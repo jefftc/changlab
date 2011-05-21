@@ -1,0 +1,97 @@
+"""Jeff's standard format for microarray data.
+
+Probe.Set.ID  Description  LocusLink  Gene.Symbol  [<SAMPLE> ...]
+
+Samples names are stored in a special column header
+tab_delimited_format.SAMPLE_NAME.
+
+
+Functions:
+read
+write
+is_format
+is_matrix
+
+"""
+import os
+import const
+
+ROW_HEADERS = ["Probe.Set.ID", "Description", "LocusLink", "Gene.Symbol"]
+MYNAME_TO_STDNAME = [
+    ("Probe.Set.ID", const.ROW_ID),
+    ("Probe.Set.ID", const.AFFY_PROBESET_ID),
+    ("Description", const.GENE_DESCRIPTION),
+    ("LocusLink", const.GENE_ID),
+    ("Gene.Symbol", const.GENE_SYMBOL),
+    ]
+
+def is_format(locator_str):
+    from genomicode import filefns
+    import tab_delimited_format
+    
+    if not filefns.exists(locator_str):
+        # This will only work if locator_str is a string.
+        return False
+    
+    # Read 5 lines and check the headers.  If the file is small, this
+    # may contain fewer than 5 lines.
+    handle = filefns.openfh(locator_str)
+    lines = [handle.readline() for i in range(5)]
+    handle.close()   # need to close it properly, or gunzip might not die.
+    lines = [x for x in lines if x]
+    matrix = [line.rstrip("\r\n").split("\t") for line in lines]
+
+    # Make sure there's at least 1 line.
+    if not matrix:
+        return False
+
+    header = matrix[0]
+    if header[:len(ROW_HEADERS)] != ROW_HEADERS:
+        return False
+
+    # Check if there's extraneous stuff.
+    nr, nc = tab_delimited_format._num_headers(matrix)
+    if nc > 4:
+        return False
+    
+    return True
+    
+    #handle = filefns.openfh(locator_str)
+    #x = handle.readline()
+    #handle.close()   # need to close it properly, or gunzip might not die.
+    #row = x.rstrip("\r\n").split("\t")
+    #if row[:len(ROW_HEADERS)] == ROW_HEADERS:
+    #    return True
+    #return False
+
+def is_matrix(X):
+    import tab_delimited_format as tdf
+    
+    if not hasattr(X, "row_names") or not hasattr(X, "col_names"):
+        return False
+    # Should only include SAMPLE_NAME.
+    if len(X.col_names()) != 1:
+        return False
+    if len(X.row_names()) != len(ROW_HEADERS):
+        return False
+    for header in X.row_names():
+        if header not in ROW_HEADERS:
+            return False
+    return True
+
+def read(handle, datatype=float):
+    from genomicode import Matrix
+    import tab_delimited_format as tdf
+    X = tdf.read(handle, hrows=1, hcols=4, datatype=datatype)
+    synonyms = {}
+    for myname, stdname in MYNAME_TO_STDNAME:
+        synonyms[stdname] = myname
+    X = Matrix.add_synonyms(X, synonyms)
+    assert is_matrix(X)
+    return X
+
+def write(X, handle):
+    import tab_delimited_format
+    
+    assert is_matrix(X)
+    tab_delimited_format.write(X, handle)

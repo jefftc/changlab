@@ -1,0 +1,221 @@
+"""
+
+red_shade
+green_shade
+rg_array_colors
+by_array_colors
+rgb_colors          From red, gree, blue colorwheel.
+matlab_colors
+bild_colors
+broad_colors
+genespring_colors
+yahoo_weather_colors
+
+"""
+
+def _matrix2color(matrix, pos):
+    # pos is [0, 1]
+    # Return (R, G, B) where R, G, and B are percentages from 0 to 1.
+    breaks = [x[0] for x in matrix]
+    
+    # Set i1 to the index of the biggest breaks that is <= pos.  i1
+    # can range from [0, len(breaks))
+    i1 = len([x for x in breaks if pos >= x]) - 1
+    assert i1 >= 0
+    x = matrix[i1][1:]
+    if i1 < len(matrix)-1:
+        # pos is [breaks[i1] , breaks[i1+1]).  Interpolate with the
+        # next index.
+        i2 = i1 + 1
+
+        delta = float(pos-breaks[i1]) / (breaks[i2]-breaks[i1])
+
+        r1, g1, b1 = matrix[i1][1:]
+        r2, g2, b2 = matrix[i2][1:]
+        r = r1 + delta*(r2-r1)
+        g = g1 + delta*(g2-g1)
+        b = b1 + delta*(b2-b1)
+        x = r, g, b
+    return [x/255.0 for x in x]
+
+def red_shade(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.0,   0, 0, 0),
+        (1.0, 255, 0, 0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def green_shade(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.0,   0, 0, 0),
+        (1.0, 255, 0, 0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def rg_array_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.0,   0, 255, 0),
+        (0.5,   0,   0, 0),
+        (1.0, 255,   0, 0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def by_array_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.0,   0,   0, 255),
+        (0.5,   0,   0,   0),
+        (1.0, 255, 255,   0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def rgb_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.00,   0,   0, 255),
+        (0.25,   0, 255, 255),
+        (0.50,   0, 255,   0),
+        (0.75, 255, 255,   0),
+        (1.00, 255,   0,   0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def matlab_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.000,   0,   0, 143),
+        (0.125,   0,   0, 255),
+        (0.250,   0, 127, 255),
+        (0.375,   0, 255, 255),
+        (0.500, 127, 255, 127),
+        (0.625, 255, 255,   0),
+        (0.750, 255, 127,   0),
+        (0.875, 255,   0,   0),
+        (1.000, 127,   0,   0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def bild_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.000,  49,  50, 114),
+        (0.050,  61,  69, 137),
+        (0.100,  62,  84, 154),
+        (0.150,  67,  89, 160),
+        (0.200,  85, 108, 176),
+        (0.250, 115, 145, 201),
+        (0.300, 160, 205, 240),
+        (0.350, 180, 220, 243),
+        (0.400, 169, 216, 211),
+        (0.450, 160, 208, 164),
+        (0.500, 179, 213, 112),
+        (0.550, 203, 220,  61),
+        (0.600, 232, 231,  61),
+        (0.650, 255, 234,  47),
+        (0.700, 250, 180,  50),
+        (0.750, 243, 136,  54),
+        (0.800, 231,  80,  61),
+        (0.850, 218,  54,  55),
+        (0.900, 204,  55,  59),
+        (0.950, 160,  52,  52),
+        (1.000, 114,  39,  44),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def broad_colors(n):
+    # Default color scheme in GenePattern HeatMapImage module.
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.000,  69,   0, 173),
+        (0.091,  39,   0, 209),
+        (0.182, 107,  88, 239),
+        (0.273, 136, 136, 255),
+        (0.364, 199, 193, 255),
+        (0.455, 213, 213, 255),
+        (0.545, 255, 192, 229),
+        (0.636, 255, 137, 137),
+        (0.727, 255, 112, 128),
+        (0.818, 255,  90,  90),
+        (0.909, 239,  64,  64),
+        (1.000, 214,  12,   0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def yahoo_weather_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.0, 255, 255, 255),
+        (0.1, 204, 255, 255),
+        (0.2, 153, 255, 255),
+        (0.3, 102, 204, 255),
+        (0.4,  84, 169, 255),
+        (0.5, 204, 255, 103),
+        (0.6, 255, 255, 103),
+        (0.7, 255, 204, 102),
+        (0.8, 255, 153, 102),
+        (0.9, 204, 102, 102),
+        (1.0, 209,  73,  73),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def genespring_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.0,   0,   0, 255),
+        (0.5, 255, 255,   0),
+        (1.0, 255,   0,   0),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def yahoo_weather_colors(n):
+    assert n > 1, "Need at least 2 colors."
+    color_matrix = [
+        (0.0, 255, 255, 255),
+        (0.1, 204, 255, 255),
+        (0.2, 153, 255, 255),
+        (0.3, 102, 204, 255),
+        (0.4,  84, 169, 255),
+        (0.5, 204, 255, 103),
+        (0.6, 255, 255, 103),
+        (0.7, 255, 204, 102),
+        (0.8, 255, 153, 102),
+        (0.9, 204, 102, 102),
+        (1.0, 209,  73,  73),
+        ]
+    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
+def rgb2hex(c):
+    # red, green, blue values from 0-1.
+    r, g, b = c
+    assert type(r) is type(0.0)
+    assert type(g) is type(0.0)
+    assert type(b) is type(0.0)
+    r, g, b = int(r*255), int(g*255), int(b*255)
+    assert r >= 0 and r < 256
+    assert g >= 0 and g < 256
+    assert b >= 0 and b < 256
+    r = hex(r)[2:].upper()
+    g = hex(g)[2:].upper()
+    b = hex(b)[2:].upper()
+    if r == "0":
+        r = "00"
+    if g == "0":
+        g = "00"
+    if b == "0":
+        b = "00"
+    x = "0x%s%s%s" % (r, g, b)
+    return x
