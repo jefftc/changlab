@@ -6,14 +6,13 @@ mfold
 
 """
 import os, sys
-from filefns import openfh
 
 def calc_free_energy(sequence, NA=None, T=None):
     # Returns the delta G of the best folding.  If no foldings, then
     # returns 0.
     import time
     import tempfile
-    import genomefns
+    import genomelib
 
     tempdir = tempfile.mkdtemp(dir=".")
     assert os.path.exists(tempdir)
@@ -26,7 +25,7 @@ def calc_free_energy(sequence, NA=None, T=None):
     
     #seq_file = os.path.join(tempdir, "test.fa")
     seq_file = "test.fa"
-    genomefns.write_fasta("sequence", sequence, handle=open(seq_file, 'w'))
+    genomelib.write_fasta("sequence", sequence, handle=open(seq_file, 'w'))
 
     r = mfold(seq_file, NA=NA, T=T)
     output = r.read()

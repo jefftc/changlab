@@ -313,18 +313,18 @@ def plot_label(plotlib, image, label_layout, gene_symbol):
     plotlib.text(image, x, y, gene_symbol, fontsize, COLOR)
 
 def resolve_symbol_or_file(name):
-    from genomicode import filefns
+    from genomicode import filelib
     
     if not os.path.exists(name):
         return [name]
-    symbols = [x.strip() for x in filefns.openfh(name)]
+    symbols = [x.strip() for x in filelib.openfh(name)]
     return symbols
 
 def resolve_sequence(
     name, bp_upstream, length, default_transcript=None,
     skip_unknown_genes=False):
-    from genomicode import parsefns
-    from genomicode import genomefns
+    from genomicode import parselib
+    from genomicode import genomelib
 
     transcript_num = default_transcript
     gene_symbol = name
@@ -334,7 +334,7 @@ def resolve_sequence(
         transcript_num = int(transcript_num)
 
     # BUG: Should be able to specify tss_file, ra_path.
-    proms = genomefns.get_promoters(gene_symbol, -bp_upstream, length)
+    proms = genomelib.get_promoters(gene_symbol, -bp_upstream, length)
     if not proms and skip_unknown_genes:
         return None
     assert proms, "I could not find gene: %s" % gene_symbol
@@ -350,7 +350,7 @@ def resolve_sequence(
         print "\t".join(map(str, x))
         for i in range(len(proms)):
             chrom, tss, strand, start, length, seq = proms[i]
-            tss = parsefns.pretty_int(tss)
+            tss = parselib.pretty_int(tss)
             x = i, chrom, strand, tss
             print "\t".join(map(str, x))
         sys.exit(0)
@@ -365,7 +365,7 @@ def resolve_sequence(
 
 def resolve_matrices(names):
     # Clean up user input.
-    from genomicode import motiffns
+    from genomicode import motiflib
 
     # Parse out the matrices from the user input.
     matrices = []
@@ -382,10 +382,10 @@ def resolve_matrices(names):
         assert len(x) < 4
 
         # Map name to matrix IDs.
-        if motiffns.is_matrix_id(name):
+        if motiflib.is_matrix_id(name):
             matrix_ids = [name]
         else:
-            x = motiffns.gene2matrices(name)
+            x = motiflib.gene2matrices(name)
             matrix_ids = [x.matid for x in x]
         assert matrix_ids, "Unrecognized gene or matrix name: %s" % name
         matrices.extend(matrix_ids)
@@ -428,9 +428,9 @@ def main():
     from optparse import OptionParser, OptionGroup
 
     import math
-    from genomicode import genomefns
-    from genomicode import motiffns
-    from genomicode import parsefns
+    from genomicode import genomelib
+    from genomicode import motiflib
+    from genomicode import parselib
     
     usage = "usage: %prog [options] <GENE SYMBOL>[,#] [...]"
     parser = OptionParser(usage=usage, version="%prog 01")
@@ -559,13 +559,13 @@ def main():
         gene_symbol, chrom, gen_start, gen_length, txn_strand, tss = x
         print "%s: %+d to %+d relative to TSS at chr%s:%s:%s." % (
             gene_symbol, -options.upstream, -options.upstream+seq_length,
-            chrom, parsefns.pretty_int(tss), txn_strand)
+            chrom, parselib.pretty_int(tss), txn_strand)
 
         # Get the TFBS from that site.
         nlp_cutoff = 0
         if options.pvalue_cutoff:
             nlp_cutoff = -math.log(options.pvalue_cutoff)
-        data = motiffns.score_tfbs_genome(
+        data = motiflib.score_tfbs_genome(
             chrom, gen_start, gen_length, matrices=matrices, nlp=nlp_cutoff)
         
         ## # If multiple matrices for the same gene symbol hit the same
@@ -586,7 +586,7 @@ def main():
         ##         i += 1
 
         # Sort by position relative to TSS, decreasing NLP
-        x = [(genomefns.genbase2tssbase(x[3], tss, txn_strand), -x[4], x)
+        x = [(genomelib.genbase2tssbase(x[3], tss, txn_strand), -x[4], x)
              for x in data]
         x.sort()
         data = [x[-1] for x in x]
@@ -599,14 +599,14 @@ def main():
         for x in data:
             matrix, chrom, strand, pos, NLP = x
 
-            m = motiffns.matid2matrix(matrix)
+            m = motiflib.matid2matrix(matrix)
             
             name_len = max(name_len, len(matrix))
             gs_len = max(gs_len, len(m.gene_symbol))
-            tss_dist = genomefns.calc_tss_seq_dist(
+            tss_dist = genomelib.calc_tss_seq_dist(
                 tss, txn_strand, pos, m.length)
             tss_dist_len = max(
-                tss_dist_len, len(parsefns.pretty_int(tss_dist)))
+                tss_dist_len, len(parselib.pretty_int(tss_dist)))
             #NLP_len = max(NLP_len, len("%.2f" % NLP))
 
         # Print the data.
@@ -614,7 +614,7 @@ def main():
         for x in data:
             matrix, chrom, strand, pos, NLP = x
             
-            m = motiffns.matid2matrix(matrix)
+            m = motiflib.matid2matrix(matrix)
             
             x = matrix, pos, m.length, strand, NLP
             binding_sites.append(x)
@@ -626,7 +626,7 @@ def main():
             right_flank = FLANK
             seq_pos = pos - left_flank
             seq_len = m.length + left_flank + right_flank
-            seq = genomefns.get_sequence(chrom, seq_pos, seq_len)
+            seq = genomelib.get_sequence(chrom, seq_pos, seq_len)
             s1 = seq[:left_flank]
             s2 = seq[left_flank:left_flank+m.length]
             s3 = seq[left_flank+m.length:]
@@ -636,14 +636,14 @@ def main():
             mat_strand = "+"
             if strand != txn_strand:
                 mat_strand = "-"
-            tss_dist = genomefns.calc_tss_seq_dist(
+            tss_dist = genomelib.calc_tss_seq_dist(
                 tss, txn_strand, pos, m.length)
-            pvalue = parsefns.pretty_pvalue(math.exp(-NLP), nsig=2)
+            pvalue = parselib.pretty_pvalue(math.exp(-NLP), nsig=2)
             #print "  %-*s [%*s] %s:%s:%s (%*s:%s) %*.2f %s" % (
             print "  %-*s [%*s] %s:%s (%*s) %-8s %s" % (
                 gs_len, m.gene_symbol, name_len, matrix, 
-                parsefns.pretty_int(pos), strand, tss_dist_len,
-                parsefns.pretty_int(tss_dist), pvalue, seq)
+                parselib.pretty_int(pos), strand, tss_dist_len,
+                parselib.pretty_int(tss_dist), pvalue, seq)
 
         # Initialize some objects to plot the figures.
         bp_start = gen_start

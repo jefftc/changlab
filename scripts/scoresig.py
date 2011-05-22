@@ -30,7 +30,7 @@ def read_signatures(
     # desired_ids is specified, then do the ones with that ID and
     # ignore desired_tags.  Otherwise, obey desired_tags.
     
-    from genomicode import filefns
+    from genomicode import filelib
     
     opr = os.path.realpath
     opj = os.path.join
@@ -48,7 +48,7 @@ def read_signatures(
     desired_tags = {}.fromkeys(x)
 
     ds = []
-    for d in filefns.read_row(filename, header=1):
+    for d in filelib.read_row(filename, header=1):
         # xls2txt converts all values to floats.  Convert them back to
         # integers.
         d.xID = int(float(d.xID))
@@ -393,10 +393,10 @@ def check_pybinreg(outpath, outfile):
     raise AssertionError, "%s\nProcessing aborted." % error
 
 def summarize_probabilities(signatures, names, paths, file_layout):
-    from genomicode import filefns
-    from genomicode import binregfns
+    from genomicode import filelib
+    from genomicode import binreg
 
-    _hash = binregfns._hash_sampleid
+    _hash = binreg._hash_sampleid
     
     sample_names = []   # list of sample names
     probabilities = []  # matrix of probabilities
@@ -405,7 +405,7 @@ def summarize_probabilities(signatures, names, paths, file_layout):
         filename = os.path.join(outpath, "probabilities.txt")
         assert os.path.exists(filename), \
                "Could not find probability file for %s." % name
-        ds = [d for d in filefns.read_row(filename, header=1)]
+        ds = [d for d in filelib.read_row(filename, header=1)]
         ds = [d for d in ds if d.Type == "test"]
 
         # Assign and check the sample names.
@@ -433,11 +433,11 @@ def summarize_probabilities(signatures, names, paths, file_layout):
     handle.close()
 
 def summarize_heatmap(python, arrayplot, cluster, libpath, file_layout):
-    from genomicode import plotfns
+    from genomicode import plotlib
 
     # Bug: what if there are nan's in the probabilities?
     xpix, ypix = 20, 20
-    plotfns.plot_heatmap(
+    plotlib.plot_heatmap(
         file_layout.PROBABILITIES_PCL, file_layout.PROBABILITIES_PNG,
         xpix, ypix, color="bild", gene_label=True, cluster_genes=True,
         array_label=True, cluster_arrays=True, scale=-0.5, gain=2.0,
@@ -622,12 +622,12 @@ def main():
     import arrayio
     from genomicode import jmath
     from genomicode import parallel
-    from genomicode import filefns
+    from genomicode import filelib
     from genomicode import archive
-    from genomicode import binregfns
-    from genomicode import genepatternfns
+    from genomicode import binreg
+    from genomicode import genepattern
     
-    genepatternfns.fix_environ_path()
+    genepattern.fix_environ_path()
     
     file_layout = make_file_layout(options.outpath)
     init_paths(file_layout)
@@ -667,10 +667,10 @@ def main():
     if DATA_rma and DATA_mas5:
         assert DATA_rma.ncol() == DATA_mas5.ncol(), \
                "RMA/MAS5 data sets have different numbers of samples."
-        if not binregfns.are_cols_aligned(DATA_rma, DATA_mas5):
-            x = binregfns.align_cols(DATA_rma, DATA_mas5)
+        if not binreg.are_cols_aligned(DATA_rma, DATA_mas5):
+            x = binreg.align_cols(DATA_rma, DATA_mas5)
             DATA_rma, DATA_mas5 = x
-        assert binregfns.are_cols_aligned(DATA_rma, DATA_mas5)
+        assert binreg.are_cols_aligned(DATA_rma, DATA_mas5)
     if DATA_rma:
         arrayio.gct_format.write(
             DATA_rma, open(file_layout.DATASET_RMA, 'w'))

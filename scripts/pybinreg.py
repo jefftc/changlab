@@ -140,9 +140,9 @@ class PyBinregParams:
 
 def parse_yaml_options(filename):
     import yaml
-    from genomicode import filefns
+    from genomicode import filelib
 
-    data = yaml.load(filefns.openfh(filename).read())
+    data = yaml.load(filelib.openfh(filename).read())
 
     # Conversion of the YAML names to the attributes for PyBinregParams.
     name2stdname = {
@@ -158,7 +158,7 @@ def parse_yaml_options(filename):
         }
 
     # Make an object with the standard options.
-    obj = filefns.GenericObject()
+    obj = filelib.GenericObject()
     for name, stdname in name2stdname.iteritems():
         assert name in data, "Missing key in YAML file: %s" % name
         assert not hasattr(obj, stdname)
@@ -194,8 +194,8 @@ def update_params_from_yaml(pybr_params, filename):
 
 def update_params_from_options(pybr_params, options, train0, train1, test):
     # test can be None.
-    from genomicode import parsefns
-    from genomicode import binregfns
+    from genomicode import parselib
+    from genomicode import binreg
 
     # Attributes from options to copy directly over to pybr_params.
     attributes = [
@@ -226,12 +226,12 @@ def update_params_from_options(pybr_params, options, train0, train1, test):
     # people to specify numbers like "080" for 80.
     if options.genes:
         genes = []
-        for (start, end) in parsefns.parse_ranges(options.genes):
+        for (start, end) in parselib.parse_ranges(options.genes):
             genes.extend(range(start, end+1))
         pybr_params.genes = genes
     if options.metagenes:
         metagenes = []
-        for (start, end) in parsefns.parse_ranges(options.metagenes):
+        for (start, end) in parselib.parse_ranges(options.metagenes):
             metagenes.extend(range(start, end+1))
         pybr_params.metagenes = metagenes
 
@@ -246,10 +246,10 @@ def update_params_from_options(pybr_params, options, train0, train1, test):
         pybr_params.log_train1 = False
     else:
         assert options.log_the_data == "auto"
-        pybr_params.log_train0 = not binregfns.is_logged_array_data(train0)
-        pybr_params.log_train1 = not binregfns.is_logged_array_data(train1)
+        pybr_params.log_train0 = not binreg.is_logged_array_data(train0)
+        pybr_params.log_train1 = not binreg.is_logged_array_data(train1)
         if test:
-            pybr_params.log_test = not binregfns.is_logged_array_data(test)
+            pybr_params.log_test = not binreg.is_logged_array_data(test)
 
     pybr_params.validate()
 
@@ -318,12 +318,12 @@ def init_paths(file_layout):
         os.mkdir(dirpath)
 
 def read_matrices(train0_file, train1_file, test_file):
-    from genomicode import binregfns
+    from genomicode import binreg
 
     filenames = [train0_file, train1_file]
     if test_file:
         filenames.append(test_file)
-    x = binregfns.read_matrices(filenames)
+    x = binreg.read_matrices(filenames)
     DATA, ALIGNED = x
 
     if not test_file:
@@ -344,28 +344,28 @@ def read_matrices(train0_file, train1_file, test_file):
 
 def strip_affx_control_probes(train0, train1, test):
     # test can be None
-    from genomicode import binregfns
+    from genomicode import binreg
     print "Stripping Affymetrix control IDs."
-    train0_s = binregfns.strip_affx_control_probes(train0)
-    train1_s = binregfns.strip_affx_control_probes(train1)
+    train0_s = binreg.strip_affx_control_probes(train0)
+    train1_s = binreg.strip_affx_control_probes(train1)
     test_s = None
     if test:
-        test_s = binregfns.strip_affx_control_probes(test)
+        test_s = binreg.strip_affx_control_probes(test)
     assert_rows_aligned(train0_s, train1_s, test_s)
     return train0_s, train1_s, test_s
 
 def assert_rows_aligned(train0, train1, test):
-    from genomicode import binregfns
+    from genomicode import binreg
     if test:
-        assert binregfns.are_rows_aligned(train0, train1, test)
+        assert binreg.are_rows_aligned(train0, train1, test)
     else:
-        assert binregfns.are_rows_aligned(train0, train1)
+        assert binreg.are_rows_aligned(train0, train1)
 
 def log_matrices(train0, train1, test, log_train0, log_train1, log_test):
     # Log each variable if necessary.  Will log in place.  Return a
     # boolean indicating whether anything was logged.  test can be None.
     from genomicode import jmath
-    from genomicode import binregfns
+    from genomicode import binreg
 
     if test is None:
         log_test = False
@@ -499,19 +499,19 @@ def shiftscale_normalize_matrices(
 def write_dataset(filename, train0, train1, test):
     # test can be None.
     import arrayio
-    from genomicode import binregfns
+    from genomicode import binreg
 
     matrices = [train0, train1]
     if test:
         matrices.append(test)
-    DATA = binregfns.merge_gct_matrices(*matrices)
+    DATA = binreg.merge_gct_matrices(*matrices)
     arrayio.gct_format.write(DATA, open(filename, 'w'))
 
 def write_files_for_binreg(train0, train1, test, file_layout):
     # Format the files for binreg.  test can be None.
-    from genomicode import binregfns
+    from genomicode import binreg
 
-    x = binregfns.format_data_files(train0, train1, test)
+    x = binreg.format_data_files(train0, train1, test)
     desc, exp = x
     open(file_layout.BR_DESCRIPTION, 'w').write(desc)
     open(file_layout.BR_EXPRESSION, 'w').write(exp)
@@ -557,31 +557,31 @@ def summarize_parameters(params, file_layout, num_genes, num_metagenes):
     handle.close()
 
 def summarize_probabilities(train0, train1, test, file_layout):
-    from genomicode import binregfns
+    from genomicode import binreg
 
-    x = binregfns.format_predictions(
+    x = binreg.format_predictions(
         train0, train1, test, outpath=file_layout.BINREG)
     open(file_layout.PROBABILITIES, 'w').write(x)
 
 def summarize_signature_dataset(file_layout):
     import arrayio
-    from genomicode import filefns
+    from genomicode import filelib
     from genomicode import jmath
-    from genomicode import binregfns
+    from genomicode import binreg
 
     # Read the gene_ids of interest.
     filename = os.path.join(file_layout.BINREG, "genecoefficients.txt")
     assert os.path.exists(filename)
-    x = [x[1] for x in filefns.read_cols(filename)]
-    gene_ids = binregfns._hash_many_geneids(x)
-    assert gene_ids[0] == binregfns._hash_geneid("Intercept")
+    x = [x[1] for x in filelib.read_cols(filename)]
+    gene_ids = binreg._hash_many_geneids(x)
+    assert gene_ids[0] == binreg._hash_geneid("Intercept")
     gene_ids.pop(0)
 
     # Read the dataset.  Should be in GCT format.
     DATA = arrayio.read(file_layout.DS_FINAL)
     assert arrayio.gct_format.is_matrix(DATA)
     # Hash the IDs to make sure they match the ones in the coefficient file.
-    x = binregfns._hash_many_geneids(DATA.row_names("NAME"))
+    x = binreg._hash_many_geneids(DATA.row_names("NAME"))
     DATA._row_names["NAME"] = x
     
     # Select only the signature genes.
@@ -593,7 +593,7 @@ def summarize_signature_dataset(file_layout):
     # Can not use sample names because they may not be unique across
     # data sets.
     #sample2type = {}
-    #for d in filefns.read_row(files.probabilities, header=1):
+    #for d in filelib.read_row(files.probabilities, header=1):
     #    if d.Sample in sample2type:
     #        assert sample2type[d.Sample] == type2i[d.Type], \
     #               "Conflicting types for sample %s: %s %s" % (
@@ -601,7 +601,7 @@ def summarize_signature_dataset(file_layout):
     #    sample2type[d.Sample] = type2i[d.Type]
     #TYPES = [sample2type[x] for x in DATA.col_names()]
     TYPES = [None] * DATA.ncol()
-    for d in filefns.read_row(file_layout.PROBABILITIES, header=1):
+    for d in filelib.read_row(file_layout.PROBABILITIES, header=1):
         d.Index = int(d.Index)
         if TYPES[d.Index] is not None:
             assert TYPES[d.Index] == type2i[d.Type], \
@@ -648,19 +648,19 @@ def summarize_signature_dataset(file_layout):
 def summarize_signature_heatmap(
     python, arrayplot, cluster, file_layout, libpath=[]):
     import arrayio
-    from genomicode import plotfns
+    from genomicode import plotlib
 
     DATA = arrayio.gct_format.read(file_layout.SIGNATURE_GCT)
     nrow, ncol = DATA.dim()
 
-    x = plotfns.find_tall_heatmap_size(
+    x = plotlib.find_tall_heatmap_size(
         nrow, ncol, min_box_height=1, min_box_width=1,
         max_box_height=40, max_box_width=40, max_total_height=700,
         max_total_width=700)
     xpix, ypix = x
     #print ypix, xpix, nrow, ncol
 
-    plotfns.plot_heatmap(
+    plotlib.plot_heatmap(
         file_layout.SIGNATURE_GCT, file_layout.SIGNATURE_PNG, xpix, ypix,
         color="bild", gene_center="mean", gene_normalize="var",
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
@@ -668,18 +668,18 @@ def summarize_signature_heatmap(
 def summarize_dataset_heatmap(
     python, arrayplot, cluster, file_layout, libpath=[]):
     import arrayio
-    from genomicode import plotfns
+    from genomicode import plotlib
 
     DATA = arrayio.gct_format.read(file_layout.DS_SIG)
     nrow, ncol = DATA.dim()
     
-    x = plotfns.find_tall_heatmap_size(
+    x = plotlib.find_tall_heatmap_size(
         nrow, ncol, min_box_width=10,
         max_total_height=2000, max_total_width=2000)
     xpix, ypix = x
     #print xpix, ypix, ncol, nrow
 
-    plotfns.plot_heatmap(
+    plotlib.plot_heatmap(
         file_layout.DS_SIG, file_layout.DS_SIG_PNG, xpix, ypix,
         color="bild",
         cluster_genes=True, gene_center="mean", gene_normalize="var",
@@ -690,7 +690,7 @@ def summarize_predictions(povray, file_layout):
     # May not plot anything if there are problems with the BinReg
     # output (e.g. all predictions are nan).
     import math
-    from genomicode import filefns
+    from genomicode import filelib
     from genomicode import povraygraph
     
     assert os.path.exists(file_layout.PROBABILITIES)
@@ -701,7 +701,7 @@ def summarize_predictions(povray, file_layout):
     X, Y, error_bar = [], [], []
     pch = []
     color = []
-    for d in filefns.read_row(file_layout.PROBABILITIES, header=1):
+    for d in filelib.read_row(file_layout.PROBABILITIES, header=1):
         if d.Method == "FITTED":
             continue
         x = float(d.Metagene)
@@ -908,12 +908,12 @@ def main():
         sys.path = options.libpath + sys.path
     # Import after the library path is set.
     import arrayio
-    from genomicode import filefns
+    from genomicode import filelib
     from genomicode import archive
-    from genomicode import binregfns
-    from genomicode import genepatternfns
+    from genomicode import binreg
+    from genomicode import genepattern
 
-    genepatternfns.fix_environ_path()
+    genepattern.fix_environ_path()
 
     # If YAML file is specified, then use the values stored in the
     # YAML file as default.  Precedence is USER > YAML > DEFAULTS.
@@ -938,10 +938,10 @@ def main():
     else:
         parser.error("Too many files.")
         
-    assert filefns.exists(train0_file), "File not found: %s" % train0_file
-    assert filefns.exists(train1_file), "File not found: %s" % train1_file
+    assert filelib.exists(train0_file), "File not found: %s" % train0_file
+    assert filelib.exists(train1_file), "File not found: %s" % train1_file
     if test_file:
-        assert filefns.exists(test_file), "File not found: %s" % test_file
+        assert filelib.exists(test_file), "File not found: %s" % test_file
 
     if not test_file:
         if options.shiftscale:
@@ -1036,7 +1036,7 @@ def main():
 
         # Format the parameters and output files for binreg.
         write_files_for_binreg(train0, train1, test, file_layout)
-        params = binregfns.BinregParams(
+        params = binreg.BinregParams(
             binreg_version=pybr_params.binreg_version,
             cross_validate=int(pybr_params.cross_validate),
             make_plots=0,
@@ -1047,7 +1047,7 @@ def main():
             credible_interval=pybr_params.credible_interval)
 
         # Run Binreg.
-        r = binregfns.binreg_raw(
+        r = binreg.binreg_raw(
             file_layout.BR_EXPRESSION, file_layout.BR_DESCRIPTION,
             1, params, matlab=options.matlab,
             binreg_path=options.binreg_path, outpath=file_layout.BINREG)

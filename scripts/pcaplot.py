@@ -15,9 +15,9 @@ def main():
     from optparse import OptionParser, OptionGroup
     import arrayio
     from genomicode import jmath
-    from genomicode import pcafns
-    from genomicode import parsefns
-    from genomicode import colorfns
+    from genomicode import pcalib
+    from genomicode import parselib
+    from genomicode import colorlib
 
     usage = "usage: %prog [options] filename outfile"
     parser = OptionParser(usage=usage, version="%prog 01")
@@ -52,7 +52,7 @@ def main():
     # Figure out the clusters for each of the samples.
     index2cluster = {}
     for clust_i, s in enumerate(options.cluster):
-        ranges = parsefns.parse_ranges(s)
+        ranges = parselib.parse_ranges(s)
         for s, e in ranges:
             for i in range(s-1, e):
                 assert i < MATRIX.ncol(), "Index %d out of range" % i
@@ -64,15 +64,15 @@ def main():
         cluster[i] = g
 
     # Select a subset of the genes.
-    I = pcafns.select_genes_var(MATRIX._X, num_genes)
+    I = pcalib.select_genes_var(MATRIX._X, num_genes)
     MATRIX = MATRIX.matrix(I, None)
 
     # Calculate the principal components and plot them.
-    principal_components = pcafns.svd_project_cols(MATRIX._X, K)
+    principal_components = pcalib.svd_project_cols(MATRIX._X, K)
     X = [x[0] for x in principal_components]
     Y = [x[1] for x in principal_components]
-    color = pcafns.choose_colors(cluster)
-    pcafns.plot_scatter(X, Y, outfile, group=cluster, color=color)
+    color = pcalib.choose_colors(cluster)
+    pcalib.plot_scatter(X, Y, outfile, group=cluster, color=color)
 
     # Write out the principal components.
     assert len(principal_components) == len(cluster)
@@ -83,7 +83,7 @@ def main():
         x = MATRIX.col_names(arrayio.COL_ID)[i]
         c = ""
         if color:
-            c = colorfns.rgb2hex(color[i])
+            c = colorlib.rgb2hex(color[i])
         x = [i+1, x, cluster[i], c] + principal_components[i]
         print "\t".join(map(str, x))
 

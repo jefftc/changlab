@@ -21,9 +21,6 @@ scan_cdf
 
 import os, sys
 
-from genomicode import filefns
-from genomicode.filefns import lwrite, tswrite, openfh
-
 def scan_cel(filename):
     fn = guess_cel_fn(filename)
     return fn(filename)
@@ -35,9 +32,10 @@ def scan_celv3(filename):
     # ("MASKS", "DATA", (X, Y))
     # ("OUTLIERS", "DATA", (X, Y))
     # ("MODIFIED", "DATA", (X, Y))
+    import filelib
     
     section = None
-    handle = openfh(filename)
+    handle = filelib.openfh(filename)
     for i, line in enumerate(handle):
         line = line.strip()
         if not line:
@@ -82,6 +80,7 @@ def scan_celv4(filename):
     # ("OUTLIERS", "DATA", (X, Y))
     # ("MODIFIED", "DATA", (X, Y))
     import struct
+    import filelib
 
     # integer   32-bit signed integer
     # DWORD     32-bit unsigned integer
@@ -92,7 +91,7 @@ def scan_celv4(filename):
         size = struct.calcsize(fmt)
         return struct.unpack(fmt, handle.read(size))
 
-    handle = openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
 
     magic, version = read("<ii")
     assert magic == 64
@@ -167,6 +166,7 @@ def scan_celvcc1(filename):
     # Y is columns.
     # X, Y coords start with (0, 0), (1, 0), (2, 0), etc.
     # Stored by row, then column.
+    import filelib
 
     def scan_data_sets1(filename):
         # Yield list of tuples for each Data Set.
@@ -207,13 +207,13 @@ def scan_celvcc1(filename):
             assert num_cols == len(column_names)
             assert num_cols*num_rows == len(values)
 
-            x = filefns.GenericObject(
+            x = filelib.GenericObject(
                 name=dataset_name, column_names=column_names,
                 num_cols=num_cols, num_rows=num_rows, data=values)
             yield x
 
     # Get the rows and cols on the chip.
-    handle = openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
     cel_rows = cel_cols = None
     for x in scan_calvin_generic_data_file(filename):
         section, name, value = x
@@ -263,11 +263,13 @@ def scan_celvcc1(filename):
         yield "OUTLIERS", "DATA", (x, y)
 
 def scan_calvin_generic_data_file(filename):
+    import filelib
+    
     VALUE2TYPE = [
         "BYTE", "UBYTE", "SHORT", "USHORT", "INT", "UINT", "FLOAT",
         "STRING", "WSTRING"]
         
-    handle = openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
     
     def _read_raw(fmt):
         # fmt is a struct format string.
@@ -435,6 +437,7 @@ def scan_bpmapv3(filename):
     # ("POSITION_INFO", "PROBE_POS", <data>)      0-based position
     # ("POSITION_INFO", "STRAND", <data>)         1 target on +, 0 target on -
     import struct
+    import filelib
 
     def read(fmt):
         size = struct.calcsize(fmt)
@@ -444,7 +447,7 @@ def scan_bpmapv3(filename):
         return read(">%ds" % length)[0]
 
     # big-endian
-    handle = openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
 
     magic, = read(">8s")
     assert magic == "PHT7\r\n\x1a\n"
@@ -522,9 +525,10 @@ def guess_cel_version(filename):
     # v4   Version 4 from GCOS software.
     # cc1  Command Console version 1.
     import struct
+    import filelib
 
     # Guess the version from the beginning of the file.
-    handle = openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
     data = handle.read(100)
     handle.close()   # close or gunzip may not die
 
@@ -701,8 +705,10 @@ def extract_chip_name(filename):
     # MOE430A
     # RAE230A
     # Mouse430A_2
+    import filelib
+    
     fn = guess_cel_fn(filename)
-    handle = openfh(filename)
+    handle = filelib.openfh(filename)
     
     chip_name = None
     for x in fn(handle):
@@ -761,12 +767,13 @@ def scan_cdf(filename):
     #   TBASE  Base of target.  Is a PM probe if PBASE != TBASE.
     #          Otherwise, is a MM probe.  Seems flipped to me?  I guess
     #          it's a PM because it interrogates the complement.
+    import filelib
     
     # ("Unit_Block<x>", "Cell<i>", <values>)  
     
     section = None
     Unit_Block_Cell_int_indexes = None
-    handle = openfh(filename)
+    handle = filelib.openfh(filename)
     for i, line in enumerate(handle):
         line = line.strip("\r\n")
         if not line:

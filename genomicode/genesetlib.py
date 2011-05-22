@@ -11,12 +11,12 @@ detect_format
 
 def read_gmx(filename):
     # yield name, description, list of genes
-    import filefns
+    import filelib
 
     genesets = {}  # name -> list of genes
     name2desc = {} # name -> description
 
-    iter = filefns.read_cols(filename)
+    iter = filelib.read_cols(filename)
 
     # Read the names line.
     names = iter.next()
@@ -47,11 +47,11 @@ def read_gmx(filename):
 
 def read_gmt(filename):
     # yield name, description, list of genes
-    import filefns
-    import iofns
+    import filelib
+    import iolib
 
-    x = filefns.openfh(filename).read()
-    for cols in iofns.split_tdf(x):
+    x = filelib.openfh(filename).read()
+    for cols in iolib.split_tdf(x):
         assert len(cols) >= 2
         name, description = cols[:2]
         x = cols[2:]
@@ -128,11 +128,11 @@ def _is_known_desc(desc):
 
 def detect_format(filename):
     # Return "GMX", "GMT", or None.
-    import filefns
-    import iofns
+    import filelib
+    import iolib
 
-    x = filefns.openfh(filename).read()
-    matrix = [x for x in iofns.split_tdf(x)]
+    x = filelib.openfh(filename).read()
+    matrix = [x for x in iolib.split_tdf(x)]
 
     # GMX
     # <name1> <name2> ... <nameN>

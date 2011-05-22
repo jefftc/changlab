@@ -414,17 +414,17 @@ def make_layout(
     cluster_genes, gene_tree_scale, gene_tree_thickness,
     cluster_arrays, array_tree_scale, array_tree_thickness,
     cluster_alg, label_genes, label_arrays):
-    from genomicode import colorfns
+    from genomicode import colorlib
 
     # Choose the color scheme.
     scheme2fn = {
-        "red" : colorfns.red_shade,
-        "red-green" : colorfns.rg_array_colors,
-        "blue-yellow" : colorfns.by_array_colors,
-        "matlab" : colorfns.matlab_colors,
-        "bild" : colorfns.bild_colors,
-        "genespring" : colorfns.genespring_colors,
-        "yahoo" : colorfns.yahoo_weather_colors,
+        "red" : colorlib.red_shade,
+        "red-green" : colorlib.rg_array_colors,
+        "blue-yellow" : colorlib.by_array_colors,
+        "matlab" : colorlib.matlab_colors,
+        "bild" : colorlib.bild_colors,
+        "genespring" : colorlib.genespring_colors,
+        "yahoo" : colorlib.yahoo_weather_colors,
         }
     assert color_scheme in scheme2fn, "Unknown color scheme: %s" % color_scheme
     color_fn = scheme2fn[color_scheme]
@@ -447,7 +447,7 @@ def make_layout(
             MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight,
             gene_tree_scale, gene_tree_thickness, 
             cluster_data.gene_tree, cluster_data.gene_tree_cluster,
-            colorfns.matlab_colors)
+            colorlib.matlab_colors)
     if(cluster_arrays and cluster_data.array_tree and array_tree_scale > 0 and
        cluster_alg == "hierarchical" and MATRIX.nrow() > 1):
         assert array_tree_scale > 0
@@ -456,7 +456,7 @@ def make_layout(
             MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight,
             array_tree_scale, array_tree_thickness, 
             cluster_data.array_tree, cluster_data.array_tree_cluster, 
-            colorfns.matlab_colors)
+            colorlib.matlab_colors)
 
     # Make layouts for the clusters.
     # Can plot these (k-means) clusters if either kmeans or
@@ -617,7 +617,7 @@ def convert_to_pcl(MATRIX, label_name=None):
     return pcl_matrix
 
 def read_filecol(filecol):
-    from genomicode import iofns
+    from genomicode import iolib
 
     # filecol is either <filename> or <filename>,<col>.  commas
     # are not allowed in the filenames.
@@ -628,7 +628,7 @@ def read_filecol(filecol):
         filename, colnum = x
         colnum = int(colnum)
     assert os.path.exists(filename), "could not find file %s" % filename
-    data = iofns.split_tdf(open(filename).read())
+    data = iolib.split_tdf(open(filename).read())
     names = [x[colnum].strip() for x in data]
     names = [x for x in names if x]
     return names
@@ -647,14 +647,14 @@ def filter_matrix(
     MATRIX, gene_indexes, gene_names, gene_filecol, num_genes_var,
     array_indexes, array_filecol):
     # Filter the genes, maintaining the order specified in the input.
-    from genomicode import pcafns
-    from genomicode import parsefns
+    from genomicode import pcalib
+    from genomicode import parselib
     
     # User provides indexes as 1-based inclusive.  Convert to 0-based
     # exclusive.
     if gene_indexes is not None:
         I = []
-        for s, e in parsefns.parse_ranges(gene_indexes):
+        for s, e in parselib.parse_ranges(gene_indexes):
             assert s >= 1
             s, e = s-1, e
             if e > MATRIX.nrow():
@@ -672,7 +672,7 @@ def filter_matrix(
 
     if array_indexes is not None:
         I = []
-        for s, e in parsefns.parse_ranges(array_indexes):
+        for s, e in parselib.parse_ranges(array_indexes):
             assert s >= 1
             s, e = s-1, e
             if e > MATRIX.ncol():
@@ -701,7 +701,7 @@ def filter_matrix(
 
     # Now select the genes based on variance.
     if num_genes_var and MATRIX.nrow() > num_genes_var:
-        I = pcafns.select_genes_var(MATRIX._X, num_genes_var)
+        I = pcalib.select_genes_var(MATRIX._X, num_genes_var)
         MATRIX = MATRIX.matrix(I, None)
         
     return MATRIX
@@ -993,7 +993,7 @@ def find_data_files(file_or_stem):
     
 def read_data_set(file_or_stem, default=None):
     import arrayio
-    from genomicode import parsefns
+    from genomicode import parselib
     from genomicode import Matrix
     from genomicode import clusterio
 
@@ -1014,7 +1014,7 @@ def read_data_set(file_or_stem, default=None):
     if not MATRIX.row_names():
         header = "GENE.ID"
         MATRIX._row_order.append(header)
-        x = ["R%s" % x for x in parsefns.pretty_range(0, MATRIX.nrow())]
+        x = ["R%s" % x for x in parselib.pretty_range(0, MATRIX.nrow())]
         MATRIX._row_names[header] = x
         synonyms[arrayio.ROW_ID] = header
         MATRIX = Matrix.add_synonyms(MATRIX, synonyms)
@@ -1188,7 +1188,7 @@ def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
 
 def plot_gene_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     import arrayio
-    from genomicode import colorfns
+    from genomicode import colorlib
     assert X.nrow() == len(clusters), "%d %d" % (X.nrow(), len(clusters))
 
     # Figure out what kind of IDs to use.
@@ -1219,12 +1219,12 @@ def plot_gene_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
         if max_cluster > 0:
             p = float(n) / max_cluster
         # Bug: This should be set in the layout.
-        c = _get_color(p, colorfns.matlab_colors)
+        c = _get_color(p, colorlib.matlab_colors)
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 def plot_array_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     import arrayio
-    from genomicode import colorfns
+    from genomicode import colorlib
     assert X.ncol() == len(clusters)
 
     # Figure out what kind of IDs to use.
@@ -1256,7 +1256,7 @@ def plot_array_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
         if max_cluster > 0:
             p = float(n) / max_cluster
         # Bug: This should be set in the layout.
-        c = _get_color(p, colorfns.matlab_colors)
+        c = _get_color(p, colorlib.matlab_colors)
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 def plot_gene_labels(plotlib, image, X, xoff, yoff, layout, labels):
@@ -1280,13 +1280,13 @@ def _cluster(MATRIX, *args, **params):
     import tempfile
     import subprocess
     import arrayio
-    from genomicode import filefns
+    from genomicode import filelib
 
     cluster = params.get("cluster") or "cluster"
 
     path = "."
     x, filestem = tempfile.mkstemp(dir=path); os.close(x)
-    filefns.safe_unlink(filestem)
+    filelib.safe_unlink(filestem)
 
     # Write the data set in PCL format.
     # This implementation requires a matrix in PCL format.
@@ -1315,14 +1315,14 @@ def _cluster(MATRIX, *args, **params):
 
 def _cleanup_cluster(filestem):
     # Just remove all the files with the filestem.
-    from genomicode import filefns
+    from genomicode import filelib
 
     path, filestem = os.path.split(filestem)
     for file in os.listdir(path):
         if not file.startswith(filestem):
             continue
         filename = os.path.join(path, file)
-        filefns.safe_unlink(filename)
+        filelib.safe_unlink(filename)
 
 def _get_gene_ids(MATRIX):
     names = MATRIX.row_names()

@@ -14,8 +14,6 @@ is_labelled_matrix
 """
 import os, sys
 
-from genomicode.filefns import openfh
-
 def score_tfbs(
     sequence, matrix_file, patser_bin=None, alphabet_file=None,
     num_jobs=None):
@@ -29,8 +27,8 @@ def score_tfbs(
 
     # In practice, parallelization of these jobs don't help things run
     # faster unless there are hundreds of matrices.
-    patser_bin = patser_bin or config.patserfns_PATSER_BIN
-    alphabet_file = alphabet_file or config.patserfns_ALPHABET_FILE
+    patser_bin = patser_bin or config.patser_PATSER_BIN
+    alphabet_file = alphabet_file or config.patser_ALPHABET_FILE
     num_jobs = num_jobs or 1
 
     assert num_jobs >= 1
@@ -163,6 +161,8 @@ def _make_patser_cmd(patser_bin, seq_file, matrix_file, alphabet_file):
 
 def parse(handle):
     # yields: name, position (1-based), strand, score, ln_p_value
+    from filelib import openfh
+
     for line in openfh(handle):
         if line.find("position") < 0:
             continue

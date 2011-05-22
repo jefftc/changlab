@@ -68,12 +68,12 @@ def init_paths(file_layout):
         os.mkdir(dirpath)
 
 def read_matrices(filenames):
-    from genomicode import binregfns
+    from genomicode import binreg
 
     if not filenames:
         return []
 
-    x = binregfns.read_matrices(filenames)
+    x = binreg.read_matrices(filenames)
     DATA, ALIGNED = x
 
     for d, filename in zip(DATA, filenames):
@@ -88,13 +88,13 @@ def log_matrices(names, matrices):
     # Log each variable if necessary.  Will log in place.  Return a
     # boolean indicating whether anything was logged.  test can be None.
     from genomicode import jmath
-    from genomicode import binregfns
+    from genomicode import binreg
 
     any_files_logged = False
     for name, matrix in zip(names, matrices):
         msg = "I will not log %s." % name
 
-        if not binregfns.is_logged_array_data(matrix):
+        if not binreg.is_logged_array_data(matrix):
             msg = "I will log %s." % name
             matrix._X = jmath.log(matrix._X, base=2, safe=1)
             any_files_logged = True
@@ -104,20 +104,20 @@ def log_matrices(names, matrices):
 
 def write_dataset(filename, matrices):
     import arrayio
-    from genomicode import binregfns
+    from genomicode import binreg
 
-    DATA = binregfns.merge_gct_matrices(*matrices)
+    DATA = binreg.merge_gct_matrices(*matrices)
     arrayio.gct_format.write(DATA, open(filename, 'w'))
 
-def run_bfrm(bfrm_path, num_factors, file_layout, matlab):
+def run_bfrm(bfrm_path, num_factors, file_layout, matlab_bin):
     import re
     import subprocess
     import arrayio
-    from genomicode import filefns
-    from genomicode import bfrmfns
-    from genomicode import matlabfns
+    from genomicode import filelib
+    from genomicode import bfrm
+    from genomicode import matlab
 
-    assert filefns.exists_nz(file_layout.DS_PROC)
+    assert filelib.exists_nz(file_layout.DS_PROC)
     DATA = arrayio.read(file_layout.DS_PROC)
 
     # Write the data to a file.
@@ -135,7 +135,7 @@ def run_bfrm(bfrm_path, num_factors, file_layout, matlab):
     x = ["%s\n" % x for x in probe_ids]
     open(file_layout.BFRM_PROBE_IDS, 'w').writelines(x)
 
-    bfrm_path = bfrmfns.find_bfrm_normalize(bfrm_path)
+    bfrm_path = bfrm.find_bfrm_normalize(bfrm_path)
     assert bfrm_path is not None, "Could not find BFRM normalize code."
     assert os.path.exists(bfrm_path)
 
@@ -146,7 +146,7 @@ def run_bfrm(bfrm_path, num_factors, file_layout, matlab):
         ("NUM_CONTROL_FACTORS", num_factors),
         ]
     setup_file = os.path.join(bfrm_path, "setup.m")
-    assert filefns.exists_nz(setup_file)
+    assert filelib.exists_nz(setup_file)
     lines = open(setup_file).readlines()
     for key, value in PARAMETERS:
         # Find the key in the parameters file.
@@ -159,15 +159,16 @@ def run_bfrm(bfrm_path, num_factors, file_layout, matlab):
 
     # Run setup.m from Matlab.
     script = "".join(lines)
-    x = matlabfns.run(script, matlab_bin=matlab, working_path=file_layout.BFRM)
+    x = matlab.run(
+        script, matlab_bin=matlab_bin, working_path=file_layout.BFRM)
     print x
-    assert filefns.exists_nz(file_layout.BFRM_PARAMETERS)
+    assert filelib.exists_nz(file_layout.BFRM_PARAMETERS)
 
     # Execute BFRM.
     print "BFRM normalizing with %d factors." % num_factors
     sys.stdout.flush()
     bfrm_bin = os.path.join(bfrm_path, "bfrm64")
-    assert filefns.exists_nz(bfrm_bin)
+    assert filelib.exists_nz(bfrm_bin)
     cwd = os.getcwd()
     try:
         os.chdir(file_layout.BFRM)
@@ -182,20 +183,21 @@ def run_bfrm(bfrm_path, num_factors, file_layout, matlab):
             sys.stdout.flush()
     finally:
         os.chdir(cwd)
-    assert filefns.exists_nz(file_layout.BFRM_MA)
+    assert filelib.exists_nz(file_layout.BFRM_MA)
 
     # Run computeCorrected.m from Matlab.
     correct_file = os.path.join(bfrm_path, "computeCorrected.m")
-    assert filefns.exists_nz(correct_file)
+    assert filelib.exists_nz(correct_file)
     script = open(correct_file).read()
-    x = matlabfns.run(script, matlab_bin=matlab, working_path=file_layout.BFRM)
+    x = matlab.run(
+        script, matlab_bin=matlab_bin, working_path=file_layout.BFRM)
     print x
-    assert filefns.exists_nz(file_layout.BFRM_CORRECTED)
+    assert filelib.exists_nz(file_layout.BFRM_CORRECTED)
 
 def summarize_dataset(file_layout):
     import arrayio
     from genomicode import Matrix
-    from genomicode import filefns
+    from genomicode import filelib
 
     DATA_orig = arrayio.read(file_layout.DS_ORIG)
 
@@ -216,17 +218,17 @@ def summarize_dataset(file_layout):
 def summarize_filtered_genes(file_layout):
     # Select the <NUM_GENES> genes that vary most by variance.
     import arrayio
-    from genomicode import binregfns
-    from genomicode import pcafns
+    from genomicode import binreg
+    from genomicode import pcalib
     
     NUM_GENES = 1000
 
     DATA_orig = arrayio.read(file_layout.DS_PROC)
     DATA_final = arrayio.read(file_layout.DS_FINAL)
-    assert binregfns.are_rows_aligned(DATA_orig, DATA_final)
+    assert binreg.are_rows_aligned(DATA_orig, DATA_final)
 
     # Select the genes with the greatest variance.
-    I = pcafns.select_genes_var(DATA_orig._X, NUM_GENES)
+    I = pcalib.select_genes_var(DATA_orig._X, NUM_GENES)
     DATA_orig = DATA_orig.matrix(I, None)
     DATA_final = DATA_final.matrix(I, None)
     
@@ -238,7 +240,7 @@ def summarize_filtered_genes(file_layout):
 def summarize_heatmaps(
     python, arrayplot, cluster, file_layout, libpath=[]):
     import arrayio
-    from genomicode import plotfns
+    from genomicode import plotlib
 
     # Load the data sets.
     DATA_orig = arrayio.gct_format.read(file_layout.DS_PROC_FILTERED)
@@ -246,35 +248,35 @@ def summarize_heatmaps(
     assert DATA_final.dim() == DATA_orig.dim()
 
     nrow, ncol = DATA_orig.dim()
-    x = plotfns.find_tall_heatmap_size(
+    x = plotlib.find_tall_heatmap_size(
         #nrow, ncol, min_box_width=20, max_total_height=2000,
         nrow, ncol, max_total_height=2000, max_total_width=2000)
     xpix, ypix = x
     #print "SIZE", nrow, ncol, xpix, ypix
     
-    plotfns.plot_heatmap(
+    plotlib.plot_heatmap(
         file_layout.DS_FINAL_FILTERED, file_layout.DS_FINAL_HEATMAP,
         xpix, ypix, color="bild", gene_center="mean", gene_normalize="var",
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
-    plotfns.plot_heatmap(
+    plotlib.plot_heatmap(
         file_layout.DS_PROC_FILTERED, file_layout.DS_PROC_HEATMAP,
         xpix, ypix, color="bild", gene_center="mean", gene_normalize="var",
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
 
 def _make_scatter(povray, pca_file, pov_file, out_file):
-    from genomicode import filefns
-    from genomicode import pcafns
+    from genomicode import filelib
+    from genomicode import pcalib
 
-    ds = [d for d in filefns.read_row(pca_file, header=1)]
+    ds = [d for d in filelib.read_row(pca_file, header=1)]
     X = [float(d.PC_0) for d in ds]
     Y = [float(d.PC_1) for d in ds]
     Z = [float(d.PC_2) for d in ds]
     DATASET = [int(d.Dataset) for d in ds]
     assert min(DATASET) >= 0 and max(DATASET) < 256
 
-    x = pcafns.plot_scatter(
+    x = pcalib.plot_scatter(
         X, Y, out_file, group=DATASET, pov_file=pov_file, povray=povray)
     print x
     sys.stdout.flush()
@@ -282,7 +284,7 @@ def _make_scatter(povray, pca_file, pov_file, out_file):
 
 def summarize_pca(povray, file_layout, matrices):
     import arrayio
-    from genomicode import pcafns
+    from genomicode import pcalib
 
     # Load the data sets.
     DATA_orig = arrayio.gct_format.read(file_layout.DS_PROC_FILTERED)
@@ -308,8 +310,8 @@ def summarize_pca(povray, file_layout, matrices):
 
     FL = file_layout
     K = 3
-    PC_orig = pcafns.svd_project_cols(DATA_orig._X, K)
-    PC_final = pcafns.svd_project_cols(DATA_final._X, K)
+    PC_orig = pcalib.svd_project_cols(DATA_orig._X, K)
+    PC_final = pcalib.svd_project_cols(DATA_final._X, K)
     _write_svd_coord(FL.DS_PROC_COORD, PC_orig, samples, dataset)
     _write_svd_coord(FL.DS_FINAL_COORD, PC_final, samples, dataset)
     _make_scatter(povray, FL.DS_PROC_COORD, FL.DS_PROC_POV, FL.DS_PROC_SCATTER)
@@ -375,18 +377,18 @@ def main():
         sys.path = options.libpath + sys.path
     # Import this after the library path is set.
     import arrayio
-    from genomicode import filefns
+    from genomicode import filelib
     from genomicode import archive
-    from genomicode import genepatternfns
+    from genomicode import genepattern
 
-    genepatternfns.fix_environ_path()
+    genepattern.fix_environ_path()
 
     if not args:
         parser.error("Please specify files to normalize.")
     filenames = args
     names = [os.path.split(x)[-1] for x in filenames]
     for filename in filenames:
-        assert filefns.exists(filename), "File not found: %s" % filename
+        assert filelib.exists(filename), "File not found: %s" % filename
 
     # Check to make sure value for num_factors is reasonable.
     MIN_FACTORS, MAX_FACTORS = 2, 100

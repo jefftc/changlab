@@ -7,9 +7,6 @@ write_tdf
 
 strip_each
 
-safe_float  Moved to jmath.
-safe_int    Moved to jmath.
-
 """
 import os, sys
 
@@ -23,10 +20,10 @@ def read_tdf(handle, num_header_rows, num_header_cols):
     # - First num_header_cols contain metadata, last ones samples.
     # - First row headings, last ones samples.
     # - Return as a single matrix.
-    import filefns
+    import filelib
     import jmath
 
-    handle = filefns.openfh(handle)
+    handle = filelib.openfh(handle)
     data = split_tdf(handle.read())
 
     X = []
@@ -53,11 +50,11 @@ def strip_each(L):
 # Try and load C implementations of functions.  If I can't,
 # then just ignore and use the pure python implementations.
 try:
-    import ciofns
+    import ciolib
 except ImportError:
     pass
 else:
     this_module = sys.modules[__name__]
-    for name in ciofns.__dict__.keys():
+    for name in ciolib.__dict__.keys():
         if not name.startswith("__"):
-            this_module.__dict__[name] = ciofns.__dict__[name]
+            this_module.__dict__[name] = ciolib.__dict__[name]

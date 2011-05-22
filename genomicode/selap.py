@@ -10,10 +10,10 @@ find_selap
 import os, sys
 
 def selap_make_raw(
-    matrix_file, penalty, matlab=None, selap_path=None, outpath=None):
+    matrix_file, penalty, matlab_bin=None, selap_path=None, outpath=None):
     # matrix_file should contain a matrix (no headers) of samples x
     # pathway predictions.
-    import matlabfns
+    import matlab
     
     # Set defaults.
     matrix_file = os.path.realpath(matrix_file)
@@ -35,15 +35,15 @@ def selap_make_raw(
     w("save('prob.txt', 'prob', '-ASCII', '-TABS');\n")
     #w("save('predict.txt', 'predictions', '-ASCII', '-TABS');\n")
     script = "".join(lines)
-    x = matlabfns.run(script, matlab_bin=matlab, working_path=outpath)
+    x = matlab.run(script, matlab_bin=matlab_bin, working_path=outpath)
     return x
 
 def selap_predict_raw(
-    matrix_file, mu_file, sig_file, prob_file, matlab=None, selap_path=None,
-    outpath=None):
+    matrix_file, mu_file, sig_file, prob_file, matlab_bin=None,
+    selap_path=None, outpath=None):
     # matrix_file should contain a matrix (no headers) of samples x
     # pathway predictions.
-    import matlabfns
+    import matlab
     
     # Set defaults.
     matrix_file = os.path.realpath(matrix_file)
@@ -74,7 +74,7 @@ def selap_predict_raw(
     w("predictions = mvnMixtureProb(X', mu, sig, prob);\n")
     w("save('predict.txt', 'predictions', '-ASCII', '-TABS');\n")
     script = "".join(lines)
-    x = matlabfns.run(script, matlab_bin=matlab, working_path=outpath)
+    x = matlab.run(script, matlab_bin=matlab_bin, working_path=outpath)
     return x
 
 def find_selap(default_path):

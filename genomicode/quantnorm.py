@@ -42,7 +42,7 @@ def normalize_binreg(X, which_columns=None, matlab=None, binreg_path=None):
     
     import jmath
     import Matrix
-    import binregfns
+    import binreg
     from dwdnorm import _write_matlab_matrix, _parse_normalized_matrix
     from dwdnorm import _safe_unlink
     
@@ -55,7 +55,7 @@ def normalize_binreg(X, which_columns=None, matlab=None, binreg_path=None):
     
     # Set defaults.
     matlab = matlab or "matlab"
-    binreg_path = binregfns.find_binreg_20(binreg_path)
+    binreg_path = binreg.find_binreg_20(binreg_path)
     assert binreg_path, "I could not find Binreg2.0"
     binreg_path = os.path.realpath(binreg_path)
     temp_path = "."

@@ -92,14 +92,14 @@ def test_place_ticks():
 
 def povray(
     filename, outfile=None, height=None, width=None, antialias=None,
-    quality=None, povray=None):
+    quality=None, povray_bin=None):
     # Return a handle to the results.
     # antialias  Which colors to anti-alias (0-3.0).
     # quality    0-9.
     import subprocess
     
     assert os.path.exists(filename)
-    povray = povray or "povray"
+    povray_bin = povray_bin or "povray"
     
     args = []
     args.append("-D")   # don't show output.
@@ -118,7 +118,7 @@ def povray(
         args.append("-Q%d" % quality)
     args.append(filename)
 
-    cmd = "%s %s" % (povray, " ".join(args))
+    cmd = "%s %s" % (povray_bin, " ".join(args))
     p = subprocess.Popen(
         cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
@@ -148,7 +148,7 @@ def scatter(
     import math
     import operator
     from StringIO import StringIO
-    import povrayfns as pr
+    import povray as pr
 
     # Constants.
     TOTAL_WIDTH = plot_width or 1024   # Size of entire drawing area.
@@ -499,7 +499,7 @@ def scatter_3d(X, Y, Z):
     import math
     import operator
     from StringIO import StringIO
-    import povrayfns as pr
+    import povray as pr
 
     # Constants.
     TOTAL_WIDTH = 1024   # Size of entire drawing area.

@@ -69,9 +69,9 @@ def format_exon_ids(exon_ids):
 
 def main():
     from optparse import OptionParser, OptionGroup
-    from genomicode import genomefns
-    from genomicode import primer3fns
-    from genomicode import parsefns
+    from genomicode import genomelib
+    from genomicode import primer3
+    from genomicode import parselib
 
     # gene    E2F1 ENSA,0 (<gene>,<tss>).
     usage = "usage: %prog [options] <gene>"
@@ -114,7 +114,7 @@ def main():
         transcript_num = int(x)
         assert transcript_num >= 0
         
-    genes = genomefns.get_gene_coords(gene_symbol)
+    genes = genomelib.get_gene_coords(gene_symbol)
     assert genes
 
     # If there is only 1 gene, then use that one.
@@ -127,9 +127,9 @@ def main():
         x = "Index", "Chrom", "Strand", "TSS"
         print "\t".join(map(str, x))
         for i in range(len(genes)):
-            tss = genomefns.transcript2tss(
+            tss = genomelib.transcript2tss(
                 genes[i].txn_start, genes[i].txn_length,genes[i].strand)
-            tss = parsefns.pretty_int(tss)
+            tss = parselib.pretty_int(tss)
             x = i, genes[i].chrom, genes[i].strand, tss
             print "\t".join(map(str, x))
         return
@@ -139,15 +139,15 @@ def main():
            "Invalid transcript: %s" % transcript_num
     gene = genes[transcript_num]
 
-    seq = genomefns.get_transcript(
+    seq = genomelib.get_transcript(
         gene.chrom, gene.strand, gene.txn_start, gene.txn_length,
         gene.exon_starts, gene.exon_lengths)
     #print gene.txn_start, gene.txn_length
-    #genomefns.write_fasta("HELLO", seq)
+    #genomelib.write_fasta("HELLO", seq)
     
     # Search for primers on just the exons.
     exon_seq = ExonSequence(seq)
-    primers = primer3fns.primer3(
+    primers = primer3.primer3(
         exon_seq.sub_seq, product_size=options.product_size,
         num_return=options.num_primers)
     if not primers:
@@ -156,7 +156,7 @@ def main():
 
     # Revcomp the right primer.
     for d1, d2, size in primers:
-        d2.seq_rc = genomefns.revcomp(d2.seq)
+        d2.seq_rc = genomelib.revcomp(d2.seq)
 
     if options.verbose:
         x = ["Index",

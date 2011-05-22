@@ -30,11 +30,11 @@ def svd_project_cols(X, K):
     return X_hat
 
 def choose_colors(group):
-    import colorfns
+    import colorlib
 
     if not group or max(group) == 0:
         return None
-    palette = colorfns.matlab_colors(max(group)+1)
+    palette = colorlib.matlab_colors(max(group)+1)
     color = [palette[x] for x in group]
     return color
 
@@ -44,7 +44,6 @@ def plot_scatter(X, Y, out_file, group=None, color=None,
     # data points.  It should be the same length of X and Y.
     # Returns the output from povray.
     import povraygraph
-    import colorfns
     import tempfile
 
     if not len(X):

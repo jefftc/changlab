@@ -1,4 +1,4 @@
-/* ciofnsmodule.c
+/* ciolibmodule.c
  * 071028  created
  */
 
@@ -12,10 +12,10 @@
 
 /* Functions in this module. */
 
-static char ciofns_split_tdf__doc__[] = 
+static char ciolib_split_tdf__doc__[] = 
 "XXX\n";
 
-static PyObject *ciofns_split_tdf(
+static PyObject *ciolib_split_tdf(
   PyObject *self, PyObject *args)
 {
     char *string;
@@ -91,10 +91,10 @@ static PyObject *ciofns_split_tdf(
     return py_matrix;
 }
 
-static char ciofns_strip_each__doc__[] = 
+static char ciolib_strip_each__doc__[] = 
 "XXX\n";
 
-static PyObject *ciofns_strip_each(PyObject *self, PyObject *args)
+static PyObject *ciolib_strip_each(PyObject *self, PyObject *args)
 {
     PyObject *py_L, *py_retval;
     Py_ssize_t len_L;
@@ -176,17 +176,17 @@ static PyObject *ciofns_strip_each(PyObject *self, PyObject *args)
 
 /* Module definition stuff */
 
-static PyMethodDef CIOfnsMethods[] = {
-  {"split_tdf", ciofns_split_tdf, METH_VARARGS, ciofns_split_tdf__doc__},
-  {"strip_each", ciofns_strip_each, METH_VARARGS, ciofns_strip_each__doc__},
+static PyMethodDef CIOlibMethods[] = {
+  {"split_tdf", ciolib_split_tdf, METH_VARARGS, ciolib_split_tdf__doc__},
+  {"strip_each", ciolib_strip_each, METH_VARARGS, ciolib_strip_each__doc__},
   {NULL, NULL, 0, NULL}
 };
 
-static char ciofns__doc__[] =
+static char ciolib__doc__[] =
 "This module provides optimized replacement functions.\n\
 ";
 
-PyMODINIT_FUNC initciofns(void)
+PyMODINIT_FUNC initciolib(void)
 {
-  (void) Py_InitModule3("ciofns", CIOfnsMethods, ciofns__doc__);
+  (void) Py_InitModule3("ciolib", CIOlibMethods, ciolib__doc__);
 }

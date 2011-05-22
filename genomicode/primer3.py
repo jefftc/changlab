@@ -9,8 +9,6 @@ parse
 """
 import os, sys
 
-from genomicode.filefns import openfh
-
 def primer3(sequence, **params):
     # See primer3_core for more options.
     # Return list of (left_primer, right_primer, product_size)
@@ -32,7 +30,7 @@ def primer3_core(
     import tempfile
     import config
 
-    primer3_core_app = primer3_core_app or config.primer3fns_PRIMER3_BIN
+    primer3_core_app = primer3_core_app or config.primer3_PRIMER3_BIN
     outhandle = outhandle or sys.stdout
 
     # Set the parameters to the webpage defaults.

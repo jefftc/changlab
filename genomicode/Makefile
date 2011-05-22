@@ -21,12 +21,14 @@ MORECFLAGS=-I$(PYINCLUDE)
 MORELDFLAGS=
 
 # Specify the files to make.
-all: ciofns.so cMatrix.so cjmath.so
+all: ciolib.so cMatrix.so cjmath.so cgeolib.so ccoherencelib.so cGeneSet.so
 .PHONY: all
 
-cjmath.so: cjmathmodule.o mathfns.o
+cjmath.so: cjmathmodule.o mathlib.o
 
-mathfns.o: mathfns.c
+ccoherencelib.so: ccoherencelibmodule.o mathlib.o
+
+mathlib.o: mathlib.c
 	${CC} -c -Wall -fPIC -march=nocona -O2 ${MORECFLAGS} $^ -o $@
 
 #cMatrixmodule.o: cMatrixmodule.c

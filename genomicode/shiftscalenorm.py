@@ -12,13 +12,13 @@ def normalize(X, Y, matlab=None, binreg_path=None):
     #import copy
     import subprocess
     import tempfile
-    import binregfns
+    import binreg
     from dwdnorm import _write_matlab_matrix, _parse_normalized_matrix
     from dwdnorm import _safe_unlink
     
     # Set defaults.
     matlab = matlab or "matlab"
-    binreg_path = binregfns.find_binreg_20(binreg_path)
+    binreg_path = binreg.find_binreg_20(binreg_path)
     binreg_path = os.path.realpath(binreg_path)
     temp_path = "."
 

@@ -8,10 +8,10 @@ def parse_names(s):
     return s.split(",")
 
 def parse_indexes(s, max_index):
-    from genomicode import parsefns
+    from genomicode import parselib
     
     I = []
-    for s, e in parsefns.parse_ranges(s):
+    for s, e in parselib.parse_ranges(s):
         assert s >= 1
         s, e = s-1, e
         e = min(e, max_index)

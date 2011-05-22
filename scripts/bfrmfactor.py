@@ -90,9 +90,9 @@ def write_bfrm_dataset(filename, DATA):
 
 def write_bfrm_bin(filename, bfrm_bin):
     import stat
-    from genomicode import bfrmfns
+    from genomicode import bfrm
     
-    bfrm_bin = bfrmfns.find_bfrm_bin(bfrm_bin)
+    bfrm_bin = bfrm.find_bfrm_bin(bfrm_bin)
     assert bfrm_bin and os.path.exists(bfrm_bin)
     x = open(bfrm_bin, 'rb').read()
     open(filename, 'wb').write(x)
@@ -100,7 +100,7 @@ def write_bfrm_bin(filename, bfrm_bin):
 
 def write_ids(geneid_file, probeid_file, sampleid_file, DATA):
     import arrayio
-    from genomicode import bfrmfns
+    from genomicode import bfrm
     
     # Gene ID file contains the row IDS from the matrix, with a header.
     row_names = DATA.row_names()
@@ -112,7 +112,7 @@ def write_ids(geneid_file, probeid_file, sampleid_file, DATA):
     handle.close()
 
     # Probe ID file contains the Affymetrix probeset IDs, no header.
-    name = bfrmfns.get_affy_row_name(DATA)
+    name = bfrm.get_affy_row_name(DATA)
     probeset_ids = DATA.row_names(name)
     x = ["%s\n" % x for x in probeset_ids]
     open(probeid_file, 'w').writelines(x)
@@ -123,7 +123,7 @@ def write_ids(geneid_file, probeid_file, sampleid_file, DATA):
     open(sampleid_file, 'w').writelines(x)
 
 def write_factor_ids(filename, file_layout):
-    from genomicode import parsefns
+    from genomicode import parselib
     
     model = _read_model(file_layout)
     num_factors = len(model["FACTOR_O"])
@@ -134,7 +134,7 @@ def write_factor_ids(filename, file_layout):
         return
 
     # Create some names for the factors.
-    x = parsefns.pretty_range(1, num_factors+1)
+    x = parselib.pretty_range(1, num_factors+1)
     factor_ids = ["FACTOR%s" % x for x in x]
     
     x = ["%s\n" % x for x in factor_ids]
@@ -179,12 +179,12 @@ def run_bfrm(
     import time
     import subprocess
     import arrayio
-    from genomicode import bfrmfns
+    from genomicode import bfrm
 
     DATA = arrayio.read(file_layout.DATASET)
 
     # Configure the parameters file.
-    params = bfrmfns.get_default_parameters(bfrm_bin=bfrm_bin)
+    params = bfrm.get_default_parameters(bfrm_bin=bfrm_bin)
 
     # Copy the BFRM binary.
     write_bfrm_bin(file_layout.BFRM_BIN, bfrm_bin)
@@ -197,7 +197,7 @@ def run_bfrm(
     # Write the data to a file.
     write_bfrm_dataset(file_layout.BFRM_DATASET, DATA)
     dataset = os.path.split(file_layout.BFRM_DATASET)[1]
-    params = bfrmfns.set_params_dataset(
+    params = bfrm.set_params_dataset(
         params, DATA.ncol(), DATA.nrow(), dataset)
 
     # Set the starting number of latent factors.
@@ -207,7 +207,7 @@ def run_bfrm(
             x = x.replace("factors", "factor")
         print x
         assert start_factors < DATA.nrow()
-        params = bfrmfns.set_params_latent_factors(params, start_factors)
+        params = bfrm.set_params_latent_factors(params, start_factors)
 
     # If control variables are requested, then make an H file.
     if num_control_vars:
@@ -219,13 +219,13 @@ def run_bfrm(
         assert len(CONTROL[0]) == DATA_orig.ncol()
         write_h(file_layout.BFRM_H, CONTROL)
         h = os.path.split(file_layout.BFRM_H)[1]
-        params = bfrmfns.set_params_control(params, len(CONTROL), h)
+        params = bfrm.set_params_control(params, len(CONTROL), h)
 
     # If the nucleus was provided, then set up an evolutionary search.
     if nucleus_file:
         print "Enabling evolutionary search."
         write_evol(file_layout.BFRM_EVOL, DATA, nucleus_file)
-        params = bfrmfns.set_params_evol(
+        params = bfrm.set_params_evol(
             params, file_layout.BFRM_EVOL, max_factors, max_genes)
 
     # Write out the parameters file.
@@ -277,16 +277,16 @@ def log_matrix(MATRIX):
     # Log the matrix if necessary.  Will log in place.  Return a
     # boolean indicating whether anything was logged.
     from genomicode import jmath
-    from genomicode import binregfns
+    from genomicode import binreg
 
-    if binregfns.is_logged_array_data(MATRIX):
+    if binreg.is_logged_array_data(MATRIX):
         return False
     print "I will log the matrix."
     MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
     return True
 
 def filter_dataset(MATRIX, filter_mean, filter_var):
-    from genomicode import pcafns
+    from genomicode import pcalib
 
     if not filter_mean and not filter_var:
         return MATRIX
@@ -298,21 +298,21 @@ def filter_dataset(MATRIX, filter_mean, filter_var):
         num_genes_mean = int(round(num_genes * (1.0-filter_mean)))
     if filter_var:
         num_genes_var = int(round(num_genes * (1.0-filter_var)))
-    I = pcafns.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+    I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
     MATRIX_f = MATRIX.matrix(I, None)
     return MATRIX_f
 
 def create_control_vars(MATRIX, num_control_vars):
     import numpy
     from genomicode import jmath
-    from genomicode import bfrmfns
+    from genomicode import bfrm
     
     # Look for the annotations that resemble affymetrix probe set IDs.
-    affx_name = bfrmfns.get_affy_row_name(MATRIX)
+    affx_name = bfrm.get_affy_row_name(MATRIX)
 
     # Select the affymetrix control variables.
     ids = MATRIX.row_names(affx_name)
-    I = [i for (i, id) in enumerate(ids) if bfrmfns.is_affx(id)]
+    I = [i for (i, id) in enumerate(ids) if bfrm.is_affx(id)]
     assert I
     AFFX = MATRIX.matrix(I, None)
     max_control_vars = min(AFFX.nrow(), AFFX.ncol())
@@ -340,9 +340,8 @@ def create_control_vars(MATRIX, num_control_vars):
 def summarize_factor_scores(
     file_layout, factor_cutoff, python, arrayplot, cluster, libpath):
     import arrayio
-    from genomicode import parsefns
     from genomicode import Matrix
-    from genomicode import plotfns
+    from genomicode import plotlib
 
     DATA = arrayio.read(file_layout.DATASET)
     model = _read_model(file_layout, factor_cutoff)
@@ -371,12 +370,12 @@ def summarize_factor_scores(
     arrayio.pcl_format.write(M, file_layout.FACTOR_SCORES)
 
     # Make the heatmap.
-    x = plotfns.find_wide_heatmap_size(
+    x = plotlib.find_wide_heatmap_size(
         M.nrow(), M.ncol(), min_box_height=10, min_box_width=10,
         max_total_height=768, max_total_width=1024)
     xpix, ypix = x
     ypix = min(ypix, xpix*4)
-    x = plotfns.plot_heatmap(
+    x = plotlib.plot_heatmap(
         file_layout.FACTOR_SCORES, file_layout.FACTOR_SCORES_PNG,
         xpix, ypix, gene_label=True, cluster_genes=True,
         gene_center="mean", gene_normalize="var", array_label=True,
@@ -399,7 +398,7 @@ def summarize_gene_factor_probs(
     file_layout, factor_cutoff, python, arrayplot, cluster, libpath):
     import arrayio
     from genomicode import Matrix
-    from genomicode import plotfns
+    from genomicode import plotlib
 
     model = _read_model(file_layout, factor_cutoff)
     PostPib = model["PostPib"]
@@ -432,11 +431,11 @@ def summarize_gene_factor_probs(
     arrayio.tab_delimited_format.write(M, file_layout.FACTOR_PROBS)
 
     # Make heatmap of the factor probs.
-    #x = plotfns.find_tall_heatmap_size(
+    #x = plotlib.find_tall_heatmap_size(
     #    M.nrow(), M.ncol(), min_box_width=10, max_total_height=1000,
     #    max_total_width=1000)
     xpix, ypix = 20, 20
-    x = plotfns.plot_heatmap(
+    x = plotlib.plot_heatmap(
         file_layout.FACTOR_PROBS, file_layout.FACTOR_PROBS_PNG, xpix, ypix,
         color="red", array_label=True, scale=-0.5, gain=2.0,
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
@@ -492,10 +491,10 @@ def summarize_factor_geneset(file_layout, factor_cutoff):
     handle.close()
 
 def _read_model(file_layout, factor_cutoff=None):
-    from genomicode import bfrmfns
+    from genomicode import bfrm
     
     param_file = os.path.split(file_layout.BFRM_PARAMETERS)[1]
-    model = bfrmfns.read_clean_model(
+    model = bfrm.read_clean_model(
         file_layout.BFRM, param_file=param_file, factor_cutoff=factor_cutoff)
     return model
 
@@ -573,11 +572,10 @@ def main():
         sys.path = options.libpath + sys.path
     # Import this after the library path is set.
     import arrayio
-    from genomicode import filefns
     from genomicode import archive
-    from genomicode import genepatternfns
+    from genomicode import genepattern
 
-    genepatternfns.fix_environ_path()
+    genepattern.fix_environ_path()
 
     if len(args) != 1:
         parser.error("Please specify a file to factor.")

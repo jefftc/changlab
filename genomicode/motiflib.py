@@ -23,25 +23,22 @@ get_tfbs_tss_db      Load the TFBS around a TSS.
 
 import os, sys
 
-import filefns
-from filefns import openfh, lwrite, tswrite
-
 def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None):
     # Return list of matrix, chrom, strand, position, NLP.
     # NLP is given in log_e.
-    import genomefns
-    import patserfns
+    import genomelib
+    import patser
 
     num_jobs = 1
 
-    seq = genomefns.get_sequence(chrom, start, length)
+    seq = genomelib.get_sequence(chrom, start, length)
     if not matrices:
         matrices = [x[0] for x in list_matrices()]
     x = [find_matrix_file(x) for x in matrices]
     matrix_files = [x for x in x if x]  # Filter out missing ones.
 
     # list of sequence_num, matrix_num, (0-based) position, strand, score, nlp
-    patser_data = patserfns.score_tfbs(seq, matrix_files, num_jobs=num_jobs)
+    patser_data = patser.score_tfbs(seq, matrix_files, num_jobs=num_jobs)
 
     # list of matrix, chrom, strand, pos, nlp
     data = []
@@ -65,7 +62,7 @@ def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None):
 
 def _load_matrices_h():
     import config
-    import filefns
+    import filelib
 
     # MATRIX_ID (all upper case) -> object with members:
     #   matid
@@ -75,24 +72,24 @@ def _load_matrices_h():
 
     # Load the lengths.
     matid2length = {}
-    for d in filefns.read_row(
-        config.motiffns_MATID2LENGTH, "matid:s length:d"):
+    for d in filelib.read_row(
+        config.motiflib_MATID2LENGTH, "matid:s length:d"):
         matid2length[d.matid] = d.length
 
     # Load the matrix information.
     matrices = []
-    for d in filefns.read_row(config.motiffns_JASPAR_INFO, header=1):
+    for d in filelib.read_row(config.motiflib_JASPAR_INFO, header=1):
         assert d.xID in matid2length
         length = matid2length.get(d.xID, 0)
-        x = filefns.GenericObject(
+        x = filelib.GenericObject(
             matid=d.xID, accession="", gene_id=d.LocusLink,
             gene_symbol=d.Gene_Symbol, length=length)
         matrices.append(x)
-    for d in filefns.read_row(config.motiffns_TRANSFAC_INFO, header=1):
+    for d in filelib.read_row(config.motiflib_TRANSFAC_INFO, header=1):
         #assert d.Accession in matid2length, "Missing: %s" % d.Accession
         # Some are missing, e.g. M00316.
         length = matid2length.get(d.Accession, 0)
-        x = filefns.GenericObject(
+        x = filelib.GenericObject(
             matid=d.Accession, accession=d.xID, gene_id=d.LocusLink,
             gene_symbol=d.Gene_Symbol, length=length)
         matrices.append(x)
@@ -147,8 +144,8 @@ def find_matrix_file(matrix_file_or_id):
     
     opj = os.path.join
     files = [
-        opj(config.motiffns_JASPAR_DB, "%s.pfm" % matrix_id),
-        opj(config.motiffns_TRANSFAC_DB, "%s.pfm" % matrix_id),
+        opj(config.motiflib_JASPAR_DB, "%s.pfm" % matrix_id),
+        opj(config.motiflib_TRANSFAC_DB, "%s.pfm" % matrix_id),
         opj(config.MOTIFSEARCH, "matrices/%s.matrix" % matrix_id),
         ]
     for file in files:
@@ -222,19 +219,19 @@ def get_tfbs_tss_db(chrom, txn_start, txn_end, txn_strand, bp_upstream, length,
     # gen_pos is the position of the matrix on the chromosome.
     # tss_pos is the position of the matrix relative to the TSS.
     # NLP is given in log_e.
-    import genomefns
+    import genomelib
     
-    x = genomefns.transcript2genome(
+    x = genomelib.transcript2genome(
         txn_start, txn_end, txn_strand, bp_upstream, length)
     gen_start, gen_end = x
-    tss = genomefns.determine_tss(txn_start, txn_end, txn_strand)
+    tss = genomelib.determine_tss(txn_start, txn_end, txn_strand)
 
     data = get_tfbs_genome_db(
         chrom, gen_start, gen_end, matrices=matrices, nlp=nlp)
     results = []
     for x in data:
         matrix, chrom, mat_strand, mat_pos, nlp = x
-        tss_pos = genomefns.genpos2tsspos(mat_pos, tss, txn_strand)
+        tss_pos = genomelib.genpos2tsspos(mat_pos, tss, txn_strand)
         x = matrix, chrom, mat_strand, mat_pos, tss, tss_pos, nlp
         results.append(x)
     return results

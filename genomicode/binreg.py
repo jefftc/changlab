@@ -32,8 +32,6 @@ BinregParams
 
 import os, sys
 
-from genomicode import filefns
-
 
 class BinregParams:
     def __init__(
@@ -278,7 +276,8 @@ def format_predictions(train0, train1, test, outpath=None):
     # Return a string.  test can be None.
     from StringIO import StringIO
     import arrayio
-    
+    import filelib
+
     outpath = outpath or "."
 
     opj = os.path.join
@@ -296,11 +295,11 @@ def format_predictions(train0, train1, test, outpath=None):
         samples = samples + test.col_names(arrayio.COL_ID)
         
     format = "index:d type:d prob:f lower_ci:f upper_ci:f mgene:f"
-    d_fit = [d for d in filefns.read_row(fitted_file, format)]
-    d_xval = [d for d in filefns.read_row(xval_file, format)]
+    d_fit = [d for d in filelib.read_row(fitted_file, format)]
+    d_xval = [d for d in filelib.read_row(xval_file, format)]
     d_pred = []
     if test:
-        d_pred = [d for d in filefns.read_row(predict_file, format)]
+        d_pred = [d for d in filelib.read_row(predict_file, format)]
     assert len(d_fit) == len(d_xval)
     # crossvalidation.txt + validationcases.txt
     assert len(d_xval)+len(d_pred) == len(samples)
@@ -513,10 +512,10 @@ def read_matrices(filenames):
 
     """
     import arrayio
-    from genomicode import filefns
+    import filelib
 
     for filename in filenames:
-        assert filefns.exists(filename)
+        assert filelib.exists(filename)
 
     # Load the files.
     DATA = []

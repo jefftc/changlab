@@ -11,7 +11,6 @@ import os, sys
 def zip_path(file_or_path, zipfile=None, noclobber=True):
     import stat
     import subprocess
-    import filefns
     
     assert os.path.exists(file_or_path), "Missing path: %s" % file_or_path
     root, name  = os.path.split(file_or_path)
@@ -54,7 +53,7 @@ def zip_path(file_or_path, zipfile=None, noclobber=True):
         # Make sure the zip file exists.
         # This doesn't work.  exists_nz will also check for the file
         # without ".zip" and will find it.
-        #assert filefns.exists_nz(zipfile), "Failed to archive trash."
+        #assert filelib.exists_nz(zipfile), "Failed to archive trash."
         assert os.path.exists(zipfile) and os.stat(zipfile)[stat.ST_SIZE] > 0,\
                "Failed to make archive."
 

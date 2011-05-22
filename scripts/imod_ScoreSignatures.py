@@ -11,7 +11,7 @@ sys.path = [SIGNATURE_PATH] + sys.path
 
 
 def read_signatures(sigdb_path, desired_normalization, desired_tags):
-    from genomicode import filefns
+    from genomicode import filelib
     
     opr = os.path.realpath
     opj = os.path.join
@@ -26,7 +26,7 @@ def read_signatures(sigdb_path, desired_normalization, desired_tags):
     desired_normalization = {}.fromkeys(x)
 
     ds = []
-    for d in filefns.read_row(filename, header=1):
+    for d in filelib.read_row(filename, header=1):
         # Skip if not the right normalization.
         if d.Normalization.upper() not in desired_normalization:
             continue
@@ -70,7 +70,7 @@ def read_signatures(sigdb_path, desired_normalization, desired_tags):
     return ds
 
 def format_module(form):
-    from genomicode import genepatternfns as gp
+    from genomicode import genepattern as gp
     
     params = []
 

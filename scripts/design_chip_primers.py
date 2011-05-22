@@ -4,9 +4,9 @@ import sys
 
 def main():
     from optparse import OptionParser, OptionGroup
-    from genomicode import genomefns
-    from genomicode import primer3fns
-    from genomicode import parsefns
+    from genomicode import genomelib
+    from genomicode import primer3
+    from genomicode import parselib
 
     # Defines the targeted region.
     # gene    E2F1 ENSA,0 (<gene>,<tss>).
@@ -89,8 +89,8 @@ def main():
             transcript_num = int(x)
             assert transcript_num >= 0
         
-        x = genomefns.get_gene_coords(gene_symbol)
-        genes = genomefns.filter_unique_tss(x)
+        x = genomelib.get_gene_coords(gene_symbol)
+        genes = genomelib.filter_unique_tss(x)
         assert genes
 
         # If there is only 1 gene, then use that one.
@@ -103,9 +103,9 @@ def main():
             x = "Index", "Chrom", "Strand", "TSS"
             print "\t".join(map(str, x))
             for i in range(len(genes)):
-                tss = genomefns.transcript2tss(
+                tss = genomelib.transcript2tss(
                     genes[i].txn_start, genes[i].txn_length,genes[i].strand)
-                tss = parsefns.pretty_int(tss)
+                tss = parselib.pretty_int(tss)
                 x = i, genes[i].chrom, genes[i].strand, tss
                 print "\t".join(map(str, x))
             return
@@ -115,7 +115,7 @@ def main():
                "Invalid transcript: %s" % transcript_num
         gene = genes[transcript_num]
 
-        x = genomefns.transcript2promoter(
+        x = genomelib.transcript2promoter(
             gene.txn_start, gene.txn_length, gene.strand, gene_offset,
             gene_length)
         base, length, strand = x
@@ -124,13 +124,13 @@ def main():
         chrom_length = length
 
         if options.verbose:
-            tss = genomefns.transcript2tss(
+            tss = genomelib.transcript2tss(
                 gene.txn_start, gene.txn_length, gene.strand)
-            tss_str = parsefns.pretty_int(tss)
+            tss_str = parselib.pretty_int(tss)
             print "%s: TSS at chr%s:%s:%s." % (
                 gene_symbol, gene.chrom, tss_str, gene.strand)
 
-    base_str = parsefns.pretty_int(chrom_base)
+    base_str = parselib.pretty_int(chrom_base)
     if options.verbose:
         print "Target at chr%s:%s:%s." % (chrom, base_str, "+")
         print
@@ -144,22 +144,22 @@ def main():
     FLANK_SIZE = max_size + BUFFER
     start = chrom_base - FLANK_SIZE
     length = chrom_length + FLANK_SIZE * 2
-    seq = genomefns.get_sequence(chrom, start, length)
+    seq = genomelib.get_sequence(chrom, start, length)
     seq = seq.upper()
     target = FLANK_SIZE+1, chrom_length  # primer3 target is 1-based
 
     if options.verbose:
         # Print out the sequence.
-        x1 = parsefns.pretty_int(start)
-        x2 = parsefns.pretty_int(start+length)
+        x1 = parselib.pretty_int(start)
+        x2 = parselib.pretty_int(start+length)
         title = "chr%s %s-%s" % (chrom, x1, x2)
         s = seq[:FLANK_SIZE].lower() + \
             seq[FLANK_SIZE:FLANK_SIZE+chrom_length] + \
             seq[FLANK_SIZE+chrom_length:].lower()
-        genomefns.write_fasta(title, s)
+        genomelib.write_fasta(title, s)
         print
 
-    primers = primer3fns.primer3(
+    primers = primer3.primer3(
         seq, product_size=options.product_size, target=target,
         num_return=options.num_primers)
     if not primers:
@@ -175,7 +175,7 @@ def main():
 
     for i, x in enumerate(primers):
         d1, d2, size = x
-        d2.seq_rc = genomefns.revcomp(d2.seq)
+        d2.seq_rc = genomelib.revcomp(d2.seq)
 
         F_i = seq.find(d1.seq) - FLANK_SIZE
         R_i = seq.find(d2.seq_rc) - FLANK_SIZE

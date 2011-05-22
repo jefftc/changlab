@@ -79,9 +79,9 @@ def write_bfrm_dataset(filename, DATA):
     handle.close()
 
 def write_sample_probe_ids(filename, DATA):
-    from genomicode import bfrmfns
+    from genomicode import bfrm
     
-    name = bfrmfns.get_affy_row_name(DATA)
+    name = bfrm.get_affy_row_name(DATA)
     probeset_ids = DATA.row_names(name)
     x = ["%s\n" % x for x in probeset_ids]
     open(filename, 'w').writelines(x)
@@ -119,13 +119,13 @@ def check_model(filename):
     assert "mPsi.txt" in s2f
     assert "probeids.txt" in s2f
 
-def run_bfrm_project(file_layout, bfrm_path, matlab):
+def run_bfrm_project(file_layout, bfrm_path, matlab_bin):
     import arrayio
-    from genomicode import bfrmfns
-    from genomicode import matlabfns
+    from genomicode import bfrm
+    from genomicode import matlab
 
     param_file = "parameters.txt"
-    model = bfrmfns.read_clean_model(
+    model = bfrm.read_clean_model(
         file_layout.BFRM_MODEL, param_file=param_file)
     num_factors = len(model["FACTOR_O"])
     assert num_factors, "No latent factors in the BFRM model."
@@ -136,7 +136,7 @@ def run_bfrm_project(file_layout, bfrm_path, matlab):
     
     DATA = arrayio.read(file_layout.DATASET)
     
-    bfrm_path = bfrmfns.find_bfrm_project(bfrm_path)
+    bfrm_path = bfrm.find_bfrm_project(bfrm_path)
     assert bfrm_path is not None, "I could not find BFRM_project."
     bfrm_path = os.path.realpath(bfrm_path)
 
@@ -172,8 +172,8 @@ def run_bfrm_project(file_layout, bfrm_path, matlab):
     w("save('%s', 'af', '-ASCII', '-TABS');\n" % file_layout.BFRM_AF)
     w("save('%s', 'Y', '-ASCII', '-TABS');\n" % file_layout.BFRM_Y)
     script = "".join(lines)
-    x = matlabfns.run(
-        script, matlab_bin=matlab, working_path=file_layout.OUTPATH)
+    x = matlab.run(
+        script, matlab_bin=matlab_bin, working_path=file_layout.OUTPATH)
     print x
     sys.stdout.flush()
 
@@ -181,9 +181,9 @@ def log_matrix(MATRIX):
     # Log the matrix if necessary.  Will log in place.  Return a
     # boolean indicating whether anything was logged.
     from genomicode import jmath
-    from genomicode import binregfns
+    from genomicode import binreg
 
-    if binregfns.is_logged_array_data(MATRIX):
+    if binreg.is_logged_array_data(MATRIX):
         return False
     print "I will log the matrix."
     MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
@@ -195,13 +195,13 @@ def summarize_factor_scores(file_layout, python, arrayplot, cluster, libpath):
     from genomicode import Matrix
     from genomicode import jmath
     from genomicode import archive
-    from genomicode import plotfns
-    from genomicode import bfrmfns
+    from genomicode import plotlib
+    from genomicode import bfrm
 
     DATA = arrayio.read(file_layout.DATASET)
 
     param_file = "parameters.txt"
-    model = bfrmfns.read_clean_model(
+    model = bfrm.read_clean_model(
         file_layout.BFRM_MODEL, param_file=param_file)
     num_factors = model["F"].nrow()
 
@@ -238,12 +238,12 @@ def summarize_factor_scores(file_layout, python, arrayplot, cluster, libpath):
     arrayio.pcl_format.write(M, file_layout.FACTOR_SCORES)
 
     # Make the heatmap.
-    x = plotfns.find_wide_heatmap_size(
+    x = plotlib.find_wide_heatmap_size(
         M.nrow(), M.ncol(), min_box_height=10, min_box_width=10,
         max_total_height=768, max_total_width=1024)
     xpix, ypix = x
     ypix = min(ypix, xpix*4)
-    x = plotfns.plot_heatmap(
+    x = plotlib.plot_heatmap(
         file_layout.FACTOR_SCORES, file_layout.FACTOR_SCORES_PNG,
         xpix, ypix, gene_label=True, cluster_genes=True,
         gene_center="mean", gene_normalize="var", array_label=True,
@@ -301,9 +301,9 @@ def main():
     # Import this after the library path is set.
     import arrayio
     from genomicode import archive
-    from genomicode import genepatternfns
+    from genomicode import genepattern
 
-    genepatternfns.fix_environ_path()
+    genepattern.fix_environ_path()
 
     if len(args) != 2:
         parser.error("Please specify files.")

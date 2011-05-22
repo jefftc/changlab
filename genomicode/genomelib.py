@@ -44,7 +44,7 @@ def get_sequence(chrom, start, length, ra_path=None):
     import config
 
     _assert_chrom(chrom)
-    ra_path = ra_path or config.genomefns_RA_CHROM_HG18
+    ra_path = ra_path or config.genomelib_RA_CHROM_HG18
     filename = os.path.join(ra_path, "chr%s.ra" % chrom)
     x = read_ra(filename, start, length, "c")
     return "".join(x)
@@ -82,7 +82,7 @@ def len_chrom(chrom, ra_path=None):
     import stat
     import config
 
-    ra_path = ra_path or config.genomefns_RA_CHROM_HG18
+    ra_path = ra_path or config.genomelib_RA_CHROM_HG18
     filename = os.path.join(ra_path, "%s.ra" % chrom)
     size = os.stat(filename)[stat.ST_SIZE]
     return size
@@ -112,7 +112,7 @@ def get_gene_coords(gene_symbol, gene_file=None):
     # transcripts.  Objects will be sorted so that first object is the
     # one whose transcription start is most upstream.
     import config
-    import filefns
+    import filelib
 
     # Find the transcript info for this gene.
     gene_file = gene_file or config.gene_HG18
@@ -171,7 +171,7 @@ def filter_unique_tss(genes):
     #
     # Objects will be sorted so that first object is the one whose
     # transcript is most upstream.
-    import filefns
+    import filelib
 
     # Filter out duplicate entries.
     i = 0
@@ -183,7 +183,7 @@ def filter_unique_tss(genes):
 
     # Clean up the objects.
     genes = [
-        filefns.GenericObject(
+        filelib.GenericObject(
             kg_id=x.kg_id, genbank_id=x.genbank_id, 
             refseq_id=x.refseq_id, gene_id=x.gene_id,
             gene_symbol=x.gene_symbol, chrom=x.chrom, strand=x.strand,
@@ -353,9 +353,9 @@ def read_fasta(fh):
 
 def read_fasta_many(fh):
     # Yield tuples of (title, sequence)
-    import filefns
+    import filelib
 
-    handle = filefns.openfh(fh)
+    handle = filelib.openfh(fh)
     title, sequence = "", []
     for line in handle:
         if line.startswith(">"):
@@ -453,7 +453,7 @@ def load_genes(gene_file=None, chrom=None):
 def _load_genes_h(gene_file):
     # This function is really slow for some reason.
     import config
-    import filefns
+    import filelib
 
     gene_file = gene_file or config.gene_HG18
     gene_data = _load_gene_file(gene_file)
@@ -477,7 +477,7 @@ def _load_genes_h(gene_file):
             length = end - start
             exon_lengths.append(length)
         assert len(exon_lengths) == len(d.exon_starts)
-        obj = filefns.GenericObject(
+        obj = filelib.GenericObject(
             kg_id=d.kg_id, genbank_id=d.genbank_id, refseq_id=d.refseq_id,
             gene_id=d.gene_id, gene_symbol=d.gene_symbol,
             chrom=chrom, strand=d.strand,
@@ -502,11 +502,11 @@ def _load_genes_h(gene_file):
     return genes
 
 def _load_gene_file_h(gene_file):
-    import filefns
+    import filelib
 
     # kg_id is unique.  Others may be duplicated or missing.
     data = []
-    for d in filefns.read_row(gene_file, header=1):
+    for d in filelib.read_row(gene_file, header=1):
         d.txn_start, d.txn_end = int(d.txn_start), int(d.txn_end)
         d.cds_start, d.cds_end = int(d.cds_start), int(d.cds_end)
         d.exon_starts = _safe_split_int(d.exon_starts)

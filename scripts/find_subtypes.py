@@ -167,12 +167,12 @@ def check_model(filename):
 
 def make_model(selap_path, penalty, file_layout, matlab):
     import arrayio
-    from genomicode import parsefns
+    from genomicode import parselib
     from genomicode import archive
-    from genomicode import selapfns
+    from genomicode import selap
 
     print "Generating subgroups with penalty %d." % penalty
-    x = selapfns.selap_make_raw(
+    x = selap.selap_make_raw(
         file_layout.SELAP_DATASET, penalty, matlab=matlab,
         selap_path=selap_path, outpath=file_layout.SELAP)
     print x
@@ -210,7 +210,7 @@ def make_model(selap_path, penalty, file_layout, matlab):
     
     # Generate the clust.txt file.
     # Set the names of the subgroups to a reasonable default.
-    x = ["GROUP%s" % x for x in parsefns.pretty_range(0, num_subgroups)]
+    x = ["GROUP%s" % x for x in parselib.pretty_range(0, num_subgroups)]
     group_names = x
     handle = open(opj(path, "clust.txt"), 'w')
     for x in group_names:
@@ -224,7 +224,7 @@ def make_model(selap_path, penalty, file_layout, matlab):
 def predict_subgroups(selap_path, file_layout, matlab):
     import zipfile
     import arrayio
-    from genomicode import selapfns
+    from genomicode import selap
     from genomicode import archive
 
     print "Predicting subgroups."
@@ -247,7 +247,7 @@ def predict_subgroups(selap_path, file_layout, matlab):
            "Dataset contains %d variables, but model requires %d." % (
         X_ds.ncol(), X_mu.nrow())
 
-    x = selapfns.selap_predict_raw(
+    x = selap.selap_predict_raw(
         file_layout.SELAP_DATASET, file_layout.SELAP_MU,
         file_layout.SELAP_SIG, file_layout.SELAP_PROB, 
         matlab=matlab, selap_path=selap_path, outpath=file_layout.SELAP)
@@ -258,7 +258,6 @@ def predict_subgroups(selap_path, file_layout, matlab):
 def summarize_predictions(file_layout):
     import zipfile
     import arrayio
-    from genomicode import parsefns
     from genomicode import archive
     
     # Load the original dataset.  Should be pathway x sample.
@@ -295,13 +294,13 @@ def summarize_predictions(file_layout):
 def summarize_heatmap(python, arrayplot, cluster, file_layout, libpath=[]):
     import subprocess
     import arrayio
-    from genomicode import plotfns
+    from genomicode import plotlib
 
     M_predict = arrayio.read(file_layout.PREDICTIONS_PCL)
     nrow, ncol = M_predict.dim()
 
     # Set the size of the plot.
-    x = plotfns.find_wide_heatmap_size(
+    x = plotlib.find_wide_heatmap_size(
         nrow, ncol, min_box_width=12, min_box_height=12,
         height_width_ratio=nrow*1.618/ncol)
     xpix, ypix = x
@@ -453,11 +452,11 @@ def main():
         sys.path = options.libpath + sys.path
     # Import after the library path is set.
     import arrayio
-    from genomicode import genepatternfns
+    from genomicode import genepattern
     from genomicode import archive
-    from genomicode import parsefns
+    from genomicode import parselib
 
-    genepatternfns.fix_environ_path()
+    genepattern.fix_environ_path()
 
     # Maximum number of models that someone can create at a time.
     MAX_MODELS = 50
@@ -465,7 +464,7 @@ def main():
     # Allow people to supply more than one penalty.  Parse into a list
     # of ranges.  Penalties must be integers.
     penalties = []
-    for (start, end) in parsefns.parse_ranges(options.penalty):
+    for (start, end) in parselib.parse_ranges(options.penalty):
         penalties.extend(range(start, end+1))
     assert len(penalties) <= MAX_MODELS, "Too many penalties (max is %d)." % \
            MAX_MODELS

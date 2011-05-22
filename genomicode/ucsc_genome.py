@@ -14,8 +14,7 @@ pslIsProtein
 """
 # External dependencies:
 # blat  (binary)
-from genomicode import filefns
-from genomicode.filefns import lwrite, tswrite, openfh
+
 
 def blat(sequence, delay=60):
     # sequence can either be a single sequence, or a FASTA-formatted
@@ -54,7 +53,7 @@ def blat(sequence, delay=60):
     
     from StringIO import StringIO
     import urllib
-    import htmlparsefns
+    import parselib
     import timer
 
     timer.wait(delay, name="UCSC")
@@ -80,11 +79,11 @@ def blat(sequence, delay=60):
     handle = urllib.urlopen(url)
     data = handle.read()
 
-    x = htmlparsefns.get_first_contents(data, "pre")
+    x = parselib.get_first_contents(data, "pre")
     if x is None:
         assert data.find("No matches") >= 0, data
         return
-    x = htmlparsefns.remove_all_tags(x).strip()
+    x = parselib.remove_all_tags(x).strip()
     handle = StringIO(x)
     ds = [d for d in parse_blat_psl(handle)]
     return ds
@@ -96,7 +95,7 @@ def in_silico_pcr(forward_primer, reverse_primer, delay=5):
     # amplified in a PCR.
     from StringIO import StringIO
     import urllib
-    import htmlparsefns
+    import parselib
     import timer
 
     timer.wait(delay, name="UCSC")
@@ -118,11 +117,11 @@ def in_silico_pcr(forward_primer, reverse_primer, delay=5):
     handle = urllib.urlopen(url)
     data = handle.read()
 
-    x = htmlparsefns.get_first_contents(data, "pre")
+    x = parselib.get_first_contents(data, "pre")
     if x is None:
         assert data.find("No matches") >= 0, data
         return
-    x = htmlparsefns.remove_all_tags(x)
+    x = parselib.remove_all_tags(x)
 
     for line in StringIO(x):
         if not line.startswith(">"):
@@ -145,7 +144,9 @@ def in_silico_pcr(forward_primer, reverse_primer, delay=5):
 
 def _clean_blat_psl(handle):
     # Yields cleaned up lines.
-    handle = openfh(handle)
+    import filelib
+    
+    handle = filelib.openfh(handle)
 
     # Format:
     # psLayout version 4 DNA DNA   (OR psLayout version 3)
@@ -171,14 +172,16 @@ def _clean_blat_psl(handle):
     x = handle.readline().strip()
     assert x == "-"*len(x)
 
-    for cols in filefns.read_cols(handle):
+    for cols in filelib.read_cols(handle):
         assert len(cols) == len(header), "%d %d" % (len(header), len(cols))
         yield "\t".join(cols)+"\n"
 
 def parse_blat_psl(handle):
     # Yields hits as objects.  See blat for the members of the
     # objects.
-    for d in filefns.read_row(_clean_blat_psl(handle), header=1):
+    import filelib
+    
+    for d in filelib.read_row(_clean_blat_psl(handle), header=1):
         yield d
 
 def calc_score_psl(psl):

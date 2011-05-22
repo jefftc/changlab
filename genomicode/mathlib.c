@@ -1,10 +1,10 @@
-/* mathfns.c
+/* mathlib.c
  * 080831  created
  */
 
 #include <Python.h>
 //#include <pmmintrin.h>  // For __mm128 stuff.
-#include "mathfns.h"
+#include "mathlib.h"
 
 #if PYTHON_API_VERSION <= 1012  /* Python 2.3 is 1012.  */
 #define Py_ssize_t int
