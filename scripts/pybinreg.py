@@ -717,7 +717,8 @@ def summarize_predictions(povray, file_layout):
             err_u = 0
         # Sometimes BinReg will generate negative errors.  If it's not
         # too bad, then just ignore it.
-        assert err_l >= -0.01 and err_u >= -0.01, "%g %g" % (err_l, err_u)
+        # Have seen negative errors as low as -0.032.
+        assert err_l >= -0.05 and err_u >= -0.05, "%g %g" % (err_l, err_u)
         err_l, err_u = max(err_l, 0), max(err_u, 0)
         error = round(err_l, 3), round(err_u, 3)
 
