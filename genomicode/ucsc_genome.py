@@ -1,7 +1,7 @@
 """
 
 Functions:
-blat
+blat                Perform a blat search on the UCSC genome webserver.
 in_silico_pcr
 
 parse_blat_psl
@@ -12,8 +12,6 @@ pslScore            Score for PSL output.
 pslIsProtein
 
 """
-# External dependencies:
-# blat  (binary)
 
 
 def blat(sequence, delay=60):

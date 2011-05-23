@@ -40,3 +40,7 @@ gene_HG18 = opj(TSS, "data/hg18.knownGene.110312.txt")
 
 # primer3
 primer3_PRIMER3_BIN = "primer3_core"
+
+
+# For normalize.py.
+
