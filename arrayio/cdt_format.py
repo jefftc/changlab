@@ -26,13 +26,13 @@ ROW_HEADERS = ["GID", "NAME", "GWEIGHT", "GORDER"]
 COL_HEADERS = ["AID", "EWEIGHT", "EORDER"]
 
 def is_format(locator_str):
-    from genomicode import filefns
+    from genomicode import filelib
     import tab_delimited_format
-    if not filefns.exists(locator_str):
+    if not filelib.exists(locator_str):
         return False
 
     # Read 5 lines and count the headers.
-    handle = filefns.openfh(locator_str)
+    handle = filelib.openfh(locator_str)
     lines = [handle.readline() for i in range(5)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]

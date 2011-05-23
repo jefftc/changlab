@@ -23,13 +23,13 @@ ROW_HEADERS = ["NAME", "GWEIGHT", "GORDER"]
 COL_HEADERS = ["EWEIGHT", "EORDER"]
 
 def is_format(locator_str):
-    from genomicode import filefns
+    from genomicode import filelib
     import tab_delimited_format
-    if not filefns.exists(locator_str):
+    if not filelib.exists(locator_str):
         return False
 
     # Read 5 lines and count the headers.
-    handle = filefns.openfh(locator_str)
+    handle = filelib.openfh(locator_str)
     lines = [handle.readline() for i in range(5)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]
@@ -100,12 +100,12 @@ def is_matrix(X):
 def read(handle, datatype=float):
     import StringIO
     import tab_delimited_format
-    from genomicode import filefns
+    from genomicode import filelib
 
     # Figure out the number of headers for tab_delimited_format.  If
     # sample names are numbers, then tab_delimited_format might
     # mistake the first row(s) for non-headers.
-    s = filefns.openfh(handle).read()
+    s = filelib.openfh(handle).read()
 
     # Read 5 lines and check the headers.  If the file is small, this
     # may contain fewer than 5 lines.

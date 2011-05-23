@@ -45,7 +45,7 @@ def guess_format(X):
 
 def read(locator, datatype=float, format=None):
     # Bug: this function fails if passed a file handle.
-    from genomicode import filefns
+    from genomicode import filelib
     format = format or choose_format(locator)
     if format is None:
         msg = "I could not find a format for: %r" % locator
@@ -325,7 +325,7 @@ def _jeff_to_pcl(X):
 def _pcl_to_gct(X):
     # Will lose the column annotations.
     from genomicode import Matrix
-    from genomicode import parsefns
+    from genomicode import parselib
     assert pcl_format.is_matrix(X)
 
     assert len(X.col_names()) == 1
@@ -349,7 +349,7 @@ def _pcl_to_gct(X):
         row_names["DESCRIPTION"] = X._row_names[row_desc]
     else:
         # Make up default row names.
-        x = ["DESC%s" % x for x in parsefns.pretty_range(0, X.nrow())]
+        x = ["DESC%s" % x for x in parselib.pretty_range(0, X.nrow())]
         row_names["DESCRIPTION"] = x
     synonyms[ROW_ID] = "NAME"
     synonyms[COL_ID] = col_order[0]
@@ -388,7 +388,7 @@ def _pcl_to_gct(X):
     
 def _tdf_to_gct(X):
     from genomicode import Matrix
-    from genomicode import parsefns
+    from genomicode import parselib
     assert tab_delimited_format.is_matrix(X)
 
     assert len(X.col_names()) == 1
@@ -398,8 +398,8 @@ def _tdf_to_gct(X):
     desc_header = "DESCRIPTION"
 
     # Make up default names.
-    name = ["NAME%s" % x for x in parsefns.pretty_range(0, X.nrow())]
-    desc = ["DESC%s" % x for x in parsefns.pretty_range(0, X.nrow())]
+    name = ["NAME%s" % x for x in parselib.pretty_range(0, X.nrow())]
+    desc = ["DESC%s" % x for x in parselib.pretty_range(0, X.nrow())]
     
     # Try to find better names.
     if not X.row_names():

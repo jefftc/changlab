@@ -14,10 +14,10 @@ is_matrix
 import os, sys
 
 def is_format(locator_str):
-    from genomicode import filefns
-    if not filefns.exists(locator_str):
+    from genomicode import filelib
+    if not filelib.exists(locator_str):
         return False
-    handle = filefns.openfh(locator_str)
+    handle = filelib.openfh(locator_str)
     x = handle.readline()
     handle.close()   # need to close it properly, or gunzip might not die.
     if not x:  # blank file
@@ -33,13 +33,13 @@ def is_matrix(X):
 def read(handle, hrows=None, hcols=None, datatype=float):
     import csv
     from StringIO import StringIO
-    from genomicode import filefns
+    from genomicode import filelib
     import tab_delimited_format
 
     # Convert this to tab-delimited format and let the other module
     # deal with it.
     outhandle = StringIO()
-    reader = csv.reader(filefns.openfh(handle))
+    reader = csv.reader(filelib.openfh(handle))
     for row in reader:
         print >>outhandle, "\t".join(row)
     outhandle.seek(0)

@@ -23,13 +23,13 @@ import os, sys
 SAMPLE_NAME = "_SAMPLE_NAME"
 
 def is_format(locator_str):
-    from genomicode import filefns
-    if not filefns.exists(locator_str):
+    from genomicode import filelib
+    if not filelib.exists(locator_str):
         return False
 
     # Read 5 lines and check the headers.  If the file is small, this
     # may contain fewer than 5 lines.
-    handle = filefns.openfh(locator_str)
+    handle = filelib.openfh(locator_str)
     lines = [handle.readline() for i in range(5)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]
@@ -166,10 +166,10 @@ def _num_headers(matrix):
 
 def read(handle, hrows=None, hcols=None, datatype=float):
     import math
-    from genomicode import filefns
+    from genomicode import filelib
     from genomicode import Matrix
     from genomicode import jmath
-    from genomicode import iofns
+    from genomicode import iolib
     import const
     # Format:
     # - gene x experiment
@@ -177,8 +177,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # - optional rows of sample annotations (requires header row)
     # - optional columns of gene annotations
 
-    handle = filefns.openfh(handle)
-    data = iofns.split_tdf(handle.read())
+    handle = filelib.openfh(handle)
+    data = iolib.split_tdf(handle.read())
 
     # Sometimes people insert blank rows or columns inside the matrix.
     # Remove all of those.
@@ -400,7 +400,7 @@ def _clean_many(l, disallowed=None):
     return l
     
 def write(X, handle):
-    from genomicode import filefns
+    from genomicode import filelib
 
     assert is_matrix(X)
     if type(handle) is type(""):

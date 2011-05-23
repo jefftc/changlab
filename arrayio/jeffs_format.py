@@ -26,16 +26,16 @@ MYNAME_TO_STDNAME = [
     ]
 
 def is_format(locator_str):
-    from genomicode import filefns
+    from genomicode import filelib
     import tab_delimited_format
     
-    if not filefns.exists(locator_str):
+    if not filelib.exists(locator_str):
         # This will only work if locator_str is a string.
         return False
     
     # Read 5 lines and check the headers.  If the file is small, this
     # may contain fewer than 5 lines.
-    handle = filefns.openfh(locator_str)
+    handle = filelib.openfh(locator_str)
     lines = [handle.readline() for i in range(5)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]
@@ -56,7 +56,7 @@ def is_format(locator_str):
     
     return True
     
-    #handle = filefns.openfh(locator_str)
+    #handle = filelib.openfh(locator_str)
     #x = handle.readline()
     #handle.close()   # need to close it properly, or gunzip might not die.
     #row = x.rstrip("\r\n").split("\t")

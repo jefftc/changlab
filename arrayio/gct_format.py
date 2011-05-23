@@ -21,12 +21,12 @@ is_matrix
 import os
 
 def is_format(locator_str):
-    from genomicode import filefns
-    if not filefns.exists(locator_str):
+    from genomicode import filelib
+    if not filelib.exists(locator_str):
         return False
 
     # Read 5 lines and check the headers.
-    handle = filefns.openfh(locator_str)
+    handle = filelib.openfh(locator_str)
     lines = [handle.readline() for i in range(5)]
     handle.close()   # need to close it properly, or gunzip might not die.
 
@@ -74,9 +74,9 @@ def read(handle, datatype=float):
     from genomicode import Matrix
     import const
     import tab_delimited_format
-    from genomicode import filefns
+    from genomicode import filelib
 
-    handle = filefns.openfh(handle)
+    handle = filelib.openfh(handle)
     assert handle.readline().strip() == "#1.2"
     x = handle.readline().rstrip("\r\n").split("\t")
     assert len(x) >= 2
