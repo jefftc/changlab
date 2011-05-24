@@ -3,11 +3,8 @@
 import os, sys
 
 def find_annotation_file(chipname):
-    # XXX this needs to be configurable.
-    PATHS = [
-        "/home/jchang/data/normalize/affymetrix",
-        "/Volumes/Users/jchang/data/normalize/affymetrix",
-        ]
+    from genomicode import config
+
     chipname2annotfile = {
         "HG-U133A" : "HG-U133A_annot.csv.gz",
         "HG-U133A_2" : "HG-U133A_2.na30.annot.csv.gz",
@@ -20,38 +17,28 @@ def find_annotation_file(chipname):
     assert chipname in chipname2annotfile, "I have no annotations for %s" % \
            chipname
     file = chipname2annotfile[chipname]
-    for path in PATHS:
-        filename = os.path.join(path, file)
-        #print filename
-        if os.path.exists(filename):
-            break
-    else:
-        raise AssertionError, "I could not find the annotation files."
+    filename = os.path.join(config.normalize_AFFYMETRIX, file)
+    assert os.path.exists(filename), "I could not find the annotation file."
     filename = os.path.realpath(filename)
     return filename
 
 def find_normscript():
-    PATHS = [
-        "/home/jchang/work/src/Rlib",
-        "/Volumes/Users/jchang/work/src/Rlib",
-        ]
+    from genomicode import config
+    
     file = "normscript.R"
-    for path in PATHS:
-        filename = os.path.join(path, file)
-        #print filename
-        if os.path.exists(filename):
-            break
-    else:
-        raise AssertionError, "I could not find normscript.R."
+    filename = os.path.join(config.normalize_RLIB, file)
+    assert os.path.exists(filename), "I could not find normscript.R."
     filename = os.path.realpath(filename)
     return filename
 
 def main():
     import tempfile
     from optparse import OptionParser, OptionGroup
-    from genomicode import affyio
+    import affyio
 
-    usage = "usage: %prog [options] algorithm path_to_cel_files"
+    usage = (
+        "usage: %prog [options] algorithm path_to_cel_files\n\n"
+        'algorithm should be "RMA" or "MAS5".')
     parser = OptionParser(usage=usage, version="%prog 01")
 
     parser.add_option(
