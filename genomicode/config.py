@@ -43,5 +43,5 @@ primer3_PRIMER3_BIN = "primer3_core"
 
 
 # For normalize.py.
-normalize_AFFYMETRIX = opj(HOME, "data/normalize/affymetrix")
-normalize_RLIB = opj(HOME, "changlab/Rlib")
+normalize_AFFYMETRIX = opj(HOME, "changlab/data/normalize/affymetrix")
+normalize_RLIB=opj(HOME,"changlab/changlab/Rlib")
