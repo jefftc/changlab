@@ -215,6 +215,7 @@ def blob_sphere(center, radius, strength, *items):
     # radius AMOUNT
     # strength AMOUNT
     # + modifiers
+    # Is this correct?  110529
     return _fmt_complex("sphere", args=(center, radius, strength), *items)
 
 def superellipsoid(value_e, value_n, *items):
@@ -297,7 +298,10 @@ def finish(*items):
     # more...
     #
     # Notes:
-    # o ambient controls the amount of ambient light.  Default 0.1.
+    
+    # o ambient controls the amount of ambient light that is produced
+    #   by the object.  0.0 means object will be black if not directly
+    #   lighted.  Default 0.1.
     # o diffuse controls how much the reflected light is scattered in
     #   a variety of directions.  Only very smooth polished surfaces
     #   have perfect specular (not diffuse) reflections.  Range from

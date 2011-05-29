@@ -211,6 +211,7 @@ def save_signal_bin(handle, annotations, sample_ids, X):
         assert "\t" not in x
     sample_str = "\t".join(sample_ids)
 
+    # TODO: Should allow user to provide the order of the headers.
     header_names = sorted(annotations)
     assert header_names
     num_headers = len(header_names)
