@@ -82,7 +82,7 @@ class Graph:
         import povray as pr
 
         CAMERA_HEIGHT = 10*self.UNIT
-        LIGHT_ANGLE = 55
+        LIGHT_ANGLE = 55   # lower means longer shadows
         LIGHT_COLOR = 1, 1, 1
 
         w = self.handle.write
@@ -97,11 +97,15 @@ class Graph:
             pr.look_at(x_mid, y_mid, 0),
             ))
         
-        # Set the light source to the upper right point of the plot.
+        # The light source is at the upper right of the plot, shining
+        # toward the lower left.  Calculate the height such that the
+        # light is shining at a specific angle relative to the plane
+        # of the plot.  Lower LIGHT_ANGLE means light source is closer
+        # to the plane (longer shadows).
         x = self.PLOT_X + self.PLOT_WIDTH
         y = self.PLOT_Y + self.PLOT_HEIGHT
-        hyp = math.sqrt(self.PLOT_WIDTH**2+self.PLOT_HEIGHT**2)
-        z = hyp * math.tan(math.pi*LIGHT_ANGLE/180.0)
+        side = math.sqrt(self.PLOT_WIDTH**2+self.PLOT_HEIGHT**2)
+        z = side * math.tan(math.pi*LIGHT_ANGLE/180.0)
         w(pr.light_source(
             pr.vector(x, y, -z),
             pr.color(*LIGHT_COLOR),
@@ -161,15 +165,33 @@ class Graph:
                 pr.ambient(0.6, 0.6, 0.6)),
             pr.no_shadow(),
             )))
+        # Give the axis a rounded cap so it looks smoother.
+        w(pr.declare("AXIS_CAP", pr.sphere(
+            pr.vector(0, 0, 0), AXIS_THICKNESS,
+            pr.pigment(pr.color(*AXIS_COLOR)),
+            pr.finish(
+                #pr.phong(0.8), pr.phong_size(5),   # too shiny
+                pr.diffuse(0.6),
+                pr.ambient(0.6, 0.6, 0.6)),
+            pr.no_shadow(),
+            )))
+        # X-axis.
         w(pr.object_(
             "AXIS",
             pr.scale(x_axis_2[0]-x_axis_1[0], 1, 1),
             pr.translate(*x_axis_1)))
         w(pr.object_(
+            "AXIS_CAP",
+            pr.translate(*x_axis_2)))
+        # Y-axis.
+        w(pr.object_(
             "AXIS",
             pr.rotate(0, 0, 90),
             pr.scale(1, y_axis_2[1]-y_axis_1[1], 1),
             pr.translate(*y_axis_1)))
+        w(pr.object_(
+            "AXIS_CAP",
+            pr.translate(*y_axis_2)))
 
         w(pr.declare("MARKER", pr.object_(
             "MARKER", pr.translate(x_axis_1[0], y_axis_1[1], 0))))
@@ -384,13 +406,14 @@ class Graph:
         w("\n")
 
     def draw_lines(
-        self, xlim, ylim, points, color, line_size=1.0, height_scale=1.0):
+        self, xlim, ylim, points, color, line_size=1.0, line_height=0):
+        # Line height should be an integer.  line 0 is lowest.
         import math
         import povray as pr
 
         THICKNESS = 0.25 * self.UNIT * line_size
         #HEIGHT = 2.5 * THICKNESS  # higher causes more shadows
-        HEIGHT = 0.30 * self.UNIT * height_scale
+        HEIGHT = 0.5*THICKNESS + THICKNESS*line_height
 
         x_min, x_len = xlim[0], xlim[1]-xlim[0]
         y_min, y_len = ylim[0], ylim[1]-ylim[0]
@@ -398,22 +421,18 @@ class Graph:
         w = self.handle.write
         w("// Plot each segment of the line.\n")
         finish = pr.finish(
-            pr.diffuse(0.5),            # lower numbers are darker
-            pr.ambient(0.7, 0.7, 0.7),  # lower numbers are darker
-            pr.brilliance(5),           # higher numbers look bolder
-            #pr.specular(0.3),          # Makes things shinier.
+            pr.diffuse(0.3),             # lower numbers are darker
+            pr.ambient(0.8, 0.8, 0.8),   # lower numbers are darker
+            pr.brilliance(5),            # higher numbers look bolder
+            #pr.reflection(0.8),
+            #pr.specular(0.3),           # Makes things shinier.
             #pr.roughness(0.05),
             )
         w(pr.declare("LINESEG", pr.cylinder(
             pr.vector(0, 0, -HEIGHT), pr.vector(1, 0, -HEIGHT), THICKNESS,
             finish)))
-        #w(pr.declare("LINESEG", pr.box(
-        #    pr.vector(0, -THICKNESS/2.0, 0),
-        #    pr.vector(1, THICKNESS/2.0, -HEIGHT),
-        #    finish)))
-        w(pr.declare("LINEEND", pr.cylinder(
-            pr.vector(0, 0, 0), pr.vector(0, 0, -HEIGHT), THICKNESS,
-            finish)))
+        w(pr.declare("LINEEND", pr.sphere(
+            pr.vector(0, 0, -HEIGHT), THICKNESS, finish)))
 
         for i in range(len(points)-1):
             xc1, yc1 = points[i]
@@ -482,11 +501,17 @@ class Graph:
             w(pr.object_(
                 "LINESEG", pr.scale(linelen, 1, 1), pr.rotate(0, 0, angle),
                 pr.translate(xp1, yp1, 0), pigment))
-            # Only draw the connectors on the internal points.
-            if i < len(points)-1:
+            w(pr.object_(
+                "LINEEND", pr.translate(xp2, yp2, 0),
+                #pr.pigment(pr.color(1, 0, 1)),
+                pigment,
+                ))
+            if i == 0:
                 w(pr.object_(
-                    "LINEEND", pr.translate(xp2, yp2, 0), pigment))
-
+                    "LINEEND", pr.translate(xp1, yp1, 0),
+                    #pr.pigment(pr.color(1, 0, 1)),
+                    pigment,
+                    ))
         w("\n")
 
     def draw_labels(self, xlabel, ylabel, label_size=1.0):
@@ -1145,10 +1170,8 @@ def line(*args, **keywds):
         label_size=label_size)
     graph.draw_labels(xlabel, ylabel, label_size=label_size)
 
-    height_scale = 1.0
     for i, line in enumerate(lines):
-        graph.draw_lines(xlim, ylim, line, color[i], height_scale=height_scale)
-        height_scale += 0.10
+        graph.draw_lines(xlim, ylim, line, color[i], line_height=i)
     
     handle.seek(0)
     return handle.read()
@@ -1268,7 +1291,8 @@ def _set_default_color(color, n):
         color = [color] * n
     for c in color:
         assert len(c) == 3, "Does not look like color: %s" % str(c)
-    assert len(color) == n
+    assert len(color) == n, "You specified %d colors, but I expected %d." % (
+        len(color), n)
     return color
 
 def _set_default_shape(shape, n):
