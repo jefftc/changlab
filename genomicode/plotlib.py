@@ -6,7 +6,10 @@ plot_heatmap
 find_tall_heatmap_size
 find_wide_heatmap_size
 
+place_ticks
+
 """
+# _choose_tick_delta
 
 def plot_heatmap(
     infile, outfile, xpix, ypix, color=None, 
@@ -163,6 +166,66 @@ def find_wide_heatmap_size(
     #print "DIM %dx%d (%d*%d, %d*%d)" % (height, width, nrow, ypix, ncol, xpix)
     return xpix, ypix
 
+def place_ticks(v_min, v_max, num_ticks=10, delta=None):
+    import math
+    
+    assert v_min < v_max
+    assert num_ticks > 0 and num_ticks <= 100
+
+    #print v_min, v_max, num_ticks
+    if delta is None:
+        delta = _choose_tick_delta(v_min, v_max, num_ticks=num_ticks)
+
+    # Do calculation in integers to 4 decimal places.
+    x = math.log(delta, 10)
+    multiplier = 10**(-int(x)+4)
+
+    delta = int(delta * multiplier)
+    tick_min, tick_max = int(v_min*multiplier), int(v_max*multiplier)
+
+    # Round tick_min down to the nearest delta and tick_max up to the
+    # nearest delta.
+    tick_min = tick_min - tick_min % delta
+    if tick_max % delta != 0:
+        tick_max = tick_max + (delta - tick_max % delta)
+
+    ticks = [float(i)/multiplier for i in range(tick_min, tick_max+1, delta)]
+    return ticks
+
+def _choose_tick_delta(v_min, v_max, num_ticks=10):
+    # Figure out the right delta to make at most num_ticks tick marks
+    # between v_min and v_max.
+    import math
+
+    assert v_min < v_max
+    assert num_ticks > 0 and num_ticks <= 100
+
+    # Generate a list of the allowable DELTAs.  This will depend on
+    # the range of the user's data.
+    DELTAS = [0.5, 0.25, 0.20, 0.1]
+
+    # Calculate the ideal delta, and choose the smallest DELTA that is
+    # >= the ideal one.  Assume DELTAS sorted from largest to
+    # smallest.  This means num_ticks is the maximum bound.
+    range = v_max - v_min
+    delta_ideal = float(range) / num_ticks
+    # delta_ideal   delta
+    #   0.8           0.5
+    #    12           10
+    #    23           20
+    #   0.02         0.02
+
+    # Scale the DELTAs to be in the same range as delta_ideal.
+    # delta_ideal should be smaller than max(DELTAS).    
+    num_logs = int(math.ceil(math.log(delta_ideal / max(DELTAS), 10)))
+    # Need to make DELTA this number of logs bigger.
+    DELTAS = [x*10**num_logs for x in DELTAS]
+    assert delta_ideal <= max(DELTAS)
+    x = [x for x in DELTAS if x >= delta_ideal]
+    delta = x[-1]
+
+    return delta
+
 def test_find_heatmap_size():
     print find_tall_heatmap_size(10, 10)  # 12, 20
     print find_tall_heatmap_size(5, 10)   # 6, 20
@@ -172,5 +235,23 @@ def test_find_heatmap_size():
     print find_wide_heatmap_size(10, 10)  # 20, 12
     print find_wide_heatmap_size(5, 10)   # 16, 20
 
+def test_place_ticks():
+    print place_ticks(0.00, 1.00, 5)
+    print place_ticks(0.03, 0.94, 3)
+    print place_ticks(-12, 15, 10)
+
+def test_choose_tick_delta():
+    print _choose_tick_delta(-2.0, 2.0, 6)
+    print _choose_tick_delta(0, 1)
+    print _choose_tick_delta(0, 100)
+    print _choose_tick_delta(0, 21)
+    print _choose_tick_delta(0, 0.8, 2)
+    print _choose_tick_delta(0, 1, 40)
+    print _choose_tick_delta(-12, 15, 2)
+    print _choose_tick_delta(0, 99, 2)
+    print _choose_tick_delta(0.0, 0.1, 10)
+
 if __name__ == '__main__':
-    test_find_heatmap_size()
+    #test_find_heatmap_size()
+    test_choose_tick_delta()
+    #test_place_ticks()

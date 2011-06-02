@@ -4,7 +4,7 @@ red_shade
 green_shade
 rg_array_colors
 by_array_colors
-rgb_colors          From red, gree, blue colorwheel.
+rgb_colors          From red, green, blue colorwheel.
 matlab_colors
 bild_colors
 broad_colors

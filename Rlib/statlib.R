@@ -18,3 +18,25 @@ bonferroni.correct <- function(p.values) {
   bonf.p <- p.values*m
   sapply(bonf.p, function(x) min(x, 1))
 }
+
+calc.sensitivity <- function(results) {
+  # results is a vector of 1/0.  It should be sorted according to some
+  # score (by decreasing score).
+  cumsum(results) / sum(results)
+}
+
+calc.specificity <- function(results) {
+  1 - cumsum(results==0)/sum(results==0)
+}
+
+calc.recall <- calc.sensitivity
+
+calc.precision <- function(results, interpolate=FALSE) {
+  x <- cumsum(results)/(1:length(results))
+  if(interpolate) {
+    #x <- sapply(1:length(x), function(i) max(x[i:length(x)]))
+    for(i in (length(x)-1):1)
+      x[i] <- max(x[i], x[i+1])
+  }
+  x
+}

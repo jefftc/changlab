@@ -18,10 +18,13 @@ def image(width, height):
     return Image.new("RGB", (width, height), (255, 255, 255))
 
 def rectangle(image, x, y, width, height, color, outline=None):
+    # color is (r, g, b) where r, g, b from 0-255.
+    # Is the fill color.  outline is the colorfor the outline.
     from PIL import ImageDraw
     draw = ImageDraw.Draw(image)
     # width and height are exclusive, but PIL is inclusive, so
     # subtract 1 to compensate.
+    # outline???
     draw.rectangle((x, y, x+width-1, y+height-1), outline=outline, fill=color)
     del draw
     
@@ -98,4 +101,3 @@ def fit_fontsize_to_height(height):
     #    raise AssertionError, "I could not find the font size."
     #return fontsize
     return height
-        

@@ -3,7 +3,6 @@
 # To do:
 # - Allow choice of gene label.
 # - Make transparent background.
-# - Add borders between elements in the plot.
 # - What if there are nan's in the probability file?
 
 """
@@ -13,6 +12,7 @@ ClusterData
 
 PlotLayout              Holds layouts for each individual pieces of the plot.
 HeatmapLayout
+ColorbarLayout
 DendrogramLayout
 GeneDendrogramLayout
 ArrayDendrogramLayout
@@ -78,9 +78,10 @@ class ClusterData:
         self.array_cluster = array_cluster
 
 class PlotLayout:
-    def __init__(self, heatmap, gene_dendrogram, array_dendrogram,
+    def __init__(self, heatmap, colorbar, gene_dendrogram, array_dendrogram,
                  gene_cluster, array_cluster, gene_label, array_label):
         self.heatmap = heatmap
+        self.colorbar = colorbar
         self.gene_dendrogram = gene_dendrogram
         self.array_dendrogram = array_dendrogram
         self.gene_cluster = gene_cluster
@@ -89,9 +90,10 @@ class PlotLayout:
         self.array_label = array_label
 
 class PlotCoords:
-    def __init__(self, hm_x, hm_y, gd_x, gd_y, ad_x, ad_y,
+    def __init__(self, hm_x, hm_y, cb_x, cb_y, gd_x, gd_y, ad_x, ad_y,
                  gc_x, gc_y, ac_x, ac_y, gl_x, gl_y, al_x, al_y):
         self.hm_x, self.hm_y = hm_x, hm_y
+        self.cb_x, self.cb_y = cb_x, cb_y
         self.gd_x, self.gd_y = gd_x, gd_y
         self.ad_x, self.ad_y = ad_x, ad_y
         self.gc_x, self.gc_y = gc_x, gc_y
@@ -100,24 +102,216 @@ class PlotCoords:
         self.al_x, self.al_y = al_x, al_y
 
 class HeatmapLayout:
-    def __init__(self, nrow, ncol, boxwidth, boxheight, color_fn):
+    def __init__(self, nrow, ncol, boxwidth, boxheight, grid, color_fn):
+        # Looks OK with even 1 pixel.
+        #MIN_GRID = 1
+        #if boxwidth < MIN_GRID or boxheight < MIN_GRID:
+        #    grid = False
         self.nrow = nrow
         self.ncol = ncol
         self.boxwidth = boxwidth
         self.boxheight = boxheight
+        self.grid = grid
         self.color_fn = color_fn
+        self.BORDER = 1
+        self.GRID_SIZE = 1
+        assert self.GRID_SIZE <= self.BORDER
     def width(self):
         return self.size()[0]
     def height(self):
         return self.size()[1]
     def size(self):
-        height = self.boxheight * self.nrow
-        width = self.boxwidth * self.ncol
+        height = self.BORDER*2
+        width = self.BORDER*2
+        height += self.boxheight * self.nrow
+        width += self.boxwidth * self.ncol
+        if self.grid:
+            height += (self.nrow-1) * self.GRID_SIZE
+            width += (self.ncol-1) * self.GRID_SIZE
         return width, height
     def coord(self, row, col):
-        x = col * self.boxwidth
-        y = row * self.boxheight
+        x = self.BORDER
+        y = self.BORDER
+        x += col * self.boxwidth
+        y += row * self.boxheight
+        if self.grid:
+            x += col * self.GRID_SIZE
+            y += row * self.GRID_SIZE
         return x, y, self.boxwidth, self.boxheight
+    def color(self, x):
+        # x is from [0, 1].  find the nearest color.
+        assert x >= 0 and x <= 1, "x out of range: %g" % x
+        return _get_color(x, self.color_fn)
+
+class ColorbarLayout:
+    def __init__(
+        self, heatmap_width, heatmap_height, signal_0, signal_1, color_fn):
+        import math
+        from genomicode import plotlib
+        
+        vertical_colorbar = True
+        if heatmap_width > heatmap_height:
+            vertical_colorbar = False
+
+        BAR_LONG = 0.50        # the long dimension, relative to heatman
+        BAR_SHORT = 0.075      # short dimension, relative to long_ratio
+        HEATMAP_BUFFER = 0.75  # separation from heatmap, relative to BAR_SHORT
+        TICK_SIZE = 0.15       # relative to BAR_SHORT
+        TICK_BUFFER = 0.15     # relative to BAR_SHORT
+        TEXT_SIZE = 0.50       # relative to BAR_SHORT
+
+        # Calculate the dimensions of the colorbar.
+        if vertical_colorbar:
+            height = int(heatmap_height * BAR_LONG)
+            width = int(height * BAR_SHORT)
+        else:
+            width = int(heatmap_width * BAR_LONG)
+            height = int(width * BAR_SHORT)
+
+        # Calculate the minimum and maximum number to label.
+        assert signal_0 < signal_1
+        delta = signal_1 - signal_0
+        num_decimals = max(-int(math.floor(math.log(delta, 10))), 0)+1
+        # Where to start labels.  Give a larger range than might fit
+        # and shrink it later based on where the tick marks are.
+        label_min = math.floor(signal_0 * 10**num_decimals)/10**num_decimals
+        label_max = math.ceil(signal_1 * 10**num_decimals)/10**num_decimals
+        #print signal_0, signal_1, label_min, label_max, num_decimals
+        assert label_min < label_max
+
+        # Estimate how much space each label will take, so we can
+        # calculate the number of tick marks.
+        if vertical_colorbar:
+            pixels_per_digit = TEXT_SIZE * width
+            num_digits = 1
+            pixels = pixels_per_digit * (num_digits+1) # add a space
+            num_ticks = int(height / pixels)
+        else:
+            pixels_per_digit = TEXT_SIZE * height  # not quite right.
+            if num_decimals == 0:
+                num_digits = int(math.ceil(math.log(delta, 10)))
+            else:
+                num_digits = num_decimals + 2
+            if signal_0 < 0:
+                num_digits += 1  # Add space for the - sign.
+            pixels = pixels_per_digit * (num_digits+1) # add a space
+            #print signal_0, signal_1
+            #print pixels_per_digit, num_digits, pixels
+            num_ticks = int(width / pixels)
+        assert num_ticks >= 0
+        #print label_min, label_max, num_ticks
+        ticks = plotlib.place_ticks(label_min, label_max, num_ticks=num_ticks)
+
+        # If any of the tick marks are off the scale, then remove it.
+        #print signal_0, signal_1, label_min, label_max, num_decimals
+        #print ticks
+        ticks = [x for x in ticks if x >= signal_0 and x <= signal_1]
+
+        # Format the tick labels.
+        x = [max(len(str(abs(x)%1))-2, 0) for x in ticks]
+        digits = max(x)
+        tick_labels = ["%.*f" % (digits, x) for x in ticks]
+
+        self._bar_width = width
+        self._bar_height = height
+        self.heatmap_width = heatmap_width
+        self.heatmap_height = heatmap_height
+        self.vertical = vertical_colorbar
+        self.color_fn = color_fn
+        self.HEATMAP_BUFFER = HEATMAP_BUFFER
+        self.TICK_SIZE = TICK_SIZE
+        self.TICK_BUFFER = TICK_BUFFER
+        self.TEXT_SIZE = TEXT_SIZE
+        self.signal_0 = signal_0
+        self.signal_1 = signal_1
+        self.ticks = ticks
+        self.tick_labels = tick_labels
+    def width(self):
+        width = self._bar_width
+        if self.vertical:
+            # Buffer between heatmap and colorbar.
+            width += self._bar_width * self.HEATMAP_BUFFER
+            # Tick mark.
+            width += self._bar_width * self.TICK_SIZE
+            # BUFFER between tick mark and label.
+            width += self._bar_width * self.TICK_BUFFER
+            # Text.
+            num_chars = max([len(x) for x in self.tick_labels])
+            width += self.text_height() * num_chars
+        width = int(width)
+        return width
+    def height(self):
+        height = self._bar_height
+        if not self.vertical:
+            # Buffer between heatmap and colorbar.
+            height += self._bar_height * self.HEATMAP_BUFFER
+            # Tick mark.
+            height += self._bar_height * self.TICK_SIZE
+            # BUFFER between tick mark and label.
+            height += self._bar_height * self.TICK_BUFFER
+            # Text.
+            height += self.text_height()
+        height = int(height)
+        return height
+    def size(self):
+        return self.width(), self.height()
+    def bar_width(self):
+        return self._bar_width
+    def bar_height(self):
+        return self._bar_height
+    def bar_coord(self):
+        if self.vertical:
+            # Buffer.
+            x = int(self._bar_width * self.HEATMAP_BUFFER)
+            y = (self.heatmap_height - self._bar_height)/2
+        else:
+            x = (self.heatmap_width - self._bar_width)/2
+            y = int(self._bar_height * self.HEATMAP_BUFFER)
+        return x, y
+    def text_height(self):
+        if self.vertical:
+            return int(self._bar_width * self.TEXT_SIZE)
+        return int(self._bar_height * self.TEXT_SIZE)
+    def num_ticks(self):
+        return len(self.tick_labels)
+    def tick_coord(self, i):
+        assert i >= 0 and i < len(self.ticks)
+        tick = self.ticks[i]
+        perc = float(tick-self.signal_0)/(self.signal_1-self.signal_0)
+        bar_x, bar_y = self.bar_coord()
+        if self.vertical:
+            width = int(self.bar_width() * self.TICK_SIZE)
+            height = 1
+            x = bar_x + self.bar_width()
+            y = bar_y + perc*self.bar_height()
+            y = min(y, bar_y+self.bar_height()-height)
+        else:
+            width = 1
+            height = int(self.bar_height() * self.TICK_SIZE)
+            x = bar_x + perc*self.bar_width()
+            y = bar_y + self.bar_height()
+            x = min(x, bar_x+self.bar_width()-width)
+        x, y = int(x), int(y)
+        return x, y, width, height
+    def tick_label(self, i):
+        assert i >= 0 and i < len(self.tick_labels)
+        return self.tick_labels[i]
+    def label_coord(self, i, plotlib):
+        label = self.tick_label(i)
+        bar_x, bar_y = self.bar_coord()
+        x = self.tick_coord(i)
+        tick_x, tick_y, tick_width, tick_height = x
+        fontsize = plotlib.fit_fontsize_to_height(self.text_height())
+        x = plotlib.get_text_size(label, fontsize)
+        label_width, label_height = x
+        if self.vertical:
+            x = tick_x + tick_width + self.bar_width()*self.TICK_BUFFER
+            y = tick_y - label_height/2
+        else:
+            x = tick_x - label_width/2
+            y = tick_y + tick_height + self.bar_height()*self.TICK_BUFFER
+        x, y = int(x), int(y)
+        return x, y
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
         assert x >= 0 and x <= 1, "x out of range: %g" % x
@@ -220,7 +414,7 @@ class DendrogramLayout:
         return x
         
 class GeneDendrogramLayout(DendrogramLayout):
-    def __init__(self, nrow, ncol, boxwidth, boxheight,
+    def __init__(self, nrow, ncol, boxwidth, boxheight, 
                  size_scale, thickness_scale, tree, tree_cluster, color_fn):
         DendrogramLayout.__init__(
             self, nrow, ncol, boxheight, boxwidth, size_scale, thickness_scale,
@@ -405,12 +599,14 @@ def process_data_set(
         write_data_set(MATRIX, cluster_data, jobname)
     # Scale after the clustering, so it doesn't affect the clustering
     # results.
-    MATRIX = pretty_scale_matrix(MATRIX, scale, gain, autoscale)
+    x = pretty_scale_matrix(MATRIX, scale, gain, autoscale)
+    MATRIX, orig_min, orig_max = x
         
-    return MATRIX, cluster_data
+    return MATRIX, cluster_data, orig_min, orig_max
 
 def make_layout(
-    MATRIX, cluster_data, plotlib, boxwidth, boxheight, color_scheme, 
+    MATRIX, cluster_data, signal_0, signal_1, plotlib,
+    boxwidth, boxheight, grid, color_scheme, colorbar,
     cluster_genes, gene_tree_scale, gene_tree_thickness,
     cluster_arrays, array_tree_scale, array_tree_thickness,
     cluster_alg, label_genes, label_arrays):
@@ -431,7 +627,14 @@ def make_layout(
 
     # Make the layout for the heatmap.
     hm_layout = HeatmapLayout(
-        MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight, color_fn)
+        MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight, grid, color_fn)
+
+    # Make the layout for the colorbar.
+    cb_layout = None
+    if colorbar:
+        cb_layout = ColorbarLayout(
+            hm_layout.width(), hm_layout.height(), signal_0, signal_1,
+            color_fn)
 
     # Make layouts for the dendrograms.
     gd_layout = ad_layout = None
@@ -443,8 +646,12 @@ def make_layout(
         # to match up the genes with the clusters.
         assert gene_tree_scale > 0
         assert gene_tree_thickness > 0
+        width, height = boxwidth, boxheight
+        if grid:
+            width += hm_layout.GRID_SIZE
+            height += hm_layout.GRID_SIZE
         gd_layout = GeneDendrogramLayout(
-            MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight,
+            MATRIX.nrow(), MATRIX.ncol(), width, height,
             gene_tree_scale, gene_tree_thickness, 
             cluster_data.gene_tree, cluster_data.gene_tree_cluster,
             colorlib.matlab_colors)
@@ -452,8 +659,12 @@ def make_layout(
        cluster_alg == "hierarchical" and MATRIX.nrow() > 1):
         assert array_tree_scale > 0
         assert array_tree_thickness > 0
+        width, height = boxwidth, boxheight
+        if grid:
+            width += hm_layout.GRID_SIZE
+            height += hm_layout.GRID_SIZE
         ad_layout = ArrayDendrogramLayout(
-            MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight,
+            MATRIX.nrow(), MATRIX.ncol(), width, height,
             array_tree_scale, array_tree_thickness, 
             cluster_data.array_tree, cluster_data.array_tree_cluster, 
             colorlib.matlab_colors)
@@ -475,19 +686,25 @@ def make_layout(
     gl_fontsize = al_fontsize = None
     if label_genes:
         gene_labels = _get_gene_labels(MATRIX)
-        gl_fontsize = plotlib.fit_fontsize_to_height(boxheight)
+        height = boxheight
+        if grid:
+            height += hm_layout.GRID_SIZE
+        gl_fontsize = plotlib.fit_fontsize_to_height(height)
         widths = [plotlib.get_text_size(x, gl_fontsize)[0]
                   for x in gene_labels]
-        gl_layout = GeneLabelLayout(boxheight, widths)
+        gl_layout = GeneLabelLayout(height, widths)
     if label_arrays:
         array_labels = _get_array_labels(MATRIX)
-        al_fontsize = plotlib.fit_fontsize_to_height(boxwidth)
+        width = boxwidth
+        if grid:
+            width += hm_layout.GRID_SIZE
+        al_fontsize = plotlib.fit_fontsize_to_height(width)
         widths = [plotlib.get_text_size(x, al_fontsize)[0]
                   for x in array_labels]
-        al_layout = ArrayLabelLayout(boxwidth, widths)
+        al_layout = ArrayLabelLayout(width, widths)
 
     x = PlotLayout(
-        hm_layout, gd_layout, ad_layout, gc_layout, ac_layout,
+        hm_layout, cb_layout, gd_layout, ad_layout, gc_layout, ac_layout,
         gl_layout, al_layout)
     return x
 
@@ -499,6 +716,7 @@ def calc_coords_for_layout(layout):
         return layout.size()
 
     hm_width, hm_height = _safe_size(layout.heatmap)
+    cb_width, cb_height = _safe_size(layout.colorbar)
     gd_width, gd_height = _safe_size(layout.gene_dendrogram)
     ad_width, ad_height = _safe_size(layout.array_dendrogram)
     gc_width, gc_height = _safe_size(layout.gene_cluster)
@@ -506,21 +724,32 @@ def calc_coords_for_layout(layout):
     gl_width, gl_height = _safe_size(layout.gene_label)
     al_width, al_height = _safe_size(layout.array_label)
     
+    # Now position the heatmap based on the dendrograms.
+    hm_x = x + gd_width + gc_width + gl_width
+    hm_y = y + ad_height + ac_height + al_height
+
     # On X-axis: gene dendrogram, cluster, label, then heatmap.
-    gd_x, gd_y = x, y+ad_height+ac_height+al_height
+    gd_x, gd_y = x, hm_y+layout.heatmap.BORDER
     gc_x, gc_y = gd_x+gd_width, gd_y
     gl_x, gl_y = gc_x+gc_width, gd_y
     
     # On Y-axis: array dendrogram, cluster, label, then heatmap.
-    ad_x, ad_y = x+gd_width+gc_width+gl_width, y
+    ad_x, ad_y = hm_x+layout.heatmap.BORDER, y
     ac_x, ac_y = ad_x, ad_y+ad_height
     al_x, al_y = ad_x, ac_y+ac_height
 
-    # Put heatmap at the end.
-    hm_x, hm_y = ad_x, gd_y
+    # Add the colorbar.
+    cb_x = cb_y = None
+    if layout.colorbar:
+        if layout.colorbar.vertical:
+            cb_x = hm_x + hm_width
+            cb_y = hm_y
+        else:
+            cb_x = hm_x
+            cb_y = hm_y + hm_height
 
     x = PlotCoords(
-        hm_x, hm_y, gd_x, gd_y, ad_x, ad_y,
+        hm_x, hm_y, cb_x, cb_y, gd_x, gd_y, ad_x, ad_y,
         gc_x, gc_y, ac_x, ac_y, gl_x, gl_y, al_x, al_y)
     return x
 
@@ -872,17 +1101,27 @@ def cluster_matrix(
     return MATRIX, cluster_data
 
 def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
-    # Find a good default gain value.  Values should be scaled from
-    # [-1, 1].
+    # Find a good default gain value.  After scaling, values should
+    # range from [-1, 1].  Then, for convenience, I will re-scale that
+    # matrix to [0, 1].
     # Will change the MATRIX variable.
+    from genomicode import jmath
 
     nrow, ncol = MATRIX.dim()
     X = MATRIX._X
 
+    # Choose a default scale based on the average expression level.
+    defscale = 0.0
+    if autoscale:
+        x_all = []
+        for x in X:
+            x_all.extend(x)
+        defscale = -jmath.mean(x_all)
+
     # Apply the scale specified by the user.
     for i in range(nrow):
         for j in range(ncol):
-            X[i][j] = X[i][j] + scale
+            X[i][j] = X[i][j] + defscale + scale
 
     # Choose a default gain based on the maximum expression level.
     defgain = 1.0
@@ -893,7 +1132,9 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
                 if x_max is None or abs(X[i][j]) > x_max:
                     x_max = abs(X[i][j])
         defgain = 1.0/x_max
-        defgain = defgain * 2.0    # By default, automatically multiply by 2.0.
+        # By default, automatically multiply by 2.0, or else
+        # everything is too dark (empirically).
+        defgain = defgain * 2.0
 
     # Apply the gain specified by the user.
     for i in range(nrow):
@@ -901,6 +1142,12 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
             # The gain is scaled from the default gain.
             X[i][j] = X[i][j] * defgain * gain
 
+    #x_min, x_max = 1E9, -1E9
+    #for i in range(nrow):
+    #    for j in range(ncol):
+    #        x_min = min(x_min, X[i][j])
+    #        x_max = max(x_max, X[i][j])
+    #print x_min, x_max, defgain, gain, defscale, scale
     #for x in X:
     #   print "\t".join(map(str, x))
 
@@ -912,7 +1159,11 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
             x = max(min(x, 1), 0)
             X[i][j] = x
 
-    return MATRIX
+    #print defgain, gain, defscale, scale
+    ORIG_min = (0.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
+    ORIG_max = (1.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
+
+    return MATRIX, ORIG_min, ORIG_max
 
 def _guess_filestem(file_or_job):
     # Examples:
@@ -1071,8 +1322,14 @@ def write_data_set(MATRIX, cluster_data, jobname):
         write_fn(data, open(outfile, 'w'))
 
 def plot(filename, MATRIX, cluster_data, plotlib, layout, coords):
+    # Calculate the plot width and height.
     plot_width = coords.hm_x + layout.heatmap.width()
     plot_height = coords.hm_y + layout.heatmap.height()
+    if layout.colorbar:
+        x = coords.cb_x + layout.colorbar.width()
+        plot_width = max(plot_width, x)
+        x = coords.cb_y + layout.colorbar.height()
+        plot_height = max(plot_height, x)
 
     # Plot each element of the figure.
     image = plotlib.image(plot_width, plot_height)
@@ -1099,16 +1356,30 @@ def plot(filename, MATRIX, cluster_data, plotlib, layout, coords):
             layout.gene_label, gene_labels)
     if layout.array_label:
         array_labels = _get_array_labels(MATRIX)
-        #print "HERE2", plot_width, plot_height, coords.al_x, coords.al_y
         plot_array_labels(
             plotlib, image, MATRIX, coords.al_x, coords.al_y,
             layout.array_label, array_labels)
     plot_matrix(
         plotlib, image, MATRIX, coords.hm_x, coords.hm_y, layout.heatmap)
+    if layout.colorbar:
+        plot_colorbar(
+            plotlib, image, coords.cb_x, coords.cb_y, layout.colorbar)
 
     plotlib.write(image, open(filename, 'w'))
     
 def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
+    GRID_COLOR = (0, 0, 0)
+    BORDER_COLOR = (0, 0, 0)
+
+    width, height = layout.size()
+
+    # Draw the underlying grid.
+    if layout.grid:
+        plotlib.rectangle(image, xoff, yoff, width, height, GRID_COLOR)
+    
+    # Draw a border around the heatmap.
+    plotlib.rectangle(image, xoff, yoff, width, height, None, BORDER_COLOR)
+    
     # Draw the actual matrix.
     X = MATRIX._X
     for i in range(MATRIX.nrow()):
@@ -1119,6 +1390,56 @@ def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
             # Find the coordinates and plot it.
             x, y, width, height = layout.coord(i, j)
             plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
+
+def plot_colorbar(plotlib, image, xoff, yoff, layout):
+    from genomicode import plotlib as pl
+
+    BLACK = (0, 0, 0)
+    OUTLINE_COLOR = (0, 0, 0)
+    TICK_COLOR = (50, 50, 50)
+
+    # Draw the colorbar.
+    bar_x, bar_y = layout.bar_coord()
+    if layout.vertical:
+        for i in range(layout.bar_height()):
+            color = layout.color(float(i)/layout.bar_height())
+            plotlib.line(
+                image, xoff+bar_x, yoff+bar_y+i, layout.bar_width(), 1, color)
+    else:
+        for i in range(layout.bar_width()):
+            color = layout.color(float(i)/layout.bar_width())
+            plotlib.line(
+                image, xoff+bar_x+i, yoff+bar_y, 1, layout.bar_height(), color)
+            
+    plotlib.rectangle(
+        image, xoff+bar_x, yoff+bar_y,
+        layout.bar_width(), layout.bar_height(), None, outline=OUTLINE_COLOR)
+
+    # Draw tickmarks.
+    for i in range(layout.num_ticks()):
+        x = layout.tick_coord(i)
+        x, y, width, height = x
+        plotlib.line(image, xoff+x, yoff+y, width, height, TICK_COLOR)
+
+    # Label the tickmarks.
+    fontsize = plotlib.fit_fontsize_to_height(layout.text_height())
+    if fontsize < MIN_FONTSIZE:
+        return
+    
+    labels = [layout.tick_label(i) for i in range(layout.num_ticks())]
+    label_sizes = [plotlib.get_text_size(x, fontsize) for x in labels]
+    max_width = max([x[0] for x in label_sizes])
+    max_height = max([x[1] for x in label_sizes])
+                   
+    for i, label in enumerate(labels):
+        x, y = layout.label_coord(i, plotlib)
+        # Right align the vertical colorbar.
+        if layout.vertical:
+            width, height = label_sizes[i]
+            x += max_width - width
+        plotlib.text(image, xoff+x, yoff+y, label, fontsize, BLACK)
+        
+    
 
 def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
     from genomicode import clusterio
@@ -1548,6 +1869,9 @@ def main():
         "-y", "--height", dest="height", type="int", default=DEF_HEIGHT,
         help="Height of boxes (default=%d)." % DEF_HEIGHT)
     group.add_option(
+        "", "--grid", dest="grid", action="store_true", default=False,
+        help="Add a grid around the boxes in the heatmap.")
+    group.add_option(
         "-s", "--scale", dest="scale", default=0, type="float",
         help="Add this to each expression value before plotting (default 0)."
         "  Scale applied, then gain applied.")
@@ -1564,6 +1888,9 @@ def main():
                  "genespring", "yahoo"],
         help="Choose the color scheme to use: red, red-green, blue-yellow, "
         "matlab (default), bild, genespring, or yahoo.")
+    group.add_option(
+        "--colorbar", dest="colorbar", default=False, action="store_true",
+        help="Add a colorbar to the plot.")
     group.add_option(
         "--gene_tree_scale", dest="gene_tree_scale", type="float", default=1.0,
         help="Scale the width of the gene tree by this factor.  "
@@ -1625,7 +1952,7 @@ def main():
     MATRIX, cluster_data = read_data_set(infile)
     # Do the normalization, clustering, etc. before plotting the
     # results.
-    MATRIX, cluster_data = process_data_set(
+    x = process_data_set(
         MATRIX, options.cluster, cluster_data, options.jobname,
         options.gene_indexes, options.gene_names, options.gene_file,
         options.select_genes_var,
@@ -1636,9 +1963,11 @@ def main():
         options.cluster_alg, options.distance, options.method,
         options.gene_k, options.array_k, options.kmeans_k,
         options.scale, options.gain, options.autoscale)
+    MATRIX, cluster_data, signal_0, signal_1 = x
     layout = make_layout(
-        MATRIX, cluster_data, plotlib, 
-        options.width, options.height, options.color_scheme,
+        MATRIX, cluster_data, signal_0, signal_1, plotlib, 
+        options.width, options.height, options.grid,
+        options.color_scheme, options.colorbar,
         options.cluster_genes, options.gene_tree_scale,
         options.gene_tree_thickness,
         options.cluster_arrays, options.array_tree_scale,

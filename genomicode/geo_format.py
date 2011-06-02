@@ -129,7 +129,10 @@ class GeoMatrix(Matrix.AbstractMatrix):
         x._cache = self._cache  # provide a pointer to share caches.
         x._rownames = self._rownames
         for header, ids in self._rowcache.iteritems():
-            x._rowcache[header] = [ids[i] for i in row_indexes]
+            if row_indexes is None:
+                x._rowcache[header] = ids
+            else:
+                x._rowcache[header] = [ids[i] for i in row_indexes]
         return x
     
     def _load_rows_cached(self, indexes):

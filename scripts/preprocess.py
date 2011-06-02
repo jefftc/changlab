@@ -18,7 +18,8 @@ def find_annotation_file(chipname):
            chipname
     file = chipname2annotfile[chipname]
     filename = os.path.join(config.normalize_AFFYMETRIX, file)
-    assert os.path.exists(filename), "I could not find the annotation file."
+    assert os.path.exists(filename), "I could not find annotation file %s." % \
+           filename
     filename = os.path.realpath(filename)
     return filename
 
@@ -34,7 +35,7 @@ def find_normscript():
 def main():
     import tempfile
     from optparse import OptionParser, OptionGroup
-    import affyio
+    from genomicode import affyio
 
     usage = (
         "usage: %prog [options] algorithm path_to_cel_files\n\n"

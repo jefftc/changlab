@@ -29,6 +29,7 @@ cor
 order
 rank
 max
+svd
 
 equal_matrix
 
@@ -392,6 +393,22 @@ def max_matrix(X, byrow=1):
 
 def max(X, byrow=1):
     return _dispatch(X, None, _fn(max_list), _fn(max_matrix, byrow=byrow))
+
+def svd(X):
+    # Return U, S, Vt.
+    # U   nrow x k  columns are principal components
+    # S   k array
+    # Vt  ncol x k  columns are principal components
+    # k   min(nrow, ncol)
+    import numpy
+    
+    # U  nrow x k  columns are principal components
+    # V  k x ncol  rows are principal components
+    U, s, V = numpy.linalg.svd(X, full_matrices=False)
+    U = U.tolist()
+    s = s.tolist()
+    V = numpy.transpose(V).tolist()
+    return U, s, V
 
 def equal_matrix(X1, X2, precision=1E-8):
     if not X1 and not X2:
