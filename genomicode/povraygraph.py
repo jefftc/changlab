@@ -6,8 +6,6 @@ povray
 scatter
 line
 
-place_ticks
-
 """
 # _set_default_color
 # _set_default_shape
@@ -16,13 +14,12 @@ place_ticks
 # _set_default_lim
 # _set_default_tick
 # _set_default_tick_label
-# _choose_tick_delta
 # _coord2pixel
 
 
 import os, sys
 
-DEFAULT, CIRCLE, SQUARE, DIAMOND = range(4)
+DEFAULT, CIRCLE, SQUARE, DIAMOND, OTHER = range(5)
 
 
 class Graph:
@@ -82,7 +79,7 @@ class Graph:
         import povray as pr
 
         CAMERA_HEIGHT = 10*self.UNIT
-        LIGHT_ANGLE = 55   # lower means longer shadows
+        LIGHT_ANGLE = 70   # lower means longer shadows, darker colors
         LIGHT_COLOR = 1, 1, 1
 
         w = self.handle.write
@@ -160,9 +157,12 @@ class Graph:
             pr.vector(0, 0, 0), pr.vector(1, 0, 0), AXIS_THICKNESS,
             pr.pigment(pr.color(*AXIS_COLOR)),
             pr.finish(
-                #pr.phong(0.8), pr.phong_size(5),   # too shiny
                 pr.diffuse(0.6),
-                pr.ambient(0.6, 0.6, 0.6)),
+                pr.ambient(0.6, 0.6, 0.6),
+                pr.phong(0.3),
+                pr.phong_size(10),
+                #pr.phong(0.8), pr.phong_size(5),   # too shiny
+                ),
             pr.no_shadow(),
             )))
         # Give the axis a rounded cap so it looks smoother.
@@ -170,9 +170,12 @@ class Graph:
             pr.vector(0, 0, 0), AXIS_THICKNESS,
             pr.pigment(pr.color(*AXIS_COLOR)),
             pr.finish(
-                #pr.phong(0.8), pr.phong_size(5),   # too shiny
                 pr.diffuse(0.6),
-                pr.ambient(0.6, 0.6, 0.6)),
+                pr.ambient(0.6, 0.6, 0.6),
+                pr.phong(0.3),
+                pr.phong_size(10),
+                #pr.phong(0.8), pr.phong_size(5),   # too shiny
+                ),
             pr.no_shadow(),
             )))
         # X-axis.
@@ -241,7 +244,10 @@ class Graph:
             pr.finish(
                 #pr.phong(0.8), pr.phong_size(5),
                 pr.diffuse(0.6),
-                pr.ambient(0.6, 0.6, 0.6)),
+                pr.ambient(0.6, 0.6, 0.6),
+                pr.phong(0.3),
+                pr.phong_size(10),
+                ),
             pr.no_shadow())))
 
         for i in range(len(xtick_pixel)):
@@ -350,10 +356,11 @@ class Graph:
         self.DRAWN["tick_labels"] = 1
 
     def draw_points(
-        self, xlim, ylim, points, color, shape, point_size=1.0):
+        self, xlim, ylim, points, color, shape, point_size=1.0, height=0):
         import povray as pr
         
-        RADIUS = 0.65*self.UNIT*point_size      # Radius of each point.
+        RADIUS = 0.6*self.UNIT*point_size      # Radius of each point.
+        HEIGHT = self._z_height(height)
 
         x_min, x_len = xlim[0], xlim[1]-xlim[0]
         y_min, y_len = ylim[0], ylim[1]-ylim[0]
@@ -373,9 +380,15 @@ class Graph:
             0.25, 0.25, pr.scale(RADIUS, RADIUS, RADIUS), finish)))
         # Diamond
         w(pr.declare("POINT_DIAMOND", pr.superellipsoid(
-            2.50, 2.50, pr.scale(RADIUS*1.25, RADIUS*1.25, RADIUS*1.25),
+            1.75, 0.50,
+            pr.scale(RADIUS, RADIUS, RADIUS),
+            #pr.scale(RADIUS*1.25, RADIUS*1.25, RADIUS*1.25),
+            #2.50, 2.00, pr.scale(RADIUS*1.25, RADIUS*1.25, RADIUS*1.25),
             finish)))
-
+        # WEIRD SHAPE
+        #w(pr.declare("POINT_OTHER", pr.superellipsoid(
+        #    1.00, 2.00, pr.scale(RADIUS, RADIUS, RADIUS),
+        #    finish)))
         for i in range(len(points)):
             x_coord, y_coord = points[i]
 
@@ -399,21 +412,30 @@ class Graph:
                 point = "POINT_SQUARE"
             elif shape[i] == DIAMOND:
                 point = "POINT_DIAMOND"
+            #elif shape[i] == OTHER:
+            #    point = "POINT_OTHER"
             else:
                 raise AssertionError, "Unknown point [%d]: %s" % (i, shape[i])
-            w(pr.object_(point, pr.translate(x_pixel, y_pixel, 0), pigment))
+            z_pixel = -HEIGHT
+            w(pr.object_(
+                point, pr.translate(x_pixel, y_pixel, z_pixel), pigment))
 
         w("\n")
 
+    def _z_height(self, height, scale=1.0):
+        HEIGHT_UNIT = 0.50 * self.UNIT * scale
+        z = (0.5+height)*HEIGHT_UNIT
+        return z
+
     def draw_lines(
-        self, xlim, ylim, points, color, line_size=1.0, line_height=0):
-        # Line height should be an integer.  line 0 is lowest.
+        self, xlim, ylim, points, color, line_size=1.0, height=0):
+        # height should be an integer.  0 is lowest.
         import math
         import povray as pr
 
-        THICKNESS = 0.25 * self.UNIT * line_size
-        #HEIGHT = 2.5 * THICKNESS  # higher causes more shadows
-        HEIGHT = 0.5*THICKNESS + THICKNESS*line_height
+        THICKNESS = 0.40 * self.UNIT * line_size
+        # BUG: HEIGHT should be scaled based on line_size.
+        HEIGHT = self._z_height(height)
 
         x_min, x_len = xlim[0], xlim[1]-xlim[0]
         y_min, y_len = ylim[0], ylim[1]-ylim[0]
@@ -421,18 +443,29 @@ class Graph:
         w = self.handle.write
         w("// Plot each segment of the line.\n")
         finish = pr.finish(
-            pr.diffuse(0.3),             # lower numbers are darker
-            pr.ambient(0.8, 0.8, 0.8),   # lower numbers are darker
-            pr.brilliance(5),            # higher numbers look bolder
+            # Metallic finish.
+            pr.diffuse(0.4),
+            pr.ambient(0.5, 0.5, 0.5),
+            pr.phong(0.3),              # bigger means brighter shiny spot
+            pr.phong_size(10),          # bigger means smaller shiny spot
+            # Clean and simple.
+            #pr.diffuse(0.3),             # lower numbers are darker
+            #pr.ambient(0.8, 0.8, 0.8),   # lower numbers are darker
+            #pr.brilliance(5),            # higher numbers look bolder
+            # Extra stuff.
             #pr.reflection(0.8),
             #pr.specular(0.3),           # Makes things shinier.
             #pr.roughness(0.05),
             )
         w(pr.declare("LINESEG", pr.cylinder(
             pr.vector(0, 0, -HEIGHT), pr.vector(1, 0, -HEIGHT), THICKNESS,
-            finish)))
+            finish,
+            #pr.no_shadow(),
+            )))
         w(pr.declare("LINEEND", pr.sphere(
-            pr.vector(0, 0, -HEIGHT), THICKNESS, finish)))
+            pr.vector(0, 0, -HEIGHT), THICKNESS, finish,
+            #pr.no_shadow(),
+            )))
 
         for i in range(len(points)-1):
             xc1, yc1 = points[i]
@@ -565,11 +598,12 @@ class Graph:
         #w(pr.object_("MARKER", pr.pigment(pr.color(0, 1.0, 0)),))
         w("\n")
 
-    def draw_error_bars(self, xlim, ylim, points, error_bar, color):
+    def draw_error_bars(self, xlim, ylim, points, error_bar, color, height=0):
         import povray as pr
         
         ERROR_THICKNESS = 0.1*self.UNIT     # Error bars.
         ERROR_WIDTH = 1.5*self.UNIT
+        HEIGHT = self._z_height(height)
 
         if not error_bar:
             return
@@ -611,13 +645,13 @@ class Graph:
                 continue
             w(pr.object_(
                 "ERRBAR", pr.rotate(0, 0, 90), pr.scale(1, err_total, 1),
-                pr.translate(x, y-err_l, 0), pigment))
+                pr.translate(x, y-err_l, -HEIGHT), pigment))
             w(pr.object_(
                 "ERRBAR", pr.scale(ERROR_WIDTH, 1, 1),
-                pr.translate(x-ERROR_WIDTH/2, y+err_u, 0), pigment))
+                pr.translate(x-ERROR_WIDTH/2, y+err_u, -HEIGHT), pigment))
             w(pr.object_(
                 "ERRBAR", pr.scale(ERROR_WIDTH, 1, 1),
-                pr.translate(x-ERROR_WIDTH/2, y-err_l, 0), pigment))
+                pr.translate(x-ERROR_WIDTH/2, y-err_l, -HEIGHT), pigment))
 
 def povray(
     filename, outfile=None, height=None, width=None, antialias=None,
@@ -1092,6 +1126,7 @@ def line(*args, **keywds):
     line2        ...
     color        List of colors, 1 for each line (<r>,<g>,<b>) from 0-1.
     shape        List of DEFAULT, CIRCLE, SQUARE, or DIAMOND.
+    draw_points  Whether to draw the points or not.
     point_size   Scales the size of each point.
     
     xlim         Tuple of (minimum x, maximum x).
@@ -1111,7 +1146,7 @@ def line(*args, **keywds):
     from StringIO import StringIO
 
     KNOWN_KEYWDS = [
-        "color", "shape", "point_size",
+        "color", "shape", "draw_points", "point_size",
         "xlim", "ylim",
         "xtick", "xtick_label", "ytick", "ytick_label", "tick_size",
         "xlabel", "ylabel", "label_size", "font",
@@ -1123,6 +1158,7 @@ def line(*args, **keywds):
 
     color = keywds.get("color", None)
     shape = keywds.get("shape", None)
+    draw_points = keywds.get("draw_points", False)
     point_size = keywds.get("point_size", 1.0)
     xlim = keywds.get("xlim", None)
     ylim = keywds.get("ylim", None)
@@ -1171,46 +1207,30 @@ def line(*args, **keywds):
     graph.draw_labels(xlabel, ylabel, label_size=label_size)
 
     for i, line in enumerate(lines):
-        graph.draw_lines(xlim, ylim, line, color[i], line_height=i)
+        graph.draw_lines(xlim, ylim, line, color[i], height=i)
+        if not draw_points:
+            continue
+        # XXX let the user specify plot only some of the points.
+        col = [color[i]] * len(line)
+        shp = [shape[i]] * len(line)
+        graph.draw_points(xlim, ylim, line, col, shp, height=i)
+    
     
     handle.seek(0)
     return handle.read()
 
-def place_ticks(v_min, v_max, num_ticks=10, delta=None):
-    import math
-    
-    assert v_min < v_max
-    assert num_ticks > 0 and num_ticks <= 100
-
-    if delta is None:
-        delta = _choose_tick_delta(v_min, v_max, num_ticks=num_ticks)
-
-    # Do calculation in integers to 4 decimal places.
-    x = math.log(delta, 10)
-    multiplier = 10**(-int(x)+4)
-
-    delta = int(delta * multiplier)
-    tick_min, tick_max = int(v_min*multiplier), int(v_max*multiplier)
-
-    # Round tick_min down to the nearest delta and tick_max up to the
-    # nearest delta.
-    tick_min = tick_min - tick_min % delta
-    if tick_max % delta != 0:
-        tick_max = tick_max + (delta - tick_max % delta)
-
-    ticks = [float(i)/multiplier for i in range(tick_min, tick_max+1, delta)]
-    return ticks
-
 def _set_default_tick(tick, coord_min, coord_max):
     import operator
+    import plotlib
+    
     if not tick:
         tick = []
     elif operator.isSequenceType(tick):
         pass
     elif tick == True:
-        tick = place_ticks(coord_min, coord_max, num_ticks=5)
+        tick = plotlib.place_ticks(coord_min, coord_max, num_ticks=5)
     elif type(tick) is type(0):
-        tick = place_ticks(coord_min, coord_max, num_ticks=tick)
+        tick = plotlib.place_ticks(coord_min, coord_max, num_ticks=tick)
     else:
         raise AssertionError, "I don't understand: %s" % str(tick)
     return tick
@@ -1223,7 +1243,7 @@ def _set_default_tick_label(label, tick):
         assert len(label) == len(tick)
     elif label:
         # Figure out the number of digits after the decimal place.
-        x = [max(len(str(x%1))-2, 0) for x in tick]
+        x = [max(len(str(abs(x)%1))-2, 0) for x in tick]
         digits = max(x)
         label = ["%.*f" % (digits, x) for x in tick]
     else:
@@ -1329,57 +1349,9 @@ def _set_default_error_bar(error_bar):
         error_bar[i] = err_l, err_u
     return error_bar
     
-def _choose_tick_delta(v_min, v_max, num_ticks=10):
-    # Figure out the right delta to make at most num_ticks tick marks
-    # between v_min and v_max.
-    import math
-
-    assert v_min < v_max
-    assert num_ticks > 0 and num_ticks <= 100
-
-    # Generate a list of the allowable DELTAs.  This will depend on
-    # the range of the user's data.
-    DELTAS = [0.5, 0.25, 0.20, 0.1]
-    
-    # Calculate the ideal delta, and choose the smallest DELTAS that
-    # is >= the ideal one.  Assume DELTAS sorted from largest to
-    # smallest.
-    range = v_max - v_min
-    delta_ideal = float(range) / num_ticks
-    # delta_ideal   delta
-    #   0.8           0.5
-    #    12           10
-    #    23           20
-    #   0.02         0.02
-    # Scale the DELTAs to be in the same range as delta_ideal.
-    num_logs = int(math.floor(math.log(delta_ideal / min(DELTAS), 10)))
-    DELTAS = [x*10**num_logs for x in DELTAS]
-    x = [x for x in DELTAS if x >= delta_ideal]
-    delta = x[-1]
-
-    return delta
-
 def _coord2pixel(x_coord, coord_min, coord_length, pixel_min, pixel_length):
     # The user provides data in coordinates of their own scale.
     # Convert those coordinates to pixels on the plot.
     scale = float(pixel_length) / coord_length
     x_pixel = (x_coord-coord_min)*scale + pixel_min
     return x_pixel
-
-def test_choose_tick_delta():
-    print _choose_tick_delta(0, 1)
-    print _choose_tick_delta(0, 100)
-    print _choose_tick_delta(0, 21)
-    print _choose_tick_delta(0, 0.8, 2)
-    print _choose_tick_delta(0, 1, 40)
-    print _choose_tick_delta(-12, 15, 2)
-    print _choose_tick_delta(0, 99, 2)
-    print _choose_tick_delta(0.0, 0.1, 10)
-
-def test_place_ticks():
-    print place_ticks(0.00, 1.00, 5)
-    print place_ticks(0.03, 0.94, 3)
-    print place_ticks(-12, 15, 10)
-
-if __name__ == '__main__':
-    test_choose_tick_delta()
