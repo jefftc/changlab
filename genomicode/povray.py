@@ -53,6 +53,9 @@ phong_size
 specular
 roughness
 reflection
+refraction
+ior
+
 no_shadow
 
 Miscellaneous:
@@ -295,6 +298,8 @@ def finish(*items):
     # roughness VALUE
     # metallic
     # reflection VALUE
+    # refraction VALUE
+    # ior        VALUE
     # more...
     #
     # Notes:
@@ -314,7 +319,8 @@ def finish(*items):
     #   surfaces such as concrete or sand.  Default is 0, and
     #   typically ranges from 0.01 to 0.5.
     # o phong causes bright and shiny spots that are the color of the
-    #   light source being reflected.  Typically from 0.0-1.0.
+    #   light source being reflected.  Typically from 0.0-1.0.  Bigger
+    #   means brighter shiny spot.
     # o phong_size controls the size of the highlight spot.  Larger
     #   values generate tighter, smaller, shinier highlights.  Values
     #   range from 1 (very dull) to 250 (highly polished).  Default is
@@ -369,6 +375,8 @@ phong_size = _fmt_amount_fn("phong_size")
 specular = _fmt_amount_fn("specular")
 roughness = _fmt_amount_fn("roughness")
 reflection = _fmt_amount_fn("reflection")
+refraction = _fmt_amount_fn("refraction")
+ior = _fmt_amount_fn("ior")
 
 no_shadow = _fmt_only_label_fn("no_shadow")
     

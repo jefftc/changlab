@@ -653,16 +653,21 @@ def summarize_signature_heatmap(
     DATA = arrayio.gct_format.read(file_layout.SIGNATURE_GCT)
     nrow, ncol = DATA.dim()
 
+    # Make the heatmap big enough to read the gene names.  SCALE 1.2
+    # is probably the minimum size, but the names are a bit fuzzy.
+    SCALE = 1.5
     x = plotlib.find_tall_heatmap_size(
         nrow, ncol, min_box_height=1, min_box_width=1,
-        max_box_height=40, max_box_width=40, max_total_height=700,
-        max_total_width=700)
+        max_box_height=40, max_box_width=40, max_total_height=768*SCALE,
+        max_total_width=1024*SCALE)
     xpix, ypix = x
     #print ypix, xpix, nrow, ncol
 
     plotlib.plot_heatmap(
         file_layout.SIGNATURE_GCT, file_layout.SIGNATURE_PNG, xpix, ypix,
-        color="bild", gene_center="mean", gene_normalize="var",
+        color="bild", show_colorbar=True, show_grid=True,
+        gene_center="mean", gene_normalize="var",
+        gene_label=True, array_label=True,
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
 
 def summarize_dataset_heatmap(
@@ -675,13 +680,13 @@ def summarize_dataset_heatmap(
     
     x = plotlib.find_tall_heatmap_size(
         nrow, ncol, min_box_width=10,
-        max_total_height=2000, max_total_width=2000)
+        max_total_height=768*3, max_total_width=1024*3)
     xpix, ypix = x
     #print xpix, ypix, ncol, nrow
 
     plotlib.plot_heatmap(
         file_layout.DS_SIG, file_layout.DS_SIG_PNG, xpix, ypix,
-        color="bild",
+        color="bild", show_colorbar=True, show_grid=True, 
         cluster_genes=True, gene_center="mean", gene_normalize="var",
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
@@ -692,6 +697,7 @@ def summarize_predictions(povray, file_layout):
     import math
     from genomicode import filelib
     from genomicode import povraygraph
+    from genomicode import plotlib
     
     assert os.path.exists(file_layout.PROBABILITIES)
 
@@ -701,9 +707,13 @@ def summarize_predictions(povray, file_layout):
     X, Y, error_bar = [], [], []
     pch = []
     color = []
+    sample = []
+    onpoint_label = []
+    num_points = {}  # "test", "train0", "train1" -> count
     for d in filelib.read_row(file_layout.PROBABILITIES, header=1):
         if d.Method == "FITTED":
             continue
+        sample.append(d.Sample)
         x = float(d.Metagene)
         y = float(d.Probability)
 
@@ -733,7 +743,12 @@ def summarize_predictions(povray, file_layout):
         p = povraygraph.SQUARE
         if d.Type in ["train0", "train1"]:
             p = povraygraph.CIRCLE
-            
+
+        # Set the label.
+        np = num_points.get(d.Type, 0)
+        num_points[d.Type] = np+1
+        onpoint_label.append(np+1)
+
         X.append(x)
         Y.append(y)
         pch.append(p)
@@ -741,17 +756,23 @@ def summarize_predictions(povray, file_layout):
         color.append(col)
     assert X, "BinReg predictions didn't work.  Nothing to plot."
     assert len(X) == len(Y)
-    xtick = povraygraph.place_ticks(min(X), max(X))
+    xtick = plotlib.place_ticks(min(X), max(X))
+    xtick_label = True
     ytick = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     ytick_label = ["%d%%" % int(x*100) for x in ytick]
     plot_width, plot_height = 1024, 768
-    font = os.path.join(os.path.split(povraygraph.__file__)[0], "Verdana.ttf")
+    plot_width, plot_height = int(plot_width*1.5), int(plot_height*1.5)
+    font = os.path.join(
+        os.path.split(povraygraph.__file__)[0], "Verdana Bold.ttf")
+    onpoint_label = None   # Don't display labels.
     x = povraygraph.scatter(
-        X, Y, error_bar=error_bar, ylim=(0, 1.02), color=color, pch=pch,
-        point_size=1, xtick=xtick, ytick=ytick, ytick_label=ytick_label,
-        tick_size=1, 
+        X, Y, color=color, shape=pch, error_bar=error_bar, point_size=1,
+        onpoint_label=onpoint_label, overpoint_label=sample,
+        ylim=(0, 1.02), 
+        xtick=xtick, xtick_label=xtick_label,
+        ytick=ytick, ytick_label=ytick_label, tick_size=1, 
         xlabel="Metagene Score", ylabel="Probability",
-        label_size=1, plot_width=plot_width, plot_height=plot_height,
+        label_size=1, width=plot_width, height=plot_height,
         font=font)
     open(file_layout.PREDICTIONS_POV, 'w').write(x)
     # povray -D -J +Opredictions.png -H768 -W1024 +A0.5 predictions.pov
@@ -759,7 +780,7 @@ def summarize_predictions(povray, file_layout):
         file_layout.PREDICTIONS_POV,
         outfile=file_layout.PREDICTIONS_PNG,
         height=plot_height, width=plot_width, antialias=0.5, quality=9,
-        povray=povray)
+        povray_bin=povray)
     print r.read()
     assert os.path.exists(file_layout.PREDICTIONS_PNG), \
            "Failed to plot predictions."
@@ -967,6 +988,9 @@ def main():
         options.outpath, num_analyses,
         pybr_params.genes[0], pybr_params.metagenes[0])
     init_paths(file_layout)
+
+    # To debug creation of scatterplot.
+    #summarize_predictions(options.povray, file_layout); return
 
     if pybr_params.strip_affx:
         x = strip_affx_control_probes(train0, train1, test)

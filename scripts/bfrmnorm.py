@@ -256,12 +256,14 @@ def summarize_heatmaps(
     
     plotlib.plot_heatmap(
         file_layout.DS_FINAL_FILTERED, file_layout.DS_FINAL_HEATMAP,
-        xpix, ypix, color="bild", gene_center="mean", gene_normalize="var",
+        xpix, ypix, color="bild", show_colorbar=True, show_grid=True,
+        gene_center="mean", gene_normalize="var",
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
     plotlib.plot_heatmap(
         file_layout.DS_PROC_FILTERED, file_layout.DS_PROC_HEATMAP,
-        xpix, ypix, color="bild", gene_center="mean", gene_normalize="var",
+        xpix, ypix, color="bild", show_colorbar=True, show_grid=True,
+        gene_center="mean", gene_normalize="var",
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
 

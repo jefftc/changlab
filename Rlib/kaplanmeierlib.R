@@ -1,4 +1,5 @@
 # calc.km
+# calc.km2   Different algorithm.
 # plot.km
 # write.km.prism
 
@@ -17,6 +18,25 @@ calc.km <- function(survival1, dead1, survival2, dead2) {
   p.value <- 1-pchisq(sd$chisq, 1)
 
   list(p.value=p.value)
+}
+
+calc.km2 <- function(survival1, dead1, survival2, dead2) {
+  # survival1 is a a vector of matrix times.  dead1 is 1/0 where 1
+  # means the patient is dead and 0 otherwise.  Returns list of
+  # p.value.
+  library("survival")
+  if(length(survival1) != length(dead1)) stop("unaligned")
+  if(length(survival2) != length(dead2)) stop("unaligned")
+  survival <- c(survival1, survival2)
+  dead <- c(dead1, dead2)
+  x <- c(rep("1", length(survival1)), rep("0", length(survival2)))
+  status <- factor(x)
+
+  res <- coxph(Surv(survival, dead) ~ status, method="breslow")
+  p.value <- 1 - pchisq(res$score, 1)
+  hr <- exp(res$coefficients)
+  #summary(res)
+  list(p.value=p.value, hr=hr)
 }
 
 plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
@@ -55,7 +75,8 @@ write.km.prism <- function(filename, survival1, dead1, survival2, dead2) {
   b.value <- c(rep("", length(dead1)), dead2)
   c.value <- dead
   data.out <- cbind(x.value, a.value, b.value, c.value)
-  my.write(data.out, filename)
+  write.table(data.out, filename, quote=FALSE, sep="\t",
+    row.names=FALSE, col.names=FALSE)
 }
 
 calc.km.curve <- function(survival, dead) {

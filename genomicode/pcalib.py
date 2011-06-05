@@ -34,7 +34,12 @@ def choose_colors(group):
 
     if not group or max(group) == 0:
         return None
-    palette = colorlib.matlab_colors(max(group)+1)
+    # Use the middle range of the colorbar, because the colors at the
+    # end are dark.
+    # Doesn't work.  Middle colors are too pastel.
+    #color_fn = colorlib.matlab_colors
+    color_fn = colorlib.bild_colors
+    palette = color_fn(max(group)+1)
     color = [palette[x] for x in group]
     return color
 
@@ -66,15 +71,16 @@ def plot_scatter(X, Y, out_file, group=None, color=None,
             
         plot_width, plot_height = 1024, 768
         x = povraygraph.scatter(
-            X, Y, color=color, xtick=True, ytick=True,
+            X, Y, color=color,
+            xtick=True, xtick_label=True, ytick=True, ytick_label=True,
             xlabel="Principal Component 1", ylabel="Principal Component 2",
-            label_size=1, plot_width=plot_width, plot_height=plot_height)
+            label_size=1, width=plot_width, height=plot_height)
         open(pov_file, 'w').write(x)
         # povray -D -J +Opredictions.png -H768 -W1024 +A0.5 predictions.pov
         r = povraygraph.povray(
             pov_file, outfile=out_file,
             height=plot_height, width=plot_width, antialias=0.5, quality=9,
-            povray=povray)
+            povray_bin=povray)
         output = r.read()
     finally:
         if is_tempfile and pov_file and os.path.exists(pov_file):

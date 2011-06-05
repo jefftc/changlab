@@ -1,5 +1,8 @@
 """
 
+The Python Imaging Library uses a coordinate system with (0, 0) in the
+upper left corner.
+
 Functions:
 image
 rectangle

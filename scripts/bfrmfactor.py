@@ -377,7 +377,9 @@ def summarize_factor_scores(
     ypix = min(ypix, xpix*4)
     x = plotlib.plot_heatmap(
         file_layout.FACTOR_SCORES, file_layout.FACTOR_SCORES_PNG,
-        xpix, ypix, gene_label=True, cluster_genes=True,
+        xpix, ypix,
+        color="bild", show_colorbar=True, show_grid=True,
+        gene_label=True, cluster_genes=True,
         gene_center="mean", gene_normalize="var", array_label=True,
         cluster_arrays=True,
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
@@ -437,7 +439,9 @@ def summarize_gene_factor_probs(
     xpix, ypix = 20, 20
     x = plotlib.plot_heatmap(
         file_layout.FACTOR_PROBS, file_layout.FACTOR_PROBS_PNG, xpix, ypix,
-        color="red", array_label=True, scale=-0.5, gain=2.0,
+        color="red",
+        #show_colorbar=True, show_grid=True,
+        array_label=True, gene_label=True, scale=-0.5, gain=2.0,
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
     
     # If exists, write the probabilities for all genes in the data set.

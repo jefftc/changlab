@@ -436,14 +436,16 @@ def summarize_heatmap(python, arrayplot, cluster, libpath, file_layout):
     from genomicode import plotlib
 
     # Bug: what if there are nan's in the probabilities?
-    xpix, ypix = 20, 20
-    plotlib.plot_heatmap(
+    xpix, ypix = 30, 30
+    x = plotlib.plot_heatmap(
         file_layout.PROBABILITIES_PCL, file_layout.PROBABILITIES_PNG,
-        xpix, ypix, color="bild", gene_label=True, cluster_genes=True,
+        xpix, ypix, color="bild", show_colorbar=True, show_grid=True,
+        gene_label=True, cluster_genes=True,
         array_label=True, cluster_arrays=True, scale=-0.5, gain=2.0,
         no_autoscale=True,
         python=python, arrayplot=arrayplot, cluster=cluster,
         libpath=libpath)
+    print x
     
     # Clean up some extra files.
     if os.path.exists(file_layout.PROBABILITIES_CDT):

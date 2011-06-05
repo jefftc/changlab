@@ -12,11 +12,12 @@ place_ticks
 # _choose_tick_delta
 
 def plot_heatmap(
-    infile, outfile, xpix, ypix, color=None, 
+    infile, outfile, xpix, ypix, color=None,
+    show_colorbar=None, show_grid=None, 
+    scale=None, gain=None, no_autoscale=False, 
     gene_label=False, cluster_genes=False,
     gene_center=None, gene_normalize=None,
     array_label=False, cluster_arrays=False,
-    scale=None, gain=None, no_autoscale=False, 
     python=None, arrayplot=None, cluster=None, libpath=None):
     import os
     import sys
@@ -38,6 +39,10 @@ def plot_heatmap(
         "-o %s" % outfile,
         "--color=%s" % color,
         ]
+    if show_grid:
+        cmd.append("--grid")
+    if show_colorbar:
+        cmd.append("--colorbar")
     if gene_label:
         cmd.append("--gl")
     if cluster_genes:

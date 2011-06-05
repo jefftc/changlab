@@ -245,7 +245,9 @@ def summarize_factor_scores(file_layout, python, arrayplot, cluster, libpath):
     ypix = min(ypix, xpix*4)
     x = plotlib.plot_heatmap(
         file_layout.FACTOR_SCORES, file_layout.FACTOR_SCORES_PNG,
-        xpix, ypix, gene_label=True, cluster_genes=True,
+        xpix, ypix,
+        color="bild", show_colorbar=True, show_grid=True,
+        gene_label=True, cluster_genes=True,
         gene_center="mean", gene_normalize="var", array_label=True,
         cluster_arrays=True,
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)

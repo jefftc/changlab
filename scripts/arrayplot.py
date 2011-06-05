@@ -51,6 +51,8 @@ _get_array_ids       Return unique IDs for the arrays.
 _get_gene_labels     Return pretty labels for the genes.
 _get_array_labels    Return pretty labels for the arrays.
 _parse_gene_names
+_calc_colorbar_size
+_calc_colorbar_ticks
 _get_color
 _exists_nz
 
@@ -145,177 +147,106 @@ class HeatmapLayout:
 
 class ColorbarLayout:
     def __init__(
-        self, heatmap_width, heatmap_height, signal_0, signal_1, color_fn):
+        self, cb_width, cb_height, signal_0, signal_1,
+        ticks, tick_labels, label_sizes, fontsize, color_fn):
         import math
         from genomicode import plotlib
-        
-        vertical_colorbar = True
-        if heatmap_width > heatmap_height:
-            vertical_colorbar = False
 
-        BAR_LONG = 0.50        # the long dimension, relative to heatman
-        BAR_SHORT = 0.075      # short dimension, relative to long_ratio
-        HEATMAP_BUFFER = 0.75  # separation from heatmap, relative to BAR_SHORT
         TICK_SIZE = 0.15       # relative to BAR_SHORT
         TICK_BUFFER = 0.15     # relative to BAR_SHORT
-        TEXT_SIZE = 0.50       # relative to BAR_SHORT
 
-        # Calculate the dimensions of the colorbar.
-        if vertical_colorbar:
-            height = int(heatmap_height * BAR_LONG)
-            width = int(height * BAR_SHORT)
-        else:
-            width = int(heatmap_width * BAR_LONG)
-            height = int(width * BAR_SHORT)
+        assert len(ticks) == len(tick_labels)
+        assert len(ticks) == len(label_sizes)
 
-        # Calculate the minimum and maximum number to label.
-        assert signal_0 < signal_1
-        delta = signal_1 - signal_0
-        num_decimals = max(-int(math.floor(math.log(delta, 10))), 0)+1
-        # Where to start labels.  Give a larger range than might fit
-        # and shrink it later based on where the tick marks are.
-        label_min = math.floor(signal_0 * 10**num_decimals)/10**num_decimals
-        label_max = math.ceil(signal_1 * 10**num_decimals)/10**num_decimals
-        #print signal_0, signal_1, label_min, label_max, num_decimals
-        assert label_min < label_max
-
-        # Estimate how much space each label will take, so we can
-        # calculate the number of tick marks.
-        if vertical_colorbar:
-            pixels_per_digit = TEXT_SIZE * width
-            num_digits = 1
-            pixels = pixels_per_digit * (num_digits+1) # add a space
-            num_ticks = int(height / pixels)
-        else:
-            pixels_per_digit = TEXT_SIZE * height  # not quite right.
-            if num_decimals == 0:
-                num_digits = int(math.ceil(math.log(delta, 10)))
-            else:
-                num_digits = num_decimals + 2
-            if signal_0 < 0:
-                num_digits += 1  # Add space for the - sign.
-            pixels = pixels_per_digit * (num_digits+1) # add a space
-            #print signal_0, signal_1
-            #print pixels_per_digit, num_digits, pixels
-            num_ticks = int(width / pixels)
-        assert num_ticks >= 0
-        #print label_min, label_max, num_ticks
-        ticks = plotlib.place_ticks(label_min, label_max, num_ticks=num_ticks)
-
-        # If any of the tick marks are off the scale, then remove it.
-        #print signal_0, signal_1, label_min, label_max, num_decimals
-        #print ticks
-        ticks = [x for x in ticks if x >= signal_0 and x <= signal_1]
-
-        # Format the tick labels.
-        x = [max(len(str(abs(x)%1))-2, 0) for x in ticks]
-        digits = max(x)
-        tick_labels = ["%.*f" % (digits, x) for x in ticks]
-
-        self._bar_width = width
-        self._bar_height = height
-        self.heatmap_width = heatmap_width
-        self.heatmap_height = heatmap_height
-        self.vertical = vertical_colorbar
-        self.color_fn = color_fn
-        self.HEATMAP_BUFFER = HEATMAP_BUFFER
         self.TICK_SIZE = TICK_SIZE
         self.TICK_BUFFER = TICK_BUFFER
-        self.TEXT_SIZE = TEXT_SIZE
-        self.signal_0 = signal_0
-        self.signal_1 = signal_1
-        self.ticks = ticks
-        self.tick_labels = tick_labels
+        self._cb_width = cb_width  # Width of just the bar.
+        self._cb_height = cb_height
+        self._signal_0 = signal_0
+        self._signal_1 = signal_1
+        self._ticks = ticks
+        self._tick_labels = tick_labels
+        self._label_sizes = label_sizes
+        self._fontsize = fontsize
+        self._color_fn = color_fn
     def width(self):
-        width = self._bar_width
-        if self.vertical:
-            # Buffer between heatmap and colorbar.
-            width += self._bar_width * self.HEATMAP_BUFFER
+        width = self._cb_width
+        if self._cb_height > self._cb_width:
             # Tick mark.
-            width += self._bar_width * self.TICK_SIZE
+            width += self._cb_width * self.TICK_SIZE
             # BUFFER between tick mark and label.
-            width += self._bar_width * self.TICK_BUFFER
+            width += self._cb_width * self.TICK_BUFFER
             # Text.
-            num_chars = max([len(x) for x in self.tick_labels])
-            width += self.text_height() * num_chars
+            text_width = max([x[1] for x in self._label_sizes])
+            # PIL doesn't calculate text widths very accurately.
+            # Compensate with a fudge factor.  2 is not big enough.
+            text_width *= 2.5
+            width += text_width
         width = int(width)
         return width
     def height(self):
-        height = self._bar_height
-        if not self.vertical:
-            # Buffer between heatmap and colorbar.
-            height += self._bar_height * self.HEATMAP_BUFFER
+        height = self._cb_height
+        if self._cb_width > self._cb_height:
             # Tick mark.
-            height += self._bar_height * self.TICK_SIZE
+            height += self._cb_height * self.TICK_SIZE
             # BUFFER between tick mark and label.
-            height += self._bar_height * self.TICK_BUFFER
+            height += self._cb_height * self.TICK_BUFFER
             # Text.
-            height += self.text_height()
+            text_height = max([x[0] for x in self._label_sizes])
+            height += text_height
         height = int(height)
         return height
     def size(self):
+        # Size taken by the entire color bar, including labels.
         return self.width(), self.height()
     def bar_width(self):
-        return self._bar_width
+        # Size of just the bar.
+        return self._cb_width
     def bar_height(self):
-        return self._bar_height
-    def bar_coord(self):
-        if self.vertical:
-            # Buffer.
-            x = int(self._bar_width * self.HEATMAP_BUFFER)
-            y = (self.heatmap_height - self._bar_height)/2
-        else:
-            x = (self.heatmap_width - self._bar_width)/2
-            y = int(self._bar_height * self.HEATMAP_BUFFER)
-        return x, y
-    def text_height(self):
-        if self.vertical:
-            return int(self._bar_width * self.TEXT_SIZE)
-        return int(self._bar_height * self.TEXT_SIZE)
+        return self._cb_height
     def num_ticks(self):
-        return len(self.tick_labels)
+        return len(self._tick_labels)
     def tick_coord(self, i):
-        assert i >= 0 and i < len(self.ticks)
-        tick = self.ticks[i]
-        perc = float(tick-self.signal_0)/(self.signal_1-self.signal_0)
-        bar_x, bar_y = self.bar_coord()
-        if self.vertical:
-            width = int(self.bar_width() * self.TICK_SIZE)
+        assert i >= 0 and i < len(self._ticks)
+        tick = self._ticks[i]
+        perc = float(tick-self._signal_0)/(self._signal_1-self._signal_0)
+        if self._cb_width < self._cb_height:  # vertical bar
+            width = self._cb_width * self.TICK_SIZE
             height = 1
-            x = bar_x + self.bar_width()
-            y = bar_y + perc*self.bar_height()
-            y = min(y, bar_y+self.bar_height()-height)
+            x = self._cb_width
+            y = perc * self._cb_height
+            y = min(y, self._cb_height-height)
         else:
             width = 1
-            height = int(self.bar_height() * self.TICK_SIZE)
-            x = bar_x + perc*self.bar_width()
-            y = bar_y + self.bar_height()
-            x = min(x, bar_x+self.bar_width()-width)
-        x, y = int(x), int(y)
+            height = self._cb_height * self.TICK_SIZE
+            x = perc * self._cb_width
+            y = self._cb_height
+            x = min(x, self._cb_width-width)
+        x, y, width, height = int(x), int(y), int(width), int(height)
         return x, y, width, height
     def tick_label(self, i):
-        assert i >= 0 and i < len(self.tick_labels)
-        return self.tick_labels[i]
-    def label_coord(self, i, plotlib):
-        label = self.tick_label(i)
-        bar_x, bar_y = self.bar_coord()
+        assert i >= 0 and i < len(self._tick_labels)
+        return self._tick_labels[i]
+    def label_coord(self, i):
         x = self.tick_coord(i)
         tick_x, tick_y, tick_width, tick_height = x
-        fontsize = plotlib.fit_fontsize_to_height(self.text_height())
-        x = plotlib.get_text_size(label, fontsize)
-        label_width, label_height = x
-        if self.vertical:
-            x = tick_x + tick_width + self.bar_width()*self.TICK_BUFFER
-            y = tick_y - label_height/2
+        label_width, label_height = self._label_sizes[i]
+        if self._cb_height > self._cb_width:  # vertical
+            x = tick_x + tick_width + self._cb_width*self.TICK_BUFFER
+            y = tick_y - label_height/2.0
         else:
-            x = tick_x - label_width/2
-            y = tick_y + tick_height + self.bar_height()*self.TICK_BUFFER
+            x = tick_x - label_width/2.0
+            y = tick_y + tick_height + self._cb_height*self.TICK_BUFFER
         x, y = int(x), int(y)
         return x, y
+    def label_size(self, i):
+        return self._label_sizes[i]
+    def fontsize(self):
+        return self._fontsize
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
         assert x >= 0 and x <= 1, "x out of range: %g" % x
-        return _get_color(x, self.color_fn)
+        return _get_color(x, self._color_fn)
 
 class DendrogramLayout:
     def __init__(
@@ -346,6 +277,7 @@ class DendrogramLayout:
         x1 = num_items * pixels_per_item
         x2 = num_other_items * pixels_per_other_item
         x = min(x1, x2)
+        #x = max(x1, x2)
         self._dist_size = int(math.ceil(x * RATIO * size_scale))
 
         # Convert the distances from clustering to percentages.  The
@@ -424,8 +356,8 @@ class GeneDendrogramLayout(DendrogramLayout):
     def height(self):
         return self.size()[1]
     def size(self):
-        height = self.item_size()
-        width = self.dist_size()
+        height = self.item_size() + self.LINEWIDTH
+        width = self.dist_size() + self.LINEWIDTH
         return width, height
     def coord(self, row, distance):
         x = self.dist_coord(distance)
@@ -437,15 +369,47 @@ class GeneDendrogramLayout(DendrogramLayout):
         node_x, node_y = self.coord(node_num, node_dist)
         left_x, left_y = self.coord(left_num, left_dist)
         right_x, right_y = self.coord(right_num, right_dist)
+        #print "NODE", node_x, node_y
+        #print "LEFT", left_x, left_y
+        #print "RIGHT", right_x, right_y
 
         # The right node is on top of the left node.
-        lines = []
+        #  3-----4   right  (2 lines: vertical and horizontal)
+        #  |
+        #  *         node
+        #  |
+        #  1-----2   left   (2 lines: vertical and horizontal)
+        #
+        # Separate out lines 1 and 3 in case they are different
+        # colors.
+        # 
         # Add two left lines, then two right lines.
-        x = node_x, left_y, left_x-node_x+1, 1
-        lines.append(self.vthicken(node_x, node_y, 1, left_y-node_y+1))
-        lines.append(self.hthicken(node_x, left_y, left_x-node_x+1, 1))
-        lines.append(self.vthicken(node_x, right_y, 1, node_y-right_y+1))
-        lines.append(self.hthicken(node_x, right_y, right_x-node_x+1, 1))
+        line1 = self.vthicken(node_x, node_y, 1, left_y-node_y+1)
+        line2 = self.hthicken(node_x, left_y, left_x-node_x+1, 1)
+        line3 = self.vthicken(node_x, right_y, 1, node_y-right_y+1)
+        line4 = self.hthicken(node_x, right_y, right_x-node_x+1, 1)
+        
+        # For some reason, left and right are sometimes switched.  If
+        # that's the case, then adjust the coordinates so there are no
+        # negative heights.
+        if line1[3] < 0:
+            line1 = self.vthicken(node_x, left_y, 1, node_y-left_y+1)
+        if line3[3] < 0:
+            line3 = self.vthicken(node_x, node_y, 1, right_y-node_y+1)
+        assert line1[3] >= 0, "%d %d %d" % (node_x, left_x, right_x)
+        assert line3[3] >= 0, "%d %d %d" % (node_x, left_x, right_x)
+
+        # Make sure the x-coordinates of 2,4 are aligned with 1,3.
+        # Also, make sure the width is at least the same as the line
+        # width.
+        if line1[0] < line2[0]:
+            delta = line2[0] - line1[0]
+            x, y, width, height = line2
+            line2 = x-delta, y, max(width+delta, self.LINEWIDTH), height
+            x, y, width, height = line4
+            line4 = x-delta, y, max(width+delta, self.LINEWIDTH), height
+            
+        lines = [line1, line2, line3, line4]
         return lines
     def root(self, node_num, node_dist):
         root_x, root_y = self.coord(node_num, self.lowest)
@@ -454,7 +418,6 @@ class GeneDendrogramLayout(DendrogramLayout):
         return self.hthicken(*x)
 
 class ArrayDendrogramLayout(DendrogramLayout):
-    # Bug: This doesn't work if the boxheight is changed (e.g. -y 2).
     def __init__(self, nrow, ncol, boxwidth, boxheight,
                  size_scale, thickness_scale, tree, tree_cluster, color_fn):
         DendrogramLayout.__init__(
@@ -465,8 +428,8 @@ class ArrayDendrogramLayout(DendrogramLayout):
     def height(self):
         return self.size()[1]
     def size(self):
-        height = self.dist_size()
-        width = self.item_size()
+        height = self.dist_size() + self.LINEWIDTH
+        width = self.item_size() + self.LINEWIDTH
         return width, height
     def coord(self, row, distance):
         x = self.item_coord(row)
@@ -478,12 +441,36 @@ class ArrayDendrogramLayout(DendrogramLayout):
         left_x, left_y = self.coord(left_num, left_dist)
         right_x, right_y = self.coord(right_num, right_dist)
 
-        lines = []
-        # Add two left lines, then two right lines.
-        lines.append(self.hthicken(left_x, node_y, right_x-left_x+1, 1))
-        lines.append(self.vthicken(left_x, node_y, 1, left_y-node_y+1))
-        lines.append(self.hthicken(node_x, node_y, right_x-node_x+1, 1))
-        lines.append(self.vthicken(right_x, node_y, 1, right_y-node_y+1))
+        #  1--*--3
+        #  |     |
+        #  2     4
+        line1 = self.hthicken(left_x, node_y, node_x-left_x+1, 1)
+        line2 = self.vthicken(left_x, node_y, 1, left_y-node_y+1)
+        line3 = self.hthicken(node_x, node_y, right_x-node_x+1, 1)
+        line4 = self.vthicken(right_x, node_y, 1, right_y-node_y+1)
+
+        # For some reason, left and right are sometimes switched.  If
+        # that's the case, then adjust the coordinates so there are no
+        # negative widths.
+        if line1[2] < 0:
+            line1 = self.hthicken(node_x, node_y, left_x-node_x+1, 1)
+        if line3[2] < 0:
+            line3 = self.hthicken(right_x, node_y, node_x-right_x+1, 1)
+        assert line1[2] >= 0, "%d %d %d" % (node_x, left_x, right_x)
+        assert line3[2] >= 0, "%d %d %d" % (node_x, left_x, right_x)
+
+        # Make sure the y-coordinates of 2,4 are aligned with 1,3.
+        # Also, make sure the height is at least the same as the line
+        # width.
+        if line1[1] < line2[1]:
+            delta = line2[1] - line1[1]
+            x, y, width, height = line2
+            line2 = x, y-delta, width, max(height+delta, self.LINEWIDTH)
+            x, y, width, height = line4
+            line4 = x, y-delta, width, max(height+delta, self.LINEWIDTH)
+            
+        #print node_x, node_y
+        lines = [line1, line2, line3, line4]
         return lines
     def root(self, node_num, node_dist):
         root_x, root_y = self.coord(node_num, self.lowest)
@@ -528,13 +515,14 @@ class ArrayClusterLayout:
         return x, y, self.item_width, self.item_height
 
 class GeneLabelLayout:
-    def __init__(self, item_height, item_widths):
+    def __init__(self, item_height, item_widths, fontsize):
         self._item_height = item_height
         self._item_widths = item_widths
         num_items = len(item_widths)
         self._width = max(item_widths)
         self._height = item_height * num_items
         self._num_items = num_items
+        self._fontsize = fontsize
     def item_height(self):
         return self._item_height
     def width(self):
@@ -543,6 +531,8 @@ class GeneLabelLayout:
         return self._height
     def size(self):
         return self.width(), self.height()
+    def fontsize(self):
+        return self._fontsize
     def coord(self, num):
         # Return a box that bounds the region.
         assert num >= 0 and num < self._num_items
@@ -551,7 +541,7 @@ class GeneLabelLayout:
         return x, y, self._item_widths[num], self._item_height
 
 class ArrayLabelLayout:
-    def __init__(self, item_height, item_widths):
+    def __init__(self, item_height, item_widths, fontsize):
         # item_height refers to the text, not rotated.
         self._item_height = item_height
         self._item_widths = item_widths
@@ -560,6 +550,7 @@ class ArrayLabelLayout:
         self._width = item_height * num_items
         self._height = max(item_widths)
         self._num_items = num_items
+        self._fontsize = fontsize
     def item_height(self):
         return self._item_height
     def width(self):
@@ -568,6 +559,8 @@ class ArrayLabelLayout:
         return self._height
     def size(self):
         return self.width(), self.height()
+    def fontsize(self):
+        return self._fontsize
     def coord(self, num):
         # Return a box that bounds the region.
         assert num >= 0 and num < self._num_items
@@ -632,9 +625,15 @@ def make_layout(
     # Make the layout for the colorbar.
     cb_layout = None
     if colorbar:
+        x = _calc_colorbar_size(
+            hm_layout.width(), hm_layout.height(), boxwidth, boxheight)
+        width, height = x
+        x = _calc_colorbar_ticks(
+            width, height, signal_0, signal_1, plotlib)
+        ticks, tick_labels, label_sizes, fontsize = x
         cb_layout = ColorbarLayout(
-            hm_layout.width(), hm_layout.height(), signal_0, signal_1,
-            color_fn)
+            width, height, signal_0, signal_1,
+            ticks, tick_labels, label_sizes, fontsize, color_fn)
 
     # Make layouts for the dendrograms.
     gd_layout = ad_layout = None
@@ -663,6 +662,7 @@ def make_layout(
         if grid:
             width += hm_layout.GRID_SIZE
             height += hm_layout.GRID_SIZE
+        #print "HERE", width, height
         ad_layout = ArrayDendrogramLayout(
             MATRIX.nrow(), MATRIX.ncol(), width, height,
             array_tree_scale, array_tree_thickness, 
@@ -684,24 +684,37 @@ def make_layout(
     gl_layout = al_layout = None
     gene_labels = array_labels = None
     gl_fontsize = al_fontsize = None
+    # If plotting both gene and array labels, make sure they aren't
+    # wildly different sizes.
     if label_genes:
+        gl_fontsize = plotlib.fit_fontsize_to_height(boxheight)
+        if gl_fontsize < MIN_FONTSIZE:
+            gl_fontsize = None
+    if label_arrays:
+        al_fontsize = plotlib.fit_fontsize_to_height(boxwidth)
+        if al_fontsize < MIN_FONTSIZE:
+            al_fontsize = None
+    if gl_fontsize and al_fontsize:
+        FONT_RATIO = 1.5
+        gl_fontsize = int(min(gl_fontsize, al_fontsize*FONT_RATIO))
+        al_fontsize = int(min(al_fontsize, gl_fontsize*FONT_RATIO))
+    
+    if label_genes and gl_fontsize:
         gene_labels = _get_gene_labels(MATRIX)
         height = boxheight
         if grid:
             height += hm_layout.GRID_SIZE
-        gl_fontsize = plotlib.fit_fontsize_to_height(height)
         widths = [plotlib.get_text_size(x, gl_fontsize)[0]
                   for x in gene_labels]
-        gl_layout = GeneLabelLayout(height, widths)
-    if label_arrays:
+        gl_layout = GeneLabelLayout(height, widths, gl_fontsize)
+    if label_arrays and al_fontsize:
         array_labels = _get_array_labels(MATRIX)
         width = boxwidth
         if grid:
             width += hm_layout.GRID_SIZE
-        al_fontsize = plotlib.fit_fontsize_to_height(width)
         widths = [plotlib.get_text_size(x, al_fontsize)[0]
                   for x in array_labels]
-        al_layout = ArrayLabelLayout(width, widths)
+        al_layout = ArrayLabelLayout(width, widths, al_fontsize)
 
     x = PlotLayout(
         hm_layout, cb_layout, gd_layout, ad_layout, gc_layout, ac_layout,
@@ -741,13 +754,16 @@ def calc_coords_for_layout(layout):
     # Add the colorbar.
     cb_x = cb_y = None
     if layout.colorbar:
-        if layout.colorbar.vertical:
-            cb_x = hm_x + hm_width
+        CB_BUFFER = 0.75  # separation from heatmap, relative to BAR_SHORT
+        bar_width = layout.colorbar.bar_width()
+        bar_height = layout.colorbar.bar_height()
+        if cb_height > cb_width:
+            cb_x = hm_x + hm_width + CB_BUFFER*bar_width
             cb_y = hm_y
         else:
             cb_x = hm_x
-            cb_y = hm_y + hm_height
-
+            cb_y = hm_y + hm_height + CB_BUFFER*bar_height
+        cb_x, cb_y = int(cb_x), int(cb_y)
     x = PlotCoords(
         hm_x, hm_y, cb_x, cb_y, gd_x, gd_y, ad_x, ad_y,
         gc_x, gc_y, ac_x, ac_y, gl_x, gl_y, al_x, al_y)
@@ -787,14 +803,21 @@ def _choose_gene_label(MATRIX):
 
     # Prioritize some potential ones.
     IDS = [
-        "DESCRIPTION",   # For GCT files.
-        "NAME",
         arrayio.GENE_SYMBOL, "Gene.Symbol",
-        arrayio.GENE_DESCRIPTION, "Description",
+        #arrayio.GENE_DESCRIPTION, "Description",
+        "DESCRIPTION",       # For GCT files.  Use the pretty name.
+        "NAME",
         arrayio.GENE_ID, "LocusLink",
         arrayio.AFFY_PROBESET_ID, "Probe.Set.ID",
         arrayio.ROW_ID
         ]
+    # Exception: If the GCT files have generic descriptions,
+    # e.g. DESC0001, then use the name field instead.
+    if "DESCRIPTION" in names:
+        desc = MATRIX.row_names("DESCRIPTION")
+        if desc[0].startswith("DESC"):
+            i = IDS.index("DESCRIPTION")
+            IDS.pop(i)
     for id in IDS:
         if id in names:
             return id
@@ -1349,6 +1372,7 @@ def plot(filename, MATRIX, cluster_data, plotlib, layout, coords):
         plot_array_clusters(
             plotlib, image, MATRIX, coords.ac_x, coords.ac_y,
             layout.array_cluster, cluster_data.array_cluster)
+
     if layout.gene_label:
         gene_labels = _get_gene_labels(MATRIX)
         plot_gene_labels(
@@ -1399,21 +1423,18 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
     TICK_COLOR = (50, 50, 50)
 
     # Draw the colorbar.
-    bar_x, bar_y = layout.bar_coord()
-    if layout.vertical:
-        for i in range(layout.bar_height()):
-            color = layout.color(float(i)/layout.bar_height())
-            plotlib.line(
-                image, xoff+bar_x, yoff+bar_y+i, layout.bar_width(), 1, color)
+    cb_width, cb_height = layout.bar_width(), layout.bar_height()
+    if cb_height > cb_width:
+        for i in range(cb_height):
+            color = layout.color(float(i)/cb_height)
+            plotlib.line(image, xoff, yoff+i, cb_width, 1, color)
     else:
-        for i in range(layout.bar_width()):
-            color = layout.color(float(i)/layout.bar_width())
-            plotlib.line(
-                image, xoff+bar_x+i, yoff+bar_y, 1, layout.bar_height(), color)
+        for i in range(cb_width):
+            color = layout.color(float(i)/cb_width)
+            plotlib.line(image, xoff+i, yoff, 1, cb_height, color)
             
     plotlib.rectangle(
-        image, xoff+bar_x, yoff+bar_y,
-        layout.bar_width(), layout.bar_height(), None, outline=OUTLINE_COLOR)
+        image, xoff, yoff, cb_width, cb_height, None, outline=OUTLINE_COLOR)
 
     # Draw tickmarks.
     for i in range(layout.num_ticks()):
@@ -1422,24 +1443,23 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
         plotlib.line(image, xoff+x, yoff+y, width, height, TICK_COLOR)
 
     # Label the tickmarks.
-    fontsize = plotlib.fit_fontsize_to_height(layout.text_height())
+    fontsize = layout.fontsize()
     if fontsize < MIN_FONTSIZE:
         return
     
     labels = [layout.tick_label(i) for i in range(layout.num_ticks())]
-    label_sizes = [plotlib.get_text_size(x, fontsize) for x in labels]
+    label_sizes = [layout.label_size(i) for i in range(layout.num_ticks())]
     max_width = max([x[0] for x in label_sizes])
     max_height = max([x[1] for x in label_sizes])
                    
     for i, label in enumerate(labels):
-        x, y = layout.label_coord(i, plotlib)
+        x, y = layout.label_coord(i)
         # Right align the vertical colorbar.
-        if layout.vertical:
+        if cb_height > cb_width:
             width, height = label_sizes[i]
             x += max_width - width
         plotlib.text(image, xoff+x, yoff+y, label, fontsize, BLACK)
         
-    
 
 def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
     from genomicode import clusterio
@@ -1452,15 +1472,16 @@ def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
         raise AssertionError, "Unknown dim: %s" % dim
 
     # num is the row or column of the node.
-    id2num = {}  # gene or node id -> num
+    id2num = {}       # gene or node id -> num
     id2distance = {}  # gene or node id -> distance
     # Find id2num and id2distance for each of the leaves.
     for i, x in enumerate(ids):
         id = clusterio.parse_node(x)
         id2num[id] = i
         id2distance[id] = 1
+    #print tree
 
-    # Find id2num and id2distance for each of the internal nodes.
+    # Set id2num and id2distance the internal nodes.
     for i, node in enumerate(tree):
         id = -(i+1)
         left, right, distance = node
@@ -1468,8 +1489,9 @@ def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
         right_num = id2num[right]
         id2num[id] = (left_num + right_num)/2.0
         id2distance[id] = distance
+    #print id2num
 
-    # Draw each of the nodes of the tree.
+    # Draw the nodes of the tree.
     for i, node in enumerate(tree):
         node_id = -(i+1)
         left_id, right_id, node_dist = node
@@ -1483,6 +1505,8 @@ def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
         lines = layout.lines(
             node_num, node_dist, left_num, left_dist, right_num, right_dist)
         ll1, ll2, lr1, lr2 = lines
+        #print node
+        #print lines
 
         # Line 1 is the top joining line, and line 2 is the line that
         # leads to the node.
@@ -1499,8 +1523,12 @@ def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
                 cr2 = (0, 0, 0)
 
         data = [(ll1, cl1), (ll2, cl2), (lr1, cr1), (lr2, cr2)]
+        #data = [(ll1, cl1), (lr1, cr1)]
+        #data = [(ll2, cl2), (lr2, cr2)]
         for line, color in data:
             x, y, width, height = line
+            #print x, y, width, height
+            assert width >= 0 and height >= 0, "%d %d" % (width, height)
             plotlib.rectangle(image, x+xoff, y+yoff, width, height, color)
 
     c = layout.color(node_id)
@@ -1581,20 +1609,30 @@ def plot_array_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 def plot_gene_labels(plotlib, image, X, xoff, yoff, layout, labels):
-    fontsize = plotlib.fit_fontsize_to_height(layout.item_height())
+    fontsize = layout.fontsize()
     if fontsize < MIN_FONTSIZE:
         return
+    #print layout.__class__.__name__
     for i in range(X.nrow()):
         x, y, width, height = layout.coord(i)
+        #print x, y, width, height, fontsize
+        w, h = plotlib.get_text_size(labels[i], fontsize)
+        # Right-align the text.  Need layout width, not width of item.
+        x += max(layout.width()-w, 0)
+        # Vertical align the text.
+        y += (height - h)/2
         plotlib.text(image, xoff+x, yoff+y, labels[i], fontsize, (0, 0, 0))
 
 def plot_array_labels(plotlib, image, X, xoff, yoff, layout, labels):
-    fontsize = plotlib.fit_fontsize_to_height(layout.item_height())
+    fontsize = layout.fontsize()
     if fontsize < MIN_FONTSIZE:
         return
     for i in range(X.ncol()):
         x, y, width, height = layout.coord(i)
+        w, h = plotlib.get_text_size(labels[i], fontsize)
         #print "HERE1", xoff, yoff, x, y, width, height, fontsize
+        # Center the text.
+        x += (width-h)/2
         plotlib.text90(image, xoff+x, yoff+y, labels[i], fontsize, (0, 0, 0))
 
 def _cluster(MATRIX, *args, **params):
@@ -1706,6 +1744,89 @@ def _get_array_labels(MATRIX):
         x = x.replace(".CEL", "")
         labels[i] = x
     return labels
+
+def _calc_colorbar_size(hm_width, hm_height, box_width, box_height):
+    # Calculate the dimensions of the colorbar.  The size of the
+    # bar should be calculated based on the size of the heatmap,
+    # and also the size of the boxes in the heatmap.
+    #
+    # MAX_BOXES of 100 is too big for signature heatmap from pybinreg.
+    BAR_LONG = 0.50        # the long dimension, relative to heatman
+    BAR_SHORT = 0.075      # short dimension, relative to long_ratio
+    MAX_BOXES = 50
+
+    vertical = True
+    if hm_width > hm_height:
+        vertical = False
+
+    if vertical:
+        x1 = hm_height * BAR_LONG
+        x2 = box_height * MAX_BOXES
+        height = max(min(x1, x2), 1)
+        width = max(height * BAR_SHORT, 1)
+    else:
+        x1 = hm_width * BAR_LONG
+        x2 = box_width * MAX_BOXES
+        width = max(min(x1, x2), 1)
+        height = max(width * BAR_SHORT, 1)
+        
+    width, height = int(width), int(height)
+    return width, height
+
+def _calc_colorbar_ticks(
+    cb_width, cb_height, signal_0, signal_1, plotlib):
+    import math
+    from genomicode import plotlib as pl
+
+    TEXT_SIZE = 0.75
+    MAX_TICKS = 20
+
+    vertical = cb_height > cb_width
+
+    # Calculate the minimum and maximum number to label.
+    assert signal_0 < signal_1
+    delta = signal_1 - signal_0
+    num_decimals = max(-int(math.floor(math.log(delta, 10))), 0)+1
+    # Where to start labels.  Give a larger range than might fit
+    # and shrink it later based on where the tick marks are.
+    label_min = math.floor(signal_0 * 10**num_decimals)/10**num_decimals
+    label_max = math.ceil(signal_1 * 10**num_decimals)/10**num_decimals
+    #print signal_0, signal_1, label_min, label_max, num_decimals
+    assert label_min < label_max
+
+    # Calculate the size of the font for the labels.
+    text_height = int(min(cb_width, cb_height) * TEXT_SIZE)
+    fontsize = plotlib.fit_fontsize_to_height(text_height)
+
+    # Try different number of tick marks until the labels fit in the
+    # colorbar.
+    # Can't have more ticks than the size of the colorbar.
+    num_ticks = min(MAX_TICKS, max(cb_width, cb_height)/2)
+    while num_ticks > 0:
+        # Calculate the ticks and remove any that are off the scale.
+        ticks = pl.place_ticks(label_min, label_max, num_ticks=num_ticks)
+        ticks = [x for x in ticks if x >= signal_0 and x <= signal_1]
+        assert ticks, "I couldn't place any tick marks."
+
+        # Format the tick labels.
+        x = [max(len(str(abs(x)%1))-2, 0) for x in ticks]
+        digits = max(x)
+        tick_labels = ["%.*f" % (digits, x) for x in ticks]
+
+        # Calculate the sizes of the tick labels.
+        label_sizes = [plotlib.get_text_size(x, fontsize) for x in tick_labels]
+
+        # See if this fits.
+        if vertical:
+            total = sum([x[1] for x in label_sizes])
+        else:
+            total = sum([x[0] for x in label_sizes])
+        if total < max(cb_width, cb_height)/2:
+            break
+        num_ticks = min(num_ticks, len(ticks))-1
+    assert num_ticks, "I couldn't place any tick marks."
+
+    return ticks, tick_labels, label_sizes, fontsize
 
 _COLOR_CACHE = {}  # (fn, num) -> list
 def _get_color(perc, color_fn, num_colors=256):

@@ -9,6 +9,7 @@ line
 """
 # _set_default_color
 # _set_default_shape
+# _set_default_label
 # _set_default_error_bar
 # _set_default_axes    lim, tick, tick_label
 # _set_default_lim
@@ -19,7 +20,7 @@ line
 
 import os, sys
 
-DEFAULT, CIRCLE, SQUARE, DIAMOND, OTHER = range(5)
+DEFAULT, CIRCLE, SQUARE, DIAMOND = range(4)
 
 
 class Graph:
@@ -45,6 +46,7 @@ class Graph:
         self.TOTAL_WIDTH = width or 1024
         self.TOTAL_HEIGHT = height or 768
         self.UNIT = self.TOTAL_WIDTH/100.0
+        self.POINT_RADIUS = 0.6 * self.UNIT  # Radius of each point.
 
         # Calculate the borders around the plot.
         BORDER = 0.25*min(self.TOTAL_WIDTH, self.TOTAL_HEIGHT)
@@ -159,8 +161,8 @@ class Graph:
             pr.finish(
                 pr.diffuse(0.6),
                 pr.ambient(0.6, 0.6, 0.6),
-                pr.phong(0.3),
-                pr.phong_size(10),
+                pr.phong(0.2),
+                pr.phong_size(5),
                 #pr.phong(0.8), pr.phong_size(5),   # too shiny
                 ),
             pr.no_shadow(),
@@ -359,7 +361,7 @@ class Graph:
         self, xlim, ylim, points, color, shape, point_size=1.0, height=0):
         import povray as pr
         
-        RADIUS = 0.6*self.UNIT*point_size      # Radius of each point.
+        RADIUS = self.POINT_RADIUS*point_size      # Radius of each point.
         HEIGHT = self._z_height(height)
 
         x_min, x_len = xlim[0], xlim[1]-xlim[0]
@@ -419,9 +421,135 @@ class Graph:
             z_pixel = -HEIGHT
             w(pr.object_(
                 point, pr.translate(x_pixel, y_pixel, z_pixel), pigment))
-
+                
         w("\n")
 
+    def draw_onpoint_labels(
+        self, xlim, ylim, points, label, point_size=1.0, height=0):
+        import povray as pr
+
+        RADIUS = self.POINT_RADIUS*point_size      # Radius of each point.
+        HEIGHT = self._z_height(height)
+        SCALE = RADIUS * 1.25
+        THICKNESS = RADIUS/2
+
+        x_min, x_len = xlim[0], xlim[1]-xlim[0]
+        y_min, y_len = ylim[0], ylim[1]-ylim[0]
+
+        w = self.handle.write
+        
+        # lower filter is brighter
+        pigment = pr.pigment(pr.color(1, 1, 1, 0.25))
+        finish = pr.finish(
+            pr.ambient(1, 1, 1),
+            pr.refraction(1),
+            pr.ior(1.5),
+            )
+
+        w("// Draw labels on each point.\n")
+        for i in range(len(label)):
+            if label[i] is None:
+                continue
+            
+            x_coord, y_coord = points[i]
+
+            x_pixel = _coord2pixel(
+                x_coord, x_min, x_len, self.PLOT_X, self.PLOT_WIDTH)
+            y_pixel = _coord2pixel(
+                y_coord, y_min, y_len, self.PLOT_Y, self.PLOT_HEIGHT)
+            z_pixel = -HEIGHT
+
+            # Don't draw points that are off the drawing area.
+            if x_pixel<self.PLOT_X or x_pixel >= self.PLOT_X+self.PLOT_WIDTH:
+                continue
+            if y_pixel<self.PLOT_Y or y_pixel >= self.PLOT_Y+self.PLOT_HEIGHT:
+                continue
+            
+            w(pr.declare("X", pr.text(
+                "FONTFILE", label[i], THICKNESS, 0,
+                pigment, finish, 
+                pr.no_shadow(),
+                pr.scale(SCALE, SCALE, SCALE),
+                pr.translate(x_pixel, y_pixel, z_pixel-RADIUS),
+                )))
+            # Center the label.
+            w(pr.declare("X", pr.object_(
+                "X", pr.translate_by_extent("X", -0.5, -0.5, 0))))
+            w(pr.object_("X"))
+                
+        w("\n")
+
+    def draw_overpoint_labels(
+        self, xlim, ylim, points, error_bar, label, point_size=1.0, height=0):
+        import povray as pr
+
+        RADIUS = self.POINT_RADIUS*point_size      # Radius of each point.
+        HEIGHT = self._z_height(height)
+        THICKNESS = RADIUS/2.0
+        SCALE = RADIUS * 1.75    # how big to make the label
+        BUFFER = RADIUS * 0.50   # how much space between point and label.
+        COLOR = 0.5, 0.5, 0.5
+
+        x_min, x_len = xlim[0], xlim[1]-xlim[0]
+        y_min, y_len = ylim[0], ylim[1]-ylim[0]
+        y_scale = self.PLOT_HEIGHT / float(y_len)
+        
+        w = self.handle.write
+        
+        pigment = pr.pigment(pr.color(*COLOR))
+        finish = pr.finish()
+
+        w("// Draw labels over each point.\n")
+        for i in range(len(label)):
+            if label[i] is None:
+                continue
+
+            err_l = err_u = 0
+            if error_bar[i]:
+                x1, x2 = error_bar[i]
+                err_l, err_u = x1*y_scale, x2*y_scale
+
+            x_coord, y_coord = points[i]
+
+            x_pixel = _coord2pixel(
+                x_coord, x_min, x_len, self.PLOT_X, self.PLOT_WIDTH)
+            y_pixel = _coord2pixel(
+                y_coord, y_min, y_len, self.PLOT_Y, self.PLOT_HEIGHT)
+            z_pixel = -HEIGHT
+
+            draw_above = y_coord < y_min + y_len/2
+
+            if draw_above:
+                # Draw above the point.
+                y_pixel += RADIUS + BUFFER + err_u
+            else:
+                y_pixel -= RADIUS + BUFFER + err_l
+            z_pixel -= RADIUS
+
+            # Don't draw points that are off the drawing area.
+            if x_pixel<self.PLOT_X or x_pixel >= self.PLOT_X+self.PLOT_WIDTH:
+                continue
+            if y_pixel<self.PLOT_Y or y_pixel >= self.PLOT_Y+self.PLOT_HEIGHT:
+                continue
+            
+            w(pr.declare("X", pr.text(
+                "FONTFILE", label[i], THICKNESS, 0,
+                pigment, finish, 
+                pr.no_shadow(),
+                pr.rotate(0, 0, 90),
+                pr.scale(SCALE, SCALE, SCALE),
+                pr.translate(x_pixel, y_pixel, z_pixel),
+                )))
+            # Center the label.
+            w(pr.declare("X", pr.object_(
+                "X", pr.translate_by_extent("X", 0.5, 0, 0))))
+            if not draw_above:
+                w(pr.declare("X", pr.object_(
+                    "X", pr.translate_by_extent("X", 0, -1, 0))))
+            w(pr.object_("X"))
+                
+        w("\n")
+            
     def _z_height(self, height, scale=1.0):
         HEIGHT_UNIT = 0.50 * self.UNIT * scale
         z = (0.5+height)*HEIGHT_UNIT
@@ -553,7 +681,8 @@ class Graph:
         THICKNESS = 0.5*self.UNIT
         LABEL_SIZE = (
             2.0*self.UNIT*label_size, 2.0*self.UNIT*label_size, 1)
-        LABEL_COLOR = 0.6, 0.6, 0.6
+        # Color (0.6, 0.6, 0.6) is too light for pybinreg predictions.
+        LABEL_COLOR = 0.2, 0.2, 0.2
         SPACE = 1.5*self.UNIT
         
         PLOT_X_MID = self.PLOT_X+self.PLOT_WIDTH/2.0
@@ -1056,18 +1185,21 @@ def povray(
 
 
 def scatter(
-    X, Y, color=None, shape=None, error_bar=None, point_size=1.0,
+    X, Y, color=None, shape=None, onpoint_label=None, overpoint_label=None, 
+    error_bar=None, point_size=1.0,
     xlim=None, ylim=None, 
     xtick=None, xtick_label=None, ytick=None, ytick_label=None, tick_size=1.0,
     xlabel=None, ylabel=None, label_size=1.0, font=None,
     width=None, height=None):
     """Return the povray-formatted script to generate a scatter plot.
     
-    X, Y         Parallel lists that indicate the coordinates of the points.
-    color        List of the color for each point (<r>,<g>,<b>) from 0-1.
-    shape        List of DEFAULT, CIRCLE, SQUARE, or DIAMOND.
-    error_bar    List of sizes of the error bar for each point.
-    point_size   Scales the size of each point.
+    X, Y             Parallel lists of the coordinates of the points.
+    color            List of the color for each point (<r>,<g>,<b>) from 0-1.
+    shape            List of DEFAULT, CIRCLE, SQUARE, or DIAMOND.
+    onpoint_label    What label to put on each point.
+    overpoint_label  What label to put over each point.
+    error_bar        List of sizes of the error bar for each point.
+    point_size       Scales the size of each point.
     
     xlim         Tuple of (minimum x, maximum x).
     xtick        Coordinates of the tickmarks on the x-axis (or True).
@@ -1088,10 +1220,14 @@ def scatter(
     # Check the inputs
     color = _set_default_color(color, len(X))
     shape = _set_default_shape(shape, len(X))
+    onpoint_label = _set_default_label(onpoint_label, len(X))
+    overpoint_label = _set_default_label(overpoint_label, len(X))
     error_bar = _set_default_error_bar(error_bar)
     assert len(X) == len(Y)
     assert len(color) == len(X)
     assert len(shape) == len(X)
+    assert len(onpoint_label) == len(X)
+    assert len(overpoint_label) == len(X)
     assert not error_bar or len(error_bar) == len(X)
 
     x = _set_default_axes(
@@ -1114,6 +1250,11 @@ def scatter(
 
     graph.draw_points(
         xlim, ylim, points, color, shape, point_size=point_size)
+    graph.draw_onpoint_labels(
+        xlim, ylim, points, onpoint_label, point_size=point_size)
+    graph.draw_overpoint_labels(
+        xlim, ylim, points, error_bar, overpoint_label, point_size=point_size)
+    
     graph.draw_error_bars(xlim, ylim, points, error_bar, color)
     
     handle.seek(0)
@@ -1210,11 +1351,10 @@ def line(*args, **keywds):
         graph.draw_lines(xlim, ylim, line, color[i], height=i)
         if not draw_points:
             continue
-        # XXX let the user specify plot only some of the points.
+        # Should let the user specify which points to plot.
         col = [color[i]] * len(line)
         shp = [shape[i]] * len(line)
-        graph.draw_points(xlim, ylim, line, col, shp, height=i)
-    
+        graph.draw_points(xlim, ylim, line, col, shp, None, height=i)
     
     handle.seek(0)
     return handle.read()
@@ -1272,7 +1412,7 @@ def _set_default_axes(
     if xtick:
         min_x, max_x = min(min_x, min(xtick)), max(max_x, max(xtick))
     if ytick:
-        min_y, max_y = min(min_x, min(ytick)), max(max_y, max(ytick))
+        min_y, max_y = min(min_y, min(ytick)), max(max_y, max(ytick))
     xlim = _set_default_lim(xlim, min_x, max_x)
     ylim = _set_default_lim(ylim, min_y, max_y)
     assert not xtick_label or len(xtick) == len(xtick_label)
@@ -1327,6 +1467,20 @@ def _set_default_shape(shape, n):
         shape = shape * n
     assert len(shape) == n
     return shape
+
+def _set_default_label(label, n):
+    # Return a list of labels.  label can be:
+    # 1.  List of strings.  None means don't label this point.
+    # 2.  None
+    # 3.  []
+    import operator
+    if label is None or label == []:
+        label = [None]
+    assert operator.isSequenceType(label)
+    if len(label) == 1:
+        label = label * n
+    assert len(label) == n
+    return label
 
 def _set_default_error_bar(error_bar):
     import operator

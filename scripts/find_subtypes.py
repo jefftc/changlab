@@ -173,7 +173,7 @@ def make_model(selap_path, penalty, file_layout, matlab):
 
     print "Generating subgroups with penalty %d." % penalty
     x = selap.selap_make_raw(
-        file_layout.SELAP_DATASET, penalty, matlab=matlab,
+        file_layout.SELAP_DATASET, penalty, matlab_bin=matlab,
         selap_path=selap_path, outpath=file_layout.SELAP)
     print x
 
@@ -250,7 +250,7 @@ def predict_subgroups(selap_path, file_layout, matlab):
     x = selap.selap_predict_raw(
         file_layout.SELAP_DATASET, file_layout.SELAP_MU,
         file_layout.SELAP_SIG, file_layout.SELAP_PROB, 
-        matlab=matlab, selap_path=selap_path, outpath=file_layout.SELAP)
+        matlab_bin=matlab, selap_path=selap_path, outpath=file_layout.SELAP)
     print x
 
     assert os.path.exists(file_layout.SELAP_PREDICT)
@@ -305,38 +305,13 @@ def summarize_heatmap(python, arrayplot, cluster, file_layout, libpath=[]):
         height_width_ratio=nrow*1.618/ncol)
     xpix, ypix = x
 
-    cmd = [
-        python,
-        arrayplot,
-        "--color=bild",
-        "--label_genes",
-        "--label_arrays",
-        "--cluster_arrays",
-        "--gain 1.5",
-        "--scale -0.5",
-        "--no_autoscale",
-        "-x %d" % xpix,
-        "-y %d" % ypix,
-        "-o %s" % file_layout.PREDICTIONS_PNG,
-        ]
-    if cluster is not None:
-        cmd.append("--cluster_app=%s" % cluster)
-    if libpath:
-        for path in libpath:
-            cmd.append("--libpath=%s" % path)
-    cmd.append(file_layout.PREDICTIONS_PCL)
-
-    # If python is None, then ignore it.
-    cmd = [x for x in cmd if x is not None]
-
-    cmd = " ".join(cmd)
-    p = subprocess.Popen(
-        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
-    w, r = p.stdin, p.stdout
-    w.close()
-    print r.read()
-    r.close()
+    x = plotlib.plot_heatmap(
+        file_layout.PREDICTIONS_PCL, file_layout.PREDICTIONS_PNG, xpix, ypix,
+        color="bild", show_colorbar=True, show_grid=True,
+        scale=-0.5, gain=1.5, no_autoscale=True,
+        gene_label=True, array_label=True, cluster_arrays=True,
+        python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
+    print x
 
     # If arrayplot generated predictions.cdt file, remove it.
     # Actually, don't remove it.  It might be required if people want
