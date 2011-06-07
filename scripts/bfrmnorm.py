@@ -15,6 +15,7 @@ import os, sys
 # summarize_filtered_genes
 # summarize_heatmaps
 # summarize_pca
+# summarize_report
 
 def make_file_layout(outpath):
     from genomicode import filelayout
@@ -37,14 +38,6 @@ def make_file_layout(outpath):
             File.DS_FINAL_COORD("normalized.pca.txt"),
             File.DS_FINAL_POV("normalized.pov"),
             ),
-        File.DS_PROC("pre_norm.gct"),
-        File.DS_PROC_HEATMAP("pre_norm.heatmap.png"),
-        File.DS_PROC_SCATTER("pre_norm.pca.png"),
-        
-        File.DS_FINAL("normalized.gct"),
-        File.DS_FINAL_HEATMAP("normalized.heatmap.png"),
-        File.DS_FINAL_SCATTER("normalized.pca.png"),
-        
         Path.BFRM("bfrm",
             File.BFRM_PROBE_IDS("probeids.txt"),
             File.BFRM_SAMPLE_IDS("sids.txt"),
@@ -53,6 +46,16 @@ def make_file_layout(outpath):
             File.BFRM_CORRECTED("correctedData.txt"),
             File.BFRM_MA("mA.txt"),
             ),
+        
+        File.DS_PROC("pre_norm.gct"),
+        File.DS_PROC_HEATMAP("pre_norm.heatmap.png"),
+        File.DS_PROC_SCATTER("pre_norm.pca.png"),
+        
+        File.DS_FINAL("normalized.gct"),
+        File.DS_FINAL_HEATMAP("normalized.heatmap.png"),
+        File.DS_FINAL_SCATTER("normalized.pca.png"),
+        
+        File.REPORT("REPORT.html"),
         ]
     
     file_layout = Path.OUTPATH(outpath, *FILES)
@@ -220,7 +223,8 @@ def summarize_filtered_genes(file_layout):
     import arrayio
     from genomicode import binreg
     from genomicode import pcalib
-    
+
+    # If this is changed, you also need to change the report.
     NUM_GENES = 1000
 
     DATA_orig = arrayio.read(file_layout.DS_PROC)
@@ -320,6 +324,144 @@ def summarize_pca(povray, file_layout, matrices):
     _make_scatter(
         povray, FL.DS_FINAL_COORD, FL.DS_FINAL_POV, FL.DS_FINAL_SCATTER)
 
+def summarize_report(
+    filenames, matrices, num_factors, start_time, file_layout):
+    import time
+    import subprocess
+    from genomicode import htmllib
+    from genomicode import parselib
+
+    def highlight(s):
+        return htmllib.SPAN(s, style="background-color:yellow")
+
+    assert len(filenames) == len(matrices)
+
+    lines = []
+    w = lines.append
+    w("<HTML>")
+    w(htmllib.HEAD(htmllib.TITLE("BFRMNormalize Report")))
+    w("<BODY>")
+    w(htmllib.CENTER(htmllib.H1(
+        htmllib.EM("BFRMNormalize") + " Report")))
+
+    w(htmllib.H3("I.  Overview"))
+    l = []
+    l.append("I normalized the following data sets with %d factors." %
+             num_factors)
+    files = [os.path.split(x)[1] for x in filenames]
+    for i in range(len(files)):
+        name = files[i]
+        num_samples = matrices[i].ncol()
+        x = "%s (%d samples)" % (name, num_samples)
+        l.append(htmllib.LI() + x)
+    l = "\n".join(l)
+    w(htmllib.UL(l))
+    
+    w(htmllib.P())
+    x = os.path.split(file_layout.DS_PROC)[1]
+    w("The merged gene expression data set is available at " +
+      htmllib.A(x, href=x) + ".")
+    w(htmllib.BR())
+    x = os.path.split(file_layout.DS_FINAL)[1]
+    w("The normalized data set is available at " +
+      htmllib.A(x, href=x) + ".")
+    
+    w(htmllib.P())
+    w(htmllib.H3("II.  Results"))
+
+    # Make the table of the heatmaps.
+    x = os.path.split(file_layout.DS_PROC_HEATMAP)[1]
+    x1 = htmllib.CENTER(
+        htmllib.B("Before Normalization") + htmllib.BR() +
+        htmllib.A(htmllib.IMG(height=480, src=x), href=x)
+        )
+    x = os.path.split(file_layout.DS_FINAL_HEATMAP)[1]
+    x2 = htmllib.CENTER(
+        htmllib.B("After Normalization") + htmllib.BR() +
+        htmllib.A(htmllib.IMG(height=480, src=x), href=x)
+        )
+    row1 = htmllib.TR(htmllib.TD(x1) + htmllib.TD(x2))
+
+    # Make sure this is really the 1000 genes.
+    x = htmllib.TD(
+        htmllib.B("Figure 1: Heatmaps. ") +
+        "These heatmaps show the expression patterns in the data before "
+        "and after normalization.  "
+        "The rows contain the 1000 genes that exhibit the highest variance "
+        "in gene expression profile across the original data set.  "
+        "The columns contain the samples in the data sets provided.  "
+        "The genes and samples are in the same order in both heatmaps.  "
+        "Warm colors indicate high expression of the gene, and cool colors "
+        "indicate low expression.",
+        colspan=2)
+    row2 = htmllib.TR(x)
+
+    w(htmllib.TABLE(row1 + row2, border=0, cellspacing=10, width="50%%"))
+    
+    w(htmllib.P())
+
+    # Make the table of the scatter plots.
+    x = os.path.split(file_layout.DS_PROC_SCATTER)[1]
+    x1 = htmllib.CENTER(
+        htmllib.B("Before Normalization") + htmllib.BR() +
+        htmllib.A(htmllib.IMG(height=400, src=x), href=x)
+        )
+    x = os.path.split(file_layout.DS_FINAL_SCATTER)[1]
+    x2 = htmllib.CENTER(
+        htmllib.B("After Normalization") + htmllib.BR() +
+        htmllib.A(htmllib.IMG(height=400, src=x), href=x)
+        )
+    row1 = htmllib.TR(htmllib.TD(x1) + htmllib.TD(x2))
+
+    x = htmllib.TD(
+        htmllib.B("Figure 2: PCA Plots. ") +
+        "These plots show the gene expression profiles of the samples "
+        "plotted on the first two principal components.  "
+        "Each point represents a sample, and samples from the same data "
+        "set have the same color.  "
+        "If there are batch effects, the samples from the same data set "
+        "(the same color) will cluster together.  "
+        "If there are no batch effects, the colors should be mixed.",
+        colspan=2)
+    row2 = htmllib.TR(x)
+
+    w(htmllib.TABLE(row1 + row2, border=0, cellspacing=10, width="50%%"))
+    
+
+    # Format the current time.
+    end_time = time.time()
+    time_str = parselib.pretty_date(start_time)
+    x = int(end_time-start_time)
+    num_min = x / 60
+    num_secs = x % 60
+    if num_min == 0:
+        run_time = "%ss" % parselib.pretty_int(num_secs)
+    else:
+        run_time = "%sm %ss" % (parselib.pretty_int(num_min), num_secs)
+
+    # Get the hostname.
+    cmd = "hostname"
+    p = subprocess.Popen(
+        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+    wh, r = p.stdin, p.stdout
+    wh.close()
+    hostname = r.read().strip()
+    assert hostname, "I could not get the hostname."
+
+    w(htmllib.P())
+    w(htmllib.HR())
+    w(htmllib.EM(
+        "This analysis was run on %s on %s.  It took %s to complete." %
+        (time_str, hostname, run_time)))
+
+    w("</BODY>")
+    w("</HTML>")
+
+    x = "\n".join(lines) + "\n"
+    outfile = file_layout.REPORT
+    open(outfile, 'w').write(x)
+
 def _write_svd_coord(filename, PC, samples, dataset):
     if not PC:
         return
@@ -378,10 +520,13 @@ def main():
     if options.libpath:
         sys.path = options.libpath + sys.path
     # Import this after the library path is set.
+    import time
     import arrayio
     from genomicode import filelib
     from genomicode import archive
     from genomicode import genepattern
+
+    start_time = time.time()
 
     genepattern.fix_environ_path()
 
@@ -434,14 +579,16 @@ def main():
         options.python, options.arrayplot, options.cluster,
         file_layout, options.libpath)
     summarize_pca(options.povray, file_layout, matrices)
+    summarize_report(
+        filenames, matrices, options.num_factors, start_time, file_layout)
 
     # Archive the BFRM stuff, and the big files.
     if options.archive:
         print "Archiving results."
         archive.zip_path(file_layout.BFRM, noclobber=False)
         archive.zip_path(file_layout.ATTIC, noclobber=False)
-        archive.zip_path(file_layout.DS_PROC, noclobber=False)
-        archive.zip_path(file_layout.DS_FINAL, noclobber=False)
+        #archive.zip_path(file_layout.DS_PROC, noclobber=False)
+        #archive.zip_path(file_layout.DS_FINAL, noclobber=False)
 
     print "Done."
 

@@ -325,6 +325,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
                 check_each_row = True
             elif str(err1).startswith("invalid literal for float()"):
                 check_each_row = True
+            elif str(err1).startswith("could not convert string to float"):
+                check_each_row = True
             else:
                 raise
         if check_each_row:

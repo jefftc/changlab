@@ -15,7 +15,8 @@ import sys, os
 # 
 # summarize_probabilities
 # summarize_heatmap
-# summarize_parameters
+# summarize_signatures
+# summarize_report
 #
 # _hash_name
 
@@ -98,8 +99,11 @@ def read_signatures(
         ds.append(d)
     return ds
 
-def process_gp_imod_all_vars(gp_imod_all_vars, signatures):
+def process_gp_imod_all_vars(gp_imod_all_vars, signatures, why_dropped):
+    import copy
     import urllib
+
+    why_dropped = copy.copy(why_dropped)
     
     # Make a list of the options.
     options = []  # list of (key, value)
@@ -174,12 +178,14 @@ def process_gp_imod_all_vars(gp_imod_all_vars, signatures):
         
         if name not in name2options:
             name2options[name] = {}
-        assert parameter not in name2options[name], "duplicate"
+        assert parameter not in name2options[name], \
+               "%s has duplicate values for %s." % (name, parameter)
         name2options[name][parameter] = value
 
     # Process the parameters for each of the signatures.
     signatures_clean = []
     for sig in signatures:
+        sig = copy.copy(sig)
         options = name2options.get(sig.Name, {})
         # By default, let users choose custom values for each signature.
         yesno = options.get(YESNO, "custom")
@@ -193,6 +199,8 @@ def process_gp_imod_all_vars(gp_imod_all_vars, signatures):
             # all other parameters provided.
             #assert len(name2options[sig.Name]) == 1  # should be just "yesno"
             print "Signature %s disabled by user.  Skipping" % sig.Name
+            x = "User chose to skip %s signature." % sig.Name
+            why_dropped[sig.xID] = x
             continue
 
         # I do no checking on the values of the variables.  I will
@@ -240,7 +248,7 @@ def process_gp_imod_all_vars(gp_imod_all_vars, signatures):
         signatures_clean.append(sig)
     signatures = signatures_clean
 
-    return signatures
+    return signatures, why_dropped
 
 def make_file_layout(outpath):
     from genomicode import filelayout
@@ -263,6 +271,7 @@ def make_file_layout(outpath):
         File.DATASET_RMA("dataset.rma.gct"),
         File.DATASET_MAS5("dataset.mas5.gct"),
         File.PARAMETERS("parameters.txt"),
+        File.REPORT("REPORT.html"),
         File.FILES("FILES"),
         ]
     file_layout = Path.OUTPATH(outpath, *FILES)
@@ -467,7 +476,7 @@ def summarize_heatmap(python, arrayplot, cluster, libpath, file_layout):
 
 def summarize_signatures(signatures, file_layout):
     handle = open(file_layout.PARAMETERS, 'w')
-    x = ("xID", "Name", "Customized", "Genes", "Metagenes", "Normalization",
+    x = ("xID", "Name", "Customized", "Genes", "Metagenes", "Preprocessing",
          "Quantile Norm", "Shift-Scale Norm", "Train0", "Train1")
     print >>handle, "\t".join(x)
     for sig in signatures:
@@ -480,6 +489,207 @@ def summarize_signatures(signatures, file_layout):
              sig.Normalization, sig.Quantile, sig.Shift_Scale, train0, train1)
         print >>handle, "\t".join(map(str, x))
     handle.close()
+
+def summarize_report(
+    signatures, orig_signatures, start_time, why_dropped, file_layout):
+    import time
+    import subprocess
+    from genomicode import parselib
+    from genomicode import htmllib
+
+    def highlight(s):
+        return htmllib.SPAN(s, style="background-color:yellow")
+    def smaller(s):
+        return htmllib.FONT(s, size=-1)
+
+    id2orig = {}
+    for sig in orig_signatures:
+        id2orig[sig.xID] = sig
+
+    id2new = {}
+    for sig in signatures:
+        id2new[sig.xID] = sig
+
+    # Figure out which of the signatures were dropped.
+    missing_ids = []
+    for sig in orig_signatures:
+        if sig.xID in id2new:
+            continue
+        missing_ids.append(sig.xID)
+
+    # Make a list of all the signatures.
+    all_ids = {}.fromkeys(id2orig.keys() + id2new.keys())
+    schwartz = [(id2orig[x].Name, x) for x in all_ids]
+    schwartz.sort()
+    all_ids = [x[-1] for x in schwartz]
+    
+
+    lines = []
+    w = lines.append
+    w("<HTML>")
+    w(htmllib.HEAD(htmllib.TITLE("ScoreSignatures Report")))
+    w("<BODY>")
+    w(htmllib.CENTER(htmllib.H1(htmllib.EM("ScoreSignatures") + " Report")))
+
+    w(htmllib.H3("I.  Signatures"))
+
+    # Make a table with each of the signatures.
+    rows = []
+
+    x = htmllib.TR(
+        htmllib.TH("ID", align="LEFT") +
+        htmllib.TH("Signature", align="LEFT") +
+        htmllib.TH("Preprocessing", align="LEFT") +
+        htmllib.TH("Genes", align="LEFT") +
+        htmllib.TH("Metagenes", align="LEFT") +
+        htmllib.TH("Normalization", align="LEFT")
+        )
+    rows.append(x)
+    
+    which_changed = {}  # ID -> 1
+    for id in all_ids:
+        orig = id2orig[id]
+
+        w("<TR>")
+
+        cols = [
+            htmllib.TD(orig.xID),
+            htmllib.TD(orig.Name),
+            ]
+
+        sig = id2new.get(id)
+        if not sig:
+            x = why_dropped.get(orig.xID, "Skipped for unknown reason.")
+            x = htmllib.TD(highlight(x), colspan=4)
+            cols.append(x)
+            rows.append(
+                htmllib.TR("\n".join(cols)))
+            continue
+        
+        # Preprocessing
+        x = sig.Normalization
+        if sig.Normalization != orig.Normalization:
+            which_changed[sig.xID] = 1
+            x = "%s<BR>%s" % (
+                highlight(sig.Normalization),
+                smaller(htmllib.EM("default: %s" % orig.Normalization)))
+        cols.append(htmllib.TD(x))
+
+        # Genes
+        x = sig.Genes
+        if sig.Genes != orig.Genes:
+            which_changed[sig.xID] = 1
+            x = "%s<BR>%s" % (
+                highlight(sig.Genes),
+                smaller(htmllib.EM("default: %s" % orig.Genes)))
+        cols.append(htmllib.TD(x))
+        
+        # Metagenes
+        x = sig.Metagenes
+        if sig.Metagenes != orig.Metagenes:
+            which_changed[sig.xID] = 1
+            x = "%s<BR>%s" % (
+                highlight(sig.Metagenes),
+                smaller(htmllib.EM("default: %s" % orig.Metagenes)))
+        cols.append(htmllib.TD(x))
+
+        # Normalization
+        norm = []
+        if sig.Quantile.upper() == "YES":
+            norm.append("Quantile")
+        if sig.Shift_Scale.upper() == "YES":
+            norm.append("Shift-Scale")
+        norm_str = "None"
+        if norm:
+            norm_str = " and ".join(norm)
+        if sig.Quantile.upper() != orig.Quantile.upper() or \
+           sig.Shift_Scale.upper() != orig.Shift_Scale.upper():
+            which_changed[sig.xID] = 1
+            norm = []
+            if orig.Quantile.upper() == "YES":
+                norm.append("Quantile")
+            if orig.Shift_Scale.upper() == "YES":
+                norm.append("Shift-Scale")
+            x = "None"
+            if norm:
+                x = " and ".join(norm)
+            norm_str = "%s<BR>%s" % (
+                highlight(norm_str), smaller(htmllib.EM("default: %s" % x)))
+        cols.append(htmllib.TD(norm_str))
+
+        #assert sig_changed == getattr(sig, "Changed", False), "%s %s %s" % (
+        #   sig.Name, sig_changed, getattr(sig, "Changed", "missing"))
+        x = htmllib.TR("\n".join(cols))
+        rows.append(x)
+        
+    w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
+
+    w(htmllib.P())
+    w(htmllib.B("Table 1: Signatures Analyzed."))
+    if not which_changed:
+        w("All signatures were run with the default parameters, "
+          "as shown above.")
+    else:
+        w("The customized parameters are highlighted in yellow.")
+
+    w(htmllib.P())
+
+    w(htmllib.H3("II.  Results"))
+
+    prob_file = os.path.split(file_layout.PROBABILITIES_PNG)[1]
+    w(htmllib.A(htmllib.IMG(height=768, src=prob_file), href=prob_file))
+
+    w(htmllib.P())
+
+    w(htmllib.B("Figure 1: Predictions."))
+    w("In this heatmap, each row contains a signature and each column "
+      "contains a sample from your data set.")
+    if which_changed:
+        #names = sorted([id2orig[x].Name for x in which_changed])
+        w("The asterisks denote the signatures that were run with "
+          "customized parameters.")
+    w("The color corresponds to the probability that a pathway is activated "
+      "in a sample.")
+    w("Warm colors represent high probabilities, and cool colors low.\n")
+
+    w(htmllib.P())
+    prob_file = os.path.split(file_layout.PROBABILITIES_PCL)[1]
+    w("The raw values from this plot are available as a "
+      'PCL-formatted file: %s' % htmllib.A(prob_file, href=prob_file))
+
+    # Format the current time.
+    end_time = time.time()
+    time_str = parselib.pretty_date(start_time)
+    x = int(end_time-start_time)
+    num_min = x / 60
+    num_secs = x % 60
+    if num_min == 0:
+        run_time = "%ss" % parselib.pretty_int(num_secs)
+    else:
+        run_time = "%sm %ss" % (parselib.pretty_int(num_min), num_secs)
+
+    # Get the hostname.
+    cmd = "hostname"
+    p = subprocess.Popen(
+        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+    wh, r = p.stdin, p.stdout
+    wh.close()
+    hostname = r.read().strip()
+    assert hostname, "I could not get the hostname."
+
+    w(htmllib.P())
+    w(htmllib.HR())
+    w(htmllib.EM(
+        "This analysis was run on %s on %s.  It took %s to complete.\n" %
+        (time_str, hostname, run_time)))
+    
+    w("</BODY>")
+    w("</HTML>")
+
+    x = "\n".join(lines) + "\n"
+    outfile = file_layout.REPORT
+    open(outfile, 'w').write(x)
 
 def _hash_name(name):
     import re
@@ -527,7 +737,11 @@ def main():
         default=None,
         help="Special internal variable for use with GenePattern "
         "interactive modules.")
-
+    parser.add_option(
+        "", "--debug_gp_imod_all_vars", action="store_true", default=False, 
+        dest="debug_gp_imod_all_vars",
+        )
+    
     #group = OptionGroup(parser, "Normalization")
     #group.add_option(
     #    "", "--normalization", dest="normalization", default="MAS5",
@@ -575,39 +789,50 @@ def main():
     sigdb_path = os.path.realpath(sigdb_path)
 
     # DEBUG the gp_imod_all_vars variable.
-    #assert not options.gp_imod_all_vars
-    #options.gp_imod_all_vars = (
-    #    "mas5_expression_file_cb=file&mas5_expression_file_url=&"
-    #    "rma_expression_file_cb=file&rma_expression_file_url=&"
-    #    "sig_AKT=no&"
-    #    "sig_BCAT=yes (custom parameters)&"
-    #    "sig_BCAT_apply_quantile_normalization=no&"
-    #    "sig_BCAT_apply_shiftscale_normalization=no&"
-    #    "sig_BCAT_num_genes=85&sig_BCAT_num_metagenes=2&"
-    #    "sig_E2F1=yes (custom parameters)&"
-    #    "sig_E2F1_apply_quantile_normalization=yes&"
-    #    "sig_E2F1_apply_shiftscale_normalization=yes&"
-    #    "sig_E2F1_num_genes=150&sig_E2F1_num_metagenes=2&"
-    #    "sig_EGFR=yes (custom parameters)&"
-    #    "sig_EGFR_apply_quantile_normalization=no&"
-    #    "sig_EGFR_apply_shiftscale_normalization=yes&"
-    #    #"sig_EGFR_num_genes=50000&sig_EGFR_num_metagenes=2&"
-    #    "sig_EGFR_num_genes=501&sig_EGFR_num_metagenes=2&"
-    #    "sig_ER=yes (custom parameters)&"
-    #    "sig_ER_apply_quantile_normalization=yes&"
-    #    "sig_ER_apply_shiftscale_normalization=yes&"
-    #    "sig_ER_num_genes=125&sig_ER_num_metagenes=2&"
-    #    "sig_HER2=yes (default parameters)&"
-    #    "sig_IFNalpha=yes (default parameters)&"
-    #    "sig_IFNgamma=yes (default parameters)&"
-    #    "sig_MYC=yes (default parameters)&sig_P53=yes (default parameters)&"
-    #    "sig_P63=yes (default parameters)&sig_PI3K=yes (default parameters)&"
-    #    "sig_PR=yes (default parameters)&sig_RAS=yes (default parameters)&"
-    #    "sig_SRC=yes (default parameters)&sig_STAT3=yes (default parameters)&"
-    #    "sig_TGFB=yes (default parameters)&sig_TNFa=yes (default parameters)&"
-    #    "which_signatures=I choose myself"
-    #    )
-
+    if options.debug_gp_imod_all_vars:
+        assert not options.gp_imod_all_vars
+        options.gp_imod_all_vars = (
+            "mas5_expression_file_cb=file&mas5_expression_file_url=&"
+            "rma_expression_file_cb=file&rma_expression_file_url=&"
+            # Skip AKT signature.
+            "sig_AKT=no&"
+            # Change BCAT normalization.
+            "sig_BCAT=yes (custom parameters)&"
+            "sig_BCAT_apply_quantile_normalization=no&"
+            "sig_BCAT_apply_shiftscale_normalization=no&"
+            "sig_BCAT_num_genes=85&sig_BCAT_num_metagenes=2&"
+            # No changes in E2F1.
+            "sig_E2F1=yes (custom parameters)&"
+            "sig_E2F1_apply_quantile_normalization=yes&"
+            "sig_E2F1_apply_shiftscale_normalization=yes&"
+            "sig_E2F1_num_genes=150&sig_E2F1_num_metagenes=2&"
+            # Change genes in EGFR.
+            "sig_EGFR=yes (custom parameters)&"
+            "sig_EGFR_apply_quantile_normalization=no&"
+            "sig_EGFR_apply_shiftscale_normalization=yes&"
+            #"sig_EGFR_num_genes=50000&sig_EGFR_num_metagenes=2&"
+            "sig_EGFR_num_genes=501&sig_EGFR_num_metagenes=2&"
+            # Change quantile, genes, metagenes in ER.
+            "sig_ER=yes (custom parameters)&"
+            "sig_ER_apply_quantile_normalization=no&"
+            "sig_ER_apply_shiftscale_normalization=yes&"
+            "sig_ER_num_genes=150&sig_ER_num_metagenes=3&"
+            "sig_HER2=yes (default parameters)&"
+            "sig_IFNalpha=yes (default parameters)&"
+            "sig_IFNgamma=yes (default parameters)&"
+            "sig_MYC=yes (default parameters)&"
+            "sig_P53=yes (default parameters)&"
+            "sig_P63=yes (default parameters)&"
+            "sig_PI3K=yes (default parameters)&"
+            "sig_PR=yes (default parameters)&"
+            "sig_RAS=yes (default parameters)&"
+            "sig_SRC=yes (default parameters)&"
+            "sig_STAT3=yes (default parameters)&"
+            "sig_TGFB=yes (default parameters)&"
+            "sig_TNFa=yes (default parameters)&"
+            "which_signatures=I choose myself"
+            )
+        
     datafile_rma = datafile_mas5 = None
     if options.rma_dataset is not None:
         assert os.path.exists(options.rma_dataset), "RMA file not found."
@@ -621,6 +846,7 @@ def main():
     if options.libpath:
         sys.path = options.libpath + sys.path
     # Import after the library path is set.
+    import time
     import arrayio
     from genomicode import jmath
     from genomicode import parallel
@@ -628,6 +854,8 @@ def main():
     from genomicode import archive
     from genomicode import binreg
     from genomicode import genepattern
+
+    start_time = time.time()
     
     genepattern.fix_environ_path()
     
@@ -637,6 +865,7 @@ def main():
     # Read the signatures and select the ones to score.
     # BUG: Should allow this to be specified on the command line.
     desired_tags = ["Production"]
+    all_normalization = ["RMA", "MAS5"]
     desired_normalization = []
     if datafile_rma is not None:   # RMA datafile is specified.
         desired_normalization.append("RMA")
@@ -650,9 +879,34 @@ def main():
     if options.signature_ids:
         desired_ids = options.signature_ids[:]
     x = read_signatures(
-        sigdb_path, desired_normalization, desired_ids, desired_tags)
+        sigdb_path, all_normalization, desired_ids, desired_tags)
     signatures = x
+    orig_signatures = signatures[:]
     assert signatures, "No signatures available."
+
+    # Filter for just the normalization that we have data files for.
+    # Keep track of why we filtered out certain signatures.
+    why_dropped = {}  # ID -> explanation as string
+    good = []
+    for sig in signatures:
+        if sig.Normalization.upper() in desired_normalization:
+            good.append(sig)
+            continue
+        x = "Signature requires a %s file, but one was not provided." % (
+            sig.Normalization.upper())
+        why_dropped[sig.xID] = x
+    signatures = good
+
+    # Process additional parameters from GenePattern.
+    # o Do this before max_signatures, so that the maximum signatures
+    #   is selected only out of the ones that the user specified.
+    # o Do this before names and paths, so the variables will be
+    #   aligned.
+    # gp_imod_all_vars can be None or "".
+    if options.gp_imod_all_vars:
+        x = process_gp_imod_all_vars(
+            options.gp_imod_all_vars, signatures, why_dropped)
+        signatures, why_dropped = x
 
     print "Reading gene expression data."
     sys.stdout.flush()
@@ -679,16 +933,6 @@ def main():
     if DATA_mas5:
         arrayio.gct_format.write(
             DATA_mas5, open(file_layout.DATASET_MAS5, 'w'))
-
-    # Process additional parameters from GenePattern.
-    # o Do this before max_signatures, so that the maximum signatures
-    #   is selected only out of the ones that the user specified.
-    # o Do this before names and paths, so the variables will be
-    #   aligned.
-    # gp_imod_all_vars can be None or "".
-    if options.gp_imod_all_vars:
-        signatures = process_gp_imod_all_vars(
-            options.gp_imod_all_vars, signatures)
 
     # Figure out the names and paths for each signature.
     names = [None] * len(signatures)
@@ -762,13 +1006,14 @@ def main():
                   "Predicting 1 signature at a time.")
             options.num_procs = 1
         sys.stdout.flush()
-        
-    if options.num_procs <= 1:
-        for x in jobs:
-            cmd, outpath, outfile = x
-            run_one_pybinreg(cmd, outpath, outfile)
-    else:
-        run_many_pybinreg(jobs, options.num_procs)
+
+    if 1:  # Can disable temporarily for debugging.
+        if options.num_procs <= 1:
+            for x in jobs:
+                cmd, outpath, outfile = x
+                run_one_pybinreg(cmd, outpath, outfile)
+        else:
+            run_many_pybinreg(jobs, options.num_procs)
 
     if signatures:
         print "Combining probabilities from each of the signatures."
@@ -782,6 +1027,10 @@ def main():
 
         print "Summarizing signatures."
         summarize_signatures(signatures, file_layout)
+
+        print "Making a report."
+        summarize_report(
+            signatures, orig_signatures, start_time, why_dropped, file_layout)
 
     if options.archive:
         print "Compressing results."

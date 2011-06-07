@@ -5,8 +5,12 @@ Functions:
 parse_ranges
 
 pretty_int
+pretty_ordinal
 pretty_range
 pretty_pvalue
+pretty_date
+pretty_list
+
 
 HTML PARSING
 remove                 Remove text from a string.
@@ -125,6 +129,20 @@ def pretty_int(num):
     pretty = ",".join(groups)
     return pretty
 
+def pretty_ordinal(num):
+    # Negative numbers and 0 not handled.
+    assert type(num) is type(0)
+    assert num >= 1
+    suffix = "th"
+    if num == 1:
+        suffix = "st"
+    elif num == 2:
+        suffix = "nd"
+    elif num == 3:
+        suffix = "rd"
+    return "%d%s" % (num, suffix)
+    
+
 def pretty_range(start, stop):
     # Return a list of numbers from start to stop-1.  e.g.  "000",
     # "001", ... <stop-1>
@@ -149,6 +167,31 @@ def pretty_pvalue(pvalue, nsig=1):
     digits_after_decimal += nsig - 1  # add more significant digits
     x = "%.*f" % (digits_after_decimal, pvalue)
     return x
+
+def pretty_date(ctime=None, format=None):
+    # ctime should be seconds since epoch or struct_time.
+    import time
+
+    ctime = ctime or time.time()
+    # e.g. Monday, 06 June 2011, 01:09 PM
+    format = format or "%A, %d %B %Y, %I:%M %p"
+    
+    if type(ctime) is type(0.0):
+        ctime = time.localtime(ctime)
+    time_str = time.strftime(format, ctime)
+    return time_str
+
+def pretty_list(items):
+    assert len(items) >= 0
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return "%s and %s" % (items[0], items[1])
+    x = ", ".join(items[:-1])
+    return "%s, and %s" % (x, items[-1])
+
 
 # NOTE: The functions in this package use quick and dirty regular
 # expressions to handle HTML.  There are cases where the code can get

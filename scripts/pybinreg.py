@@ -27,6 +27,7 @@ import os, sys
 # summarize_signature_heatmap
 # summarize_dataset_heatmap
 # summarize_predictions
+# summarize_report
 
 MAX_ANALYSES = 100   # Maximum number of analyses to do at a time.
 
@@ -137,6 +138,23 @@ class PyBinregParams:
         assert self.samples > 0
         assert self.skips >= 0
         assert self.credible_interval >= 0 and self.credible_interval <= 100
+
+class AnalysisDetails:
+    # Keeps track of miscellaneous details of the analysis to help in
+    # generating the report.
+    def __init__(self):
+        self.script_start_time = None
+        self.job_start_time = None
+        
+        self.train0_file = None
+        self.train1_file = None
+        self.test_file = None
+
+        self.train0 = None
+        self.train1 = None
+        self.test = None
+
+        self.num_analyses = None
 
 def parse_yaml_options(filename):
     import yaml
@@ -294,6 +312,7 @@ def make_file_layout(outpath, num_analyses, gene, metagene):
         File.PREDICTIONS_PNG("predictions.png"),
         File.SIGNATURE_PNG("signature.png"),
         File.MODEL("model.txt"),
+        File.REPORT("REPORT.html"),
         ]
     
     if num_analyses > 1:
@@ -303,6 +322,10 @@ def make_file_layout(outpath, num_analyses, gene, metagene):
         GLOBAL_FILES = GLOBAL_FILES + [
             File.GLOBAL_PROBABILITIES("probabilities.%s.txt" % analysis),
             File.GLOBAL_PREDICTIONS_PNG("predictions.%s.png" % analysis),
+            File.GLOBAL_SIGNATURE_PNG("signature.%s.png" % analysis),
+            ]
+        GLOBAL_FILES = GLOBAL_FILES + [
+            File.GLOBAL_REPORT("REPORT.html"),
             ]
     
     file_layout = Path.OUTPATH(outpath, *(GLOBAL_FILES+LOCAL_FILES))
@@ -785,6 +808,270 @@ def summarize_predictions(povray, file_layout):
     assert os.path.exists(file_layout.PREDICTIONS_PNG), \
            "Failed to plot predictions."
 
+def summarize_report(
+    outpath, params, details, file_layout, num_genes, num_metagenes):
+    # If num_genes and num_metagenes are given, then will create a
+    # report for a single analysis.  If they are None, then will
+    # create a report for the global analysis.
+    import time
+    import subprocess
+    from genomicode import parselib
+    from genomicode import htmllib
+
+    global_report = num_genes is None or num_metagenes is None
+    if global_report:
+        num_genes = params.genes
+        num_metagenes = params.metagenes
+    else:
+        num_genes = [num_genes]
+        num_metagenes = [num_metagenes]
+    
+    def highlight(s):
+        return htmllib.SPAN(s, style="background-color:yellow")
+
+    lines = []
+    w = lines.append
+    w("<HTML>")
+    w(htmllib.HEAD(htmllib.TITLE("CreateSignatures Report")))
+    w("<BODY>")
+    w(htmllib.CENTER(htmllib.H1(htmllib.EM("CreateSignatures") + " Report")))
+
+    w(htmllib.H3("I.  Analysis"))
+
+    items = []
+
+    # Files.
+    t0 = os.path.split(details.train0_file)[1]
+    t1 = os.path.split(details.train1_file)[1]
+    te = None
+    if details.test_file:
+        te = os.path.split(details.test_file)[1]
+    x = "I ran a signature analysis using a training set of %s and %s." % (
+        highlight(t0), highlight(t1))
+    if te:
+        x += "  I generated predictions on %s." % highlight(te)
+    items.append(x)
+
+    # Algorithm.
+    genes = "a range of genes"
+    metagenes = "a range of metagenes"
+    if len(num_genes) == 1:
+        genes = highlight("%d genes" % num_genes[0])
+    if len(num_metagenes) == 1:
+        metagenes = highlight("%d metagenes" % num_metagenes[0])
+        if num_metagenes[0] == 1:
+            metagenes = metagenes.replace("genes", "gene")
+    x = "I used the %s algorithm with %s and %s." % (
+        highlight("BinReg %d" % params.binreg_version), genes, metagenes)
+    items.append(x)
+        
+    # Logging the data.
+    logged = []
+    if params.log_train0:
+        logged.append(t0)
+    if params.log_train1:
+        logged.append(t1)
+    if params.log_test:
+        assert te
+        logged.append(te)
+    logged_str = None
+    if len(logged) == 1:
+        logged_str = logged[0]
+    elif len(logged) == 2:
+        logged_str = "%s and %s" % tuple(logged)
+    elif len(logged) == 3:
+        logged_str = "%s, %s, and %s" % tuple(logged)
+    if logged_str:
+        x = "I logged the expression values in %s." % logged_str
+        items.append(x)
+
+    # Normalization.
+    norm = []
+    if params.quantile:
+        norm.append("quantile")
+    if params.shiftscale:
+        norm.append("Shift-Scale")
+    if params.dwd:
+        norm.append("DWD")
+    if params.dwd_bild:
+        norm.append("DWD (Bild method)")
+    norm_str = None
+    if len(norm) == 1:
+        norm_str = highlight(norm[0])
+    elif len(norm) == 2:
+        norm_str = "%s and %s" % tuple(map(highlight, norm))
+    elif len(norm) == 3:
+        norm_str = "%s, %s, and %s" % tuple(map(highlight, norm))
+    elif len(norm) == 4:
+        norm_str = "%s, %s, %s, and %s" % tuple(map(highlight, norm))
+    if norm_str:
+        x = "I applied %s normalization." % norm_str
+    else:
+        x = "I did not normalize the data."
+    items.append(x)
+        
+    # Strip Affymetrix control probes.
+    if params.strip_affx:
+        x = "As requested, I stripped the Affymetrix control probes."
+        items.append(x)
+
+    # MCMC
+    x = ("For the statistical (Markov chain Monte Carlo) simulation, I "
+         "discarded %s samples for the burn-in and then collected %s "
+         "samples for the model." % (
+             parselib.pretty_int(params.burnin),
+             parselib.pretty_int(params.samples)))
+    if params.skips > 1:
+        x += "  During the sampling, I recorded every %s sample." % (
+            parselib.pretty_ordinal(params.skips))
+    items.append(x)
+
+    items = [htmllib.LI() + x for x in items]
+    items_str = "\n".join(items)
+    w(htmllib.UL(items_str))
+
+    w(htmllib.P())
+
+    w(htmllib.H3("II.  Results"))
+
+    # Put together a table with the results.
+    rows = []
+
+    jobs = []
+    for ng in num_genes:
+        for nm in num_metagenes:
+            jobs.append((ng, nm))
+
+    for i, (ng, nm) in enumerate(jobs):
+        fl = make_file_layout(outpath, details.num_analyses, ng, nm)
+
+        if i > 0:
+            # Make a divider between the rows.
+            x = htmllib.TR(htmllib.TD(htmllib.HR(), colspan=2))
+            rows.append(x)
+
+        # Make the heading for this set of parameters.
+        x = htmllib.TR(
+            htmllib.TD(
+                htmllib.H3("%d Genes, %d Metagenes" % (ng, nm)),
+                colspan=2, align="CENTER"))
+        rows.append(x)
+                       
+
+        if params.noplots:
+            sig_file = None
+        elif global_report:
+            sig_file = os.path.split(fl.GLOBAL_SIGNATURE_PNG)[1]
+        else:
+            sig_file = os.path.split(fl.SIGNATURE_PNG)[1]
+        if not sig_file:
+            x = "No plot generated."
+        else:
+            x = htmllib.A(htmllib.IMG(height=480, src=sig_file), href=sig_file)
+        col1 = htmllib.TD(x)
+            
+        if params.noplots:
+            pred_file = None
+        elif global_report:
+            pred_file = os.path.split(fl.GLOBAL_PREDICTIONS_PNG)[1]
+        else:
+            pred_file = os.path.split(fl.PREDICTIONS_PNG)[1]
+        if not pred_file:
+            x = "No plot generated."
+        else:
+            x = htmllib.A(
+                htmllib.IMG(height=480, src=pred_file), href=pred_file)
+        col2 = htmllib.TD(x)
+
+        x = htmllib.TR(col1+col2)
+        rows.append(x)
+            
+        col1 = htmllib.TD(
+            htmllib.B("Figure 1: Signature Heatmap. ") +
+            "In this heatmap, each row represents a gene in the signature. "
+            "The first %d columns are the samples from the <EM>train 0</EM> "
+            "data set, and the remaining %d columns are the samples from the "
+            "<EM>train 1</EM> data set. "
+            "Warm colors indicate high expression of the gene, and cool "
+            "colors indicate low expression." % (
+                details.train0.ncol(), details.train1.ncol()),
+            valign="TOP")
+
+        x = (
+            "<B>Figure 2: Predictions.</B> "
+            "This scatter plot shows the predictions from the signature "
+            "for each sample. "
+            "On the Y-axis, high probabilities indicate that the gene "
+            "expression profile of the sample better resembles the train 1 "
+            "class, while low probabilities indicate a closer resemblance "
+            "to train 0."
+            "The blue and red circles are the predictions (from "
+            "leave-one-out cross-validation) on the train 0 and train 1 "
+            "samples, respectively. ")
+        if details.test_file:
+            x += "The black squares are the predictions on the test samples. "
+        x += "The error bars show the %d%% credible interval. " % \
+             params.credible_interval
+        x += (
+            "The X-axis, the Metagene Score, is the magnitude of the "
+            "sample on the first principal component. "
+            "This is used only to separate the samples on the plot, and "
+            "we do not further interpret these values.")
+        prob_file = os.path.split(fl.PROBABILITIES)[1]
+        if global_report:
+            prob_file = os.path.split(fl.GLOBAL_PROBABILITIES)[1]
+        x += htmllib.P() + (
+            "The raw values from this plot are available as a "
+            'tab-delimited text file: <A HREF="%s">%s</A>.' % (
+                prob_file, prob_file))
+        col2 = htmllib.TD(x, valign="TOP")
+        x = htmllib.TR(col1+col2)
+        rows.append(x)
+
+    rows_str = "\n".join(rows)
+    w(htmllib.TABLE(rows_str, border=0, cellspacing=10))
+
+    # Format the current time.
+    start_time = details.job_start_time
+    if global_report or details.num_analyses == 1:
+        start_time = details.script_start_time
+    end_time = time.time()
+
+    time_str = parselib.pretty_date(start_time)
+    x = int(end_time-start_time)
+    num_min = x / 60
+    num_secs = x % 60
+    if num_min == 0:
+        run_time = "%ss" % parselib.pretty_int(num_secs)
+    else:
+        run_time = "%sm %ss" % (parselib.pretty_int(num_min), num_secs)
+
+    # Get the hostname.
+    cmd = "hostname"
+    p = subprocess.Popen(
+        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+    wh, r = p.stdin, p.stdout
+    wh.close()
+    hostname = r.read().strip()
+    assert hostname, "I could not get the hostname."
+
+    w(htmllib.P())
+    w(htmllib.HR())
+    w(htmllib.EM(
+        "This analysis was run on %s on %s.  It took %s to complete.\n" %
+        (time_str, hostname, run_time)))
+
+    w("</BODY>")
+    w("</HTML>")
+
+    x = "\n".join(lines) + "\n"
+    outfile = file_layout.REPORT
+    if global_report:
+        outfile = file_layout.GLOBAL_REPORT
+    open(outfile, 'w').write(x)
+    
+
 ## def make_FILES(files):
 ##     handle = open(files.FILES, 'w')
 ##     w = handle.write
@@ -929,6 +1216,7 @@ def main():
     if options.libpath:
         sys.path = options.libpath + sys.path
     # Import after the library path is set.
+    import time
     import arrayio
     from genomicode import filelib
     from genomicode import archive
@@ -976,6 +1264,12 @@ def main():
             print "No test file, so disabling DWD (Bild) normalization."
             options.dwd_bild = False
 
+    details = AnalysisDetails()
+    details.script_start_time = time.time()
+    details.train0_file = train0_file
+    details.train1_file = train1_file
+    details.test_file = test_file
+
     # Read each of the input files and align them.
     x = read_matrices(train0_file, train1_file, test_file)
     train0, train1, test = x
@@ -988,6 +1282,8 @@ def main():
         options.outpath, num_analyses,
         pybr_params.genes[0], pybr_params.metagenes[0])
     init_paths(file_layout)
+
+    details.num_analyses = num_analyses
 
     # To debug creation of scatterplot.
     #summarize_predictions(options.povray, file_layout); return
@@ -1034,8 +1330,11 @@ def main():
             binreg_path=options.binreg_path)
         write_dataset(file_layout.DS_SS, train0, train1, test)
 
-    print "Writing final dataset."
+    print "Writing processed dataset."
     write_dataset(file_layout.DS_FINAL, train0, train1, test)
+    details.train0 = train0
+    details.train1 = train1
+    details.test = test
 
     # Make a list of the analyses to do.
     analyses = []  # list of (gene, metagene)
@@ -1053,6 +1352,7 @@ def main():
         if metagene == 1:
             x = x.replace("metagenes", "metagene")
         print x
+        details.job_start_time = time.time()
         
         # Generate the file layout for this analysis.
         file_layout = make_file_layout(
@@ -1084,7 +1384,7 @@ def main():
         summarize_parameters(pybr_params, file_layout, gene, metagene)
         summarize_probabilities(train0, train1, test, file_layout)
         summarize_signature_dataset(file_layout)
-        
+
         # Make some plots, if desired.
         if not pybr_params.noplots:
             summarize_signature_heatmap(
@@ -1094,6 +1394,11 @@ def main():
                 options.python, options.arrayplot, options.cluster,
                 file_layout, options.libpath)
             summarize_predictions(options.povray, file_layout)
+
+        # Make a report for this analysis.
+        summarize_report(
+            options.outpath, pybr_params, details, file_layout,
+            gene, metagene)
         sys.stdout.flush()
 
         # Don't need, because archive takes care of it.
@@ -1113,6 +1418,7 @@ def main():
         files_to_copy = [
             (fl.PROBABILITIES, fl.GLOBAL_PROBABILITIES),
             (fl.PREDICTIONS_PNG, fl.GLOBAL_PREDICTIONS_PNG),
+            (fl.SIGNATURE_PNG, fl.GLOBAL_SIGNATURE_PNG),
             ]
         for src, dst in files_to_copy:
             assert os.path.exists(src)
@@ -1121,6 +1427,11 @@ def main():
         if pybr_params.archive:
             archive.zip_path(file_layout.ANALYSIS)
         sys.stdout.flush()
+
+    if num_analyses > 1:
+        summarize_report(
+            options.outpath, pybr_params, details, file_layout,
+            None, None)
 
     if pybr_params.archive:
         if os.path.exists(file_layout.BINREG):

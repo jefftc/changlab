@@ -11,7 +11,27 @@ place_ticks
 """
 # _choose_tick_delta
 
-def plot_heatmap(
+def plot_heatmap(infile, outfile, xpix, ypix, **keywds):
+    import os
+    import sys
+    import subprocess
+    
+    cmd = plot_heatmap_cmd(infile, outfile, xpix, ypix, **keywds)
+    p = subprocess.Popen(
+        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+    w, r = p.stdin, p.stdout
+    w.close()
+    output = r.read()
+
+    # Make sure the signature was generated correctly.  An error could
+    # mean that arrayplot.py or cluster is missing.
+    if not os.path.exists(outfile):
+        print >>sys.stderr, output
+        raise AssertionError, "Failed to make dataset."
+    return output
+
+def plot_heatmap_cmd(
     infile, outfile, xpix, ypix, color=None,
     show_colorbar=None, show_grid=None, 
     scale=None, gain=None, no_autoscale=False, 
@@ -19,10 +39,6 @@ def plot_heatmap(
     gene_center=None, gene_normalize=None,
     array_label=False, cluster_arrays=False,
     python=None, arrayplot=None, cluster=None, libpath=None):
-    import os
-    import sys
-    import subprocess
-
     # If arrayplot is not supplied, then use the default arrayplot.py.
     # This may not be in the current path, so be sure not to include
     # python.
@@ -72,24 +88,8 @@ def plot_heatmap(
 
     # If python is None, then ignore it.
     cmd = [x for x in cmd if x is not None]
-
     cmd = " ".join(cmd)
-    #print cmd
-    #w, r = os.popen4(cmd)
-    p = subprocess.Popen(
-        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
-    w, r = p.stdin, p.stdout
-    w.close()
-    output = r.read()
-
-    # Make sure the signature was generated correctly.  An error could
-    # mean that arrayplot.py or cluster is missing.
-    if not os.path.exists(outfile):
-        print >>sys.stderr, output
-        raise AssertionError, "Failed to make dataset."
-
-    return output
+    return cmd
 
 def find_tall_heatmap_size(
     nrow, ncol, min_box_height=None, min_box_width=None,

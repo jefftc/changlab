@@ -113,10 +113,11 @@ class HeatmapLayout:
         self.ncol = ncol
         self.boxwidth = boxwidth
         self.boxheight = boxheight
-        self.grid = grid
         self.color_fn = color_fn
         self.BORDER = 1
         self.GRID_SIZE = 1
+        if not grid:
+            self.GRID_SIZE = 0
         assert self.GRID_SIZE <= self.BORDER
     def width(self):
         return self.size()[0]
@@ -127,18 +128,16 @@ class HeatmapLayout:
         width = self.BORDER*2
         height += self.boxheight * self.nrow
         width += self.boxwidth * self.ncol
-        if self.grid:
-            height += (self.nrow-1) * self.GRID_SIZE
-            width += (self.ncol-1) * self.GRID_SIZE
+        height += (self.nrow-1) * self.GRID_SIZE
+        width += (self.ncol-1) * self.GRID_SIZE
         return width, height
     def coord(self, row, col):
         x = self.BORDER
         y = self.BORDER
         x += col * self.boxwidth
         y += row * self.boxheight
-        if self.grid:
-            x += col * self.GRID_SIZE
-            y += row * self.GRID_SIZE
+        x += col * self.GRID_SIZE
+        y += row * self.GRID_SIZE
         return x, y, self.boxwidth, self.boxheight
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
@@ -626,7 +625,8 @@ def make_layout(
     cb_layout = None
     if colorbar:
         x = _calc_colorbar_size(
-            hm_layout.width(), hm_layout.height(), boxwidth, boxheight)
+            hm_layout.width(), hm_layout.height(), hm_layout.GRID_SIZE,
+            boxwidth, boxheight)
         width, height = x
         x = _calc_colorbar_ticks(
             width, height, signal_0, signal_1, plotlib)
@@ -646,9 +646,8 @@ def make_layout(
         assert gene_tree_scale > 0
         assert gene_tree_thickness > 0
         width, height = boxwidth, boxheight
-        if grid:
-            width += hm_layout.GRID_SIZE
-            height += hm_layout.GRID_SIZE
+        width += hm_layout.GRID_SIZE
+        height += hm_layout.GRID_SIZE
         gd_layout = GeneDendrogramLayout(
             MATRIX.nrow(), MATRIX.ncol(), width, height,
             gene_tree_scale, gene_tree_thickness, 
@@ -659,9 +658,8 @@ def make_layout(
         assert array_tree_scale > 0
         assert array_tree_thickness > 0
         width, height = boxwidth, boxheight
-        if grid:
-            width += hm_layout.GRID_SIZE
-            height += hm_layout.GRID_SIZE
+        width += hm_layout.GRID_SIZE
+        height += hm_layout.GRID_SIZE
         #print "HERE", width, height
         ad_layout = ArrayDendrogramLayout(
             MATRIX.nrow(), MATRIX.ncol(), width, height,
@@ -702,16 +700,14 @@ def make_layout(
     if label_genes and gl_fontsize:
         gene_labels = _get_gene_labels(MATRIX)
         height = boxheight
-        if grid:
-            height += hm_layout.GRID_SIZE
+        height += hm_layout.GRID_SIZE
         widths = [plotlib.get_text_size(x, gl_fontsize)[0]
                   for x in gene_labels]
         gl_layout = GeneLabelLayout(height, widths, gl_fontsize)
     if label_arrays and al_fontsize:
         array_labels = _get_array_labels(MATRIX)
         width = boxwidth
-        if grid:
-            width += hm_layout.GRID_SIZE
+        width += hm_layout.GRID_SIZE
         widths = [plotlib.get_text_size(x, al_fontsize)[0]
                   for x in array_labels]
         al_layout = ArrayLabelLayout(width, widths, al_fontsize)
@@ -1398,8 +1394,7 @@ def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
     width, height = layout.size()
 
     # Draw the underlying grid.
-    if layout.grid:
-        plotlib.rectangle(image, xoff, yoff, width, height, GRID_COLOR)
+    plotlib.rectangle(image, xoff, yoff, width, height, GRID_COLOR)
     
     # Draw a border around the heatmap.
     plotlib.rectangle(image, xoff, yoff, width, height, None, BORDER_COLOR)
@@ -1745,29 +1740,35 @@ def _get_array_labels(MATRIX):
         labels[i] = x
     return labels
 
-def _calc_colorbar_size(hm_width, hm_height, box_width, box_height):
+def _calc_colorbar_size(hm_width, hm_height, grid_size, box_width, box_height):
     # Calculate the dimensions of the colorbar.  The size of the
     # bar should be calculated based on the size of the heatmap,
     # and also the size of the boxes in the heatmap.
     #
     # MAX_BOXES of 100 is too big for signature heatmap from pybinreg.
-    BAR_LONG = 0.50        # the long dimension, relative to heatman
-    BAR_SHORT = 0.075      # short dimension, relative to long_ratio
-    MAX_BOXES = 50
+    BAR_LONG = 0.50     # the long dimension, relative to heatmap
+    BAR_SHORT = 0.075   # short dimension, relative to long_ratio
+    MAX_BOXES = 50      # Maximum boxes in the long dimension.
+    MIN_BOXES = 1       # Minimum boxes in the short dimension.
 
-    vertical = True
-    if hm_width > hm_height:
-        vertical = False
+    vertical = hm_height > hm_width
 
     if vertical:
+        # x1 is the upper limit.  Do not make bigger than this.
         x1 = hm_height * BAR_LONG
-        x2 = box_height * MAX_BOXES
-        height = max(min(x1, x2), 1)
+        # These are both lower and upper limits.  Make the bigger one
+        # of these.
+        x2 = (box_height+grid_size) * MAX_BOXES
+        x3 = ((box_width+grid_size)*MIN_BOXES)/BAR_SHORT
+        x4 = max(x2, x3)
+        height = max(min(x1, x4), 1)
         width = max(height * BAR_SHORT, 1)
     else:
         x1 = hm_width * BAR_LONG
-        x2 = box_width * MAX_BOXES
-        width = max(min(x1, x2), 1)
+        x2 = (box_width+grid_size) * MAX_BOXES
+        x3 = ((box_height+grid_size)*MIN_BOXES)/BAR_SHORT
+        x4 = max(x2, x3)
+        width = max(min(x1, x4), 1)
         height = max(width * BAR_SHORT, 1)
         
     width, height = int(width), int(height)
