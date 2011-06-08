@@ -174,7 +174,30 @@ def _get_gp_imod_all_vars_dict(form):
     
     all_vars = {}
     value = form.getlist(GP_IMOD_ALL_VARS)[0]
+
+    # In GenePattern, after reload, this value might be further
+    # hashed:
+    # sig_PI3K%3Dyes%2B%2528default%2Bparameters%2529%26sig_ER%3Dyes
+    # %2B%2528default%2Bparameters%2529%26sig_MYC%3Dyes%2B%2528default
+    # %2Bparameters%2529%26sig_HER2%3Dyes%2B%2528default%2Bparameters
+    # %2529%26sig_PR%3Dyes%2B%2528default%2Bparameters%2529%26sig_STAT3
+    # ...
+    #
+    # %3D     =
+    # %26     &
+    # %2B     <space>
+    # %25     %
+    #
+    # Hack: Just unquote this.  Should really figure out why this is
+    # quoted twice, and stop it.
+    if value.find("&") == -1 and value.find("=") == -1:
+        value = value.replace("%26", "&")
+        value = value.replace("%3D", "=")
+        value = value.replace("%2B", " ")
+        value = value.replace("%25", "%")
+    
     for x in value.split("&"):
+        assert "=" in x, x
         k, v = x.split("=", 1)
         # Unquote after we split on "&" and "=".
         k = urllib.unquote_plus(k)

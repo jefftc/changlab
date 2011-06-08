@@ -760,6 +760,7 @@ def calc_coords_for_layout(layout):
             cb_x = hm_x
             cb_y = hm_y + hm_height + CB_BUFFER*bar_height
         cb_x, cb_y = int(cb_x), int(cb_y)
+
     x = PlotCoords(
         hm_x, hm_y, cb_x, cb_y, gd_x, gd_y, ad_x, ad_y,
         gc_x, gc_y, ac_x, ac_y, gl_x, gl_y, al_x, al_y)
@@ -1388,7 +1389,10 @@ def plot(filename, MATRIX, cluster_data, plotlib, layout, coords):
     plotlib.write(image, open(filename, 'w'))
     
 def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
-    GRID_COLOR = (0, 0, 0)
+    # (0, 0, 0) is too dark for small box sizes.  100 looks too washed
+    # out.  50-75 is about right.
+    #GRID_COLOR = (0, 0, 0)
+    GRID_COLOR = (75, 75, 75)
     BORDER_COLOR = (0, 0, 0)
 
     width, height = layout.size()
