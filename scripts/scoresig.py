@@ -550,8 +550,6 @@ def summarize_report(
     for id in all_ids:
         orig = id2orig[id]
 
-        w("<TR>")
-
         cols = [
             htmllib.TD(orig.xID),
             htmllib.TD(orig.Name),
