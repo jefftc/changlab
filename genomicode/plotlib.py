@@ -181,7 +181,8 @@ def place_ticks(v_min, v_max, num_ticks=10, delta=None):
     if delta is None:
         delta = _choose_tick_delta(v_min, v_max, num_ticks=num_ticks)
 
-    # Do calculation in integers to 4 decimal places.
+    # Do calculation in integers to 4 decimal places to avoid floating
+    # point representation issues.
     x = math.log(delta, 10)
     multiplier = 10**(-int(x)+4)
 
@@ -195,6 +196,13 @@ def place_ticks(v_min, v_max, num_ticks=10, delta=None):
         tick_max = tick_max + (delta - tick_max % delta)
 
     ticks = [float(i)/multiplier for i in range(tick_min, tick_max+1, delta)]
+
+    # Convert ticks to integers if possible.
+    for t in ticks:
+        if abs(float(t)-int(t)) >= 1E-50:
+            break
+    else:
+        ticks = [int(x) for x in ticks]
     return ticks
 
 def _choose_tick_delta(v_min, v_max, num_ticks=10):

@@ -788,7 +788,7 @@ def summarize_predictions(povray, file_layout):
     font = os.path.join(
         os.path.split(povraygraph.__file__)[0], "Verdana Bold.ttf")
     onpoint_label = None   # Don't display labels.
-    x = povraygraph.scatter(
+    graph = povraygraph.scatter(
         X, Y, color=color, shape=pch, error_bar=error_bar, point_size=1,
         onpoint_label=onpoint_label, overpoint_label=sample,
         ylim=(0, 1.02), 
@@ -797,7 +797,7 @@ def summarize_predictions(povray, file_layout):
         xlabel="Metagene Score", ylabel="Probability",
         label_size=1, width=plot_width, height=plot_height,
         font=font)
-    open(file_layout.PREDICTIONS_POV, 'w').write(x)
+    open(file_layout.PREDICTIONS_POV, 'w').write(graph.draw())
     # povray -D -J +Opredictions.png -H768 -W1024 +A0.5 predictions.pov
     r = povraygraph.povray(
         file_layout.PREDICTIONS_POV,
