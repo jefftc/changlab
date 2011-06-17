@@ -1,7 +1,7 @@
 """
 
 The Python Imaging Library uses a coordinate system with (0, 0) in the
-upper left corner.
+upper left corner, extending positive to the right and down.
 
 Functions:
 image

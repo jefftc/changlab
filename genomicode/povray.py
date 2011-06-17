@@ -1,5 +1,7 @@
 """
 
+povray
+
 include
 declare
 local
@@ -141,6 +143,44 @@ class _fmt_vector_fn:
     def __call__(self, *args):
         return _fmt_simple(self.name, vector(*args))
 
+def povray(
+    filename, outfile=None, height=None, width=None, antialias=None,
+    quality=None, povray_bin=None):
+    # Return a handle to the results.
+    # antialias  Which colors to anti-alias (0-3.0).
+    # quality    0-9.
+    import os
+    import subprocess
+    
+    assert os.path.exists(filename)
+    povray_bin = povray_bin or "povray"
+    
+    args = []
+    args.append("-D")   # don't show output.
+    args.append("-J")   # turn off jitter.
+    if outfile:
+        args.append("+O%s" % outfile)
+    if height is not None:
+        args.append("-H%d" % height)
+    if width is not None:
+        args.append("-W%d" % width)
+    if antialias is not None:
+        assert antialias >= 0 and antialias <= 3
+        args.append("+A%g" % antialias)
+    if quality is not None:
+        assert quality >= 0 and quality <= 9
+        args.append("-Q%d" % quality)
+    args.append(filename)
+
+    cmd = "%s %s" % (povray_bin, " ".join(args))
+    p = subprocess.Popen(
+        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+    w, r = p.stdin, p.stdout
+    #w, r = os.popen4(cmd)
+    w.close()
+    return r
+
 def include(file_inc):
     return '#include "%s"' % file_inc
 
@@ -205,7 +245,10 @@ def light_source(location, color, *items):
     return _fmt_complex("light_source", args=(location, color), *items)
 
 def object_(name, *items):
-    return _fmt_complex("object", args=(name,), *items)
+    x = _fmt_complex("object", args=(name,), *items)
+    if not x.endswith("\n"):
+        x += "\n"
+    return x
 
 def sphere(center, radius, *items):
     # center VECTOR
@@ -244,7 +287,10 @@ def box(corner_1, corner_2, *items):
 def text(file, string, thickness, offset, *items):
     # If "file" is the name of a file, then you need to enclose it
     # within quotes.  Otherwise, it will be interpreted as a variable
-    # name.
+    # name.  thickness is best from 0.5 to 2.  Offset will add kerning
+    # distance.
+    # Text starts with origin in the lower left.  Thickness goes in
+    # the +z direction.
     x = 'ttf %s "%s" %g, %g' % (file, string, thickness, offset)
     items = (x,) + items
     return _fmt_complex("text", *items)
@@ -312,9 +358,9 @@ def finish(*items):
     #   have perfect specular (not diffuse) reflections.  Range from
     #   0 (dull) - 1 (shiny), default is 0.6.
     # o brilliance varies the amount that light falls off depending on
-    #   the angle of incidence.  Higher values look more metallic.
-    #   Default is 1.0, and 5-10 causes light to fall off less at
-    #   medium to low angles.
+    #   the angle of incidence.  Higher values look more metallic,
+    #   bolder.  Default is 1.0, and 5-10 causes light to fall off
+    #   less at medium to low angles.
     # o crand causes minor random darkening, e.g. for very rough
     #   surfaces such as concrete or sand.  Default is 0, and
     #   typically ranges from 0.01 to 0.5.
@@ -374,13 +420,14 @@ phong = _fmt_amount_fn("phong")
 phong_size = _fmt_amount_fn("phong_size")
 specular = _fmt_amount_fn("specular")
 roughness = _fmt_amount_fn("roughness")
+metallic = _fmt_only_label_fn("metallic")
 reflection = _fmt_amount_fn("reflection")
 refraction = _fmt_amount_fn("refraction")
 ior = _fmt_amount_fn("ior")
 
 no_shadow = _fmt_only_label_fn("no_shadow")
     
-def color(red, green, blue, filter=None, transmit=None):
+def color(red, green=None, blue=None, filter=None, transmit=None):
     # filter AMOUNT
     # transmit AMOUNT  
     #
@@ -390,6 +437,9 @@ def color(red, green, blue, filter=None, transmit=None):
     #   1, 1, 1, filter=1 makes a clear object.
     # o For transmit, all frequencies of light pass through tiny holes
     #   in the surface (e.g. mesh netting).
+
+    if green is None and blue is None:
+        green = blue = red
     
     # Don't display integers as floating point, e.g. 1.0 -> 1.
     if abs(red-round(red, 0))<1E-3:
