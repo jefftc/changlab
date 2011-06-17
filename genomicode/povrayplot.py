@@ -25,11 +25,6 @@ write
 # _declare_fontfile
 # _draw_background
 
-import sys, os
-
-
-SIMPLE, METALLIC, ROUGH = range(3)
-
 class Image:
     def __init__(self, width, height, depth):
         import StringIO
@@ -49,12 +44,13 @@ def image(width, height, depth):
     im = Image(width, height, depth)
     _declare_fontfile(im)
     _position_camera(im, width, height, depth)
+    #_declare_points(im)
     _draw_background(im)
     # Clear the canvas for the client to draw on.
     del im._objects[:]
     return im
 
-def box(image, coord, extent, color, finish=SIMPLE):
+def box(image, coord, extent, color, finish=None):
     # coord is (x, y, z).  extent is (width, height, depth).
     import povray as pr
     finish = _make_finish(finish)
@@ -75,18 +71,37 @@ def box(image, coord, extent, color, finish=SIMPLE):
     #image._add_object(name, coord1, extent)
 
         
-def sphere(image, coord, radius, color, finish=SIMPLE):
+def sphere(image, coord, radius, color, shape=None, finish=None):
     # coord is the center of the sphere, with radius.
     import povray as pr
+    import graphconst as gc
+
     finish = _make_finish(finish)
-    w = image.handle.write
     coord = _coord2pr(image, coord)
+
+    # DEFAULT, CIRCLE, SQUARE, DIAMOND
+    if shape is None:
+        shape = gc.DEFAULT
+    if shape in [gc.DEFAULT, gc.CIRCLE]:
+        point = pr.superellipsoid(
+            1.0, 0.50, pr.scale(radius, radius, radius),
+            pr.translate(*coord), pr.pigment(pr.color(*color)), finish)
+    # Square
+    elif shape == gc.SQUARE:
+        point = pr.superellipsoid(
+            0.25, 0.25, pr.scale(radius, radius, radius),
+            pr.translate(*coord), pr.pigment(pr.color(*color)), finish)
+    # Diamond
+    elif shape == gc.DIAMOND:
+        point = pr.superellipsoid(
+            1.75, 0.50, pr.scale(radius, radius, radius),
+            pr.translate(*coord), pr.pigment(pr.color(*color)), finish)
+    else:
+        raise AssertionError, "Unknown point: %s" % (shape)
+    
+    w = image.handle.write
     name = image._make_object_name()
-    w(pr.declare(name, pr.sphere(
-        pr.vector(*coord), radius,
-        pr.pigment(pr.color(*color)),
-        finish,
-        )))
+    w(pr.declare(name, point))
     w(pr.object_(name))
 
     #x, y, z = coord
@@ -95,7 +110,7 @@ def sphere(image, coord, radius, color, finish=SIMPLE):
     #image._add_object(name, coord, extent)
 
 def cylinder(
-    image, coord, extent, radius, color, no_shadow=False, finish=SIMPLE):
+    image, coord, extent, radius, color, no_shadow=False, finish=None):
     # coord is the center of one end, with the center of the other end
     # in the direction determined by extent.
     import povray as pr
@@ -122,7 +137,7 @@ def text(
     center_x=False, center_y=False, center_z=False,
     wrong_x=False, wrong_y=False, wrong_z=False,
     min_x=False, max_x=False, min_y=False, max_y=False,
-    vertical=False, finish=SIMPLE):
+    vertical=False, finish=None):
     # The coordinate should be at the upper left point of the text.
     # depth grows in the +z direction (toward the user).
     # center_x means the x-coord is at the middle, and wrong_x means
@@ -229,6 +244,7 @@ def text90(*args, **keywds):
 
 def write(image, handle):
     # Format the image with POV-RAY and write the results to handle.
+    import os
     import tempfile
     import povray
 
@@ -255,13 +271,17 @@ def write(image, handle):
 
 def _make_finish(finish):
     import povray as pr
+    import graphconst as gc
 
-    if finish == SIMPLE:
+    if finish is None:
+        finish = gc.SIMPLE
+        
+    if finish == gc.SIMPLE:
         x = pr.finish(
             pr.ambient(0.8, 0.8, 0.8),
             pr.diffuse(0.3),
             )
-    elif finish == METALLIC:
+    elif finish == gc.METALLIC:
         ## x = pr.finish(
         ##     pr.ambient(0.4, 0.4, 0.4),
         ##     pr.diffuse(0.3),
@@ -274,7 +294,7 @@ def _make_finish(finish):
         # F_MetalC.  Colors washed out.  Bright.
         # F_MetalE.  Too washed out.
         x = pr.finish(
-            pr.ambient(0.35),
+            pr.ambient(0.45),
             pr.brilliance(2),
             pr.diffuse(0.3),
             pr.metallic(),
@@ -282,11 +302,19 @@ def _make_finish(finish):
             pr.roughness(1./20),
             pr.reflection(0.1),
             )
-    elif finish == ROUGH:
+    elif finish == gc.ROUGH:
         x = pr.finish(
-            pr.ambient(0.5, 0.5, 0.5),
+            pr.ambient(0.8, 0.8, 0.8),
             pr.diffuse(0.4),
             pr.crand(0.2),
+            )
+    elif finish == gc.SHINY:
+        # Doesn't work very well for graphs.
+        x = pr.finish(
+            pr.ambient(0.7),
+            pr.diffuse(0.1),
+            pr.reflection(0.3),
+            pr.ior(1.5),
             )
     else:
         raise AssertionError, "Unknown finish: %s" % finish
@@ -328,7 +356,7 @@ def _position_camera(image, width, height, depth):
     
     #CAMERA_HEIGHT = depth*1.0
     CAMERA_HEIGHT = depth*5.0
-    LIGHT_ANGLE = 70        # lower means longer shadows, darker colors
+    LIGHT_ANGLE = 78        # lower means longer shadows, darker colors
     LIGHT_COLOR = 1, 1, 1
 
     # Set the camera to the middle of the plot, looking down.
@@ -339,8 +367,8 @@ def _position_camera(image, width, height, depth):
     z_mid = depth*0.5
     camera_x = x_mid
     camera_y = y_mid
-    camera_x = width * 0.75
-    camera_y = height * 0.75
+    #camera_x = width * 0.75
+    #camera_y = height * 0.75
 
     w = image.handle.write
     w(pr.camera(
@@ -357,18 +385,22 @@ def _position_camera(image, width, height, depth):
     # light is shining at a specific angle relative to the plane
     # of the plot.  Lower LIGHT_ANGLE means light source is closer
     # to the plane (longer shadows).
-    x = width * 0.75
-    y = height * 0.25
-    side = math.sqrt(width**2 + height**2)
+    light_x = width * 0.95
+    light_y = height * 0.95
+    target_x = width * 0.15
+    target_y = height * 0.15
+    side = math.sqrt((light_x-target_x)**2 + (light_y-target_y)**2)
     z = side * math.tan(math.pi*LIGHT_ANGLE/180.0)
+    #print z
     w(pr.light_source(
-        pr.vector(x, y, -z),
+        pr.vector(light_x, light_y, -z),
         pr.color(*LIGHT_COLOR),
         pr.light_type("parallel"),
         ))
     w("\n")
 
 def _declare_fontfile(image, fontfile=None):
+    import os
     import povray as pr
 
     if not fontfile:
@@ -380,15 +412,34 @@ def _declare_fontfile(image, fontfile=None):
     w = image.handle.write
     w(pr.declare("FONTFILE", '"%s"' % fontfile)+"\n")
 
+## def _declare_points(image):
+##     import povray as pr
+##     w = image.handle.write
+    
+##     # Circle
+##     w(pr.declare("POINT_CIRCLE", pr.superellipsoid(
+##         1.0, 0.50, pr.scale(RADIUS, RADIUS, RADIUS))))
+##     # Square
+##     w(pr.declare("POINT_SQUARE", pr.superellipsoid(
+##         0.25, 0.25, pr.scale(RADIUS, RADIUS, RADIUS))))
+##     # Diamond
+##     w(pr.declare("POINT_DIAMOND", pr.superellipsoid(
+##         1.75, 0.50,
+##         pr.scale(RADIUS, RADIUS, RADIUS),
+##         #pr.scale(RADIUS*1.25, RADIUS*1.25, RADIUS*1.25),
+##         #2.50, 2.00, pr.scale(RADIUS*1.25, RADIUS*1.25, RADIUS*1.25),
+##         )))
+
 def _draw_background(image):
     import povray as pr
+    import graphconst as gc
     
     BACKGROUND_DEPTH = 10   # extends into the Z axis.
     BACKGROUND_COLOR = 1, 1, 1
 
     coord = 0, 0, 0
     extent = image.width, image.height, -BACKGROUND_DEPTH
-    box(image, coord, extent, BACKGROUND_COLOR, finish=SIMPLE)
+    box(image, coord, extent, BACKGROUND_COLOR, finish=gc.SIMPLE)
 
     w = image.handle.write
     w(pr.background(pr.color(*BACKGROUND_COLOR)))

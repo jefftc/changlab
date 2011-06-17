@@ -294,18 +294,18 @@ def summarize_predictions(file_layout):
 def summarize_heatmap(python, arrayplot, cluster, file_layout, libpath=[]):
     import subprocess
     import arrayio
-    from genomicode import plotlib
+    from genomicode import graphlib
 
     M_predict = arrayio.read(file_layout.PREDICTIONS_PCL)
     nrow, ncol = M_predict.dim()
 
     # Set the size of the plot.
-    x = plotlib.find_wide_heatmap_size(
+    x = graphlib.find_wide_heatmap_size(
         nrow, ncol, min_box_width=12, min_box_height=12,
         height_width_ratio=nrow*1.618/ncol)
     xpix, ypix = x
 
-    x = plotlib.plot_heatmap(
+    x = graphlib.plot_heatmap(
         file_layout.PREDICTIONS_PCL, file_layout.PREDICTIONS_PNG, xpix, ypix,
         color="bild", show_colorbar=True, show_grid=True,
         scale=-0.5, gain=1.5, no_autoscale=True,

@@ -244,7 +244,7 @@ def summarize_filtered_genes(file_layout):
 def summarize_heatmaps(
     python, arrayplot, cluster, file_layout, libpath=[]):
     import arrayio
-    from genomicode import plotlib
+    from genomicode import graphlib
 
     # Load the data sets.
     DATA_orig = arrayio.gct_format.read(file_layout.DS_PROC_FILTERED)
@@ -252,19 +252,19 @@ def summarize_heatmaps(
     assert DATA_final.dim() == DATA_orig.dim()
 
     nrow, ncol = DATA_orig.dim()
-    x = plotlib.find_tall_heatmap_size(
+    x = graphlib.find_tall_heatmap_size(
         #nrow, ncol, min_box_width=20, max_total_height=2000,
         nrow, ncol, max_total_height=2000, max_total_width=2000)
     xpix, ypix = x
     #print "SIZE", nrow, ncol, xpix, ypix
     
-    plotlib.plot_heatmap(
+    graphlib.plot_heatmap(
         file_layout.DS_FINAL_FILTERED, file_layout.DS_FINAL_HEATMAP,
         xpix, ypix, color="bild", show_colorbar=True, show_grid=True,
         gene_center="mean", gene_normalize="var",
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
-    plotlib.plot_heatmap(
+    graphlib.plot_heatmap(
         file_layout.DS_PROC_FILTERED, file_layout.DS_PROC_HEATMAP,
         xpix, ypix, color="bild", show_colorbar=True, show_grid=True,
         gene_center="mean", gene_normalize="var",

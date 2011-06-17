@@ -149,7 +149,6 @@ class ColorbarLayout:
         self, cb_width, cb_height, signal_0, signal_1,
         ticks, tick_labels, label_sizes, fontsize, color_fn):
         import math
-        from genomicode import plotlib
 
         TICK_SIZE = 0.15       # relative to BAR_SHORT
         TICK_BUFFER = 0.15     # relative to BAR_SHORT
@@ -1415,7 +1414,7 @@ def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
             plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 def plot_colorbar(plotlib, image, xoff, yoff, layout):
-    from genomicode import plotlib as pl
+    from genomicode import graphlib
 
     BLACK = (0, 0, 0)
     OUTLINE_COLOR = (0, 0, 0)
@@ -1781,7 +1780,7 @@ def _calc_colorbar_size(hm_width, hm_height, grid_size, box_width, box_height):
 def _calc_colorbar_ticks(
     cb_width, cb_height, signal_0, signal_1, plotlib):
     import math
-    from genomicode import plotlib as pl
+    from genomicode import graphlib
 
     TEXT_SIZE = 0.75
     MAX_TICKS = 20
@@ -1809,7 +1808,7 @@ def _calc_colorbar_ticks(
     num_ticks = min(MAX_TICKS, max(cb_width, cb_height)/2)
     while num_ticks > 0:
         # Calculate the ticks and remove any that are off the scale.
-        ticks = pl.place_ticks(label_min, label_max, num_ticks=num_ticks)
+        ticks = graphlib.place_ticks(label_min, label_max, num_ticks=num_ticks)
         ticks = [x for x in ticks if x >= signal_0 and x <= signal_1]
         assert ticks, "I couldn't place any tick marks."
 

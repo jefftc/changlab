@@ -48,8 +48,9 @@ def plot_scatter(X, Y, out_file, group=None, color=None,
     # group should be a list of 0-N indicating the groupings of the
     # data points.  It should be the same length of X and Y.
     # Returns the output from povray.
-    import povraygraph
     import tempfile
+    import graphlib
+    import filelib
 
     if not len(X):
         return None
@@ -70,22 +71,24 @@ def plot_scatter(X, Y, out_file, group=None, color=None,
             x, pov_file = tempfile.mkstemp(suffix=".pov", dir="."); os.close(x)
             
         plot_width, plot_height = 1024, 768
-        graph = povraygraph.scatter(
-            X, Y, color=color,
+        points = zip(X, Y)
+        graph = graphlib.scatter(
+            points, color=color,
             xtick=True, xtick_label=True, ytick=True, ytick_label=True,
             xlabel="Principal Component 1", ylabel="Principal Component 2",
             label_size=1, width=plot_width, height=plot_height)
-        open(pov_file, 'w').write(graph.draw())
-        # povray -D -J +Opredictions.png -H768 -W1024 +A0.5 predictions.pov
-        r = povraygraph.povray(
-            pov_file, outfile=out_file,
-            height=plot_height, width=plot_width, antialias=0.5, quality=9,
-            povray_bin=povray)
-        output = r.read()
+        output = graph.write(open(out_file, 'w'))
+        #open(pov_file, 'w').write(graph.draw())
+        ## povray -D -J +Opredictions.png -H768 -W1024 +A0.5 predictions.pov
+        #r = povraygraph.povray(
+        #    pov_file, outfile=out_file,
+        #    height=plot_height, width=plot_width, antialias=0.5, quality=9,
+        #    povray_bin=povray)
+        #output = r.read()
     finally:
         if is_tempfile and pov_file and os.path.exists(pov_file):
             os.unlink(pov_file)
-    assert os.path.exists(out_file), "Failed to plot predictions.\n%s" % (
+    assert filelib.exists_nz(out_file), "Failed to plot predictions.\n%s" % (
         output)
     return output
 

@@ -341,7 +341,7 @@ def summarize_factor_scores(
     file_layout, factor_cutoff, python, arrayplot, cluster, libpath):
     import arrayio
     from genomicode import Matrix
-    from genomicode import plotlib
+    from genomicode import graphlib
 
     DATA = arrayio.read(file_layout.DATASET)
     model = _read_model(file_layout, factor_cutoff)
@@ -370,12 +370,12 @@ def summarize_factor_scores(
     arrayio.pcl_format.write(M, file_layout.FACTOR_SCORES)
 
     # Make the heatmap.
-    x = plotlib.find_wide_heatmap_size(
+    x = graphlib.find_wide_heatmap_size(
         M.nrow(), M.ncol(), min_box_height=10, min_box_width=10,
         max_total_height=768, max_total_width=1024)
     xpix, ypix = x
     ypix = min(ypix, xpix*4)
-    x = plotlib.plot_heatmap(
+    x = graphlib.plot_heatmap(
         file_layout.FACTOR_SCORES, file_layout.FACTOR_SCORES_PNG,
         xpix, ypix,
         color="bild", show_colorbar=True, show_grid=True,
@@ -400,7 +400,7 @@ def summarize_gene_factor_probs(
     file_layout, factor_cutoff, python, arrayplot, cluster, libpath):
     import arrayio
     from genomicode import Matrix
-    from genomicode import plotlib
+    from genomicode import graphlib
 
     model = _read_model(file_layout, factor_cutoff)
     PostPib = model["PostPib"]
@@ -433,11 +433,11 @@ def summarize_gene_factor_probs(
     arrayio.tab_delimited_format.write(M, file_layout.FACTOR_PROBS)
 
     # Make heatmap of the factor probs.
-    #x = plotlib.find_tall_heatmap_size(
+    #x = graphlib.find_tall_heatmap_size(
     #    M.nrow(), M.ncol(), min_box_width=10, max_total_height=1000,
     #    max_total_width=1000)
     xpix, ypix = 20, 20
-    x = plotlib.plot_heatmap(
+    x = graphlib.plot_heatmap(
         file_layout.FACTOR_PROBS, file_layout.FACTOR_PROBS_PNG, xpix, ypix,
         color="red",
         #show_colorbar=True, show_grid=True,

@@ -195,7 +195,7 @@ def summarize_factor_scores(file_layout, python, arrayplot, cluster, libpath):
     from genomicode import Matrix
     from genomicode import jmath
     from genomicode import archive
-    from genomicode import plotlib
+    from genomicode import graphlib
     from genomicode import bfrm
 
     DATA = arrayio.read(file_layout.DATASET)
@@ -238,12 +238,12 @@ def summarize_factor_scores(file_layout, python, arrayplot, cluster, libpath):
     arrayio.pcl_format.write(M, file_layout.FACTOR_SCORES)
 
     # Make the heatmap.
-    x = plotlib.find_wide_heatmap_size(
+    x = graphlib.find_wide_heatmap_size(
         M.nrow(), M.ncol(), min_box_height=10, min_box_width=10,
         max_total_height=768, max_total_width=1024)
     xpix, ypix = x
     ypix = min(ypix, xpix*4)
-    x = plotlib.plot_heatmap(
+    x = graphlib.plot_heatmap(
         file_layout.FACTOR_SCORES, file_layout.FACTOR_SCORES_PNG,
         xpix, ypix,
         color="bild", show_colorbar=True, show_grid=True,
