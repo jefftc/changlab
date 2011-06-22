@@ -282,8 +282,10 @@ class Graph:
                 LABEL_COLOR, wrong_x=True, center_y=True)
 
         for i, z_pix in enumerate(ztick_pixel):
-            coord = y_axis_at-TICK_LENGTH/2.0, x_axis_at, z_pix
+            coord = [y_axis_at-TICK_LENGTH/2.0, x_axis_at, z_pix]
             extent = TICK_LENGTH, 0, 0
+            if not ztick_at&gc.LEFT:
+                coord[0] += self.GRAPH_WIDTH
             self._plotter.cylinder(
                 self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
                 finish=gc.METALLIC)
@@ -328,16 +330,16 @@ class Graph:
             return
         
         GRAPH_X_MID = self.GRAPH_X+self.GRAPH_WIDTH/2.0
-        coord = GRAPH_X_MID, -TITLE_SPACE, 0
+        coord = GRAPH_X_MID, self.GRAPH_Y-TITLE_SPACE, 0
         self._plotter.text(
             self._image, title, coord, 
             TITLE_DEPTH, TITLE_FONTSIZE, TITLE_COLOR,
-            center_x=True, wrong_y=True, min_y=True)
+            center_x=True, wrong_y=True, min_y=False)
             
 
     def draw_labels(
-        self, xlabel, ylabel, zlabel, xtick_at, ytick_at, ztick_at,
-        label_size=1.0):
+        self, xlabel, ylabel, zlabel, draw_x_axis, draw_y_axis, draw_z_axis,
+        xtick_at, ytick_at, ztick_at, label_size=1.0):
         import graphconst as gc
         
         # Labels sit on the background.
@@ -352,21 +354,29 @@ class Graph:
         GRAPH_Z_MID = self.GRAPH_Z+self.GRAPH_DEPTH/2.0
 
         if xlabel:
+            max_y = True
             coord = [GRAPH_X_MID, LABEL_SPACE, 0]
             if not xtick_at&gc.BACK:
                 coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
+            if not draw_x_axis:
+                coord[1] = self.GRAPH_Y + self.GRAPH_HEIGHT + LABEL_SPACE
+                max_y = False
             self._plotter.text(
                 self._image, xlabel, coord, 
                 LABEL_DEPTH, LABEL_FONTSIZE, LABEL_COLOR,
-                center_x=True, max_y=True)
+                center_x=True, max_y=max_y)
         if ylabel:
+            min_x = True
             coord = [-LABEL_SPACE, GRAPH_Y_MID, 0]
             if not ytick_at&gc.BACK:
                 coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2
+            if not draw_y_axis:
+                coord[0] = self.GRAPH_X - LABEL_SPACE
+                min_x = False
             self._plotter.text90(
                 self._image, ylabel, coord, 
                 LABEL_DEPTH, LABEL_FONTSIZE, LABEL_COLOR,
-                center_y=True, wrong_x=True, min_x=True)
+                center_y=True, wrong_x=True, min_x=min_x)
         if zlabel:
             coord = [
                 self.GRAPH_X, self.GRAPH_Y+self.GRAPH_HEIGHT+LABEL_SPACE,
@@ -614,13 +624,15 @@ class Graph:
         for i in range(len(bars)):
             assert len(bars[i]) in [2, 3, 4]
             zc = None
+            yminc = 0.0
             if len(bars[i]) == 2:
                 xc, ymaxc = bars[i]
-                yminc = 0.0
             elif len(bars[i]) == 3:
-                xc, yminc, ymaxc = bars[i]
+                #xc, yminc, ymaxc = bars[i]
+                xc, ymaxc, zc = bars[i]
             else:
-                xc, yminc, ymaxc, zc = bars[i]
+                #xc, yminc, ymaxc, zc = bars[i]
+                xc, ymaxc, zc, yminc = bars[i]
             assert yminc <= ymaxc
             xc -= barwidth/2.0
 
@@ -692,12 +704,13 @@ class Graph:
         return pix_z
 
 def scatter(
-    points, color=None, shape=None, shadow=True, onpoint_label=None,
+    points, color=None, shape=None, shadow=None, onpoint_label=None,
     overpoint_label=None,  error_bar=None, point_size=1.0, graph=None,
     plotter=None, **keywds):
     """Return the Graph object.
     
     points           List of (x, y) coordinates for the points.
+                     Also can be (x, y, z).
     color            List of the color for each point (<r>,<g>,<b>) from 0-1.
     shape            List of DEFAULT, CIRCLE, SQUARE, or DIAMOND.
     shadow
@@ -768,9 +781,9 @@ def line(*args, **keywds):
 
     color = keywds.get("color", None)
     shape = keywds.get("shape", None)
-    shadow = keywds.get("shadow", True)
+    shadow = keywds.get("shadow", None)
     line_size = keywds.get("line_size", 1.0)
-    draw_points = keywds.get("draw_points", False)
+    draw_points = keywds.get("draw_points", None)
     point_size = keywds.get("point_size", 1.0)
     graph = keywds.get("graph", None)
     plotter = keywds.get("plotter", None)
@@ -801,8 +814,9 @@ def line(*args, **keywds):
             Z_min, Z_max = min(Z), max(Z)
         graph = _make_graph(
             plotter, min(X), max(X), min(Y), max(Y), Z_min, Z_max, **keywds)
-        
+
     for i, line in enumerate(lines):
+        c1, c2 = line
         graph.draw_line(line, color[i], shadow, line_size=line_size)
         if not draw_points:
             continue
@@ -817,8 +831,8 @@ def bar(*args, **keywds):
     """Return the Graph object.
 
     series1      List of the (x, y) coordinates of this set of bars.
-                 Can also be (x, y_min, y_max).
-                 Can also be (x, y_min, y_max, z).
+                 Can also be (x, y, z).
+                 Can also be (x, y, z, y_min).
     series2      ...
     color        List of colors, 1 for each bar (<r>,<g>,<b>) from 0-1.
     shadow       Whether to draw a shadow.
@@ -829,7 +843,7 @@ def bar(*args, **keywds):
     
     # TODO: ERROR BAR
     color = keywds.get("color", None)
-    shadow = keywds.get("shadow", True)
+    shadow = keywds.get("shadow", None)
     width_size = keywds.get("width_size", 1.0)
     graph = keywds.get("graph", None)
     plotter = keywds.get("plotter", None)
@@ -1071,11 +1085,11 @@ def place_ticks(v_min, v_max, num_ticks=10, delta=None):
 def _make_graph(
     plotter, X_min, X_max, Y_min, Y_max, Z_min, Z_max,
     xlim=None, ylim=None, zlim=None, 
-    xtick=None, xtick_label=None, ytick=None, ytick_label=None,
-    ztick=None, ztick_label=None,
+    xtick=None, xtick_label=True, ytick=None, ytick_label=True,
+    ztick=None, ztick_label=True,
     xtick_at=None, ytick_at=None, ztick_at=None, tick_size=1.0,
     draw_x_axis=None, draw_y_axis=None, draw_z_axis=None, 
-    grid=False, title=None, title_size=1.0,
+    grid=None, title=None, title_size=1.0,
     xlabel=None, ylabel=None, zlabel=None, label_size=1.0,
     font=None, width=None, height=None, **keywds):
     # xlim         Tuple of (minimum x, maximum x).
@@ -1106,17 +1120,6 @@ def _make_graph(
     (xlim, ylim, zlim,
      xtick, ytick, ztick, xtick_label, ytick_label, ztick_label) = x
 
-    if xtick_at is None:
-        xtick_at = gc.BACK         # default is bottom, back
-        if ztick:
-            xtick_at = xtick_at^gc.BACK
-    if ytick_at is None:
-        ytick_at = gc.LEFT|gc.BACK # default is bottom, back
-        if ztick:
-            ytick_at = ytick_at^gc.BACK
-    if ztick_at is None:
-        ztick_at = 0         # default is bottom, right
-
     if draw_x_axis is None:
         draw_x_axis = True
     if draw_y_axis is None:
@@ -1131,6 +1134,23 @@ def _make_graph(
     if not draw_z_axis:
         ztick, ztick_label = [], None
 
+    if ztick and grid is None:
+        # None means no value set.  Set to False if really don't want grid.
+        grid = True
+
+    if xtick_at is None:
+        xtick_at = gc.BACK         # default is bottom, back
+        if ztick and grid:
+            xtick_at = xtick_at^gc.BACK
+    if ytick_at is None:
+        ytick_at = gc.LEFT|gc.BACK # default is bottom, back
+        if ztick and grid:
+            ytick_at = ytick_at^gc.BACK
+    if ztick_at is None:
+        ztick_at = gc.LEFT         # default is bottom, left
+        if grid:
+            ztick_at = ztick_at^gc.LEFT
+
     graph = Graph(plotter, width, height, xlim, ylim, zlim)
     graph.draw_axes(draw_x_axis, draw_y_axis, draw_z_axis)
     graph.draw_tick_marks(
@@ -1139,8 +1159,8 @@ def _make_graph(
         label_size=label_size)
     graph.draw_title(title, title_size=title_size)
     graph.draw_labels(
-        xlabel, ylabel, zlabel, xtick_at, ytick_at, ztick_at,
-        label_size=label_size)
+        xlabel, ylabel, zlabel, draw_x_axis, draw_y_axis, draw_z_axis,
+        xtick_at, ytick_at, ztick_at, label_size=label_size)
     return graph
 
 def _set_default_color(color, n):

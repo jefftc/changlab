@@ -380,18 +380,19 @@ def _position_camera(image, width, height, depth):
     # Have to look at the middle of the entire plot, or else the
     # borders will be off.
     x_mid, y_mid, z_mid = width*0.5, height*0.5, depth*0.5
-    # Default camera location.
-    camera = (x_mid, y_mid, -CAMERA_HEIGHT)
-    look = (x_mid, y_mid, z_mid)
-    dist_scale = 1.0
-    if 0:
-        camera = (width*0.70, height*0.50, -depth*1.2)
-        look = (x_mid*0.25, y_mid*0.35, z_mid)
-        dist_scale = 1.35
     if 1:
+        # Default camera location.
+        camera = (x_mid, y_mid, -CAMERA_HEIGHT)
+        look = (x_mid, y_mid, z_mid)
+        dist_scale = 1.0
+    elif 0:
         camera = (width*0.60, height*0.50, -depth*1.2)
         look = (x_mid*0.25, y_mid*0.35, z_mid)
         dist_scale = 1.50
+    elif 0:
+        camera = (width*0.70, height*0.50, -depth*1.2)
+        look = (x_mid*0.25, y_mid*0.35, z_mid)
+        dist_scale = 1.35
     
     w = image.handle.write
     w(pr.camera(
