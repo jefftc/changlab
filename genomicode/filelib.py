@@ -283,7 +283,7 @@ def read_cols(file_or_handle, delimiter="\t", skip=0):
 def _normalize_colname(name):
     import re
     # Fix the header to be a python variable.
-    x = name
+    x = str(name)
     # Replace all non-word character with _.
     x = re.sub(r"\W", "_", x)
     # Replace initial numbers with Xnumber.

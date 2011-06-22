@@ -50,7 +50,7 @@ def image(width, height, depth):
     del im._objects[:]
     return im
 
-def box(image, coord, extent, color, finish=None):
+def box(image, coord, extent, color, shadow=False, finish=None):
     # coord is (x, y, z).  extent is (width, height, depth).
     import povray as pr
     finish = _make_finish(finish)
@@ -60,9 +60,14 @@ def box(image, coord, extent, color, finish=None):
     width, height, depth = extent
     coord2 = x+width, y-height, z-depth
     name = image._make_object_name()
+    #print coord1, coord2
+    ns = None
+    if not shadow:
+        ns = pr.no_shadow()
     w(pr.declare(name, pr.box(
         pr.vector(*coord1), pr.vector(*coord2), 
         pr.pigment(pr.color(*color)),
+        ns,
         finish,
         )))
     w(pr.object_(name))
@@ -71,7 +76,8 @@ def box(image, coord, extent, color, finish=None):
     #image._add_object(name, coord1, extent)
 
         
-def sphere(image, coord, radius, color, shape=None, finish=None):
+def sphere(image, coord, radius, color, shadow=False, shape=None,
+           finish=None):
     # coord is the center of the sphere, with radius.
     import povray as pr
     import graphconst as gc
@@ -79,23 +85,27 @@ def sphere(image, coord, radius, color, shape=None, finish=None):
     finish = _make_finish(finish)
     coord = _coord2pr(image, coord)
 
+    ns = None
+    if not shadow:
+        ns = pr.no_shadow()
+        
     # DEFAULT, CIRCLE, SQUARE, DIAMOND
     if shape is None:
         shape = gc.DEFAULT
     if shape in [gc.DEFAULT, gc.CIRCLE]:
         point = pr.superellipsoid(
             1.0, 0.50, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pr.pigment(pr.color(*color)), finish)
+            pr.translate(*coord), pr.pigment(pr.color(*color)), ns, finish)
     # Square
     elif shape == gc.SQUARE:
         point = pr.superellipsoid(
             0.25, 0.25, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pr.pigment(pr.color(*color)), finish)
+            pr.translate(*coord), pr.pigment(pr.color(*color)), ns, finish)
     # Diamond
     elif shape == gc.DIAMOND:
         point = pr.superellipsoid(
             1.75, 0.50, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pr.pigment(pr.color(*color)), finish)
+            pr.translate(*coord), pr.pigment(pr.color(*color)), ns, finish)
     else:
         raise AssertionError, "Unknown point: %s" % (shape)
     
@@ -110,7 +120,7 @@ def sphere(image, coord, radius, color, shape=None, finish=None):
     #image._add_object(name, coord, extent)
 
 def cylinder(
-    image, coord, extent, radius, color, no_shadow=False, finish=None):
+    image, coord, extent, radius, color, shadow=False, finish=None):
     # coord is the center of one end, with the center of the other end
     # in the direction determined by extent.
     import povray as pr
@@ -122,7 +132,7 @@ def cylinder(
     coord2 = x+width, y-height, z-depth
     name = image._make_object_name()
     ns = None
-    if no_shadow:
+    if not shadow:
         ns = pr.no_shadow()
     w(pr.declare(name, pr.cylinder(
         pr.vector(*coord1), pr.vector(*coord2), radius,
@@ -133,7 +143,7 @@ def cylinder(
     w(pr.object_(name))
 
 def text(
-    image, text, coord, depth, fontsize, color,
+    image, text, coord, depth, fontsize, color, shadow=False,
     center_x=False, center_y=False, center_z=False,
     wrong_x=False, wrong_y=False, wrong_z=False,
     min_x=False, max_x=False, min_y=False, max_y=False,
@@ -173,11 +183,14 @@ def text(
         rotate = pr.rotate(0, 0, 90)
         
     name = image._make_object_name()
+    ns = None
+    if not shadow:
+        ns = pr.no_shadow()
     w(pr.declare(name, pr.text(
         "FONTFILE", text, depth, 0,
         pr.pigment(pr.color(*color)),
         finish,
-        pr.no_shadow(),
+        ns,
         rotate,
         pr.scale(fontsize, fontsize, 1),
         pr.translate(*coord),
@@ -200,7 +213,12 @@ def text(
         x = "max(\n  %s)" % ",\n  ".join(x)
         y_trans = x
     elif max_y and image._objects:
-        x = ["min_extent(%s).y" % x for x in names]
+        # Hack: max_y can be an integer that indicates the number of
+        # last objects to ignore.
+        n = names
+        if type(max_y) is type(0):
+            n = names[:-max_y]
+        x = ["min_extent(%s).y" % x for x in n]
         x = "min(\n  %s)" % ",\n  ".join(x)
         y_trans = x
     if x_trans or y_trans:
@@ -354,30 +372,34 @@ def _position_camera(image, width, height, depth):
     import math
     import povray as pr
     
-    #CAMERA_HEIGHT = depth*1.0
-    CAMERA_HEIGHT = depth*5.0
+    CAMERA_HEIGHT = depth * 1.1
     LIGHT_ANGLE = 78        # lower means longer shadows, darker colors
     LIGHT_COLOR = 1, 1, 1
 
     # Set the camera to the middle of the plot, looking down.
     # Have to look at the middle of the entire plot, or else the
     # borders will be off.
-    x_mid = width*0.5
-    y_mid = height*0.5
-    z_mid = depth*0.5
-    camera_x = x_mid
-    camera_y = y_mid
-    #camera_x = width * 0.75
-    #camera_y = height * 0.75
-
+    x_mid, y_mid, z_mid = width*0.5, height*0.5, depth*0.5
+    # Default camera location.
+    camera = (x_mid, y_mid, -CAMERA_HEIGHT)
+    look = (x_mid, y_mid, z_mid)
+    dist_scale = 1.0
+    if 0:
+        camera = (width*0.70, height*0.50, -depth*1.2)
+        look = (x_mid*0.25, y_mid*0.35, z_mid)
+        dist_scale = 1.35
+    if 1:
+        camera = (width*0.60, height*0.50, -depth*1.2)
+        look = (x_mid*0.25, y_mid*0.35, z_mid)
+        dist_scale = 1.50
+    
     w = image.handle.write
     w(pr.camera(
         pr.projection("orthographic"),
-        pr.location(camera_x, camera_y, -CAMERA_HEIGHT),
-        pr.right(width, 0, 0),
-        pr.up(0, height, 0),
-        #pr.look_at(x_mid, y_mid, z_mid),
-        pr.look_at(x_mid, y_mid, 0),
+        pr.location(*camera),
+        pr.right(width*dist_scale, 0, 0),
+        pr.up(0, height*dist_scale, 0),
+        pr.look_at(*look),
         ))
         
     # The light source is at the upper right of the plot, shining
@@ -437,9 +459,14 @@ def _draw_background(image):
     BACKGROUND_DEPTH = 10   # extends into the Z axis.
     BACKGROUND_COLOR = 1, 1, 1
 
-    coord = 0, 0, 0
-    extent = image.width, image.height, -BACKGROUND_DEPTH
-    box(image, coord, extent, BACKGROUND_COLOR, finish=gc.SIMPLE)
-
     w = image.handle.write
     w(pr.background(pr.color(*BACKGROUND_COLOR)))
+
+    SIZE = 100
+    coord = -image.width*SIZE/2, -image.height*SIZE/2, 0
+    extent = image.width*SIZE, image.height*SIZE, -BACKGROUND_DEPTH
+    box(image, coord, extent, BACKGROUND_COLOR, finish=gc.SIMPLE)
+
+    #coord = -image.width*SIZE/2, image.height, -image.depth*SIZE/2
+    #extent = image.width*SIZE, BACKGROUND_DEPTH, image.depth*SIZE
+    #box(image, coord, extent, BACKGROUND_COLOR, finish=gc.SIMPLE)

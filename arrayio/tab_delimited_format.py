@@ -177,6 +177,9 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # - optional rows of sample annotations (requires header row)
     # - optional columns of gene annotations
 
+    filename = None
+    if type(handle) is type(""):
+        filename = handle
     handle = filelib.openfh(handle)
     data = iolib.split_tdf(handle.read())
 
@@ -191,16 +194,29 @@ def read(handle, hrows=None, hcols=None, datatype=float):
             i += 1
         else:
             del data[i]
-    # Delete blank columns.
+
+    # Make sure each line has the same number of columns.
+    num_rows = len(data)
+    num_cols = len(data[0])
+    for i, cols in enumerate(data):
+        f = ""
+        if filename:
+            f = " [%s]" % filename
+        error_msg = "Header%s has %d columns but line %d has %d." % (
+            f, num_cols, i+1, len(cols))
+        assert len(cols) == num_cols, error_msg
+    #print num_rows, num_cols; sys.exit(0)
+
+    # Matlab appends blank columns to the end.  Delete columns are
+    # completely blank.
     # DEBUG.
     #handle = open("/home/jchang/debug.txt", 'w')
     #for x in data:
     #    print >>handle, "\t".join(map(str, x))
     #handle.close()
-
     i = 0
     while data and data[0] and i < len(data[0]):
-        # Bug: What if every row is not the same length?
+        # Assumes that every row is the same length.
         x = [x[i] for x in data]
         x = [x for x in x if x]
         if x:
@@ -209,8 +225,6 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         else:
             # Delete this column.
             [x.pop(i) for x in data]
-    
-
     # Excel (or some other tool) sometimes appends rows full of blanks
     # at the end.  Detect this and delete those rows.
     #while data:
@@ -219,7 +233,6 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     #        # There's data at the last line.
     #        break
     #    del data[-1]
-
     # Stupid Matlab inserts a blank column at the end.  Check for this
     # and remove it.
     # BUG: What if the matrix is empty?
@@ -231,15 +244,6 @@ def read(handle, hrows=None, hcols=None, datatype=float):
 
     if not data:
         return Matrix.InMemoryMatrix([])
-
-    # Make sure each line has the same number of columns.
-    num_rows = len(data)
-    num_cols = len(data[0])
-    for i, cols in enumerate(data):
-        error_msg = "Header has %d columns but line %d has %d." % (
-            num_cols, i, len(cols))
-        assert len(cols) == num_cols, error_msg
-    #print num_rows, num_cols; sys.exit(0)
 
     # If the rows and cols not explicitly specified, then try to guess
     # them from the file.

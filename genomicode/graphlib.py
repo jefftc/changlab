@@ -105,7 +105,7 @@ class Graph:
 
         self._zstack = []  # list of (object, z, depth)
 
-    def draw_axes(self):
+    def draw_axes(self, draw_x, draw_y, draw_z):
         import graphconst as gc
         
         # Axes are half cylinders lying on the background.
@@ -115,61 +115,69 @@ class Graph:
         x_min, y_min = self.GRAPH_X, self.GRAPH_Y+self.GRAPH_HEIGHT
         x_axis_at, y_axis_at = y_min, x_min
 
-        # X-axis.
-        x_coord = x_min, x_axis_at, 0
-        x_extent = self.GRAPH_WIDTH, 0, 0
-        self._plotter.cylinder(
-            self._image, x_coord, x_extent, AXIS_RADIUS, AXIS_COLOR,
-            finish=gc.METALLIC)
-        # Give each axis a rounded cap so it looks smoother.
-        x_coord = x_min+self.GRAPH_WIDTH, x_axis_at, 0
-        self._plotter.sphere(
-            self._image, x_coord, AXIS_RADIUS, AXIS_COLOR,
-            finish=gc.METALLIC)
-        
-        # Y-axis.
-        y_coord = y_axis_at, y_min, 0
-        y_extent = 0, -self.GRAPH_HEIGHT, 0
-        self._plotter.cylinder(
-            self._image, y_coord, y_extent, AXIS_RADIUS, AXIS_COLOR,
-            finish=gc.METALLIC)
-        y_coord = y_axis_at, y_min-self.GRAPH_HEIGHT, 0
-        self._plotter.sphere(
-            self._image, y_coord, AXIS_RADIUS, AXIS_COLOR,
-            finish=gc.METALLIC)
+        if draw_x:
+            # X-axis.
+            x_coord = x_min, x_axis_at, 0
+            x_extent = self.GRAPH_WIDTH, 0, 0
+            if draw_y:
+                # Extend the X-axis out to the left, so there's no gap with
+                # the Y-axis.
+                x_coord = x_coord[0]-AXIS_RADIUS, x_coord[1], x_coord[2]
+                x_extent = x_extent[0]+AXIS_RADIUS, x_extent[1], x_extent[2]
+            self._plotter.cylinder(
+                self._image, x_coord, x_extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC)
+            # Give each axis a rounded cap so it looks smoother.
+            x_coord = x_min+self.GRAPH_WIDTH, x_axis_at, 0
+            self._plotter.sphere(
+                self._image, x_coord, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC)
 
-        # Z-axis.
-        if self._virt_zlim is None:
-            return
-        #AXIS_COLOR = 0.9, 0.3, 0.3
-        z_coord = y_axis_at, x_axis_at, self.GRAPH_Z
-        z_extent = 0, 0, self.GRAPH_DEPTH
-        self._plotter.cylinder(
-            self._image, z_coord, z_extent, AXIS_RADIUS, AXIS_COLOR,
-            finish=gc.METALLIC)
-        z_coord = y_axis_at, x_axis_at, self.GRAPH_Z-self.GRAPH_HEIGHT
-        self._plotter.sphere(
-            self._image, z_coord, AXIS_RADIUS, AXIS_COLOR,
-            finish=gc.METALLIC)
+        if draw_y:
+            # Y-axis.
+            y_coord = y_axis_at, y_min, 0
+            y_extent = 0, -self.GRAPH_HEIGHT, 0
+            self._plotter.cylinder(
+                self._image, y_coord, y_extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC)
+            y_coord = y_axis_at, y_min-self.GRAPH_HEIGHT, 0
+            self._plotter.sphere(
+                self._image, y_coord, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC)
+
+        if draw_z and self._virt_zlim:
+            # Z-axis.
+            z_coord = y_axis_at, x_axis_at, self.GRAPH_Z
+            z_extent = 0, 0, self.GRAPH_DEPTH
+            self._plotter.cylinder(
+                self._image, z_coord, z_extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC)
+            z_coord = y_axis_at, x_axis_at, self.GRAPH_Z-self.GRAPH_HEIGHT
+            self._plotter.sphere(
+                self._image, z_coord, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC)
 
     def draw_tick_marks(
         self, xtick, ytick, ztick, xtick_label, ytick_label, ztick_label,
-        draw_grid, tick_size=1.0, label_size=1.0):
+        xtick_at, ytick_at, ztick_at, draw_grid, 
+        tick_size=1.0, label_size=1.0):
         # xtick is a list of virtual units where the tickmarks should
         # be on the X-axis.
+        # wrong_ztick_label will draw the ztick label on the opposite
+        # side of the graph.
         import graphconst as gc
-        
+
         # Tick marks are half cylinders lying on the background.
         TICK_COLOR = 0.4, 0.4, 0.4
         TICK_LENGTH = 1.6 * self.UNIT
         TICK_RADIUS = 0.2*self.UNIT*tick_size
 
-        GRID_COLOR = 0.9, 0.9, 0.9
-        GRID_RADIUS = TICK_RADIUS * 0.5
+        GRID_COLOR = 0.7, 0.7, 0.7
+        GRID_RADIUS = TICK_RADIUS * 0.50
 
         LABEL_COLOR = 0.4, 0.4, 0.4
         LABEL_FONTSIZE = 1.5*self.UNIT*label_size
-        LABEL_DEPTH = 0.8*self.UNIT
+        LABEL_DEPTH = 0.1*self.UNIT
         LABEL_SPACE = 0.8*self.UNIT   # between tick mark and label
 
         x_min, y_min = self.GRAPH_X, self.GRAPH_Y+self.GRAPH_HEIGHT
@@ -183,18 +191,28 @@ class Graph:
             ztick_pixel = [self._virtz2pix(z) for z in ztick]
 
         for i, x_pix in enumerate(xtick_pixel):
-            coord = x_pix, x_axis_at-TICK_LENGTH/2.0, 0
+            coord = [x_pix, x_axis_at-TICK_LENGTH/2.0, 0]
             extent = 0, TICK_LENGTH, 0
+            if not xtick_at&gc.BACK:
+                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
             self._plotter.cylinder(
                 self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
-                no_shadow=True, finish=gc.METALLIC)
+                finish=gc.METALLIC)
+            # Round out the ticks so they look smoother.
+            self._plotter.sphere(
+                self._image, coord, TICK_RADIUS, TICK_COLOR,
+                finish=gc.METALLIC)
+            coord = coord[0], coord[1]+TICK_LENGTH, coord[2]
+            self._plotter.sphere(
+                self._image, coord, TICK_RADIUS, TICK_COLOR,
+                finish=gc.METALLIC)
 
-            if draw_grid and ztick:
-                coord = x_pix, x_axis_at, 0
-                extent = 0, 0, self.GRAPH_DEPTH
-                self._plotter.cylinder(
-                    self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    no_shadow=True, finish=gc.METALLIC)
+            #if draw_grid and ztick:
+            #    coord = x_pix, x_axis_at, 0
+            #    extent = 0, 0, self.GRAPH_DEPTH
+            #    self._plotter.cylinder(
+            #        self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
+            #        finish=gc.METALLIC)
                 #extent = 0, -self.GRAPH_HEIGHT, 0
                 #self._plotter.cylinder(
                 #    self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
@@ -202,63 +220,102 @@ class Graph:
             
             if not xtick_label:
                 continue
+            if i == 0 and x_pix == y_axis_at and xtick_at&gc.TOP:
+                # don't overlap with axis
+                continue
             label = xtick_label[i]
             # text coord left, top, back.  Extends to the right, down, to user.
-            coord = x_pix, x_axis_at+TICK_LENGTH/2.0+LABEL_SPACE, 0
+            coord = [x_pix, x_axis_at+TICK_LENGTH/2.0+LABEL_SPACE, 0]
+            wrong_y = False
+            if xtick_at&gc.TOP:
+                coord[1] = x_axis_at-TICK_LENGTH/2.0-LABEL_SPACE
+                wrong_y = True
+            if not xtick_at&gc.BACK:
+                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
             self._plotter.text(
                 self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
-                LABEL_COLOR, center_x=True)
+                LABEL_COLOR, center_x=True, wrong_y=wrong_y)
             
         for i, y_pix in enumerate(ytick_pixel):
-            coord = y_axis_at-TICK_LENGTH/2.0, y_pix, 0
+            coord = [y_axis_at-TICK_LENGTH/2.0, y_pix, 0]
             extent = TICK_LENGTH, 0, 0
+            if not ytick_at&gc.BACK:
+                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
             self._plotter.cylinder(
                 self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
-                no_shadow=True, finish=gc.METALLIC)
+                finish=gc.METALLIC)
+            # Round out the ticks so they look smoother.
+            self._plotter.sphere(
+                self._image, coord, TICK_RADIUS, TICK_COLOR,
+                finish=gc.METALLIC)
+            coord = coord[0]+TICK_LENGTH, coord[1], coord[2]
+            self._plotter.sphere(
+                self._image, coord, TICK_RADIUS, TICK_COLOR,
+                finish=gc.METALLIC)
 
             if draw_grid:
+                # Draw the grid on the X-Y plane.
                 coord = y_axis_at, y_pix, 0
                 extent = self.GRAPH_WIDTH, 0, 0
                 self._plotter.cylinder(
                     self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    no_shadow=True, finish=gc.METALLIC)
+                    finish=gc.METALLIC)
             if draw_grid and ztick:
+                # Draw the grid on the Y-Z plane.
                 coord = y_axis_at, y_pix, 0
                 extent = 0, 0, self.GRAPH_DEPTH
                 self._plotter.cylinder(
                     self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    no_shadow=True, finish=gc.METALLIC)
+                    finish=gc.METALLIC)
             
             if not ytick_label:
                 continue
+            # Don't overlap with the Z label.
+            if i == 0 and ztick_label and ztick_at&gc.LEFT:
+                continue
             label = ytick_label[i]
-            coord = y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, y_pix, 0
+            coord = [y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, y_pix, 0]
+            if not ytick_at&gc.BACK:
+                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
             self._plotter.text(
                 self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
                 LABEL_COLOR, wrong_x=True, center_y=True)
 
         for i, z_pix in enumerate(ztick_pixel):
-            coord = y_axis_at, x_axis_at-TICK_LENGTH/2.0, z_pix
+            coord = y_axis_at-TICK_LENGTH/2.0, x_axis_at, z_pix
             extent = TICK_LENGTH, 0, 0
             self._plotter.cylinder(
                 self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
-                no_shadow=True, finish=gc.METALLIC)
+                finish=gc.METALLIC)
+            # Round out the ticks so they look smoother.
+            self._plotter.sphere(
+                self._image, coord, TICK_RADIUS, TICK_COLOR,
+                finish=gc.METALLIC)
+            coord = coord[0]+TICK_LENGTH, coord[1], coord[2]
+            self._plotter.sphere(
+                self._image, coord, TICK_RADIUS, TICK_COLOR,
+                finish=gc.METALLIC)
 
             if draw_grid:
+                # Draw the grid on the X-Z plane.
                 coord = y_axis_at, x_axis_at, z_pix
                 extent = self.GRAPH_WIDTH, 0, 0
                 self._plotter.cylinder(
                     self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    no_shadow=True, finish=gc.METALLIC)
+                    finish=gc.METALLIC)
 
             if not ztick_label:
                 continue
             label = ztick_label[i]
             # text coord left, top, back.  Extends to the right, down, to user.
-            coord = y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, x_axis_at, z_pix
+            coord = [y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, x_axis_at, z_pix]
+            wrong_x = True
+            if not ztick_at&gc.LEFT:
+                coord[0] = y_axis_at + self.GRAPH_WIDTH + LABEL_SPACE
+                wrong_x = False
             self._plotter.text(
                 self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
-                LABEL_COLOR, wrong_x=True, center_y=True, center_z=True)
+                LABEL_COLOR, wrong_x=wrong_x, center_y=True, center_z=True)
 
     def draw_title(self, title, title_size=1.0):
         # Title sits on the background.
@@ -278,9 +335,13 @@ class Graph:
             center_x=True, wrong_y=True, min_y=True)
             
 
-    def draw_labels(self, xlabel, ylabel, label_size=1.0):
+    def draw_labels(
+        self, xlabel, ylabel, zlabel, xtick_at, ytick_at, ztick_at,
+        label_size=1.0):
+        import graphconst as gc
+        
         # Labels sit on the background.
-        LABEL_DEPTH = 0.8*self.UNIT
+        LABEL_DEPTH = 0.1*self.UNIT
         # Color (0.6, 0.6, 0.6) is too light for pybinreg predictions.
         LABEL_COLOR = 0.2, 0.2, 0.2
         LABEL_FONTSIZE = 2.5*self.UNIT*label_size
@@ -288,23 +349,40 @@ class Graph:
         
         GRAPH_X_MID = self.GRAPH_X+self.GRAPH_WIDTH/2.0
         GRAPH_Y_MID = self.GRAPH_Y+self.GRAPH_HEIGHT/2.0
+        GRAPH_Z_MID = self.GRAPH_Z+self.GRAPH_DEPTH/2.0
 
         if xlabel:
-            coord = GRAPH_X_MID, LABEL_SPACE, 0
+            coord = [GRAPH_X_MID, LABEL_SPACE, 0]
+            if not xtick_at&gc.BACK:
+                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
             self._plotter.text(
                 self._image, xlabel, coord, 
                 LABEL_DEPTH, LABEL_FONTSIZE, LABEL_COLOR,
                 center_x=True, max_y=True)
         if ylabel:
-            coord = -LABEL_SPACE, GRAPH_Y_MID, 0
+            coord = [-LABEL_SPACE, GRAPH_Y_MID, 0]
+            if not ytick_at&gc.BACK:
+                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2
             self._plotter.text90(
                 self._image, ylabel, coord, 
                 LABEL_DEPTH, LABEL_FONTSIZE, LABEL_COLOR,
                 center_y=True, wrong_x=True, min_x=True)
+        if zlabel:
+            coord = [
+                self.GRAPH_X, self.GRAPH_Y+self.GRAPH_HEIGHT+LABEL_SPACE,
+                GRAPH_Z_MID-LABEL_DEPTH/2]
+            if not ztick_at&gc.LEFT:
+                coord[0] = self.GRAPH_X + self.GRAPH_WIDTH + LABEL_SPACE
+            coord[1] = LABEL_SPACE
+            num_to_skip = int(bool(xlabel)) + int(bool(ylabel))
+            self._plotter.text(
+                self._image, zlabel, coord, 
+                LABEL_DEPTH, LABEL_FONTSIZE, LABEL_COLOR,
+                center_x=True, max_y=num_to_skip)
 
     def draw_points(
         self, points, error_bars, onpoint_labels, overpoint_labels, 
-        color, shape, point_size=1.0):
+        color, shape, shadow, point_size):
         import graphconst as gc
         
         RADIUS = 0.8*self.UNIT*point_size      # Radius of each point.
@@ -344,8 +422,8 @@ class Graph:
             # Draw the point.
             coord = x_pix, y_pix, z_pix+RADIUS
             self._plotter.sphere(
-                self._image, coord, RADIUS, color[i], shape[i],
-                finish=gc.METALLIC)
+                self._image, coord, RADIUS, color[i], shape=shape[i],
+                finish=gc.METALLIC, shadow=shadow)
             x = "points", z_pix, RADIUS*2
             if x not in self._zstack:
                 self._zstack.append(x)
@@ -405,7 +483,7 @@ class Graph:
                     OVER_LABEL_DEPTH, OVER_LABEL_FONTSIZE, OVER_LABEL_COLOR, 
                     center_x=True, wrong_y=wrong_y)
             
-    def draw_line(self, points, color, line_size=1.0):
+    def draw_line(self, points, color, shadow, line_size=1.0):
         import math
         import graphconst as gc
         
@@ -426,11 +504,11 @@ class Graph:
             if len(points[i]) == 3:
                 zv1 = points[i][2]
             if len(points[i+1]) == 3:
-                zv2 = points[i][2]
+                zv2 = points[i+1][2]
 
             xp1, yp1 = self._virtx2pix(xv1), self._virty2pix(yv1)
             xp2, yp2 = self._virtx2pix(xv2), self._virty2pix(yv2)
-            zp1 = zp2 = HEIGHT
+            zp1 = zp2 = HEIGHT + RADIUS
             if zv1 is not None:
                 zp1 = self._virtz2pix(zv1)
             if zv2 is not None:
@@ -498,25 +576,25 @@ class Graph:
             angle = 90
             if abs(xp2-xp1) > 1E-8:
                 angle = math.degrees(math.atan(float(yp2-yp1)/(xp2-xp1)))
-            coord = xp1, yp1, zp1+RADIUS
+            coord = xp1, yp1, zp1
             extent = xp2-xp1, yp2-yp1, zp2-zp1
             if i == 0:
                 self._plotter.sphere(
                     self._image, coord, RADIUS, color,
-                    finish=gc.METALLIC)
+                    finish=gc.METALLIC, shadow=shadow)
             self._plotter.cylinder(
                 self._image, coord, extent, RADIUS, color, 
-                finish=gc.METALLIC)
-            coord = xp2, yp2, zp2+RADIUS
+                finish=gc.METALLIC, shadow=shadow)
+            coord = xp2, yp2, zp2
             self._plotter.sphere(
                 self._image, coord, RADIUS, color, 
-                finish=gc.METALLIC)
+                finish=gc.METALLIC, shadow=shadow)
 
             x = "line", max(zp1, zp2), RADIUS*2
             if x not in self._zstack:
                 self._zstack.append(x)
 
-    def draw_bars(self, bars, barwidth, color, width_size=1.0):
+    def draw_bars(self, bars, barwidth, color, shadow, width_size=1.0):
         # height should be an integer.  0 is lowest.
         import math
         import povray as pr
@@ -574,8 +652,10 @@ class Graph:
             # Draw the box.
             coord = xp, yp, zp
             extent = width, height, DEPTH
+            #finish = gc.METALLIC
+            finish = gc.ROUGH
             self._plotter.box(
-                self._image, coord, extent, color, finish=gc.ROUGH)
+                self._image, coord, extent, color, finish=finish,shadow=shadow)
 
             x = "bars", zp, DEPTH
             if x not in self._zstack:
@@ -612,7 +692,7 @@ class Graph:
         return pix_z
 
 def scatter(
-    points, color=None, shape=None, onpoint_label=None,
+    points, color=None, shape=None, shadow=True, onpoint_label=None,
     overpoint_label=None,  error_bar=None, point_size=1.0, graph=None,
     plotter=None, **keywds):
     """Return the Graph object.
@@ -620,6 +700,7 @@ def scatter(
     points           List of (x, y) coordinates for the points.
     color            List of the color for each point (<r>,<g>,<b>) from 0-1.
     shape            List of DEFAULT, CIRCLE, SQUARE, or DIAMOND.
+    shadow
     onpoint_label    What label to put on each point.
     overpoint_label  What label to put over each point.
     error_bar        List of sizes of the error bar for each point.
@@ -656,7 +737,7 @@ def scatter(
             plotter, min(X), max(X), min(Y), max(Y), Z_min, Z_max, **keywds)
     graph.draw_points(
         points, error_bar, onpoint_label, overpoint_label,
-        color, shape, point_size=point_size)
+        color, shape, shadow, point_size=point_size)
     return graph
 
 def line(*args, **keywds):
@@ -666,6 +747,7 @@ def line(*args, **keywds):
     line2        ...
     color        List of colors, 1 for each line (<r>,<g>,<b>) from 0-1.
     shape        List of DEFAULT, CIRCLE, SQUARE, or DIAMOND.
+    shadow
     line_size    Scales the size of the line.
     draw_points  Whether to draw the points or not.
     point_size   Scales the size of each point.
@@ -686,6 +768,7 @@ def line(*args, **keywds):
 
     color = keywds.get("color", None)
     shape = keywds.get("shape", None)
+    shadow = keywds.get("shadow", True)
     line_size = keywds.get("line_size", 1.0)
     draw_points = keywds.get("draw_points", False)
     point_size = keywds.get("point_size", 1.0)
@@ -720,13 +803,13 @@ def line(*args, **keywds):
             plotter, min(X), max(X), min(Y), max(Y), Z_min, Z_max, **keywds)
         
     for i, line in enumerate(lines):
-        graph.draw_line(line, color[i], line_size=line_size)
+        graph.draw_line(line, color[i], shadow, line_size=line_size)
         if not draw_points:
             continue
         # Should let the user specify which points to plot.
         col = [color[i]] * len(line)
         shp = [shape[i]] * len(line)
-        graph.draw_points(line, None, None, None, col, shp)
+        graph.draw_points(line, None, None, None, col, shp, shadow, point_size)
 
     return graph
 
@@ -738,6 +821,7 @@ def bar(*args, **keywds):
                  Can also be (x, y_min, y_max, z).
     series2      ...
     color        List of colors, 1 for each bar (<r>,<g>,<b>) from 0-1.
+    shadow       Whether to draw a shadow.
     width_size   Width of bar.  1.0 means bars do not overlap.
 
     """
@@ -745,6 +829,7 @@ def bar(*args, **keywds):
     
     # TODO: ERROR BAR
     color = keywds.get("color", None)
+    shadow = keywds.get("shadow", True)
     width_size = keywds.get("width_size", 1.0)
     graph = keywds.get("graph", None)
     plotter = keywds.get("plotter", None)
@@ -781,7 +866,8 @@ def bar(*args, **keywds):
             plotter, X_min, X_max, min(Y), max(Y), Z_min, Z_max, **keywds)
         
     for i, series in enumerate(all_series):
-        graph.draw_bars(series, barwidth, color[i], width_size=width_size)
+        graph.draw_bars(
+            series, barwidth, color[i], shadow, width_size=width_size)
 
     return graph
 
@@ -898,7 +984,6 @@ def find_tall_heatmap_size(
     total_x = total_y / height_width_ratio
     #print total_x, total_y
     xpix = float(total_x) / ncol
-    #print "HERE1", xpix, ypix
     # If the width is too small, then use this to set the minimum.
     if xpix < min_box_width:
         xpix = min_box_width
@@ -906,12 +991,10 @@ def find_tall_heatmap_size(
         total_y = total_x * height_width_ratio
         ypix = float(total_y) / nrow
         assert ypix >= min_box_height
-        #print "HERE3", xpix, ypix
         
     # Increase size up to the maximum allowed.
     max_xpix = min(max_box_width, float(max_total_width) / ncol)
     max_ypix = min(max_box_height, float(max_total_height) / nrow)
-    #print "HERE2", max_xpix, max_ypix, xpix, ypix
     x_ratio = max_xpix / xpix
     y_ratio = max_ypix / ypix
     ratio = min(y_ratio, x_ratio)
@@ -954,7 +1037,6 @@ def place_ticks(v_min, v_max, num_ticks=10, delta=None):
     assert v_min < v_max, "%g %g" % (v_min, v_max)
     assert num_ticks > 0 and num_ticks <= 100
 
-    #print v_min, v_max, num_ticks
     if delta is None:
         delta = _choose_tick_delta(v_min, v_max, num_ticks=num_ticks)
 
@@ -967,7 +1049,7 @@ def place_ticks(v_min, v_max, num_ticks=10, delta=None):
     tick_min, tick_max = int(v_min*multiplier), int(v_max*multiplier)
 
     # Round tick_min down to the nearest delta and tick_max up to the
-    # nearest delta.
+    # nearest delta to cover the whole range.
     tick_min = tick_min - tick_min % delta
     if tick_max % delta != 0:
         tick_max = tick_max + (delta - tick_max % delta)
@@ -980,13 +1062,19 @@ def place_ticks(v_min, v_max, num_ticks=10, delta=None):
             break
     else:
         ticks = [int(x) for x in ticks]
+
+    # Only keep the ticks that are within the range.
+    ticks = [x for x in ticks if x >= v_min and x <= v_max]
+
     return ticks
 
 def _make_graph(
     plotter, X_min, X_max, Y_min, Y_max, Z_min, Z_max,
     xlim=None, ylim=None, zlim=None, 
     xtick=None, xtick_label=None, ytick=None, ytick_label=None,
-    ztick=None, ztick_label=None, tick_size=1.0,
+    ztick=None, ztick_label=None,
+    xtick_at=None, ytick_at=None, ztick_at=None, tick_size=1.0,
+    draw_x_axis=None, draw_y_axis=None, draw_z_axis=None, 
     grid=False, title=None, title_size=1.0,
     xlabel=None, ylabel=None, zlabel=None, label_size=1.0,
     font=None, width=None, height=None, **keywds):
@@ -1003,6 +1091,8 @@ def _make_graph(
     # 
     # width        Number of pixels wide for the plot.
     # height
+    import graphconst as gc
+    
     width = width or 1024
     height = height or 768
     if plotter is None:
@@ -1016,14 +1106,41 @@ def _make_graph(
     (xlim, ylim, zlim,
      xtick, ytick, ztick, xtick_label, ytick_label, ztick_label) = x
 
+    if xtick_at is None:
+        xtick_at = gc.BACK         # default is bottom, back
+        if ztick:
+            xtick_at = xtick_at^gc.BACK
+    if ytick_at is None:
+        ytick_at = gc.LEFT|gc.BACK # default is bottom, back
+        if ztick:
+            ytick_at = ytick_at^gc.BACK
+    if ztick_at is None:
+        ztick_at = 0         # default is bottom, right
+
+    if draw_x_axis is None:
+        draw_x_axis = True
+    if draw_y_axis is None:
+        draw_y_axis = True
+    if draw_z_axis is None and zlim:
+        draw_z_axis = True
+
+    if not draw_x_axis:
+        xtick, xtick_label = [], None
+    if not draw_y_axis:
+        ytick, ytick_label = [], None
+    if not draw_z_axis:
+        ztick, ztick_label = [], None
+
     graph = Graph(plotter, width, height, xlim, ylim, zlim)
-    graph.draw_axes()
+    graph.draw_axes(draw_x_axis, draw_y_axis, draw_z_axis)
     graph.draw_tick_marks(
-        xtick, ytick, ztick, xtick_label, ytick_label, ztick_label, grid, 
-        tick_size=tick_size, label_size=label_size)
+        xtick, ytick, ztick, xtick_label, ytick_label, ztick_label,
+        xtick_at, ytick_at, ztick_at, grid, tick_size=tick_size,
+        label_size=label_size)
     graph.draw_title(title, title_size=title_size)
-    # Z-axis label?
-    graph.draw_labels(xlabel, ylabel, label_size=label_size)
+    graph.draw_labels(
+        xlabel, ylabel, zlabel, xtick_at, ytick_at, ztick_at,
+        label_size=label_size)
     return graph
 
 def _set_default_color(color, n):
@@ -1104,12 +1221,15 @@ def _set_default_axes(
     min_x, max_x, min_y, max_y, min_z, max_z, 
     xlim, ylim, zlim,
     xtick, ytick, ztick, xtick_label, ytick_label, ztick_label):
+    # Initialize some variables.
     if xtick_label and not xtick:
         xtick = True
     if ytick_label and not ytick:
         ytick = True
     if ztick_label and not ztick:
         ztick = True
+
+    # Set the tick marks.
     if xlim:
         assert len(xlim) == 2
         xtick = _set_default_tick(xtick, xlim[0], xlim[1])
@@ -1129,10 +1249,14 @@ def _set_default_axes(
         # No Z coordinates.
         ztick = None
         ztick_label = None
+
+    # Set the tick mark labels.
     xtick_label = _set_default_tick_label(xtick_label, xtick)
     ytick_label = _set_default_tick_label(ytick_label, ytick)
     if ztick is not None:
         ztick_label = _set_default_tick_label(ztick_label, ztick)
+
+    # Set the limits.
     if xtick:
         min_x, max_x = min(min_x, min(xtick)), max(max_x, max(xtick))
     if ytick:
@@ -1141,12 +1265,13 @@ def _set_default_axes(
         min_z, max_z = min(min_z, min(ztick)), max(max_z, max(ztick))
     xlim = _set_default_lim(xlim, min_x, max_x)
     ylim = _set_default_lim(ylim, min_y, max_y)
-    zlim = None
     if min_z is not None and max_z is not None:
         zlim = _set_default_lim(zlim, min_z, max_z)
+
     assert not xtick_label or len(xtick) == len(xtick_label)
     assert not ytick_label or len(ytick) == len(ytick_label)
     assert not ztick_label or len(ztick) == len(ztick_label)
+    
     x = (xlim, ylim, zlim,
          xtick, ytick, ztick, xtick_label, ytick_label, ztick_label)
     return x

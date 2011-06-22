@@ -11,6 +11,7 @@ calc_coherence_score_from_matrix
 calc_coherence_p
 calc_coherence_p_from_geo
 load_alpha_distribution
+estimate_alpha_distribution
 choose_z_cutoff
 fit_z_cutoff_to_ALPHA
 
@@ -414,23 +415,17 @@ def calc_coherence_p(dataset, geneset, z_cutoff, obs_alpha, num_samples=100):
     num_extreme, num_samples, mod, pvalue = x
     return mod, pvalue
 
-def calc_coherence_p_from_geo(
-    geo_path, GSEID, GPLID, num_probes, obs_alpha, sizes=None):
+def calc_coherence_p_from_dist(obs_alpha, num_probes, size2dist, sizes=None):
     # Can set the sizes that should be used for interpolation (for
     # debugging).
     # Interpolate between two sizes that have been sampled.  Will not
     # extrapolate outwards.
     import jmath
-    import geolib
-    FF = geolib.FileFactory
     parzen_h = 0.5
 
     assert num_probes > 0, "must have at least 1 gene"
     assert obs_alpha >= 1 and obs_alpha <= num_probes
-
-    # Load the alpha distribution file.
-    size2dist = load_alpha_distribution(geo_path, GSEID, GPLID)
-
+    
     # If the user specific specific sizes to use, then make sure they
     # have been sampled.
     if sizes is not None:
@@ -522,6 +517,14 @@ def calc_coherence_p_from_geo(
     # Round the p-value to the proper resolution.
     pvalue = max(round(pvalue*N), 1.0)/N
     return mod, pvalue
+
+def calc_coherence_p_from_geo(
+    geo_path, GSEID, GPLID, num_probes, obs_alpha, sizes=None):
+    # Load the alpha distribution file.
+    size2dist = load_alpha_distribution(geo_path, GSEID, GPLID)
+    x = calc_coherence_p_from_dist(
+        obs_alpha, num_probes, size2dist, sizes=sizes)
+    return x
 
 def _find_alpha_range(X_obs, X_count, h=1, eps=1E-10):
     import math
@@ -672,6 +675,52 @@ def load_alpha_distribution(geo_path, GSEID, GPLID):
         x = AlphaDistribution(size, int(samples), alphas, counts)
         size2dist[size] = x
     return size2dist
+
+## def estimate_alpha_distribution(
+##     geo_path, GSEID, GPLID, num_probes, sizes=None):
+
+##     assert num_probes > 0, "must have at least 1 gene"
+
+##     # Load the alpha distribution file.
+##     size2dist = load_alpha_distribution(geo_path, GSEID, GPLID)
+
+##     # If the user specific specific sizes to use, then make sure they
+##     # have been sampled.
+##     if sizes is not None:
+##         for s in sizes:
+##             assert s in size2dist
+
+##     # If this size is already sampled, then no need to interpolate.
+##     if sizes is None and num_probes in size2dist:
+##         return size2dist[num_probes]
+
+##     # Select the sizes to use to interpolate num_probes.
+##     if sizes is None:
+##         # Strategy: Interpolate using the next larger and next smaller
+##         # size.
+##         smaller = [s for s in size2dist if s <= num_probes]
+##         larger = [s for s in size2dist if s > num_probes]
+##         assert smaller, \
+##                "Gene set [%d] is too small for estimation [%d]." % (
+##             num_probes, min(size2dist))
+##         assert larger, \
+##                "Gene set [%d] is too big for estimation [%d]." % (
+##             num_probes, max(size2dist))
+##         smaller, larger = max(smaller), min(larger)
+##         sizes = [smaller, larger]
+
+##     if len(sizes) == 1:
+##         # Only one size, must be already sampled.
+##         size = sizes[0]
+##         assert size in size2dist
+##         dist = size2dist[size]
+##     else:
+##         # Estimate the count of ALPHA from the data in sizes.
+##         dist0 = size2dist[sizes[0]]
+##         dist1 = size2dist[sizes[1]]
+##         alphas = sorted({}.fromkeys(dist0.alphas + dist1.alphas))
+        
+        
 
 def choose_z_cutoff(dataset, gene_id_name=None, debug_handle=None):
     # Choose a reasonable Z cutoff for this data set.  Z-cutoff is the

@@ -906,13 +906,14 @@ def main():
             options.gp_imod_all_vars, signatures, why_dropped)
         signatures, why_dropped = x
 
-    print "Reading gene expression data."
     sys.stdout.flush()
     DATA_rma = DATA_mas5 = None
     if datafile_rma is not None:
+        print "Reading RMA file."
         DATA_rma = arrayio.read(datafile_rma)
         DATA_rma = arrayio.convert(DATA_rma, to_format=arrayio.gct_format)
     if datafile_mas5 is not None:
+        print "Reading MAS5 file."
         DATA_mas5 = arrayio.read(datafile_mas5)
         DATA_mas5 = arrayio.convert(DATA_mas5, to_format=arrayio.gct_format)
     # Don't handle the log.  Let pybinreg do it.
