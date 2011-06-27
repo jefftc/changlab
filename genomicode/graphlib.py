@@ -396,7 +396,7 @@ class Graph:
         import graphconst as gc
         
         RADIUS = 0.8*self.UNIT*point_size      # Radius of each point.
-        HEIGHT = 0
+        HEIGHT = 0                             # Bottom of each point.
         if self._zstack:
             HEIGHT = max([z+depth for (name, z, depth) in self._zstack])
         
@@ -419,7 +419,7 @@ class Graph:
                 z_virt = points[i][2]
             
             x_pix, y_pix = self._virtx2pix(x_virt), self._virty2pix(y_virt)
-            z_pix = HEIGHT
+            z_pix = HEIGHT   # Bottom of each point.
             if z_virt is not None:
                 z_pix = self._virtz2pix(z_virt)-RADIUS
 
@@ -493,14 +493,19 @@ class Graph:
                     OVER_LABEL_DEPTH, OVER_LABEL_FONTSIZE, OVER_LABEL_COLOR, 
                     center_x=True, wrong_y=wrong_y)
             
-    def draw_line(self, points, color, shadow, line_size=1.0):
+    def draw_line(self, points, color, shadow, same_height, line_size):
         import math
         import graphconst as gc
         
         RADIUS = 0.40 * self.UNIT * line_size
-        HEIGHT = 0.0
+        HEIGHT = 0.0     # Bottom of each line.
         if self._zstack:
-            HEIGHT = max([z+depth for (name, z, depth) in self._zstack])
+            if same_height:
+                # Make same height as highest thing.
+                HEIGHT = max([z for (name, z, depth) in self._zstack])
+            else:
+                # Make higher than highest thing.
+                HEIGHT = max([z+depth for (name, z, depth) in self._zstack])
 
         # For convenience.
         GRAPH_X, GRAPH_Y, GRAPH_Z = self.GRAPH_X, self.GRAPH_Y, self.GRAPH_Z
@@ -518,7 +523,7 @@ class Graph:
 
             xp1, yp1 = self._virtx2pix(xv1), self._virty2pix(yv1)
             xp2, yp2 = self._virtx2pix(xv2), self._virty2pix(yv2)
-            zp1 = zp2 = HEIGHT + RADIUS
+            zp1 = zp2 = HEIGHT+RADIUS   # Center of each line.
             if zv1 is not None:
                 zp1 = self._virtz2pix(zv1)
             if zv2 is not None:
@@ -600,7 +605,7 @@ class Graph:
                 self._image, coord, RADIUS, color, 
                 finish=gc.METALLIC, shadow=shadow)
 
-            x = "line", max(zp1, zp2), RADIUS*2
+            x = "line", max(zp1, zp2)-RADIUS, RADIUS*2
             if x not in self._zstack:
                 self._zstack.append(x)
 
@@ -703,10 +708,10 @@ class Graph:
         pix_z = float(virt_z-virt_min)/virt_len*pix_len + pix_min
         return pix_z
 
-def scatter(
-    points, color=None, shape=None, shadow=None, onpoint_label=None,
-    overpoint_label=None,  error_bar=None, point_size=1.0, graph=None,
-    plotter=None, **keywds):
+def scatter(*args, **keywds):
+    #points, color=None, shape=None, shadow=None, onpoint_label=None,
+    #overpoint_label=None,  error_bar=None, point_size=1.0, graph=None,
+    #plotter=None, **keywds):
     """Return the Graph object.
     
     points           List of (x, y) coordinates for the points.
@@ -723,6 +728,18 @@ def scatter(
     
     """
     from StringIO import StringIO
+
+    assert len(args) == 1, "Specify points"
+    points, = args
+    color = keywds.get("color", None)
+    shape = keywds.get("spahe", None)
+    shadow = keywds.get("shadow", None)
+    onpoint_label = keywds.get("onpoint_label", None)
+    overpoint_label = keywds.get("overpoint_label", None)
+    error_bar = keywds.get("error_bar", None)
+    point_size = keywds.get("point_size", 1.0)
+    graph = keywds.get("graph", None)
+    plotter = keywds.get("plotter", None)
 
     # Check the inputs
     color = _set_default_color(color, len(points))
@@ -764,6 +781,7 @@ def line(*args, **keywds):
     line_size    Scales the size of the line.
     draw_points  Whether to draw the points or not.
     point_size   Scales the size of each point.
+    same_height  Draw all lines at the same height (default False).
     
     """
     import itertools
@@ -785,6 +803,7 @@ def line(*args, **keywds):
     line_size = keywds.get("line_size", 1.0)
     draw_points = keywds.get("draw_points", None)
     point_size = keywds.get("point_size", 1.0)
+    same_height = keywds.get("same_height", False)
     graph = keywds.get("graph", None)
     plotter = keywds.get("plotter", None)
     
@@ -817,7 +836,7 @@ def line(*args, **keywds):
 
     for i, line in enumerate(lines):
         c1, c2 = line
-        graph.draw_line(line, color[i], shadow, line_size=line_size)
+        graph.draw_line(line, color[i], shadow, same_height, line_size)
         if not draw_points:
             continue
         # Should let the user specify which points to plot.

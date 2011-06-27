@@ -126,7 +126,7 @@ def process_gp_imod_all_vars(gp_imod_all_vars, signatures, why_dropped):
     # If the user wanted to do all the signatures, then just return
     # all the original signatures.
     if do_all_signatures:
-        return signatures
+        return signatures, why_dropped
     
     # Filter out some parameters to ignore.
     options_clean = []

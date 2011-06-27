@@ -15,12 +15,9 @@ estimate_alpha_distribution
 choose_z_cutoff
 fit_z_cutoff_to_ALPHA
 
-calc_consensus_score
-calc_consensus_score_from_matrix
-calc_consensus_p
 
+Classes:
 CoherenceScore
-ConsensusScore
 AlphaDistribution
 
 """
@@ -77,20 +74,6 @@ class AlphaDistribution:
         schwartz.sort()
         self.alphas = [x[0] for x in schwartz]
         self.counts = [x[1] for x in schwartz]
-
-class ConsensusScore:
-    """
-    C          Matrix of consensus scores.
-    C_flat     List of the scores on the upper diagonal.
-    score2cdf  Dictionary of consensus score -> CDF.
-    auc        Area under the curve.
-    
-    """
-    def __init__(self, C, C_flat, score2cdf, auc):
-        self.C = C
-        self.C_flat = C_flat
-        self.score2cdf = score2cdf
-        self.auc = auc
 
 def _find_medoid(CORS, CUTOFF):
     import jmath
@@ -1038,100 +1021,7 @@ def uniquify_genes(dataset, id_name):
     indexes = indexes[:num_indexes]
     return dataset.matrix(row=indexes)
 
-def calc_consensus_score(dataset):
-    # dataset is a gene x data set matrix of 1/0 indicating whether
-    # the gene belongs in the data set.
-    # Return a ConsensusScore object.
-    assert dataset.nrow() > 0, "not enough genes (%d)" % dataset.nrow()
-    assert dataset.ncol() >= 2, "not enough samples (%d)" % dataset.ncol()
-    X = dataset.slice()
-    return calc_consensus_score_from_matrix(X)
 
-def calc_consensus_score_from_matrix(X):
-    # Return a ConsensusScore object.
-    x = _calc_consensus_score_h(X)
-    return ConsensusScore(*x)
-
-def _calc_consensus_matrix(X):
-    # Return a consensus matrix from X.  Only fills in the upper
-    # diagonal of the matrix.
-    # For each pair of genes, count the number of data sets in which
-    # they are in the same cluster.
-    nrow, ncol = len(X), len(X[0])
-    C = [[0]*nrow for i in range(nrow)]
-    for i in range(nrow):
-        X_i = X[i]
-        for j in range(i, nrow):
-            X_j = X[j]
-            count = 0
-            for k in range(ncol):
-                count += X_i[k] == X_j[k]
-            # This is about 50% slower.
-            #count = len([x for (x, y) in zip(X[i], X[j]) if x == y])
-            C[i][j] = float(count) / ncol
-    return C
-
-def _calc_consensus_score_h(X):
-    # For each pair of genes, count the number of data sets in which
-    # they occur together.
-    C = _calc_consensus_matrix(X)
-
-    # Get a list of the pairwise consensus values.
-    C_flat = []
-    for i in range(len(C)-1):
-        x = C[i][i+1:]
-        C_flat.extend(x)
-    TOTAL = len(C)*(len(C)-1)/2
-    assert len(C_flat) == TOTAL
-
-    # For each consensus value, calculate the cdf.
-    score2cdf = {}  # dict of consensus score -> CDF
-    for i, score in enumerate(sorted(C_flat, reverse=True)):
-        if score in score2cdf:
-            continue
-        cdf = 1.0 - float(i)/len(C_flat)
-        score2cdf[score] = cdf
-
-    # Calculate the area under the curve.
-    scores = sorted(score2cdf)
-    n = len(scores)
-    auc = 0.0
-    for i in range(1, len(scores)):
-        auc += (scores[i]-scores[i-1]) * score2cdf[scores[i]]
-
-    return C, C_flat, score2cdf, auc
-
-def calc_consensus_p(dataset, NUM_SAMPLES=100):
-    import math
-    import random
-    import jmath
-    
-    R = jmath.start_R()
-    
-    # Calculate the consensus score for this gene set.
-    X_gset = dataset.matrix()
-    C_gset = calc_consensus_score_from_matrix(X_gset)
-
-    rand_nlp = [None] * NUM_SAMPLES
-    for zzz in range(NUM_SAMPLES):
-        # Randomly permute the gene set.
-        X_rand = [X_gset[i][:] for i in range(len(X_gset))]
-        for i in range(len(X_rand[0])):
-            for j in range(len(X_rand)-1, 0, -1):
-                k = random.randint(0, j)
-                X_rand[j][i], X_rand[k][i] = X_rand[k][i], X_rand[j][i]
-        C_rand = calc_consensus_score_from_matrix(X_rand)
-
-        # Calculate the p-value from the Kolmogorov-Smirnov test.
-        ow = R.options("warn")
-        R.options(warn=-1)
-        x = R.ks_test(C_gset.C_flat, C_rand.C_flat, exact=True)
-        R.options(**ow)
-        p_value = max(x["p.value"], 1E-10)
-        nlp = -math.log(p_value, 10)
-        rand_nlp[zzz] = nlp
-    mean_nlp = float(sum(rand_nlp)) / len(rand_nlp)
-    return mean_nlp
 
 
 # Try and load C implementations of functions.  If I can't,

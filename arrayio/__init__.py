@@ -50,7 +50,7 @@ def read(locator, datatype=float, format=None):
     if format is None:
         msg = "I could not find a format for: %r" % locator
         if not os.path.exists(locator):
-            msg = "%s\nIt does not appear to be a file." % msg
+            msg = "%s.  It does not appear to be a file." % msg
         assert format is not None, msg
     #print "PARSING WITH", format
     return format.read(locator, datatype=datatype)

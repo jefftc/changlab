@@ -428,8 +428,9 @@ static PyMethodDef cCoherenceLibMethods[] = {
    ccoherencelib__find_medoid__doc__},
   {"_calc_coherence_score_h", ccoherencelib__calc_coherence_score_h, 
    METH_VARARGS, ccoherencelib__calc_coherence_score_h__doc__},
-  {"_calc_consensus_matrix", ccoherencelib__calc_consensus_matrix, 
-   METH_VARARGS, ccoherencelib__calc_consensus_matrix__doc__},
+  /* Out of date. */
+  /*  {"_calc_consensus_matrix", ccoherencelib__calc_consensus_matrix, 
+      METH_VARARGS, ccoherencelib__calc_consensus_matrix__doc__}, */
   {"_get_unique_indexes", ccoherencelib__get_unique_indexes, 
    METH_VARARGS, ccoherencelib__get_unique_indexes__doc__},
   {NULL, NULL, 0, NULL}

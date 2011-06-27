@@ -124,6 +124,8 @@ def _is_known_desc(desc):
         return True
     if ldesc.startswith("http"):
         return True
+    if ldesc == "":
+        return True
     return False
 
 def detect_format(filename):
@@ -225,7 +227,6 @@ def detect_format(filename):
         return GMX
     if not spaces_in_col1 and spaces_in_row1:
         return GMT
-    #print "HERE1"
 
     # Most likely, there will be different numbers of genes per gene
     # set.  This will lead to there being empty strings.  Check for a
@@ -261,7 +262,6 @@ def detect_format(filename):
         return GMT
     if genes_left_aligned and not genes_top_aligned:
         return GMX
-    #print "HERE2"
 
     # Check the descriptions to see if they match up.
     row2 = matrix[1]
@@ -278,7 +278,6 @@ def detect_format(filename):
         return GMX
     if desc_col and not desc_row:
         return GMT
-    #print "HERE3"
     
     return None
         
