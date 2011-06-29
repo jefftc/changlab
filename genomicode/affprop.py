@@ -144,8 +144,10 @@ def _find_clusters(exemplars):
             topology[i] = []
         if j not in topology:
             topology[j] = []
-        topology[i].append(j)
-        topology[j].append(i)
+        if j not in topology[i]:
+            topology[i].append(j)
+        if i not in topology[j]:
+            topology[j].append(i)
 
     # Find the centers of each cluster.  A node is a cluster center
     # if:
@@ -159,8 +161,7 @@ def _find_clusters(exemplars):
             centers.append(node)
         elif len(topology[partners[0]]) == 1 and partners[0] not in centers:
             centers.append(node)
-    centers = sorted(centers)
-
+    
     # Assign each node to a cluster, as defined by the centers.
     # 1.  If a node is a center, then set it to its own cluster.
     # 2.  If the node is connected to a center, then set it to that

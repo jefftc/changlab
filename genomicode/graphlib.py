@@ -679,6 +679,8 @@ class Graph:
                 self._zstack.append(x)
 
     def write(self, handle):
+        if type(handle) is type(""):
+            handle = open(handle, 'w')
         return self._plotter.write(self._image, handle)
     
     def _virtx2pix(self, virt_x):
@@ -806,6 +808,10 @@ def line(*args, **keywds):
     same_height = keywds.get("same_height", False)
     graph = keywds.get("graph", None)
     plotter = keywds.get("plotter", None)
+
+    # The points on the line should be smaller than the points in the
+    # scatter plot.
+    point_size = point_size * 0.75
     
     # Check the inputs
     lines = args
@@ -835,7 +841,6 @@ def line(*args, **keywds):
             plotter, min(X), max(X), min(Y), max(Y), Z_min, Z_max, **keywds)
 
     for i, line in enumerate(lines):
-        c1, c2 = line
         graph.draw_line(line, color[i], shadow, same_height, line_size)
         if not draw_points:
             continue
@@ -1336,7 +1341,7 @@ def _set_default_tick(tick, coord_min, coord_max):
     elif operator.isSequenceType(tick):
         pass
     elif tick == True:
-        tick = place_ticks(coord_min, coord_max, num_ticks=5)
+        tick = place_ticks(coord_min, coord_max, num_ticks=8)
     elif type(tick) is type(0):
         tick = place_ticks(coord_min, coord_max, num_ticks=tick)
     else:

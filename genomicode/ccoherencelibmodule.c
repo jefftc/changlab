@@ -266,60 +266,60 @@ static PyObject *ccoherencelib__calc_coherence_score_h(
     return py_retval;
 }
 
-static char ccoherencelib__calc_consensus_matrix__doc__[] = 
-"XXX\n";
-
-static PyObject *ccoherencelib__calc_consensus_matrix(
-  PyObject *self, PyObject *args)
-{
-    PyObject *py_X;
-
-    float *X, *X_i, *X_j;
-    int nrow, ncol;
-
-    float *C;
-    int i, j, k;
-    int count;
-
-    PyObject *py_retval;
-
-    X = NULL;
-    C = NULL;
-    py_retval = NULL;
-
-    if(!PyArg_ParseTuple(args, "O", &py_X))
-	return NULL;
-    if(!py2c_fmatrix(py_X, &X, &nrow, &ncol))
-	return NULL;
-    if(nrow < 1 || ncol < 1) {
-	PyErr_SetString(PyExc_AssertionError, "empty matrix");
-	return NULL;
-    }
-
-    if(!(C = (float *)malloc(nrow*nrow*sizeof(*C))))
-	goto _calc_consensus_matrix_cleanup;
-    memset(C, 0, nrow*nrow*sizeof(*C));
-
-    for(i=0; i<nrow; i++) {
-	for(j=i; j<nrow; j++) {
-	    X_i = X + i*ncol;
-	    X_j = X + j*ncol;
-	    count = 0;
-	    for(k=0; k<ncol; k++) {
-		count += *X_i++ == *X_j++;
-                /* count += X[i*ncol+k] == X[j*ncol+k]; */
-	    }
-	    C[i*nrow+j] = (float)count / ncol;
-	}
-    }
-    if(!(py_retval = c2py_fmatrix(C, nrow, nrow)))
-	goto _calc_consensus_matrix_cleanup;
-
- _calc_consensus_matrix_cleanup:
-    if(X) { free(X); }
-    if(C) { free(C); }
-    return py_retval;
-}
+//static char ccoherencelib__calc_consensus_matrix__doc__[] = 
+//"XXX\n";
+//
+//static PyObject *ccoherencelib__calc_consensus_matrix(
+//  PyObject *self, PyObject *args)
+//{
+//    PyObject *py_X;
+//
+//    float *X, *X_i, *X_j;
+//    int nrow, ncol;
+//
+//    float *C;
+//    int i, j, k;
+//    int count;
+//
+//    PyObject *py_retval;
+//
+//    X = NULL;
+//    C = NULL;
+//    py_retval = NULL;
+//
+//    if(!PyArg_ParseTuple(args, "O", &py_X))
+//	return NULL;
+//    if(!py2c_fmatrix(py_X, &X, &nrow, &ncol))
+//	return NULL;
+//    if(nrow < 1 || ncol < 1) {
+//	PyErr_SetString(PyExc_AssertionError, "empty matrix");
+//	return NULL;
+//    }
+//
+//    if(!(C = (float *)malloc(nrow*nrow*sizeof(*C))))
+//	goto _calc_consensus_matrix_cleanup;
+//    memset(C, 0, nrow*nrow*sizeof(*C));
+//
+//    for(i=0; i<nrow; i++) {
+//	for(j=i; j<nrow; j++) {
+//	    X_i = X + i*ncol;
+//	    X_j = X + j*ncol;
+//	    count = 0;
+//	    for(k=0; k<ncol; k++) {
+//		count += *X_i++ == *X_j++;
+//                /* count += X[i*ncol+k] == X[j*ncol+k]; */
+//	    }
+//	    C[i*nrow+j] = (float)count / ncol;
+//	}
+//    }
+//    if(!(py_retval = c2py_fmatrix(C, nrow, nrow)))
+//	goto _calc_consensus_matrix_cleanup;
+//
+// _calc_consensus_matrix_cleanup:
+//    if(X) { free(X); }
+//    if(C) { free(C); }
+//    return py_retval;
+//}
 
 static char ccoherencelib__get_unique_indexes__doc__[] = 
 "XXX\n";
