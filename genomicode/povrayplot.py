@@ -312,7 +312,8 @@ def _make_finish(finish):
         # F_MetalC.  Colors washed out.  Bright.
         # F_MetalE.  Too washed out.
         x = pr.finish(
-            pr.ambient(0.45),
+            #pr.ambient(0.45),   # a bit bright
+            pr.ambient(0.30),
             pr.brilliance(2),
             pr.diffuse(0.3),
             pr.metallic(),
@@ -373,7 +374,7 @@ def _position_camera(image, width, height, depth):
     import povray as pr
     
     CAMERA_HEIGHT = depth * 1.1
-    LIGHT_ANGLE = 78        # lower means longer shadows, darker colors
+    LIGHT_ANGLE = 70        # lower means longer shadows, darker colors
     LIGHT_COLOR = 1, 1, 1
 
     # Set the camera to the middle of the plot, looking down.

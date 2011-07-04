@@ -333,6 +333,8 @@ def calc_coherence_score(dataset, geneset, z_cutoff):
     # Return a CoherenceScore object.
     import jmath
     I = geneset.get_indexes(dataset)
+    # This can happen if the gene_id_name of the GeneSet doesn't match
+    # the gene IDs of the data set.
     assert I, "Dataset contains no genes from geneset."
     X = dataset.slice(row=I)
     assert jmath.nrow(X) > 0 and jmath.ncol(X) > 0, "Empty matrix"

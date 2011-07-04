@@ -196,15 +196,14 @@ class GMTGeneSet(AbstractGeneSet):
         self.genes = None
     def _get_genes(self):
         import iolib
-        from filelib import openfh
+        import genesetlib
 
-        data = openfh(self.filename).read()
-        # <name> <comment> <gene1> <gene2> ... <genen>
         genes = []
-        for cols in iolib.split_tdf(data):
-            if cols[0] not in self.geneset_names:
+        for x in genesetlib.read_genesets(self.filename):
+            name, description, g = x
+            if name not in self.geneset_names:
                 continue
-            genes.extend(cols[2:])
+            genes.extend(g)
         if not genes:
             raise AssertionError, "I could not find gene set: %s" % \
                   ",".join(self.geneset_names)

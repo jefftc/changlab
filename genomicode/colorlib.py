@@ -1,5 +1,7 @@
 """
 
+Colors are specified as (R, G, B) tuples with values from from 0.0 to 1.0.
+
 red_shade
 green_shade
 rg_array_colors
@@ -10,6 +12,9 @@ bild_colors
 broad_colors
 genespring_colors
 yahoo_weather_colors
+
+choose_contrasting_color
+choose_contrasting_bw
 
 """
 
@@ -219,3 +224,100 @@ def rgb2hex(c):
         b = "00"
     x = "0x%s%s%s" % (r, g, b)
     return x
+
+def choose_contrasting_color(col):
+    import math
+    r, g, b = col
+
+    assert r >= 0 and r <= 1
+    assert g >= 0 and g <= 1
+    assert b >= 0 and b <= 1
+
+    h, s, l = rgb2hsl(col)
+    l = l + 0.50
+    if l > 1.0:
+        l -= 1
+    col = hsl2rgb((h, s, l))
+    return col
+    return r, g, b
+
+def choose_contrasting_bw(col):
+    import math
+    r, g, b = col
+    assert r >= 0 and r <= 1
+    assert g >= 0 and g <= 1
+    assert b >= 0 and b <= 1
+
+    Y = 0.2126*(r**2.2) + 0.7151*(g**2.2) + 0.0721*(b**2.2)
+    contrast = 0, 0, 0       # black
+    if Y <= 0.18:
+        contrast = 1, 1, 1   # white
+    return contrast
+
+def rgb2hsl(col):
+    import math
+    r, g, b = col
+    assert r >= 0 and r <= 1
+    assert g >= 0 and g <= 1
+    assert b >= 0 and b <= 1
+    r, g, b = float(r), float(g), float(b)
+
+    maxcolor = max(r, g, b)
+    mincolor = min(r, g, b)
+    L = (maxcolor+mincolor)/2.0
+    if maxcolor == mincolor:
+        S = H = 0
+        return H, S, L
+        
+    if L < 0.5:
+        S = (maxcolor-mincolor)/(maxcolor+mincolor)
+    else:
+        S = (maxcolor-mincolor)/(2.0-maxcolor-mincolor)
+
+    if r == maxcolor:
+        H = (g-b)/(maxcolor-mincolor)
+    elif g == maxcolor:
+        H = 2.0+(b-r)/(maxcolor-mincolor)
+    else:
+        H = 4.0+(r-g)/(maxcolor-mincolor)
+
+    # Scale H to 0-360.
+    H = H*60.0
+    if H < 0:
+        H += 360
+    return H, S, L
+
+def _hsl2rgb_h(H, temp1, temp2, temp3):
+    if temp3 < 0:
+        temp3 += 1
+    elif temp3 > 1:
+        temp3 -= 1
+
+    if 6.0*temp3 < 1:
+        c = temp1 + (temp2-temp1)*6.0*temp3
+    elif 2.0*temp3 < 1:
+        c = temp2
+    elif 3.0*temp3 < 2:
+        c = temp1+(temp2-temp1)*((2.0/3.0)-temp3)*6.0
+    else:
+        c = temp1
+    return c
+
+def hsl2rgb(col):
+    H, S, L = col
+
+    if S == 0:
+        return L, L, L
+
+    if L < 0.5:
+        temp2 = L*(1.0+S)
+    else:
+        temp2 = L+S - L*S
+    temp1 = 2.0*L - temp2
+
+    H = H/360.0
+
+    R = _hsl2rgb_h(H, temp1, temp2, H+1.0/3.0)
+    G = _hsl2rgb_h(H, temp1, temp2, H)
+    B = _hsl2rgb_h(H, temp1, temp2, H-1.0/3.0)
+    return R, G, B

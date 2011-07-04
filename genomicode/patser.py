@@ -132,9 +132,10 @@ def _make_labeled_matrix(matrix_file):
     # Name the file meaningfully, because it will show up in the
     # patser output.
     matrix_name = os.path.split(matrix_file)[-1]
-    unique_str = "%d.%g" % (os.getpid(), time.time())
-    x, file = tempfile.mkstemp(
-        suffix=unique_str, prefix=matrix_name, dir=".")
+    unique_str = ".%d.%g" % (os.getpid(), time.time())
+    prefix = matrix_name + "."  # need "." to separate matrix from temp str
+    suffix = unique_str
+    x, file = tempfile.mkstemp(suffix=suffix, prefix=prefix, dir=".")
     os.close(x)
     #path = tempfile.gettempdir()
     #file = "%s/%s.%s" % (path, matrix_name, unique_str)
