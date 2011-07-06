@@ -66,8 +66,10 @@ def _load_matrices_h():
 
     # MATRIX_ID (all upper case) -> object with members:
     #   matid
-    #   Gene_Symbol
-    #   LocusLink
+    #   accession
+    #   gene_id
+    #   gene_symbol
+    #   organism     (for JASPAR)
     #   length
 
     # Load the lengths.
@@ -83,7 +85,7 @@ def _load_matrices_h():
         length = matid2length.get(d.xID, 0)
         x = filelib.GenericObject(
             matid=d.xID, accession="", gene_id=d.LocusLink,
-            gene_symbol=d.Gene_Symbol, length=length)
+            gene_symbol=d.Gene_Symbol, organism=d.Organism, length=length)
         matrices.append(x)
     for d in filelib.read_row(config.motiflib_TRANSFAC_INFO, header=1):
         #assert d.Accession in matid2length, "Missing: %s" % d.Accession
@@ -91,7 +93,7 @@ def _load_matrices_h():
         length = matid2length.get(d.Accession, 0)
         x = filelib.GenericObject(
             matid=d.Accession, accession=d.xID, gene_id=d.LocusLink,
-            gene_symbol=d.Gene_Symbol, length=length)
+            gene_symbol=d.Gene_Symbol, organism="", length=length)
         matrices.append(x)
     return matrices
 

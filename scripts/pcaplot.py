@@ -41,8 +41,8 @@ def main():
     if not os.path.exists(filename):
         parser.error("I could not find file %s." % filename)
 
-    num_genes = options.genes or 200
-    K = 3  # number of dimensions
+    num_genes = options.genes
+    K = 10  # number of dimensions
 
     MATRIX = read_matrix(filename)
 
@@ -64,10 +64,12 @@ def main():
         cluster[i] = g
 
     # Select a subset of the genes.
-    I = pcalib.select_genes_var(MATRIX._X, num_genes)
-    MATRIX = MATRIX.matrix(I, None)
+    if num_genes:
+        I = pcalib.select_genes_var(MATRIX._X, num_genes)
+        MATRIX = MATRIX.matrix(I, None)
 
     # Calculate the principal components and plot them.
+    K = min(K, MATRIX.nrow(), MATRIX.ncol())
     principal_components = pcalib.svd_project_cols(MATRIX._X, K)
     X = [x[0] for x in principal_components]
     Y = [x[1] for x in principal_components]
@@ -76,7 +78,7 @@ def main():
 
     # Write out the principal components.
     assert len(principal_components) == len(cluster)
-    x = ["PC%d" % i for i in range(K)]
+    x = ["PC%02d" % i for i in range(K)]
     x = ["Index", "Sample", "Cluster", "Color"] + x
     print "\t".join(x)
     for i in range(len(principal_components)):

@@ -15,6 +15,7 @@ sphere
 cylinder
 text
 text90
+get_text_size
 
 write
 
@@ -40,10 +41,10 @@ class Image:
     def format(self, outhandle):
         outhandle.write(self.handle.getvalue())
 
-def image(width, height, depth):
+def image(width, height, depth, make_3d):
     im = Image(width, height, depth)
     _declare_fontfile(im)
-    _position_camera(im, width, height, depth)
+    _position_camera(im, width, height, depth, make_3d)
     #_declare_points(im)
     _draw_background(im)
     # Clear the canvas for the client to draw on.
@@ -257,6 +258,57 @@ def text90(*args, **keywds):
     keywds["vertical"] = True
     return text(*args, **keywds)
 
+def get_text_size(text, fontsize):
+    # This only works for Verdana Bold!.  Also, doesn't get the exact
+    # size.  Just an estimate.
+
+    REF_FONTSIZE = 100
+    #DEFAULT_HEIGHT = 100  # includes drop letters
+    DEFAULT_HEIGHT = 118  # includes drop letters
+    # On average, uses 9.75 pixels between letters (see 110706).
+    SPACING = 9.75
+
+    # Sizes of letters in Verdana Bold at 100 fontsize.  The heights
+    # are pretty much useless because some of the letters drop down.
+    letter2size = {
+        "A" : (75, 73), "B" : (63, 73), "C" : (63, 77), "D" : (69, 73),
+        "E" : (53, 73), "F" : (52, 73), "G" : (69, 78), "H" : (66, 73),
+        "I" : (43, 73), "J" : (45, 75), "K" : (68, 73), "L" : (53, 73),
+        "M" : (77, 73), "N" : (66, 73), "O" : (75, 78), "P" : (60, 73),
+        "Q" : (75, 116), "R" : (70, 73), "S" : (63, 77), "T" : (65, 73),
+        "U" : (65, 76), "V" : (74, 73), "W" : (107, 73), "X" : (74, 73),
+        "Y" : (73, 73), "Z" : (61, 73),
+        "a" : (55, 60), "b" : (58, 78), "c" : (52, 60), "d" : (58, 79),
+        "e" : (58, 60), "f" : (42, 77), "g" : (58, 98), "h" : (55, 76),
+        "i" : (19, 76), "j" : (35, 118), "k" : (58, 76), "l" : (18, 76),
+        "m" : (90, 57), "n" : (55, 57), "o" : (60, 60), "p" : (58, 97),
+        "q" : (58, 97), "r" : (40, 55), "s" : (52, 60), "t" : (42, 73),
+        "u" : (55, 58), "v" : (62, 55), "w" : (94, 55), "x" : (64, 55),
+        "y" : (62, 95), "z" : (52, 55),
+        "0" : (61, 78), "1" : (49, 73), "2" : (57, 74), "3" : (58, 78),
+        "4" : (63, 73), "5" : (57, 76), "6" : (60, 77), "7" : (57, 73),
+        "8" : (62, 78), "9" : (60, 77),
+        "#" : (72, 73), "*" : (51, 50), "+" : (66, 65), "-" : (38, 20),
+        "/" : (54, 108), "=" : (63, 50), "_" : (73, 28),
+        }
+
+    # Calculate a default width to use for symbols not in this table.
+    total = sum([w for (w, h) in letter2size.itervalues()])
+    DEFAULT_WIDTH = float(total)/len(letter2size)
+
+    width = 0
+    height = DEFAULT_HEIGHT   # Use a default height of 73.
+    for l in text:
+        w, h = letter2size.get(str(l), (DEFAULT_WIDTH, DEFAULT_HEIGHT))
+        width += w
+    width += SPACING * (len(text)-1)
+
+    # Scale the height and width by fontsize.
+    width = width * fontsize / float(REF_FONTSIZE)
+    height = height * fontsize / float(REF_FONTSIZE)
+    
+    return width, height
+
 ## def line(image, x, y, width, height, color):
 ##     raise NotImplementedError
 
@@ -265,6 +317,9 @@ def write(image, handle):
     import os
     import tempfile
     import povray
+
+    if type(handle) is type(""):
+        handle = open(handle, 'w')
 
     pov_file = out_file = None
     try:
@@ -369,11 +424,11 @@ def _coord2pr(image, coord):
     z = -z
     return x, y, z
 
-def _position_camera(image, width, height, depth):
+def _position_camera(image, width, height, depth, make_3d):
     import math
     import povray as pr
     
-    CAMERA_HEIGHT = depth * 1.1
+    CAMERA_HEIGHT = depth * 1.2
     LIGHT_ANGLE = 70        # lower means longer shadows, darker colors
     LIGHT_COLOR = 1, 1, 1
 
@@ -381,19 +436,18 @@ def _position_camera(image, width, height, depth):
     # Have to look at the middle of the entire plot, or else the
     # borders will be off.
     x_mid, y_mid, z_mid = width*0.5, height*0.5, depth*0.5
-    if 1:
+    if not make_3d:
         # Default camera location.
         camera = (x_mid, y_mid, -CAMERA_HEIGHT)
         look = (x_mid, y_mid, z_mid)
         dist_scale = 1.0
-    elif 0:
+    else:
         camera = (width*0.60, height*0.50, -depth*1.2)
         look = (x_mid*0.25, y_mid*0.35, z_mid)
         dist_scale = 1.50
-    elif 0:
-        camera = (width*0.70, height*0.50, -depth*1.2)
-        look = (x_mid*0.25, y_mid*0.35, z_mid)
-        dist_scale = 1.35
+        #camera = (width*0.70, height*0.50, -depth*1.2)
+        #look = (x_mid*0.25, y_mid*0.35, z_mid)
+        #dist_scale = 1.35
     
     w = image.handle.write
     w(pr.camera(
