@@ -93,7 +93,7 @@ class Graph:
         YBORDER = 0.25 * self.TOTAL_HEIGHT
         X1_BORDER = XBORDER * 0.65   # Make a little larger for the labels.
         X2_BORDER = XBORDER - X1_BORDER
-        Y1_BORDER = YBORDER * 0.4
+        Y1_BORDER = YBORDER * 0.35
         Y2_BORDER = YBORDER - Y1_BORDER
 
         # Upper left hand coordinate of the graph.
@@ -399,23 +399,22 @@ class Graph:
                 center_y=True, wrong_x=True, min_x=min_x)
         if zlabel and draw_z_axis:
             coord = [
-                #self.GRAPH_X, LABEL_SPACE, GRAPH_Z_MID-LABEL_DEPTH/2]
-                self.GRAPH_X, self.GRAPH_Y+self.GRAPH_HEIGHT+LABEL_SPACE,
-                GRAPH_Z_MID-LABEL_DEPTH/2]
+                self.GRAPH_X, LABEL_SPACE, GRAPH_Z_MID-LABEL_DEPTH/2]
+                #self.GRAPH_X, self.GRAPH_Y+self.GRAPH_HEIGHT+LABEL_SPACE,
+                #GRAPH_Z_MID-LABEL_DEPTH/2]
             if not ztick_at&gc.LEFT:
                 coord[0] = self.GRAPH_X + self.GRAPH_WIDTH + LABEL_SPACE
-            #coord[1] = LABEL_SPACE
             num_to_skip = int(bool(xlabel)) + int(bool(ylabel))
             self._plotter.text(
                 self._image, zlabel, coord, 
                 LABEL_DEPTH, LABEL_FONTSIZE, LABEL_COLOR,
-                #center_x=True, max_y=num_to_skip)
-                center_x=True)
+                center_x=True, max_y=num_to_skip)
+                #center_x=True)
 
     def draw_points(
         self, points, color, shape, error_bars,
         onpoint_labels, onpoint_label_color, onpoint_label_size,
-        overpoint_labels, overpoint_label_size, overpoint_label_orientation,
+        overpoint_labels, overpoint_label_size, 
         shadow, point_size):
         # color should be parallel to points.
         # onpoint_label_color should be parallel to onpoint_labels.
@@ -511,7 +510,7 @@ class Graph:
                 # Include the error bars into point_coords.
                 radius = max(RADIUS, ERROR_RADIUS)
                 y = min(y_pix-err_u-ERROR_RADIUS, y_pix-RADIUS)
-                h = max(err_total, RADIUS*2)
+                h = max(err_total+ERROR_RADIUS*2, RADIUS*2)
                 point_coords[i] = (
                     x_pix-radius, y, z_pix, radius*2, h, radius*2)
 
@@ -523,7 +522,7 @@ class Graph:
                     (x_pix, y_pix, z_pix+RADIUS*2),
                     ON_LABEL_DEPTH, ON_LABEL_FONTSIZE, on_label_col,
                     center_x=True, center_y=True)
-                
+
         # Position the labels around the points.
         plot_coords = (
             self.GRAPH_X, self.GRAPH_Y, self.GRAPH_Z,
@@ -538,7 +537,7 @@ class Graph:
             label_sizes[i] = lw, lh, ld
         margin = OVER_LABEL_SPACE
         x = position_labels(plot_coords, point_coords, label_sizes, margin)
-        label_positions, label_orientations, label_coords = x
+        label_positions, label_orientations, x = x
 
         # Draw the labels around the points.
         for i in range(len(points)):
@@ -595,9 +594,10 @@ class Graph:
                 fn = self._plotter.text90
             fn(
                 self._image, label, coord,
-                OVER_LABEL_DEPTH, OVER_LABEL_FONTSIZE, OVER_LABEL_COLOR, 
+                OVER_LABEL_DEPTH, OVER_LABEL_FONTSIZE, OVER_LABEL_COLOR,
                 center_x=center_x, wrong_x=wrong_x,
-                center_y=center_y, wrong_y=wrong_y)
+                center_y=center_y, wrong_y=wrong_y,
+                background=True)
             
     def draw_line(self, points, color, shadow, same_height, line_size):
         import math
@@ -695,7 +695,9 @@ class Graph:
                 # Just a point.  Ignore.
                 continue
 
-            # Draw a line.
+            # Draw a line.  A line consists of a cylinder with spheres
+            # at both ends.  The sphere is so that there is no gap
+            # between two line segments.
             linelen = math.sqrt((xp2-xp1)**2 + (yp2-yp1)**2)
             angle = 90
             if abs(xp2-xp1) > 1E-8:
@@ -750,7 +752,7 @@ class Graph:
             else:
                 #xc, yminc, ymaxc, zc = bars[i]
                 xc, ymaxc, zc, yminc = bars[i]
-            assert yminc <= ymaxc
+            assert yminc <= ymaxc, "%g %g" % (yminc, ymaxc)
             xc -= barwidth/2.0
 
             xp = self._virtx2pix(xc)
@@ -853,8 +855,8 @@ def scatter(*args, **keywds):
     onpoint_label_size = keywds.get("onpoint_label_size", 1.0)
     overpoint_label = keywds.get("overpoint_label", None)
     overpoint_label_size = keywds.get("overpoint_label_size", 1.0)
-    overpoint_label_orientation = keywds.get(
-        "overpoint_label_orientation", gc.LABEL_HORIZONTAL)
+    #overpoint_label_orientation = keywds.get(
+    #    "overpoint_label_orientation", gc.LABEL_HORIZONTAL)
     error_bar = keywds.get("error_bar", None)
     point_size = keywds.get("point_size", 1.0)
     graph = keywds.get("graph", None)
@@ -869,8 +871,8 @@ def scatter(*args, **keywds):
     onpoint_label_color = _set_default_color(
         onpoint_label_color, len(onpoint_label))
     overpoint_label = _set_default_label(overpoint_label, len(points))
-    overpoint_label_orientation = _set_default_label(
-        overpoint_label_orientation, len(points))
+    #overpoint_label_orientation = _set_default_label(
+    #    overpoint_label_orientation, len(points))
     error_bar = _set_default_error_bar(error_bar)
     assert len(color) == len(points)
     assert len(shape) == len(points)
@@ -894,7 +896,7 @@ def scatter(*args, **keywds):
     graph.draw_points(
         points, color, shape, error_bar,
         onpoint_label, onpoint_label_color, onpoint_label_size, 
-        overpoint_label, overpoint_label_size, overpoint_label_orientation,
+        overpoint_label, overpoint_label_size, 
         shadow, point_size)
     return graph
 
@@ -973,8 +975,13 @@ def line(*args, **keywds):
         # Should let the user specify which points to plot.
         col = [color[i]] * len(line)
         shp = [shape[i]] * len(line)
-        graph.draw_points(line, col, shp, None, None, None, shadow, point_size)
-
+        default = [None] * len(line)
+        graph.draw_points(
+            line, col, shp,
+            None,                    # error_bars
+            default, default, 1.0,   # onpoint_labels, color, size
+            default, 1.0,            # overpoint_labels, size
+            shadow, point_size)
     return graph
 
 def bar(*args, **keywds):
@@ -1666,9 +1673,19 @@ def _score_label(
         gc.LABEL_BOTTOM_LEFT : -5,
         gc.LABEL_BOTTOM_RIGHT : -5,
         }
+
+    favor_horizontal = True
+    fx, fy, fz, fw, fh, fd = features[index]
+    if fh > fd*2:
+        # If the object to be labelled is long and skinny, then a
+        # vertical label would look better.
+        favor_vertical = True
+
     pos_score = position2score[position]
-    if orientation == gc.LABEL_VERTICAL:
+    if favor_horizontal and orientation == gc.LABEL_VERTICAL:
         pos_score -= 10   # favor horizontal ones.
+    if not favor_horizontal and orientation == gc.LABEL_HORIZONTAL:
+        pos_score -= 10   # favor vertical ones.
     score += pos_score
 
     # Penalize overlaps with features.

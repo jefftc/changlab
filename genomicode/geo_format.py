@@ -13,6 +13,7 @@ GeoMatrix
 Functions:
 make_locator
 is_format
+is_matrix
 read
 write
 
@@ -22,12 +23,7 @@ import os, sys
 import arrayio
 from genomicode import Matrix
 
-this_module = sys.modules[__name__]
-if this_module not in arrayio.FORMATS:
-    arrayio.FORMATS.append(this_module)
-del this_module
-
-SAMPLE_NAME = "_SAMPLE_NAME"
+SAMPLE_NAME = arrayio.tdf.SAMPLE_NAME
 
 
 class GeoMatrix(Matrix.AbstractMatrix):
@@ -186,6 +182,15 @@ def is_format(locator_str):
         return True
     return False
 
+def is_matrix(X):
+    if not hasattr(X, "filename"):
+        return False
+    if not hasattr(X, "subrows") or not hasattr(X, "subcols"):
+        return False
+    if not hasattr(X, "MAX_CACHE_SIZE"):
+        return False
+    return True
+
 def read(handle, datatype=None):
     import arrayio
     
@@ -212,3 +217,61 @@ def read(handle, datatype=None):
 
 def write(X, handle):
     raise NotImplementedError, "Saving of GEO DataSets not supported"
+
+def _geo_to_tdf(X):
+    import arrayio
+    from genomicode import Matrix
+    
+    assert is_matrix(X)
+    assert X.row_names()
+    assert X.col_names()
+
+    _X = X.slice()
+    row_order = X.row_names()
+    col_order = X.col_names()
+    row_names = {}
+    col_names = {}
+    synonyms = {}
+
+    for name in X.row_names():
+        row_names[name] = X.row_names(name)
+    for name in X.col_names():
+        col_names[name] = X.col_names(name)
+
+    # Find a suitable ROW_ID.
+    row_ids = ["Probe.Set.ID", "Probe Set ID", "PSID", "ID"]
+    for row_id in row_ids:
+        if row_id in row_order:
+            break
+    else:
+        row_id = row_order[0]
+    # Make row_id the first column.
+    i = row_order.index(row_id)
+    row_order.pop(i)
+    row_order = [row_id] + row_order
+
+    # Set the synonyms.
+    synonyms[arrayio.ROW_ID] = row_id
+    synonyms[arrayio.COL_ID] = col_order[0]
+    if "Gene.Symbol" in row_order:
+        synonyms[arrayio.GENE_SYMBOL] = "Gene.Symbol"
+    if "Description" in row_order:
+        synonyms[arrayio.GENE_DESCRIPTION] = "Description"
+    if "LocusLink" in row_order:
+        synonyms[arrayio.GENE_ID] = "LocusLink"
+    
+    x = Matrix.InMemoryMatrix(
+        _X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order)
+    x = Matrix.add_synonyms(x, synonyms)
+    assert arrayio.tab_delimited_format.is_matrix(x)
+    return x
+
+
+this_module = sys.modules[__name__]
+if this_module not in arrayio.FORMATS:
+    arrayio.FORMAT_NAMES.insert(0, sys.modules[__name__])
+    arrayio.FORMATS.insert(0, this_module)
+    x = "geo_format", "tab_delimited_format", _geo_to_tdf
+    arrayio.CONVERTERS.insert(0, x)
+del this_module

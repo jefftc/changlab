@@ -3,7 +3,7 @@
 DEFAULT, CIRCLE, SQUARE, DIAMOND = range(4)
 
 # Finishes.
-SIMPLE, ROUGH, METALLIC, SHINY = range(4)
+SIMPLE, ROUGH, METALLIC, SHINY, TRANSPARENT = range(5)
 
 # Label positions.  Can combine with bit operations.
 # DEPRECATED: SHOULD USE THE CONSTANTS BELOW.

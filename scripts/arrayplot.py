@@ -1091,7 +1091,7 @@ def cluster_matrix(
 
         if algorithm == "kmeans":
             args.append("-k %d" % kmeans_k)
-
+            
         filestem = _cluster(MATRIX, cluster=cluster, *args)
         files = find_data_files(filestem)
         assert "cdt" in files, "No cdt file produced."
@@ -1286,8 +1286,18 @@ def read_data_set(file_or_stem, default=None):
         MATRIX._row_order.append(header)
         x = ["R%s" % x for x in parselib.pretty_range(0, MATRIX.nrow())]
         MATRIX._row_names[header] = x
+        synonyms = {}
         synonyms[arrayio.ROW_ID] = header
         MATRIX = Matrix.add_synonyms(MATRIX, synonyms)
+    if not MATRIX.col_names():
+        header = arrayio.tdf.SAMPLE_NAME
+        MATRIX._col_order.append(header)
+        x = ["C%s" % x for x in parselib.pretty_range(0, MATRIX.ncol())]
+        MATRIX._col_names[header] = x
+        synonyms = {}
+        synonyms[arrayio.COL_ID] = header
+        MATRIX = Matrix.add_synonyms(MATRIX, synonyms)
+        
 
     # Read the clustering files.
     formats = [
@@ -1540,7 +1550,7 @@ def plot_gene_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
 
     # Figure out what kind of IDs to use.
     ID_NAMES = ["GID", "NAME", arrayio.ROW_ID]
-    ID_NAMES = [x for x in ID_NAMES if x in X.row_names()]
+    ID_NAMES = [x for x in ID_NAMES if x in X.row_names() or x in X._synonyms]
     ids = [x[0] for x in clusters]
     for ID_NAME in ID_NAMES:
         ID = X.row_names(ID_NAME)
@@ -1548,10 +1558,12 @@ def plot_gene_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
         for id in ids:
             if id in ID:
                 num_found += 1
+        #print ID_NAME, num_found, len(ids), ids[:3]
         if num_found == len(ids):
             break
     else:
-        raise AssertionError, "I could not find the cluster IDs."
+        raise AssertionError, "I could not find the cluster IDs: %s" % \
+              str(X.row_names())
     
     GID = X.row_names(ID_NAME)
     gid2i = {}
@@ -1577,7 +1589,8 @@ def plot_array_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     # Figure out what kind of IDs to use.
     ID_NAMES = [
         "AID", arrayio.COL_ID, arrayio.tab_delimited_format.SAMPLE_NAME]
-    ID_NAMES = [x for x in ID_NAMES if x in X.col_names()]
+    ID_NAMES = [x for x in ID_NAMES if x in X.col_names() or x in X._synonyms]
+    #ID_NAMES = [x for x in ID_NAMES if x in X.col_names()]
     ids = [x[0] for x in clusters]
     for ID_NAME in ID_NAMES:
         ID = X.col_names(ID_NAME)
@@ -2017,6 +2030,10 @@ def main():
         "--colorbar", dest="colorbar", default=False, action="store_true",
         help="Add a colorbar to the plot.")
     group.add_option(
+        "--no_dendrogram", dest="no_dendrogram", default=False,
+        action="store_true",
+        help="Don't draw the dendrograms.")
+    group.add_option(
         "--gene_tree_scale", dest="gene_tree_scale", type="float", default=1.0,
         help="Scale the width of the gene tree by this factor.  "
         "Set to 0 to disable dendrogram.")
@@ -2056,6 +2073,10 @@ def main():
         options.cluster_arrays = True
         options.label_genes = True
         options.label_arrays = True
+
+    if options.no_dendrogram:
+        options.gene_tree_scale = 0
+        options.array_tree_scale = 0
 
     if not options.jobname:
         options.jobname = _guess_filestem(infile)

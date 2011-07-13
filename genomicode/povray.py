@@ -256,13 +256,13 @@ def sphere(center, radius, *items):
     # + modifiers
     return _fmt_complex("sphere", args=(center, radius), *items)
 
-def blob_sphere(center, radius, strength, *items):
-    # center VECTOR
-    # radius AMOUNT
-    # strength AMOUNT
-    # + modifiers
-    # Is this correct?  110529
-    return _fmt_complex("sphere", args=(center, radius, strength), *items)
+## def blob_sphere(center, radius, strength, *items):
+##     # center VECTOR
+##     # radius AMOUNT
+##     # strength AMOUNT
+##     # + modifiers
+##     # Is this correct?  110529
+##     return _fmt_complex("sphere", args=(center, radius, strength), *items)
 
 def superellipsoid(value_e, value_n, *items):
     # http://local.wasp.uwa.edu.au/~pbourke/geometry/superellipse/
@@ -380,6 +380,10 @@ def finish(*items):
     #   metallic surface.
     # o reflection indicates how reflective the object is.  Ranges
     #   from 0-1.  Default 0.15.
+    # o refraction is either 0 (disable) or 1 (enable).  For
+    #   transparent objects, will refract the light going through it.
+    # o ior is the index of refraction.  Empty space is 1.0 (default).
+    #   1.000292 is air, 1.33 water, and 1.5 glass.
     return _fmt_complex("finish", *items)
 
 ambient_light = _fmt_color_fn("ambient_light")
@@ -428,8 +432,8 @@ ior = _fmt_amount_fn("ior")
 no_shadow = _fmt_only_label_fn("no_shadow")
     
 def color(red, green=None, blue=None, filter=None, transmit=None):
-    # filter AMOUNT
-    # transmit AMOUNT  
+    # filter    AMOUNT
+    # transmit  AMOUNT  
     #
     # Notes:
     # o For filter, the light passing through is tinted by the

@@ -15,20 +15,6 @@ import os
 
 from const import *
 
-FORMAT_NAMES = [
-    # Most specific to most general format.
-    #"res_format",     # Characteristic row lengths.  Matrix specific.
-    "gct_format",     # Matrix more specific than ODF format.
-    #"odf_format",     # Very specific header.
-    "jeffs_format", 
-    "cdt_format", 
-    "pcl_format", 
-    "tab_delimited_format",
-    "csv_format",
-    ]
-FORMATS = [__import__(x, globals(), locals(), []) for x in FORMAT_NAMES]
-tdf = tab_delimited_format  # for convenience
-
 def choose_format(locator):
     # Return the module that can read this format or None.
     for format in FORMATS:
@@ -462,36 +448,42 @@ def _choose_converter(from_format, to_format):
     #   by a algorithm that generates CALLs.
 
     # See if a converter exists.
-##     if from_name == "res_format" and to_name == "gct_format":
-##         return _res_to_gct
-##     elif from_name == "res_format" and to_name == "odf_format":
-##         return _res_to_odf
-##     elif from_name == "res_format" and to_name == "pcl_format":
-##         return _res_to_pcl
-##     elif from_name == "gct_format" and to_name == "odf_format":
-##         return _gct_to_odf
-    if from_name == "gct_format" and to_name == "pcl_format":
-        return _gct_to_pcl
-##     elif from_name == "odf_format" and to_name == "gct_format":
-##         return _odf_to_gct
-##     elif from_name == "odf_format" and to_name == "pcl_format":
-##         return _odf_to_pcl
-    elif from_name == "jeffs_format" and to_name =="gct_format":
-        return _jeff_to_gct
-##     elif from_name == "jeffs_format" and to_name == "odf_format":
-##         return _jeff_to_odf
-    elif from_name == "jeffs_format" and to_name == "pcl_format":
-        return _jeff_to_pcl
-    elif from_name == "pcl_format" and to_name == "gct_format":
-        return _pcl_to_gct
-##     elif from_name == "pcl_format" and to_name == "odf_format":
-##         return _pcl_to_odf
-    elif from_name == "tab_delimited_format" and to_name == "gct_format":
-        return _tdf_to_gct
-    elif to_name == "csv_format":
-        return _any_to_csv
-    elif to_name == "tab_delimited_format":
-        return _any_to_tdf
+    for f, t, fn in CONVERTERS:
+        if f is not None and from_name != f:
+            continue
+        if t is not None and to_name != t:
+            continue
+        return fn
+## ##     if from_name == "res_format" and to_name == "gct_format":
+## ##         return _res_to_gct
+## ##     elif from_name == "res_format" and to_name == "odf_format":
+## ##         return _res_to_odf
+## ##     elif from_name == "res_format" and to_name == "pcl_format":
+## ##         return _res_to_pcl
+## ##     elif from_name == "gct_format" and to_name == "odf_format":
+## ##         return _gct_to_odf
+##     if from_name == "gct_format" and to_name == "pcl_format":
+##         return _gct_to_pcl
+## ##     elif from_name == "odf_format" and to_name == "gct_format":
+## ##         return _odf_to_gct
+## ##     elif from_name == "odf_format" and to_name == "pcl_format":
+## ##         return _odf_to_pcl
+##     elif from_name == "jeffs_format" and to_name =="gct_format":
+##         return _jeff_to_gct
+## ##     elif from_name == "jeffs_format" and to_name == "odf_format":
+## ##         return _jeff_to_odf
+##     elif from_name == "jeffs_format" and to_name == "pcl_format":
+##         return _jeff_to_pcl
+##     elif from_name == "pcl_format" and to_name == "gct_format":
+##         return _pcl_to_gct
+## ##     elif from_name == "pcl_format" and to_name == "odf_format":
+## ##         return _pcl_to_odf
+##     elif from_name == "tab_delimited_format" and to_name == "gct_format":
+##         return _tdf_to_gct
+##     elif to_name == "csv_format":
+##         return _any_to_csv
+##     elif to_name == "tab_delimited_format":
+##         return _any_to_tdf
 
     # No converter exists.
     return None
@@ -509,3 +501,31 @@ def convert(X, from_format=None, to_format=None):
            "I could not find a converter from %s to %s." % (
         _format2name(from_format), _format2name(to_format))
     return convert_fn(X)
+
+
+
+
+FORMAT_NAMES = [
+    # Most specific to most general format.
+    #"res_format",     # Characteristic row lengths.  Matrix specific.
+    "gct_format",     # Matrix more specific than ODF format.
+    #"odf_format",     # Very specific header.
+    "jeffs_format", 
+    "cdt_format", 
+    "pcl_format", 
+    "tab_delimited_format",
+    "csv_format",
+    ]
+FORMATS = [__import__(x, globals(), locals(), []) for x in FORMAT_NAMES]
+tdf = tab_delimited_format  # for convenience
+
+CONVERTERS = [
+    # Most specific to most general.
+    ("gct_format", "pcl_format", _gct_to_pcl),
+    ("jeffs_format","gct_format", _jeff_to_gct),
+    ("jeffs_format", "pcl_format", _jeff_to_pcl),
+    ("pcl_format", "gct_format", _pcl_to_gct),
+    ("tab_delimited_format", "gct_format", _tdf_to_gct),
+    (None, "csv_format", _any_to_csv),
+    (None, "tab_delimited_format", _any_to_tdf),
+    ]

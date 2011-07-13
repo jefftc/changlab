@@ -594,7 +594,6 @@ def _find_p_value(
     pvalue = 1.0 - q
     return pvalue
     
-
 def _fit_size_to_alpha(pvalue, size2dist, sizes=None, parzen_h=0.5):
     # Do a regression to fit: A = x0 + x1*S
     # Return x0, x1.
@@ -661,51 +660,57 @@ def load_alpha_distribution(geo_path, GSEID, GPLID):
         size2dist[size] = x
     return size2dist
 
-## def estimate_alpha_distribution(
-##     geo_path, GSEID, GPLID, num_probes, sizes=None):
+def estimate_alpha_distribution(size2dist, num_probes, sizes=None):
+    parzen_h = 0.5
 
-##     assert num_probes > 0, "must have at least 1 gene"
+    assert num_probes > 0, "must have at least 1 gene"
 
-##     # Load the alpha distribution file.
-##     size2dist = load_alpha_distribution(geo_path, GSEID, GPLID)
+    # Load the alpha distribution file.
+    #size2dist = load_alpha_distribution(geo_path, GSEID, GPLID)
 
-##     # If the user specific specific sizes to use, then make sure they
-##     # have been sampled.
-##     if sizes is not None:
-##         for s in sizes:
-##             assert s in size2dist
+    # If the user specific specific sizes to use, then make sure they
+    # have been sampled.
+    if sizes is not None:
+        for s in sizes:
+            assert s in size2dist
 
-##     # If this size is already sampled, then no need to interpolate.
-##     if sizes is None and num_probes in size2dist:
-##         return size2dist[num_probes]
+    # If this size is already sampled, then no need to interpolate.
+    if sizes is None and num_probes in size2dist:
+        return size2dist[num_probes]
 
-##     # Select the sizes to use to interpolate num_probes.
-##     if sizes is None:
-##         # Strategy: Interpolate using the next larger and next smaller
-##         # size.
-##         smaller = [s for s in size2dist if s <= num_probes]
-##         larger = [s for s in size2dist if s > num_probes]
-##         assert smaller, \
-##                "Gene set [%d] is too small for estimation [%d]." % (
-##             num_probes, min(size2dist))
-##         assert larger, \
-##                "Gene set [%d] is too big for estimation [%d]." % (
-##             num_probes, max(size2dist))
-##         smaller, larger = max(smaller), min(larger)
-##         sizes = [smaller, larger]
+    # Select the sizes to use to interpolate num_probes.
+    if sizes is None:
+        # Strategy: Interpolate using the next larger and next smaller
+        # size.
+        smaller = [s for s in size2dist if s <= num_probes]
+        larger = [s for s in size2dist if s > num_probes]
+        assert smaller, \
+               "Gene set [%d] is too small for estimation [%d]." % (
+            num_probes, min(size2dist))
+        assert larger, \
+               "Gene set [%d] is too big for estimation [%d]." % (
+            num_probes, max(size2dist))
+        smaller, larger = max(smaller), min(larger)
+        sizes = [smaller, larger]
 
-##     if len(sizes) == 1:
-##         # Only one size, must be already sampled.
-##         size = sizes[0]
-##         assert size in size2dist
-##         dist = size2dist[size]
-##     else:
-##         # Estimate the count of ALPHA from the data in sizes.
-##         dist0 = size2dist[sizes[0]]
-##         dist1 = size2dist[sizes[1]]
-##         alphas = sorted({}.fromkeys(dist0.alphas + dist1.alphas))
-        
-        
+    assert len(sizes) >= 2, "Must interpolate from at least two sizes."
+    
+    # Estimate the count of ALPHA from the data in sizes.
+    big_dist = size2dist[max(sizes)]
+    small_dist = size2dist[min(sizes)]
+    alphas = range(min(small_dist.alphas), max(big_dist.alphas))
+    # pvalue is tuple of ('=', 0.7027).  Just want the number.
+    x = [calc_coherence_p_from_dist(x, num_probes, size2dist)
+         for x in alphas]
+    pvalues = [x[1] for x in x]
+    # Convert the p-values to counts.
+    TOTAL_COUNTS = 1000000
+    counts = [None] * len(pvalues)
+    counts[0] = int(round((1.0-pvalues[0])*TOTAL_COUNTS))
+    for i in range(1, len(pvalues)):
+        counts[i] = int(round((pvalues[i-1]-pvalues[i])*TOTAL_COUNTS))
+    dist = AlphaDistribution(num_probes, sum(counts), alphas, counts)
+    return dist
 
 def choose_z_cutoff(dataset, gene_id_name=None, debug_handle=None):
     # Choose a reasonable Z cutoff for this data set.  Z-cutoff is the

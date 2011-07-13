@@ -50,7 +50,8 @@ def is_format(locator_str):
     nrow, ncol = tab_delimited_format._num_headers(matrix)
     # tab_delimited_format sometimes mistakenly believes the number of
     # rows is 0 if the sample names are numbers.
-    assert len(matrix) >= 1
+    if nrow == 0 and ncol == 0:
+        return False
     nrow = max(nrow, 1)
     if nrow < 1 or nrow > 3:
         return False
@@ -61,6 +62,7 @@ def is_format(locator_str):
     #    ncol = 2
     #if ncol < 2 or ncol > 4:
     #    return False
+    assert len(matrix) >= 1
     header_def = [
         (0, 1, "NAME"),   (0, 2, "GWEIGHT"),   (0, 3, "GORDER"),
         (1, 0, "EWEIGHT"),

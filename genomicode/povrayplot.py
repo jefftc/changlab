@@ -21,6 +21,7 @@ write
 
 """
 # _make_finish
+# _make_pigment
 # _coord2pr
 # _position_camera
 # _declare_fontfile
@@ -55,6 +56,7 @@ def box(image, coord, extent, color, shadow=False, finish=None):
     # coord is (x, y, z).  extent is (width, height, depth).
     import povray as pr
     finish = _make_finish(finish)
+    pigment = _make_pigment(color, finish)
     w = image.handle.write
     coord1 = _coord2pr(image, coord)
     x, y, z = coord1
@@ -66,10 +68,10 @@ def box(image, coord, extent, color, shadow=False, finish=None):
     if not shadow:
         ns = pr.no_shadow()
     w(pr.declare(name, pr.box(
-        pr.vector(*coord1), pr.vector(*coord2), 
-        pr.pigment(pr.color(*color)),
-        ns,
+        pr.vector(*coord1), pr.vector(*coord2),
+        pigment,
         finish,
+        ns,
         )))
     w(pr.object_(name))
 
@@ -84,6 +86,7 @@ def sphere(image, coord, radius, color, shadow=False, shape=None,
     import graphconst as gc
 
     finish = _make_finish(finish)
+    pigment = _make_pigment(color, finish)
     coord = _coord2pr(image, coord)
 
     ns = None
@@ -96,17 +99,17 @@ def sphere(image, coord, radius, color, shadow=False, shape=None,
     if shape in [gc.DEFAULT, gc.CIRCLE]:
         point = pr.superellipsoid(
             1.0, 0.50, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pr.pigment(pr.color(*color)), ns, finish)
+            pr.translate(*coord), pigment, ns, finish)
     # Square
     elif shape == gc.SQUARE:
         point = pr.superellipsoid(
             0.25, 0.25, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pr.pigment(pr.color(*color)), ns, finish)
+            pr.translate(*coord), pigment, ns, finish)
     # Diamond
     elif shape == gc.DIAMOND:
         point = pr.superellipsoid(
             1.75, 0.50, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pr.pigment(pr.color(*color)), ns, finish)
+            pr.translate(*coord), pigment, ns, finish)
     else:
         raise AssertionError, "Unknown point: %s" % (shape)
     
@@ -126,6 +129,7 @@ def cylinder(
     # in the direction determined by extent.
     import povray as pr
     finish = _make_finish(finish)
+    pigment = _make_pigment(color, finish)
     w = image.handle.write
     coord1 = _coord2pr(image, coord)
     x, y, z = coord1
@@ -137,9 +141,7 @@ def cylinder(
         ns = pr.no_shadow()
     w(pr.declare(name, pr.cylinder(
         pr.vector(*coord1), pr.vector(*coord2), radius,
-        pr.pigment(pr.color(*color)),
-        ns, 
-        finish,
+        pigment, finish, ns, 
         )))
     w(pr.object_(name))
 
@@ -148,20 +150,27 @@ def text(
     center_x=False, center_y=False, center_z=False,
     wrong_x=False, wrong_y=False, wrong_z=False,
     min_x=False, max_x=False, min_y=False, max_y=False,
-    vertical=False, finish=None):
+    background=None, vertical=False, finish=None):
     # The coordinate should be at the upper left point of the text.
     # depth grows in the +z direction (toward the user).
     # center_x means the x-coord is at the middle, and wrong_x means
     # the x-coord is at the right.  They should not both be True.
+    import operator
     import povray as pr
+    import graphconst as gc
     
     assert not (center_x and wrong_x)
     assert not (center_y and wrong_y)
     assert not (center_z and wrong_z)
     assert not (min_x and max_x)
     assert not (min_y and max_y)
+    # Background should be a true value, or the color of the background.
+    if background and not operator.isSequenceType(background):
+        background = (1, 1, 1)
+    assert not background or len(background) == 3
 
     finish = _make_finish(finish)
+    pigment = _make_pigment(color, finish)
 
     w = image.handle.write
 
@@ -189,7 +198,7 @@ def text(
         ns = pr.no_shadow()
     w(pr.declare(name, pr.text(
         "FONTFILE", text, depth, 0,
-        pr.pigment(pr.color(*color)),
+        pigment,
         finish,
         ns,
         rotate,
@@ -247,11 +256,25 @@ def text(
     if x_extent or y_extent or z_extent:
         w(pr.declare(name, pr.object_(
             name, pr.translate_by_extent(name, x_extent, y_extent, z_extent))))
-        
     w(pr.object_(name))
 
     # Coordinates are hard to calculate.  Hope this isn't necessary.
     #image._add_object(name, None, None)
+    
+    if not background:
+        return
+    #background = (1, 0, 0)
+    finish = _make_finish(gc.TRANSPARENT)
+    pigment = _make_pigment(background, gc.TRANSPARENT)
+    BACKGROUND_DEPTH = 0.2*depth
+    coord1 = (
+        "min_extent(%s).x" % name, "min_extent(%s).y" % name, pr_z)
+    coord2 = (
+        "max_extent(%s).x" % name, "max_extent(%s).y" % name,
+        pr_z-BACKGROUND_DEPTH)
+    w(pr.box(
+        pr.vector(*coord1), pr.vector(*coord2),
+        pigment, finish, pr.no_shadow()))
     
     
 def text90(*args, **keywds):
@@ -367,8 +390,8 @@ def _make_finish(finish):
         # F_MetalC.  Colors washed out.  Bright.
         # F_MetalE.  Too washed out.
         x = pr.finish(
-            #pr.ambient(0.45),   # a bit bright
-            pr.ambient(0.30),
+            pr.ambient(0.45),
+            #pr.ambient(0.30),
             pr.brilliance(2),
             pr.diffuse(0.3),
             pr.metallic(),
@@ -390,8 +413,27 @@ def _make_finish(finish):
             pr.reflection(0.3),
             pr.ior(1.5),
             )
+    elif finish == gc.TRANSPARENT:
+        x = pr.finish(
+            pr.refraction(1),
+            pr.ior(1.3),
+            pr.ambient(0.8),
+            pr.diffuse(0.3),
+            )
     else:
         raise AssertionError, "Unknown finish: %s" % finish
+    return x
+
+def _make_pigment(color, finish):
+    import povray as pr
+    import graphconst as gc
+
+    if finish is None:
+        finish = gc.SIMPLE
+    if finish == gc.TRANSPARENT:
+        x = pr.pigment(pr.color(*color, filter=0.9))
+    else:
+        x = pr.pigment(pr.color(*color))
     return x
 
 # Finishes:
@@ -432,6 +474,8 @@ def _position_camera(image, width, height, depth, make_3d):
     LIGHT_ANGLE = 70        # lower means longer shadows, darker colors
     LIGHT_COLOR = 1, 1, 1
 
+    w = image.handle.write
+
     # Set the camera to the middle of the plot, looking down.
     # Have to look at the middle of the entire plot, or else the
     # borders will be off.
@@ -441,15 +485,18 @@ def _position_camera(image, width, height, depth, make_3d):
         camera = (x_mid, y_mid, -CAMERA_HEIGHT)
         look = (x_mid, y_mid, z_mid)
         dist_scale = 1.0
+        # Make this a bit dimmer to compensate for the fact that the
+        # 3D projection is further away.
+        w(pr.global_settings(pr.ambient_light(0.67, 0.67, 0.67)))
     else:
-        camera = (width*0.60, height*0.50, -depth*1.2)
+        camera = (width*0.60, height*0.50, -CAMERA_HEIGHT)
         look = (x_mid*0.25, y_mid*0.35, z_mid)
-        dist_scale = 1.50
+        dist_scale = 1.5
+        #dist_scale = 1.0
         #camera = (width*0.70, height*0.50, -depth*1.2)
         #look = (x_mid*0.25, y_mid*0.35, z_mid)
         #dist_scale = 1.35
     
-    w = image.handle.write
     w(pr.camera(
         pr.projection("orthographic"),
         pr.location(*camera),

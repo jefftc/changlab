@@ -94,6 +94,7 @@ def read(handle, datatype=float):
 
     X = tab_delimited_format.read(handle, datatype=datatype)
     # Set const.ROW_ID to be the <ID> column.
+    assert len(X.row_names()) >= 2
     synonyms = {}
     synonyms[const.ROW_ID] = X.row_names()[1]
     X = Matrix.add_synonyms(X, synonyms)
