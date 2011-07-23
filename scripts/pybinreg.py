@@ -798,7 +798,7 @@ def summarize_predictions(povray, file_layout):
         xlabel="Metagene Score", ylabel="Probability",
         label_size=1, width=plot_width, height=plot_height,
         font=font)
-    x = graph.write(open(file_layout.PREDICTIONS_PNG, 'w'))
+    x = graph.write(file_layout.PREDICTIONS_PNG, povray_bin=povray)
     print x
     assert filelib.exists_nz(file_layout.PREDICTIONS_PNG), \
            "Failed to plot predictions."

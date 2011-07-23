@@ -117,7 +117,7 @@ def list_matrices():
     return x
     
 def matid2matrix(matid):
-    # Return a matrix object.
+    # Return a matrix object (see load_matrices).
     matrix_db = load_matrices()
     x = [x for x in matrix_db if x.matid.upper() == matid.upper()]
     assert x, "I couldn't find matrix: %s." % matid

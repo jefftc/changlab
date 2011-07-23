@@ -13,7 +13,6 @@ light_source
 Objects:
 object_
 sphere
-blob_sphere
 cylinder
 box
 text
@@ -59,6 +58,10 @@ refraction
 ior
 
 no_shadow
+
+blob_threshold
+blob_sphere
+blob_cylinder
 
 Miscellaneous:
 color
@@ -256,13 +259,12 @@ def sphere(center, radius, *items):
     # + modifiers
     return _fmt_complex("sphere", args=(center, radius), *items)
 
-## def blob_sphere(center, radius, strength, *items):
-##     # center VECTOR
-##     # radius AMOUNT
-##     # strength AMOUNT
-##     # + modifiers
-##     # Is this correct?  110529
-##     return _fmt_complex("sphere", args=(center, radius, strength), *items)
+def blob_sphere(center, radius, strength, *items):
+    # center VECTOR
+    # radius AMOUNT
+    # strength AMOUNT
+    # + modifiers
+    return _fmt_complex("sphere", args=(center, radius, strength), *items)
 
 def superellipsoid(value_e, value_n, *items):
     # http://local.wasp.uwa.edu.au/~pbourke/geometry/superellipse/
@@ -277,6 +279,15 @@ def cylinder(base_point, cap_point, radius, *items):
     # + modifiers
     return _fmt_complex(
         "cylinder", args=(base_point, cap_point, radius), *items)
+
+def blob_cylinder(base_point, cap_point, radius, strength, *items):
+    # base_point VECTOR
+    # cap_point VECTOR
+    # radius AMOUNT
+    # strength AMOUNT
+    # + modifiers
+    return _fmt_complex(
+        "cylinder", args=(base_point, cap_point, radius, strength), *items)
 
 def box(corner_1, corner_2, *items):
     # corner_1 VECTOR
@@ -430,6 +441,8 @@ refraction = _fmt_amount_fn("refraction")
 ior = _fmt_amount_fn("ior")
 
 no_shadow = _fmt_only_label_fn("no_shadow")
+
+blob_threshold = _fmt_amount_fn("threshold")
     
 def color(red, green=None, blue=None, filter=None, transmit=None):
     # filter    AMOUNT

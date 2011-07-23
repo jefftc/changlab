@@ -77,7 +77,7 @@ def plot_scatter(X, Y, out_file, group=None, color=None,
             xtick=True, xtick_label=True, ytick=True, ytick_label=True,
             xlabel="Principal Component 1", ylabel="Principal Component 2",
             label_size=1, width=plot_width, height=plot_height)
-        output = graph.write(open(out_file, 'w'))
+        output = graph.write(out_file, povray_bin=povray)
         #open(pov_file, 'w').write(graph.draw())
         ## povray -D -J +Opredictions.png -H768 -W1024 +A0.5 predictions.pov
         #r = povraygraph.povray(

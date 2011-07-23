@@ -34,12 +34,16 @@ class Image:
         self.height = height
         self.depth = depth
         self.handle = StringIO.StringIO()
-        self._objects = []  # list of object names
+        self._object_id = 0
+        self._objects = []    # list of graph objects.  subset of all objects
     def _make_object_name(self):
-        name = "OBJECT%05d" % len(self._objects)
+        name = "OBJECT%05d" % self._object_id
+        self._object_id += 1
         self._objects.append(name)
         return name
     def format(self, outhandle):
+        if type(outhandle) is type(""):
+            outhandle = open(outhandle, 'w')
         outhandle.write(self.handle.getvalue())
 
 def image(width, height, depth, make_3d):
@@ -74,7 +78,8 @@ def box(image, coord, extent, color, shadow=False, finish=None):
         ns,
         )))
     w(pr.object_(name))
-
+    w("\n")
+    
     #extent = coord2[0]-coord1[0], coord2[1]-coord1[1], coord2[2]-coord1[2]
     #image._add_object(name, coord1, extent)
 
@@ -117,6 +122,7 @@ def sphere(image, coord, radius, color, shadow=False, shape=None,
     name = image._make_object_name()
     w(pr.declare(name, point))
     w(pr.object_(name))
+    w("\n")
 
     #x, y, z = coord
     #coord = x-radius, y-radius, z-radius
@@ -124,12 +130,16 @@ def sphere(image, coord, radius, color, shadow=False, shape=None,
     #image._add_object(name, coord, extent)
 
 def cylinder(
-    image, coord, extent, radius, color, shadow=False, finish=None):
+    image, coord, extent, radius, color, shadow=False, finish=None, blob=None):
     # coord is the center of one end, with the center of the other end
-    # in the direction determined by extent.
+    # in the direction determined by extent.  blob can be True or a
+    # blob strength.
     import povray as pr
     finish = _make_finish(finish)
     pigment = _make_pigment(color, finish)
+    if blob is True:
+        blob = 1.0
+        
     w = image.handle.write
     coord1 = _coord2pr(image, coord)
     x, y, z = coord1
@@ -144,6 +154,17 @@ def cylinder(
         pigment, finish, ns, 
         )))
     w(pr.object_(name))
+
+    # HACK: min_extent and max_extent doesn't work for blobs for some
+    # reason.  Solution is to draw the object so that the extent can
+    # be calculated, and then draw a blob at the same place.
+    if blob:
+        w(pr._fmt_complex(
+            "blob", pr.blob_threshold(0.01), pr.blob_cylinder(
+            pr.vector(*coord1), pr.vector(*coord2), radius, blob),
+            pigment, finish, ns, 
+            ))
+    w("\n")
 
 def text(
     image, text, coord, depth, fontsize, color, shadow=False,
@@ -227,17 +248,19 @@ def text(
         # last objects to ignore.
         n = names
         if type(max_y) is type(0):
+            max_y = min(max_y, len(names))
             n = names[:-max_y]
-        x = ["min_extent(%s).y" % x for x in n]
-        x = "min(\n  %s)" % ",\n  ".join(x)
-        y_trans = x
+        if n:
+            x = ["min_extent(%s).y" % x for x in n]
+            x = "min(\n  %s)" % ",\n  ".join(x)
+            y_trans = x
     if x_trans or y_trans:
         w(pr.declare(name, pr.object_(
             name, pr.translate(x_trans, y_trans, 0))))
         
     # Translate by extent.
     x_extent = 0
-    y_extent = -1   # povray coordinates are from the lower left
+    y_extent = -1      # povray coordinates are from the lower left
     z_extent = 0
     if vertical:
         x_extent += 1  # Rotating will throw off the coordinates.
@@ -275,6 +298,7 @@ def text(
     w(pr.box(
         pr.vector(*coord1), pr.vector(*coord2),
         pigment, finish, pr.no_shadow()))
+    w("\n")
     
     
 def text90(*args, **keywds):
@@ -335,7 +359,7 @@ def get_text_size(text, fontsize):
 ## def line(image, x, y, width, height, color):
 ##     raise NotImplementedError
 
-def write(image, handle):
+def write(image, handle, povray_bin=None):
     # Format the image with POV-RAY and write the results to handle.
     import os
     import tempfile
@@ -350,11 +374,12 @@ def write(image, handle):
         x, out_file = tempfile.mkstemp(dir=".", suffix=".png"); os.close(x)
         if os.path.exists(out_file):
             os.unlink(out_file)
-            
+
         image.format(open(pov_file, 'w'))
         r = povray.povray(
             pov_file, outfile=out_file, 
-            height=image.height, width=image.width, antialias=0.5, quality=9)
+            height=image.height, width=image.width, antialias=0.5, quality=9,
+            povray_bin=povray_bin)
         output = r.read()
         assert os.path.exists(out_file), "POV-RAY failed.\n%s" % output
         handle.write(open(out_file).read())
@@ -373,9 +398,11 @@ def _make_finish(finish):
         finish = gc.SIMPLE
         
     if finish == gc.SIMPLE:
+        # Ambient of 0.8 and diffuse 0.3 is too dark.  At default
+        # camera position, background is gray.
         x = pr.finish(
-            pr.ambient(0.8, 0.8, 0.8),
-            pr.diffuse(0.3),
+            pr.ambient(0.95),
+            pr.diffuse(0.4),
             )
     elif finish == gc.METALLIC:
         ## x = pr.finish(
@@ -401,9 +428,9 @@ def _make_finish(finish):
             )
     elif finish == gc.ROUGH:
         x = pr.finish(
-            pr.ambient(0.8, 0.8, 0.8),
-            pr.diffuse(0.4),
-            pr.crand(0.2),
+            pr.ambient(0.7),
+            pr.diffuse(0.3),
+            pr.crand(0.1),
             )
     elif finish == gc.SHINY:
         # Doesn't work very well for graphs.
@@ -536,6 +563,7 @@ def _declare_fontfile(image, fontfile=None):
 
     w = image.handle.write
     w(pr.declare("FONTFILE", '"%s"' % fontfile)+"\n")
+    w("\n")
 
 ## def _declare_points(image):
 ##     import povray as pr
@@ -564,11 +592,19 @@ def _draw_background(image):
 
     w = image.handle.write
     w(pr.background(pr.color(*BACKGROUND_COLOR)))
+    w("\n\n")
+
+
+    # Draw a box for the background.  But make sure it doesn't appear
+    # in the list of graph objects.
 
     SIZE = 100
     coord = -image.width*SIZE/2, -image.height*SIZE/2, 0
     extent = image.width*SIZE, image.height*SIZE, -BACKGROUND_DEPTH
+    objs = image._objects[:]
     box(image, coord, extent, BACKGROUND_COLOR, finish=gc.SIMPLE)
+    #box(image, coord, extent, BACKGROUND_COLOR, finish=gc.ROUGH)
+    image._objects = objs
 
     #coord = -image.width*SIZE/2, image.height, -image.depth*SIZE/2
     #extent = image.width*SIZE, BACKGROUND_DEPTH, image.depth*SIZE

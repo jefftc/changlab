@@ -4,6 +4,9 @@ Functions:
 scatter
 line
 bar
+histogram
+
+calc_histogram
 
 plot_heatmap
 find_tall_heatmap_size
@@ -85,7 +88,7 @@ class Graph:
         # Constants.
         self.TOTAL_WIDTH = pixel_width
         self.TOTAL_HEIGHT = pixel_height
-        self.TOTAL_DEPTH = min(pixel_width, pixel_height)
+        self.TOTAL_DEPTH = max(pixel_width, pixel_height)
 
         # Calculate the borders around the plot.
         #BORDER = 0.25*min(self.TOTAL_WIDTH, self.TOTAL_HEIGHT)
@@ -104,7 +107,7 @@ class Graph:
         self.GRAPH_HEIGHT = self.TOTAL_HEIGHT-(Y1_BORDER+Y2_BORDER)
         self.GRAPH_DEPTH = self.TOTAL_DEPTH
         
-        self.UNIT = self.GRAPH_WIDTH/100.0
+        self.UNIT = max(self.GRAPH_WIDTH, self.GRAPH_HEIGHT)/100.0
 
         is_3d = virtual_zlim is not None
         self._plotter = plotter
@@ -116,7 +119,7 @@ class Graph:
 
         self._zstack = []  # list of (object, z, depth)
 
-    def draw_axes(self, draw_x, draw_y, draw_z):
+    def draw_axes(self, draw_x, draw_y, draw_z, draw_box):
         import graphconst as gc
         
         # Axes are half cylinders lying on the background.
@@ -130,31 +133,43 @@ class Graph:
             # X-axis.
             x_coord = x_min, x_axis_at, 0
             x_extent = self.GRAPH_WIDTH, 0, 0
-            if draw_y:
-                # Extend the X-axis out to the left, so there's no gap with
-                # the Y-axis.
-                x_coord = x_coord[0]-AXIS_RADIUS, x_coord[1], x_coord[2]
-                x_extent = x_extent[0]+AXIS_RADIUS, x_extent[1], x_extent[2]
+            #if draw_y:
+            #    # Extend the X-axis out to the left, so there's no gap with
+            #    # the Y-axis.
+            #    x_coord = x_coord[0]-AXIS_RADIUS, x_coord[1], x_coord[2]
+            #    x_extent = x_extent[0]+AXIS_RADIUS, x_extent[1], x_extent[2]
             self._plotter.cylinder(
                 self._image, x_coord, x_extent, AXIS_RADIUS, AXIS_COLOR,
-                finish=gc.METALLIC)
+                finish=gc.METALLIC, blob=True)
             # Give each axis a rounded cap so it looks smoother.
-            x_coord = x_min+self.GRAPH_WIDTH, x_axis_at, 0
-            self._plotter.sphere(
-                self._image, x_coord, AXIS_RADIUS, AXIS_COLOR,
-                finish=gc.METALLIC)
-
+            #x_coord = x_min+self.GRAPH_WIDTH, x_axis_at, 0
+            #self._plotter.sphere(
+            #    self._image, x_coord, AXIS_RADIUS, AXIS_COLOR,
+            #    finish=gc.METALLIC)
         if draw_y:
             # Y-axis.
             y_coord = y_axis_at, y_min, 0
             y_extent = 0, -self.GRAPH_HEIGHT, 0
             self._plotter.cylinder(
                 self._image, y_coord, y_extent, AXIS_RADIUS, AXIS_COLOR,
-                finish=gc.METALLIC)
-            y_coord = y_axis_at, y_min-self.GRAPH_HEIGHT, 0
-            self._plotter.sphere(
-                self._image, y_coord, AXIS_RADIUS, AXIS_COLOR,
-                finish=gc.METALLIC)
+                finish=gc.METALLIC, blob=True)
+            #y_coord = y_axis_at, y_min-self.GRAPH_HEIGHT, 0
+            #self._plotter.sphere(
+            #    self._image, y_coord, AXIS_RADIUS, AXIS_COLOR,
+            #    finish=gc.METALLIC)
+
+        if draw_box and draw_x and draw_y:
+            coord = self.GRAPH_X, self.GRAPH_Y, 0
+            extent = self.GRAPH_WIDTH, 0, 0
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+            coord = self.GRAPH_X+self.GRAPH_WIDTH, self.GRAPH_Y, 0
+            extent = 0, self.GRAPH_HEIGHT, 0
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+            
 
         if draw_z and self._virt_zlim:
             # Z-axis.
@@ -162,11 +177,12 @@ class Graph:
             z_extent = 0, 0, self.GRAPH_DEPTH
             self._plotter.cylinder(
                 self._image, z_coord, z_extent, AXIS_RADIUS, AXIS_COLOR,
-                finish=gc.METALLIC)
-            z_coord = y_axis_at, x_axis_at, self.GRAPH_Z-self.GRAPH_HEIGHT
-            self._plotter.sphere(
-                self._image, z_coord, AXIS_RADIUS, AXIS_COLOR,
-                finish=gc.METALLIC)
+                finish=gc.METALLIC, blob=True)
+            #z_coord = y_axis_at, x_axis_at, self.GRAPH_Z-self.GRAPH_HEIGHT
+            #self._plotter.sphere(
+            #    self._image, z_coord, AXIS_RADIUS, AXIS_COLOR,
+            #    finish=gc.METALLIC)
+
 
     def draw_tick_marks(
         self, xtick, ytick, ztick, xtick_label, ytick_label, ztick_label,
@@ -211,15 +227,15 @@ class Graph:
                 coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
             self._plotter.cylinder(
                 self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
-                finish=gc.METALLIC)
+                finish=gc.METALLIC, blob=True)
             # Round out the ticks so they look smoother.
             #self._plotter.sphere(
             #    self._image, coord, TICK_RADIUS, TICK_COLOR,
             #    finish=gc.METALLIC)
-            coord = coord[0], coord[1]+TICK_LENGTH, coord[2]
-            self._plotter.sphere(
-                self._image, coord, TICK_RADIUS, TICK_COLOR,
-                finish=gc.METALLIC)
+            #coord = coord[0], coord[1]+TICK_LENGTH, coord[2]
+            #self._plotter.sphere(
+            #    self._image, coord, TICK_RADIUS, TICK_COLOR,
+            #    finish=gc.METALLIC)
 
             #if draw_grid and ztick:
             if draw_grid:
@@ -228,7 +244,7 @@ class Graph:
                 extent = 0, 0, self.GRAPH_DEPTH
                 self._plotter.cylinder(
                     self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    finish=gc.METALLIC)
+                    finish=gc.METALLIC, blob=True)
                 # Draw the grid on the back pane of the plot.
                 #extent = 0, -self.GRAPH_HEIGHT, 0
                 #self._plotter.cylinder(
@@ -242,17 +258,19 @@ class Graph:
                 # don't overlap with axis
                 continue
             label = xtick_label[i]
-            # text coord left, top, back.  Extends to the right, down, to user.
-            coord = [x_pix, x_axis_at+TICK_LENGTH/2.0+LABEL_SPACE, 0]
-            wrong_y = False
-            if xtick_at&gc.TOP:
-                coord[1] = x_axis_at-TICK_LENGTH/2.0-LABEL_SPACE
-                wrong_y = True
-            if not xtick_at&gc.BACK:
-                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
-            self._plotter.text(
-                self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
-                LABEL_COLOR, center_x=True, wrong_y=wrong_y)
+            if label:
+                # text coord left, top, back.  Extends to the right,
+                # down, to user.
+                coord = [x_pix, x_axis_at+TICK_LENGTH/2.0+LABEL_SPACE, 0]
+                wrong_y = False
+                if xtick_at&gc.TOP:
+                    coord[1] = x_axis_at-TICK_LENGTH/2.0-LABEL_SPACE
+                    wrong_y = True
+                if not xtick_at&gc.BACK:
+                    coord[2] = self.GRAPH_Z+self.GRAPH_DEPTH-LABEL_DEPTH/2.0
+                self._plotter.text(
+                    self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
+                    LABEL_COLOR, center_x=True, wrong_y=wrong_y)
             
         for i, y_pix in enumerate(ytick_pixel):
             #coord = [y_axis_at-TICK_LENGTH/2.0, y_pix, 0]
@@ -262,15 +280,15 @@ class Graph:
                 coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
             self._plotter.cylinder(
                 self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
-                finish=gc.METALLIC)
+                finish=gc.METALLIC, blob=True)
             # Round out the ticks so they look smoother.
-            self._plotter.sphere(
-                self._image, coord, TICK_RADIUS, TICK_COLOR,
-                finish=gc.METALLIC)
-            #coord = coord[0]+TICK_LENGTH, coord[1], coord[2]
             #self._plotter.sphere(
             #    self._image, coord, TICK_RADIUS, TICK_COLOR,
             #    finish=gc.METALLIC)
+            ##coord = coord[0]+TICK_LENGTH, coord[1], coord[2]
+            ##self._plotter.sphere(
+            ##    self._image, coord, TICK_RADIUS, TICK_COLOR,
+            ##    finish=gc.METALLIC)
 
             if draw_grid:
                 # Draw the grid on the X-Y plane.
@@ -278,14 +296,14 @@ class Graph:
                 extent = self.GRAPH_WIDTH, 0, 0
                 self._plotter.cylinder(
                     self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    finish=gc.METALLIC)
+                    finish=gc.METALLIC, blob=True)
             if draw_grid and ztick:
                 # Draw the grid on the Y-Z plane.
                 coord = y_axis_at, y_pix, 0
                 extent = 0, 0, self.GRAPH_DEPTH
                 self._plotter.cylinder(
                     self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    finish=gc.METALLIC)
+                    finish=gc.METALLIC, blob=True)
             
             if not ytick_label:
                 continue
@@ -293,12 +311,13 @@ class Graph:
             if i == 0 and ztick_label and ztick_at&gc.LEFT:
                 continue
             label = ytick_label[i]
-            coord = [y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, y_pix, 0]
-            if not ytick_at&gc.BACK:
-                coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH - LABEL_DEPTH/2.0
-            self._plotter.text(
-                self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
-                LABEL_COLOR, wrong_x=True, center_y=True)
+            if label:
+                coord = [y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, y_pix, 0]
+                if not ytick_at&gc.BACK:
+                    coord[2] = self.GRAPH_Z+self.GRAPH_DEPTH-LABEL_DEPTH/2.0
+                self._plotter.text(
+                    self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
+                    LABEL_COLOR, wrong_x=True, center_y=True)
 
         for i, z_pix in enumerate(ztick_pixel):
             #coord = [y_axis_at-TICK_LENGTH/2.0, x_axis_at, z_pix]
@@ -309,15 +328,15 @@ class Graph:
                 coord[0] += self.GRAPH_WIDTH
             self._plotter.cylinder(
                 self._image, coord, extent, TICK_RADIUS, TICK_COLOR,
-                finish=gc.METALLIC)
+                finish=gc.METALLIC, blob=True)
             # Round out the ticks so they look smoother.
-            self._plotter.sphere(
-                self._image, coord, TICK_RADIUS, TICK_COLOR,
-                finish=gc.METALLIC)
-            #coord = coord[0]+TICK_LENGTH, coord[1], coord[2]
             #self._plotter.sphere(
             #    self._image, coord, TICK_RADIUS, TICK_COLOR,
             #    finish=gc.METALLIC)
+            ##coord = coord[0]+TICK_LENGTH, coord[1], coord[2]
+            ##self._plotter.sphere(
+            ##    self._image, coord, TICK_RADIUS, TICK_COLOR,
+            ##    finish=gc.METALLIC)
 
             if draw_grid:
                 # Draw the grid on the X-Z plane.
@@ -325,20 +344,23 @@ class Graph:
                 extent = self.GRAPH_WIDTH, 0, 0
                 self._plotter.cylinder(
                     self._image, coord, extent, GRID_RADIUS, GRID_COLOR,
-                    finish=gc.METALLIC)
+                    finish=gc.METALLIC, blob=True)
 
             if not ztick_label:
                 continue
             label = ztick_label[i]
-            # text coord left, top, back.  Extends to the right, down, to user.
-            coord = [y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, x_axis_at, z_pix]
-            wrong_x = True
-            if not ztick_at&gc.LEFT:
-                coord[0] = y_axis_at + self.GRAPH_WIDTH + LABEL_SPACE
-                wrong_x = False
-            self._plotter.text(
-                self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
-                LABEL_COLOR, wrong_x=wrong_x, center_y=True, center_z=True)
+            if label:
+                # text coord left, top, back.  Extends to the right,
+                # down, to user.
+                coord = [
+                    y_axis_at-TICK_LENGTH/2.0-LABEL_SPACE, x_axis_at, z_pix]
+                wrong_x = True
+                if not ztick_at&gc.LEFT:
+                    coord[0] = y_axis_at + self.GRAPH_WIDTH + LABEL_SPACE
+                    wrong_x = False
+                self._plotter.text(
+                    self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
+                    LABEL_COLOR, wrong_x=wrong_x, center_y=True, center_z=True)
 
     def draw_title(self, title, title_size=1.0):
         # Title sits on the background.
@@ -441,6 +463,7 @@ class Graph:
         ON_LABEL_COLOR = 1, 1, 1
 
         OVER_LABEL_FONTSIZE = 1.35*RADIUS*overpoint_label_size
+        OVER_LABEL_ALTFONTSIZE = OVER_LABEL_FONTSIZE * 0.75
         #OVER_LABEL_DEPTH = RADIUS/2.0
         OVER_LABEL_DEPTH = RADIUS*0.25*overpoint_label_size
         OVER_LABEL_COLOR = 0.2, 0.2, 0.2
@@ -492,20 +515,30 @@ class Graph:
                 err_l, err_u = x1*y_scale, x2*y_scale
                 err_total = err_l + err_u
             if err_total:
+                # Make sure the error bars don't go out of the plot.
+                y_min = max(y_pix-err_u, self.GRAPH_Y)
+                y_max = min(y_pix+err_l, self.GRAPH_Y+self.GRAPH_HEIGHT)
+                err_height = y_max - y_min
+
+                # Vertical error bar, from top to bottom.
                 self._plotter.cylinder(
-                    self._image, (x_pix, y_pix-err_u, z_pix+RADIUS),
-                    (0, err_total, 0), ERROR_RADIUS, col,
+                    self._image, (x_pix, y_min, z_pix+RADIUS),
+                    (0, err_height, 0), ERROR_RADIUS, col,
                     finish=gc.METALLIC)
-                self._plotter.cylinder(
-                    self._image,
-                    (x_pix-ERROR_WIDTH/2, y_pix+err_l, z_pix+RADIUS),
-                    (ERROR_WIDTH, 0, 0), ERROR_RADIUS, col,
-                    finish=gc.METALLIC)
-                self._plotter.cylinder(
-                    self._image,
-                    (x_pix-ERROR_WIDTH/2, y_pix-err_u, z_pix+RADIUS),
-                    (ERROR_WIDTH, 0, 0), ERROR_RADIUS, col,
-                    finish=gc.METALLIC)
+                # Top horizontal bar.
+                if y_pix-err_u >= self.GRAPH_Y:
+                    self._plotter.cylinder(
+                        self._image,
+                        (x_pix-ERROR_WIDTH/2, y_pix-err_u, z_pix+RADIUS),
+                        (ERROR_WIDTH, 0, 0), ERROR_RADIUS, col,
+                        finish=gc.METALLIC)
+                # Bottom horizontal bar.
+                if y_pix+err_l < self.GRAPH_Y+self.GRAPH_HEIGHT:
+                    self._plotter.cylinder(
+                        self._image,
+                        (x_pix-ERROR_WIDTH/2, y_pix+err_l, z_pix+RADIUS),
+                        (ERROR_WIDTH, 0, 0), ERROR_RADIUS, col,
+                        finish=gc.METALLIC)
 
                 # Include the error bars into point_coords.
                 radius = max(RADIUS, ERROR_RADIUS)
@@ -528,6 +561,7 @@ class Graph:
             self.GRAPH_X, self.GRAPH_Y, self.GRAPH_Z,
             self.GRAPH_WIDTH, self.GRAPH_HEIGHT, self.GRAPH_DEPTH)
         label_sizes = [(0, 0, 0)] * len(points)
+        altlabel_sizes = [(0, 0, 0)] * len(points)
         for i in range(len(points)):
             label = overpoint_labels[i]
             if not label:
@@ -535,9 +569,12 @@ class Graph:
             lw, lh = self._plotter.get_text_size(label, OVER_LABEL_FONTSIZE)
             ld = OVER_LABEL_DEPTH
             label_sizes[i] = lw, lh, ld
+            lw, lh = self._plotter.get_text_size(label, OVER_LABEL_ALTFONTSIZE)
+            altlabel_sizes[i] = lw, lh, ld
         margin = OVER_LABEL_SPACE
-        x = position_labels(plot_coords, point_coords, label_sizes, margin)
-        label_positions, label_orientations, x = x
+        x = position_labels(
+            plot_coords, point_coords, label_sizes, altlabel_sizes, margin)
+        label_positions, label_orientations, label_alternates, x = x
 
         # Draw the labels around the points.
         for i in range(len(points)):
@@ -592,9 +629,12 @@ class Graph:
             #if overpoint_label_orientation[i] == gc.LABEL_VERTICAL:
             if label_orientations[i] == gc.LABEL_VERTICAL:
                 fn = self._plotter.text90
+            fontsize = OVER_LABEL_FONTSIZE
+            if label_alternates[i]:
+                fontsize = OVER_LABEL_ALTFONTSIZE
             fn(
                 self._image, label, coord,
-                OVER_LABEL_DEPTH, OVER_LABEL_FONTSIZE, OVER_LABEL_COLOR,
+                OVER_LABEL_DEPTH, fontsize, OVER_LABEL_COLOR,
                 center_x=center_x, wrong_x=wrong_x,
                 center_y=center_y, wrong_y=wrong_y,
                 background=True)
@@ -695,26 +735,24 @@ class Graph:
                 # Just a point.  Ignore.
                 continue
 
-            # Draw a line.  A line consists of a cylinder with spheres
-            # at both ends.  The sphere is so that there is no gap
-            # between two line segments.
+            # Draw a line.
             linelen = math.sqrt((xp2-xp1)**2 + (yp2-yp1)**2)
             angle = 90
             if abs(xp2-xp1) > 1E-8:
                 angle = math.degrees(math.atan(float(yp2-yp1)/(xp2-xp1)))
             coord = xp1, yp1, zp1
             extent = xp2-xp1, yp2-yp1, zp2-zp1
-            if i == 0:
-                self._plotter.sphere(
-                    self._image, coord, RADIUS, color,
-                    finish=gc.METALLIC, shadow=shadow)
+            #if i == 0:
+            #    self._plotter.sphere(
+            #        self._image, coord, RADIUS, color,
+            #        finish=gc.METALLIC, shadow=shadow)
             self._plotter.cylinder(
                 self._image, coord, extent, RADIUS, color, 
-                finish=gc.METALLIC, shadow=shadow)
-            coord = xp2, yp2, zp2
-            self._plotter.sphere(
-                self._image, coord, RADIUS, color, 
-                finish=gc.METALLIC, shadow=shadow)
+                finish=gc.METALLIC, shadow=shadow, blob=True)
+            #coord = xp2, yp2, zp2
+            #self._plotter.sphere(
+            #    self._image, coord, RADIUS, color, 
+            #    finish=gc.METALLIC, shadow=shadow)
 
             x = "line", max(zp1, zp2)-RADIUS, RADIUS*2
             if x not in self._zstack:
@@ -792,10 +830,10 @@ class Graph:
             if x not in self._zstack:
                 self._zstack.append(x)
 
-    def write(self, handle):
+    def write(self, handle, **keywds):
         if type(handle) is type(""):
             handle = open(handle, 'w')
-        return self._plotter.write(self._image, handle)
+        return self._plotter.write(self._image, handle, **keywds)
     
     def _virtx2pix(self, virt_x):
         # The user provides virtual coordinates.
@@ -836,7 +874,8 @@ def scatter(*args, **keywds):
     onpoint_label_color
     onpoint_label_size
     overpoint_label  What label to put over each point.
-    error_bar        List of sizes of the error bar for each point.
+    error_bar        List of error or (errlow, errhi).
+                     The errors are the heights of the error bars.
     point_size       Scales the size of each point.
 
     More from _make_graph.
@@ -939,7 +978,7 @@ def line(*args, **keywds):
 
     # The points on the line should be smaller than the points in the
     # scatter plot.
-    point_size = point_size * 0.75
+    point_size = point_size * 0.80 * line_size
     
     # Check the inputs
     lines = args
@@ -1041,6 +1080,73 @@ def bar(*args, **keywds):
             series, barwidth, color[i], shadow, width_size=width_size)
 
     return graph
+
+def histogram(X, *args, **keywds):
+    """Return a Graph object.
+
+    X            List of the values to plot.
+    breaks       Number of breaks
+    frequency    True/False.  Plot the frequency or the density.
+    bar_size     1.0 means bars do not overlap.
+
+    """
+    # TODO: Should recognize if X is all integers and not allow any
+    # bars at sub-integer frequencies.
+    breaks = keywds.get("breaks", None)
+    frequency = keywds.get("frequency", True)
+    bar_size = keywds.get("bar_size", 1.0)
+    
+    x = calc_histogram(X, breaks=breaks)
+    breaks, counts, density = x
+
+    series = counts
+    if not frequency:
+        series = density
+    # Convert to (x, y) coordinates.
+    series = zip(breaks[:-1], series)
+        
+    graph = bar(series, width_size=bar_size, **keywds)
+    return graph
+
+def place_breaks(v_min, v_max, num_breaks=10, delta=None):
+    assert v_min < v_max, "%g %g" % (v_min, v_max)
+    assert num_breaks > 0 and num_breaks <= 1000
+
+    breaks = place_ticks(v_min, v_max, num_ticks=num_breaks, delta=delta)
+    assert len(breaks) >= 2
+    delta = breaks[1] - breaks[0]
+    if breaks[0] > v_min:
+        breaks = [breaks[0]-delta] + breaks
+    if breaks[-1] < v_max:
+        breaks = breaks + [breaks[-1]+delta]
+    assert breaks[0] >= v_min
+    assert breaks[-1] <= v_max
+    return breaks
+
+def calc_histogram(X, breaks=None):
+    import bisect
+    
+    if breaks is None:
+        breaks = place_breaks(min(X), max(X))
+    elif type(breaks) is type(0):
+        breaks = place_breaks(min(X), max(X), num_breaks=breaks)
+
+    counts = [0]*(len(breaks)-1)
+    for x in X:
+        # Find the correct bin.
+        i = bisect.bisect_left(breaks, x)
+        # Drop the items that are too big.  If x is exactly
+        # breaks[-1], then will not count.
+        if i >= len(counts):  # if x is too big.
+            continue
+        # Drop the items that are too small.
+        if breaks[i] > x:     # if x is too small.
+            continue
+        # Increase the right count.
+        counts[i] += 1
+    sum_counts = float(sum(counts))
+    density = [x/sum_counts for x in counts]
+    return breaks, counts, density
 
 def plot_heatmap(infile, outfile, xpix, ypix, **keywds):
     import os
@@ -1206,7 +1312,7 @@ def place_ticks(v_min, v_max, num_ticks=10, delta=None):
         v_min = v_min * 0.95
         v_max = v_max * 1.05
     assert v_min < v_max, "%g %g" % (v_min, v_max)
-    assert num_ticks > 0 and num_ticks <= 100
+    assert num_ticks > 0 and num_ticks <= 1000
 
     if delta is None:
         delta = _choose_tick_delta(v_min, v_max, num_ticks=num_ticks)
@@ -1245,7 +1351,8 @@ def _make_graph(
     xtick=None, xtick_label=True, ytick=None, ytick_label=True,
     ztick=None, ztick_label=True,
     xtick_at=None, ytick_at=None, ztick_at=None, tick_size=1.0,
-    draw_x_axis=None, draw_y_axis=None, draw_z_axis=None, 
+    draw_x_axis=None, draw_y_axis=None, draw_z_axis=None,
+    draw_box=None, 
     grid=None, title=None, title_size=1.0,
     xlabel=None, ylabel=None, zlabel=None, label_size=1.0,
     font=None, width=None, height=None, **keywds):
@@ -1309,7 +1416,7 @@ def _make_graph(
             ztick_at = ztick_at^gc.LEFT
 
     graph = Graph(plotter, width, height, xlim, ylim, zlim)
-    graph.draw_axes(draw_x_axis, draw_y_axis, draw_z_axis)
+    graph.draw_axes(draw_x_axis, draw_y_axis, draw_z_axis, draw_box)
     graph.draw_tick_marks(
         xtick, ytick, ztick, xtick_label, ytick_label, ztick_label,
         xtick_at, ytick_at, ztick_at, grid, tick_size=tick_size,
@@ -1590,18 +1697,25 @@ def _perc_overlap(obj1, obj2):
     area2 = w2*h2*d2
     x = _overlaps_3d(obj1, obj2)
     p = float(x) / min(area1, area2)
-    assert p >= 0 and p <= 1, p
+    EPS = 1E-10
+    assert p >= 0.0-EPS and p <= 1.0+EPS, p
     return p
 
-def _calc_label_coord(feature, label, position, orientation, margin):
-    # feature   (x, y, z, width, height, depth)
-    # label     (width, height, depth)
-    # position  from graphconst
-    # margin    how much extra space to use
+def _calc_label_coord(
+    object, label, altlabel, position, orientation, alternate, margin):
+    # object       (x, y, z, width, height, depth)
+    # label        (width, height, depth)
+    # altlabel     (width, height, depth)
+    # position     from graphconst
+    # orientation  from graphconst
+    # alternate    Whether to use altlabel instead of label.
+    # margin       How much extra space to use.
     import graphconst as gc
     
-    fx, fy, fz, fw, fh, fd = feature
+    fx, fy, fz, fw, fh, fd = object
     lw, lh, ld = label
+    if alternate:
+        lw, lh, ld = altlabel
     if orientation == gc.LABEL_VERTICAL:
         lw, lh = lh, lw
     if position == gc.LABEL_TOP:
@@ -1634,48 +1748,57 @@ def _calc_label_coord(feature, label, position, orientation, margin):
     return x, y, z
 
 def _score_label(
-    bounds, label, position, orientation, index,
-    features, labels, coords, margin, overlap_cache):
+    index, label, altlabel, position, orientation, alternate,
+    objects, labels, altlabels, coords, positions, orientations, alternates, 
+    bounds, margin, overlap_cache):
     import graphconst as gc
-    assert len(features) == len(labels)
+    assert len(objects) == len(labels)
     assert len(labels) == len(coords)
     w, h, d = label
+    if alternate:
+        w, h, d = altlabel
     if orientation == gc.LABEL_VERTICAL:
         w, h = h, w
     
     coord = _calc_label_coord(
-        features[index], label, position, orientation, margin)
+        objects[index], label, altlabel, position, orientation, alternate,
+        margin)
     x, y, z = coord
 
     # Use a scoring heuristic that takes into account:
     # 1.  The position of the label.  Some are favored over others.
     # 2.  If the label overlaps with other labels.
-    # 3.  If the label overlaps with features on the plot.
+    # 3.  If the label overlaps with objects on the plot.
     # 4.  If the label is out of bounds.
     #
     # Tried both all-or-nothing penalties and penalties that take into
     # account the amount of overlap.  The ones that give partial
     # credit generates much better solutions.
-    PENALTY_LABEL = -400
-    PENALTY_FEATURE = -200
-    PENALTY_OUTSIDE = -10000
+    PENALTY_ALTERNATE = -10   # Whether to use the alternate label.
+    PENALTY_LABEL = -400      # Overlaps with a label.
+    PENALTY_OBJECT = -200     # Overlaps with an object.
+    PENALTY_OUTSIDE = -10000  # Outside the boundary.
     
     score = 0
+
+    # Penalize if using the alternate label.
+    if alternate:
+        score += PENALTY_ALTERNATE
 
     # Score based on the position.
     position2score = {
         gc.LABEL_TOP : 0,
         gc.LABEL_BOTTOM : 0,
-        gc.LABEL_LEFT : 0,
-        gc.LABEL_RIGHT : 0,
-        gc.LABEL_TOP_LEFT : -5,
-        gc.LABEL_TOP_RIGHT : -5,
-        gc.LABEL_BOTTOM_LEFT : -5,
-        gc.LABEL_BOTTOM_RIGHT : -5,
+        gc.LABEL_LEFT : -5,
+        gc.LABEL_RIGHT : -5,
+        gc.LABEL_TOP_LEFT : -20,
+        gc.LABEL_TOP_RIGHT : -20,
+        gc.LABEL_BOTTOM_LEFT : -20,
+        gc.LABEL_BOTTOM_RIGHT : -20,
         }
 
     favor_horizontal = True
-    fx, fy, fz, fw, fh, fd = features[index]
+    fx, fy, fz, fw, fh, fd = objects[index]
     if fh > fd*2:
         # If the object to be labelled is long and skinny, then a
         # vertical label would look better.
@@ -1688,29 +1811,33 @@ def _score_label(
         pos_score -= 10   # favor vertical ones.
     score += pos_score
 
-    # Penalize overlaps with features.
-    key = index, position, orientation
-    I = overlap_cache.get(key, range(len(features)))
-    #I = range(len(features))
+    # Penalize overlaps with objects.
+    key = index, position, orientation, alternate
+    I = overlap_cache.get(key, range(len(objects)))
+    #I = range(len(objects))
     for i in I:
-        fx, fy, fz, fw, fh, fd = features[i]
-        p = _perc_overlap((x, y, z, w, h, d), features[i])
+        fx, fy, fz, fw, fh, fd = objects[i]
+        p = _perc_overlap((x, y, z, w, h, d), objects[i])
         #if p:
-        #    score += PENALTY_FEATURE
-        score += p*PENALTY_FEATURE
+        #    score += PENALTY_OBJECT
+        score += p*PENALTY_OBJECT
         #if i in [114] and orientation == 0 and position == 2:
         #    xx = ["HERE2", i, position, orientation, score] + \
-        #         list(features[i])[:2] + list((x, y, w, h))
+        #         list(objects[i])[:2] + list((x, y, w, h))
         #    print "\t".join(map(str, xx))
 
     # Penalize overlaps with other labels.
     for i in range(len(labels)):
         if i == index:
             continue
-        if labels[i] == (0, 0, 0):
-            continue
         lx, ly, lz = coords[i]
         lw, lh, ld = labels[i]
+        if alternates[i]:
+            lw, lh, ld = altlabels[i]
+        if (lw, lh, ld) == (0, 0, 0):
+            continue
+        if orientations[i] == gc.LABEL_VERTICAL:
+            lw, lh = lh, lw
         p = _perc_overlap((x, y, z, w, h, d), (lx, ly, lz, lw, lh, ld))
         #if p:
         #    score += PENALTY_LABEL
@@ -1727,10 +1854,13 @@ def _score_label(
     return score
 
 def _position_one_label(
-    bounds, label, index, features, labels, coords, margin, overlap_cache):
+    index, label, altlabel, 
+    objects, labels, altlabels, coords, positions, orientations, alternates, 
+    bounds, margin, overlap_cache):
+    import itertools
     import graphconst as gc
 
-    assert len(features) == len(labels)
+    assert len(objects) == len(labels)
     assert len(labels) == len(coords)
 
     # Find the best position for the label.
@@ -1740,76 +1870,96 @@ def _position_one_label(
         gc.LABEL_BOTTOM_LEFT, gc.LABEL_BOTTOM_RIGHT]
     ALL_ORIENTATIONS = [
         gc.LABEL_HORIZONTAL, gc.LABEL_VERTICAL]
+    ALL_ALTERNATES = [False, True]
     
-    best_pos = best_orient = max_score = None
-    for pos in ALL_POSITIONS:
-        for orient in ALL_ORIENTATIONS:
-            score = _score_label(
-                bounds, label, pos, orient, index,
-                features, labels, coords, margin, overlap_cache)
-            #x = "HERE1", pos, orient, index, score
-            #print "\t".join(map(str, x))
-            if max_score is None or score > max_score:
-                best_pos, best_orient, max_score = pos, orient, score
-    return best_pos, best_orient
+    best_pos = best_orient = best_alt = max_score = None
+    for x in itertools.product(
+        ALL_POSITIONS, ALL_ORIENTATIONS, ALL_ALTERNATES):
+        pos, orient, alt = x
+        score = _score_label(
+            index, label, altlabel, pos, orient, alt, 
+            objects, labels, altlabels, coords, positions, orientations,
+            alternates, bounds, margin, overlap_cache)
+          
+        #x = "HERE1", index, pos, orient, alt, score
+        #print "\t".join(map(str, x))
+        if max_score is None or score > max_score:
+            best_pos, best_orient, best_alt, max_score = (
+                pos, orient, alt, score)
+    return best_pos, best_orient, best_alt
 
-def _cache_label_feature_overlaps(features, labels, margin):
+def _cache_label_object_overlaps(objects, labels, altlabels, margin):
     import itertools
     import graphconst as gc
-    
-    # Optimization: cache the overlaps between labels and features.
+    import jmath
+
+    # Optimization: cache the overlaps between labels and objects.
     ALL_POSITIONS = [
         gc.LABEL_TOP, gc.LABEL_BOTTOM, gc.LABEL_LEFT, gc.LABEL_RIGHT,
         gc.LABEL_TOP_LEFT, gc.LABEL_TOP_RIGHT,
         gc.LABEL_BOTTOM_LEFT, gc.LABEL_BOTTOM_RIGHT]
     ALL_ORIENTATIONS = [
         gc.LABEL_HORIZONTAL, gc.LABEL_VERTICAL]
+    ALL_ALTERNATES = [False, True]
 
-    overlaps = {}  # i, pos, orient -> list of features
+    overlaps = {}  # i, pos, orient, alternate -> list of objects
     for x in itertools.product(
-        range(len(labels)), ALL_POSITIONS, ALL_ORIENTATIONS):
-        i, pos, orient = x
-        if labels[i] == (0, 0, 0):
+        range(len(labels)), ALL_POSITIONS, ALL_ORIENTATIONS, ALL_ALTERNATES):
+        i, pos, orient, alt = x
+        if alt and altlabels[i] == (0, 0, 0):
             continue
-        overlaps[(i, pos, orient)] = []
-        coord = _calc_label_coord(features[i], labels[i], pos, orient, margin)
+        if not alt and labels[i] == (0, 0, 0):
+            continue
+        overlaps[(i, pos, orient, alt)] = []
+        coord = _calc_label_coord(
+            objects[i], labels[i], altlabels[i], pos, orient, alt, margin)
         x, y, z = coord
         w, h, d = labels[i]
+        if alt:
+            w, h, d = altlabels[i]
         if orient == gc.LABEL_VERTICAL:
             w, h = h, w
-        for j in range(len(features)):
-            if _overlaps((x, y, z, w, h, d), features[j]):
-                overlaps[(i, pos, orient)].append(j)
+        for j in range(len(objects)):
+            if _overlaps((x, y, z, w, h, d), objects[j]):
+                overlaps[(i, pos, orient, alt)].append(j)
     return overlaps
 
-def position_labels(bounds, features, labels, margin):
+def position_labels(bounds, objects, labels, altlabels, margin):
     # bounds is (x, y, z, width, height, depth) for the whole plotting
-    # area.  features is a list of (x, y, z, width, height, depth) of
-    # the features.  labels is a list of the (width, height, depth)
-    # for each of the labels.  If this label is missing, then width,
-    # height, and depth should each be 0.  labels should be parallel
-    # to features.  margin is the amount of space to add between the
-    # edge of the feature and the label.
+    # area.  objects is a list of (x, y, z, width, height, depth) of
+    # the objects on the plot to avoid.  labels is a list of the
+    # (width, height, depth) for the label of each object.  labels
+    # should be parallel to objects.  If an object is not labeled,
+    # then width, height, and depth should each be 0.  altlabels is a
+    # list of alternate labels.  It should be in the same form as
+    # labels.  margin is the amount of space to add between the edge
+    # of the object and the label.
     import graphconst as gc
 
     assert len(bounds) == 6
-    assert len(features) == len(labels)
-    for x in features:
+    assert len(objects) == len(labels)
+    assert len(objects) == len(altlabels)
+    for x in objects:
         assert len(x) == 6
     for x in labels:
+        assert len(x) == 3
+    for x in altlabels:
         assert len(x) == 3
 
     # Initialize the positions and coordinates for each label.
     positions = [gc.LABEL_TOP] * len(labels)
     orientations = [gc.LABEL_HORIZONTAL] * len(labels)
+    alternates = [False] * len(labels)
     coords = [None] * len(labels)
     for i in range(len(labels)):
         coords[i] = _calc_label_coord(
-            features[i], labels[i], positions[i], orientations[i], margin)
+            objects[i], labels[i], altlabels[i], positions[i], orientations[i],
+            alternates[i], margin)
 
-    # Cache overlapping features and the labels to prevent a long
+    # Cache overlapping objects and the labels to prevent a long
     # search each time.
-    overlap_cache = _cache_label_feature_overlaps(features, labels, margin)
+    overlap_cache = _cache_label_object_overlaps(
+        objects, labels, altlabels, margin)
 
     MAX_ITER = 50
     MAX_SAME = 2   # how many times same labels moved back and forth.
@@ -1829,31 +1979,38 @@ def position_labels(bounds, features, labels, margin):
             # Check the positioning of this label.  If it's good, then
             # don't move it.
             score = _score_label(
-                bounds, labels[i], positions[i], orientations[i], i,
-                features, labels, coords, margin, overlap_cache)
+                i, labels[i], altlabels[i], positions[i], orientations[i],
+                alternates[i], objects, labels, altlabels, coords,
+                positions, orientations, alternates, bounds, margin,
+                overlap_cache)
             if score >= 0:
                 continue
 
             # Try to find a better position for this label.
             x = _position_one_label(
-                bounds, labels[i], i, features, labels, coords, margin,
-                overlap_cache)
-            pos, orient = x
-            if pos == positions[i] and orient == orientations[i]:
+                i, labels[i], altlabels[i],
+                objects, labels, altlabels,
+                coords, positions, orientations, alternates,
+                bounds, margin, overlap_cache)
+            pos, orient, alt = x
+            if(pos == positions[i] and orient == orientations[i] and
+               alt == alternates[i]):
                 # Hasn't moved, don't do anything.
                 continue
             
             positions[i] = pos
             orientations[i] = orient
+            alternates[i] = alt
             coords[i] = _calc_label_coord(
-                features[i], labels[i], positions[i], orientations[i], margin)
+                objects[i], labels[i], altlabels[i],
+                positions[i], orientations[i], alternates[i], margin)
             moved.append(i)
         if last_moved == moved:
             num_same_moved += 1
         else:
             num_same_moved = 0
         #print moved, num_same_moved, num_iter; import sys; sys.stdout.flush()
-    return positions, orientations, coords
+    return positions, orientations, alternates, coords
 
 
 def test_find_heatmap_size():
