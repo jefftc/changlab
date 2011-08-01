@@ -129,60 +129,85 @@ class Graph:
         x_min, y_min = self.GRAPH_X, self.GRAPH_Y+self.GRAPH_HEIGHT
         x_axis_at, y_axis_at = y_min, x_min
 
+        if draw_box:
+            draw_x = draw_y = draw_z = True
+        is_3d = bool(self._virt_zlim)
+
+
+        # Draw the X axis (the bottom line of the X-Y plane).
+        coord = [x_min, x_axis_at, self.GRAPH_Z]
+        extent = [self.GRAPH_WIDTH, 0, 0]
         if draw_x:
-            # X-axis.
-            x_coord = x_min, x_axis_at, 0
-            x_extent = self.GRAPH_WIDTH, 0, 0
-            #if draw_y:
-            #    # Extend the X-axis out to the left, so there's no gap with
-            #    # the Y-axis.
-            #    x_coord = x_coord[0]-AXIS_RADIUS, x_coord[1], x_coord[2]
-            #    x_extent = x_extent[0]+AXIS_RADIUS, x_extent[1], x_extent[2]
             self._plotter.cylinder(
-                self._image, x_coord, x_extent, AXIS_RADIUS, AXIS_COLOR,
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
                 finish=gc.METALLIC, blob=True)
-            # Give each axis a rounded cap so it looks smoother.
-            #x_coord = x_min+self.GRAPH_WIDTH, x_axis_at, 0
-            #self._plotter.sphere(
-            #    self._image, x_coord, AXIS_RADIUS, AXIS_COLOR,
-            #    finish=gc.METALLIC)
+        if draw_box and is_3d:
+            coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+            coord[2] = self.GRAPH_Z
+        # Draw the top line of the X-Y plane.
+        coord[1] = self.GRAPH_Y
+        if draw_box:
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+        if draw_box and is_3d:
+            coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+
+        # Draw the Y axis (the left line of the X-Y plane).
+        coord = [y_axis_at, y_min, self.GRAPH_Z]
+        extent = [0, -self.GRAPH_HEIGHT, 0]
         if draw_y:
-            # Y-axis.
-            y_coord = y_axis_at, y_min, 0
-            y_extent = 0, -self.GRAPH_HEIGHT, 0
-            self._plotter.cylinder(
-                self._image, y_coord, y_extent, AXIS_RADIUS, AXIS_COLOR,
-                finish=gc.METALLIC, blob=True)
-            #y_coord = y_axis_at, y_min-self.GRAPH_HEIGHT, 0
-            #self._plotter.sphere(
-            #    self._image, y_coord, AXIS_RADIUS, AXIS_COLOR,
-            #    finish=gc.METALLIC)
-
-        if draw_box and draw_x and draw_y:
-            coord = self.GRAPH_X, self.GRAPH_Y, 0
-            extent = self.GRAPH_WIDTH, 0, 0
             self._plotter.cylinder(
                 self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
                 finish=gc.METALLIC, blob=True)
-            coord = self.GRAPH_X+self.GRAPH_WIDTH, self.GRAPH_Y, 0
-            extent = 0, self.GRAPH_HEIGHT, 0
+        if draw_box and is_3d:
+            coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH
             self._plotter.cylinder(
                 self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
                 finish=gc.METALLIC, blob=True)
-            
-
-        if draw_z and self._virt_zlim:
-            # Z-axis.
-            z_coord = y_axis_at, x_axis_at, self.GRAPH_Z
-            z_extent = 0, 0, self.GRAPH_DEPTH
+            coord[2] = self.GRAPH_Z
+        # Draw the right line of the X-Y plane.
+        coord[0] = self.GRAPH_X + self.GRAPH_WIDTH
+        if draw_box:
             self._plotter.cylinder(
-                self._image, z_coord, z_extent, AXIS_RADIUS, AXIS_COLOR,
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
                 finish=gc.METALLIC, blob=True)
-            #z_coord = y_axis_at, x_axis_at, self.GRAPH_Z-self.GRAPH_HEIGHT
-            #self._plotter.sphere(
-            #    self._image, z_coord, AXIS_RADIUS, AXIS_COLOR,
-            #    finish=gc.METALLIC)
+        if draw_box and is_3d:
+            coord[2] = self.GRAPH_Z + self.GRAPH_DEPTH
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
 
+        # Draw the Z axis (the left line of the X-Z plane).
+        # Z-axis.
+        coord = [y_axis_at, x_axis_at, self.GRAPH_Z]
+        extent = [0, 0, self.GRAPH_DEPTH]
+        if draw_z:
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+        if draw_box and is_3d:
+            coord[1] = self.GRAPH_Y
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+            coord[1] = self.GRAPH_Y+self.GRAPH_HEIGHT
+        # Draw the right line of the X-Z plane.
+        coord[0] = self.GRAPH_X + self.GRAPH_WIDTH
+        if draw_box and is_3d:
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
+            coord[1] = self.GRAPH_Y
+            self._plotter.cylinder(
+                self._image, coord, extent, AXIS_RADIUS, AXIS_COLOR,
+                finish=gc.METALLIC, blob=True)
 
     def draw_tick_marks(
         self, xtick, ytick, ztick, xtick_label, ytick_label, ztick_label,

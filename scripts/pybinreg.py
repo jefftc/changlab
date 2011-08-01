@@ -736,12 +736,12 @@ def summarize_predictions(povray, file_layout):
     for d in filelib.read_row(file_layout.PROBABILITIES, header=1):
         if d.Method == "FITTED":
             continue
-        sample.append(d.Sample)
         x = float(d.Metagene)
         y = float(d.Probability)
-
         if math.isnan(x) or math.isnan(y):
             continue
+
+        sample.append(d.Sample)
         # Calculate the error bars.
         err_l, err_u = y-float(d.Lower_CI), float(d.Upper_CI)-y
         if math.isnan(err_l):

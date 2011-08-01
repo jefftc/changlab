@@ -1186,14 +1186,15 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
 
 def _guess_filestem(file_or_job):
     # Examples:
-    # file_or_job          stem
-    # test                 test
-    # GSE5451.l2.mas5.gtr  GSE5451.l2.mas5
-    # GSE1456.mas5.gz      GSE1456
-    # GSE1456.mas5         GSE1456
-    # out.dat              out
-    # out.pcl              out
-    # out.txt              out
+    # file_or_job           stem
+    # test                  test
+    # GSE5451.l2.mas5.gtr   GSE5451.l2.mas5
+    # GSE1456.mas5.gz       GSE1456
+    # GSE1456.mas5          GSE1456
+    # out.dat               out
+    # out.pcl               out
+    # out.txt               out
+    # /home/jchang/out.txt  /home/jchang/out
     # 
     # Rule:
     # - If the file doesn't exist, then use the whole thing as the
@@ -2079,7 +2080,9 @@ def main():
         options.array_tree_scale = 0
 
     if not options.jobname:
-        options.jobname = _guess_filestem(infile)
+        x = _guess_filestem(infile)
+        x = os.path.split(x)[1]   # Save results in local directory.
+        options.jobname = x
 
     outfile = options.outfile
             
