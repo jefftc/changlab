@@ -27,7 +27,7 @@ COL_HEADERS = ["AID", "EWEIGHT", "EORDER"]
 
 def is_format(locator_str):
     from genomicode import filelib
-    import tab_delimited_format
+    import util
     if not filelib.exists(locator_str):
         return False
 
@@ -47,7 +47,7 @@ def is_format(locator_str):
         if len(cols) != len(matrix[0]):
             return False
     
-    nrow, ncol = tab_delimited_format._num_headers(matrix)
+    nrow, ncol = util.num_headers(matrix)
     
     if nrow < 1 or nrow > 4:
         return False

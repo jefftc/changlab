@@ -25,7 +25,7 @@ static PyObject *cjmath_safe_int(PyObject *self, PyObject *args)
 
     if(!PyArg_ParseTuple(args, "O", &py_x))
 	return NULL;
-    if(py_x == Py_None) {
+    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
 	Py_INCREF(Py_None);
 	return Py_None;
     }
@@ -41,7 +41,7 @@ static PyObject *cjmath_safe_float(PyObject *self, PyObject *args)
 
     if(!PyArg_ParseTuple(args, "O", &py_x))
 	return NULL;
-    if(py_x == Py_None) {
+    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
 	Py_INCREF(Py_None);
 	return Py_None;
     }
@@ -174,6 +174,27 @@ static PyObject *cjmath_cor_matrix(PyObject *self, PyObject *args,
     return py_cor;
 }
 
+
+static char cjmath_log_add__doc__[] = 
+"_logadd(logx, logy)\n";
+
+static PyObject *cjmath_log_add(PyObject *self, PyObject *args)
+{
+    double logx, logy;
+    double retval;
+
+    if(!PyArg_ParseTuple(args, "dd", &logx, &logy))
+	return NULL;
+    if(logy - logx > 100) {
+	retval = logy;
+    } else if(logx - logy > 100) {
+	retval = logx;
+    } else {
+	double minxy = (logx < logy) ? logx : logy;
+	retval = minxy + log(exp(logx-minxy) + exp(logy-minxy));
+    }
+    return PyFloat_FromDouble(retval);
+}
 
 static char cjmath_fisher_z_item__doc__[] = 
 "XXX\n";
@@ -741,6 +762,8 @@ static PyMethodDef CJMathMethods[] = {
    cjmath_cov_matrix__doc__},
   {"cor_matrix", (PyCFunction)cjmath_cor_matrix, METH_VARARGS | METH_KEYWORDS, 
    cjmath_cor_matrix__doc__},
+  {"log_add", (PyCFunction)cjmath_log_add, METH_VARARGS, 
+   cjmath_log_add__doc__},
   {"fisher_z_item", cjmath_fisher_z_item, METH_VARARGS, 
    cjmath_fisher_z_item__doc__},
   {"fisher_z_matrix", cjmath_fisher_z_matrix, METH_VARARGS, 

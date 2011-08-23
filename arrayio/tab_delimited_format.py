@@ -55,114 +55,116 @@ def is_matrix(X):
     # Any matrix can be a tab-delimited format.
     return True
 
-def _num_headers(matrix):
-    """Return (# row headers, # col headers)."""
-    # Try to find the number of rows and columns that contain header
-    # information.  In general, assume that numbers are data and
-    # headers contain characters.  Headers are at the beginnings of
-    # the matrix.
-    if not matrix:
-        return 0, 0
-    num_rows, num_cols = len(matrix), len(matrix[0])
+## def _num_headers(matrix):
+##     """Return (# row headers, # col headers)."""
+##     # Try to find the number of rows and columns that contain header
+##     # information.  In general, assume that numbers are data and
+##     # headers contain characters.  Headers are at the beginnings of
+##     # the matrix.
+##     if not matrix:
+##         return 0, 0
+##     num_rows, num_cols = len(matrix), len(matrix[0])
 
-    # Make sure each row contains the same number of columns.
-    for cols in matrix:
-        assert len(cols) == len(matrix[0]), "matrix row length mismatch"
+##     # Make sure each row contains the same number of columns.
+##     for cols in matrix:
+##         assert len(cols) == len(matrix[0]), "matrix row length mismatch"
 
-    # This algorithm is broken.  If a column is mostly numeric, but
-    # has a few non-numeric entries (e.g. LocusLink), then this will
-    # miss it because it only looks at the entries in the last row.
+##     # First, look for rows and columns that contain characters.  Check
+##     # from the end of the matrix, and move towards the front.
+##     # 
+##     # This algorithm is broken.  If a column is mostly numeric, but
+##     # has a few non-numeric entries, then this will consider the whole
+##     # column numeric because the last row is numeric.
+##     last_row = matrix[num_rows-1]
+##     for c in range(num_cols-1, -1, -1):
+##         if not _is_numeric(last_row[c]):
+##             break
+##     else:
+##         c = -1
+##     hcols = c+1
+
+##     last_col = [x[num_cols-1] for x in matrix]
+##     for r in range(num_rows-1, -1, -1):
+##         if not _is_numeric(last_col[r]):
+##             break
+##     else:
+##         r = -1
+##     hrows = r+1
+##     print "HEADERS_1", hrows, hcols
+
+##     # Check for row headers that match the pattern:
+##     # <HEAD1>  <HEAD2>   <HEAD3>   <DATA>
+##     # <ROW>    <blank>   <blank>  <number>
+##     # Because <ROW> has <blank> value, <ROW> must be a header.  If it
+##     # contains information about a specific gene, then <HEAD2> and
+##     # <HEAD3> would have annotations.
+##     # This will not be found by the previous filter, because it looked
+##     # only in the last column, which should have values for <HEAD2>
+##     # and <HEAD3>.
+##     # This will fail if the row begins with a bunch of missing values.
     
-    # First, look for rows and columns that contain characters.  Check
-    # from the end of the matrix, and move towards the front.
-    row = matrix[num_rows-1]
-    for c in range(num_cols-1, -1, -1):
-        if not _is_numeric(row[c]):
-            break
-    else:
-        c = -1
-    hcols = c+1
-
-    col = [x[num_cols-1] for x in matrix]
-    for r in range(num_rows-1, -1, -1):
-        if not _is_numeric(col[r]):
-            break
-    else:
-        r = -1
-    hrows = r+1
-    #print "HEADERS_1", hrows, hcols
-
-    # Check for row headers that match the pattern:
-    # <HEAD1>  <HEAD2>   <HEAD3>   <DATA>
-    # <ROW>    <blank>   <blank>  <number>
-    # Because <ROW> has <blank> value, <ROW> must be a header.  If it
-    # contains information about a specific gene, then <HEAD2> and
-    # <HEAD3> would have annotations.
-    # This will not be found by the previous filter, because it looked
-    # only in the last column.
-    
-    # Exception: If the whole column is blank, and none of the genes
-    # have any annotation, then ignore this column.  This should not
-    # happen if I detect and remove blank columns above.
-    if hrows and hcols:
-        # Look for blank columns and exclude them.
-        while hrows < len(matrix) and hcols > 1:
-            all_space = 1
-            for i in range(1, hcols):
-                if matrix[hrows][i].strip() != "":
-                    all_space = 0
-                    break
-            if not all_space:
-                break
-            hrows += 1
-    #print "HEADERS_2", hrows, hcols
+##     # Exception: If the whole column is blank, and none of the genes
+##     # have any annotation, then ignore this column.  This should not
+##     # happen if I detect and remove blank columns above.
+##     if hrows and hcols:
+##         # Look for blank columns and exclude them.
+##         while hrows < len(matrix) and hcols > 1:
+##             all_space = 1
+##             for i in range(1, hcols):
+##                 if matrix[hrows][i].strip() != "":
+##                     all_space = 0
+##                     break
+##             if not all_space:
+##                 break
+##             hrows += 1
+##     print "HEADERS_2", hrows, hcols
             
-    # The values of some columns are numeric, but nevertheless should
-    # be considered headers.  If known headers are given, check for
-    # them.
-    if hrows:
-        col_headers = [x.upper() for x in matrix[0]]
-        while hcols < len(col_headers) and col_headers[hcols] in [
-            "GID", "NA", "ID", "NAME", "LOCUSLINK",
-            "GWEIGHT", "GORDER", "GCLUSTER"]:
-            hcols += 1
-    if hcols:
-        row_headers = [x[0].upper() for x in matrix]
-        while hrows < len(row_headers) and row_headers[hrows] in [
-            "GID", "AID", "EWEIGHT", "EORDER", "ACLUSTER"]:
-            hrows += 1
-    #print "HEADERS_3", hrows, hcols
+##     # The values of some columns are numeric, but nevertheless should
+##     # be considered headers.  If known headers are given, check for
+##     # them.
+##     if hrows:
+##         col_headers = [x.upper() for x in matrix[0]]
+##         while hcols < len(col_headers) and col_headers[hcols] in [
+##             "GID", "NA", "ID", "NAME", "LOCUSLINK",
+##             "GWEIGHT", "GORDER", "GCLUSTER"]:
+##             hcols += 1
+##     if hcols:
+##         row_headers = [x[0].upper() for x in matrix]
+##         while hrows < len(row_headers) and row_headers[hrows] in [
+##             "GID", "AID", "EWEIGHT", "EORDER", "ACLUSTER"]:
+##             hrows += 1
+##     #print "HEADERS_3", hrows, hcols
 
-    # Check for row headers that match the pattern:
-    # <HEADER1>  <HEADER2>  <SAMPLE#>  <SAMPLE#>  <SAMPLE#>
-    # <NAME>     <NAME>        ...        ...        ...
-    # If the sample names are all numbers, then it will appear to be
-    # data.  Try to identify the case where SAMPLEs are given as
-    # integers, but the data is given as floats.
-    if hcols and not hrows:
-        samples_are_ints = False
-        for x in matrix[0][hcols:]:
-            if not _is_int(x):
-                break
-        else:
-            samples_are_ints = True
-        data_are_float = False
-        for x in matrix[hrows+1][hcols:]:
-            if not _is_float_not_int(x):
-                break
-        else:
-            data_are_float = True
-        if samples_are_ints and data_are_float:
-            hrows += 1
+##     # Check for row headers that match the pattern:
+##     # <HEADER1>  <HEADER2>  <SAMPLE#>  <SAMPLE#>  <SAMPLE#>
+##     # <NAME>     <NAME>        ...        ...        ...
+##     # If the sample names are all numbers, then it might be mistaken
+##     # for data.  Try to identify the case where SAMPLEs are given as
+##     # integers, but the data is given as floats.
+##     if hcols and not hrows:
+##         samples_are_ints = False
+##         for x in matrix[0][hcols:]:
+##             if not _is_int(x):
+##                 break
+##         else:
+##             samples_are_ints = True
+##         data_are_float = False
+##         for x in matrix[hrows+1][hcols:]:
+##             if not _is_float_not_int(x):
+##                 break
+##         else:
+##             data_are_float = True
+##         if samples_are_ints and data_are_float:
+##             hrows += 1
             
-    # Now check from the front of the matrix to make sure that the
-    # row and column we ended up at contains numbers.
-    while (hrows < num_rows and hcols < num_cols and
-           not _is_numeric(matrix[hrows][hcols])):
-        hcols += 1
-    #print "HEADERS_4", hrows, hcols
+##     # Now check from the front of the matrix to make sure that the
+##     # row and column we ended up at contains numbers.
+##     while (hrows < num_rows and hcols < num_cols and
+##            not _is_numeric(matrix[hrows][hcols])):
+##         hcols += 1
+##     #print "HEADERS_4", hrows, hcols
 
-    return hrows, hcols
+##     return hrows, hcols
 
 def read(handle, hrows=None, hcols=None, datatype=float):
     import math
@@ -170,6 +172,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     from genomicode import Matrix
     from genomicode import jmath
     from genomicode import iolib
+    import util
     import const
     # Format:
     # - gene x experiment
@@ -195,6 +198,21 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         else:
             del data[i]
 
+    # R creates headers that contain one fewer columns than the rest
+    # of the matrix, if someone requests to write out the row names.
+    # Detect this case and insert a dummy header.
+    all_one_fewer = True
+    for i in range(1, len(data)):
+        if len(data[i]) != len(data[0])+1:
+            all_one_fewer = False
+    # This can happen either if the length of the first row is one
+    # less than every other row of the matrix, or if matrix has
+    # only 1 row.  Only add a fake header if the matrix has more
+    # than one row.
+    if all_one_fewer and len(data) > 1:
+        header_row = data[0]
+        header_row.insert("ROW_NAMES", 0)
+    
     # Make sure each line has the same number of columns.
     num_rows = len(data)
     num_cols = len(data[0])
@@ -207,8 +225,21 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         assert len(cols) == num_cols, error_msg
     #print num_rows, num_cols; sys.exit(0)
 
-    # Matlab appends blank columns to the end.  Delete columns are
-    # completely blank.
+    # Sometimes, a user might cluster a matrix with an empty column
+    # using Cluster 3.0.  In this case, Cluster 3.0 will preserve the
+    # empty column, except for a "1.000000" for the EWEIGHT row
+    # header.  Try to detect this case and remove the "1.000000".
+    last_col = [x[-1] for x in data]
+    non_empty = [x for x in last_col if x.strip()]
+    value = None
+    if len(non_empty) == 1:
+        value = jmath.safe_float(non_empty[0])
+    if value is not None and abs(value-1.00) < 1E-10:
+        for i in range(num_rows):
+            data[i][-1] = ""
+
+    # Matlab appends blank columns to the end.  Delete columns that
+    # are completely blank.
     # DEBUG.
     #handle = open("/home/jchang/debug.txt", 'w')
     #for x in data:
@@ -225,22 +256,6 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         else:
             # Delete this column.
             [x.pop(i) for x in data]
-    # Excel (or some other tool) sometimes appends rows full of blanks
-    # at the end.  Detect this and delete those rows.
-    #while data:
-    #    x = [x for x in data[-1] if x]
-    #    if x:
-    #        # There's data at the last line.
-    #        break
-    #    del data[-1]
-    # Stupid Matlab inserts a blank column at the end.  Check for this
-    # and remove it.
-    # BUG: What if the matrix is empty?
-    #last_col = [x[-1] for x in data]
-    #last_col = [x for x in last_col if x]
-    #if not last_col:
-    #    data = [x[:-1] for x in data]
-    #    num_cols -= 1
 
     if not data:
         return Matrix.InMemoryMatrix([])
@@ -248,7 +263,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # If the rows and cols not explicitly specified, then try to guess
     # them from the file.
     if hrows is None or hcols is None:
-        hr, hc = _num_headers(data)
+        hr, hc = util.num_headers(data)
         if hrows is None:
             hrows = hr
         if hcols is None:
@@ -357,38 +372,6 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         row_order=row_order, col_order=col_order)
     X = Matrix.add_synonyms(X, synonyms)
     return X
-
-def _all_numeric(vec):
-    for n in vec:
-        if not _is_numeric(n):
-            return False
-    return True
-
-def _is_numeric(n):
-    # empty strings are not numeric.
-    if n == "":
-        return False
-    try:
-        float(n)
-    except ValueError, x:
-        return False
-    return True
-
-def _is_int(n):
-    try:
-        int(n)
-    except ValueError, x:
-        return False
-    return True
-
-def _is_float_not_int(n):
-    if _is_int(n):
-        return False
-    try:
-        float(n)
-    except ValueError, x:
-        return False
-    return True
 
 def _clean(s, disallowed=None):
     # Make sure there are no disallowed characters in the string s.

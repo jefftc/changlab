@@ -1027,8 +1027,8 @@ def summarize_report(
             prob_file = os.path.split(fl.GLOBAL_PROBABILITIES)[1]
         x += htmllib.P() + (
             "The raw values from this plot are available as a "
-            'tab-delimited text file: <A HREF="%s">%s</A>.' % (
-                prob_file, prob_file))
+            'tab-delimited text file: %s.' %
+            htmllib.A(prob_file, href=prob_file))
         col2 = htmllib.TD(x, valign="TOP")
         x = htmllib.TR(col1+col2)
         rows.append(x)

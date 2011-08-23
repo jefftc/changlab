@@ -9,7 +9,7 @@ matrices.
 
 Functions:
 safe_int
-safe_flot
+safe_float
 
 is_list
 is_matrix
@@ -31,6 +31,8 @@ rank
 max
 svd
 
+log_add
+
 equal_matrix
 
 cmh_bonferroni   Correct multiple hypotheses, Bonferroni.
@@ -48,6 +50,10 @@ dparzen
 pparzen
 qparzen
 
+choose
+lchoose
+factorial
+lfactorial
 sample
 
 int_simpson
@@ -91,12 +97,12 @@ def _dispatch(X, single_fn, list_fn, matrix_fn):
     return single_fn(X)
 
 def safe_int(x):
-    if x is None:
+    if x is None or x == "":
         return None
     return int(x)
 
 def safe_float(x):
-    if x is None:
+    if x is None or x == "":
         return None
     return float(x)
 
@@ -179,6 +185,22 @@ def mean_matrix(X, byrow=1):
 
 def mean(X, byrow=1):
     return _dispatch(X, None, _fn(mean_list), _fn(mean_matrix, byrow=byrow))
+
+def safe_mean_list(X):
+    assert len(X) > 0
+    X = [x for x in X if x is not None]
+    if not X:
+        return 0
+    return float(sum(X)) / len(X)
+
+def safe_mean_matrix(X, byrow=1):
+    if not byrow:
+        X = transpose(X)
+    return [safe_mean_list(x) for x in X]
+
+def safe_mean(X, byrow=1):
+    return _dispatch(
+        X, None, _fn(safe_mean_list), _fn(safe_mean_matrix, byrow=byrow))
 
 def median_list(X):
     assert len(X) > 0
@@ -409,6 +431,17 @@ def svd(X):
     s = s.tolist()
     V = numpy.transpose(V).tolist()
     return U, s, V
+
+def log_add(logx, logy):
+    # return log(x+y), given log(x) and log(y), checking for overflow
+    # problems
+    import math
+    if logy - logx > 100:
+        return logy
+    elif logx - logy > 100:
+        return logx
+    minxy = min(logx, logy)
+    return minxy + math.log(math.exp(logx-minxy) + math.exp(logy-minxy))
 
 def equal_matrix(X1, X2, precision=1E-8):
     if not X1 and not X2:
@@ -719,8 +752,38 @@ def qparzen(q, X_obs, X_count, h=1, eps=1E-10):
 ##             x_max = x - x_delta
 ##     return x
 
+def choose(n, k):
+    import gmpy
+    return int(gmpy.comb(n, k))
+    #R = start_R()
+    #x = R("choose(%d, %d)" % (n, k))
+    #x = list(x)
+    #return x[0]
+
+def lchoose(n, k):
+    import math
+    return math.log(choose(n, k))
+    #R = start_R()
+    #x = R("lchoose(%d, %d)" % (n, k))
+    #x = list(x)
+    #return x[0]
+
+def factorial(x):
+    import gmpy
+    return int(gmpy.fac(x))
+    #R = start_R()
+    #x = R("factorial(%d)" % x)
+    #x = list(x)
+    #return x[0]
+
+def lfactorial(x):
+    R = start_R()
+    x = R("lfactorial(%d)" % x)
+    x = list(x)
+    return x[0]
+
 def sample(X, n, replace=False, prob=None):
-    # Choose n items from X.
+    # Choose n items from X.  X must be a list of numbers.
     if not replace:
         assert n <= len(X)
     R = start_R()

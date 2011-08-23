@@ -1177,14 +1177,25 @@ def plot_heatmap(infile, outfile, xpix, ypix, **keywds):
     import os
     import sys
     import subprocess
+
+    # Set the path to the same path as the outfile.
+    path, x = os.path.split(outfile)
+    cwd = None
+    try:
+        if path:
+            cwd = os.getcwd()
+            os.chdir(path)
     
-    cmd = plot_heatmap_cmd(infile, outfile, xpix, ypix, **keywds)
-    p = subprocess.Popen(
-        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
-    w, r = p.stdin, p.stdout
-    w.close()
-    output = r.read()
+        cmd = plot_heatmap_cmd(infile, outfile, xpix, ypix, **keywds)
+        p = subprocess.Popen(
+            cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+        w, r = p.stdin, p.stdout
+        w.close()
+        output = r.read()
+    finally:
+        if cwd:
+            os.chdir(cwd)
 
     # Make sure the signature was generated correctly.  An error could
     # mean that arrayplot.py or cluster is missing.

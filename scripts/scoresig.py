@@ -12,7 +12,8 @@ import sys, os
 # run_one_pybinreg
 # run_many_pybinreg
 # check_pybinreg
-# 
+#
+# extract_reports
 # summarize_probabilities
 # summarize_heatmap
 # summarize_signatures
@@ -401,6 +402,66 @@ def check_pybinreg(outpath, outfile):
             
     raise AssertionError, "%s\nProcessing aborted." % error
 
+def extract_reports(names, paths, file_layout):
+    import shutil
+    import re
+    
+    # From each signature, pull out the following files:
+    # REPORT.html
+    # signature.png
+    # predictions.png
+    # probabilities.txt
+    #
+    # Copy to:
+    # SIG19_AKT_REPORT.html
+    # SIG19_AKT_signature.png
+    # ... etc
+    #
+    # Fix the links in SIG19_AKT_REPORT.html.
+    # Can be either HREFs or IMG.
+    files = [
+        "REPORT.html",
+        "signature.png",
+        "predictions.png",
+        "probabilities.txt",
+        ]
+    outpath = file_layout.OUTPATH
+    report_files = []
+    for name, path in zip(names, paths):
+        infiles = files
+        outfiles = ["%s_%s" % (name, x) for x in files]
+        infiles_full = [os.path.join(path, x) for x in infiles]
+        outfiles_full = [os.path.join(outpath, x) for x in outfiles]
+        for x in infiles_full:
+            assert os.path.exists(x)
+        for src, dst in zip(infiles_full, outfiles_full):
+            shutil.copy2(src, dst)
+
+        # Fix the title and links in REPORT.html.
+        x = [x for x in outfiles_full if x.endswith("_REPORT.html")]
+        assert len(x) == 1, "I could not find the report file."
+        report_file = x[0]
+        report_files.append(report_file)
+        data = open(report_file).read()
+
+        # Fix the title.
+        x = re.sub(r"^SIG\d+_", "", name)
+        src = r"<H1><EM>CreateSignatures</EM> Report</H1>"
+        dst = r"<H1><EM>CreateSignatures</EM> Report for %s</H1>" % x
+        assert data.find(src) >= 1, "I could not find the title of the report"
+        data = data.replace(src, dst)
+
+        # Fix the links.
+        for infile, outfile in zip(infiles, outfiles):
+            infile = infile.replace(".", "\\.")
+            data = re.sub(
+                infile, outfile, data, re.IGNORECASE|re.MULTILINE)
+        open(report_file, 'w').write(data)
+        
+        
+    assert len(report_files) == len(names)
+    return report_files
+
 def summarize_probabilities(signatures, names, paths, file_layout):
     from genomicode import filelib
     from genomicode import binreg
@@ -491,7 +552,8 @@ def summarize_signatures(signatures, file_layout):
     handle.close()
 
 def summarize_report(
-    signatures, orig_signatures, start_time, why_dropped, file_layout):
+    signatures, orig_signatures, report_files, start_time, why_dropped,
+    file_layout):
     import time
     import subprocess
     from genomicode import parselib
@@ -509,6 +571,13 @@ def summarize_report(
     id2new = {}
     for sig in signatures:
         id2new[sig.xID] = sig
+
+    assert len(signatures) == len(report_files)
+    id2reportfile = {}
+    for sig, file in zip(signatures, report_files):
+        # The report_file in the HTML should be a relative path.
+        x, file = os.path.split(file)
+        id2reportfile[sig.xID] = file
 
     # Figure out which of the signatures were dropped.
     missing_ids = []
@@ -549,13 +618,23 @@ def summarize_report(
     which_changed = {}  # ID -> 1
     for id in all_ids:
         orig = id2orig[id]
-
-        cols = [
-            htmllib.TD(orig.xID),
-            htmllib.TD(orig.Name),
-            ]
-
         sig = id2new.get(id)
+
+        cols = []
+
+        # ID
+        cols.append(htmllib.TD(orig.xID))
+
+        # Name
+        name = orig.Name
+        report_file = None
+        if sig:
+            report_file = id2reportfile.get(sig.xID)
+        if report_file:
+            name = htmllib.A(name, href=report_file)
+        cols.append(htmllib.TD(name))
+
+        # If this signature was not run, then skip the rest of the columns.
         if not sig:
             x = why_dropped.get(orig.xID, "Skipped for unknown reason.")
             x = htmllib.TD(highlight(x), colspan=4)
@@ -934,8 +1013,8 @@ def main():
             DATA_mas5, open(file_layout.DATASET_MAS5, 'w'))
 
     # Figure out the names and paths for each signature.
-    names = [None] * len(signatures)
-    paths = [None] * len(signatures)
+    names = [None] * len(signatures)   # SIG19_AKT[_modified]
+    paths = [None] * len(signatures)   # <path>/SIG19_AKT[_modified]
     for i, sig in enumerate(signatures):
         name = "SIG%02d_%s" % (sig.xID, _hash_name(sig.Name))
         # If the user has modified the signature from the default
@@ -1006,7 +1085,8 @@ def main():
             options.num_procs = 1
         sys.stdout.flush()
 
-    if 1:  # Can disable temporarily for debugging.
+    DEBUG = False   # Can disable pybinreg temporarily for debugging.
+    if not DEBUG:  
         if options.num_procs <= 1:
             for x in jobs:
                 cmd, outpath, outfile = x
@@ -1015,6 +1095,9 @@ def main():
             run_many_pybinreg(jobs, options.num_procs)
 
     if signatures:
+        print "Extracting the reports from each signature."
+        report_files = extract_reports(names, paths, file_layout)
+        
         print "Combining probabilities from each of the signatures."
         summarize_probabilities(signatures, names, paths, file_layout)
 
@@ -1029,7 +1112,8 @@ def main():
 
         print "Making a report."
         summarize_report(
-            signatures, orig_signatures, start_time, why_dropped, file_layout)
+            signatures, orig_signatures, report_files, start_time, why_dropped,
+            file_layout)
 
     if options.archive:
         print "Compressing results."

@@ -27,7 +27,7 @@ MYNAME_TO_STDNAME = [
 
 def is_format(locator_str):
     from genomicode import filelib
-    import tab_delimited_format
+    import util
     
     if not filelib.exists(locator_str):
         # This will only work if locator_str is a string.
@@ -50,7 +50,7 @@ def is_format(locator_str):
         return False
 
     # Check if there's extraneous stuff.
-    nr, nc = tab_delimited_format._num_headers(matrix)
+    nr, nc = util.num_headers(matrix)
     if nc > 4:
         return False
     

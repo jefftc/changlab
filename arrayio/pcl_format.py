@@ -24,7 +24,7 @@ COL_HEADERS = ["EWEIGHT", "EORDER"]
 
 def is_format(locator_str):
     from genomicode import filelib
-    import tab_delimited_format
+    import util
     if not filelib.exists(locator_str):
         return False
 
@@ -47,16 +47,14 @@ def is_format(locator_str):
         if len(cols) != len(matrix[0]):
             return False
         
-    nrow, ncol = tab_delimited_format._num_headers(matrix)
-    # tab_delimited_format sometimes mistakenly believes the number of
-    # rows is 0 if the sample names are numbers.
+    nrow, ncol = util.num_headers(matrix)
     if nrow == 0 and ncol == 0:
         return False
     nrow = max(nrow, 1)
     if nrow < 1 or nrow > 3:
         return False
-    # PCL format has at most 2 columns.
-    if ncol > 2:
+    # PCL format has at most 4 header columns.
+    if ncol > 4:
         return False
     #if ncol > 2:
     #    ncol = 2

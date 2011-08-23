@@ -141,6 +141,8 @@ class HeatmapLayout:
         return x, y, self.boxwidth, self.boxheight
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
+        if x is None:
+            return _get_color(0.5, self.color_fn)
         assert x >= 0 and x <= 1, "x out of range: %g" % x
         return _get_color(x, self.color_fn)
 
@@ -1135,11 +1137,15 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
         x_all = []
         for x in X:
             x_all.extend(x)
-        defscale = -jmath.mean(x_all)
+        # Use safe_mean to handle missing values.
+        defscale = -jmath.safe_mean(x_all)
 
     # Apply the scale specified by the user.
     for i in range(nrow):
         for j in range(ncol):
+            # Ignore missing values.
+            if X[i][j] is None:
+                continue
             X[i][j] = X[i][j] + defscale + scale
 
     # Choose a default gain based on the maximum expression level.
@@ -1148,9 +1154,13 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
         x_max = None
         for i in range(nrow):
             for j in range(ncol):
+                # Ignore missing values.
+                if X[i][j] is None:
+                    continue
                 if x_max is None or abs(X[i][j]) > x_max:
                     x_max = abs(X[i][j])
-        defgain = 1.0/x_max
+        if x_max is not None:
+            defgain = 1.0/x_max
         # By default, automatically multiply by 2.0, or else
         # everything is too dark (empirically).
         defgain = defgain * 2.0
@@ -1158,6 +1168,8 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     # Apply the gain specified by the user.
     for i in range(nrow):
         for j in range(ncol):
+            if X[i][j] is None:
+                continue
             # The gain is scaled from the default gain.
             X[i][j] = X[i][j] * defgain * gain
 
@@ -1173,6 +1185,8 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     # Finally, rescale to [0, 1].
     for i in range(nrow):
         for j in range(ncol):
+            if X[i][j] is None:
+                continue
             x = X[i][j]
             x = (x + 1) * 0.5
             x = max(min(x, 1), 0)
