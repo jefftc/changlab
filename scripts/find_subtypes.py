@@ -101,8 +101,11 @@ def align_dataset(MATRIX, model_file):
         if index == None:
             missing.append(var_names[i])
     assert not missing, (
-        "I could not find all the variables in the model.\n"
-        "The data set is missing:\n" % ", ".join(missing))
+        "The subtype model was created with variables (genes or factors) "
+        "named:\n%s\n"
+        "I could not find these names in your data set.\n"
+        "Your data set must contain these names so that they can be matched "
+        "to the previous subtypes." % ", ".join(missing))
     
     MATRIX = MATRIX.matrix(I, None)
     assert var_names == MATRIX.row_names(arrayio.ROW_ID)

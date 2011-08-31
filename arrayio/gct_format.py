@@ -83,7 +83,11 @@ def read(handle, datatype=float):
     num_genes, num_samples = map(int, x[:2])
 
     X = tab_delimited_format.read(handle, hrows=1, hcols=2, datatype=datatype)
-    assert X.dim() == (num_genes, num_samples), "Matrix size mismatch."
+    assert X.dim() == (num_genes, num_samples), (
+        "Matrix size mismatch.\n"
+        "The GCT headers indicate a matrix with %d rows and %d columns.\n"
+        "However, I found %d rows and %d columns." % (
+            num_genes, num_samples, X.nrow(), X.ncol()))
 
     #assert X.row_headers()[0].upper() == "NAME"
     #assert X.row_headers()[1].upper() == "DESCRIPTION"
