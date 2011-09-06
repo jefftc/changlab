@@ -142,7 +142,9 @@ class HeatmapLayout:
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
         if x is None:
-            return _get_color(0.5, self.color_fn)
+            # Missing value.  Return a white box.
+            #return _get_color(0.5, self.color_fn)
+            return (255, 255, 255)
         assert x >= 0 and x <= 1, "x out of range: %g" % x
         return _get_color(x, self.color_fn)
 

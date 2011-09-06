@@ -439,6 +439,8 @@ def num_headers(matrix):
             x = datatype[i][j]
             if x == CHAR:
                 st = HEAD | SAMPLE | ANNOT
+                if matrix[i][j].upper() == "NA":
+                    st = st | VALUE
             elif x == INT:
                 st = HEAD | SAMPLE | ANNOT | VALUE
             elif x == FLOAT:

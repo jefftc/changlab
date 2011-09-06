@@ -16,37 +16,41 @@
 
 /* Functions in this module. */
 
-static char cjmath_safe_int__doc__[] = 
-"XXX\n";
+// This implementation does not match the Python implementation.  Need
+// to update.
+//static char cjmath_safe_int__doc__[] = 
+//"XXX\n";
+//
+//static PyObject *cjmath_safe_int(PyObject *self, PyObject *args)
+//{
+//    PyObject *py_x;
+//
+//    if(!PyArg_ParseTuple(args, "O", &py_x))
+//	return NULL;
+//    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
+//	Py_INCREF(Py_None);
+//	return Py_None;
+//    }
+//    return PyNumber_Int(py_x);
+//}
 
-static PyObject *cjmath_safe_int(PyObject *self, PyObject *args)
-{
-    PyObject *py_x;
-
-    if(!PyArg_ParseTuple(args, "O", &py_x))
-	return NULL;
-    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
-	Py_INCREF(Py_None);
-	return Py_None;
-    }
-    return PyNumber_Int(py_x);
-}
-
-static char cjmath_safe_float__doc__[] = 
-"XXX\n";
-
-static PyObject *cjmath_safe_float(PyObject *self, PyObject *args)
-{
-    PyObject *py_x;
-
-    if(!PyArg_ParseTuple(args, "O", &py_x))
-	return NULL;
-    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
-	Py_INCREF(Py_None);
-	return Py_None;
-    }
-    return PyNumber_Float(py_x);
-}
+// This implementation does not match the Python implementation.  Need
+// to update.
+//static char cjmath_safe_float__doc__[] = 
+//"XXX\n";
+//
+//static PyObject *cjmath_safe_float(PyObject *self, PyObject *args)
+//{
+//    PyObject *py_x;
+//
+//    if(!PyArg_ParseTuple(args, "O", &py_x))
+//	return NULL;
+//    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
+//	Py_INCREF(Py_None);
+//	return Py_None;
+//    }
+//    return PyNumber_Float(py_x);
+//}
 
 static char cjmath_mean_list__doc__[] = 
 "XXX\n";
@@ -754,8 +758,8 @@ static PyObject *cjmath__pparzen_ul(PyObject *self,
 /* Module definition stuff */
 
 static PyMethodDef CJMathMethods[] = {
-  {"safe_int", cjmath_safe_int, METH_VARARGS, cjmath_safe_int__doc__},
-  {"safe_float", cjmath_safe_float, METH_VARARGS, cjmath_safe_float__doc__},
+  //{"safe_int", cjmath_safe_int, METH_VARARGS, cjmath_safe_int__doc__},
+  //{"safe_float", cjmath_safe_float, METH_VARARGS, cjmath_safe_float__doc__},
   {"mean_list", cjmath_mean_list, METH_VARARGS, cjmath_mean_list__doc__},
   {"var_list", cjmath_var_list, METH_VARARGS, cjmath_var_list__doc__},
   {"cov_matrix", (PyCFunction)cjmath_cov_matrix, METH_VARARGS | METH_KEYWORDS, 
