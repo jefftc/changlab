@@ -17,6 +17,7 @@ align_rows             # WAS align_matrices
 align_cols
 are_rows_aligned       # is_matrices_aligned
 are_cols_aligned
+describe_unaligned_rows
 
 read_matrices
 merge_gct_matrices
@@ -483,6 +484,49 @@ def are_rows_aligned(*matrices):
         if hnames[0] != hnames[i]:
             return False
     return True
+
+def describe_unaligned_rows(*matrices):
+    # Return a text string that describes where the rows are not aligned.
+    import arrayio
+    import parselib
+
+    header = arrayio.ROW_ID
+    
+    if len(matrices) <= 1:
+        return "Only 1 matrix.  Must be aligned."
+
+    # Check the number of rows in each matrix.
+    num_rows = [x.nrow() for x in matrices]
+    if min(num_rows) != max(num_rows):
+        x = "Matrices have differing number of rows: %s" % ", ".join(
+            map(parselib.pretty_int, num_rows))
+        return x
+
+    # Check the names of the rows.
+    names = [x.row_names(header) for x in matrices]
+    hnames = [_hash_many_geneids(x.row_names(header)) for x in matrices]
+    bad_rows = []
+    for i in range(matrices[0].nrow()):
+        unaligned =False
+        for j in range(1, len(matrices)):
+            if hnames[0][i] != hnames[j][i]:
+                unaligned = True
+        if unaligned:
+            x = [names[j][i] for j in range(len(matrices))]
+            x = "Row %s: %s" % (parselib.pretty_int(i+1), ", ".join(x))
+            bad_rows.append(x)
+    if not bad_rows:
+        return "Matrices are aligned."
+
+    total_bad = len(bad_rows)
+    if total_bad > 10:
+        bad_rows = bad_rows[:10]
+        bad_rows.append("...")
+    x = "%s of %s rows are unaligned." % (
+        parselib.pretty_int(total_bad),
+        parselib.pretty_int(matrices[0].nrow()))
+    lines = [x] + bad_rows
+    return "\n".join(lines)
 
 def are_cols_aligned(*matrices):
     import arrayio

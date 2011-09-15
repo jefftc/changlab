@@ -62,6 +62,11 @@ def read_atc_file(filename):
     return read_gtc_file(filename)
 
 def read_kgg_file(filename):
+    import jmath 
+
+    # <ID> GROUP
+    #
+    # GROUP should be integer.
     handle = open(filename)
     x = handle.readline().strip().split()
     assert len(x) == 2
@@ -70,7 +75,7 @@ def read_kgg_file(filename):
     for line in handle:
         x = line.rstrip("\r\n").split("\t")
         id, group = x
-        group = int(group)
+        group = jmath.safe_int(group)
         x = id, group
         cluster.append(x)
     return cluster

@@ -16,41 +16,68 @@
 
 /* Functions in this module. */
 
-// This implementation does not match the Python implementation.  Need
-// to update.
-//static char cjmath_safe_int__doc__[] = 
-//"XXX\n";
-//
-//static PyObject *cjmath_safe_int(PyObject *self, PyObject *args)
-//{
-//    PyObject *py_x;
-//
-//    if(!PyArg_ParseTuple(args, "O", &py_x))
-//	return NULL;
-//    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
-//	Py_INCREF(Py_None);
-//	return Py_None;
-//    }
-//    return PyNumber_Int(py_x);
-//}
+static char cjmath_safe_int__doc__[] = 
+"XXX\n";
 
-// This implementation does not match the Python implementation.  Need
-// to update.
-//static char cjmath_safe_float__doc__[] = 
-//"XXX\n";
-//
-//static PyObject *cjmath_safe_float(PyObject *self, PyObject *args)
-//{
-//    PyObject *py_x;
-//
-//    if(!PyArg_ParseTuple(args, "O", &py_x))
-//	return NULL;
-//    if((py_x == Py_None) || (PyString_Check(py_x) && !PyString_Size(py_x))) {
-//	Py_INCREF(Py_None);
-//	return Py_None;
-//    }
-//    return PyNumber_Float(py_x);
-//}
+static PyObject *cjmath_safe_int(PyObject *self, PyObject *args)
+{
+    PyObject *py_x;
+    char *buffer;
+    Py_ssize_t length;
+
+    if(!PyArg_ParseTuple(args, "O", &py_x))
+	return NULL;
+    if(py_x == Py_None) {
+	Py_INCREF(Py_None);
+	return Py_None;
+    }
+    if(PyString_Check(py_x)) {
+	if(PyString_AsStringAndSize(py_x, &buffer, &length) == -1)
+	    return NULL;
+	if(length == 0 || strcasecmp(buffer, "na") == 0 ||
+	   strcasecmp(buffer, "nan") == 0) {
+	    Py_INCREF(Py_None);
+	    return Py_None;
+	}
+    }
+
+    return PyNumber_Int(py_x);
+}
+
+static char cjmath_safe_float__doc__[] = 
+"XXX\n";
+
+static PyObject *cjmath_safe_float(PyObject *self, PyObject *args)
+{
+    PyObject *py_x;
+    PyObject *py_nan_str, *py_nan_float;
+    char *buffer;
+    Py_ssize_t length;
+
+    if(!PyArg_ParseTuple(args, "O", &py_x))
+	return NULL;
+    if(py_x == Py_None) {
+	Py_INCREF(Py_None);
+	return Py_None;
+    }
+    if(PyString_Check(py_x)) {
+	if(PyString_AsStringAndSize(py_x, &buffer, &length) == -1)
+	    return NULL;
+	if(length == 0 || strcasecmp(buffer, "na") == 0) {
+	    Py_INCREF(Py_None);
+	    return Py_None;
+	}
+	if(strcasecmp(buffer, "nan") == 0) {
+	    if(!(py_nan_str = PyString_FromString("nan")))
+		return NULL;
+	    py_nan_float = PyFloat_FromString(py_nan_str, NULL);
+	    Py_DECREF(py_nan_str);
+	    return py_nan_float;
+	}
+
+    }
+    return PyNumber_Float(py_x);
+}
 
 static char cjmath_mean_list__doc__[] = 
 "XXX\n";
@@ -758,8 +785,8 @@ static PyObject *cjmath__pparzen_ul(PyObject *self,
 /* Module definition stuff */
 
 static PyMethodDef CJMathMethods[] = {
-  //{"safe_int", cjmath_safe_int, METH_VARARGS, cjmath_safe_int__doc__},
-  //{"safe_float", cjmath_safe_float, METH_VARARGS, cjmath_safe_float__doc__},
+  {"safe_int", cjmath_safe_int, METH_VARARGS, cjmath_safe_int__doc__},
+  {"safe_float", cjmath_safe_float, METH_VARARGS, cjmath_safe_float__doc__},
   {"mean_list", cjmath_mean_list, METH_VARARGS, cjmath_mean_list__doc__},
   {"var_list", cjmath_var_list, METH_VARARGS, cjmath_var_list__doc__},
   {"cov_matrix", (PyCFunction)cjmath_cov_matrix, METH_VARARGS | METH_KEYWORDS, 

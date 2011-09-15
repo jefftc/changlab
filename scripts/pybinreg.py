@@ -341,6 +341,7 @@ def init_paths(file_layout):
         os.mkdir(dirpath)
 
 def read_matrices(train0_file, train1_file, test_file):
+    from genomicode import parselib
     from genomicode import binreg
 
     filenames = [train0_file, train1_file]
@@ -356,11 +357,15 @@ def read_matrices(train0_file, train1_file, test_file):
     DATA_train0, DATA_train1, DATA_test = DATA
     ALIGN_train0, ALIGN_train1, ALIGN_test = ALIGNED
     
-    print "train0 file has %d genes and %d samples." % DATA_train0.dim()
-    print "train1 file has %d genes and %d samples." % DATA_train1.dim()
+    print "train0 file has %s genes and %s samples." % (
+        tuple(map(parselib.pretty_int, DATA_train0.dim())))
+    print "train1 file has %s genes and %s samples." % (
+        tuple(map(parselib.pretty_int, DATA_train1.dim())))
     if DATA_test:
-        print "test file has %d genes and %d samples." % DATA_test.dim()
-    print "Merged file has %d genes." % ALIGN_train0.nrow()
+        print "test file has %s genes and %s samples." % (
+            tuple(map(parselib.pretty_int, DATA_test.dim())))
+    print "Merged file has %s genes." % (
+        parselib.pretty_int(ALIGN_train0.nrow()))
     sys.stdout.flush()
 
     return ALIGN_train0, ALIGN_train1, ALIGN_test

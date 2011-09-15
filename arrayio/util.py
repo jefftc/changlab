@@ -415,6 +415,13 @@ def num_headers(matrix):
     for row in matrix:
         assert len(row) == num_cols, "matrix row length mismatch"
 
+    # This is REALLY SLOW for big matrices.  Optimize by assuming a
+    # maximum number of header rows.  Just look at the first rows for
+    # the header.
+    MAX_HEADER_ROWS = 100
+    matrix = matrix[:MAX_HEADER_ROWS]
+    num_rows = len(matrix)
+
     # Figure out the data type for each cell in the matrix.
     CHAR, INT, FLOAT, EMPTY = 1, 2, 4, 8
     datatype = [[None]*num_cols for i in range(num_rows)]
@@ -497,6 +504,7 @@ def num_headers(matrix):
         first_row, first_col = num_rows, num_cols
     hrows, hcols = first_row, first_col
 
+    assert hrows < MAX_HEADER_ROWS
     #print datatype
     #print semtype
     return hrows, hcols

@@ -11,6 +11,66 @@ def read_matrix(filename):
 
     return arrayio.read(filename)
 
+def _parse_cluster(options_cluster, MATRIX):
+    # Return a vector of clusters, where each cluster is an integer
+    # from 0 to K-1.  K is the total number of clusters.  The length
+    # of the vector should be the same as the number of samples in the
+    # matrix.
+    index2cluster = {}
+    for clust_i, s in enumerate(options_cluster):
+        ranges = parselib.parse_ranges(s)
+        for s, e in ranges:
+            for i in range(s-1, e):
+                assert i < MATRIX.ncol(), "Index %d out of range" % i
+                assert i not in index2cluster, \
+                       "Index %d in multiple clusters" % i
+                index2cluster[i] = clust_i
+    #cluster = [len(options_cluster)] * MATRIX.ncol()
+    cluster = [None] * MATRIX.ncol()
+    for i, g in index2cluster.iteritems():
+        cluster[i] = g
+    return cluster
+
+def _parse_cluster_file(cluster_file, MATRIX):
+    # Return a vector of clusters, where each cluster is an integer
+    # from 0 to K-1.  K is the total number of clusters.  The length
+    # of the vector should be the same as the number of samples in the
+    # matrix.
+    from genomicode import clusterio
+    
+    id2cluster = {}
+    for (id, cluster) in clusterio.read_kgg_file(cluster_file):
+        id2cluster[id] = cluster
+
+    # Figure out which row header matches the IDs.
+    header2numids = {}  # header -> number of IDs matched.
+    header = num_ids = None
+    for cn in MATRIX.col_names():
+        x = MATRIX.col_names(cn)
+        col_ids = {}.fromkeys(x)
+        x = [x for x in id2cluster if x in col_ids]
+        if header is None or len(x) > num_ids:
+            header, num_ids = cn, len(x)
+
+    index2cluster = {}
+    if header is not None:
+        for i, name in enumerate(MATRIX.col_names(header)):
+            cluster = id2cluster.get(name)
+            index2cluster[i] = cluster
+            
+    cluster = [None] * MATRIX.ncol()
+    for i, g in index2cluster.iteritems():
+        cluster[i] = g
+
+    # Make sure the clusters are 0-based.
+    clean = [x for x in cluster if x is not None]
+    if clean and min(clean) > 0:
+        for i in range(len(cluster)):
+            if cluster[i] is None:
+                continue
+            cluster[i] = cluster[i] - min(clean)
+    return cluster
+
 def main():
     from optparse import OptionParser, OptionGroup
     import arrayio
@@ -32,11 +92,26 @@ def main():
     parser.add_option(
         "-c", "--cluster", dest="cluster", default=[], action="append",
         help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
+    parser.add_option(
+        "", "--cluster_file", dest="cluster_file", default=None, 
+        help="A KGG format file of the clusters for the samples.  "
+        "Clusters in this file can be 0-based or 1-based.")
+    parser.add_option(
+        "", "--label", dest="label", default=False, action="store_true",
+        help="Label the samples.")
+    parser.add_option(
+        "", "--title", dest="title", default=None, type="str",
+        help="Put a title on the plot.")
+    parser.add_option(
+        "-v", "--verbose", dest="verbose", default=False, action="store_true",
+        help="")
     
     # Parse the input arguments.
     options, args = parser.parse_args()
-    if len(args) != 2:
+    if len(args) < 2:
         parser.error("Please specify an infile and an outfile.")
+    elif len(args) > 2:
+        parser.error("Too many input parameters (%d)." % len(args))
     filename, outfile = args
     if not os.path.exists(filename):
         parser.error("I could not find file %s." % filename)
@@ -45,23 +120,18 @@ def main():
     K = 10  # number of dimensions
 
     MATRIX = read_matrix(filename)
-
     if options.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
 
-    # Figure out the clusters for each of the samples.
-    index2cluster = {}
-    for clust_i, s in enumerate(options.cluster):
-        ranges = parselib.parse_ranges(s)
-        for s, e in ranges:
-            for i in range(s-1, e):
-                assert i < MATRIX.ncol(), "Index %d out of range" % i
-                assert i not in index2cluster, \
-                       "Index %d in multiple clusters" % i
-                index2cluster[i] = clust_i
-    cluster = [len(options.cluster)] * MATRIX.ncol()
-    for i, g in index2cluster.iteritems():
-        cluster[i] = g
+    if options.cluster and options.cluster_file:
+        parser.error("Cannot specify clusters and a cluster file.")
+    if options.cluster:
+        cluster = _parse_cluster(options.cluster, MATRIX)
+    if options.cluster_file:
+        if not os.path.exists(options.cluster_file):
+            parser.error(
+                "I could not find cluster file: %s" % options.cluster_file)
+        cluster = _parse_cluster_file(options.cluster_file, MATRIX)
 
     # Select a subset of the genes.
     if num_genes:
@@ -74,20 +144,27 @@ def main():
     X = [x[0] for x in principal_components]
     Y = [x[1] for x in principal_components]
     color = pcalib.choose_colors(cluster)
-    pcalib.plot_scatter(X, Y, outfile, group=cluster, color=color)
+    LABEL = None
+    if options.label:
+        LABEL = MATRIX.col_names(arrayio.COL_ID)
+    assert not LABEL or len(LABEL) == len(X), "%d %d" % (len(X), len(LABEL))
+    pcalib.plot_scatter(
+        X, Y, outfile, group=cluster, color=color, title=options.title,
+        label=LABEL)
 
-    # Write out the principal components.
-    assert len(principal_components) == len(cluster)
-    x = ["PC%02d" % i for i in range(K)]
-    x = ["Index", "Sample", "Cluster", "Color"] + x
-    print "\t".join(x)
-    for i in range(len(principal_components)):
-        x = MATRIX.col_names(arrayio.COL_ID)[i]
-        c = ""
-        if color:
-            c = colorlib.rgb2hex(color[i])
-        x = [i+1, x, cluster[i], c] + principal_components[i]
-        print "\t".join(map(str, x))
+    if options.verbose:
+        # Write out the principal components.
+        assert len(principal_components) == len(cluster)
+        x = ["PC%02d" % i for i in range(K)]
+        x = ["Index", "Sample", "Cluster", "Color"] + x
+        print "\t".join(x)
+        for i in range(len(principal_components)):
+            x = MATRIX.col_names(arrayio.COL_ID)[i]
+            c = ""
+            if color:
+                c = colorlib.rgb2hex(color[i])
+            x = [i+1, x, cluster[i], c] + principal_components[i]
+            print "\t".join(map(str, x))
 
 
 if __name__ == '__main__':

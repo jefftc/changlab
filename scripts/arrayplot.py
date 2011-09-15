@@ -134,10 +134,8 @@ class HeatmapLayout:
     def coord(self, row, col):
         x = self.BORDER
         y = self.BORDER
-        x += col * self.boxwidth
-        y += row * self.boxheight
-        x += col * self.GRID_SIZE
-        y += row * self.GRID_SIZE
+        x += col * (self.boxwidth + self.GRID_SIZE)
+        y += row * (self.boxheight + self.GRID_SIZE)
         return x, y, self.boxwidth, self.boxheight
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
@@ -481,39 +479,48 @@ class ArrayDendrogramLayout(DendrogramLayout):
         return self.vthicken(*x)
 
 class GeneClusterLayout:
-    def __init__(self, num_items, item_width, item_height):
-        self.num_items = num_items
-        self.item_width = item_width
-        self.item_height = item_height
+    def __init__(self, num_items, item_width, item_height, grid):
+        array_layout = ArrayClusterLayout(
+            num_items, item_height, item_width, grid)
+        self.array_layout = array_layout
     def width(self):
-        return self.item_width
+        return self.size()[0]
     def height(self):
-        return self.item_height * self.num_items
+        return self.size()[1]
     def size(self):
-        return self.width(), self.height()
+        height, width = self.array_layout.size()
+        return width, height
     def coord(self, num):
-        # Return a box that bounds the region.
-        assert num >= 0 and num < self.num_items
-        x = 0
-        y = num * self.item_height
-        return x, y, self.item_width, self.item_height
+        y, x, height, width = self.array_layout.coord(num)
+        return x, y, width, height
 
 class ArrayClusterLayout:
-    def __init__(self, num_items, item_width, item_height):
+    def __init__(self, num_items, item_width, item_height, grid):
         self.num_items = num_items
         self.item_width = item_width
         self.item_height = item_height
+        self.BORDER = 1
+        self.GRID_SIZE = 1
+        if not grid:
+            self.GRID_SIZE = 0
+        assert self.GRID_SIZE <= self.BORDER
     def width(self):
-        return self.item_width * self.num_items
+        return self.size()[0]
     def height(self):
-        return self.item_height
+        return self.size()[1]
     def size(self):
-        return self.width(), self.height()
+        height = self.BORDER*2
+        width = self.BORDER*2
+        height += self.item_height
+        width = self.item_width * self.num_items
+        width += (self.num_items-1) * self.GRID_SIZE
+        return width, height
     def coord(self, num):
         # Return a box that bounds the region.
         assert num >= 0 and num < self.num_items
-        x = num * self.item_width
-        y = 0
+        x = self.BORDER
+        y = self.BORDER
+        x += num * (self.item_width + self.GRID_SIZE)
         return x, y, self.item_width, self.item_height
 
 class GeneLabelLayout:
@@ -590,14 +597,14 @@ def process_data_set(
     MATRIX, cluster_data = cluster_matrix(
         MATRIX, cluster, cluster_data, cluster_genes, cluster_arrays,
         cluster_alg, distance, method, gene_k, array_k, kmeans_k)
-    if jobname:
-        write_data_set(MATRIX, cluster_data, jobname)
     # Scale after the clustering, so it doesn't affect the clustering
     # results.
     x = pretty_scale_matrix(MATRIX, scale, gain, autoscale)
-    MATRIX, orig_min, orig_max = x
+    MATRIX_scaled, orig_min, orig_max = x
+    if jobname:
+        write_data_set(MATRIX, MATRIX_scaled, cluster_data, jobname)
         
-    return MATRIX, cluster_data, orig_min, orig_max
+    return MATRIX_scaled, cluster_data, orig_min, orig_max
 
 def make_layout(
     MATRIX, cluster_data, signal_0, signal_1, plotlib,
@@ -677,9 +684,10 @@ def make_layout(
     # the matrix file.
     gc_layout = ac_layout = None
     if cluster_data.gene_cluster:
-        gc_layout = GeneClusterLayout(MATRIX.nrow(), boxwidth, boxheight)
+        gc_layout = GeneClusterLayout(MATRIX.nrow(), boxwidth, boxheight, grid)
     if cluster_data.array_cluster:
-        ac_layout = ArrayClusterLayout(MATRIX.ncol(), boxwidth, boxheight)
+        ac_layout = ArrayClusterLayout(
+            MATRIX.ncol(), boxwidth, boxheight, grid)
 
     # Make the layout for the gene or array labels.
     gl_layout = al_layout = None
@@ -1130,6 +1138,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     # Will change the MATRIX variable.
     from genomicode import jmath
 
+    MATRIX = MATRIX.matrix()
     nrow, ncol = MATRIX.dim()
     X = MATRIX._X
 
@@ -1344,12 +1353,14 @@ def read_data_set(file_or_stem, default=None):
         )
     return MATRIX, cluster_data
 
-def write_data_set(MATRIX, cluster_data, jobname):
+def write_data_set(MATRIX, SCALED, cluster_data, jobname):
     from arrayio import tab_delimited_format
     from genomicode import clusterio
 
     matrix_file = "%s.cdt" % jobname
     tab_delimited_format.write(MATRIX, open(matrix_file, 'w'))
+    scaled_file = "%s_s.cdt" % jobname
+    tab_delimited_format.write(SCALED, open(scaled_file, 'w'))
 
     cd = cluster_data
     formats = [
@@ -1565,6 +1576,9 @@ def plot_gene_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     from genomicode import colorlib
     assert X.nrow() == len(clusters), "%d %d" % (X.nrow(), len(clusters))
 
+    GRID_COLOR = (75, 75, 75)
+    BORDER_COLOR = (0, 0, 0)
+
     # Figure out what kind of IDs to use.
     ID_NAMES = ["GID", "NAME", arrayio.ROW_ID]
     ID_NAMES = [x for x in ID_NAMES if x in X.row_names() or x in X._synonyms]
@@ -1587,21 +1601,31 @@ def plot_gene_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     for i, gid in enumerate(GID):
         gid2i[gid] = i
         
+    # Draw the underlying grid, and a border around the whole thing.
+    width, height = layout.size()
+    plotlib.rectangle(image, xoff, yoff, width, height, GRID_COLOR)
+    plotlib.rectangle(image, xoff, yoff, width, height, None, BORDER_COLOR)
+
     max_cluster = max([x[1] for x in clusters])
     for gid, n in clusters:
         i = gid2i[gid]
         x, y, width, height = layout.coord(i)
-        p = 0.5
-        if max_cluster > 0:
-            p = float(n) / max_cluster
-        # Bug: This should be set in the layout.
-        c = _get_color(p, colorlib.matlab_colors)
+        c = 255, 255, 255
+        if n is not None:
+            p = 0.5
+            if max_cluster > 0:
+                p = float(n) / max_cluster
+            # Bug: This should be set in the layout.
+            c = _get_color(p, colorlib.matlab_colors)
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 def plot_array_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     import arrayio
     from genomicode import colorlib
     assert X.ncol() == len(clusters)
+
+    GRID_COLOR = (75, 75, 75)
+    BORDER_COLOR = (0, 0, 0)
 
     # Figure out what kind of IDs to use.
     ID_NAMES = [
@@ -1624,16 +1648,23 @@ def plot_array_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     aid2i = {}
     for i, aid in enumerate(AID):
         aid2i[aid] = i
-        
+
+    # Draw the underlying grid, and a border around the whole thing.
+    width, height = layout.size()
+    plotlib.rectangle(image, xoff, yoff, width, height, GRID_COLOR)
+    plotlib.rectangle(image, xoff, yoff, width, height, None, BORDER_COLOR)
+
     max_cluster = max([x[1] for x in clusters])
     for aid, n in clusters:
         i = aid2i[aid]
         x, y, width, height = layout.coord(i)
-        p = 0.5
-        if max_cluster > 0:
-            p = float(n) / max_cluster
-        # Bug: This should be set in the layout.
-        c = _get_color(p, colorlib.matlab_colors)
+        c = 255, 255, 255
+        if n is not None:
+            p = 0.5
+            if max_cluster > 0:
+                p = float(n) / max_cluster
+            # Bug: This should be set in the layout.
+            c = _get_color(p, colorlib.matlab_colors)
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 def plot_gene_labels(plotlib, image, X, xoff, yoff, layout, labels):

@@ -899,6 +899,7 @@ def scatter(*args, **keywds):
     onpoint_label_color
     onpoint_label_size
     overpoint_label  What label to put over each point.
+    overpoint_label_size
     error_bar        List of error or (errlow, errhi).
                      The errors are the heights of the error bars.
     point_size       Scales the size of each point.

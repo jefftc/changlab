@@ -8,6 +8,7 @@ import os, sys
 # read_matrices
 # log_matrices
 # write_dataset
+# label_control_probes
 #
 # run_bfrm
 # 
@@ -16,6 +17,11 @@ import os, sys
 # summarize_heatmaps
 # summarize_pca
 # summarize_report
+
+
+# The number of genes to use for the heatmap and PCA plots.
+NUM_FILTERED_GENES = 1000
+
 
 def make_file_layout(outpath):
     from genomicode import filelayout
@@ -50,10 +56,12 @@ def make_file_layout(outpath):
         File.DS_PROC("pre_norm.gct"),
         File.DS_PROC_HEATMAP("pre_norm.heatmap.png"),
         File.DS_PROC_SCATTER("pre_norm.pca.png"),
+        File.DS_PROC_CLUSTER_TRASH("pre_norm.filtered.cdt"),
         
         File.DS_FINAL("normalized.gct"),
         File.DS_FINAL_HEATMAP("normalized.heatmap.png"),
         File.DS_FINAL_SCATTER("normalized.pca.png"),
+        File.DS_FINAL_CLUSTER_TRASH("normalized.filtered.cdt"),
         
         File.REPORT("REPORT.html"),
         ]
@@ -71,6 +79,7 @@ def init_paths(file_layout):
         os.mkdir(dirpath)
 
 def read_matrices(filenames):
+    from genomicode import parselib
     from genomicode import binreg
 
     if not filenames:
@@ -81,8 +90,11 @@ def read_matrices(filenames):
 
     for d, filename in zip(DATA, filenames):
         f = os.path.split(filename)[1]
-        print "%s has %d genes and %d samples." % (f, d.nrow(), d.ncol())
-    print "Merged file has %d genes." % ALIGNED[0].nrow()
+        print "%s has %s genes and %s samples." % (
+            f, parselib.pretty_int(d.nrow()), parselib.pretty_int(d.ncol()))
+    if len(filenames) > 1:
+        print "The merged file has %s genes." % \
+              parselib.pretty_int(ALIGNED[0].nrow())
     sys.stdout.flush()
 
     return ALIGNED
@@ -112,6 +124,46 @@ def write_dataset(filename, matrices):
     DATA = binreg.merge_gct_matrices(*matrices)
     arrayio.gct_format.write(DATA, open(filename, 'w'))
 
+def label_control_probes(probe_ids):
+    # BFRM_Normalize expects control probes to start with "AFFX" in
+    # all upper case.  Make sure I can find these probes.
+    from genomicode import config
+    from genomicode import filelib
+
+    probe_ids = probe_ids[:]
+    
+    found = False
+
+    # Make the AFFX uppercase, if necessary.
+    for i, pid in enumerate(probe_ids):
+        if not pid.upper().startswith("AFFX"):
+            continue
+        pid = pid.upper()
+        probe_ids[i] = pid
+        found = True
+
+    # If I haven't found the control probes, then check to see if it's
+    # an Illumina probe.
+    control_probes = {}
+    if not found and os.path.exists(config.illumina_HUMANHT12_CONTROL):
+        for d in filelib.read_row(
+            config.illumina_HUMANHT12_CONTROL, header=True):
+            control_probes[d.Probe_ID.upper()] = 1
+
+    if not found and control_probes:
+        for i, pid in enumerate(probe_ids):
+            if pid.upper() not in control_probes:
+                continue
+            # Hack: If it is an Illumina control probe, then prepend
+            # "AFFX_" to it so that BFRM_Normalize will recognize it
+            # as a control.
+            pid = "AFFX_%s" % pid
+            probe_ids[i] = pid
+            found = True
+
+    assert found, "I could not find any control probes."
+    return probe_ids
+
 def run_bfrm(bfrm_path, num_factors, file_layout, matlab_bin):
     import re
     import subprocess
@@ -132,7 +184,8 @@ def run_bfrm(bfrm_path, num_factors, file_layout, matlab_bin):
 
     # Write the probeids.txt and sampleids.txt files.
     sample_ids = DATA.col_names(arrayio.COL_ID)
-    probe_ids = DATA.row_names("NAME")
+    x = DATA.row_names("NAME")
+    probe_ids = label_control_probes(x)
     x = ["%s\n" % x for x in sample_ids]
     open(file_layout.BFRM_SAMPLE_IDS, 'w').writelines(x)
     x = ["%s\n" % x for x in probe_ids]
@@ -159,6 +212,8 @@ def run_bfrm(bfrm_path, num_factors, file_layout, matlab_bin):
         else:
             raise AssertionError, "I could not find parameter: %s" % key
         lines[i] = "%s = %s;\n" % (key, value)
+
+    # By default, will use the "AFFX" probes as the housekeeping.
 
     # Run setup.m from Matlab.
     script = "".join(lines)
@@ -219,20 +274,18 @@ def summarize_dataset(file_layout):
     handle.close()
 
 def summarize_filtered_genes(file_layout):
-    # Select the <NUM_GENES> genes that vary most by variance.
+    # Select the <NUM_FILTERED_GENES> genes that vary most by variance.
     import arrayio
     from genomicode import binreg
     from genomicode import pcalib
 
-    # If this is changed, you also need to change the report.
-    NUM_GENES = 1000
-
     DATA_orig = arrayio.read(file_layout.DS_PROC)
     DATA_final = arrayio.read(file_layout.DS_FINAL)
-    assert binreg.are_rows_aligned(DATA_orig, DATA_final)
+    if not binreg.are_rows_aligned(DATA_orig, DATA_final):
+        assert False, binreg.describe_unaligned_rows(DATA_orig, DATA_final)
 
     # Select the genes with the greatest variance.
-    I = pcalib.select_genes_var(DATA_orig._X, NUM_GENES)
+    I = pcalib.select_genes_var(DATA_orig._X, NUM_FILTERED_GENES)
     DATA_orig = DATA_orig.matrix(I, None)
     DATA_final = DATA_final.matrix(I, None)
     
@@ -271,6 +324,11 @@ def summarize_heatmaps(
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
 
+    if os.path.exists(file_layout.DS_PROC_CLUSTER_TRASH):
+        os.unlink(file_layout.DS_PROC_CLUSTER_TRASH)
+    if os.path.exists(file_layout.DS_FINAL_CLUSTER_TRASH):
+        os.unlink(file_layout.DS_FINAL_CLUSTER_TRASH)
+
 def _make_scatter(povray, pca_file, pov_file, out_file):
     from genomicode import filelib
     from genomicode import pcalib
@@ -296,8 +354,8 @@ def summarize_pca(povray, file_layout, matrices):
     DATA_orig = arrayio.gct_format.read(file_layout.DS_PROC_FILTERED)
     DATA_final = arrayio.gct_format.read(file_layout.DS_FINAL_FILTERED)
     assert DATA_final.dim() == DATA_orig.dim()
-    nrow, ncol = DATA_orig.dim()
-    nmin = min(nrow, ncol)
+    #nrow, ncol = DATA_orig.dim()
+    #nmin = min(nrow, ncol)
 
     # Get the names of the samples.
     samples = []
@@ -345,10 +403,12 @@ def summarize_report(
         htmllib.EM("BFRMNormalize") + " Report")))
 
     w(htmllib.H3("I.  Overview"))
-    l = []
-    l.append("I normalized the following data sets with %d factors." %
-             num_factors)
     files = [os.path.split(x)[1] for x in filenames]
+    l = []
+    x = "I normalized the following data sets using %d factors." % num_factors
+    if len(filenames) == 1:
+        x = "I normalized one data set using %d factors." % num_factors
+    l.append(x)
     for i in range(len(files)):
         name = files[i]
         num_samples = matrices[i].ncol()
@@ -382,17 +442,16 @@ def summarize_report(
         )
     row1 = htmllib.TR(htmllib.TD(x1) + htmllib.TD(x2))
 
-    # Make sure this is really the 1000 genes.
     x = htmllib.TD(
         htmllib.B("Figure 1: Heatmaps. ") +
         "These heatmaps show the expression patterns in the data before "
         "and after normalization.  "
-        "The rows contain the 1000 genes that exhibit the highest variance "
-        "in gene expression profile across the original data set.  "
+        "The rows contain the %d genes that exhibit the highest variance "
+        "in gene expression across the original data set.  "
         "The columns contain the samples in the data sets provided.  "
         "The genes and samples are in the same order in both heatmaps.  "
         "Warm colors indicate high expression of the gene, and cool colors "
-        "indicate low expression.",
+        "indicate low expression." % NUM_FILTERED_GENES,
         colspan=2)
     row2 = htmllib.TR(x)
 
@@ -413,16 +472,22 @@ def summarize_report(
         )
     row1 = htmllib.TR(htmllib.TD(x1) + htmllib.TD(x2))
 
-    x = htmllib.TD(
-        htmllib.B("Figure 2: PCA Plots. ") +
-        "These plots show the gene expression profiles of the samples "
-        "plotted on the first two principal components.  "
+    x1 = (
+        "These plots show the samples projected onto the first two principal "
+        "components of the expression profiles of the %d genes that "
+        "exhibit the highest variance across the original data set.  "
+        % NUM_FILTERED_GENES
+        )
+    x2 = (
         "Each point represents a sample, and samples from the same data "
         "set have the same color.  "
         "If there are batch effects, the samples from the same data set "
         "(the same color) will cluster together.  "
-        "If there are no batch effects, the colors should be mixed.",
-        colspan=2)
+        "If there are no batch effects, the colors should be mixed." 
+        )
+    if len(filenames) == 1:
+        x2 = ""
+    x = htmllib.TD(htmllib.B("Figure 2: PCA Plots. ") + x1 + x2, colspan=2)
     row2 = htmllib.TR(x)
 
     w(htmllib.TABLE(row1 + row2, border=0, cellspacing=10, width="50%%"))
@@ -538,9 +603,12 @@ def main():
         assert filelib.exists(filename), "File not found: %s" % filename
 
     # Check to make sure value for num_factors is reasonable.
-    MIN_FACTORS, MAX_FACTORS = 2, 100
+    MIN_FACTORS, MAX_FACTORS = 1, 100
     if options.num_factors < MIN_FACTORS:
-        parser.error("At least %d factors are required." % MIN_FACTORS)
+        if MIN_FACTORS == 1:
+            parser.error("At least %d factor is required." % MIN_FACTORS)
+        else:
+            parser.error("At least %d factors are required." % MIN_FACTORS)
     elif options.num_factors > MAX_FACTORS:
         parser.error("%d factors is too many.  Maximum is %d." % (
             options.num_factors, MAX_FACTORS))
@@ -558,23 +626,28 @@ def main():
         parser.error("Too many factors.")
 
     # Standardize each of the matrices to GCT format.
-    for i in range(len(matrices)):
-        matrices[i] = arrayio.convert(
-            matrices[i], to_format=arrayio.gct_format)
-    write_dataset(file_layout.DS_ORIG, matrices)
+    if 0:   # for debugging
+        for i in range(len(matrices)):
+            matrices[i] = arrayio.convert(
+                matrices[i], to_format=arrayio.gct_format)
+        write_dataset(file_layout.DS_ORIG, matrices)
 
     # Log each of the matrices if needed.
-    log_matrices(names, matrices)
-    write_dataset(file_layout.DS_PROC, matrices)
-    sys.stdout.flush()
+    if 0:   # for debugging
+        log_matrices(names, matrices)
+        write_dataset(file_layout.DS_PROC, matrices)
+        sys.stdout.flush()
 
     # Format the parameters and output files for bfrm.
-    run_bfrm(
-        options.bfrm_path, options.num_factors, file_layout, options.matlab)
+    if 0:  # for debugging
+        run_bfrm(
+            options.bfrm_path, options.num_factors, file_layout,
+            options.matlab)
 
     # Generate some files for output.
-    summarize_dataset(file_layout)
-    summarize_filtered_genes(file_layout)
+    if 0:  # for debugging
+        summarize_dataset(file_layout)
+        summarize_filtered_genes(file_layout)
     summarize_heatmaps(
         options.python, options.arrayplot, options.cluster,
         file_layout, options.libpath)

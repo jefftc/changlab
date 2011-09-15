@@ -46,3 +46,7 @@ primer3_PRIMER3_BIN = "primer3_core"
 # For normalize.py.
 normalize_AFFYMETRIX = opj(CLAB_HOME, "data/normalize/affymetrix")
 normalize_RLIB = opj(CLAB_HOME, "changlab/Rlib")
+
+
+illumina_HUMANHT12_CONTROL = opj(
+    PROJECTS, "illumina/data/HumanHT-12.control.txt")

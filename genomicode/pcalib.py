@@ -30,21 +30,30 @@ def svd_project_cols(X, K):
     return X_hat
 
 def choose_colors(group):
+    # group should be a list of 0-based integers.  Can be None if no
+    # group is assigned to a sample.
     import colorlib
 
-    if not group or max(group) == 0:
+    group_clean = [x for x in group if x is not None]
+    if not group_clean or max(group_clean) == 0:
+        # No clusters specified.
         return None
     # Use the middle range of the colorbar, because the colors at the
     # end are dark.
     # Doesn't work.  Middle colors are too pastel.
     #color_fn = colorlib.matlab_colors
     color_fn = colorlib.bild_colors
-    palette = color_fn(max(group)+1)
-    color = [palette[x] for x in group]
+    palette = color_fn(max(group_clean)+1)
+    color = [None] * len(group)
+    for i in range(len(group)):
+        if group[i] is None:
+            continue
+        color[i] = palette[group[i]]
     return color
 
-def plot_scatter(X, Y, out_file, group=None, color=None,
-                 pov_file=None, povray=None):
+def plot_scatter(
+    X, Y, out_file, group=None, color=None, label=None, title=None,
+    pov_file=None, povray=None):
     # group should be a list of 0-N indicating the groupings of the
     # data points.  It should be the same length of X and Y.
     # Returns the output from povray.
@@ -55,13 +64,15 @@ def plot_scatter(X, Y, out_file, group=None, color=None,
     if not len(X):
         return None
     assert len(X) == len(Y)
-    if not group:
+    group_clean = [x for x in group if x is not None]
+    if not group_clean:
         group = [0]*len(X)
+        group_clean = [x for x in group if x is not None]
     assert len(group) == len(Y)
-    assert min(group) >= 0 and max(group) < len(X)
+    assert min(group_clean) >= 0 and max(group_clean) < len(X)
     
     # If there is only 1 dataset, then just make everything black.
-    if max(group) > 0 and not color:
+    if max(group_clean) > 0 and not color:
         color = choose_colors(group)
 
     is_tempfile = False
@@ -75,8 +86,11 @@ def plot_scatter(X, Y, out_file, group=None, color=None,
         graph = graphlib.scatter(
             points, color=color,
             xtick=True, xtick_label=True, ytick=True, ytick_label=True,
+            overpoint_label=label,
             xlabel="Principal Component 1", ylabel="Principal Component 2",
-            label_size=1, width=plot_width, height=plot_height)
+            label_size=1,
+            title=title,
+            width=plot_width, height=plot_height)
         output = graph.write(out_file, povray_bin=povray)
         #open(pov_file, 'w').write(graph.draw())
         ## povray -D -J +Opredictions.png -H768 -W1024 +A0.5 predictions.pov
