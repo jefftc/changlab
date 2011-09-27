@@ -64,10 +64,12 @@ def plot_scatter(
     if not len(X):
         return None
     assert len(X) == len(Y)
+    if not group:
+        group = [0]*len(X)
     group_clean = [x for x in group if x is not None]
     if not group_clean:
-        group = [0]*len(X)
-        group_clean = [x for x in group if x is not None]
+        # All group are None.
+        group = group_clean = [0]*len(X)
     assert len(group) == len(Y)
     assert min(group_clean) >= 0 and max(group_clean) < len(X)
     

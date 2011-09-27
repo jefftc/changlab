@@ -77,7 +77,7 @@ def _rule_no_values_then_is_head(
         if any_values:
             continue
         for jj in range(j+1):
-            assert semtype[0][jj] & HEAD
+            assert semtype[0][jj] & HEAD, "Missing header."
             if semtype[0][jj] != HEAD:
                 semtype[0][jj] = HEAD
                 changed = True
@@ -418,7 +418,7 @@ def num_headers(matrix):
     # This is REALLY SLOW for big matrices.  Optimize by assuming a
     # maximum number of header rows.  Just look at the first rows for
     # the header.
-    MAX_HEADER_ROWS = 100
+    MAX_HEADER_ROWS = 25
     matrix = matrix[:MAX_HEADER_ROWS]
     num_rows = len(matrix)
 
@@ -454,6 +454,8 @@ def num_headers(matrix):
                 st = HEAD | SAMPLE | ANNOT | VALUE
             elif x == EMPTY:
                 st = ANNOT | VALUE | BLANK
+                if i == 0:
+                    st = st | HEAD
             else:
                 raise AssertionError
             semtype[i][j] = st

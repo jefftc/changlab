@@ -56,12 +56,14 @@ def make_file_layout(outpath):
         File.DS_PROC("pre_norm.gct"),
         File.DS_PROC_HEATMAP("pre_norm.heatmap.png"),
         File.DS_PROC_SCATTER("pre_norm.pca.png"),
-        File.DS_PROC_CLUSTER_TRASH("pre_norm.filtered.cdt"),
+        File.DS_PROC_CLUSTER_TRASH1("pre_norm.filtered.cdt"),
+        File.DS_PROC_CLUSTER_TRASH2("pre_norm.filtered_2.cdt"),
         
         File.DS_FINAL("normalized.gct"),
         File.DS_FINAL_HEATMAP("normalized.heatmap.png"),
         File.DS_FINAL_SCATTER("normalized.pca.png"),
-        File.DS_FINAL_CLUSTER_TRASH("normalized.filtered.cdt"),
+        File.DS_FINAL_CLUSTER_TRASH1("normalized.filtered.cdt"),
+        File.DS_FINAL_CLUSTER_TRASH2("normalized.filtered_s.cdt"),
         
         File.REPORT("REPORT.html"),
         ]
@@ -124,47 +126,64 @@ def write_dataset(filename, matrices):
     DATA = binreg.merge_gct_matrices(*matrices)
     arrayio.gct_format.write(DATA, open(filename, 'w'))
 
-def label_control_probes(probe_ids):
+def label_control_probes(probe_ids, control_probe_file):
     # BFRM_Normalize expects control probes to start with "AFFX" in
     # all upper case.  Make sure I can find these probes.
     from genomicode import config
     from genomicode import filelib
 
-    probe_ids = probe_ids[:]
-    
-    found = False
+    control_probes = {}
 
-    # Make the AFFX uppercase, if necessary.
+    # First, take a look to see if any affymetrix control probes
+    # exist.
     for i, pid in enumerate(probe_ids):
         if not pid.upper().startswith("AFFX"):
             continue
-        pid = pid.upper()
-        probe_ids[i] = pid
-        found = True
+        control_probes[pid.upper()] = 1
 
-    # If I haven't found the control probes, then check to see if it's
-    # an Illumina probe.
-    control_probes = {}
-    if not found and os.path.exists(config.illumina_HUMANHT12_CONTROL):
-        for d in filelib.read_row(
-            config.illumina_HUMANHT12_CONTROL, header=True):
-            control_probes[d.Probe_ID.upper()] = 1
+    # Use the probes from the control probe file if:
+    # 1.  a control probe file is specified    OR
+    # 2.  no affx probes exist (use a default control probe file).
+    if not control_probes and not control_probe_file:
+        control_probe_file = config.illumina_HUMANHT12_CONTROL
+        assert os.path.exists(control_probe_file), \
+               "I could not find any control probes."
+    if control_probe_file:
+        assert os.path.exists(control_probe_file), \
+               "I could not find file: %s" % control_probe_file
+        control_probes = {}
+        for cols in filelib.read_cols(control_probe_file):
+            for x in cols:
+                control_probes[x.upper()] = 1
 
-    if not found and control_probes:
-        for i, pid in enumerate(probe_ids):
-            if pid.upper() not in control_probes:
-                continue
-            # Hack: If it is an Illumina control probe, then prepend
-            # "AFFX_" to it so that BFRM_Normalize will recognize it
-            # as a control.
-            pid = "AFFX_%s" % pid
-            probe_ids[i] = pid
+    # Hack: If it is an Illumina control probe, then prepend "AFFX_"
+    # to it so that BFRM_Normalize will recognize it as a control.
+    probe_ids = probe_ids[:]
+    found = False
+    for i, pid in enumerate(probe_ids):
+        upid = pid.upper()
+        is_control_probe = upid in control_probes
+        if is_control_probe:
             found = True
+        # If a probe is not a control and starts with AFFX, mask it
+        # out so that BFRM_Normalize will not recognize it.
+        if not is_control_probe and upid.startswith("AFFX"):
+            pid = "AFF_" + pid[4:]
+        # If a probe is a control and does not start with AFFX, add
+        # AFFX so that BFRM_Normalize will recognize it.
+        if is_control_probe and not upid.startswith("AFFX"):
+            pid = "AFFX_%s" % pid
+        if is_control_probe:
+            assert pid.startswith("AFFX")
+        else:
+            assert not pid.startswith("AFFX")
+        probe_ids[i] = pid
 
     assert found, "I could not find any control probes."
     return probe_ids
 
-def run_bfrm(bfrm_path, num_factors, file_layout, matlab_bin):
+def run_bfrm(
+    bfrm_path, num_factors, control_probe_file, file_layout, matlab_bin):
     import re
     import subprocess
     import arrayio
@@ -185,7 +204,7 @@ def run_bfrm(bfrm_path, num_factors, file_layout, matlab_bin):
     # Write the probeids.txt and sampleids.txt files.
     sample_ids = DATA.col_names(arrayio.COL_ID)
     x = DATA.row_names("NAME")
-    probe_ids = label_control_probes(x)
+    probe_ids = label_control_probes(x, control_probe_file)
     x = ["%s\n" % x for x in sample_ids]
     open(file_layout.BFRM_SAMPLE_IDS, 'w').writelines(x)
     x = ["%s\n" % x for x in probe_ids]
@@ -324,10 +343,15 @@ def summarize_heatmaps(
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
 
-    if os.path.exists(file_layout.DS_PROC_CLUSTER_TRASH):
-        os.unlink(file_layout.DS_PROC_CLUSTER_TRASH)
-    if os.path.exists(file_layout.DS_FINAL_CLUSTER_TRASH):
-        os.unlink(file_layout.DS_FINAL_CLUSTER_TRASH)
+    trash_files = [
+        file_layout.DS_PROC_CLUSTER_TRASH1,
+        file_layout.DS_PROC_CLUSTER_TRASH2,
+        file_layout.DS_FINAL_CLUSTER_TRASH1,
+        file_layout.DS_FINAL_CLUSTER_TRASH2,
+        ]
+    for f in trash_files:
+        if os.path.exists(f):
+            os.unlink(f)
 
 def _make_scatter(povray, pca_file, pov_file, out_file):
     from genomicode import filelib
@@ -550,6 +574,11 @@ def main():
     parser.add_option(
         "-f", "--num_factors", dest="num_factors", type="int", 
         default=15, help="Number of factors to use for normalization.")
+    # Any string in the control probe file can be a control probe.
+    # Delimited by tabs and newlines.
+    parser.add_option(
+        "", "--control_probe_file", dest="control_probe_file", default=None,
+        help="File that contains the control probes.")
     parser.add_option(
         "", "--python", dest="python", default=None,
         help="Specify the command to run python (optional).")
@@ -626,26 +655,26 @@ def main():
         parser.error("Too many factors.")
 
     # Standardize each of the matrices to GCT format.
-    if 0:   # for debugging
+    if 1:   # for debugging
         for i in range(len(matrices)):
             matrices[i] = arrayio.convert(
                 matrices[i], to_format=arrayio.gct_format)
         write_dataset(file_layout.DS_ORIG, matrices)
 
     # Log each of the matrices if needed.
-    if 0:   # for debugging
+    if 1:   # for debugging
         log_matrices(names, matrices)
         write_dataset(file_layout.DS_PROC, matrices)
         sys.stdout.flush()
 
     # Format the parameters and output files for bfrm.
-    if 0:  # for debugging
+    if 1:  # for debugging
         run_bfrm(
-            options.bfrm_path, options.num_factors, file_layout,
-            options.matlab)
+            options.bfrm_path, options.num_factors, options.control_probe_file,
+            file_layout, options.matlab)
 
     # Generate some files for output.
-    if 0:  # for debugging
+    if 1:  # for debugging
         summarize_dataset(file_layout)
         summarize_filtered_genes(file_layout)
     summarize_heatmaps(

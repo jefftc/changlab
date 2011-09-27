@@ -16,6 +16,8 @@ def _parse_cluster(options_cluster, MATRIX):
     # from 0 to K-1.  K is the total number of clusters.  The length
     # of the vector should be the same as the number of samples in the
     # matrix.
+    from genomicode import parselib
+
     index2cluster = {}
     for clust_i, s in enumerate(options_cluster):
         ranges = parselib.parse_ranges(s)
@@ -76,7 +78,6 @@ def main():
     import arrayio
     from genomicode import jmath
     from genomicode import pcalib
-    from genomicode import parselib
     from genomicode import colorlib
 
     usage = "usage: %prog [options] filename outfile"

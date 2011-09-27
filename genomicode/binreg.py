@@ -452,7 +452,7 @@ def align_cols(*matrices):
     # Use only the IDs that occur in all data files.  Use the order of
     # the samples from first data set.
     ids = [id for id in all_ids[0] if len(ids_hash[id]) == len(matrices)]
-    assert len(ids) > 0, "The data sets all have different column IDs."
+    assert len(ids) > 0, "The data sets have different column IDs."
 
     # Align the columns by the ids.
     aligned = [None] * len(matrices)
@@ -570,6 +570,7 @@ def read_matrices(filenames):
             raise
         except Exception, x:
             # Can diagnose which file failed here.
+            # raise
             raise Exception, "Problem reading %s: %s" % (
                 repr(filename), str(x))
         DATA.append(x)
