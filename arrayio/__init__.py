@@ -29,15 +29,87 @@ def guess_format(X):
             return format
     return None
 
+def _diagnose_format_problem(filename):
+    import StringIO
+    import csv
+    from genomicode import filelib
+
+    # Try to diagnose potential problems with the format of the file.
+    # Return a description of the error.
+    assert os.path.exists(filename)
+
+    # Read the first 5 lines of the file.  Can usually diagnose from
+    # that.
+    NUM_LINES = 5
+    handle = filelib.openfh(filename)
+    x = [handle.readline() for i in range(NUM_LINES)]
+    handle.close()
+    lines = [x for x in x if x is not None]
+
+    if not lines:
+        return "The file is empty."
+
+    # Figure out whether this is a tab-delimited or comma-delimited file.
+    is_tdf = True
+    for line in lines:
+        # Don't check the first line, because GCT format might not
+        # have a tab in the first line.
+        if "\t" not in line:
+            is_tdf = False
+
+    is_csv = False
+    if not is_tdf:
+        is_csv = True
+        if "," not in line:
+            is_csv = False
+            
+    assert not (is_tdf and is_csv)
+
+    # Problem: Not tab-delimited and not comma-delimited format.
+    if not is_tdf and not is_csv:
+        return "File does not appear to be delimited by tabs or commas."
+
+    # If this is a tab-delimited file, then split it into columns
+    # based on the tabs.
+    cols = []
+    if is_tdf:
+        for line in lines:
+            x = line.rstrip("\r\n").split("\t")
+            cols.append(x)
+    elif is_csv:
+        handle = StringIO.StringIO("".join(lines))
+        reader = csv.reader(handle)
+        cols = [x for x in reader]
+
+    # Problem: Sometimes people provide a file where the first row
+    # contains one fewer column than the remaining rows.  For example,
+    # if they used R to create the file.
+    num_cols = [len(x) for x in cols]
+    if num_cols[0] == num_cols[1]-1:
+        return "First row has 1 fewer column than second row."
+    if min(num_cols) != max(num_cols):
+        return "Rows have different numbers of columns."
+        
+    return None
+
+
 def read(locator, datatype=float, format=None):
     # Bug: this function fails if passed a file handle.
     from genomicode import filelib
     format = format or choose_format(locator)
     if format is None:
-        msg = "I could not find a format for: %r" % locator
+        msg = []
+        x = "I could not find a format for: %r." % locator
+        msg.append(x)
         if not os.path.exists(locator):
-            msg = "%s.  It does not appear to be a file." % msg
-        assert format is not None, msg
+            x = "It does not appear to be a file." % msg
+            msg.append(x)
+        else:
+            x = _diagnose_format_problem(locator)
+            msg.append(x)
+        msg = [x for x in msg if x]
+        msg = "\n".join(msg)
+        raise AssertionError, msg
     #print "PARSING WITH", format
     return format.read(locator, datatype=datatype)
 
