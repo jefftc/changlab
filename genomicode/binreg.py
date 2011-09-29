@@ -165,6 +165,7 @@ def find_binreg_20(default_path):
         "/home/jchang/projects/geclassify/data/BinReg2.0",
         "/home/jefftc/projects/geclassify/data/BinReg2.0",
         "/home/vis/jefftc/projects/geclassify/data/BinReg2.0",
+        "/home/changlab/SIGNATURE/BinReg2.0",
         ]
     path = None
     for spath in search_paths:
