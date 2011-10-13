@@ -1101,7 +1101,7 @@ def main():
             options.num_procs = 1
         sys.stdout.flush()
 
-    DEBUG = True   # Can disable pybinreg temporarily for debugging.
+    DEBUG = False   # Can disable pybinreg temporarily for debugging.
     if not DEBUG:  
         if options.num_procs <= 1:
             for x in jobs:
