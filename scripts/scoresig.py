@@ -552,8 +552,8 @@ def summarize_signatures(signatures, file_layout):
     handle.close()
 
 def summarize_report(
-    signatures, orig_signatures, report_files, start_time, why_dropped,
-    file_layout):
+    analysis_name, signatures, orig_signatures, report_files, start_time,
+    why_dropped, file_layout):
     import time
     import subprocess
     from genomicode import parselib
@@ -596,9 +596,14 @@ def summarize_report(
     lines = []
     w = lines.append
     w("<HTML>")
-    w(htmllib.HEAD(htmllib.TITLE("ScoreSignatures Report")))
+    #title = "%s Report" % htmllib.EM("ScoreSignatures")
+    title = "%s Report" % "ScoreSignatures"
+    if analysis_name:
+        title = "%s for %s" % (title, htmllib.EM(analysis_name))
+    x = parselib.remove_all_tags(title)
+    w(htmllib.HEAD(htmllib.TITLE(x)))
     w("<BODY>")
-    w(htmllib.CENTER(htmllib.H1(htmllib.EM("ScoreSignatures") + " Report")))
+    w(htmllib.CENTER(htmllib.H1(title)))
 
     w(htmllib.H3("I.  Signatures"))
 
@@ -777,6 +782,17 @@ def _hash_name(name):
     # Replace initial numbers with Xnumber.
     x = re.sub(r"^(\d)", r"X\1", x)
     return x
+
+def make_analysis_name(options):
+    filenames = [options.outpath, options.rma_dataset, options.mas5_dataset]
+    filenames = [x for x in filenames if x]
+    if filenames:
+        # GSE4184.sigs -> GSE4184
+        x = filenames[0]
+        x = os.path.split(x)[1]
+        x = x.split(".")[0]
+        return x
+    return None
 
 def main():
     from optparse import OptionParser, OptionGroup
@@ -1085,7 +1101,7 @@ def main():
             options.num_procs = 1
         sys.stdout.flush()
 
-    DEBUG = False   # Can disable pybinreg temporarily for debugging.
+    DEBUG = True   # Can disable pybinreg temporarily for debugging.
     if not DEBUG:  
         if options.num_procs <= 1:
             for x in jobs:
@@ -1111,9 +1127,10 @@ def main():
         summarize_signatures(signatures, file_layout)
 
         print "Making a report."
+        analysis_name = make_analysis_name(options)
         summarize_report(
-            signatures, orig_signatures, report_files, start_time, why_dropped,
-            file_layout)
+            analysis_name, signatures, orig_signatures, report_files,
+            start_time, why_dropped, file_layout)
 
     if options.archive:
         print "Compressing results."

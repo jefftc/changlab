@@ -34,8 +34,10 @@ def scan_celv3(filename):
     # ("MODIFIED", "DATA", (X, Y))
     import filelib
     
-    section = None
+    
+    assert type(filename) is type("")
     handle = filelib.openfh(filename)
+    section = None
     for i, line in enumerate(handle):
         line = line.strip()
         if not line:
@@ -70,7 +72,9 @@ def scan_celv3(filename):
             assert line.find("=") >= 0, line
             name, value = [x.strip() for x in line.split("=", 1)]
             yield section, name, value
-    handle.close()   # close or gunzip might not die
+    if type(filename) is type(""):
+        # If I opened this file, then close it.  gunzip might not die.
+        handle.close()   
 
 def scan_celv4(filename):
     # Yields:
@@ -81,7 +85,7 @@ def scan_celv4(filename):
     # ("MODIFIED", "DATA", (X, Y))
     import struct
     import filelib
-
+    
     # integer   32-bit signed integer
     # DWORD     32-bit unsigned integer
     # float     32-bit floating-point number
@@ -91,7 +95,9 @@ def scan_celv4(filename):
         size = struct.calcsize(fmt)
         return struct.unpack(fmt, handle.read(size))
 
+    assert type(filename) is type("")
     handle = filelib.openfh(filename, "rb")
+    handle.seek(0)
 
     magic, version = read("<ii")
     assert magic == 64
@@ -151,7 +157,8 @@ def scan_celv4(filename):
         x = read("<ffff")
         left_cell_pos, top_cell_pos, right_cell_pos, bottom_cell_pos = x
 
-    handle.close()
+    if type(filename) is type(""):
+        handle.close()
 
 
 def scan_celvcc1(filename):
@@ -161,6 +168,9 @@ def scan_celvcc1(filename):
     # ("MASKS", "DATA", (X, Y))
     # ("OUTLIERS", "DATA", (X, Y))
     # ("MODIFIED", "DATA", (X, Y))
+    #
+    # Bug: Does not yield every piece of data from the file.  Will
+    # need to manually add the ones that are of interest.
 
     # X is rows.
     # Y is columns.
@@ -213,27 +223,27 @@ def scan_celvcc1(filename):
             yield x
 
     # Get the rows and cols on the chip.
-    handle = filelib.openfh(filename, "rb")
     cel_rows = cel_cols = None
     for x in scan_calvin_generic_data_file(filename):
         section, name, value = x
+        if section == "DATA GROUP":
+            break
         if section != "DATA HEADER":
             continue
+        yield section, name, value
         if name == "affymetrix-cel-rows":
             cel_rows = value
         elif name == "affymetrix-cel-cols":
             cel_cols = value
-        if cel_rows is not None and cel_cols is not None:
-            break
+        #if cel_rows is not None and cel_cols is not None:
+        #    break
     else:
         raise AssertionError, "Could not find chip dimensions"
 
     # Pull out the Data Sets.
     name2data = {}
-    for x in scan_data_sets2(handle):
+    for x in scan_data_sets2(filename):
         name2data[x.name] = x
-
-    handle.close()
 
     assert "Intensity" in name2data
     assert "StdDev" in name2data
@@ -269,8 +279,6 @@ def scan_calvin_generic_data_file(filename):
         "BYTE", "UBYTE", "SHORT", "USHORT", "INT", "UINT", "FLOAT",
         "STRING", "WSTRING"]
         
-    handle = filelib.openfh(filename, "rb")
-    
     def _read_raw(fmt):
         # fmt is a struct format string.
         import struct
@@ -329,11 +337,14 @@ def scan_calvin_generic_data_file(filename):
         return text
 
     # SECTION: File Header
+    assert type(filename) is type("")
+    handle = filelib.openfh(filename, "rb")
+    handle.seek(0)
     magic = _read("UBYTE")
     version = _read("UBYTE")
     num_data_groups = _read("INT")
     pos_first_data_group = _read("UINT")
-    assert magic == 59
+    assert magic == 59, repr(magic)
     assert version == 1
 
     yield "FILE HEADER", "NUM DATA GROUPS", num_data_groups
@@ -417,7 +428,8 @@ def scan_calvin_generic_data_file(filename):
         if pos_next_group != 0:
             handle.seek(pos_next_group)
 
-    handle.close()
+    if type(filename) is type(""):
+        handle.close()
 
 def scan_bpmapv3(filename):
     # Yields:
@@ -447,7 +459,9 @@ def scan_bpmapv3(filename):
         return read(">%ds" % length)[0]
 
     # big-endian
+    assert type(filename) is type("")
     handle = filelib.openfh(filename, "rb")
+    handle.seek(0)
 
     magic, = read(">8s")
     assert magic == "PHT7\r\n\x1a\n"
@@ -517,7 +531,8 @@ def scan_bpmapv3(filename):
             yield "POSITION_INFO", "PROBE_POS", probe_pos
             yield "POSITION_INFO", "STRAND", strand
 
-    handle.close()
+    if type(filename) is type(""):
+        handle.close()
 
 def guess_cel_version(filename):
     # Returns:
@@ -528,7 +543,9 @@ def guess_cel_version(filename):
     import filelib
 
     # Guess the version from the beginning of the file.
+    assert type(filename) is type("")
     handle = filelib.openfh(filename, "rb")
+    handle.seek(0)   # in case filename was a file handle
     data = handle.read(100)
     handle.close()   # close or gunzip may not die
 
@@ -683,8 +700,6 @@ def convert_cel_cc1_to_3(filename, outhandle=None):
     print >>outhandle, "CellHeader=X\tY\tORIGMEAN"
 
 def guess_cel_fn(filename):
-    assert type(filename) == type("")
-
     version = guess_cel_version(filename)
     if version == "v3":
         return scan_celv3
@@ -708,24 +723,24 @@ def extract_chip_name(filename):
     import filelib
     
     fn = guess_cel_fn(filename)
-    handle = filelib.openfh(filename)
-    
+
     chip_name = None
-    for x in fn(handle):
+    for x in fn(filename):
         section, name, value = x
 
-        if section != "HEADER":
-            continue
-        if name not in ["DatHeader", "Header"]:
-            continue
-
-        # CEL v3 format.
-        #
-        # Format:
+        # CEL v3, found in HEADER section:
         # DatHeader=[4..46107]  Yang 80 U133B:CLS=4733 RWS=4733 XIN=3  \
         # YIN=3  VE=17        2.0 07/10/03 15:42:44    ^T  ^T          \
         # HG-U133B.1sq ^T  ^T  ^T  ^T  ^T  ^T  ^T  ^T  ^T 6
         #
+        # CEL vcc1, founder in DATA HEADER section:
+        # affymetrix-array-type  HG-U133_Plus_2
+
+        if section not in ["HEADER", "DATA HEADER"]:
+            continue
+        if name not in ["DatHeader", "Header", "affymetrix-array-type"]:
+            continue
+
         # Raw chip names:
         # HG-U133_Plus_2.1sq
         # HG-U133A.1sq
@@ -733,14 +748,14 @@ def extract_chip_name(filename):
         # MOE430A.1sq
         # Mouse430A_2.1sq
         x = value.split()
-        x = [x for x in x if x.find("sq") >= 0]
+        if len(x) > 1:
+            x = [x for x in x if x.find("sq") >= 0]
         if not x:
             continue
         chip_name = x[0]
         # Remove the .1sq.
         chip_name = chip_name.replace(".1sq", "")
         break
-    handle.close()
     return chip_name
 
 def scan_cdf(filename):
@@ -773,6 +788,7 @@ def scan_cdf(filename):
     
     section = None
     Unit_Block_Cell_int_indexes = None
+    assert type(filename) is type("")
     handle = filelib.openfh(filename)
     for i, line in enumerate(handle):
         line = line.strip("\r\n")
@@ -831,3 +847,5 @@ def scan_cdf(filename):
             value = tuple(value)
 
         yield section, name, value
+    if type(filename) is type(""):
+        handle.close()
