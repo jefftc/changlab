@@ -2132,7 +2132,7 @@ def main():
         options.jobname = x
 
     outfile = options.outfile
-            
+
     # Choose a plotting library.
     if options.image_format == "svg":
         plotlib = __import__(
@@ -2170,10 +2170,11 @@ def main():
         options.array_tree_thickness,
         options.cluster_alg, 
         options.label_genes, options.label_arrays)
-    
+
     megapixels = layout.heatmap.width() * layout.heatmap.height() / 1024 / 1024
-    assert megapixels <= MAX_MEGAPIXELS, "%dx%d plot too big." % (
-        layout.heatmap.width(), layout.heatmap.height())
+    assert megapixels <= MAX_MEGAPIXELS, "%dx%d plot too big [%d:%d]." % (
+        layout.heatmap.width(), layout.heatmap.height(),
+        options.width, options.height)
     
     coords = calc_coords_for_layout(layout)
     plot(outfile, MATRIX, cluster_data, plotlib, layout, coords)

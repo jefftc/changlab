@@ -689,7 +689,7 @@ def summarize_signature_heatmap(
         max_box_height=40, max_box_width=40, max_total_height=768*SCALE,
         max_total_width=1024*SCALE)
     xpix, ypix = x
-    #print ypix, xpix, nrow, ncol
+    #print ypix, xpix, nrow, ncol; sys.stdout.flush()
 
     graphlib.plot_heatmap(
         file_layout.SIGNATURE_GCT, file_layout.SIGNATURE_PNG, xpix, ypix,
@@ -705,12 +705,15 @@ def summarize_dataset_heatmap(
 
     DATA = arrayio.gct_format.read(file_layout.DS_SIG)
     nrow, ncol = DATA.dim()
-    
+
+    # 10 won't work for large data sets (1000 samples).
+    #min_box_width = 10
+    min_box_width = 1
     x = graphlib.find_tall_heatmap_size(
-        nrow, ncol, min_box_width=10,
+        nrow, ncol, min_box_width=min_box_width,
         max_total_height=768*3, max_total_width=1024*3)
     xpix, ypix = x
-    #print xpix, ypix, ncol, nrow
+    #print xpix, ypix, ncol, nrow; sys.stdout.flush()
 
     graphlib.plot_heatmap(
         file_layout.DS_SIG, file_layout.DS_SIG_PNG, xpix, ypix,
@@ -1382,12 +1385,14 @@ def main():
             credible_interval=pybr_params.credible_interval)
 
         # Run Binreg.
-        r = binreg.binreg_raw(
-            file_layout.BR_EXPRESSION, file_layout.BR_DESCRIPTION,
-            1, params, matlab=options.matlab,
-            binreg_path=options.binreg_path, outpath=file_layout.BINREG)
-        print r.read()
-        sys.stdout.flush()
+        DEBUG = False
+        if not DEBUG:
+            r = binreg.binreg_raw(
+                file_layout.BR_EXPRESSION, file_layout.BR_DESCRIPTION,
+                1, params, matlab=options.matlab,
+                binreg_path=options.binreg_path, outpath=file_layout.BINREG)
+            print r.read()
+            sys.stdout.flush()
 
         # Generate some files for output.
         summarize_model(file_layout)
