@@ -419,8 +419,12 @@ def write(X, handle):
     nrow, ncol = X.dim()
     M = X.slice()
     for i in range(nrow):
-        x = [X.row_names(header)[i] for header in row_names]
+        names = [X.row_names(header)[i] for header in row_names]
         # M[i] might be tuples.
-        x = x + list(M[i])
+        values = list(M[i])
+        for j in range(len(values)):
+            if values[j] is None:
+                values[j] = ""
+        x = names + values
         x = _clean_many(map(str, x))
         print >>handle, "\t".join(x)
