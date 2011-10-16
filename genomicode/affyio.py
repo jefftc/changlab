@@ -34,9 +34,9 @@ def scan_celv3(filename):
     # ("MODIFIED", "DATA", (X, Y))
     import filelib
     
-    
     assert type(filename) is type("")
-    handle = filelib.openfh(filename)
+    handle = open(filename)
+    #handle = filelib.openfh(filename)
     section = None
     for i, line in enumerate(handle):
         line = line.strip()
@@ -72,9 +72,9 @@ def scan_celv3(filename):
             assert line.find("=") >= 0, line
             name, value = [x.strip() for x in line.split("=", 1)]
             yield section, name, value
-    if type(filename) is type(""):
-        # If I opened this file, then close it.  gunzip might not die.
-        handle.close()   
+            
+    # If I opened this file, then close it.  gunzip might not die.
+    handle.close()   
 
 def scan_celv4(filename):
     # Yields:
@@ -96,8 +96,9 @@ def scan_celv4(filename):
         return struct.unpack(fmt, handle.read(size))
 
     assert type(filename) is type("")
-    handle = filelib.openfh(filename, "rb")
-    handle.seek(0)
+    handle = open(filename, "rb")
+    #handle = filelib.openfh(filename, "rb")
+    #handle.seek(0)
 
     magic, version = read("<ii")
     assert magic == 64
@@ -157,8 +158,8 @@ def scan_celv4(filename):
         x = read("<ffff")
         left_cell_pos, top_cell_pos, right_cell_pos, bottom_cell_pos = x
 
-    if type(filename) is type(""):
-        handle.close()
+    #if type(filename) is type(""):
+    handle.close()
 
 
 def scan_celvcc1(filename):
@@ -338,8 +339,9 @@ def scan_calvin_generic_data_file(filename):
 
     # SECTION: File Header
     assert type(filename) is type("")
-    handle = filelib.openfh(filename, "rb")
-    handle.seek(0)
+    handle = open(filename, "rb")
+    #handle = filelib.openfh(filename, "rb")
+    #handle.seek(0)
     magic = _read("UBYTE")
     version = _read("UBYTE")
     num_data_groups = _read("INT")
@@ -428,8 +430,8 @@ def scan_calvin_generic_data_file(filename):
         if pos_next_group != 0:
             handle.seek(pos_next_group)
 
-    if type(filename) is type(""):
-        handle.close()
+    #if type(filename) is type(""):
+    handle.close()
 
 def scan_bpmapv3(filename):
     # Yields:
@@ -460,8 +462,9 @@ def scan_bpmapv3(filename):
 
     # big-endian
     assert type(filename) is type("")
-    handle = filelib.openfh(filename, "rb")
-    handle.seek(0)
+    handle = open(filename, "rb")
+    #handle = filelib.openfh(filename, "rb")
+    #handle.seek(0)
 
     magic, = read(">8s")
     assert magic == "PHT7\r\n\x1a\n"
@@ -531,9 +534,9 @@ def scan_bpmapv3(filename):
             yield "POSITION_INFO", "PROBE_POS", probe_pos
             yield "POSITION_INFO", "STRAND", strand
 
-    if type(filename) is type(""):
-        handle.close()
-
+    #if type(filename) is type(""):
+    handle.close()
+        
 def guess_cel_version(filename):
     # Returns:
     # v3   Version 3 from MAS software.
@@ -543,9 +546,16 @@ def guess_cel_version(filename):
     import filelib
 
     # Guess the version from the beginning of the file.
+
+    # I need to be able to read from the start of the file.  If I
+    # accept a file handle, it's not guaranteed to be at the start of
+    # the file.  I can try to seek to the beginning of the file, but
+    # this will fail for some files, e.g. gzip'd files.  It's easiest
+    # just to not allow file handles.
+    #handle = filelib.openfh(filename, "rb")
+    #handle.seek(0)   # in case filename was a file handle
     assert type(filename) is type("")
-    handle = filelib.openfh(filename, "rb")
-    handle.seek(0)   # in case filename was a file handle
+    handle = open(filename, "rb")
     data = handle.read(100)
     handle.close()   # close or gunzip may not die
 
