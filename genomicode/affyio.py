@@ -35,8 +35,7 @@ def scan_celv3(filename):
     import filelib
     
     assert type(filename) is type("")
-    handle = open(filename)
-    #handle = filelib.openfh(filename)
+    handle = filelib.openfh(filename)  # in case of GZ file
     section = None
     for i, line in enumerate(handle):
         line = line.strip()
@@ -96,8 +95,7 @@ def scan_celv4(filename):
         return struct.unpack(fmt, handle.read(size))
 
     assert type(filename) is type("")
-    handle = open(filename, "rb")
-    #handle = filelib.openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
     #handle.seek(0)
 
     magic, version = read("<ii")
@@ -339,8 +337,7 @@ def scan_calvin_generic_data_file(filename):
 
     # SECTION: File Header
     assert type(filename) is type("")
-    handle = open(filename, "rb")
-    #handle = filelib.openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
     #handle.seek(0)
     magic = _read("UBYTE")
     version = _read("UBYTE")
@@ -462,8 +459,7 @@ def scan_bpmapv3(filename):
 
     # big-endian
     assert type(filename) is type("")
-    handle = open(filename, "rb")
-    #handle = filelib.openfh(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
     #handle.seek(0)
 
     magic, = read(">8s")
@@ -552,10 +548,9 @@ def guess_cel_version(filename):
     # the file.  I can try to seek to the beginning of the file, but
     # this will fail for some files, e.g. gzip'd files.  It's easiest
     # just to not allow file handles.
-    #handle = filelib.openfh(filename, "rb")
-    #handle.seek(0)   # in case filename was a file handle
     assert type(filename) is type("")
-    handle = open(filename, "rb")
+    handle = filelib.openfh(filename, "rb")
+    #handle.seek(0)   # in case filename was a file handle
     data = handle.read(100)
     handle.close()   # close or gunzip may not die
 
