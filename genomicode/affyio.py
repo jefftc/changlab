@@ -337,7 +337,12 @@ def scan_calvin_generic_data_file(filename):
 
     # SECTION: File Header
     assert type(filename) is type("")
-    handle = filelib.openfh(filename, "rb")
+    # Do not accept .gz files because we need to seek to specific
+    # locations.
+    assert not filename.lower().endswith(".gz"), \
+           "I cannot handle compressed files"
+    handle = open(filename, "rb")
+    #handle = filelib.openfh(filename, "rb")
     #handle.seek(0)
     magic = _read("UBYTE")
     version = _read("UBYTE")
@@ -590,10 +595,12 @@ def convert_cel_cc1_to_3(filename, outhandle=None):
         #    break
         data.append(x)
 
-    def getvalue(section, name):
+    def getvalue(section, name, default=None):
         for s, n, v in data:
             if s == section and n == name:
                 return v
+        if default is not None:
+            return default
         raise AssertionError, "not found: %s %s" % (section, name)
 
     def getdataset(name):
@@ -646,8 +653,9 @@ def convert_cel_cc1_to_3(filename, outhandle=None):
     print >>outhandle, "Axis-invertX=0"
     print >>outhandle, "AxisInvertY=0"
     print >>outhandle, "swapXY=0"
-    print >>outhandle, "DatHeader=%s" % getvalue(
-        "DATA HEADER", "affymetrix-partial-dat-header").strip()
+    x = getvalue("DATA HEADER", "affymetrix-partial-dat-header", "").strip()
+    if x:
+        print >>outhandle, "DatHeader=%s" % x
     print >>outhandle, "Algorithm=%s" % getvalue(
         "DATA HEADER", "affymetrix-algorithm-name")
     params = []
