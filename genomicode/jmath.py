@@ -596,7 +596,6 @@ def norm_mv(X, M=0, V=1, byrow=1):
 
 def safe_norm_mv_list(X, M=0, V=1):
     assert len(X) > 0
-    # broken XXX X is not aligned.
     V_0 = safe_var(X)
     M_0 = safe_mean(X)
     X_norm = X[:]
@@ -605,8 +604,6 @@ def safe_norm_mv_list(X, M=0, V=1):
             continue
         X_norm[i] = (X[i]-M_0)*math.sqrt(V/V_0)+M
     return X_norm
-
-    return norm_mv_list(X, M=M, V=V)
 
 def safe_norm_mv_matrix(X, M=0, V=1, byrow=1):
     if not byrow:
