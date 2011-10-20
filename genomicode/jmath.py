@@ -21,6 +21,7 @@ log      Take the log of a single number, a list, or a matrix.
 exp
 mysum
 mean
+safe_mean
 median
 var
 stddev
@@ -40,6 +41,7 @@ cmh_fdr          Correct multiple hypotheses, False Discovery Rate.
 
 fisher_z
 norm_mv
+safe_norm_mv
 
 transpose
 flatten
@@ -242,6 +244,22 @@ def var_matrix(X, byrow=1):
 
 def var(X, byrow=1):
     return _dispatch(X, None, _fn(var_list), _fn(var_matrix, byrow=byrow))
+
+def safe_var_list(X):
+    assert len(X) > 0
+    X = [x for x in X if x is not None]
+    if not X:
+        return 0
+    return var_list(X)
+
+def safe_var_matrix(X, byrow=1):
+    if not byrow:
+        X = transpose(X)
+    return [safe_var_list(x) for x in X]
+
+def safe_var(X, byrow=1):
+    return _dispatch(
+        X, None, _fn(safe_var_list), _fn(safe_var_matrix, byrow=byrow))
 
 def stddev_list(X):
     v = var(X)
@@ -575,6 +593,34 @@ def norm_mv(X, M=0, V=1, byrow=1):
     # Normalize a list of numbers so the mean is M and variance is V.
     return _dispatch(
         X, None, _fn(norm_mv_list, M, V), _fn(norm_mv_matrix, M, V, byrow))
+
+def safe_norm_mv_list(X, M=0, V=1):
+    assert len(X) > 0
+    # broken XXX X is not aligned.
+    V_0 = safe_var(X)
+    M_0 = safe_mean(X)
+    X_norm = X[:]
+    for i in range(len(X)):
+        if X[i] is None:
+            continue
+        X_norm[i] = (X[i]-M_0)*math.sqrt(V/V_0)+M
+    return X_norm
+
+    return norm_mv_list(X, M=M, V=V)
+
+def safe_norm_mv_matrix(X, M=0, V=1, byrow=1):
+    if not byrow:
+        X = transpose(X)
+    X_norm = [safe_norm_mv_list(x, M=M, V=V) for x in X]
+    if not byrow:
+        X_norm = transpose(X_norm)
+    return X_norm
+
+def safe_norm_mv(X, M=0, V=1, byrow=1):
+    # Normalize a list of numbers so the mean is M and variance is V.
+    return _dispatch(
+        X, None, _fn(safe_norm_mv_list, M, V),
+        _fn(safe_norm_mv_matrix, M, V, byrow))
 
 def transpose(X):
     # Bug: Need to check dimensions of X.
