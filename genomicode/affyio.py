@@ -653,9 +653,20 @@ def convert_cel_cc1_to_3(filename, outhandle=None):
     print >>outhandle, "Axis-invertX=0"
     print >>outhandle, "AxisInvertY=0"
     print >>outhandle, "swapXY=0"
-    x = getvalue("DATA HEADER", "affymetrix-partial-dat-header", "").strip()
-    if x:
+
+    # In CC1 files, the platform (e.g. HG-U133_Plus_2) can be stored
+    # in several places.  Try them all.
+    platform_names = [
+        "affymetrix-dat-header", "affymetrix-partial-dat-header",
+        "affymetrix-array-type", "affymetrix-created-arraytype",
+        ]
+    for name in platform_names:
+        x = getvalue("DATA HEADER", name, "").strip()
+        if not x:
+            continue
         print >>outhandle, "DatHeader=%s" % x
+        break
+        
     print >>outhandle, "Algorithm=%s" % getvalue(
         "DATA HEADER", "affymetrix-algorithm-name")
     params = []
@@ -749,6 +760,8 @@ def extract_chip_name(filename):
         # CEL vcc1, founder in DATA HEADER section:
         # affymetrix-array-type  HG-U133_Plus_2
 
+        if section == "INTENSITY":
+            break
         if section not in ["HEADER", "DATA HEADER"]:
             continue
         if name not in ["DatHeader", "Header", "affymetrix-array-type"]:
