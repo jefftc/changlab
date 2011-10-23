@@ -796,10 +796,14 @@ def summarize_predictions(povray, file_layout):
     font = os.path.join(
         os.path.split(graphlib.__file__)[0], "Verdana Bold.ttf")
     onpoint_label = None   # Don't display labels.
+    overpoint_label = sample
+    if len(overpoint_label) > 50:
+        # Don't label if it's too crowded.
+        overpoint_label = None
     points = zip(X, Y)
     graph = graphlib.scatter(
         points, color=color, shape=pch, error_bar=error_bar, point_size=1,
-        onpoint_label=onpoint_label, overpoint_label=sample,
+        onpoint_label=onpoint_label, overpoint_label=overpoint_label,
         ylim=(0, 1.02), 
         xtick=xtick, xtick_label=xtick_label,
         ytick=ytick, ytick_label=ytick_label, tick_size=1, 

@@ -248,7 +248,7 @@ def var(X, byrow=1):
 def safe_var_list(X):
     assert len(X) > 0
     X = [x for x in X if x is not None]
-    if not X:
+    if len(X) <= 1:
         return 0
     return var_list(X)
 
@@ -602,7 +602,10 @@ def safe_norm_mv_list(X, M=0, V=1):
     for i in range(len(X)):
         if X[i] is None:
             continue
-        X_norm[i] = (X[i]-M_0)*math.sqrt(V/V_0)+M
+        if abs(V_0) < 1E-100:
+            X_norm[i] = M
+        else:
+            X_norm[i] = (X[i]-M_0)*math.sqrt(V/V_0)+M
     return X_norm
 
 def safe_norm_mv_matrix(X, M=0, V=1, byrow=1):
