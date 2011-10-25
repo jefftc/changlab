@@ -913,7 +913,7 @@ def scatter(*args, **keywds):
     assert len(args) == 1, "Specify points"
     points, = args
     color = keywds.get("color", None)
-    shape = keywds.get("spahe", None)
+    shape = keywds.get("shape", None)
     shadow = keywds.get("shadow", None)
     onpoint_label = keywds.get("onpoint_label", None)
     onpoint_label_color = keywds.get("onpoint_label_color", None)
@@ -1728,6 +1728,7 @@ def _overlaps(obj1, obj2):
     return _overlaps_3d(obj1, obj2)
 
 def _perc_overlap(obj1, obj2):
+    # Can rewrite this in C for a 10% speedup for pybinreg.py.
     x1, y1, z1, w1, h1, d1 = obj1
     x2, y2, z2, w2, h2, d2 = obj2
     area1 = w1*h1*d1

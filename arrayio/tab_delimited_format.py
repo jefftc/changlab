@@ -373,14 +373,20 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     X = Matrix.add_synonyms(X, synonyms)
     return X
 
+CLEAN_RE = None
+CLEAN_DISALLOWED = None
 def _clean(s, disallowed=None):
     # Make sure there are no disallowed characters in the string s.
+    global CLEAN_RE
+    global CLEAN_DISALLOWED
+    
     import re
 
     disallowed = disallowed or "\r\n\t"
-
-    x = re.subn("[%s]" % disallowed, " ", s)
-    s, count = x
+    if CLEAN_RE is None or CLEAN_DISALLOWED != disallowed:
+        CLEAN_RE = re.compile("[%s]" % disallowed)
+        CLEAN_DISALLOWED = disallowed
+    s, count = CLEAN_RE.subn(" ", s)
     s = s.strip()
     return s
 
@@ -390,6 +396,7 @@ def _clean_many(l, disallowed=None):
     
 def write(X, handle):
     from genomicode import filelib
+    from genomicode import iolib
 
     assert is_matrix(X)
     if type(handle) is type(""):
@@ -398,33 +405,39 @@ def write(X, handle):
     row_names = X.row_names()
     col_names = X.col_names()
 
+    M_out = []  # Matrix to write out.
+
     # Print out the header row if there are row headers or sample
     # names.
     if row_names:
         header = row_names
         if SAMPLE_NAME in col_names:
             header = header + X.col_names(SAMPLE_NAME)
-        header = _clean_many(header)
-        print >>handle, "\t".join(header)
+        M_out.append(header)
+        #header = _clean_many(header)
+        #print >>handle, "\t".join(header)
 
     # Print out the column annotations.
     for header in col_names:
         if header == SAMPLE_NAME:
             continue
         x = [header] + [""]*(len(row_names)-1) + X.col_names(header)
-        x = _clean_many(map(str, x))
-        print >>handle, "\t".join(x)
+        M_out.append(x)
+        #x = _clean_many(map(str, x))
+        #print >>handle, "\t".join(x)
 
     # Print out the row ids and data.
     nrow, ncol = X.dim()
     M = X.slice()
+    header2rownames = {}
+    for header in row_names:
+        header2rownames[header] = X.row_names(header)
     for i in range(nrow):
-        names = [X.row_names(header)[i] for header in row_names]
+        #names = [X.row_names(header)[i] for header in row_names]
+        names = [header2rownames[header][i] for header in row_names]
         # M[i] might be tuples.
         values = list(M[i])
-        for j in range(len(values)):
-            if values[j] is None:
-                values[j] = ""
         x = names + values
-        x = _clean_many(map(str, x))
-        print >>handle, "\t".join(x)
+        M_out.append(x)
+    iolib.cleanwrite(M_out, handle)
+

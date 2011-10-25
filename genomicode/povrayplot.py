@@ -20,8 +20,7 @@ get_text_size
 write
 
 """
-# _make_finish
-# _make_pigment
+# _format_appearance
 # _coord2pr
 # _position_camera
 # _declare_fontfile
@@ -59,8 +58,8 @@ def image(width, height, depth, make_3d):
 def box(image, coord, extent, color, shadow=False, finish=None):
     # coord is (x, y, z).  extent is (width, height, depth).
     import povray as pr
-    finish = _make_finish(finish)
-    pigment = _make_pigment(color, finish)
+    x = _format_appearance(color, finish)
+    finish, pigment, interior = x
     w = image.handle.write
     coord1 = _coord2pr(image, coord)
     x, y, z = coord1
@@ -75,6 +74,7 @@ def box(image, coord, extent, color, shadow=False, finish=None):
         pr.vector(*coord1), pr.vector(*coord2),
         pigment,
         finish,
+        interior,
         ns,
         )))
     w(pr.object_(name))
@@ -90,8 +90,8 @@ def sphere(image, coord, radius, color, shadow=False, shape=None,
     import povray as pr
     import graphconst as gc
 
-    finish = _make_finish(finish)
-    pigment = _make_pigment(color, finish)
+    x = _format_appearance(color, finish)
+    finish, pigment, interior = x
     coord = _coord2pr(image, coord)
 
     ns = None
@@ -104,17 +104,17 @@ def sphere(image, coord, radius, color, shadow=False, shape=None,
     if shape in [gc.DEFAULT, gc.CIRCLE]:
         point = pr.superellipsoid(
             1.0, 0.50, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pigment, ns, finish)
+            pr.translate(*coord), pigment, ns, finish, interior)
     # Square
     elif shape == gc.SQUARE:
         point = pr.superellipsoid(
             0.25, 0.25, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pigment, ns, finish)
+            pr.translate(*coord), pigment, ns, finish, interior)
     # Diamond
     elif shape == gc.DIAMOND:
         point = pr.superellipsoid(
             1.75, 0.50, pr.scale(radius, radius, radius),
-            pr.translate(*coord), pigment, ns, finish)
+            pr.translate(*coord), pigment, ns, finish, interior)
     else:
         raise AssertionError, "Unknown point: %s" % (shape)
     
@@ -135,8 +135,8 @@ def cylinder(
     # in the direction determined by extent.  blob can be True or a
     # blob strength.
     import povray as pr
-    finish = _make_finish(finish)
-    pigment = _make_pigment(color, finish)
+    x = _format_appearance(color, finish)
+    finish, pigment, interior = x
     if blob is True:
         blob = 1.0
         
@@ -151,7 +151,7 @@ def cylinder(
         ns = pr.no_shadow()
     w(pr.declare(name, pr.cylinder(
         pr.vector(*coord1), pr.vector(*coord2), radius,
-        pigment, finish, ns, 
+        pigment, finish, interior, ns, 
         )))
     w(pr.object_(name))
 
@@ -162,7 +162,7 @@ def cylinder(
         w(pr._fmt_complex(
             "blob", pr.blob_threshold(0.01), pr.blob_cylinder(
             pr.vector(*coord1), pr.vector(*coord2), radius, blob),
-            pigment, finish, ns, 
+            pigment, finish, interior, ns, 
             ))
     w("\n")
 
@@ -190,8 +190,8 @@ def text(
         background = (1, 1, 1)
     assert not background or len(background) == 3
 
-    finish = _make_finish(finish)
-    pigment = _make_pigment(color, finish)
+    x = _format_appearance(color, finish)
+    pr_finish, pr_pigment, pr_interior = x
 
     w = image.handle.write
 
@@ -219,8 +219,9 @@ def text(
         ns = pr.no_shadow()
     w(pr.declare(name, pr.text(
         "FONTFILE", text, depth, 0,
-        pigment,
-        finish,
+        pr_pigment,
+        pr_finish,
+        pr_interior,
         ns,
         rotate,
         pr.scale(fontsize, fontsize, 1),
@@ -287,8 +288,8 @@ def text(
     if not background:
         return
     #background = (1, 0, 0)
-    finish = _make_finish(gc.TRANSPARENT)
-    pigment = _make_pigment(background, gc.TRANSPARENT)
+    x = _format_appearance(background, gc.TRANSPARENT)
+    pr_finish, pr_pigment, pr_interior = x
     BACKGROUND_DEPTH = 0.2*depth
     coord1 = (
         "min_extent(%s).x" % name, "min_extent(%s).y" % name, pr_z)
@@ -297,7 +298,7 @@ def text(
         pr_z-BACKGROUND_DEPTH)
     w(pr.box(
         pr.vector(*coord1), pr.vector(*coord2),
-        pigment, finish, pr.no_shadow()))
+        pr_pigment, pr_finish, pr_interior, pr.no_shadow()))
     w("\n")
     
     
@@ -390,17 +391,20 @@ def write(image, handle, povray_bin=None):
             os.unlink(out_file)
     return output
 
-def _make_finish(finish):
+def _format_appearance(color, finish):
     import povray as pr
     import graphconst as gc
 
+    pr_finish = pr_pigment = pr_interior = ""
+
+    pr_pigment = pr.pigment(pr.color(*color))
+    
     if finish is None:
         finish = gc.SIMPLE
-        
     if finish == gc.SIMPLE:
         # Ambient of 0.8 and diffuse 0.3 is too dark.  At default
         # camera position, background is gray.
-        x = pr.finish(
+        pr_finish = pr.finish(
             pr.ambient(0.95),
             pr.diffuse(0.4),
             )
@@ -416,7 +420,7 @@ def _make_finish(finish):
         # F_MetalB.  Looks pretty good.
         # F_MetalC.  Colors washed out.  Bright.
         # F_MetalE.  Too washed out.
-        x = pr.finish(
+        pr_finish = pr.finish(
             pr.ambient(0.45),
             #pr.ambient(0.30),
             pr.brilliance(2),
@@ -427,41 +431,33 @@ def _make_finish(finish):
             pr.reflection(0.1),
             )
     elif finish == gc.ROUGH:
-        x = pr.finish(
+        pr_finish = pr.finish(
             pr.ambient(0.7),
             pr.diffuse(0.3),
             pr.crand(0.1),
             )
     elif finish == gc.SHINY:
         # Doesn't work very well for graphs.
-        x = pr.finish(
+        pr_finish = pr.finish(
             pr.ambient(0.7),
             pr.diffuse(0.1),
             pr.reflection(0.3),
-            pr.ior(1.5),
+            #pr.ior(1.5),
             )
+        pr_interior = pr.interior(pr.ior(1.5))
     elif finish == gc.TRANSPARENT:
-        x = pr.finish(
-            pr.refraction(1),
-            pr.ior(1.3),
+        pr_finish = pr.finish(
+            #pr.refraction(1),
+            #pr.ior(1.3),
             pr.ambient(0.8),
             pr.diffuse(0.3),
             )
+        pr_pigment = pr.pigment(pr.color(*color, filter=0.9))
+        pr_interior = pr.interior(pr.ior(1.3))
     else:
         raise AssertionError, "Unknown finish: %s" % finish
-    return x
+    return pr_finish, pr_pigment, pr_interior
 
-def _make_pigment(color, finish):
-    import povray as pr
-    import graphconst as gc
-
-    if finish is None:
-        finish = gc.SIMPLE
-    if finish == gc.TRANSPARENT:
-        x = pr.pigment(pr.color(*color, filter=0.9))
-    else:
-        x = pr.pigment(pr.color(*color))
-    return x
 
 # Finishes:
 # DIFF  CRAND  AMB  REFR  IOR  PHO  PHS  DESCRIPTION        USES

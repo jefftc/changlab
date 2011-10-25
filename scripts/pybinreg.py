@@ -722,13 +722,16 @@ def summarize_dataset_heatmap(
         array_label=True, 
         python=python, arrayplot=arrayplot, cluster=cluster, libpath=libpath)
 
-def summarize_predictions(povray, file_layout):
+def summarize_predictions(povray, label_samples, draw_error_bars, file_layout):
     # May not plot anything if there are problems with the BinReg
     # output (e.g. all predictions are nan).
     import math
     from genomicode import filelib
     from genomicode import graphlib
     from genomicode import graphconst
+
+    assert label_samples in ["yes", "no", "auto"]
+    assert draw_error_bars in ["yes", "no", "auto"]
     
     assert os.path.exists(file_layout.PROBABILITIES)
 
@@ -787,6 +790,7 @@ def summarize_predictions(povray, file_layout):
         color.append(col)
     assert X, "BinReg predictions didn't work.  Nothing to plot."
     assert len(X) == len(Y)
+
     xtick = graphlib.place_ticks(min(X), max(X))
     xtick_label = True
     ytick = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -797,9 +801,12 @@ def summarize_predictions(povray, file_layout):
         os.path.split(graphlib.__file__)[0], "Verdana Bold.ttf")
     onpoint_label = None   # Don't display labels.
     overpoint_label = sample
-    if len(overpoint_label) > 50:
+    if label_samples == "no" or (
+        label_samples == "auto" and len(overpoint_label) > 50):
         # Don't label if it's too crowded.
         overpoint_label = None
+    if draw_error_bars == "no":
+        error_bar = None
     points = zip(X, Y)
     graph = graphlib.scatter(
         points, color=color, shape=pch, error_bar=error_bar, point_size=1,
@@ -1165,14 +1172,27 @@ def main():
         "-z", "", dest="archive", action="store_true", default=None,
         help="Archive the raw output.  Helpful for GenePattern.")
     parser.add_option(
-        "", "--noplots", dest="noplots", action="store_true", default=None,
-        help="Do not make any plots.")
-    parser.add_option(
         "", "--yaml", dest="yaml", default=None,
         help="Configure the analysis from a YAML-formatted file.  "
         "Command line parameters takes precedence over the ones from "
         "the file.")
     
+    group = OptionGroup(parser, "Plotting")
+    group.add_option(
+        "", "--noplots", dest="noplots", action="store_true", default=None,
+        help="Do not make any plots.")
+    group.add_option(
+        "", "--label_samples", dest="label_samples", type="choice",
+        choices=["yes", "no", "auto"], default="auto",
+        help="Label the samples in the scatter plot.  "
+        "Must be 'yes', 'no', or 'auto' (default).")
+    group.add_option(
+        "", "--draw_error_bars", dest="draw_error_bars", type="choice",
+        choices=["yes", "no", "auto"], default="auto",
+        help="Draw the error bars in the scatter plot.  "
+        "Must be 'yes', 'no', or 'auto' (default).")
+    parser.add_option_group(group)
+
     group = OptionGroup(parser, "Signature")
     group.add_option(
         "-g", "--genes", dest="genes", default=None,
@@ -1303,7 +1323,10 @@ def main():
     details.num_analyses = num_analyses
 
     # To debug creation of scatterplot.
-    #summarize_predictions(options.povray, file_layout); return
+    #summarize_predictions(
+    #    options.povray, options.label_samples,
+    #    options.draw_error_bars, file_layout)
+    #return
 
     if pybr_params.strip_affx:
         x = strip_affx_control_probes(train0, train1, test)
@@ -1412,7 +1435,9 @@ def main():
             summarize_dataset_heatmap(
                 options.python, options.arrayplot, options.cluster,
                 file_layout, options.libpath)
-            summarize_predictions(options.povray, file_layout)
+            summarize_predictions(
+                options.povray, options.label_samples,
+                options.draw_error_bars, file_layout)
 
         # Make a report for this analysis.
         summarize_report(

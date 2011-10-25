@@ -43,6 +43,28 @@ def write_tdf(data, outhandle):
         x = map(str, x)
         print >>outhandle, "\t".join(x)
 
+CLEAN_RE = None
+CLEAN_DISALLOWED = None
+def cleanwrite(data, outhandle, delim="\t"):
+    global CLEAN_RE
+    global CLEAN_DISALLOWED
+    import re
+
+    disallowed = "\r\n" + delim
+    if CLEAN_RE is None or CLEAN_DISALLOWED != disallowed:
+        CLEAN_RE = re.compile("[%s]" % disallowed)
+        CLEAN_DISALLOWED = disallowed
+
+    for x in data:
+        x = x[:]
+        for i in range(len(x)):
+            if x[i] is None:
+                x[i] = ""
+        x = map(str, x)
+        x = [CLEAN_RE.subn(" ", x)[0].strip() for x in x]
+        x = delim.join(x)
+        print >>outhandle, x
+
 def strip_each(L):
     return [x.strip() for x in L]
 
@@ -50,6 +72,7 @@ def strip_each(L):
 # Try and load C implementations of functions.  If I can't,
 # then just ignore and use the pure python implementations.
 try:
+    #raise ImportError
     import ciolib
 except ImportError:
     pass

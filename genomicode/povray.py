@@ -355,12 +355,11 @@ def finish(*items):
     # roughness VALUE
     # metallic
     # reflection VALUE
-    # refraction VALUE
-    # ior        VALUE
+    # refraction VALUE    NOT NECESSARY ANYMORE
+    # ior        VALUE    OBSOLETE.  NOW IN INTERIOR.
     # more...
     #
     # Notes:
-    
     # o ambient controls the amount of ambient light that is produced
     #   by the object.  0.0 means object will be black if not directly
     #   lighted.  Default 0.1.
@@ -391,11 +390,17 @@ def finish(*items):
     #   metallic surface.
     # o reflection indicates how reflective the object is.  Ranges
     #   from 0-1.  Default 0.15.
+    return _fmt_complex("finish", *items)
+
+def interior(*items):
+    # ior        VALUE
+    #
+    # Notes:
     # o refraction is either 0 (disable) or 1 (enable).  For
     #   transparent objects, will refract the light going through it.
     # o ior is the index of refraction.  Empty space is 1.0 (default).
     #   1.000292 is air, 1.33 water, and 1.5 glass.
-    return _fmt_complex("finish", *items)
+    return _fmt_complex("interior", *items)
 
 ambient_light = _fmt_color_fn("ambient_light")
 

@@ -665,7 +665,9 @@ def _hash_geneid(id):
     return id.strip().lower()
 
 def _hash_many_geneids(ids):
-    return [_hash_geneid(x) for x in ids]
+    #return [_hash_geneid(x) for x in ids]
+    # Optimization: do this without a function call.
+    return [x.strip().lower() for x in ids]
 
 def _hash_sampleid(id):
     # Hash the sample names so that small differences are ignored.  R

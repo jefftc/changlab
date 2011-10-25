@@ -145,7 +145,18 @@ def log_item(X, base=None, safe=0):
     return math.log(X)/den
 
 def log_list(X, base=None, safe=0):
-    return [log_item(x, base=base, safe=safe) for x in X]
+    #return [log_item(x, base=base, safe=safe) for x in X]
+    # Optimization: write this directly into here.
+    den = 1
+    if base is not None:
+        den = math.log(base)
+    Y = [None] * len(X)
+    for i in range(len(X)):
+        if safe and X[i] <= 0:
+            Y[i] = 0.0
+        else:
+            Y[i] = math.log(X[i])/den
+    return Y
 
 def log_matrix(X, base=None, safe=0):
     return [log_list(x, base=base, safe=safe) for x in X]
