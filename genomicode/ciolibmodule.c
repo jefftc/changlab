@@ -340,7 +340,11 @@ static PyObject *ciolib_cleanwrite(
 	    /* New reference. */
 	    if(!(py_item = PySequence_GetItem(py_data_row, c)))
 		goto cleanwrite_cleanup;
-	    if(PyString_Check(py_item)) {
+	    if(py_item == Py_None) {
+		c_str = buffer;
+		buffer[0] = 0;
+		length = 0;
+	    } else if(PyString_Check(py_item)) {
 		if(PyString_AsStringAndSize(py_item, &c_str, &length) == -1)
 		    goto cleanwrite_cleanup;
 	    } else {
