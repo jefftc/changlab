@@ -13,6 +13,7 @@ def find_annotation_file(chipname):
         "Mouse430A_2" : "Mouse430A_2_annot.csv.gz",
         "RAE230A" : "RAE230A.na26.annot.csv.gz",
         "HT_HG-U133A" : "HT_HG-U133A.na31.annot.csv.gz",
+        "HG_U95Av2" : "HG_U95Av2_annot.csv.gz",
         }
     assert chipname in chipname2annotfile, "I have no annotations for %s" % \
            chipname

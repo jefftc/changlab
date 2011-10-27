@@ -128,15 +128,27 @@ static char ciolib_split_tdf__doc__[] =
 "XXX\n";
 
 static PyObject *ciolib_split_tdf(
-  PyObject *self, PyObject *args)
+    PyObject *self, PyObject *args, PyObject *keywds)
 {
     char *string;
-    int start, end;
+    PyObject *py_strip;
+    int strip;
+    int start, end, s, e;
     PyObject *py_matrix, *py_row, *py_item;
 
+    static char *kwlist[] = {"data", "strip", NULL};
+
     py_matrix = py_row = py_item = NULL;
-    if(!PyArg_ParseTuple(args, "s", &string))
+    py_strip = NULL;
+    strip = 0;
+    if(!PyArg_ParseTupleAndKeywords(args, keywds, "s|O", kwlist,
+				    &string, &py_strip))
 	return NULL;
+    if(py_strip != NULL) {
+	if((strip = PyObject_IsTrue(py_strip)) == -1)
+	    return NULL;
+    }
+
     if(!(py_matrix = PyList_New(0)))
 	return NULL;
 
@@ -148,8 +160,17 @@ static PyObject *ciolib_split_tdf(
 	      string[end] != '\t')
 	    end++;
 
+	s = start;
+	e = end;
+	if(strip) {
+	    while(s < e && isspace(string[s]))
+		s++;
+	    while(e > s && isspace(string[e-1]))
+		e--;
+	}
+
 	/* Create the new word. */
-	if((!(py_item=PyString_FromStringAndSize(&string[start], end-start))))
+	if((!(py_item=PyString_FromStringAndSize(&string[s], e-s))))
 	    goto split_tdf_cleanup;
 
 	/* Insert the new word into a row, creating it if necessary. */
@@ -420,7 +441,8 @@ static PyObject *ciolib_cleanwrite(
 /* Module definition stuff */
 
 static PyMethodDef CIOlibMethods[] = {
-  {"split_tdf", ciolib_split_tdf, METH_VARARGS, ciolib_split_tdf__doc__},
+  {"split_tdf", (PyCFunction)ciolib_split_tdf, METH_VARARGS|METH_KEYWORDS, 
+   ciolib_split_tdf__doc__},
   {"strip_each", ciolib_strip_each, METH_VARARGS, ciolib_strip_each__doc__},
   {"cleanwrite", (PyCFunction)ciolib_cleanwrite, METH_VARARGS|METH_KEYWORDS, 
    ciolib_cleanwrite__doc__},

@@ -14,6 +14,8 @@ LOG.SIGNAL <- as.numeric(argv[7])
 FILTER.25 <- as.numeric(argv[8])
 FILTER.50 <- as.numeric(argv[9])
 
+MAS5.BATCH.SIZE <- 50
+
 ##DATA.DIR <- "../geo/data/datasets/GSE5460.CEL"
 ##ANNOTFILE <- "data/affymetrix/HG-U133_Plus_2_annot.csv.gz"
 ##FILESTEM <- "GSE5460"
@@ -110,10 +112,9 @@ print(sprintf("Normalizing %d files with %s.", length(fullpaths), ALGORITHM))
 if(ALGORITHM.U == "RMA") {
   data.norm <- justRMA(filenames=fullpaths, compress=COMPRESSED)
 } else if(ALGORITHM.U == "MAS5") {
-  BATCH.SIZE <- 20
   data.all <- c()
-  for(i1 in seq(1, length(fullpaths), BATCH.SIZE)) {
-    i2 <- min(i1+BATCH.SIZE-1, length(fullpaths))
+  for(i1 in seq(1, length(fullpaths), MAS5.BATCH.SIZE)) {
+    i2 <- min(i1+MAS5.BATCH.SIZE-1, length(fullpaths))
     print(c(i1, i2))
     x <- ReadAffy(filenames=(fullpaths[i1:i2]))
     x.mas5 <- mas5(x, normalize=FALSE)

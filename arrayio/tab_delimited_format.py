@@ -184,27 +184,33 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     if type(handle) is type(""):
         filename = handle
     handle = filelib.openfh(handle)
-    data = iolib.split_tdf(handle.read())
+    data = iolib.split_tdf(handle.read(), strip=True)
 
     # Sometimes people insert blank rows or columns inside the matrix.
     # Remove all of those.
     # Delete blank rows.
     i = 0
     while i < len(data):
-        x = [x for x in data[i] if x]
-        if x:
-            # There's data in this row.  Ignore it.
-            i += 1
+        for x in data[i]:
+            if x:
+                # There's data in this row.  Ignore it.
+                i += 1
+                break
         else:
             del data[i]
+
+    # Make sure each line has the same number of columns.
+    num_rows = len(data)
+    num_cols_all = [len(x) for x in data]
 
     # R creates headers that contain one fewer columns than the rest
     # of the matrix, if someone requests to write out the row names.
     # Detect this case and insert a dummy header.
     all_one_fewer = True
     for i in range(1, len(data)):
-        if len(data[i]) != len(data[0])+1:
+        if num_cols_all[i] != num_cols_all[0]+1:
             all_one_fewer = False
+            break
     # This can happen either if the length of the first row is one
     # less than every other row of the matrix, or if matrix has
     # only 1 row.  Only add a fake header if the matrix has more
@@ -212,17 +218,17 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     if all_one_fewer and len(data) > 1:
         header_row = data[0]
         header_row.insert("ROW_NAMES", 0)
+        num_cols_all[0] += 1
     
     # Make sure each line has the same number of columns.
-    num_rows = len(data)
-    num_cols = len(data[0])
-    for i, cols in enumerate(data):
+    num_cols = num_cols_all[0]
+    for i, nc in enumerate(num_cols_all):
         f = ""
         if filename:
             f = " [%s]" % filename
         error_msg = "Header%s has %d columns but line %d has %d." % (
-            f, num_cols, i+1, len(cols))
-        assert len(cols) == num_cols, error_msg
+            f, num_cols, i+1, nc)
+        assert nc == num_cols, error_msg
     #print num_rows, num_cols; sys.exit(0)
 
     # Sometimes, a user might cluster a matrix with an empty column
@@ -230,7 +236,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # empty column, except for a "1.000000" for the EWEIGHT row
     # header.  Try to detect this case and remove the "1.000000".
     last_col = [x[-1] for x in data]
-    non_empty = [x for x in last_col if x.strip()]
+    #non_empty = [x for x in last_col if x.strip()]
+    non_empty = [x for x in last_col if x]
     value = None
     if len(non_empty) == 1:
         value = jmath.safe_float(non_empty[0])
@@ -248,13 +255,12 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     i = 0
     while data and data[0] and i < len(data[0]):
         # Assumes that every row is the same length.
-        x = [x[i] for x in data]
-        x = [x for x in x if x]
-        if x:
+        for row in data:
             # There's data in this column.  Ignore it.
-            i += 1
+            if row[i]:
+                i += 1
+                break
         else:
-            # Delete this column.
             [x.pop(i) for x in data]
 
     if not data:
@@ -284,7 +290,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
             ndigits = int(math.ceil(math.log(hcols, 10)))
             row_order = ["ANNOT%*d" % (ndigits, i+1) for i in range(hcols)]
         # Strip extraneous whitespace from the header names.
-        row_order = [x.strip() for x in row_order]
+        # Not necessary.  Handled now in split_tdf.
+        #row_order = [x.strip() for x in row_order]
         
         # Sometimes the format detection can go wrong and a GCT file
         # will slip through to here.  If this occurs, a "duplicate
@@ -307,7 +314,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
             names = data[i][hcols:]
             assert header not in col_names, "duplicate name: %s" % header
             # Strip extraneous whitespace from the header names.
-            header = header.strip()
+            # Not necessary.  Handled now in split_tdf.
+            #header = header.strip()
             col_order.append(header)
             col_names[header] = names
 

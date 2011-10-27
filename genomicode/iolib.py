@@ -10,10 +10,15 @@ strip_each
 """
 import os, sys
 
-def split_tdf(data):
+def split_tdf(data, strip=False):
     # Bug: will skip blank lines.
-    return [x.rstrip("\r\n").split("\t") for x in data.split("\n")
-            if x.strip()]
+    matrix = [
+        x.rstrip("\r\n").split("\t") for x in data.split("\n") if x.strip()]
+    if strip:
+        for i in range(len(matrix)):
+            for j in range(len(matrix[i])):
+                matrix[i][j] = matrix[i][j].strip()
+    return matrix
 
 def read_tdf(handle, num_header_rows, num_header_cols):
     # Format:
