@@ -1,7 +1,7 @@
 """
 
 Functions:
-fix_environ_path
+fix_environ_path        PATH messed up within GenePattern.  Fix this.
 
 format_parameter_info   Write a list of ParameterInfo objects to GP format.
 parse_parameter_info

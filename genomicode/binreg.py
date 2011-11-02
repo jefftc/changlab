@@ -549,31 +549,40 @@ def are_cols_aligned(*matrices):
             return False
     return True
 
-def read_matrices(filenames):
+def read_matrices(filenames, cache=None):
     """Read a list of matrices and align them.  filenames is a list of
     the matrix files to read.  Returns a tuple where the first element
     is a list of the matrices read, and the second is the aligned
     matrix.
 
+    cache is an optional dictionary of filename to matrix.  This can
+    be used to prevent re-reading of matrices.
+
     """
+    import copy
     import arrayio
     import filelib
 
     for filename in filenames:
-        assert filelib.exists(filename)
+        assert filelib.exists(filename), "File not found: %s" % filename
 
     # Load the files.
     DATA = []
     for filename in filenames:
-        try:
-            x = arrayio.read(filename)
-        except (SystemError, KeyboardInterrupt, MemoryError), x:
-            raise
-        except Exception, x:
-            # Can diagnose which file failed here.
-            # raise
-            raise Exception, "Problem reading %s: %s" % (
-                repr(filename), str(x))
+        if cache is not None and filename in cache:
+            x = copy.deepcopy(cache[filename])
+        else:
+            try:
+                x = arrayio.read(filename)
+            except (SystemError, KeyboardInterrupt, MemoryError), x:
+                raise
+            except Exception, x:
+                # Can diagnose which file failed here.
+                # raise
+                raise Exception, "Problem reading %s: %s" % (
+                    repr(filename), str(x))
+            if cache is not None:
+                cache[filename] = x
         DATA.append(x)
 
     for d, filename in zip(DATA, filenames):

@@ -113,11 +113,12 @@ def TD(s, colspan=None, align=None, valign=None):
         ]
     return _join_sme("TD", s, attrs=attrs, join="\n")
 
-def A(s, href=None):
+def A(s, href=None, name=None):
     attrs = [
         ("HREF", href),
+        ("NAME", name),
         ]
-    return _join_sme("A", s, attrs=attrs, join="\n")
+    return _join_sme("A", s, attrs=attrs, join="")
 
 def IMG(height=None, src=None):
     attrs = [

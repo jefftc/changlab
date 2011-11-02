@@ -18,6 +18,9 @@ import sys, os
 # summarize_heatmap
 # summarize_signatures
 # summarize_report
+# 
+# pretty_runtime
+# pretty_hostname
 #
 # _hash_name
 
@@ -739,27 +742,11 @@ def summarize_report(
     w("The raw values from this plot are available as a "
       'PCL-formatted file: %s' % htmllib.A(prob_file, href=prob_file))
 
-    # Format the current time.
+    # Write out the footer.
     end_time = time.time()
     time_str = parselib.pretty_date(start_time)
-    x = int(end_time-start_time)
-    num_min = x / 60
-    num_secs = x % 60
-    if num_min == 0:
-        run_time = "%ss" % parselib.pretty_int(num_secs)
-    else:
-        run_time = "%sm %ss" % (parselib.pretty_int(num_min), num_secs)
-
-    # Get the hostname.
-    cmd = "hostname"
-    p = subprocess.Popen(
-        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
-    wh, r = p.stdin, p.stdout
-    wh.close()
-    hostname = r.read().strip()
-    assert hostname, "I could not get the hostname."
-
+    run_time = pretty_runtime(start_time, end_time)
+    hostname = pretty_hostname()
     w(htmllib.P())
     w(htmllib.HR())
     w(htmllib.EM(
@@ -773,6 +760,39 @@ def summarize_report(
     outfile = file_layout.REPORT
     open(outfile, 'w').write(x)
 
+def pretty_runtime(start_time, end_time):
+    from genomicode import parselib
+    
+    x = end_time-start_time
+    fracs = x - int(x)
+    fracs = int(fracs * 1000)
+    x = int(x)
+    num_hours = x / 3600
+    x = x % 3600
+    num_secs = x % 60
+    num_mins = x / 60
+    if num_hours == 0 and num_mins == 0:
+        run_time = "%ss" % parselib.pretty_int(num_secs)
+    elif num_hours == 0:
+        run_time = "%02d:%02d.%03d" % (num_mins, num_secs, fracs)
+    else:
+        run_time = "%02d:%02d:%02d.%03d" % (
+            num_hours, num_mins, num_secs, fracs)
+    return run_time
+
+def pretty_hostname():
+    import subprocess
+    
+    cmd = "hostname"
+    p = subprocess.Popen(
+        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+    wh, r = p.stdin, p.stdout
+    wh.close()
+    hostname = r.read().strip()
+    assert hostname, "I could not get the hostname."
+    return hostname
+    
 def _hash_name(name):
     import re
     # Fix the header to be a python variable.

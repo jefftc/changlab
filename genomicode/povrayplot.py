@@ -389,6 +389,7 @@ def write(image, handle, povray_bin=None):
             os.unlink(pov_file)
         if out_file and os.path.exists(out_file):
             os.unlink(out_file)
+    output = output.replace("\r", "\n")
     return output
 
 def _format_appearance(color, finish):

@@ -182,6 +182,8 @@ def povray(
     w, r = p.stdin, p.stdout
     #w, r = os.popen4(cmd)
     w.close()
+    # POV-RAY generates "\r" characters.  Might have to replace with "\n".
+    # output = output.replace("\r", "\n")
     return r
 
 def include(file_inc):
