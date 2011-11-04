@@ -124,6 +124,7 @@ def main():
     if options.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
 
+    cluster = None
     if options.cluster and options.cluster_file:
         parser.error("Cannot specify clusters and a cluster file.")
     if options.cluster:
@@ -144,7 +145,9 @@ def main():
     principal_components = pcalib.svd_project_cols(MATRIX._X, K)
     X = [x[0] for x in principal_components]
     Y = [x[1] for x in principal_components]
-    color = pcalib.choose_colors(cluster)
+    color = None
+    if cluster is not None:
+        color = pcalib.choose_colors(cluster)
     LABEL = None
     if options.label:
         LABEL = MATRIX.col_names(arrayio.COL_ID)

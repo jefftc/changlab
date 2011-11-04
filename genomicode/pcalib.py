@@ -2,6 +2,7 @@
 
 Functions:
 svd_project_cols
+choose_colors
 plot_scatter
 
 select_genes_mv
