@@ -604,6 +604,8 @@ def list_type(L):
     return t
 
 
+# synonyms should be part of the Matrix class.  Having it separate
+# makes it too hard to create Matrices.
 class _SynonymDecorator:
     # Members:
     # _matrix
@@ -613,7 +615,7 @@ class _SynonymDecorator:
         col_names = {}.fromkeys(matrix.col_names())
 
         for synonym, name in synonyms.iteritems():
-            assert name in row_names or name in col_names
+            assert name in row_names or name in col_names, "unknown: %s" % name
         self.__dict__["_matrix"] = matrix
         self.__dict__["_synonyms"] = synonyms.copy()
         self.__dict__["_method"] = None

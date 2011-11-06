@@ -26,6 +26,9 @@ import os, sys
 # 
 # write_dataset
 # write_files_for_binreg
+# run_analysis
+# _run_binreg_standard
+# _run_binreg_normref
 # 
 # summarize_model
 # summarize_parameters
@@ -607,6 +610,7 @@ def make_file_layout(outpath, analysis_path):
             File.BR_DESCRIPTION("description.txt"),
             File.BR_EXPRESSION("expression.txt"),
             File.BR_COEFFICIENTS("genecoefficients.txt"),
+            File.BR_VALIDATION("validationcases.txt"),
             ),
         Path.ATTIC("attic",
             File.PREDICTIONS_POV("predictions.pov"),
@@ -925,6 +929,158 @@ def write_files_for_binreg(train0, train1, test, file_layout):
     open(file_layout.BR_DESCRIPTION, 'w').write(desc)
     open(file_layout.BR_EXPRESSION, 'w').write(exp)
     
+def run_analysis(analysis, options, train0, train1, test, normref):
+    import time
+
+    start_time = time.time()
+
+    x = "Analyzing with %d genes and %d metagenes." % (
+        analysis.params.genes, analysis.params.metagenes)
+    if analysis.params.metagenes == 1:
+        x = x.replace("metagenes", "metagene")
+    print x
+
+    # Format the parameters and output files for binreg.
+    print "Formatting data for binreg analysis."
+    file_layout = make_file_layout(options.outpath, analysis.subpath)
+    init_paths(file_layout)
+
+    if False and normref:
+        # This gives exactly the same results as the standard
+        # analysis.  Don't bother running it.  It's slower.
+        _run_binreg_normref(
+            analysis, options, file_layout, train0, train1, test, normref)
+    else:
+        _run_binreg_standard(
+            analysis, options, file_layout, train0, train1, test)
+
+    # Generate some files for output.
+    print "Summarizing results."; sys.stdout.flush()
+    summarize_model(file_layout)
+    summarize_parameters(analysis.params, file_layout)
+    summarize_probabilities(train0, train1, test, file_layout)
+    summarize_signature_dataset(file_layout)
+
+    # Make some plots, if desired.
+    if not analysis.params.noplots:
+        summarize_signature_heatmap(
+            options.python, options.arrayplot, options.cluster,
+            file_layout, options.libpath)
+        summarize_dataset_heatmap(
+            options.python, options.arrayplot, options.cluster,
+            file_layout, options.libpath)
+        summarize_predictions(
+            options.povray, analysis.params.label_samples,
+            analysis.params.draw_error_bars, file_layout)
+
+    # Make a report for this analysis.
+    summarize_report(options.outpath, analysis, start_time)
+    sys.stdout.flush()
+
+def _run_binreg_standard(analysis, options, file_layout, train0, train1, test):
+    from genomicode import binreg
+
+    print "Running binreg."; sys.stdout.flush()
+    write_files_for_binreg(train0, train1, test, file_layout)
+    params = analysis.params
+    br_params = binreg.BinregParams(
+        binreg_version=params.binreg_version,
+        cross_validate=int(params.cross_validate),
+        make_plots=0,
+        num_genes=params.genes, num_metagenes=params.metagenes,
+        quantile_normalize=0, shift_scale_normalize=0,
+        num_burnin=params.burnin, num_iterations=params.samples,
+        num_skips=params.skips,
+        credible_interval=params.credible_interval)
+    r = binreg.binreg_raw(
+        file_layout.BR_EXPRESSION, file_layout.BR_DESCRIPTION,
+        1, br_params, matlab=options.matlab,
+        binreg_path=options.binreg_path, outpath=file_layout.BINREG)
+    print r.read()
+    sys.stdout.flush()
+    
+def _run_binreg_normref(
+    analysis, options, file_layout, train0, train1, test, normref):
+    import shutil
+    from genomicode import Matrix
+    from genomicode import binreg
+    from genomicode import filelib
+    import arrayio
+
+    # test must be specified to shiftscale normalize matrices.
+    assert test, "Shift-scale normalization requires a test set."
+    assert train0.ncol() and train1.ncol(), "Training samples missing."
+    assert test.ncol(), "No test samples found."
+    assert normref.ncol(), "No normalization reference samples found."
+    assert_rows_aligned(train0, train1, test, normref)
+
+    print("Running binreg "
+          "using a normalization reference with %d samples." % normref.ncol())
+
+    for j in range(test.ncol()):
+        print "Running binreg on sample %d of %d." % (j+1, test.ncol())
+        sys.stdout.flush()
+
+        # Put the test sample in the context of the normalization reference.
+        X = [None] * test.nrow()
+        for i in range(test.nrow()):
+            X[i] = [test._X[i][j]] + normref._X[i]
+        x = Matrix.InMemoryMatrix(X, row_names=test._row_names)
+        synonyms = { arrayio.ROW_ID : test._synonyms[arrayio.ROW_ID] }
+        test_j = Matrix.add_synonyms(x, synonyms)
+        
+        write_files_for_binreg(train0, train1, test_j, file_layout)
+    
+        params = analysis.params
+        br_params = binreg.BinregParams(
+            binreg_version=params.binreg_version,
+            cross_validate=int(params.cross_validate),
+            make_plots=0,
+            num_genes=params.genes, num_metagenes=params.metagenes,
+            quantile_normalize=0, shift_scale_normalize=0,
+            num_burnin=params.burnin, num_iterations=params.samples,
+            num_skips=params.skips,
+            credible_interval=params.credible_interval)
+        r = binreg.binreg_raw(
+            file_layout.BR_EXPRESSION, file_layout.BR_DESCRIPTION,
+            1, br_params, matlab=options.matlab,
+            binreg_path=options.binreg_path, outpath=file_layout.BINREG)
+        br_output = r.read()
+
+        assert os.path.exists(file_layout.BR_VALIDATION), \
+               "I could not find the validation file."
+        sample_file = "%s.%04d" % (file_layout.BR_VALIDATION, j)
+        shutil.move(file_layout.BR_VALIDATION, sample_file)
+        
+    # Print out last one, so user can see if there are any errors.
+    print br_output
+    sys.stdout.flush()
+
+    # Combine the validation cases file.
+    data = []  # list of (index, type, prob, lower_ci, upper_ci, mgene)
+    for j in range(test.ncol()):
+        sample_file = "%s.%04d" % (file_layout.BR_VALIDATION, j)
+        assert os.path.exists(sample_file)
+        iter = filelib.read_cols(sample_file)
+        x = iter.next()
+        assert len(x) == 6
+        data.append(x)
+    # Fix the indexes.
+    assert data and len(data) == test.ncol()
+    first_index = int(data[0][0])
+    for j in range(test.ncol()):
+        x = data[j]
+        x[0] = first_index + j
+        data[j] = x
+    # Write out the new validationcases file.
+    assert not os.path.exists(file_layout.BR_VALIDATION)
+    handle = open(file_layout.BR_VALIDATION, 'w')
+    for x in data:
+        print >>handle, "\t".join(map(str, x))
+    handle.close()
+        
+    
+
 def summarize_model(file_layout):
     from genomicode import filelib
     
@@ -1618,67 +1774,6 @@ def _make_footer(start_time, end_time):
 ##     w("preferences.dat       BinReg preference file.\n")
 ##     handle.close()
 
-def run_one_analysis(analysis, options, train0, train1, test):
-    import time
-    from genomicode import binreg
-
-    start_time = time.time()
-
-    params = analysis.params
-    x = "Analyzing with %d genes and %d metagenes." % (
-        params.genes, params.metagenes)
-    if params.metagenes == 1:
-        x = x.replace("metagenes", "metagene")
-    print x
-
-    # Format the parameters and output files for binreg.
-    print "Formatting data for binreg analysis."
-    file_layout = make_file_layout(options.outpath, analysis.subpath)
-    init_paths(file_layout)
-    write_files_for_binreg(train0, train1, test, file_layout)
-    br_params = binreg.BinregParams(
-        binreg_version=params.binreg_version,
-        cross_validate=int(params.cross_validate),
-        make_plots=0,
-        num_genes=params.genes, num_metagenes=params.metagenes,
-        quantile_normalize=0, shift_scale_normalize=0,
-        num_burnin=params.burnin, num_iterations=params.samples,
-        num_skips=params.skips,
-        credible_interval=params.credible_interval)
-
-    # Run Binreg.
-    if 1: # For debugging.
-        print "Running binreg."; sys.stdout.flush()
-        r = binreg.binreg_raw(
-            file_layout.BR_EXPRESSION, file_layout.BR_DESCRIPTION,
-            1, br_params, matlab=options.matlab,
-            binreg_path=options.binreg_path, outpath=file_layout.BINREG)
-        print r.read()
-        sys.stdout.flush()
-
-    # Generate some files for output.
-    print "Summarizing results."; sys.stdout.flush()
-    summarize_model(file_layout)
-    summarize_parameters(params, file_layout)
-    summarize_probabilities(train0, train1, test, file_layout)
-    summarize_signature_dataset(file_layout)
-
-    # Make some plots, if desired.
-    if not params.noplots:
-        summarize_signature_heatmap(
-            options.python, options.arrayplot, options.cluster,
-            file_layout, options.libpath)
-        summarize_dataset_heatmap(
-            options.python, options.arrayplot, options.cluster,
-            file_layout, options.libpath)
-        summarize_predictions(
-            options.povray, params.label_samples,
-            params.draw_error_bars, file_layout)
-
-    # Make a report for this analysis.
-    summarize_report(options.outpath, analysis, start_time)
-    sys.stdout.flush()
-
 def pretty_runtime(start_time, end_time):
     from genomicode import parselib
     
@@ -1826,7 +1921,7 @@ def main():
         if len(analyses) > 1:
             print "Running analysis %d of %d." % (i+1, len(analyses))
             sys.stdout.flush()
-        run_one_analysis(analysis, options, train0, train1, test)
+        run_analysis(analysis, options, train0, train1, test, normref)
 
     # If there were multiple analyses specified, make a copy of
     # some files for convenience.  Need to copy it rather than
