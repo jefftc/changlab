@@ -4,7 +4,6 @@ import os
 
 opj = os.path.join
 
-
 HOME = os.environ["HOME"]
 PROJECTS = opj(HOME, "projects")
 CLAB_HOME = "/home/changlab"
@@ -15,38 +14,25 @@ SEARCH_PATH = [
     "/usr/bin",
     ]
 
-# patser
-MOTIFSEARCH = opj(PROJECTS, "motifsearch")
-patser_PATSER_BIN = opj(MOTIFSEARCH, "patser/patser-v3b")
-patser_ALPHABET_FILE = opj(MOTIFSEARCH, "alphabet.prom_500_100")
+def read_config():
+    import ConfigParser
+    
+    config_file = os.environ["HOME"]+'/.genomicoderc'
 
-motiflib_JASPAR_DB = opj(MOTIFSEARCH, "data/JASPAR_CORE_2008")
-motiflib_TRANSFAC_DB = opj(MOTIFSEARCH, "data/transfac.12_1.pfm")
-motiflib_JASPAR_INFO = opj(MOTIFSEARCH, "jasparid2info")
-motiflib_TRANSFAC_INFO = opj(MOTIFSEARCH, "matid2info")
-motiflib_MATID2LENGTH = opj(MOTIFSEARCH, "matid2length")
+    var_dict = dict()
+    if not os.path.exists(config_file):
+        return var_dict
 
+    config = ConfigParser.ConfigParser()
+    config.optionxform = str   # use case sensitive option names
+    config.read(config_file)
+    for section in config.sections():
+        for x in config.items(section):
+            name, value = x
+            var_dict[name] = value
+    return var_dict
 
-
-# genomelib
-SCGENOME = opj(PROJECTS, "scgenome")
-genomelib_RA_CHROM_HG18 = opj(SCGENOME, "data/data.hg18/ra_chrom")
-genomelib_RA_CHROM_MM9 = opj(SCGENOME, "data/data.mm9/ra_chrom")
-
-
-# tss
-TSS = opj(PROJECTS, "tss")
-gene_HG18 = opj(TSS, "data/hg18.knownGene.110312.txt")
-
-
-# primer3
-primer3_PRIMER3_BIN = "primer3_core"
-
-
-# For normalize.py.
-normalize_AFFYMETRIX = opj(CLAB_HOME, "data/normalize/affymetrix")
-normalize_RLIB = opj(CLAB_HOME, "changlab/Rlib")
-
-
-illumina_HUMANHT12_CONTROL = opj(
-    PROJECTS, "illumina/data/HumanHT-12.control.txt")
+var_dict = read_config()
+for name, value in var_dict.iteritems():
+    vars()[name] = value
+del var_dict
