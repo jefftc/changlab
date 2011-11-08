@@ -1218,7 +1218,7 @@ def plot_heatmap_cmd(
     import config
 
     python = python or config.python
-    arrayplot = arrayplot or "arrayplot.py"
+    arrayplot = arrayplot or config.arrayplot or "arrayplot.py"
     # If arrayplot.py is not a real file, then it may need to be found
     # on the path.  In this case, make sure python is None.
     if not os.path.exists(arrayplot) and \

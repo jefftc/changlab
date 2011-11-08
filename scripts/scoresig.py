@@ -298,7 +298,7 @@ def make_pybinreg_cmd(
     from genomicode import config
 
     python = python or config.python
-    pybinreg = pybinreg or "pybinreg.py"
+    pybinreg = pybinreg or config.pybinreg or "pybinreg.py"
     # If pybinreg.py is not a real file, then it may need to be found
     # on the path.  In this case, make sure python is None.
     if not os.path.exists(pybinreg) and \
@@ -878,26 +878,26 @@ def main():
 
     group = OptionGroup(parser, "Pybinreg")
     group.add_option(
-        "", "--pybinreg", dest="pybinreg", default=None,
-        help="Specify the command to run pybinreg.py.")
-    group.add_option(
         "", "--python", dest="python", default=None,
         help="Specify the command to run python.")
     group.add_option(
-        "", "--binreg", dest="binreg_path", default=None,
-        help="Specify the path to the BinReg2.0 code.")
-    group.add_option(
         "", "--matlab", dest="matlab", default=None,
         help="Specify the command to run matlab.")
-    group.add_option(
-        "", "--arrayplot", dest="arrayplot", default=None,
-        help="Specify the command to run arrayplot.")
     group.add_option(
         "", "--povray", dest="povray", default=None,
         help="Specify the command to run povray.")
     group.add_option(
         "", "--cluster", dest="cluster", default=None,
         help="Specify the command to run cluster.")
+    group.add_option(
+        "", "--binreg", dest="binreg_path", default=None,
+        help="Specify the path to the BinReg2.0 code.")
+    group.add_option(
+        "", "--pybinreg", dest="pybinreg", default=None,
+        help="Specify the command to run pybinreg.py.")
+    group.add_option(
+        "", "--arrayplot", dest="arrayplot", default=None,
+        help="Specify the command to run arrayplot.")
     parser.add_option_group(group)
 
     options, args = parser.parse_args()
