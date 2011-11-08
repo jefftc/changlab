@@ -9,6 +9,7 @@ histogram
 calc_histogram
 
 plot_heatmap
+plot_heatmap_cmd
 find_tall_heatmap_size
 find_wide_heatmap_size
 
@@ -1213,12 +1214,16 @@ def plot_heatmap_cmd(
     gene_center=None, gene_normalize=None,
     array_label=False, cluster_arrays=False,
     python=None, arrayplot=None, cluster=None, libpath=None):
-    # If arrayplot is not supplied, then use the default arrayplot.py.
-    # This may not be in the current path, so be sure not to include
-    # python.
-    if not arrayplot:
+    import os
+    import config
+
+    python = python or config.python
+    arrayplot = arrayplot or "arrayplot.py"
+    # If arrayplot.py is not a real file, then it may need to be found
+    # on the path.  In this case, make sure python is None.
+    if not os.path.exists(arrayplot) and \
+       not os.path.exists(os.path.realpath(arrayplot)):
         python = None
-        arrayplot = "arrayplot.py"
     color = color or "bild"
 
     cmd = [

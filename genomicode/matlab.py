@@ -9,8 +9,9 @@ import os
 
 def run(script, matlab_bin=None, working_path=None):
     import subprocess
+    import config
     
-    matlab_bin = matlab_bin or "matlab"
+    matlab_bin = matlab_bin or config.matlab or "matlab"
     matlab_args = ["-nosplash", "-nodesktop", "-nodisplay"]
     x = " ".join(matlab_args)
     matlab_cmd = "%s %s" % (matlab_bin, x)

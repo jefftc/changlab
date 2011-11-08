@@ -280,7 +280,7 @@ def main():
         "", "--python", dest="python", default=None,
         help="Specify the command to run python (optional).")
     parser.add_option(
-        "", "--arrayplot", dest="arrayplot", default="arrayplot.py",
+        "", "--arrayplot", dest="arrayplot", default=None,
         help="Specify the command to run arrayplot.")
     parser.add_option(
         "", "--cluster", dest="cluster", default=None,

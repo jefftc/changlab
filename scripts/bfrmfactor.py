@@ -515,7 +515,7 @@ def main():
         "", "--bfrm_bin", dest="bfrm_bin", default=None,
         help="Specify the path to the BFRM binary.")
     parser.add_option(
-        "", "--arrayplot", dest="arrayplot", default="arrayplot.py",
+        "", "--arrayplot", dest="arrayplot", default=None,
         help="Specify the command to run arrayplot.")
     parser.add_option(
         "", "--cluster", dest="cluster", default=None,

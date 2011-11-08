@@ -158,8 +158,11 @@ def binreg_raw(expression_file, description_file, is_logged, params,
 
 def find_binreg_20(default_path):
     # Return the path to BinReg2.0 or None.
+    import config
+    
     search_paths = [
         default_path, 
+        config.binreg20_path,
         "BinReg2.0",
         "/Volumes/Users/jchang/projects/geclassify/data/BinReg2.0",
         "/home/jchang/projects/geclassify/data/BinReg2.0",

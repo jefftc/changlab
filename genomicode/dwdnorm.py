@@ -13,9 +13,12 @@ normalize
 import os, sys
 
 def find_dwd(default_path):
-    # Return the path to BinReg2.0 or None.
+    # Return the path to BatchAdjust or None.
+    import config
+    
     search_paths = [
-        default_path, 
+        default_path,
+        config.dwd_path,
         "BatchAdjust",
         "/home/jchang/projects/normalize/data/BatchAdjust",
         "/home/jefftc/projects/normalize/data/BatchAdjust",

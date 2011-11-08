@@ -154,9 +154,10 @@ def povray(
     # quality    0-9.
     import os
     import subprocess
+    import config
     
     assert os.path.exists(filename)
-    povray_bin = povray_bin or "povray"
+    povray_bin = povray_bin or config.povray or "povray"
     
     args = []
     args.append("-D")   # don't show output.

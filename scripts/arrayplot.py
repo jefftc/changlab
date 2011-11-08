@@ -1699,8 +1699,9 @@ def _cluster(MATRIX, *args, **params):
     import subprocess
     import arrayio
     from genomicode import filelib
+    from genomicode import config
 
-    cluster = params.get("cluster") or "cluster"
+    cluster = params.get("cluster") or config.cluster or "cluster"
 
     path = "."
     x, filestem = tempfile.mkstemp(dir=path); os.close(x)

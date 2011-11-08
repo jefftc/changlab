@@ -1,3 +1,24 @@
+[GENERAL]
+python=/usr/local/bin/python
+matlab=/usr/local/bin/matlab
+povray=/usr/local/bin/povray
+cluster=/usr/local/bin/cluster
+bfrm=/home/jchang/projects/bfrm/data/bfrm_20_4/bfrm64
+
+binreg20_path=/home/changlab/SIGNATURE/BinReg2.0
+bfrm_normalize_path=/home/changlab/SIGNATURE/BFRM_normalize
+bfrm_project_path=/home/changlab/SIGNATURE/BFRM_project
+dwd_path=/home/changlab/SIGNATURE/BatchAdjust
+sigdb_path=/home/changlab/SIGNATURE/sigdb
+
+
+
+[NORMALIZE_PY]
+normalize_AFFYMETRIX=/home/changlab/data/normalize/affymetrix
+normalize_RLIB=/home/changlab/changlab/Rlib
+
+
+
 [PATSER]
 patser_PATSER_BIN=/home/jchang/projects/motifsearch/patser/patser-v3b
 patser_ALPHABET_FILE=/home/jchang/projects/motifsearch/alphabet.prom_500_100
@@ -24,10 +45,3 @@ primer3_PRIMER3_BIN=primer3_core
 
 [ILLUMINA]
 illumina_HUMANHT12_CONTROL=/home/jchang/projects/illumina/data/HumanHT-12.control.txt
-
-
-[NORMALIZE_PY]
-normalize_AFFYMETRIX=/home/changlab/data/normalize/affymetrix
-normalize_RLIB=/home/changlab/changlab/Rlib
-
-

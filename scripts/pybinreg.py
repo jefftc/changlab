@@ -148,23 +148,23 @@ def init_params():
         "", "--python", dest="python", default=None,
         help="Specify the command to run python (optional).")
     parser.add_option(
-        "", "--dwd_path", dest="dwd_path", default=None,
-        help="Specify the path of BatchAdjust.")
-    parser.add_option(
-        "", "--binreg", dest="binreg_path", default=None,
-        help="Specify the path to the BinReg2.0 code.")
-    parser.add_option(
         "", "--matlab", dest="matlab", default="matlab",
         help="Specify the command to run matlab.")
-    parser.add_option(
-        "", "--arrayplot", dest="arrayplot", default="arrayplot.py",
-        help="Specify the command to run arrayplot.")
     parser.add_option(
         "", "--povray", dest="povray", default="povray",
         help="Specify the command to run povray.")
     parser.add_option(
         "", "--cluster", dest="cluster", default=None,
         help="Specify the command to run cluster.")
+    parser.add_option(
+        "", "--dwd_path", dest="dwd_path", default=None,
+        help="Specify the path of BatchAdjust.")
+    parser.add_option(
+        "", "--binreg", dest="binreg_path", default=None,
+        help="Specify the path to the BinReg2.0 code.")
+    parser.add_option(
+        "", "--arrayplot", dest="arrayplot", default=None,
+        help="Specify the command to run arrayplot.")
     parser.add_option(
         "", "--libpath", dest="libpath", action="append", default=[],
         help="Add to the Python library search path.")

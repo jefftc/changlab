@@ -589,7 +589,7 @@ def main():
         "", "--matlab", dest="matlab", default="matlab",
         help="Specify the command to run matlab.")
     parser.add_option(
-        "", "--arrayplot", dest="arrayplot", default="arrayplot.py",
+        "", "--arrayplot", dest="arrayplot", default=None,
         help="Specify the command to run arrayplot.")
     parser.add_option(
         "", "--povray", dest="povray", default="povray",

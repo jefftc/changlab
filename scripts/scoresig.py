@@ -295,7 +295,15 @@ def make_pybinreg_cmd(
     outpath, archive, num_genes, num_metagenes,
     quantile_normalize, shift_scale_normalize,
     train0_file, train1_file, test_file):
+    from genomicode import config
+
+    python = python or config.python
     pybinreg = pybinreg or "pybinreg.py"
+    # If pybinreg.py is not a real file, then it may need to be found
+    # on the path.  In this case, make sure python is None.
+    if not os.path.exists(pybinreg) and \
+       not os.path.exists(os.path.realpath(pybinreg)):
+        python = None
 
     cmd = []
     # If the python path was explicitly specified, then make sure to
@@ -436,7 +444,7 @@ def extract_reports(names, paths, file_layout):
         infiles_full = [os.path.join(path, x) for x in infiles]
         outfiles_full = [os.path.join(outpath, x) for x in outfiles]
         for x in infiles_full:
-            assert os.path.exists(x)
+            assert os.path.exists(x), "Missing: %s" % x
         for src, dst in zip(infiles_full, outfiles_full):
             shutil.copy2(src, dst)
 
@@ -817,7 +825,7 @@ def make_analysis_name(options):
 def main():
     from optparse import OptionParser, OptionGroup
     
-    usage = "usage: %prog [options] sigdb_path"
+    usage = "usage: %prog [options]"
     parser = OptionParser(usage=usage, version="%prog 01")
 
     parser.add_option(
@@ -826,6 +834,9 @@ def main():
     parser.add_option(
         "-m", "--mas5", dest="mas5_dataset", type="string", default=None,
         help="Specify the MAS5-normalized data to analyze.")
+    parser.add_option(
+        "", "--sigdb_path", dest="sigdb_path", type="string", default=None,
+        help="Location of the sigdb/ directory.")
     parser.add_option(
         "", "--sigid", dest="signature_ids", default=[], action="append",
         help="Specify a specific signature to use.")
@@ -890,16 +901,14 @@ def main():
     parser.add_option_group(group)
 
     options, args = parser.parse_args()
-    if len(args) < 1:
-        #print sys.argv
-        #print len(args), args
-        parser.error("Please specify sigdb_path.")
-    elif len(args) > 1:
+    #if len(args) < 1:
+    #    #print sys.argv
+    #    #print len(args), args
+    #    parser.error("Please specify sigdb_path.")
+    #elif len(args) > 1:
+    #    parser.error("Too many arguments.")
+    if args:
         parser.error("Too many arguments.")
-    sigdb_path, = args
-    assert os.path.exists(sigdb_path), \
-           "I could not find the signatures database: %s." % sigdb_path
-    sigdb_path = os.path.realpath(sigdb_path)
 
     # DEBUG the gp_imod_all_vars variable.
     if options.debug_gp_imod_all_vars:
@@ -961,12 +970,19 @@ def main():
     # Import after the library path is set.
     import time
     import arrayio
+    from genomicode import config
     from genomicode import jmath
     from genomicode import parallel
     from genomicode import filelib
     from genomicode import archive
     from genomicode import binreg
     from genomicode import genepattern
+    
+    #sigdb_path, = args
+    x = options.sigdb_path or config.sigdb_path
+    sigdb_path = os.path.realpath(x)
+    assert os.path.exists(sigdb_path), \
+           "I could not find the signatures database: %s." % sigdb_path
 
     start_time = time.time()
     
@@ -987,7 +1003,7 @@ def main():
         
     # If any signature IDs are specified, then use only those IDs and
     # ignore the desired tags.
-    print "Reading signature database."
+    print "Reading signature database: %s." % sigdb_path
     desired_ids = []
     if options.signature_ids:
         desired_ids = options.signature_ids[:]
