@@ -1268,6 +1268,7 @@ def plot_heatmap_cmd(
     # If python is None, then ignore it.
     cmd = [x for x in cmd if x is not None]
     cmd = " ".join(cmd)
+    #print cmd
     return cmd
 
 def find_tall_heatmap_size(

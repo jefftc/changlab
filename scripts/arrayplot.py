@@ -139,7 +139,8 @@ class HeatmapLayout:
         return x, y, self.boxwidth, self.boxheight
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
-        if x is None:
+        import math
+        if x is None or math.isnan(x):
             # Missing value.  Return a white box.
             #return _get_color(0.5, self.color_fn)
             return (255, 255, 255)
@@ -1136,6 +1137,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     # range from [-1, 1].  Then, for convenience, I will re-scale that
     # matrix to [0, 1].
     # Will change the MATRIX variable.
+    import math
     from genomicode import jmath
 
     MATRIX = MATRIX.matrix()
@@ -1166,7 +1168,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
         for i in range(nrow):
             for j in range(ncol):
                 # Ignore missing values.
-                if X[i][j] is None:
+                if X[i][j] is None or math.isnan(X[i][j]):
                     continue
                 if x_max is None or abs(X[i][j]) > x_max:
                     x_max = abs(X[i][j])
@@ -1204,6 +1206,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
             X[i][j] = x
 
     #print defgain, gain, defscale, scale
+    assert not math.isnan(defgain) and not math.isnan(defscale)
     ORIG_min = (0.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
     ORIG_max = (1.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
 
@@ -1850,7 +1853,8 @@ def _calc_colorbar_ticks(
     vertical = cb_height > cb_width
 
     # Calculate the minimum and maximum number to label.
-    assert signal_0 < signal_1
+    assert not math.isnan(signal_0) and not math.isnan(signal_1)
+    assert signal_0 < signal_1, "%g %g" % (signal_0, signal_1)
     delta = signal_1 - signal_0
     num_decimals = max(-int(math.floor(math.log(delta, 10))), 0)+1
     # Where to start labels.  Give a larger range than might fit

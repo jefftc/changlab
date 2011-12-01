@@ -208,8 +208,9 @@ def mean(X, byrow=1):
     return _dispatch(X, None, _fn(mean_list), _fn(mean_matrix, byrow=byrow))
 
 def safe_mean_list(X):
+    import math
     assert len(X) > 0
-    X = [x for x in X if x is not None]
+    X = [x for x in X if x is not None and not math.isnan(x)]
     if not X:
         return 0
     return float(sum(X)) / len(X)

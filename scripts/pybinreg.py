@@ -683,10 +683,9 @@ def read_matrices(train0_file, train1_file, test_file, normref_file):
 
 def assert_rows_aligned(train0, train1, test, normref):
     from genomicode import binreg
-    if test:
-        assert binreg.are_rows_aligned(train0, train1, test)
-    else:
-        assert binreg.are_rows_aligned(train0, train1)
+    x = [train0, train1, test, normref]
+    matrices = [x for x in x if x]
+    assert binreg.are_rows_aligned(*matrices)
 
 def strip_affx_control_probes(train0, train1, test, normref):
     # test, normref can be None
@@ -908,6 +907,33 @@ def _shiftscale_normalize_normref(
         X_n = DATA_n._X
         for i in range(len(X_n)):
             test._X[i][j] = X_n[i][0]
+
+def filter_missing_values(train0, train1, test, normref):
+    import math
+    
+    # Optimization: Assume that the rows are aligned.
+    I = []
+    for i in range(train0.nrow()):
+        x = train0._X[i] + train1._X[i]
+        if test:
+            x += test._X[i]
+        if normref:
+            x += normref._X[i]
+        x = [x for x in x if math.isnan(x)]
+        if not x:
+            I.append(i)
+        else:
+            print "Filtering out nan's found in row %d." % (i+1)
+    if len(I) < train0.nrow():
+        train0 = train0.matrix(I, None)
+        train1 = train1.matrix(I, None)
+        if test:
+            test = test.matrix(I, None)
+        if normref:
+            normref = normref.matrix(I, None)
+    x = train0, train1, test, normref
+    return x
+    
 
 def write_dataset(filename, train0, train1, test):
     # test can be None.
@@ -1910,6 +1936,11 @@ def main():
             train0, train1, test, normref, matlab=options.matlab,
             binreg_path=options.binreg_path)
         write_dataset(file_layout.DS_SS, train0, train1, test)
+
+    # Make sure there are no NA's, or BinReg will not do the
+    # predictions correctly.
+    x = filter_missing_values(train0, train1, test, normref)
+    train0, train1, test, normref = x
 
     print "Writing processed dataset."; sys.stdout.flush()
     write_dataset(file_layout.DS_FINAL, train0, train1, test)
