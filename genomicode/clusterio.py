@@ -137,6 +137,8 @@ def write_kgg_file(data, handle):
     print >>handle, "\t".join(x)
     for id, cluster in data:
         x = id, cluster
+        if cluster is None:
+            cluster = "NA"
         print >>handle, "\t".join(map(str, x))
 
 def write_kag_file(data, handle):

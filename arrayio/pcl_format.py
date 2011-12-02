@@ -87,13 +87,13 @@ def is_matrix(X):
         if i == 0:
             # Ignore the <ID> column.  Can be named anything.
             continue
-        if name not in ROW_HEADERS:
+        if name.upper() not in ROW_HEADERS:
             return False
     for name in X.col_names():
         # Ignore the sample name header.
         if name == tdf.SAMPLE_NAME:
             continue
-        if name not in COL_HEADERS:
+        if name.upper() not in COL_HEADERS:
             return False
     return True
 
