@@ -22,7 +22,7 @@ import os
 ROW_HEADERS = ["NAME", "GWEIGHT", "GORDER"]
 COL_HEADERS = ["EWEIGHT", "EORDER"]
 
-def is_format(locator_str):
+def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
     import util
     if not filelib.exists(locator_str):
@@ -47,7 +47,10 @@ def is_format(locator_str):
         if len(cols) != len(matrix[0]):
             return False
         
-    nrow, ncol = util.num_headers(matrix)
+    nr, nc = util.num_headers(matrix)
+    nrow = hrows or nr
+    ncol = hcols or nc
+
     if nrow == 0 and ncol == 0:
         return False
     nrow = max(nrow, 1)
@@ -72,15 +75,22 @@ def is_format(locator_str):
                 return False
     return True
 
+DIAGNOSIS = ""
 def is_matrix(X):
+    global DIAGNOSIS
     import tab_delimited_format as tdf
 
+    DIAGNOSIS = ""
+
     if not hasattr(X, "col_names") or not hasattr(X, "row_names"):
+        DIAGNOSIS = "No annotations."
         return False
     # Needs at least the ID header.
     if len(X.row_names()) < 1:
+        DIAGNOSIS = "No ID header."
         return False
     if tdf.SAMPLE_NAME not in X.col_names():
+        DIAGNOSIS = "No samples."
         return False
 
     for i, name in enumerate(X.row_names()):
@@ -88,16 +98,18 @@ def is_matrix(X):
             # Ignore the <ID> column.  Can be named anything.
             continue
         if name.upper() not in ROW_HEADERS:
+            DIAGNOSIS = "Unknown row header: %s." % name
             return False
     for name in X.col_names():
         # Ignore the sample name header.
         if name == tdf.SAMPLE_NAME:
             continue
         if name.upper() not in COL_HEADERS:
+            DIAGNOSIS = "Unknown col header: %s." % name
             return False
     return True
 
-def read(handle, datatype=float):
+def read(handle, hrows=None, hcols=None, datatype=float):
     import StringIO
     import tab_delimited_format
     from genomicode import filelib
@@ -117,21 +129,25 @@ def read(handle, datatype=float):
     assert len(matrix) >= 1
     assert len(matrix[0]) >= 2
 
-    hrows, hcols = 1, 1
-    if len(matrix[0]) >= 2 and matrix[0][1].strip().upper() in ROW_HEADERS:
-        hcols += 1
-    if len(matrix[0]) >= 3 and matrix[0][2].strip().upper() in ROW_HEADERS:
-        hcols += 1
-    if len(matrix[0]) >= 4 and matrix[0][3].strip().upper() in ROW_HEADERS:
-        hcols += 1
-    if len(matrix) >= 2 and matrix[1][0].strip().upper() in COL_HEADERS:
-        hrows += 1
-    if len(matrix) >= 3 and matrix[2][0].strip().upper() in COL_HEADERS:
-        hrows += 1
+    if hcols is None:
+        hcols = 1
+        if len(matrix[0]) >= 2 and matrix[0][1].strip().upper() in ROW_HEADERS:
+            hcols += 1
+        if len(matrix[0]) >= 3 and matrix[0][2].strip().upper() in ROW_HEADERS:
+            hcols += 1
+        if len(matrix[0]) >= 4 and matrix[0][3].strip().upper() in ROW_HEADERS:
+            hcols += 1
+    if hrows is None:
+        hrows = 1
+        if len(matrix) >= 2 and matrix[1][0].strip().upper() in COL_HEADERS:
+            hrows += 1
+        if len(matrix) >= 3 and matrix[2][0].strip().upper() in COL_HEADERS:
+            hrows += 1
 
     handle = StringIO.StringIO(s)
     X = tab_delimited_format.read(
         handle, hrows=hrows, hcols=hcols, datatype=datatype)
+    #is_matrix(X); print DIAGNOSIS
     assert is_matrix(X)
     return X
 

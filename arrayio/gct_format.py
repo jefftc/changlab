@@ -20,9 +20,14 @@ is_matrix
 """
 import os
 
-def is_format(locator_str):
+def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
     if not filelib.exists(locator_str):
+        return False
+
+    if hrows not in [None, 1]:
+        return False
+    if hcols not in [None, 2]:
         return False
 
     # Read 5 lines and check the headers.
@@ -70,11 +75,14 @@ def is_matrix(X):
     #    return False
     return True
 
-def read(handle, datatype=float):
+def read(handle, hrows=None, hcols=None, datatype=float):
     from genomicode import Matrix
     import const
     import tab_delimited_format
     from genomicode import filelib
+
+    assert hrows is None or hrows == 1
+    assert hcols is None or hcols == 2
 
     handle = filelib.openfh(handle)
     assert handle.readline().strip() == "#1.2"

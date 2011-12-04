@@ -25,10 +25,15 @@ MYNAME_TO_STDNAME = [
     ("Gene.Symbol", const.GENE_SYMBOL),
     ]
 
-def is_format(locator_str):
+def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
     import util
     
+    if hrows not in [None, 1]:
+        return False
+    if hcols not in [None, 4]:
+        return False
+
     if not filelib.exists(locator_str):
         # This will only work if locator_str is a string.
         return False
@@ -79,9 +84,13 @@ def is_matrix(X):
             return False
     return True
 
-def read(handle, datatype=float):
+def read(handle, hrows=None, hcols=None, datatype=float):
     from genomicode import Matrix
     import tab_delimited_format as tdf
+
+    assert hrows is None or hrows == 1
+    assert hcols is None or hcols == 4
+    
     X = tdf.read(handle, hrows=1, hcols=4, datatype=datatype)
     synonyms = {}
     for myname, stdname in MYNAME_TO_STDNAME:

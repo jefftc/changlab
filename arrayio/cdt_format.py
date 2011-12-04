@@ -25,7 +25,7 @@ import os
 ROW_HEADERS = ["GID", "NAME", "GWEIGHT", "GORDER"]
 COL_HEADERS = ["AID", "EWEIGHT", "EORDER"]
 
-def is_format(locator_str):
+def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
     import util
     if not filelib.exists(locator_str):
@@ -46,8 +46,10 @@ def is_format(locator_str):
     for cols in matrix:
         if len(cols) != len(matrix[0]):
             return False
-    
-    nrow, ncol = util.num_headers(matrix)
+
+    nr, nc = util.num_headers(matrix)
+    nrow = hrows or nr
+    ncol = hcols or nc
     
     if nrow < 1 or nrow > 4:
         return False
@@ -87,12 +89,13 @@ def is_matrix(X):
             return False
     return True
 
-def read(handle, datatype=float):
+def read(handle, nrows=None, hcols=None, datatype=float):
     from genomicode import Matrix
     import const
     import tab_delimited_format
 
-    X = tab_delimited_format.read(handle, datatype=datatype)
+    X = tab_delimited_format.read(
+        handle, hrows=hrows, hcols=hcols, datatype=datatype)
     # Set const.ROW_ID to be the <ID> column.
     assert len(X.row_names()) >= 2
     synonyms = {}

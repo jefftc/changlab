@@ -13,7 +13,7 @@ is_matrix
 """
 import os, sys
 
-def is_format(locator_str):
+def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
     if not filelib.exists(locator_str):
         return False

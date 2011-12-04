@@ -15,10 +15,10 @@ import os
 
 from const import *
 
-def choose_format(locator):
+def choose_format(locator, hrows=None, hcols=None):
     # Return the module that can read this format or None.
     for format in FORMATS:
-        if format.is_format(locator):
+        if format.is_format(locator, hrows=hrows, hcols=hcols):
             return format
     return None
 
@@ -93,10 +93,10 @@ def _diagnose_format_problem(filename):
     return None
 
 
-def read(locator, datatype=float, format=None):
+def read(locator, hrows=None, hcols=None, datatype=float, format=None):
     # Bug: this function fails if passed a file handle.
     from genomicode import filelib
-    format = format or choose_format(locator)
+    format = format or choose_format(locator, hrows=hrows, hcols=hcols)
     if format is None:
         msg = []
         x = "I could not find a format for: %r." % locator
@@ -111,7 +111,7 @@ def read(locator, datatype=float, format=None):
         msg = "\n".join(msg)
         raise AssertionError, msg
     #print "PARSING WITH", format
-    return format.read(locator, datatype=datatype)
+    return format.read(locator, hrows=hrows, hcols=hcols, datatype=datatype)
 
 def write(X, handle, format=None):
     format = format or guess_format(X)
