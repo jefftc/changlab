@@ -62,6 +62,31 @@ def parse_geneset(MATRIX, is_row, filename, genesets):
         I = I_col
     return I
 
+def align_row_indexes(MATRIX, rowalign_file, ignore_missing_row_ids):
+    import arrayio
+    
+    if not rowalign_file:
+        return None
+    ALIGN = arrayio.read(rowalign_file)
+    ids = ALIGN.row_names(arrayio.ROW_ID)
+    I_row, I_col = MATRIX._index(row=ids, row_header=arrayio.ROW_ID)
+    I = I_row
+    if not ignore_missing_row_ids and len(ids) != len(I):
+        # Can diagnose problem here.
+        x = ALIGN.row_names(arrayio.ROW_ID)
+        ids_A = {}.fromkeys(x)
+        x = MATRIX.row_names(arrayio.ROW_ID)
+        ids_M = {}.fromkeys(x)
+        missing = []
+        for id in ids_A:
+            if id not in ids_M:
+                missing.append(id)
+        for id in sorted(missing):
+            print id
+        message = "I could not find %d IDs." % len(missing)
+        raise AssertionError, message
+    return I
+
 def find_row_indexes(MATRIX, rows, rowfile, row_geneset):
     if not rows and not rowfile and not row_geneset:
         return None
@@ -194,7 +219,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Slice the rows or columns of a matrix.")
-    parser.add_argument("filename", help="Matrix to slice.")
+    parser.add_argument("filename", help="Matrices to slice.")
     parser.add_argument(
         "-o", default=None, metavar="OUTFILE", dest="outfile",
         help="Save to this file.  By default, writes output to STDOUT.")
@@ -223,7 +248,14 @@ def main():
     group.add_argument(
         "--col_geneset", action="append", default=[],
         help="Which gene set to use out of --colfile.")
-        
+
+    group.add_argument(
+        "--rowalign_file", default=None,
+        help="File that this one should align to.")
+    group.add_argument(
+        "--ignore_missing_row_ids", default=False, action="store_true",
+        help="Ignore any rows that can't be found.")
+
     group = parser.add_argument_group(title="Other options")
     group.add_argument(
         "--add_geneset", action="append", default=[],
@@ -233,19 +265,29 @@ def main():
         help="Remove this annotations from the matrix.")
 
     args = parser.parse_args()
-    if not os.path.exists(args.filename):
-        parser.error("File not found: %s" % args.filename)
     if args.row_geneset and not args.rowfile:
         parser.error("Row geneset provided without a rowfile.")
     if args.col_geneset and not args.colfile:
         parser.error("Col geneset provided without a colfile.")
     if args.add_geneset and not args.rowfile:
         parser.error("Geneset provided without a rowfile.")
+    filenames = [args.filename, args.rowfile, args.colfile, args.rowalign_file]
+    for f in filenames:
+        if f and not os.path.exists(f):
+            parser.error("File not found: %s" % f)
         
     # Read the file.
     fmt_module = arrayio.guess_format(args.filename)
     assert fmt_module, "I could not figure out the format of the matrix file."
     MATRIX = fmt_module.read(args.filename)
+
+    if not MATRIX.nrow():
+        return
+
+    # Align to the align_file.
+    I_row = align_row_indexes(
+        MATRIX, args.rowalign_file, args.ignore_missing_row_ids)
+    MATRIX = MATRIX.matrix(I_row, None)
 
     # Slice to a submatrix.
     I_row = find_row_indexes(MATRIX, args.rows, args.rowfile, args.row_geneset)

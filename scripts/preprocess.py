@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os, sys
-sys.path.append("/home/xchen/chencode/genomicode/")
+
 def find_annotation_file(chipname):
     from genomicode import config
 

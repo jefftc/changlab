@@ -202,6 +202,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # Make sure each line has the same number of columns.
     num_rows = len(data)
     num_cols_all = [len(x) for x in data]
+    #print num_rows, num_cols_all
 
     # R creates headers that contain one fewer columns than the rest
     # of the matrix, if someone requests to write out the row names.
@@ -221,14 +222,15 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         num_cols_all[0] += 1
     
     # Make sure each line has the same number of columns.
-    num_cols = num_cols_all[0]
-    for i, nc in enumerate(num_cols_all):
-        f = ""
-        if filename:
-            f = " [%s]" % filename
-        error_msg = "Header%s has %d columns but line %d has %d." % (
-            f, num_cols, i+1, nc)
-        assert nc == num_cols, error_msg
+    if num_cols_all:
+        num_cols = num_cols_all[0]
+        for i, nc in enumerate(num_cols_all):
+            f = ""
+            if filename:
+                f = " [%s]" % filename
+            error_msg = "Header%s has %d columns but line %d has %d." % (
+                f, num_cols, i+1, nc)
+            assert nc == num_cols, error_msg
     #print num_rows, num_cols; sys.exit(0)
 
     # Sometimes, a user might cluster a matrix with an empty column

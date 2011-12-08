@@ -66,6 +66,7 @@ wilcox_test
 shapiro_test
 start_R
 R_equals
+R2py_matrix
 
 apply
 match    Return list of indexes of matches from list1 in list2.
@@ -951,15 +952,27 @@ def R_equals_item(x, varname):
     return varname
 
 def R_equals_vector(X, varname):
+    # Should use FloatVector instead of string converstion.
     X_str = ",".join(map(str, X))
     R("%s <- c(%s)" % (varname, X_str))
     return varname
 
 def R_equals_matrix(M, varname):
-    X = flatten(M)
-    X_str = ",".join(map(str, X))
-    R("%s <- c(%s)" % (varname, X_str))
-    R("%s <- matrix(%s, %d, %d)" % (varname, varname, nrow(M), ncol(M)))
+    # Bug: Only works with floats.
+    temp_varname = "JMATH.R.TMP"
+    R = start_R()
+    x = flatten(M)
+    x = robjects.FloatVector(x)
+    x = robjects.r["matrix"](x, nrow=nrow(M), ncol=ncol(M))
+
+    # Set to a temporary variable first.  varname may not be a
+    # variable, e.g. "OBJ$member".
+    robjects.globalenv[temp_varname] = x
+    R("%s <- %s" % (varname, temp_varname))
+    #X = flatten(M)
+    #X_str = ",".join(map(str, X))
+    #R("%s <- c(%s)" % (varname, X_str))
+    #R("%s <- matrix(%s, %d, %d)" % (varname, varname, nrow(M), ncol(M)))
     return varname
 
 def R_equals(X, varname):
@@ -968,6 +981,31 @@ def R_equals(X, varname):
         X, _fn(R_equals_item, varname), _fn(R_equals_vector, varname),
         _fn(R_equals_matrix, varname))
 
+def R2py_matrix(m):
+    # m should be a rpy2.robjects.Matrix object.
+    import time
+    start = time.time()
+    # Fastest implementation (1.2s for 37,632x2 matrix)
+    pym = [[None]*m.ncol for i in range(m.nrow)]
+    z = 0
+    for i in range(m.nrow):
+        for j in range(m.ncol):
+            pym[i][j] = m[z]
+            z += 1
+    # This implementation is slow (5.0s).
+    #pym = []
+    #for i in range(m.nrow):
+    #    row = m.rx(i+1, True)
+    #    x = [row[j] for j in range(m.ncol)]
+    #    pym.append(x)
+    # This implementation is slowest (8.5s).
+    #pym = [[None]*m.ncol for i in range(m.nrow)]
+    #for i in range(m.nrow):
+    #    for j in range(m.ncol):
+    #        pym[i][j] = m.rx(i+1, j+1)[0]
+    end = time.time()
+    #print end - start
+    return pym
 
 def apply(M, margin, fn):
     assert margin in [1, 2]
