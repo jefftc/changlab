@@ -54,21 +54,30 @@ def is_format(locator_str, hrows=None, hcols=None):
     #    return False
     return True
 
+DIAGNOSIS = ""
 def is_matrix(X):
+    global DIAGNOSIS
     import tab_delimited_format as tdf
 
+    DIAGNOSIS = ""
+
     if not hasattr(X, "col_names") or not hasattr(X, "row_names"):
+        DIAGNOSIS = "No annotations."
         return False
     
     if tdf.SAMPLE_NAME not in X.col_names():
+        DIAGNOSIS = "No samples."
         return False
     if len(X.col_names()) != 1:
+        DIAGNOSIS = "Extract sample annotations."
         return False
     if len(X.row_names()) != 2:
+        DIAGNOSIS = "Row annotations not right."
         return False
     # Make sure "NAME" and "DESCRIPTION" are present somewhere.
     x = [x.upper() for x in X.row_names() + X._synonyms.keys()]
     if "NAME" not in x or "DESCRIPTION" not in x:
+        DIAGNOSIS = "Missing NAME and/or DESCRIPTION headers."
         return False
     #x = [x.upper() for x in X.row_headers()]
     #if sorted(x) != sorted(["NAME", "DESCRIPTION"]):

@@ -118,36 +118,38 @@ def write(X, handle, format=None):
     assert format is not None
     format.write(X, handle)
 
-## def _res_to_gct(X):
-##     # Will lose the CALL information.
-##     # Will lose the SCALE_FACTOR.
-##     # Will lose the column DESCRIPTIONS.
-##     from genomicode import Matrix
-##     assert res_format.is_matrix(X)
+def _res_to_gct(X):
+    # Will lose the CALL information.
+    # Will lose the SCALE_FACTOR.
+    # Will lose the column DESCRIPTIONS.
+    from genomicode import Matrix
+    assert res_format.is_matrix(X)
 
-##     # Figure out the annotation names for the row name and description.
-##     acc_header, desc_header, call_header = X.row_headers()
-##     if X._synonyms[ROW_ID] != acc_header:
-##         acc_header, desc_header = desc_header, acc_header
-##     assert X._synonyms[ROW_ID] == acc_header
+    # Figure out the annotation names for the row name and description.
+    acc_header, desc_header, call_header = X.row_names()
+    if X._synonyms[ROW_ID] != acc_header:
+        acc_header, desc_header = desc_header, acc_header
+    assert X._synonyms[ROW_ID] == acc_header
 
-##     row_names = X._row_names
-##     col_names = X._col_names
-##     row_headers = ["Name", "Description"]
-##     col_headers = None
-##     row_annots = {}
-##     col_annots = {}
-##     synonyms = { ROW_ID : "Name" }
+    row_order = ["Name", "Description"]
+    col_order = [X._col_order[0]]
+    row_names = {}
+    col_names = {}
+    synonyms = {}
 
-##     row_annots["Name"] = X.row_annots(acc_header)
-##     row_annots["Description"] = X.row_annots(desc_header)
+    row_names["Name"] = X.row_names(acc_header)
+    row_names["Description"] = X.row_names(desc_header)
+    col_names[col_order[0]] = X.col_names(col_order[0])
+    synonyms[ROW_ID] = "Name"
+    synonyms[COL_ID] = col_order[0]
 
-##     x = Matrix.InMemoryMatrix(
-##         X._X, row_names=row_names, col_names=col_names,
-##         row_headers=row_headers, col_headers=col_headers,
-##         row_annots=row_annots, col_annots=col_annots, synonyms=synonyms)
-##     assert gct_format.is_matrix(x)
-##     return x
+    x = Matrix.InMemoryMatrix(
+        X._X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order)
+    x = Matrix.add_synonyms(x, synonyms)
+    #gct_format.is_matrix(x); print gct_format.DIAGNOSIS
+    assert gct_format.is_matrix(x)
+    return x
     
 ## def _res_to_odf(X):
 ##     # Will lose the CALL information.
@@ -163,41 +165,43 @@ def write(X, handle, format=None):
 ##     assert odf_format.is_matrix(x)
 ##     return x
     
-## def _res_to_pcl(X):
-##     # Will lose the CALL information.
-##     # Will lose the SCALE_FACTOR.
-##     # Will lose the column DESCRIPTIONS.
-##     from genomicode import Matrix
-##     assert res_format.is_matrix(X)
+def _res_to_pcl(X):
+    # Will lose the CALL information.
+    # Will lose the SCALE_FACTOR.
+    # Will lose the column DESCRIPTIONS.
+    from genomicode import Matrix
+    assert res_format.is_matrix(X)
     
-##     # Figure out the annotation names for the row name and description.
-##     acc_header, desc_header, call_header = X.row_headers()
-##     if X._synonyms[ROW_ID] != acc_header:
-##         acc_header, desc_header = desc_header, acc_header
-##     assert X._synonyms[ROW_ID] == acc_header
+    # Figure out the annotation names for the row name and description.
+    acc_header, desc_header, call_header = X.row_names()
+    if X._synonyms[ROW_ID] != acc_header:
+        acc_header, desc_header = desc_header, acc_header
+    assert X._synonyms[ROW_ID] == acc_header
 
-##     # Make sure the names don't conflict.
-##     row_name = acc_header
-##     if row_name == "NAME":
-##         row_name = "NAME0"
+    # Make sure the names don't conflict.
+    row_name = acc_header
+    if row_name == "NAME":
+        row_name = "ORIGINAL_NAME"
 
-##     row_names = X._row_names
-##     col_names = X._col_names
-##     row_annots = {}
-##     col_annots = {}
-##     row_headers = [row_name, "NAME"]
-##     col_headers = None
-##     synonyms = { ROW_ID : row_name }
-    
-##     row_annots[row_name] = X._row_annots[acc_header]
-##     row_annots["NAME"] = X._row_annots[desc_header]
+    row_order = [row_name, "NAME"]
+    col_order = [X._col_order[0]]
+    row_names = {}
+    col_names = {}
+    synonyms = {}
 
-##     x = Matrix.InMemoryMatrix(
-##         X._X, row_names=row_names, col_names=col_names,
-##         row_headers=row_headers, col_headers=col_headers,
-##         row_annots=row_annots, col_annots=col_annots, synonyms=synonyms)
-##     assert pcl_format.is_matrix(x)
-##     return x
+    row_names[row_name] = X.row_names(acc_header)
+    row_names["NAME"] = X.row_names(desc_header)
+    col_names[col_order[0]] = X.col_names(col_order[0])
+    synonyms[ROW_ID] = row_name
+    synonyms[COL_ID] = col_order[0]
+
+    x = Matrix.InMemoryMatrix(
+        X._X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order)
+    x = Matrix.add_synonyms(x, synonyms)
+    #pcl_format.is_matrix(x); print pcl_format.DIAGNOSIS
+    assert pcl_format.is_matrix(x)
+    return x
     
 ## def _gct_to_odf(X):
 ##     from genomicode import Matrix
@@ -579,7 +583,7 @@ def convert(X, from_format=None, to_format=None):
 
 FORMAT_NAMES = [
     # Most specific to most general format.
-    #"res_format",     # Characteristic row lengths.  Matrix specific.
+    "res_format",     # Characteristic row lengths.  Matrix specific.
     "gct_format",     # Matrix more specific than ODF format.
     #"odf_format",     # Very specific header.
     "jeffs_format", 
@@ -593,6 +597,8 @@ tdf = tab_delimited_format  # for convenience
 
 CONVERTERS = [
     # Most specific to most general.
+    ("res_format", "gct_format", _res_to_gct),
+    ("res_format", "pcl_format", _res_to_pcl),
     ("gct_format", "pcl_format", _gct_to_pcl),
     ("jeffs_format","gct_format", _jeff_to_gct),
     ("jeffs_format", "pcl_format", _jeff_to_pcl),

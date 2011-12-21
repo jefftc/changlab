@@ -354,9 +354,11 @@ class AbstractMatrix:
             #    params["row_name"] = key
             #elif key in self.col_names():
             #    params["col_name"] = key
-            if key in self.row_headers():
+            #if key in self.row_headers():
+            if key in self.row_names():
                 params["row_header"] = key
-            elif key in self.col_headers():
+            #elif key in self.col_headers():
+            elif key in self.col_names():
                 params["col_header"] = key
             else:
                 raise KeyError, "Unknown name: %s" % key
