@@ -111,6 +111,7 @@ def read(locator, hrows=None, hcols=None, datatype=float, format=None):
         msg = "\n".join(msg)
         raise AssertionError, msg
     #print "PARSING WITH", format
+    #print format.__file__
     return format.read(locator, hrows=hrows, hcols=hcols, datatype=datatype)
 
 def write(X, handle, format=None):

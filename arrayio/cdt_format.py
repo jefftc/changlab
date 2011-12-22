@@ -89,7 +89,7 @@ def is_matrix(X):
             return False
     return True
 
-def read(handle, nrows=None, hcols=None, datatype=float):
+def read(handle, hrows=None, hcols=None, datatype=float):
     from genomicode import Matrix
     import const
     import tab_delimited_format
