@@ -2074,11 +2074,11 @@ def main():
         "", "--no_autoscale", dest="autoscale", action="store_false",
         default=True, help="Disable autoscaling.")
     group.add_option(
-        "--color", dest="color_scheme", type="choice", default="matlab",
+        "--color", dest="color_scheme", type="choice", default="bild",
         choices=["red", "red-green", "blue-yellow", "matlab", "bild",
                  "genespring", "yahoo"],
         help="Choose the color scheme to use: red, red-green, blue-yellow, "
-        "matlab (default), bild, genespring, or yahoo.")
+        "matlab, bild (default), genespring, or yahoo.")
     group.add_option(
         "--colorbar", dest="colorbar", default=False, action="store_true",
         help="Add a colorbar to the plot.")

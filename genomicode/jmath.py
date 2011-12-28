@@ -67,6 +67,7 @@ shapiro_test
 start_R
 R_equals
 R2py_matrix
+R_hash
 
 apply
 match    Return list of indexes of matches from list1 in list2.
@@ -1006,6 +1007,18 @@ def R2py_matrix(m):
     end = time.time()
     #print end - start
     return pym
+
+def R_hash(s):
+    # Hash a string using the R algorithm for list names.
+    import re
+
+    s_orig = s
+    # If the string starts with a non word character, prepend an "X".
+    if re.match(r"[^a-zA-Z]", s):
+        s = "X%s" % s
+    # Convert all punctuation (except for _) to ".".
+    s = re.sub(r"\W", ".", s)
+    return s
 
 def apply(M, margin, fn):
     assert margin in [1, 2]
