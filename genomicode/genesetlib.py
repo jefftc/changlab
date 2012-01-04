@@ -9,55 +9,87 @@ detect_format
 
 """
 
-def read_gmx(filename):
+def read_gmx(filename, preserve_spaces=False):
     # yield name, description, list of genes
+    import StringIO
     import filelib
 
-    genesets = {}  # name -> list of genes
-    name2desc = {} # name -> description
-
-    iter = filelib.read_cols(filename)
-
-    # Read the names line.
-    names = iter.next()
-    for name in names:
-        genesets[name] = []
-
-    # Read the description line.
-    descs = iter.next()
-    assert len(descs) == len(names)
-    for name, desc in zip(names, descs):
-        name2desc[name] = desc
-
-    # Read each of the genes.
-    # These lines may not be the same length as the names, e.g. if the
-    # gene sets at the end have very few genes.
-    for cols in iter:
-        for i in range(len(cols)):
-            gene = cols[i].strip()
-            if not gene:
+    # Transpose this file and parse as gmt.
+    matrix = [x for x in filelib.read_cols(filename)]
+    assert len(matrix) >= 2
+    t_matrix = []
+    for j in range(len(matrix[0])):
+        x = []
+        for i in range(len(matrix)):
+            # These lines may not be the same length as the names,
+            # e.g. if the gene sets at the end have very few genes.
+            if j >= len(matrix[i]):
                 continue
-            name = names[i]
-            genesets[name].append(gene)
+            x.append(matrix[i][j])
+        assert len(x) >= 2
+        x1 = x[:2]
+        x2 = [x.strip() for x in x[2:]]
+        x = x1 + x2
+        t_matrix.append(x)
 
-    for name in names:
-        desc = name2desc[name]
-        genes = genesets[name]
-        yield name, desc, genes
+    handle = StringIO.StringIO()
+    for x in t_matrix:
+        print >>handle, "\t".join(x)
 
-def read_gmt(filename):
+    handle.seek(0)
+    return read_gmt(handle, preserve_spaces=preserve_spaces)
+
+## def read_gmx(filename):
+##     # yield name, description, list of genes
+##     import filelib
+##     genesets = {}  # name -> list of genes
+##     name2desc = {} # name -> description
+
+##     iter = filelib.read_cols(filename)
+
+##     # Read the names line.
+##     names = iter.next()
+##     for name in names:
+##         genesets[name] = []
+
+##     # Read the description line.
+##     descs = iter.next()
+##     assert len(descs) == len(names)
+##     for name, desc in zip(names, descs):
+##         name2desc[name] = desc
+
+##     # Read each of the genes.
+##     # These lines may not be the same length as the names, e.g. if the
+##     # gene sets at the end have very few genes.
+##     for cols in iter:
+##         for i in range(len(cols)):
+##             gene = cols[i].strip()
+##             if not gene:
+##                 continue
+##             name = names[i]
+##             genesets[name].append(gene)
+
+##     for name in names:
+##         desc = name2desc[name]
+##         genes = genesets[name]
+##         yield name, desc, genes
+
+def read_gmt(filename, preserve_spaces=False):
     # yield name, description, list of genes
     import filelib
     import iolib
 
+    # <name> <desc> [<gene>, <gene>, ...]
     x = filelib.openfh(filename).read()
     for cols in iolib.split_tdf(x):
         assert len(cols) >= 2
         name, description = cols[:2]
         x = cols[2:]
         x = [x.strip() for x in x]
-        x = [x for x in x if x]
+        if not preserve_spaces:
+            x = [x for x in x if x]
         genes = x
+        #print preserve_spaces, len(genes), len(cols)
         yield name, description, genes
 
 def read_genesets(filename):

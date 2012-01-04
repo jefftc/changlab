@@ -55,7 +55,7 @@ def main():
 
     options, args = parser.parse_args()
     if len(args) != 2:
-        parser.error(usage)
+        parser.error("I expected 2 arguments.")
     algorithm, path = args
     algorithm = algorithm.upper()
 
@@ -79,7 +79,7 @@ def main():
         return
 
     if algorithm == "MAS5":
-        log_signal, filter_25, filter_50 = 1, 0, 0
+        log_signal, filter_25, filter_50 = 0, 0, 0
     elif algorithm == "RMA":
         log_signal, filter_25, filter_50 = 0, 0, 0
     else:

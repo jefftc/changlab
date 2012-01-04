@@ -984,6 +984,19 @@ def normalize_matrix(
         not array_center and not array_normalize):
         return MATRIX, cluster_data
 
+    # Normalize the variance before normalizing the median.  If you
+    # normalize the median first, then the final median may be far
+    # from 0.  Example: Some data points a lot less than 0, a few
+    # close to 0.  Median is 0.  After normalizing variance, all data
+    # points will be less than 0.
+    
+    #arrayio.tdf.write(MATRIX, sys.stdout)
+    if gene_normalize == "var":
+        normalize_genes_var(MATRIX)
+    if array_normalize == "var":
+        normalize_arrays_var(MATRIX)
+    #arrayio.tdf.write(MATRIX, sys.stdout)
+
     args = []
     if log_transform:
         args.append("-l")
@@ -1009,11 +1022,6 @@ def normalize_matrix(
     assert "nrm" in files, "No normalization file produced."
     MATRIX, cluster_data = read_data_set(filestem, cluster_data)
     _cleanup_cluster(filestem)
-
-    if gene_normalize == "var":
-        normalize_genes_var(MATRIX)
-    if array_normalize == "var":
-        normalize_arrays_var(MATRIX)
 
     return MATRIX, cluster_data
 
@@ -1937,7 +1945,7 @@ def main():
 
     parser.add_option(
         "--cluster", dest="autoclust", default=False, action="store_true",
-        help="Will automatically use the options: --gc median --gn var "
+        help="Will automatically use the options: --gc mean --gn var "
         "-g -a --gl --al")
     parser.add_option(
         "", "--libpath", dest="libpath", action="append", default=[],
@@ -2074,11 +2082,11 @@ def main():
         "", "--no_autoscale", dest="autoscale", action="store_false",
         default=True, help="Disable autoscaling.")
     group.add_option(
-        "--color", dest="color_scheme", type="choice", default="matlab",
+        "--color", dest="color_scheme", type="choice", default="bild",
         choices=["red", "red-green", "blue-yellow", "matlab", "bild",
                  "genespring", "yahoo"],
         help="Choose the color scheme to use: red, red-green, blue-yellow, "
-        "matlab (default), bild, genespring, or yahoo.")
+        "matlab, bild (default), genespring, or yahoo.")
     group.add_option(
         "--colorbar", dest="colorbar", default=False, action="store_true",
         help="Add a colorbar to the plot.")
@@ -2120,7 +2128,7 @@ def main():
         sys.path = options.libpath + sys.path
 
     if options.autoclust:
-        options.gene_center = "median"
+        options.gene_center = "mean"
         options.gene_normalize = "var"
         options.cluster_genes = True
         options.cluster_arrays = True

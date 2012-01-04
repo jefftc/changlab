@@ -307,11 +307,12 @@ static PyObject *ciolib_strip_each(PyObject *self, PyObject *args)
 }
 
 
-static char ciolib_cleanwrite__doc__[] = 
+static char ciolib__cleanwrite__doc__[] = 
 "XXX\n";
 
+// BUG: Does not work with StringIO objects.
 #define MAXLEN 1024*1024
-static PyObject *ciolib_cleanwrite(
+static PyObject *ciolib__cleanwrite(
     PyObject *self, PyObject *args, PyObject *keywds)
 {
     PyObject *py_data, *py_outhandle;
@@ -337,46 +338,46 @@ static PyObject *ciolib_cleanwrite(
 
     if(!PySequence_Check(py_data)) {
 	PyErr_SetString(PyExc_AssertionError, "not a matrix");
-	goto cleanwrite_cleanup;
+	goto _cleanwrite_cleanup;
     }
     if(!PyFile_Check(py_outhandle)) {
 	PyErr_SetString(PyExc_AssertionError, "no file");
-	goto cleanwrite_cleanup;
+	goto _cleanwrite_cleanup;
     }
 
     if((nrow = PySequence_Size(py_data)) == -1)
-	goto cleanwrite_cleanup;
+	goto _cleanwrite_cleanup;
     for(r=0; r<nrow; r++) {
 	/* New reference. */
 	if(!(py_data_row = PySequence_GetItem(py_data, r)))
-	    goto cleanwrite_cleanup;
+	    goto _cleanwrite_cleanup;
 	if(!PySequence_Check(py_data_row)) {
 	    PyErr_SetString(PyExc_AssertionError, "not a matrix");
-	    goto cleanwrite_cleanup;
+	    goto _cleanwrite_cleanup;
 	}
 	if((ncol = PySequence_Size(py_data_row)) == -1)
-	    goto cleanwrite_cleanup;
+	    goto _cleanwrite_cleanup;
 	for(c=0; c<ncol; c++) {
 	    // Make a copy of the string.
 	    /* New reference. */
 	    if(!(py_item = PySequence_GetItem(py_data_row, c)))
-		goto cleanwrite_cleanup;
+		goto _cleanwrite_cleanup;
 	    if(py_item == Py_None) {
 		c_str = buffer;
 		buffer[0] = 0;
 		length = 0;
 	    } else if(PyString_Check(py_item)) {
 		if(PyString_AsStringAndSize(py_item, &c_str, &length) == -1)
-		    goto cleanwrite_cleanup;
+		    goto _cleanwrite_cleanup;
 	    } else {
 		if(!(py_str = PyObject_Str(py_item)))
-		    goto cleanwrite_cleanup;
+		    goto _cleanwrite_cleanup;
 		if(PyString_AsStringAndSize(py_str, &c_str, &length) == -1)
-		    goto cleanwrite_cleanup;
+		    goto _cleanwrite_cleanup;
 	    }
 	    if(length >= MAXLEN) {
 		PyErr_SetString(PyExc_AssertionError, "string too long");
-		goto cleanwrite_cleanup;
+		goto _cleanwrite_cleanup;
 	    }
 	    clean = buffer;
 	    strcpy(clean, c_str);
@@ -410,21 +411,21 @@ static PyObject *ciolib_cleanwrite(
 
 	    // Write it to the file.
 	    if(PyFile_WriteString(clean, py_outhandle) == -1)
-		goto cleanwrite_cleanup;
+		goto _cleanwrite_cleanup;
 	    if(c < ncol-1) {
 		if(PyFile_WriteString(delim, py_outhandle) == -1)
-		    goto cleanwrite_cleanup;
+		    goto _cleanwrite_cleanup;
 	    }
 	}
 	Py_DECREF(py_data_row);
 	py_data_row = NULL;
 
 	if(PyFile_WriteString("\n", py_outhandle) == -1)
-	    goto cleanwrite_cleanup;
+	    goto _cleanwrite_cleanup;
     }
     
 
- cleanwrite_cleanup:
+ _cleanwrite_cleanup:
     if(py_data_row)
 	Py_DECREF(py_data_row);
     if(py_item)
@@ -444,8 +445,8 @@ static PyMethodDef CIOlibMethods[] = {
   {"split_tdf", (PyCFunction)ciolib_split_tdf, METH_VARARGS|METH_KEYWORDS, 
    ciolib_split_tdf__doc__},
   {"strip_each", ciolib_strip_each, METH_VARARGS, ciolib_strip_each__doc__},
-  {"cleanwrite", (PyCFunction)ciolib_cleanwrite, METH_VARARGS|METH_KEYWORDS, 
-   ciolib_cleanwrite__doc__},
+  {"_cleanwrite", (PyCFunction)ciolib__cleanwrite, METH_VARARGS|METH_KEYWORDS, 
+   ciolib__cleanwrite__doc__},
   {NULL, NULL, 0, NULL}
 };
 

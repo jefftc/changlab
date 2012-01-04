@@ -50,7 +50,7 @@ def write_tdf(data, outhandle):
 
 CLEAN_RE = None
 CLEAN_DISALLOWED = None
-def cleanwrite(data, outhandle, delim="\t"):
+def _py_cleanwrite(data, outhandle, delim="\t"):
     global CLEAN_RE
     global CLEAN_DISALLOWED
     import re
@@ -69,6 +69,19 @@ def cleanwrite(data, outhandle, delim="\t"):
         x = [CLEAN_RE.subn(" ", x)[0].strip() for x in x]
         x = delim.join(x)
         print >>outhandle, x
+_cleanwrite = _py_cleanwrite
+
+def cleanwrite(data, outhandle, delim="\t"):
+    import types
+    
+    # The C version of _cleanwrite requires outhandle to be a file
+    # object and won't work with StringIO objects.  If the user does
+    # not provide a real file object, then use the python
+    # implementation.
+    if type(outhandle) is not types.FileType:
+        _py_cleanwrite(data, outhandle, delim=delim)
+        return
+    _cleanwrite(data, outhandle, delim=delim)
 
 def strip_each(L):
     return [x.strip() for x in L]

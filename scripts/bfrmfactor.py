@@ -618,10 +618,12 @@ def main():
     write_dataset(file_layout.DATASET, MATRIX)
 
     # Run BFRM.
-    run_bfrm(
-        file_layout, options.bfrm_bin, options.num_control_vars,
-        options.start_factors, options.nucleus_file, options.evol_max_factors,
-        options.evol_max_genes)
+    DEBUG = False
+    if not DEBUG:
+        run_bfrm(
+            file_layout, options.bfrm_bin, options.num_control_vars,
+            options.start_factors, options.nucleus_file,
+            options.evol_max_factors, options.evol_max_genes)
 
     # Generate output files.
     summarize_factor_scores(

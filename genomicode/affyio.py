@@ -34,7 +34,7 @@ def scan_celv3(filename):
     # ("MODIFIED", "DATA", (X, Y))
     import filelib
     
-    assert type(filename) is type("")
+    assert type(filename) is type(""), "Need actual filename."
     handle = filelib.openfh(filename)  # in case of GZ file
     section = None
     for i, line in enumerate(handle):

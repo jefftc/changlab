@@ -3,16 +3,17 @@
 Format described at:
 http://www.broad.mit.edu/cancer/software/genepattern/tutorial/gp_fileformats.html
 
-Description  Accession  <Sample>  ""              [...]
-\t<description>\t<description> [...]
+Description    Accession    <Sample>  <EMPTY>    [...]
+<EMPTY>        <desc1>                <desc2>    [...]
 <num rows>
+<description>  <accession>  <signal>  [AP]       [...]
 [...]
 
 * Each Accession must be unique.
 * The columns for Description and Accession can be switched.
-* Format of the descriptions are:
+* Format of the sample descriptions are:
   <description>[/scale factor=<scale>]
-* The second line contains one fewer column than the first line.
+* The second line contains one fewer columns than the first line.
 * The blank column contains absent or present calls [AP].
 * The GenePattern PreprocessDataset module generates res format files
   where the last column is empty.
@@ -28,13 +29,13 @@ is_matrix
 """
 import os
 
-def is_format(locator_str):
-    from genomicode import filefns
-    if not filefns.exists(locator_str):
+def is_format(locator_str, hrows=None, hcols=None):
+    from genomicode import filelib
+    if not filelib.exists(locator_str):
         return False
 
     # Read 5 lines and count the headers.
-    handle = filefns.openfh(locator_str)
+    handle = filelib.openfh(locator_str)
     lines = [handle.readline() for i in range(5)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]
@@ -59,29 +60,40 @@ def is_format(locator_str):
 
     return True
 
+DIAGNOSIS = ""
 def is_matrix(X):
-    if not hasattr(X, "col_headers") or not hasattr(X, "row_headers"):
+    global DIAGNOSIS
+    import tab_delimited_format as tdf
+    
+    DIAGNOSIS = ""
+    
+    if not hasattr(X, "col_names") or not hasattr(X, "row_names"):
+        DIAGNOSIS = "No annotations."
         return False
-    x = [x.upper() for x in X.row_headers()]
+    x = [x.upper() for x in X.row_names()]
     if sorted(x) != sorted(["ACCESSION", "DESCRIPTION", "CALL"]):
+        DIAGNOSIS = "Improper row headers."
         return False
-    x = [x.upper() for x in X.col_headers()]
-    if sorted(x) != sorted(["DESCRIPTION", "SCALE_FACTOR"]):
+    x = [x.upper() for x in X.col_names()]
+    if sorted(x) != sorted([tdf.SAMPLE_NAME, "DESCRIPTION", "SCALE_FACTOR"]):
+        DIAGNOSIS = "Improper column headers."
         return False
     return True
 
-def read(handle, datatype=None):
-    from genomicode import filefns
-    from genomicode import iofns
+def read(handle, hrows=None, hcols=None, datatype=float):
+    from genomicode import filelib
+    from genomicode import jmath
     from genomicode import Matrix
+    import tab_delimited_format as tdf
     import const
 
-    handle = filefns.openfh(handle)
-    # Can't use iofns.split_tdf here because it does not handle empty
+    handle = filelib.openfh(handle)
+    # Can't use iolib.split_tdf here because it does not handle empty
     # lines properly (which can occur if there is a file with no
     # samples).
-    #data = iofns.split_tdf(handle.read())
+    #data = iolib.split_tdf(handle.read())
     data = [x.rstrip("\r\n").split("\t") for x in handle]
+    assert len(data) >= 3, "Invalid RES file."
 
     # Do some checking on the format.
     assert len(data[0]) == len(data[1])+1
@@ -168,42 +180,42 @@ def read(handle, datatype=None):
         
     # Should have some way of specifying no conversion.
     if datatype is None:
-        convert_fn = float   # default
+        convert_fn = None   # default
     elif datatype is int:
-        convert_fn = iofns.safe_int
+        convert_fn = jmath.safe_int
     elif datatype is float:
-        convert_fn = iofns.safe_float
+        convert_fn = jmath.safe_float
     else:
         convert_fn = datatype
         
     if convert_fn:
         matrix = [map(convert_fn, x) for x in matrix]
 
-    col_names = sample_names
-    row_names = None
-    row_headers = data[0][:2] + ["CALL"]
-    col_headers = None
-    col_annots = {}
-    row_annots = {}
-    synonyms = {}
+    row_names = {}
+    col_names = {}
+    row_order = data[0][:2] + ["CALL"]
+    col_order = [tdf.SAMPLE_NAME, "DESCRIPTION", "SCALE_FACTOR"]
     
-    row_annots[accession_header] = accession
-    row_annots[description_header] = description
-    col_annots["DESCRIPTION"] = sample_description
-    col_annots["SCALE_FACTOR"] = scale_factors
-
+    row_names[accession_header] = accession
+    row_names[description_header] = description
     # Store the calls as row annotations.  The gene annotation "CALL"
     # is a string of A, P, or M, with one call per sample.
-    row_annots["CALL"] = ["".join(x) for x in calls]
+    row_names["CALL"] = ["".join(x) for x in calls]
+    
+    col_names[tdf.SAMPLE_NAME] = sample_names
+    col_names["DESCRIPTION"] = sample_description
+    col_names["SCALE_FACTOR"] = scale_factors
 
+    synonyms = {}
+    synonyms[const.COL_ID] = tdf.SAMPLE_NAME
     synonyms[const.ROW_ID] = accession_header
 
     X = Matrix.InMemoryMatrix(
         matrix, row_names=row_names, col_names=col_names,
-        row_headers=row_headers, col_headers=col_headers,
-        row_annots=row_annots, col_annots=col_annots, synonyms=synonyms)
+        row_order=row_order, col_order=col_order)
+    X = Matrix.add_synonyms(X, synonyms)
+    #is_matrix(X); print DIAGNOSIS
     assert is_matrix(X)
-    
     return X
 
 def write(X, handle):
