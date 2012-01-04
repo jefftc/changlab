@@ -1,3 +1,8 @@
+.genomicoderc
+
+arrayplot.py requires PIL
+
+
 Requirements:
 - rpy2         R code in jmath.
 - numpy        jmath.

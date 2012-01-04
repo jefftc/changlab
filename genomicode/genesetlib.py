@@ -9,7 +9,7 @@ detect_format
 
 """
 
-def read_gmx(filename):
+def read_gmx(filename, preserve_spaces=False):
     # yield name, description, list of genes
     import StringIO
     import filelib
@@ -28,7 +28,7 @@ def read_gmx(filename):
             x.append(matrix[i][j])
         assert len(x) >= 2
         x1 = x[:2]
-        x2 = [x.strip() for x in x[2:] if x.strip()]
+        x2 = [x.strip() for x in x[2:]]
         x = x1 + x2
         t_matrix.append(x)
 
@@ -37,7 +37,7 @@ def read_gmx(filename):
         print >>handle, "\t".join(x)
 
     handle.seek(0)
-    return read_gmt(handle)
+    return read_gmt(handle, preserve_spaces=preserve_spaces)
 
 ## def read_gmx(filename):
 ##     # yield name, description, list of genes
@@ -74,7 +74,7 @@ def read_gmx(filename):
 ##         genes = genesets[name]
 ##         yield name, desc, genes
 
-def read_gmt(filename):
+def read_gmt(filename, preserve_spaces=False):
     # yield name, description, list of genes
     import filelib
     import iolib
@@ -86,8 +86,10 @@ def read_gmt(filename):
         name, description = cols[:2]
         x = cols[2:]
         x = [x.strip() for x in x]
-        x = [x for x in x if x]
+        if not preserve_spaces:
+            x = [x for x in x if x]
         genes = x
+        #print preserve_spaces, len(genes), len(cols)
         yield name, description, genes
 
 def read_genesets(filename):

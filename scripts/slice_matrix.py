@@ -6,6 +6,8 @@
 # parse_geneset
 # _parse_file_gs
 #
+# read_geneset_or_clin
+#
 # find_col_indexes
 # relabel_col_ids
 # 
@@ -90,11 +92,6 @@ def _parse_file_gs(geneset):
     filename, genesets = x[0], x[1:]
     return filename, genesets
     
-def find_col_indexes(MATRIX, indexes):
-    if not indexes:
-        return None
-    return parse_indexes(MATRIX, False, indexes)
-
 def read_geneset_or_clin(filename):
     # Read either a GMT/GMX file, or a generic tab-delimited text file
     # where each column is an annotation.
@@ -102,16 +99,21 @@ def read_geneset_or_clin(filename):
 
     fmt = genesetlib.detect_format(filename)
     if fmt is not None:
-        for x in genesetlib.read_genesets(filename):
+        for x in genesetlib.read_genesets(filename, preserve_spaces=True):
             yield x
         return
 
-    for x in genesetlib.read_gmx(filename):
+    for x in genesetlib.read_gmx(filename, preserve_spaces=True):
         name, description, genes = x
         genes = [description] + genes
         description = ""
         yield name, description, genes
     
+
+def find_col_indexes(MATRIX, indexes):
+    if not indexes:
+        return None
+    return parse_indexes(MATRIX, False, indexes)
 
 def relabel_col_ids(MATRIX, geneset):
     import arrayio
@@ -206,9 +208,14 @@ def add_row_annot(MATRIX, row_annots):
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
-    for x in genesetlib.read_genesets(filename):
+    num_genes = None
+    for x in read_geneset_or_clin(filename):
         geneset, description, genes = x
         geneset2genes[geneset] = genes
+        if num_genes is None:
+            num_genes = len(genes)
+        assert len(genes) == num_genes, "%s %d %d" % (
+            geneset, len(genes), num_genes)
         all_genesets.append(geneset)
 
     # Find an alignment between one of the matrix row_names and the
