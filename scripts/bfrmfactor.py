@@ -317,8 +317,8 @@ def create_control_vars(MATRIX, num_control_vars):
     AFFX = MATRIX.matrix(I, None)
     max_control_vars = min(AFFX.nrow(), AFFX.ncol())
     assert num_control_vars<= AFFX.nrow() and num_control_vars <= AFFX.ncol(),\
-           "Too many control variables.  Maximum is %d." % (
-        num_control_vars, max_control_vars)
+           "Too many control variables (%d).  Maximum is %d." % (
+               num_control_vars, max_control_vars)
 
     # Calculate the SVD of the control probes.
     X = AFFX._X
