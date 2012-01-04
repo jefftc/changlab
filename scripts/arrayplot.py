@@ -104,7 +104,9 @@ class PlotCoords:
         self.al_x, self.al_y = al_x, al_y
 
 class HeatmapLayout:
-    def __init__(self, nrow, ncol, boxwidth, boxheight, grid, color_fn):
+    def __init__(
+            self, nrow, ncol, boxwidth, boxheight, grid, inverse_colors,
+            color_fn):
         # Looks OK with even 1 pixel.
         #MIN_GRID = 1
         #if boxwidth < MIN_GRID or boxheight < MIN_GRID:
@@ -113,6 +115,7 @@ class HeatmapLayout:
         self.ncol = ncol
         self.boxwidth = boxwidth
         self.boxheight = boxheight
+        self.inverse_colors = inverse_colors
         self.color_fn = color_fn
         self.BORDER = 1
         self.GRID_SIZE = 1
@@ -145,12 +148,12 @@ class HeatmapLayout:
             #return _get_color(0.5, self.color_fn)
             return (255, 255, 255)
         assert x >= 0 and x <= 1, "x out of range: %g" % x
-        return _get_color(x, self.color_fn)
+        return _get_color(x, self.color_fn, flip_colors=self.inverse_colors)
 
 class ColorbarLayout:
     def __init__(
         self, cb_width, cb_height, signal_0, signal_1,
-        ticks, tick_labels, label_sizes, fontsize, color_fn):
+        ticks, tick_labels, label_sizes, fontsize, inverse_colors, color_fn):
         import math
 
         TICK_SIZE = 0.15       # relative to BAR_SHORT
@@ -169,6 +172,7 @@ class ColorbarLayout:
         self._tick_labels = tick_labels
         self._label_sizes = label_sizes
         self._fontsize = fontsize
+        self._inverse_colors = inverse_colors
         self._color_fn = color_fn
     def width(self):
         width = self._cb_width
@@ -247,7 +251,7 @@ class ColorbarLayout:
     def color(self, x):
         # x is from [0, 1].  find the nearest color.
         assert x >= 0 and x <= 1, "x out of range: %g" % x
-        return _get_color(x, self._color_fn)
+        return _get_color(x, self._color_fn, flip_colors=self._inverse_colors)
 
 class DendrogramLayout:
     def __init__(
@@ -333,6 +337,7 @@ class DendrogramLayout:
         if self.tree_cluster:
             n = self.tree_cluster[id]
         if n is not None and self.max_cluster:
+            # If requested, should I use the inverse of the color here?
             p = float(n) / self.max_cluster
             c = _get_color(p, self.color_fn)
         return c
@@ -609,7 +614,7 @@ def process_data_set(
 
 def make_layout(
     MATRIX, cluster_data, signal_0, signal_1, plotlib,
-    boxwidth, boxheight, grid, color_scheme, colorbar,
+    boxwidth, boxheight, grid, flip_colors, color_scheme, colorbar,
     cluster_genes, gene_tree_scale, gene_tree_thickness,
     cluster_arrays, array_tree_scale, array_tree_thickness,
     cluster_alg, label_genes, label_arrays):
@@ -630,7 +635,8 @@ def make_layout(
 
     # Make the layout for the heatmap.
     hm_layout = HeatmapLayout(
-        MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight, grid, color_fn)
+        MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight, grid, flip_colors,
+        color_fn)
 
     # Make the layout for the colorbar.
     cb_layout = None
@@ -644,7 +650,7 @@ def make_layout(
         ticks, tick_labels, label_sizes, fontsize = x
         cb_layout = ColorbarLayout(
             width, height, signal_0, signal_1,
-            ticks, tick_labels, label_sizes, fontsize, color_fn)
+            ticks, tick_labels, label_sizes, fontsize, flip_colors, color_fn)
 
     # Make layouts for the dendrograms.
     gd_layout = ad_layout = None
@@ -1907,12 +1913,15 @@ def _calc_colorbar_ticks(
     return ticks, tick_labels, label_sizes, fontsize
 
 _COLOR_CACHE = {}  # (fn, num) -> list
-def _get_color(perc, color_fn, num_colors=256):
+def _get_color(perc, color_fn, num_colors=256, flip_colors=False):
     # Convert a percentage into a (r, g, b) color.
     # r, g, b are numbers from 0 to 255.
     global _COLOR_CACHE
     import math
 
+    assert perc >= 0.0 and perc <= 1.0
+    if flip_colors:
+        perc = 1.0 - perc
     x = color_fn, num_colors
     if x not in _COLOR_CACHE:
         _COLOR_CACHE[x] = color_fn(num_colors)
@@ -2088,6 +2097,9 @@ def main():
         help="Choose the color scheme to use: red, red-green, blue-yellow, "
         "matlab, bild (default), genespring, or yahoo.")
     group.add_option(
+        "--inverse", dest="inverse", action="store_true", default=False,
+        help="Flip the colors for the heatmap.")
+    group.add_option(
         "--colorbar", dest="colorbar", default=False, action="store_true",
         help="Add a colorbar to the plot.")
     group.add_option(
@@ -2176,7 +2188,7 @@ def main():
     layout = make_layout(
         MATRIX, cluster_data, signal_0, signal_1, plotlib, 
         options.width, options.height, options.grid,
-        options.color_scheme, options.colorbar,
+        options.inverse, options.color_scheme, options.colorbar,
         options.cluster_genes, options.gene_tree_scale,
         options.gene_tree_thickness,
         options.cluster_arrays, options.array_tree_scale,
