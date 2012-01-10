@@ -177,6 +177,7 @@ class ColorbarLayout:
     def width(self):
         width = self._cb_width
         if self._cb_height > self._cb_width:
+            # Vertical skinny colorbar.
             # Tick mark.
             width += self._cb_width * self.TICK_SIZE
             # BUFFER between tick mark and label.
@@ -191,7 +192,10 @@ class ColorbarLayout:
         return width
     def height(self):
         height = self._cb_height
+        # Bug: For vertical colorbar, does not take into account
+        # height of labels.  Might be cut off.
         if self._cb_width > self._cb_height:
+            # Horizontal colorbar.
             # Tick mark.
             height += self._cb_height * self.TICK_SIZE
             # BUFFER between tick mark and label.
@@ -887,16 +891,21 @@ def read_filecol(filecol):
     from genomicode import iolib
 
     # filecol is either <filename> or <filename>,<col>.  commas
-    # are not allowed in the filenames.
-    filename, colnum = filecol, 0
+    # are not allowed in the filenames.  <col> should be 1-based
+    # index.
+    filename, colnum = filecol, 1
     if filecol.find(",") >= 0:
         x = filecol.split(",")
         assert len(x) == 2, "File should be specified: <filename>,<col>"
         filename, colnum = x
         colnum = int(colnum)
+        assert colnum >= 1
     assert os.path.exists(filename), "could not find file %s" % filename
     data = iolib.split_tdf(open(filename).read())
-    names = [x[colnum].strip() for x in data]
+    # Make sure colnum is correct.
+    for x in data:
+        assert colnum <= len(x)
+    names = [x[colnum-1].strip() for x in data]
     names = [x for x in names if x]
     return names
 
@@ -1977,14 +1986,14 @@ def main():
         help="Comma-separated list of genes to show.")
     group.add_option(
         "", "--gene_file", dest="gene_file", type="string", default=None,
-        help="<file>[,<column num>] containing the names of genes.")
+        help="<file>[,<1-based column num>] containing the names of genes.")
     group.add_option(
         "", "--array_indexes", dest="array_indexes", type="string",
         default=None,
         help="Indexes of arrays to show, e.g. 1-50,75 (1-based, inclusive).")
     group.add_option(
         "", "--array_file", dest="array_file", type="string", default=None,
-        help="<file>[,<column num>] containing the names of arrays.")
+        help="<file>[,<1-based column num>] containing the names of arrays.")
     group.add_option(
         "-j", "--jobname", dest="jobname", type="string", default=None,
         help="Save the processed matrix to a file.")

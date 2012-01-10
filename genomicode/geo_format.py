@@ -177,7 +177,7 @@ def make_locator(geo_path, GSEID, GPLID, filename=None):
     x = ":".join(x)
     return x
 
-def is_format(locator_str):
+def is_format(locator_str, hrows=None, hcols=None):
     if locator_str.startswith("geo_format"):
         return True
     return False
@@ -191,7 +191,7 @@ def is_matrix(X):
         return False
     return True
 
-def read(handle, datatype=None):
+def read(handle, hrows=None, hcols=None, datatype=None):
     import arrayio
     
     assert type(handle) is type("")

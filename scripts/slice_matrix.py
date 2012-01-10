@@ -178,10 +178,14 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
            "File not found: %s" % align_row_file
     
     ALIGN = arrayio.read(align_row_file)
-    ids = ALIGN.row_names(arrayio.ROW_ID)
-    I_row, I_col = MATRIX._index(row=ids, row_header=arrayio.ROW_ID)
-    I = I_row
-    if not ignore_missing_row and len(ids) != len(I):
+    # Try all the headers and see if we can find a hit.
+    for header in ALIGN.row_names():
+        ids = ALIGN.row_names(header)
+        I_row, I_col = MATRIX._index(row=ids, row_header=arrayio.ROW_ID)
+        I = I_row
+        if len(I) == len(ids):
+            break
+    if not ignore_missing_rows and len(ids) != len(I):
         # Diagnose problem here.
         x = ALIGN.row_names(arrayio.ROW_ID)
         ids_A = {}.fromkeys(x)
@@ -191,8 +195,9 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         for id in ids_A:
             if id not in ids_M:
                 missing.append(id)
-        for id in sorted(missing):
-            print id
+        if len(missing) < 10:
+            for id in sorted(missing):
+                print id
         message = "I could not find %d IDs." % len(missing)
         raise AssertionError, message
     return I
