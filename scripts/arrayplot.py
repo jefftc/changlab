@@ -1167,7 +1167,8 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     nrow, ncol = MATRIX.dim()
     X = MATRIX._X
 
-    # Choose a default scale based on the average expression level.
+    # Choose a default scale so that the average expression level is
+    # 0.
     defscale = 0.0
     if autoscale:
         x_all = []
@@ -1184,7 +1185,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
                 continue
             X[i][j] = X[i][j] + defscale + scale
 
-    # Choose a default gain based on the maximum expression level.
+    # Choose a default gain so that the maximum expression level is 1.
     defgain = 1.0
     if autoscale:
         x_max = None
@@ -1232,7 +1233,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     assert not math.isnan(defgain) and not math.isnan(defscale)
     ORIG_min = (0.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
     ORIG_max = (1.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
-
+    
     return MATRIX, ORIG_min, ORIG_max
 
 def _guess_filestem(file_or_job):
