@@ -1481,6 +1481,8 @@ def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
 def plot_colorbar(plotlib, image, xoff, yoff, layout):
     from genomicode import graphlib
 
+    #yoff += 100
+    #xoff += 100
     BLACK = (0, 0, 0)
     OUTLINE_COLOR = (0, 0, 0)
     TICK_COLOR = (50, 50, 50)

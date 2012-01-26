@@ -169,6 +169,30 @@ def find_row_genesets(MATRIX, genesets):
         return None
     return parse_geneset(MATRIX, True, genesets)
 
+def find_row_mean_var(MATRIX, filter_mean, filter_var):
+    from genomicode import pcalib
+    if filter_mean is None and filter_var is None:
+        return None
+    if filter_mean is not None:
+        filter_mean = float(filter_mean)
+    if filter_var is not None:
+        filter_var = float(filter_var)
+    
+    assert filter_mean is None or (filter_mean >= 0 and filter_mean <= 1)
+    assert filter_var is None or (filter_var >= 0 and filter_var <= 1)
+
+    nrow = MATRIX.nrow()
+
+    num_genes_mean = num_genes_var = None
+    if filter_mean is not None:
+        # Calculate the number of genes to keep.
+        num_genes_mean = int((1.0 - filter_mean) * nrow)
+    if filter_var is not None:
+        # Calculate the number of genes to keep.
+        num_genes_var = int((1.0 - filter_var) * nrow)
+    I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+    return I
+
 def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     import arrayio
     
@@ -421,6 +445,14 @@ def main():
         "--filter_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
         "Format: <gmx/gmt_file>[,<geneset>,<geneset>,...]")
+    group.add_argument(
+        "--filter_row_mean", default=None,
+        help="Remove this percentage of rows that have the lowest mean.  "
+        "Should be between 0 and 1.")
+    group.add_argument(
+        "--filter_row_var", default=None,
+        help="Remove this percentage of rows that have the lowest variance.  "
+        "Should be between 0 and 1.")
 
     group.add_argument(
         "--add_row_annot", default=None,
@@ -453,7 +485,8 @@ def main():
     I1 = find_row_indexes(MATRIX, args.filter_row_indexes)
     I2 = find_row_ids(MATRIX, args.filter_row_ids)
     I3 = find_row_genesets(MATRIX, args.filter_row_genesets)
-    I_row = _intersect_indexes(I1, I2, I3)
+    I4 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
+    I_row = _intersect_indexes(I1, I2, I3, I4)
     I_col = find_col_indexes(MATRIX, args.filter_col_indexes)
     MATRIX = MATRIX.matrix(I_row, I_col)
 

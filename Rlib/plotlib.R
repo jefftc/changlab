@@ -234,6 +234,10 @@ normalize.one.mv <- function(x, M=0, V=1) {
   # Normalize a list of numbers so the mean is M and variance is V.
   M.0 <- mean(x)
   V.0 <- var(x)
+  if(is.null(M))
+    M <- M.0
+  if(is.null(V))
+    V <- V.0
   if(V.0 == 0)
     return(x-M.0+M)
   (x-M.0)*sqrt(V/V.0) + M
