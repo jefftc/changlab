@@ -15,6 +15,7 @@
 # find_row_ids
 # find_row_genesets
 # align_rows
+# align_cols
 # add_row_annot
 # remove_row_annot
 #
@@ -203,18 +204,58 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
 
     ALIGN = arrayio.read(align_row_file)
     # Try all the headers and see if we can find a hit.
-    # BUG: what if there's no header?  I will not be set.
+    # BUG: what if there's no header?
+    best_I = []
     for header in ALIGN.row_names():
         ids = ALIGN.row_names(header)
         I_row, I_col = MATRIX._index(row=ids, row_header=arrayio.ROW_ID)
-        I = I_row
-        if len(I) == len(ids):
+        if len(I_row) > len(best_I):
+            best_I = I_row
+        #I = I_row
+        if len(best_I) == len(ids):
             break
+    I = best_I
     if not ignore_missing_rows and len(ids) != len(I):
         # Diagnose problem here.
         x = ALIGN.row_names(arrayio.ROW_ID)
         ids_A = {}.fromkeys(x)
         x = MATRIX.row_names(arrayio.ROW_ID)
+        ids_M = {}.fromkeys(x)
+        missing = []
+        for id in ids_A:
+            if id not in ids_M:
+                missing.append(id)
+        if len(missing) < 10:
+            for id in sorted(missing):
+                print id
+        message = "I could not find %d IDs." % len(missing)
+        raise AssertionError, message
+    return I
+
+def align_cols(MATRIX, align_col_file, ignore_missing_cols):
+    import arrayio
+
+    if not align_col_file:
+        return None
+    assert os.path.exists(align_col_file), \
+        "File not found: %s" % align_col_file
+    
+    ALIGN = arrayio.read(align_col_file)
+    # Try all the headers and see if we can find a hit.
+    best_I = []
+    for header in ALIGN.col_names():
+        ids = ALIGN.col_names(header)
+        I_row, I_col = MATRIX._index(col=ids, col_header=arrayio.COL_ID)
+        if len(I_col) > len(best_I):
+            best_I = I_col
+        if len(best_I) == len(ids):
+            break
+    I = best_I
+    if not ignore_missing_cols and len(ids) != len(I):
+        # Diagnose problem here.
+        x = ALIGN.col_names(arrayio.COL_ID)
+        ids_A = {}.fromkeys(x)
+        x = MATRIX.col_names(arrayio.COL_ID)
         ids_M = {}.fromkeys(x)
         missing = []
         for id in ids_A:
@@ -433,6 +474,12 @@ def main():
         "--relabel_col_ids", default=None,  
         help="Relabel the column IDs.  Format: <gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
+    group.add_argument(
+        "--align_col_file", default=None,
+        help="Align the cols to this other matrix file.")
+    group.add_argument(
+        "--ignore_missing_cols", default=False, action="store_true",
+        help="Ignore any cols that can't be found.")
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
@@ -492,9 +539,10 @@ def main():
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Align to the align_file.
-    I_row = align_rows(
-        MATRIX, args.align_row_file, args.ignore_missing_rows)
+    I_row = align_rows(MATRIX, args.align_row_file, args.ignore_missing_rows)
     MATRIX = MATRIX.matrix(I_row, None)
+    I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
+    MATRIX = MATRIX.matrix(None, I_col)
 
     # Add row annotations.
     MATRIX = add_row_annot(MATRIX, args.add_row_annot)
