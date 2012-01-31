@@ -31,8 +31,9 @@ def find_dwd(default_path):
             continue
         # Test for some well-known BatchAdjust files.
         files = [
-            "ReadMe.txt", "Data", "SubRoutines",
-            "BatchAdjustSM.m", "BatchAdjustSMtest.m", "basm1.m",
+            "ReadMe.txt", "SubRoutines", "basm1.m",
+            # Files removed from distribution to save space.
+            #"Data", "BatchAdjustSM.m", "BatchAdjustSMtest.m", 
             ]
         complete = True   # Is this distribution complete.
         for file in files:
