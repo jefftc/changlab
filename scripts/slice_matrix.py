@@ -201,9 +201,10 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         return None
     assert os.path.exists(align_row_file), \
            "File not found: %s" % align_row_file
-    
+
     ALIGN = arrayio.read(align_row_file)
     # Try all the headers and see if we can find a hit.
+    # BUG: what if there's no header?
     best_I = []
     for header in ALIGN.row_names():
         ids = ALIGN.row_names(header)
