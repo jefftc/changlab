@@ -174,9 +174,11 @@ class ColorbarLayout:
         self._fontsize = fontsize
         self._inverse_colors = inverse_colors
         self._color_fn = color_fn
+    def is_vertical(self):
+        return self._cb_height > self._cb_width
     def width(self):
         width = self._cb_width
-        if self._cb_height > self._cb_width:
+        if self.is_vertical():
             # Vertical skinny colorbar.
             # Tick mark.
             width += self._cb_width * self.TICK_SIZE
@@ -194,7 +196,7 @@ class ColorbarLayout:
         height = self._cb_height
         # Bug: For vertical colorbar, does not take into account
         # height of labels.  Might be cut off.
-        if self._cb_width > self._cb_height:
+        if not self.is_vertical():
             # Horizontal colorbar.
             # Tick mark.
             height += self._cb_height * self.TICK_SIZE
@@ -219,11 +221,12 @@ class ColorbarLayout:
         assert i >= 0 and i < len(self._ticks)
         tick = self._ticks[i]
         perc = float(tick-self._signal_0)/(self._signal_1-self._signal_0)
-        if self._cb_width < self._cb_height:  # vertical bar
+        if self.is_vertical():
             width = self._cb_width * self.TICK_SIZE
             height = 1
             x = self._cb_width
-            y = perc * self._cb_height
+            #y = perc * self._cb_height          # high numbers on bottom
+            y = (1.0-perc) * self._cb_height    # high numbers on top
             y = min(y, self._cb_height-height)
         else:
             width = 1
@@ -240,7 +243,7 @@ class ColorbarLayout:
         x = self.tick_coord(i)
         tick_x, tick_y, tick_width, tick_height = x
         label_width, label_height = self._label_sizes[i]
-        if self._cb_height > self._cb_width:  # vertical
+        if self.is_vertical():
             x = tick_x + tick_width + self._cb_width*self.TICK_BUFFER
             y = tick_y - label_height/2.0
         else:
@@ -775,12 +778,18 @@ def calc_coords_for_layout(layout):
         CB_BUFFER = 0.75  # separation from heatmap, relative to BAR_SHORT
         bar_width = layout.colorbar.bar_width()
         bar_height = layout.colorbar.bar_height()
-        if cb_height > cb_width:
+        if layout.colorbar.is_vertical():
             cb_x = hm_x + hm_width + CB_BUFFER*bar_width
             cb_y = hm_y
+            # If there are no dendrograms or labels, then need to add
+            # a buffer so that the labels aren't cut off.
+            if not layout.array_dendrogram and not layout.array_label:
+                cb_y += layout.colorbar.fontsize()
         else:
             cb_x = hm_x
             cb_y = hm_y + hm_height + CB_BUFFER*bar_height
+            if not layout.gene_dendrogram and not layout.gene_label:
+                cb_x += layout.colorbar.fontsize()
         cb_x, cb_y = int(cb_x), int(cb_y)
 
     x = PlotCoords(
@@ -1489,9 +1498,10 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
 
     # Draw the colorbar.
     cb_width, cb_height = layout.bar_width(), layout.bar_height()
-    if cb_height > cb_width:
+    if layout.is_vertical():
         for i in range(cb_height):
-            color = layout.color(float(i)/cb_height)
+            #color = layout.color(float(i)/cb_height)        # big on bottom
+            color = layout.color(1.0-(float(i)/cb_height))  # big on top
             plotlib.line(image, xoff, yoff+i, cb_width, 1, color)
     else:
         for i in range(cb_width):
