@@ -106,7 +106,7 @@ class PlotCoords:
 class HeatmapLayout:
     def __init__(
             self, nrow, ncol, boxwidth, boxheight, grid, inverse_colors,
-            color_fn):
+            black0, color_fn):
         # Looks OK with even 1 pixel.
         #MIN_GRID = 1
         #if boxwidth < MIN_GRID or boxheight < MIN_GRID:
@@ -116,6 +116,7 @@ class HeatmapLayout:
         self.boxwidth = boxwidth
         self.boxheight = boxheight
         self.inverse_colors = inverse_colors
+        self.black0 = black0
         self.color_fn = color_fn
         self.BORDER = 1
         self.GRID_SIZE = 1
@@ -148,7 +149,9 @@ class HeatmapLayout:
             #return _get_color(0.5, self.color_fn)
             return (255, 255, 255)
         assert x >= 0 and x <= 1, "x out of range: %g" % x
-        return _get_color(x, self.color_fn, flip_colors=self.inverse_colors)
+        return _get_color(
+            x, self.color_fn, flip_colors=self.inverse_colors,
+            black0=self.black0)
 
 class ColorbarLayout:
     def __init__(
@@ -173,6 +176,7 @@ class ColorbarLayout:
         self._label_sizes = label_sizes
         self._fontsize = fontsize
         self._inverse_colors = inverse_colors
+        #self._black0 = black0
         self._color_fn = color_fn
     def is_vertical(self):
         return self._cb_height > self._cb_width
@@ -621,7 +625,7 @@ def process_data_set(
 
 def make_layout(
     MATRIX, cluster_data, signal_0, signal_1, plotlib,
-    boxwidth, boxheight, grid, flip_colors, color_scheme, colorbar,
+    boxwidth, boxheight, grid, color_scheme, flip_colors, black0, colorbar,
     cluster_genes, gene_tree_scale, gene_tree_thickness,
     cluster_arrays, array_tree_scale, array_tree_thickness,
     cluster_alg, label_genes, label_arrays):
@@ -643,7 +647,7 @@ def make_layout(
     # Make the layout for the heatmap.
     hm_layout = HeatmapLayout(
         MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight, grid, flip_colors,
-        color_fn)
+        black0, color_fn)
 
     # Make the layout for the colorbar.
     cb_layout = None
@@ -1935,13 +1939,16 @@ def _calc_colorbar_ticks(
     return ticks, tick_labels, label_sizes, fontsize
 
 _COLOR_CACHE = {}  # (fn, num) -> list
-def _get_color(perc, color_fn, num_colors=256, flip_colors=False):
+def _get_color(perc, color_fn, num_colors=256, black0=False,
+               flip_colors=False):
     # Convert a percentage into a (r, g, b) color.
     # r, g, b are numbers from 0 to 255.
     global _COLOR_CACHE
     import math
 
     assert perc >= 0.0 and perc <= 1.0
+    if black0 and perc < 1.0/num_colors:
+        return 0, 0, 0
     if flip_colors:
         perc = 1.0 - perc
     x = color_fn, num_colors
@@ -1953,6 +1960,7 @@ def _get_color(perc, color_fn, num_colors=256, flip_colors=False):
     r = min(int(math.floor(r*256)), 255)
     g = min(int(math.floor(g*256)), 255)
     b = min(int(math.floor(b*256)), 255)
+    #print perc, r, g, b
     return r, g, b
 
 def _exists_nz(filename):
@@ -2119,6 +2127,9 @@ def main():
         help="Choose the color scheme to use: red, red-green, blue-yellow, "
         "matlab, bild (default), genespring, or yahoo.")
     group.add_option(
+        "--black0", dest="black0", action="store_true", default=False,
+        help="Color 0 values black (no matter the color scheme).")
+    group.add_option(
         "--inverse", dest="inverse", action="store_true", default=False,
         help="Flip the colors for the heatmap.")
     group.add_option(
@@ -2210,7 +2221,8 @@ def main():
     layout = make_layout(
         MATRIX, cluster_data, signal_0, signal_1, plotlib, 
         options.width, options.height, options.grid,
-        options.inverse, options.color_scheme, options.colorbar,
+        options.color_scheme, options.inverse, options.black0,
+        options.colorbar,
         options.cluster_genes, options.gene_tree_scale,
         options.gene_tree_thickness,
         options.cluster_arrays, options.array_tree_scale,
