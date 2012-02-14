@@ -24,7 +24,9 @@
 
 
 matrix2color <- function(cmatrix, pos) {
-  # pos is [0, 1]
+  # pos is [0, 1].  Returns r, g, b where each one is from [0, 1].
+  if(is.nan(pos))  # this can happen if someone calls matlab.colors(1)
+    pos <- 0.5
   breaks <- cmatrix[,1]
   i1 <- sum(pos >= breaks)
   x <- cmatrix[i1,2:4]
@@ -37,11 +39,13 @@ matrix2color <- function(cmatrix, pos) {
 }
 
 matrix2rgb <- function(cmatrix, pos) {
+  # pos is [0, 1].  Returns color, e.g. "#003300".
   x <- matrix2color(cmatrix, pos)
   rgb(x[1], x[2], x[3], maxColorValue=1)
 }
 
 green.shade <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.0,   0,   0, 0),
     c(1.0,   0, 255, 0)),
@@ -50,6 +54,7 @@ green.shade <- function(n) {
 }
 
 red.shade <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.0,   0, 0, 0),
     c(1.0, 255, 0, 0)),
@@ -58,6 +63,7 @@ red.shade <- function(n) {
 }
 
 rg.array.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.0,   0, 255, 0),
     c(0.5,   0,   0, 0),
@@ -67,6 +73,7 @@ rg.array.colors <- function(n) {
 }
 
 by.array.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.0,   0,   0, 255),
     c(0.5,   0,   0,   0),
@@ -76,6 +83,7 @@ by.array.colors <- function(n) {
 }
 
 rgb.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.00,   0,   0, 255),
     c(0.25,   0, 255, 255),
@@ -87,6 +95,7 @@ rgb.colors <- function(n) {
 }
 
 ryb.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.00,   0,   0, 255),
     c(0.25,   0, 255,   0),
@@ -98,6 +107,7 @@ ryb.colors <- function(n) {
 }
 
 matlab.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.000,   0,   0, 143),
     c(0.125,   0,   0, 255),
@@ -112,7 +122,20 @@ matlab.colors <- function(n) {
   sapply((0:(n-1))/(n-1), function(x) matrix2rgb(cmatrix, x))
 }
 
+matlab.hot.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
+  cmatrix <- t(matrix(c(
+    c(0.000,  10,   0,   0),
+    c(0.361, 255,   0,   0),
+    c(0.377, 255,  10,   0),
+    c(0.738, 255, 255,   0),
+    c(1.000, 255, 255, 255)),
+    4, 5))
+  sapply((0:(n-1))/(n-1), function(x) matrix2rgb(cmatrix, x))
+}
+
 bild.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.000,  49,  50, 114),
     c(0.050,  61,  69, 137),
@@ -139,18 +162,8 @@ bild.colors <- function(n) {
   sapply((0:(n-1))/(n-1), function(x) matrix2rgb(cmatrix, x))
 }
 
-matlab.hot.colors <- function(n) {
-  cmatrix <- t(matrix(c(
-    c(0.000,  10,   0,   0),
-    c(0.361, 255,   0,   0),
-    c(0.377, 255,  10,   0),
-    c(0.738, 255, 255,   0),
-    c(1.000, 255, 255, 255)),
-    4, 5))
-  sapply((0:(n-1))/(n-1), function(x) matrix2rgb(cmatrix, x))
-}
-
 yahoo.weather.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.0, 255, 255, 255),
     c(0.1, 204, 255, 255),
@@ -168,6 +181,7 @@ yahoo.weather.colors <- function(n) {
 }
 
 genespring.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
   cmatrix <- t(matrix(c(
     c(0.0,   0,   0, 255),
     c(0.5, 255, 255,   0),
