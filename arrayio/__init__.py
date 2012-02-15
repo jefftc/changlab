@@ -454,7 +454,7 @@ def _tdf_to_gct(X):
     from genomicode import parselib
     assert tab_delimited_format.is_matrix(X)
 
-    assert len(X.col_names()) == 1
+    assert len(X.col_names()) >= 1
     assert X._col_order and X._col_order[0] == tab_delimited_format.SAMPLE_NAME
 
     name_header = "NAME"
@@ -485,13 +485,14 @@ def _tdf_to_gct(X):
         desc = X.row_names(X.row_names()[desc_i])
     
     row_order = [name_header, desc_header]
-    col_order = X._col_order[:]
+    col_order = [X._col_order[0]]
     row_names = {}
-    col_names = X._col_names.copy()
+    col_names = {}
     synonyms = {}
     
     row_names[name_header] = name
     row_names[desc_header] = desc
+    col_names[tab_delimited_format.SAMPLE_NAME] = X._col_names[X._col_order[0]]
     synonyms[ROW_ID] = name_header
     synonyms[COL_ID] = col_order[0]
         

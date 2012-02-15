@@ -506,11 +506,16 @@ def num_headers(matrix):
         first_row, first_col = num_rows, num_cols
     hrows, hcols = first_row, first_col
 
+    #print hrows, hcols
+    #for i in range(5):
+    #    print i, datatype[i][:5]
+    #for i in range(5):
+    #    print i, semtype[i][:5]
+    #import sys; sys.exit(0)
+    
     assert hcols < num_cols, \
            "It looks like there are annotations at the end of the matrix."
     assert hrows < MAX_HEADER_ROWS, "Too many header rows."
-    #print datatype
-    #print semtype
     return hrows, hcols
 
 def _all_numeric(vec):
