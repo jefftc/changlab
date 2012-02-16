@@ -15,6 +15,7 @@
 # find_row_ids
 # find_row_genesets
 # align_rows
+# align_cols
 # add_row_annot
 # remove_row_annot
 #
@@ -169,6 +170,30 @@ def find_row_genesets(MATRIX, genesets):
         return None
     return parse_geneset(MATRIX, True, genesets)
 
+def find_row_mean_var(MATRIX, filter_mean, filter_var):
+    from genomicode import pcalib
+    if filter_mean is None and filter_var is None:
+        return None
+    if filter_mean is not None:
+        filter_mean = float(filter_mean)
+    if filter_var is not None:
+        filter_var = float(filter_var)
+    
+    assert filter_mean is None or (filter_mean >= 0 and filter_mean <= 1)
+    assert filter_var is None or (filter_var >= 0 and filter_var <= 1)
+
+    nrow = MATRIX.nrow()
+
+    num_genes_mean = num_genes_var = None
+    if filter_mean is not None:
+        # Calculate the number of genes to keep.
+        num_genes_mean = int((1.0 - filter_mean) * nrow)
+    if filter_var is not None:
+        # Calculate the number of genes to keep.
+        num_genes_var = int((1.0 - filter_var) * nrow)
+    I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+    return I
+
 def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     import arrayio
     
@@ -176,12 +201,21 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         return None
     assert os.path.exists(align_row_file), \
            "File not found: %s" % align_row_file
-    
+
     ALIGN = arrayio.read(align_row_file)
-    ids = ALIGN.row_names(arrayio.ROW_ID)
-    I_row, I_col = MATRIX._index(row=ids, row_header=arrayio.ROW_ID)
-    I = I_row
-    if not ignore_missing_row and len(ids) != len(I):
+    # Try all the headers and see if we can find a hit.
+    # BUG: what if there's no header?
+    best_I = []
+    for header in ALIGN.row_names():
+        ids = ALIGN.row_names(header)
+        I_row, I_col = MATRIX._index(row=ids, row_header=arrayio.ROW_ID)
+        if len(I_row) > len(best_I):
+            best_I = I_row
+        #I = I_row
+        if len(best_I) == len(ids):
+            break
+    I = best_I
+    if not ignore_missing_rows and len(ids) != len(I):
         # Diagnose problem here.
         x = ALIGN.row_names(arrayio.ROW_ID)
         ids_A = {}.fromkeys(x)
@@ -191,8 +225,45 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         for id in ids_A:
             if id not in ids_M:
                 missing.append(id)
-        for id in sorted(missing):
-            print id
+        if len(missing) < 10:
+            for id in sorted(missing):
+                print id
+        message = "I could not find %d IDs." % len(missing)
+        raise AssertionError, message
+    return I
+
+def align_cols(MATRIX, align_col_file, ignore_missing_cols):
+    import arrayio
+
+    if not align_col_file:
+        return None
+    assert os.path.exists(align_col_file), \
+        "File not found: %s" % align_col_file
+    
+    ALIGN = arrayio.read(align_col_file)
+    # Try all the headers and see if we can find a hit.
+    best_I = []
+    for header in ALIGN.col_names():
+        ids = ALIGN.col_names(header)
+        I_row, I_col = MATRIX._index(col=ids, col_header=arrayio.COL_ID)
+        if len(I_col) > len(best_I):
+            best_I = I_col
+        if len(best_I) == len(ids):
+            break
+    I = best_I
+    if not ignore_missing_cols and len(ids) != len(I):
+        # Diagnose problem here.
+        x = ALIGN.col_names(arrayio.COL_ID)
+        ids_A = {}.fromkeys(x)
+        x = MATRIX.col_names(arrayio.COL_ID)
+        ids_M = {}.fromkeys(x)
+        missing = []
+        for id in ids_A:
+            if id not in ids_M:
+                missing.append(id)
+        if len(missing) < 10:
+            for id in sorted(missing):
+                print id
         message = "I could not find %d IDs." % len(missing)
         raise AssertionError, message
     return I
@@ -403,6 +474,12 @@ def main():
         "--relabel_col_ids", default=None,  
         help="Relabel the column IDs.  Format: <gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
+    group.add_argument(
+        "--align_col_file", default=None,
+        help="Align the cols to this other matrix file.")
+    group.add_argument(
+        "--ignore_missing_cols", default=False, action="store_true",
+        help="Ignore any cols that can't be found.")
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
@@ -416,6 +493,14 @@ def main():
         "--filter_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
         "Format: <gmx/gmt_file>[,<geneset>,<geneset>,...]")
+    group.add_argument(
+        "--filter_row_mean", default=None,
+        help="Remove this percentage of rows that have the lowest mean.  "
+        "Should be between 0 and 1.")
+    group.add_argument(
+        "--filter_row_var", default=None,
+        help="Remove this percentage of rows that have the lowest variance.  "
+        "Should be between 0 and 1.")
 
     group.add_argument(
         "--add_row_annot", default=None,
@@ -448,14 +533,16 @@ def main():
     I1 = find_row_indexes(MATRIX, args.filter_row_indexes)
     I2 = find_row_ids(MATRIX, args.filter_row_ids)
     I3 = find_row_genesets(MATRIX, args.filter_row_genesets)
-    I_row = _intersect_indexes(I1, I2, I3)
+    I4 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
+    I_row = _intersect_indexes(I1, I2, I3, I4)
     I_col = find_col_indexes(MATRIX, args.filter_col_indexes)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Align to the align_file.
-    I_row = align_rows(
-        MATRIX, args.align_row_file, args.ignore_missing_rows)
+    I_row = align_rows(MATRIX, args.align_row_file, args.ignore_missing_rows)
     MATRIX = MATRIX.matrix(I_row, None)
+    I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
+    MATRIX = MATRIX.matrix(None, I_col)
 
     # Add row annotations.
     MATRIX = add_row_annot(MATRIX, args.add_row_annot)

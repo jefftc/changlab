@@ -148,7 +148,7 @@ def find_matrix_file(matrix_file_or_id):
     files = [
         opj(config.motiflib_JASPAR_DB, "%s.pfm" % matrix_id),
         opj(config.motiflib_TRANSFAC_DB, "%s.pfm" % matrix_id),
-        opj(config.MOTIFSEARCH, "matrices/%s.matrix" % matrix_id),
+        #opj(config.MOTIFSEARCH, "matrices/%s.matrix" % matrix_id),
         ]
     for file in files:
         if os.path.exists(file):

@@ -333,7 +333,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         sample_names = data[0][hcols:]
     if sample_names:
         col_names[SAMPLE_NAME] = sample_names
-        col_order.append(SAMPLE_NAME)
+        col_order.insert(0, SAMPLE_NAME)
 
     if datatype is None:
         convert_fn = None   # no conversion

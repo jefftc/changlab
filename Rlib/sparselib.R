@@ -29,13 +29,23 @@ list2sparse <- function(l) {
     stop("ERROR: ia is not monotonically increasing.")
   }
 
-  x <- data.frame()
-  class(x) <- as.character(l$klass)
-  x@ra <- l$ra; x@ja <- l$ja; x@ia <- l$ia
-  x@dimension <- l$dimension
-  # Takes a long time...
-  x <- x[,]   # Make it into a real sparse matrix (otherwise problems occur).
+  # Make an S4 class.
+  setClass("matrix.csr", representation(
+    ra="numeric",
+    ja="numeric",
+    ia="numeric",
+    dimension="numeric"))
+  x <- new("matrix.csr", ra=l$ra, ja=l$ja, ia=l$ia, dimension=l$dimension)
   x
+
+  # OBSOLETE: S3 class.
+  #x <- data.frame()
+  #class(x) <- as.character(l$klass)
+  #x@ra <- l$ra; x@ja <- l$ja; x@ia <- l$ia
+  #x@dimension <- l$dimension
+  ## Takes a long time...
+  #x <- x[,]   # Make it into a real sparse matrix (otherwise problems occur).
+  #x
 }
 
 

@@ -106,7 +106,7 @@ class PlotCoords:
 class HeatmapLayout:
     def __init__(
             self, nrow, ncol, boxwidth, boxheight, grid, inverse_colors,
-            color_fn):
+            black0, color_fn):
         # Looks OK with even 1 pixel.
         #MIN_GRID = 1
         #if boxwidth < MIN_GRID or boxheight < MIN_GRID:
@@ -116,6 +116,7 @@ class HeatmapLayout:
         self.boxwidth = boxwidth
         self.boxheight = boxheight
         self.inverse_colors = inverse_colors
+        self.black0 = black0
         self.color_fn = color_fn
         self.BORDER = 1
         self.GRID_SIZE = 1
@@ -148,7 +149,9 @@ class HeatmapLayout:
             #return _get_color(0.5, self.color_fn)
             return (255, 255, 255)
         assert x >= 0 and x <= 1, "x out of range: %g" % x
-        return _get_color(x, self.color_fn, flip_colors=self.inverse_colors)
+        return _get_color(
+            x, self.color_fn, flip_colors=self.inverse_colors,
+            black0=self.black0)
 
 class ColorbarLayout:
     def __init__(
@@ -173,10 +176,14 @@ class ColorbarLayout:
         self._label_sizes = label_sizes
         self._fontsize = fontsize
         self._inverse_colors = inverse_colors
+        #self._black0 = black0
         self._color_fn = color_fn
+    def is_vertical(self):
+        return self._cb_height > self._cb_width
     def width(self):
         width = self._cb_width
-        if self._cb_height > self._cb_width:
+        if self.is_vertical():
+            # Vertical skinny colorbar.
             # Tick mark.
             width += self._cb_width * self.TICK_SIZE
             # BUFFER between tick mark and label.
@@ -191,7 +198,10 @@ class ColorbarLayout:
         return width
     def height(self):
         height = self._cb_height
-        if self._cb_width > self._cb_height:
+        # Bug: For vertical colorbar, does not take into account
+        # height of labels.  Might be cut off.
+        if not self.is_vertical():
+            # Horizontal colorbar.
             # Tick mark.
             height += self._cb_height * self.TICK_SIZE
             # BUFFER between tick mark and label.
@@ -215,11 +225,12 @@ class ColorbarLayout:
         assert i >= 0 and i < len(self._ticks)
         tick = self._ticks[i]
         perc = float(tick-self._signal_0)/(self._signal_1-self._signal_0)
-        if self._cb_width < self._cb_height:  # vertical bar
+        if self.is_vertical():
             width = self._cb_width * self.TICK_SIZE
             height = 1
             x = self._cb_width
-            y = perc * self._cb_height
+            #y = perc * self._cb_height          # high numbers on bottom
+            y = (1.0-perc) * self._cb_height    # high numbers on top
             y = min(y, self._cb_height-height)
         else:
             width = 1
@@ -236,7 +247,7 @@ class ColorbarLayout:
         x = self.tick_coord(i)
         tick_x, tick_y, tick_width, tick_height = x
         label_width, label_height = self._label_sizes[i]
-        if self._cb_height > self._cb_width:  # vertical
+        if self.is_vertical():
             x = tick_x + tick_width + self._cb_width*self.TICK_BUFFER
             y = tick_y - label_height/2.0
         else:
@@ -614,7 +625,7 @@ def process_data_set(
 
 def make_layout(
     MATRIX, cluster_data, signal_0, signal_1, plotlib,
-    boxwidth, boxheight, grid, flip_colors, color_scheme, colorbar,
+    boxwidth, boxheight, grid, color_scheme, flip_colors, black0, colorbar,
     cluster_genes, gene_tree_scale, gene_tree_thickness,
     cluster_arrays, array_tree_scale, array_tree_thickness,
     cluster_alg, label_genes, label_arrays):
@@ -636,7 +647,7 @@ def make_layout(
     # Make the layout for the heatmap.
     hm_layout = HeatmapLayout(
         MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight, grid, flip_colors,
-        color_fn)
+        black0, color_fn)
 
     # Make the layout for the colorbar.
     cb_layout = None
@@ -771,12 +782,18 @@ def calc_coords_for_layout(layout):
         CB_BUFFER = 0.75  # separation from heatmap, relative to BAR_SHORT
         bar_width = layout.colorbar.bar_width()
         bar_height = layout.colorbar.bar_height()
-        if cb_height > cb_width:
+        if layout.colorbar.is_vertical():
             cb_x = hm_x + hm_width + CB_BUFFER*bar_width
             cb_y = hm_y
+            # If there are no dendrograms or labels, then need to add
+            # a buffer so that the labels aren't cut off.
+            if not layout.array_dendrogram and not layout.array_label:
+                cb_y += layout.colorbar.fontsize()
         else:
             cb_x = hm_x
             cb_y = hm_y + hm_height + CB_BUFFER*bar_height
+            if not layout.gene_dendrogram and not layout.gene_label:
+                cb_x += layout.colorbar.fontsize()
         cb_x, cb_y = int(cb_x), int(cb_y)
 
     x = PlotCoords(
@@ -887,16 +904,21 @@ def read_filecol(filecol):
     from genomicode import iolib
 
     # filecol is either <filename> or <filename>,<col>.  commas
-    # are not allowed in the filenames.
-    filename, colnum = filecol, 0
+    # are not allowed in the filenames.  <col> should be 1-based
+    # index.
+    filename, colnum = filecol, 1
     if filecol.find(",") >= 0:
         x = filecol.split(",")
         assert len(x) == 2, "File should be specified: <filename>,<col>"
         filename, colnum = x
         colnum = int(colnum)
+        assert colnum >= 1
     assert os.path.exists(filename), "could not find file %s" % filename
     data = iolib.split_tdf(open(filename).read())
-    names = [x[colnum].strip() for x in data]
+    # Make sure colnum is correct.
+    for x in data:
+        assert colnum <= len(x)
+    names = [x[colnum-1].strip() for x in data]
     names = [x for x in names if x]
     return names
 
@@ -1158,7 +1180,8 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     nrow, ncol = MATRIX.dim()
     X = MATRIX._X
 
-    # Choose a default scale based on the average expression level.
+    # Choose a default scale so that the average expression level is
+    # 0.
     defscale = 0.0
     if autoscale:
         x_all = []
@@ -1175,7 +1198,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
                 continue
             X[i][j] = X[i][j] + defscale + scale
 
-    # Choose a default gain based on the maximum expression level.
+    # Choose a default gain so that the maximum expression level is 1.
     defgain = 1.0
     if autoscale:
         x_max = None
@@ -1223,7 +1246,7 @@ def pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     assert not math.isnan(defgain) and not math.isnan(defscale)
     ORIG_min = (0.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
     ORIG_max = (1.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
-
+    
     return MATRIX, ORIG_min, ORIG_max
 
 def _guess_filestem(file_or_job):
@@ -1471,15 +1494,18 @@ def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
 def plot_colorbar(plotlib, image, xoff, yoff, layout):
     from genomicode import graphlib
 
+    #yoff += 100
+    #xoff += 100
     BLACK = (0, 0, 0)
     OUTLINE_COLOR = (0, 0, 0)
     TICK_COLOR = (50, 50, 50)
 
     # Draw the colorbar.
     cb_width, cb_height = layout.bar_width(), layout.bar_height()
-    if cb_height > cb_width:
+    if layout.is_vertical():
         for i in range(cb_height):
-            color = layout.color(float(i)/cb_height)
+            #color = layout.color(float(i)/cb_height)        # big on bottom
+            color = layout.color(1.0-(float(i)/cb_height))  # big on top
             plotlib.line(image, xoff, yoff+i, cb_width, 1, color)
     else:
         for i in range(cb_width):
@@ -1913,13 +1939,16 @@ def _calc_colorbar_ticks(
     return ticks, tick_labels, label_sizes, fontsize
 
 _COLOR_CACHE = {}  # (fn, num) -> list
-def _get_color(perc, color_fn, num_colors=256, flip_colors=False):
+def _get_color(perc, color_fn, num_colors=256, black0=False,
+               flip_colors=False):
     # Convert a percentage into a (r, g, b) color.
     # r, g, b are numbers from 0 to 255.
     global _COLOR_CACHE
     import math
 
     assert perc >= 0.0 and perc <= 1.0
+    if black0 and perc < 1.0/num_colors:
+        return 0, 0, 0
     if flip_colors:
         perc = 1.0 - perc
     x = color_fn, num_colors
@@ -1931,6 +1960,7 @@ def _get_color(perc, color_fn, num_colors=256, flip_colors=False):
     r = min(int(math.floor(r*256)), 255)
     g = min(int(math.floor(g*256)), 255)
     b = min(int(math.floor(b*256)), 255)
+    #print perc, r, g, b
     return r, g, b
 
 def _exists_nz(filename):
@@ -1977,14 +2007,14 @@ def main():
         help="Comma-separated list of genes to show.")
     group.add_option(
         "", "--gene_file", dest="gene_file", type="string", default=None,
-        help="<file>[,<column num>] containing the names of genes.")
+        help="<file>[,<1-based column num>] containing the names of genes.")
     group.add_option(
         "", "--array_indexes", dest="array_indexes", type="string",
         default=None,
         help="Indexes of arrays to show, e.g. 1-50,75 (1-based, inclusive).")
     group.add_option(
         "", "--array_file", dest="array_file", type="string", default=None,
-        help="<file>[,<column num>] containing the names of arrays.")
+        help="<file>[,<1-based column num>] containing the names of arrays.")
     group.add_option(
         "-j", "--jobname", dest="jobname", type="string", default=None,
         help="Save the processed matrix to a file.")
@@ -2097,6 +2127,9 @@ def main():
         help="Choose the color scheme to use: red, red-green, blue-yellow, "
         "matlab, bild (default), genespring, or yahoo.")
     group.add_option(
+        "--black0", dest="black0", action="store_true", default=False,
+        help="Color 0 values black (no matter the color scheme).")
+    group.add_option(
         "--inverse", dest="inverse", action="store_true", default=False,
         help="Flip the colors for the heatmap.")
     group.add_option(
@@ -2188,7 +2221,8 @@ def main():
     layout = make_layout(
         MATRIX, cluster_data, signal_0, signal_1, plotlib, 
         options.width, options.height, options.grid,
-        options.inverse, options.color_scheme, options.colorbar,
+        options.color_scheme, options.inverse, options.black0,
+        options.colorbar,
         options.cluster_genes, options.gene_tree_scale,
         options.gene_tree_thickness,
         options.cluster_arrays, options.array_tree_scale,

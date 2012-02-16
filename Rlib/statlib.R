@@ -1,3 +1,17 @@
+# fdr.correct.bh
+# bonferroni.correct
+#
+# calc.sensitivity
+# calc.specificity
+# calc.recall
+# calc.precision
+#
+# logadd
+# logsum
+#
+# normalize.quant
+
+
 fdr.correct.bh <- function(p.values) {
   m <- length(p.values)
 
@@ -40,3 +54,28 @@ calc.precision <- function(results, interpolate=FALSE) {
   }
   x
 }
+
+logadd <- function(logx, logy) {
+  if(logy-logx > 100)
+    return(logy)
+  if(logx-logy > 100)
+    return(logx)
+  minxy <- min(logx, logy)
+  minxy + log(exp(logx-minxy) + exp(logy-minxy))
+}
+
+logsum <- function(x) {
+  x <- x[(max(x)-x) < 100]
+  minx <- min(x)
+  minx + log(sum(exp(x-minx)))
+}
+
+normalize.quant <- function(M) {
+  #library("affy")
+  library("preprocessCore")  # normalize.quantiles moved from affy library
+  M.dbl <- matrix(as.double(as.matrix(M)), nrow(M), ncol(M))  # prevent crash
+  N <- normalize.quantiles(M.dbl)
+  colnames(N) <- colnames(M)
+  N
+}
+
