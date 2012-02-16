@@ -27,8 +27,6 @@ def main(filename):
                 a = math.log(float(number[k]),2)
                 newnumber.append(str(a))
             f.write("\t".join(newnumber)+"\n")
-     
-    print 'yes,log'
     f.close()
 
 
