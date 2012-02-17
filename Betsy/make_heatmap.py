@@ -34,8 +34,8 @@ PARAMETERS = {
 
 DEFAULT = {
     'cluster_alg':'no_cluster_alg',
-    'preprocess':'rma','gene_center':'mean',
-    'gene_normalize':'variance','quantile':'no_quantile',
+    'preprocess':'rma','gene_center':'no_gene_center',
+    'gene_normalize':'no_gene_normalize','quantile':'no_quantile',
     'dwd':'no_dwd','shiftscale':'no_shiftscale',
     'combat':'no_combat','filter':'no_filter',
     'gene_order':'no_order','color':'red_green'}

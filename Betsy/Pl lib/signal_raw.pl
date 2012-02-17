@@ -109,7 +109,7 @@ signal_raw(DatasetId, Contents,Parameters,Modules):-
 % Preprocess geo_dataset with illumine format to signal_file by illumina,
 signal_raw(DatasetId, Contents,Parameters,Modules):-
     (convert_parameters_raw([preprocess,illumina,is_logged,no_logged,format,gct],NewParameters);
-     convert_parameters_raw([preprocess,illumina_controls,is_logged,no_logged,format,gct],NewParameters)),
+     convert_parameters_raw([preprocess,illumina_controls,no_logged,no_logged,format,gct],NewParameters)),
     Parameters=NewParameters,	
     geo_dataset(DatasetId, Contents,[version,illumina],Past_Modules),
     append(['DatasetId',

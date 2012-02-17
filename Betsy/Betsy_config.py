@@ -22,8 +22,8 @@ SEARCH_PATH = [
         ]
 
 def read_config():
-    config_file='Betsy.cfg'
-    #config_file = os.environ["HOME"]+'/.betsyrc'
+    #config_file='Betsy.cfg'
+    config_file = os.environ["HOME"]+'/.betsyrc'
     var_dict = dict()
     if os.path.exists(config_file):
         config = ConfigParser.ConfigParser()

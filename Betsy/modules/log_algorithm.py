@@ -15,6 +15,8 @@ def run(parameters,objects):
     for i in range(len(M._X)):
         for j in range(len(M._X[i])):
             if M._X[i][j] is not None :
+                if float(M._X[i][j])<1:
+                    M._X[i][j] = 1
                 M._X[i][j]=math.log(float(M._X[i][j]),2)
     if M_format.__name__ == 'arrayio.gct_format':
         M_c = arrayio.convert(M,to_format=arrayio.gct_format)
