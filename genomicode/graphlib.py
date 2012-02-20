@@ -1413,7 +1413,7 @@ def _make_graph(
     # width        Number of pixels wide for the plot.
     # height
     import graphconst as gc
-    
+
     width = width or 1024
     height = height or 768
     if plotter is None:
@@ -1426,6 +1426,7 @@ def _make_graph(
         xtick, ytick, ztick, xtick_label, ytick_label, ztick_label)
     (xlim, ylim, zlim,
      xtick, ytick, ztick, xtick_label, ytick_label, ztick_label) = x
+     #print xlim, ylim, zlim
 
     if draw_x_axis is None:
         draw_x_axis = True
@@ -1458,6 +1459,7 @@ def _make_graph(
         if grid:
             ztick_at = ztick_at^gc.LEFT
 
+    #print draw_x_axis, draw_y_axis, draw_z_axis, draw_box
     graph = Graph(plotter, width, height, xlim, ylim, zlim)
     graph.draw_axes(draw_x_axis, draw_y_axis, draw_z_axis, draw_box)
     graph.draw_tick_marks(

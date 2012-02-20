@@ -106,7 +106,6 @@ def openfh(file_or_handle, mode='rU'):
     # utilities here will split only on newlines (\n).  So Mac
     # formatted files that have only carriage returns (\r) will not
     # work correctly.  Now fixed.  Uses subprocess module.
-    #from subprocess import Popen, PIPE
     if type(file_or_handle) is not type(''):
         # If this is not a string, assume it's already a file handle.
         return file_or_handle
@@ -125,11 +124,6 @@ def openfh(file_or_handle, mode='rU'):
             # process doesn't stick around half done.
             cmd = "gunzip -c '%s'" % file_or_handle
             w, r, e = _my_popen(cmd)
-            #w, r, e = os.popen3(cmd)
-            #p = Popen(
-            #    cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-            #    close_fds=True, universal_newlines=True)
-            #w, r, e = p.stdin, p.stdout, p.stderr
             w.close()
             e.close()
             return r
@@ -142,11 +136,6 @@ def openfh(file_or_handle, mode='rU'):
                 raise IOError, "File does not exist: %s" % file_or_handle
             cmd = "bzcat '%s'" % file_or_handle
             w, r, e = _my_popen(cmd)
-            #w, r, e = os.popen3(cmd)
-            #p = Popen(
-            #    cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-            #    close_fds=True, universal_newlines=True)
-            #w, r, e = p.stdin, p.stdout, p.stderr
             w.close()
             e.close()
             return r
@@ -158,26 +147,19 @@ def openfh(file_or_handle, mode='rU'):
                 raise IOError, "File does not exist: %s" % file_or_handle
             cmd = "unzip -p '%s'" % file_or_handle
             w, r, e = _my_popen(cmd)
-            #w, r, e = os.popen3(cmd)
-            #p = Popen(
-            #    cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-            #    close_fds=True, universal_newlines=True)
-            #w, r, e = p.stdin, p.stdout, p.stderr
             w.close()
             e.close()
             return r
         else:
             raise NotImplementedError
-    elif file_or_handle.lower().endswith(".xls"):
+    elif file_or_handle.lower().endswith(".xls") or \
+        file_or_handle.lower().endswith(".xlsx"):
         cmd = "xls2txt '%s'" % file_or_handle
         w, r, e = _my_popen(cmd)
-        #w, r, e = os.popen3(cmd)
-        #p = Popen(
-        #    cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-        #    close_fds=True, universal_newlines=True)
-        #w, r, e = p.stdin, p.stdout, p.stderr
-        x = e.read()
-        assert not x, x
+        # This may block.  Just ignore this until we can figure out
+        # how to fix it properly.
+        #x = e.read()
+        #assert not x, x
         w.close()
         e.close()
         return r

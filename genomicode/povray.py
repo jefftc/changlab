@@ -177,11 +177,11 @@ def povray(
     args.append(filename)
 
     cmd = "%s %s" % (povray_bin, " ".join(args))
+    #print cmd
     p = subprocess.Popen(
         cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
     w, r = p.stdin, p.stdout
-    #w, r = os.popen4(cmd)
     w.close()
     # POV-RAY generates "\r" characters.  Might have to replace with "\n".
     # output = output.replace("\r", "\n")

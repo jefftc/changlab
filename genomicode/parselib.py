@@ -5,6 +5,7 @@ Functions:
 parse_ranges
 
 pretty_int
+pretty_float
 pretty_ordinal
 pretty_range
 pretty_pvalue
@@ -128,6 +129,24 @@ def pretty_int(num):
         del groups[0]
     pretty = ",".join(groups)
     return pretty
+
+def pretty_float(num, ndigits=None):
+    import math
+    
+    left = int(math.floor(num))
+    right = num - left
+    assert right < 1 and right >= 0
+    
+    left = pretty_int(left)
+    if ndigits:
+        right = "%.*f" % (ndigits, right)
+    else:
+        right = str(right)
+    assert right.startswith("0.")
+    right = right[2:]
+    
+    x = "%s.%s" % (left, right)
+    return x
 
 def pretty_ordinal(num):
     # Negative numbers and 0 not handled.

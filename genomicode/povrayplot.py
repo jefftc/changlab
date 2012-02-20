@@ -385,8 +385,8 @@ def write(image, handle, povray_bin=None):
         assert os.path.exists(out_file), "POV-RAY failed.\n%s" % output
         handle.write(open(out_file).read())
     finally:
-        if pov_file and os.path.exists(pov_file):
-            os.unlink(pov_file)
+        #if pov_file and os.path.exists(pov_file):
+        #    os.unlink(pov_file)
         if out_file and os.path.exists(out_file):
             os.unlink(out_file)
     output = output.replace("\r", "\n")
@@ -507,11 +507,13 @@ def _position_camera(image, width, height, depth, make_3d):
     if not make_3d:
         # Default camera location.
         camera = (x_mid, y_mid, -CAMERA_HEIGHT)
-        look = (x_mid, y_mid, z_mid)
+        #look = (x_mid, y_mid, z_mid)   # should be -z_mid?
+        look = (x_mid, y_mid, 0)
         dist_scale = 1.0
         # Make this a bit dimmer to compensate for the fact that the
         # 3D projection is further away.
         w(pr.global_settings(pr.ambient_light(0.67, 0.67, 0.67)))
+        w("\n")
     else:
         camera = (width*0.60, height*0.50, -CAMERA_HEIGHT)
         look = (x_mid*0.25, y_mid*0.35, z_mid)
@@ -589,8 +591,7 @@ def _draw_background(image):
 
     w = image.handle.write
     w(pr.background(pr.color(*BACKGROUND_COLOR)))
-    w("\n\n")
-
+    w("\n")
 
     # Draw a box for the background.  But make sure it doesn't appear
     # in the list of graph objects.
