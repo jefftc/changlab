@@ -36,6 +36,7 @@ def run(pipeline_parameters,objects):
     goal_file = None
     result_files = os.listdir(download_directory)
     for result_file in result_files:
+        assert result_file.endswith('.gct')
         if 'controls' in pipeline_parameters['preprocess']:
             if '-controls' in result_file:
                 goal_file = os.path.realpath(

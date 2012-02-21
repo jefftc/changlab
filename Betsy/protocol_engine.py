@@ -1,8 +1,9 @@
-#protocol_engine.py
+#!/usr/bin/env python
 
+#protocol_engine.py
 import rule_engine
 import argparse
-
+import os
 
 def filter_pipelines(protocol, inputs, output_info,
                      in_dataset_ids, in_contents, parameters=None):
@@ -42,6 +43,7 @@ def run_protocol(protocol, inputs, output_info, identifiers,
        run the pipelines,
        return a list of final result file,
       if Parameters is None, then use the default parameters"""
+    
     module = __import__(protocol)
     pipelines = filter_pipelines(protocol, inputs, output_info,
                                  in_dataset_ids, in_contents, parameters)
@@ -90,6 +92,7 @@ def main():
     args = parser.parse_args()
     if not args.protocol_file:
         raise ValueError('please specify the protocol_file')
+    
     module = __import__(args.protocol_file)
     inputs = []
     identifiers = []
