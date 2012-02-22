@@ -5,9 +5,10 @@ import shutil
 import xlrd
 import module_utils
 import rule_engine
+import openpyxl
 
 def run(parameters,objects):
-    """check an input file is xls format"""
+    """check an input file is xls or xlsx format"""
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     try:
@@ -15,8 +16,18 @@ def run(parameters,objects):
         shutil.copyfile(identifier,outfile)
         module_utils.write_Betsy_parameters_file(parameters,single_object)
         return new_objects
+    except Exception,XLRDError:
+        try:
+            book =openpyxl.load_workbook(identifier)
+            shutil.copyfile(identifier,outfile)
+            module_utils.write_Betsy_parameters_file(parameters,single_object)
+            return new_objects
+        except(SystemError,MemoryError,KeyError),x:
+            raise
+        except Exception,x:
+            return None
     except (SystemError,MemoryError,KeyError),x:
-        raise 
+            raise 
     except Exception,x:
         return None
     

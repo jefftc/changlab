@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+
+import os
+
+def cell2str(book, cell):
+    import datetime
+    import xlrd
+    
+    (XL_CELL_EMPTY, XL_CELL_TEXT, XL_CELL_NUMBER, XL_CELL_DATE,
+     XL_CELL_BOOLEAN, XL_CELL_ERROR, XL_CELL_BLANK) = range(7)
+    if cell.ctype in [XL_CELL_EMPTY, XL_CELL_BLANK]:
+        return ""
+    elif cell.ctype in [XL_CELL_TEXT, XL_CELL_NUMBER, XL_CELL_BOOLEAN]:
+        return safe_encode(cell.value)
+    elif cell.ctype == XL_CELL_DATE:
+        if book.datemode == 0:
+            dt1 = datetime.datetime(1899, 12, 31, 0, 0, 0)
+        else:
+            dt1 = datetime.datetime(1904, 1, 1, 0, 0, 0)
+
+        # year, month, day, hour, minute, second
+        x = xlrd.xldate_as_tuple(cell.value, book.datemode)
+        year, month, day, hour, minute, second = x
+        if year > 1904:  # Format as date.
+            dt = datetime.datetime(*x)
+            format = "%m/%d/%y %H:%M:%S"
+            if hour ==0 and minute == 0 and second == 0:
+                format = "%m/%d/%y"
+            x = dt.strftime(format)
+            if x.startswith("0"):
+                x = x[1:]
+        else:            # Format as time.
+            if month > 0 or day > 0:
+                assert year == dt1.year
+                dt2 = datetime.datetime(dt1.year, month, day, 0, 0, 0)
+                delta = dt2 - dt1
+                hour += delta.days * 24
+            
+            x = "%d:%02d:%02d" % (hour, minute, second)
+        return x
+    elif cell.ctype == XL_CELL_ERROR:
+        return "EXCEL ERROR CODE: %s" % cell.value
+    else:
+        raise AssertionError, "Unknown cell type: %s" % cell.ctype
+
+def convert_xls(filename, worksheet):
+    import StringIO
+    import xlrd
+    
+    book = xlrd.open_workbook(filename, logfile=StringIO.StringIO())
+    assert book.nsheets, "Empty workbook"
+
+    sheet_num = 0
+    if worksheet:
+        sheet_names = [str(x) for x in book.sheet_names()]
+        assert worksheet in sheet_names, "Worksheet %s not found" % worksheet
+        sheet_num = sheet_names.index(worksheet)
+
+    sheet = book.sheet_by_index(sheet_num)
+    for i in range(sheet.nrows):
+        x = sheet.row(i)
+        x = [cell2str(book, x) for x in x]
+        print "\t".join(x)
+
+def convert_xlsx(filename, worksheet):
+    from openpyxl import load_workbook
+
+    wb = load_workbook(filename)
+    if worksheet:
+        sheet_names = wb.get_sheet_names()
+        assert worksheet in sheet_names, "Worksheet %s not found" % worksheet
+    else:
+        sheet_names = wb.get_sheet_names()
+        assert sheet_names
+        worksheet = sheet_names[0]
+    ws = wb.get_sheet_by_name(name=worksheet)
+
+    dim = ws.calculate_dimension()  # A1:B109
+    M = ws.range(dim)
+    for i, ws_row in enumerate(M):
+        row = [safe_encode(x.value) for x in ws_row]
+        print "\t".join(row)
+
+def safe_encode(x):
+    if x is None:
+        return ""
+    return unicode(x).encode("utf-8")
+
+def main():
+    from optparse import OptionParser
+
+    usage = "usage: %prog [options] <excel_file>"
+    parser = OptionParser(usage=usage, version="%prog 01")
+
+    parser.add_option(
+        "-s", "--worksheet", dest="worksheet", type="string", default=None,
+        help="Name of worksheet to parse into table")
+    options, args = parser.parse_args()
+    if len(args) != 1:
+        parser.error("Please specify an infile.")
+
+    filename = args[0]
+    worksheet = options.worksheet
+
+    x, ext = os.path.splitext(filename)
+    if ext.lower() == ".xls":
+        convert_xls(filename, worksheet)
+    elif ext.lower() == ".xlsx":
+        convert_xlsx(filename, worksheet)
+    else:
+        raise AssertionError, "Unknown file extension: %s" % filename
+
+
+if __name__ == '__main__':
+    main()
+
+
