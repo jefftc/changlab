@@ -2,7 +2,7 @@
 import os
 import module_utils
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """convert pcl signal file to gct format"""
     import arrayio
     identifier,single_object = get_identifier(parameters,objects)
@@ -12,7 +12,7 @@ def run(parameters,objects):
     M_c = arrayio.convert(M,to_format=arrayio.gct_format)
     arrayio.gct_format.write(M_c,f)
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

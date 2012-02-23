@@ -6,7 +6,7 @@ import rule_engine
 import os
 import json
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     result,label_line,second_line=read_label_file.read(identifier)
@@ -26,7 +26,7 @@ def run(parameters,objects):
                  if int(label)==content_index[i]]
         new_label_line.extend(newline)
     read_label_file.write(outfile,contents,new_label_line)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

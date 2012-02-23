@@ -87,7 +87,7 @@ def parse_text_pipeline(line):
     return pipeline
 
 def make_module_wd_name(module_name,hash_string):
-    working_dir = module_name + '_' + hash_string
+    working_dir = module_name + hash_string
     return working_dir
 
 def make_module_wd(working_dir):
@@ -100,7 +100,8 @@ def run_pipeline(pipeline,objects):
                         filename = os.path.join(cwd,'errorlog.txt'))
     OUTPUT = None
     try:
-        for analysis in pipeline:
+        for  i in range(len(pipeline)):
+            analysis = pipeline[i]
             module_name = analysis.name
             print module_name
             module = __import__(module_name)
@@ -116,7 +117,7 @@ def run_pipeline(pipeline,objects):
                 if os.path.exists(outfile):
                     size = os.path.getsize(outfile)
                 if not os.path.exists(outfile) or size == 0:
-                    new_objects = module.run(analysis.parameters,objects)
+                    new_objects = module.run(analysis.parameters,objects,pipeline[0:i+1])
                 if analysis == pipeline[-1]:
                      if os.path.exists(outfile):
                         OUTPUT = outfile

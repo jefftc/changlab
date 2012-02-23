@@ -6,7 +6,7 @@ import shutil
 import gzip
 import string
 import module_utils
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """given a database ID and database,download and untar the data folder"""
     from ftplib import FTP
     import tarfile
@@ -123,7 +123,7 @@ def run(parameters,objects):
                 else:
                     raise ValueError('does not recognazie the platform')
     os.rename(out_filename,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

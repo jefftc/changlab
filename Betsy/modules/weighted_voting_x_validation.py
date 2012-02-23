@@ -4,7 +4,7 @@ import shutil
 import os
 import Betsy_config
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     label_file,obj = module_utils.find_object(
@@ -16,7 +16,7 @@ def run(parameters,objects):
     parameters['class.filename'] = label_file
     download_directory = module_utils.run_gp_module(module_name,parameters)
     os.rename(download_directory,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

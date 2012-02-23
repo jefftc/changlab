@@ -4,7 +4,7 @@ import module_utils
 import subprocess
 import hash_method
 import rule_engine
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """preprocess the inputfile with RMA or MAS5
        using preprocess.py will generate a output file"""
     #preprocess the cel file to text signal file
@@ -28,7 +28,7 @@ def run(parameters,objects):
         elif i.endswith('.rma'):
             outputfile = i
     os.rename(outputfile,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
     
 def make_unique_hash(parameters,objects):

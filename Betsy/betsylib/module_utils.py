@@ -11,10 +11,7 @@ import Betsy_config
 def make_unique_hash(parameters,objects,objecttype,attribute):
     identifier,single_object = find_object(parameters,objects,objecttype,attribute)
     filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH_' in filename: 
-        original_file = '_'.join(filename.split('_')[:-2])
-    else:
-        original_file = filename
+    original_file = filename
     new_parameters = parameters.copy()
     new_parameters['filename'] = original_file
     hash_result = hash_method.hash_parameters(**new_parameters)
@@ -23,12 +20,12 @@ def make_unique_hash(parameters,objects,objecttype,attribute):
 def get_outfile(parameters,objects,in_objecttype,in_attribute,out_objecttype):
     identifier,single_object = find_object(parameters,objects,in_objecttype,in_attribute)
     old_filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH_' in old_filename: 
+    if '_BETSYHASH1_' in old_filename: 
         original_file = '_'.join(old_filename.split('_')[:-2])
     else:
         original_file = old_filename
     hash_string = make_unique_hash(parameters,objects,in_objecttype,in_attribute)
-    filename = original_file +'_BETSYHASH_'+ hash_string
+    filename = original_file + hash_string
     outfile = os.path.join(os.getcwd(),filename)
     if 'Status' in parameters.keys():
         del parameters['Status']
@@ -71,7 +68,7 @@ def format_convert(X):
         data.append(X.value(None,i))
     return data
 
-def write_Betsy_parameters_file(parameters,single_object):
+def write_Betsy_parameters_file(parameters,single_object,pipeline):
     f = file(os.path.join(os.getcwd(),'Betsy_parameters.txt'),'w')
     f.write('Module input:\n')
     if not isinstance(single_object,list):
@@ -84,9 +81,9 @@ def write_Betsy_parameters_file(parameters,single_object):
     f.write('Module output:\n')
     for i in parameters.keys():
          f.write(i+':'+parameters[i]+'\n')
-    #f.write('Pipeline module sequence:\n')
-    #for analysis in pipeline:
-    #    f.write(analysis.name+'\n')
+    f.write('Pipeline module sequence:\n')
+    for analysis in pipeline:
+        f.write(analysis.name+'\n')
     f.close()
     
 

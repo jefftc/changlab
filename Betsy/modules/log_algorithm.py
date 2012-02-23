@@ -3,7 +3,7 @@
 import os
 import module_utils
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """log the input gct or pcl file"""
     import arrayio
     import math
@@ -25,7 +25,7 @@ def run(parameters,objects):
         M_c = arrayio.convert(M,to_format=arrayio.pcl_format)
         arrayio.pcl_format.write(M_c,f)
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 

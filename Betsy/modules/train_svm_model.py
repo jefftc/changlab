@@ -6,7 +6,7 @@ import read_label_file
 import rule_engine
 import module_utils
 import os
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     training = arrayio.read(identifier)
@@ -17,7 +17,7 @@ def run(parameters,objects):
     y_training = [int(x) for x in training_label]
     model = svmutil.svm_train(y_training,x_training)
     svmutil.svm_save_model(outfile,model)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
     
 def make_unique_hash(parameters,objects):

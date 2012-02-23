@@ -3,7 +3,7 @@ import hash_method
 import gene_ranking
 import module_utils
 import os
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     #also if input is other kind of file
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
@@ -27,7 +27,7 @@ def run(parameters,objects):
     for i in range(len(indexlist)):
         f.write(content[indexlist[i]+1]+'\n')
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

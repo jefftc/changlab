@@ -2,7 +2,7 @@
 import os
 import module_utils
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     import arrayio
@@ -14,7 +14,7 @@ def run(parameters,objects):
                     M._X[i][j] = '0'
     arrayio.pcl_format.write(M,f_out)    
     f_out.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 

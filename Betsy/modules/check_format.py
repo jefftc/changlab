@@ -2,14 +2,14 @@
 import shutil
 import module_utils
 import arrayio
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """check if not_xls format is res"""
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     M=arrayio.choose_format(identifier)
     if parameters['format']==M.__name__[8:-7]:
         shutil.copyfile(identifier,outfile)
-        module_utils.write_Betsy_parameters_file(parameters,single_object)
+        module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
         return new_objects
     else:
         return None

@@ -4,12 +4,12 @@ import shutil
 import check_missing
 import module_utils
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     if check_missing.is_missing(parameters,objects) is False:
         shutil.copyfile(identifier,outfile)
-        module_utils.write_Betsy_parameters_file(parameters,single_object)
+        module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
         return new_objects
     else:
         return None

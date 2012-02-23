@@ -8,7 +8,7 @@ def hash_parameters(**parameters):
         hashstring += str(parameters[key])
     hash = md5()
     hash.update(hashstring)
-    hash_result = hash.hexdigest()
+    hash_result = '_BETSYHASH1_'+hash.hexdigest()
     return hash_result
 
 def get_file_checksum(identifier):

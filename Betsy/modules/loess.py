@@ -7,7 +7,7 @@ import gzip
 from genomicode import smarray
 import gpr_module
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     filenames=os.listdir(identifier)
@@ -57,7 +57,7 @@ def run(parameters,objects):
             f.write(str(SIGNAL[i][j]))
         f.write('\n')
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 

@@ -5,7 +5,7 @@ import module_utils
 from genomicode import quantnorm
 import arrayio
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     M = arrayio.read(identifier)
@@ -14,7 +14,7 @@ def run(parameters,objects):
     Y_c = arrayio.convert(Y,to_format = arrayio.pcl_format)
     arrayio.pcl_format.write(Y_c,f)
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 

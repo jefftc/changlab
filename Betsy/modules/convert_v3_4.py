@@ -6,7 +6,7 @@ import rule_engine
 import shutil
 import gzip
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """convert from cc to v3_4"""
     from genomicode import affyio
     identifier,single_object = get_identifier(parameters,objects)
@@ -41,7 +41,7 @@ def run(parameters,objects):
             shutil.copyfile(cel_file,os.path.join(outfile,newcelfname))
         if fileloc.endswith('.gz'):
             os.remove(cel_file)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
     

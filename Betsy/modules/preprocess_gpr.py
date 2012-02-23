@@ -6,7 +6,7 @@ import rule_engine
 import gzip
 import gpr_module
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """preprocess the input gpr files, generate a signal file"""
     #preprocess the cel file to text signal file
     identifier,single_object = get_identifier(parameters,objects)
@@ -29,7 +29,7 @@ def run(parameters,objects):
             f.write(logmatrix[j][i])
         f.write('\n')
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
     
 def make_unique_hash(parameters,objects):

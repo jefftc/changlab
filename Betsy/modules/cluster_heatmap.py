@@ -5,7 +5,7 @@ import hash_method
 import subprocess
 import module_utils
 import rule_engine
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """generate a heatmap of input file"""
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects =  get_outfile(parameters,objects)
@@ -24,7 +24,7 @@ def run(parameters,objects):
         raise ValueError(error_message)
     outputfile = os.listdir(os.getcwd())[0]
     os.rename(outputfile,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
     
 def make_unique_hash(parameters,objects):

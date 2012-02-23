@@ -6,7 +6,7 @@ import read_label_file
 import rule_engine
 import module_utils
 import os
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     model_file,obj=module_utils.find_object(parameters,objects,'svm_model','Train_DatasetId')
@@ -26,7 +26,7 @@ def run(parameters,objects):
         f.write('\t'.join(str(p_acc)))
         f.write('\t'.join(str(p_val)))
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
     
 def make_unique_hash(parameters,objects):

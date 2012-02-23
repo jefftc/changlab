@@ -63,7 +63,7 @@ def get_seriesmatrix_file(GSEID,GPLID):
     ftp.close()
     return platform_txtfiles
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """given a database ID and GPLID, get the cel files"""
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
@@ -104,7 +104,7 @@ def run(parameters,objects):
                             cel_file = clean_cel_filename(os.path.splitext(cel_file)[0])+'.gz'
                         outfilename=os.path.join(outfile,cel_file)
                         shutil.copyfile(os.path.join(GSEID_path,cel_file),outfilename)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
          
 def make_unique_hash(parameters,objects):

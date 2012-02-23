@@ -8,7 +8,7 @@ import rule_engine
 import shutil
 import read_label_file
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """extract one signal file to another signal file according to contents"""
     identifier,single_object = get_identifier(parameters,objects)
     class_label_file,obj=module_utils.find_object(parameters,
@@ -36,7 +36,7 @@ def run(parameters,objects):
     f_out = file(outfile,'w')
     arrayio.pcl_format.write(M_c,f_out)
     f_out.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

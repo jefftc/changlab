@@ -4,7 +4,7 @@ import os
 import subprocess
 import module_utils
 import rule_engine
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """clustering the input file"""
     CLUSTER_BIN = 'cluster'
     distance_para = {'correlation':'1','euclidean':'7'}
@@ -35,7 +35,7 @@ def run(parameters,objects):
     min_index = sizelist.index(min_size)
     outputfile = result_files[min_index]
     os.rename(outputfile,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

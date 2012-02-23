@@ -7,20 +7,22 @@ import module_utils
 import rule_engine
 import openpyxl
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """check an input file is xls or xlsx format"""
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     try:
         xlrd.open_workbook(identifier)
         shutil.copyfile(identifier,outfile)
-        module_utils.write_Betsy_parameters_file(parameters,single_object)
+        module_utils.write_Betsy_parameters_file(parameters,
+                                                 single_object,pipeline)
         return new_objects
     except Exception,XLRDError:
         try:
             book =openpyxl.load_workbook(identifier)
             shutil.copyfile(identifier,outfile)
-            module_utils.write_Betsy_parameters_file(parameters,single_object)
+            module_utils.write_Betsy_parameters_file(parameters,
+                                                     single_object,pipeline)
             return new_objects
         except(SystemError,MemoryError,KeyError),x:
             raise
@@ -47,12 +49,12 @@ def make_unique_hash(parameters,objects):
 def get_outfile(parameters,objects):
     identifier,single_object = get_identifier(parameters,objects)
     filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH_' in filename: 
+    if '_BETSYHASH1_' in filename: 
         original_file = '_'.join(filename.split('_')[:-2])
     else:
         original_file = filename
     hash_string = make_unique_hash(parameters,objects)
-    filename = original_file +'_BETSYHASH_'+ hash_string
+    filename = original_file + hash_string
     outfile = os.path.join(os.getcwd(),filename)
     objecttype='signal_file'
     if 'Status' in parameters.keys():

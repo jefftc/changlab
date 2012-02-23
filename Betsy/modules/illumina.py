@@ -18,7 +18,7 @@ def zip_directory(dir, zip_file):
     zip.close()
     
 
-def run(pipeline_parameters,objects):
+def run(pipeline_parameters,objects,pipeline):
     identifier,single_object = get_identifier(pipeline_parameters,objects)
     outfile,new_objects = get_outfile(pipeline_parameters,objects)
     module_name = 'IlluminaExpressionFileCreator'
@@ -47,7 +47,7 @@ def run(pipeline_parameters,objects):
                         download_directory+'/'+result_file)
         os.rename(goal_file,outfile)
         module_utils.write_Betsy_parameters_file(
-                    parameters,single_object)
+                    parameters,single_object,pipeline)
         return new_objects
     else:
         return None

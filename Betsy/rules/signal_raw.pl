@@ -84,14 +84,14 @@ geo_dataset(DatasetId,Contents,[version,gpr],Modules):-
 % generate gpr_file from geo_dataset
 geo_dataset(DatasetId,Contents,[version,illumina],Modules):-
     geo_dataset(DatasetId,Contents,[version,unknown_version],Past_Modules),
-    Newadd=['check_illumina', ['DatasetId',
+    Newadd=['extract_illumina_idat_files', ['DatasetId',
            DatasetId,'Version', 'illumina','Contents',Contents]],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % generate gpr_file from geo_dataset
 geo_dataset(DatasetId,Contents,[version,agilent],Modules):-
     geo_dataset(DatasetId,Contents,[version,unknown_version],Past_Modules),
-    Newadd=['check_agilent', ['DatasetId',
+    Newadd=['extract_agilent_files', ['DatasetId',
            DatasetId,'Version', 'agilent','Contents',Contents]],
     append(Past_Modules, Newadd, Modules).
 
@@ -124,7 +124,7 @@ signal_raw(DatasetId, Contents,Parameters,Modules):-
     geo_dataset(DatasetId, Contents,[version,agilent],Past_Modules),
     append(['DatasetId',
             DatasetId,'Contents',Contents],Parameters,Write_list),
-    Newadd=[agilent,Write_list],
+    Newadd=[preprocess_agilent,Write_list],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % Preprocess v3_4 cel_file by MAS5 or RMA to signal_file,

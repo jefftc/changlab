@@ -5,7 +5,7 @@ import shutil
 import rule_engine
 import module_utils
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """check if the data set has cel file in cc1 version"""
     from genomicode import affyio
     identifier,single_object = get_identifier(parameters,objects)
@@ -26,7 +26,7 @@ def run(parameters,objects):
                 old_file = os.path.join(identifier,i)
                 new_file = os.path.join(outfile,i)
                 shutil.copyfile(old_file,new_file)
-        module_utils.write_Betsy_parameters_file(parameters,single_object)
+        module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
         return new_objects
     else:
         return None
@@ -42,12 +42,12 @@ def make_unique_hash(parameters,objects):
 def get_outfile(parameters,objects):
     identifier,single_object = get_identifier(parameters,objects)
     old_filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH_' in old_filename: 
+    if '_BETSYHASH1_' in old_filename: 
         original_file = '_'.join(old_filename.split('_')[:-2])
     else:
         original_file = old_filename
     hash_string = make_unique_hash(parameters,objects)
-    filename = original_file +'_BETSYHASH_'+ hash_string
+    filename = original_file + hash_string
     outfile = os.path.join(os.getcwd(),filename)
     attributes = parameters.values()
     objecttype = 'geo_dataset'

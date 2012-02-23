@@ -6,7 +6,7 @@ import openpyxl
 import shutil
 import subprocess
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """convert xls or xlsx signal file to pcl format"""
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
@@ -40,7 +40,7 @@ def run(parameters,objects):
     f = file(outfile,'w')
     arrayio.pcl_format.write(M_c,f)
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 

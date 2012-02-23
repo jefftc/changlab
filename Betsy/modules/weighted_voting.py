@@ -5,7 +5,7 @@ import os
 from genomicode import jmath
 import Betsy_config
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     train_identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     train_label_file,obj=module_utils.find_object(parameters,objects,'class_label_file','TrainContents,Train_DatasetId')
@@ -20,7 +20,7 @@ def run(parameters,objects):
     parameters['test.class.filename']=test_label_file
     download_directory=module_utils.run_gp_module(module_name,parameters)
     os.rename(download_directory,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

@@ -6,7 +6,7 @@ import shutil
 import os
 import rule_engine
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile,new_objects = get_outfile(parameters,objects)
     label_file,onj=module_utils.find_object(parameters,objects,'class_label_file','Contents,DatasetId')
@@ -15,7 +15,7 @@ def run(parameters,objects):
     f = open(outfile,'w')
     f.write('\t'.join(gene_list))
     f.close()
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

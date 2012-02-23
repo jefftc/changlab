@@ -7,7 +7,7 @@ import hash_method
 import rule_engine
 from genomicode import binreg,Matrix
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """merge two signal file to generate a joined signal file"""
     merge_file1,obj1=module_utils.find_object(parameters,objects,'signal_file','merge1,dataset1')
     merge_file2,obj2=module_utils.find_object(parameters,objects,'signal_file','merge2,dataset2')
@@ -18,7 +18,7 @@ def run(parameters,objects):
     module_utils.merge_two_files(merge_file1,merge_file2,f)
     f.close()
     assert os.path.exists(outfile)
-    module_utils.write_Betsy_parameters_file(parameters,[obj1,obj2])
+    module_utils.write_Betsy_parameters_file(parameters,[obj1,obj2],pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):

@@ -6,7 +6,7 @@ import hash_method
 import rule_engine
 import shutil
 import read_label_file
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """pull out the signal file if the class label file is given"""
     class_label_file,obj=module_utils.find_object(parameters,
                         objects,'class_label_file','Contents,DatasetId')
@@ -17,7 +17,7 @@ def run(parameters,objects):
     M=arrayio.read(identifier)
     if M.dim()[1]==len(label_line):
         shutil.copyfile(identifier,outfile)
-        module_utils.write_Betsy_parameters_file(parameters,single_object)
+        module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
         return new_objects
     else:
         return None

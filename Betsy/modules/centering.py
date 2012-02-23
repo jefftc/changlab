@@ -3,7 +3,7 @@ import os
 import subprocess
 import module_utils
 
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """mean or median"""
     CLUSTER_BIN = 'cluster'
     center_alg = {'mean':'a','median':'m'}
@@ -23,7 +23,7 @@ def run(parameters,objects):
         raise ValueError(error_message)
     outputfile = outfile + '.nrm'
     os.rename(outputfile,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
     

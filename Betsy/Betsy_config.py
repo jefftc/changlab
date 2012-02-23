@@ -8,6 +8,10 @@ import ConfigParser
 ##config.add_section('Section1')
 ##config.set('Section1', 'PREPROCESS', '/home/xchen/chencode/scripts/preprocess.py')
 ##config.set('Section1', 'ARRAYPLOT', '/home/xchen/chencode/scripts/arrayplot.py')
+##config.set('Section1','xls2txt','/home/xchen/chencode/scripts/xls2txt')
+##config.set('Section1','username','xiaolingchen')
+##config.set('Section1','password', 'baby2008')
+##config.set('Section1','servername', 'http://genepattern.broadinstitute.org/gp/pages/index.jsf')
 ##with open('Betsy.cfg','wb') as configfile:
 ##    config.write(configfile)
 

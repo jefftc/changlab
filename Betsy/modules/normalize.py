@@ -2,7 +2,7 @@
 import os
 import module_utils
 import subprocess
-def run(parameters,objects):
+def run(parameters,objects,pipeline):
     """variance or sum_of_square"""
     norm_para = ["variance","sum_of_squares"]
     if parameters['gene_normalize'] not in norm_para:
@@ -30,7 +30,7 @@ def run(parameters,objects):
         
         outputfile = outfile+'.nrm'
         os.rename(outputfile,outfile)
-    module_utils.write_Betsy_parameters_file(parameters,single_object)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(parameters,objects):
