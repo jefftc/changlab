@@ -26,14 +26,15 @@ PARAMETERS = {
     'shiftscale':['yes_shiftscale','no_shiftscale'],
     'combat':['yes_combat','no_combat'],
     'gene_order':['by_sample_ttest','by_gene_list','no_order'],
-    'filter':['no_filter','integer between 0 and 100']}
+    'filter':['no_filter','integer between 0 and 100'],
+    'format':['pcl','gct']}
 
 DEFAULT = {
     'preprocess':'rma','gene_center':'no_gene_center',
     'gene_normalize':'no_gene_normalize','quantile':'no_quantile',
     'dwd':'no_dwd','shiftscale':'no_shiftscale',
     'combat':'no_combat','filter':'no_filter',
-    'gene_order':'no_order'}
+    'gene_order':'no_order','format':'pcl'}
 
 predicate2arguments={
     'gse_dataset':([],'[]'),

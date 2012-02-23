@@ -16,7 +16,7 @@ INPUTS = [
     ['input_signal_file','gene_list_file']]
 
 OUTPUTS = [
-    'cluster_file','cluster_heatmap','signal_file']
+    'cluster_file','cluster_heatmap']
 
 PARAMETERS = {
     'cluster_alg':['kmeans','pca','hierarchical','som'],

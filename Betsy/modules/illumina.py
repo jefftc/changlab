@@ -37,20 +37,37 @@ def run(pipeline_parameters,objects,pipeline):
     result_files = os.listdir(download_directory)
     for result_file in result_files:
         assert result_file.endswith('.gct')
-        if 'controls' in pipeline_parameters['preprocess']:
-            if '-controls' in result_file:
+        if '-controls' in result_file:
+            f = file(os.path.join(download_directory,result_file),'r')
+            text = f.readlines()
+            biotin=[]
+            for line in text[1:]:
+                words = line.split()
+                if words[1] == 'biotin':
+                    biotin.append(words)
+            from genomicode import jmath
+            R = jmath.start_R()
+            for i in range(len(biotin)):
+                jmath.R_equals_vector(biotin[i][2:],'biotin')
+                command = 'pdf("biotin'+str(i)+'.pdf")'
+                R(command)
+                R('plot(biotin,xlab = "sample",ylab = "biotin")')
+                R('lines(biotin)')
+                title = 'title(main="' + biotin[i][0] + '")'
+                R(title)
+                R('dev.off()')
+            if 'controls' in pipeline_parameters['preprocess']:
                 goal_file = os.path.realpath(
                         download_directory+'/'+result_file)
         else:
-            if '-controls' not in result_file:
+            if 'controls' not in pipeline_parameters['preprocess']:
                 goal_file = os.path.realpath(
                         download_directory+'/'+result_file)
-        os.rename(goal_file,outfile)
-        module_utils.write_Betsy_parameters_file(
+                
+    os.rename(goal_file,outfile)
+    module_utils.write_Betsy_parameters_file(
                     parameters,single_object,pipeline)
-        return new_objects
-    else:
-        return None
+    return new_objects
 
 def make_unique_hash(parameters,objects):
     return module_utils.make_unique_hash(

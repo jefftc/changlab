@@ -29,12 +29,12 @@ def run(parameters,objects,pipeline):
     if error_message:
         raise ValueError(error_message)
     result_files = os.listdir(os.getcwd())
-    fullpath = [os.path.realpath(i) for i in result_files]
-    sizelist = [os.path.getsize(i) for i in fullpath]
-    min_size = min(sizelist)
-    min_index = sizelist.index(min_size)
-    outputfile = result_files[min_index]
-    os.rename(outputfile,outfile)
+    result_formats = {'kmeans': 'cdt','pca':'pc.txt',
+           'hierarchical':'nrm','som':'txt'}
+    result_format = result_formats[parameters['cluster_alg']]
+    for result_file in result_files:
+        if result_file.endswith(result_format):
+            os.rename(result_file,outfile)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 

@@ -111,24 +111,24 @@ def find_object(parameters,objects,objecttype,attribute):
 def run_gp_module(module_name,parameters):
     """given the module_name and the module parameters
        in dict, call module in Genepatttern"""
-    R=jmath.start_R()
-    username='\"'+Betsy_config.USERNAME+'\"'
-    password='\"'+Betsy_config.PASSWORD+'\"'
-    servername='\"'+Betsy_config.SERVERNAME+'\"'
+    R = jmath.start_R()
+    username = '\"' + Betsy_config.USERNAME + '\"'
+    password = '\"' + Betsy_config.PASSWORD + '\"'
+    servername = '\"'+ Betsy_config.SERVERNAME + '\"'
     jmath.R_equals(password,'password')
     jmath.R_equals(servername,'servername')
     jmath.R_equals(username,'username')
-    command="\'"+module_name+"\'"
+    command = "\'" + module_name + "\'"
     for key in parameters.keys():
-        command=command+','+key+'='+'\"'+parameters[key]+'\"'
-    fullcommand='result<-run.analysis(gp.client,'+command+')'
+        command = command + ',' + key + '=' + '\"' + parameters[key] + '\"'
+    fullcommand = 'result<-run.analysis(gp.client,' + command + ')'
     R('library(GenePattern)')
     R('gp.client <- gp.login(servername, username, password)')
     R(fullcommand)
     R('download.directory <- job.result.get.job.number(result)')
     R('download.directory <- as.character(download.directory)')
     R('job.result.download.files(result, download.directory)')
-    download_directory=os.path.realpath(R('download.directory')[0])
+    download_directory = os.path.realpath(R('download.directory')[0])
     result_files = os.listdir(download_directory)
     if 'stderr.txt' in result_files:
         return None
