@@ -329,6 +329,7 @@ static PyObject *ciolib__cleanwrite(
 
     static char *kwlist[] = {"data", "outhandle", "delim", NULL};
 
+    //printf("Starting\n");
     py_data = py_outhandle = NULL;
     py_data_row = py_item = py_str = NULL;
     delim = "\t";
@@ -336,6 +337,7 @@ static PyObject *ciolib__cleanwrite(
 				    &py_data, &py_outhandle, &delim))
 	return NULL;
 
+    //printf("Checking\n");
     if(!PySequence_Check(py_data)) {
 	PyErr_SetString(PyExc_AssertionError, "not a matrix");
 	goto _cleanwrite_cleanup;
@@ -363,7 +365,7 @@ static PyObject *ciolib__cleanwrite(
 	    if(!(py_item = PySequence_GetItem(py_data_row, c)))
 		goto _cleanwrite_cleanup;
 	    if(py_item == Py_None) {
-		c_str = buffer;
+ 		c_str = buffer;
 		buffer[0] = 0;
 		length = 0;
 	    } else if(PyString_Check(py_item)) {

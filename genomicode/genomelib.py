@@ -193,7 +193,7 @@ def filter_unique_tss(genes):
     # Sort by transcription start that is most upstream.
     # Coordinates are 0-based, exclusive end.
     tss = [x.tss for x in genes]
-    if genes[0].strand == "-":
+    if genes and genes[0].strand == "-":
         tss = [-x for x in tss]
     schwartz = zip(tss, genes)
     schwartz.sort()

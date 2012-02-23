@@ -385,8 +385,8 @@ def write(image, handle, povray_bin=None):
         assert os.path.exists(out_file), "POV-RAY failed.\n%s" % output
         handle.write(open(out_file).read())
     finally:
-        #if pov_file and os.path.exists(pov_file):
-        #    os.unlink(pov_file)
+        if pov_file and os.path.exists(pov_file):
+            os.unlink(pov_file)
         if out_file and os.path.exists(out_file):
             os.unlink(out_file)
     output = output.replace("\r", "\n")

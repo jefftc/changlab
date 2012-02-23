@@ -405,7 +405,6 @@ def _clean_many(l, disallowed=None):
     return l
     
 def write(X, handle):
-    from genomicode import filelib
     from genomicode import iolib
 
     assert is_matrix(X)

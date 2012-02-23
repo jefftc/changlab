@@ -21,6 +21,7 @@ describe_unaligned_rows
 
 read_matrices
 merge_gct_matrices
+merge_matrices
 strip_affx_control_probes
 
 Classes:
@@ -653,6 +654,60 @@ def merge_gct_matrices(*matrices):
         row_order=row_order, col_order=col_order)
     DATA = Matrix.add_synonyms(DATA, synonyms)
     assert arrayio.gct_format.is_matrix(DATA)
+    return DATA
+
+def merge_matrices(*matrices):
+    import arrayio
+    import Matrix
+
+    assert len(matrices)
+    assert are_rows_aligned(*matrices)
+
+    # Get the values in list of lists format.
+    X = [x.value() for x in matrices]
+    X_all = []
+    for i in range(len(X[0])):   # each row
+        x = []
+        for j in range(len(X)):  # each matrix
+            x.extend(X[j][i])
+        X_all.append(x)
+
+    # The sample names may not be unique.
+    matrix0 = matrices[0]
+    row_order = []
+    col_order = []
+    row_names = {}
+    col_names = {}
+    synonyms = {}
+
+    # Use the annotations from the first matrix.
+    for name in matrix0.row_names():
+        row_names[name] = matrix0.row_names(name)
+    row_order = matrix0._row_order
+    # Add any annotations that do not occur in the first matrix.
+    for m in matrices[1:]:
+        for name in m.row_names():
+            if name in row_names:
+                continue
+            row_names[name] = m.row_names(name)
+            row_order.append(name)
+
+    # NotImplemented: copy over the column annotations.
+
+    # Copy over the sample names.
+    col_order = [matrix0._col_order[0]]
+    x = []
+    for m in matrices:
+        x.extend(m.col_names(arrayio.COL_ID))
+    col_names[col_order[0]] = x
+    
+    synonyms[arrayio.ROW_ID] = matrix0._synonyms[arrayio.ROW_ID]
+    synonyms[arrayio.COL_ID] = col_order[0]
+
+    DATA = Matrix.InMemoryMatrix(
+        X_all, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order)
+    DATA = Matrix.add_synonyms(DATA, synonyms)
     return DATA
 
 def strip_affx_control_probes(DATA, psid_header=None):

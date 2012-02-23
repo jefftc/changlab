@@ -36,9 +36,13 @@ def choose_colors(group):
     import colorlib
 
     group_clean = [x for x in group if x is not None]
-    if not group_clean or max(group_clean) == 0:
+    if not group_clean:
         # No clusters specified.
         return None
+    # If there is only 1 group specified, then color the samples in
+    # that group, leaving the others black.
+    if max(group_clean) == 0:
+        pass
     # Use the middle range of the colorbar, because the colors at the
     # end are dark.
     # Doesn't work.  Middle colors are too pastel.

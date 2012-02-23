@@ -161,6 +161,9 @@ def find_row_indexes(MATRIX, indexes):
     return parse_indexes(MATRIX, True, indexes)
 
 def find_row_ids(MATRIX, ids):
+    # IDs is a list of gene IDs or names.  Combine them into a single string.
+    ids = [x.strip() for x in ids]
+    ids = ",".join(ids)
     if not ids:
         return None
     return parse_names(MATRIX, True, ids)
@@ -449,13 +452,19 @@ def _dedup_indexes(I):
 def main():
     import argparse
     import arrayio
+    from genomicode import jmath
+    from genomicode import binreg
 
     parser = argparse.ArgumentParser(
         description="Slice the rows or columns of a matrix.")
-    parser.add_argument("filename", help="Matrices to slice.")
+    parser.add_argument("filename", nargs="+", help="Matrices to slice.")
     parser.add_argument(
         "-o", default=None, metavar="OUTFILE", dest="outfile",
         help="Save to this file.  By default, writes output to STDOUT.")
+    parser.add_argument(
+        "-l", "--log_transform", dest="log_transform", default=False,
+        action="store_true",
+        help="Log transform the data.")
 
     # --filter_row_indexes   Indexes of rows to include.
     # --filter_row_ids       Ids of rows to include.
@@ -487,7 +496,7 @@ def main():
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive)."
        )
     group.add_argument(
-        "--filter_row_ids", default=None,
+        "--filter_row_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.")
     group.add_argument(
         "--filter_row_genesets", default=None,
@@ -520,12 +529,22 @@ def main():
         help="Ignore any rows that can't be found.")
     
     args = parser.parse_args()
-        
-    # Read the file.
-    fmt_module = arrayio.guess_format(args.filename)
-    assert fmt_module, "I could not figure out the format of the matrix file."
-    MATRIX = fmt_module.read(args.filename)
+    assert len(args.filename) >= 1
 
+    # Read the files.
+    matrices = []
+    for filename in args.filename:
+        fmt_module = arrayio.guess_format(filename)
+        assert fmt_module, "I could not figure out the format of file: %s" % \
+               filename
+        x = fmt_module.read(filename)
+        matrices.append(x)
+    if len(matrices) == 1:
+        MATRIX = matrices[0]
+    else:
+        # Merge the matrices into one big file.
+        matrices = binreg.align_rows(*matrices)
+        MATRIX = binreg.merge_matrices(*matrices)
     if not MATRIX.nrow():
         return
 
@@ -554,6 +573,9 @@ def main():
     # Relabel the column IDs.
     MATRIX = relabel_col_ids(MATRIX, args.relabel_col_ids)
 
+    # Log transform, if requested.
+    if args.log_transform:
+        MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
 
     # Write the outfile (in the same format).
     handle = sys.stdout
