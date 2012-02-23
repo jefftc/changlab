@@ -2,7 +2,6 @@
 import module_utils
 import shutil
 import os
-import Betsy_config
 from genomicode import jmath
 
 def run(parameters,objects):

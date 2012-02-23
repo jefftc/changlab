@@ -102,7 +102,7 @@ def find_object(parameters,objects,objecttype,attribute):
     compare_attribute = [parameters[i] for i in attributes]
     
     for single_object in objects:
-        flag=True
+        flag = True
         if objecttype in single_object.objecttype:
             for i in compare_attribute:
                 if i not in single_object.attributes:
@@ -132,6 +132,10 @@ def run_gp_module(module_name,parameters):
     R('download.directory <- as.character(download.directory)')
     R('job.result.download.files(result, download.directory)')
     download_directory=os.path.realpath(R('download.directory')[0])
-    return download_directory
+    result_files = os.listdir(download_directory)
+    if 'stderr.txt' in result_files:
+        return None
+    else:
+        return download_directory
 
 

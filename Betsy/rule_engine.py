@@ -1,10 +1,13 @@
-#rule_engine1107version.py using tracking methods
+#! /usr/bin/env python
+
 import os
 import swipl
 import shutil
 import sys
 import logging
 import json
+import argparse
+
 class Analysis:
     def __init__(self,name,parameters):
         self.name = name
@@ -109,7 +112,10 @@ def run_pipeline(pipeline,objects):
             try:
                 os.chdir(working_dir)
                 outfile,new_objects = module.get_outfile(analysis.parameters,objects)
-                if not os.path.exists(outfile):
+                size = 0
+                if os.path.exists(outfile):
+                    size = os.path.getsize(outfile)
+                if not os.path.exists(outfile) or size == 0:
                     new_objects = module.run(analysis.parameters,objects)
                 if analysis == pipeline[-1]:
                      if os.path.exists(outfile):
@@ -126,7 +132,7 @@ def run_pipeline(pipeline,objects):
 
 def make_pipelines(pl_output,pl_inputs):
     cwd = os.getcwd()
-    pl_lib = os.path.join(os.path.dirname(__file__),'Pl lib')
+    pl_lib = os.path.join(os.path.dirname(__file__),'rules')
     try:
         os.chdir(pl_lib)
         p = swipl.connect()
@@ -137,7 +143,6 @@ def make_pipelines(pl_output,pl_inputs):
         swipl.source_code(p,'signal_norm2.pl')
         swipl.source_code(p,'prolog_utils.pl')
         swipl.source_code(p,'clustering.pl')
-        #swipl.source_code(p,'classificationV5.pl')
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input +').'
             swipl.send_query(p,more_command)
@@ -155,3 +160,39 @@ def make_pipelines(pl_output,pl_inputs):
         pipelines.append(pipeline)
     return pipelines
 
+def main():
+    
+      parser = argparse.ArgumentParser(description='Run the engine')
+      
+      parser.add_argument('--plin',dest='plin',default=None,action='append',type=str,
+                          help='prolog command for pipeline start')
+      parser.add_argument('--plout',dest='plout',default=None,type=str,
+                          help='prolog command for querying')
+      parser.add_argument('--id',dest='id',default=None,action='append',type=str,
+                          help='sepecify the file or database id')
+      parser.add_argument('--dry_run',dest='dry_run',action='store_const',
+                          const=True,default=False,
+                          help='show the test case procedure')
+      
+      args = parser.parse_args()
+      assert len(args.id) == len(args.plin),'the length of id and plin should be the equal'
+      pl_inputs = args.plin
+      pl_output = args.plout
+      identifiers = args.id
+      objects = plstring2dataobject(pl_inputs,identifiers)
+      pipelines = make_pipelines(pl_output,pl_inputs)
+      
+      if args.dry_run:
+            print len(pipelines)
+            for pipeline in pipelines:
+                  for analysis in pipeline:
+                        print 'module',analysis.name,'\r'
+                        print 'parameters',analysis.parameters
+                  print '------------------------'
+            print len(pipelines)
+      else:
+            for pipeline in pipelines:
+                run_pipeline(pipeline,objects)
+                  
+if __name__=='__main__':
+    main()
