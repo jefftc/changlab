@@ -81,6 +81,7 @@ def cleanwrite(data, outhandle, delim="\t"):
     if type(outhandle) is not types.FileType:
         _py_cleanwrite(data, outhandle, delim=delim)
         return
+    #print "Calling _cleanwrite"
     _cleanwrite(data, outhandle, delim=delim)
 
 def strip_each(L):

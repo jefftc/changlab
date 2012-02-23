@@ -43,46 +43,49 @@ def _matrix2color(matrix, pos):
         x = r, g, b
     return [x/255.0 for x in x]
 
+def _colors(color_matrix, n):
+    assert n > 0, "Need at least 1 color."
+    if n == 1:
+        x = [_matrix2color(color_matrix, 0.5)]
+    else:
+        x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    return x
+
 def red_shade(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.0,   0, 0, 0),
         (1.0, 255, 0, 0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def green_shade(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.0,   0, 0, 0),
         (1.0, 255, 0, 0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def rg_array_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.0,   0, 255, 0),
         (0.5,   0,   0, 0),
         (1.0, 255,   0, 0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def by_array_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.0,   0,   0, 255),
         (0.5,   0,   0,   0),
         (1.0, 255, 255,   0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def rgb_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.00,   0,   0, 255),
         (0.25,   0, 255, 255),
@@ -90,11 +93,10 @@ def rgb_colors(n):
         (0.75, 255, 255,   0),
         (1.00, 255,   0,   0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def matlab_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.000,   0,   0, 143),
         (0.125,   0,   0, 255),
@@ -106,11 +108,10 @@ def matlab_colors(n):
         (0.875, 255,   0,   0),
         (1.000, 127,   0,   0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def bild_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.000,  49,  50, 114),
         (0.050,  61,  69, 137),
@@ -134,12 +135,11 @@ def bild_colors(n):
         (0.950, 160,  52,  52),
         (1.000, 114,  39,  44),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def broad_colors(n):
     # Default color scheme in GenePattern HeatMapImage module.
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.000,  69,   0, 173),
         (0.091,  39,   0, 209),
@@ -154,11 +154,10 @@ def broad_colors(n):
         (0.909, 239,  64,  64),
         (1.000, 214,  12,   0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def yahoo_weather_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.0, 255, 255, 255),
         (0.1, 204, 255, 255),
@@ -172,21 +171,19 @@ def yahoo_weather_colors(n):
         (0.9, 204, 102, 102),
         (1.0, 209,  73,  73),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def genespring_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.0,   0,   0, 255),
         (0.5, 255, 255,   0),
         (1.0, 255,   0,   0),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def yahoo_weather_colors(n):
-    assert n > 1, "Need at least 2 colors."
     color_matrix = [
         (0.0, 255, 255, 255),
         (0.1, 204, 255, 255),
@@ -200,7 +197,7 @@ def yahoo_weather_colors(n):
         (0.9, 204, 102, 102),
         (1.0, 209,  73,  73),
         ]
-    x = [_matrix2color(color_matrix, float(i)/(n-1)) for i in range(n)]
+    x = _colors(color_matrix, n)
     return x
 
 def rgb2hex(c):

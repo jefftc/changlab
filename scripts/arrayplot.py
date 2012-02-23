@@ -1005,12 +1005,17 @@ def normalize_matrix(
     # array_normalize  None, "ss", or "var"
 
     import arrayio
+    from genomicode import jmath
 
     # If no normalization requested, then just return the matrix.
     if (not log_transform and
         not gene_center and not gene_normalize and
         not array_center and not array_normalize):
         return MATRIX, cluster_data
+
+    # Log transform data before normalizing the variance.
+    if log_transform:
+        MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
 
     # Normalize the variance before normalizing the median.  If you
     # normalize the median first, then the final median may be far
@@ -1026,8 +1031,8 @@ def normalize_matrix(
     #arrayio.tdf.write(MATRIX, sys.stdout)
 
     args = []
-    if log_transform:
-        args.append("-l")
+    #if log_transform:
+    #    args.append("-l")
     if gene_center == "mean":
         args.append("-cg a")
     elif gene_center == "median":
@@ -1055,7 +1060,7 @@ def normalize_matrix(
 
 def normalize_genes_var(MATRIX):
     from genomicode import jmath
-    
+
     # Normalize the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
