@@ -46,3 +46,10 @@ primer3_PRIMER3_BIN=primer3_core
 
 [ILLUMINA]
 illumina_HUMANHT12_CONTROL=/home/jchang/projects/illumina/data/HumanHT-12.control.txt
+
+
+[GENE MAP]
+gm_user=genemap
+gm_passwd=g33m4p
+gm_db=genemap
+gm_host=
