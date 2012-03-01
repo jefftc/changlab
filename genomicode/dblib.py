@@ -1,11 +1,12 @@
 # Functions:
-# query_db
+# query
+# format_list
 
 # _dnslookup
 # _connect_mysql
 # _disconnect_mysql
 
-def query_db(query, user, passwd, db, host):
+def query(query, user, passwd, db, host):
     import time
     import MySQLdb
 
@@ -36,6 +37,14 @@ def query_db(query, user, passwd, db, host):
     #debuglog(query)
     #print "QUERY %g: %s" % (end-start, query)
     return results
+
+def format_list(x, quote=True):
+    assert x, "empty list!"
+    if quote:
+        x = ['"%s"' % x for x in x]
+    else:
+        x = map(str, x)
+    return ", ".join(x)
 
 def _dnslookup(hostname):
     import socket

@@ -9,7 +9,7 @@ binreg20_path=/home/changlab/SIGNATURE/BinReg2.0
 bfrm_normalize_path=/home/changlab/SIGNATURE/BFRM_normalize
 bfrm_project_path=/home/changlab/SIGNATURE/BFRM_project
 dwd_path=/home/changlab/SIGNATURE/BatchAdjust
-sigdb_path=/home/changlab/SIGNATURE/sigdb
+sigdb_path=/home/jchang/projects/genepattern/data/SIGDB/sigdb
 
 pybinreg=/home/jchang/changlab/scripts/pybinreg.py
 arrayplot=/home/jchang/changlab/scripts/arrayplot.py

@@ -43,15 +43,17 @@ def read_signatures(
     filename = opj(sigdb_path, "signatures.txt")
     assert os.path.exists(filename), "Missing signatures.txt file."
 
-    x = [x.upper() for x in desired_normalization]
+    x = [x.upper() for x in desired_normalization]  # case insensitive
     desired_normalization = {}.fromkeys(x)
 
-    x = [x.upper() for x in desired_ids]
+    x = [x.upper() for x in desired_ids]    # case insensitive
     desired_ids = {}.fromkeys(x)
 
-    x = [x.upper() for x in desired_tags]
+    original_tags = desired_tags[:]
+    x = [x.upper() for x in desired_tags]   # case insensitive
     desired_tags = {}.fromkeys(x)
 
+    tags_in_db = {}
     ds = []
     for d in filelib.read_row(filename, header=1):
         # xls2txt converts all values to floats.  Convert them back to
@@ -66,11 +68,13 @@ def read_signatures(
 
         # If the IDs are specified, then make sure the id matches.  If
         # no IDs are specified, then make sure the tags match.
+        tags = [x.upper() for x in d.Tags.split()]
+        for tag in tags:
+            tags_in_db[tag] = 1
         if desired_ids:
             if str(d.xID) not in desired_ids:
                 continue
         else:
-            tags = [x.upper() for x in d.Tags.split()]
             for tag in tags:
                 if tag in desired_tags:
                     break
@@ -101,6 +105,11 @@ def read_signatures(
         d.Train1 = train1
 
         ds.append(d)
+
+    # Check to see if all the tags the user specified are valid.
+    for tag in original_tags:
+        assert tag.upper() in tags_in_db, "Unknown tag: %s" % tag
+        
     return ds
 
 def process_gp_imod_all_vars(gp_imod_all_vars, signatures, why_dropped):
@@ -274,6 +283,7 @@ def make_file_layout(outpath):
         File.PROBABILITIES_ATR("probabilities.atr"),  # made by clustering
         File.DATASET_RMA("dataset.rma.gct"),
         File.DATASET_MAS5("dataset.mas5.gct"),
+        File.DATASET_ILLU("dataset.illu.gct"),
         File.PARAMETERS("parameters.txt"),
         File.REPORT("REPORT.html"),
         File.FILES("FILES"),
@@ -835,8 +845,14 @@ def main():
         "-m", "--mas5", dest="mas5_dataset", type="string", default=None,
         help="Specify the MAS5-normalized data to analyze.")
     parser.add_option(
+        "-i", "--illu", dest="illu_dataset", type="string", default=None,
+        help="Specify the Illumina data to analyze.")
+    parser.add_option(
         "", "--sigdb_path", dest="sigdb_path", type="string", default=None,
         help="Location of the sigdb/ directory.")
+    parser.add_option(
+        "", "--sigtag", dest="signature_tags", default=[], action="append",
+        help="Specify a specific tag to use.")
     parser.add_option(
         "", "--sigid", dest="signature_ids", default=[], action="append",
         help="Specify a specific signature to use.")
@@ -955,15 +971,18 @@ def main():
             "which_signatures=I choose myself"
             )
         
-    datafile_rma = datafile_mas5 = None
+    datafile_rma = datafile_mas5 = datafile_illu = None
     if options.rma_dataset is not None:
         assert os.path.exists(options.rma_dataset), "RMA file not found."
         datafile_rma = os.path.realpath(options.rma_dataset)
     if options.mas5_dataset is not None:
         assert os.path.exists(options.mas5_dataset), "MAS5 file not found."
         datafile_mas5 = os.path.realpath(options.mas5_dataset)
-    assert datafile_rma or datafile_mas5, \
-           "Please specify an RMA and/or a MAS5 normalized data set."
+    if options.illu_dataset is not None:
+        assert os.path.exists(options.illu_dataset), "ILLU file not found."
+        datafile_illu = os.path.realpath(options.illu_dataset)
+    assert datafile_rma or datafile_mas5 or datafile_illu, \
+           "Please specify at least one data set."
 
     if options.libpath:
         sys.path = options.libpath + sys.path
@@ -993,13 +1012,17 @@ def main():
 
     # Read the signatures and select the ones to score.
     # BUG: Should allow this to be specified on the command line.
-    desired_tags = ["Production"]
-    all_normalization = ["RMA", "MAS5"]
+    desired_tags = ["Pathway"]  # default
+    if options.signature_tags:
+        desired_tags = options.signature_tags[:]
+    all_normalization = ["RMA", "MAS5", "ILLU"]
     desired_normalization = []
     if datafile_rma is not None:   # RMA datafile is specified.
         desired_normalization.append("RMA")
     if datafile_mas5 is not None:  # MAS5 datafile is specified.
         desired_normalization.append("MAS5")
+    if datafile_illu is not None:  # ILLU datafile is specified.
+        desired_normalization.append("ILLU")
         
     # If any signature IDs are specified, then use only those IDs and
     # ignore the desired tags.
@@ -1011,7 +1034,6 @@ def main():
         sigdb_path, all_normalization, desired_ids, desired_tags)
     signatures = x
     orig_signatures = signatures[:]
-    assert signatures, "No signatures available."
 
     # Filter for just the normalization that we have data files for.
     # Keep track of why we filtered out certain signatures.
@@ -1025,6 +1047,7 @@ def main():
             sig.Normalization.upper())
         why_dropped[sig.xID] = x
     signatures = good
+    assert signatures, "No signatures available."
 
     # Process additional parameters from GenePattern.
     # o Do this before max_signatures, so that the maximum signatures
@@ -1038,7 +1061,7 @@ def main():
         signatures, why_dropped = x
 
     sys.stdout.flush()
-    DATA_rma = DATA_mas5 = None
+    DATA_rma = DATA_mas5 = DATA_illu = None
     if datafile_rma is not None:
         print "Reading RMA file."
         DATA_rma = arrayio.read(datafile_rma)
@@ -1047,22 +1070,51 @@ def main():
         print "Reading MAS5 file."
         DATA_mas5 = arrayio.read(datafile_mas5)
         DATA_mas5 = arrayio.convert(DATA_mas5, to_format=arrayio.gct_format)
+    if datafile_illu is not None:
+        print "Reading ILLU file."
+        DATA_illu = arrayio.read(datafile_illu)
+        DATA_illu = arrayio.convert(DATA_illu, to_format=arrayio.gct_format)
     # Don't handle the log.  Let pybinreg do it.
     # Make sure the data sets contain the same samples.  Align them if
     # necessary.
-    if DATA_rma and DATA_mas5:
-        assert DATA_rma.ncol() == DATA_mas5.ncol(), \
-               "RMA/MAS5 data sets have different numbers of samples."
-        if not binreg.are_cols_aligned(DATA_rma, DATA_mas5):
-            x = binreg.align_cols(DATA_rma, DATA_mas5)
-            DATA_rma, DATA_mas5 = x
-        assert binreg.are_cols_aligned(DATA_rma, DATA_mas5)
+    DATA_all = [
+        ("DATA_rma", DATA_rma), ("DATA_mas5", DATA_mas5),
+        ("DATA_illu", DATA_illu)]
+    DATA_all = [x for x in DATA_all if x[1]]
+    for i in range(1, len(DATA_all)):
+        key1, data1 = DATA_all[0]
+        key2, data2 = DATA_all[i]
+        assert key1 != key2
+        assert data1 and data2
+        assert data1.ncol() == data2.ncol(), \
+               "%s and %s data sets have different numbers of samples." % (
+            key1, key2)
+        if binreg.are_cols_aligned(data1, data2):
+            continue
+        x = binreg.align_cols(data1, data2)
+        data1_new, data2_new = x
+        assert binreg.are_cols_aligned(data1_new, data2_new)
+        # The samples in data1 (the reference) should not be changed.
+        assert binreg.are_cols_aligned(data1, data1_new)
+        DATA_all[i] = key2, data2_new
+    for key, data in DATA_all:
+        if key == "DATA_rma":
+            DATA_rma = data
+        elif key == "DATA_mas5":
+            DATA_mas5 = data
+        elif key == "DATA_illu":
+            DATA_illu = data
+        else:
+            raise AssertionError, "Unknown key: %s" % key
     if DATA_rma:
         arrayio.gct_format.write(
             DATA_rma, open(file_layout.DATASET_RMA, 'w'))
     if DATA_mas5:
         arrayio.gct_format.write(
             DATA_mas5, open(file_layout.DATASET_MAS5, 'w'))
+    if DATA_illu:
+        arrayio.gct_format.write(
+            DATA_illu, open(file_layout.DATASET_ILLU, 'w'))
 
     # Figure out the names and paths for each signature.
     names = [None] * len(signatures)   # SIG19_AKT[_modified]
@@ -1106,6 +1158,9 @@ def main():
         elif sig.Normalization.upper() == "MAS5":
             datafile = file_layout.DATASET_MAS5
             assert DATA_mas5
+        elif sig.Normalization.upper() == "ILLU":
+            datafile = file_layout.DATASET_ILLU
+            assert DATA_illu
         else:
             raise AssertionError, "Unknown normalization."
 
@@ -1130,7 +1185,8 @@ def main():
     if options.num_procs > 1:
         if parallel.find():
             num_sigs = min(options.num_procs, len(jobs))
-            print "Predicting %d signatures at a time." % num_sigs
+            if num_sigs > 1:
+                print "Predicting %d signatures at a time." % num_sigs
         else:
             print("I could not find GNU parallel.  "
                   "Predicting 1 signature at a time.")
