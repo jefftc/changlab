@@ -8,24 +8,26 @@ import read_label_file
 import Betsy_config
 
 """contain some functions that are called by many modules"""
-def make_unique_hash(parameters,objects,objecttype,attribute):
+def make_unique_hash(parameters,objects,objecttype,attribute,pipeline):
     identifier,single_object = find_object(parameters,objects,objecttype,attribute)
-    filename = os.path.split(identifier)[-1]
-    original_file = filename
+    old_filename = os.path.split(identifier)[-1]
+    if '_BETSYHASH1_' in old_filename: 
+        inputid = '_'.join(old_filename.split('_')[:-2])
+    else:
+        inputid = old_filename
     new_parameters = parameters.copy()
-    new_parameters['filename'] = original_file
-    hash_result = hash_method.hash_parameters(**new_parameters)
+    hash_result = hash_method.hash_parameters(inputid,pipeline,**new_parameters)
     return hash_result
 
-def get_outfile(parameters,objects,in_objecttype,in_attribute,out_objecttype):
+def get_outfile(parameters,objects,in_objecttype,in_attribute,out_objecttype,pipeline):
     identifier,single_object = find_object(parameters,objects,in_objecttype,in_attribute)
     old_filename = os.path.split(identifier)[-1]
     if '_BETSYHASH1_' in old_filename: 
         original_file = '_'.join(old_filename.split('_')[:-2])
     else:
         original_file = old_filename
-    hash_string = make_unique_hash(parameters,objects,in_objecttype,in_attribute)
-    filename = original_file + hash_string
+    hash_string = make_unique_hash(parameters,objects,in_objecttype,in_attribute,pipeline)
+    filename = original_file + '_BETSYHASH1_' + hash_string
     outfile = os.path.join(os.getcwd(),filename)
     if 'Status' in parameters.keys():
         del parameters['Status']
@@ -82,8 +84,7 @@ def write_Betsy_parameters_file(parameters,single_object,pipeline):
     for i in parameters.keys():
          f.write(i+':'+parameters[i]+'\n')
     f.write('Pipeline module sequence:\n')
-    for analysis in pipeline:
-        f.write(analysis.name+'\n')
+    f.write('\t'.join(pipeline))
     f.close()
     
 
@@ -108,31 +109,67 @@ def find_object(parameters,objects,objecttype,attribute):
                 identifier=single_object.identifier
                 break
     return identifier,single_object
-def run_gp_module(module_name,parameters):
-    """given the module_name and the module parameters
-       in dict, call module in Genepatttern"""
-    R = jmath.start_R()
-    username = '\"' + Betsy_config.USERNAME + '\"'
-    password = '\"' + Betsy_config.PASSWORD + '\"'
-    servername = '\"'+ Betsy_config.SERVERNAME + '\"'
-    jmath.R_equals(password,'password')
-    jmath.R_equals(servername,'servername')
-    jmath.R_equals(username,'username')
-    command = "\'" + module_name + "\'"
-    for key in parameters.keys():
-        command = command + ',' + key + '=' + '\"' + parameters[key] + '\"'
-    fullcommand = 'result<-run.analysis(gp.client,' + command + ')'
-    R('library(GenePattern)')
-    R('gp.client <- gp.login(servername, username, password)')
-    R(fullcommand)
-    R('download.directory <- job.result.get.job.number(result)')
-    R('download.directory <- as.character(download.directory)')
-    R('job.result.download.files(result, download.directory)')
-    download_directory = os.path.realpath(R('download.directory')[0])
-    result_files = os.listdir(download_directory)
-    if 'stderr.txt' in result_files:
-        return None
-    else:
-        return download_directory
+def write_report(module_name,outputfile,parameters,pipeline_sequence):
+    report = os.path.join(Betsy_config.OUTPUTPATH,'report_file.txt')
+    f = file(report,'a+')
+    f.write('module_name:\n')
+    f.write(module_name)
+    f.write('\n outputfile:\n')
+    f.write(outputfile)
+    f.write('\n parameters:\n')
+    for i in parameters.keys():
+         f.write(i+':'+parameters[i]+'\n')
+    f.write('Pipeline module sequence:\n')
+    f.write('\t'.join(pipeline_sequence))
+    f.write('\n------------------------------------\n')
+    f.close()
 
+def exists_nz(filename):
+    if os.path.exists(filename):
+        size = os.path.getsize(filename)
+        if size > 0:
+            return True
+        else:
+            return False
+    else:
+        return False
+    
+def plot_R(filename,keywords,outfile):
+    from genomicode import jmath
+    R = jmath.start_R()
+    R('library(R.utils)')
+    command = 'png2("' + outfile + '")'
+    R(command)
+    row = len(keywords)
+    jmath.R_equals(row,'row')
+    R('par(mfrow=c(row,1))')
+    M = arrayio.read(filename)
+    header = M.row_names()
+    for keyword in keywords:
+        data= []
+        legend_name = []
+        for i in range(M.dim()[0]):
+            if M.row_names(header[1])[i] == keyword:
+                data.append(M.slice()[i])
+                legend_name.append('"'+M.row_names(header[0])[i]+'"')
+        assert len(data)>0,'input is not a control file'
+        max_value = max(data[0])
+        for i in range(1,len(data)):
+            max_value = max(max_value,max(data[i]))
+        R('opts = c("red","blue","yellow","green","black","orangered","indianred",\
+          "deepskyblue","pink")')
+        jmath.R_equals(max_value,'max_value')
+        jmath.R_equals_vector(data[0],'data')
+        jmath.R_equals('"'+keyword+'"','keyword')
+        R('plot(data,ylim=c(0,max_value),\
+          xlab = "sample",ylab = keyword,type="l",col=opts[1])')
+        for i in range(1,len(data)):
+            jmath.R_equals(i,'i')
+            jmath.R_equals_vector(data[i],'data')
+            R('lines(data,col=opts[i+1])')
+        jmath.R_equals_vector(legend_name,'legend_name')
+        R('legend("bottomleft", legend_name,col=opts, lty=1,cex=0.8)')
+    R('dev.off()')
+    assert exists_nz(outfile),'the plot_R fails'
+    
 

@@ -8,11 +8,12 @@ import module_utils
 import os
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)
-    model_file,obj=module_utils.find_object(parameters,objects,'svm_model','Train_DatasetId')
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
+    model_file,obj = module_utils.find_object(
+        parameters,objects,'svm_model','Train_DatasetId')
     test=arrayio.read(identifier)
     x_test = module_utils.format_convert(test)#convert to the format libsvm accept
-    test_label_file,obj=module_utils.find_object(parameters,objects,'class_label_file','TestContents,Test_DatasetId')
+    test_label_file,obj = module_utils.find_object(parameters,objects,'class_label_file','TestContents,Test_DatasetId')
     a,test_label,second_line = read_label_file.read(test_label_file)    
     if test_label:
         y_test = [int(x) for x in test_label]
@@ -29,14 +30,16 @@ def run(parameters,objects,pipeline):
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
     
-def make_unique_hash(parameters,objects):
-    return module_utils.make_unique_hash(parameters,objects,'signal_file','TestContents,Test_DatasetId')
+def make_unique_hash(parameters,objects,pipeline):
+    return module_utils.make_unique_hash(
+        parameters,objects,'signal_file','TestContents,Test_DatasetId',pipeline)
     
-def get_outfile(parameters,objects):
+def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(parameters,
-            objects,'signal_file','TestContents,Test_DatasetId','classification_file')
+            objects,'signal_file','TestContents,Test_DatasetId','classification_file',pipeline)
 
 def get_identifier(parameters,objects):
-    return module_utils.find_object(parameters,objects,'signal_file','TestContents,Test_DatasetId')
+    return module_utils.find_object(
+        parameters,objects,'signal_file','TestContents,Test_DatasetId')
 
 

@@ -4,6 +4,7 @@
 import rule_engine
 import argparse
 import os
+import protocol_utils
 
 def import_protocol(protocol):
     protocol_name = 'protocols.'+protocol
@@ -24,7 +25,7 @@ def filter_pipelines(protocol, inputs, output_info,
         x = module.predicate2arguments[inputs[i]]
         assert len(x) == 2
         in_parameters, modules = x
-        query = module.format_prolog_query(
+        query = protocol_utils.format_prolog_query(
             inputs[i], in_dataset_ids[i],
             in_contents[i], in_parameters,modules)
         pl_inputs.append(query)
@@ -38,7 +39,7 @@ def filter_pipelines(protocol, inputs, output_info,
     for key in new_parameters.keys(): 
         parameter_list.extend([key,new_parameters[key]])
     [output, out_dataset_id, out_content] = output_info
-    pl_output = module.format_prolog_query(
+    pl_output = protocol_utils.format_prolog_query(
         output, out_dataset_id, out_content, parameter_list,'Modules')
     pipelines = rule_engine.make_pipelines(pl_output,pl_inputs)
     return pipelines
@@ -58,33 +59,38 @@ def run_protocol(protocol, inputs, output_info, identifiers,
         x = module.predicate2arguments[inputs[i]]
         assert len(x) == 2
         in_parameters, modules = x
-        query = module.format_prolog_query(
+        query = protocol_utils.format_prolog_query(
             inputs[i], in_dataset_ids[i], in_contents[i],
             in_parameters, modules)
         pl_inputs.append(query)
     objects = rule_engine.plstring2dataobject(pl_inputs,identifiers)
-    output_files = []
+    output_files_all = []
+    parameters_all = []
+    pipeline_sequence_all = []
     for pipeline in pipelines:
-          output_file = rule_engine.run_pipeline(pipeline,objects)
-          if output_file:
-              output_files.append(output_file)
-    return output_files
+          out_files = rule_engine.run_pipeline(pipeline,objects)
+          if out_files:
+              pipeline_sequence = [analysis.name for analysis in pipeline]
+              output_files_all.append(out_files[-1])
+              parameters_all.append(pipeline[-1].parameters)
+              pipeline_sequence_all.append(pipeline_sequence)
+              
+    return output_files_all,parameters_all,pipeline_sequence_all
 
 def main():
     parser = argparse.ArgumentParser(
         description = 'run the protocol engine')
-    parser.add_argument('--protocol_file',
-                        dest = 'protocol_file',type = str,
-                        help = 'input the protocol file')
+    parser.add_argument('--protocol',
+                        dest = 'protocol',type = str,
+                        help = 'The name of the protocol,eg. cluster_genes')
     parser.add_argument('--input',dest = 'input',type = str,
                         action = 'append',default = None,
                         help ='input:datasetid:contents:identifier_or_file\
                         or input:identifier')
     parser.add_argument('--output',dest = 'output',type=str,
-                        help = 'the output predicate:datasetid:contents\
-                        or the output predicate')
+                        help = 'datasetid:contents of the output')
     parser.add_argument('--parameters',dest = 'parameters',
-                        action = 'append',default = None,
+                        action = 'append',default = [],
                         type = str,help='key:value')
     parser.add_argument('--dry_run',dest = 'dry_run',const = True,
                         default = False,action = 'store_const',
@@ -96,15 +102,30 @@ def main():
                         help = 'shows the protocol details')
 
     args = parser.parse_args()
-    if not args.protocol_file:
-        raise ValueError('please specify the protocol_file')
-  
-    module = import_protocol(args.protocol_file)
+    if not args.protocol:
+        raise parser.error('please specify the protocol')
+    if not args.input:
+        raise parser.error('please specify the input')
+    len_inputs = []
+    for i in args.input:
+        len_input = len(i.split(':'))
+        assert len_input in [2,4],'input is length 2 or 4'
+        len_inputs.append(len_input)
+        if len(i.split(':')) == 4:
+            assert args.output,'please specify the output'
+            assert len(args.output.split(':')) == 2,'the\
+                      format of output is datasetid:contents'
+    
+    assert len_inputs == [len_inputs[0]]*len(len_inputs),'the format of all inputs do not match'
+    for i in args.parameters:
+        assert len(i.split(':')) == 2, 'parameters should format like key:value'
+        
+    module = import_protocol(args.protocol)
+    
     inputs = []
     identifiers = []
     in_dataset_ids = []
     in_contents = []
-    output_info = []
     for i in args.input:
         inpair = i.split(':')
         if len(inpair) == 4:
@@ -119,17 +140,24 @@ def main():
             raise ValueError('the length of input should be 2 or 4')
         inputs.append(predicate)
         identifiers.append(identifier)
-    
-    output_info = args.output.split(':')
-    assert len(output_info) == len(inpair) - 1
-    if len(output_info) == 1:
-        output_info.extend(['not_applicable','not_applicable'])
+    if args.output:       
+        output = args.output.split(':')
+    else:
+        output = ['not_applicable','not_applicable']
+                       
+    assert inputs in module.INPUTS,("%s is not recognized in %s)"
+                                        %(str(inputs),args.protocol))
         
     parameters = module.DEFAULT
     if args.parameters:
         for i in args.parameters:
             parpair = i.split(':')
             key,value = parpair
+            assert key in module.PARAMETERS.keys(),(
+                '%s is not a valid parameter key in %s'%(key,args.protocol))
+            if not value.isdigit():
+                assert value in module.PARAMETERS[key],(
+                '   %s is not a valid parameter value in %s'%(value,args.protocol))
             parameters[key.lower()] = value.lower()
             
     if args.describe_protocol:
@@ -139,22 +167,33 @@ def main():
         print 'DEFAULTS', module.DEFAULT
         
     if args.dry_run:
-        pipelines = filter_pipelines(
-        args.protocol_file, inputs,output_info,
-        in_dataset_ids,in_contents,parameters)
-        print len(pipelines)
-        for pipeline in pipelines:
-            for analysis in pipeline:
-                print analysis.name
-                print analysis.parameters
-            print '-------------------------'
+        for output_file in module.OUTPUTS:
+            output_info = [output_file]
+            output_info.extend(output)
+            pipelines = filter_pipelines(
+            args.protocol, inputs,output_info,
+            in_dataset_ids,in_contents,parameters)
+            print len(pipelines)
+            for pipeline in pipelines:
+                for analysis in pipeline:
+                    print analysis.name
+                    print analysis.parameters
+                print '-------------------------'
     else:
-        output_files = run_protocol(
-            args.protocol_file,inputs,output_info,
-            identifiers,in_dataset_ids,in_contents,parameters)
-        print output_files
-    
-    
+        final_output = []
+        final_parameters = []
+        final_pipeline_sequence = []
+        for output_file in module.OUTPUTS:
+            output_info = [output_file]
+            output_info.extend(output)
+            output_files,parameters_all,pipeline_sequence_all = run_protocol(
+                args.protocol,inputs,output_info,
+                identifiers,in_dataset_ids,in_contents,parameters)
+            final_output.append(output_files)
+            final_parameters.append(parameters_all)
+            final_pipeline_sequence.append(pipeline_sequence_all)
+        protocol_utils.get_result_folder(
+            final_output,final_parameters,final_pipeline_sequence)
         
 if __name__=='__main__':
     main()

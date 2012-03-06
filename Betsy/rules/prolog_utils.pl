@@ -64,7 +64,35 @@ convert_parameters_raw(Parameters,NewParameters):-
     get_value(Parameters,status,created,Status),
     member(Status,[given,created,jointed,splited]),
     append(NewParameters6,[status,Status],NewParameters).
+/*-------------------------------------------------------------------------*/
+convert_parameters_clean_out(Parameters,NewParameters):-
+    get_value(Parameters,format,unknown_format,Format),
+    Format=pcl,
+    append([],[format,Format],NewParameters1),
+   
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,illumina_controls]),
+    append(NewParameters1,[preprocess,Preprocess],NewParameters2),
 
+    get_value(Parameters,is_logged,logged,Is_Logged),
+    Is_Logged=logged,
+    append(NewParameters2,[is_logged,Is_Logged],NewParameters3),
+
+    get_value(Parameters,has_missing_value,no_missing,Has_Missing_Value),
+    member(Has_Missing_Value,[yes_missing,no_missing,unknown_missing]),
+    append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
+
+    get_value(Parameters,filter,no_filter,Filter),
+    (Filter=no_filter;not(atom(Filter))),
+    append(NewParameters4,[filter,Filter],NewParameters5),
+   
+    get_value(Parameters,fill,no_fill,Fill),
+    member(Fill,[no_fill,yes_fill]),
+    append(NewParameters5,[fill,Fill],NewParameters6),
+    
+    get_value(Parameters,status,created,Status),
+    member(Status,[given,created,jointed,splited]),
+    append(NewParameters6,[status,Status],NewParameters).
 /*-----------------------------------------------*/
 convert_parameters_variable_raw(Parameters,NewParameters):-
     get_value_variable(Parameters,format,Format),

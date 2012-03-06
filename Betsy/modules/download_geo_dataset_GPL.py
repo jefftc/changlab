@@ -66,7 +66,7 @@ def get_seriesmatrix_file(GSEID,GPLID):
 def run(parameters,objects,pipeline):
     """given a database ID and GPLID, get the cel files"""
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     assert len(identifier.split(','))==2,'the identifier should contain GSEID and GPLID'
     GSEID = identifier.split(',')[0]
     GPLID = identifier.split(',')[1]
@@ -107,12 +107,12 @@ def run(parameters,objects,pipeline):
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
          
-def make_unique_hash(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     return identifier.split(',')[0]+'.'+identifier.split(',')[1]
     
-def get_outfile(parameters,objects):
-    hash_string = make_unique_hash(parameters,objects)
+def get_outfile(parameters,objects,pipeline):
+    hash_string = make_unique_hash(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
     filename = hash_string
     outfile = os.path.join(os.getcwd(),filename)

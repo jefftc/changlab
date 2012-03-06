@@ -8,7 +8,7 @@ import json
 
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     result,label_line,second_line=read_label_file.read(identifier)
     assert parameters['Contents'].startswith('[') and parameters['Contents'].endswith(']')
     contents=parameters['Contents'][1:-1].split(',')
@@ -26,14 +26,15 @@ def run(parameters,objects,pipeline):
                  if int(label)==content_index[i]]
         new_label_line.extend(newline)
     read_label_file.write(outfile,contents,new_label_line)
-    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
+    module_utils.write_Betsy_parameters_file(
+        parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     return module_utils.make_unique_hash(parameters,
-                    objects,'class_label_file','PreContents,PreDatasetid')
+                    objects,'class_label_file','PreContents,PreDatasetid',pipeline)
     
-def get_outfile(parameters,objects):
+def get_outfile(parameters,objects,pipeline):
     outfile = os.path.join(os.getcwd(),'class_label_file.cls')
     attributes = parameters.values()
     new_object=rule_engine.DataObject('class_label_file',attributes,outfile)

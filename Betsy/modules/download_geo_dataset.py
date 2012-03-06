@@ -12,7 +12,7 @@ def run(parameters,objects,pipeline):
     import tarfile
     #download the tar folder from geo
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     file_folder = os.path.join(os.getcwd(),identifier)
     ftp = FTP('ftp.ncbi.nih.gov')
     ftp.login()
@@ -126,13 +126,13 @@ def run(parameters,objects,pipeline):
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     hash_string = identifier
     return hash_string
 
-def get_outfile(parameters,objects):
-    hash_string = make_unique_hash(parameters,objects)
+def get_outfile(parameters,objects,pipeline):
+    hash_string = make_unique_hash(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
     filename = identifier + '_after_select'
     outfile = os.path.join(os.getcwd(),filename)

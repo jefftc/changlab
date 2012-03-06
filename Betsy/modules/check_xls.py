@@ -10,43 +10,36 @@ import openpyxl
 def run(parameters,objects,pipeline):
     """check an input file is xls or xlsx format"""
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     try:
         xlrd.open_workbook(identifier)
-        shutil.copyfile(identifier,outfile)
-        module_utils.write_Betsy_parameters_file(parameters,
-                                                 single_object,pipeline)
-        return new_objects
-    except Exception,XLRDError:
+    except XLRDError,x:
         try:
             book =openpyxl.load_workbook(identifier)
-            shutil.copyfile(identifier,outfile)
-            module_utils.write_Betsy_parameters_file(parameters,
-                                                     single_object,pipeline)
-            return new_objects
-        except(SystemError,MemoryError,KeyError),x:
-            raise
-        except Exception,x:
+        except InvalidFileException,x:
             return None
-    except (SystemError,MemoryError,KeyError),x:
-            raise 
-    except Exception,x:
-        return None
+    shutil.copyfile(identifier,outfile)
+    module_utils.write_Betsy_parameters_file(parameters,
+                                                 single_object,pipeline)
+    return new_objects
     
-def make_unique_hash(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     filename = os.path.split(identifier)[-1]
+    if '_BETSYHASH1_' in filename: 
+        original_file = '_'.join(filename.split('_')[:-2])
+    else:
+        original_file = filename
     byte_size,md5_checksum,sha1_checksum = hash_method.get_file_checksum(identifier)
     new_parameters = parameters.copy()
-    new_parameters['filename'] = filename
     new_parameters['file size']= byte_size
     new_parameters['checksum1']= md5_checksum
     new_parameters['checksum2']= sha1_checksum
-    hash_result = hash_method.hash_parameters(**new_parameters)
+    hash_result = hash_method.hash_parameters(original_file,pipeline,**new_parameters)
     return hash_result
 
     
-def get_outfile(parameters,objects):
+def get_outfile(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     filename = os.path.split(identifier)[-1]
     if '_BETSYHASH1_' in filename: 
@@ -54,7 +47,7 @@ def get_outfile(parameters,objects):
     else:
         original_file = filename
     hash_string = make_unique_hash(parameters,objects)
-    filename = original_file + hash_string
+    filename = original_file + '_BETSYHASH1_' + hash_string
     outfile = os.path.join(os.getcwd(),filename)
     objecttype='signal_file'
     if 'Status' in parameters.keys():

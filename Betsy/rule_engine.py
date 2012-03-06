@@ -7,6 +7,8 @@ import sys
 import logging
 import json
 import argparse
+import Betsy_config
+import module_utils
 
 class Analysis:
     def __init__(self,name,parameters):
@@ -87,48 +89,55 @@ def parse_text_pipeline(line):
     return pipeline
 
 def make_module_wd_name(module_name,hash_string):
-    working_dir = module_name + hash_string
+    working_dir = module_name + '_BETSYHASH1_' + hash_string
     return working_dir
 
 def make_module_wd(working_dir):
     os.mkdir(working_dir)
     
+
+    
 def run_pipeline(pipeline,objects):
     """run a single pipeline"""
     cwd = os.getcwd()
-    logging.basicConfig(level = logging.DEBUG,
-                        filename = os.path.join(cwd,'errorlog.txt'))
     OUTPUT = None
+    outfile_list = []
     try:
+        output_path = Betsy_config.OUTPUTPATH
+        assert os.path.exists(output_path), 'the output_path does not exist'
         for  i in range(len(pipeline)):
+            pipeline_sequence = [analysis.name for analysis in pipeline[0:i+1]]
             analysis = pipeline[i]
             module_name = analysis.name
             print module_name
             module = __import__(module_name)
             hash_string = module.make_unique_hash(
-                                analysis.parameters,objects)
-            working_dir = make_module_wd_name(module_name,hash_string)
+                                analysis.parameters,objects,pipeline_sequence)
+            working_dir = os.path.join(output_path,make_module_wd_name(
+                                        module_name,hash_string))
             if not os.path.exists(working_dir):
                 make_module_wd(working_dir)
             try:
                 os.chdir(working_dir)
-                outfile,new_objects = module.get_outfile(analysis.parameters,objects)
-                size = 0
-                if os.path.exists(outfile):
-                    size = os.path.getsize(outfile)
-                if not os.path.exists(outfile) or size == 0:
-                    new_objects = module.run(analysis.parameters,objects,pipeline[0:i+1])
-                if analysis == pipeline[-1]:
-                     if os.path.exists(outfile):
-                        OUTPUT = outfile
+                outfile,new_objects = module.get_outfile(
+                    analysis.parameters,objects,pipeline_sequence)
+                if not module_utils.exists_nz(outfile):
+                    new_objects = module.run(
+                        analysis.parameters,objects,pipeline_sequence)                        
+                outfile_list.append(outfile)
+                if not new_objects:
+                    break
+                
                 objects = new_objects[:]
+                if analysis == pipeline[-1]:
+                    if module_utils.exists_nz(outfile):
+                        OUTPUT = outfile_list
             finally:
                 os.chdir(cwd)
-                
-    except (SystemError,MemoryError,KeyError),x:
-            raise 
+    
     except Exception,x:
-            logging.exception(x)
+            raise
+    
     return OUTPUT
 
 def make_pipelines(pl_output,pl_inputs):

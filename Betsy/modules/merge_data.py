@@ -9,11 +9,11 @@ from genomicode import binreg,Matrix
 
 def run(parameters,objects,pipeline):
     """merge two signal file to generate a joined signal file"""
-    merge_file1,obj1=module_utils.find_object(parameters,objects,'signal_file','merge1,dataset1')
-    merge_file2,obj2=module_utils.find_object(parameters,objects,'signal_file','merge2,dataset2')
+    merge_file1,obj1 = module_utils.find_object(parameters,objects,'signal_file','merge1,dataset1')
+    merge_file2,obj2 = module_utils.find_object(parameters,objects,'signal_file','merge2,dataset2')
     assert os.path.exists(merge_file1)
     assert os.path.exists(merge_file2)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     f = file(outfile,'w')
     module_utils.merge_two_files(merge_file1,merge_file2,f)
     f.close()
@@ -21,13 +21,14 @@ def run(parameters,objects,pipeline):
     module_utils.write_Betsy_parameters_file(parameters,[obj1,obj2],pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects):
-    return module_utils.make_unique_hash(parameters,objects,'signal_file','merge1,dataset1')
+def make_unique_hash(parameters,objects,pipeline):
+    return module_utils.make_unique_hash(
+        parameters,objects,'signal_file','merge1,dataset1',pipeline)
 
 
-def get_outfile(parameters,objects):
+def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(parameters,
-            objects,'signal_file','merge1,dataset1','signal_file')
+            objects,'signal_file','merge1,dataset1','signal_file',pipeline)
     
 
 

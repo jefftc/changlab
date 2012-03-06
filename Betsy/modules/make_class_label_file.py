@@ -9,20 +9,21 @@ def run(parameters,objects,pipeline):
     """generate the class_label_file for signal data"""
     import arrayio
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)     
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)     
     M = arrayio.read(identifier)
     label_line = ['0'] * M.dim()[1]
     assert parameters['Contents'].startswith('[') and parameters['Contents'].endswith(']')
     class_name=[parameters['Contents'][1:-1]]
     read_label_file.write(outfile,class_name,label_line)
-    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
+    module_utils.write_Betsy_parameters_file(
+        parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     return module_utils.make_unique_hash(parameters,
-                                    objects,'signal_file','Contents,DatasetId')
+                    objects,'signal_file','Contents,DatasetId',pipeline)
     
-def get_outfile(parameters,objects):
+def get_outfile(parameters,objects,pipeline):
     outfile = os.path.join(os.getcwd(),'class_label_file.cls')
     if 'status' in parameters.keys():
         del parameters['status']

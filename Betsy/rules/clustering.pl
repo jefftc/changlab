@@ -43,15 +43,18 @@ cluster_heatmap(DatasetId,Contents,Parameters,Modules):-
     get_value_variable(Parameters,color,Color),
     member(Color,[blue_yellow,red_green]),
     (convert_cluster_parameters(Parameters,NewParameters),
-    cluster_file(DatasetId,Contents,NewParameters,Past_Modules);
+    cluster_file(DatasetId,Contents,NewParameters,Past_Modules),
+    append(NewParameters,[color,Color],NewParameters1),
+    append(['DatasetId',DatasetId,'Contents',Contents],NewParameters1,Write_list);
     get_value_variable(Parameters,cluster_alg,Cluster_Alg),
     Cluster_Alg=no_cluster_alg,
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
     Format=pcl,
-    signal_file(DatasetId,Contents,NewParameters,Past_Modules)),
+    signal_file(DatasetId,Contents,NewParameters,Past_Modules),
     append(NewParameters,[color,Color],NewParameters1),
-    append(['DatasetId',DatasetId,'Contents',Contents],NewParameters1,Write_list),
+    append(['DatasetId',DatasetId,'Contents',Contents,cluster_alg,
+          no_cluster_alg],NewParameters1,Write_list)),
     Newadd = [cluster_heatmap,Write_list],
     append(Past_Modules,Newadd,Modules).
 

@@ -1,14 +1,14 @@
 #hash_method.py
 
-def hash_parameters(**parameters):
+def hash_parameters(inputid,pipeline,**parameters):
     """given a file parameters,generate a hash string"""
     from hashlib import md5
-    hashstring = ''
+    hashstring = inputid + ' '.join(pipeline)
     for key in sorted(parameters):
         hashstring += str(parameters[key])
     hash = md5()
     hash.update(hashstring)
-    hash_result = '_BETSYHASH1_'+hash.hexdigest()
+    hash_result = hash.hexdigest()
     return hash_result
 
 def get_file_checksum(identifier):

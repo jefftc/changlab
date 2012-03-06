@@ -8,27 +8,28 @@ import shutil
 import read_label_file
 def run(parameters,objects,pipeline):
     """pull out the signal file if the class label file is given"""
-    class_label_file,obj=module_utils.find_object(parameters,
+    class_label_file,obj = module_utils.find_object(parameters,
                         objects,'class_label_file','Contents,DatasetId')
     assert os.path.exists(class_label_file)
     identifier,single_object = get_identifier(parameters,objects)
     result,label_line,second_line=read_label_file.read(class_label_file)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     M=arrayio.read(identifier)
     if M.dim()[1]==len(label_line):
         shutil.copyfile(identifier,outfile)
-        module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
+        module_utils.write_Betsy_parameters_file(
+            parameters,single_object,pipeline)
         return new_objects
     else:
         return None
     
-def make_unique_hash(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     return module_utils.make_unique_hash(parameters,
-                    objects,'signal_file','[unknown],DatasetId')
+                    objects,'signal_file','[unknown],DatasetId',pipeline)
     
-def get_outfile(parameters,objects):
+def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(parameters,
-                    objects,'signal_file','[unknown],DatasetId','signal_file')
+        objects,'signal_file','[unknown],DatasetId','signal_file',pipeline)
     
 
 def get_identifier(parameters,objects):

@@ -15,7 +15,8 @@ import ConfigParser
 ##with open('Betsy.cfg','wb') as configfile:
 ##    config.write(configfile)
 
-DEFAULTS={'PREPROCESS': 'preprocess.py', 'ARRAYPLOT': 'arrayplot.py','XLS2TXT':'xls2txt'}
+DEFAULTS={'PREPROCESS': 'preprocess.py', 'ARRAYPLOT': 'arrayplot.py','XLS2TXT':'xls2txt',
+          'GENEPATTERN':'run_genepattern.py'}
 SEARCH_PATH = [
         '/home/xchen/chencode/scripts',
         "/usr/local/bin",

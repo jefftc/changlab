@@ -4,7 +4,8 @@ import shutil
 import os
 import Betsy_config
 import zipfile
-
+import subprocess
+import plot_biotin
 def zip_directory(dir, zip_file):
     zip = zipfile.ZipFile(zip_file, 'w',
                           compression = zipfile.ZIP_DEFLATED)
@@ -20,7 +21,7 @@ def zip_directory(dir, zip_file):
 
 def run(pipeline_parameters,objects,pipeline):
     identifier,single_object = get_identifier(pipeline_parameters,objects)
-    outfile,new_objects = get_outfile(pipeline_parameters,objects)
+    outfile,new_objects = get_outfile(pipeline_parameters,objects,pipeline)
     module_name = 'IlluminaExpressionFileCreator'
     parameters = dict()
     if zipfile.is_zipfile(identifier):
@@ -31,31 +32,34 @@ def run(pipeline_parameters,objects,pipeline):
         parameters['idat.zip'] = zipfile_name
     parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
     parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
-    download_directory = module_utils.run_gp_module(
-        module_name,parameters)
+    
+    gp_module = Betsy_config.GENEPATTERN
+    command = [gp_module, module_name]
+    for key in parameters.keys():
+        a = ['--parameters',key+':'+ parameters[key]]
+        command.extend(a)
+    
+    download_directory = None
+    process = subprocess.Popen(command,shell=False,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+    process.wait()
+    output_text =  process.stdout.read()
+    
+    out_lines = output_text.split('\n')
+    for out_line in out_lines:
+        if out_line != 'Loading required package: rJava' and len(out_line)>0:
+            download_directory = out_line
+            break
+    error_message = process.communicate()[1]
+    if error_message:
+        raise ValueError(error_message)
     goal_file = None
     result_files = os.listdir(download_directory)
+    assert 'stderr.txt' not in result_files,'gene_pattern get error'
     for result_file in result_files:
         assert result_file.endswith('.gct')
         if '-controls' in result_file:
-            f = file(os.path.join(download_directory,result_file),'r')
-            text = f.readlines()
-            biotin=[]
-            for line in text[1:]:
-                words = line.split()
-                if words[1] == 'biotin':
-                    biotin.append(words)
-            from genomicode import jmath
-            R = jmath.start_R()
-            for i in range(len(biotin)):
-                jmath.R_equals_vector(biotin[i][2:],'biotin')
-                command = 'pdf("biotin'+str(i)+'.pdf")'
-                R(command)
-                R('plot(biotin,xlab = "sample",ylab = "biotin")')
-                R('lines(biotin)')
-                title = 'title(main="' + biotin[i][0] + '")'
-                R(title)
-                R('dev.off()')
             if 'controls' in pipeline_parameters['preprocess']:
                 goal_file = os.path.realpath(
                         download_directory+'/'+result_file)
@@ -69,13 +73,13 @@ def run(pipeline_parameters,objects,pipeline):
                     parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     return module_utils.make_unique_hash(
-        parameters,objects,'geo_dataset','Contents,DatasetId')
+        parameters,objects,'geo_dataset','Contents,DatasetId',pipeline)
 
-def get_outfile(parameters,objects):
+def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'geo_dataset','Contents,DatasetId','signal_file')
+        parameters,objects,'geo_dataset','Contents,DatasetId','signal_file',pipeline)
     
 def get_identifier(parameters,objects):
     return module_utils.find_object(

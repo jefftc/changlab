@@ -15,8 +15,7 @@ INPUTS = [
     ['input_signal_file','class_label_file'],
     ['input_signal_file','gene_list_file']]
 
-OUTPUTS = [
-    'cluster_file','cluster_heatmap','signal_file']
+OUTPUTS = ['cluster_heatmap']
 
 PARAMETERS = {
     'cluster_alg':['no_cluster_alg'],
@@ -47,19 +46,6 @@ predicate2arguments={
     'class_label_file':(['status','given'],'[]'),
     'gene_list_file':([],'[]'),
     'input_signal_file':(['status','given'],'[]')}
-
-def format_prolog_query(
-    predicate,dataset_id,content,parameters,modules):
-    str_parameters = ','.join(parameters)
-    output = str('['+dataset_id+'],[' + content + '],[' +
-                 str_parameters + '],' + modules)
-    query = predicate + '(' + output+')'
-    return query
-
-
-
-
-
 
 
 

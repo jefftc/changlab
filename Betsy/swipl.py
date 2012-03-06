@@ -70,10 +70,14 @@ def send_query(handle,query):
                                timeout=waitingtime)
     result = result.split(';')
     newresult = [x for x in result if x.strip()]#get rid of the last empty line
-    text = newresult[0].split('\r\n')  #clean the header
-    newtext = [x.strip() for x in text if x.strip() and x!='.']
-    newresult[0] = '\r\n'.join(newtext[1:])
-    return newresult
+    
+    if newresult == []:
+        return newresult 
+    else:
+        text = newresult[0].split('\r\n')  #clean the header
+        newtext = [x.strip() for x in text if x.strip() and x!='.']
+        newresult[0] = '\r\n'.join(newtext[1:])
+        return newresult
     
         
 def source_code(handle,sourcecode):

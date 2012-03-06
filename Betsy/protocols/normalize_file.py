@@ -1,4 +1,6 @@
 #normalize_file.py
+import os
+import shutil
 
 INPUTS = [
     ['gse_dataset'],
@@ -14,11 +16,13 @@ INPUTS = [
     ['input_signal_file','class_label_file'],
     ['input_signal_file','gene_list_file']]
 
-OUTPUTS = ['signal_file']
+OUTPUTS = ['signal_file','pca_plot_in','pca_plot_out','intensity_plot',
+           'biotin_plot','actb_plot','hyb_bar_plot',]
+
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',
-                  'ilumina','agilent','unknown_preproces'],
+                  'illumina','agilent','unknown_preproces'],
     'gene_center':['mean','median','no_gene_center'],
     'gene_normalize':['variance','sum_of_squares','no_gene_normalize'],
     'quantile':['yes_quantile','no_quantile'],
@@ -44,10 +48,4 @@ predicate2arguments={
     'gene_list_file':([],'[]'),
     'input_signal_file':(['status','given'],'[]')}
 
-def format_prolog_query(
-    predicate,dataset_id,content,parameters,modules):
-    str_parameters = ','.join(parameters)
-    output = str('['+dataset_id+'],[' + content + '],[' +
-                 str_parameters + '],' + modules)
-    query = predicate + '(' + output+')'
-    return query
+            

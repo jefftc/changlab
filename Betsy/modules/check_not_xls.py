@@ -9,7 +9,7 @@ def run(parameters,objects,pipeline):
     """check an input file is not xls format"""
     import arrayio
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     try:
         arrayio.choose_format(identifier)
         shutil.copyfile(identifier,outfile)
@@ -22,29 +22,34 @@ def run(parameters,objects,pipeline):
     
         
     
-def make_unique_hash(parameters,objects):
-    identifier,single_object = get_identifier(parameters,objects)
-    filename = os.path.split(identifier)[-1]
-    byte_size,md5_checksum,sha1_checksum = hash_method.get_file_checksum(identifier)
-    new_parameters = parameters.copy()
-    new_parameters['filename'] = filename
-    new_parameters['file size']= byte_size
-    new_parameters['checksum1']= md5_checksum
-    new_parameters['checksum2']= sha1_checksum
-    hash_result = hash_method.hash_parameters(**new_parameters)
-    return hash_result
-
-def get_outfile(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     filename = os.path.split(identifier)[-1]
     if '_BETSYHASH1_' in filename: 
         original_file = '_'.join(filename.split('_')[:-2])
     else:
         original_file = filename
-    hash_string = make_unique_hash(parameters,objects)
-    filename = original_file + hash_string
+    byte_size,md5_checksum,sha1_checksum = hash_method.get_file_checksum(
+                                                              identifier)
+    new_parameters = parameters.copy()
+    new_parameters['file size']= byte_size
+    new_parameters['checksum1']= md5_checksum
+    new_parameters['checksum2']= sha1_checksum
+    hash_result = hash_method.hash_parameters(
+        original_file,pipeline,**new_parameters)
+    return hash_result
+
+def get_outfile(parameters,objects,pipeline):
+    identifier,single_object = get_identifier(parameters,objects)
+    filename = os.path.split(identifier)[-1]
+    if '_BETSYHASH1_' in filename: 
+        original_file = '_'.join(filename.split('_')[:-2])
+    else:
+        original_file = filename
+    hash_string = make_unique_hash(parameters,objects,pipeline)
+    filename = original_file + '_BETSYHASH1_' + hash_string
     outfile = os.path.join(os.getcwd(),filename)
-    objecttype='signal_file'
+    objecttype = 'signal_file'
     if 'Status' in parameters.keys():
         del parameters['Status']
     attributes = parameters.values()

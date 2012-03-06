@@ -18,7 +18,7 @@ def extract_all(zipName):
 
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects)
+    outfile,new_objects = get_outfile(parameters,objects,pipeline)
     if zipfile.is_zipfile(identifier):
         directory = os.path.split(identifier)[-1]
         directory = os.path.splitext(directory)[0]
@@ -43,23 +43,28 @@ def run(parameters,objects,pipeline):
     else:
         return None
     
-def make_unique_hash(parameters,objects):
-    identifier,single_object = get_identifier(parameters,objects)
-    hash_profile={'filename':os.path.split(identifier)[-1],
-                   'version': 'illumina',
-                   'number of files':str(len(os.listdir(identifier)))}
-    hash_result=hash_method.hash_parameters(**hash_profile)
-    return hash_result
-
-def get_outfile(parameters,objects):
+def make_unique_hash(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     old_filename = os.path.split(identifier)[-1]
     if '_BETSYHASH1_' in old_filename: 
         original_file = '_'.join(old_filename.split('_')[:-2])
     else:
         original_file = old_filename
-    hash_string = make_unique_hash(parameters,objects)
-    filename = original_file + hash_string
+    hash_profile={'version': 'illumina',
+                   'number of files':str(len(os.listdir(identifier)))}
+    hash_result=hash_method.hash_parameters(
+        original_file,pipeline,**hash_profile)
+    return hash_result
+
+def get_outfile(parameters,objects,pipeline):
+    identifier,single_object = get_identifier(parameters,objects)
+    old_filename = os.path.split(identifier)[-1]
+    if '_BETSYHASH1_' in old_filename: 
+        original_file = '_'.join(old_filename.split('_')[:-2])
+    else:
+        original_file = old_filename
+    hash_string = make_unique_hash(parameters,objects,pipeline)
+    filename = original_file + '_BETSYHASH1_' + hash_string
     outfile = os.path.join(os.getcwd(),filename)
     attributes = parameters.values()
     objecttype = 'geo_dataset'

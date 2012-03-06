@@ -88,4 +88,60 @@ signal_file(DatasetId, Contents,Parameters,Modules):-
             DatasetId,'Contents',Contents],Parameters,Write_list),
     Newadd=['convert_pcl_gct',Write_list],
     append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+pca_plot_out(DatasetId,Contents,Parameters,Modules):-
+    signal_file(DatasetId,Contents,Parameters,Past_Modules),
+    append(['DatasetId',
+            DatasetId,'Contents',Contents],Parameters,Write_list),
+    Newadd=[pca_plot,Write_list],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+pca_plot_in(DatasetId,Contents,Parameters,Modules):-
+    signal_clean(DatasetId,Contents,Parameters,Past_Modules),
+    get_desire_parameters_raw(Parameters,NewParameters1),
+    convert_parameters_clean_out(NewParameters1,NewParameters),
+    append(['DatasetId',
+            DatasetId,'Contents',Contents],NewParameters,Write_list),
+    Newadd=[pca_plot,Write_list],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+biotin_plot(DatasetId,Contents,Parameters,Modules):-
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    member(Preprocess,[illumina_controls,illumina]),
+    convert_parameters_raw([preprocess,illumina_controls,is_logged,no_logged,
+                         format,gct],NewParameters),
+    signal_raw(DatasetId,Contents,NewParameters,Past_Modules),
+    append(['DatasetId',
+            DatasetId,'Contents',Contents],NewParameters,Write_list),
+    Newadd=[plot_biotin,Write_list],
+    append(Past_Modules, Newadd, Modules).
 
+/*-------------------------------------------------------------------------*/
+actb_plot(DatasetId,Contents,Parameters,Modules):-
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    Preprocess = illumina,
+    signal_clean(DatasetId,Contents,Parameters,Past_Modules),
+    get_desire_parameters_raw(Parameters,NewParameters1),
+    convert_parameters_clean_out(NewParameters1,NewParameters),
+    append(['DatasetId',
+            DatasetId,'Contents',Contents],NewParameters,Write_list),
+    Newadd=[plot_actb,Write_list],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+hyb_bar_plot(DatasetId,Contents,Parameters,Modules):-
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    member(Preprocess,[illumina_controls,illumina]),
+    convert_parameters_raw([preprocess,illumina_controls,is_logged,no_logged,
+                         format,gct],NewParameters),
+    signal_raw(DatasetId,Contents,NewParameters,Past_Modules),
+    append(['DatasetId',
+            DatasetId,'Contents',Contents],NewParameters,Write_list),
+    Newadd=[plot_hyb_bar,Write_list],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+intensity_plot(DatasetId,Contents,Parameters,Modules):-
+    signal_file(DatasetId,Contents,Parameters,Past_Modules),
+    append(['DatasetId',
+            DatasetId,'Contents',Contents],Parameters,Write_list),
+    Newadd=[plot_intensity,Write_list],
+    append(Past_Modules, Newadd, Modules).
