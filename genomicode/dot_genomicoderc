@@ -9,7 +9,7 @@ binreg20_path=/home/changlab/SIGNATURE/BinReg2.0
 bfrm_normalize_path=/home/changlab/SIGNATURE/BFRM_normalize
 bfrm_project_path=/home/changlab/SIGNATURE/BFRM_project
 dwd_path=/home/changlab/SIGNATURE/BatchAdjust
-sigdb_path=/home/changlab/SIGNATURE/sigdb
+sigdb_path=/home/jchang/projects/genepattern/data/SIGDB/sigdb
 
 pybinreg=/home/jchang/changlab/scripts/pybinreg.py
 arrayplot=/home/jchang/changlab/scripts/arrayplot.py
@@ -46,3 +46,10 @@ primer3_PRIMER3_BIN=primer3_core
 
 [ILLUMINA]
 illumina_HUMANHT12_CONTROL=/home/jchang/projects/illumina/data/HumanHT-12.control.txt
+
+
+[GENE MAP]
+gm_user=genemap
+gm_passwd=g33m4p
+gm_db=genemap
+gm_host=

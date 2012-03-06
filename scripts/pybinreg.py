@@ -1110,7 +1110,8 @@ def _run_binreg_normref(
 def summarize_model(file_layout):
     from genomicode import filelib
     
-    assert filelib.exists_nz(file_layout.BR_COEFFICIENTS)
+    assert filelib.exists_nz(file_layout.BR_COEFFICIENTS), \
+           "Cannot find Binreg model.  Binreg failed?"
 
     handle = open(file_layout.MODEL, 'w')
     print >>handle, "%s\t%s" % ("Name", "Coefficient")
