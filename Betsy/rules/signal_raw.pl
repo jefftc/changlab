@@ -298,8 +298,3 @@ signal_raw(DatasetId, Contents,Parameters,Modules):-
     Newadd=[zero_fill,Write_list],
     append(Past_Modules, Newadd, Modules).
 
-
-%gse_dataset([a],[test],[],[]).
-%gse_dataset([b],[neg],[],[]).
-%input_signal_file([a],[unknown],[preprocess,rma,status,given],[]).
-%class_label_file([a],[test],given,[]).

@@ -3,6 +3,7 @@
 
 INPUTS = [
     ['gse_dataset'],
+    ['gse_dataset','gse_dataset'],
     ['gse_dataset','class_label_file'],
     ['gse_dataset','gene_list_file'],
     ['gse_dataset_and_platform'],

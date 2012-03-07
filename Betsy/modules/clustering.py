@@ -29,7 +29,7 @@ def run(parameters,objects,pipeline):
     if error_message:
         raise ValueError(error_message)
     result_files = os.listdir(os.getcwd())
-    result_formats = {'kmeans': 'cdt','pca':'pc.txt',
+    result_formats = {'kmeans': 'cdt','pca':'pca_gene.coords.txt',#or 'pc.txt'
            'hierarchical':'nrm','som':'txt'}
     result_format = result_formats[parameters['cluster_alg']]
     for result_file in result_files:

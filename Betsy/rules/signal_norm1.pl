@@ -15,8 +15,7 @@ signal_norm1(DatasetId,Contents,Parameters,Modules):-
     get_length(n_norm1,N1),
     N<N1,
     convert_parameters_norm1(NewParameters1,NewParameters),
-    signal_norm1(DatasetId,Contents,NewParameters,Modules),
-    write(NewParameters),nl.
+    signal_norm1(DatasetId,Contents,NewParameters,Modules).
 /*-------------------------------------------------------------------------*/
 % Input interface
 % generate signal_norm1 from signal_clean with 

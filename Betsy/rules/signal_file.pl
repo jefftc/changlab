@@ -20,7 +20,7 @@ signal_file(DatasetId,Contents,Parameters,Modules):-
 
 signal_file(DatasetId,Contents,Parameters,Modules):-
    length(Parameters,N),
-    get_length(n_file,N1),
+   get_length(n_file,N1),
    N=N1,
    get_value(Parameters,gene_order,no_order,Gene_Order),
    Gene_Order=no_order,

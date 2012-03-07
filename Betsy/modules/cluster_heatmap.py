@@ -13,8 +13,8 @@ def run(parameters,objects,pipeline):
     Heatmap_BIN = Betsy_config.ARRAYPLOT
     color='--color=' + parameters['color'].replace('_','-')
     command = ['python', Heatmap_BIN,
-                   "-y","1","-x","200","--label_arrays",
-               "--no_autoscale",color,identifier]
+                   "-y","1","-x","200","--label_arrays","--no_autoscale",
+               color,identifier,'-o',outfile]
     
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,

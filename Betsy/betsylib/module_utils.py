@@ -109,20 +109,6 @@ def find_object(parameters,objects,objecttype,attribute):
                 identifier=single_object.identifier
                 break
     return identifier,single_object
-def write_report(module_name,outputfile,parameters,pipeline_sequence):
-    report = os.path.join(Betsy_config.OUTPUTPATH,'report_file.txt')
-    f = file(report,'a+')
-    f.write('module_name:\n')
-    f.write(module_name)
-    f.write('\n outputfile:\n')
-    f.write(outputfile)
-    f.write('\n parameters:\n')
-    for i in parameters.keys():
-         f.write(i+':'+parameters[i]+'\n')
-    f.write('Pipeline module sequence:\n')
-    f.write('\t'.join(pipeline_sequence))
-    f.write('\n------------------------------------\n')
-    f.close()
 
 def exists_nz(filename):
     if os.path.exists(filename):

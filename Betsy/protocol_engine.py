@@ -6,18 +6,14 @@ import argparse
 import os
 import protocol_utils
 
-def import_protocol(protocol):
-    protocol_name = 'protocols.'+protocol
-    mod = __import__(protocol_name)
-    mod = getattr(mod, protocol)
-    return mod
+
 
 def filter_pipelines(protocol, inputs, output_info,
                      in_dataset_ids, in_contents, parameters=None):
     """given the Inputs and Output and Parameters dictionary,
        return a list of pipelines,if Parameters is None,
        then use the default parameters"""
-    module = import_protocol(protocol)
+    module = protocol_utils.import_protocol(protocol)
     pl_inputs = []
     assert len(in_dataset_ids) == len(inputs)
     assert len(in_contents) == len(inputs)
@@ -51,7 +47,7 @@ def run_protocol(protocol, inputs, output_info, identifiers,
        return a list of final result file,
       if Parameters is None, then use the default parameters"""
     
-    module = import_protocol(protocol)
+    module = protocol_utils.import_protocol(protocol)
     pipelines = filter_pipelines(protocol, inputs, output_info,
                                  in_dataset_ids, in_contents, parameters)
     pl_inputs = []
@@ -120,7 +116,7 @@ def main():
     for i in args.parameters:
         assert len(i.split(':')) == 2, 'parameters should format like key:value'
         
-    module = import_protocol(args.protocol)
+    module = protocol_utils.import_protocol(args.protocol)
     
     inputs = []
     identifiers = []
@@ -193,7 +189,7 @@ def main():
             final_parameters.append(parameters_all)
             final_pipeline_sequence.append(pipeline_sequence_all)
         protocol_utils.get_result_folder(
-            final_output,final_parameters,final_pipeline_sequence)
+            args.protocol,final_output,final_parameters,final_pipeline_sequence)
         
 if __name__=='__main__':
     main()
