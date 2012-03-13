@@ -92,39 +92,60 @@ def read_gmt(filename, preserve_spaces=False):
         #print preserve_spaces, len(genes), len(cols)
         yield name, description, genes
 
-def read_genesets(filename):
+def read_tdf(filename, preserve_spaces=False):
     # yield name, description, list of genes
+
+    # BUG: This will fail is there is a geneset with no genes in it,
+    # because read_gmx requires at least the name and description
+    # lines.
+    for x in read_gmx(filename, preserve_spaces=preserve_spaces):
+        name, description, genes = x
+        genes = [description] + genes
+        description = ""
+        yield name, description, genes
+
+def read_genesets(filename, allow_tdf=False):
+    # yield name, description, list of genes
+    # If allow_tdf is True, will also parse filename if it is a
+    # tab-delimited file where each column is a geneset.
     if filename is None:
         return
     
     # Figure out the format of the geneset file.
     fmt = detect_format(filename)
-    assert fmt is not None, "I could not figure out the format of: %s" % \
-           filename
     if fmt == "GMX":
         read_fn = read_gmx
     elif fmt == "GMT":
         read_fn = read_gmt
-    else:
+    elif fmt:
         raise AssertionError, "Unknown format: %s" % fmt
+    elif allow_tdf:
+        read_fn = read_tdf
+    else:
+        raise AssertionError, "I could not figure out the format of: %s" % \
+           filename
 
     # Read the geneset file.
     for x in read_fn(filename):
         yield x
 
-def read_genes(filename, *genesets):
+def read_genes(filename, *genesets, **keywds):
     """Return a list of genes from the desired gene sets.  If no
     genesets are provided, then I will return a list of all the genes
     in the file.
 
     """
+    allow_tdf = keywds.get("allow_tdf", False)
+    for k in keywds:
+        assert k == "allow_tdf"
+    
     if filename is None:
         return []
     
     # Read the geneset file.
     geneset2genes = {}
     all_genesets = []
-    for x in read_genesets(filename):
+    for x in read_genesets(filename, allow_tdf=allow_tdf):
         name, description, genes = x
         geneset2genes[name] = genes
         all_genesets.append(name)
