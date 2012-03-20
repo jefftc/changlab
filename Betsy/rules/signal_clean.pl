@@ -50,6 +50,8 @@ signal_clean(DatasetId,Contents,Parameters,Modules):-
     set_value(Parameters,status,OldStatus2,Parameters2),
     signal_clean(Y1,C1,Parameters1,Past_Modules_1),
     signal_clean(Y2,C2,Parameters2,Past_Modules_2),
+    append(C1,C2,C3),
+    C3=Contents,
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(['DatasetId',DatasetId,'Contents',Contents,merge1,C1,merge2,C2,dataset1,
     Y1,dataset2,Y2],Parameters,Write_list),

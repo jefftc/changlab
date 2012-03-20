@@ -16,7 +16,7 @@ import ConfigParser
 ##    config.write(configfile)
 
 DEFAULTS={'PREPROCESS': 'preprocess.py', 'ARRAYPLOT': 'arrayplot.py','XLS2TXT':'xls2txt',
-          'GENEPATTERN':'run_genepattern.py'}
+          'GENEPATTERN':'run_genepattern.py','OUTPUTPATH':'.'}
 SEARCH_PATH = [
         '/home/xchen/chencode/scripts',
         "/usr/local/bin",

@@ -34,9 +34,14 @@ def filter_pipelines(protocol, inputs, output_info,
     parameter_list = []
     for key in new_parameters.keys(): 
         parameter_list.extend([key,new_parameters[key]])
-    [output, out_dataset_id, out_content] = output_info
+    test_dataset=None
+    test_content=None
+    if len(output_info) == 3:
+        [output, out_dataset_id, out_content] = output_info
+    if len(output_info) == 5:
+        [output, out_dataset_id, out_content, test_dataset,test_content] = output_info
     pl_output = protocol_utils.format_prolog_query(
-        output, out_dataset_id, out_content, parameter_list,'Modules')
+        output, out_dataset_id, out_content, parameter_list,'Modules',test_content)
     pipelines = rule_engine.make_pipelines(pl_output,pl_inputs)
     return pipelines
    
@@ -84,7 +89,7 @@ def main():
                         help ='input:datasetid:contents:identifier_or_file\
                         or input:identifier')
     parser.add_argument('--output',dest = 'output',type=str,
-                        help = 'datasetid:contents of the output')
+                        help = 'datasetid:contents;datasetid:contents (train set;test set')
     parser.add_argument('--parameters',dest = 'parameters',
                         action = 'append',default = [],
                         type = str,help='key:value')
@@ -109,9 +114,16 @@ def main():
         len_inputs.append(len_input)
         if len(i.split(':')) == 4:
             assert args.output,'please specify the output'
-            assert len(args.output.split(':')) == 2,'the\
+            if ';' in args.output:
+                outputs = args.output.split(';')
+                for output in outputs:
+                    assert len(output.split(':')) == 2,'the\
+                      format of output is datasetid:contents\
+                      or datasetid:contents;datasetid:contents'
+            else:
+                assert len(args.output.split(':')) == 2,'the\
                       format of output is datasetid:contents'
-    
+                      
     assert len_inputs == [len_inputs[0]]*len(len_inputs),'the format of all inputs do not match'
     for i in args.parameters:
         assert len(i.split(':')) == 2, 'parameters should format like key:value'
@@ -134,16 +146,21 @@ def main():
             in_dataset_ids.append('not_applicable')
         else:
             raise ValueError('the length of input should be 2 or 4')
+        assert predicate in module.INPUTS,("%s is not recognized in %s)"
+                                        %(str(predicate),args.protocol))
         inputs.append(predicate)
         identifiers.append(identifier)
-    if args.output:       
-        output = args.output.split(':')
+    if args.output:
+        if ';' in args.output:
+            output = []
+            outputs = args.output.split(';')
+            for out in outputs:
+                output.extend(out.split(':'))
+        else:
+            output = args.output.split(':')
     else:
         output = ['not_applicable','not_applicable']
-                       
-    assert inputs in module.INPUTS,("%s is not recognized in %s)"
-                                        %(str(inputs),args.protocol))
-        
+ 
     parameters = module.DEFAULT
     if args.parameters:
         for i in args.parameters:
@@ -188,6 +205,7 @@ def main():
             final_output.append(output_files)
             final_parameters.append(parameters_all)
             final_pipeline_sequence.append(pipeline_sequence_all)
+        print final_output
         protocol_utils.get_result_folder(
             args.protocol,final_output,final_parameters,final_pipeline_sequence)
         

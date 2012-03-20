@@ -13,22 +13,43 @@ def run(parameters,objects,pipeline):
     merge_file2,obj2 = module_utils.find_object(parameters,objects,'signal_file','merge2,dataset2')
     assert os.path.exists(merge_file1)
     assert os.path.exists(merge_file2)
-    outfile,new_objects = get_outfile(parameters,objects,pipeline)
+    outfile = get_outfile(parameters,objects,pipeline)
     f = file(outfile,'w')
     module_utils.merge_two_files(merge_file1,merge_file2,f)
     f.close()
     assert os.path.exists(outfile)
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,[obj1,obj2],pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects,pipeline):
+def make_unique_hash(identifier,pipeline,parameters):
+    parameters = module_utils.renew_parameters(
+        parameters,['merge1','merge2','dataset1','dataset2','status'])
     return module_utils.make_unique_hash(
-        parameters,objects,'signal_file','merge1,dataset1',pipeline)
+        identifier,pipeline,parameters)
 
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(parameters,
-            objects,'signal_file','merge1,dataset1','signal_file',pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(identifier)
+    parameters = module_utils.renew_parameters(
+        parameters,['merge1','merge2','dataset1','dataset2','status'])
+    hash_string = make_unique_hash(identifier,pipeline,parameters)
+    filename = original_file + '_BETSYHASH1_' + hash_string
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 
+def get_identifier(parameters,objects):
+    return module_utils.find_object(
+        parameters,objects,'signal_file','merge1,dataset1')
 
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    parameters = module_utils.renew_parameters(
+        parameters,['merge1','merge2','dataset1','dataset2','status'])
+    attributes = parameters.values()
+    new_object = rule_engine.DataObject('signal_file',attributes,outfile)
+    new_objects = objects[:]
+    new_objects.append(new_object)
+    return new_objects

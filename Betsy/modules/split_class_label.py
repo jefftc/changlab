@@ -8,7 +8,8 @@ import json
 
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects,pipeline)
+    outfile = get_outfile(parameters,objects,pipeline)
+    
     result,label_line,second_line=read_label_file.read(identifier)
     assert parameters['Contents'].startswith('[') and parameters['Contents'].endswith(']')
     contents=parameters['Contents'][1:-1].split(',')
@@ -26,23 +27,32 @@ def run(parameters,objects,pipeline):
                  if int(label)==content_index[i]]
         new_label_line.extend(newline)
     read_label_file.write(outfile,contents,new_label_line)
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects,pipeline):
-    return module_utils.make_unique_hash(parameters,
-                    objects,'class_label_file','PreContents,PreDatasetid',pipeline)
+def make_unique_hash(identifier,pipeline,parameters):
+    parameters = module_utils.renew_parameters(
+             parameters,['PreContents','PreDatasetid'])
+    return module_utils.make_unique_hash(identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
     outfile = os.path.join(os.getcwd(),'class_label_file.cls')
+    return outfile
+
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    parameters = module_utils.renew_parameters(
+             parameters,['PreContents','PreDatasetid'])
     attributes = parameters.values()
-    new_object=rule_engine.DataObject('class_label_file',attributes,outfile)
+    new_object = rule_engine.DataObject('class_label_file',attributes,outfile)
     new_objects = objects[:]
     new_objects.append(new_object)
-    return outfile,new_objects
+    return new_objects
 
 def get_identifier(parameters,objects):
-    return module_utils.find_object(parameters,
-                                    objects,'class_label_file','PreContents,PreDatasetid')
-
+    identifier,single_object = module_utils.find_object(parameters,
+                    objects,'class_label_file','PreContents,PreDatasetid')
+    assert os.path.exists(identifier),'the input file does not exist'
+    return identifier,single_object

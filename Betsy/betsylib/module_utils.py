@@ -6,37 +6,41 @@ import rule_engine
 import os
 import read_label_file
 import Betsy_config
-
-"""contain some functions that are called by many modules"""
-def make_unique_hash(parameters,objects,objecttype,attribute,pipeline):
-    identifier,single_object = find_object(parameters,objects,objecttype,attribute)
+import rule_engine
+def get_inputid(identifier):
     old_filename = os.path.split(identifier)[-1]
     if '_BETSYHASH1_' in old_filename: 
         inputid = '_'.join(old_filename.split('_')[:-2])
     else:
         inputid = old_filename
+    return inputid
+
+"""contain some functions that are called by many modules"""
+def make_unique_hash(identifier,pipeline,parameters):
+    parameters = renew_parameters(parameters,['status'])
+    inputid = get_inputid(identifier)
     new_parameters = parameters.copy()
-    hash_result = hash_method.hash_parameters(inputid,pipeline,**new_parameters)
+    hash_result = hash_method.hash_parameters(
+        inputid,pipeline,**new_parameters)
     return hash_result
 
-def get_outfile(parameters,objects,in_objecttype,in_attribute,out_objecttype,pipeline):
-    identifier,single_object = find_object(parameters,objects,in_objecttype,in_attribute)
-    old_filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH1_' in old_filename: 
-        original_file = '_'.join(old_filename.split('_')[:-2])
-    else:
-        original_file = old_filename
-    hash_string = make_unique_hash(parameters,objects,in_objecttype,in_attribute,pipeline)
+def get_outfile(parameters,objects,in_objecttype,in_attribute,pipeline):
+    identifier,single_object = find_object(
+        parameters,objects,in_objecttype,in_attribute)
+    original_file = get_inputid(identifier)
+    hash_string = make_unique_hash(identifier,pipeline,parameters)
     filename = original_file + '_BETSYHASH1_' + hash_string
     outfile = os.path.join(os.getcwd(),filename)
-    if 'Status' in parameters.keys():
-        del parameters['Status']
+    return outfile
+
+def get_newobjects(outfile,out_objecttype,parameters,objects,single_object):
+    parameters = renew_parameters(parameters,['status'])
     attributes = parameters.values()
     new_object = rule_engine.DataObject(out_objecttype,attributes,outfile)
     new_objects = objects[:]
     new_objects.remove(single_object)
     new_objects.append(new_object)
-    return outfile,new_objects
+    return new_objects
 
     
 def merge_two_files(A_file,B_file,handle):
@@ -55,8 +59,16 @@ def merge_two_files(A_file,B_file,handle):
     col_names = {}
     for name in M_A._col_names:
         if name not in M_B._col_names:
-            continue                                                                                                         
-        x = M_A._col_names[name] + M_B._col_names[name]
+            continue
+        newsample_list = []
+        for sample in M_B._col_names[name]:
+            if sample in M_A._col_names[name]:
+                newsample = sample + '_2'
+            else:
+                newsample = sample
+            newsample_list.append(newsample)
+        #x = M_A._col_names[name] + M_B._col_names[name]
+        x = M_A._col_names[name] + newsample_list 
         col_names[name] = x
     M_c = Matrix.InMemoryMatrix(X,row_names,col_names,row_order)
     #M_c = arrayio.convert(M,to_format=arrayio.pcl_format)
@@ -159,3 +171,9 @@ def plot_R(filename,keywords,outfile):
     assert exists_nz(outfile),'the plot_R fails'
     
 
+def renew_parameters(parameters,key_list):
+    newparameters = parameters.copy()
+    for key in key_list:
+        if key in newparameters.keys():
+            del newparameters[key]
+    return newparameters

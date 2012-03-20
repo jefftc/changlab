@@ -1,13 +1,14 @@
-#check_not_missing.py
-import os
+#check_not_pcl.py
 import shutil
-import check_missing
 import module_utils
-
+import arrayio
+import os
 def run(parameters,objects,pipeline):
+    """check if not_xls format is res"""
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    if check_missing.is_missing(parameters,objects) is False:
+    M = arrayio.choose_format(identifier)
+    if not(M.__name__[8:-7] == 'pcl'):
         shutil.copyfile(identifier,outfile)
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(
@@ -15,7 +16,7 @@ def run(parameters,objects,pipeline):
         return new_objects
     else:
         return None
-
+    
 def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
@@ -28,6 +29,7 @@ def get_identifier(parameters,objects):
         parameters,objects,'signal_file','Contents,DatasetId')
     assert os.path.exists(identifier),'the input file does not exist'
     return identifier,single_object
+
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

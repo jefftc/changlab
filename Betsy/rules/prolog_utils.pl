@@ -38,7 +38,7 @@ remove_at(X,[Y|Xs],K,[Y|Ys]) :- K > 1,
 /*-------------------------------------------------------------------------*/
 convert_parameters_raw(Parameters,NewParameters):-
     get_value(Parameters,format,unknown_format,Format),
-    member(Format,[tdf,jeffs,res,gct,pcl,unknown_format,xls,not_xls]),
+    member(Format,[tdf,jeffs,res,gct,pcl,not_pcl,unknown_format,xls,not_xls]),
     append([],[format,Format],NewParameters1),
    
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
@@ -56,14 +56,18 @@ convert_parameters_raw(Parameters,NewParameters):-
     get_value(Parameters,filter,no_filter,Filter),
     (Filter=no_filter;not(atom(Filter))),
     append(NewParameters4,[filter,Filter],NewParameters5),
-   
+
+    get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
+    member(Filter_fc,[yes_filter_fc,no_filter_fc]),
+    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
+    
     get_value(Parameters,fill,no_fill,Fill),
     member(Fill,[no_fill,yes_fill]),
-    append(NewParameters5,[fill,Fill],NewParameters6),
+    append(NewParameters6,[fill,Fill],NewParameters7),
     
     get_value(Parameters,status,created,Status),
     member(Status,[given,created,jointed,splited]),
-    append(NewParameters6,[status,Status],NewParameters).
+    append(NewParameters7,[status,Status],NewParameters).
 /*-------------------------------------------------------------------------*/
 convert_parameters_clean_out(Parameters,NewParameters):-
     get_value(Parameters,format,unknown_format,Format),
@@ -86,13 +90,17 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     (Filter=no_filter;not(atom(Filter))),
     append(NewParameters4,[filter,Filter],NewParameters5),
    
+    get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
+    member(Filter_fc,[yes_filter_fc,no_filter_fc]),
+    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
+
     get_value(Parameters,fill,no_fill,Fill),
     member(Fill,[no_fill,yes_fill]),
-    append(NewParameters5,[fill,Fill],NewParameters6),
+    append(NewParameters6,[fill,Fill],NewParameters7),
     
     get_value(Parameters,status,created,Status),
     member(Status,[given,created,jointed,splited]),
-    append(NewParameters6,[status,Status],NewParameters).
+    append(NewParameters7,[status,Status],NewParameters).
 /*-----------------------------------------------*/
 convert_parameters_variable_raw(Parameters,NewParameters):-
     get_value_variable(Parameters,format,Format),
@@ -112,18 +120,22 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
     get_value(Parameters,filter,no_filter,Filter),
-    (member(Filter,[no_filter,25]);not(atom(Filter))),
+    (member(Filter,[no_filter,25]);not(Filter=25),not(atom(Filter))),
     (not(atom(Filter)),Has_Missing_Value=yes_missing;Filter=no_filter,true),
     append(NewParameters4,[filter,Filter],NewParameters5),
     
+    get_value_variable(Parameters,filter_fc,Filter_fc),
+    member(Filter_fc,[yes_filter_fc,no_filter_fc]),
+    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
+
     get_value_variable(Parameters,fill,Fill),
     member(Fill,[no_fill,yes_fill]),
     (Fill=yes_fill,Has_Missing_Value=yes_missing;not(Fill=yes_fill),true),
-    append(NewParameters5,[fill,Fill],NewParameters6),
-   
+    append(NewParameters6,[fill,Fill],NewParameters7),
+
     get_value_variable(Parameters,status,Status),
     member(Status,[given,created,jointed,splited]),
-    append(NewParameters6,[status,Status],NewParameters).
+    append(NewParameters7,[status,Status],NewParameters).
 
 /*-------------------------------------------------------------------------*/
 %get the parameters list for signal_raw
@@ -158,17 +170,23 @@ get_desire_parameters_raw(Parameters,NewParameters):-
     not(member(filter,Parameters)),
     NewParameters5=NewParameters4),
     
+    (member(filter_fc,Parameters),
+    get_value_variable(Parameters,filter_fc,Filter_fc),
+    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6);
+    not(member(filter_fc,Parameters)),
+    NewParameters6=NewParameters5),
+
     (member(fill,Parameters),
     get_value_variable(Parameters,fill,Fill),
-    append(NewParameters5,[fill,Fill],NewParameters6);
+    append(NewParameters6,[fill,Fill],NewParameters7);
     not(member(fill,Parameters)),
-    NewParameters6=NewParameters5),
+    NewParameters7=NewParameters6),
 
     (member(status,Parameters),
     get_value_variable(Parameters,status,Status),
-    append(NewParameters6,[status,Status],NewParameters);
+    append(NewParameters7,[status,Status],NewParameters);
     not(member(status,Parameters)),
-    NewParameters=NewParameters6).
+    NewParameters=NewParameters7).
 
 /*-------------------------------------------------------------------------*/
 convert_parameters_norm1(Parameters,NewParameters):-
@@ -309,7 +327,7 @@ getdatasetid(DatasetId,Contents,C,W,Y):-
 getdatasetid(DatasetId,Contents,[],R,R).
 
 get_length(A,B):-
-    A=n_raw, B=14;
-    A=n_norm1,B=22;
-    A=n_norm2,B=26;
-    A=n_file,B=28.
+    A=n_raw, B=16;
+    A=n_norm1,B=24;
+    A=n_norm2,B=28;
+    A=n_file,B=30.

@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-
+#rule_engine.py
 import os
 import swipl
 import shutil
@@ -111,23 +111,25 @@ def run_pipeline(pipeline,objects):
             module_name = analysis.name
             print module_name
             module = __import__(module_name)
-            hash_string = module.make_unique_hash(
-                                analysis.parameters,objects,pipeline_sequence)
+            identifier,single_object = module.get_identifier(analysis.parameters,objects)
+            hash_string = module.make_unique_hash(identifier,pipeline_sequence,analysis.parameters)
             working_dir = os.path.join(output_path,make_module_wd_name(
                                         module_name,hash_string))
             if not os.path.exists(working_dir):
                 make_module_wd(working_dir)
             try:
                 os.chdir(working_dir)
-                outfile,new_objects = module.get_outfile(
+                outfile = module.get_outfile(
                     analysis.parameters,objects,pipeline_sequence)
-                if not module_utils.exists_nz(outfile):
+                if module_utils.exists_nz(outfile):
+                    new_objects = module.get_newobjects(
+                        analysis.parameters,objects,pipeline_sequence)
+                elif not module_utils.exists_nz(outfile):
                     new_objects = module.run(
-                        analysis.parameters,objects,pipeline_sequence)                        
+                        analysis.parameters,objects,pipeline_sequence)
+                    if not new_objects:
+                        break
                 outfile_list.append(outfile)
-                if not new_objects:
-                    break
-                
                 objects = new_objects[:]
                 if analysis == pipeline[-1]:
                     if module_utils.exists_nz(outfile):
@@ -153,6 +155,8 @@ def make_pipelines(pl_output,pl_inputs):
         swipl.source_code(p,'signal_norm2.pl')
         swipl.source_code(p,'prolog_utils.pl')
         swipl.source_code(p,'clustering.pl')
+        swipl.source_code(p,'classification.pl')
+        swipl.source_code(p,'class_label_file.pl')
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input +').'
             swipl.send_query(p,more_command)

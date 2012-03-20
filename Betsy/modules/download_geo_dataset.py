@@ -12,7 +12,7 @@ def run(parameters,objects,pipeline):
     import tarfile
     #download the tar folder from geo
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects,pipeline)
+    outfile = get_outfile(parameters,objects,pipeline)
     file_folder = os.path.join(os.getcwd(),identifier)
     ftp = FTP('ftp.ncbi.nih.gov')
     ftp.login()
@@ -123,28 +123,36 @@ def run(parameters,objects,pipeline):
                 else:
                     raise ValueError('does not recognazie the platform')
     os.rename(out_filename,outfile)
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+def make_unique_hash(identifier,pipeline,parameters):
     hash_string = identifier
     return hash_string
 
 def get_outfile(parameters,objects,pipeline):
-    hash_string = make_unique_hash(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
+    hash_string = make_unique_hash(identifier,pipeline,parameters)
     filename = identifier + '_after_select'
     outfile = os.path.join(os.getcwd(),filename)
+    return outfile
+
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
     new_object = rule_engine.DataObject('geo_dataset',[parameters['DatasetId'],
-                                        'unknown',parameters['Contents']],outfile)
+                                    'unknown',parameters['Contents']],outfile)
     new_objects = objects[:]
     new_objects.remove(single_object)
     new_objects.append(new_object)
-    return outfile,new_objects
+    return new_objects
 
 def get_identifier(parameters,objects):
-    return module_utils.find_object(parameters,objects,'gse_dataset','Contents,DatasetId')
+    identifier,single_object = module_utils.find_object(
+        parameters,objects,'gse_dataset','Contents,DatasetId')
+    assert identifier.startswith('GSE'),'the GSEID should start with GSE'
+    return identifier,single_object
 
 def clean_cel_filename(cel_file):
     """clean the cel_file name"""

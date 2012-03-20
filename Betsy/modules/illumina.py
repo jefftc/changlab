@@ -21,7 +21,8 @@ def zip_directory(dir, zip_file):
 
 def run(pipeline_parameters,objects,pipeline):
     identifier,single_object = get_identifier(pipeline_parameters,objects)
-    outfile,new_objects = get_outfile(pipeline_parameters,objects,pipeline)
+    outfile = get_outfile(pipeline_parameters,objects,pipeline)
+    
     module_name = 'IlluminaExpressionFileCreator'
     parameters = dict()
     if zipfile.is_zipfile(identifier):
@@ -69,18 +70,28 @@ def run(pipeline_parameters,objects,pipeline):
                         download_directory+'/'+result_file)
                 
     os.rename(goal_file,outfile)
+    new_objects = get_newobjects(pipeline_parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                    parameters,single_object,pipeline)
+                    pipeline_parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects,pipeline):
+def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(
-        parameters,objects,'geo_dataset','Contents,DatasetId',pipeline)
+        identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'geo_dataset','Contents,DatasetId','signal_file',pipeline)
+        parameters,objects,'geo_dataset','Contents,DatasetId',pipeline)
     
 def get_identifier(parameters,objects):
-    return module_utils.find_object(
+    identifier,single_object = module_utils.find_object(
         parameters,objects,'geo_dataset','Contents,DatasetId')
+    assert os.path.exists(identifier),'the input file does not exist'
+    return identifier,single_object
+
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
+    new_objects = module_utils.get_newobjects(
+        outfile,'signal_file',parameters,objects,single_object)
+    return new_objects

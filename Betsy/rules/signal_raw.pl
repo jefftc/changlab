@@ -163,7 +163,7 @@ signal_raw(DatasetId, Contents,Parameters,Modules):-
     member(OldStatus,[given,created,jointed,splited]),
     get_value(Parameters,format,unknown_format,Format),
     Format=pcl,
-    (member(OldFormat,[tdf,res,gct,jeffs]),
+    (member(OldFormat,[tdf,res,gct,jeffs,not_pcl]),
     set_value(Parameters,format,OldFormat,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(DatasetId, Contents,OldParameters,Past_Modules),
@@ -214,14 +214,14 @@ signal_raw(DatasetId,Contents,Parameters, Modules):-
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
     get_value(Parameters,format,unknown_format,Format),
-    member(Format, [res,tdf,jeffs,gct,pcl]),
+    member((Format, Module),[(not_pcl, check_not_pcl), (pcl, check_pcl)]),
     OldFormat=not_xls,
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,format,OldFormat,OldParameters),
     signal_raw(DatasetId, Contents,OldParameters,Past_Modules),
     append(['DatasetId',
             DatasetId,'Contents',Contents],Parameters,Write_list),
-    Newadd=[check_format,Write_list],
+    Newadd=[Module,Write_list],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % check missing value of the signal_file with Has_Missing_Value is unknown,
@@ -273,6 +273,30 @@ signal_raw(DatasetId, Contents,Parameters,Modules):-
             DatasetId,'Contents',Contents],Parameters,Write_list),
     Newadd=[gene_filter,Write_list],
     append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+% filter genes with fold change
+% The signal_file format is pcl.
+% filtering occurs before zero filling and gene ordering,
+% Is_logged is logged.
+signal_raw(DatasetId, Contents,Parameters,Modules):-
+    get_value(Parameters,status,given,Status),
+    Status=created,
+    member(OldStatus,[given,created,jointed,splited]),
+    get_value(Parameters,is_logged,unknown_logged,Is_Logged),
+    Is_Logged=logged,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=pcl,
+    get_value(Parameters,filter_fc,no_filter,Filter_fc),
+    Filter_fc=yes_filter_fc,
+    OldFilter_fc=no_filter_fc,
+    set_value(Parameters,filter_fc,OldFilter_fc,OldParameters1),
+    set_value(OldParameters1,status,OldStatus,OldParameters),
+    signal_raw(DatasetId, Contents,OldParameters,Past_Modules),
+    append(['DatasetId',
+            DatasetId,'Contents',Contents],Parameters,Write_list),
+    Newadd=[filter_by_fold_change,Write_list],
+    append(Past_Modules, Newadd, Modules).
+
 /*--------------------------------------------------------------------------*/
 % zero filling the missing value,
 % zero filling occurs before gene ordering,

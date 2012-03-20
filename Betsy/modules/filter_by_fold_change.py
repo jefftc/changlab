@@ -1,36 +1,31 @@
-#centering.py
+#filter_by_fold_change.py
 import os
-import subprocess
 import module_utils
-
+import math
 def run(parameters,objects,pipeline):
-    """mean or median"""
-    CLUSTER_BIN = 'cluster'
-    center_alg = {'mean':'a','median':'m'}
-    try :
-        center_parameter = center_alg[parameters['gene_center']]
-    except:
-        raise ValueError("Centering parameter is not recognized")
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    
-    process = subprocess.Popen([CLUSTER_BIN,'-f',identifier,
-                                '-cg',center_parameter,'-u',outfile],
-                                shell=False,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-    error_message = process.communicate()[1]
-    if error_message:
-        raise ValueError(error_message)
-    outputfile = outfile + '.nrm'
-    os.rename(outputfile,outfile)
+    import arrayio
+    min_fold_change = 1.5
+    f_out = file(outfile,'w')
+    M = arrayio.read(identifier)
+    I_good = []
+    for i in range(M.dim()[0]):
+        med = median(M.slice(i,None)[0])
+        new = [x/med for x in M.slice(i,None)[0]]
+        flag = [j > min_fold_change for j in new]
+        if True in flag:
+            I_good.append(i)
+    M_c = M.matrix(I_good,None)
+    arrayio.pcl_format.write(M_c,f_out)
+    f_out.close()
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
-
     
 def make_unique_hash(identifier,pipeline,parameters):
-    return module_utils.make_unique_hash(identifier,pipeline,parameters)
+    return module_utils.make_unique_hash(
+        identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
@@ -48,3 +43,14 @@ def get_newobjects(parameters,objects,pipeline):
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects
+
+def median(numberList):
+    numberList.sort()
+    middle = len(numberList)/2
+    if len(numberList)%2 == 1:
+        return numberList[middle]
+    else:
+        right = int(math.ceil(middle))
+        left = right - 1
+        return (numberList[right]+numberList[left])/2.0
+

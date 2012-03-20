@@ -5,22 +5,32 @@ import module_utils
 import shutil
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects,pipeline)
+    outfile = get_outfile(parameters,objects,pipeline)
     plot_pca(identifier,outfile)
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
 
-def make_unique_hash(parameters,objects,pipeline):
+def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(
-        parameters,objects,'signal_file','Contents,DatasetId',pipeline)
+        identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','Contents,DatasetId','pca_plot',pipeline)
+        parameters,objects,'signal_file','Contents,DatasetId',pipeline)
     
 def get_identifier(parameters,objects):
-    return module_utils.find_object(
+    identifier,single_object = module_utils.find_object(
         parameters,objects,'signal_file','Contents,DatasetId')
+    assert os.path.exists(identifier),'the input file does not exist'
+    return identifier,single_object
+
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
+    new_objects = module_utils.get_newobjects(
+        outfile,'pca_plot',parameters,objects,single_object)
+    return new_objects
 
 def plot_pca(filename,result_fig):
     from genomicode import jmath

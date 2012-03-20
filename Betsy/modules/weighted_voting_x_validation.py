@@ -6,7 +6,7 @@ import Betsy_config
 
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects,pipeline)
+    outfile = get_outfile(parameters,objects,pipeline)
     label_file,obj = module_utils.find_object(
         parameters,objects,'class_label_file','Contents,DatsetId')
     assert os.path.exists(label_file),'cannot find label_file'
@@ -37,19 +37,30 @@ def run(parameters,objects,pipeline):
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
     os.rename(download_directory,outfile)
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
     return new_objects
     
-def make_unique_hash(parameters,objects,pipeline):
+def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(
-        parameters,objects,'signal_file','Contents,DatsetId',pipeline)
+        identifier,pipeline,parameters)
 
 def get_identifier(parameters,objects,pipeline):
-    return module_utils.find_object(
+    identifier,single_object = module_utils.find_object(
         parameters,objects,'signal_file','Contents,DatsetId',pipeline)
+    assert os.path.exists(identifier),'the input file does not exist'
+    return identifier,single_object
 
 def get_outfile(parameters,objects):
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','Contents,DatsetId','signal_file')
+        parameters,objects,'signal_file','Contents,DatsetId',pipeline)
     
+    
+
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
+    new_objects = module_utils.get_newobjects(
+        outfile,'signal_file',parameters,objects,single_object)
+    return new_objects

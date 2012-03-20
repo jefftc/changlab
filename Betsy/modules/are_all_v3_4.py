@@ -8,9 +8,7 @@ def run(parameters,objects,pipeline):
     """check if all the cel file are v3_4"""
     from genomicode import affyio
     identifier,single_object = get_identifier(parameters,objects)
-    assert os.path.exists(identifier),'folder %s does not exit.' % identifier
-    assert os.path.isdir(identifier),"input is not a folder"
-    outfile,new_objects = get_outfile(parameters,objects,pipeline)
+    outfile = get_outfile(parameters,objects,pipeline)
     cel_vdict = dict()
     for i in os.listdir(identifier):
         if i == '.DS_Store':
@@ -27,44 +25,41 @@ def run(parameters,objects,pipeline):
                 old_file = os.path.join(identifier,i)
                 new_file = os.path.join(outfile,i)
                 shutil.copyfile(old_file,new_file)
-        module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
+        new_objects = get_newobjects(parameters,objects,pipeline)
+        module_utils.write_Betsy_parameters_file(
+            parameters,single_object,pipeline)
         return new_objects
     else:
          return None
         
     
-def make_unique_hash(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
-    old_filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH1_' in old_filename: 
-        original_file = '_'.join(old_filename.split('_')[:-2])
-    else:
-        original_file = old_filename
+def make_unique_hash(identifier,pipeline,parameters):
+    inputid = module_utils.get_inputid(identifier)
     hash_profile={'version': 'v3_4',
                    'number of files':str(len(os.listdir(identifier)))}
     hash_result=hash_method.hash_parameters(
-                     original_file,pipeline,**hash_profile)
+                    inputid,pipeline,**hash_profile)
     return hash_result
 
 
 def get_outfile(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
-    old_filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH1_' in old_filename: 
-        original_file = '_'.join(old_filename.split('_')[:-2])
-    else:
-        original_file = old_filename
-    hash_string = make_unique_hash(parameters,objects,pipeline)
+    original_file = module_utils.get_inputid(identifier)
+    hash_string = make_unique_hash(identifier,pipeline,parameters)
     filename = original_file + '_BETSYHASH1_' + hash_string
     outfile = os.path.join(os.getcwd(),filename)
-    attributes = parameters.values()
-    objecttype = 'geo_dataset'
-    new_object = rule_engine.DataObject(objecttype,attributes,outfile)
-    new_objects = objects[:]
-    new_objects.remove(single_object)
-    new_objects.append(new_object)
-    return outfile,new_objects
+    return outfile
+
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
+    new_objects = module_utils.get_newobjects(
+        outfile,'geo_dataset',parameters,objects,single_object)
+    return new_objects
 
 def get_identifier(parameters,objects):
-    return module_utils.find_object(parameters,objects,'geo_dataset','Contents,DatasetId')
- 
+    identifier,single_object = module_utils.find_object(
+        parameters,objects,'geo_dataset','Contents,DatasetId')
+    assert os.path.exists(identifier),'folder %s does not exit.' % identifier
+    assert os.path.isdir(identifier),"input is not a folder"
+    return identifier,single_object

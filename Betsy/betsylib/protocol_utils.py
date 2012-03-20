@@ -24,22 +24,44 @@ def get_result_folder(protocol,outfiles,parameters,pipeline):
         for j in range(len(outfiles)):
             if len(outfiles[j]) == 1:
                 final_output = os.path.split(outfiles[j][0])[-1]
-                shutil.copyfile(outfiles[j][0],
-                            os.path.join(result_folder,final_output))
+                result_file = os.path.join(result_folder,final_output)
                 result_files.append(outfiles[j][0])
+                if not os.path.exists(result_file):
+                    if os.path.isdir(outfiles[j][0]):
+                        shutil.copytree(outfiles[j][0],result_file)
+                    else:
+                        shutil.copyfile(outfiles[j][0],result_file) 
             elif len(outfiles[j]) > 1:
                 final_output = os.path.split(outfiles[j][i])[-1]
-                shutil.copyfile(outfiles[j][i],
-                            os.path.join(result_folder,final_output))
+                result_file = os.path.join(result_folder,final_output)
                 result_files.append(outfiles[j][i])
+                if not os.path.exists(result_file):
+                    if os.path.isdir(outfiles[j][i]):
+                        shutil.copytree(outfiles[j][i],result_file)
+                    else:
+                        shutil.copyfile(outfiles[j][i],result_file)
             elif len(outfiles[j]) == 0:
                 result_files.append(None)
         summarize_report(protocol,result_files,result_folder,parameters[0][i],pipeline[0][i])
 
+##def format_prolog_query(
+##    predicate,dataset_id,content,parameters,modules):
+##    str_parameters = ','.join(parameters)
+##    output = str('['+dataset_id+'],[' + content + '],[' +
+##                 str_parameters + '],' + modules)
+##    query = predicate + '(' + output+')'
+##    return query
+
 def format_prolog_query(
-    predicate,dataset_id,content,parameters,modules):
+    predicate,dataset_id,content,parameters,modules,
+    test_content=None):
     str_parameters = ','.join(parameters)
-    output = str('['+dataset_id+'],[' + content + '],[' +
+    if test_content:
+        output = str('['+dataset_id+'],[' + content + '],[' +
+                test_content +'],['+
+                     str_parameters + '],' + modules)
+    else:
+        output = str('['+dataset_id+'],[' + content + '],[' +
                  str_parameters + '],' + modules)
     query = predicate + '(' + output+')'
     return query
@@ -124,7 +146,9 @@ def summarize_report(protocol,result_files,result_folder,parameters,pipeline):
             'intensity_plot': 'the intersity of the signal in the data set after normalization',
             'biotin_plot': 'the value of biotin and housekeeping in different sample in the control file',
             'actb_plot': 'the value of ACTB and TUBB in different sample before normalization in the data set',
-            'hyb_bar_plot': 'the value of hybridization controls in the data set'         
+            'hyb_bar_plot': 'the value of hybridization controls in the data set',
+            'svm_predictions':'the svm predictions',
+            'weightedVoting':'the results file of weighted Voting '
             }
         #put the image in the same folder
         w(htmllib.H3("III.  Results"))
@@ -133,16 +157,17 @@ def summarize_report(protocol,result_files,result_folder,parameters,pipeline):
             result = result_files[i]
             if result:
                 prob_file = os.path.split(result)[-1]
-                if imghdr.what(prob_file) == 'png':
-                    w(htmllib.P())
-                    w(htmllib.A(htmllib.IMG(height=500,
+                if not(os.path.isdir(prob_file)):
+                    if imghdr.what(prob_file) == 'png':
+                        w(htmllib.P())
+                        w(htmllib.A(htmllib.IMG(height=500,
                                 src=prob_file), href=prob_file))
-                    w(htmllib.P())
-                    name = 'Figure:' + output_type[i]
-                    w(htmllib.B(name))
-                    w(all_description[output_type[i]])
-                    w(htmllib.P())
-                else:
+                        w(htmllib.P())
+                        name = 'Figure:' + output_type[i]
+                        w(htmllib.B(name))
+                        w(all_description[output_type[i]])
+                        w(htmllib.P())
+                elif os.path.isdir(prob_file) or not(imghdr.what(prob_file) == 'png'):
                     w(all_description[output_type[i]]+'is shown in: %s'
                       % htmllib.A(prob_file, href=prob_file))
 

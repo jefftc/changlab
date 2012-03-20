@@ -66,8 +66,7 @@ def get_seriesmatrix_file(GSEID,GPLID):
 def run(parameters,objects,pipeline):
     """given a database ID and GPLID, get the cel files"""
     identifier,single_object = get_identifier(parameters,objects)
-    outfile,new_objects = get_outfile(parameters,objects,pipeline)
-    assert len(identifier.split(','))==2,'the identifier should contain GSEID and GPLID'
+    outfile = get_outfile(parameters,objects,pipeline)
     GSEID = identifier.split(',')[0]
     GPLID = identifier.split(',')[1]
     assert GSEID.startswith('GSE'),'GSEID is not correct'
@@ -104,28 +103,36 @@ def run(parameters,objects,pipeline):
                             cel_file = clean_cel_filename(os.path.splitext(cel_file)[0])+'.gz'
                         outfilename=os.path.join(outfile,cel_file)
                         shutil.copyfile(os.path.join(GSEID_path,cel_file),outfilename)
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
          
-def make_unique_hash(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+def make_unique_hash(identifier,pipeline,parameters):
     return identifier.split(',')[0]+'.'+identifier.split(',')[1]
     
 def get_outfile(parameters,objects,pipeline):
-    hash_string = make_unique_hash(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
+    hash_string = make_unique_hash(identifier,pipeline,parameters)
     filename = hash_string
     outfile = os.path.join(os.getcwd(),filename)
+    return outfile
+
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
     new_object = rule_engine.DataObject('geo_dataset',[parameters['DatasetId'],
                                         'unknown',parameters['Contents']],outfile)
     new_objects = objects[:]
     new_objects.remove(single_object)
     new_objects.append(new_object)
-    return outfile,new_objects
+    return new_objects
+
 
 def get_identifier(parameters,objects):
-    return module_utils.find_object(parameters,objects,
-                                    'gse_dataset_and_platform','Contents,DatasetId')
+    identifier,single_object = module_utils.find_object(parameters,objects,
+                        'gse_dataset_and_platform','Contents,DatasetId')
+    assert len(identifier.split(','))==2,'the identifier should contain GSEID and GPLID'
+    return identifier,single_object
 
 def clean_cel_filename(cel_file):
     """clean the cel_file name"""
