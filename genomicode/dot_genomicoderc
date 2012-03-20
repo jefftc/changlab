@@ -53,3 +53,9 @@ gm_user=genemap
 gm_passwd=g33m4p
 gm_db=genemap
 gm_host=
+
+
+username=xiaolingchen
+password=baby2008
+servername=http://genepattern.broadinstitute.org/gp/pages/index.jsf
+

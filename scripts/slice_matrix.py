@@ -9,6 +9,7 @@
 # read_geneset_or_clin
 #
 # find_col_indexes
+# find_col_genesets
 # relabel_col_ids
 # 
 # find_row_indexes
@@ -74,7 +75,7 @@ def parse_geneset(MATRIX, is_row, geneset):
         return []
     filename, genesets = _parse_file_gs(geneset)
     
-    genes = genesetlib.read_genes(filename, *genesets)
+    genes = genesetlib.read_genes(filename, *genesets, allow_tdf=True)
     params = { "row" : genes }
     if not is_row:
         params = { "col" : genes }
@@ -116,6 +117,11 @@ def find_col_indexes(MATRIX, indexes):
         return None
     return parse_indexes(MATRIX, False, indexes)
 
+def find_col_genesets(MATRIX, genesets):
+    if not genesets:
+        return None
+    return parse_geneset(MATRIX, False, genesets)
+
 def relabel_col_ids(MATRIX, geneset):
     import arrayio
     from genomicode import genesetlib
@@ -138,6 +144,20 @@ def relabel_col_ids(MATRIX, geneset):
     if not x:
         x = _match_colnames_to_geneset(
             MATRIX, all_genesets, geneset2genes, hash=True)
+    if not x:
+        # No matches.  Try to diagnose.
+        gs, nm, m, mm = _best_match_colnames_to_geneset(
+            MATRIX, all_genesets, geneset2genes, hash=True)
+        if nm == 0:
+            print "Matrixes doesn't match any gene sets."
+        else:
+            print "Matrix best matches %s [%d:%d]." % (gs, nm, MATRIX.ncol())
+            if len(mm) > 5:
+                print "Missing (showing %d of %d):" % (5, len(mm))
+            else:
+                print "Missing:"
+            for x_ in mm[:5]:
+                print x_
     assert x, "I could not match the matrix to a geneset."
     I_geneset = x
 
@@ -374,11 +394,18 @@ def _match_colnames_to_geneset(
     import arrayio
     from genomicode import jmath
 
-    # Align every geneset to the col names in the matrix.
-    geneset_aligns = []  # list of (I_geneset, geneset)
     annots = MATRIX.col_names(arrayio.COL_ID)
     if hash:
         annots = [jmath.R_hash(x) for x in annots]
+        g2g = {}
+        for gs in all_genesets:
+            genes = geneset2genes[gs]
+            genes = [jmath.R_hash(x) for x in genes]
+            g2g[gs] = genes
+        geneset2genes = g2g
+        
+    # Align every geneset to the col names in the matrix.
+    geneset_aligns = []  # list of (I_geneset, geneset)
     for gs in all_genesets:
         genes = geneset2genes[gs]
         I_geneset = _align_geneset_to_matrix(annots, genes)
@@ -396,6 +423,53 @@ def _match_colnames_to_geneset(
 
     # Return None if not found.
     return None
+
+def _best_match_colnames_to_geneset(
+    MATRIX, all_genesets, geneset2genes, hash=False):
+    # Return the (name, num_matches, list of matches, list of
+    # non-matches) for the geneset that best matches the colnames.
+    import arrayio
+    from genomicode import jmath
+
+    annots = MATRIX.col_names(arrayio.COL_ID)
+    annots_orig = annots[:]
+    if hash:
+        annots = [jmath.R_hash(x) for x in annots]
+        g2g = {}
+        for gs in all_genesets:
+            genes = geneset2genes[gs]
+            genes = [jmath.R_hash(x) for x in genes]
+            g2g[gs] = genes
+        geneset2genes = g2g
+
+    # Align every geneset to the col names in the matrix.
+    best_gs = best_num_matches = best_matches = best_mismatches = None
+    for gs in all_genesets:
+        genes = geneset2genes[gs]
+        x = _num_matches_to_geneset(annots_orig, annots, genes)
+        num_matches, matches, mismatches = x
+        if best_num_matches is None or num_matches > best_num_matches:
+            best_gs = gs
+            best_num_matches = num_matches
+            best_matches = matches
+            best_mismatches = mismatches
+                
+    return best_gs, best_num_matches, best_matches, best_mismatches
+
+def _num_matches_to_geneset(matrix_annots, hashed_annots, geneset_genes):
+    # Count the number of annotations that match the geneset.  Return
+    # number of matches, list of matches, list of mismatches.
+    assert len(matrix_annots) == len(hashed_annots)
+    
+    count = 0
+    matches, mismatches = [], []
+    for i, annot in enumerate(hashed_annots):
+        if annot in geneset_genes:
+            count += 1
+            matches.append(matrix_annots[i])
+        else:
+            mismatches.append(matrix_annots[i])
+    return count, matches, mismatches
 
 def _align_geneset_to_matrix(matrix_annots, geneset_genes):
     # Return a list of the indexes required to align the geneset to
@@ -480,8 +554,12 @@ def main():
         help="Which columns to include e.g. 1-5,8 (1-based, inclusive)."
        )
     group.add_argument(
+        "--filter_col_genesets", default=None,
+        help="Include only the samples from this geneset.  "
+        "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
+    group.add_argument(
         "--relabel_col_ids", default=None,  
-        help="Relabel the column IDs.  Format: <gmx/gmt_file>,<geneset>.  "
+        help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
         "--align_col_file", default=None,
@@ -501,7 +579,7 @@ def main():
     group.add_argument(
         "--filter_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
-        "Format: <gmx/gmt_file>[,<geneset>,<geneset>,...]")
+        "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
         "--filter_row_mean", default=None,
         help="Remove this percentage of rows that have the lowest mean.  "
@@ -514,7 +592,7 @@ def main():
     group.add_argument(
         "--add_row_annot", default=None,
         help="Add a geneset as a new annotation for the matrix.  "
-        "The format should be: <gmx/gmt_file>[,<geneset>].  "
+        "The format should be: <txt/gmx/gmt_file>[,<geneset>].  "
         "Each geneset in the file should contain the same number of "
         "genes as the matrix.  One of the genesets should be align-able "
         "to the IDs of this matrix.")
@@ -554,7 +632,9 @@ def main():
     I3 = find_row_genesets(MATRIX, args.filter_row_genesets)
     I4 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
     I_row = _intersect_indexes(I1, I2, I3, I4)
-    I_col = find_col_indexes(MATRIX, args.filter_col_indexes)
+    I1 = find_col_indexes(MATRIX, args.filter_col_indexes)
+    I2 = find_col_genesets(MATRIX, args.filter_col_genesets)
+    I_col = _intersect_indexes(I1, I2)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Align to the align_file.
