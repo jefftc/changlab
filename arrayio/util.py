@@ -512,7 +512,15 @@ def num_headers(matrix):
     #for i in range(5):
     #    print i, semtype[i][:5]
     #import sys; sys.exit(0)
-    
+
+    # Don't allow this.  It makes it too complicated to have to keep
+    # track of matrices with and without signal values.
+    ## If this is a matrix that only contains annotations, then there
+    ## can only be one header row.  (Because there are no headers for
+    ## annotations).
+    #if hcols == num_cols:
+    #    hrows = 1
+    #assert hcols <= num_cols
     assert hcols < num_cols, \
            "It looks like there are annotations at the end of the matrix."
     assert hrows < MAX_HEADER_ROWS, "Too many header rows."

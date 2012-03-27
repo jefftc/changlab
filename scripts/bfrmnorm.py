@@ -430,7 +430,7 @@ def summarize_report(
     files = [os.path.split(x)[1] for x in filenames]
     l = []
     x = "I normalized the following data sets using %d factors." % num_factors
-    if len(filenames) == 1:
+    if num_factors == 1:
         x = "I normalized one data set using %d factors." % num_factors
     l.append(x)
     for i in range(len(files)):
