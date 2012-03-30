@@ -15,13 +15,18 @@ find_many_genes_detailed
 # fuzzy match of gene names
 
 def find_gene(name):
-    # Return gene_id, symbol, name, tax_id, organism, name_from_query or None
+    # Return gene_id, symbol, name, tax_id, organism, name_from_query
+    # or None.  If name is a RefSeq ID, be sure there is no version
+    # number.  E.g. "NP_000680.2" won't be found, but "NP_000680"
+    # will.
+    orig_name = name
     x = find_many_genes([name])
     assert len(x) == 1
     num_matches, gene_id, symbol, name, tax_id, organism, name_from_query =x[0]
     if num_matches == 0:
         return None
-    assert num_matches == 1, "Multiple matches found."
+    assert num_matches == 1, 'Multiple matches (%d) found for "%s".' % (
+        num_matches, orig_name)
     x = gene_id, symbol, name, tax_id, organism, name_from_query
     return x
 
