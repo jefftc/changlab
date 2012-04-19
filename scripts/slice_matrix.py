@@ -11,6 +11,7 @@
 # find_col_indexes
 # find_col_genesets
 # relabel_col_ids
+# remove_duplicate_cols
 # 
 # find_row_indexes
 # find_row_ids
@@ -174,6 +175,21 @@ def relabel_col_ids(MATRIX, geneset):
     
     return MATRIX_new
 
+def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
+    import arrayio
+    
+    if not filter_duplicate_cols:
+        return MATRIX
+    headers = MATRIX.col_names(arrayio.COL_ID)
+    I = []
+    seen = {}
+    for i in range(len(headers)):
+        if headers[i] in seen:
+            continue
+        seen[headers[i]] = 1
+        I.append(i)
+    x = MATRIX.matrix(None, I)
+    return x
 
 def find_row_indexes(MATRIX, indexes):
     if not indexes:
@@ -232,6 +248,9 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     for header in ALIGN.row_names():
         ids = ALIGN.row_names(header)
         I_row, I_col = MATRIX._index(row=ids, row_header=arrayio.ROW_ID)
+        # Bug: cannot just check length.  If there are duplicate rows,
+        # the longest one may not be the one that matches the most
+        # unique rows.
         if len(I_row) > len(best_I):
             best_I = I_row
         #I = I_row
@@ -244,14 +263,15 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         ids_A = {}.fromkeys(x)
         x = MATRIX.row_names(arrayio.ROW_ID)
         ids_M = {}.fromkeys(x)
-        missing = []
+        missing = []  # In the align file, but not in my file.
         for id in ids_A:
             if id not in ids_M:
                 missing.append(id)
         if len(missing) < 10:
             for id in sorted(missing):
                 print id
-        message = "I could not find %d IDs." % len(missing)
+        message = "%d IDs from the align file are missing from the " + \
+                  "matrix file." % len(missing)
         raise AssertionError, message
     return I
 
@@ -262,18 +282,37 @@ def align_cols(MATRIX, align_col_file, ignore_missing_cols):
         return None
     assert os.path.exists(align_col_file), \
         "File not found: %s" % align_col_file
-    
+
+    headers = MATRIX.col_names(arrayio.COL_ID)
     ALIGN = arrayio.read(align_col_file)
     # Try all the headers and see if we can find a hit.
-    best_I = []
+    # Bug: what if there are duplicates in MATRIX or ALIGN?
+    best_matches, best_I, best_header = None, [], ""
     for header in ALIGN.col_names():
         ids = ALIGN.col_names(header)
         I_row, I_col = MATRIX._index(col=ids, col_header=arrayio.COL_ID)
-        if len(I_col) > len(best_I):
-            best_I = I_col
-        if len(best_I) == len(ids):
+        # Count the number of unique matches.
+        num_matches = {}
+        for i in I_col:
+            num_matches[headers[i]] = 1
+        num_matches = len(num_matches)
+        if best_matches is None or num_matches > best_matches:
+            best_matches, best_I, best_header = num_matches, I_col, header
+        if num_matches == len(ids):
             break
     I = best_I
+    #if ignore_duplicate_cols:
+    #    seen = {}
+    #    i = 0
+    #    while i < len(I):
+    #        if headers[I[i]] in seen:
+    #            del I[i]
+    #        else:
+    #            seen[headers[I[i]]] = 1
+    #            i += 1
+    #for i in best_I:
+    #    print i, MATRIX.col_names(arrayio.COL_ID)[i]
+    #sys.exit(0)
     if not ignore_missing_cols and len(ids) != len(I):
         # Diagnose problem here.
         x = ALIGN.col_names(arrayio.COL_ID)
@@ -548,6 +587,7 @@ def main():
     # --remove_row_annot     <name>                          (multiple)
     # --filter_col_indexes   Indexes of columns to include.
     # --relabel_col_ids      <gmx/gmt_file>[,<geneset>]
+    # --align_col_file
     group = parser.add_argument_group(title="Column operations")
     group.add_argument(
         "--filter_col_indexes", default=None,  
@@ -567,6 +607,9 @@ def main():
     group.add_argument(
         "--ignore_missing_cols", default=False, action="store_true",
         help="Ignore any cols that can't be found.")
+    group.add_argument(
+        "--filter_duplicate_cols", default=False, action="store_true",
+        help="If a column is found multiple times, keep only the first one.")
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
@@ -652,6 +695,9 @@ def main():
 
     # Relabel the column IDs.
     MATRIX = relabel_col_ids(MATRIX, args.relabel_col_ids)
+
+    # Filter after relabeling.
+    MATRIX = remove_duplicate_cols(MATRIX, args.filter_duplicate_cols)
 
     # Log transform, if requested.
     if args.log_transform:

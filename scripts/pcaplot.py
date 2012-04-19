@@ -158,7 +158,7 @@ def main():
 
     if options.verbose:
         # Write out the principal components.
-        assert len(principal_components) == len(cluster)
+        assert cluster is None or len(cluster) == len(principal_components)
         x = ["PC%02d" % i for i in range(K)]
         x = ["Index", "Sample", "Cluster", "Color"] + x
         print "\t".join(x)
@@ -167,7 +167,10 @@ def main():
             c = ""
             if color:
                 c = colorlib.rgb2hex(color[i])
-            x = [i+1, x, cluster[i], c] + principal_components[i]
+            clust = ""
+            if cluster is not None:
+                clust = cluster[i]
+            x = [i+1, x, clust, c] + principal_components[i]
             print "\t".join(map(str, x))
 
 

@@ -140,15 +140,22 @@ def write_factor_ids(filename, file_layout):
     x = ["%s\n" % x for x in factor_ids]
     open(filename, 'w').writelines(x)
 
-def write_h(filename, CONTROL):
+def write_h(filename, DESIGN, CONTROL):
     # sample x design factor matrix
-    # 1st column = 1, intercept
-    # 2-n column = control vectors
-    assert CONTROL
+    # 1st column     1, intercept
+    # 2-n column     design vectors
+    # n+1-m column   control vectors
+    assert DESIGN or CONTROL
+
+    X = []
+    if DESIGN:
+        X.extend(DESIGN)
+    if CONTROL:
+        X.extend(CONTROL)
     
     handle = open(filename, 'w')
-    for i in range(len(CONTROL[0])):
-        x = [1] + [x[i] for x in CONTROL]
+    for i in range(len(X[0])):
+        x = [1] + [x[i] for x in X]
         print >>handle, "\t".join(map(str, x))
     handle.close()
 
@@ -172,9 +179,21 @@ def write_evol(filename, DATA, nucleus_file):
         print >>handle, i
     handle.close()
 
+def assert_cols_aligned(matrix1, matrix2):
+    # TODO: take an arbitrary number of matrices
+    import arrayio
+    
+    assert matrix1.ncol() == matrix2.ncol(), "number of columns different"
+    header1 = matrix1.col_names(arrayio.COL_ID)
+    header2 = matrix2.col_names(arrayio.COL_ID)
+    num_same = 0
+    for h1, h2 in zip(header1, header2):
+        num_same += int(h1 == h2)
+    assert num_same == len(header1)
+
 def run_bfrm(
-    file_layout, bfrm_bin, num_control_vars, start_factors, nucleus_file,
-    max_factors, max_genes):
+    file_layout, bfrm_bin, num_control_vars, num_factors, design_file,
+    nucleus_file, max_factors, max_genes):
     import random
     import time
     import subprocess
@@ -200,16 +219,29 @@ def run_bfrm(
     params = bfrm.set_params_dataset(
         params, DATA.ncol(), DATA.nrow(), dataset)
 
-    # Set the starting number of latent factors.
-    if start_factors:
-        x = "Initiating analysis with %d factors." % start_factors
-        if start_factors == 1:
+    # Set the number of latent factors.
+    if num_factors:
+        x = "Running analysis with %d factors." % num_factors
+        if nucleus_file:
+            x = "Starting analysis with %d factors." % num_factors
+        if num_factors == 1:
             x = x.replace("factors", "factor")
         print x
-        assert start_factors < DATA.nrow()
-        params = bfrm.set_params_latent_factors(params, start_factors)
+        assert num_factors < DATA.nrow()
+        params = bfrm.set_params_latent_factors(params, num_factors)
 
-    # If control variables are requested, then make an H file.
+    # If a design file was specified, then read it in.
+    DESIGN = None  # list of lists
+    if design_file:
+        assert os.path.exists(design_file), "File not found: %s" % design_file
+        x = arrayio.read(design_file)
+        assert_cols_aligned(DATA, x)
+        DESIGN = x._X
+        print "Reading design file with %d factors." % len(DESIGN)
+        # Add 1 for intercept.
+        params = bfrm.set_params_design(params, len(DESIGN)+1)
+    # If control variables are requested, then calculate them.
+    CONTROL = None  # list of lists
     if num_control_vars:
         print "Using %d control variables." % num_control_vars
         # Should create control variables based on original data set.
@@ -217,9 +249,13 @@ def run_bfrm(
         CONTROL = create_control_vars(DATA_orig, num_control_vars)
         assert len(CONTROL) == num_control_vars
         assert len(CONTROL[0]) == DATA_orig.ncol()
-        write_h(file_layout.BFRM_H, CONTROL)
+        params = bfrm.set_params_control(params, len(CONTROL))
+    # If either control variables or a design file was given, then
+    # make an H file.
+    if CONTROL or DESIGN:
+        write_h(file_layout.BFRM_H, DESIGN, CONTROL)
         h = os.path.split(file_layout.BFRM_H)[1]
-        params = bfrm.set_params_control(params, len(CONTROL), h)
+        params = bfrm.set_params_h(params, h)
 
     # If the nucleus was provided, then set up an evolutionary search.
     if nucleus_file:
@@ -547,8 +583,12 @@ def main():
         "--nc", dest="num_control_vars", type="int", default=None,
         help="Specify the number of control variables to use.")
     group.add_option(
-        "--start_factors", dest="start_factors", type="int", default=None,
-        help="The number of factors to start the analysis.")
+        "--num_factors", dest="num_factors", type="int", default=None,
+        help="The number of factors to fit.  "
+        "For evolutionary search, starts with this number of factors.")
+    group.add_option(
+        "--design_file", dest="design_file", default=None,
+        help="A file containing a matrix with additional design variables.")
     group.add_option(
         "--nucleus_file", dest="nucleus_file", default=None,
         help="A file that contains the genes to start the evolution.")
@@ -622,7 +662,8 @@ def main():
     if not DEBUG:
         run_bfrm(
             file_layout, options.bfrm_bin, options.num_control_vars,
-            options.start_factors, options.nucleus_file,
+            options.num_factors, options.design_file, 
+            options.nucleus_file,
             options.evol_max_factors, options.evol_max_genes)
 
     # Generate output files.

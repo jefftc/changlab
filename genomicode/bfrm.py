@@ -158,9 +158,18 @@ def set_params_latent_factors(parameters, num_factors):
     x = _set_param(x, "NLatentFactors", num_factors)
     return x
 
-def set_params_control(parameters, NControlVariables, HFile):
+def set_params_control(parameters, NControlVariables):
     x = parameters
     x = _set_param(x, "NControlVariables", NControlVariables)
+    return x
+
+def set_params_design(parameters, NDesignVariables):
+    x = parameters
+    x = _set_param(x, "NDesignVariables", NDesignVariables)
+    return x
+
+def set_params_h(parameters, HFile):
+    x = parameters
     x = _set_param(x, "HFile", HFile)
     return x
 

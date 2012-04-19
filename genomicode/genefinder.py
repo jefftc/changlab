@@ -25,8 +25,16 @@ def find_gene(name):
     num_matches, gene_id, symbol, name, tax_id, organism, name_from_query =x[0]
     if num_matches == 0:
         return None
-    assert num_matches == 1, 'Multiple matches (%d) found for "%s".' % (
-        num_matches, orig_name)
+    if num_matches > 1:
+        msg = 'Multiple matches (%d) found for "%s".' % (
+            num_matches, orig_name)
+        x = find_many_genes_detailed([orig_name])
+        all_llid = [x[0] for x in x]
+        llid_str = ",".join(map(str, all_llid))
+        if len(all_llid) <= 5:
+            msg = 'Multiple matches (%s) found for "%s".' % (
+                llid_str, orig_name)
+        assert num_matches == 1, msg
     x = gene_id, symbol, name, tax_id, organism, name_from_query
     return x
 
