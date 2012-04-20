@@ -232,7 +232,7 @@ def camera(*items):
     #    continue to look at the specified point.
     return _fmt_complex("camera", *items)
 
-def light_source(location, color, *items):
+def light_source(location_, color, *items):
     # location VECTOR
     # color COLOR       2,2,2 will be 2x as bright as 1,1,1.
     # light_type VALUE  spotlight, shadowless, cylinder, area_light
@@ -248,7 +248,7 @@ def light_source(location, color, *items):
     # o parallel can be used with any type of light source.  Makes
     #   light rays parallel to simulate very distant light sources.
     # o For normal point lights, point_at must come after parallel.
-    return _fmt_complex("light_source", args=(location, color), *items)
+    return _fmt_complex("light_source", args=(location_, color), *items)
 
 def object_(name, *items):
     x = _fmt_complex("object", args=(name,), *items)
@@ -256,18 +256,18 @@ def object_(name, *items):
         x += "\n"
     return x
 
-def sphere(center, radius, *items):
+def sphere(center, radius_, *items):
     # center VECTOR
     # radius AMOUNT
     # + modifiers
-    return _fmt_complex("sphere", args=(center, radius), *items)
+    return _fmt_complex("sphere", args=(center, radius_), *items)
 
-def blob_sphere(center, radius, strength, *items):
+def blob_sphere(center, radius_, strength, *items):
     # center VECTOR
     # radius AMOUNT
     # strength AMOUNT
     # + modifiers
-    return _fmt_complex("sphere", args=(center, radius, strength), *items)
+    return _fmt_complex("sphere", args=(center, radius_, strength), *items)
 
 def superellipsoid(value_e, value_n, *items):
     # http://local.wasp.uwa.edu.au/~pbourke/geometry/superellipse/
@@ -275,22 +275,22 @@ def superellipsoid(value_e, value_n, *items):
     x = "<%s, %s>" % (value_e, value_n)
     return _fmt_complex("superellipsoid", args=(x,), *items)
 
-def cylinder(base_point, cap_point, radius, *items):
+def cylinder(base_point, cap_point, radius_, *items):
     # base_point VECTOR
     # cap_point VECTOR
     # radius AMOUNT
     # + modifiers
     return _fmt_complex(
-        "cylinder", args=(base_point, cap_point, radius), *items)
+        "cylinder", args=(base_point, cap_point, radius_), *items)
 
-def blob_cylinder(base_point, cap_point, radius, strength, *items):
+def blob_cylinder(base_point, cap_point, radius_, strength, *items):
     # base_point VECTOR
     # cap_point VECTOR
     # radius AMOUNT
     # strength AMOUNT
     # + modifiers
     return _fmt_complex(
-        "cylinder", args=(base_point, cap_point, radius, strength), *items)
+        "cylinder", args=(base_point, cap_point, radius_, strength), *items)
 
 def box(corner_1, corner_2, *items):
     # corner_1 VECTOR

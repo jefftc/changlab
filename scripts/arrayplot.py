@@ -945,7 +945,7 @@ def filter_matrix(
         I = []
         for s, e in parselib.parse_ranges(gene_indexes):
             assert s >= 1
-            s, e = s-1, e
+            s = s-1
             if e > MATRIX.nrow():
                 e = MATRIX.nrow()
             I.extend(range(s, e))
@@ -963,7 +963,7 @@ def filter_matrix(
         I = []
         for s, e in parselib.parse_ranges(array_indexes):
             assert s >= 1
-            s, e = s-1, e
+            s = s-1
             if e > MATRIX.ncol():
                 e = MATRIX.ncol()
             I.extend(range(s, e))

@@ -306,7 +306,7 @@ def init_params():
     # analyses to be done.
     if len(param_list) > MAX_ANALYSES:
         assert False, "Requested %d analyses, but maximum is %d." % (
-            len(param_list), MAX_ANALYSIS)
+            len(param_list), MAX_ANALYSES)
     
     return options, param_list
 
@@ -369,8 +369,8 @@ def make_params_from_yaml(filename, args):
         keywds[stdname] = data[name]
 
     # Make sure the values are the right type.
-    keywds["genes"] = int(obj.genes)
-    keywds["metagenes"] = int(obj.metagenes)
+    keywds["genes"] = int(data.genes)
+    keywds["metagenes"] = int(data.metagenes)
 
     znf = data.get("zero_normalized_file")
     onf = data.get("one_normalized_file")
@@ -650,7 +650,6 @@ def init_paths(file_layout):
 MATRIX_CACHE = {}
 def read_matrices_all(train0_file, train1_file, test_file, normref_file):
     global MATRIX_CACHE
-    from genomicode import parselib
     from genomicode import binreg
 
     filenames = [train0_file, train1_file]
@@ -709,7 +708,6 @@ def log_matrices(
     # Log each variable if necessary.  Will log in place.  Return a
     # boolean indicating whether anything was logged.  test can be None.
     from genomicode import jmath
-    from genomicode import binreg
 
     variables = [
         ("train0", train0, log_train0),
@@ -776,7 +774,6 @@ def quantile_normalize_matrices(
 
 def dwd_normalize_matrices(
     train0, train1, test, version=None, matlab=None, dwd_path=None):
-    import arrayio
     from genomicode import Matrix
     from genomicode import dwdnorm
 
@@ -829,7 +826,6 @@ def shiftscale_normalize_matrices(
 
 def _shiftscale_normalize_standard(
     train0, train1, test, matlab=None, binreg_path=None):
-    import arrayio
     from genomicode import Matrix
     from genomicode import shiftscalenorm
 
@@ -862,7 +858,6 @@ def _shiftscale_normalize_standard(
 
 def _shiftscale_normalize_normref(
     train0, train1, test, normref, matlab=None, binreg_path=None):
-    import arrayio
     from genomicode import Matrix
     from genomicode import shiftscalenorm
 
@@ -1087,8 +1082,8 @@ def _run_binreg_normref(
     for j in range(test.ncol()):
         sample_file = "%s.%04d" % (file_layout.BR_VALIDATION, j)
         assert os.path.exists(sample_file)
-        iter = filelib.read_cols(sample_file)
-        x = iter.next()
+        iter_ = filelib.read_cols(sample_file)
+        x = iter_.next()
         assert len(x) == 6
         data.append(x)
     # Fix the indexes.
@@ -1566,8 +1561,8 @@ def summarize_all_report(outpath, analyses, start_time):
     import time
     from genomicode import htmllib
 
-    def highlight(s):
-        return htmllib.SPAN(s, style="background-color:yellow")
+    #def highlight(s):
+    #    return htmllib.SPAN(s, style="background-color:yellow")
     def yesno(x):
         if x:
             return "Yes"

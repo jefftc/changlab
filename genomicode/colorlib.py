@@ -157,23 +157,6 @@ def broad_colors(n):
     x = _colors(color_matrix, n)
     return x
 
-def yahoo_weather_colors(n):
-    color_matrix = [
-        (0.0, 255, 255, 255),
-        (0.1, 204, 255, 255),
-        (0.2, 153, 255, 255),
-        (0.3, 102, 204, 255),
-        (0.4,  84, 169, 255),
-        (0.5, 204, 255, 103),
-        (0.6, 255, 255, 103),
-        (0.7, 255, 204, 102),
-        (0.8, 255, 153, 102),
-        (0.9, 204, 102, 102),
-        (1.0, 209,  73,  73),
-        ]
-    x = _colors(color_matrix, n)
-    return x
-
 def genespring_colors(n):
     color_matrix = [
         (0.0,   0,   0, 255),
@@ -223,7 +206,6 @@ def rgb2hex(c):
     return x
 
 def choose_contrasting_color(col):
-    import math
     r, g, b = col
 
     assert r >= 0 and r <= 1
@@ -236,10 +218,8 @@ def choose_contrasting_color(col):
         l -= 1
     col = hsl2rgb((h, s, l))
     return col
-    return r, g, b
 
 def choose_contrasting_bw(col):
-    import math
     r, g, b = col
     assert r >= 0 and r <= 1
     assert g >= 0 and g <= 1
@@ -252,7 +232,6 @@ def choose_contrasting_bw(col):
     return contrast
 
 def rgb2hsl(col):
-    import math
     r, g, b = col
     assert r >= 0 and r <= 1
     assert g >= 0 and g <= 1
@@ -285,6 +264,7 @@ def rgb2hsl(col):
     return H, S, L
 
 def _hsl2rgb_h(H, temp1, temp2, temp3):
+    # What is H for?
     if temp3 < 0:
         temp3 += 1
     elif temp3 > 1:

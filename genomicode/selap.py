@@ -7,7 +7,7 @@ selap_predict_raw
 find_selap
 
 """
-import os, sys
+import os
 
 def selap_make_raw(
     matrix_file, penalty, matlab_bin=None, selap_path=None, outpath=None):
@@ -93,8 +93,8 @@ def find_selap(default_path):
             "runme.txt", "subanalysis.m", "Utilities",
             ]
         complete = True   # Is this distribution complete.
-        for file in files:
-            filename = os.path.join(spath, file)
+        for file_ in files:
+            filename = os.path.join(spath, file_)
             if not os.path.exists(filename):
                 complete = False
                 # Don't break here, so we can diagnose missing files.

@@ -152,8 +152,8 @@ def check_model(filename):
         "var.txt",
         "clust.txt",
         ]
-    for file in FILES:
-        assert file in s2f, "Model is missing file: %s." % file
+    for file_ in FILES:
+        assert file_ in s2f, "Model is missing file: %s." % file_
 
     # Check the consistency of the files in the model.
     tdf = arrayio.tab_delimited_format
@@ -295,7 +295,6 @@ def summarize_predictions(file_layout):
     handle.close()
 
 def summarize_heatmap(python, arrayplot, cluster, file_layout, libpath=[]):
-    import subprocess
     import arrayio
     from genomicode import graphlib
 

@@ -272,8 +272,6 @@ def scan_celvcc1(filename):
         yield "OUTLIERS", "DATA", (x, y)
 
 def scan_calvin_generic_data_file(filename):
-    import filelib
-    
     VALUE2TYPE = [
         "BYTE", "UBYTE", "SHORT", "USHORT", "INT", "UINT", "FLOAT",
         "STRING", "WSTRING"]
@@ -744,8 +742,6 @@ def extract_chip_name(filename):
     # MOE430A
     # RAE230A
     # Mouse430A_2
-    import filelib
-    
     fn = guess_cel_fn(filename)
 
     chip_name = None

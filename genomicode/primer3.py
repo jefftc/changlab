@@ -7,7 +7,7 @@ primer3_core
 parse
 
 """
-import os, sys
+import sys
 
 def primer3(sequence, **params):
     # See primer3_core for more options.
@@ -27,7 +27,6 @@ def primer3_core(
     # num_return    5           default 5
     # target        (25, 50)    target base 25 (1-based), length 50
     import subprocess
-    import tempfile
     import config
 
     primer3_core_app = primer3_core_app or config.primer3_PRIMER3_BIN

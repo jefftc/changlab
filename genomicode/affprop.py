@@ -11,7 +11,7 @@ def cluster(similarity_matrix, dampfact=0.5, update_fn=None):
     # similar points should have higher scores.  The score can be a
     # really small value if the two points are not connected.  Returns
     # a list of length N indicating the exemplar for each item.
-    import itertools
+    #import itertools
     
     assert dampfact >= 0 and dampfact <= 1.0
     

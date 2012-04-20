@@ -1,5 +1,10 @@
 """
 
+Color is tuple of (R, G, B) where RGB is from 0.0 to 1.0.
+
+
+
+
 Functions:
 scatter
 line
@@ -757,6 +762,8 @@ class Graph:
                 if yp2 > max_y:
                     xp2, yp2 = max_x, max_y
 
+            #x = xv1, yv1, xv2, yv2, xp1, yp1, xp2, yp2
+            #print "\t".join(map(str, x))
             if abs(xp2-xp1) < EPS and abs(yp2-yp1) < EPS:
                 # Just a point.  Ignore.
                 continue
@@ -772,6 +779,7 @@ class Graph:
             #    self._plotter.sphere(
             #        self._image, coord, RADIUS, color,
             #        finish=gc.METALLIC, shadow=shadow)
+            #print "PLOTTING", coord, extent
             self._plotter.cylinder(
                 self._image, coord, extent, RADIUS, color, 
                 finish=gc.METALLIC, shadow=shadow, blob=True)
@@ -787,7 +795,6 @@ class Graph:
     def draw_bars(self, bars, barwidth, color, shadow, width_size=1.0):
         # height should be an integer.  0 is lowest.
         import math
-        import povray as pr
         import graphconst as gc
 
         DEPTH = 0.40 * self.UNIT
@@ -908,8 +915,8 @@ def scatter(*args, **keywds):
     More from _make_graph.
     
     """
-    from StringIO import StringIO
-    import graphconst as gc
+    #from StringIO import StringIO
+    #import graphconst as gc
 
     assert len(args) == 1, "Specify points"
     points, = args
@@ -1062,8 +1069,6 @@ def bar(*args, **keywds):
     width_size   Width of bar.  1.0 means bars do not overlap.
 
     """
-    import itertools
-    
     # TODO: ERROR BAR
     color = keywds.get("color", None)
     shadow = keywds.get("shadow", None)
@@ -1323,8 +1328,8 @@ def find_tall_heatmap_size(
     #print xpix, ypix
 
     xpix, ypix = int(xpix), int(ypix)
-    height = nrow * ypix
-    width = ncol * xpix
+    #height = nrow * ypix
+    #width = ncol * xpix
     #print "DIM %dx%d (%d*%d, %d*%d)" % (height, width, nrow, ypix, ncol, xpix)
     return xpix, ypix
 
@@ -1343,8 +1348,8 @@ def find_wide_heatmap_size(
         height_width_ratio=inv_height_width_ratio)
     xpix, ypix = x
     xpix, ypix = ypix, xpix
-    height = nrow * ypix
-    width = ncol * xpix
+    #height = nrow * ypix
+    #width = ncol * xpix
     #print "DIM %dx%d (%d*%d, %d*%d)" % (height, width, nrow, ypix, ncol, xpix)
     return xpix, ypix
 
@@ -1412,12 +1417,17 @@ def _make_graph(
     # 
     # width        Number of pixels wide for the plot.
     # height
+
+    # keywds will absorb additional arguments...
     import graphconst as gc
 
     width = width or 1024
     height = height or 768
     if plotter is None:
         import povrayplot as plotter
+
+    if font:
+        raise NotImplementedError
 
     # Check the inputs
     x = _set_default_axes(
@@ -1486,7 +1496,7 @@ def _set_default_color(color, n):
     if n == 0:
         return []
     assert n > 0
-    if color == True:
+    if color is True:
         if n == 1:
             color = None
         else:
@@ -1638,7 +1648,7 @@ def _set_default_tick(tick, coord_min, coord_max):
         tick = []
     elif operator.isSequenceType(tick):
         pass
-    elif tick == True:
+    elif tick is True:
         tick = place_ticks(coord_min, coord_max, num_ticks=8)
     elif type(tick) is type(0):
         tick = place_ticks(coord_min, coord_max, num_ticks=tick)
@@ -1695,8 +1705,8 @@ def _choose_tick_delta(v_min, v_max, num_ticks=10):
     # Calculate the ideal delta, and choose the smallest DELTA that is
     # >= the ideal one.  Assume DELTAS sorted from largest to
     # smallest.  This means num_ticks is the maximum bound.
-    range = v_max - v_min
-    delta_ideal = float(range) / num_ticks
+    range_ = v_max - v_min
+    delta_ideal = float(range_) / num_ticks
     # delta_ideal   delta
     #   0.8           0.5
     #    12           10
@@ -1848,7 +1858,7 @@ def _score_label(
     if fh > fd*2:
         # If the object to be labelled is long and skinny, then a
         # vertical label would look better.
-        favor_vertical = True
+        favor_horizontal = False
 
     pos_score = position2score[position]
     if favor_horizontal and orientation == gc.LABEL_VERTICAL:
@@ -1937,7 +1947,6 @@ def _position_one_label(
 def _cache_label_object_overlaps(objects, labels, altlabels, margin):
     import itertools
     import graphconst as gc
-    import jmath
 
     # Optimization: cache the overlaps between labels and objects.
     ALL_POSITIONS = [

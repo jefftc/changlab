@@ -5,7 +5,7 @@ layout
 
 """
 
-def layout(nodes, edges):
+def layout(nodes, edges, prog=None):
     # nodes is a list of the names of the nodes, given as strings.
     # edges is a list of tuples (<node_a>, <node_b>) that indicate
     # which nodes are connected.  Return a list of the (x, y)

@@ -16,7 +16,7 @@ get_missing_names
 
 """
 
-import os, sys
+import os
 
 class Node:
     def __init__(self, id):

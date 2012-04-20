@@ -10,7 +10,6 @@ import os, sys
 def calc_free_energy(sequence, NA=None, T=None):
     # Returns the delta G of the best folding.  If no foldings, then
     # returns 0.
-    import time
     import tempfile
     import genomelib
 
