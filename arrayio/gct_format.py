@@ -69,7 +69,7 @@ def is_matrix(X):
         DIAGNOSIS = "No samples."
         return False
     if len(X.col_names()) != 1:
-        DIAGNOSIS = "Extract sample annotations."
+        DIAGNOSIS = "Extra sample annotations."
         return False
     if len(X.row_names()) != 2:
         DIAGNOSIS = "Row annotations not right."

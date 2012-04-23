@@ -391,7 +391,8 @@ def _pcl_to_gct(X):
     from genomicode import parselib
     assert pcl_format.is_matrix(X)
 
-    assert len(X.col_names()) == 1
+    # PCL format can have multiple column annotations, e.g. EWEIGHT.
+    #assert len(X.col_names()) == 1
     assert X._col_order and X._col_order[0] == tab_delimited_format.SAMPLE_NAME
     assert len(X.row_names()) > 0
 
@@ -402,9 +403,10 @@ def _pcl_to_gct(X):
         row_name, row_desc = X.row_names()[:2]
     
     row_order = ["NAME", "DESCRIPTION"]
-    col_order = X._col_order[:]
+    #col_order = X._col_order[:]
+    col_order = [tab_delimited_format.SAMPLE_NAME]
     row_names = {}
-    col_names = X._col_names.copy()
+    col_names = {}
     synonyms = {}
 
     row_names["NAME"] = X._row_names[row_name]
@@ -414,6 +416,7 @@ def _pcl_to_gct(X):
         # Make up default row names.
         x = ["DESC%s" % x for x in parselib.pretty_range(0, X.nrow())]
         row_names["DESCRIPTION"] = x
+    col_names[col_order[0]] = X._col_names[tab_delimited_format.SAMPLE_NAME]
     synonyms[ROW_ID] = "NAME"
     synonyms[COL_ID] = col_order[0]
 
@@ -421,6 +424,8 @@ def _pcl_to_gct(X):
         X._X, row_names=row_names, col_names=col_names,
         row_order=row_order, col_order=col_order)
     x = Matrix.add_synonyms(x, synonyms)
+    #gct_format.is_matrix(x)
+    #print gct_format.DIAGNOSIS
     assert gct_format.is_matrix(x)
     return x
 
