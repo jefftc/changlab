@@ -1426,8 +1426,9 @@ def _make_graph(
     if plotter is None:
         import povrayplot as plotter
 
-    if font:
-        raise NotImplementedError
+    # Ignored!
+    #if font:
+    #    raise NotImplementedError
 
     # Check the inputs
     x = _set_default_axes(

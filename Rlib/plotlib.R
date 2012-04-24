@@ -214,7 +214,7 @@ my.lineplot <- function(coords, xlim=NA, ylim=NA, col=NA, lwd=2) {
 }
 
 my.lineplot2 <- function(X, Y=NA, xlab=NA, ylab=NA, 
-  col=NA, SPACING=NA, lwd=1) {
+  col=NA, SPACING=NA, lwd=1, main=NA) {
   # X should be gene x samples matrix.
   # Y should be a vector of the line number for each row of X (1-based).
   # col is a vector of the colors for each gene.
@@ -233,7 +233,8 @@ my.lineplot2 <- function(X, Y=NA, xlab=NA, ylab=NA,
 
   xlim <- c(1, ncol(X))  
   ylim <- c(-SPACING, num.lines*SPACING)
-  plot(NA, type="n", axes=FALSE, xlim=xlim, ylim=ylim, xlab="", ylab="")
+  plot(NA, type="n", axes=FALSE, xlim=xlim, ylim=ylim, xlab="", ylab="", 
+    main=main)
   for(i in 1:nrow(X)) {
     offset <- (Y[i]-1) * SPACING
     x <- as.numeric(X[i,]) + offset
