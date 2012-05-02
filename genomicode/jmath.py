@@ -958,13 +958,13 @@ def R_equals_vector(X, varname):
     R("%s <- c(%s)" % (varname, X_str))
     return varname
 
-def R_equals_matrix(M, varname):
+def R_equals_matrix(M, varname,by_row=False):
     # Bug: Only works with floats.
     temp_varname = "JMATH.R.TMP"
     R = start_R()
     x = flatten(M)
     x = robjects.FloatVector(x)
-    x = robjects.r["matrix"](x, nrow=nrow(M), ncol=ncol(M))
+    x = robjects.r["matrix"](x, nrow=nrow(M), ncol=ncol(M),byrow=by_row)
 
     # Set to a temporary variable first.  varname may not be a
     # variable, e.g. "OBJ$member".
