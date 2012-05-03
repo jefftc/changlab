@@ -5,6 +5,7 @@
 # parse_names
 # parse_geneset
 # _parse_file_gs
+# _parse_file_annot
 #
 # read_geneset_or_clin
 #
@@ -47,16 +48,13 @@ def parse_indexes(MATRIX, is_row, s):
     I = []
     for s, e in parselib.parse_ranges(s):
         assert s >= 1
-        s, e = s-1, e
-        e = min(e, max_index)
+        s, e = s-1, min(e, max_index)
         I.extend(range(s, e))
     return I
 
 def parse_names(MATRIX, is_row, s):
     # Examples:
     # E2F1,E2F3,PCNA
-    import re
-
     names = s.split(",")
     params = { "row" : names }
     if not is_row:
@@ -77,8 +75,9 @@ def parse_geneset(MATRIX, is_row, geneset):
     if not geneset:
         return []
     filename, genesets = _parse_file_gs(geneset)
-    
-    genes = genesetlib.read_genes(filename, *genesets, allow_tdf=True)
+
+    keywds = { "allow_tdf" : True }
+    genes = genesetlib.read_genes(filename, *genesets, **keywds)
     params = { "row" : genes }
     if not is_row:
         params = { "col" : genes }
@@ -92,10 +91,20 @@ def _parse_file_gs(geneset):
     # Parse a geneset specified by the user.  geneset is in the format
     # of <filename>[,<geneset>,<geneset>,...].  Return a tuple of
     # <filename>, list of <geneset> (or empty list).
+    # XXX what happens if this is an empty list?
     x = geneset.split(",")
     assert len(x) >= 1
     filename, genesets = x[0], x[1:]
     return filename, genesets
+
+def _parse_file_annot(annotation):
+    # annotations is in the format:
+    # <txt_file>,<header>,<value>[,<value,...]
+    # Return a tuple of <filename>, <header>, list of <value>.
+    x = annotation.split(",")
+    assert len(x) >= 3
+    filename, header, values = x[0], x[1], x[2:]
+    return filename, header, values
     
 def read_geneset_or_clin(filename):
     # Read either a GMT/GMX file, or a generic tab-delimited text file
@@ -127,7 +136,6 @@ def find_col_genesets(MATRIX, genesets):
 
 def relabel_col_ids(MATRIX, geneset):
     import arrayio
-    from genomicode import genesetlib
 
     if not geneset:
         return MATRIX
@@ -206,6 +214,63 @@ def find_row_ids(MATRIX, ids):
         return None
     return parse_names(MATRIX, True, ids)
 
+def find_col_annotation(MATRIX, col_annotation):
+    # Format: <txt_file>,<header>,<value>[,<value,...]
+    from genomicode import genesetlib
+    from genomicode import jmath
+    from genomicode import hashlib
+    
+    x = _parse_file_annot(col_annotation)
+    filename, header, values = x
+
+    # Read the annotations.
+    assert os.path.exists(filename)
+    header2annots = {}
+    header_order = []
+    for x in genesetlib.read_tdf(filename):
+        name, x, annots = x
+        header2annots[name] = annots
+        header_order.append(name)
+    assert header_order
+    for h in header_order[1:]:
+        assert len(header2annots[h]) == len(header2annots[header_order[0]])
+
+    matrix_header = _find_col_header(MATRIX, header2annots["Name"])
+        
+    # Align the annotations to the matrix file.  Search for a
+    # col_annot in the MATRIX that matches a column in the annotation
+    # file.
+    for annot_header in header_order:
+        matrix_header = _find_col_header(MATRIX, header2annots[annot_header])
+        if matrix_header is not None:
+            break
+    else:
+        raise AssertionError, "I could not align the annotation file to " + \
+              "the matrix."
+    annot = header2annots[annot_header]
+    matrix_annot = MATRIX.col_names(matrix_header)
+    h_annot = [hashlib.hash_R(x) for x in annot]
+    h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
+    I = jmath.match(h_matrix_annot, h_annot)
+    assert None not in I
+    for h in header2annots:
+        x = header2annots[h]
+        header2annots[h] = [x[i] for i in I]
+    # Make sure they're aligned correctly.
+    annot = header2annots[annot_header]
+    matrix_annot = MATRIX.col_names(matrix_header)
+    h_annot = [hashlib.hash_R(x) for x in annot]
+    h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
+    assert h_annot == h_matrix_annot
+
+    # Identify the lines that match the annotations.
+    assert header in header2annots, "I could not find the header: %s" % header
+    I = []
+    for i, annot in enumerate(header2annots[header]):
+        if annot in values:
+            I.append(i)
+    return I
+
 def find_row_genesets(MATRIX, genesets):
     if not genesets:
         return None
@@ -266,14 +331,14 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         x = MATRIX.row_names(arrayio.ROW_ID)
         ids_M = {}.fromkeys(x)
         missing = []  # In the align file, but not in my file.
-        for id in ids_A:
-            if id not in ids_M:
+        for id_ in ids_A:
+            if id_ not in ids_M:
                 missing.append(id)
         if len(missing) < 10:
-            for id in sorted(missing):
-                print id
-        message = "%d IDs from the align file are missing from the " + \
-                  "matrix file." % len(missing)
+            for id_ in sorted(missing):
+                print id_
+        message = ("%d IDs from the align file are missing from the "
+                   "matrix file." % len(missing))
         raise AssertionError, message
     return I
 
@@ -322,20 +387,18 @@ def align_cols(MATRIX, align_col_file, ignore_missing_cols):
         x = MATRIX.col_names(arrayio.COL_ID)
         ids_M = {}.fromkeys(x)
         missing = []
-        for id in ids_A:
-            if id not in ids_M:
-                missing.append(id)
+        for id_ in ids_A:
+            if id_ not in ids_M:
+                missing.append(id_)
         if len(missing) < 10:
-            for id in sorted(missing):
-                print id
+            for id_ in sorted(missing):
+                print id_
         message = "I could not find %d IDs." % len(missing)
         raise AssertionError, message
     return I
 
 def add_row_annot(MATRIX, row_annots):
     # row_annot should be in the format <gmx/gmt_file>[,<geneset>].
-    from genomicode import genesetlib
-    
     if not row_annots:
         return MATRIX
     filename, genesets = _parse_file_gs(row_annots)
@@ -439,15 +502,15 @@ def _match_colnames_to_geneset(
     # names from MATRIX must match the names in the gene set exactly.
     # MATRIX may be a subset of the gene set.
     import arrayio
-    from genomicode import jmath
+    from genomicode import hashlib
 
     annots = MATRIX.col_names(arrayio.COL_ID)
     if hash:
-        annots = [jmath.R_hash(x) for x in annots]
+        annots = [hashlib.hash_R(x) for x in annots]
         g2g = {}
         for gs in all_genesets:
             genes = geneset2genes[gs]
-            genes = [jmath.R_hash(x) for x in genes]
+            genes = [hashlib.hash_R(x) for x in genes]
             g2g[gs] = genes
         geneset2genes = g2g
         
@@ -476,16 +539,16 @@ def _best_match_colnames_to_geneset(
     # Return the (name, num_matches, list of matches, list of
     # non-matches) for the geneset that best matches the colnames.
     import arrayio
-    from genomicode import jmath
+    from genomicode import hashlib
 
     annots = MATRIX.col_names(arrayio.COL_ID)
     annots_orig = annots[:]
     if hash:
-        annots = [jmath.R_hash(x) for x in annots]
+        annots = [hashlib.hash_R(x) for x in annots]
         g2g = {}
         for gs in all_genesets:
             genes = geneset2genes[gs]
-            genes = [jmath.R_hash(x) for x in genes]
+            genes = [hashlib.hash_R(x) for x in genes]
             g2g[gs] = genes
         geneset2genes = g2g
 
@@ -570,6 +633,27 @@ def _dedup_indexes(I):
             i += 1
     return I
 
+def _find_col_header(MATRIX, col_names):
+    # Given a list of col names, find a header in the MATRIX that
+    # contains these names.  If multiple ones match, then just return
+    # the first one.  If none match, return None.
+    from genomicode import jmath
+    from genomicode import hashlib
+
+    h_col_names = [hashlib.hash_R(x) for x in col_names]
+    
+    for name in MATRIX.col_names():
+        matrix_col_names = MATRIX.col_names(name)
+        h_matrix_col_names = [hashlib.hash_R(x) for x in matrix_col_names]
+        I = jmath.match(h_col_names, h_matrix_col_names)
+        if None in I:  # missing something
+            continue
+        I = jmath.match(h_matrix_col_names, h_col_names)
+        if None in I:  # missing something
+            continue
+        return name
+    return None
+
 def main():
     import argparse
     import arrayio
@@ -591,22 +675,26 @@ def main():
         default=None,
         help="Quantile normalize the data.")
 
-    # --filter_row_indexes   Indexes of rows to include.
-    # --filter_row_ids       Ids of rows to include.
-    # --filter_row_geneset   <gmx/gmt_file>[,<geneset>]
+    # --select_row_indexes   Indexes of rows to include.
+    # --select_row_ids       Ids of rows to include.
+    # --select_row_geneset   <gmx/gmt_file>[,<geneset>]
     # --align_row_file       <filename>
     # --add_row_annot        <gmx/gmt_file>[,<geneset>]
     # --remove_row_annot     <name>                          (multiple)
-    # --filter_col_indexes   Indexes of columns to include.
+    # --select_col_indexes   Indexes of columns to include.
     # --relabel_col_ids      <gmx/gmt_file>[,<geneset>]
     # --align_col_file
     group = parser.add_argument_group(title="Column operations")
     group.add_argument(
-        "--filter_col_indexes", default=None,  
+        "--select_col_indexes", default=None,  
         help="Which columns to include e.g. 1-5,8 (1-based, inclusive)."
        )
     group.add_argument(
-        "--filter_col_genesets", default=None,
+        "--select_col_annotation", default=None, 
+        help="Include only the cols where the annotation contains a "
+        "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
+    group.add_argument(
+        "--select_col_genesets", default=None,
         help="Include only the samples from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
@@ -625,14 +713,14 @@ def main():
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
-        "--filter_row_indexes", default=None,  
+        "--select_row_indexes", default=None,  
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive)."
        )
     group.add_argument(
-        "--filter_row_ids", default=[], action="append",
+        "--select_row_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.")
     group.add_argument(
-        "--filter_row_genesets", default=None,
+        "--select_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
@@ -682,14 +770,15 @@ def main():
         return
 
     # Slice to a submatrix.
-    I1 = find_row_indexes(MATRIX, args.filter_row_indexes)
-    I2 = find_row_ids(MATRIX, args.filter_row_ids)
-    I3 = find_row_genesets(MATRIX, args.filter_row_genesets)
+    I1 = find_row_indexes(MATRIX, args.select_row_indexes)
+    I2 = find_row_ids(MATRIX, args.select_row_ids)
+    I3 = find_row_genesets(MATRIX, args.select_row_genesets)
     I4 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
     I_row = _intersect_indexes(I1, I2, I3, I4)
-    I1 = find_col_indexes(MATRIX, args.filter_col_indexes)
-    I2 = find_col_genesets(MATRIX, args.filter_col_genesets)
-    I_col = _intersect_indexes(I1, I2)
+    I1 = find_col_indexes(MATRIX, args.select_col_indexes)
+    I2 = find_col_genesets(MATRIX, args.select_col_genesets)
+    I3 = find_col_annotation(MATRIX, args.select_col_annotation)
+    I_col = _intersect_indexes(I1, I2, I3)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Align to the align_file.

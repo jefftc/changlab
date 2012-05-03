@@ -2,6 +2,7 @@
 
 read_gmx
 read_gmt
+read_tdf
 read_genesets   Read the genesets in a geneset file.
 read_genes      Read a list of genes that belong in a geneset.
 
@@ -14,9 +15,19 @@ def read_gmx(filename, preserve_spaces=False):
     import StringIO
     import filelib
 
-    # Transpose this file and parse as gmt.
     matrix = [x for x in filelib.read_cols(filename)]
     assert len(matrix) >= 2
+    
+    # Transpose this file and parse as gmt.
+    t_matrix = _transpose_gmx(matrix)
+    handle = StringIO.StringIO()
+    for x in t_matrix:
+        print >>handle, "\t".join(x)
+    handle.seek(0)
+    
+    return read_gmt(handle, preserve_spaces=preserve_spaces)
+
+def _transpose_gmx(matrix):
     t_matrix = []
     for j in range(len(matrix[0])):
         x = []
@@ -31,13 +42,7 @@ def read_gmx(filename, preserve_spaces=False):
         x2 = [x.strip() for x in x[2:]]
         x = x1 + x2
         t_matrix.append(x)
-
-    handle = StringIO.StringIO()
-    for x in t_matrix:
-        print >>handle, "\t".join(x)
-
-    handle.seek(0)
-    return read_gmt(handle, preserve_spaces=preserve_spaces)
+    return t_matrix
 
 ## def read_gmx(filename):
 ##     # yield name, description, list of genes
@@ -94,15 +99,24 @@ def read_gmt(filename, preserve_spaces=False):
 
 def read_tdf(filename, preserve_spaces=False):
     # yield name, description, list of genes
+    import filelib
+
+    matrix = [x for x in filelib.read_cols(filename)]
+    t_matrix = _transpose_gmx(matrix)
+    for i in range(len(t_matrix)):
+        x = t_matrix[i]
+        name, description, genes = x[0], "", x[1:]
+        yield name, description, genes
 
     # BUG: This will fail is there is a geneset with no genes in it,
     # because read_gmx requires at least the name and description
     # lines.
-    for x in read_gmx(filename, preserve_spaces=preserve_spaces):
-        name, description, genes = x
-        genes = [description] + genes
-        description = ""
-        yield name, description, genes
+    # BUG: Does not preserve spaces.
+    #for x in read_gmx(filename, preserve_spaces=preserve_spaces):
+    #    name, description, genes = x
+    #    genes = [description] + genes
+    #    description = ""
+    #    yield name, description, genes
 
 def read_genesets(filename, allow_tdf=False):
     # yield name, description, list of genes
