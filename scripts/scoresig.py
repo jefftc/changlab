@@ -454,7 +454,8 @@ def extract_reports(names, paths, file_layout):
         infiles_full = [os.path.join(path, x) for x in infiles]
         outfiles_full = [os.path.join(outpath, x) for x in outfiles]
         for x in infiles_full:
-            assert os.path.exists(x), "Missing: %s" % x
+            msg = "File missing: %s.  Analysis must have failed." % x
+            assert os.path.exists(x), msg
         for src, dst in zip(infiles_full, outfiles_full):
             shutil.copy2(src, dst)
 
@@ -1043,7 +1044,7 @@ def main():
         if sig.Normalization.upper() in desired_normalization:
             good.append(sig)
             continue
-        x = "Signature requires a %s file, but one was not provided." % (
+        x = "Signature requires %s normalized data, but it was not provided."%(
             sig.Normalization.upper())
         why_dropped[sig.xID] = x
     signatures = good
@@ -1106,6 +1107,7 @@ def main():
             DATA_illu = data
         else:
             raise AssertionError, "Unknown key: %s" % key
+    print "Writing aligned signal files."
     if DATA_rma:
         arrayio.gct_format.write(
             DATA_rma, open(file_layout.DATASET_RMA, 'w'))
@@ -1117,6 +1119,7 @@ def main():
             DATA_illu, open(file_layout.DATASET_ILLU, 'w'))
 
     # Figure out the names and paths for each signature.
+    print "Finding signatures."
     names = [None] * len(signatures)   # SIG19_AKT[_modified]
     paths = [None] * len(signatures)   # <path>/SIG19_AKT[_modified]
     for i, sig in enumerate(signatures):
@@ -1235,6 +1238,8 @@ def main():
     print "Done."
     
 if __name__ == '__main__':
+    #import sys
+    #print "Running python: %s" % sys.executable
     #print "'%s'" % os.environ["PATH"]
     #print os.getcwd()
     #sys.exit(0)

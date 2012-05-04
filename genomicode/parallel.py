@@ -1,6 +1,6 @@
 # Functions for running GNU parallel.
 
-# Probably should deprecate this in favor of multiprocessing module.
+# Should deprecate this in favor of multiprocessing module.
 
 import os, sys
 
@@ -32,6 +32,7 @@ def find():
 
     return None
 
+# Problem: How to detect if the process failed?
 def run_commands(commands, num_procs):
     # commands is a list of shell commands (as strings).  num_procs is
     # the number of processes to run.
@@ -54,4 +55,3 @@ def run_commands(commands, num_procs):
 
     output = r.read()
     return output
-

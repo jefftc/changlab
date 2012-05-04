@@ -1,6 +1,7 @@
 .genomicoderc
 
 arrayplot.py requires PIL
+GNU parallel
 
 
 Requirements:

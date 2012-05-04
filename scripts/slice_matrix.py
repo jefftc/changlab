@@ -13,6 +13,7 @@
 # find_col_genesets
 # relabel_col_ids
 # remove_duplicate_cols
+# remove_col_ids
 # 
 # find_row_indexes
 # find_row_ids
@@ -123,7 +124,6 @@ def read_geneset_or_clin(filename):
         description = ""
         yield name, description, genes
     
-
 def find_col_indexes(MATRIX, indexes):
     if not indexes:
         return None
@@ -201,6 +201,28 @@ def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
     x = MATRIX.matrix(None, I)
     return x
 
+def remove_col_ids(MATRIX, remove_col_ids):
+    import arrayio
+
+    if remove_col_ids is None:
+        return MATRIX
+    x = remove_col_ids.split(",")
+    col_ids = [x.strip() for x in x]
+    names = MATRIX.col_names(arrayio.COL_ID)
+    
+    I = []
+    not_found = {}.fromkeys(col_ids)
+    for i, name in enumerate(names):
+        if name in col_ids:
+            if name in not_found:
+                del not_found[name]
+        else:
+            I.append(i)
+    assert not not_found, "I could not find: %s." % \
+        ", ".join(sorted(not_found))
+    x = MATRIX.matrix(None, I)
+    return x
+    
 def find_row_indexes(MATRIX, indexes):
     if not indexes:
         return None
@@ -220,6 +242,9 @@ def find_col_annotation(MATRIX, col_annotation):
     from genomicode import jmath
     from genomicode import hashlib
     
+    if not col_annotation:
+        return None
+
     x = _parse_file_annot(col_annotation)
     filename, header, values = x
 
@@ -235,8 +260,6 @@ def find_col_annotation(MATRIX, col_annotation):
     for h in header_order[1:]:
         assert len(header2annots[h]) == len(header2annots[header_order[0]])
 
-    matrix_header = _find_col_header(MATRIX, header2annots["Name"])
-        
     # Align the annotations to the matrix file.  Search for a
     # col_annot in the MATRIX that matches a column in the annotation
     # file.
@@ -634,22 +657,28 @@ def _dedup_indexes(I):
     return I
 
 def _find_col_header(MATRIX, col_names):
-    # Given a list of col names, find a header in the MATRIX that
-    # contains these names.  If multiple ones match, then just return
-    # the first one.  If none match, return None.
+    # Find the header in the MATRIX whose annotations can be found in
+    # col_names.  MATRIX can be a subset of col_names.  If multiple
+    # headers match, then just return the first one.  If none match,
+    # return None.
     from genomicode import jmath
     from genomicode import hashlib
 
     h_col_names = [hashlib.hash_R(x) for x in col_names]
-    
+
     for name in MATRIX.col_names():
         matrix_col_names = MATRIX.col_names(name)
         h_matrix_col_names = [hashlib.hash_R(x) for x in matrix_col_names]
-        I = jmath.match(h_col_names, h_matrix_col_names)
-        if None in I:  # missing something
-            continue
+        #I = jmath.match(h_col_names, h_matrix_col_names)
+        #if None in I:  # missing something
+        #    continue
         I = jmath.match(h_matrix_col_names, h_col_names)
-        if None in I:  # missing something
+        missing = []
+        for i in range(len(I)):
+            if I[i] is None:
+                missing.append(matrix_col_names[i])
+        #print name, len(missing), missing
+        if len(missing):
             continue
         return name
     return None
@@ -697,6 +726,9 @@ def main():
         "--select_col_genesets", default=None,
         help="Include only the samples from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
+    group.add_argument(
+        "--remove_col_ids", default=None,  
+        help="Comma-separated list of IDs to remove.")
     group.add_argument(
         "--relabel_col_ids", default=None,  
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
@@ -781,24 +813,28 @@ def main():
     I_col = _intersect_indexes(I1, I2, I3)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
-    # Align to the align_file.
-    I_row = align_rows(MATRIX, args.align_row_file, args.ignore_missing_rows)
-    MATRIX = MATRIX.matrix(I_row, None)
-    I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
-    MATRIX = MATRIX.matrix(None, I_col)
-
-    # Add row annotations.
-    MATRIX = add_row_annot(MATRIX, args.add_row_annot)
-
     # Remove row annotations.
     for name in args.remove_row_annot:
         MATRIX = remove_row_annot(MATRIX, name)
 
+    # Add row annotations.
+    MATRIX = add_row_annot(MATRIX, args.add_row_annot)
+
     # Relabel the column IDs.
     MATRIX = relabel_col_ids(MATRIX, args.relabel_col_ids)
 
+    # Remove col IDs.  Do this after relabeling.
+    MATRIX = remove_col_ids(MATRIX, args.remove_col_ids)
+
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.filter_duplicate_cols)
+
+    # Align to the align_file.  Do this as close to the end as
+    # possible, after everything else removed and added.
+    I_row = align_rows(MATRIX, args.align_row_file, args.ignore_missing_rows)
+    MATRIX = MATRIX.matrix(I_row, None)
+    I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
+    MATRIX = MATRIX.matrix(None, I_col)
 
     # Log transform, if requested.
     if args.log_transform:

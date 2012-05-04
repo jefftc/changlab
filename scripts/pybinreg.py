@@ -1989,5 +1989,7 @@ def main():
     print "Finished pybinreg.py analysis on %s." % x
 
 if __name__ == '__main__':
+    #import sys
+    #print "Running python: %s" % sys.executable
     main()
     #import profile; profile.run("main()")
