@@ -11,7 +11,9 @@ def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     import Betsy_config
-    PREPROCESS_BIN = Betsy_config.PREPROCESS
+    PREPROCESS_path = Betsy_config.PREPROCESS
+    PREPROCESS_BIN = module_utils.which(PREPROCESS_path)
+    assert PREPROCESS_BIN,'cannot find the %s' %PREPROCESS_path
     command = ['python', PREPROCESS_BIN, parameters['preprocess'].upper(), 
                identifier]
     process = subprocess.Popen(command,shell=False,
@@ -28,6 +30,8 @@ def run(parameters,objects,pipeline):
         elif i.endswith('.rma'):
             outputfile = i
     os.rename(outputfile,outfile)
+    assert module_utils.exists_nz(outfile),'the output file %s\
+                   for preprocess fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
@@ -38,12 +42,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'geo_dataset','Contents,DatasetId',pipeline)
+        parameters,objects,'cel_files','contents',pipeline)
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'geo_dataset','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+        parameters,objects,'cel_files','contents')
+    assert os.path.exists(identifier),'the input file %s\
+               for preprocess does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

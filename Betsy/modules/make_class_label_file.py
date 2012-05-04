@@ -12,9 +12,12 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(identifier)
     label_line = ['0'] * M.dim()[1]
-    assert parameters['Contents'].startswith('[') and parameters['Contents'].endswith(']')
-    class_name=[parameters['Contents'][1:-1]]
+    assert parameters['contents'].startswith('[') and parameters['contents'].endswith(']')
+    class_name=[parameters['contents'][1:-1]]
     read_label_file.write(outfile,class_name,label_line)
+    assert module_utils.exists_nz(outfile),'the \
+            output file %s for make_class_label_file fails'%outfile
+
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
@@ -39,6 +42,7 @@ def get_newobjects(parameters,objects,pipeline):
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(parameters,
-                            objects,'signal_file','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+                            objects,'signal_file','contents')
+    assert os.path.exists(identifier),'the input \
+            file %s for make_class_label_file does not exist'%identifier
     return identifier,single_object

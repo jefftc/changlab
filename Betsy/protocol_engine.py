@@ -1,68 +1,54 @@
 #!/usr/bin/env python
-
 #protocol_engine.py
 import rule_engine
 import argparse
 import os
 import protocol_utils
+import module_utils
 
-
-
-def filter_pipelines(protocol, inputs, output_info,
-                     in_dataset_ids, in_contents, parameters=None):
+def filter_pipelines(protocol, inputs, in_contents,output,parameters):
     """given the Inputs and Output and Parameters dictionary,
        return a list of pipelines,if Parameters is None,
        then use the default parameters"""
     module = protocol_utils.import_protocol(protocol)
     pl_inputs = []
-    assert len(in_dataset_ids) == len(inputs)
     assert len(in_contents) == len(inputs)
     for i in range(len(inputs)):
         x = module.predicate2arguments[inputs[i]]
         assert len(x) == 2
-        in_parameters, modules = x
+        in_parameters = x[0][:]
+        in_parameters.extend(['contents','['+in_contents[i]+']'])
+        modules = x[1]
         query = protocol_utils.format_prolog_query(
-            inputs[i], in_dataset_ids[i],
-            in_contents[i], in_parameters,modules)
+            inputs[i], in_parameters,modules)
         pl_inputs.append(query)
-    new_parameters = dict()
-    if parameters:
-        for key in parameters.keys():
-            new_parameters[key.lower()] = parameters[key].lower()
-    else:
-        new_parameters = module.DEFAULT
     parameter_list = []
-    for key in new_parameters.keys(): 
-        parameter_list.extend([key,new_parameters[key]])
-    test_dataset=None
-    test_content=None
-    if len(output_info) == 3:
-        [output, out_dataset_id, out_content] = output_info
-    if len(output_info) == 5:
-        [output, out_dataset_id, out_content, test_dataset,test_content] = output_info
+    for key in parameters.keys(): 
+        parameter_list.extend([key,parameters[key]])
     pl_output = protocol_utils.format_prolog_query(
-        output, out_dataset_id, out_content, parameter_list,'Modules',test_content)
+        output, parameter_list,'Modules')
     pipelines = rule_engine.make_pipelines(pl_output,pl_inputs)
     return pipelines
-   
-def run_protocol(protocol, inputs, output_info, identifiers,
-                 in_dataset_ids, in_contents, parameters=None):
+
+def run_protocol(protocol, inputs, output, identifiers,
+                  in_contents, parameters):
     """given the Inputs and Output and Parameters dictionary,
        run the pipelines,
        return a list of final result file,
       if Parameters is None, then use the default parameters"""
     
     module = protocol_utils.import_protocol(protocol)
-    pipelines = filter_pipelines(protocol, inputs, output_info,
-                                 in_dataset_ids, in_contents, parameters)
+    pipelines = filter_pipelines(protocol, inputs, in_contents,output,
+                                 parameters)
     pl_inputs = []
     for i in range(len(inputs)):
         x = module.predicate2arguments[inputs[i]]
         assert len(x) == 2
-        in_parameters, modules = x
+        in_parameters = x[0][:]
+        in_parameters.extend(['contents','['+in_contents[i]+']'])
+        modules = x[1]
         query = protocol_utils.format_prolog_query(
-            inputs[i], in_dataset_ids[i], in_contents[i],
-            in_parameters, modules)
+            inputs[i], in_parameters,modules)
         pl_inputs.append(query)
     objects = rule_engine.plstring2dataobject(pl_inputs,identifiers)
     output_files_all = []
@@ -75,7 +61,7 @@ def run_protocol(protocol, inputs, output_info, identifiers,
               output_files_all.append(out_files[-1])
               parameters_all.append(pipeline[-1].parameters)
               pipeline_sequence_all.append(pipeline_sequence)
-              
+          
     return output_files_all,parameters_all,pipeline_sequence_all
 
 def main():
@@ -86,10 +72,8 @@ def main():
                         help = 'The name of the protocol,eg. cluster_genes')
     parser.add_argument('--input',dest = 'input',type = str,
                         action = 'append',default = None,
-                        help ='input:datasetid:contents:identifier_or_file\
+                        help ='input:contents:identifier_or_file\
                         or input:identifier')
-    parser.add_argument('--output',dest = 'output',type=str,
-                        help = 'datasetid:contents;datasetid:contents (train set;test set')
     parser.add_argument('--parameters',dest = 'parameters',
                         action = 'append',default = [],
                         type = str,help='key:value')
@@ -101,29 +85,20 @@ def main():
                         action = 'store_const',default = False,
                         const = True,
                         help = 'shows the protocol details')
-
+    
     args = parser.parse_args()
     if not args.protocol:
         raise parser.error('please specify the protocol')
     if not args.input:
         raise parser.error('please specify the input')
+    
+                
     len_inputs = []
     for i in args.input:
         len_input = len(i.split(':'))
-        assert len_input in [2,4],'input is length 2 or 4'
+        assert len_input in [2,3],'input is length 2 or 3'
         len_inputs.append(len_input)
-        if len(i.split(':')) == 4:
-            assert args.output,'please specify the output'
-            if ';' in args.output:
-                outputs = args.output.split(';')
-                for output in outputs:
-                    assert len(output.split(':')) == 2,'the\
-                      format of output is datasetid:contents\
-                      or datasetid:contents;datasetid:contents'
-            else:
-                assert len(args.output.split(':')) == 2,'the\
-                      format of output is datasetid:contents'
-                      
+
     assert len_inputs == [len_inputs[0]]*len(len_inputs),'the format of all inputs do not match'
     for i in args.parameters:
         assert len(i.split(':')) == 2, 'parameters should format like key:value'
@@ -136,31 +111,20 @@ def main():
     in_contents = []
     for i in args.input:
         inpair = i.split(':')
-        if len(inpair) == 4:
-            predicate, dataset_id, content, identifier = inpair
-            in_contents.append(content)
-            in_dataset_ids.append(dataset_id)
+        if len(inpair) == 3:
+            predicate, content, identifier = inpair
         elif len(inpair) == 2:
             predicate, identifier = inpair
-            in_contents.append('not_applicable')
-            in_dataset_ids.append('not_applicable')
+            content='unknown'
         else:
-            raise ValueError('the length of input should be 2 or 4')
+            raise ValueError('the length of input should be 2 or 3')
         assert predicate in module.INPUTS,("%s is not recognized in %s)"
                                         %(str(predicate),args.protocol))
+        if os.path.exists(identifier):
+            identifier = os.path.realpath(identifier)
         inputs.append(predicate)
+        in_contents.append(content)
         identifiers.append(identifier)
-    if args.output:
-        if ';' in args.output:
-            output = []
-            outputs = args.output.split(';')
-            for out in outputs:
-                output.extend(out.split(':'))
-        else:
-            output = args.output.split(':')
-    else:
-        output = ['not_applicable','not_applicable']
- 
     parameters = module.DEFAULT
     if args.parameters:
         for i in args.parameters:
@@ -168,10 +132,17 @@ def main():
             key,value = parpair
             assert key in module.PARAMETERS.keys(),(
                 '%s is not a valid parameter key in %s'%(key,args.protocol))
-            if not value.isdigit():
+            if module.PARAMETERS[key] == ['number']:
+                assert module_utils.is_number(value),'%s is not a number'%value
+            elif (not value.isdigit() and
+                  not (module.PARAMETERS[key] == ['arbitrary string']) and
+                  not (module.PARAMETERS[key] == ['arbitrary content'])):
                 assert value in module.PARAMETERS[key],(
                 '   %s is not a valid parameter value in %s'%(value,args.protocol))
-            parameters[key.lower()] = value.lower()
+            if module.PARAMETERS[key] == ['arbitrary content']:
+                parameters[key.lower()] = '['+value.lower() +']'
+            else:
+                parameters[key.lower()] = value.lower()
             
     if args.describe_protocol:
         print 'INPUTS', module.INPUTS
@@ -181,28 +152,26 @@ def main():
         
     if args.dry_run:
         for output_file in module.OUTPUTS:
-            output_info = [output_file]
-            output_info.extend(output)
             pipelines = filter_pipelines(
-            args.protocol, inputs,output_info,
-            in_dataset_ids,in_contents,parameters)
+            args.protocol,inputs,in_contents,output_file,
+            parameters)
             print len(pipelines)
             for pipeline in pipelines:
-                for analysis in pipeline:
-                    print analysis.name
-                    print analysis.parameters
-                print '-------------------------'
+                  for analysis in pipeline:
+                      print 'module',analysis.name,'\r'
+                      print 'parameters',analysis.parameters
+                  print '------------------------'
+            print len(pipelines)
+
     else:
         final_output = []
         final_parameters = []
         final_pipeline_sequence = []
-        for output_file in module.OUTPUTS:
-            output_info = [output_file]
-            output_info.extend(output)
-            output_files,parameters_all,pipeline_sequence_all = run_protocol(
-                args.protocol,inputs,output_info,
-                identifiers,in_dataset_ids,in_contents,parameters)
-            final_output.append(output_files)
+        for output in module.OUTPUTS:
+            output_file,parameters_all,pipeline_sequence_all = run_protocol(
+                args.protocol,inputs,output,
+                identifiers,in_contents,parameters)
+            final_output.append(output_file)
             final_parameters.append(parameters_all)
             final_pipeline_sequence.append(pipeline_sequence_all)
         print final_output

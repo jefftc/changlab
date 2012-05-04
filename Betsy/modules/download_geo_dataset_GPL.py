@@ -26,8 +26,10 @@ def download_dataset(GSEID):
         tar.extractall(path=GSEID_path)
         tar.close()
     os.remove(download_rarfile)
-    assert os.path.exists(GSEID_path),'the download file does not exist'
-    assert len(os.listdir(GSEID_path))>0, 'the untar fails'
+    assert os.path.exists(GSEID_path),'the download file %s\
+                        does not exist'%GSEID_path
+    assert len(os.listdir(GSEID_path))>0, 'the untar in \
+           download_geo_dataset_GPL %s fails'%GSEID_path
     return GSEID_path
 
 def get_seriesmatrix_file(GSEID,GPLID):
@@ -45,7 +47,8 @@ def get_seriesmatrix_file(GSEID,GPLID):
             ftp.retrbinary('RETR '+platform_filename,f.write)
             f.close()
             platform_txtfile = platform_filename[:-3]
-            assert not os.path.exists(platform_txtfile),'the seriesmatrix file already exists'
+            assert not os.path.exists(platform_txtfile),'the seriesmatrix\
+                          file %s already exists'%platform_txtfile
             #unzip the gz data
             import gzip
             fileObj = gzip.GzipFile(platform_filename, 'rb');
@@ -58,7 +61,8 @@ def get_seriesmatrix_file(GSEID,GPLID):
             fileObj.close()
             fileObjOut.close()
             os.remove(platform_filename)
-            assert os.path.exists(platform_txtfile),'the unzip fails'
+            assert os.path.exists(platform_txtfile),'the \
+                unzip %s in download_geo_dataset_GPL fails'%platform_txtfile
             platform_txtfiles.append(platform_txtfile)
     ftp.close()
     return platform_txtfiles
@@ -69,8 +73,8 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     GSEID = identifier.split(',')[0]
     GPLID = identifier.split(',')[1]
-    assert GSEID.startswith('GSE'),'GSEID is not correct'
-    assert GPLID.startswith('GPL'),'GPLID is not correct'
+    assert GSEID.startswith('GSE'),'GSEID %s is not correct'&GSEID
+    assert GPLID.startswith('GPL'),'GPLID %s is not correct'&GPLID
     GSEID_path = download_dataset(GSEID)
     platform_txtfiles = get_seriesmatrix_file(GSEID,GPLID)
     #get the cel file name for the GPL platform
@@ -83,7 +87,8 @@ def run(parameters,objects,pipeline):
             if linecontent.startswith('!Sample_geo_accession'):
                 cel_line = linecontent
                 break
-        assert cel_line,'the file does not contain "!Sample_geo_accession"'
+        assert cel_line,'the file %s\
+        does not contain "!Sample_geo_accession"'&platform_txtfile
         filecontent = os.listdir(GSEID_path)
         cel_names = []
         for x in linecontent.split()[1:]:
@@ -103,6 +108,8 @@ def run(parameters,objects,pipeline):
                             cel_file = clean_cel_filename(os.path.splitext(cel_file)[0])+'.gz'
                         outfilename=os.path.join(outfile,cel_file)
                         shutil.copyfile(os.path.join(GSEID_path,cel_file),outfilename)
+    assert module_utils.exists_nz(outfile),'the output file %s\
+                                    for download_geo_dataset_GPL fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
@@ -120,8 +127,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
-    new_object = rule_engine.DataObject('geo_dataset',[parameters['DatasetId'],
-                                        'unknown',parameters['Contents']],outfile)
+    newobjecttype = parameters['filetype']
+    new_object = rule_engine.DataObject(newobjecttype,[
+                        'unknown_version',parameters['contents']],outfile)
     new_objects = objects[:]
     new_objects.remove(single_object)
     new_objects.append(new_object)
@@ -130,8 +138,9 @@ def get_newobjects(parameters,objects,pipeline):
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(parameters,objects,
-                        'gse_dataset_and_platform','Contents,DatasetId')
-    assert len(identifier.split(','))==2,'the identifier should contain GSEID and GPLID'
+                        'gse_id_and_platform','contents')
+    assert len(identifier.split(','))==2,'the identifier %s\
+                            should contain GSEID and GPLID'%identifier
     return identifier,single_object
 
 def clean_cel_filename(cel_file):

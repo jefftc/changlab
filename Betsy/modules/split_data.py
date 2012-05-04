@@ -12,11 +12,12 @@ def run(parameters,objects,pipeline):
     """extract one signal file to another signal file according to contents"""
     identifier,single_object = get_identifier(parameters,objects)
     class_label_file,obj = module_utils.find_object(parameters,
-                            objects,'class_label_file','PreContents,PreDatasetid')
-    assert os.path.exists(class_label_file)
+                            objects,'class_label_file','precontents')
+    assert os.path.exists(class_label_file),'class_label_file %s\
+                                     does not exist'%class_label_file
     result,label_line,second_line = read_label_file.read(class_label_file)
-    assert parameters['Contents'].startswith('[') and parameters['Contents'].endswith(']')
-    contents = parameters['Contents'][1:-1].split(',')
+    assert parameters['contents'].startswith('[') and parameters['contents'].endswith(']')
+    contents = parameters['contents'][1:-1].split(',')
     content_index = []
     second_line = [class_name.lower() for class_name in second_line]
     for content in contents:
@@ -36,6 +37,8 @@ def run(parameters,objects,pipeline):
     f_out = file(outfile,'w')
     arrayio.pcl_format.write(M_c,f_out)
     f_out.close()
+    assert module_utils.exists_nz(outfile),'the output\
+                                   file %s for split_data fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
@@ -43,7 +46,7 @@ def run(parameters,objects,pipeline):
 
 def make_unique_hash(identifier,pipeline,parameters):
     parameters = module_utils.renew_parameters(
-        parameters,['PreDatasetid','PreContents','status'])
+        parameters,['precontents','status'])
     return module_utils.make_unique_hash(
         identifier,pipeline,parameters)
 
@@ -51,7 +54,7 @@ def get_outfile(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(identifier)
     parameters = module_utils.renew_parameters(
-        parameters,['PreDatasetid','PreContents','status'])
+        parameters,['precontents','status'])
     hash_string = make_unique_hash(identifier,pipeline,parameters)
     filename = original_file + '_BETSYHASH1_' + hash_string
     outfile = os.path.join(os.getcwd(),filename)
@@ -60,7 +63,7 @@ def get_outfile(parameters,objects,pipeline):
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     parameters = module_utils.renew_parameters(
-        parameters,['PreDatasetid','PreContents','status'])
+        parameters,['precontents','status'])
     attributes = parameters.values()
     new_object = rule_engine.DataObject('signal_file',attributes,outfile)
     new_objects = objects[:]
@@ -69,7 +72,8 @@ def get_newobjects(parameters,objects,pipeline):
     
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','PreContents,PreDatasetid')
-    assert os.path.exists(identifier),'the input file does not exist'
+        parameters,objects,'signal_file','precontents')
+    assert os.path.exists(identifier),'the input\
+                        file %s for split_data does not exist'%identifier
     return identifier,single_object
 

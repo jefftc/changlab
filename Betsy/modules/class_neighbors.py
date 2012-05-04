@@ -5,22 +5,72 @@ import os
 from genomicode import jmath
 import Betsy_config
 import subprocess
-
-def run(pipeline_parameters,objects,pipeline):
-    identifier,single_object = get_identifier(pipeline_parameters,objects)
-    outfile = get_outfile(pipeline_parameters,objects,pipeline)
+import rule_engine
+def run(parameters,objects,pipeline):
+    identifier,single_object = get_identifier(parameters,objects)
+    outfile = get_outfile(parameters,objects,pipeline)
     label_file,obj = module_utils.find_object(
-        pipeline_parameters,objects,'class_label_file','Contents,DatasetId')
-    assert os.path.exists(label_file),'cannot find label_file'
+        parameters,objects,'class_label_file','contents')
+    assert os.path.exists(label_file),('cannot find label_file %s for class_neighbors'
+                                       %label_file)
+    import arrayio
+    tmp = 'tmp.txt'
+    f = file(tmp,'w')
+    M = arrayio.read(identifier)
+    M_c = arrayio.convert(M,to_format=arrayio.gct_format)
+    arrayio.gct_format.write(M_c,f)
+    f.close()
     module_name = 'ClassNeighbors'
-    parameters = dict()
-    parameters['data.filename'] = identifier
-    parameters['class.filename'] = label_file
+    gp_parameters = dict()
+    gp_parameters['data.filename'] = tmp
+    gp_parameters['class.filename'] = label_file
+    
+    if 'cn_num_neighbors' in parameters.keys():
+        assert parameters['cn_num_neighbors'].isdigit(),'cn_num_neighbors should be digit'
+        gp_parameters['num.neighbors'] = str(parameters['cn_num_neighbors'])
+        
+    if 'cn_num_perm' in parameters.keys():
+        assert  gp_parameters['cn_num_perm'].isdigit(),'cn_num_perm should be digit'
+        gp_parameters['num.permutations'] = str(parameters['cn_num_perm'])
+        
+    if 'cn_user_pval' in parameters.keys():
+        assert  module_utils.is_number(gp_parameters['cn_user_pval']),'cn_user_pval should be a number'
+        gp_parameters['user.pval'] = str(parameters['cn_user_pval'])
+        
+    if 'cn_mean_or_median' in parameters.keys():
+        assert  gp_parameters['cn_mean_or_median'] in ['cn_none','cn_max','cn_median'],'ill_coll_mode is not correct'
+        gp_parameters['mean.or.median'] = str(parameters['cn_mean_or_median'])[3:]
+        
+    if 'cn_ttest_or_snr' in parameters.keys():
+        p={'cn_ttest':'-T','cn_snr':'-S'}
+        assert parameters['cn_ttest_or_snr'] in p.values(),'cn_ttest_snr is invalid'
+        gp_parameters['ttest.or.snr'] = p[parameters['cn_ttest_or_snr']]
+        
+    if 'cn_filter_data' in parameters.keys():
+        assert parameters['cn_ttest_or_snr'] in ['cn_yes','cn_no'],'cn_filter_data is invalid'
+        gp_parameters['filter.data'] = str(parameters['cn_filter_data'])[3:]
 
-    gp_module = Betsy_config.GENEPATTERN
+    if 'cn_abs_diff' in parameters.keys():
+        assert parameters['cn_abs_diff'].isdigit(),'cn_abs_diff should be digit'
+        gp_parameters['min.abs.diff'] = str(parameters['cn_abs_diff'])
+        
+    if 'cn_min_threshold' in parameters.keys():
+        assert parameters['cn_min_threshold'].isdigit(),'cn_min_threshold should be digit'
+        gp_parameters['min.threshold'] = str(parameters['cn_min_threshold'])
+        
+    if 'cn_max_threshold' in parameters.keys():
+        assert parameters['cn_max_threshold'].isdigit(),'cn_max_threshold should be digit'
+        gp_parameters['max.threshold'] = str(parameters['cn_max_threshold'])
+        
+    if 'cn_min_folddiff' in parameters.keys():
+        assert parameters['cn_min_folddiff'].isdigit(),'cn_min_folddiff should be digit'
+        gp_parameters['min.fold.diff'] = str(parameters['cn_min_folddiff'])
+    gp_path = Betsy_config.GENEPATTERN
+    gp_module = module_utils.which(gp_path)
+    assert gp_module,'cannot find the %s' %gp_path
     command = [gp_module, module_name]
-    for key in parameters.keys():
-        a = ['--parameters',key+':'+ parameters[key]]
+    for key in gp_parameters.keys():
+        a = ['--parameters',key+':'+ gp_parameters[key]]
         command.extend(a)
     
     download_directory = None
@@ -39,10 +89,31 @@ def run(pipeline_parameters,objects,pipeline):
         raise ValueError(error_message)
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
-    os.rename(download_directory,outfile)
-    new_objects = get_newobjects(pipeline_parameters,objects,pipeline)
+    os.remove(tmp)
+    gene_list=[]
+    for result_file in result_files:
+        if result_file.endswith('.odf'):
+            f = file(os.path.join(download_directory,result_file),'r')
+            text = f.read()
+            text = text.split('\n')
+            f.close()
+            numline = 8
+            startline = 14
+            assert text[numline].startswith('NumNeighbors'),'the odf file format is not right'
+            number_gene=int(text[numline].split('=')[1])
+            assert text[startline].startswith('1'),'the start line is not right'
+            
+            for line in text[startline:startline+number_gene]:
+                lines = line.split('\t')
+                gene_list.append(lines[10])
+    f = file(outfile,'w')
+    f.write('\t'.join(gene_list))
+    f.close()
+    assert module_utils.exists_nz(outfile),'the output \
+                        file %s for class_neighbors fails' %outfile
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        pipeline_parameters,single_object,pipeline)
+        parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):
@@ -50,18 +121,21 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_identifier(parameters,objects):
-    return module_utils.find_object(
-        parameters,objects,'signal_file','Contents,DatasetId')
-
-def get_outfile(parameters,objects,pipelines):
-    identifier,single_object = module_utils.get_outfile(
-        parameters,objects,'signal_file','Contents,DatasetId',pipeline)
-    assert os.path.exists(identifier),'the input file does not exist'
+    identifier,single_object = module_utils.find_object(
+        parameters,objects,'signal_file','contents')
+    assert os.path.exists(identifier),'the input \
+            file %s for class_neighbors does not exist'%identifier
     return identifier,single_object
 
+def get_outfile(parameters,objects,pipeline):
+     return module_utils.get_outfile(
+        parameters,objects,'signal_file','contents',pipeline)
+    
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
-    new_objects = module_utils.get_newobjects(
-        outfile,'signal_file',parameters,objects,single_object)
+    parameters = module_utils.renew_parameters(parameters,['status'])
+    new_object = rule_engine.DataObject(
+        'gene_list_file',[parameters['contents']],outfile)
+    new_objects = objects[:]
+    new_objects.append(new_object)
     return new_objects

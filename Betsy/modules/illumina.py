@@ -17,27 +17,51 @@ def zip_directory(dir, zip_file):
             archive_name = os.path.join(archive_root, f)
             zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
     zip.close()
-    
 
-def run(pipeline_parameters,objects,pipeline):
-    identifier,single_object = get_identifier(pipeline_parameters,objects)
-    outfile = get_outfile(pipeline_parameters,objects,pipeline)
-    
+def run(parameters,objects,pipeline):
+    identifier,single_object = get_identifier(parameters,objects)
+    outfile = get_outfile(parameters,objects,pipeline)
     module_name = 'IlluminaExpressionFileCreator'
-    parameters = dict()
+    gp_parameters = dict()
     if zipfile.is_zipfile(identifier):
-        parameters['idat.zip'] = identifier
+        gp_parameters['idat.zip'] = identifier
     else:
         zipfile_name = os.path.split(identifier)[-1]+'.zip'
         zip_directory(identifier,zipfile_name)
-        parameters['idat.zip'] = zipfile_name
-    parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
-    parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
-    
-    gp_module = Betsy_config.GENEPATTERN
+        gp_parameters['idat.zip'] = zipfile_name
+    gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
+    gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
+    manifiest = ['HumanHT-12_V3_0_R2_11283641.txt','HumanHT-12_V4_0_R2_15002873_B.txt']
+    chip = ['ilmn_HumanHT_12_V4_0_R1_15002873_B.chip']
+    if 'ill_bg_mode' in parameters.keys():
+        assert parameters['ill_bg_mode'] in ['ill_yes','ill_no'],'ill_bg_mode should be ill_yes or ill_no'
+        p = {'ill_yes':'true','ill_no':'false'}
+        gp_parameters['background.subtraction.mode'] = p[parameters['ill_bg_mode']]
+        
+    if 'ill_chip' in parameters.keys():
+        assert  gp_parameters['ill_chip'] in chip,'ill_chip is not correct'
+        gp_parameters['chip'] = str(parameters['ill_chip'])
+        
+    if 'ill_manifest' in parameters.keys():
+        assert  gp_parameters['ill_manifest'] in manifiest,'ill_manifest is not correct'
+        gp_parameters['manifest'] = str(parameters['ill_manifest'])
+        
+    if 'ill_coll_mode' in parameters.keys():
+        assert  gp_parameters['ill_coll_mode'] in ['ill_none','ill_max','ill_median'],'ill_coll_mode is not correct'
+        gp_parameters['collapse.mode'] = str(parameters['ill_coll_mode'])[4:]
+        
+    if 'ill_clm' in parameters.keys():
+        gp_parameters['clm'] = str(parameters['ill_clm'])
+        
+    if 'ill_custom_chip' in parameters.keys():
+        gp_parameters['chip'] = str(parameters['ill_custom_chip'])
+
+    gp_path = Betsy_config.GENEPATTERN
+    gp_module = module_utils.which(gp_path)
+    assert gp_module,'cannot find the %s' %gp_path
     command = [gp_module, module_name]
-    for key in parameters.keys():
-        a = ['--parameters',key+':'+ parameters[key]]
+    for key in gp_parameters.keys():
+        a = ['--parameters',key+':'+ gp_parameters[key]]
         command.extend(a)
     
     download_directory = None
@@ -61,18 +85,20 @@ def run(pipeline_parameters,objects,pipeline):
     for result_file in result_files:
         assert result_file.endswith('.gct')
         if '-controls' in result_file:
-            if 'controls' in pipeline_parameters['preprocess']:
+            if 'controls' in parameters['preprocess']:
                 goal_file = os.path.realpath(
                         download_directory+'/'+result_file)
         else:
-            if 'controls' not in pipeline_parameters['preprocess']:
+            if 'controls' not in parameters['preprocess']:
                 goal_file = os.path.realpath(
                         download_directory+'/'+result_file)
                 
     os.rename(goal_file,outfile)
-    new_objects = get_newobjects(pipeline_parameters,objects,pipeline)
+    assert module_utils.exists_nz(outfile),'the output file %s\
+                         for illumina fails'%outfile
+    new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                    pipeline_parameters,single_object,pipeline)
+                    parameters,single_object,pipeline)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):
@@ -81,12 +107,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'geo_dataset','Contents,DatasetId',pipeline)
+        parameters,objects,'idat_files','contents',pipeline)
     
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'geo_dataset','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+        parameters,objects,'idat_files','contents')
+    assert os.path.exists(identifier),'the input file %s \
+             for illumina does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

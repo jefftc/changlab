@@ -34,45 +34,59 @@ set_value(Parameters,Key,Value,NewParameters):-
 remove_at(X,[X|Xs],1,Xs).
 remove_at(X,[Y|Xs],K,[Y|Ys]) :- K > 1, 
    K1 is K - 1, remove_at(X,Xs,K1,Ys).
-    
+
 /*-------------------------------------------------------------------------*/
 convert_parameters_raw(Parameters,NewParameters):-
+   
+    get_value(Parameters,contents,[unknown],Contents),
+    NewParameters0=[contents,Contents],
+ 
     get_value(Parameters,format,unknown_format,Format),
     member(Format,[tdf,jeffs,res,gct,pcl,not_pcl,unknown_format,xls,not_xls]),
-    append([],[format,Format],NewParameters1),
-   
+    append(NewParameters0,[format,Format],NewParameters1),
+     
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,illumina_controls]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
-
+    
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     member(Is_Logged,[logged,no_logged,unknown_logged]),
     append(NewParameters2,[is_logged,Is_Logged],NewParameters3),
 
     get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
-    member(Has_Missing_Value,[yes_missing,no_missing,unknown_missing]),
+    member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
     get_value(Parameters,filter,no_filter,Filter),
     (Filter=no_filter;not(atom(Filter))),
     append(NewParameters4,[filter,Filter],NewParameters5),
+    
+    %get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
+    %(Filter_fc=no_filter_fc;not(atom(Filter_fc))),
+    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
+    
+    get_value(Parameters,predataset,no_predataset,Predataset),
+    member(Predataset,[yes_predataset,no_predataset]),
+    append(NewParameters5,[predataset,Predataset],NewParameters6),
 
-    get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
-    member(Filter_fc,[yes_filter_fc,no_filter_fc]),
-    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
-    
-    get_value(Parameters,fill,no_fill,Fill),
-    member(Fill,[no_fill,yes_fill]),
-    append(NewParameters6,[fill,Fill],NewParameters7),
-    
     get_value(Parameters,status,created,Status),
     member(Status,[given,created,jointed,splited]),
-    append(NewParameters7,[status,Status],NewParameters).
+    append(NewParameters6,[status,Status],NewParameters7),
+
+    (member(Preprocess,[illumina,illumina_controls]),
+    get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
+    append(NewParameters7,Options,NewParameters);
+    not(member(Preprocess,[illumina,illumina_controls])),
+    NewParameters=NewParameters7).
 /*-------------------------------------------------------------------------*/
 convert_parameters_clean_out(Parameters,NewParameters):-
+
+    get_value(Parameters,contents,[unknown],Contents),
+    append([],[contents,Contents],NewParameters0),
+
     get_value(Parameters,format,unknown_format,Format),
     Format=pcl,
-    append([],[format,Format],NewParameters1),
+    append(NewParameters0,[format,Format],NewParameters1),
    
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,illumina_controls]),
@@ -83,29 +97,38 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     append(NewParameters2,[is_logged,Is_Logged],NewParameters3),
 
     get_value(Parameters,has_missing_value,no_missing,Has_Missing_Value),
-    member(Has_Missing_Value,[yes_missing,no_missing,unknown_missing]),
+    member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
     get_value(Parameters,filter,no_filter,Filter),
     (Filter=no_filter;not(atom(Filter))),
     append(NewParameters4,[filter,Filter],NewParameters5),
    
-    get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
-    member(Filter_fc,[yes_filter_fc,no_filter_fc]),
-    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
+    get_value(Parameters,predataset,no_predataset,Predataset),
+    member(Predataset,[yes_predataset,no_predataset]),
+    append(NewParameters5,[predataset,Predataset],NewParameters6),
 
-    get_value(Parameters,fill,no_fill,Fill),
-    member(Fill,[no_fill,yes_fill]),
-    append(NewParameters6,[fill,Fill],NewParameters7),
-    
+    %get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
+    %(Filter_fc=no_filter_fc;not(atom(Filter_fc))),
+    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
+
     get_value(Parameters,status,created,Status),
     member(Status,[given,created,jointed,splited]),
-    append(NewParameters7,[status,Status],NewParameters).
+    append(NewParameters6,[status,Status],NewParameters7),
+    
+    (member(Preprocess,[illumina,illumina_controls]),
+    get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
+    append(NewParameters7,Options,NewParameters);
+    not(member(Preprocess,[illumina,illumina_controls])),
+    NewParameters=NewParameters7).
 /*-----------------------------------------------*/
 convert_parameters_variable_raw(Parameters,NewParameters):-
+    get_value(Parameters,contents,[unknown],Contents),
+    append([],[contents,Contents],NewParameters0),
+
     get_value_variable(Parameters,format,Format),
     member(Format,[tdf,jeffs,res,gct,pcl,unknown_format,xls,not_xls]),
-    append([],[format,Format],NewParameters1),
+    append(NewParameters0,[format,Format],NewParameters1),
     
     get_value_variable(Parameters,preprocess,Preprocess),
     member(Preprocess,[rma,mas5,loess,agilent,illumina,unknown_preprocess,illumina_controls]),
@@ -116,36 +139,44 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     append(NewParameters2,[is_logged,Is_Logged],NewParameters3),
     
     get_value_variable(Parameters,has_missing_value,Has_Missing_Value),
-    member(Has_Missing_Value,[yes_missing,no_missing,unknown_missing]),
+    member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
     get_value(Parameters,filter,no_filter,Filter),
     (member(Filter,[no_filter,25]);not(Filter=25),not(atom(Filter))),
-    (not(atom(Filter)),Has_Missing_Value=yes_missing;Filter=no_filter,true),
     append(NewParameters4,[filter,Filter],NewParameters5),
     
-    get_value_variable(Parameters,filter_fc,Filter_fc),
-    member(Filter_fc,[yes_filter_fc,no_filter_fc]),
-    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
+    %get_value_variable(Parameters,filter_fc,Filter_fc),
+    %(member(Filter_fc,[no_filter_fc,2]);not(Filter_fc=2),not(atom(Filter_fc))),
+    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
 
-    get_value_variable(Parameters,fill,Fill),
-    member(Fill,[no_fill,yes_fill]),
-    (Fill=yes_fill,Has_Missing_Value=yes_missing;not(Fill=yes_fill),true),
-    append(NewParameters6,[fill,Fill],NewParameters7),
+    get_value_variable(Parameters,predataset,Predataset),
+    member(Predataset,[yes_predataset,no_predataset]),
+    append(NewParameters5,[predataset,Predataset],NewParameters6),
 
     get_value_variable(Parameters,status,Status),
     member(Status,[given,created,jointed,splited]),
-    append(NewParameters7,[status,Status],NewParameters).
+    append(NewParameters6,[status,Status],NewParameters7),
+
+    (member(Preprocess,[illumina,illumina_controls]),
+    get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
+    append(NewParameters7,Options,NewParameters);
+    not(member(Preprocess,[illumina,illumina_controls])),
+    NewParameters=NewParameters7).
 
 /*-------------------------------------------------------------------------*/
 %get the parameters list for signal_raw
 get_desire_parameters_raw(Parameters,NewParameters):-
+
+    get_value(Parameters,contents,[unknown],Contents),
+    append([],[contents,Contents],NewParameters0),
+
     (member(format,Parameters),
     get_value_variable(Parameters,format,Format),
-    append([],[format,Format],NewParameters1);
+    append(NewParameters0,[format,Format],NewParameters1);
     not(member(format,Parameters)),
-    NewParameters1=[]),
-    
+    NewParameters1=NewParameters0),
+ 
     (member(preprocess,Parameters),
     get_value_variable(Parameters,preprocess,Preprocess),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2);
@@ -157,7 +188,7 @@ get_desire_parameters_raw(Parameters,NewParameters):-
     append(NewParameters2,[is_logged,Is_Logged],NewParameters3);
     not(member(is_logged,Parameters)),
     NewParameters3=NewParameters2),
-    
+
     (member(has_missing_value,Parameters),
     get_value_variable(Parameters,has_missing_value,Has_Missing_Value),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4);
@@ -170,23 +201,24 @@ get_desire_parameters_raw(Parameters,NewParameters):-
     not(member(filter,Parameters)),
     NewParameters5=NewParameters4),
     
-    (member(filter_fc,Parameters),
-    get_value_variable(Parameters,filter_fc,Filter_fc),
-    append(NewParameters5,[filter_fc,Filter_fc],NewParameters6);
-    not(member(filter_fc,Parameters)),
-    NewParameters6=NewParameters5),
+    %(member(filter_fc,Parameters),
+    %get_value_variable(Parameters,filter_fc,Filter_fc),
+    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6);
+    %not(member(filter_fc,Parameters)),
+    %NewParameters6=NewParameters5),
 
-    (member(fill,Parameters),
-    get_value_variable(Parameters,fill,Fill),
-    append(NewParameters6,[fill,Fill],NewParameters7);
-    not(member(fill,Parameters)),
-    NewParameters7=NewParameters6),
+    (member(predataset,Parameters),
+    get_value_variable(Parameters,predataset,Predataset),
+    append(NewParameters5,[predataset,Predataset],NewParameters6);
+    not(member(predataset,Parameters)),
+    NewParameters6=NewParameters5),
 
     (member(status,Parameters),
     get_value_variable(Parameters,status,Status),
-    append(NewParameters7,[status,Status],NewParameters);
+    member(Status,[created,jointed,splited,given]),
+    append(NewParameters6,[status,Status],NewParameters);
     not(member(status,Parameters)),
-    NewParameters=NewParameters7).
+    NewParameters=NewParameters6).
 
 /*-------------------------------------------------------------------------*/
 convert_parameters_norm1(Parameters,NewParameters):-
@@ -269,8 +301,14 @@ get_desire_parameters_norm2(Parameters,NewParameters):-
 convert_parameters_file(Parameters,NewParameters):-
     convert_parameters_norm2(Parameters,NewParameters1),
     get_value_variable(Parameters,gene_order,Gene_Order),
-    member(Gene_Order,[by_sample_ttest,by_gene_list,no_order]),
-    append(NewParameters1,[gene_order,Gene_Order],NewParameters).
+    member(Gene_Order,[by_sample_ttest,by_gene_list,by_class_neighbors,no_order]),
+    append(NewParameters1,[gene_order,Gene_Order],NewParameters2),
+    (Gene_Order=by_class_neighbors,
+    get_options(Parameters,[cn_num_neighbors,cn_num_perm,cn_user_pval,cn_mean_or_median,cn_ttest_or_snr,cn_filter_data,cn_min_threshold,cn_max_threshold,cn_min_folddiff,cn_abs_diff],[],Options),
+    append(NewParameters2,Options,NewParameters);
+    not(Gene_Order=by_class_neighbors),
+    NewParameters=NewParameters2).
+
  /*-------------------------------------------------------------------------*/
 %get the parameters list for signal_file
 get_desire_parameters_file(Parameters,NewParameters):-
@@ -280,7 +318,22 @@ get_desire_parameters_file(Parameters,NewParameters):-
     append(NewParameters1,[gene_order,Gene_Order],NewParameters);
     not(member(gene_order,Parameters)),
     NewParameters=NewParameters1).
-
+ /*-------------------------------------------------------------------------*/
+convert_parameters_svm(Parameters,NewParameters):-
+    convert_parameters_file(Parameters,NewParameters1),
+    get_value(NewParameters1,format,unknown_format,Format),
+    Format=pcl,
+    get_value(Parameters,svm_kernel,linear,Svm_Kernel),
+    member(Svm_Kernel,[linear,polynomial,rbf,sigmoid,precomputed_kernel]),
+    append(NewParameters1,[svm_kernel,Svm_Kernel],NewParameters2),
+    (member(traincontents,Parameters),
+    member(testcontents,Parameters),
+    get_value_variable(Parameters,traincontents,TrainContents),
+    get_value_variable(Parameters,testcontents,TestContents),
+    append(NewParameters2,[traincontents,TrainContents,testcontents,TestContents],NewParameters);
+    not(member(traincontents,Parameters)),
+    not(member(testcontents,Parameters)),
+    NewParameters=NewParameters2).
 /*----------------------------------------------------------------------*/
 /*Whether [X|Y] is a subset of Z*/
 is_subset([X|Y], Z) :- member(X, Z), is_subset(Y, Z).
@@ -309,25 +362,23 @@ takeout(X,[F|R],[F|S]):- takeout(X,R,S).
 perm([X|Y],Z):- perm(Y,W),takeout(X,Z,W).
 perm([],[]).
 /*-------------------------------------------------------------------------*/    
-%%getdatasetid(+DatasetId,+Contents,+C,+W,-Y)
-% given DatasetId and Contents both List_N,
-% C is a subset of Contents
-% find the corresponding DatasetId of C,
-% output is Y, W is the initial output.
-
-getdatasetid(DatasetId,Contents,C,W,Y):-
-    length(C,N),
-    N>0,
-    nth0(0,C,X),
-    nth0(Z,Contents,X),
-    delete(C,X,R),
-    nth0(Z,DatasetId,U),
-    append(W,[U],T),
-    getdatasetid(DatasetId,Contents,R,T,Y).
-getdatasetid(DatasetId,Contents,[],R,R).
-
 get_length(A,B):-
     A=n_raw, B=16;
     A=n_norm1,B=24;
     A=n_norm2,B=28;
     A=n_file,B=30.
+/*-------------------------------------------------------------------------*/  
+get_options(Parameters,Keys,S,Options):-
+   member(Key,Keys),
+   (member(Key,Parameters),
+   nth0(N,Parameters,Key),
+   X is N+1,
+   nth0(X,Parameters,Value),
+   append(S,[Key,Value],Option);
+   not(member(Key,Parameters)),
+   append(S,[],Option)),
+   remove_at(Key,Keys,1,Subkeys),
+   get_options(Parameters,Subkeys,Option,Options).
+
+get_options(Parameters,[],S,Options):-
+   Options=S.

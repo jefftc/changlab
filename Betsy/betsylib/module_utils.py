@@ -7,6 +7,7 @@ import os
 import read_label_file
 import Betsy_config
 import rule_engine
+
 def get_inputid(identifier):
     old_filename = os.path.split(identifier)[-1]
     if '_BETSYHASH1_' in old_filename: 
@@ -74,7 +75,26 @@ def merge_two_files(A_file,B_file,handle):
     #M_c = arrayio.convert(M,to_format=arrayio.pcl_format)
     arrayio.pcl_format.write(M_c,handle)
     
-
+def which(program):
+    
+    def is_exe(fpath):
+        return os.path.exists(fpath) and os.access(fpath, os.X_OK)
+    
+    def ext_candidates(fpath):
+        yield fpath
+        for ext in os.environ.get("PATHEXT", "").split(os.pathsep):
+            yield fpath + ext
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            for candidate in ext_candidates(exe_file):
+                if is_exe(candidate):
+                    return candidate
+    return None
         
 def format_convert(X):
     data = []
@@ -177,3 +197,9 @@ def renew_parameters(parameters,key_list):
         if key in newparameters.keys():
             del newparameters[key]
     return newparameters
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False

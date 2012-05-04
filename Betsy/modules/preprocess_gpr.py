@@ -29,8 +29,11 @@ def run(parameters,objects,pipeline):
             f.write(logmatrix[j][i])
         f.write('\n')
     f.close()
+    assert module_utils.exists_nz(outfile),'the output\
+                        file %s for preprocess_gpr fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
+    module_utils.write_Betsy_parameters_file(
+                            parameters,single_object,pipeline)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):
@@ -39,11 +42,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'geo_dataset','Contents,DatasetId',pipeline)
+        parameters,objects,'gpr_files','contents',pipeline)
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(parameters,objects,'geo_dataset','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+    identifier,single_object = module_utils.find_object(
+                     parameters,objects,'gpr_files','contents')
+    assert os.path.exists(identifier),'the input \
+                file %s for preprocess_gpr does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

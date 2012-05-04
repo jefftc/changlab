@@ -50,12 +50,14 @@ def run(parameters,objects,pipeline):
             old_file = os.path.join(directory,filename)
             new_file = os.path.join(outfile,filename)
             shutil.copyfile(old_file,new_file)
+        assert module_utils.exists_nz(outfile),'the output \
+                        file %s for extract_agilent_files fails'%outfile
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(parameters,
                                                  single_object,pipeline)
         return new_objects
     else:
-        return None
+        raise ValueError('no agilent file in the input %s'&identifier)
 def make_unique_hash(identifier,pipeline,parameters):
     original_file = module_utils.get_inputid(identifier)
     hash_profile={'version': 'agilent',
@@ -76,11 +78,12 @@ def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
-        outfile,'geo_dataset',parameters,objects,single_object)
+        outfile,'agilent_files',parameters,objects,single_object)
     return new_objects
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'geo_dataset','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+        parameters,objects,'agilent_files','contents')
+    assert os.path.exists(identifier),'the input \
+                file %s for extract_agilent_files does not exist'%identifier
     return identifier,single_object

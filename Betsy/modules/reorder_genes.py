@@ -9,8 +9,8 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     #read the gene order list
     gene_list_file,obj=module_utils.find_object(parameters,
-                                objects,'gene_list_file','DatasetId')
-    assert os.path.exists(gene_list_file),'cannot find gene_list_file'    
+                                objects,'gene_list_file','contents')
+    assert os.path.exists(gene_list_file),'cannot find gene_list_file %s'%gene_list_file  
     gene_list = open(gene_list_file,'r').read().split()
     #read the pcl signal file
     f_signal= open(identifier,'r')
@@ -23,10 +23,12 @@ def run(parameters,objects,pipeline):
     #get the order index and write to the outout file
     indexlist = gene_ranking.find_sorted_index(original_list,gene_list)
     f = open(outfile,'w')
-    f.write(content[0]+'\n')
+    f.write(content[0])
     for i in range(len(indexlist)):
-        f.write(content[indexlist[i]+1]+'\n')
+        f.write(content[indexlist[i]+1])
     f.close()
+    assert module_utils.exists_nz(outfile),'the output\
+                        file %s for reorder_genes fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
@@ -38,11 +40,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return  module_utils.get_outfile(
-        parameters,objects,'signal_file','Contents,DatasetId',pipeline)
+        parameters,objects,'signal_file','contents',pipeline)
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(parameters,objects,'signal_file','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+    identifier,single_object = module_utils.find_object(
+                  parameters,objects,'signal_file','contents')
+    assert os.path.exists(identifier),'the input\
+                file %s for reorder_genes does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

@@ -11,34 +11,44 @@ def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     model_file,obj = module_utils.find_object(
-        parameters,objects,'svm_model','DatasetId')
-    assert os.path.exists(model_file),'the model file does not exist'
-    test=arrayio.read(identifier)
+        parameters,objects,'svm_model','traincontents')
+    assert os.path.exists(model_file),'the model file %s for svm test \
+                                                      does not exist'%model_file
+    test = arrayio.read(identifier)
+    train_file = module_utils.find_object(parameters,objects,'signal_file','traincontents')
     x_test = module_utils.format_convert(test)#convert to the format libsvm accept
     test_label_file,obj = module_utils.find_object(parameters,objects,
-                                'class_label_file','TestContents,DatasetId')
-    assert os.path.exists(test_label_file),'the input file does not exist'
-    a,test_label,second_line = read_label_file.read(test_label_file)    
-    y_test = [int(x) for x in test_label]
+                                'class_label_file','testcontents')
     model = svmutil.svm_load_model(model_file)
+    if test_label_file:
+        assert os.path.exists(test_label_file),'the test_label_file %s for svm test\
+                                                         does not exist'%test_label_file
+        a,test_label,second_line = read_label_file.read(test_label_file)
+        actual_label = [second_line[int(i)] for i in test_label]
+        y_test = [int(x) for x in test_label]
+    else:
+        y_test = [0] * test.ncol()
+        actual_label = [''] * test.ncol()
     p_label,p_acc,p_val = svmutil.svm_predict(y_test,x_test,model)
     train_label_file,obj = module_utils.find_object(
-        parameters,objects,'class_label_file','TrainContents,DatasetId')
-    assert os.path.exists(train_label_file),'cannot find train_label_file'
+        parameters,objects,'class_label_file','traincontents')
+    assert os.path.exists(train_label_file),'the train_label_file %s \
+                              for svm test does not exist'%train_label_file
     result,label_line,second_line = read_label_file.read(train_label_file)
-    legend_name = ['"'+ i +'='+
-                    str(second_line.index(i))+'"' for i in second_line]
-    from genomicode import jmath
-    R = jmath.start_R()
-    R('library(R.utils)')
-    command = 'png2("'+outfile+'")'
-    R(command)
-    jmath.R_equals_vector(p_label,'p_label')
-    R('barx <- barplot(p_label, ylim=c(-1,max(p_label)+1), \
-      col="blue", axis.lty=2, ylab="Prediction",xlab="Sample")')
-    jmath.R_equals_vector(legend_name,'legend_name')
-    R('legend("bottomleft", legend_name, lty=1,cex=1)')
-    R('dev.off()')
+    prediction_index = [int(i) for i in p_label]
+    prediction = [second_line[i] for i in prediction_index]
+    result = [['Sample_name','Predicted_class','Confidence','Actual_class']]
+    name = test._col_names.keys()[0]
+    sample_name = test._col_names[name]
+    for i in range(len(sample_name)):
+        result.append(
+            [sample_name[i],prediction[i],str(p_val[i][0]),actual_label[i]])
+    f = file(outfile,'w')
+    for i in result:
+        f.write('\t'.join(i))
+        f.write('\n')
+    f.close()
+    assert module_utils.exists_nz(outfile),'the output file %s for svm test fails' %outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
@@ -48,12 +58,13 @@ def make_unique_hash(identifier,pipeline,parameters):
     
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(parameters,
-            objects,'signal_file','TestContents,DatasetId',pipeline)
+            objects,'signal_file','testcontents',pipeline)
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','TestContents,DatasetId')
-    assert os.path.exists(identifier),'the test file does not exist'
+        parameters,objects,'signal_file','testcontents')
+    assert os.path.exists(identifier),'the test file %s\
+                             for svm test does not exist' % identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

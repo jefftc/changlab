@@ -1,5 +1,4 @@
-#cluster_genes.py
-
+#differential_expressed_gene_analysis.py
 
 INPUTS = [
     'gse_id',
@@ -12,14 +11,12 @@ INPUTS = [
     'agilent_files',
     'input_signal_file']
 
-OUTPUTS = ['cluster_heatmap','cluster_file']
+OUTPUTS = ['differential_expressed_genes']
 
 PARAMETERS = {
-    'cluster_alg':['kmeans','pca','hierarchical','som'],
-    'distance':['correlation','euclidean'],
-    'k':'integer' ,
     'preprocess':['rma','mas5','loess','illumina_controls',
-                  'ilumina','agilent','unknown_preprocess'],
+                  'illumina','agilent','unknown_preprocess'],
+    'has_missing_value':['unknown_missing','no_missing','median_fill','zero_fill'],
     'gene_center':['mean','median','no_gene_center'],
     'gene_normalize':['variance','sum_of_squares','no_gene_normalize'],
     'quantile':['yes_quantile','no_quantile'],
@@ -27,16 +24,16 @@ PARAMETERS = {
     'shiftscale':['yes_shiftscale','no_shiftscale'],
     'combat':['yes_combat','no_combat'],
     'gene_order':['by_sample_ttest','by_gene_list','no_order','by_class_neighbors'],
-    'color':['red_green','blue_yellow'],
     'predataset':['yes_predataset','no_predataset'],
     'filter':['no_filter','integer between 0 and 100'],
-    'has_missing_value':['no_missing','median_fill','zero_fill','unknown_missing'],
+    'format':['pcl','gct'],
     'is_logged':['no_logged','logged'],
     'traincontents':['arbitrary content'],
     'testcontents':['arbitrary content'],
     'contents':['arbitrary content'],
-    'hm_width':['number'],
-    'hm_height':['number'],
+    'diff_expr':['t_test','sam'],
+    'sam_foldchange':['number'],
+    'sam_delta':['number'],
     'ill_manifest':['arbitrary string'],
     'ill_chip':['arbitrary string'],
     'ill_bg_mode':['ill_yes','ill_no'],
@@ -55,14 +52,12 @@ PARAMETERS = {
     'cn_abs_diff':['number']}
 
 DEFAULT = {
-    'cluster_alg':'kmeans','distance':'correlation','k':'5',
     'gene_center':'no_gene_center',
     'gene_normalize':'no_gene_normalize','quantile':'no_quantile',
     'dwd':'no_dwd','shiftscale':'no_shiftscale',
-    'combat':'no_combat','filter':'no_filter',
+    'combat':'no_combat','filter':'no_filter','is_logged':'logged',
     'predataset':'no_predataset',
-    'is_logged':'logged',
-    'gene_order':'no_order','color':'red_green'}
+    'gene_order':'no_order'}
 
 predicate2arguments={
     'gse_id':([],'[]'),
@@ -74,10 +69,4 @@ predicate2arguments={
     'class_label_file':(['status','given'],'[]'),
     'gene_list_file':([],'[]'),
     'input_signal_file':(['status','given'],'[]')}
-
-
-
-
-
-
 

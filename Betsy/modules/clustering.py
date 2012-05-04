@@ -12,7 +12,7 @@ def run(parameters,objects,pipeline):
         raise ValueError('K must be an integer')
     dist = distance_para[parameters['distance']]
     alg = {'kmeans': ["-g",dist,"-k",parameters['k']],'pca':["-g",dist,'-pg'],
-           'hierarchical':['-m','m'],'som':["-g",dist,'-s']}
+           'hierarchical':['-m','m','-ag'],'som':["-g",dist,'-s']}
     try:    
         com_parameter = alg[parameters['cluster_alg']]
     except:
@@ -35,6 +35,8 @@ def run(parameters,objects,pipeline):
     for result_file in result_files:
         if result_file.endswith(result_format):
             os.rename(result_file,outfile)
+    assert module_utils.exists_nz(outfile),'the output file %s\
+               for clustering fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
@@ -46,12 +48,13 @@ def make_unique_hash(identifier,pipeline,parameters):
     
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','Contents,DatasetId',pipeline)
+        parameters,objects,'signal_file','contents',pipeline)
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+        parameters,objects,'signal_file','contents')
+    assert os.path.exists(identifier),'the input file %s\
+                for clustering does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

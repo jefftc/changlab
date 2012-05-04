@@ -6,6 +6,43 @@ import hash_method
 import time
 import imghdr
 
+##def get_result_folder(protocol,outfiles,parameters,pipeline):
+##    OUTPUTPATH = Betsy_config.OUTPUTPATH
+##    filename = os.path.split(outfiles[0][0])[-1]
+##    if '_BETSYHASH1_' in filename: 
+##        inputid = '_'.join(filename.split('_')[:-2])
+##    else:
+##        inputid = filename
+##    for i in range(len(outfiles[0])):
+##        result_files = []
+##        folder_string = hash_method.hash_parameters(
+##            inputid,pipeline[0][i],**parameters[0][i])
+##        folder_name = 'result_folder_BETSYHASH1_'+folder_string
+##        result_folder = os.path.join(OUTPUTPATH,folder_name)
+##        if not os.path.exists(result_folder):
+##            os.mkdir(result_folder)
+##        for j in range(len(outfiles)):
+##            if len(outfiles[j]) == 1:
+##                final_output = os.path.split(outfiles[j][0])[-1]
+##                result_file = os.path.join(result_folder,final_output)
+##                result_files.append(outfiles[j][0])
+##                if not os.path.exists(result_file):
+##                    if os.path.isdir(outfiles[j][0]):
+##                        shutil.copytree(outfiles[j][0],result_file)
+##                    else:
+##                        shutil.copyfile(outfiles[j][0],result_file) 
+##            elif len(outfiles[j]) > 1:
+##                final_output = os.path.split(outfiles[j][i])[-1]
+##                result_file = os.path.join(result_folder,final_output)
+##                result_files.append(outfiles[j][i])
+##                if not os.path.exists(result_file):
+##                    if os.path.isdir(outfiles[j][i]):
+##                        shutil.copytree(outfiles[j][i],result_file)
+##                    else:
+##                        shutil.copyfile(outfiles[j][i],result_file)
+##            elif len(outfiles[j]) == 0:
+##                result_files.append(None)
+##        summarize_report(protocol,result_files,result_folder,parameters[0][i],pipeline[0][i])
 def get_result_folder(protocol,outfiles,parameters,pipeline):
     OUTPUTPATH = Betsy_config.OUTPUTPATH
     filename = os.path.split(outfiles[0][0])[-1]
@@ -43,26 +80,10 @@ def get_result_folder(protocol,outfiles,parameters,pipeline):
             elif len(outfiles[j]) == 0:
                 result_files.append(None)
         summarize_report(protocol,result_files,result_folder,parameters[0][i],pipeline[0][i])
-
-##def format_prolog_query(
-##    predicate,dataset_id,content,parameters,modules):
-##    str_parameters = ','.join(parameters)
-##    output = str('['+dataset_id+'],[' + content + '],[' +
-##                 str_parameters + '],' + modules)
-##    query = predicate + '(' + output+')'
-##    return query
-
 def format_prolog_query(
-    predicate,dataset_id,content,parameters,modules,
-    test_content=None):
+    predicate,parameters,modules):
     str_parameters = ','.join(parameters)
-    if test_content:
-        output = str('['+dataset_id+'],[' + content + '],[' +
-                test_content +'],['+
-                     str_parameters + '],' + modules)
-    else:
-        output = str('['+dataset_id+'],[' + content + '],[' +
-                 str_parameters + '],' + modules)
+    output = str('[' + str_parameters + '],' + modules)
     query = predicate + '(' + output+')'
     return query
 
@@ -148,13 +169,17 @@ def summarize_report(protocol,result_files,result_folder,parameters,pipeline):
             'actb_plot': 'the value of ACTB and TUBB in different sample before normalization in the data set',
             'hyb_bar_plot': 'the value of hybridization controls in the data set',
             'svm_predictions':'the svm predictions',
-            'weightedVoting':'the results file of weighted Voting '
+            'weightedVoting':'the results file of weighted Voting ',
+            'loocv': ' the result of the leave one out cross validation',
+            'differential_expressed_genes':'the result of the differential_expressed_genes ',
+            'class_neighbors':'the result of the class_neighbors'
             }
         #put the image in the same folder
         w(htmllib.H3("III.  Results"))
         output_type = module.OUTPUTS
         for i in range(len(output_type)):
             result = result_files[i]
+            flag = False
             if result:
                 prob_file = os.path.split(result)[-1]
                 if not(os.path.isdir(prob_file)):
@@ -167,8 +192,12 @@ def summarize_report(protocol,result_files,result_folder,parameters,pipeline):
                         w(htmllib.B(name))
                         w(all_description[output_type[i]])
                         w(htmllib.P())
-                elif os.path.isdir(prob_file) or not(imghdr.what(prob_file) == 'png'):
-                    w(all_description[output_type[i]]+'is shown in: %s'
+                    else:
+                        flag = True
+                else:
+                    flag = True
+            if flag:
+                w(all_description[output_type[i]]+'is shown in: %s'
                       % htmllib.A(prob_file, href=prob_file))
 
         # Write out the footer.
@@ -187,3 +216,4 @@ def summarize_report(protocol,result_files,result_folder,parameters,pipeline):
         raise 
     finally:
         os.chdir(cwd)
+

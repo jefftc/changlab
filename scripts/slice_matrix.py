@@ -21,6 +21,8 @@
 # add_row_annot
 # remove_row_annot
 #
+# quantile_normalize
+# 
 # _match_rownames_to_geneset
 # _match_colnames_to_geneset
 # _align_geneset_to_matrix
@@ -384,6 +386,12 @@ def remove_row_annot(MATRIX, name):
     # Bug: Does not remove from the synonyms list.
     return MATRIX_clean
 
+def quantile_normalize(MATRIX):
+    from genomicode import quantnorm
+    
+    MATRIX = quantnorm.normalize(MATRIX)
+    return MATRIX
+
 def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
     # Return tuple of (I_matrix, I_geneset) or None if no match can be
     # found.  Will find the largest match possible.
@@ -578,6 +586,10 @@ def main():
         "-l", "--log_transform", dest="log_transform", default=False,
         action="store_true",
         help="Log transform the data.")
+    parser.add_argument(
+        "-q", "--quantile", dest="quantile", action="store_true",
+        default=None,
+        help="Quantile normalize the data.")
 
     # --filter_row_indexes   Indexes of rows to include.
     # --filter_row_ids       Ids of rows to include.
@@ -702,6 +714,10 @@ def main():
     # Log transform, if requested.
     if args.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+
+    # Quantile normalize, if requested.
+    if args.quantile:
+        MATRIX = quantile_normalize(MATRIX)
 
     # Write the outfile (in the same format).
     handle = sys.stdout

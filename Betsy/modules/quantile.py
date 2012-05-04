@@ -14,6 +14,8 @@ def run(parameters,objects,pipeline):
     Y_c = arrayio.convert(Y,to_format = arrayio.pcl_format)
     arrayio.pcl_format.write(Y_c,f)
     f.close()
+    assert module_utils.exists_nz(outfile),'the output file %s\
+                    for quantile fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
@@ -26,11 +28,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','Contents,DatasetId',pipeline)
+        parameters,objects,'signal_file','contents',pipeline)
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(parameters,objects,'signal_file','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+    identifier,single_object = module_utils.find_object(
+                                 parameters,objects,'signal_file','contents')
+    assert os.path.exists(identifier),'the input\
+                    file %s for quantile does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

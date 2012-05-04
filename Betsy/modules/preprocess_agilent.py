@@ -39,6 +39,8 @@ def run(parameters,objects,pipeline):
         f.write('\n')
     f.close()
     os.remove(tmpfile)
+    assert module_utils.exists_nz(outfile),'the output\
+                 file %s for preprocess_agilent fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
     parameters,single_object,pipeline)
@@ -51,11 +53,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'geo_dataset','Contents,DatasetId',pipeline)
+        parameters,objects,'agilent_files','contents',pipeline)
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(parameters,objects,'geo_dataset','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+    identifier,single_object = module_utils.find_object(
+            parameters,objects,'agilent_files','contents')
+    assert os.path.exists(identifier),'the input \
+        file %s for preprocess_agilent does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):

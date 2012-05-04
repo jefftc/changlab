@@ -1,30 +1,26 @@
-#log_algorithm.py
-
+#unlog_signal_file.py
 import os
+import shutil
 import module_utils
-
+from genomicode import binreg
 def run(parameters,objects,pipeline):
-    """log the input gct or pcl file"""
+    """unlog the pcl file"""
     import arrayio
     import math
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    f = file(outfile,'w')
-    M_format = arrayio.choose_format(identifier)
     M = arrayio.read(identifier)
+    assert binreg.is_logged_array_data(M),'the input file\
+                               %s should be logged'%identifier
     for i in range(len(M._X)):
         for j in range(len(M._X[i])):
             if M._X[i][j] is not None :
-                if float(M._X[i][j])<1:
-                    M._X[i][j] = 1
-                M._X[i][j]=math.log(float(M._X[i][j]),2)
-    if M_format.__name__ == 'arrayio.gct_format':
-        M_c = arrayio.convert(M,to_format=arrayio.gct_format)
-        arrayio.gct_format.write(M_c,f)
-    elif M_format.__name__ == 'arrayio.pcl_format':
-        M_c = arrayio.convert(M,to_format=arrayio.pcl_format)
-        arrayio.pcl_format.write(M_c,f)
+                M._X[i][j] = 2**float(M._X[i][j])
+    f = file(outfile,'w')
+    arrayio.pcl_format.write(M,f)
     f.close()
+    assert module_utils.exists_nz(outfile),'the output\
+                        file %s for unlog_signal_file fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
@@ -37,12 +33,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','Contents,DatasetId',pipeline)
+        parameters,objects,'signal_file','contents',pipeline)
     
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','Contents,DatasetId')
-    assert os.path.exists(identifier),'the input file does not exist'
+        parameters,objects,'signal_file','contents')
+    assert os.path.exists(identifier),'the input\
+            file %s for unlog_signal_file does not exist'%identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):
@@ -51,3 +48,4 @@ def get_newobjects(parameters,objects,pipeline):
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects
+

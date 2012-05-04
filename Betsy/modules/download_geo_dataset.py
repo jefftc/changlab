@@ -25,7 +25,7 @@ def run(parameters,objects,pipeline):
     ftp.close()
     #untar the data folder
     if not tarfile.is_tarfile(filename):
-        raise ValueError('download file is not tar file')
+        raise ValueError('download file %s is not tar file'%tarfile)
     else:
         tar = tarfile.open(filename)
         tar.extractall(path=file_folder)
@@ -49,7 +49,7 @@ def run(parameters,objects,pipeline):
                     fileObjOut.write(line)
                 fileObj.close()
                 fileObjOut.close()
-                assert os.path.exists(unzipfile),'the unzip fails'
+                assert os.path.exists(unzipfile),'the unzip %s fails' %unzipfile
             else:
                 unzipfile = fileloc
                 newcelfname = clean_cel_filename(cel_file)
@@ -123,6 +123,8 @@ def run(parameters,objects,pipeline):
                 else:
                     raise ValueError('does not recognazie the platform')
     os.rename(out_filename,outfile)
+    assert module_utils.exists_nz(outfile),'the output \
+                       file %s for download_geo_dataset fails' %outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
     return new_objects
@@ -141,8 +143,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
-    new_object = rule_engine.DataObject('geo_dataset',[parameters['DatasetId'],
-                                    'unknown',parameters['Contents']],outfile)
+    newobjecttype = parameters['filetype']
+    new_object = rule_engine.DataObject(newobjecttype,[
+                        'unknown_version',parameters['contents']],outfile)
     new_objects = objects[:]
     new_objects.remove(single_object)
     new_objects.append(new_object)
@@ -150,8 +153,9 @@ def get_newobjects(parameters,objects,pipeline):
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'gse_dataset','Contents,DatasetId')
-    assert identifier.startswith('GSE'),'the GSEID should start with GSE'
+        parameters,objects,'gse_id','contents')
+    assert identifier.startswith('GSE'),'the GSEID %s\
+                         should start with GSE'%identifeir
     return identifier,single_object
 
 def clean_cel_filename(cel_file):

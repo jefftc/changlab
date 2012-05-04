@@ -10,21 +10,42 @@ def run(parameters,objects,pipeline):
     train_identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     train_label_file,obj = module_utils.find_object(
-        parameters,objects,'class_label_file','TrainContents,DatasetId')
-    test_label_file,obj = module_utils.find_object(
-        parameters,objects,'class_label_file','TestContents,DatasetId')
+        parameters,objects,'class_label_file','traincontents')
+    test_label_file,clf_obj = module_utils.find_object(
+        parameters,objects,'class_label_file','testcontents')
     test_file,obj = module_utils.find_object(
-        parameters,objects,'signal_file','TestContents,DatasetId')
-    assert os.path.exists(test_file),'the test file does not exist'
-    assert os.path.exists(test_label_file),'cannot find test_label_file'
-    assert os.path.exists(train_label_file),'cannot find train_label_file'
+        parameters,objects,'signal_file','testcontents')
+    if 'given' in clf_obj.attributes:
+        actual = True
+    else:
+        actual = False
+    assert os.path.exists(test_file),'the test\
+                file %s for weighted_voting does not exist'%test_file
+    assert os.path.exists(test_label_file),'cannot\
+                find test_label_file %s for weighted_voting'%test_label_file
+    assert os.path.exists(train_label_file),'cannot\
+                find train_label_file %s for weighted_voting'%train_label_file
     module_name = 'WeightedVoting'
     gp_parameters = dict()
     gp_parameters['train.filename'] = train_identifier
     gp_parameters['train.class.filename'] = train_label_file
     gp_parameters['test.filename'] = test_file
     gp_parameters['test.class.filename'] = test_label_file
-    gp_module = Betsy_config.GENEPATTERN
+    if 'wv_num_features' in parameters.keys():
+        assert parameters['wv_num_features'].isdigit(
+            ),'the wv_num_features should be digit numbers'
+        gp_parameters['num.features'] = str(parameters['wv_num_features'])
+    if 'wv_minstd' in parameters.keys():
+        assert module_utils.is_number(
+            parameters['wv_minstd']), 'the sv_minstd should be number'
+        gp_parameters['min.std'] = str(parameters['wv_minstd'])
+    if 'wv_feature_stat' in parameters.keys():
+        assert module_utils.is_number(
+            parameters['wv_feature_stat']), 'the wv_feature_stat should be number'
+        gp_parameters['feature.selection.statistic'] = str(parameters['wv_feature_stat'])
+    gp_path = Betsy_config.GENEPATTERN
+    gp_module = module_utils.which(gp_path)
+    assert gp_module,'cannot find the %s' %gp_path
     command = [gp_module, module_name]
     for key in gp_parameters.keys():
         a = ['--parameters',key+':'+ gp_parameters[key]]
@@ -55,23 +76,22 @@ def run(parameters,objects,pipeline):
             text = f.readlines()
             assert text[1][0:12]=='HeaderLines='
             start=int(text[1][12:-1])
-            label=[]
+            newresult=[['Sample_name','Predicted_class','Confidence','Actual_class']]
             for i in text[start+2:]:
                 line = i.split()
-                label.append(line[2])
-            number = [second_line.index(i) for i in label]
-            legend_name = ['"'+ i +'='+
-                           str(second_line.index(i))+'"' for i in second_line]
-            R = jmath.start_R()
-            R('library(R.utils)')
-            command = 'png2("'+outfile+'")'
-            R(command)
-            jmath.R_equals_vector(number,'p_label')
-            jmath.R_equals_vector(legend_name,'legend_name')
-            R('barx <- barplot(p_label, ylim=c(-1,max(p_label)+1), \
-              col="blue", axis.lty=2, ylab="Prediction",xlab="Sample")')
-            R('legend("bottomleft", legend_name, lty=1,cex=1)')
-            R('dev.off()')
+                n = len(line)
+                if actual:
+                    newline = [' '.join(line[0:n-4]),line[n-3],line[n-2],line[n-4]]
+                else:
+                    newline = [' '.join(line[0:n-4]),line[n-3],line[n-2],'']
+                newresult.append(newline)
+            f=file(outfile,'w')
+            for i in newresult:
+                f.write('\t'.join(i))
+                f.write('\n')
+            f.close()
+    assert module_utils.exists_nz(outfile),'the output\
+                               file %s for weighted_voting fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)
@@ -83,13 +103,15 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','TrainContents,DatasetId')
-    assert os.path.exists(identifier),'the train file does not exist'
+        parameters,objects,'signal_file','traincontents')
+    assert os.path.exists(identifier),'the train\
+            file %s for weighted_voting does not exist'%identifier
     return identifier,single_object
 
 def get_outfile(parameters,objects,pipeline):
+    
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','TrainContents,DatasetId',pipeline)
+        parameters,objects,'signal_file','traincontents',pipeline)
     
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

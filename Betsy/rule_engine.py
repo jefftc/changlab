@@ -57,9 +57,9 @@ def parse_text_pipeline(line):
     """parse a text line to a pipeline"""
     #convert to JSON object format
     import re
-    newline = re.sub(r"\b([a-zA-Z0-9_]\w*)\b(?!['\"])", r'"\1"', line)
+    newline = re.sub(r"\b(\d*[a-zA-Z0-9_\.]\w*)\b(?!['\"\.])", r'"\1"', line)
     newline = newline.replace("'",'"')
-    newline = newline.replace('.','')
+    #newline = newline.replace('.','')
     jline = json.loads(newline)
     #the output of json.loads is in unicode format,convert to string
     jline=convert_unicode_str(jline)
@@ -95,7 +95,6 @@ def make_module_wd_name(module_name,hash_string):
 def make_module_wd(working_dir):
     os.mkdir(working_dir)
     
-
     
 def run_pipeline(pipeline,objects):
     """run a single pipeline"""
@@ -157,6 +156,7 @@ def make_pipelines(pl_output,pl_inputs):
         swipl.source_code(p,'clustering.pl')
         swipl.source_code(p,'classification.pl')
         swipl.source_code(p,'class_label_file.pl')
+        swipl.source_code(p,'differentail_expressed_gene_analysis.pl')
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input +').'
             swipl.send_query(p,more_command)

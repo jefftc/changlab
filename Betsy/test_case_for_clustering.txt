@@ -1,38 +1,0 @@
-Test case for Clustering 1.Given a gse_dataset, generate a cluster_heatmap.
-cluster_alg = kmeans
-k=5
-gene_center = median
-gene_normalize =varianceThe input command will be like:
-protocol_engine.py  --protocol 'cluster_genes' --input 'gse_dataset:GSE21947' --parameter 'k:5' --parameters 'preprocess:rma' --parameters 'gene_center:median' --parameters 'gene_normalize:variance' --parameters 'cluster_alg:kmeans'
--------------------------------------------------------------------------------
-2.Given a gse_dataset_and_platform, genereate a cluster_heatmap.
-cluster_alg = kmeans
-k=5
-gene_center = median
-gene_normalize =variance
-The input command will be like:
-
-protocol_engine.py  --protocol 'cluster_genes' --input 'gse_dataset_and_platform:GSE17907,GPL570' --parameter 'k:5' --parameters 'preprocess:rma' --parameters 'gene_center:median' --parameters 'gene_normalize:variance' --parameters 'cluster_alg:kmeans'
--------------------------------------------------------------------------------
-3. Given two gse_dataset, merge and plot the heatmap. 
-quatile = yes_quantile,
-cluster_alg=pca
-preprocess = rma
-The input command will be like:
-
-protocol_engine.py  --protocol 'cluster_genes' --input 'gse_dataset:a:neg:GSE21947' --input 'gse_dataset:b:pos:GSE20437' --output 'a,b:neg,pos' --parameters 'preprocess:rma' --parameters 'quantile:yes_quantile' --parameters 'cluster_alg:pca'
--------------------------------------------------------------------------------
-4. Given a geo_dataset, preprocess using illumina
-preprocess=illumina
-format = pcl
-The input command will be like:
-
-protocol_engine.py  --protocol 'normalize_file' --input 'geo_dataset:/path_of_file'  --parameters 'preprocess:illumina' --parameters 'format:pcl' 
--------------------------------------------------------------------------------
-5. comand to call rule_engine.py 
-
- /home/xchen/chencode/Betsy/rule_engine.py  
---plin 'gse_dataset([a],[test],[],[])' 
---id 'GSE21947' 
---plout 'cluster_heatmap([a],[test],[k,5,preprocess,rma,gene_center,median,gene_normalize,variance,cluster_alg,kmeans,dwd,no_dwd,shiftscale,no_shiftscale,combat,no_combat,quantile,no_quantile,distance,correlation,color,red_green],A)'
--------------------------------------------------------------------------------

@@ -9,19 +9,20 @@
 % for the parameter which is not provide, will be in 
 
 
-signal_norm1(DatasetId,Contents,Parameters,Modules):-
+signal_norm1(Parameters,Modules):-
     get_desire_parameters_norm1(Parameters,NewParameters1),
     length(NewParameters1,N),
     get_length(n_norm1,N1),
     N<N1,
-    convert_parameters_norm1(NewParameters1,NewParameters),
-    signal_norm1(DatasetId,Contents,NewParameters,Modules).
+    convert_parameters_norm1(Parameters,NewParameters),
+    signal_norm1(NewParameters,Modules).
 /*-------------------------------------------------------------------------*/
 % Input interface
 % generate signal_norm1 from signal_clean with 
 %no_combat/no_shiftscale/no_dwd/no_quantile
-signal_norm1(DatasetId,Contents,Parameters,Modules):-
-   length(Parameters,N),
+signal_norm1(Parameters,Modules):-
+   get_desire_parameters_norm1(Parameters,NewParameters1),
+   length(NewParameters1,N),
    get_length(n_norm1,N1),
    N=N1,
    get_value(Parameters,quantile,no_quantile,Quantile),
@@ -33,10 +34,12 @@ signal_norm1(DatasetId,Contents,Parameters,Modules):-
    get_value(Parameters,dwd,no_dwd,Dwd),
    Dwd=no_dwd,
    get_desire_parameters_raw(Parameters,NewParameters),
-   signal_clean(DatasetId,Contents,NewParameters,Modules).
+   get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
+   append(NewParameters,Options,NewParameters2),
+   signal_clean(NewParameters2,Modules).
 /*--------------------------------------------------------------------------*/
 % Quantile the signal file,
-signal_norm1(DatasetId,Contents,Parameters, Modules):-
+signal_norm1(Parameters, Modules):-
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
@@ -45,15 +48,13 @@ signal_norm1(DatasetId,Contents,Parameters, Modules):-
     OldQuantile=no_quantile,
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,quantile,OldQuantile,OldParameters),
-    signal_norm1(DatasetId, Contents,OldParameters,Past_Modules),
-    append(['DatasetId',
-            DatasetId,'Contents',Contents],Parameters,Write_list),
-    Newadd=[quantile,Write_list],
+    signal_norm1(OldParameters,Past_Modules),
+    Newadd=[quantile,Parameters],
     append(Past_Modules, Newadd, Modules).
     
 /*--------------------------------------------------------------------------*/
 % Combat the signal file,
-signal_norm1(DatasetId,Contents,Parameters, Modules):-
+signal_norm1(Parameters, Modules):-
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
@@ -62,15 +63,13 @@ signal_norm1(DatasetId,Contents,Parameters, Modules):-
     OldCombat=no_combat,
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,combat,OldCombat,OldParameters),
-    signal_norm1(DatasetId, Contents,OldParameters,Past_Modules),
-    append(['DatasetId',
-            DatasetId,'Contents',Contents],Parameters,Write_list),
-    Newadd=[combat,Write_list],
+    signal_norm1(OldParameters,Past_Modules),
+    Newadd=[combat,Parameters],
     append(Past_Modules, Newadd, Modules).
     
 /*--------------------------------------------------------------------------*/
 % Dwd the signal file,
-signal_norm1(DatasetId,Contents,Parameters, Modules):-
+signal_norm1(Parameters, Modules):-
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
@@ -79,15 +78,13 @@ signal_norm1(DatasetId,Contents,Parameters, Modules):-
     OldDwd=no_dwd,
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,dwd,OldDwd,OldParameters),
-    signal_norm1(DatasetId, Contents,OldParameters,Past_Modules),
-    append(['DatasetId',
-            DatasetId,'Contents',Contents],Parameters,Write_list),
-    Newadd=[dwd,Write_list],
+    signal_norm1(OldParameters,Past_Modules),
+    Newadd=[dwd,Parameters],
     append(Past_Modules, Newadd, Modules).
     
 /*--------------------------------------------------------------------------*/
 % Shiftscale the signal file,
-signal_norm1(DatasetId,Contents,Parameters, Modules):-
+signal_norm1(Parameters, Modules):-
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
@@ -96,8 +93,6 @@ signal_norm1(DatasetId,Contents,Parameters, Modules):-
     OldShiftscale=no_shiftscale,
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,shiftscale,OldShiftscale,OldParameters),
-    signal_norm1(DatasetId, Contents,OldParameters,Past_Modules),
-    append(['DatasetId',
-            DatasetId,'Contents',Contents],Parameters,Write_list),
-    Newadd=[shiftscale,Write_list],
+    signal_norm1(OldParameters,Past_Modules),
+    Newadd=[shiftscale,Parameters],
     append(Past_Modules, Newadd, Modules).
