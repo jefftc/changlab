@@ -30,11 +30,7 @@ Classes:
 BinregParams
 
 """
-# Private functions:
-# _hash_geneid
-# _hash_sampleid
-
-import os, sys
+import os
 
 
 class BinregParams:
@@ -184,8 +180,8 @@ def find_binreg_20(default_path):
             "quantnorm.m", "std_rows_to_y.m", 
             "Binreg2.0.Matlab.tutorial.ppt"]
         complete = True   # Is this distribution complete.
-        for file in files:
-            filename = os.path.join(spath, file)
+        for file_ in files:
+            filename = os.path.join(spath, file_)
             if not os.path.exists(filename):
                 complete = False
                 break
@@ -228,8 +224,8 @@ def format_data_files(train0, train1, test):
     # Write the description file.
     ids = train0.row_names(arrayio.ROW_ID)
     desc_handle = StringIO()
-    for id in ids:
-        print >>desc_handle, id
+    for id_ in ids:
+        print >>desc_handle, id_
     desc_handle.seek(0)
     desc_str = desc_handle.read()
 
@@ -304,12 +300,12 @@ def format_predictions(train0, train1, test, outpath=None):
     if test:
         samples = samples + test.col_names(arrayio.COL_ID)
         
-    format = "index:d type:d prob:f lower_ci:f upper_ci:f mgene:f"
-    d_fit = [d for d in filelib.read_row(fitted_file, format)]
-    d_xval = [d for d in filelib.read_row(xval_file, format)]
+    format_ = "index:d type:d prob:f lower_ci:f upper_ci:f mgene:f"
+    d_fit = [d for d in filelib.read_row(fitted_file, format_)]
+    d_xval = [d for d in filelib.read_row(xval_file, format_)]
     d_pred = []
     if test:
-        d_pred = [d for d in filelib.read_row(predict_file, format)]
+        d_pred = [d for d in filelib.read_row(predict_file, format_)]
     assert len(d_fit) == len(d_xval)
     # crossvalidation.txt + validationcases.txt
     assert len(d_xval)+len(d_pred) == len(samples)
@@ -381,10 +377,11 @@ def log_matrix_if_needed(DATA):
 def strip_affx_control_probes(DATA, psid_header=None):
     # psid_header should be the header that contains the Probe Set IDs.
     import arrayio
+    import hashlib
 
     header = psid_header or arrayio.ROW_ID
     
-    ID = _hash_many_geneids(DATA.row_names(header))
+    ID = hashlib.hash_many_geneids(DATA.row_names(header))
     ID_at = [x for x in ID if x.endswith("_at")]
     ID_good = [x for x in ID if not x.startswith("affx")]
     assert ID, "No IDs."
@@ -395,40 +392,3 @@ def strip_affx_control_probes(DATA, psid_header=None):
     DATA_s = DATA.matrix(row=ID_good, row_header=header)
 
     return DATA_s
-
-def _hash_geneid(id):
-    return id.strip().lower()
-
-def _hash_many_geneids(ids):
-    #return [_hash_geneid(x) for x in ids]
-    # Optimization: do this without a function call.
-    return [x.strip().lower() for x in ids]
-
-def _hash_sampleid(id):
-    # Hash the sample names so that small differences are ignored.  R
-    # will change the sample names, so if one data set has been
-    # through R but not the other, the names will be different.
-    # 2554_6933_32492_Mock1_HG-U133A+2
-    # X2554_6933_32492_Mock1_HG.U133A.2
-    import re
-
-    x = id
-
-    # If there are alphanumeric characters, then assume that
-    # punctuation isn't meaningful.
-    if re.search(r"\w", x):
-        # Change all non-words to '.', like R does.  (This does not
-        # change underscores.)
-        x = re.subn(r"\W", ".", x)[0]
-
-    # Ignore initial X.
-    if re.match(r"X[\d\w]", x):
-        x = x[1:]
-
-    # Make case insensitive.
-    x = x.lower()
-
-    return x
-
-def _hash_many_sampleids(ids):
-    return [_hash_sampleid(x) for x in ids]

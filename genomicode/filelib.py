@@ -66,7 +66,6 @@ def _unlock(handle):
 
 def lwrite(s, handle=None):
     if handle is None:
-        import sys
         handle = sys.stdout
     _lock(handle)
     try:
@@ -77,7 +76,6 @@ def lwrite(s, handle=None):
 
 def nlwrite(s, handle=None):
     if handle is None:
-        import sys
         handle = sys.stdout
     handle.write(s)
     
@@ -88,7 +86,6 @@ def tswrite(s, handle=None, format="%m/%d/%Y %H:%M:%S", write_fn=lwrite):
     write_fn("%s\t%s" % (now, s), handle=handle)
 
 def _my_popen(cmd):
-    import sys
     if sys.hexversion >= 0x02040000:
         from subprocess import Popen, PIPE
         p = Popen(
@@ -96,10 +93,8 @@ def _my_popen(cmd):
             close_fds=True, universal_newlines=True)
         w, r, e = p.stdin, p.stdout, p.stderr
     else:
-        import os
         w, r, e = os.popen3(cmd)
     return w, r, e
-        
 
 def openfh(file_or_handle, mode='rU'):
     # Bug: This doesn't handle newlines correctly.  Most of the
@@ -170,7 +165,7 @@ def exists(filename):
         # Looks like a URL.
         import urllib2
         try:
-            handle = urllib2.urlopen(filename)
+            urllib2.urlopen(filename)
         except urllib2.HTTPError:
             return None
         return filename
@@ -205,10 +200,10 @@ def _parse_format(format):
     
     names, fmt = [], ""
     for x in format.split():
-        name, type = x.split(":")
-        assert len(type) == 1, "Invalid type: %s" % type
+        name, type_ = x.split(":")
+        assert len(type_) == 1, "Invalid type: %s" % type_
         names.append(name)
-        fmt += type
+        fmt += type_
     assert len(names) == len(fmt)
     return names, fmt
 
@@ -262,21 +257,12 @@ def read_cols(file_or_handle, delimiter="\t", skip=0):
         yield cols
     handle.close()
 
-def _normalize_colname(name):
-    import re
-    # Fix the header to be a python variable.
-    x = str(name)
-    # Replace all non-word character with _.
-    x = re.sub(r"\W", "_", x)
-    # Replace initial numbers with Xnumber.
-    x = re.sub(r"^(\d)", r"X\1", x)
-    return x
-
 def _make_format_from_header(names):
     import math
+    import hashlib
     
     # Normalize each name.
-    normnames = [_normalize_colname(x) for x in names]
+    normnames = [hashlib.hash_var(x) for x in names]
 
     # For columns with duplicate names, number them so that they are
     # unique.
@@ -290,9 +276,9 @@ def _make_format_from_header(names):
             continue
         # Figure out the number of digits to use for the id.
         ndigits = int(math.floor(math.log(count, 10))) + 1
-        id = name2nextid.get(name, 0)
-        name2nextid[name] = id + 1
-        x = "%s_%0*d" % (name, ndigits, id)
+        id_ = name2nextid.get(name, 0)
+        name2nextid[name] = id_ + 1
+        x = "%s_%0*d" % (name, ndigits, id_)
         normnames[i] = x
 
     # Make each of the columns a string.
@@ -387,11 +373,16 @@ class RowIterator:
 
         self._line = line
         self._cols = cols
-        setattr(data, "_iter", self)
-        setattr(data, "_line", line)
-        setattr(data, "_cols", cols)
-        setattr(data, "_header", self._header)
-        setattr(data, "_nheader", self._nheader)
+        data._iter = self
+        data._line = line
+        data._cols = cols
+        data._header = self._header
+        data._nheader = self._nheader
+        #setattr(data, "_iter", self)
+        #setattr(data, "_line", line)
+        #setattr(data, "_cols", cols)
+        #setattr(data, "_header", self._header)
+        #setattr(data, "_nheader", self._nheader)
         return data
 
     def __iter__(self):
@@ -489,7 +480,7 @@ def join_by(delimiter, convert_fn=None):
     def f(data):
         if convert_fn is not None:
             data = [convert_fn(x) for x in data]
-        return ";".join(data)
+        return delimiter.join(data)
     return f
 
 def iter_by(iterator, *args, **params):
@@ -522,16 +513,16 @@ def as_dict(iterator, *args, **keywds):
     unique = keywds.get("unique", 1)
     use_first = keywds.get("use_first", 0)
 
-    dict = {}
+    dict_ = {}
     for d in iterator:
         key = tuple([getattr(d, fn) for fn in args])
         if len(args) == 1:
             key = key[0]
         if not unique:
-            dict.setdefault(key, []).append(d)
-        elif not (use_first and key in dict):
-            dict[key] = d
-    return dict
+            dict_.setdefault(key, []).append(d)
+        elif not (use_first and key in dict_):
+            dict_[key] = d
+    return dict_
 
 def safe_unlink(filename):
     if not filename or not os.path.exists(filename):

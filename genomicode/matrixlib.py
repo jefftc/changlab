@@ -31,6 +31,7 @@ def align_rows(*matrices):
 
     """
     import arrayio
+    import hashlib
 
     header = arrayio.ROW_ID
     if not matrices:
@@ -41,12 +42,12 @@ def align_rows(*matrices):
     # Get the intersection of the IDs.
     all_ids = [None]*len(matrices) # matrix index -> list of hids
     for i in range(len(matrices)):
-        all_ids[i] = _hash_many_geneids(matrices[i].row_names(header))
+        all_ids[i] = hashlib.hash_many_geneids(matrices[i].row_names(header))
     
     ids_hash = {}  # hid -> matrix_i -> row_i, id
     for i, ids in enumerate(all_ids):
-        for j, id in enumerate(ids):
-            hid = _hash_geneid(id)
+        for j, id_ in enumerate(ids):
+            hid = hashlib.hash_geneid(id_)
             # If I have not seen this hashed ID before, then add it to
             # the dictionary.
             if hid not in ids_hash:
@@ -54,17 +55,17 @@ def align_rows(*matrices):
             # If a dataset has duplicate IDs, then take the first one only.
             if i in ids_hash[hid]:
                 continue
-            ids_hash[hid][i] = j, id
+            ids_hash[hid][i] = j, id_
 
     # Use only the IDs that occur in all data files.  Use the order of
     # the samples from first data set.
-    ids = [id for id in all_ids[0] if len(ids_hash[id]) == len(matrices)]
+    ids = [x for x in all_ids[0] if len(ids_hash[x]) == len(matrices)]
     assert len(ids) > 0, "The data sets all have different row IDs."
             
     # Align the rows by the ids.
     aligned = [None] * len(matrices)
     for i in range(len(matrices)):
-        I = [ids_hash[id][i][0] for id in ids]
+        I = [ids_hash[x][i][0] for x in ids]
         x = matrices[i].matrix(row=I)
         aligned[i] = x
 
@@ -79,6 +80,7 @@ def align_cols(*matrices):
 
     """
     import arrayio
+    import hashlib
 
     header = arrayio.COL_ID
     if not matrices:
@@ -89,12 +91,12 @@ def align_cols(*matrices):
     # Get the intersection of the IDs.
     all_ids = [None]*len(matrices) # matrix index -> list of hids
     for i in range(len(matrices)):
-        all_ids[i] = _hash_many_sampleids(matrices[i].col_names(header))
+        all_ids[i] = hashlib.hash_many_sampleids(matrices[i].col_names(header))
     
     ids_hash = {}  # hid -> matrix_i -> col_i, id
     for i, ids in enumerate(all_ids):
-        for j, id in enumerate(ids):
-            hid = _hash_sampleid(id)
+        for j, id_ in enumerate(ids):
+            hid = hashlib.hash_sampleid(id_)
             # If I have not seen this hashed ID before, then add it to
             # the dictionary.
             if hid not in ids_hash:
@@ -102,17 +104,17 @@ def align_cols(*matrices):
             # If a dataset has duplicate IDs, then take the first one only.
             if i in ids_hash[hid]:
                 continue
-            ids_hash[hid][i] = j, id
+            ids_hash[hid][i] = j, id_
             
     # Use only the IDs that occur in all data files.  Use the order of
     # the samples from first data set.
-    ids = [id for id in all_ids[0] if len(ids_hash[id]) == len(matrices)]
+    ids = [x for x in all_ids[0] if len(ids_hash[x]) == len(matrices)]
     assert len(ids) > 0, "The data sets have different column IDs."
 
     # Align the columns by the ids.
     aligned = [None] * len(matrices)
     for i in range(len(matrices)):
-        I = [ids_hash[id][i][0] for id in ids]
+        I = [ids_hash[x][i][0] for x in ids]
         x = matrices[i].matrix(col=I)
         aligned[i] = x
 
@@ -122,6 +124,7 @@ def align_cols(*matrices):
 
 def are_rows_aligned(*matrices):
     import arrayio
+    import hashlib
 
     header = arrayio.ROW_ID
     
@@ -134,7 +137,7 @@ def are_rows_aligned(*matrices):
             return False
 
     # Check the names of the rows.
-    hnames = [_hash_many_geneids(x.row_names(header)) for x in matrices]
+    hnames = [hashlib.hash_many_geneids(x.row_names(header)) for x in matrices]
     for i in range(1, len(matrices)):
         if hnames[0] != hnames[i]:
             return False
@@ -142,6 +145,7 @@ def are_rows_aligned(*matrices):
 
 def are_cols_aligned(*matrices):
     import arrayio
+    import hashlib
 
     header = arrayio.COL_ID
 
@@ -154,7 +158,8 @@ def are_cols_aligned(*matrices):
             return False
 
     # Check the names of the columns.
-    hnames = [_hash_many_sampleids(x.col_names(header)) for x in matrices]
+    hnames = [
+        hashlib.hash_many_sampleids(x.col_names(header)) for x in matrices]
     for i in range(1, len(matrices)):
         if hnames[0] != hnames[i]:
             return False
@@ -169,6 +174,7 @@ def describe_unaligned_rows(*matrices):
     # Return a text string that describes where the rows are not aligned.
     import arrayio
     import parselib
+    import hashlib
 
     header = arrayio.ROW_ID
     
@@ -184,7 +190,7 @@ def describe_unaligned_rows(*matrices):
 
     # Check the names of the rows.
     names = [x.row_names(header) for x in matrices]
-    hnames = [_hash_many_geneids(x.row_names(header)) for x in matrices]
+    hnames = [hashlib.hash_many_geneids(x.row_names(header)) for x in matrices]
     bad_rows = []
     for i in range(matrices[0].nrow()):
         unaligned =False
@@ -225,7 +231,8 @@ def align_rows_to_annot(
     row_names = [row_names[x] for x in I2]
     return MATRIX, row_names
 
-def align_cols_to_annot(MATRIX, col_names, header=None, hash=False):
+def align_cols_to_annot(
+        MATRIX, col_names, header=None, hash=False, get_indexes=False):
     # Return tuple of aligned (MATRIX, col_names).
     x = _align_to_annot_I(MATRIX, col_names, header, hash, False)
     I1, I2 = x
@@ -247,7 +254,7 @@ def align_rows_to_many_annots(
     
     MATRIX = MATRIX.matrix(I_matrix, None)
     row_names = many_row_names[index]
-    names = [row_names[x] for x in I_names]
+    row_names = [row_names[x] for x in I_names]
     return MATRIX, row_names
 
 def align_cols_to_many_annots(
@@ -262,14 +269,10 @@ def align_cols_to_many_annots(
     
     MATRIX = MATRIX.matrix(I_matrix, None)
     col_names = many_col_names[index]
-    names = [col_names[x] for x in I_names]
+    col_names = [col_names[x] for x in I_names]
     return MATRIX, col_names
 
 def _align_to_many_annots_I(MATRIX, many_names, header, hash, is_row):
-    get_names = MATRIX.row_names
-    if not is_row:
-        get_names = MATRIX.col_names
-
     best_I_matrix = best_I_names = best_index = None
     for i, names in enumerate(many_names):
         x = _align_to_annot_I(MATRIX, names, header, hash, is_row)
@@ -324,46 +327,46 @@ def _align_header_to_annot_I(MATRIX, names, header, hash, is_row):
     assert len(I_MATRIX) == len(I_names)
     return I_MATRIX, I_names
     
-def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
-    # Return tuple of (I_matrix, I_geneset) or None if no match can be
-    # found.  Will find the largest match possible.
+## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
+##     # Return tuple of (I_matrix, I_geneset) or None if no match can be
+##     # found.  Will find the largest match possible.
 
-    # Align every geneset to every row name in the matrix.
-    geneset_aligns = []  # list of (I_geneset, rowname, geneset)
-    matrix_aligns = []   # list of (I_matrix, rowname, geneset)
-    for name in MATRIX.row_names():
-        annots = MATRIX.row_names(name)
-        for gs in all_genesets:
-            genes = geneset2genes[gs]
-            I_geneset = _align_geneset_to_matrix(annots, genes)
-            I_matrix = _align_matrix_to_geneset(annots, genes)
-            if I_geneset:
-                x = I_geneset, name, gs
-                geneset_aligns.append(x)
-            if I_matrix:
-                x = I_matrix, name, gs
-                matrix_aligns.append(x)
+##     # Align every geneset to every row name in the matrix.
+##     geneset_aligns = []  # list of (I_geneset, rowname, geneset)
+##     matrix_aligns = []   # list of (I_matrix, rowname, geneset)
+##     for name in MATRIX.row_names():
+##         annots = MATRIX.row_names(name)
+##         for gs in all_genesets:
+##             genes = geneset2genes[gs]
+##             I_geneset = _align_geneset_to_matrix(annots, genes)
+##             I_matrix = _align_matrix_to_geneset(annots, genes)
+##             if I_geneset:
+##                 x = I_geneset, name, gs
+##                 geneset_aligns.append(x)
+##             if I_matrix:
+##                 x = I_matrix, name, gs
+##                 matrix_aligns.append(x)
                 
-    # First, try to find a geneset that matches the exactly matrix.
-    # Favor geneset_aligns over matrix_aligns to avoid changing the
-    # matrix.
-    for x in geneset_aligns:
-        I_geneset, rowname, geneset = x
-        I_matrix = range(MATRIX.nrow())
-        assert len(I_matrix) == len(I_geneset)
-        return I_matrix, I_geneset
+##     # First, try to find a geneset that matches the exactly matrix.
+##     # Favor geneset_aligns over matrix_aligns to avoid changing the
+##     # matrix.
+##     for x in geneset_aligns:
+##         I_geneset, rowname, geneset = x
+##         I_matrix = range(MATRIX.nrow())
+##         assert len(I_matrix) == len(I_geneset)
+##         return I_matrix, I_geneset
 
-    # Otherwise, choose the match that generates the largest matrix.
-    I_matrix = None
-    for x in matrix_aligns:
-        I, rowname, geneset = x
-        if I_matrix is None or len(I) > len(I_matrix):
-            I_matrix = I
-    if I_matrix:
-        I_geneset = range(len(I_matrix))
-        return I_matrix, I_geneset
+##     # Otherwise, choose the match that generates the largest matrix.
+##     I_matrix = None
+##     for x in matrix_aligns:
+##         I, rowname, geneset = x
+##         if I_matrix is None or len(I) > len(I_matrix):
+##             I_matrix = I
+##     if I_matrix:
+##         I_geneset = range(len(I_matrix))
+##         return I_matrix, I_geneset
 
-    return None
+##     return None
 
 def find_row_header(MATRIX, row_names, hash=False):
     # Find the column (row header) from the MATRIX that contains all
@@ -383,7 +386,6 @@ def find_col_header(MATRIX, col_names, hash=False):
     return None
 
 def _best_header(MATRIX, names, hash, is_row):
-    import jmath
     import hashlib
 
     get_names = MATRIX.row_names
@@ -464,9 +466,9 @@ def read_matrices(filenames, cache=None):
                 cache[filename] = x
         DATA.append(x)
 
-    for d, filename in zip(DATA, filenames):
-        f = os.path.split(filename)[1]
-        #print "%s has %d genes and %d samples." % (f, d.nrow(), d.ncol())
+    #for d, filename in zip(DATA, filenames):
+    #    f = os.path.split(filename)[1]
+    #    print "%s has %d genes and %d samples." % (f, d.nrow(), d.ncol())
 
     # Align the matrices.
     ALIGNED = align_rows(*DATA)
