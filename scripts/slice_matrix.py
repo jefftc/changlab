@@ -6,11 +6,11 @@
 # parse_geneset
 # _parse_file_gs
 # _parse_file_annot
-#
-# read_geneset_or_clin
+# _read_annot_file
 #
 # find_col_indexes
 # find_col_genesets
+# find_col_annotation
 # relabel_col_ids
 # remove_duplicate_cols
 # remove_col_ids
@@ -18,17 +18,25 @@
 # find_row_indexes
 # find_row_ids
 # find_row_genesets
+# find_row_annotation
+# find_row_numeric_annotation
+# find_row_mean_var
+# 
 # align_rows
 # align_cols
+# 
 # add_row_annot
 # remove_row_annot
+# rename_row_annot
+# move_row_annot
 #
-# quantile_normalize
-# 
-# _match_rownames_to_geneset
-# _match_colnames_to_geneset
-# _align_geneset_to_matrix
-# _align_matrix_to_geneset
+# _match_rownames_to_geneset       DEPRECATED
+# _match_colnames_to_geneset       DEPRECATED
+# _best_match_colnames_to_geneset  DEPRECATED
+# _num_matches_to_geneset          DEPRECATED
+# _align_geneset_to_matrix         DEPRECATED
+# _align_matrix_to_geneset         DEPRECATED
+# _find_col_header                 DEPRECATED
 # 
 # _intersect_indexes
 # _dedup_indexes
@@ -106,23 +114,47 @@ def _parse_file_annot(annotation):
     assert len(x) >= 3
     filename, header, values = x[0], x[1], x[2:]
     return filename, header, values
-    
-def read_geneset_or_clin(filename):
-    # Read either a GMT/GMX file, or a generic tab-delimited text file
-    # where each column is an annotation.
+
+def _read_annot_file(filename):
+    # Return (header2annots, all_headers, all_annots).
     from genomicode import genesetlib
+    
+    assert os.path.exists(filename)
+    header2annots = {}
+    all_headers = []
+    all_annots = []
+    for x in genesetlib.read_tdf(filename):
+        name, x, annots = x
+        header2annots[name] = annots
+        all_headers.append(name)
+        all_annots.append(annots)
+    assert all_headers
+    for annots in all_annots[1:]:
+        assert len(annots) == len(all_annots[0])
+    return header2annots, all_headers, all_annots
 
-    fmt = genesetlib.detect_format(filename)
-    if fmt is not None:
-        for x in genesetlib.read_genesets(filename, preserve_spaces=True):
-            yield x
-        return
-
-    for x in genesetlib.read_gmx(filename, preserve_spaces=True):
-        name, description, genes = x
-        genes = [description] + genes
-        description = ""
-        yield name, description, genes
+def _parse_file_num_annot(annotation):
+    # annotations is in the format:
+    # <txt_file>,<header>,<value>[,<value,...]
+    # <value> can optionally start with modifiers "<", "<=", ">=" or ">".
+    # Return a tuple of <filename>, <header>, list of (<modifier>, <value>).
+    # If no modifier is specified, then <modifier> is "=".  <value> is
+    # a floating point number.
+    x = annotation.split(",")
+    assert len(x) >= 3
+    filename, header, values = x[0], x[1], x[2:]
+    for i in range(len(values)):
+        value = values[i]
+        modifier = "="
+        if value[:2] in ["<=", ">="]:
+            modifier = value[:2]
+            value = value[2:]
+        elif value[0] in "<>=":
+            modifier = value[0]
+            value = value[1:]
+        value = float(value)
+        values[i] = modifier, value
+    return filename, header, values
     
 def find_col_indexes(MATRIX, indexes):
     if not indexes:
@@ -134,8 +166,70 @@ def find_col_genesets(MATRIX, genesets):
         return None
     return parse_geneset(MATRIX, False, genesets)
 
+def find_col_annotation(MATRIX, col_annotation):
+    # Format: <txt_file>,<header>,<value>[,<value,...]
+    from genomicode import matrixlib
+    
+    if not col_annotation:
+        return None
+
+    x = _parse_file_annot(col_annotation)
+    filename, header, values = x
+
+    # Read the annotations.
+    x = _read_annot_file(filename)
+    header2annots, all_headers, all_annots = x
+
+    # Align the annotations to the matrix file.
+    x = matrixlib.align_cols_to_many_annots(
+        MATRIX, all_annots, hash=True, get_indexes=True)
+    I_matrix, I_annots, index = x
+    assert len(I_matrix) == len(I_annots)
+
+    annots = header2annots[header]
+    I = []
+    for (im, ia) in zip(I_matrix, I_annots):
+        if annots[ia] in values:
+            I.append(im)
+    #I = [im for (im, ia) in zip(I_matrix, I_annots) if annots[ia] in values]
+
+##     # Search for a col_annot in the MATRIX that matches a column in
+##     # the annotation file.
+##     for annot_header in header_order:
+##         matrix_header = _find_col_header(MATRIX, header2annots[annot_header])
+##         if matrix_header is not None:
+##             break
+##     else:
+##         raise AssertionError, "I could not align the annotation file to " + \
+##               "the matrix."
+##     annot = header2annots[annot_header]
+##     matrix_annot = MATRIX.col_names(matrix_header)
+##     h_annot = [hashlib.hash_R(x) for x in annot]
+##     h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
+##     I = jmath.match(h_matrix_annot, h_annot)
+##     assert None not in I
+##     for h in header2annots:
+##         x = header2annots[h]
+##         header2annots[h] = [x[i] for i in I]
+##     # Make sure they're aligned correctly.
+##     annot = header2annots[annot_header]
+##     matrix_annot = MATRIX.col_names(matrix_header)
+##     h_annot = [hashlib.hash_R(x) for x in annot]
+##     h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
+##     assert h_annot == h_matrix_annot
+
+##     # Identify the lines that match the annotations.
+##     assert header in header2annots, "I could not find the header: %s" % header
+##     I = []
+##     for i, annot in enumerate(header2annots[header]):
+##         if annot in values:
+##             I.append(i)
+    return I
+
 def relabel_col_ids(MATRIX, geneset):
     import arrayio
+    from genomicode import genesetlib
+    from genomicode import matrixlib
 
     if not geneset:
         return MATRIX
@@ -145,32 +239,38 @@ def relabel_col_ids(MATRIX, geneset):
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
-    for x in read_geneset_or_clin(filename):
+    all_genes = []
+    for x in genesetlib.read_genesets(filename, allow_tdf=True):
         geneset, description, genes = x
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
+        all_genes.append(genes)
 
     # Find an alignment between the sample names and the genesets.
-    x = _match_colnames_to_geneset(MATRIX, all_genesets, geneset2genes)
-    if not x:
-        x = _match_colnames_to_geneset(
-            MATRIX, all_genesets, geneset2genes, hash=True)
-    if not x:
+    x = matrixlib.align_cols_to_many_annots(
+        MATRIX, all_genes, hash=True, get_indexes=True)
+    I_matrix, I_geneset, index = x
+    if len(I_matrix) != MATRIX.ncol():
         # No matches.  Try to diagnose.
-        gs, nm, m, mm = _best_match_colnames_to_geneset(
-            MATRIX, all_genesets, geneset2genes, hash=True)
-        if nm == 0:
+        #gs, nm, m, mm = _best_match_colnames_to_geneset(
+        #    MATRIX, all_genesets, geneset2genes, hash=True)
+        if len(I_matrix) == 0:
             print "Matrixes doesn't match any gene sets."
         else:
+            gs = all_genesets[index]
+            nm = len(I_matrix)
+            missing = []
+            col_names = MATRIX.col_names(arrayio.COL_ID)
+            missing = [col_names[i] for i in range(len(col_names))
+                       if i not in I_matrix]
             print "Matrix best matches %s [%d:%d]." % (gs, nm, MATRIX.ncol())
-            if len(mm) > 5:
-                print "Missing (showing %d of %d):" % (5, len(mm))
+            if len(missing) > 5:
+                print "Missing (showing %d of %d):" % (5, len(missing))
             else:
                 print "Missing:"
-            for x_ in mm[:5]:
+            for x_ in missing[:5]:
                 print x_
-    assert x, "I could not match the matrix to a geneset."
-    I_geneset = x
+        raise AssertionError, "I could not match the matrix to a geneset."
 
     # Add the new column names to the MATRIX.
     MATRIX_new = MATRIX.matrix()
@@ -236,68 +336,79 @@ def find_row_ids(MATRIX, ids):
         return None
     return parse_names(MATRIX, True, ids)
 
-def find_col_annotation(MATRIX, col_annotation):
-    # Format: <txt_file>,<header>,<value>[,<value,...]
-    from genomicode import genesetlib
-    from genomicode import jmath
-    from genomicode import hashlib
-    
-    if not col_annotation:
-        return None
-
-    x = _parse_file_annot(col_annotation)
-    filename, header, values = x
-
-    # Read the annotations.
-    assert os.path.exists(filename)
-    header2annots = {}
-    header_order = []
-    for x in genesetlib.read_tdf(filename):
-        name, x, annots = x
-        header2annots[name] = annots
-        header_order.append(name)
-    assert header_order
-    for h in header_order[1:]:
-        assert len(header2annots[h]) == len(header2annots[header_order[0]])
-
-    # Align the annotations to the matrix file.  Search for a
-    # col_annot in the MATRIX that matches a column in the annotation
-    # file.
-    for annot_header in header_order:
-        matrix_header = _find_col_header(MATRIX, header2annots[annot_header])
-        if matrix_header is not None:
-            break
-    else:
-        raise AssertionError, "I could not align the annotation file to " + \
-              "the matrix."
-    annot = header2annots[annot_header]
-    matrix_annot = MATRIX.col_names(matrix_header)
-    h_annot = [hashlib.hash_R(x) for x in annot]
-    h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
-    I = jmath.match(h_matrix_annot, h_annot)
-    assert None not in I
-    for h in header2annots:
-        x = header2annots[h]
-        header2annots[h] = [x[i] for i in I]
-    # Make sure they're aligned correctly.
-    annot = header2annots[annot_header]
-    matrix_annot = MATRIX.col_names(matrix_header)
-    h_annot = [hashlib.hash_R(x) for x in annot]
-    h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
-    assert h_annot == h_matrix_annot
-
-    # Identify the lines that match the annotations.
-    assert header in header2annots, "I could not find the header: %s" % header
-    I = []
-    for i, annot in enumerate(header2annots[header]):
-        if annot in values:
-            I.append(i)
-    return I
-
 def find_row_genesets(MATRIX, genesets):
     if not genesets:
         return None
     return parse_geneset(MATRIX, True, genesets)
+
+def find_row_annotation(MATRIX, row_annotation):
+    # Format: <txt_file>,<header>,<value>[,<value,...]
+    from genomicode import matrixlib
+    
+    if not row_annotation:
+        return None
+
+    x = _parse_file_annot(row_annotation)
+    filename, header, values = x
+
+    # Read the annotations.
+    x = _read_annot_file(filename)
+    header2annots, all_headers, all_annots = x
+
+    # Align the annotations to the matrix file.
+    x = matrixlib.align_rows_to_many_annots(
+        MATRIX, all_annots, hash=True, get_indexes=True)
+    I_matrix, I_annots, index = x
+    assert len(I_matrix) == len(I_annots)
+
+    annots = header2annots[header]
+    I = []
+    for (im, ia) in zip(I_matrix, I_annots):
+        if annots[ia] in values:
+            I.append(im)
+    return I
+
+def find_row_numeric_annotation(MATRIX, row_annotation):
+    # Format: <txt_file>,<header>,<value>[,<value,...]
+    from genomicode import matrixlib
+    
+    if not row_annotation:
+        return None
+
+    x = _parse_file_num_annot(row_annotation)
+    filename, header, values = x
+
+    # Read the annotations.
+    x = _read_annot_file(filename)
+    header2annots, all_headers, all_annots = x
+
+    # Align the annotations to the matrix file.
+    x = matrixlib.align_rows_to_many_annots(
+        MATRIX, all_annots, hash=True, get_indexes=True)
+    I_matrix, I_annots, index = x
+    assert len(I_matrix) == len(I_annots)
+
+    annots = header2annots[header]
+    I = []
+    for (im, ia) in zip(I_matrix, I_annots):
+        x = float(annots[ia])
+        match = True
+        for (modifier, value) in values:
+            if modifier == "=":
+                match = (x == value)
+            elif modifier == "<":
+                match = (x < value)
+            elif modifier == ">":
+                match = (x > value)
+            elif modifier == "<=":
+                match = (x <= value)
+            elif modifier == ">=":
+                match = (x >= value)
+            else:
+                raise AssertionError, "Unknown modifier: %s" % modifier
+        if match:
+            I.append(im)
+    return I
 
 def find_row_mean_var(MATRIX, filter_mean, filter_var):
     from genomicode import pcalib
@@ -422,6 +533,9 @@ def align_cols(MATRIX, align_col_file, ignore_missing_cols):
 
 def add_row_annot(MATRIX, row_annots):
     # row_annot should be in the format <gmx/gmt_file>[,<geneset>].
+    from genomicode import genesetlib
+    from genomicode import matrixlib
+
     if not row_annots:
         return MATRIX
     filename, genesets = _parse_file_gs(row_annots)
@@ -429,8 +543,9 @@ def add_row_annot(MATRIX, row_annots):
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
+    all_genes = []
     num_genes = None
-    for x in read_geneset_or_clin(filename):
+    for x in genesetlib.read_genesets(filename, allow_tdf=True):
         geneset, description, genes = x
         geneset2genes[geneset] = genes
         if num_genes is None:
@@ -438,12 +553,17 @@ def add_row_annot(MATRIX, row_annots):
         assert len(genes) == num_genes, "%s %d %d" % (
             geneset, len(genes), num_genes)
         all_genesets.append(geneset)
+        all_genes.append(genes)
 
     # Find an alignment between one of the matrix row_names and the
     # genesets.
-    x = _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes)
-    assert x, "I could not match the matrix to a geneset."
-    I_matrix, I_geneset = x
+    x = matrixlib.align_rows_to_many_annots(
+        MATRIX, all_genes, hash=True, get_indexes=True)
+    I_matrix, I_geneset, x = x
+    assert len(I_matrix), "I could not match the matrix to a geneset."
+    #x = _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes)
+    #assert x, "I could not match the matrix to a geneset."
+    #I_matrix, I_geneset = x
     MATRIX_new = MATRIX.matrix(I_matrix, None)
 
     # Add the new annotations to the MATRIX.
@@ -472,162 +592,223 @@ def remove_row_annot(MATRIX, name):
     # Bug: Does not remove from the synonyms list.
     return MATRIX_clean
 
-def quantile_normalize(MATRIX):
-    from genomicode import quantnorm
+def rename_row_annot(MATRIX, row_annot):
+    if row_annot is None:
+        return MATRIX
+    assert "," in row_annot
+    x = row_annot.split(",", 1)
+    old_name, new_name = x
+    assert old_name in MATRIX.row_names(), \
+        "I could not find name: %s" % old_name
     
-    MATRIX = quantnorm.normalize(MATRIX)
-    return MATRIX
+    MATRIX_clean = MATRIX.matrix()
+    Mc = MATRIX_clean
+    assert old_name in Mc._row_names
+    Mc._row_names[new_name] = Mc._row_names[old_name]
+    del Mc._row_names[old_name]
+    if Mc._row_order and old_name in Mc._row_order:
+        i = Mc._row_order.index(old_name)
+        Mc._row_order[i] = new_name
+    # Bug: Does not remove from the synonyms list.
+    return MATRIX_clean
 
-def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
-    # Return tuple of (I_matrix, I_geneset) or None if no match can be
-    # found.  Will find the largest match possible.
+def move_row_annot(MATRIX, move_row_annot):
+    if move_row_annot is None:
+        return MATRIX
+    x = move_row_annot.split(",", 1)
+    assert len(x) == 2
+    old_index, new_index = x
+    old_index = int(old_index)
+    new_index = int(new_index)
 
-    # Align every geneset to every row name in the matrix.
-    geneset_aligns = []  # list of (I_geneset, rowname, geneset)
-    matrix_aligns = []   # list of (I_matrix, rowname, geneset)
-    for name in MATRIX.row_names():
-        annots = MATRIX.row_names(name)
-        for gs in all_genesets:
-            genes = geneset2genes[gs]
-            I_geneset = _align_geneset_to_matrix(annots, genes)
-            I_matrix = _align_matrix_to_geneset(annots, genes)
-            if I_geneset:
-                x = I_geneset, name, gs
-                geneset_aligns.append(x)
-            if I_matrix:
-                x = I_matrix, name, gs
-                matrix_aligns.append(x)
+    MATRIX_clean = MATRIX.matrix()
+    assert MATRIX_clean._row_order
+    order = MATRIX_clean._row_order[:]
+    assert old_index >= 1 and old_index <= len(order)
+    assert new_index >= 1 and new_index <= len(order)
+    x = order.pop(old_index-1)
+    order.insert(new_index-1, x)
+    MATRIX_clean._row_order = order
+    return MATRIX_clean
+
+
+## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
+##     # Return tuple of (I_matrix, I_geneset) or None if no match can be
+##     # found.  Will find the largest match possible.
+
+##     # Align every geneset to every row name in the matrix.
+##     geneset_aligns = []  # list of (I_geneset, rowname, geneset)
+##     matrix_aligns = []   # list of (I_matrix, rowname, geneset)
+##     for name in MATRIX.row_names():
+##         annots = MATRIX.row_names(name)
+##         for gs in all_genesets:
+##             genes = geneset2genes[gs]
+##             I_geneset = _align_geneset_to_matrix(annots, genes)
+##             I_matrix = _align_matrix_to_geneset(annots, genes)
+##             if I_geneset:
+##                 x = I_geneset, name, gs
+##                 geneset_aligns.append(x)
+##             if I_matrix:
+##                 x = I_matrix, name, gs
+##                 matrix_aligns.append(x)
                 
-    # First, try to find a geneset that matches the exactly matrix.
-    # Favor geneset_aligns over matrix_aligns to avoid changing the
-    # matrix.
-    for x in geneset_aligns:
-        I_geneset, rowname, geneset = x
-        I_matrix = range(MATRIX.nrow())
-        assert len(I_matrix) == len(I_geneset)
-        return I_matrix, I_geneset
+##     # First, try to find a geneset that matches the exactly matrix.
+##     # Favor geneset_aligns over matrix_aligns to avoid changing the
+##     # matrix.
+##     for x in geneset_aligns:
+##         I_geneset, rowname, geneset = x
+##         I_matrix = range(MATRIX.nrow())
+##         assert len(I_matrix) == len(I_geneset)
+##         return I_matrix, I_geneset
 
-    # Otherwise, choose the match that generates the largest matrix.
-    I_matrix = None
-    for x in matrix_aligns:
-        I, rowname, geneset = x
-        if I_matrix is None or len(I) > len(I_matrix):
-            I_matrix = I
-    if I_matrix:
-        I_geneset = range(len(I_matrix))
-        return I_matrix, I_geneset
+##     # Otherwise, choose the match that generates the largest matrix.
+##     I_matrix = None
+##     for x in matrix_aligns:
+##         I, rowname, geneset = x
+##         if I_matrix is None or len(I) > len(I_matrix):
+##             I_matrix = I
+##     if I_matrix:
+##         I_geneset = range(len(I_matrix))
+##         return I_matrix, I_geneset
 
-    return None
+##     return None
 
-def _match_colnames_to_geneset(
-    MATRIX, all_genesets, geneset2genes, hash=False):
-    # Return I_geneset or None if no match can be found.  The sample
-    # names from MATRIX must match the names in the gene set exactly.
-    # MATRIX may be a subset of the gene set.
-    import arrayio
-    from genomicode import hashlib
+## def _match_colnames_to_geneset(
+##     MATRIX, all_genesets, geneset2genes, hash=False):
+##     # Return I_geneset or None if no match can be found.  The sample
+##     # names from MATRIX must match the names in the gene set exactly.
+##     # MATRIX may be a subset of the gene set.
+##     import arrayio
+##     from genomicode import hashlib
 
-    annots = MATRIX.col_names(arrayio.COL_ID)
-    if hash:
-        annots = [hashlib.hash_R(x) for x in annots]
-        g2g = {}
-        for gs in all_genesets:
-            genes = geneset2genes[gs]
-            genes = [hashlib.hash_R(x) for x in genes]
-            g2g[gs] = genes
-        geneset2genes = g2g
+##     annots = MATRIX.col_names(arrayio.COL_ID)
+##     if hash:
+##         annots = [hashlib.hash_R(x) for x in annots]
+##         g2g = {}
+##         for gs in all_genesets:
+##             genes = geneset2genes[gs]
+##             genes = [hashlib.hash_R(x) for x in genes]
+##             g2g[gs] = genes
+##         geneset2genes = g2g
         
-    # Align every geneset to the col names in the matrix.
-    geneset_aligns = []  # list of (I_geneset, geneset)
-    for gs in all_genesets:
-        genes = geneset2genes[gs]
-        I_geneset = _align_geneset_to_matrix(annots, genes)
-        if I_geneset:
-            x = I_geneset, gs
-            geneset_aligns.append(x)
+##     # Align every geneset to the col names in the matrix.
+##     geneset_aligns = []  # list of (I_geneset, geneset)
+##     for gs in all_genesets:
+##         genes = geneset2genes[gs]
+##         I_geneset = _align_geneset_to_matrix(annots, genes)
+##         if I_geneset:
+##             x = I_geneset, gs
+##             geneset_aligns.append(x)
                 
-    # Find a geneset that exactly matches the sample names in the matrix.
-    for x in geneset_aligns:
-        I_geneset, geneset = x
-        # Allow the geneset to be a superset of MATRIX.
-        if len(I_geneset) > MATRIX.ncol():
-            continue
-        return I_geneset
+##     # Find a geneset that exactly matches the sample names in the matrix.
+##     for x in geneset_aligns:
+##         I_geneset, geneset = x
+##         # Allow the geneset to be a superset of MATRIX.
+##         if len(I_geneset) > MATRIX.ncol():
+##             continue
+##         return I_geneset
 
-    # Return None if not found.
-    return None
+##     # Return None if not found.
+##     return None
 
-def _best_match_colnames_to_geneset(
-    MATRIX, all_genesets, geneset2genes, hash=False):
-    # Return the (name, num_matches, list of matches, list of
-    # non-matches) for the geneset that best matches the colnames.
-    import arrayio
-    from genomicode import hashlib
+## def _best_match_colnames_to_geneset(
+##     MATRIX, all_genesets, geneset2genes, hash=False):
+##     # Return the (name, num_matches, list of matches, list of
+##     # non-matches) for the geneset that best matches the colnames.
+##     import arrayio
+##     from genomicode import hashlib
 
-    annots = MATRIX.col_names(arrayio.COL_ID)
-    annots_orig = annots[:]
-    if hash:
-        annots = [hashlib.hash_R(x) for x in annots]
-        g2g = {}
-        for gs in all_genesets:
-            genes = geneset2genes[gs]
-            genes = [hashlib.hash_R(x) for x in genes]
-            g2g[gs] = genes
-        geneset2genes = g2g
+##     annots = MATRIX.col_names(arrayio.COL_ID)
+##     annots_orig = annots[:]
+##     if hash:
+##         annots = [hashlib.hash_R(x) for x in annots]
+##         g2g = {}
+##         for gs in all_genesets:
+##             genes = geneset2genes[gs]
+##             genes = [hashlib.hash_R(x) for x in genes]
+##             g2g[gs] = genes
+##         geneset2genes = g2g
 
-    # Align every geneset to the col names in the matrix.
-    best_gs = best_num_matches = best_matches = best_mismatches = None
-    for gs in all_genesets:
-        genes = geneset2genes[gs]
-        x = _num_matches_to_geneset(annots_orig, annots, genes)
-        num_matches, matches, mismatches = x
-        if best_num_matches is None or num_matches > best_num_matches:
-            best_gs = gs
-            best_num_matches = num_matches
-            best_matches = matches
-            best_mismatches = mismatches
+##     # Align every geneset to the col names in the matrix.
+##     best_gs = best_num_matches = best_matches = best_mismatches = None
+##     for gs in all_genesets:
+##         genes = geneset2genes[gs]
+##         x = _num_matches_to_geneset(annots_orig, annots, genes)
+##         num_matches, matches, mismatches = x
+##         if best_num_matches is None or num_matches > best_num_matches:
+##             best_gs = gs
+##             best_num_matches = num_matches
+##             best_matches = matches
+##             best_mismatches = mismatches
                 
-    return best_gs, best_num_matches, best_matches, best_mismatches
+##     return best_gs, best_num_matches, best_matches, best_mismatches
 
-def _num_matches_to_geneset(matrix_annots, hashed_annots, geneset_genes):
-    # Count the number of annotations that match the geneset.  Return
-    # number of matches, list of matches, list of mismatches.
-    assert len(matrix_annots) == len(hashed_annots)
+## def _num_matches_to_geneset(matrix_annots, hashed_annots, geneset_genes):
+##     # Count the number of annotations that match the geneset.  Return
+##     # number of matches, list of matches, list of mismatches.
+##     assert len(matrix_annots) == len(hashed_annots)
     
-    count = 0
-    matches, mismatches = [], []
-    for i, annot in enumerate(hashed_annots):
-        if annot in geneset_genes:
-            count += 1
-            matches.append(matrix_annots[i])
-        else:
-            mismatches.append(matrix_annots[i])
-    return count, matches, mismatches
+##     count = 0
+##     matches, mismatches = [], []
+##     for i, annot in enumerate(hashed_annots):
+##         if annot in geneset_genes:
+##             count += 1
+##             matches.append(matrix_annots[i])
+##         else:
+##             mismatches.append(matrix_annots[i])
+##     return count, matches, mismatches
 
-def _align_geneset_to_matrix(matrix_annots, geneset_genes):
-    # Return a list of the indexes required to align the geneset to
-    # the rows of the matrix.  If it cannot be completely aligned,
-    # then return None.
-    from genomicode import jmath
+## def _align_geneset_to_matrix(matrix_annots, geneset_genes):
+##     # Return a list of the indexes required to align the geneset to
+##     # the rows of the matrix.  If it cannot be completely aligned,
+##     # then return None.
+##     from genomicode import jmath
 
-    if len(matrix_annots) > len(geneset_genes):
-        return None
-    I = jmath.match(matrix_annots, geneset_genes)
-    if None in I:
-        return None
-    return I
+##     if len(matrix_annots) > len(geneset_genes):
+##         return None
+##     I = jmath.match(matrix_annots, geneset_genes)
+##     if None in I:
+##         return None
+##     return I
 
-def _align_matrix_to_geneset(matrix_annots, geneset_genes):
-    # Return a list of the indexes required to align the matrix to the
-    # geneset.  If it cannot be completely aligned, then return None.
-    from genomicode import jmath
+## def _align_matrix_to_geneset(matrix_annots, geneset_genes):
+##     # Return a list of the indexes required to align the matrix to the
+##     # geneset.  If it cannot be completely aligned, then return None.
+##     from genomicode import jmath
 
-    if len(geneset_genes) > len(matrix_annots):
-        return None
-    I = jmath.match(geneset_genes, matrix_annots)
-    if None in I:
-        return None
-    return I
+##     if len(geneset_genes) > len(matrix_annots):
+##         return None
+##     I = jmath.match(geneset_genes, matrix_annots)
+##     if None in I:
+##         return None
+##     return I
+
+## def _find_col_header(MATRIX, col_names):
+##     # Find the header in the MATRIX whose annotations can be found in
+##     # col_names.  MATRIX can be a subset of col_names.  If multiple
+##     # headers match, then just return the first one.  If none match,
+##     # return None.
+##     from genomicode import jmath
+##     from genomicode import hashlib
+
+##     h_col_names = [hashlib.hash_R(x) for x in col_names]
+
+##     for name in MATRIX.col_names():
+##         matrix_col_names = MATRIX.col_names(name)
+##         h_matrix_col_names = [hashlib.hash_R(x) for x in matrix_col_names]
+##         #I = jmath.match(h_col_names, h_matrix_col_names)
+##         #if None in I:  # missing something
+##         #    continue
+##         I = jmath.match(h_matrix_col_names, h_col_names)
+##         missing = []
+##         for i in range(len(I)):
+##             if I[i] is None:
+##                 missing.append(matrix_col_names[i])
+##         #print name, len(missing), missing
+##         if len(missing):
+##             continue
+##         return name
+##     return None
 
 def _intersect_indexes(*indexes):
     # None means take all indexes.
@@ -656,38 +837,12 @@ def _dedup_indexes(I):
             i += 1
     return I
 
-def _find_col_header(MATRIX, col_names):
-    # Find the header in the MATRIX whose annotations can be found in
-    # col_names.  MATRIX can be a subset of col_names.  If multiple
-    # headers match, then just return the first one.  If none match,
-    # return None.
-    from genomicode import jmath
-    from genomicode import hashlib
-
-    h_col_names = [hashlib.hash_R(x) for x in col_names]
-
-    for name in MATRIX.col_names():
-        matrix_col_names = MATRIX.col_names(name)
-        h_matrix_col_names = [hashlib.hash_R(x) for x in matrix_col_names]
-        #I = jmath.match(h_col_names, h_matrix_col_names)
-        #if None in I:  # missing something
-        #    continue
-        I = jmath.match(h_matrix_col_names, h_col_names)
-        missing = []
-        for i in range(len(I)):
-            if I[i] is None:
-                missing.append(matrix_col_names[i])
-        #print name, len(missing), missing
-        if len(missing):
-            continue
-        return name
-    return None
-
 def main():
     import argparse
     import arrayio
     from genomicode import jmath
-    from genomicode import binreg
+    from genomicode import matrixlib
+    from genomicode import quantnorm
 
     parser = argparse.ArgumentParser(
         description="Slice the rows or columns of a matrix.")
@@ -752,6 +907,17 @@ def main():
         "--select_row_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.")
     group.add_argument(
+        "--select_row_annotation", default=None, 
+        help="Include only the rows where the annotation contains a "
+        "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
+    group.add_argument(
+        "--select_row_numeric_annotation", default=None, 
+        help="Include only the rows where the annotation contains a "
+        "numeric value.  Format: <txt_file>,<header>,<value>[,<value,...].  "
+        'If <value> starts with a "<", then will only find the rows where '
+        "the annotation is less than <value>.  "
+        'The analogous constraint will be applied for ">".')
+    group.add_argument(
         "--select_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
@@ -775,6 +941,15 @@ def main():
         "--remove_row_annot", action="append", default=[],
         help="Remove this annotations from the matrix.")
     group.add_argument(
+        "--rename_row_annot", action="append", default=[],
+        help="Rename this header.  "
+        "The format should be: <old_name>,<new_name>.")
+    group.add_argument(
+        "--move_row_annot", action="append", default=[],
+        help="Move this header.  "
+        "The format should be: <header>,<old_index>,<new_index>.  "
+        "The indexes are 1-based.")
+    group.add_argument(
         "--align_row_file", default=None,
         help="Align the rows to this other matrix file.")
     group.add_argument(
@@ -796,8 +971,8 @@ def main():
         MATRIX = matrices[0]
     else:
         # Merge the matrices into one big file.
-        matrices = binreg.align_rows(*matrices)
-        MATRIX = binreg.merge_matrices(*matrices)
+        matrices = matrixlib.align_rows(*matrices)
+        MATRIX = matrixlib.merge_matrices(*matrices)
     if not MATRIX.nrow():
         return
 
@@ -805,8 +980,11 @@ def main():
     I1 = find_row_indexes(MATRIX, args.select_row_indexes)
     I2 = find_row_ids(MATRIX, args.select_row_ids)
     I3 = find_row_genesets(MATRIX, args.select_row_genesets)
-    I4 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
-    I_row = _intersect_indexes(I1, I2, I3, I4)
+    I4 = find_row_annotation(MATRIX, args.select_row_annotation)
+    I5 = find_row_numeric_annotation(
+        MATRIX, args.select_row_numeric_annotation)
+    I6 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
+    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     I1 = find_col_indexes(MATRIX, args.select_col_indexes)
     I2 = find_col_genesets(MATRIX, args.select_col_genesets)
     I3 = find_col_annotation(MATRIX, args.select_col_annotation)
@@ -819,6 +997,14 @@ def main():
 
     # Add row annotations.
     MATRIX = add_row_annot(MATRIX, args.add_row_annot)
+
+    # Rename the row annotations.  Do this after removing and adding.
+    for x in args.rename_row_annot:
+        MATRIX = rename_row_annot(MATRIX, x)
+
+    # Move the row annotations.  Do this at the end.
+    for x in args.move_row_annot:
+        MATRIX = move_row_annot(MATRIX, x)
 
     # Relabel the column IDs.
     MATRIX = relabel_col_ids(MATRIX, args.relabel_col_ids)
@@ -842,7 +1028,7 @@ def main():
 
     # Quantile normalize, if requested.
     if args.quantile:
-        MATRIX = quantile_normalize(MATRIX)
+        MATRIX = quantnorm.normalize(MATRIX)
 
     # Write the outfile (in the same format).
     handle = sys.stdout
