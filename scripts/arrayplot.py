@@ -157,8 +157,6 @@ class ColorbarLayout:
     def __init__(
         self, cb_width, cb_height, signal_0, signal_1,
         ticks, tick_labels, label_sizes, fontsize, inverse_colors, color_fn):
-        import math
-
         TICK_SIZE = 0.15       # relative to BAR_SHORT
         TICK_BUFFER = 0.15     # relative to BAR_SHORT
 
@@ -382,7 +380,6 @@ class GeneDendrogramLayout(DendrogramLayout):
         return x, y
     def lines(self, node_num, node_dist, left_num, left_dist,
               right_num, right_dist):
-        import math
         node_x, node_y = self.coord(node_num, node_dist)
         left_x, left_y = self.coord(left_num, left_dist)
         right_x, right_y = self.coord(right_num, right_dist)
@@ -601,8 +598,6 @@ def process_data_set(
     log_transform, gene_center, gene_normalize, array_center, array_normalize,
     cluster_genes, cluster_arrays, cluster_alg, distance, method,
     gene_k, array_k, kmeans_k, scale, gain, autoscale):
-    import arrayio
-
     assert MATRIX.nrow() > 0, "Matrix has no genes."
     MATRIX = filter_matrix(
         MATRIX, gene_indexes, gene_names, gene_file, num_genes_var,
@@ -811,20 +806,23 @@ def _choose_gene_id(MATRIX):
     # Prioritize some potential ones.  Don't use the standard headers,
     # e.g. arrayio.ROW_ID, so that we can preserve the user's header.
     IDS = ["Probe.Set.ID"]
-    for id in IDS:
-        if id in headers:
-            return id
+    for id_ in IDS:
+        if id_ in headers:
+            return id_
 
     # If no known headers are found, then choose a standard one.
     IDS = [arrayio.AFFY_PROBESET_ID, arrayio.GENE_ID, arrayio.ROW_ID]
-    for id in IDS:
-        if id in headers:
-            return id
+    for id_ in IDS:
+        if id_ in headers:
+            return id_
 
     # If no standard ones are found, then just arbitrarily use the
-    # first column.
-    if headers:
-        return headers[0]
+    # first column that is not missing any values.
+    for header in headers:
+        names = MATRIX.row_names(header)
+        missing = [x for x in names if not x.strip()]
+        if not missing:
+            return header
     
     raise AssertionError, "I could not find an ID for the matrix."
 
@@ -850,9 +848,9 @@ def _choose_gene_label(MATRIX):
         if desc[0].startswith("DESC"):
             i = IDS.index("DESCRIPTION")
             IDS.pop(i)
-    for id in IDS:
-        if id in names:
-            return id
+    for id_ in IDS:
+        if id_ in names:
+            return id_
     if names:
         return names[0]
     raise AssertionError, "I could not find an ID for the matrix."
@@ -867,6 +865,15 @@ def convert_to_pcl(MATRIX, label_name=None):
     # Select from the row names an ID and a NAME.
     id_name = _choose_gene_id(MATRIX)
     name_name = _choose_gene_label(MATRIX)
+
+    # Make sure there aren't any blank gene IDs, or cluster will
+    # complain.  Also, make sure they are unique.
+    seen = {}
+    for id_ in MATRIX.row_names(id_name):
+        id_ = id_.strip()
+        assert id_, "Missing gene IDs (header %s)." % id_name
+        assert id_ not in seen, "Duplicate gene ID %s." % id_
+        seen[id_] = 1
 
     # Should not use "GID" as column name for PCL file.  When
     # clustering, cluster will add another "GID" column, and then
@@ -1003,8 +1010,6 @@ def normalize_matrix(
     # gene_normalize   None, "ss", or "var"
     # array_center     None, "mean", or "median"
     # array_normalize  None, "ss", or "var"
-
-    import arrayio
     from genomicode import jmath
 
     # If no normalization requested, then just return the matrix.
@@ -1101,7 +1106,6 @@ def cluster_matrix(
     MATRIX, cluster, cluster_data,
     cluster_genes, cluster_arrays, algorithm, distance, method,
     gene_k, array_k, kmeans_k):
-    import arrayio
     from genomicode import clusterio
 
     assert algorithm in ["hierarchical", "kmeans"]
@@ -1130,18 +1134,18 @@ def cluster_matrix(
     if cluster_genes or cluster_arrays:
         args = []
 
-        id = dist2id[distance]
+        id_ = dist2id[distance]
         if cluster_genes:
-            args.append("-g %s" % id)
+            args.append("-g %s" % id_)
         else:
             args.append("-g 0")
         if cluster_arrays:
-            args.append("-e %s" % id)
+            args.append("-e %s" % id_)
         else:
             args.append("-e 0")
 
-        id = method2id[method]
-        args.append("-m %s" % id)
+        id_ = method2id[method]
+        args.append("-m %s" % id_)
 
         if algorithm == "kmeans":
             args.append("-k %d" % kmeans_k)
@@ -1309,10 +1313,10 @@ def find_data_files(file_or_stem):
     EXTENSIONS = [
         "nrm", "pcl", "cdt", "gtr", "atr", "gtc", "atc", "kgg", "kag"]
     ext2file = {}
-    for file in os.listdir(path):
-        if not file.startswith(stem):
+    for file_ in os.listdir(path):
+        if not file_.startswith(stem):
             continue
-        f, e = os.path.splitext(file)
+        f, e = os.path.splitext(file_)
         if e.startswith("."):
             e = e[1:]
         if e not in EXTENSIONS:
@@ -1329,7 +1333,7 @@ def find_data_files(file_or_stem):
         if not recognize_file:
             continue
         
-        ext2file[e] = os.path.join(path, file)
+        ext2file[e] = os.path.join(path, file_)
     return ext2file
     
 def read_data_set(file_or_stem, default=None):
@@ -1497,8 +1501,6 @@ def plot_matrix(plotlib, image, MATRIX, xoff, yoff, layout):
             plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 def plot_colorbar(plotlib, image, xoff, yoff, layout):
-    from genomicode import graphlib
-
     #yoff += 100
     #xoff += 100
     BLACK = (0, 0, 0)
@@ -1534,7 +1536,7 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
     labels = [layout.tick_label(i) for i in range(layout.num_ticks())]
     label_sizes = [layout.label_size(i) for i in range(layout.num_ticks())]
     max_width = max([x[0] for x in label_sizes])
-    max_height = max([x[1] for x in label_sizes])
+    #max_height = max([x[1] for x in label_sizes])
                    
     for i, label in enumerate(labels):
         x, y = layout.label_coord(i)
@@ -1560,19 +1562,19 @@ def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
     id2distance = {}  # gene or node id -> distance
     # Find id2num and id2distance for each of the leaves.
     for i, x in enumerate(ids):
-        id = clusterio.parse_node(x)
-        id2num[id] = i
-        id2distance[id] = 1
+        id_ = clusterio.parse_node(x)
+        id2num[id_] = i
+        id2distance[id_] = 1
     #print tree
 
     # Set id2num and id2distance the internal nodes.
     for i, node in enumerate(tree):
-        id = -(i+1)
+        id_ = -(i+1)
         left, right, distance = node
         left_num = id2num[left]
         right_num = id2num[right]
-        id2num[id] = (left_num + right_num)/2.0
-        id2distance[id] = distance
+        id2num[id_] = (left_num + right_num)/2.0
+        id2distance[id_] = distance
     #print id2num
 
     # Draw the nodes of the tree.
@@ -1634,8 +1636,8 @@ def plot_gene_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     for ID_NAME in ID_NAMES:
         ID = X.row_names(ID_NAME)
         num_found = 0
-        for id in ids:
-            if id in ID:
+        for id_ in ids:
+            if id_ in ID:
                 num_found += 1
         #print ID_NAME, num_found, len(ids), ids[:3]
         if num_found == len(ids):
@@ -1684,8 +1686,8 @@ def plot_array_clusters(plotlib, image, X, xoff, yoff, layout, clusters):
     for ID_NAME in ID_NAMES:
         ID = X.col_names(ID_NAME)
         num_found = 0
-        for id in ids:
-            if id in ID:
+        for id_ in ids:
+            if id_ in ID:
                 num_found += 1
         if num_found == len(ids):
             break
@@ -1777,6 +1779,8 @@ def _cluster(MATRIX, *args, **params):
         raise AssertionError, "cluster: command not found"
     elif output.find("command not found") >= 0:
         raise AssertionError, "%s: command not found" % cluster
+    elif output.find("Error reading file") >= 0:
+        raise AssertionError, "%s\n%s" % (cmd, output)
 
     return filestem
 
@@ -1785,10 +1789,10 @@ def _cleanup_cluster(filestem):
     from genomicode import filelib
 
     path, filestem = os.path.split(filestem)
-    for file in os.listdir(path):
-        if not file.startswith(filestem):
+    for file_ in os.listdir(path):
+        if not file_.startswith(filestem):
             continue
-        filename = os.path.join(path, file)
+        filename = os.path.join(path, file_)
         filelib.safe_unlink(filename)
 
 def _get_gene_ids(MATRIX):
