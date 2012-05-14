@@ -2244,5 +2244,7 @@ def main():
     plot(outfile, MATRIX, cluster_data, plotlib, layout, coords)
 
 if __name__ == '__main__':
+    #import sys
+    #print "Running python: %s" % sys.executable
     main()
     #import profile; profile.run("main()")

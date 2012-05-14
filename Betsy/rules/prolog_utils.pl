@@ -57,8 +57,8 @@ convert_parameters_raw(Parameters,NewParameters):-
     member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
-    get_value(Parameters,filter,no_filter,Filter),
-    (Filter=no_filter;not(atom(Filter))),
+    get_value(Parameters,filter,0,Filter),
+    not(atom(Filter)),
     append(NewParameters4,[filter,Filter],NewParameters5),
     
     %get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
@@ -74,7 +74,7 @@ convert_parameters_raw(Parameters,NewParameters):-
     append(NewParameters6,[status,Status],NewParameters7),
 
     (member(Preprocess,[illumina,illumina_controls]),
-    get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
+    get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,ill_custom_manifest],[],Options),
     append(NewParameters7,Options,NewParameters);
     not(member(Preprocess,[illumina,illumina_controls])),
     NewParameters=NewParameters7).
@@ -100,8 +100,8 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
-    get_value(Parameters,filter,no_filter,Filter),
-    (Filter=no_filter;not(atom(Filter))),
+    get_value(Parameters,filter,0,Filter),
+    not(atom(Filter)),
     append(NewParameters4,[filter,Filter],NewParameters5),
    
     get_value(Parameters,predataset,no_predataset,Predataset),
@@ -142,8 +142,8 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
-    get_value(Parameters,filter,no_filter,Filter),
-    (member(Filter,[no_filter,25]);not(Filter=25),not(atom(Filter))),
+    get_value(Parameters,filter,0,Filter),
+    (member(Filter,[0,25]);not(Filter=25),not(Filter=0),not(atom(Filter))),
     append(NewParameters4,[filter,Filter],NewParameters5),
     
     %get_value_variable(Parameters,filter_fc,Filter_fc),

@@ -31,8 +31,40 @@ def run(parameters,objects,pipeline):
         gp_parameters['idat.zip'] = zipfile_name
     gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
     gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
-    manifiest = ['HumanHT-12_V3_0_R2_11283641.txt','HumanHT-12_V4_0_R2_15002873_B.txt']
-    chip = ['ilmn_HumanHT_12_V4_0_R1_15002873_B.chip']
+    manifiest = ['HumanHT-12_V3_0_R2_11283641_A.txt',
+                    'HumanHT-12_V4_0_R2_15002873_B.txt',
+                    'HumanHT-12_V3_0_R3_11283641_A.txt',
+                    'HumanHT-12_V4_0_R1_15002873_B.txt',
+                    'HumanMI_V1_R2_XS0000122-MAP.txt',
+                    'HumanMI_V2_R0_XS0000124-MAP.txt',
+                    'HumanRef-8_V2_0_R4_11223162_A.txt',
+                    'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
+                    'HumanRef-8_V3_0_R2_11282963_A.txt',
+                    'HumanRef-8_V3_0_R3_11282963_A.txt',
+                    'HumanWG-6_V2_0_R4_11223189_A.txt',
+                    'HumanWG-6_V3_0_R2_11282955_A.txt',
+                    'HumanWG-6_V3_0_R3_11282955_A.txt',
+                    'MouseMI_V1_R2_XS0000127-MAP.txt',
+                    'MouseMI_V2_R0_XS0000129-MAP.txt',
+                    'MouseRef-8_V1_1_R4_11234312_A.txt',
+                    'MouseRef-8_V2_0_R2_11278551_A.txt',
+                    'MouseRef-8_V2_0_R3_11278551_A.txt',
+                    'MouseWG-6_V1_1_R4_11234304_A.txt',
+                    'MouseWG-6_V2_0_R2_11278593_A.txt',
+                    'MouseWG-6_V2_0_R3_11278593_A.txt',
+                    'RatRef-12_V1_0_R5_11222119_A.txt']
+    chip = ['ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
+                'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+                'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
+                'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
+                'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
+                'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
+                'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
+                'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
+                'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
+                'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
+                'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
+                'ilmn_RatRef_12_V1_0_R5_11222119_A.chip']
     if 'ill_bg_mode' in parameters.keys():
         assert parameters['ill_bg_mode'] in ['ill_yes','ill_no'],'ill_bg_mode should be ill_yes or ill_no'
         p = {'ill_yes':'true','ill_no':'false'}
@@ -55,6 +87,9 @@ def run(parameters,objects,pipeline):
         
     if 'ill_custom_chip' in parameters.keys():
         gp_parameters['chip'] = str(parameters['ill_custom_chip'])
+
+    if 'ill_custom_manifest' in parameters.keys():
+        gp_parameters['custom.manifest'] = str(parameters['ill_custom_manifest'])
 
     gp_path = Betsy_config.GENEPATTERN
     gp_module = module_utils.which(gp_path)

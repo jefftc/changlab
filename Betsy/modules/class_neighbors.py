@@ -38,11 +38,12 @@ def run(parameters,objects,pipeline):
         gp_parameters['user.pval'] = str(parameters['cn_user_pval'])
         
     if 'cn_mean_or_median' in parameters.keys():
-        assert  gp_parameters['cn_mean_or_median'] in ['cn_none','cn_max','cn_median'],'ill_coll_mode is not correct'
-        gp_parameters['mean.or.median'] = str(parameters['cn_mean_or_median'])[3:]
+        mean_median = {'cn_mean':'','cn_median':'-d']
+        assert  gp_parameters['cn_mean_or_median'] in ['cn_mean','cn_median'],'ill_coll_mode is not correct'
+        gp_parameters['mean.or.median'] = mean_median[parameters['cn_mean_or_median']]
         
     if 'cn_ttest_or_snr' in parameters.keys():
-        p={'cn_ttest':'-T','cn_snr':'-S'}
+        p={'cn_ttest':'','cn_snr':'-S'}
         assert parameters['cn_ttest_or_snr'] in p.values(),'cn_ttest_snr is invalid'
         gp_parameters['ttest.or.snr'] = p[parameters['cn_ttest_or_snr']]
         
@@ -51,20 +52,21 @@ def run(parameters,objects,pipeline):
         gp_parameters['filter.data'] = str(parameters['cn_filter_data'])[3:]
 
     if 'cn_abs_diff' in parameters.keys():
-        assert parameters['cn_abs_diff'].isdigit(),'cn_abs_diff should be digit'
+        assert module_utils.isnumber(parameters['cn_abs_diff']),'cn_abs_diff should be number'
         gp_parameters['min.abs.diff'] = str(parameters['cn_abs_diff'])
         
     if 'cn_min_threshold' in parameters.keys():
-        assert parameters['cn_min_threshold'].isdigit(),'cn_min_threshold should be digit'
+        assert module_utils.isnumber(parameters['cn_min_threshold']),'cn_min_threshold should be number'
         gp_parameters['min.threshold'] = str(parameters['cn_min_threshold'])
         
     if 'cn_max_threshold' in parameters.keys():
-        assert parameters['cn_max_threshold'].isdigit(),'cn_max_threshold should be digit'
+        assert module_utils.isnumber(parameters['cn_max_threshold']),'cn_max_threshold should be number'
         gp_parameters['max.threshold'] = str(parameters['cn_max_threshold'])
         
     if 'cn_min_folddiff' in parameters.keys():
-        assert parameters['cn_min_folddiff'].isdigit(),'cn_min_folddiff should be digit'
+        assert module_utils.isnumber(parameters['cn_min_folddiff']),'cn_min_folddiff should be number'
         gp_parameters['min.fold.diff'] = str(parameters['cn_min_folddiff'])
+        
     gp_path = Betsy_config.GENEPATTERN
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path

@@ -104,7 +104,8 @@ def main():
         assert len(i.split(':')) == 2, 'parameters should format like key:value'
         
     module = protocol_utils.import_protocol(args.protocol)
-    
+    protocol_utils.check_parameters(module.PARAMETERS)
+    protocol_utils.check_default(module.DEFAULT,module.PARAMETERS)
     inputs = []
     identifiers = []
     in_dataset_ids = []
@@ -132,18 +133,21 @@ def main():
             key,value = parpair
             assert key in module.PARAMETERS.keys(),(
                 '%s is not a valid parameter key in %s'%(key,args.protocol))
-            if module.PARAMETERS[key] == ['number']:
+            if module.PARAMETERS[key] == 'float':
                 assert module_utils.is_number(value),'%s is not a number'%value
-            elif (not value.isdigit() and
-                  not (module.PARAMETERS[key] == ['arbitrary string']) and
-                  not (module.PARAMETERS[key] == ['arbitrary content'])):
-                assert value in module.PARAMETERS[key],(
-                '   %s is not a valid parameter value in %s'%(value,args.protocol))
-            if module.PARAMETERS[key] == ['arbitrary content']:
-                parameters[key.lower()] = '['+value.lower() +']'
+                parameters[key] = value
+            elif module.PARAMETERS[key] == 'integer':
+                assert value.isdigit(),'%s is not a number'%value
+                parameters[key] = value
+            elif module.PARAMETERS[key] == 'list':
+                values = value.split(',')
+                parameters[key] = str(values)
+            elif module.PARAMETERS[key] == 'string':
+                parameters[key] = '\''+value+'\''
             else:
-                parameters[key.lower()] = value.lower()
-            
+                assert value in module.PARAMETERS[key],(
+                '%s is not a valid parameter value in %s'%(value,args.protocol))
+                parameters[key] = value
     if args.describe_protocol:
         print 'INPUTS', module.INPUTS
         print 'OUTPUTS', module.OUTPUTS

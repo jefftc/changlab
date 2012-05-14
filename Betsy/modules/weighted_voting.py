@@ -39,10 +39,13 @@ def run(parameters,objects,pipeline):
         assert module_utils.is_number(
             parameters['wv_minstd']), 'the sv_minstd should be number'
         gp_parameters['min.std'] = str(parameters['wv_minstd'])
+    wv_feature_stat = ['wv_snr','wv_ttest','wv_snr_median','wv_ttest_median',
+                       'wv_snr_minstd','wv_ttest_minstd','wv_snr_median_minstd',
+                       'wv_ttest_median_minstd']
     if 'wv_feature_stat' in parameters.keys():
-        assert module_utils.is_number(
-            parameters['wv_feature_stat']), 'the wv_feature_stat should be number'
-        gp_parameters['feature.selection.statistic'] = str(parameters['wv_feature_stat'])
+        assert parameters['wv_feature_stat'] in wv_feture_stat, 'the wv_feature_stat is invalid'
+        gp_parameters['feature.selection.statistic'] = str(
+                               wv_feature_stat.index(parameters['wv_feature_stat'])
     gp_path = Betsy_config.GENEPATTERN
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path

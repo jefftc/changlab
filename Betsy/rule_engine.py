@@ -57,9 +57,8 @@ def parse_text_pipeline(line):
     """parse a text line to a pipeline"""
     #convert to JSON object format
     import re
-    newline = re.sub(r"\b(\d*[a-zA-Z0-9_\.]\w*)\b(?!['\"\.])", r'"\1"', line)
-    newline = newline.replace("'",'"')
-    #newline = newline.replace('.','')
+    line = line.replace('\'','')
+    newline = re.sub(r"\b(\d*[a-zA-Z0-9_\.]\w*[a-zA-Z0-9_\.]\w*)\b(?!['\"])",r'"\1"', line)
     jline = json.loads(newline)
     #the output of json.loads is in unicode format,convert to string
     jline=convert_unicode_str(jline)
