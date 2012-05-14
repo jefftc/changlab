@@ -13,26 +13,24 @@ format_predictions
 is_logged_array_data
 log_matrix_if_needed
 
-align_rows             # WAS align_matrices
-align_cols
-are_rows_aligned       # is_matrices_aligned
-are_cols_aligned
-describe_unaligned_rows
+## Moved to matrixlib.
+#align_rows             # WAS align_matrices
+#align_cols
+#are_rows_aligned       # is_matrices_aligned
+#are_cols_aligned
+#describe_unaligned_rows
+#
+#read_matrices
+#merge_gct_matrices
+#merge_matrices
 
-read_matrices
-merge_gct_matrices
-merge_matrices
 strip_affx_control_probes
 
 Classes:
 BinregParams
 
 """
-# Private functions:
-# _hash_geneid
-# _hash_sampleid
-
-import os, sys
+import os
 
 
 class BinregParams:
@@ -182,8 +180,8 @@ def find_binreg_20(default_path):
             "quantnorm.m", "std_rows_to_y.m", 
             "Binreg2.0.Matlab.tutorial.ppt"]
         complete = True   # Is this distribution complete.
-        for file in files:
-            filename = os.path.join(spath, file)
+        for file_ in files:
+            filename = os.path.join(spath, file_)
             if not os.path.exists(filename):
                 complete = False
                 break
@@ -197,12 +195,14 @@ def format_data_files(train0, train1, test):
     # test can be None.
     from StringIO import StringIO
     import arrayio
+    import matrixlib
 
     assert train0.nrow() > 0 and train0.ncol() > 0
     assert train1.nrow() > 0 and train1.ncol() > 0
     assert not test or (test.nrow() > 0 and test.ncol() > 0)
-    assert are_rows_aligned(train0, train1), "matrices not aligned"
-    assert not test or are_rows_aligned(train0, test), "matrices not aligned"
+    assert matrixlib.are_rows_aligned(train0, train1), "matrices not aligned"
+    assert not test or matrixlib.are_rows_aligned(train0, test), \
+        "matrices not aligned"
 
     X_train0 = train0.value()
     X_train1 = train1.value()
@@ -224,8 +224,8 @@ def format_data_files(train0, train1, test):
     # Write the description file.
     ids = train0.row_names(arrayio.ROW_ID)
     desc_handle = StringIO()
-    for id in ids:
-        print >>desc_handle, id
+    for id_ in ids:
+        print >>desc_handle, id_
     desc_handle.seek(0)
     desc_str = desc_handle.read()
 
@@ -300,12 +300,12 @@ def format_predictions(train0, train1, test, outpath=None):
     if test:
         samples = samples + test.col_names(arrayio.COL_ID)
         
-    format = "index:d type:d prob:f lower_ci:f upper_ci:f mgene:f"
-    d_fit = [d for d in filelib.read_row(fitted_file, format)]
-    d_xval = [d for d in filelib.read_row(xval_file, format)]
+    format_ = "index:d type:d prob:f lower_ci:f upper_ci:f mgene:f"
+    d_fit = [d for d in filelib.read_row(fitted_file, format_)]
+    d_xval = [d for d in filelib.read_row(xval_file, format_)]
     d_pred = []
     if test:
-        d_pred = [d for d in filelib.read_row(predict_file, format)]
+        d_pred = [d for d in filelib.read_row(predict_file, format_)]
     assert len(d_fit) == len(d_xval)
     # crossvalidation.txt + validationcases.txt
     assert len(d_xval)+len(d_pred) == len(samples)
@@ -374,349 +374,14 @@ def log_matrix_if_needed(DATA):
     DATA._X = jmath.log(DATA._X, base=2, safe=1)
     return DATA
 
-def align_rows(*matrices):
-    """Aligns matrices by ROW_ID.  Return a list of the matrices after
-    the rows are aligned.  Raises an exception if no rows are common
-    to all matrices.
-
-    """
-    import arrayio
-
-    header = arrayio.ROW_ID
-    if not matrices:
-        return []
-    for m in matrices:
-        assert m.nrow() > 0 and m.ncol() > 0
-
-    # Get the intersection of the IDs.
-    all_ids = [None]*len(matrices) # matrix index -> list of hids
-    for i in range(len(matrices)):
-        all_ids[i] = _hash_many_geneids(matrices[i].row_names(header))
-    
-    ids_hash = {}  # hid -> matrix_i -> row_i, id
-    for i, ids in enumerate(all_ids):
-        for j, id in enumerate(ids):
-            hid = _hash_geneid(id)
-            # If I have not seen this hashed ID before, then add it to
-            # the dictionary.
-            if hid not in ids_hash:
-                ids_hash[hid] = {}
-            # If a dataset has duplicate IDs, then take the first one only.
-            if i in ids_hash[hid]:
-                continue
-            ids_hash[hid][i] = j, id
-
-    # Use only the IDs that occur in all data files.  Use the order of
-    # the samples from first data set.
-    ids = [id for id in all_ids[0] if len(ids_hash[id]) == len(matrices)]
-    assert len(ids) > 0, "The data sets all have different row IDs."
-            
-    # Align the rows by the ids.
-    aligned = [None] * len(matrices)
-    for i in range(len(matrices)):
-        I = [ids_hash[id][i][0] for id in ids]
-        x = matrices[i].matrix(row=I)
-        aligned[i] = x
-
-    assert are_rows_aligned(*aligned), "matrices not aligned"
-
-    return aligned
-
-def align_cols(*matrices):
-    """Aligns matrices by COL_ID.  Return a list of the matrices after
-    the columns are aligned.  Raises an exception if no columns are
-    common to all matrices.
-
-    """
-    import arrayio
-
-    header = arrayio.COL_ID
-    if not matrices:
-        return []
-    for m in matrices:
-        assert m.nrow() > 0 and m.ncol() > 0
-
-    # Get the intersection of the IDs.
-    all_ids = [None]*len(matrices) # matrix index -> list of hids
-    for i in range(len(matrices)):
-        all_ids[i] = _hash_many_sampleids(matrices[i].col_names(header))
-    
-    ids_hash = {}  # hid -> matrix_i -> col_i, id
-    for i, ids in enumerate(all_ids):
-        for j, id in enumerate(ids):
-            hid = _hash_sampleid(id)
-            # If I have not seen this hashed ID before, then add it to
-            # the dictionary.
-            if hid not in ids_hash:
-                ids_hash[hid] = {}
-            # If a dataset has duplicate IDs, then take the first one only.
-            if i in ids_hash[hid]:
-                continue
-            ids_hash[hid][i] = j, id
-            
-    # Use only the IDs that occur in all data files.  Use the order of
-    # the samples from first data set.
-    ids = [id for id in all_ids[0] if len(ids_hash[id]) == len(matrices)]
-    assert len(ids) > 0, "The data sets have different column IDs."
-
-    # Align the columns by the ids.
-    aligned = [None] * len(matrices)
-    for i in range(len(matrices)):
-        I = [ids_hash[id][i][0] for id in ids]
-        x = matrices[i].matrix(col=I)
-        aligned[i] = x
-
-    assert are_cols_aligned(*aligned), "matrices not aligned"
-
-    return aligned
-
-def are_rows_aligned(*matrices):
-    import arrayio
-
-    header = arrayio.ROW_ID
-    
-    if len(matrices) <= 1:
-        return True
-
-    # Check the number of rows in each matrix.
-    for i in range(1, len(matrices)):
-        if matrices[0].nrow() != matrices[i].nrow():
-            return False
-
-    # Check the names of the rows.
-    hnames = [_hash_many_geneids(x.row_names(header)) for x in matrices]
-    for i in range(1, len(matrices)):
-        if hnames[0] != hnames[i]:
-            return False
-    return True
-
-def describe_unaligned_rows(*matrices):
-    # Return a text string that describes where the rows are not aligned.
-    import arrayio
-    import parselib
-
-    header = arrayio.ROW_ID
-    
-    if len(matrices) <= 1:
-        return "Only 1 matrix.  Must be aligned."
-
-    # Check the number of rows in each matrix.
-    num_rows = [x.nrow() for x in matrices]
-    if min(num_rows) != max(num_rows):
-        x = "Matrices have differing number of rows: %s" % ", ".join(
-            map(parselib.pretty_int, num_rows))
-        return x
-
-    # Check the names of the rows.
-    names = [x.row_names(header) for x in matrices]
-    hnames = [_hash_many_geneids(x.row_names(header)) for x in matrices]
-    bad_rows = []
-    for i in range(matrices[0].nrow()):
-        unaligned =False
-        for j in range(1, len(matrices)):
-            if hnames[0][i] != hnames[j][i]:
-                unaligned = True
-        if unaligned:
-            x = [names[j][i] for j in range(len(matrices))]
-            x = "Row %s: %s" % (parselib.pretty_int(i+1), ", ".join(x))
-            bad_rows.append(x)
-    if not bad_rows:
-        return "Matrices are aligned."
-
-    total_bad = len(bad_rows)
-    if total_bad > 10:
-        bad_rows = bad_rows[:10]
-        bad_rows.append("...")
-    x = "%s of %s rows are unaligned." % (
-        parselib.pretty_int(total_bad),
-        parselib.pretty_int(matrices[0].nrow()))
-    lines = [x] + bad_rows
-    return "\n".join(lines)
-
-def are_cols_aligned(*matrices):
-    import arrayio
-
-    header = arrayio.COL_ID
-
-    if len(matrices) <= 1:
-        return True
-
-    # Check the number of columns in each matrix.
-    for i in range(1, len(matrices)):
-        if matrices[0].ncol() != matrices[i].ncol():
-            return False
-
-    # Check the names of the columns.
-    hnames = [_hash_many_sampleids(x.col_names(header)) for x in matrices]
-    for i in range(1, len(matrices)):
-        if hnames[0] != hnames[i]:
-            return False
-    return True
-
-def read_matrices(filenames, cache=None):
-    """Read a list of matrices and align them.  filenames is a list of
-    the matrix files to read.  Returns a tuple where the first element
-    is a list of the matrices read, and the second is the aligned
-    matrix.
-
-    cache is an optional dictionary of filename to matrix.  This can
-    be used to prevent re-reading of matrices.
-
-    """
-    import copy
-    import arrayio
-    import filelib
-
-    for filename in filenames:
-        assert filelib.exists(filename), "File not found: %s" % filename
-
-    # Load the files.
-    DATA = []
-    for filename in filenames:
-        if cache is not None and filename in cache:
-            x = copy.deepcopy(cache[filename])
-        else:
-            try:
-                x = arrayio.read(filename)
-            except (SystemError, KeyboardInterrupt, MemoryError), x:
-                raise
-            except Exception, x:
-                # Can diagnose which file failed here.
-                # raise
-                raise Exception, "Problem reading %s: %s" % (
-                    repr(filename), str(x))
-            if cache is not None:
-                cache[filename] = x
-        DATA.append(x)
-
-    for d, filename in zip(DATA, filenames):
-        f = os.path.split(filename)[1]
-        #print "%s has %d genes and %d samples." % (f, d.nrow(), d.ncol())
-
-    # Align the matrices.
-    ALIGNED = align_rows(*DATA)
-    #if DATA:
-    #    print "Merged file has %d genes." % DATA[0].nrow()
-    #sys.stdout.flush()
-
-    return DATA, ALIGNED
-
-def merge_gct_matrices(*matrices):
-    import arrayio
-    import Matrix
-
-    assert len(matrices)
-    assert are_rows_aligned(*matrices)
-    for m in matrices:
-        assert arrayio.gct_format.is_matrix(m)
-
-    # Get the values in list of lists format.
-    X = [x.value() for x in matrices]
-    X_all = []
-    for i in range(len(X[0])):   # each row
-        x = []
-        for j in range(len(X)):  # each matrix
-            x.extend(X[j][i])
-        X_all.append(x)
-
-    # The sample names may not be unique.
-    row_order = ["NAME", "DESCRIPTION"]
-    col_order = []
-    row_names = {}
-    col_names = {}
-    synonyms = {}
-
-    # Should be in GCT format.
-    matrix0 = matrices[0]
-    assert len(matrix0.row_names()) == 2, "Invalid file format."
-    # Just assume the first column is the NAME and second is the
-    # DESCRIPTION.  Allow more flexibility in the actual column
-    # headers.
-    name, description = matrix0.row_names()
-    row_names["NAME"] = matrix0.row_names(name)
-    row_names["DESCRIPTION"] = matrix0.row_names(description)
-
-    for m in matrices:
-        assert len(m.col_names()) == 1
-    col_order = matrix0.col_names()
-    assert len(col_order) == 1
-
-    x = []
-    for m in matrices:
-        x.extend(m.col_names(m.col_names()[0]))
-    col_names[col_order[0]] = x
-
-    synonyms[arrayio.ROW_ID] = "NAME"
-    synonyms[arrayio.COL_ID] = col_order[0]
-
-    DATA = Matrix.InMemoryMatrix(
-        X_all, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    DATA = Matrix.add_synonyms(DATA, synonyms)
-    assert arrayio.gct_format.is_matrix(DATA)
-    return DATA
-
-def merge_matrices(*matrices):
-    import arrayio
-    import Matrix
-
-    assert len(matrices)
-    assert are_rows_aligned(*matrices)
-
-    # Get the values in list of lists format.
-    X = [x.value() for x in matrices]
-    X_all = []
-    for i in range(len(X[0])):   # each row
-        x = []
-        for j in range(len(X)):  # each matrix
-            x.extend(X[j][i])
-        X_all.append(x)
-
-    # The sample names may not be unique.
-    matrix0 = matrices[0]
-    row_order = []
-    col_order = []
-    row_names = {}
-    col_names = {}
-    synonyms = {}
-
-    # Use the annotations from the first matrix.
-    for name in matrix0.row_names():
-        row_names[name] = matrix0.row_names(name)
-    row_order = matrix0._row_order
-    # Add any annotations that do not occur in the first matrix.
-    for m in matrices[1:]:
-        for name in m.row_names():
-            if name in row_names:
-                continue
-            row_names[name] = m.row_names(name)
-            row_order.append(name)
-
-    # NotImplemented: copy over the column annotations.
-
-    # Copy over the sample names.
-    col_order = [matrix0._col_order[0]]
-    x = []
-    for m in matrices:
-        x.extend(m.col_names(arrayio.COL_ID))
-    col_names[col_order[0]] = x
-    
-    synonyms[arrayio.ROW_ID] = matrix0._synonyms[arrayio.ROW_ID]
-    synonyms[arrayio.COL_ID] = col_order[0]
-
-    DATA = Matrix.InMemoryMatrix(
-        X_all, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    DATA = Matrix.add_synonyms(DATA, synonyms)
-    return DATA
-
 def strip_affx_control_probes(DATA, psid_header=None):
     # psid_header should be the header that contains the Probe Set IDs.
     import arrayio
+    import hashlib
 
     header = psid_header or arrayio.ROW_ID
     
-    ID = _hash_many_geneids(DATA.row_names(header))
+    ID = hashlib.hash_many_geneids(DATA.row_names(header))
     ID_at = [x for x in ID if x.endswith("_at")]
     ID_good = [x for x in ID if not x.startswith("affx")]
     assert ID, "No IDs."
@@ -727,40 +392,3 @@ def strip_affx_control_probes(DATA, psid_header=None):
     DATA_s = DATA.matrix(row=ID_good, row_header=header)
 
     return DATA_s
-
-def _hash_geneid(id):
-    return id.strip().lower()
-
-def _hash_many_geneids(ids):
-    #return [_hash_geneid(x) for x in ids]
-    # Optimization: do this without a function call.
-    return [x.strip().lower() for x in ids]
-
-def _hash_sampleid(id):
-    # Hash the sample names so that small differences are ignored.  R
-    # will change the sample names, so if one data set has been
-    # through R but not the other, the names will be different.
-    # 2554_6933_32492_Mock1_HG-U133A+2
-    # X2554_6933_32492_Mock1_HG.U133A.2
-    import re
-
-    x = id
-
-    # If there are alphanumeric characters, then assume that
-    # punctuation isn't meaningful.
-    if re.search(r"\w", x):
-        # Change all non-words to '.', like R does.  (This does not
-        # change underscores.)
-        x = re.subn(r"\W", ".", x)[0]
-
-    # Ignore initial X.
-    if re.match(r"X[\d\w]", x):
-        x = x[1:]
-
-    # Make case insensitive.
-    x = x.lower()
-
-    return x
-
-def _hash_many_sampleids(ids):
-    return [_hash_sampleid(x) for x in ids]

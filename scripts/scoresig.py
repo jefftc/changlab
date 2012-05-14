@@ -255,7 +255,8 @@ def process_gp_imod_all_vars(gp_imod_all_vars, signatures, why_dropped):
                 changed = True
         if changed:
             # Flag this as being changed.
-            setattr(sig, "Changed", True)
+            sig.Changed = True
+            #setattr(sig, "Changed", True)
             #print "Signature %s run with altered parameters." % sig.Name
             
         signatures_clean.append(sig)
@@ -577,7 +578,6 @@ def summarize_report(
     analysis_name, signatures, orig_signatures, report_files, start_time,
     why_dropped, file_layout):
     import time
-    import subprocess
     from genomicode import parselib
     from genomicode import htmllib
 
@@ -596,10 +596,10 @@ def summarize_report(
 
     assert len(signatures) == len(report_files)
     id2reportfile = {}
-    for sig, file in zip(signatures, report_files):
+    for sig, file_ in zip(signatures, report_files):
         # The report_file in the HTML should be a relative path.
-        x, file = os.path.split(file)
-        id2reportfile[sig.xID] = file
+        x, file_ = os.path.split(file_)
+        id2reportfile[sig.xID] = file_
 
     # Figure out which of the signatures were dropped.
     missing_ids = []
@@ -643,9 +643,9 @@ def summarize_report(
     rows.append(x)
     
     which_changed = {}  # ID -> 1
-    for id in all_ids:
-        orig = id2orig[id]
-        sig = id2new.get(id)
+    for id_ in all_ids:
+        orig = id2orig[id_]
+        sig = id2new.get(id_)
 
         cols = []
 
@@ -991,11 +991,9 @@ def main():
     import time
     import arrayio
     from genomicode import config
-    from genomicode import jmath
     from genomicode import parallel
-    from genomicode import filelib
     from genomicode import archive
-    from genomicode import binreg
+    from genomicode import matrixlib
     from genomicode import genepattern
     
     #sigdb_path, = args
@@ -1090,13 +1088,13 @@ def main():
         assert data1.ncol() == data2.ncol(), \
                "%s and %s data sets have different numbers of samples." % (
             key1, key2)
-        if binreg.are_cols_aligned(data1, data2):
+        if matrixlib.are_cols_aligned(data1, data2):
             continue
-        x = binreg.align_cols(data1, data2)
+        x = matrixlib.align_cols(data1, data2)
         data1_new, data2_new = x
-        assert binreg.are_cols_aligned(data1_new, data2_new)
+        assert matrixlib.are_cols_aligned(data1_new, data2_new)
         # The samples in data1 (the reference) should not be changed.
-        assert binreg.are_cols_aligned(data1, data1_new)
+        assert matrixlib.are_cols_aligned(data1, data1_new)
         DATA_all[i] = key2, data2_new
     for key, data in DATA_all:
         if key == "DATA_rma":

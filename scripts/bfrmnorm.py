@@ -82,12 +82,12 @@ def init_paths(file_layout):
 
 def read_matrices(filenames):
     from genomicode import parselib
-    from genomicode import binreg
+    from genomicode import matrixlib
 
     if not filenames:
         return []
 
-    x = binreg.read_matrices(filenames)
+    x = matrixlib.read_matrices(filenames)
     DATA, ALIGNED = x
 
     for d, filename in zip(DATA, filenames):
@@ -121,9 +121,9 @@ def log_matrices(names, matrices):
 
 def write_dataset(filename, matrices):
     import arrayio
-    from genomicode import binreg
+    from genomicode import matrixlib
 
-    DATA = binreg.merge_gct_matrices(*matrices)
+    DATA = matrixlib.merge_gct_matrices(*matrices)
     arrayio.gct_format.write(DATA, open(filename, 'w'))
 
 def label_control_probes(probe_ids, control_probe_file):
@@ -273,8 +273,6 @@ def run_bfrm(
 
 def summarize_dataset(file_layout):
     import arrayio
-    from genomicode import Matrix
-    from genomicode import filelib
 
     DATA_orig = arrayio.read(file_layout.DS_ORIG)
 
@@ -295,13 +293,13 @@ def summarize_dataset(file_layout):
 def summarize_filtered_genes(file_layout):
     # Select the <NUM_FILTERED_GENES> genes that vary most by variance.
     import arrayio
-    from genomicode import binreg
+    from genomicode import matrixlib
     from genomicode import pcalib
 
     DATA_orig = arrayio.read(file_layout.DS_PROC)
     DATA_final = arrayio.read(file_layout.DS_FINAL)
-    if not binreg.are_rows_aligned(DATA_orig, DATA_final):
-        assert False, binreg.describe_unaligned_rows(DATA_orig, DATA_final)
+    if not matrixlib.are_rows_aligned(DATA_orig, DATA_final):
+        assert False, matrixlib.describe_unaligned_rows(DATA_orig, DATA_final)
 
     # Select the genes with the greatest variance.
     I = pcalib.select_genes_var(DATA_orig._X, NUM_FILTERED_GENES)
@@ -360,7 +358,7 @@ def _make_scatter(povray, pca_file, pov_file, out_file):
     ds = [d for d in filelib.read_row(pca_file, header=1)]
     X = [float(d.PC_0) for d in ds]
     Y = [float(d.PC_1) for d in ds]
-    Z = [float(d.PC_2) for d in ds]
+    #Z = [float(d.PC_2) for d in ds]
     DATASET = [int(d.Dataset) for d in ds]
     assert min(DATASET) >= 0 and max(DATASET) < 256
 
@@ -413,8 +411,8 @@ def summarize_report(
     from genomicode import htmllib
     from genomicode import parselib
 
-    def highlight(s):
-        return htmllib.SPAN(s, style="background-color:yellow")
+    #def highlight(s):
+    #    return htmllib.SPAN(s, style="background-color:yellow")
 
     assert len(filenames) == len(matrices)
 
@@ -566,7 +564,8 @@ def _write_svd_coord(filename, PC, samples, dataset):
     handle.close()
     
 def main():
-    from optparse import OptionParser, OptionGroup
+    #from optparse import OptionParser, OptionGroup
+    from optparse import OptionParser
     
     usage = "usage: %prog [options] <file1> <file2> ..."
     parser = OptionParser(usage=usage, version="%prog 01")

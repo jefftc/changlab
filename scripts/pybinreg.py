@@ -15,7 +15,7 @@ import os, sys
 # 
 # read_matrices
 # read_matrices_all
-# assert_rows_aligned
+
 # strip_affx_control_probes
 # log_matrices
 # quantile_normalize_matrices
@@ -650,14 +650,14 @@ def init_paths(file_layout):
 MATRIX_CACHE = {}
 def read_matrices_all(train0_file, train1_file, test_file, normref_file):
     global MATRIX_CACHE
-    from genomicode import binreg
+    from genomicode import matrixlib
 
     filenames = [train0_file, train1_file]
     if test_file:
         filenames.append(test_file)
     if normref_file:
         filenames.append(normref_file)
-    x = binreg.read_matrices(filenames, cache=MATRIX_CACHE)
+    x = matrixlib.read_matrices(filenames, cache=MATRIX_CACHE)
     DATA, ALIGNED = x
 
     DATA_train0, DATA_train1 = DATA[:2]
@@ -680,15 +680,10 @@ def read_matrices(train0_file, train1_file, test_file, normref_file):
      ALIGN_train0, ALIGN_train1, ALIGN_test, ALIGN_normref) = x
     return ALIGN_train0, ALIGN_train1, ALIGN_test, ALIGN_normref
 
-def assert_rows_aligned(train0, train1, test, normref):
-    from genomicode import binreg
-    x = [train0, train1, test, normref]
-    matrices = [x for x in x if x]
-    assert binreg.are_rows_aligned(*matrices)
-
 def strip_affx_control_probes(train0, train1, test, normref):
     # test, normref can be None
     from genomicode import binreg
+    from genomicode import matrixlib
     
     print "Stripping Affymetrix control IDs."
     train0_s = binreg.strip_affx_control_probes(train0)
@@ -699,7 +694,7 @@ def strip_affx_control_probes(train0, train1, test, normref):
     normref_s = None
     if normref:
         normref_s = binreg.strip_affx_control_probes(normref)
-    assert_rows_aligned(train0_s, train1_s, test_s, normref_s)
+    matrixlib.assert_rows_aligned(train0_s, train1_s, test_s, normref_s)
     return train0_s, train1_s, test_s, normref_s
 
 def log_matrices(
@@ -734,8 +729,9 @@ def quantile_normalize_matrices(
     # test can be None.
     from genomicode import Matrix
     from genomicode import quantnorm
+    from genomicode import matrixlib
 
-    assert_rows_aligned(train0, train1, test, None)
+    matrixlib.assert_rows_aligned(train0, train1, test, None)
 
     X = [None] * train0.nrow()
     for i in range(len(X)):
@@ -776,11 +772,12 @@ def dwd_normalize_matrices(
     train0, train1, test, version=None, matlab=None, dwd_path=None):
     from genomicode import Matrix
     from genomicode import dwdnorm
+    from genomicode import matrixlib
 
     # test must be specified to dwd normalize matrices.
     assert test, "DWD normalization requires a test set."
     
-    assert_rows_aligned(train0, train1, test, None)
+    matrixlib.assert_rows_aligned(train0, train1, test, None)
     assert train0.ncol() and train1.ncol(), "No training samples found."
     assert test.ncol(), "No test samples found."
 
@@ -827,6 +824,7 @@ def shiftscale_normalize_matrices(
 def _shiftscale_normalize_standard(
     train0, train1, test, matlab=None, binreg_path=None):
     from genomicode import Matrix
+    from genomicode import matrixlib
     from genomicode import shiftscalenorm
 
     print "Normalizing with shift-scale."; sys.stdout.flush()
@@ -835,7 +833,7 @@ def _shiftscale_normalize_standard(
     assert test, "Shift-scale normalization requires a test set."
     assert train0.ncol() and train1.ncol(), "Training samples missing."
     assert test.ncol(), "No test samples found."
-    assert_rows_aligned(train0, train1, test, None)
+    matrixlib.assert_rows_aligned(train0, train1, test, None)
 
     # Shift-scale will normalize X to Y.  X is the test data and Y is
     # the training data.
@@ -859,6 +857,7 @@ def _shiftscale_normalize_standard(
 def _shiftscale_normalize_normref(
     train0, train1, test, normref, matlab=None, binreg_path=None):
     from genomicode import Matrix
+    from genomicode import matrixlib
     from genomicode import shiftscalenorm
 
     # test must be specified to shiftscale normalize matrices.
@@ -866,7 +865,7 @@ def _shiftscale_normalize_normref(
     assert train0.ncol() and train1.ncol(), "Training samples missing."
     assert test.ncol(), "No test samples found."
     assert normref.ncol(), "No normalization reference samples found."
-    assert_rows_aligned(train0, train1, test, normref)
+    matrixlib.assert_rows_aligned(train0, train1, test, normref)
 
     print("Normalizing with shift-scale, "
           "using a normalization reference with %d samples." % normref.ncol())
@@ -933,12 +932,12 @@ def filter_missing_values(train0, train1, test, normref):
 def write_dataset(filename, train0, train1, test):
     # test can be None.
     import arrayio
-    from genomicode import binreg
+    from genomicode import matrixlib
 
     matrices = [train0, train1]
     if test:
         matrices.append(test)
-    DATA = binreg.merge_gct_matrices(*matrices)
+    DATA = matrixlib.merge_gct_matrices(*matrices)
     arrayio.gct_format.write(DATA, open(filename, 'w'))
 
 def write_files_for_binreg(train0, train1, test, file_layout):
@@ -1024,6 +1023,7 @@ def _run_binreg_normref(
     analysis, options, file_layout, train0, train1, test, normref):
     import shutil
     from genomicode import Matrix
+    from genomicode import matrixlib
     from genomicode import binreg
     from genomicode import filelib
     import arrayio
@@ -1033,7 +1033,7 @@ def _run_binreg_normref(
     assert train0.ncol() and train1.ncol(), "Training samples missing."
     assert test.ncol(), "No test samples found."
     assert normref.ncol(), "No normalization reference samples found."
-    assert_rows_aligned(train0, train1, test, normref)
+    matrixlib.assert_rows_aligned(train0, train1, test, normref)
 
     print("Running binreg "
           "using a normalization reference with %d samples." % normref.ncol())
