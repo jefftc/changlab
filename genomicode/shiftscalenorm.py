@@ -12,6 +12,7 @@ def normalize(X, Y, matlab=None, binreg_path=None):
     #import copy
     import subprocess
     import tempfile
+    import Matrix
     import binreg
     from dwdnorm import _write_matlab_matrix, _parse_normalized_matrix
     from dwdnorm import _safe_unlink
@@ -21,6 +22,9 @@ def normalize(X, Y, matlab=None, binreg_path=None):
     binreg_path = binreg.find_binreg_20(binreg_path)
     binreg_path = os.path.realpath(binreg_path)
     temp_path = "."
+
+    assert Matrix.is_Matrix(X), "X must be a Matrix object."
+    assert Matrix.is_Matrix(Y), "Y must be a Matrix object."
 
     # Start an instance of matlab.
     matlab_args = [
