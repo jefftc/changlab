@@ -21,8 +21,6 @@ import sys, os
 # 
 # pretty_runtime
 # pretty_hostname
-#
-# _hash_name
 
 # The structure of "signatures" is based on the signatures.txt file.
 # process_gp_imod_all_vars can introduce a boolean variable "Changed"
@@ -487,9 +485,9 @@ def extract_reports(names, paths, file_layout):
 
 def summarize_probabilities(signatures, names, paths, file_layout):
     from genomicode import filelib
-    from genomicode import binreg
+    from genomicode import hashlib
 
-    _hash = binreg._hash_sampleid
+    _hash = hashlib.hash_sampleid
     
     sample_names = []   # list of sample names
     probabilities = []  # matrix of probabilities
@@ -812,16 +810,6 @@ def pretty_hostname():
     assert hostname, "I could not get the hostname."
     return hostname
     
-def _hash_name(name):
-    import re
-    # Fix the header to be a python variable.
-    x = name
-    # Replace all non-word character with _.
-    x = re.sub(r"\W", "_", x)
-    # Replace initial numbers with Xnumber.
-    x = re.sub(r"^(\d)", r"X\1", x)
-    return x
-
 def make_analysis_name(options):
     filenames = [options.outpath, options.rma_dataset, options.mas5_dataset]
     filenames = [x for x in filenames if x]
@@ -993,6 +981,7 @@ def main():
     from genomicode import config
     from genomicode import parallel
     from genomicode import archive
+    from genomicode import hashlib
     from genomicode import matrixlib
     from genomicode import genepattern
     
@@ -1121,7 +1110,7 @@ def main():
     names = [None] * len(signatures)   # SIG19_AKT[_modified]
     paths = [None] * len(signatures)   # <path>/SIG19_AKT[_modified]
     for i, sig in enumerate(signatures):
-        name = "SIG%02d_%s" % (sig.xID, _hash_name(sig.Name))
+        name = "SIG%02d_%s" % (sig.xID, hashlib.hash_var(sig.Name))
         # If the user has modified the signature from the default
         # parameters, then make a note of it.
         if getattr(sig, "Changed", False):
