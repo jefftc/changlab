@@ -131,7 +131,6 @@ def get_newobjects(parameters,objects,pipeline):
     new_object = rule_engine.DataObject(newobjecttype,[
                         'unknown_version',parameters['contents']],outfile)
     new_objects = objects[:]
-    new_objects.remove(single_object)
     new_objects.append(new_object)
     return new_objects
 

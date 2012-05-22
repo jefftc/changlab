@@ -25,7 +25,7 @@ signal_file(Parameters,Modules):-
    get_value(Parameters,gene_order,no_order,Gene_Order),
    Gene_Order=no_order,
    get_desire_parameters_norm2(Parameters,NewParameters),
-   get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
+   get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,num_factors],[],Options),
    append(NewParameters,Options,NewParameters2),
    signal_norm2(NewParameters2,Modules).
 
@@ -38,7 +38,7 @@ signal_file(Parameters,Modules):-
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
     get_value(Parameters,gene_order,no_order,Gene_Order),
-    Gene_Order=by_sample_ttest,
+    member(Gene_Order,[t_test_p,t_test_fdr]),
     OldGene_Order=no_order,
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,gene_order,OldGene_Order,OldParameters),
@@ -153,7 +153,7 @@ pca_plot_out(Parameters,Modules):-
 pca_plot_in(Parameters,Modules):-
     get_desire_parameters_raw(Parameters,NewParameters1),
     convert_parameters_clean_out(NewParameters1,NewParameters),
-    signal_clean(NewParameters,Past_Modules),
+    signal_clean(Parameters,Past_Modules),
     Newadd=[pca_plot,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/

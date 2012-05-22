@@ -9,10 +9,11 @@ INPUTS = [
     'gpr_files',
     'idat_files',
     'agilent_files',
-    'input_signal_file']
+    'input_signal_file',
+    'renanme_list_file']
 
-OUTPUTS = ['signal_file']#'pca_plot_in','pca_plot_out','intensity_plot',
-           #'biotin_plot','actb_plot','hyb_bar_plot']
+OUTPUTS = ['signal_file']#,'pca_plot_in','pca_plot_out','intensity_plot',
+          # 'biotin_plot','actb_plot','hyb_bar_plot']
 
 
 PARAMETERS = {
@@ -22,9 +23,10 @@ PARAMETERS = {
     'gene_normalize':['variance','sum_of_squares','no_gene_normalize'],
     'quantile':['yes_quantile','no_quantile'],
     'dwd':['yes_dwd','no_dwd'],
+    'bfrm':['yes_bfrm','no_bfrm'],
     'shiftscale':['yes_shiftscale','no_shiftscale'],
     'combat':['yes_combat','no_combat'],
-    'gene_order':['by_sample_ttest','by_gene_list','no_order',
+    'gene_order':['t_test_p','t_test_fdr','by_gene_list','no_order',
                   'by_class_neighbors'],
     'predataset':['yes_predataset','no_predataset'],
     'filter':'integer',
@@ -51,7 +53,10 @@ PARAMETERS = {
     'cn_min_threshold':'float',
     'cn_max_threshold':'float',
     'cn_min_folddiff':'float',
-    'cn_abs_diff':'float'}
+    'cn_abs_diff':'float',
+    'gene_select_threshold':'float',
+    'rename_sample':['yes_rename','no_rename'],
+    'num_factors':'integer'}
 
 
 DEFAULT = {
@@ -59,8 +64,8 @@ DEFAULT = {
     'gene_normalize':'no_gene_normalize','quantile':'no_quantile',
     'dwd':'no_dwd','shiftscale':'no_shiftscale',
     'combat':'no_combat','filter':'0',
-    'predataset':'no_predataset',
-    'is_logged':'logged',
+    'predataset':'no_predataset','bfrm':'no_bfrm',
+    'is_logged':'logged','rename_sample':'no_rename',
     'gene_order':'no_order','format':'pcl'}
 
 predicate2arguments={
@@ -72,7 +77,8 @@ predicate2arguments={
     'agilent_files':(['version','unknown_version'],'[]'),
     'class_label_file':(['status','given'],'[]'),
     'gene_list_file':([],'[]'),
-    'input_signal_file':(['status','given'],'[]')}
+    'input_signal_file':(['status','given'],'[]'),
+    'rename_list_file':([],'[]')}
 
 
 

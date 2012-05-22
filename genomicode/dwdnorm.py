@@ -5,8 +5,10 @@ find_dwd
 normalize
 
 """
-# _format_matlab_matrix
+# _format_matlab_matrix    XXX should move to matlab.py library.
 # _format_matlab_vector
+# _write_matlab_matrix
+
 # _format_exec_file
 # _parse_normalized_matrix
 
@@ -115,6 +117,9 @@ def _format_matlab_vector(X):
     return "[%s]" % " ".join(map(str, X))
 
 def _write_matlab_matrix(X, filename):
+    import Matrix
+    assert Matrix.is_Matrix(X), "X must be a Matrix object."
+    
     handle = open(filename, 'w')
     X = X.slice()
     for x in X:

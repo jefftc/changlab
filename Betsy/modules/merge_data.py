@@ -5,7 +5,7 @@ import os
 import arrayio
 import hash_method
 import rule_engine
-from genomicode import binreg,Matrix
+
 
 def run(parameters,objects,pipeline):
     """merge two signal file to generate a joined signal file"""

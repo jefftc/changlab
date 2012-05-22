@@ -12,7 +12,7 @@ import string
 import sys
 os.environ["TERM"] = "dumb"
 os.environ["TERMCAP"] = ""
-waitingtime=16
+waitingtime=200
 def connect(plcmd=None):
     """Create a pexpect handle."""
     if plcmd == None:
@@ -87,7 +87,7 @@ def source_code(handle,sourcecode):
     assert os.path.exists(os.path.join(os.getcwd(),sourcecode+'.pl')
                           ),"Cannot find the source code"
     handle.send('['+sourcecode+'].'+'\n')
-    loaded = handle.expect(['ERROR','true'],timeout=2)
+    loaded = handle.expect(['ERROR','true'],timeout=waitingtime)
     if loaded == 0:
          handle.expect('[#\?]',timeout=1)
          raise ValueError('ERROR'+handle.before)

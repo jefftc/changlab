@@ -1,7 +1,7 @@
 #module_utils.py
 import hash_method
 import arrayio
-from genomicode import binreg,Matrix,jmath
+from genomicode import binreg,Matrix,jmath,matrixlib
 import rule_engine
 import os
 import read_label_file
@@ -50,7 +50,8 @@ def merge_two_files(A_file,B_file,handle):
     M_B = arrayio.read(B_file)
     assert arrayio.tab_delimited_format.is_matrix(M_A)
     assert arrayio.tab_delimited_format.is_matrix(M_B)
-    [M_A,M_B] = binreg.align_rows(M_A,M_B)
+    [M_A,M_B] = matrixlib.align_rows(M_A,M_B)
+    assert M_A.nrow() > 0, 'there is no common genes between two files'
     X = []
     for i in range(M_A.dim()[0]):
         x = M_A._X[i]+M_B._X[i]
@@ -130,7 +131,6 @@ def find_object(parameters,objects,objecttype,attribute):
             else:
                 attribute = parameters[attributes[i]]
     compare_attribute = [parameters[i] for i in attributes]
-    
     for single_object in objects:
         flag = True
         if objecttype in single_object.objecttype:
@@ -203,3 +203,24 @@ def is_number(s):
         return True
     except ValueError:
         return False
+    
+def check_rename_file(filename):
+    f=file(filename,'rU')
+    text=f.read()
+    f.close()
+    lines=text.split('\n')
+    lines=[line for line in lines if len(line)>0]
+    for line in lines:
+        assert len(line.split('\t'))==2,'the format of %s is not correct'%filename
+    
+def read_rename_file(filename):
+    file_dict = dict()
+    f=file(filename,'rU')
+    text=f.read()
+    f.close()
+    lines=text.split('\n')
+    lines=[line for line in lines if len(line)>0]
+    for line in lines:
+        line = line.split('\t')
+        file_dict[line[0]]=line[1]
+    return file_dict

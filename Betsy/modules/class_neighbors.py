@@ -124,14 +124,14 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(identifier),'the input \
             file %s for class_neighbors does not exist'%identifier
     return identifier,single_object
 
 def get_outfile(parameters,objects,pipeline):
      return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
+        parameters,objects,'signal_file','contents,preprocess',pipeline)
     
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

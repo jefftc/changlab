@@ -1168,20 +1168,20 @@ def summarize_signature_dataset(file_layout):
     import arrayio
     from genomicode import filelib
     from genomicode import jmath
-    from genomicode import binreg
+    from genomicode import hashlib
 
     # Read the gene_ids of interest.
     assert filelib.exists_nz(file_layout.BR_COEFFICIENTS)
     x = [x[1] for x in filelib.read_cols(file_layout.BR_COEFFICIENTS)]
-    gene_ids = binreg._hash_many_geneids(x)
-    assert gene_ids[0] == binreg._hash_geneid("Intercept")
+    gene_ids = hashlib.hash_many_geneids(x)
+    assert gene_ids[0] == hashlib.hash_geneid("Intercept")
     gene_ids.pop(0)
 
     # Read the dataset.  Should be in GCT format.
     DATA = arrayio.read(file_layout.DS_FINAL)
     assert arrayio.gct_format.is_matrix(DATA)
     # Hash the IDs to make sure they match the ones in the coefficient file.
-    x = binreg._hash_many_geneids(DATA.row_names("NAME"))
+    x = hashlib.hash_many_geneids(DATA.row_names("NAME"))
     DATA._row_names["NAME"] = x
     
     # Select only the signature genes.

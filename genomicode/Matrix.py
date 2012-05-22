@@ -677,6 +677,22 @@ def add_synonyms(matrix, synonyms):
         matrix = matrix._matrix
     return _SynonymDecorator(matrix, synonyms)
 
+def is_Matrix(x):
+    # Check if it's a Matrix object.  Hard to check based on class
+    # name because of derived classes and decorators.  So do a quick
+    # and dirty check for some expected "matrix" methods.
+    import types
+    
+    METHODS = [
+        "matrix", "slice", "value", "dim", "row_names", "col_names",
+        ]
+    if type(x) is not types.InstanceType:
+        return False
+    for m in METHODS:
+        if not getattr(x, m, None):
+            return False
+    return True
+
 def _index_strings(words):
     # Return dictionary of string -> list of indexes.
     word2indexes = {}

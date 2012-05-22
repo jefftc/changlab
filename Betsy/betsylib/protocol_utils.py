@@ -83,6 +83,7 @@ def get_result_folder(protocol,outfiles,parameters,pipeline):
         summarize_report(protocol,result_files,result_folder,parameters[0][i],pipeline[0][i])
 def format_prolog_query(
     predicate,parameters,modules):
+    parameters=[str(i) for i in parameters]
     str_parameters = ','.join(parameters)
     output = str('[' + str_parameters + '],' + modules)
     query = predicate + '(' + output+')'

@@ -27,6 +27,8 @@ def filter_pipelines(protocol, inputs, in_contents,output,parameters):
         parameter_list.extend([key,parameters[key]])
     pl_output = protocol_utils.format_prolog_query(
         output, parameter_list,'Modules')
+    print pl_output
+    print pl_inputs
     pipelines = rule_engine.make_pipelines(pl_output,pl_inputs)
     return pipelines
 
@@ -135,19 +137,18 @@ def main():
                 '%s is not a valid parameter key in %s'%(key,args.protocol))
             if module.PARAMETERS[key] == 'float':
                 assert module_utils.is_number(value),'%s is not a number'%value
-                parameters[key] = value
+                parameters[key] = str(value)
             elif module.PARAMETERS[key] == 'integer':
                 assert value.isdigit(),'%s is not a number'%value
-                parameters[key] = value
+                parameters[key] = str(value)
             elif module.PARAMETERS[key] == 'list':
-                values = value.split(',')
-                parameters[key] = str(values)
+                parameters[key]='['+value+']'
             elif module.PARAMETERS[key] == 'string':
                 parameters[key] = '\''+value+'\''
             else:
                 assert value in module.PARAMETERS[key],(
                 '%s is not a valid parameter value in %s'%(value,args.protocol))
-                parameters[key] = value
+                parameters[key] = str(value)
     if args.describe_protocol:
         print 'INPUTS', module.INPUTS
         print 'OUTPUTS', module.OUTPUTS

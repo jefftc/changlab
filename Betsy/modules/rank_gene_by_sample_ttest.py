@@ -5,14 +5,37 @@ import module_utils
 import shutil
 import os
 import rule_engine
-
+from genomicode import jmath
+import arrayio
+import read_label_file
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     label_file,onj=module_utils.find_object(
         parameters,objects,'class_label_file','contents')
     assert os.path.exists(label_file),'cannot find label_file %s'%label_file
-    gene_list = gene_ranking.t_test_for_file(identifier,label_file)
+    label,label_line,second_line = read_label_file.read(label_file)
+    M = arrayio.read(identifier)
+    assert len(label) == 2, ' the length of label in %s should be 2'%label_file
+    assert len(label[0]) == 2
+    assert len(label[1]) == 2
+    first = M.slice(None,label[0][0])
+    second = M.slice(None,label[1][0])
+    t,p = gene_ranking.t_test(first,second)
+    gene_list=[]
+    key = M._row_order[0]
+    threshold = 0.05
+    if 'gene_select_threshold' in parameters.keys():
+        threshold = float(parameters['gene_select_threshold'])
+    if parameters['gene_order'] == 't_test_p':
+        for i in range(len(p)):
+            if float(p[i]) < threshold:
+                gene_list.append(M._row_names[key][i])
+    elif parameters['gene_order'] == 't_test_fdr':
+        fdr = jmath.cmh_fdr_bh(p)
+        for i in range(len(fdr)):
+            if float(fdr[i]) < threshold:
+                gene_list.append(M._row_names[key][i])
     f = open(outfile,'w')
     f.write('\t'.join(gene_list))
     f.close()
@@ -30,13 +53,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
+        parameters,objects,'signal_file','contents,preprocess',pipeline)
 
     
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(identifier),'the input\
                file %s for rank_gene_by_sample_ttest does not exist'%identifier
     return identifier,single_object

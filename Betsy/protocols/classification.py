@@ -9,7 +9,8 @@ INPUTS = [
     'gpr_files',
     'idat_files',
     'agilent_files',
-    'input_signal_file']
+    'input_signal_file',
+    'renanme_list_file']
 
 OUTPUTS = ['svm_predictions','weightedVoting','loocv']
 
@@ -22,9 +23,10 @@ PARAMETERS = {
     'gene_normalize':['variance','sum_of_squares','no_gene_normalize'],
     'quantile':['yes_quantile','no_quantile'],
     'dwd':['yes_dwd','no_dwd'],
+    'bfrm':['yes_bfrm','no_bfrm'],
     'shiftscale':['yes_shiftscale','no_shiftscale'],
     'combat':['yes_combat','no_combat'],
-    'gene_order':['by_sample_ttest','by_gene_list','no_order',
+    'gene_order':['t_test_p','t_test_fdr','by_gene_list','no_order',
                   'by_class_neighbors'],
     'predataset':['yes_predataset','no_predataset'],
     'filter':'integer',
@@ -56,7 +58,10 @@ PARAMETERS = {
     'cn_min_threshold':'float',
     'cn_max_threshold':'float',
     'cn_min_folddiff':'float',
-    'cn_abs_diff':'float'
+    'cn_abs_diff':'float',
+    'gene_select_threshold':'float',
+    'rename_sample':['yes_rename','no_rename'],
+    'num_factors':'integer'
     }
 
 
@@ -64,8 +69,8 @@ DEFAULT = {
     'gene_center':'no_gene_center',
     'gene_normalize':'no_gene_normalize','quantile':'no_quantile',
     'dwd':'no_dwd','shiftscale':'no_shiftscale',
-    'combat':'no_combat','filter':0,
-    'predataset':'no_predataset',
+    'combat':'no_combat','filter':0,'rename_sample':'no_rename',
+    'predataset':'no_predataset','bfrm':'no_bfrm',
     'gene_order':'no_order','is_logged':'logged'}
 
 predicate2arguments={
@@ -77,5 +82,6 @@ predicate2arguments={
     'agilent_files':(['version','unknown_version'],'[]'),
     'class_label_file':(['status','given'],'[]'),
     'gene_list_file':([],'[]'),
-    'input_signal_file':(['status','given'],'[]')}
+    'input_signal_file':(['status','given'],'[]'),
+    'rename_list_file':([],'[]')}
 

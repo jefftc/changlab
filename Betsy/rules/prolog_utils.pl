@@ -75,9 +75,14 @@ convert_parameters_raw(Parameters,NewParameters):-
 
     (member(Preprocess,[illumina,illumina_controls]),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,ill_custom_manifest],[],Options),
-    append(NewParameters7,Options,NewParameters);
+    append(NewParameters7,Options,NewParameters8);
     not(member(Preprocess,[illumina,illumina_controls])),
-    NewParameters=NewParameters7).
+    NewParameters8=NewParameters7),
+    
+    get_value(Parameters,rename_sample,no_rename,Rename_sample),
+    member(Rename_sample,[yes_rename,no_rename]),
+    append(NewParameters8,[rename_sample,Rename_sample],NewParameters).
+
 /*-------------------------------------------------------------------------*/
 convert_parameters_clean_out(Parameters,NewParameters):-
 
@@ -118,9 +123,13 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     
     (member(Preprocess,[illumina,illumina_controls]),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
-    append(NewParameters7,Options,NewParameters);
+    append(NewParameters7,Options,NewParameters8);
     not(member(Preprocess,[illumina,illumina_controls])),
-    NewParameters=NewParameters7).
+    NewParameters8=NewParameters7),
+
+    get_value(Parameters,rename_sample,no_rename,Rename_sample),
+    member(Rename_sample,[yes_rename,no_rename]),
+    append(NewParameters8,[rename_sample,Rename_sample],NewParameters).
 /*-----------------------------------------------*/
 convert_parameters_variable_raw(Parameters,NewParameters):-
     get_value(Parameters,contents,[unknown],Contents),
@@ -160,9 +169,13 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
 
     (member(Preprocess,[illumina,illumina_controls]),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
-    append(NewParameters7,Options,NewParameters);
+    append(NewParameters7,Options,NewParameters8);
     not(member(Preprocess,[illumina,illumina_controls])),
-    NewParameters=NewParameters7).
+    NewParameters8=NewParameters7),
+    
+    get_value_variable(Parameters,rename_sample,Rename_sample),
+    member(Rename_sample,[yes_rename,no_rename]),
+    append(NewParameters8,[rename_sample,Rename_sample],NewParameters).
 
 /*-------------------------------------------------------------------------*/
 %get the parameters list for signal_raw
@@ -216,9 +229,16 @@ get_desire_parameters_raw(Parameters,NewParameters):-
     (member(status,Parameters),
     get_value_variable(Parameters,status,Status),
     member(Status,[created,jointed,splited,given]),
-    append(NewParameters6,[status,Status],NewParameters);
+    append(NewParameters6,[status,Status],NewParameters7);
     not(member(status,Parameters)),
-    NewParameters=NewParameters6).
+    NewParameters7=NewParameters6),
+   
+    (member(rename_sample,Parameters),
+    get_value_variable(Parameters,rename_sample,Rename_sample),
+    member(Rename_sample,[yes_rename,no_rename]),
+    append(NewParameters7,[rename_sample,Rename_sample],NewParameters);
+    not(member(rename_sample,Parameters)),
+    NewParameters=NewParameters7).
 
 /*-------------------------------------------------------------------------*/
 convert_parameters_norm1(Parameters,NewParameters):-
@@ -238,7 +258,16 @@ convert_parameters_norm1(Parameters,NewParameters):-
 
     get_value_variable(Parameters,dwd,Dwd),
     member(Dwd,[yes_dwd,no_dwd]),
-    append(NewParameters4,[dwd,Dwd],NewParameters).
+    append(NewParameters4,[dwd,Dwd],NewParameters5),
+ 
+    get_value_variable(Parameters,bfrm,Bfrm),
+    member(Bfrm,[yes_bfrm,no_bfrm]),
+    append(NewParameters5,[bfrm,Bfrm],NewParameters6),
+    (Bfrm=yes_bfrm,
+    get_options(Parameters,[num_factors],[],Options),
+    append(NewParameters6,Options,NewParameters);
+    Bfrm=no_bfrm,
+    NewParameters=NewParameters6).
 
 /*-------------------------------------------------------------------------*/
 
@@ -266,9 +295,16 @@ get_desire_parameters_norm1(Parameters,NewParameters):-
 
     (member(dwd,Parameters),
     get_value_variable(Parameters,dwd,Dwd),
-    append(NewParameters4,[dwd,Dwd],NewParameters);
+    append(NewParameters4,[dwd,Dwd],NewParameters5);
     not(member(dwd,Parameters)),
-    NewParameters=NewParameters4).
+    NewParameters5=NewParameters4),
+
+    (member(bfrm,Parameters),
+    get_value_variable(Parameters,bfrm,Bfrm),
+    append(NewParameters5,[bfrm,Bfrm],NewParameters);
+    not(member(bfrm,Parameters)),
+    NewParameters=NewParameters5).
+
 
  /*-------------------------------------------------------------------------*/
 convert_parameters_norm2(Parameters,NewParameters):-
@@ -301,13 +337,17 @@ get_desire_parameters_norm2(Parameters,NewParameters):-
 convert_parameters_file(Parameters,NewParameters):-
     convert_parameters_norm2(Parameters,NewParameters1),
     get_value_variable(Parameters,gene_order,Gene_Order),
-    member(Gene_Order,[by_sample_ttest,by_gene_list,by_class_neighbors,no_order]),
+    member(Gene_Order,[t_test_p,t_test_fdr,by_gene_list,by_class_neighbors,no_order]),
     append(NewParameters1,[gene_order,Gene_Order],NewParameters2),
     (Gene_Order=by_class_neighbors,
     get_options(Parameters,[cn_num_neighbors,cn_num_perm,cn_user_pval,cn_mean_or_median,cn_ttest_or_snr,cn_filter_data,cn_min_threshold,cn_max_threshold,cn_min_folddiff,cn_abs_diff],[],Options),
     append(NewParameters2,Options,NewParameters);
-    not(Gene_Order=by_class_neighbors),
+    member(Gene_Order,[t_test_p,t_test_fdr]),
+    get_options(Parameters,[gene_select_threshold],[],Options1),
+    append(NewParameters2,Options1,NewParameters);
+    not(member(Gene_Order,[by_class_neighbors,t_test_p,t_test_fdr])),
     NewParameters=NewParameters2).
+    
 
  /*-------------------------------------------------------------------------*/
 %get the parameters list for signal_file
@@ -363,10 +403,10 @@ perm([X|Y],Z):- perm(Y,W),takeout(X,Z,W).
 perm([],[]).
 /*-------------------------------------------------------------------------*/    
 get_length(A,B):-
-    A=n_raw, B=16;
-    A=n_norm1,B=24;
-    A=n_norm2,B=28;
-    A=n_file,B=30.
+    A=n_raw, B=18;
+    A=n_norm1,B=28;
+    A=n_norm2,B=32;
+    A=n_file,B=34.
 /*-------------------------------------------------------------------------*/  
 get_options(Parameters,Keys,S,Options):-
    member(Key,Keys),

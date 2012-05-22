@@ -12,7 +12,7 @@
 :- dynamic agilent_files/2.
 :- dynamic class_label_file/2.
 :- dynamic gene_list_file/2.
-
+:- dynamic rename_list_file/2.
 
 /*-------------------------------------------------------------------------*/
 % Input interface
@@ -272,13 +272,8 @@ signal_raw(Parameters,Modules):-
     append(Past_Modules, Newadd, Modules).
 /*--------------------------------------------------------------------------*/
 % median filling the missing value,
-% median filling occurs before gene ordering,
 % the format is pcl and Is_logged is logged.
 signal_raw(Parameters,Modules):-
-    %get_desire_parameters_raw(Parameters,NewParameters1),
-    %length(NewParameters1,N),
-    %get_length(n_raw,N1),
-    %N=N1,
     get_value(Parameters,status,given,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
@@ -295,4 +290,26 @@ signal_raw(Parameters,Modules):-
     Newadd=[median_fill_if_missing,Parameters],
     append(Past_Modules, Newadd, Modules).
 
-
+/*--------------------------------------------------------------------------*/
+%rename the sample name if required
+% rename sample occurs after checking missing and check_logged,and check_pcl.
+signal_raw(Parameters,Modules):-
+    get_value(Parameters,contents,[unknown],Contents),
+    rename_list_file([contents,Contents],[]),
+    get_value(Parameters,status,given,Status),
+    Status=created,
+    member(OldStatus,[given,created,jointed,splited]),
+    get_value(Parameters,is_logged,unknown_logged,Is_Logged),
+    Is_Logged=logged,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=pcl,
+    get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
+    member(Has_Missing_Value,[median_fill,zero_fill,no_missing]),
+    get_value(Parameters,rename_sample,no_rename,Rename_sample),
+    Rename_sample=yes_rename,
+    OldRename = no_rename,
+    set_value(Parameters,rename_sample,OldRename,OldParameters1),
+    set_value(OldParameters1,status,OldStatus,OldParameters),
+    signal_raw(OldParameters,Past_Modules),
+    Newadd=[rename_sample,Parameters],
+    append(Past_Modules, Newadd, Modules).

@@ -15,6 +15,7 @@ def run(parameters,objects,pipeline):
         f = file(outfile,'w')
         M = arrayio.read(identifier,format = arrayio.pcl_format)
         M_n = jmath.safe_norm_mv(M.slice())
+        M._X = M_n
         M_c = arrayio.convert(M,to_format=arrayio.pcl_format)
         arrayio.pcl_format.write(M_c,f)
         f.close()
@@ -43,12 +44,12 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_outfile(parameters,objects,pipeline):
     return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',
+        parameters,objects,'signal_file','contents,preprocess',
         pipeline)
     
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(identifier),'the input \
                 file %s for normalize does not exist'%identifier
     return identifier,single_object

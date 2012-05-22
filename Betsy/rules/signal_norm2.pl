@@ -28,7 +28,7 @@ signal_norm2(Parameters,Modules):-
    get_value(Parameters,gene_normalize,no_gene_normalize,Gene_Normalize),
    Gene_Normalize=no_gene_normalize,
    get_desire_parameters_norm1(Parameters,NewParameters),
-   get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
+   get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,num_factors],[],Options),
    append(NewParameters,Options,NewParameters2),
    signal_norm1(NewParameters2,Modules).
 

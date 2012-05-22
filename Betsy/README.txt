@@ -17,7 +17,7 @@ Preprocess Usage
 
 	protocol_engine.py  
       --protocol 'normalize_file' 
-      --input 'gse_id_and_platform:<GSE1456,GPL96>'  
+      --input 'gse_id_and_platform:<GSE17907,GPL570>'  
       --parameters 'preprocess:rma' 
      
 	------------------------------------------------------------
@@ -202,6 +202,9 @@ Betsy can make heatmap for a signal_file without clustering.
     The result folder will contain a png file showing the heatmap.
 =============================================================================
     
+../Betsy/protocol_engine.py --protocol 'cluster_genes' --input 'idat_files:Chang_AR00410' --input 'class_label_file:jessie_illumina/class_label_file1.cls' --input 'rename_list_file:rename_list_file.txt' --parameters 'rename_sample:yes_rename' --parameters 'gene_order:t_test_fdr' --parameters 'has_missing_value:zero_fill' --dry_run 
+
+../Betsy/rule_engine.py --plin 'gse_id([contents,[a]],[])' --id 'GSE8286' --plout 'signature_analysis([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,rma,filter,0,rename_sample,no_rename,signature,sigscore],Modules)' --dry_run 
 
 
 

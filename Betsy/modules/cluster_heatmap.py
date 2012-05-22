@@ -13,9 +13,11 @@ def run(parameters,objects,pipeline,options=None):
     Heatmap_path = Betsy_config.ARRAYPLOT
     Heatmap_BIN = module_utils.which(Heatmap_path)
     assert Heatmap_BIN,'cannot find the %s' %Heatmap_path
-    color='--color=' + parameters['color'].replace('_','-')
-    command = ['python', Heatmap_BIN,identifier,'-o',outfile,color,"--label_arrays","--no_autoscale",
+    command = ['python', Heatmap_BIN,identifier,'-o',outfile,"--label_arrays",
                "--grid"]
+    if 'color' in parameters.keys():
+        color=['--color' , parameters['color'].replace('_','-')]
+        command.extend(color)
     if 'hm_width' in parameters.keys():
         command.extend(['-x',parameters['hm_width']])
     if 'hm_height' in parameters.keys():

@@ -11,8 +11,8 @@ def run(parameters,objects,pipeline):
     if not int(parameters['k']):
         raise ValueError('K must be an integer')
     dist = distance_para[parameters['distance']]
-    alg = {'kmeans': ["-g",dist,"-k",parameters['k']],'pca':["-g",dist,'-pg'],
-           'hierarchical':['-m','m','-ag'],'som':["-g",dist,'-s']}
+    alg = {'kmeans': ["-g",dist,"-k",parameters['k'],'-e','1'],'pca':["-g",dist,'-pg','-e','1'],
+           'hierarchical':['-m','m','-e','1','-g',dist],'som':["-g",dist,'-s','-e','1']}
     try:    
         com_parameter = alg[parameters['cluster_alg']]
     except:
@@ -30,7 +30,7 @@ def run(parameters,objects,pipeline):
         raise ValueError(error_message)
     result_files = os.listdir(os.getcwd())
     result_formats = {'kmeans': 'cdt','pca':'pca_gene.coords.txt',#or 'pc.txt'
-           'hierarchical':'nrm','som':'txt'}
+           'hierarchical':'cdt','som':'txt'}
     result_format = result_formats[parameters['cluster_alg']]
     for result_file in result_files:
         if result_file.endswith(result_format):

@@ -38,11 +38,8 @@ cluster_file(Parameters,Modules):-
 
 % generate the cluster_heatmap from cluster_file
 cluster_heatmap(Parameters,Modules):-
-    get_value_variable(Parameters,color,Color),
-    member(Color,[blue_yellow,red_green]),
-    (convert_cluster_parameters(Parameters,NewParameters),
-    cluster_file(NewParameters,Past_Modules),
-    append(NewParameters,[color,Color],NewParameters1);
+    (convert_cluster_parameters(Parameters,NewParameters1),
+    cluster_file(NewParameters1,Past_Modules);
     get_value_variable(Parameters,cluster_alg,Cluster_Alg),
     Cluster_Alg=no_cluster_alg,
     convert_parameters_file(Parameters,NewParameters),
@@ -52,8 +49,8 @@ cluster_heatmap(Parameters,Modules):-
     Is_Logged=logged,
     signal_file(NewParameters,Past_Modules),
     append(NewParameters,[cluster_alg,
-          no_cluster_alg,color,Color],NewParameters1)),
-    get_options(Parameters,[hm_width,hm_height],[],Options),
+          no_cluster_alg],NewParameters1)),
+    get_options(Parameters,[hm_width,hm_height,color],[],Options),
     append(NewParameters1,Options,NewParameters2),
     Newadd = [cluster_heatmap,NewParameters2],
     append(Past_Modules,Newadd,Modules).
