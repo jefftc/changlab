@@ -45,7 +45,7 @@ def run(parameters,objects,pipeline):
     if 'wv_feature_stat' in parameters.keys():
         assert parameters['wv_feature_stat'] in wv_feture_stat, 'the wv_feature_stat is invalid'
         gp_parameters['feature.selection.statistic'] = str(
-                               wv_feature_stat.index(parameters['wv_feature_stat'])
+                               wv_feature_stat.index(parameters['wv_feature_stat']))
     gp_path = Betsy_config.GENEPATTERN
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path

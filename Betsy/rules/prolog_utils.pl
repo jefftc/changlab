@@ -85,30 +85,23 @@ convert_parameters_raw(Parameters,NewParameters):-
 
 /*-------------------------------------------------------------------------*/
 convert_parameters_clean_out(Parameters,NewParameters):-
-
     get_value(Parameters,contents,[unknown],Contents),
     append([],[contents,Contents],NewParameters0),
 
-    get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    append(NewParameters0,[format,Format],NewParameters1),
-   
+    append(NewParameters0,[format,pcl],NewParameters1),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,illumina_controls]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
 
-    get_value(Parameters,is_logged,logged,Is_Logged),
-    Is_Logged=logged,
-    append(NewParameters2,[is_logged,Is_Logged],NewParameters3),
-
+    append(NewParameters2,[is_logged,logged],NewParameters3),
     get_value(Parameters,has_missing_value,no_missing,Has_Missing_Value),
-    member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
+    member(Has_Missing_Value,[median_fill,zero_fill,no_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
     get_value(Parameters,filter,0,Filter),
     not(atom(Filter)),
     append(NewParameters4,[filter,Filter],NewParameters5),
-   
+
     get_value(Parameters,predataset,no_predataset,Predataset),
     member(Predataset,[yes_predataset,no_predataset]),
     append(NewParameters5,[predataset,Predataset],NewParameters6),
@@ -117,10 +110,10 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     %(Filter_fc=no_filter_fc;not(atom(Filter_fc))),
     %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
 
-    get_value(Parameters,status,created,Status),
+    get_value_variable(Parameters,status,Status),
     member(Status,[given,created,jointed,splited]),
     append(NewParameters6,[status,Status],NewParameters7),
-    
+
     (member(Preprocess,[illumina,illumina_controls]),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
     append(NewParameters7,Options,NewParameters8);

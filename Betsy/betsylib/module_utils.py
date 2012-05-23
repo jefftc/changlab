@@ -204,23 +204,3 @@ def is_number(s):
     except ValueError:
         return False
     
-def check_rename_file(filename):
-    f=file(filename,'rU')
-    text=f.read()
-    f.close()
-    lines=text.split('\n')
-    lines=[line for line in lines if len(line)>0]
-    for line in lines:
-        assert len(line.split('\t'))==2,'the format of %s is not correct'%filename
-    
-def read_rename_file(filename):
-    file_dict = dict()
-    f=file(filename,'rU')
-    text=f.read()
-    f.close()
-    lines=text.split('\n')
-    lines=[line for line in lines if len(line)>0]
-    for line in lines:
-        line = line.split('\t')
-        file_dict[line[0]]=line[1]
-    return file_dict

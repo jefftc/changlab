@@ -3,7 +3,7 @@ import sys
 import arrayio
 import module_utils
 import os
-from genomicode import binreg
+from genomicode import matrixlib
 import rule_engine
 
 def run(parameters,objects,pipeline):
@@ -19,7 +19,7 @@ def run(parameters,objects,pipeline):
                     for select_common_genes does not exists' %test_file
     training = arrayio.read(training_file)
     test = arrayio.read(test_file)
-    [M_A,M_B] = binreg.align_rows(training,test)
+    [M_A,M_B] = matrixlib.align_rows(training,test)
     assert M_A.nrow()>0,'there is no common genes betwee %s \
                              and %s'%(training_file,test_file)
     f = file(outfile,'w')

@@ -168,7 +168,7 @@ Betsy can do clustering for a signal_file and plot the heatmap.
     --parameters 'gene_center:mean'
     --parameters 'gene_normalize:variance'
     --parameters 'cluster_alg:hierarchical'
-    --parameters 'hm_width:200'
+    --parameters 'hm_width:20'
     --parameters 'hm_height:1'
     --parameters 'preprocess:illumina'
     --parameters 'rename_sample:yes_rename'
@@ -231,13 +231,11 @@ Betsy can make heatmap for a signal_file without clustering.
     --parameters 'hm_height:1'
     --parameters 'preprocess:unknown_preprocess'
     The result folder will contain a png file showing the heatmap.
-=============================================================================
 
- 
-../Betsy/protocol_engine.py --protocol 'cluster_genes' --input 'idat_files:Chang_AR00410' --input 'class_label_file:jessie_illumina/class_label_file1.cls' --input 'rename_list_file:rename_list_file.txt' --parameters 'rename_sample:yes_rename' --parameters 'gene_order:t_test_fdr' --parameters 'has_missing_value:zero_fill' --dry_run 
 =============================================================================
 command example for rule_engine.py
-rule_engine.py --plin 'gse_id([contents,[a]],[])' --id 'GSE8286' --plout 'signature_analysis([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,rma,filter,0,rename_sample,no_rename,signature,sigscore],Modules)' --dry_run 
+rule_engine.py --plin 'gse_id([contents,[a]],[])' 
+--id 'GSE8286' --plout 'signal_file([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,preprocess,rma,filter,0,rename_sample,no_rename],Modules)' --dry_run 
 
 
 

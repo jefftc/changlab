@@ -155,7 +155,7 @@ pca_plot_out(Parameters,Modules):-
 pca_plot_in(Parameters,Modules):-
     get_desire_parameters_raw(Parameters,NewParameters1),
     convert_parameters_clean_out(NewParameters1,NewParameters),
-    signal_clean(Parameters,Past_Modules),
+    signal_clean(NewParameters,Past_Modules),
     Newadd=[pca_plot,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/

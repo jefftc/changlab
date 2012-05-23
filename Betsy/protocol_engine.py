@@ -27,8 +27,6 @@ def filter_pipelines(protocol, inputs, in_contents,output,parameters):
         parameter_list.extend([key,parameters[key]])
     pl_output = protocol_utils.format_prolog_query(
         output, parameter_list,'Modules')
-    print pl_output
-    print pl_inputs
     pipelines = rule_engine.make_pipelines(pl_output,pl_inputs)
     return pipelines
 

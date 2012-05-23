@@ -39,6 +39,7 @@ def run(parameters,objects,pipeline):
     f = open(outfile,'w')
     f.write('\t'.join(gene_list))
     f.close()
+    assert len(gene_list)>0,'there is no significant genes can be found in ttest'
     assert module_utils.exists_nz(outfile),'the output\
                 file %s for rank_gene_by_sample_ttest fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
