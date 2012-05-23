@@ -12,7 +12,7 @@ import string
 import sys
 os.environ["TERM"] = "dumb"
 os.environ["TERMCAP"] = ""
-waitingtime=200
+waitingtime=100
 def connect(plcmd=None):
     """Create a pexpect handle."""
     if plcmd == None:

@@ -17,7 +17,9 @@ import ConfigParser
 
 DEFAULTS={'PREPROCESS': 'preprocess.py', 'ARRAYPLOT': 'arrayplot.py','XLS2TXT':'xls2txt',
           'GENEPATTERN':'run_genepattern.py','OUTPUTPATH':'.','BFRMNORM':'bfrmnorn.py',
-          'COMBATNORM':'combatnorm.py','RUN_COMBAT':'run_combat.R','SCORESIG':'scoresig.py'}
+          'COMBATNORM':'combatnorm.py','RUN_COMBAT':'run_combat.R','SCORESIG':'scoresig.py',
+          'RENAME':'slice_matrix.py'
+          }
 SEARCH_PATH = [
         '/home/xchen/chencode/scripts',
         "/usr/local/bin",

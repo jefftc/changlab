@@ -55,6 +55,7 @@ Preprocess Usage
 	--protocol 'normalize_file' 
 	--input 'gpr_files:<path_of_folder>'  
 	--parameters 'has_missing_value:zero_fill'
+      --parameters 'preprocess:loess'
 
      The output will be pcl format, without missing value and logged with base 2.
      Also the result folder will contain pca_plot,intensity_plot.
@@ -65,7 +66,9 @@ Preprocess Usage
 
       protocol_engine.py
       --protocol 'normalize_file' 
-      --input 'agilent_files:<path_of_folder>'  
+      --input 'agilent_files:<path_of_folder>' 
+      --parameters 'has_missing_value:zero_fill'
+      --parameters 'preprocess:agilent'
 
      The output will be pcl format, without missing value and logged with base 2.
      Also the result folder will contain pca_plot,intensity_plot.
@@ -87,7 +90,8 @@ Process Usage
     --parameters 'gene_normalize:variance'
     --parameters 'format:gct'
     --parameters 'has_missing_value:zero_fill'
-    
+    --parameters 'preprocess:unknown_preprocess'
+
      The result folder will contain output signal_file,pca_plot,intensity_plot.
     --------------------------------------------------------------------
     When given a signal_file and gene_list_file, fill the missing value with median, 
@@ -101,6 +105,7 @@ Process Usage
     --parameters 'gene_center:mean'
     --parameters 'has_missing_value:median_fill'
     --parameters 'gene_order:by_gene_list'
+    --parameters 'preprocess:unknown_preprocess'
 
     The result folder will contain output signal_file,pca_plot,intensity_plot.
      --------------------------------------------------------------------
@@ -115,7 +120,8 @@ Process Usage
     --input 'input_signal_file:neg:/path of the file'
     --parameters 'has_missing_value:zero_fill'
     --parameters 'contents:pos,neg'
- 
+    --parameters 'preprocess:unknown_preprocess'
+
      The result folder will contain output signal_file,pca_plot,intensity_plot.
     --------------------------------------------------------------------
     When given a signal_file and its class_label_file, split them into two signal_file 
@@ -126,6 +132,7 @@ Process Usage
     --input 'class_label_file:pos,neg:<path of the file>'
     --parameters 'has_missing_value:zero_fill'
     --parameters 'contents:pos'
+    --parameters 'preprocess:unknown_preprocess'
     The result folder will contain output signal_file contains positive samples,
     pca_plot,intensity_plot.
 
@@ -146,7 +153,27 @@ Betsy can do clustering for a signal_file and plot the heatmap.
     --parameters 'cluster_alg:hierarchical'
     --parameters 'hm_width:200'
     --parameters 'hm_height:1'
- 
+    --parameters 'preprocess:unknown_preprocess'
+
+    The result folder will contain a clustering file and a png file showing the heatmap.
+    --------------------------------------------------------------------
+    When given idate files,preprocess=illumina, rename sample names, select genes according to fdr value,gene_center=mean,gene_normalize=variance,clustering and then make heatmap.
+    The command is:
+    protocol_engine.py
+    --protocol 'cluster_genes'
+    --input 'idat_files:<path of the file>'
+    --input 'class_label_file:<path of the file>'
+    --input 'rename_list_file:<path of the file>'
+    --parameters 'has_missing_value:zero_fill'
+    --parameters 'gene_center:mean'
+    --parameters 'gene_normalize:variance'
+    --parameters 'cluster_alg:hierarchical'
+    --parameters 'hm_width:200'
+    --parameters 'hm_height:1'
+    --parameters 'preprocess:illumina'
+    --parameters 'rename_sample:yes_rename'
+    --parameters 'gene_order:t_test_fdr'
+
     The result folder will contain a clustering file and a png file showing the heatmap.
 
 =============================================================================
@@ -168,6 +195,7 @@ Also it can leave one out cross validation by these two methods.
     --parameters 'testcontents:test'
     --parameters 'svm_kernel:linear'
     --parameters 'wv_num_features:50'
+    --parameters 'preprocess:unknown_preprocess' 
     The result folder contains one predication result for svm, one predication result for 
     weighted_voting,one predication result for leave one out cross validation on svm and one 
     leave one out cross validation on weighted_voting.
@@ -185,6 +213,8 @@ Example:
     --parameters 'has_missing_value:zero_fill'
     --parameters 'diff_expr:sam'
     --parameters 'sam_delta:1.0'
+    --parameters 'preprocess:unknown_preprocess'
+
    The result folder will contain a result file for the analysis.
 =============================================================================
 
@@ -199,12 +229,15 @@ Betsy can make heatmap for a signal_file without clustering.
     --parameters 'has_missing_value:zero_fill'
     --parameters 'hm_width:200'
     --parameters 'hm_height:1'
+    --parameters 'preprocess:unknown_preprocess'
     The result folder will contain a png file showing the heatmap.
 =============================================================================
-    
-../Betsy/protocol_engine.py --protocol 'cluster_genes' --input 'idat_files:Chang_AR00410' --input 'class_label_file:jessie_illumina/class_label_file1.cls' --input 'rename_list_file:rename_list_file.txt' --parameters 'rename_sample:yes_rename' --parameters 'gene_order:t_test_fdr' --parameters 'has_missing_value:zero_fill' --dry_run 
 
-../Betsy/rule_engine.py --plin 'gse_id([contents,[a]],[])' --id 'GSE8286' --plout 'signature_analysis([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,rma,filter,0,rename_sample,no_rename,signature,sigscore],Modules)' --dry_run 
+ 
+../Betsy/protocol_engine.py --protocol 'cluster_genes' --input 'idat_files:Chang_AR00410' --input 'class_label_file:jessie_illumina/class_label_file1.cls' --input 'rename_list_file:rename_list_file.txt' --parameters 'rename_sample:yes_rename' --parameters 'gene_order:t_test_fdr' --parameters 'has_missing_value:zero_fill' --dry_run 
+=============================================================================
+command example for rule_engine.py
+rule_engine.py --plin 'gse_id([contents,[a]],[])' --id 'GSE8286' --plout 'signature_analysis([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,rma,filter,0,rename_sample,no_rename,signature,sigscore],Modules)' --dry_run 
 
 
 

@@ -9,10 +9,12 @@ svm_model(Parameters,Modules):-
     get_value(NewParameters1,traincontents,[unknown],TrainContents),
     signal_file(NewParameters1,Past_Modules_1),
     set_value(NewParameters1,contents,TrainContents,NewParameters),
-    class_label_file([contents,TrainContents,status,_],Past_Modules_2);
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,TrainContents,preprocess,Preprocess,status,_],Past_Modules_2);
     not(member(traincontents,Parameters)),
     get_value(Parameters,contents,[unknown],Contents),
-    class_label_file([contents,Contents,status,_],Past_Modules_2),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_2),
     get_value(NewParameters1,format,unknown_format,Format),
     Format=pcl,
     get_value(NewParameters1,status,created,Status),
@@ -32,8 +34,6 @@ svm_predictions(Parameters,Modules):-
     svm_model(NewParameters,Past_Modules),
     get_value(Parameters,testcontents,[unknown],TestContents),
     set_value(NewParameters,contents,TestContents,NewParameters1),
-    (class_label_file([contents,TestContents,status,given],[]);
-    not(class_label_file([contents,TestContents,status,given],[]))),
     Newadd=[apply_svm_model,NewParameters1],
     append(Past_Modules,Newadd,Modules).
 
@@ -41,8 +41,9 @@ svm_predictions(Parameters,Modules):-
 weightedVoting(Parameters,Modules):-
     get_value(Parameters,traincontents,[unknown],TrainContents),
     get_value(Parameters,testcontents,[unknown],TestContents),
-    class_label_file([contents,TestContents,status,_],Past_Modules_6),
-    class_label_file([contents,TrainContents,status,_],Past_Modules_4),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,TestContents,preprocess,Preprocess,status,_],Past_Modules_6),
+    class_label_file([contents,TrainContents,preprocess,Preprocess,status,_],Past_Modules_4),
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
     Format=gct,
@@ -66,7 +67,8 @@ loocv(Parameters,Modules):-
     member(Classification,[svm,weightedvoting]),
     get_CV_parameter(Classification,Required_format,List),
     get_value(Parameters,traincontents,[unknown],Contents),
-    class_label_file([contents,Contents,status,_],Past_Modules_2),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_2),
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
     Format=Required_format,

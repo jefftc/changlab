@@ -33,7 +33,8 @@ signal_file(Parameters,Modules):-
 % rank genes by sample_ttest
 signal_file(Parameters,Modules):-
     get_value(Parameters,contents,[unknown],Contents),
-    class_label_file([contents,Contents,status,_],Past_Modules_1),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
@@ -50,7 +51,8 @@ signal_file(Parameters,Modules):-
 %rank genes by class_neighbors
 signal_file(Parameters,Modules):-
     get_value(Parameters,contents,[unknown],Contents),
-    class_label_file([contents,Contents,status,_],Past_Modules_1),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),

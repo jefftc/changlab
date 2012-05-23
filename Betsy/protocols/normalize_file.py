@@ -12,8 +12,8 @@ INPUTS = [
     'input_signal_file',
     'renanme_list_file']
 
-OUTPUTS = ['signal_file']#,'pca_plot_in','pca_plot_out','intensity_plot',
-          # 'biotin_plot','actb_plot','hyb_bar_plot']
+OUTPUTS = ['signal_file','pca_plot_in','pca_plot_out','intensity_plot',
+          'biotin_plot','actb_plot','hyb_bar_plot']
 
 
 PARAMETERS = {
