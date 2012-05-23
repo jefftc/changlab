@@ -239,7 +239,7 @@ def detect_format(filename):
     # 4.  >= 2 rows, 1 column      GMX
     # 5.  1 row, >= 2 columns      GMT
     # 6.  2 rows and 2 columns     Check for known descriptions.
-    # 7.  > 2 rows, > 2 columns    Check for spaces, then descriptions
+    # 7.  >= 2 rows, >= 2 columns  Check for spaces, then descriptions
 
     GMX, GMT = "GMX", "GMT"
 
@@ -269,7 +269,7 @@ def detect_format(filename):
             return GMT
         return None
     # Case 7.
-    assert nrow > 2 and ncol > 2
+    assert nrow >= 2 and ncol >= 2, "%d %d" % (nrow, ncol)
 
     # Check the extension of the file.
     if type(filename) is type(""):
