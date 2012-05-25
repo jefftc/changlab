@@ -4,19 +4,30 @@ import os
 import module_utils
 import shutil
 import read_label_file
-
+from genomicode import pcalib
+import arrayio
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     label_file,obj = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
+    M = arrayio.read(identifier)
+    X = M._X
+    index = pcalib.select_genes_var(X,500)
+    M_new = M.matrix(index,None)
+    tmp = 'tmp'
+    f = file(tmp,'w')
+    arrayio.pcl_format.write(M_new,f)
+    f.close()
+
     if label_file:
         a,b,c=read_label_file.read(label_file)
         colors = ['"red"','"blue"','"green"','"yellow"']
         opts = [colors[int(i)] for i in b]
-        plot_pca(identifier,outfile,opts)
+        plot_pca(tmp,outfile,opts)
     else:
-        plot_pca(identifier,outfile)
+        plot_pca(tmp,outfile)
+    os.remove(tmp)
     assert module_utils.exists_nz(outfile),'the output file %s\
                                 for pca_plot fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)

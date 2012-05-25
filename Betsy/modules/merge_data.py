@@ -9,8 +9,8 @@ import rule_engine
 
 def run(parameters,objects,pipeline):
     """merge two signal file to generate a joined signal file"""
-    merge_file1,obj1 = module_utils.find_object(parameters,objects,'signal_file','merge1')
-    merge_file2,obj2 = module_utils.find_object(parameters,objects,'signal_file','merge2')
+    merge_file1,obj1 = module_utils.find_object(parameters,objects,'signal_file','merge1,format')
+    merge_file2,obj2 = module_utils.find_object(parameters,objects,'signal_file','merge2,format')
     assert os.path.exists(merge_file1),'the merge_file1 %s in merge_data does not exist'%merge_file1
     assert os.path.exists(merge_file2),'the merge_file2 %s in merge_data does not exist'%merge_file2
     outfile = get_outfile(parameters,objects,pipeline)
@@ -42,7 +42,7 @@ def get_outfile(parameters,objects,pipeline):
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(
-        parameters,objects,'signal_file','merge1')
+        parameters,objects,'signal_file','merge1,format')
     assert os.path.exists(identifier),'the input file %s for merge_data does not exist'%identifier
     return identifier,single_object
 

@@ -40,8 +40,8 @@ def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    outfile = os.path.join(os.getcwd(),'class_label_file.cls')
-    return outfile
+    return module_utils.get_outfile(
+        parameters,objects,'class_label_file','precontents',pipeline)
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

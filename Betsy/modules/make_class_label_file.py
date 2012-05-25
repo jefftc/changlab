@@ -28,8 +28,8 @@ def make_unique_hash(identifier,pipeline,parameters):
                     identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    outfile = os.path.join(os.getcwd(),'class_label_file.cls')
-    return outfile
+    return module_utils.get_outfile(
+        parameters,objects,'signal_file','contents',pipeline)
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

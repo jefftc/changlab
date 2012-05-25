@@ -5,6 +5,7 @@ import subprocess
 import module_utils
 import rule_engine
 import shutil
+import arrayio
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
@@ -32,7 +33,12 @@ def run(parameters,objects,pipeline):
              for bfrm_normalize fails' %tmp
     assert module_utils.exists_nz(os.path.join(tmp,'normalized.gct')),'the output gct file \
              for bfrm_normalize fails'
-    shutil.copyfile(os.path.join(tmp,'normalized.gct'),outfile)
+    out = os.path.join(tmp,'normalized.gct')
+    M = arrayio.read(out)
+    M_new = arrayio.convert(M,to_format = arrayio.pcl_format)
+    f = file(outfile,'w')
+    arrayio.pcl_format.write(M_new,f)
+    f.close()
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline)

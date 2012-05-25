@@ -12,13 +12,14 @@ def run(parameters,objects,pipeline):
     label_file,obj=module_utils.find_object(
         parameters,objects,'class_label_file','contents')
     assert os.path.exists(label_file),'cannot find label_file %s'%label_file
-    M=arrayio.read(identifier)
+    M = arrayio.read(identifier)
     result,label_line,second_line=read_label_file.read(label_file)
     assert len(result) == 2, 'for dwd,there should be only 2 classes'
     assert [i in ['0','1'] for i in label_line] == [True]*len(label_line),'\
                      the label of class shoul be 0 and 1'
     y = [i.replace('0','-1') for i in label_line]
     M_y = dwdnorm.normalize(M,y)
+  
     f = file(outfile,'w')
     arrayio.pcl_format.write(M_y,f)
     f.close()

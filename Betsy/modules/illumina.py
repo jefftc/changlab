@@ -104,9 +104,8 @@ def run(parameters,objects,pipeline):
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
     process.wait()
-    output_text =  process.stdout.read()
-    
-    out_lines = output_text.split('\n')
+    out_text =  process.stdout.read()
+    out_lines = out_text.split('\n')
     for out_line in out_lines:
         if out_line != 'Loading required package: rJava' and len(out_line)>0:
             download_directory = out_line
@@ -115,6 +114,8 @@ def run(parameters,objects,pipeline):
     if error_message:
         raise ValueError(error_message)
     goal_file = None
+    
+    assert os.path.exists(download_directory),'there is no output directory for illumina'
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
     for result_file in result_files:

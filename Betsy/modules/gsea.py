@@ -1,0 +1,75 @@
+#gsea.py
+import module_utils
+import shutil
+import os
+from genomicode import jmath
+import Betsy_config
+import subprocess
+import read_label_file
+def run(parameters,objects,pipeline):
+    identifier,single_object = get_identifier(parameters,objects)
+    outfile = get_outfile(parameters,objects,pipeline)
+    label_file,obj = module_utils.find_object(
+        parameters,objects,'class_label_file','contents')
+    assert os.path.exists(label_file),'cannot\
+                find label_file %s for gsea'%label_file
+    module_name = 'GSEA'
+    gp_parameters = dict()
+    gp_parameters['expression.dataset'] = identifier
+    gp_parameters['phenotype.labels'] = label_file
+    
+    gp_path = Betsy_config.GENEPATTERN
+    gp_module = module_utils.which(gp_path)
+    assert gp_module,'cannot find the %s' %gp_path
+    command = [gp_module, module_name]
+    for key in gp_parameters.keys():
+        a = ['--parameters',key+':'+ gp_parameters[key]]
+        command.extend(a)
+    download_directory = None
+    process = subprocess.Popen(command,shell=False,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+    process.wait()
+    out_text =  process.stdout.read()
+    out_lines = out_text.split('\n')
+    for out_line in out_lines:
+        if out_line != 'Loading required package: rJava' and len(out_line)>0:
+            download_directory = out_line
+            break
+    error_message = process.communicate()[1]
+    if error_message:
+        raise ValueError(error_message)
+    assert os.path.exists(download_directory),'there is no output directory for GSEA'
+    gp_files = os.listdir(download_directory)
+    assert 'stderr.txt' not in gp_files,'gene_pattern get error'
+    for gp_file in gp_files:
+        if gp_file.endswith('.zip'):
+            shutil.copy(gp_file,outfile)
+    assert module_utils.exists_nz(outfile),'the output\
+                               file %s for gsea fails'%outfile
+    new_objects = get_newobjects(parameters,objects,pipeline)
+    module_utils.write_Betsy_parameters_file(
+        parameters,single_object,pipeline)
+    return new_objects
+
+def make_unique_hash(identifier,pipeline,parameters):
+    return module_utils.make_unique_hash(
+        identifier,pipeline,parameters)
+
+def get_identifier(parameters,objects):
+    identifier,single_object = module_utils.find_object(
+        parameters,objects,'signal_file','contents')
+    assert os.path.exists(identifier),'the train\
+            file %s for signature_analysis does not exist'%identifier
+    return identifier,single_object
+
+def get_outfile(parameters,objects,pipeline):
+    return module_utils.get_outfile(
+        parameters,objects,'signal_file','contents',pipeline)
+    
+def get_newobjects(parameters,objects,pipeline):
+    outfile = get_outfile(parameters,objects,pipeline)
+    identifier,single_object = get_identifier(parameters,objects)
+    new_objects = module_utils.get_newobjects(
+        outfile,'signature_analysis',parameters,objects,single_object)
+    return new_objects

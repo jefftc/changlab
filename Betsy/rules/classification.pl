@@ -22,7 +22,7 @@ svm_model(Parameters,Modules):-
     member(OldStatus,[given,jointed,splited,created]),
     set_value(NewParameters1,status,OldStatus,NewParameters),
     signal_file(NewParameters,Past_Modules_1)),
-    append(Past_Modules_1,Past_Modules_2,Past_Modules),
+    append(Past_Modules_2,Past_Modules_1,Past_Modules),
     Newadd=[train_svm_model,NewParameters],
     append(Past_Modules,Newadd,Modules).
 

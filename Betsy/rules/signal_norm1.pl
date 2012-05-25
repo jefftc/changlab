@@ -8,7 +8,6 @@
 % The parameters in output can be any length and it will trace to the full length one
 % for the parameter which is not provide, will be in 
 
-
 signal_norm1(Parameters,Modules):-
     get_desire_parameters_norm1(Parameters,NewParameters1),
     length(NewParameters1,N),

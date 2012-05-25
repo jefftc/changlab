@@ -35,8 +35,8 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    outfile = os.path.join(os.getcwd(),'class_label_file.cls')
-    return outfile
+    return module_utils.get_outfile(
+        parameters,objects,'class_label_file','merge1',pipeline)
 
 def get_identifier(parameters,objects):
     identifier,single_object = module_utils.find_object(

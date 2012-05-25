@@ -148,15 +148,23 @@ signal_file(Parameters,Modules):-
 /*-------------------------------------------------------------------------*/
 pca_plot_out(Parameters,Modules):-
     convert_parameters_file(Parameters,NewParameters),
-    signal_file(NewParameters,Past_Modules),
+    signal_file(NewParameters,Past_Modules_2),
     Newadd=[pca_plot,NewParameters],
+    get_value(Parameters,contents,[unknown],Contents),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
+    append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 pca_plot_in(Parameters,Modules):-
     get_desire_parameters_raw(Parameters,NewParameters1),
     convert_parameters_clean_out(NewParameters1,NewParameters),
-    signal_clean(NewParameters,Past_Modules),
+    signal_clean(NewParameters,Past_Modules_2),
     Newadd=[pca_plot,NewParameters],
+    get_value(Parameters,contents,[unknown],Contents),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
+    append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 biotin_plot(Parameters,Modules):-
