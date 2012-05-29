@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 # Functions:
+# read_matrices
+# 
 # parse_indexes
 # parse_names
 # parse_geneset
@@ -42,6 +44,76 @@
 # _dedup_indexes
 
 import os, sys
+
+def _clean(s):
+    s = s.replace("\t", " ")
+    s = s.strip()
+    if s.startswith('"') and s.endswith('"'):
+        s = s[1:-1]
+    return s
+
+def read_matrices(filenames, read_as_csv, remove_comments, clean_only):
+    import csv
+    import tempfile
+    import arrayio
+    from genomicode import filelib
+    
+    temp_files = []
+    try:
+        if read_as_csv or (remove_comments is not None):
+            delimiter = "\t"
+            if read_as_csv:
+                delimiter = ","
+            assert delimiter not in remove_comments
+                
+            # Make a temporary files for each matrix file.
+            for filename in filenames:
+                x, file = tempfile.mkstemp(dir="."); os.close(x)
+                temp_files.append(file)
+            assert len(filenames) == len(temp_files)
+
+            # Clean up the files.
+            for (infile, outfile) in zip(filenames, temp_files):
+                if read_as_csv:
+                    inhandle = csv.reader(filelib.openfh(infile))
+                else:
+                    inhandle = filelib.read_cols(infile, delimiter=delimiter)
+                    
+                outhandle = open(outfile, 'w')
+                for cols in inhandle:
+                    if not cols:
+                        continue
+                    if remove_comments and cols[0].startswith(remove_comments):
+                        continue
+                    # Clean up the data.
+                    cols = [_clean(x) for x in cols]
+                    
+                    outhandle.write("\t".join(cols)+"\n")
+                outhandle.close()
+
+            # Use the cleaned files.
+            filenames = temp_files
+
+        if clean_only:
+            if len(filenames) != 1:
+                raise NotImplementedError, "Can not clean and merge."
+            sys.stdout.write(open(filenames[0]).read())
+            sys.exit(0)
+
+        # Read the files.
+        matrices = []
+        for filename in filenames:
+            fmt_module = arrayio.guess_format(filename)
+            assert fmt_module,"I could not figure out the format of file: %s"%\
+                filename
+            x = fmt_module.read(filename)
+            matrices.append(x)
+    finally:
+        for file in temp_files:
+            if os.path.exists(file):
+                os.unlink(file)
+    
+    return fmt_module, matrices
 
 def parse_indexes(MATRIX, is_row, s):
     # Examples:
@@ -610,7 +682,15 @@ def rename_row_annot(MATRIX, row_annot):
     if Mc._row_order and old_name in Mc._row_order:
         i = Mc._row_order.index(old_name)
         Mc._row_order[i] = new_name
-    # Bug: Does not remove from the synonyms list.
+    if hasattr(Mc, "_synonyms"):
+        synonyms = {}
+        for (key, value) in Mc._synonyms.iteritems():
+            if key == old_name:
+                key = new_name
+            if value == old_name:
+                value = new_name
+            synonyms[key] = value
+        Mc.__dict__["_synonyms"] = synonyms
     return MATRIX_clean
 
 def move_row_annot(MATRIX, move_row_annot):
@@ -840,7 +920,6 @@ def _dedup_indexes(I):
 
 def main():
     import argparse
-    import arrayio
     from genomicode import jmath
     from genomicode import matrixlib
     from genomicode import quantnorm
@@ -849,8 +928,19 @@ def main():
         description="Slice the rows or columns of a matrix.")
     parser.add_argument("filename", nargs="+", help="Matrices to slice.")
     parser.add_argument(
-        "-o", default=None, metavar="OUTFILE", dest="outfile",
-        help="Save to this file.  By default, writes output to STDOUT.")
+        "--read_as_csv", default=False, action="store_true",
+        help="Read as a CSV file.")
+    parser.add_argument(
+        "--remove_comments", default=None,
+        help="Remove rows that start with this character (e.g. '#')")
+    parser.add_argument(
+        "--clean_only", default=False, action="store_true",
+        help="Only read_as_csv and remove_comments.")
+    # If the user chooses an outfile, will need to implement it for
+    # clean_only as well.
+    #parser.add_argument(
+    #    "-o", default=None, metavar="OUTFILE", dest="outfile",
+    #    help="Save to this file.  By default, writes output to STDOUT.")
     parser.add_argument(
         "-l", "--log_transform", dest="log_transform", default=False,
         action="store_true",
@@ -934,7 +1024,7 @@ def main():
     group.add_argument(
         "--add_row_annot", default=None,
         help="Add a geneset as a new annotation for the matrix.  "
-        "The format should be: <txt/gmx/gmt_file>[,<geneset>].  "
+        "The format should be: <txt/gmx/gmt_file>,<geneset>[,<geneset>].  "
         "Each geneset in the file should contain the same number of "
         "genes as the matrix.  One of the genesets should be align-able "
         "to the IDs of this matrix.")
@@ -960,14 +1050,9 @@ def main():
     args = parser.parse_args()
     assert len(args.filename) >= 1
 
-    # Read the files.
-    matrices = []
-    for filename in args.filename:
-        fmt_module = arrayio.guess_format(filename)
-        assert fmt_module, "I could not figure out the format of file: %s" % \
-               filename
-        x = fmt_module.read(filename)
-        matrices.append(x)
+    x = read_matrices(
+        args.filename, args.read_as_csv, args.remove_comments, args.clean_only)
+    fmt_module, matrices = x
     if len(matrices) == 1:
         MATRIX = matrices[0]
     else:
@@ -1033,8 +1118,8 @@ def main():
 
     # Write the outfile (in the same format).
     handle = sys.stdout
-    if args.outfile:
-        handle = open(args.outfile, 'w')
+    #if args.outfile:
+    #    handle = open(args.outfile, 'w')
     fmt_module.write(MATRIX, handle)
     
 
