@@ -23,7 +23,7 @@ def run(parameters,objects,pipeline):
     M_new = M.matrix(index,None)
     tmp = 'tmp'
     f = file(tmp,'w')
-    arrayio.pcl_format.write(M_new,tmp)
+    arrayio.pcl_format.write(M_new,f)
     f.close()
     if label_file:
         a,b,c=read_label_file.read(label_file)
