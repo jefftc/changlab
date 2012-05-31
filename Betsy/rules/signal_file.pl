@@ -147,8 +147,10 @@ signal_file(Parameters,Modules):-
 
 /*-------------------------------------------------------------------------*/
 pca_plot_out(Parameters,Modules):-
-    convert_parameters_file(Parameters,NewParameters),
-    signal_file(NewParameters,Past_Modules_2),
+    convert_parameters_file(Parameters,NewParameters1),
+    signal_file(NewParameters1,Past_Modules_2),
+    get_options(Parameters,[pca_gene_num],[],Options),
+    append(NewParameters1,Options,NewParameters),
     Newadd=[pca_plot,NewParameters],
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
@@ -157,9 +159,10 @@ pca_plot_out(Parameters,Modules):-
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 pca_plot_in(Parameters,Modules):-
-    get_desire_parameters_raw(Parameters,NewParameters1),
-    convert_parameters_clean_out(NewParameters1,NewParameters),
-    signal_clean(NewParameters,Past_Modules_2),
+    convert_parameters_clean_out(Parameters,NewParameters2),
+    signal_clean(NewParameters2,Past_Modules_2),
+    get_options(Parameters,[pca_gene_num],[],Options),
+    append(NewParameters2,Options,NewParameters),
     Newadd=[pca_plot,NewParameters],
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
@@ -181,8 +184,7 @@ biotin_plot(Parameters,Modules):-
 actb_plot(Parameters,Modules):-
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     Preprocess = illumina,
-    get_desire_parameters_raw(Parameters,NewParameters1),
-    convert_parameters_clean_out(NewParameters1,NewParameters),
+    convert_parameters_clean_out(Parameters,NewParameters),
     signal_clean(NewParameters,Past_Modules),
     Newadd=[plot_actb,NewParameters],
     append(Past_Modules, Newadd, Modules).

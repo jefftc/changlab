@@ -157,6 +157,7 @@ def make_pipelines(pl_output,pl_inputs):
         swipl.source_code(p,'class_label_file.pl')
         swipl.source_code(p,'differentail_expressed_gene_analysis.pl')
         swipl.source_code(p,'signature_analysis.pl')
+        swipl.source_code(p,'comparison_report.pl')
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input +').'
             swipl.send_query(p,more_command)

@@ -20,7 +20,7 @@ def connect(plcmd=None):
             plcmd = "swipl"
         elif sys.platform == 'darwin':
             plcmd = "/opt/local/bin/swipl"
-    p=pexpect.spawn(plcmd)
+    p=pexpect.spawn(plcmd,timeout=waitingtime)
     return p
 
 def send_query(handle,query):
@@ -53,7 +53,7 @@ def send_query(handle,query):
         if i == 0:
             result = result + handle.before
             try: #to check if the result is "true.", if yes, no more solution,exit
-                i = handle.expect(['[#\?]'],timeout=waitingtime)
+                i = handle.expect(['[#\?]'],timeout=0.5)
                 break   
             except pexpect.TIMEOUT:  # if TimeoutError, there are more solutions
                 handle.send(';')
@@ -63,7 +63,7 @@ def send_query(handle,query):
             result = result + handle.before + ';'
             try:
                 i = handle.expect(['true','false','ERROR','[#\?]',';'],
-                                  timeout=waitingtime)
+                                  timeout=0.5)
             except pexpect.TIMEOUT:
                 handle.send(';')
                 i=handle.expect(['true','false','ERROR','[#\?]',';'],

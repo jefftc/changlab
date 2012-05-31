@@ -6,6 +6,8 @@ import shutil
 import read_label_file
 from genomicode import pcalib
 import arrayio
+import tempfile
+
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -13,13 +15,16 @@ def run(parameters,objects,pipeline):
         parameters,objects,'class_label_file','contents')
     M = arrayio.read(identifier)
     X = M._X
-    index = pcalib.select_genes_var(X,500)
+    if 'pca_gene_num' in parameters.keys():
+        N = int(parameters['pca_gene_num'])
+    else:
+        N = 500
+    index = pcalib.select_genes_var(X,N)
     M_new = M.matrix(index,None)
     tmp = 'tmp'
     f = file(tmp,'w')
-    arrayio.pcl_format.write(M_new,f)
+    arrayio.pcl_format.write(M_new,tmp)
     f.close()
-
     if label_file:
         a,b,c=read_label_file.read(label_file)
         colors = ['"red"','"blue"','"green"','"yellow"']

@@ -6,6 +6,7 @@ import module_utils
 import rule_engine
 import shutil
 import arrayio
+import tempfile
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
@@ -17,7 +18,6 @@ def run(parameters,objects,pipeline):
     if 'num_factors' in parameters.keys():
         num_factor = int(parameters['num_factors'])
         assert num_factor >= 1, 'the num_factor should be >=1'
-        import arrayio
         M = arrayio.read(identifier)
         col_num = M.ncol()
         assert num_factor <= col_num,'the num_factor should be less than %d'%col_num

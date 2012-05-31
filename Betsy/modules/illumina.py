@@ -6,6 +6,7 @@ import Betsy_config
 import zipfile
 import subprocess
 import plot_biotin
+import rule_engine
 def zip_directory(dir, zip_file):
     zip = zipfile.ZipFile(zip_file, 'w',
                           compression = zipfile.ZIP_DEFLATED)
@@ -155,6 +156,10 @@ def get_identifier(parameters,objects):
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
-    new_objects = module_utils.get_newobjects(
-        outfile,'signal_file',parameters,objects,single_object)
+    parameters = module_utils.renew_parameters(parameters,['status'])
+    attributes = parameters.values()
+    new_object = rule_engine.DataObject('signal_file',attributes,outfile)
+    new_objects = objects[:]
+    new_objects.append(new_object)
     return new_objects
+

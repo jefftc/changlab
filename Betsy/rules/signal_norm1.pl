@@ -43,7 +43,7 @@ signal_norm1(Parameters,Modules):-
 signal_norm1(Parameters, Modules):-
     get_value(Parameters,quantile,no_quantile,Quantile),
     Quantile=yes_quantile,
-    OldQuantile=no_quantile,
+    OldQuantile=no_quantile,    
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
@@ -62,9 +62,6 @@ signal_norm1(Parameters, Modules):-
     get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
-    get_value(Parameters,combat,no_combat,Combat),
-    Combat=yes_combat,
-    OldCombat=no_combat,
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),

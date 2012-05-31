@@ -94,7 +94,8 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
 
     append(NewParameters2,[is_logged,logged],NewParameters3),
-    get_value(Parameters,has_missing_value,no_missing,Has_Missing_Value),
+
+    get_value_variable(Parameters,has_missing_value,Has_Missing_Value),
     member(Has_Missing_Value,[median_fill,zero_fill,no_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 

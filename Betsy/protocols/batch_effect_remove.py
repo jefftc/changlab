@@ -1,4 +1,4 @@
-#differential_expressed_gene_analysis.py
+#batch_effect_remove.py
 
 INPUTS = [
     'gse_id',
@@ -12,12 +12,11 @@ INPUTS = [
     'input_signal_file',
     'renanme_list_file']
 
-OUTPUTS = ['differential_expressed_genes']
+OUTPUTS = ['normalization_comparison_report','pca_plot_in','pca_plot_normalization']
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',
                   'illumina','agilent','unknown_preprocess'],
-    'has_missing_value':['unknown_missing','no_missing','median_fill','zero_fill'],
     'gene_center':['mean','median','no_gene_center'],
     'gene_normalize':['variance','sum_of_squares','no_gene_normalize'],
     'quantile':['yes_quantile','no_quantile'],
@@ -25,19 +24,19 @@ PARAMETERS = {
     'bfrm':['yes_bfrm','no_bfrm'],
     'shiftscale':['yes_shiftscale','no_shiftscale'],
     'combat':['yes_combat','no_combat'],
-    'gene_order':['t_test_p','t_test_fdr','by_gene_list','no_order','by_class_neighbors'],
+    'gene_order':['t_test_p','t_test_fdr','by_gene_list','no_order',
+                  'by_class_neighbors'],
     'predataset':['yes_predataset','no_predataset'],
     'filter':'integer',
+    'has_missing_value':['no_missing','median_fill','zero_fill',
+                         'unknown_missing'],
     'format':['pcl','gct'],
     'is_logged':['no_logged','logged'],
     'traincontents':'list',
     'testcontents':'list',
     'contents':'list',
-    'diff_expr':['t_test','sam'],
-    'sam_foldchange':'float',
-    'sam_delta':'float',
     'ill_manifest':'string',
-    'ill_chip':'integer',
+    'ill_chip':'string',
     'ill_bg_mode':['ill_yes','ill_no'],
     'ill_coll_mode':['ill_none','ill_max','ill_median'],
     'ill_clm':'string',
@@ -61,11 +60,10 @@ PARAMETERS = {
 
 DEFAULT = {
     'gene_center':'no_gene_center',
-    'gene_normalize':'no_gene_normalize','quantile':'no_quantile',
-    'dwd':'no_dwd','shiftscale':'no_shiftscale',
-    'combat':'no_combat','filter':0,'is_logged':'logged',
-    'predataset':'no_predataset','bfrm':'no_bfrm',
-    'gene_order':'no_order','rename_sample':'no_rename'}
+    'gene_normalize':'no_gene_normalize',
+    'filter':'0','predataset':'no_predataset',
+    'is_logged':'logged','rename_sample':'no_rename',
+    'gene_order':'no_order','format':'pcl'}
 
 predicate2arguments={
     'gse_id':([],'[]'),
@@ -78,4 +76,6 @@ predicate2arguments={
     'gene_list_file':([],'[]'),
     'input_signal_file':(['status','given'],'[]'),
     'rename_list_file':([],'[]')}
+
+
 

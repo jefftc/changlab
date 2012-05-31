@@ -187,7 +187,9 @@ def summarize_report(protocol,final_result_files,result_folder,final_parameters,
                 'weightedVoting':'the results file of weighted Voting ',
                 'loocv': ' the result of the leave one out cross validation',
                 'differential_expressed_genes':'the result of the differential_expressed_genes ',
-                'class_neighbors':'the result of the class_neighbors'
+                'class_neighbors':'the result of the class_neighbors',
+                'normalization_comparison_report':'the result of the normalization',
+                'pca_plot_normalization':'the pca plot of the normalization'
                 }
             #put the image in the same folder
             w(htmllib.H3("III.  Results"))

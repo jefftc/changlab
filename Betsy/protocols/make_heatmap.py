@@ -58,7 +58,8 @@ PARAMETERS = {
     'cn_abs_diff':'float',
     'gene_select_threshold':'float',
     'rename_sample':['yes_rename','no_rename'],
-    'num_factors':'integer'}
+    'num_factors':'integer',
+    'pca_gene_num':'integer'}
 
 
 DEFAULT = {

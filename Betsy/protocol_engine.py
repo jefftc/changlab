@@ -38,17 +38,7 @@ def run_protocol(protocol, inputs, output, identifiers,
       if Parameters is None, then use the default parameters"""
     
     module = protocol_utils.import_protocol(protocol)
-    if module.OPTIONS:
-        pipelines=[]
-        for opt in module.OPTIONS:
-            new_parameters = parameters.copy()
-            for key in opt.keys():
-                new_parameters[key]=opt[key]
-            new_pipelines = filter_pipelines(protocol, inputs, in_contents,output,
-                                 new_parameters)
-            pipelines.extend(new_pipelines)
-    else:
-        pipelines = filter_pipelines(protocol, inputs, in_contents,output,
+    pipelines = filter_pipelines(protocol, inputs, in_contents,output,
                                  parameters)
     pl_inputs = []
     for i in range(len(inputs)):
@@ -165,30 +155,16 @@ def main():
         
     if args.dry_run:
         for output_file in module.OUTPUTS:
-            if not module.OPTIONS:
-                pipelines = filter_pipelines(
-                args.protocol,inputs,in_contents,output_file,
-                parameters)
-                for pipeline in pipelines:
-                      for analysis in pipeline:
-                          print 'module',analysis.name,'\r'
-                          print 'parameters',analysis.parameters
-                      print '------------------------'
-                print len(pipelines)
-            if module.OPTIONS:
-                for opt in module.OPTIONS:
-                    new_parameters = parameters.copy()
-                    for key in opt.keys():
-                        new_parameters[key]=opt[key]
-                        pipelines = filter_pipelines(
-                        args.protocol,inputs,in_contents,output_file,
-                        new_parameters)
-                    for pipeline in pipelines:
-                          for analysis in pipeline:
-                              print 'module',analysis.name,'\r'
-                              print 'parameters',analysis.parameters
-                          print '------------------------'
-                    print len(pipelines)
+            pipelines = filter_pipelines(
+            args.protocol,inputs,in_contents,output_file,
+            parameters)
+            for pipeline in pipelines:
+                  for analysis in pipeline:
+                      print 'module',analysis.name,'\r'
+                      print 'parameters',analysis.parameters
+                  print '------------------------'
+            print len(pipelines)
+        
 
     else:
         final_output = []
