@@ -14,7 +14,7 @@ def run(parameters,objects,pipeline,options=None):
     Heatmap_BIN = module_utils.which(Heatmap_path)
     assert Heatmap_BIN,'cannot find the %s' %Heatmap_path
     command = ['python', Heatmap_BIN,identifier,'-o',outfile,"--label_arrays",
-               "--grid"]
+               "--grid","--label_genes"]
     if 'color' in parameters.keys():
         color=['--color' , parameters['color'].replace('_','-')]
         command.extend(color)

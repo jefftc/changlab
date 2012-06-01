@@ -121,7 +121,7 @@ agilent_files([contents,Contents,version,agilent],Modules):-
 % Preprocess geo_dataset with gpr format to signal_file by loess,
 signal_raw(Parameters,Modules):-
     get_value(Parameters,contents,[unknown],Contents),
-    convert_parameters_raw([contents,Contents,preprocess,loess,is_logged,no_logged,format,pcl],NewParameters),
+    convert_parameters_raw([contents,Contents,preprocess,loess,is_logged,no_logged,format,tdf],NewParameters),
     Parameters=NewParameters,	
     gpr_files([contents,Contents,version,gpr],Past_Modules),
     Newadd=[loess,Parameters],

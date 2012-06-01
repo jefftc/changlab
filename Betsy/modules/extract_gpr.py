@@ -54,7 +54,7 @@ def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
-        ooutfile,'gpr_files',parameters,objects,single_object)
+        outfile,'gpr_files',parameters,objects,single_object)
     return new_objects
 
 

@@ -33,11 +33,14 @@ def check_gpr(fileloc):
         line = line.split('=')
         if line[0] not in entry: # '%s is not in gpr entry'%line[0]
             return False
+    
     column_name=text[startline].split('\t')
+    
     column_need=['Name','ID','Block','Column','Row','Log Ratio (635/532)']
+    
     for i in column_need:
         if i not in column_name:
-            return False           
+            return False
     return True
 
 def extract_gpr(fileloc,keep):

@@ -50,11 +50,11 @@ convert_parameters_raw(Parameters,NewParameters):-
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
     
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
-    member(Is_Logged,[logged,no_logged,unknown_logged]),
+    member(Is_Logged,[no_logged,logged,unknown_logged]),
     append(NewParameters2,[is_logged,Is_Logged],NewParameters3),
 
     get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
-    member(Has_Missing_Value,[median_fill,zero_fill,no_missing,unknown_missing]),
+    member(Has_Missing_Value,[no_missing,median_fill,zero_fill,unknown_missing]),
     append(NewParameters3,[has_missing_value,Has_Missing_Value],NewParameters4),
 
     get_value(Parameters,filter,0,Filter),
@@ -66,7 +66,7 @@ convert_parameters_raw(Parameters,NewParameters):-
     %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
     
     get_value(Parameters,predataset,no_predataset,Predataset),
-    member(Predataset,[yes_predataset,no_predataset]),
+    member(Predataset,[no_predataset,yes_predataset]),
     append(NewParameters5,[predataset,Predataset],NewParameters6),
 
     get_value(Parameters,status,created,Status),
@@ -80,7 +80,7 @@ convert_parameters_raw(Parameters,NewParameters):-
     NewParameters8=NewParameters7),
     
     get_value(Parameters,rename_sample,no_rename,Rename_sample),
-    member(Rename_sample,[yes_rename,no_rename]),
+    member(Rename_sample,[no_rename,yes_rename]),
     append(NewParameters8,[rename_sample,Rename_sample],NewParameters).
 
 /*-------------------------------------------------------------------------*/

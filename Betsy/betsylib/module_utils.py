@@ -133,7 +133,7 @@ def find_object(parameters,objects,objecttype,attribute):
     compare_attribute = [parameters[i] for i in attributes]
     for single_object in objects:
         flag = True
-        if objecttype in single_object.objecttype:
+        if objecttype == single_object.objecttype:
             for i in compare_attribute:
                 if i not in single_object.attributes:
                     flag=False

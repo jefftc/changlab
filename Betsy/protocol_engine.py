@@ -161,7 +161,7 @@ def main():
             for pipeline in pipelines:
                   for analysis in pipeline:
                       print 'module',analysis.name,'\r'
-                      print 'parameters',analysis.parameters
+                      #print 'parameters',analysis.parameters
                   print '------------------------'
             print len(pipelines)
         
