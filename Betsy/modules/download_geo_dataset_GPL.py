@@ -77,6 +77,7 @@ def run(parameters,objects,pipeline):
     assert GPLID.startswith('GPL'),'GPLID %s is not correct'&GPLID
     GSEID_path = download_dataset(GSEID)
     platform_txtfiles = get_seriesmatrix_file(GSEID,GPLID)
+    assert len(platform_txtfiles)>0,'there is no platform seriesmatrix file avaiable in the database' 
     #get the cel file name for the GPL platform
     if not os.path.exists(outfile):
             os.mkdir(outfile)

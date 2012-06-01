@@ -7,6 +7,8 @@
 % for the parameter which is not provide, will be in no_order
 
 signal_file(Parameters,Modules):-
+    get_value(Parameters,annot,no_annot,Annot),
+    Annot=no_annot,
     get_desire_parameters_file(Parameters,NewParameters1),
     length(NewParameters1,N),
     get_length(n_file,N1),
@@ -18,6 +20,8 @@ signal_file(Parameters,Modules):-
 % generate signal_file from signal_norm2 with no_order
 
 signal_file(Parameters,Modules):-
+   get_value(Parameters,annot,no_annot,Annot),
+   Annot=no_annot,
    get_desire_parameters_file(Parameters,NewParameters1),
    length(NewParameters1,N),
    get_length(n_file,N1),
@@ -203,4 +207,21 @@ intensity_plot(Parameters,Modules):-
     convert_parameters_file(Parameters,NewParameters),
     signal_file(NewParameters,Past_Modules),
     Newadd=[plot_intensity,NewParameters],
+    append(Past_Modules, Newadd, Modules).
+
+/*------------------------------------------------------------------------*/
+%annotate the signal file
+signal_file(Parameters,Modules):-
+    get_value(Parameters,annot,no_annot,Annot),
+    Annot=yes_annot,
+    convert_parameters_file(Parameters,NewParameters),
+    get_value(NewParameters,status,created,Status),
+    Status=created,
+    member(OldStatus,[given,created,jointed,splited]),
+    get_value(NewParameters,format,unknown_format,Format),
+    Format=pcl,
+    set_value(NewParameters,status,OldStatus,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    append(NewParameters,[annot,yes_annot],NewParameters2),
+    Newadd=[annot_file,NewParameters2],
     append(Past_Modules, Newadd, Modules).

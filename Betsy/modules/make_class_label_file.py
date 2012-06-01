@@ -34,10 +34,12 @@ def get_outfile(parameters,objects,pipeline):
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     identifier,single_object = get_identifier(parameters,objects)
-    attributes = parameters.values()
-    new_object = rule_engine.DataObject('class_label_file',attributes,outfile)
-    new_objects = objects[:]
-    new_objects.append(new_object)
+    new_objects = module_utils.get_newobjects(
+        outfile,'class_label_file',parameters,objects,single_object)
+    #attributes = parameters.values()
+    #new_object = rule_engine.DataObject('class_label_file',attributes,outfile)
+    #new_objects = objects[:]
+    #new_objects.append(new_object)
     return new_objects
 
 def get_identifier(parameters,objects):

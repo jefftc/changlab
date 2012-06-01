@@ -6,7 +6,6 @@ import shutil
 import read_label_file
 from genomicode import pcalib
 import arrayio
-import tempfile
 
 def run(parameters,objects,pipeline):
     identifier,single_object = get_identifier(parameters,objects)
