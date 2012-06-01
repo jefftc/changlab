@@ -52,7 +52,8 @@ def _clean(s):
         s = s[1:-1]
     return s
 
-def read_matrices(filenames, read_as_csv, remove_comments, clean_only):
+def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
+                  clean_only):
     import csv
     import tempfile
     import arrayio
@@ -60,11 +61,12 @@ def read_matrices(filenames, read_as_csv, remove_comments, clean_only):
     
     temp_files = []
     try:
-        if read_as_csv or (remove_comments is not None):
+        if read_as_csv or remove_comments or skip_lines:
             delimiter = "\t"
             if read_as_csv:
                 delimiter = ","
-            assert delimiter not in remove_comments
+            if remove_comments:
+                assert delimiter not in remove_comments
                 
             # Make a temporary files for each matrix file.
             for filename in filenames:
@@ -74,10 +76,16 @@ def read_matrices(filenames, read_as_csv, remove_comments, clean_only):
 
             # Clean up the files.
             for (infile, outfile) in zip(filenames, temp_files):
+                inhandle = filelib.openfh(infile)
+                if skip_lines:
+                    skip_lines = int(skip_lines)
+                    for i in range(skip_lines):
+                        inhandle.readline()
+                
                 if read_as_csv:
-                    inhandle = csv.reader(filelib.openfh(infile))
+                    inhandle = csv.reader(inhandle)
                 else:
-                    inhandle = filelib.read_cols(infile, delimiter=delimiter)
+                    inhandle = filelib.read_cols(inhandle, delimiter=delimiter)
                     
                 outhandle = open(outfile, 'w')
                 for cols in inhandle:
@@ -705,8 +713,10 @@ def move_row_annot(MATRIX, move_row_annot):
     MATRIX_clean = MATRIX.matrix()
     assert MATRIX_clean._row_order
     order = MATRIX_clean._row_order[:]
-    assert old_index >= 1 and old_index <= len(order)
-    assert new_index >= 1 and new_index <= len(order)
+    assert old_index >= 1 and old_index <= len(order), \
+        "Invalid annotation index: %d" % old_index
+    assert new_index >= 1 and new_index <= len(order), \
+        "Invalid annotation index: %d" % new_index
     x = order.pop(old_index-1)
     order.insert(new_index-1, x)
     MATRIX_clean._row_order = order
@@ -931,6 +941,9 @@ def main():
         "--read_as_csv", default=False, action="store_true",
         help="Read as a CSV file.")
     parser.add_argument(
+        "--skip_lines", default=None,
+        help="Skip this number of lines in the file.")
+    parser.add_argument(
         "--remove_comments", default=None,
         help="Remove rows that start with this character (e.g. '#')")
     parser.add_argument(
@@ -1051,7 +1064,8 @@ def main():
     assert len(args.filename) >= 1
 
     x = read_matrices(
-        args.filename, args.read_as_csv, args.remove_comments, args.clean_only)
+        args.filename, args.skip_lines, args.read_as_csv, args.remove_comments,
+        args.clean_only)
     fmt_module, matrices = x
     if len(matrices) == 1:
         MATRIX = matrices[0]
