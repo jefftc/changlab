@@ -6,6 +6,7 @@ import rule_engine
 from ftplib import FTP
 import module_utils
 import string
+import gzip
 def download_dataset(GSEID):
     #download the tar folder from geo
     ftp = FTP('ftp.ncbi.nih.gov')
@@ -77,38 +78,40 @@ def run(parameters,objects,pipeline):
     assert GPLID.startswith('GPL'),'GPLID %s is not correct'&GPLID
     GSEID_path = download_dataset(GSEID)
     platform_txtfiles = get_seriesmatrix_file(GSEID,GPLID)
-    assert len(platform_txtfiles)>0,'there is no platform seriesmatrix file avaiable in the database' 
     #get the cel file name for the GPL platform
     if not os.path.exists(outfile):
             os.mkdir(outfile)
-    for platform_txtfile in platform_txtfiles:
-        cel_list = open(platform_txtfile,'r').readlines()
-        cel_line = None
-        for linecontent in cel_list:
-            if linecontent.startswith('!Sample_geo_accession'):
-                cel_line = linecontent
-                break
-        assert cel_line,'the file %s\
-        does not contain "!Sample_geo_accession"'&platform_txtfile
-        filecontent = os.listdir(GSEID_path)
-        cel_names = []
-        for x in linecontent.split()[1:]:
-            x = x.strip()
-            assert x.startswith('\"') and x.endswith('\"')
-            x = x[1:-1]
-            cel_names.append(x)
-        #check if the GSM Id cannot found in the data set
-        file_name_string = ' '.join(filecontent)
-        for cel_name in cel_names:
-            if cel_name not in file_name_string:
-                raise ValueError('The GSM ID %s cannot find in data set'%cel_name)
-            else:
-                for cel_file in filecontent:
-                    if cel_file.upper().startswith(cel_name.upper()):
-                        if cel_file.lower().endswith('gz'):
-                            cel_file = clean_cel_filename(os.path.splitext(cel_file)[0])+'.gz'
-                        outfilename=os.path.join(outfile,cel_file)
-                        shutil.copyfile(os.path.join(GSEID_path,cel_file),outfilename)
+    if len(platform_txtfiles)>0:
+        for platform_txtfile in platform_txtfiles:
+            cel_list = open(platform_txtfile,'r').readlines()
+            cel_line = None
+            for linecontent in cel_list:
+                if linecontent.startswith('!Sample_geo_accession'):
+                    cel_line = linecontent
+                    break
+            assert cel_line,'the file %s\
+            does not contain "!Sample_geo_accession"'&platform_txtfile
+            filecontent = os.listdir(GSEID_path)
+            cel_names = []
+            for x in linecontent.split()[1:]:
+                x = x.strip()
+                assert x.startswith('\"') and x.endswith('\"')
+                x = x[1:-1]
+                cel_names.append(x)
+            #check if the GSM Id cannot found in the data set
+            file_name_string = ' '.join(filecontent)
+            for cel_name in cel_names:
+                if cel_name not in file_name_string:
+                    raise ValueError('The GSM ID %s cannot find in data set'%cel_name)
+                else:
+                    for cel_file in filecontent:
+                        if cel_file.upper().startswith(cel_name.upper()):
+                            if cel_file.lower().endswith('gz'):
+                                cel_file = clean_cel_filename(os.path.splitext(cel_file)[0])+'.gz'
+                            outfilename=os.path.join(outfile,cel_file)
+                            shutil.copyfile(os.path.join(GSEID_path,cel_file),outfilename)
+    else:
+        os.rename(GSEID_path,outfile)
     assert module_utils.exists_nz(outfile),'the output file %s\
                                     for download_geo_dataset_GPL fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
