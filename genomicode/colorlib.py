@@ -4,6 +4,7 @@ Colors are specified as (R, G, B) tuples with values from from 0.0 to 1.0.
 
 red_shade
 green_shade
+white_shade
 rg_array_colors
 by_array_colors
 rgb_colors          From red, green, blue colorwheel.
@@ -62,7 +63,15 @@ def red_shade(n):
 def green_shade(n):
     color_matrix = [
         (0.0,   0, 0, 0),
-        (1.0, 255, 0, 0),
+        (1.0, 0, 255, 0),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+
+def white_shade(n):
+    color_matrix = [
+        (0.0,   0, 0, 0),
+        (1.0, 255, 255, 255),
         ]
     x = _colors(color_matrix, n)
     return x
