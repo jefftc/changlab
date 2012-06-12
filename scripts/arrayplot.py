@@ -629,6 +629,7 @@ def make_layout(
     # Choose the color scheme.
     scheme2fn = {
         "red" : colorlib.red_shade,
+        "white" : colorlib.white_shade,
         "red-green" : colorlib.rg_array_colors,
         "blue-yellow" : colorlib.by_array_colors,
         "matlab" : colorlib.matlab_colors,
@@ -2131,10 +2132,10 @@ def main():
         default=True, help="Disable autoscaling.")
     group.add_option(
         "--color", dest="color_scheme", type="choice", default="bild",
-        choices=["red", "red-green", "blue-yellow", "matlab", "bild",
+        choices=["red", "white", "red-green", "blue-yellow", "matlab", "bild",
                  "genespring", "yahoo"],
-        help="Choose the color scheme to use: red, red-green, blue-yellow, "
-        "matlab, bild (default), genespring, or yahoo.")
+        help="Choose the color scheme to use: red, white, red-green, "
+        "blue-yellow, matlab, bild (default), genespring, or yahoo.")
     group.add_option(
         "--black0", dest="black0", action="store_true", default=False,
         help="Color 0 values black (no matter the color scheme).")
