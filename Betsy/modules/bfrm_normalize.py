@@ -8,7 +8,7 @@ import shutil
 import arrayio
 import tempfile
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
     import Betsy_config
     bfrm_path = Betsy_config.BFRMNORM
@@ -22,7 +22,7 @@ def run(parameters,objects,pipeline):
         col_num = M.ncol()
         assert num_factor <= col_num,'the num_factor should be less than %d'%col_num
     tmp = 'tmp_dir'
-    command = ['python', bfrm_BIN,identifier,'-f',str(num_factor), '-o',tmp]
+    command = ['python', bfrm_BIN,single_object.identifier,'-f',str(num_factor), '-o',tmp]
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -49,19 +49,22 @@ def make_unique_hash(identifier,pipeline,parameters):
             identifier,pipeline,parameters)
    
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
-    
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_bfrm_'+original_file+'.pcl'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
+
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(identifier),'the input file \
-        %s for bfrm_normalize does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input file \
+        %s for bfrm_normalize does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects

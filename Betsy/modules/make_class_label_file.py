@@ -8,9 +8,9 @@ import rule_engine
 def run(parameters,objects,pipeline):
     """generate the class_label_file for signal data"""
     import arrayio
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    M = arrayio.read(identifier)
+    M = arrayio.read(single_object.identifier)
     label_line = ['0'] * M.dim()[1]
     assert parameters['contents'].startswith('[') and parameters['contents'].endswith(']')
     class_name=[parameters['contents'][1:-1]]
@@ -28,23 +28,22 @@ def make_unique_hash(identifier,pipeline,parameters):
                     identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'class_label_file_'+original_file+'.cls'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'class_label_file',parameters,objects,single_object)
-    #attributes = parameters.values()
-    #new_object = rule_engine.DataObject('class_label_file',attributes,outfile)
-    #new_objects = objects[:]
-    #new_objects.append(new_object)
     return new_objects
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(parameters,
+    single_object = module_utils.find_object(parameters,
                             objects,'signal_file','contents')
-    assert os.path.exists(identifier),'the input \
-            file %s for make_class_label_file does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input \
+            file %s for make_class_label_file does not exist'%single_object.identifier
+    return single_object

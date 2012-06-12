@@ -8,9 +8,9 @@ from genomicode import smarray
 import gpr_module
 import rule_engine
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    filenames=os.listdir(identifier)
+    filenames=os.listdir(single_object.identifier)
     keep=[]
     red_sig_matrix=[]
     green_sig_matrix=[]
@@ -18,7 +18,7 @@ def run(parameters,objects,pipeline):
     green_back_matrix=[]
     sample=[]
     for filename in filenames:
-        fileloc=os.path.join(identifier,filename)
+        fileloc=os.path.join(single_object.identifier,filename)
         if not filename.endswith('gpr.gz') and not filename.endswith('gpr'):
             continue
         if filename.endswith('gpr.gz'):   
@@ -69,19 +69,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'geo_dataset','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_loess_'+original_file+'.tdf'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'geo_dataset','contents')
-    assert os.path.exists(identifier),'the input file %s\
-                   for loess does not exist'%identifier
+    assert os.path.exists(single_object.identifier),'the input file %s\
+                   for loess does not exist'%single_object.identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     parameters = module_utils.renew_parameters(parameters,['status'])
     attributes = parameters.values()
     new_object = rule_engine.DataObject('signal_file',attributes,outfile)

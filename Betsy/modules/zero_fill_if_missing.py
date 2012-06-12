@@ -4,12 +4,12 @@ import shutil
 import module_utils
 import arrayio
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    if not is_missing(identifier):
-            shutil.copyfile(identifier,outfile)
+    if not is_missing(single_object.identifier):
+            shutil.copyfile(single_object.identifier,outfile)
     else:
-        M = arrayio.read(identifier)
+        M = arrayio.read(single_object.identifier)
         f_out = file(outfile,'w')
         for i in range(M.dim()[0]):
            for j in range(M.dim()[1]):
@@ -29,19 +29,21 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
-    
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_zero_fill_' + original_file + '.pcl'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile    
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(identifier),'the input\
-            file %s for zero_fill_if_missing does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input\
+            file %s for zero_fill_if_missing does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects

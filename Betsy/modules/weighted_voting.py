@@ -7,30 +7,30 @@ import Betsy_config
 import subprocess
 import read_label_file
 def run(parameters,objects,pipeline):
-    train_identifier,single_object = get_identifier(parameters,objects)
+    train_identifier = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    train_label_file,obj = module_utils.find_object(
+    train_label_file= module_utils.find_object(
         parameters,objects,'class_label_file','traincontents')
-    test_label_file,clf_obj = module_utils.find_object(
+    test_label_file = module_utils.find_object(
         parameters,objects,'class_label_file','testcontents')
-    test_file,obj = module_utils.find_object(
+    test_file = module_utils.find_object(
         parameters,objects,'signal_file','testcontents')
-    if 'given' in clf_obj.attributes:
+    if 'given' in test_label_file.attributes:
         actual = True
     else:
         actual = False
-    assert os.path.exists(test_file),'the test\
-                file %s for weighted_voting does not exist'%test_file
-    assert os.path.exists(test_label_file),'cannot\
-                find test_label_file %s for weighted_voting'%test_label_file
-    assert os.path.exists(train_label_file),'cannot\
-                find train_label_file %s for weighted_voting'%train_label_file
+    assert os.path.exists(test_file.identifier),'the test\
+                file %s for weighted_voting does not exist'%test_file.identifier
+    assert os.path.exists(test_label_file.identifier),'cannot\
+                find test_label_file %s for weighted_voting'%test_label_file.identifier
+    assert os.path.exists(train_label_file.identifier),'cannot\
+                find train_label_file %s for weighted_voting'%train_label_file.identifier
     module_name = 'WeightedVoting'
     gp_parameters = dict()
-    gp_parameters['train.filename'] = train_identifier
-    gp_parameters['train.class.filename'] = train_label_file
-    gp_parameters['test.filename'] = test_file
-    gp_parameters['test.class.filename'] = test_label_file
+    gp_parameters['train.filename'] = train_identifier.identifier
+    gp_parameters['train.class.filename'] = train_label_file.identifier
+    gp_parameters['test.filename'] = test_file.identifier
+    gp_parameters['test.class.filename'] = test_label_file.identifier
     if 'wv_num_features' in parameters.keys():
         assert parameters['wv_num_features'].isdigit(
             ),'the wv_num_features should be digit numbers'
@@ -72,7 +72,7 @@ def run(parameters,objects,pipeline):
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
     gp_files = os.listdir(download_directory)
-    result,label_line,second_line = read_label_file.read(train_label_file)
+    result,label_line,second_line = read_label_file.read(train_label_file.identifier)
     for gp_file in gp_files:
         if gp_file.endswith('pred.odf'):
             gp_file = os.path.join(download_directory,gp_file)
@@ -98,7 +98,7 @@ def run(parameters,objects,pipeline):
                                file %s for weighted_voting fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline)
+        parameters,train_identifier,pipeline)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):
@@ -106,20 +106,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','traincontents')
-    assert os.path.exists(identifier),'the train\
-            file %s for weighted_voting does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the train\
+            file %s for weighted_voting does not exist'%single_object.identifier
+    return single_object
 
 def get_outfile(parameters,objects,pipeline):
-    
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','traincontents',pipeline)
-    
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'weighted_voting_' + original_file + '.txt'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
+
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'weighted_voting',parameters,objects,single_object)
     return new_objects

@@ -8,28 +8,11 @@ import string
 import module_utils
 def run(parameters,objects,pipeline):
     """given a database ID and database,download and untar the data folder"""
-    from ftplib import FTP
-    import tarfile
     #download the tar folder from geo
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    file_folder = os.path.join(os.getcwd(),identifier)
-    ftp = FTP('ftp.ncbi.nih.gov')
-    ftp.login()
-    directory = 'pub/geo/DATA/supplementary/series/'+identifier
-    ftp.cwd(directory)
-    filename = identifier+'_RAW.tar'
-    f = open(filename,'wb')
-    ftp.retrbinary('RETR '+identifier+'_RAW.tar',f.write)
-    f.close()
-    ftp.close()
-    #untar the data folder
-    if not tarfile.is_tarfile(filename):
-        raise ValueError('download file %s is not tar file'%tarfile)
-    else:
-        tar = tarfile.open(filename)
-        tar.extractall(path=file_folder)
-        tar.close()
+    file_folder = os.path.join(os.getcwd(),single_object.identifier)
+    module_utils.download_dataset(single_object.identifier)
     #get chip name
     cel_files = os.listdir(file_folder)
     unknown_folder = os.path.join(os.getcwd(),'unknown_folder')
@@ -134,15 +117,14 @@ def make_unique_hash(identifier,pipeline,parameters):
     return hash_string
 
 def get_outfile(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
-    hash_string = make_unique_hash(identifier,pipeline,parameters)
-    filename = identifier + '_after_select'
+    single_object = get_identifier(parameters,objects)
+    filename = 'after_select_' + single_object.identifier
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     newobjecttype = parameters['filetype']
     new_object = rule_engine.DataObject(newobjecttype,[
                         'unknown_version',parameters['contents']],outfile)
@@ -151,11 +133,11 @@ def get_newobjects(parameters,objects,pipeline):
     return new_objects
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'gse_id','contents')
-    assert identifier.startswith('GSE'),'the GSEID %s\
-                         should start with GSE'%identifeir
-    return identifier,single_object
+    assert single_object.identifier.startswith('GSE'),'the GSEID %s\
+                         should start with GSE'%single_object.identifeir
+    return single_object
 
 def clean_cel_filename(cel_file):
     """clean the cel_file name"""

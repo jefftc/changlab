@@ -7,13 +7,13 @@ import read_label_file
 from genomicode import shiftscalenorm
 import arrayio
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    label_file,obj = module_utils.find_object(
+    label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file),'cannot find label_file %s'%label_file
-    M = arrayio.read(identifier)
-    result,label_line,second_line=read_label_file.read(label_file)
+    assert os.path.exists(label_file.identifier),'cannot find label_file %s'%label_file.identifier
+    M = arrayio.read(single_object.identifier)
+    result,label_line,second_line=read_label_file.read(label_file.identifier)
     assert len(result) == 2, 'for shiftscale,there should be only 2 classes'
     index1=result[0][0]
     index2=result[1][0]
@@ -44,19 +44,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_shiftscale' + original_file + '.pcl'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
                                parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(identifier),'the input\
-                    file %s for shiftscale does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input\
+                    file %s for shiftscale does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects

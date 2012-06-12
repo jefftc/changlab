@@ -20,15 +20,15 @@ def zip_directory(dir, zip_file):
     zip.close()
 
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     module_name = 'IlluminaExpressionFileCreator'
     gp_parameters = dict()
-    if zipfile.is_zipfile(identifier):
-        gp_parameters['idat.zip'] = identifier
+    if zipfile.is_zipfile(single_object.identifier):
+        gp_parameters['idat.zip'] = single_object.identifier
     else:
-        zipfile_name = os.path.split(identifier)[-1]+'.zip'
-        zip_directory(identifier,zipfile_name)
+        zipfile_name = os.path.split(single_object.identifier)[-1]+'.zip'
+        zip_directory(single_object.identifier,zipfile_name)
         gp_parameters['idat.zip'] = zipfile_name
     gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
     gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
@@ -143,19 +143,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'idat_files','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_illumina_'+original_file+'.gct'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'idat_files','contents')
-    assert os.path.exists(identifier),'the input file %s \
-             for illumina does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input file %s \
+             for illumina does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     parameters = module_utils.renew_parameters(parameters,['status'])
     attributes = parameters.values()
     new_object = rule_engine.DataObject('signal_file',attributes,outfile)

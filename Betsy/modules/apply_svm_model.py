@@ -8,33 +8,33 @@ import module_utils
 import os
 import read_label_file
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    model_file,obj = module_utils.find_object(
+    model_file = module_utils.find_object(
         parameters,objects,'svm_model','traincontents')
-    assert os.path.exists(model_file),'the model file %s for svm test \
-                                                      does not exist'%model_file
-    test = arrayio.read(identifier)
+    assert os.path.exists(model_file.identifier),'the model file %s for svm test \
+                                                      does not exist'%model_file.identifier
+    test = arrayio.read(single_object.identifier)
     train_file = module_utils.find_object(parameters,objects,'signal_file','traincontents')
     x_test = module_utils.format_convert(test)#convert to the format libsvm accept
-    test_label_file,obj = module_utils.find_object(parameters,objects,
+    test_label_file = module_utils.find_object(parameters,objects,
                                 'class_label_file','testcontents')
-    model = svmutil.svm_load_model(model_file)
+    model = svmutil.svm_load_model(model_file.identifier)
     if test_label_file:
-        assert os.path.exists(test_label_file),'the test_label_file %s for svm test\
-                                                         does not exist'%test_label_file
-        a,test_label,second_line = read_label_file.read(test_label_file)
+        assert os.path.exists(test_label_file.identifier),'the test_label_file %s for svm test\
+                                                         does not exist'%test_label_file.identifier
+        a,test_label,second_line = read_label_file.read(test_label_file.identifier)
         actual_label = [second_line[int(i)] for i in test_label]
         y_test = [int(x) for x in test_label]
     else:
         y_test = [0] * test.ncol()
         actual_label = [''] * test.ncol()
     p_label,p_acc,p_val = svmutil.svm_predict(y_test,x_test,model)
-    train_label_file,obj = module_utils.find_object(
+    train_label_file= module_utils.find_object(
         parameters,objects,'class_label_file','traincontents')
-    assert os.path.exists(train_label_file),'the train_label_file %s \
-                              for svm test does not exist'%train_label_file
-    result,label_line,second_line = read_label_file.read(train_label_file)
+    assert os.path.exists(train_label_file.identifier),'the train_label_file %s \
+                              for svm test does not exist'%train_label_file.identifier
+    result,label_line,second_line = read_label_file.read(train_label_file.identifier)
     prediction_index = [int(i) for i in p_label]
     prediction = [second_line[i] for i in prediction_index]
     result = [['Sample_name','Predicted_class','Confidence','Actual_class']]
@@ -57,19 +57,22 @@ def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(parameters,
-            objects,'signal_file','testcontents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'prediction_result_'+original_file+'.txt'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','testcontents')
-    assert os.path.exists(identifier),'the test file %s\
-                             for svm test does not exist' % identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the test file %s\
+                             for svm test does not exist' % single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'classification_file',parameters,objects,single_object)
     return new_objects

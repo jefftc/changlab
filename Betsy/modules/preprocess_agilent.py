@@ -5,13 +5,13 @@ import os
 from genomicode import jmath
 import rule_engine
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     
     cwd = os.getcwd()
     R = jmath.start_R()
     R('library(marray)')
-    os.chdir(identifier)
+    os.chdir(single_object.identifier)
     try:
         R('dir<-getwd()')
         R('files<-list.files(dir)')
@@ -52,19 +52,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'agilent_files','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_agilent' + original_file + '.tdf'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
             parameters,objects,'agilent_files','contents')
-    assert os.path.exists(identifier),'the input \
-        file %s for preprocess_agilent does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input \
+        file %s for preprocess_agilent does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     parameters = module_utils.renew_parameters(parameters,['status'])
     attributes = parameters.values()
     new_object = rule_engine.DataObject('signal_file',attributes,outfile)

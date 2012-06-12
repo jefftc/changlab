@@ -7,14 +7,14 @@ import os
 import svmutil
 
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    M = arrayio.read(identifier)
-    training_label_file,obj = module_utils.find_object(parameters,
+    M = arrayio.read(single_object.identifier)
+    training_label_file = module_utils.find_object(parameters,
                                     objects,'class_label_file','contents')
-    assert os.path.exists(training_label_file),'the training\
-                   label file %s does not exist'%training_label_file
-    a,training_label,second_line = read_label_file.read(training_label_file)
+    assert os.path.exists(training_label_file.identifier),'the training\
+                   label file %s does not exist'%training_label_file.identifier
+    a,training_label,second_line = read_label_file.read(training_label_file.identifier)
     full_index = range(M.ncol())
     train_model = None
     if 'train_model' in parameters.keys():
@@ -96,20 +96,23 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'predication_loocv_'+original_file+'.txt'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(identifier),'the input file %s\
-                        for loocv does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input file %s\
+                        for loocv does not exist'%single_object.identifier
+    return single_object
 
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'loocv',parameters,objects,single_object)
     return new_objects

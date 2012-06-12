@@ -1,44 +1,24 @@
 #download_geo_dataset_GPL.py
 import os
-import tarfile
 import shutil
 import rule_engine
 from ftplib import FTP
 import module_utils
 import string
 import gzip
-def download_dataset(GSEID):
-    #download the tar folder from geo
-    ftp = FTP('ftp.ncbi.nih.gov')
-    ftp.login()
-    GSE_directory = 'pub/geo/DATA/supplementary/series/'+GSEID
-    ftp.cwd(GSE_directory)    
-    download_rarfile = GSEID+'_RAW.tar'
-    f = open(download_rarfile,'wb')
-    ftp.retrbinary('RETR '+GSEID+'_RAW.tar',f.write)
-    f.close()
-    ftp.close()
-    #untar the data folder
-    GSEID_path = GSEID
-    if not tarfile.is_tarfile(download_rarfile):
-        raise ValueError('download file is not tar file')
-    else:
-        tar = tarfile.open(download_rarfile)
-        tar.extractall(path=GSEID_path)
-        tar.close()
-    os.remove(download_rarfile)
-    assert os.path.exists(GSEID_path),'the download file %s\
-                        does not exist'%GSEID_path
-    assert len(os.listdir(GSEID_path))>0, 'the untar in \
-           download_geo_dataset_GPL %s fails'%GSEID_path
-    return GSEID_path
 
 def get_seriesmatrix_file(GSEID,GPLID):
     'download series matrix and unzip'
-    ftp = FTP('ftp.ncbi.nih.gov')
-    ftp.login()
-    GPL_directory = 'pub/geo/DATA/SeriesMatrix/'+GSEID
-    ftp.cwd(GPL_directory)
+    try:
+        ftp = FTP('ftp.ncbi.nih.gov')
+        ftp.login()
+    except Exception,e:
+        raise ValueError(e)
+    try:
+        ftp.cwd('pub/geo/DATA/SeriesMatrix/'+GSEID)
+    except FTP.error_perm,x:
+        if str(x).find('No such file')>=0:
+            raise AssertionError,'cannot find the %s' %path
     entry = []
     ftp.retrlines('NLST',entry.append)
     platform_txtfiles = []
@@ -70,13 +50,13 @@ def get_seriesmatrix_file(GSEID,GPLID):
 
 def run(parameters,objects,pipeline):
     """given a database ID and GPLID, get the cel files"""
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    GSEID = identifier.split(',')[0]
-    GPLID = identifier.split(',')[1]
+    GSEID = single_object.identifier.split(',')[0]
+    GPLID = single_object.identifier.split(',')[1]
     assert GSEID.startswith('GSE'),'GSEID %s is not correct'&GSEID
     assert GPLID.startswith('GPL'),'GPLID %s is not correct'&GPLID
-    GSEID_path = download_dataset(GSEID)
+    GSEID_path = module_utils.download_dataset(GSEID)
     platform_txtfiles = get_seriesmatrix_file(GSEID,GPLID)
     #get the cel file name for the GPL platform
     if not os.path.exists(outfile):
@@ -122,15 +102,15 @@ def make_unique_hash(identifier,pipeline,parameters):
     return identifier.split(',')[0]+'.'+identifier.split(',')[1]
     
 def get_outfile(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
-    hash_string = make_unique_hash(identifier,pipeline,parameters)
+    single_object = get_identifier(parameters,objects)
+    hash_string = make_unique_hash(single_object.identifier,pipeline,parameters)
     filename = hash_string
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     newobjecttype = parameters['filetype']
     new_object = rule_engine.DataObject(newobjecttype,[
                         'unknown_version',parameters['contents']],outfile)
@@ -140,11 +120,11 @@ def get_newobjects(parameters,objects,pipeline):
 
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(parameters,objects,
+    single_object = module_utils.find_object(parameters,objects,
                         'gse_id_and_platform','contents')
-    assert len(identifier.split(','))==2,'the identifier %s\
-                            should contain GSEID and GPLID'%identifier
-    return identifier,single_object
+    assert len(single_object.identifier.split(','))==2,'the identifier %s\
+                            should contain GSEID and GPLID'%single_object.identifier
+    return single_object
 
 def clean_cel_filename(cel_file):
     """clean the cel_file name"""

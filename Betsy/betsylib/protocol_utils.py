@@ -89,8 +89,9 @@ def get_result_folder(protocol,outfiles,parameters,pipeline):
         final_result_files.append(result_files)
         final_parameters.append(parameters[0][i])
         final_pipeline.append(pipeline[0][i])
+    
     summarize_report(protocol,final_result_files,result_folder,final_parameters,final_pipeline)
-        
+    print 'Report:'+ os.path.join(result_folder,'report.html')  
 def format_prolog_query(
     predicate,parameters,modules):
     parameters=[str(i) for i in parameters]

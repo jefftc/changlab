@@ -7,11 +7,11 @@ def run(parameters,objects,pipeline):
     """log the input gct or pcl file"""
     import arrayio
     import math
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    M = arrayio.read(identifier)
+    M = arrayio.read(single_object.identifier)
     if binreg.is_logged_array_data(M):
-        shutil.copyfile(identifier,outfile)
+        shutil.copyfile(single_object.identifier,outfile)
     else:
         for i in range(len(M._X)):
             for j in range(len(M._X[i])):
@@ -37,19 +37,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_log_'+original_file+'.pcl'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(identifier),'the input\
-            file %s for log_if_not_log does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input\
+            file %s for log_if_not_log does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects
