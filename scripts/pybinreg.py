@@ -1016,7 +1016,9 @@ def _run_binreg_standard(analysis, options, file_layout, train0, train1, test):
         file_layout.BR_EXPRESSION, file_layout.BR_DESCRIPTION,
         1, br_params, matlab=options.matlab,
         binreg_path=options.binreg_path, outpath=file_layout.BINREG)
-    print r.read()
+    br_output = r.read()
+    binreg.check_output(br_output)
+    print br_output
     sys.stdout.flush()
     
 def _run_binreg_normref(
@@ -1067,6 +1069,7 @@ def _run_binreg_normref(
             1, br_params, matlab=options.matlab,
             binreg_path=options.binreg_path, outpath=file_layout.BINREG)
         br_output = r.read()
+        binreg.check_output(br_output)
 
         assert os.path.exists(file_layout.BR_VALIDATION), \
                "I could not find the validation file."
@@ -1100,8 +1103,6 @@ def _run_binreg_normref(
         print >>handle, "\t".join(map(str, x))
     handle.close()
         
-    
-
 def summarize_model(file_layout):
     from genomicode import filelib
     

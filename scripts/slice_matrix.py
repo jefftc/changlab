@@ -315,8 +315,8 @@ def relabel_col_ids(MATRIX, geneset):
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
     assert len(genesets) == 1
-    print filename
-    print genesets
+    #print filename
+    #print genesets
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets

@@ -3,6 +3,7 @@
 Functions:
 binreg
 binreg_raw
+check_output
 
 find_binreg_20
 format_data_files
@@ -154,6 +155,11 @@ def binreg_raw(expression_file, description_file, is_logged, params,
     finally:
         os.chdir(cwd)
     return r
+
+def check_output(output):
+    if output.find("??? Index exceeds matrix dimensions.") >= 0 and \
+        output.find("Error in ==> select_genes_cor at 9") >= 0:
+        raise AssertionError, "Not enough genes for model."
 
 def find_binreg_20(default_path):
     # Return the path to BinReg2.0 or None.
