@@ -9,15 +9,15 @@ import read_label_file
 from genomicode import jmath
 
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    label_file,obj=module_utils.find_object(
+    label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file),'cannot find label_file %s'%label_file
-    label,label_line,second_line = read_label_file.read(label_file)
+    assert os.path.exists(label_file.identifier),'cannot find label_file %s'%label_file.identifier
+    label,label_line,second_line = read_label_file.read(label_file.identifier)
     class_num = len(label)
-    assert class_num == 2, 'the number of class in %s is not 2'%label_file
-    M = arrayio.read(identifier)
+    assert class_num == 2, 'the number of class in %s is not 2'%label_file.identifier
+    M = arrayio.read(single_object.identifier)
     data = M.slice()
     label_list = [int(i)+1 for i in label_line]
     key = M._row_names.keys()
@@ -95,15 +95,18 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'sam_' + original_file + '.txt'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(identifier),'the input file %s\
-                            for sam does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input file %s\
+                            for sam does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

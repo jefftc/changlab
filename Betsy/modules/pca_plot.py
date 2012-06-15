@@ -8,11 +8,11 @@ from genomicode import pcalib
 import arrayio
 
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    label_file,obj = module_utils.find_object(
+    label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    M = arrayio.read(identifier)
+    M = arrayio.read(single_object.identifier)
     X = M._X
     if 'pca_gene_num' in parameters.keys():
         N = int(parameters['pca_gene_num'])
@@ -25,7 +25,7 @@ def run(parameters,objects,pipeline):
     arrayio.pcl_format.write(M_new,f)
     f.close()
     if label_file:
-        a,b,c=read_label_file.read(label_file)
+        a,b,c=read_label_file.read(label_file.identifier)
         colors = ['"red"','"blue"','"green"','"yellow"']
         opts = [colors[int(i)] for i in b]
         plot_pca(tmp,outfile,opts)
@@ -43,19 +43,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'pca_'+original_file+'.png'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(identifier),'the input file %s\
-                    for pca_plot does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input file %s\
+                    for pca_plot does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'pca_plot',parameters,objects,single_object)
     return new_objects
@@ -85,24 +88,3 @@ def plot_pca(filename,result_fig,opts='"red"'):
     R('dev.off()')
     assert module_utils.exists_nz(result_fig),'the plot_pca.py fails'
 
-def find_object(parameters,objects,objecttype,attribute):
-    identifier = None
-    single_object = None
-    attributes = attribute.split(',')
-    for i in range(len(attributes)):  #consider the content is [unknown]
-            if '[' in attributes[i]:
-                attribute = attributes
-            else:
-                attribute = parameters[attributes[i]]
-    compare_attribute = [parameters[i] for i in attributes]
-    
-    for single_object in objects:
-        flag = True
-        if objecttype in single_object.objecttype:
-            for i in compare_attribute:
-                if i not in single_object.attributes:
-                    flag=False
-            if flag:
-                identifier=single_object.identifier
-                break
-    return identifier,single_object

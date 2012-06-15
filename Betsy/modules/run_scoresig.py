@@ -5,17 +5,17 @@ import module_utils
 import rule_engine
 import subprocess
 def run(parameters,objects,pipeline):
-    rma_file,obj1 = module_utils.find_object(parameters,objects,'signal_file','contents,pre1')
-    mas_file,obj2 = module_utils.find_object(parameters,objects,'signal_file','contents,pre2')
-    assert os.path.exists(rma_file),'the rma_file %s in run_scoresig does not exist'%rma_file
-    assert os.path.exists(mas_file),'the mas_file %s in run_scoresig does not exist'%mas_file
+    rma_file = module_utils.find_object(parameters,objects,'signal_file','contents,pre1')
+    mas_file = module_utils.find_object(parameters,objects,'signal_file','contents,pre2')
+    assert os.path.exists(rma_file.identifier),'the rma_file %s in run_scoresig does not exist'%rma_file.identifier
+    assert os.path.exists(mas_file.identifier),'the mas_file %s in run_scoresig does not exist'%mas_file.identifier
     outfile = get_outfile(parameters,objects,pipeline)
     import Betsy_config
     scoresig_path = Betsy_config.SCORESIG
     scoresig_BIN = module_utils.which(scoresig_path)
     assert scoresig_BIN,'cannot find the %s' %scoresig_path
 
-    command = ['python',scoresig_BIN,'-r',rma_file,'-m',mas_file,'-j','20','-o',outfile]
+    command = ['python',scoresig_BIN,'-r',rma_file.identifier,'-m',mas_file.identifier,'-j','20','-o',outfile]
     process = subprocess.Popen(command,shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
@@ -26,7 +26,7 @@ def run(parameters,objects,pipeline):
         file %s for run_scoresig does not exists'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
-                                            obj1,pipeline)
+                                            rma_file,pipeline)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):
@@ -35,15 +35,18 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-    parameters,objects,'signal_file','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signature_score_' + original_file
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(identifier),'the input file %s for run_scoresig does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input file %s for run_scoresig does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

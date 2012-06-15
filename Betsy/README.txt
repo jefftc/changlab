@@ -115,7 +115,7 @@ Process Usage
     When given two signal_file, one contains positive sample, one contains negative sample, 
     merge them together. Then command is:
     protocol_engine.py
-    --protocol 'normalize_file'
+     
     --input 'input_signal_file:pos:/path of the file'
     --input 'input_signal_file:neg:/path of the file'
     --parameters 'has_missing_value:zero_fill'
@@ -239,4 +239,7 @@ rule_engine.py --plin 'gse_id([contents,[a]],[])'
 
 
 
+../Betsy/rule_engine.py --plin 'input_signal_file([contents,[unknown],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[unknown],status,given],[])' --id 'all_aml_train.cls' --plout 'gsea([contents,[unknown],preprocess,unknown_preprocess,gene_center,no_gene_center,combat,no_combat,format,gct,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename],Modules)' --dry_run
+
+../Betsy/rule_engine.py --plin 'gse_id([contents,[unknown]],[])' --id 'GSE8286' --plout 'signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename,preprocess,rma],Modules)'
 

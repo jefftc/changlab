@@ -7,15 +7,15 @@ import rule_engine
 import module_utils
 import os
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    training = arrayio.read(identifier)
+    training = arrayio.read(single_object.identifier)
     x_training = module_utils.format_convert(training)#convert to the format libsvm accept
-    training_label_file,obj = module_utils.find_object(parameters,
+    training_label_file = module_utils.find_object(parameters,
                                     objects,'class_label_file','contents')
-    assert os.path.exists(training_label_file),'the training label file\
-                          %s does not exist'%training_label_file
-    a,training_label,second_line = read_label_file.read(training_label_file)
+    assert os.path.exists(training_label_file.identifier),'the training label file\
+                          %s does not exist'%training_label_file.identifier
+    a,training_label,second_line = read_label_file.read(training_label_file.identifier)
     y_training = [int(x) for x in training_label]
     svm_kernel = ['linear','polynomial','RBF','sigmoid','precomputed_kernel']
     if 'svm_kernel' in parameters.keys():
@@ -39,15 +39,18 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'svm_model_' + original_file + '.txt'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
                            parameters,objects,'signal_file','contents')
-    assert os.path.exists(identifier),'the input\
-                file %s for train_svm_model does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input\
+                file %s for train_svm_model does not exist'%single_object.identifier
+    return single_object
 
 
 def get_newobjects(parameters,objects,pipeline):

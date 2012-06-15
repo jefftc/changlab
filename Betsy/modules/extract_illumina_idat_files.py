@@ -17,15 +17,15 @@ def extract_all(zipName):
             z.extract(f)
 
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    if zipfile.is_zipfile(identifier):
-        directory = os.path.split(identifier)[-1]
+    if zipfile.is_zipfile(single_object.identifier):
+        directory = os.path.split(single_object.identifier)[-1]
         directory = os.path.splitext(directory)[0]
         directory = os.path.join(os.getcwd(),directory)
-        extract_all(identifier)
+        extract_all(single_object.identifier)
     else:
-        directory = identifier
+        directory = single_object.identifier
     illumina_file = []
     for filename in os.listdir(directory):
         if filename in ['.DS_Store','._.DS_Store','.Rapp.history']:
@@ -60,25 +60,24 @@ def make_unique_hash(identifier,pipeline,parameters):
     return hash_result
 
 def get_outfile(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
-    original_file = module_utils.get_inputid(identifier)
-    hash_string = make_unique_hash(identifier,pipeline,parameters)
-    filename = original_file + '_BETSYHASH1_' + hash_string
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'idat_files_' + original_file
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'idat_files',parameters,objects,single_object)
     return new_objects
     
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'idat_files','contents')
-    assert os.path.exists(identifier),'the input \
-     file %s for extract_illumina_idat_files does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input \
+     file %s for extract_illumina_idat_files does not exist'%single_object.identifier
+    return single_object
 

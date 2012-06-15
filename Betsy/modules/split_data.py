@@ -10,12 +10,12 @@ import read_label_file
 
 def run(parameters,objects,pipeline):
     """extract one signal file to another signal file according to contents"""
-    identifier,single_object = get_identifier(parameters,objects)
-    class_label_file,obj = module_utils.find_object(parameters,
+    single_object = get_identifier(parameters,objects)
+    class_label_file = module_utils.find_object(parameters,
                             objects,'class_label_file','precontents')
-    assert os.path.exists(class_label_file),'class_label_file %s\
-                                     does not exist'%class_label_file
-    result,label_line,second_line = read_label_file.read(class_label_file)
+    assert os.path.exists(class_label_file.identifier),'class_label_file %s\
+                                     does not exist'%class_label_file.identifier
+    result,label_line,second_line = read_label_file.read(class_label_file.identifier)
     assert parameters['contents'].startswith('[') and parameters['contents'].endswith(']')
     contents = parameters['contents'][1:-1].split(',')
     content_index = []
@@ -24,6 +24,7 @@ def run(parameters,objects,pipeline):
         try:
             a = second_line.index(content)    
         except ValueError:
+            raise ValueError('the content value in parameters and cls file does not match')
             return None
         content_index.append(a)
     sample_index = []
@@ -31,8 +32,8 @@ def run(parameters,objects,pipeline):
         newline = [i for j in range(len(content_index))
                  if int(label_line[i]) == content_index[j]]
         sample_index.extend(newline)
-    outfile = get_outfile(parameters,objects)
-    M = arrayio.read(identifier)
+    outfile = get_outfile(parameters,objects,pipeline)
+    M = arrayio.read(single_object.identifier)
     M_c = M.matrix(None,sample_index)
     f_out = file(outfile,'w')
     arrayio.pcl_format.write(M_c,f_out)
@@ -51,12 +52,9 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
-    original_file = module_utils.get_inputid(identifier)
-    parameters = module_utils.renew_parameters(
-        parameters,['precontents','status'])
-    hash_string = make_unique_hash(identifier,pipeline,parameters)
-    filename = original_file + '_BETSYHASH1_' + hash_string
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_split_' + original_file + '.pcl'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
@@ -71,9 +69,9 @@ def get_newobjects(parameters,objects,pipeline):
     return new_objects
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','precontents')
-    assert os.path.exists(identifier),'the input\
-                        file %s for split_data does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input\
+                        file %s for split_data does not exist'%single_object.identifier
+    return single_object
 

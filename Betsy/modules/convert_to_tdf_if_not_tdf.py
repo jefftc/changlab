@@ -9,16 +9,16 @@ import openpyxl
 import arrayio
 def run(parameters,objects,pipeline):
     """check an input file is xls or xlsx format"""
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     M = None
     tmp_file = None
     try:
-        xlrd.open_workbook(identifier)
+        xlrd.open_workbook(single_object.identifier)
         tmp_file='tmp.xls'
     except Exception,XLRDError:
         try:
-            book = openpyxl.load_workbook(identifier)
+            book = openpyxl.load_workbook(single_object.identifier)
             tmp_file = 'tmp.xlsx'
         except Exception,InvalidFileException:
             tmp_file = None
@@ -27,16 +27,16 @@ def run(parameters,objects,pipeline):
         
     if not tmp_file:
         try:
-            M = arrayio.choose_format(identifier)
+            M = arrayio.choose_format(single_object.identifier)
         except Exception,x:
                 raise 
         except (SystemError,MemoryError,KeyError),x:
             raise 
     
     if M:
-        shutil.copyfile(identifier,outfile)
+        shutil.copyfile(single_object.identifier,outfile)
     elif tmp_file:
-        shutil.copyfile(identifier,tmp_file)
+        shutil.copyfile(single_object.identifier,tmp_file)
         import Betsy_config
         xls2txt_path = Betsy_config.XLS2TXT
         xls2txt_BIN = module_utils.which(xls2txt_path)
@@ -76,16 +76,15 @@ def make_unique_hash(identifier,pipeline,parameters):
 
     
 def get_outfile(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
-    original_file = module_utils.get_inputid(identifier)
-    hash_string = make_unique_hash(identifier,pipeline,parameters)
-    filename = original_file + '_BETSYHASH1_' + hash_string
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_'+ original_file + '.tdf'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     parameters = module_utils.renew_parameters(parameters,['status'])
     attributes = parameters.values()
     new_object = rule_engine.DataObject('signal_file',attributes,outfile)
@@ -94,9 +93,9 @@ def get_newobjects(parameters,objects,pipeline):
     return new_objects
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'input_signal_file','contents')
-    assert os.path.exists(identifier),'the input \
-        file %s for convert_to_tdf_if_not_tdf does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input \
+        file %s for convert_to_tdf_if_not_tdf does not exist'%single_object.identifier
+    return single_object
 

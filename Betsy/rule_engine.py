@@ -9,7 +9,7 @@ import json
 import argparse
 import Betsy_config
 import module_utils
-
+import re
 class Analysis:
     def __init__(self,name,parameters):
         self.name = name
@@ -30,8 +30,20 @@ def plstring2dataobject(pl_inputs,identifiers):
         assert '(' in pl_inputs[i] and pl_inputs[i].endswith(')')
         start_index = pl_inputs[i].index('(')
         objecttype = pl_inputs[i][0:start_index]
-        attributes = pl_inputs[i][start_index+1:-1]
-        
+        parameters = '['+pl_inputs[i][start_index+1:-1]+']'
+        parameters = parameters.replace('\'','')
+        newline = re.sub(r"([\w/\.:\\]+)\b(?!['\"])", r'"\1"', parameters)
+        jline = json.loads(newline)
+        #the output of json.loads is in unicode format,convert to string
+        jline=convert_unicode_str(jline)
+        attributes = []
+        for j in range(len(jline[0])/2):
+            if isinstance(jline[0][j*2+1],list):
+                tmp = str(jline[0][j*2+1]).replace('\'','')
+                tmp = tmp.replace(' ','')
+                attributes.append(tmp)
+            else:
+                attributes.append(jline[0][j*2+1])
         identifier = identifiers[i]
         dataobject_list.append(DataObject(objecttype,attributes,identifier))
     return dataobject_list
@@ -56,7 +68,6 @@ def convert_unicode_str(text):
 def parse_text_pipeline(line):
     """parse a text line to a pipeline"""
     #convert to JSON object format
-    import re
     line = line.replace('\'','')
     newline = re.sub(r"([\w/\.:\\]+)\b(?!['\"])", r'"\1"', line)
     jline = json.loads(newline)
@@ -107,10 +118,10 @@ def run_pipeline(pipeline,objects):
             pipeline_sequence = [analysis.name for analysis in pipeline[0:i+1]]
             analysis = pipeline[i]
             module_name = analysis.name
-            print module_name
+            print str(i+1) + '.' + module_name
             module = __import__(module_name)
-            identifier,single_object = module.get_identifier(analysis.parameters,objects)
-            hash_string = module.make_unique_hash(identifier,pipeline_sequence,analysis.parameters)
+            single_object = module.get_identifier(analysis.parameters,objects)
+            hash_string = module.make_unique_hash(single_object.identifier,pipeline_sequence,analysis.parameters)
             working_dir = os.path.join(output_path,make_module_wd_name(
                                         module_name,hash_string))
             if not os.path.exists(working_dir):
@@ -132,6 +143,10 @@ def run_pipeline(pipeline,objects):
                 if analysis == pipeline[-1]:
                     if module_utils.exists_nz(outfile):
                         OUTPUT = outfile_list
+                        print 'File: ', OUTPUT[-1] + '\r'
+                        print '\r'
+                    else:
+                        raise ValueError('there is no output for this pipeline')
             finally:
                 os.chdir(cwd)
     
@@ -194,6 +209,9 @@ def main():
       pl_inputs = args.plin
       pl_output = args.plout
       identifiers = args.id
+      for i in range(len(identifiers)):
+          if os.path.exists(identifiers[i]):
+              identifiers[i] = os.path.realpath(identifiers[i])
       objects = plstring2dataobject(pl_inputs,identifiers)
       pipelines = make_pipelines(pl_output,pl_inputs)
       
@@ -206,8 +224,14 @@ def main():
                   print '------------------------'
             print len(pipelines)
       else:
+            k = 1
             for pipeline in pipelines:
+                print  'pipeline' + str(k) + ':','\r'
                 run_pipeline(pipeline,objects)
+                print '\r'
+                k = k + 1
+                
+                
                   
 if __name__=='__main__':
     main()

@@ -10,10 +10,8 @@ import rule_engine
 
 def get_inputid(identifier):
     old_filename = os.path.split(identifier)[-1]
-    if '_BETSYHASH1_' in old_filename: 
-        inputid = '_'.join(old_filename.split('_')[:-2])
-    else:
-        inputid = old_filename
+    old_filename_no_ext = os.path.splitext(old_filename)[-2]
+    inputid = old_filename_no_ext.split('_')[-1]
     return inputid
 
 """contain some functions that are called by many modules"""
@@ -25,14 +23,6 @@ def make_unique_hash(identifier,pipeline,parameters):
         inputid,pipeline,**new_parameters)
     return hash_result
 
-def get_outfile(parameters,objects,in_objecttype,in_attribute,pipeline):
-    identifier,single_object = find_object(
-        parameters,objects,in_objecttype,in_attribute)
-    original_file = get_inputid(identifier)
-    hash_string = make_unique_hash(identifier,pipeline,parameters)
-    filename = original_file + '_BETSYHASH1_' + hash_string
-    outfile = os.path.join(os.getcwd(),filename)
-    return outfile
 
 def get_newobjects(outfile,out_objecttype,parameters,objects,single_object):
     parameters = renew_parameters(parameters,['status'])
@@ -121,16 +111,10 @@ def write_Betsy_parameters_file(parameters,single_object,pipeline):
     f.close()
     
 
-def find_object(parameters,objects,objecttype,attribute):
-    identifier = None
+def find_object(parameters,objects,objecttype,attribute_key):
     single_object = None
-    attributes = attribute.split(',')
-    for i in range(len(attributes)):  #consider the content is [unknown]
-            if '[' in attributes[i]:
-                attribute = attributes
-            else:
-                attribute = parameters[attributes[i]]
-    compare_attribute = [parameters[i] for i in attributes]
+    attribute_keys = attribute_key.split(',') # split the compared parameter key
+    compare_attribute = [parameters[i] for i in attribute_keys]
     for single_object in objects:
         flag = True
         if objecttype == single_object.objecttype:
@@ -138,15 +122,41 @@ def find_object(parameters,objects,objecttype,attribute):
                 if i not in single_object.attributes:
                     flag=False
             if flag:
-                identifier=single_object.identifier
-                break
-    return identifier,single_object
+                return single_object
+    return None
+
+##def find_object(parameters,objects,objecttype,attribute):
+##    identifier = None
+##    single_object = None
+##    attributes = attribute.split(',')
+##    for i in range(len(attributes)):  #consider the content is [unknown]
+##            if '[' in attributes[i]:
+##                attribute = attributes
+##            else:
+##                attribute = parameters[attributes[i]]
+##    compare_attribute = [parameters[i] for i in attributes]
+##    for single_object in objects:
+##        flag = True
+##        if objecttype == single_object.objecttype:
+##            for i in compare_attribute:
+##                if i not in single_object.attributes:
+##                    flag=False
+##            if flag:
+##                identifier=single_object.identifier
+##                break
+##    return identifier,single_object
 
 def exists_nz(filename):
     if os.path.exists(filename):
         size = os.path.getsize(filename)
         if size > 0:
-            return True
+            if not os.path.isdir(filename):
+                return True
+            else:
+                if os.listdir(filename):
+                    return True
+                else:
+                    return False
         else:
             return False
     else:
@@ -204,3 +214,47 @@ def is_number(s):
     except ValueError:
         return False
     
+def download_ftp(host,path,filename):
+    from ftplib import FTP
+    try:
+        ftp = FTP(host)
+        ftp.login()
+    except Exception,e:
+        raise ValueError(e)
+    try:
+        ftp.cwd(path)
+    except FTP.error_perm,x:
+        if str(x).find('No such file')>=0:
+            raise AssertionError,'cannot find the %s' %path
+    filelist = [] #to store all files
+    ftp.retrlines('NLST',filelist.append)
+    if filename in filelist:
+        f = open(filename,'wb')
+        ftp.retrbinary('RETR '+filename,f.write)
+        f.close()
+        ftp.close()
+    else:
+        ftp.close()
+        raise AssertionError,'cannot find %s in %s' %(filename,host)
+    
+ 
+def download_dataset(GSEID):
+    import tarfile
+    #download the tar folder from geo
+    host = 'ftp.ncbi.nih.gov'
+    GSE_directory = 'pub/geo/DATA/supplementary/series/'+GSEID
+    download_rarfile = GSEID+'_RAW.tar'
+    download_ftp(host,GSE_directory,download_rarfile)
+    #untar the data folder
+    GSEID_path = GSEID
+    if not tarfile.is_tarfile(download_rarfile):
+        raise ValueError('download file is not tar file')
+    tar = tarfile.open(download_rarfile)
+    tar.extractall(path=GSEID_path)
+    tar.close()
+    os.remove(download_rarfile)
+    assert os.path.exists(GSEID_path),'the download file %s\
+                        does not exist'%GSEID_path
+    assert len(os.listdir(GSEID_path))>0, 'the untar in \
+           download_geo_dataset_GPL %s fails'%GSEID_path
+    return GSEID_path

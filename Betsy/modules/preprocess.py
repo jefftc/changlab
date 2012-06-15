@@ -8,14 +8,14 @@ def run(parameters,objects,pipeline):
     """preprocess the inputfile with RMA or MAS5
        using preprocess.py will generate a output file"""
     #preprocess the cel file to text signal file
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     import Betsy_config
     PREPROCESS_path = Betsy_config.PREPROCESS
     PREPROCESS_BIN = module_utils.which(PREPROCESS_path)
     assert PREPROCESS_BIN,'cannot find the %s' %PREPROCESS_path
     command = ['python', PREPROCESS_BIN, parameters['preprocess'].upper(), 
-               identifier]
+               single_object.identifier]
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -41,19 +41,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'cel_files','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_preprocess_' + original_file + '.jeffs'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'cel_files','contents')
-    assert os.path.exists(identifier),'the input file %s\
-               for preprocess does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input file %s\
+               for preprocess does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     parameters = module_utils.renew_parameters(parameters,['status'])
     attributes = parameters.values()
     new_object = rule_engine.DataObject('signal_file',attributes,outfile)

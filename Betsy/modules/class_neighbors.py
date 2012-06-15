@@ -7,23 +7,23 @@ import Betsy_config
 import subprocess
 import rule_engine
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    label_file,obj = module_utils.find_object(
+    label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file),('cannot find label_file %s for class_neighbors'
-                                       %label_file)
+    assert os.path.exists(label_file.identifier),('cannot find label_file %s for class_neighbors'
+                                       %label_file.identifier)
     import arrayio
     tmp = 'tmp.txt'
     f = file(tmp,'w')
-    M = arrayio.read(identifier)
+    M = arrayio.read(single_object.identifier)
     M_c = arrayio.convert(M,to_format=arrayio.gct_format)
     arrayio.gct_format.write(M_c,f)
     f.close()
     module_name = 'ClassNeighbors'
     gp_parameters = dict()
     gp_parameters['data.filename'] = tmp
-    gp_parameters['class.filename'] = label_file
+    gp_parameters['class.filename'] = label_file.identifier
     
     if 'cn_num_neighbors' in parameters.keys():
         assert parameters['cn_num_neighbors'].isdigit(),'cn_num_neighbors should be digit'
@@ -38,7 +38,7 @@ def run(parameters,objects,pipeline):
         gp_parameters['user.pval'] = str(parameters['cn_user_pval'])
         
     if 'cn_mean_or_median' in parameters.keys():
-        mean_median = {'cn_mean':'','cn_median':'-d']
+        mean_median = {'cn_mean':'','cn_median':'-d'}
         assert  gp_parameters['cn_mean_or_median'] in ['cn_mean','cn_median'],'ill_coll_mode is not correct'
         gp_parameters['mean.or.median'] = mean_median[parameters['cn_mean_or_median']]
         
@@ -124,15 +124,18 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(identifier),'the input \
-            file %s for class_neighbors does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input \
+            file %s for class_neighbors does not exist'%single_object.identifier
+    return single_object
 
 def get_outfile(parameters,objects,pipeline):
-     return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'gene_list_'+original_file+'.txt'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

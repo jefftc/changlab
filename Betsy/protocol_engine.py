@@ -54,8 +54,11 @@ def run_protocol(protocol, inputs, output, identifiers,
     output_files_all = []
     parameters_all = []
     pipeline_sequence_all = []
+    k = 1
     for pipeline in pipelines:
+          print  'pipeline' + str(k) + ':','\r'
           out_files = rule_engine.run_pipeline(pipeline,objects)
+          k = k + 1
           if out_files:
               pipeline_sequence = [analysis.name for analysis in pipeline]
               output_files_all.append(out_files[-1])
@@ -99,7 +102,7 @@ def main():
         assert len_input in [2,3],'input is length 2 or 3'
         len_inputs.append(len_input)
 
-    assert len_inputs == [len_inputs[0]]*len(len_inputs),'the format of all inputs do not match'
+    #assert len_inputs == [len_inputs[0]]*len(len_inputs),'the format of all inputs do not match'
     for i in args.parameters:
         assert len(i.split(':')) == 2, 'parameters should format like key:value'
         
@@ -154,16 +157,20 @@ def main():
         print 'DEFAULTS', module.DEFAULT
         
     if args.dry_run:
+        p_n = 1
         for output_file in module.OUTPUTS:
             pipelines = filter_pipelines(
             args.protocol,inputs,in_contents,output_file,
             parameters)
             for pipeline in pipelines:
+                  print 'pipeline'+ str(p_n),'\r'
+                  p_n = p_n + 1
+                  k = 1
                   for analysis in pipeline:
-                      print 'module',analysis.name,'\r'
-                      #print 'parameters',analysis.parameters
+                      print str(k) + '.',analysis.name,'\r'
+                      print 'parameters',analysis.parameters
+                      k = k + 1
                   print '------------------------'
-            print len(pipelines)
         
 
     else:
@@ -173,12 +180,10 @@ def main():
         for output in module.OUTPUTS:
             output_file,parameters_all,pipeline_sequence_all = run_protocol(
                 args.protocol,inputs,output,
-                identifiers,in_contents,parameters)
-           
+                identifiers,in_contents,parameters)       
             final_output.append(output_file)
             final_parameters.append(parameters_all)
             final_pipeline_sequence.append(pipeline_sequence_all)
-        print final_output
         protocol_utils.get_result_folder(
             args.protocol,final_output,final_parameters,final_pipeline_sequence)
         

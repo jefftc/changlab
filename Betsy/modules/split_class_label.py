@@ -7,10 +7,9 @@ import os
 import json
 
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    
-    result,label_line,second_line = read_label_file.read(identifier)
+    result,label_line,second_line = read_label_file.read(single_object.identifier)
     assert parameters['contents'].startswith('[') and parameters['contents'].endswith(']')
     contents = parameters['contents'][1:-1].split(',')
     content_index = []
@@ -19,6 +18,7 @@ def run(parameters,objects,pipeline):
         try:
             a = second_line.index(content)
         except ValueError:
+            raise ValueError('the content value in parameters and cls file does not match')
             return None
         content_index.append(a)
     new_label_line=[]
@@ -26,7 +26,8 @@ def run(parameters,objects,pipeline):
         newline=[str(i) for i in range(len(content_index))
                  if int(label)==content_index[i]]
         new_label_line.extend(newline)
-    read_label_file.write(outfile,second_line,new_label_line)
+    new_second_line = [second_line[i] for i in content_index]
+    read_label_file.write(outfile,new_second_line,new_label_line)
     assert module_utils.exists_nz(outfile),'the output\
                                 file %s for split_class_label fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
@@ -40,8 +41,11 @@ def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'class_label_file','precontents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'class_label_file_' + original_file + '.cls'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
@@ -54,8 +58,8 @@ def get_newobjects(parameters,objects,pipeline):
     return new_objects
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(parameters,
+    single_object = module_utils.find_object(parameters,
                     objects,'class_label_file','precontents')
-    assert os.path.exists(identifier),'the input\
-                file %s for split_class_label does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input\
+                file %s for split_class_label does not exist'%single_object.identifier
+    return single_object

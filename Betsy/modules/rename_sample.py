@@ -5,19 +5,21 @@ import module_utils
 import arrayio
 import subprocess
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
-    rename_file,obj = module_utils.find_object(parameters,objects,
+    single_object = get_identifier(parameters,objects)
+    rename_file = module_utils.find_object(parameters,objects,
                                           'rename_list_file','contents')
     outfile = get_outfile(parameters,objects,pipeline)
     import Betsy_config
     rename_path = Betsy_config.RENAME
     rename_BIN = module_utils.which(rename_path)
     assert rename_BIN,'cannot find the %s' %rename_path
-    command=['python',rename_BIN,identifier,'--relabel_col_ids',
-             rename_file+',NewName','-o',outfile]
+    command=['python',rename_BIN,single_object.identifier,'--relabel_col_ids',
+             rename_file.identifier+',NewName']
+    f=file(outfile,'w')
     process = subprocess.Popen(command,shell=False,
-                                stdout=subprocess.PIPE,
+                                stdout=f,
                                 stderr=subprocess.PIPE)
+    f.close()
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
@@ -34,19 +36,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_rename_' + original_file + '.pcl'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(identifier),'the input \
-        file %s for median_fill_if_missing does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the input \
+        file %s for median_fill_if_missing does not exist'%single_object.identifier
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects 

@@ -3,7 +3,7 @@ import os
 import module_utils
 import math
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     folder_number = parameters['filter_fc']
     try:
@@ -14,7 +14,7 @@ def run(parameters,objects,pipeline):
     import arrayio
     min_fold_change = math.log(fold_change,2)
     f_out = file(outfile,'w')
-    M = arrayio.read(identifier)
+    M = arrayio.read(single_object.identifier)
     I_good = []
     X = M.slice()
     for i in range(M.nrow()):
@@ -36,19 +36,25 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'signal_foldchange_'+original_file+'.pcl'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
+
     return module_utils.get_outfile(
         parameters,objects,'signal_file','contents',pipeline)
     
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(identifier),'the input\
+    assert os.path.exists(single_object.identifier),'the input\
                 file for filter_by_fold_change does not exist'
-    return identifier,single_object
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects

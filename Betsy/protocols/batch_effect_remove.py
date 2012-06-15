@@ -55,8 +55,7 @@ PARAMETERS = {
     'gene_select_threshold':'float',
     'rename_sample':['yes_rename','no_rename'],
     'num_factors':'integer',
-    'pca_gene_num':'integer',
-    'annot':['yes_annot','no_annot']}
+    'pca_gene_num':'integer'}
 
 
 DEFAULT = {

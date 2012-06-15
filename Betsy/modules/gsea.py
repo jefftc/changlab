@@ -7,16 +7,16 @@ import Betsy_config
 import subprocess
 import read_label_file
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    label_file,obj = module_utils.find_object(
+    label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file),'cannot\
-                find label_file %s for gsea'%label_file
+    assert os.path.exists(label_file.identifier),'cannot\
+                find label_file %s for gsea'%label_file.identifier
     module_name = 'GSEA'
     gp_parameters = dict()
-    gp_parameters['expression.dataset'] = identifier
-    gp_parameters['phenotype.labels'] = label_file
+    gp_parameters['expression.dataset'] = single_object.identifier
+    gp_parameters['phenotype.labels'] = label_file.identifier
     
     gp_path = Betsy_config.GENEPATTERN
     gp_module = module_utils.which(gp_path)
@@ -57,19 +57,22 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(identifier),'the train\
-            file %s for signature_analysis does not exist'%identifier
-    return identifier,single_object
+    assert os.path.exists(single_object.identifier),'the train\
+            file %s for signature_analysis does not exist'%single_object.identifier
+    return single_object
 
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'gsea_'+original_file
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
     
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signature_analysis',parameters,objects,single_object)
     return new_objects

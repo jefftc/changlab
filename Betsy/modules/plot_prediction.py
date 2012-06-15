@@ -6,9 +6,9 @@ import os
 from genomicode import jmath
 
 def run(parameters,objects,pipeline):
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    f = open(identifier,'r')
+    f = open(single_object.identifier,'r')
     text = f.readlines()
     f.close()
     label_dict = dict()
@@ -42,21 +42,24 @@ def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
     
 def get_outfile(parameters,objects,pipeline):
-    return module_utils.get_outfile(parameters,
-            objects,'prediction_plot','testcontents',pipeline)
+    single_object = get_identifier(parameters,objects)
+    original_file = module_utils.get_inputid(single_object.identifier)
+    filename = 'prediction' + original_file + 'png'
+    outfile = os.path.join(os.getcwd(),filename)
+    return outfile
 
 def get_identifier(parameters,objects):
-    identifier,single_object = module_utils.find_object(
+    single_object = module_utils.find_object(
         parameters,objects,'classification_file','traincontents')
-    assert os.path.exists(identifier),'the classification\
-                file %s for plot_prediction does not exist'%identifier
+    assert os.path.exists(single_object.identifier),'the classification\
+                file %s for plot_prediction does not exist'%single_object.identifier
     return identifier,single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
-    identifier,single_object = get_identifier(parameters,objects)
+    single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
-        outfile,'classification_file',parameters,objects,single_object)
+        outfile,'prediction_plot',parameters,objects,single_object)
     return new_objects
     
 
