@@ -319,9 +319,12 @@ class DendrogramLayout:
         self.lowest, self.highest = lowest, highest
 
         min_ppi = min(pixels_per_item, pixels_per_other_item)
+        #min_ppi = pixels_per_item
         x = int(math.ceil(min_ppi*0.20 * thickness_scale))
-        x = min(max(x, 1), min_ppi)
+        #x = min(max(x, 1), min_ppi)
+        x = min(max(x, 1), pixels_per_item)
         self.LINEWIDTH = x
+        #print min_ppi, thickness_scale, min_ppi, self.LINEWIDTH
     def vthicken(self, x, y, width, height):
         import math
         np = self.LINEWIDTH - width
@@ -661,12 +664,16 @@ def make_layout(
 
     # Make layouts for the dendrograms.
     gd_layout = ad_layout = None
-    if(cluster_genes and cluster_data.gene_tree and gene_tree_scale > 0 and 
+    #if(cluster_genes and cluster_data.gene_tree and gene_tree_scale > 0 and 
+    #   cluster_alg == "hierarchical" and MATRIX.ncol() > 1):
+    if(cluster_data.gene_tree and gene_tree_scale > 0 and 
        cluster_alg == "hierarchical" and MATRIX.ncol() > 1):
         # Only add the dendrogram if hierarchical clustering was
         # requested.  If clustering not done, then the matrix file
         # will not have the GID annotations, and there will be no way
         # to match up the genes with the clusters.
+        # Also should add dendrogram if the clusters were supplied by
+        # the user in a gtr file.
         assert gene_tree_scale > 0
         assert gene_tree_thickness > 0
         width, height = boxwidth, boxheight
@@ -677,7 +684,9 @@ def make_layout(
             gene_tree_scale, gene_tree_thickness, 
             cluster_data.gene_tree, cluster_data.gene_tree_cluster,
             colorlib.matlab_colors)
-    if(cluster_arrays and cluster_data.array_tree and array_tree_scale > 0 and
+    #if(cluster_arrays and cluster_data.array_tree and array_tree_scale > 0 and
+    #   cluster_alg == "hierarchical" and MATRIX.nrow() > 1):
+    if(cluster_data.array_tree and array_tree_scale > 0 and
        cluster_alg == "hierarchical" and MATRIX.nrow() > 1):
         assert array_tree_scale > 0
         assert array_tree_thickness > 0
@@ -1344,7 +1353,8 @@ def read_data_set(file_or_stem, default=None):
     from genomicode import clusterio
 
     files = find_data_files(file_or_stem)
-
+    #print "FOUND", files; sys.exit(0)
+    
     filename = file_or_stem
     if not os.path.exists(filename):
         # If this file does not exist, then look for a CDT, NRM, or

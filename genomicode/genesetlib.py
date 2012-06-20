@@ -28,9 +28,17 @@ def read_gmx(filename, preserve_spaces=False):
     return read_gmt(handle, preserve_spaces=preserve_spaces)
 
 def _transpose_gmx(matrix):
+    # GMX format:
+    # <gene set name>  ...
+    # <description>    ...
+    # <gene>           ...
+    #
+    # Each column is a gene set.
     t_matrix = []
+    # Iterate over each of the columns (gene sets).
     for j in range(len(matrix[0])):
         x = []
+        # Pull this column out of the matrix into variable x.
         for i in range(len(matrix)):
             # These lines may not be the same length as the names,
             # e.g. if the gene sets at the end have very few genes.
@@ -42,6 +50,7 @@ def _transpose_gmx(matrix):
         x2 = [x.strip() for x in x[2:]]
         x = x1 + x2
         t_matrix.append(x)
+    # The rows are not guaranteed to be the same length.
     return t_matrix
 
 ## def read_gmx(filename):
@@ -98,15 +107,24 @@ def read_gmt(filename, preserve_spaces=False):
         yield name, description, genes
 
 def read_tdf(filename, preserve_spaces=False):
-    # yield name, description, list of genes
+    # yield name, description (always ""), list of genes
     import filelib
 
     matrix = [x for x in filelib.read_cols(filename)]
     t_matrix = _transpose_gmx(matrix)
+
+    # For the TDF file, each of the rows should be exactly the same
+    # length.  Make sure they are the same length.
+    maxlen = max([len(x) for x in t_matrix]) - 1
+    assert maxlen >= 0
+
     for i in range(len(t_matrix)):
         x = t_matrix[i]
         name, description, genes = x[0], "", x[1:]
+        if len(genes) < maxlen:
+            genes = genes + [""]*(maxlen-len(genes))
         yield name, description, genes
+        
 
     # BUG: This will fail is there is a geneset with no genes in it,
     # because read_gmx requires at least the name and description

@@ -3,15 +3,16 @@
 # Created 5/6/2002, jchang
 
 # This should be SOLARIS, IRIX, OSX, OSX4, or LINUX.
-PLATFORM=LINUX
-#PLATFORM=OSX
+#PLATFORM=LINUX
+PLATFORM=OSX
 
 # Set this to point to the include files for your current installation
 # of python.
-PYINCLUDE=/usr/local/include/python2.7
+#PYINCLUDE=/usr/local/include/python2.7
 #PYINCLUDE=/home/jefftc/include/python2.5
 #PYINCLUDE=/opt/local/include/python2.4
 #PYINCLUDE=/opt/local/Library/Frameworks/Python.framework/Versions/2.4/include/python2.4
+PYINCLUDE=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
 
 # Use this to pass any other flags to the C compiler.  This should be
 # at least -I$(PYINCLUDE).

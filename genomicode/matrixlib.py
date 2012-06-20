@@ -259,9 +259,11 @@ def align_rows_to_many_annots(
 
 def align_cols_to_many_annots(
         MATRIX, many_col_names, header=None, hash=False, get_indexes=False):
-    # Return tuple of aligned (MATRIX, col_names).  If get_indexes is
-    # True, then return (I_MATRIX, I_col_names, index into
-    # many_col_names).
+    # many_col_names is list of col_names, where col_names is a list
+    # of the column names to be matched to the MATRIX.  Return tuple
+    # of aligned (MATRIX, col_names).  If get_indexes is True, then
+    # return (I_MATRIX, I_col_names, index into many_col_names).  XXX
+    # BEST MATCH?
     x = _align_to_many_annots_I(MATRIX, many_col_names, header, hash, False)
     I_matrix, I_names, index = x
     if get_indexes:
