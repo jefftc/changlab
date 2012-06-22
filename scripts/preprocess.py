@@ -105,7 +105,14 @@ def main():
     # Make sure all the files are the same type.
     # Should normalize all the chip files separately.
     chipnames = sorted({}.fromkeys(file2chipname.values()).keys())
-    assert len(chipnames) == 1, "multiple platforms: %s" % repr(chipnames)
+    if len(chipnames) != 1:
+        # Count the number of times each chip appears.
+        counts = {}
+        for x in file2chipname.values():
+            counts[x] = counts.get(x, 0) + 1
+        x = ["%s (%d)" % x for x in counts.iteritems()]
+        x = ", ".join(x)
+        assert len(chipnames) == 1, "multiple platforms: %s" % x
     chipname = chipnames[0]
 
     # Choose the annotation file for the chip name.
