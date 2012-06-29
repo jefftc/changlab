@@ -64,22 +64,13 @@ def convert_unicode_str(text):
     else:
         final = str(text)
     return final
-
-def parse_text_pipeline(line):
-    """parse a text line to a pipeline"""
-    #convert to JSON object format
-    line = line.replace('\'','')
-    newline = re.sub(r"([\w/\.:\\]+)\b(?!['\"])", r'"\1"', line)
-    jline = json.loads(newline)
-    #the output of json.loads is in unicode format,convert to string
-    jline=convert_unicode_str(jline)
-    #generate the module list and parameters list for this pipeline
+def convert_one_pipeline(jline):
     modules = []
     parameters = []
+    pipeline = []
     for i in range(len(jline)/2):
         modules.append(jline[i*2])
         parameters.append(jline[i*2+1])
-    pipeline = []
     for i in range(len(parameters)):
         para_dict = dict()
         for j in range(len(parameters[i])/2):
@@ -97,6 +88,25 @@ def parse_text_pipeline(line):
         analysis = Analysis(modules[i],para_dict)
         pipeline.append(analysis)
     return pipeline
+
+def parse_text_pipeline(line):
+    """parse a text line to a pipeline"""
+    #convert to JSON object format
+    line = line.replace('\'','')
+    newline = re.sub(r"([\w/\.:\\]+)\b(?!['\"])", r'"\1"', line)
+    jlines = json.loads(newline)
+    #the output of json.loads is in unicode format,convert to string
+    jlines=convert_unicode_str(jlines)
+    pipelines =[]
+    if [True]*len(jlines)==[isinstance(jline,list) for jline in jlines]:
+        for jline in jlines:
+            #generate the module list and parameters list for this pipeline
+            pipeline = convert_one_pipeline(jline)
+            pipelines.append(pipeline)
+    else:
+        pipeline = convert_one_pipeline(jlines)
+        pipelines.append(pipeline)
+    return pipelines
 
 def make_module_wd_name(module_name,hash_string):
     working_dir = module_name + '_BETSYHASH1_' + hash_string
@@ -187,7 +197,7 @@ def make_pipelines(pl_output,pl_inputs):
         text,variables = swipl.parse_solution(single_pipeline)
         line = variables[variable_name]
         pipeline = parse_text_pipeline(line)
-        pipelines.append(pipeline)
+        pipelines.extend(pipeline)
     return pipelines
 
 def main():

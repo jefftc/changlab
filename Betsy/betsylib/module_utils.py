@@ -7,6 +7,9 @@ import os
 import read_label_file
 import Betsy_config
 import rule_engine
+import json
+import math
+"""contain some functions that are called by many modules"""
 
 def get_inputid(identifier):
     old_filename = os.path.split(identifier)[-1]
@@ -14,11 +17,11 @@ def get_inputid(identifier):
     inputid = old_filename_no_ext.split('_')[-1]
     return inputid
 
-"""contain some functions that are called by many modules"""
 def make_unique_hash(identifier,pipeline,parameters):
     parameters = renew_parameters(parameters,['status'])
     inputid = get_inputid(identifier)
     new_parameters = parameters.copy()
+    new_parameters['filesize'] = os.path.getsize(identifier)
     hash_result = hash_method.hash_parameters(
         inputid,pipeline,**new_parameters)
     return hash_result
@@ -93,28 +96,29 @@ def format_convert(X):
         data.append(X.value(None,i))
     return data
 
-def write_Betsy_parameters_file(parameters,single_object,pipeline):
+def write_Betsy_parameters_file(parameters,single_object,pipeline,outfile):
     f = file(os.path.join(os.getcwd(),'Betsy_parameters.txt'),'w')
-    f.write('Module input:\n')
-    if not isinstance(single_object,list):
-        f.write(single_object.objecttype + '\n') 
-        f.write(single_object.identifier + '\n')
+    if isinstance(single_object,list):
+        text = ['Module input:',[(i.objecttype,i.identifier) for i in single_object],
+            'Module output:',outfile,
+            'Module output parameters:',parameters,'Pipeline module sequence:',
+            pipeline]
     else:
-        for one_object in single_object:
-            f.write(one_object.objecttype + '\n') 
-            f.write(one_object.identifier + '\n')
-    f.write('Module output:\n')
-    for i in parameters.keys():
-         f.write(i+':'+parameters[i]+'\n')
-    f.write('Pipeline module sequence:\n')
-    f.write('\t'.join(pipeline))
+        text = ['Module input:',(single_object.objecttype,single_object.identifier),
+                'Module output:',outfile,
+                'Module output parameters:',parameters,'Pipeline module sequence:',
+                pipeline]
+    newtext = json.dumps(text,sort_keys=True, indent=4)
+    f.write(newtext)
     f.close()
     
 
-def find_object(parameters,objects,objecttype,attribute_key):
+def find_object(parameters,objects,objecttype,attribute_key,opt_attribute=None):
     single_object = None
     attribute_keys = attribute_key.split(',') # split the compared parameter key
     compare_attribute = [parameters[i] for i in attribute_keys]
+    if opt_attribute:
+        compare_attribute.extend(opt_attribute)
     for single_object in objects:
         flag = True
         if objecttype == single_object.objecttype:
@@ -124,27 +128,6 @@ def find_object(parameters,objects,objecttype,attribute_key):
             if flag:
                 return single_object
     return None
-
-##def find_object(parameters,objects,objecttype,attribute):
-##    identifier = None
-##    single_object = None
-##    attributes = attribute.split(',')
-##    for i in range(len(attributes)):  #consider the content is [unknown]
-##            if '[' in attributes[i]:
-##                attribute = attributes
-##            else:
-##                attribute = parameters[attributes[i]]
-##    compare_attribute = [parameters[i] for i in attributes]
-##    for single_object in objects:
-##        flag = True
-##        if objecttype == single_object.objecttype:
-##            for i in compare_attribute:
-##                if i not in single_object.attributes:
-##                    flag=False
-##            if flag:
-##                identifier=single_object.identifier
-##                break
-##    return identifier,single_object
 
 def exists_nz(filename):
     if os.path.exists(filename):
@@ -180,6 +163,7 @@ def plot_R(filename,keywords,outfile):
             if M.row_names(header[1])[i] == keyword:
                 data.append(M.slice()[i])
                 legend_name.append('"'+M.row_names(header[0])[i]+'"')
+       
         assert len(data)>0,'input is not a control file'
         max_value = max(data[0])
         for i in range(1,len(data)):
@@ -190,17 +174,29 @@ def plot_R(filename,keywords,outfile):
         jmath.R_equals_vector(data[0],'data')
         jmath.R_equals('"'+keyword+'"','keyword')
         R('plot(data,ylim=c(0,max_value),\
-          xlab = "sample",ylab = keyword,type="l",col=opts[1])')
-        for i in range(1,len(data)):
+          xlab = "",ylab = keyword,type="l",col=opts[1],axes=F)')
+        for i in range(0,len(data)):
             jmath.R_equals(i,'i')
             jmath.R_equals_vector(data[i],'data')
             R('lines(data,col=opts[i+1])')
         jmath.R_equals_vector(legend_name,'legend_name')
         R('legend("bottomleft", legend_name,col=opts, lty=1,cex=0.8)')
+        label = ['""']*M.ncol()
+        name = M._col_names.keys()[0]
+        if M.ncol()<=12:
+            label = ['"'+M._col_names[name][i]+'"' for i in range(M.ncol())]
+        else:
+            index = [round(M.ncol()/12.0*i) for i in range(12)]
+            for i in range(12):
+                label[index[i]] = '"'+M._col_names[name][index[i]]+'"'
+        jmath.R_equals(M.ncol(),'ncol')
+        jmath.R_equals(label,'label')
+        R('axis(1,at=seq(1,ncol,by=1),lab=label,cex.axis=0.7,las=3)')
+        R('axis(2,ylim=c(0,ceiling(max_value)))')
+            
     R('dev.off()')
     assert exists_nz(outfile),'the plot_R fails'
     
-
 def renew_parameters(parameters,key_list):
     newparameters = parameters.copy()
     for key in key_list:
@@ -258,3 +254,20 @@ def download_dataset(GSEID):
     assert len(os.listdir(GSEID_path))>0, 'the untar in \
            download_geo_dataset_GPL %s fails'%GSEID_path
     return GSEID_path
+
+def gunzip(filename):
+    import gzip
+    if filename.endswith('.gz'):
+        newfilename =os.path.join(os.getcwd(),os.path.split(os.path.splitext(filename)[0])[-1])
+        #unzip the gz data
+        fileObj = gzip.GzipFile(filename, 'rb');
+        fileObjOut = file(newfilename, 'wb');
+        while 1:
+            line = fileObj.readline()
+            if line == '':
+                break
+            fileObjOut.write(line)
+        fileObj.close()
+        fileObjOut.close()
+        assert os.path.exists(newfilename),'unzip the cel_file %s fails'%filename
+        return newfilename

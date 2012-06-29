@@ -64,7 +64,7 @@ def run_protocol(protocol, inputs, output, identifiers,
               output_files_all.append(out_files[-1])
               parameters_all.append(pipeline[-1].parameters)
               pipeline_sequence_all.append(pipeline_sequence)
-          
+    
     return output_files_all,parameters_all,pipeline_sequence_all
 
 def main():
@@ -162,6 +162,7 @@ def main():
             pipelines = filter_pipelines(
             args.protocol,inputs,in_contents,output_file,
             parameters)
+            print len(pipelines)
             for pipeline in pipelines:
                   print 'pipeline'+ str(p_n),'\r'
                   p_n = p_n + 1
@@ -184,8 +185,10 @@ def main():
             final_output.append(output_file)
             final_parameters.append(parameters_all)
             final_pipeline_sequence.append(pipeline_sequence_all)
-        protocol_utils.get_result_folder(
-            args.protocol,final_output,final_parameters,final_pipeline_sequence)
+        module1 = protocol_utils.import_protocol(args.protocol)
+        print module1.OUTPUTS[0]
+        module = __import__(module1.OUTPUTS[0])     
+        module.run(final_output,final_parameters,final_pipeline_sequence)
         
 if __name__=='__main__':
     main()

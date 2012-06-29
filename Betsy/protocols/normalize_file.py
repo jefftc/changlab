@@ -12,8 +12,7 @@ INPUTS = [
     'input_signal_file',
     'rename_list_file']
 
-OUTPUTS = ['signal_file','pca_plot_in','pca_plot_out','intensity_plot',
-          'biotin_plot','actb_plot','hyb_bar_plot']
+OUTPUTS = ['make_normalize_report']
 
 
 PARAMETERS = {
@@ -57,7 +56,9 @@ PARAMETERS = {
     'gene_select_threshold':'float',
     'rename_sample':['yes_rename','no_rename'],
     'num_factors':'integer',
-    'pca_gene_num':'integer'}
+    'pca_gene_num':'integer',
+    'unique_genes':['average_genes','high_var','first_gene'],
+    'platform':['"HG_U133A"','unknown_platform']}
 
 
 DEFAULT = {
@@ -83,4 +84,11 @@ predicate2arguments={
 
 
 
-
+report=['the expression value of the data set after normalization',
+         'the pca plot of the data set before normalization',
+         'the pca plot of the data set after normalization',
+         'the intersity of the signal in the data set after normalization',
+         'the control file of illumina',
+         'the value of biotin and housekeeping in different sample in the control file',
+         'the value of ACTB and TUBB in different sample before normalization in the data set',
+         'the value of hybridization controls in the data set']

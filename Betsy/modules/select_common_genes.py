@@ -32,7 +32,7 @@ def run(parameters,objects,pipeline):
                            for select_common_genes fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                         parameters,single_object,pipeline)
+                         parameters,single_object,pipeline,outfile)
     return new_objects
 
 

@@ -54,14 +54,15 @@ def run(parameters,objects,pipeline):
                         file %s for extract_agilent_files fails'%outfile
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(parameters,
-                                                 single_object,pipeline)
+                                                 single_object,pipeline,outfile)
         return new_objects
     else:
         raise ValueError('no agilent file in the input %s'&identifier)
 def make_unique_hash(identifier,pipeline,parameters):
     original_file = module_utils.get_inputid(identifier)
     hash_profile={'version': 'agilent',
-                   'number of files':str(len(os.listdir(identifier)))}
+                   'number of files':str(len(os.listdir(identifier))),
+                  'filenames':str(os.listdir(identifier))}
     hash_result=hash_method.hash_parameters(
         original_file,pipeline,**hash_profile)
     return hash_result
@@ -69,7 +70,8 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'agilent_files_' + original_file
+    hash_result = make_unique_hash(single_object.identifier,pipeline,parameters)
+    filename = 'agilent_files_' + hash_result + '*'+ original_file
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 

@@ -7,6 +7,8 @@ import zipfile
 import subprocess
 import plot_biotin
 import rule_engine
+import arrayio
+
 def zip_directory(dir, zip_file):
     zip = zipfile.ZipFile(zip_file, 'w',
                           compression = zipfile.ZIP_DEFLATED)
@@ -119,23 +121,24 @@ def run(parameters,objects,pipeline):
     assert os.path.exists(download_directory),'there is no output directory for illumina'
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
+    os.rename(download_directory,outfile)
     for result_file in result_files:
-        assert result_file.endswith('.gct')
-        if '-controls' in result_file:
-            if 'controls' in parameters['preprocess']:
-                goal_file = os.path.realpath(
-                        download_directory+'/'+result_file)
-        else:
-            if 'controls' not in parameters['preprocess']:
-                goal_file = os.path.realpath(
-                        download_directory+'/'+result_file)
-                
-    os.rename(goal_file,outfile)
+        result_path = os.path.join(outfile,result_file)
+        M = arrayio.read(result_path)
+        a = M._col_names['_SAMPLE_NAME']
+        b = sorted(a)
+        index = []
+        for i in b:
+            index.append(a.index(i))
+        M_new = M.matrix(None,index)
+        f = file(result_path,'w')
+        arrayio.gct_format.write(M_new,f)
+        f.close()
     assert module_utils.exists_nz(outfile),'the output file %s\
                          for illumina fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                    parameters,single_object,pipeline)
+                    parameters,single_object,pipeline,outfile)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):
@@ -145,13 +148,13 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'signal_illumina_'+original_file+'.gct'
+    filename = 'signal_illumina_'+original_file
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'idat_files','contents')
+        parameters,objects,'idat_files','contents',['illumina'])
     assert os.path.exists(single_object.identifier),'the input file %s \
              for illumina does not exist'%single_object.identifier
     return single_object
@@ -161,7 +164,7 @@ def get_newobjects(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     parameters = module_utils.renew_parameters(parameters,['status'])
     attributes = parameters.values()
-    new_object = rule_engine.DataObject('signal_file',attributes,outfile)
+    new_object = rule_engine.DataObject('illu_folder',attributes,outfile)
     new_objects = objects[:]
     new_objects.append(new_object)
     return new_objects

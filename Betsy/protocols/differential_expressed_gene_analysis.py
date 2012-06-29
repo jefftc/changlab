@@ -12,7 +12,7 @@ INPUTS = [
     'input_signal_file',
     'renanme_list_file']
 
-OUTPUTS = ['differential_expressed_genes']
+OUTPUTS = ['make_diffgenes_report']
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',
@@ -56,7 +56,9 @@ PARAMETERS = {
     'gene_select_threshold':'float',
     'rename_sample':['yes_rename','no_rename'],
     'num_factors':'integer',
-    'pca_gene_num':'integer'
+    'pca_gene_num':'integer',
+    'unique_genes':['average_genes','high_var','first_gene'],
+    'platform':['"HG_U133A"','unknown_platform']
     }
 
 
@@ -80,3 +82,5 @@ predicate2arguments={
     'input_signal_file':(['status','given'],'[]'),
     'rename_list_file':([],'[]')}
 
+report=['the result of the differential_expressed_genes ',
+    'the expression value of the data set after normalization']

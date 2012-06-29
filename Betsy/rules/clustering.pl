@@ -52,7 +52,7 @@ cluster_heatmap(Parameters,Modules):-
           no_cluster_alg],NewParameters1)),
     get_options(Parameters,[hm_width,hm_height,color],[],Options),
     append(NewParameters1,Options,NewParameters2),
-    Newadd = [cluster_heatmap,NewParameters2],
+    Newadd = [make_heatmap,NewParameters2],
     append(Past_Modules,Newadd,Modules).
 
 

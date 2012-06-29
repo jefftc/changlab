@@ -35,7 +35,7 @@ def run(parameters,objects,pipeline):
     assert module_utils.exists_nz(outfile),'the output\
                     file %s for plot_prediction fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):

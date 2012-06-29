@@ -29,14 +29,15 @@ def run(parameters,objects,pipeline,options=None):
                               for extract_gpr fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-            parameters,single_object,pipeline)
+            parameters,single_object,pipeline,outfile)
     return new_objects
 
 
 def make_unique_hash(identifier,pipeline,parameters):
     inputid = module_utils.get_inputid(identifier)
     hash_profile = {'version': 'gpr',
-                   'number of files':str(len(os.listdir(identifier)))}
+                   'number of files':str(len(os.listdir(identifier))),
+                    'filenames':str(os.listdir(identifier))}
     hash_result = hash_method.hash_parameters(
                  inputid,pipeline,**hash_profile)
     return hash_result
@@ -45,7 +46,8 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'gpr_files_'+ original_file
+    hash_result = make_unique_hash(single_object.identifier,pipeline,parameters)
+    filename = 'gpr_files_'+ hash_result + '*'+ original_file
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 

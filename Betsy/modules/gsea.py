@@ -2,10 +2,11 @@
 import module_utils
 import shutil
 import os
-from genomicode import jmath
+from genomicode import jmath,arrayannot
 import Betsy_config
 import subprocess
 import read_label_file
+
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -17,7 +18,8 @@ def run(parameters,objects,pipeline):
     gp_parameters = dict()
     gp_parameters['expression.dataset'] = single_object.identifier
     gp_parameters['phenotype.labels'] = label_file.identifier
-    
+    chipname = arrayannot.guess_chip(single_object.identifier)
+    gp_parameters['chip.platform']= chipname+'.chip'
     gp_path = Betsy_config.GENEPATTERN
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path
@@ -44,12 +46,12 @@ def run(parameters,objects,pipeline):
     assert 'stderr.txt' not in gp_files,'gene_pattern get error'
     for gp_file in gp_files:
         if gp_file.endswith('.zip'):
-            shutil.copy(gp_file,outfile)
+            shutil.copy(os.path.join(download_directory,gp_file),outfile)
     assert module_utils.exists_nz(outfile),'the output\
                                file %s for gsea fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline)
+        parameters,single_object,pipeline,outfile)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

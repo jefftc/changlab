@@ -25,7 +25,7 @@ def run(parameters,objects,pipeline):
                     file %s for join_class_label_file fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                                  parameters,[clf1,clf2],pipeline)
+                                  parameters,[clf1,clf2],pipeline,outfile)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

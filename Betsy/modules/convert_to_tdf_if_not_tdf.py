@@ -55,7 +55,7 @@ def run(parameters,objects,pipeline):
         file %s for convert_to_tdf_if_not_tdf does not exists'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
-                                            single_object,pipeline)
+                                            single_object,pipeline,outfile)
     return new_objects
 
 
@@ -78,7 +78,8 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'signal_'+ original_file + '.tdf'
+    hash_result = make_unique_hash(single_object.identifier,pipeline,parameters)
+    filename = 'signal_'+ hash_result + '*' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 

@@ -10,9 +10,10 @@ INPUTS = [
     'idat_files',
     'agilent_files',
     'input_signal_file',
-    'renanme_list_file']
+    'rename_list_file']
 
-OUTPUTS = ['normalization_comparison_report','pca_plot_in','pca_plot_normalization']
+
+OUTPUTS=['make_batch_report']
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',
@@ -55,7 +56,9 @@ PARAMETERS = {
     'gene_select_threshold':'float',
     'rename_sample':['yes_rename','no_rename'],
     'num_factors':'integer',
-    'pca_gene_num':'integer'}
+    'pca_gene_num':'integer',
+    'unique_genes':['average_genes','high_var','first_gene'],
+    'platform':['"HG_U133A"','unknown_platform']}
 
 
 DEFAULT = {
@@ -78,4 +81,22 @@ predicate2arguments={
     'rename_list_file':([],'[]')}
 
 
-
+report = ['the expression value of the data set after quantile',
+         'the pca plot of the data set after quantile',
+         'the pca plot of the data set before quantile',
+         
+         'the expression value of the data set after quantile and dwd',
+         'the pca plot of the data set after quantile and dwd',
+         'the pca plot of the data set before quantile and dwd'
+         
+         'the expression value of the data set after quantile and shiftscale',
+         'the pca plot of the data set after quantile and shiftscale',
+         'the pca plot of the data set before quantile and shiftscale'
+         
+         'the expression value of the data set after bfrm_normalize',
+         'the pca plot of the data set after bfrm_normalize',
+         'the pca plot of the data set before bfrm_normalize'
+         
+         'the expression value of the data set after quantile and combat',
+         'the pca plot of the data set after quantile and combat',
+         'the pca plot of the data set before quantile and combat']

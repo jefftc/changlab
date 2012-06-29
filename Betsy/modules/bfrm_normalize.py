@@ -18,7 +18,7 @@ def run(parameters,objects,pipeline):
     if 'num_factors' in parameters.keys():
         num_factor = int(parameters['num_factors'])
         assert num_factor >= 1, 'the num_factor should be >=1'
-        M = arrayio.read(identifier)
+        M = arrayio.read(single_object.identifier)
         col_num = M.ncol()
         assert num_factor <= col_num,'the num_factor should be less than %d'%col_num
     tmp = 'tmp_dir'
@@ -41,7 +41,7 @@ def run(parameters,objects,pipeline):
     f.close()
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline)
+        parameters,single_object,pipeline,outfile)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):

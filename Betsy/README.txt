@@ -115,7 +115,7 @@ Process Usage
     When given two signal_file, one contains positive sample, one contains negative sample, 
     merge them together. Then command is:
     protocol_engine.py
-     
+    --protocol 'normalize_file'
     --input 'input_signal_file:pos:/path of the file'
     --input 'input_signal_file:neg:/path of the file'
     --parameters 'has_missing_value:zero_fill'
@@ -157,7 +157,7 @@ Betsy can do clustering for a signal_file and plot the heatmap.
 
     The result folder will contain a clustering file and a png file showing the heatmap.
     --------------------------------------------------------------------
-    When given idate files,preprocess=illumina, rename sample names, select genes according to fdr value,gene_center=mean,gene_normalize=variance,clustering and then make heatmap.
+    When given idat files,preprocess=illumina, rename sample names, select genes according to fdr value,gene_center=mean,gene_normalize=variance,clustering and then make heatmap.
     The command is:
     protocol_engine.py
     --protocol 'cluster_genes'
@@ -187,11 +187,11 @@ Also it can leave one out cross validation by these two methods.
     is set to 50. The command is:
     protocol_engine.py
     --protocol 'classification'
-    --input 'input_signal_file:neg:<path of the file>'
-    --input 'input_signal_file:pos:<path of the file>'
+    --input 'input_signal_file:train:<path of the file>'
+    --input 'class_label_file:train:<path of the file>'
     --input 'input_signal_file:test:<path of the file>'
     --parameters 'has_missing_value:zero_fill'
-    --parameters 'traincontents:neg,pos'
+    --parameters 'traincontents:train'
     --parameters 'testcontents:test'
     --parameters 'svm_kernel:linear'
     --parameters 'wv_num_features:50'
@@ -231,15 +231,60 @@ Betsy can make heatmap for a signal_file without clustering.
     --parameters 'hm_height:1'
     --parameters 'preprocess:unknown_preprocess'
     The result folder will contain a png file showing the heatmap.
-
 =============================================================================
-command example for rule_engine.py
-rule_engine.py --plin 'gse_id([contents,[a]],[])' 
---id 'GSE8286' --plout 'signal_file([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,preprocess,rma,filter,0,rename_sample,no_rename],Modules)' --dry_run 
+Batch effect remove Usage
+Example:
+When given a signal_file and class_label_file, try five different batch_effect remove methods and plot their pca figure.
 
+     protocol_engine.py
+     --protocol 'batch_effect_remove'
+     --input 'input_signal_file:<path of the file>'
+     --input 'class_label_file:<path of the file>'
+     --parameters 'has_missing_value:zero_fill'
+     --parameters 'preprocess:unknown_preprocess'
+     --parameters 'num_factors:1'
+=============================================================================
+New features
+Convert the illumina platform to affymetrix platform
+Example:
+	protocol_engine.py  
+      --protocol 'normalize_file' 
+      --input 'idat_files:<6991010018>'  
+      --parameters 'preprocess:illumina' 
+      --parameters 'has_missing_value:zero_fill'
+      --parameters 'platform:"HG_U133A"'
 
+Get the unique genes 
+      protocol_engine.py  
+      --protocol 'normalize_file' 
+      --input 'idat_files:<6991010018>'  
+      --parameters 'preprocess:illumina' 
+      --parameters 'has_missing_value:zero_fill'
+      --parameters 'unique_genes:average_genes'
+=============================================================================
+Command example for rule_engine.py
+rule_engine.py 
+--plin 'gse_id([contents,[a]],[])' 
+--id 'GSE8286' 
+--plout 'signal_file([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,preprocess,rma,filter,0,rename_sample,no_rename],Modules)' 
+--dry_run 
 
-../Betsy/rule_engine.py --plin 'input_signal_file([contents,[unknown],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[unknown],status,given],[])' --id 'all_aml_train.cls' --plout 'gsea([contents,[unknown],preprocess,unknown_preprocess,gene_center,no_gene_center,combat,no_combat,format,gct,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename],Modules)' --dry_run
+../Betsy/rule_engine.py 
+--plin 'input_signal_file([contents,[unknown],status,given],[])' 
+--id 'all_aml_train.res' 
+--plin 'class_label_file([contents,[unknown],status,given],[])' 
+--id 'all_aml_train.cls' 
+--plout 'gsea([contents,[unknown],preprocess,unknown_preprocess,gene_center,no_gene_center,combat,no_combat,format,gct,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename,unique_genes,first_gene],Modules)' 
+--dry_run
 
-../Betsy/rule_engine.py --plin 'gse_id([contents,[unknown]],[])' --id 'GSE8286' --plout 'signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename,preprocess,rma],Modules)'
+../Betsy/rule_engine.py 
+--plin 'gse_id([contents,[unknown]],[])' 
+--id 'GSE8286' 
+--plout 'signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename,preprocess,rma],Modules)'
+
+../Betsy/rule_engine.py 
+--plin 'idat_files([version,unknown_version,contents,[unknown]],[])' 
+--id '6991010018' 
+--plout 'signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,
+no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,illumina,filter,0,rename_sample,no_rename,platform,"HG_U133A"],Modules)'
 

@@ -46,7 +46,7 @@ convert_parameters_raw(Parameters,NewParameters):-
     append(NewParameters0,[format,Format],NewParameters1),
      
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
-    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,illumina_controls]),
+    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
     
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
@@ -73,10 +73,10 @@ convert_parameters_raw(Parameters,NewParameters):-
     member(Status,[given,created,jointed,splited]),
     append(NewParameters6,[status,Status],NewParameters7),
 
-    (member(Preprocess,[illumina,illumina_controls]),
+    (member(Preprocess,[illumina]),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,ill_custom_manifest],[],Options),
     append(NewParameters7,Options,NewParameters8);
-    not(member(Preprocess,[illumina,illumina_controls])),
+    not(member(Preprocess,[illumina])),
     NewParameters8=NewParameters7),
     
     get_value(Parameters,rename_sample,no_rename,Rename_sample),
@@ -90,7 +90,7 @@ convert_parameters_clean_out(Parameters,NewParameters):-
 
     append(NewParameters0,[format,pcl],NewParameters1),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
-    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,illumina_controls]),
+    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
 
     append(NewParameters2,[is_logged,logged],NewParameters3),
@@ -115,10 +115,10 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     member(Status,[given,created,jointed,splited]),
     append(NewParameters6,[status,Status],NewParameters7),
 
-    (member(Preprocess,[illumina,illumina_controls]),
+    (member(Preprocess,[illumina]),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
     append(NewParameters7,Options,NewParameters8);
-    not(member(Preprocess,[illumina,illumina_controls])),
+    not(member(Preprocess,[illumina])),
     NewParameters8=NewParameters7),
 
     get_value(Parameters,rename_sample,no_rename,Rename_sample),
@@ -134,7 +134,7 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     append(NewParameters0,[format,Format],NewParameters1),
     
     get_value_variable(Parameters,preprocess,Preprocess),
-    member(Preprocess,[rma,mas5,loess,agilent,illumina,unknown_preprocess,illumina_controls]),
+    member(Preprocess,[rma,mas5,loess,agilent,illumina,unknown_preprocess]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
 
     get_value_variable(Parameters,is_logged,Is_Logged),
@@ -161,10 +161,10 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     member(Status,[given,created,jointed,splited]),
     append(NewParameters6,[status,Status],NewParameters7),
 
-    (member(Preprocess,[illumina,illumina_controls]),
+    (member(Preprocess,[illumina]),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip],[],Options),
     append(NewParameters7,Options,NewParameters8);
-    not(member(Preprocess,[illumina,illumina_controls])),
+    not(member(Preprocess,[illumina])),
     NewParameters8=NewParameters7),
     
     get_value_variable(Parameters,rename_sample,Rename_sample),
@@ -335,12 +335,20 @@ convert_parameters_file(Parameters,NewParameters):-
     append(NewParameters1,[gene_order,Gene_Order],NewParameters2),
     (Gene_Order=by_class_neighbors,
     get_options(Parameters,[cn_num_neighbors,cn_num_perm,cn_user_pval,cn_mean_or_median,cn_ttest_or_snr,cn_filter_data,cn_min_threshold,cn_max_threshold,cn_min_folddiff,cn_abs_diff],[],Options),
-    append(NewParameters2,Options,NewParameters);
+    append(NewParameters2,Options,NewParameters3);
     member(Gene_Order,[t_test_p,t_test_fdr]),
     get_options(Parameters,[gene_select_threshold],[],Options1),
     append(NewParameters2,Options1,NewParameters);
     not(member(Gene_Order,[by_class_neighbors,t_test_p,t_test_fdr])),
-    NewParameters=NewParameters2).
+    NewParameters3=NewParameters2),
+
+    get_value(Parameters,platform,unknown_platform,Platform),
+    member(Platform,["HG_U133A",unknown_platform]),
+    append(NewParameters3,[platform,Platform],NewParameters4),
+    
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    member(Unique_Genes,[no_unique_genes,average_genes,high_var,first_gene]),
+    append(NewParameters4,[unique_genes,Unique_Genes],NewParameters).
     
 
  /*-------------------------------------------------------------------------*/
@@ -349,9 +357,13 @@ get_desire_parameters_file(Parameters,NewParameters):-
     get_desire_parameters_norm2(Parameters,NewParameters1),
     (member(gene_order,Parameters),
     get_value_variable(Parameters,gene_order,Gene_Order),
-    append(NewParameters1,[gene_order,Gene_Order],NewParameters);
+    append(NewParameters1,[gene_order,Gene_Order],NewParameters2);
     not(member(gene_order,Parameters)),
-    NewParameters=NewParameters1).
+    NewParameters2=NewParameters1),
+    get_value(Parameters,platform,unknown_platform,Platform),
+    append(NewParameters2,[platform,Platform],NewParameters3),
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    append(NewParameters3,[unique_genes,Unique_Genes],NewParameters).
  /*-------------------------------------------------------------------------*/
 convert_parameters_svm(Parameters,NewParameters):-
     convert_parameters_file(Parameters,NewParameters1),
@@ -368,6 +380,24 @@ convert_parameters_svm(Parameters,NewParameters):-
     not(member(traincontents,Parameters)),
     not(member(testcontents,Parameters)),
     NewParameters=NewParameters2).
+ /*-------------------------------------------------------------------------*/
+
+convert_parameters_classify(Parameters,NewParameters):-
+    convert_parameters_file(Parameters,NewParameters1),
+    get_value(NewParameters1,status,created,Status),
+    Status=created,
+    get_value(NewParameters1,format,unknown_format,Format),
+    Format=pcl,
+    get_value(Parameters,svm_kernel,linear,Svm_Kernel),
+    member(Svm_Kernel,[linear,polynomial,rbf,sigmoid,precomputed_kernel]),
+    append(NewParameters1,[svm_kernel,Svm_Kernel],NewParameters2),
+    get_options(Parameters,[wv_num_features,wv_minstd,wv_feature_stat],[],Options),
+    append(NewParameters2,Options,NewParameters3),
+    get_value_variable(Parameters,traincontents,TrainContents),
+    get_value_variable(Parameters,testcontents,TestContents),
+    append(NewParameters3,[traincontents,TrainContents,testcontents,TestContents],NewParameters).
+    
+
 /*----------------------------------------------------------------------*/
 /*Whether [X|Y] is a subset of Z*/
 is_subset([X|Y], Z) :- member(X, Z), is_subset(Y, Z).
@@ -400,7 +430,7 @@ get_length(A,B):-
     A=n_raw, B=18;
     A=n_norm1,B=28;
     A=n_norm2,B=32;
-    A=n_file,B=34.
+    A=n_file,B=38.
 /*-------------------------------------------------------------------------*/  
 get_options(Parameters,Keys,S,Options):-
    member(Key,Keys),

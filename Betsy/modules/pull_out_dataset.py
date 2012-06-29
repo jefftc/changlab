@@ -21,7 +21,7 @@ def run(parameters,objects,pipeline):
                            file %s for pull_out_dataset fails'%outfile
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(
-            parameters,single_object,pipeline)
+            parameters,single_object,pipeline,outfile)
         return new_objects
     else:
         raise ValueError('the pull_out_dataset fails')

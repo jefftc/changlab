@@ -26,7 +26,7 @@ def run(parameters,objects,pipeline):
         file %s for run_scoresig does not exists'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
-                                            rma_file,pipeline)
+                                            rma_file,pipeline,outfile)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):

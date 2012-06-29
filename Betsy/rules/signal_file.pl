@@ -24,6 +24,10 @@ signal_file(Parameters,Modules):-
    N=N1,
    get_value(Parameters,gene_order,no_order,Gene_Order),
    Gene_Order=no_order,
+   get_value(Parameters,platform,unknown_platform,Platform),
+   Platform=unknown_platform,
+   get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+   Unique_Genes=no_unique_genes,
    get_desire_parameters_norm2(Parameters,NewParameters),
    get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,num_factors],[],Options),
    append(NewParameters,Options,NewParameters2),
@@ -97,7 +101,7 @@ signal_file(Parameters,Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,format,Pre_format,OldParameters),
     signal_file(OldParameters,Past_Modules),
-    Newadd=['convert_pcl_gct',Parameters],
+    Newadd=[convert_pcl_gct,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*-------------------------------------------------------------------------*/
@@ -144,14 +148,49 @@ signal_file(Parameters,Modules):-
     Newadd2=[select_common_genes,Write_list2],
     append(Newadd1,Newadd2,Newadd),
     append(Past_Modules,Newadd,Modules).
-
+/*-------------------------------------------------------------------------*/
+%convert the unknown_platform to HG_U133A platform
+signal_file(Parameters,Modules):-
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    member(OldStatus,[given,created,jointed,splited]),
+    get_value(Parameters,format,unknown_format,Format),
+    Format=pcl,
+    get_value(Parameters,is_logged,logged,Is_logged),
+    Is_logged=logged,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform="HG_U133A",
+    Pre_platform=unknown_platform,
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,platform,Pre_platform,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    Newadd=[convert_platform_to_HG_U133A_if_not,Parameters],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+%get the unique genes
+signal_file(Parameters,Modules):-
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    member(OldStatus,[given,created,jointed,splited]),
+    get_value(Parameters,format,unknown_format,Format),
+    Format=pcl,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    member(Unique_Genes,[average_genes,high_var,first_gene]),
+    Pre_unique_genes=no_unique_genes,
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,unique_genes,Pre_unique_genes,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    Newadd=[get_unique_genes,Parameters],
+    append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 pca_plot_out(Parameters,Modules):-
     convert_parameters_file(Parameters,NewParameters1),
     set_value(NewParameters1,format,pcl,NewParameters2),
-    signal_file(NewParameters2,Past_Modules_2),
+    set_value(NewParameters1,platform,unknown_platform,NewParameters4),
+    signal_file(NewParameters4,Past_Modules_2),
     get_options(Parameters,[pca_gene_num],[],Options),
-    append(NewParameters1,Options,NewParameters),
+    append(NewParameters1,Options,NewParameters3),
+   append(NewParameters3,[objecttype,pca_plot_out],NewParameters),
     Newadd=[pca_plot,NewParameters],
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
@@ -163,7 +202,8 @@ pca_plot_in(Parameters,Modules):-
     convert_parameters_clean_out(Parameters,NewParameters2),
     signal_clean(NewParameters2,Past_Modules_2),
     get_options(Parameters,[pca_gene_num],[],Options),
-    append(NewParameters2,Options,NewParameters),
+    append(NewParameters2,Options,NewParameters3),
+    append(NewParameters3,[objecttype,pca_plot_in],NewParameters),
     Newadd=[pca_plot,NewParameters],
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
@@ -174,10 +214,10 @@ pca_plot_in(Parameters,Modules):-
 biotin_plot(Parameters,Modules):-
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     get_value(Parameters,contents,[unknown],Contents),
-    member(Preprocess,[illumina_controls,illumina]),
-    convert_parameters_raw([contents,Contents,preprocess,illumina_controls,is_logged,no_logged,
+    member(Preprocess,[illumina]),
+    convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,
                          format,gct],NewParameters),
-    signal_raw(NewParameters,Past_Modules),
+    control_file(NewParameters,Past_Modules),
     Newadd=[plot_biotin,NewParameters],
     append(Past_Modules, Newadd, Modules).
 
@@ -193,10 +233,10 @@ actb_plot(Parameters,Modules):-
 hyb_bar_plot(Parameters,Modules):-
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     get_value(Parameters,contents,[unknown],Contents),
-    member(Preprocess,[illumina_controls,illumina]),
-    convert_parameters_raw([contents,Contents,preprocess,illumina_controls,is_logged,no_logged,
+    member(Preprocess,[illumina]),
+    convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,
                          format,gct],NewParameters),
-    signal_raw(NewParameters,Past_Modules),
+    control_file(NewParameters,Past_Modules),
     Newadd=[plot_hyb_bar,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/

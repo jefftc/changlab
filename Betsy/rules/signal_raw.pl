@@ -127,17 +127,28 @@ signal_raw(Parameters,Modules):-
     Newadd=[loess,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
-% Preprocess idat_files with illumine format to signal_file by illumina,
-signal_raw(Parameters,Modules):-
+% Preprocess idat_files with illumine format to illu_folder by illumina,
+illu_folder(Parameters,Modules):-
     get_value(Parameters,contents,[unknown],Contents),
-    (convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,format,gct],NewParameters);
-     convert_parameters_raw([contents,Contents,preprocess,illumina_controls,is_logged,no_logged,format,gct],NewParameters)),
+    convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,format,gct],NewParameters),
     get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,ill_custom_manifest],[],Options),
     append(NewParameters,Options,NewParameters1),
     Parameters = NewParameters1,	
     idat_files([contents,Contents,version,illumina],Past_Modules),
     Newadd=[illumina,Parameters],
     append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+control_file(Parameters,Modules):-
+   illu_folder(Parameters,Past_Modules),
+   Newadd=[illu_control,Parameters],
+   append(Past_Modules,Newadd,Modules).
+/*-------------------------------------------------------------------------*/
+signal_raw(Parameters,Modules):-
+   get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+   Preprocess=illumina,
+   illu_folder(Parameters,Past_Modules),
+   Newadd=[illu_signal,Parameters],
+   append(Past_Modules,Newadd,Modules).
 /*-------------------------------------------------------------------------*/
 % Preprocess agilent_files with agilent format to signal_file by agilent,
 signal_raw(Parameters,Modules):-
@@ -155,7 +166,7 @@ signal_raw(Parameters,Modules):-
     convert_parameters_raw([contents,Contents,preprocess,Preprocess, is_logged, Is_Logged,format,jeffs,has_missing_value,no_missing],NewParameters),
     Parameters=NewParameters,
     cel_files([contents,Contents,version,v3_4], Past_Modules),
-    Newadd=[preprocess,Parameters],
+    Newadd=[preprocess,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % log the signal file with Is_Logged is unknown_logged or no_logged.

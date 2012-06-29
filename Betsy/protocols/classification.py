@@ -12,7 +12,7 @@ INPUTS = [
     'input_signal_file',
     'renanme_list_file']
 
-OUTPUTS = ['svm_predictions','weightedVoting','loocv']
+OUTPUTS = ['make_classify_report']
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',
@@ -62,7 +62,9 @@ PARAMETERS = {
     'gene_select_threshold':'float',
     'rename_sample':['yes_rename','no_rename'],
     'num_factors':'integer',
-    'pca_gene_num':'integer'
+    'pca_gene_num':'integer',
+    'unique_genes':['average_genes','high_var','first_gene'],
+    'platform':['"HG_U133A"','unknown_platform']
     }
 
 
@@ -85,4 +87,7 @@ predicate2arguments={
     'gene_list_file':([],'[]'),
     'input_signal_file':(['status','given'],'[]'),
     'rename_list_file':([],'[]')}
-
+report=['the svm predictions',
+        'the results file of weighted Voting ',
+        'the result of the leave one out cross validation with svm',
+        'the result of the leave one out cross validation with weightedvoting']

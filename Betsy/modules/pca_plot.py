@@ -35,7 +35,7 @@ def run(parameters,objects,pipeline):
     assert module_utils.exists_nz(outfile),'the output file %s\
                                 for pca_plot fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):
@@ -45,7 +45,7 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'pca_'+original_file+'.png'
+    filename = parameters['objecttype']+'_'+original_file+'.png'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
     

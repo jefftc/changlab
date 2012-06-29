@@ -13,7 +13,7 @@ INPUTS = [
     'input_signal_file',
     'rename_list_file']
 
-OUTPUTS = ['cluster_heatmap','cluster_file']
+OUTPUTS = ['make_cluster_report']
 
 PARAMETERS = {
     'cluster_alg':['kmeans','pca','hierarchical','som'],
@@ -61,7 +61,9 @@ PARAMETERS = {
     'gene_select_threshold':'float',
     'rename_sample':['yes_rename','no_rename'],
     'num_factors':'integer',
-    'pca_gene_num':'integer'}
+    'pca_gene_num':'integer',
+    'unique_genes':['average_genes','high_var','first_gene'],
+    'platform':['"HG_U133A"','unknown_platform']}
 
 DEFAULT = {
     'cluster_alg':'kmeans','distance':'correlation','k':5,
@@ -87,7 +89,9 @@ predicate2arguments={
     }
 
 
-
+report=["In this heatmap, each row contains a signature and each column \
+        contains a sample from your data set.",
+        'the expression value of the data set after clustering']
 
 
 
