@@ -15,8 +15,8 @@ def run(parameters,objects,pipeline):
     label_list = []
     i = -1
     for line in text[1:]:
-        label = line.split()[1]
-        if  label not in lable_dict.keys():
+        label = line.split('\t')[1]
+        if  label not in label_dict.keys():
             i = i+1
             label_dict[label] = i
         label_list.append(label_dict[label])
@@ -24,8 +24,8 @@ def run(parameters,objects,pipeline):
     R('library(R.utils)')
     command = 'png2("'+outfile+'")'
     R(command)
-    legend_name = ['"'+label_dict[i] + '=' +
-                    i+'"' for i in label_dict.keys()]
+    legend_name = ['"'+str(label_dict[i]) + '=' +
+                    str(i)+'"' for i in label_dict.keys()]
     jmath.R_equals_vector(label_list,'p_label')
     jmath.R_equals_vector(legend_name,'legend_name')
     R('barx <- barplot(p_label, ylim=c(-1,max(p_label)+1), \
@@ -44,7 +44,7 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'prediction' + original_file + 'png'
+    filename = 'prediction' + original_file + '.png'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
@@ -53,7 +53,7 @@ def get_identifier(parameters,objects):
         parameters,objects,'classification_file','traincontents')
     assert os.path.exists(single_object.identifier),'the classification\
                 file %s for plot_prediction does not exist'%single_object.identifier
-    return identifier,single_object
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

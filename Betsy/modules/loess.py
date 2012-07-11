@@ -1,5 +1,4 @@
 #loess.py
-
 import os
 import module_utils
 import shutil
@@ -49,7 +48,9 @@ def run(parameters,objects,pipeline):
     keep[0][1]=keep[0][1].upper() #convert the 'Name' to 'NAME'
     f=open(outfile,'w')
     f.write('\t'.join(keep[0][0:2]))
-    f.write('t'.join(sample))
+    f.write('\t')
+    f.write('\t'.join(sample))
+    f.write('\n')
     for i in range(len(keep)-1):
         f.write('\t'.join(keep[i+1][0:2]))
         for j in range(len(SIGNAL[0])):
@@ -77,10 +78,10 @@ def get_outfile(parameters,objects,pipeline):
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'geo_dataset','contents',['gpr'])
+        parameters,objects,'gpr_files','contents',['gpr'])
     assert os.path.exists(single_object.identifier),'the input file %s\
                    for loess does not exist'%single_object.identifier
-    return identifier,single_object
+    return single_object
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

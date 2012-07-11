@@ -12,6 +12,7 @@ def run(parameters,objects,pipeline,options=None):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     check = []
+    newfiles = []
     files = os.listdir(single_object.identifier)
     for i in files:
         if i == '.DS_Store':
@@ -19,11 +20,12 @@ def run(parameters,objects,pipeline,options=None):
         else:
             gpr = gpr_module.check_gpr(os.path.join(single_object.identifier,i))
             check.append(gpr)
+            newfiles.append(i)
     os.mkdir(outfile)
     for i in range(len(check)):
         if check[i]:
-            old_file = os.path.join(single_object.identifier,i)
-            new_file = os.path.join(outfile,i)
+            old_file = os.path.join(single_object.identifier,newfiles[i])
+            new_file = os.path.join(outfile,newfiles[i])
             shutil.copyfile(old_file,new_file)
     assert module_utils.exists_nz(outfile),'the output file %s\
                               for extract_gpr fails'%outfile

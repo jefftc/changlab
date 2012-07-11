@@ -45,7 +45,6 @@ signal_raw(Parameters,Modules):-
     N<N1,
     convert_parameters_variable_raw(Parameters,NewParameters),
     signal_raw(NewParameters,Modules).
-
 /*-------------------------------------------------------------------------*/
 % generate geo_dataset with version v3_4 from cel_file with version cc;
 % or from cel_file with version unknown.
@@ -127,7 +126,7 @@ signal_raw(Parameters,Modules):-
     Newadd=[loess,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
-% Preprocess idat_files with illumine format to illu_folder by illumina,
+% Preprocess idat_files with illumina format to illu_folder by illumina,
 illu_folder(Parameters,Modules):-
     get_value(Parameters,contents,[unknown],Contents),
     convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,format,gct],NewParameters),
@@ -139,8 +138,9 @@ illu_folder(Parameters,Modules):-
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 control_file(Parameters,Modules):-
-   illu_folder(Parameters,Past_Modules),
-   Newadd=[illu_control,Parameters],
+   convert_parameters_variable_raw(Parameters,NewParameters),
+   illu_folder(NewParameters,Past_Modules),
+   Newadd=[illu_control,NewParameters],
    append(Past_Modules,Newadd,Modules).
 /*-------------------------------------------------------------------------*/
 signal_raw(Parameters,Modules):-

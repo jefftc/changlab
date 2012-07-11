@@ -338,12 +338,12 @@ convert_parameters_file(Parameters,NewParameters):-
     append(NewParameters2,Options,NewParameters3);
     member(Gene_Order,[t_test_p,t_test_fdr]),
     get_options(Parameters,[gene_select_threshold],[],Options1),
-    append(NewParameters2,Options1,NewParameters);
+    append(NewParameters2,Options1,NewParameters3);
     not(member(Gene_Order,[by_class_neighbors,t_test_p,t_test_fdr])),
     NewParameters3=NewParameters2),
 
     get_value(Parameters,platform,unknown_platform,Platform),
-    member(Platform,["HG_U133A",unknown_platform]),
+    member(Platform,['HG_U133A',unknown_platform]),
     append(NewParameters3,[platform,Platform],NewParameters4),
     
     get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),

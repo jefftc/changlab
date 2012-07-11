@@ -285,6 +285,8 @@ rule_engine.py
 ../Betsy/rule_engine.py 
 --plin 'idat_files([version,unknown_version,contents,[unknown]],[])' 
 --id '6991010018' 
---plout 'signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,
-no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,illumina,filter,0,rename_sample,no_rename,platform,"HG_U133A"],Modules)'
+--plout "signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,
+no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,illumina,filter,0,rename_sample,no_rename,platform,'HG_U133A'],Modules)"
 
+
+../Betsy/rule_engine.py --plin 'input_signal_file([status,given,contents,[train]],[])' --id 'all_aml_train.res' --plin 'class_label_file([status,given,contents,[train]],[])' --id 'all_aml_train.cls' --plout 'gather([contents,[train],gene_center,mean,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,format,pcl,gene_order,by_class_neighbors,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,preprocess,unknown_preprocess,filter,0,has_missing_value,zero_fill],A)'

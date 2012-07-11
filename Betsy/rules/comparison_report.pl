@@ -40,24 +40,31 @@ make_batch_report(Parameters,Modules):-
 /*-------------------------------------------------------------------*/
 
 make_diffgenes_report(Parameters,Modules):-
-    get_value_variable(Parameters,diff_expr,Diff_expr),
-    member(Diff_expr,[t_test,sam]),
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
     Format=pcl,
     get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
+    get_value(NewParameters,gene_order,no_order,Gene_Order),
+    Gene_Order=no_order,
     get_value(NewParameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,jointed,splited,created]),
     set_value(NewParameters,status,OldStatus,NewParameters1),
-    append(NewParameters1,[diff_expr,Diff_expr],NewParameters2),
-    differential_expressed_genes(NewParameters2,Modules1),
-    append(NewParameters1,[filetype,signal_file],NewParameters3),
-    signal_file(NewParameters1,Modules2),
-    append(Modules2,[annot_file,NewParameters3],Modules3),
-    Modules = [Modules1,Modules3].
 
+    set_value(NewParameters1,format,gct,NewParameters2),
+    gsea(NewParameters2,Modules1),
+    
+    append(NewParameters1,[diff_expr,t_test],NewParameters3),
+    differential_expressed_genes(NewParameters3,Modules2),
+    
+    append(NewParameters1,[diff_expr,sam],NewParameters4),
+    differential_expressed_genes(NewParameters4,Modules3),
+    
+    set_value(NewParameters1,gene_order,t_test_p,NewParameters5),
+    gather(NewParameters5,Modules4),
+    
+    Modules = [Modules1,Modules2,Modules3,Modules4].
 /*-------------------------------------------------------------------*/
 make_cluster_report(Parameters,Modules):-
     convert_cluster_parameters(Parameters,NewParameters1),

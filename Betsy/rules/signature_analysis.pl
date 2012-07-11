@@ -28,7 +28,7 @@ signature_score(Parameters,Modules):-
    get_value(NewParameters,status,created,Status),
    Status=created,
    get_value(Parameters,platform,unknown_platform,Platform),
-   Platform="HG_U133A",
+   Platform='HG_U133A',
    member(OldStatus,[given,jointed,splited,created]),
    set_value(NewParameters,status,OldStatus,NewParameters2),
    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),

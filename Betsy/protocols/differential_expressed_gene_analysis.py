@@ -68,7 +68,7 @@ DEFAULT = {
     'dwd':'no_dwd','shiftscale':'no_shiftscale',
     'combat':'no_combat','filter':0,'is_logged':'logged',
     'predataset':'no_predataset','bfrm':'no_bfrm',
-    'gene_order':'no_order','rename_sample':'no_rename'}
+    'gene_order':'no_order','rename_sample':'no_rename','format':'pcl'}
 
 predicate2arguments={
     'gse_id':([],'[]'),
@@ -82,5 +82,8 @@ predicate2arguments={
     'input_signal_file':(['status','given'],'[]'),
     'rename_list_file':([],'[]')}
 
-report=['the result of the differential_expressed_genes ',
-    'the expression value of the data set after normalization']
+report=['the result of the gsea ',
+        'the result of the differential_expressed_genes using t_test',
+        'the result of the differential_expressed_genes using sam',
+        'the result of gather']
+     

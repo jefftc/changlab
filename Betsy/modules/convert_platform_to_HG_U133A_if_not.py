@@ -5,7 +5,7 @@ import module_utils
 import subprocess
 import Betsy_config
 from genomicode import arrayannot
-
+import shutil
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -34,7 +34,7 @@ def run(parameters,objects,pipeline):
                 raise ValueError(error_message)
         f.close()
     elif parameters['preprocess'] in ['mas5','rma']:
-        shutil.copyfile(single_object,outfile)
+        shutil.copyfile(single_object.identifier,outfile)
     else:
         raise ValueError('we cannot convert the platform you input to HG_U133A')
     assert module_utils.exists_nz(outfile),'the output file %s\

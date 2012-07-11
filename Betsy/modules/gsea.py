@@ -68,7 +68,7 @@ def get_identifier(parameters,objects):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'gsea_'+original_file
+    filename = 'gsea_'+original_file+'.zip'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
     

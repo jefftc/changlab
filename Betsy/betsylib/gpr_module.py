@@ -124,15 +124,15 @@ def extract_multiple(fileloc,keep):
     g2=column_name.index('F532 Mean')
     g3=column_name.index('B635 Median')
     g4=column_name.index('B532 Median')
-    for i in range(startline+1,len(text)):
+    for i in range(startline,len(text)):
         h=text[i].replace('\"','')
         g=h.split('\t')
         if len(keep)<=i-startline:
              keep.append([g[b],g[a],g[c],g[d],g[k]])
         else:
-             assert [g[b],g[a],g[c],g[d],g[k]]==keep[i-startline-1],'row not match'
+             assert [g[b],g[a],g[c],g[d],g[k]]==keep[i-startline],'row not match'
         red_signal.append(g[g1])
         green_signal.append(g[g2])
         red_back.append(g[g3])
         green_back.append(g[g4])
-    return red_signal,green_signal,red_back,green_back,keep
+    return red_signal[1:],green_signal[1:],red_back[1:],green_back[1:],keep

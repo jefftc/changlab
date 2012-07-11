@@ -72,27 +72,33 @@ def hash_chipname(filename):
     return x,version
 
 def chipname2filename(chipname):
-    if chipname in ['HumanHT-12','HumanHT-12_control',
-                    'MouseRef-8','MouseRef-8_control']:
-        path = Betsy_config.ANNOT_DATA_ILLU
-        assert os.path.exists(path),'%s does not exist'%path
-        for file in os.listdir(path):
-            if chipname in file:
-                filename = os.path.join(path, file)
-        return filename
-    else:
-        path = Betsy_config.ANNOT_DATA_AFFY
-        assert os.path.exists(path),'%s does not exist'%path
-        chip2file = {}
-        for file in os.listdir(path):
+    filename = chipname2filename_affy(chipname)
+    if not filename:
+        filename = chipname2filename_illu(chipname)
+    return filename
+
+def chipname2filename_illu(chipname):
+    filename = None
+    path = Betsy_config.ANNOT_DATA_ILLU
+    assert os.path.exists(path),'%s does not exist'%path
+    for file in os.listdir(path):
+        if chipname in file:
             filename = os.path.join(path, file)
-            chipname1,version = hash_chipname(filename)
-            if chipname1 in chip2file.keys():
-                if version > chip2file[chipname1][0]:
-                    chip2file[chipname1] = (version,filename)
-            else:
-                chip2file[chipname1] = (version,filename)
-        return chip2file[chipname][1]
+    return filename
 
-
-
+def chipname2filename_affy(chipname):
+    filename = None
+    path = Betsy_config.ANNOT_DATA_AFFY
+    assert os.path.exists(path),'%s does not exist'%path
+    chip2file = {}
+    for file in os.listdir(path):
+        filename1 = os.path.join(path, file)
+        chipname1,version = hash_chipname(filename1)
+        if chipname1 in chip2file.keys():
+            if version > chip2file[chipname1][0]:
+                chip2file[chipname1] = (version,filename1)
+        else:
+            chip2file[chipname1] = (version,filename1)
+    if chipname in chip2file.keys():
+        version,filename = chip2file[chipname]
+    return filename

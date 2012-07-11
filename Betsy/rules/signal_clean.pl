@@ -82,7 +82,7 @@ signal_clean(Parameters,Modules):-
     not(member(unknown,Contents)),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,given],Past_Modules_1),
-    get_value(Parameters,status,given,Status),
+    get_value(Parameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
     set_value(Parameters,status,OldStatus,OldParameters1),

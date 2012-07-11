@@ -93,6 +93,8 @@ def parse_text_pipeline(line):
     """parse a text line to a pipeline"""
     #convert to JSON object format
     line = line.replace('\'','')
+    if line.endswith('.'):
+        line=line[0:-1]
     newline = re.sub(r"([\w/\.:\\]+)\b(?!['\"])", r'"\1"', line)
     jlines = json.loads(newline)
     #the output of json.loads is in unicode format,convert to string
@@ -183,6 +185,7 @@ def make_pipelines(pl_output,pl_inputs):
         swipl.source_code(p,'differentail_expressed_gene_analysis.pl')
         swipl.source_code(p,'signature_analysis.pl')
         swipl.source_code(p,'comparison_report.pl')
+        swipl.source_code(p,'gather.pl')
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input +').'
             swipl.send_query(p,more_command)

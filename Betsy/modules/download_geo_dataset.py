@@ -136,7 +136,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'gse_id','contents')
     assert single_object.identifier.startswith('GSE'),'the GSEID %s\
-                         should start with GSE'%single_object.identifeir
+                         should start with GSE'%single_object.identifier
     return single_object
 
 def clean_cel_filename(cel_file):

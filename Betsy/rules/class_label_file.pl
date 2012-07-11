@@ -14,9 +14,9 @@ class_label_file([contents,[X],preprocess,Preprocess,status,created],Modules):-
 class_label_file([contents,Contents,preprocess,Preprocess,status,given],[]):-
     class_label_file([contents,Contents,status,given],[]),!.
 /*----------------------------------------------------------------------*/
-%%class_label_file([contents,+Contents,status,joined],-Modules)
+%%class_label_file([contents,+Contents,status,jointed],-Modules)
 %merge different class_label_files to generate one class_label_file.
-class_label_file([contents,Contents,preprocess,Preprocess,status,joined],Modules):-
+class_label_file([contents,Contents,preprocess,Preprocess,status,jointed],Modules):-
     length(Contents,N),N>1,
     make_psubset(Contents,C1),
     difference(Contents,C1,C2),
@@ -28,10 +28,9 @@ class_label_file([contents,Contents,preprocess,Preprocess,status,joined],Modules
     Newadd=[join_class_label_files,[contents,Contents,merge1,C1,merge2,C2]],
     append(Past_Modules, Newadd, Modules).
 /*----------------------------------------------------------------------*/
-%%class_label_file(split, -Modules)
 % split class_label_file with Contents from a class 
 %label file 
-class_label_file([contents,Contents,preprocess,Preprocess,status,split],Modules):-
+class_label_file([contents,Contents,preprocess,Preprocess,status,splited],Modules):-
     length(Contents,N),N>0,
     class_label_file([contents,C,preprocess,Preprocess,status,given],Past_Modules),
     is_subset(Contents,C),
