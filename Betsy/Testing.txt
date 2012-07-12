@@ -50,7 +50,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 11. Test convert_to_pcl_if_not_pcl module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plout 'signal_raw([contents,[a],format,pal,is_logged,unknown_logged,preprocess,unknown_preprocess,predataset,no_predataset],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plout 'signal_raw([contents,[a],format,pcl,is_logged,unknown_logged,preprocess,unknown_preprocess,predataset,no_predataset],A)'
 --------------------------------------------------
 
 12. Test log_if_not_log  module
@@ -79,7 +79,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given,is_logged,lo
 
 17. Test combat module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_norm1([contents,[a],format,pal,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dad,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,yes_combat],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_norm1([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,yes_combat],A)'
 --------------------------------------------------
 
 18. Test shiftscale module
@@ -138,7 +138,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 29. Test unlog_signal_file module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_file([contents,[a],format,pcl,is_logged,no_logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order],A)
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_file([contents,[a],format,pcl,is_logged,no_logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order],A)'
 --------------------------------------------------
 30. Test convert_platform_to_HG_U133A_if_not module
 command:

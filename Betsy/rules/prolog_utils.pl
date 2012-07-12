@@ -4,6 +4,9 @@
              [quoted(true), portray(true), max_depth(0)]).
 
 use_module(library(lists)).
+/*-------------------------------------------------------------------------*/
+% Given the Parameters,Key and Default, return the key_value in Parameters,
+% if Key not exisits,return the Default
 
 get_value(Parameters,Key,Default,Value):-
    member(Key,Parameters),
@@ -14,6 +17,8 @@ get_value(Parameters,Key,Default,Value):-
    Value=Default.
 
 /*-------------------------------------------------------------------------*/
+% Given the Parameters,Key, return the key_value in Parameters,
+% if Key not exisits, return a variable
 get_value_variable(Parameters,Key,Value):-
    member(Key,Parameters),
    nth0(N,Parameters,Key),
@@ -22,20 +27,25 @@ get_value_variable(Parameters,Key,Value):-
    not(member(Key,Parameters)),
    Value=R.
 /*-------------------------------------------------------------------------*/
+% replace the Ith item in the list with X
 replace([_|T],0,X,[X|T]). 
 replace([H|T],I,X,[H|R]):-I1 is I-1, replace(T,I1,X,R).
 
 /*-------------------------------------------------------------------------*/
+% Set the Value for Key in Parameters and newlist is NewParameters
 set_value(Parameters,Key,Value,NewParameters):-
     member(Key,Parameters),
     nth0(N,Parameters,Key),
     replace(Parameters,N+1,Value,NewParameters).
 /*-------------------------------------------------------------------------*/
+% search X from the list's kth pos and remove X from list, output is Xs
 remove_at(X,[X|Xs],1,Xs).
 remove_at(X,[Y|Xs],K,[Y|Ys]) :- K > 1, 
    K1 is K - 1, remove_at(X,Xs,K1,Ys).
 
 /*-------------------------------------------------------------------------*/
+% convert the Parameters to a full length Parameters for signal_raw, for the parameter which
+% is not specified, will assign a default value
 convert_parameters_raw(Parameters,NewParameters):-
    
     get_value(Parameters,contents,[unknown],Contents),
@@ -60,11 +70,7 @@ convert_parameters_raw(Parameters,NewParameters):-
     get_value(Parameters,filter,0,Filter),
     not(atom(Filter)),
     append(NewParameters4,[filter,Filter],NewParameters5),
-    
-    %get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
-    %(Filter_fc=no_filter_fc;not(atom(Filter_fc))),
-    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
-    
+        
     get_value(Parameters,predataset,no_predataset,Predataset),
     member(Predataset,[no_predataset,yes_predataset]),
     append(NewParameters5,[predataset,Predataset],NewParameters6),
@@ -84,6 +90,10 @@ convert_parameters_raw(Parameters,NewParameters):-
     append(NewParameters8,[rename_sample,Rename_sample],NewParameters).
 
 /*-------------------------------------------------------------------------*/
+% convert the Parameters to a full length Parameters for signal_clean, for the parameter which
+% is not specified, will assign a default value, it should logged and pcl, has_missing_value in 
+% [median_fill,zero_fill,no_missing]
+
 convert_parameters_clean_out(Parameters,NewParameters):-
     get_value(Parameters,contents,[unknown],Contents),
     append([],[contents,Contents],NewParameters0),
@@ -107,10 +117,6 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     member(Predataset,[yes_predataset,no_predataset]),
     append(NewParameters5,[predataset,Predataset],NewParameters6),
 
-    %get_value(Parameters,filter_fc,no_filter_fc,Filter_fc),
-    %(Filter_fc=no_filter_fc;not(atom(Filter_fc))),
-    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
-
     get_value_variable(Parameters,status,Status),
     member(Status,[given,created,jointed,splited]),
     append(NewParameters6,[status,Status],NewParameters7),
@@ -125,6 +131,9 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     member(Rename_sample,[yes_rename,no_rename]),
     append(NewParameters8,[rename_sample,Rename_sample],NewParameters).
 /*-----------------------------------------------*/
+% convert the Parameters to a full length Parameters for signal_raw, for the parameter which
+% is not specified, will assign a variable
+
 convert_parameters_variable_raw(Parameters,NewParameters):-
     get_value(Parameters,contents,[unknown],Contents),
     append([],[contents,Contents],NewParameters0),
@@ -149,10 +158,6 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     (member(Filter,[0,25]);not(Filter=25),not(Filter=0),not(atom(Filter))),
     append(NewParameters4,[filter,Filter],NewParameters5),
     
-    %get_value_variable(Parameters,filter_fc,Filter_fc),
-    %(member(Filter_fc,[no_filter_fc,2]);not(Filter_fc=2),not(atom(Filter_fc))),
-    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6),
-
     get_value_variable(Parameters,predataset,Predataset),
     member(Predataset,[yes_predataset,no_predataset]),
     append(NewParameters5,[predataset,Predataset],NewParameters6),
@@ -207,12 +212,6 @@ get_desire_parameters_raw(Parameters,NewParameters):-
     append(NewParameters4,[filter,Filter],NewParameters5);
     not(member(filter,Parameters)),
     NewParameters5=NewParameters4),
-    
-    %(member(filter_fc,Parameters),
-    %get_value_variable(Parameters,filter_fc,Filter_fc),
-    %append(NewParameters5,[filter_fc,Filter_fc],NewParameters6);
-    %not(member(filter_fc,Parameters)),
-    %NewParameters6=NewParameters5),
 
     (member(predataset,Parameters),
     get_value_variable(Parameters,predataset,Predataset),
@@ -235,6 +234,8 @@ get_desire_parameters_raw(Parameters,NewParameters):-
     NewParameters=NewParameters7).
 
 /*-------------------------------------------------------------------------*/
+% convert the Parameters to a full length Parameters for signal_norm1, for the parameter which
+% is not specified, will assign a variable
 convert_parameters_norm1(Parameters,NewParameters):-
     convert_parameters_variable_raw(Parameters,NewParameters1),
 
@@ -301,6 +302,8 @@ get_desire_parameters_norm1(Parameters,NewParameters):-
 
 
  /*-------------------------------------------------------------------------*/
+% convert the Parameters to a full length Parameters for signal_nomr2, for the parameter which
+% is not specified, will assign a variable
 convert_parameters_norm2(Parameters,NewParameters):-
     convert_parameters_norm1(Parameters,NewParameters1),
     
@@ -328,6 +331,9 @@ get_desire_parameters_norm2(Parameters,NewParameters):-
     not(member(gene_normalize,Parameters)),
     NewParameters=NewParameters2).
  /*-------------------------------------------------------------------------*/
+% convert the Parameters to a full length Parameters for signal_file, for the parameter which
+%  is not specified, will assign a variable, except platform,unique_genes, for this two, 
+%  will give a default value if not specified
 convert_parameters_file(Parameters,NewParameters):-
     convert_parameters_norm2(Parameters,NewParameters1),
     get_value_variable(Parameters,gene_order,Gene_Order),
@@ -365,6 +371,9 @@ get_desire_parameters_file(Parameters,NewParameters):-
     get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
     append(NewParameters3,[unique_genes,Unique_Genes],NewParameters).
  /*-------------------------------------------------------------------------*/
+% convert the Parameters to a full length Parameters for svm_predictions, for the parameter which
+% is not specified, will assign a variable,except svm_kernel,
+% it will assgin a linear as default if not specified
 convert_parameters_svm(Parameters,NewParameters):-
     convert_parameters_file(Parameters,NewParameters1),
     get_value(NewParameters1,format,unknown_format,Format),
@@ -381,7 +390,9 @@ convert_parameters_svm(Parameters,NewParameters):-
     not(member(testcontents,Parameters)),
     NewParameters=NewParameters2).
  /*-------------------------------------------------------------------------*/
-
+% convert the Parameters to a full length Parameters for classification, for the parameter which
+% is not specified, will assign a variable,except svm_kernel,
+% it will assgin a linear as default if not specified
 convert_parameters_classify(Parameters,NewParameters):-
     convert_parameters_file(Parameters,NewParameters1),
     get_value(NewParameters1,status,created,Status),
@@ -425,13 +436,16 @@ takeout(X,[X|R],R).
 takeout(X,[F|R],[F|S]):- takeout(X,R,S).
 perm([X|Y],Z):- perm(Y,W),takeout(X,Z,W).
 perm([],[]).
-/*-------------------------------------------------------------------------*/    
+/*-------------------------------------------------------------------------*/
+% store the length for signal_raw,signal_norm1,signal_norm2,signal_file    
 get_length(A,B):-
     A=n_raw, B=18;
     A=n_norm1,B=28;
     A=n_norm2,B=32;
     A=n_file,B=38.
-/*-------------------------------------------------------------------------*/  
+/*-------------------------------------------------------------------------*/ 
+% find the Keys in Parameters,return the key_value pair in Options, S is the initial output  
+
 get_options(Parameters,Keys,S,Options):-
    member(Key,Keys),
    (member(Key,Parameters),
