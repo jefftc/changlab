@@ -216,7 +216,8 @@ class Graph:
                 finish=gc.METALLIC, blob=True)
 
     def draw_tick_marks(
-        self, xtick, ytick, ztick, xtick_label, ytick_label, ztick_label,
+        self, xtick, ytick, ztick, vertical_xtick_label,
+        xtick_label, ytick_label, ztick_label,
         xtick_at, ytick_at, ztick_at, draw_grid, 
         tick_size=1.0, label_size=1.0):
         # xtick is a list of virtual units where the tickmarks should
@@ -301,7 +302,8 @@ class Graph:
                     coord[2] = self.GRAPH_Z+self.GRAPH_DEPTH-LABEL_DEPTH/2.0
                 self._plotter.text(
                     self._image, label, coord, LABEL_DEPTH, LABEL_FONTSIZE,
-                    LABEL_COLOR, center_x=True, wrong_y=wrong_y)
+                    LABEL_COLOR, center_x=True, wrong_y=wrong_y,
+                    vertical=vertical_xtick_label)
             
         for i, y_pix in enumerate(ytick_pixel):
             #coord = [y_axis_at-TICK_LENGTH/2.0, y_pix, 0]
@@ -792,17 +794,27 @@ class Graph:
             if x not in self._zstack:
                 self._zstack.append(x)
 
-    def draw_bars(self, bars, barwidth, color, shadow, width_size=1.0):
-        # height should be an integer.  0 is lowest.
+    def draw_bars(self, bars, barwidth, color, shadow,
+                  overbar_label, overbar_label_size,
+                  underbar_label, underbar_label_size,
+                  width_size=1.0):
         import math
         import graphconst as gc
+
+        assert len(overbar_label) == len(bars)
 
         DEPTH = 0.40 * self.UNIT
         HEIGHT = 0.0
         zstack = [x for x in self._zstack if x[0] != "bars"]
         if zstack:
             HEIGHT = max([z+depth for (name, z, depth) in zstack])
-            
+
+        LABEL_COLOR = 0.4, 0.4, 0.4
+        OVERBAR_LABEL_FONTSIZE = 1.0*self.UNIT*overbar_label_size
+        UNDERBAR_LABEL_FONTSIZE = 1.0*self.UNIT*overbar_label_size
+        LABEL_DEPTH = 0.1*self.UNIT
+        LABEL_SPACE = 0.1*self.UNIT   # space between bar and label
+
         if color is None:
             color = 0, 0, 0
 
@@ -823,7 +835,9 @@ class Graph:
             else:
                 #xc, yminc, ymaxc, zc = bars[i]
                 xc, ymaxc, zc, yminc = bars[i]
-            assert yminc <= ymaxc, "%g %g" % (yminc, ymaxc)
+            #assert yminc <= ymaxc, "%g %g" % (yminc, ymaxc)
+            if yminc > ymaxc:
+                yminc, ymaxc = ymaxc, yminc
             xc -= barwidth/2.0
 
             xp = self._virtx2pix(xc)
@@ -858,6 +872,32 @@ class Graph:
             finish = gc.ROUGH
             self._plotter.box(
                 self._image, coord, extent, color, finish=finish,shadow=shadow)
+
+            # Draw the label.
+            label = overbar_label[i]
+            if label:
+                yc = yp - LABEL_SPACE
+                wrong_y = True
+                if yminc < 0:  # bar is negative
+                    yc = yp + height + LABEL_SPACE
+                    wrong_y = False
+                coord = xp+width/2.0, yc, zp
+                self._plotter.text(
+                    self._image, label, coord,
+                    LABEL_DEPTH, OVERBAR_LABEL_FONTSIZE, LABEL_COLOR,
+                    center_x=True, wrong_y=wrong_y, vertical=True)
+            label = underbar_label[i]
+            if label:
+                yc = yp + height + LABEL_SPACE
+                wrong_y = False
+                if yminc < 0:  # bar is negative
+                    yc = yp - LABEL_SPACE
+                    wrong_y = True
+                coord = xp+width/2.0, yc, zp
+                self._plotter.text(
+                    self._image, label, coord,
+                    LABEL_DEPTH, UNDERBAR_LABEL_FONTSIZE, LABEL_COLOR,
+                    center_x=True, wrong_y=wrong_y, vertical=True)
 
             x = "bars", zp, DEPTH
             if x not in self._zstack:
@@ -911,7 +951,6 @@ def scatter(*args, **keywds):
     error_bar        List of error or (errlow, errhi).
                      The errors are the heights of the error bars.
     point_size       Scales the size of each point.
-
     More from _make_graph.
     
     """
@@ -1060,21 +1099,36 @@ def line(*args, **keywds):
 def bar(*args, **keywds):
     """Return the Graph object.
 
-    series1      List of the (x, y) coordinates of this set of bars.
-                 Can also be (x, y, z).
-                 Can also be (x, y, z, y_min).
-    series2      ...
-    color        List of colors, 1 for each bar (<r>,<g>,<b>) from 0-1.
-    shadow       Whether to draw a shadow.
-    width_size   Width of bar.  1.0 means bars do not overlap.
+    series1        List of the (x, y) coordinates of this set of bars.
+                   Can also be (x, y, z).
+                   Can also be (x, y, z, y_min).
+    series2        ...
+    color          List of colors, 1 for each bar (<r>,<g>,<b>) from 0-1.
+    shadow         Whether to draw a shadow.
+    width_size     Width of bar.  1.0 means bars do not overlap.
+    overbar_label  Label to draw over each bar.
+    overbar_label_size
+    underbar_label  Label to draw under each bar.
+    underbar_label_size
+    bar_label      Label for each bar.
+    bar_label_size
 
     """
-    # TODO: ERROR BAR
+    # TODO:
+    # ERROR BAR
+    # Label multiple series.
+    # detect whether xtick_label should be vertical
     color = keywds.get("color", None)
     shadow = keywds.get("shadow", None)
     width_size = keywds.get("width_size", 1.0)
     graph = keywds.get("graph", None)
     plotter = keywds.get("plotter", None)
+    bar_label = keywds.get("bar_label", None)
+    bar_label_size = keywds.get("bar_label_size", 1.0)
+    overbar_label = keywds.get("overbar_label", None)
+    overbar_label_size = keywds.get("overbar_label_size", 1.0)
+    underbar_label = keywds.get("underbar_label", None)
+    underbar_label_size = keywds.get("underbar_label_size", 1.0)
 
     # Check the inputs
     assert args, "No bars given."
@@ -1096,6 +1150,18 @@ def bar(*args, **keywds):
     color = _set_default_color(color, len(all_series))
     assert len(color) == len(all_series)
 
+    # BUG: label only applies to the first series.
+    assert "xtick" not in keywds
+    assert "xtick_label" not in keywds
+    assert "vertical_xtick_label" not in keywds
+    xtick = xtick_label = None
+    if bar_label:
+        series = all_series[0]
+        xtick = [bar[0] for bar in series]
+        xtick_label = _set_default_label(bar_label, len(all_series[0]))
+    overbar_label = _set_default_label(overbar_label, len(all_series[0]))
+    underbar_label = _set_default_label(underbar_label, len(all_series[0]))
+
     barwidth = _set_bar_width(X)
 
     if graph is None:
@@ -1104,12 +1170,18 @@ def bar(*args, **keywds):
         Z_min = Z_max = None
         if Z:
             Z_min, Z_max = min(Z), max(Z)
+        # BUG: label_size parameter is ignored.
         graph = _make_graph(
-            plotter, X_min, X_max, min(Y), max(Y), Z_min, Z_max, **keywds)
+            plotter, X_min, X_max, min(Y), max(Y), Z_min, Z_max,
+            xtick=xtick, xtick_label=xtick_label, label_size=bar_label_size,
+            vertical_xtick_label=True, **keywds)
         
     for i, series in enumerate(all_series):
         graph.draw_bars(
-            series, barwidth, color[i], shadow, width_size=width_size)
+            series, barwidth, color[i], shadow,
+            overbar_label, overbar_label_size,
+            underbar_label, underbar_label_size,
+            width_size=width_size)
 
     return graph
 
@@ -1398,6 +1470,7 @@ def _make_graph(
     xlim=None, ylim=None, zlim=None, 
     xtick=None, xtick_label=True, ytick=None, ytick_label=True,
     ztick=None, ztick_label=True,
+    vertical_xtick_label=False,
     xtick_at=None, ytick_at=None, ztick_at=None, tick_size=1.0,
     draw_x_axis=None, draw_y_axis=None, draw_z_axis=None,
     draw_box=None, 
@@ -1474,12 +1547,14 @@ def _make_graph(
     graph = Graph(plotter, width, height, xlim, ylim, zlim)
     graph.draw_axes(draw_x_axis, draw_y_axis, draw_z_axis, draw_box)
     graph.draw_tick_marks(
-        xtick, ytick, ztick, xtick_label, ytick_label, ztick_label,
+        xtick, ytick, ztick, vertical_xtick_label,
+        xtick_label, ytick_label, ztick_label,
         xtick_at, ytick_at, ztick_at, grid, tick_size=tick_size,
         label_size=label_size)
     graph.draw_title(title, title_size=title_size)
     graph.draw_labels(
-        xlabel, ylabel, zlabel, draw_x_axis, draw_y_axis, draw_z_axis,
+        xlabel, ylabel, zlabel, 
+        draw_x_axis, draw_y_axis, draw_z_axis,
         xtick_at, ytick_at, ztick_at, label_size=label_size)
     return graph
 

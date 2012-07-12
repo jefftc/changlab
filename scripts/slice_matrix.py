@@ -326,8 +326,19 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
+    ext = os.path.splitext(filename)[1].lower()
     for x in genesetlib.read_genesets(filename, allow_tdf=True):
         geneset, description, genes = x
+
+        # Bug: sometimes will mis-identify TDF files as GMX.  The
+        # first row will be interpreted as a description instead of a
+        # gene (or annotation).  If the extension of the file isn't
+        # gmx or gmt, then assume it's some sort of tdf file.
+        #if not genesetlib._is_known_desc(description) and \
+        #       ext not in [".gmx", ".gmt"]:
+        if ext not in [".gmx", ".gmt"]:
+            genes = [description] + genes
+            
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
         all_genes.append(genes)
