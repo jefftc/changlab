@@ -71,7 +71,7 @@ gpr_files([contents,Contents,version,unknown_version], Modules):-
     gse_id_and_platform([contents,Contents],[]),
     % Module:download_geo_dataset_GPL
     % Output parameters:[contents,Contents,version,unknown_version,filetype,gpr_files]
-    Newadd=['download_geo_dataset_GPL',[contents,Contents,version,unknown_version,filetype,gpr_files]]
+    Newadd=[download_geo_dataset_GPL,[contents,Contents,version,unknown_version,filetype,gpr_files]]
      ),
     append( [],Newadd,Modules).
 /*-------------------------------------------------------------------------*/
@@ -324,7 +324,7 @@ signal_raw(Parameters,Modules):-
     Predataset=yes_predataset,
     % Input: signal_raw with no_predataset,unknown_logged or no_logged,pcl and different status
     member(OldStatus,[given,created,jointed,splited]),
-    OldPredataset=no_predataset,unknown_logged or no_logged,pcl and different status
+    OldPredataset=no_predataset,
     set_value(Parameters,predataset,OldPredataset,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
