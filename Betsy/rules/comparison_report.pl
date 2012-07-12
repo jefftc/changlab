@@ -1,5 +1,6 @@
 /*comparison_report.pl*/
 
+% Determine if the First is before the Second in Modules
 comes_before(Modules,First,Second):-
     not(Second=none),
     nth0(N,Modules,First),
@@ -8,6 +9,7 @@ comes_before(Modules,First,Second):-
     Second=none,
     member(First,Modules).
 /*-------------------------------------------------------------------*/
+% 
 make_batch_report(Parameters,Modules):-
     member((Options,First,Second),[([quantile,yes_quantile,dwd,no_dwd,combat,no_combat,bfrm,no_bfrm,shiftscale,no_shiftscale],quantile,none),
 ([quantile,yes_quantile,dwd,yes_dwd,combat,no_combat,bfrm,no_bfrm,shiftscale,no_shiftscale],quantile,dwd),

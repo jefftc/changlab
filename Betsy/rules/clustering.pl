@@ -1,12 +1,8 @@
 /*clustering.pl*/
 :- dynamic cluster_file/2.
-/*file type
-cluster_file(Parameters,Modules)
-cluster_heatmap(Parameters,Modules)
-class_neighbors(Parameters,Modules)
-*/
-%output interface
 
+
+%convert the Parameters to a full length version
 convert_cluster_parameters(Parameters,NewParameters):-
     convert_parameters_file(Parameters,NewParameters0),
     get_value_variable(Parameters,cluster_alg,Cluster_Alg),
@@ -19,18 +15,20 @@ convert_cluster_parameters(Parameters,NewParameters):-
     not(atom(K)),
     append(NewParameters2,[k,K],NewParameters).
 
-
-    
  /*-------------------------------------------------------------------------*/
 % generate the cluster_file from signal_file with format pcl.    
 cluster_file(Parameters,Modules):-
      convert_cluster_parameters(Parameters,NewParameters),
+     % Conditions: pcl,logged,
      get_value(NewParameters,format,unknown_format,Format),
      Format=pcl,
      get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
      Is_Logged=logged,
+     % Input: signal_file
      convert_parameters_file(NewParameters,NewParameters1),
      signal_file(NewParameters1,Past_Modules),
+     % Module:clustering
+     % Output parameters: update parameters to full length
      Newadd = [clustering,NewParameters],
      append(Past_Modules,Newadd,Modules).
 
@@ -38,8 +36,11 @@ cluster_file(Parameters,Modules):-
 
 % generate the cluster_heatmap from cluster_file
 cluster_heatmap(Parameters,Modules):-
+    % Conditions: cluster_alg not no_cluster_alg
     (convert_cluster_parameters(Parameters,NewParameters1),
+    % Input: cluster_file
     cluster_file(NewParameters1,Past_Modules);
+    % Conditions: if no_cluster_alg, pcl,logged
     get_value_variable(Parameters,cluster_alg,Cluster_Alg),
     Cluster_Alg=no_cluster_alg,
     convert_parameters_file(Parameters,NewParameters),
@@ -47,11 +48,14 @@ cluster_heatmap(Parameters,Modules):-
     Format=pcl,
     get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
+    % Input: signal_file
     signal_file(NewParameters,Past_Modules),
     append(NewParameters,[cluster_alg,
           no_cluster_alg],NewParameters1)),
+    % Output parameters: update parameters to full length and includes options
     get_options(Parameters,[hm_width,hm_height,color],[],Options),
     append(NewParameters1,Options,NewParameters2),
+    % Module: make_heatmap
     Newadd = [make_heatmap,NewParameters2],
     append(Past_Modules,Newadd,Modules).
 
