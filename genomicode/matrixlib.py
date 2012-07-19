@@ -15,8 +15,8 @@ align_cols_to_many_annots
 
 find_row_header            Find the row header that contains specified annots.
 find_col_header            Find the col header that contains specified annots.
-best_row_header
-best_col_header
+find_best_row_header
+find_best_col_header
 
 read_matrices
 merge_matrices
@@ -374,20 +374,20 @@ def find_row_header(MATRIX, row_names, hash=False):
     # Find the column (row header) from the MATRIX that contains all
     # the row_names.  If multiple headers match, then just return the
     # first one.  If none match, return None.
-    x = best_row_header(MATRIX, row_names, hash=hash)
-    header, num_matches, missing = x
+    x = find_best_row_header(MATRIX, row_names, hash=hash)
+    header, num_matches, found, missing = x
     if num_matches == len(row_names):
         return header
     return None
 
 def find_col_header(MATRIX, col_names, hash=False):
     x = best_col_header(MATRIX, col_names, hash=hash)
-    header, num_matches, missing = x
+    header, num_matches, found, missing = x
     if num_matches == len(col_names):
         return header
     return None
 
-def _best_header(MATRIX, names, hash, is_row):
+def _find_best_header(MATRIX, names, hash, is_row):
     import hashlib
 
     get_names = MATRIX.row_names
@@ -400,7 +400,8 @@ def _best_header(MATRIX, names, hash, is_row):
         h_names = [hashlib.hash_R(x) for x in names]
 
     # Count the number of names that are found in each header.
-    header2missing = {}    # header -> list of names not found
+    header2found = {}    # header -> list of names found
+    header2missing = {}  # header -> list of names not found
     for header in get_names():
         matrix_names = get_names(header)
         h_matrix_names = matrix_names
@@ -408,29 +409,33 @@ def _best_header(MATRIX, names, hash, is_row):
             h_matrix_names = [hashlib.hash_R(x) for x in matrix_names]
         h_matrix_names = {}.fromkeys(h_matrix_names)
 
-        missing = [x for x in h_names if x not in h_matrix_names]
-        header2missing[header] = missing
+        x1 = [x for x in h_names if x in h_matrix_names]
+        x2 = [x for x in h_names if x not in h_matrix_names]
+        header2found[header] = x1
+        header2missing[header] = x2
 
     # Find the best match.
-    best_match = best_num_missing = missing = None
+    best_header = best_found = best_num_missing = missing = None
     for header in get_names():
+        found = header2found[header]
         missing = header2missing[header]
         num_missing = len(missing)
-        if best_match is None or num_missing < best_num_missing:
-            best_match = header
+        if best_header is None or num_missing < best_num_missing:
+            best_header = header
+            best_found = found
             best_num_missing = num_missing
             best_missing = missing
-    return best_match, len(names)-best_num_missing, best_missing
+    return best_header, len(names)-best_num_missing, best_found, best_missing
 
-def best_row_header(MATRIX, row_names, hash=False):
+def find_best_row_header(MATRIX, row_names, hash=False):
     # Find the column (row header) from the MATRIX that contains the
     # most row_names.  If multiple headers match the same number, then
     # just return the first one.  Return a tuple of (header,
-    # num_matches, list of mismatches).
-    return _best_header(MATRIX, row_names, hash, True)
+    # num_matches, list of matches, list of mismatches).
+    return _find_best_header(MATRIX, row_names, hash, True)
 
-def best_col_header(MATRIX, col_names, hash=False):
-    return _best_header(MATRIX, col_names, hash, False)
+def find_best_col_header(MATRIX, col_names, hash=False):
+    return _find_best_header(MATRIX, col_names, hash, False)
 
 def read_matrices(filenames, cache=None):
     """Read a list of matrices and align them.  filenames is a list of
