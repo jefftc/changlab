@@ -195,9 +195,10 @@ def yahoo_weather_colors(n):
 def rgb2hex(c):
     # red, green, blue values from 0-1.
     r, g, b = c
-    assert type(r) is type(0.0)
-    assert type(g) is type(0.0)
-    assert type(b) is type(0.0)
+    NUMERIC_TYPE = [type(0.0), type(0)]
+    assert type(r) in NUMERIC_TYPE
+    assert type(g) in NUMERIC_TYPE
+    assert type(b) in NUMERIC_TYPE
     r, g, b = int(r*255), int(g*255), int(b*255)
     assert r >= 0 and r < 256
     assert g >= 0 and g < 256
