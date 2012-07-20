@@ -14,13 +14,13 @@ find_many_genes_detailed
 # TODO:
 # fuzzy match of gene names
 
-def find_gene(name):
+def find_gene(name, tax_id=None):
     # Return gene_id, symbol, name, tax_id, organism, name_from_query
     # or None.  If name is a RefSeq ID, be sure there is no version
     # number.  E.g. "NP_000680.2" won't be found, but "NP_000680"
     # will.
     orig_name = name
-    x = find_many_genes([name])
+    x = find_many_genes([name], tax_id=tax_id)
     assert len(x) == 1
     num_matches, gene_id, symbol, name, tax_id, organism, name_from_query =x[0]
     if num_matches == 0:
@@ -52,18 +52,18 @@ def find_gene(name):
 ##             results += 1
 ##     return results
     
-def find_gene_detailed(name):
+def find_gene_detailed(name, tax_id=None):
     # Return list of gene_id, symbol, name, tax_id, organism,
     # name_from_query, source_db, name_in_db.
-    return find_many_genes_detailed([name])
+    return find_many_genes_detailed([name], tax_id=tax_id)
 
-def find_many_genes(genes):
+def find_many_genes(genes, tax_id=None):
     # Return list of (num_matches, gene_id, symbol, name, tax_id,
     # organism, name_from_query) that is parallel to genes.  If there
     # are no matches or multiple matches, values (other than
     # num_matches and name_from_query) are set to None.
     
-    x = find_many_genes_detailed(genes)
+    x = find_many_genes_detailed(genes, tax_id=tax_id)
     results = [(x[0], x[1], x[2], x[3], x[4], x[5]) for x in x]
     results.sort()
     # No duplicates.
@@ -92,7 +92,7 @@ def find_many_genes(genes):
         clean.append(x)
     return clean
 
-def find_many_genes_detailed(genes):
+def find_many_genes_detailed(genes, tax_id=None):
     # Return list of gene_id, symbol, name, tax_id, organism,
     #   name_from_query, source_db, name_in_db.
     # May not be in the same order as the query.
@@ -172,6 +172,11 @@ def find_many_genes_detailed(genes):
             x = gene_id, symbol, name, tax_id, organism, name_from_query, \
                 source_db, name_in_db
             clean.append(x)
+
+    # If tax_id is given, then only return hits from that tax_id.
+    if tax_id:
+        clean = [x for x in clean if x[3] == tax_id]
+            
     return clean
 
 def _lookup_gene(id):
