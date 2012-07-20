@@ -23,6 +23,7 @@
 # find_row_annotation
 # find_row_numeric_annotation
 # find_row_mean_var
+# dedup_row_by_var
 # 
 # align_rows
 # align_cols
@@ -33,6 +34,10 @@
 # rename_row_annot
 # move_row_annot
 #
+# center_genes_mean
+# center_genes_median
+# normalize_genes_var
+# 
 # _match_rownames_to_geneset       DEPRECATED
 # _match_colnames_to_geneset       DEPRECATED
 # _best_match_colnames_to_geneset  DEPRECATED
@@ -326,8 +331,19 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
+    ext = os.path.splitext(filename)[1].lower()
     for x in genesetlib.read_genesets(filename, allow_tdf=True):
         geneset, description, genes = x
+
+        # Bug: sometimes will mis-identify TDF files as GMX.  The
+        # first row will be interpreted as a description instead of a
+        # gene (or annotation).  If the extension of the file isn't
+        # gmx or gmt, then assume it's some sort of tdf file.
+        #if not genesetlib._is_known_desc(description) and \
+        #       ext not in [".gmx", ".gmt"]:
+        if ext not in [".gmx", ".gmt"]:
+            genes = [description] + genes
+            
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
         all_genes.append(genes)
@@ -521,6 +537,37 @@ def find_row_mean_var(MATRIX, filter_mean, filter_var):
         # Calculate the number of genes to keep.
         num_genes_var = int((1.0 - filter_var) * nrow)
     I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+    return I
+
+def dedup_row_by_var(MATRIX, header):
+    from genomicode import jmath
+    if not header:
+        return None
+
+    assert header in MATRIX.row_names(), "Missing header: %s" % header
+
+    annots = MATRIX.row_names(header)
+    annot2i = {}  # annotation -> list of indexes
+    for i, annot in enumerate(annots):
+        if annot not in annot2i:
+            annot2i[annot] = []
+        annot2i[annot].append(i)
+
+    vars = jmath.var(MATRIX._X)
+
+    I = []
+    for annot, indexes in annot2i.iteritems():
+        if len(indexes) == 1:
+            I.append(indexes[0])
+            continue
+        max_var = max_i = None
+        for i in indexes:
+            if max_var is None or vars[i] > max_var:
+                max_var = vars[i]
+                max_i = i
+        assert max_i is not None
+        I.append(max_i)
+    I.sort()
     return I
 
 def align_rows(MATRIX, align_row_file, ignore_missing_rows):
@@ -746,6 +793,45 @@ def move_row_annot(MATRIX, move_row_annot):
     MATRIX_clean._row_order = order
     return MATRIX_clean
 
+def center_genes_mean(MATRIX):
+    from genomicode import jmath
+
+    # Center the genes in place.
+    X = MATRIX._X
+    for i in range(len(X)):
+        # Subtract the mean.
+        X_i = X[i]
+        m = jmath.mean(X_i)
+        X[i] = [x-m for x in X_i]
+
+def center_genes_median(MATRIX):
+    from genomicode import jmath
+
+    # Center the genes in place.
+    X = MATRIX._X
+    for i in range(len(X)):
+        # Subtract the median.
+        X_i = X[i]
+        m = jmath.median(X_i)
+        X[i] = [x-m for x in X_i]
+
+def normalize_genes_var(MATRIX):
+    from genomicode import jmath
+
+    # Normalize the genes in place.
+    X = MATRIX._X
+    for i in range(len(X)):
+        X_i = X[i]
+        m = jmath.mean(X_i)
+        # Subtract the mean.
+        X_i = [x-m for x in X_i]
+        # Normalize to stddev of 1.
+        s = jmath.stddev(X_i)
+        if s != 0:
+            X_i = [x/s for x in X_i]
+        # Add the mean back.
+        X_i = [x+m for x in X_i]
+        X[i] = X_i
 
 ## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
 ##     # Return tuple of (I_matrix, I_geneset) or None if no match can be
@@ -986,6 +1072,14 @@ def main():
         "-q", "--quantile", dest="quantile", action="store_true",
         default=False,
         help="Quantile normalize the data.")
+    parser.add_argument(
+        "--gc", "--gene_center", dest="gene_center", default=None, 
+        choices=["mean", "median"], 
+        help="Center each gene by: mean, median.")
+    parser.add_argument(
+        "--gn", "--gene_normalize", dest="gene_normalize", default=None,
+        choices=["ss", "var"], 
+        help="Normalize each gene by: ss (sum of squares), var (variance).")
 
     group = parser.add_argument_group(title="Column operations")
     group.add_argument(
@@ -1047,6 +1141,11 @@ def main():
         "--select_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
+    group.add_argument(
+        "--dedup_row_by_var", default=None,
+        help="If multiple rows have the same annotation, select the one "
+        "with the highest variance.  The value of this parameter should "
+        "be the header of the column that contains duplicate annotations.")
     group.add_argument(
         "--filter_row_mean", default=None,
         help="Remove this percentage of rows that have the lowest mean.  "
@@ -1159,6 +1258,22 @@ def main():
     # Quantile normalize, if requested.
     if args.quantile:
         MATRIX = quantnorm.normalize(MATRIX)
+
+    # This has to happen before any normalization by variance, but
+    # after logging and quantile normalization.
+    I = dedup_row_by_var(MATRIX, args.dedup_row_by_var)
+    MATRIX = MATRIX.matrix(I, None)
+
+    # Preprocess the expression values.
+    if args.gene_center == "mean":
+        center_genes_mean(MATRIX)
+    elif args.gene_center == "median":
+        center_genes_median(MATRIX)
+
+    if args.gene_normalize == "ss":
+        raise NotImplementedError
+    elif args.gene_normalize == "var":
+        normalize_genes_var(MATRIX)
 
     # Write the outfile (in the same format).
     handle = sys.stdout
