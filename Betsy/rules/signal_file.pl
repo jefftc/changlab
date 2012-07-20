@@ -41,13 +41,21 @@ signal_file(Parameters,Modules):-
 % rank genes by sample_ttest
 signal_file(Parameters,Modules):-
     % Conditions:Parameters has created,pcl,gene_order in [t_test_p,t_test_fdr]
+    %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
     Format=pcl,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes=no_unique_genes,
+    get_value(Parameters,is_logged,unknown_logged,Is_logged),
+    Is_logged=logged,
     get_value(Parameters,gene_order,no_order,Gene_Order),
     member(Gene_Order,[t_test_p,t_test_fdr]),
     % Input: class_label_file and signal_file with no_order,pcl,different status
+    %    unknown_platform,no_unique_genes and logged
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
@@ -65,13 +73,21 @@ signal_file(Parameters,Modules):-
 %rank genes by class_neighbors
 signal_file(Parameters,Modules):-
     % Conditions: Parameters has created,pcl,by_class_neighbors
+    %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
     Format=pcl,
     get_value(Parameters,gene_order,no_order,Gene_Order),
     Gene_Order=by_class_neighbors,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes=no_unique_genes,
+    get_value(Parameters,is_logged,unknown_logged,Is_logged),
+    Is_logged=logged,
     % Input: class_label_file and signal_file with pcl,no_order and different status
+    %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
@@ -91,13 +107,21 @@ signal_file(Parameters,Modules):-
 
 signal_file(Parameters,Modules):-
     % Conditions:Parameters has created,by_gene_list,pcl
+    %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
     Format=pcl,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes=no_unique_genes,
+    get_value(Parameters,is_logged,unknown_logged,Is_logged),
+    Is_logged=logged,
     get_value(Parameters,gene_order,no_order,Gene_Order),
     Gene_Order=by_gene_list,
     % Input: gene_list_file and signal_file with created,pcl,no_order
+    %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,contents,[unknown],Contents),
     gene_list_file([contents,Contents],[]),
     OldGene_Order=no_order,
@@ -152,7 +176,8 @@ signal_file(Parameters,Modules):-
 /*---------------------------------------------------------------*/
 %algin train signal file and test signal file
 signal_file(Parameters,Modules):-
-    % Conditions: Parameters has traincontents,testcontents,pcl,created
+    % Conditions: Parameters has traincontents,testcontents,pcl,
+    %     created,logged,unknown_platform
     member(traincontents,Parameters),
     member(testcontents,Parameters),
     get_value(Parameters,traincontents,[unknown],TrainContents),
@@ -162,8 +187,13 @@ signal_file(Parameters,Modules):-
     Format=pcl,
     get_value(NewParameters,status,created,Status),
     Status=created,
-    % Input: signal_file with traincontents,pcl,different status and 
-    %   signal_file with testcontents,pcl,different status
+    get_value(NewParameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(NewParameters,is_logged,unknown_logged,Is_logged),
+    Is_logged=logged,
+    % Input: signal_file with traincontents,pcl,different status,
+    %     logged,unknown_platform and  signal_file with testcontents,pcl,
+    %     different status,logged,unknown_platform
     member(OldStatus1,[given,jointed,splited,created]),
     member(OldStatus2,[given,jointed,splited,created]),
     set_value(NewParameters,status,OldStatus1,Parameters1),
