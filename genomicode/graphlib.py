@@ -1562,7 +1562,7 @@ def _set_default_color(color, n):
     # Return an n-length list of colors.
     # 
     # As input, the possible values for color are:
-    # (r, g, b)    Use this color for everything.
+    # (r, g, b)    Use this color for everything.  color from 0-1.
     # True         Use a default color scheme.
     # <function>   Use the function to generate a color scheme.
     # <false>      Everything is black (no color).
@@ -1581,16 +1581,36 @@ def _set_default_color(color, n):
         color = color(n)
     if not color:
         color = None
+        
     # At this point, color can be:
-    # None, (r, g, b), or [(r, g, b), ...]
-    assert color is None or operator.isSequenceType(color)
-    # Distinguish between (0, 0, 0) and [(0, 0, 0), (0, 0, 0), (0, 0, 0)]
-    if color is None or not operator.isSequenceType(color[0]):
+    # 1.  None                                  None
+    # 2.  (r, g, b)                             Color
+    # 3.  [(r, g, b), ...]                      Sequence of colors.
+    # 4.  [None, None, (r, g, b), None, ...]    Mix of None and colors.
+    # 5.  [None, None, None, None]
+
+    isnum = operator.isNumberType
+
+    # Case 1: Convert None to list of black.
+    if color is None:
+        color = [(0, 0, 0)] * n
+    # Case 2: Convert to list.
+    if len(color) == 3 and \
+           isnum(color[0]) and isnum(color[1]) and isnum(color[2]):
         color = [color] * n
-    for c in color:
-        assert c is None or len(c) == 3, "Does not look like color: %s" %str(c)
+    # Case 4, 5: Convert None to black.
+    if operator.isSequenceType(color):
+        for i in range(len(color)):
+            if color[i] is None:
+                color[i] = (0, 0, 0)
+
+    # At this point, color should be list of (r, g, b).
     assert len(color) == n, "You specified %d colors, but I expected %d." % (
         len(color), n)
+    for c in color:
+        assert len(c) == 3, "Does not look like color: %s" % str(c)
+        assert isnum(c[0]) and isnum(c[1]) and isnum(c[2]), \
+               "Does not look like color: %s" % str(c)        
     return color
 
 def _set_default_shape(shape, n):

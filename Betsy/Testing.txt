@@ -1,4 +1,102 @@
+<<<<<<< HEAD
+Comments:
+--plin: the input file
+     *gse_id([contents,[Contents],[])  
+     *gse_id_and_platform([contents,[Contents]],[])
+     *cel_file([contents,[Contents],version,Version],[])  #Version can be [unknown_version,cc,v3_4]
+     *agilent_files([contents,[Contents],version,Version],[]) # Version can be [unknown_version,agilent]
+     *idat_files([contents,[Contents],version,Version],[])  #Version can be [unknown_version,illumina]
+     *gpr_file([contents,[Contents],version,Version],[])  #Version can be [unknown_version,gpr]
+     *input_signal_file([contents,[Contents],status,given],[])
+     *input_signal_file([contents,[Contents],status,given,is_logged,logged],[])
+     *class_label_file([contents,[Contents],status,given],[])
+     *rename_list_file([contents,[Contents]],[])
+--------------------------------------------------     
+--plout: the output file
+    *cel_files([contents,[Contents],version,Version],A) #Version can be [unknown_version,cc,v3_4]
+    *agilent_files([contents,[Contents],version,Version],A)  #Version can be [unknown_version,agilent]
+    *idat_files([contents,[Contents],version,Version],A)   #Version can be [unknown_version,illumina]
+    *gpr_file([contents,[Contents],version,Version],A)  #Version can be [unknown_version,gpr]
+    *signal_raw([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,has_missing_value,Has_missing_value,rename_sample,Rename,predataset,Predataset,filter,Filter],A)
+       #Format can be [jeffs,tdf,gct,pcl,unknown_format]
+       #Is_logged can be[unknown_logged,logged,no_logged]
+       #Preprocess  can be [rma,mas5,gpr,illumina,agilent,unknown_preprocess]
+       # Has_missing_value can be [no_missing,unknown_missing,zero_fill,median_fill]
+       # Rename can be [yes_rename,no_rename]
+       # Predataset can be [no_predataset,yes_predataset]
+       # Filter can be any integer between 0 and 100
+     *control_file([contents,[Contents],format,gct,is_logged,no_logged,preprocess,illumina,predataset,no_predataset],A)
+     *signal_norm1([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat],A)
+       # other parameters are the same as in signal_raw
+       # Quantile can be [yes_quantile,no_quantile]
+       # Dwd can be [yes_dwd,no_dwd]
+       # Bfrm can be [yes_bfrm,no_bfrm]
+       # Shiftscale can be [yes_shiftscale,no_shiftscale]
+       # Combat can be [yes_combat,no_combat]
+     *signal_norm2([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize],A)
+         # other parameters are the same as in signal_norm1
+         # Gene_Center can be [mean,median]
+         # Gene_Normalize can be [variance,sum_of_squares]
+     *gene_list_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Ppreprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)        # Gene_Order can be [by_class_neighbors,t_test_p,t_test_fdr]
+         # other parameters are the same as in siganl_norm2
+     *signal_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,unique_genes,Unique_Genes,platform,Platform],A)
+        # Unique_Genes can be [average_genes,high_var,first_gene]
+        # Platfrom can be ['HG_U133A',unknown_platform]
+        # other parameters are the same as in gene_list_file
+    *cluster_file([cluster_alg,Cluster_alg,k,K,contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,distance,Distance],A)'
+       # Cluster_alg can be [som,pca,kmeans,hierarchical]
+       # K can be any integer
+       # Distance can be [euclidean,correlation]
+       # other parameters are the same as in gene_list_file
+   *cluster_heatmap([cluster_alg,Cluster_alg,k,K,contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,distance,Distance,hm_width,Hm_width,hm_height,Hm_height],A)
+       # Hm_width can be any integer
+       # Hm_height can be any integer
+       # other parameters are the same as in gene_list_file
+    * gsea([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)   
+       # parameters are the same as in gene_list_file
+    * pca_plot_in([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value],A)
+       # parameters are the same as in signal_raw
+    * intensity_plot([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)
+    # parameters are the same as in signal_file
+    * actb_plot([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value],A)
+       # parameters are the same as in control_file
+    * biotin_plot([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value],A)
+       # parameters are the same as in control_file
+    * hyb_bar_plot([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value],A)
+       # parameters are the same as in control_file
+    * class_label_file([contents,[Contents],preprocess,Preprocess,status,Status],A)
+       # Preprocess can be [rma,mas5,illumina,unknown_preprocess,gpr,loess,agilent]
+       # Status can be [jointed,splited,created]
+    * signal_clean([contents,[Contents],format,pcl,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value],A)
+       # Has_missing_value can be [zero_fill,median_fill,no_missing]
+       # Preprocess can be [yes_preprocess,no_preprocess]
+       # Predataset can be [yes_predataset,no_predataset]
+   *signature_score([contents,[Contents],format,pcl,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,rename_sample,Rename,platform,'HG_U133A'],A)
+    # Preprocess can be [rma,mas5,illumina]
+    # other parameters are the same as in signal_file
+    *differential_expressed_genes([contents,[a],format,pcl,is_logged,logged,preprocess,Preprocesss,predataset,Predataset,has_missing_value,Has_missing_value,diff_expr,Diff_expr,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)
+      # Diff_expr can be [sam,t_test]
+      # other parameters are the same as in signal_file
+   * signal_file([format,pcl,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,traincontents,[Contents1],testcontents,[Contenets2]],A)
+      # parameters are the same as in signal_file
+    *svm_model([format,pcl,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,traincontents,[contents1],testcontents,[Content2],svm_kernel,Svm_kernel],A)
+   #svm_kernel can be [linear,polynomial,rbf,sigmoid,precomputed_kernel]
+      # other parameters are the same as in signal_file
+   * svm_predictions([format,pcl,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,traincontents,[Contents1],testcontents,[Contents2],svm_kernel,Svm_kernel],A)
+       # other parameters are the same as in svm_model
+    *weightedVoting([format,gct,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,traincontents,[Contents1],testcontents,[Contents2]],A)
+       # parameters are the same as in signal_file
+    *prediction_plot([format,pcl,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,traincontents,[Contents1],testcontents,[Contents2],class_plot,Classification],A)
+       # Classification can be [svm,weightedvoting,loocv]
+       # parameters are the same as in signal_file
+    *loocv([format,pcl,is_logged,logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,traincontents,[Contents],classification,Classification],A)
+       # Classification can be [svm,weightedvoting]
+       # parameters are the same as in signal_file
+--------------------------------------------------
+1.Test download_geo_dataset module
+=======
 1.Test download_geo_dataset_GPL module
+>>>>>>> a28b8e4a09c20c623e5321ef81cffaccaf7b15f8
 command:
 rule_engine.py --plin 'gse_id([contents,[a]],[])' --id 'GSE8286' --plout 'cel_files([contents,[a],version,unknown_version],A)' 
 --------------------------------------------------
