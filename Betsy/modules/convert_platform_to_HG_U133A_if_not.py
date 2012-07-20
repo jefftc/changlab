@@ -4,9 +4,14 @@ import os
 import module_utils
 import subprocess
 import Betsy_config
+<<<<<<< HEAD
 from genomicode import arrayannot,jmath,Matrix
 import shutil
 import arrayio
+=======
+from genomicode import arrayannot
+import shutil
+>>>>>>> a28b8e4a09c20c623e5321ef81cffaccaf7b15f8
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -21,6 +26,7 @@ def run(parameters,objects,pipeline):
         f = file(outfile,'w')
         arrayio.tab_delimited_format.write(M_new,f)
         f.close()
+<<<<<<< HEAD
     elif not attributes:
         if chipname1 in ['HumanHT-12']:
             mapfile = Betsy_config.MAPPING
@@ -47,6 +53,12 @@ def run(parameters,objects,pipeline):
                 shutil.copyfile(single_object.identifier,outfile)
         else:
             raise ValueError('we cannot convert the platform you input to HG_U133A')
+=======
+    elif parameters['preprocess'] in ['mas5','rma']:
+        shutil.copyfile(single_object.identifier,outfile)
+    else:
+        raise ValueError('we cannot convert the platform you input to HG_U133A')
+>>>>>>> a28b8e4a09c20c623e5321ef81cffaccaf7b15f8
     assert module_utils.exists_nz(outfile),'the output file %s\
                                             for convert_platform fails'%outfile
     new_objects = get_newobjects(parameters,objects,pipeline)

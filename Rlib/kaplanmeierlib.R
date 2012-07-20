@@ -75,8 +75,9 @@ write.km.prism <- function(filename, survival1, dead1, survival2, dead2) {
   b.value <- c(rep("", length(dead1)), dead2)
   c.value <- dead
   data.out <- cbind(x.value, a.value, b.value, c.value)
+  colnames(data.out) <- c("Survival", "Class-1", "Class-2", "Both")
   write.table(data.out, filename, quote=FALSE, sep="\t",
-    row.names=FALSE, col.names=FALSE)
+    row.names=FALSE, col.names=TRUE)
 }
 
 calc.km.curve <- function(survival, dead) {

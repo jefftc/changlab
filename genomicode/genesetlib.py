@@ -154,7 +154,8 @@ def read_genesets(filename, allow_tdf=False):
     elif allow_tdf:
         read_fn = read_tdf
     else:
-        raise AssertionError, "I could not figure out the format of: %s" % \
+        raise AssertionError, \
+              "I could not figure out the format of geneset file: %s" % \
            filename
 
     # Read the geneset file.
