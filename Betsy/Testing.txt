@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 Comments:
 --plin: the input file
      *gse_id([contents,[Contents],[])  
@@ -93,10 +93,8 @@ Comments:
        # Classification can be [svm,weightedvoting]
        # parameters are the same as in signal_file
 --------------------------------------------------
-1.Test download_geo_dataset module
-=======
 1.Test download_geo_dataset_GPL module
->>>>>>> a28b8e4a09c20c623e5321ef81cffaccaf7b15f8
+
 command:
 rule_engine.py --plin 'gse_id([contents,[a]],[])' --id 'GSE8286' --plout 'cel_files([contents,[a],version,unknown_version],A)' 
 --------------------------------------------------
