@@ -751,7 +751,9 @@ def rename_row_annot(MATRIX, row_annot):
     x = row_annot.split(",", 1)
     old_name, new_name = x
     assert old_name in MATRIX.row_names(), \
-        "I could not find name: %s" % old_name
+           "I could not find name: %s" % old_name
+    assert new_name not in MATRIX.row_names(), \
+           "Row name %s already exists." % new_name
     
     MATRIX_clean = MATRIX.matrix()
     Mc = MATRIX_clean
@@ -1283,4 +1285,6 @@ def main():
     
 
 if __name__ == '__main__':
+    #import cProfile as profile
+    #profile.runctx("main()", globals(), locals())
     main()

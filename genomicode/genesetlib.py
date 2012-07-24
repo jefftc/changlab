@@ -10,6 +10,8 @@ detect_format
 
 """
 
+# Optimization: call _is_known_desc less.
+
 def read_gmx(filename, preserve_spaces=False):
     # yield name, description, list of genes
     import StringIO

@@ -24,6 +24,8 @@ merge_gct_matrices
 
 """
 
+# Optimization: call hash_R less
+
 def align_rows(*matrices):
     """Aligns matrices by ROW_ID.  Return a list of the matrices after
     the rows are aligned.  Raises an exception if no rows are common
@@ -317,8 +319,10 @@ def _align_header_to_annot_I(MATRIX, names, header, hash, is_row):
     h_names = names
     h_matrix_names = matrix_names
     if hash:
-        h_names = [hashlib.hash_R(x) for x in names]
-        h_matrix_names = [hashlib.hash_R(x) for x in matrix_names]
+        #h_names = [hashlib.hash_R(x) for x in names]
+        #h_matrix_names = [hashlib.hash_R(x) for x in matrix_names]
+        h_names = hashlib.hash_R_many(names)
+        h_matrix_names = hashlib.hash_R_many(matrix_names)
     
     I_names = jmath.match(h_matrix_names, h_names)
     I_MATRIX = []
@@ -397,7 +401,8 @@ def _find_best_header(MATRIX, names, hash, is_row):
     h_names = names
     if hash:
         # Hash the names for comparison.
-        h_names = [hashlib.hash_R(x) for x in names]
+        #h_names = [hashlib.hash_R(x) for x in names]
+        h_names = hashlib.hash_R_many(names)
 
     # Count the number of names that are found in each header.
     header2found = {}    # header -> list of names found

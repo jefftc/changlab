@@ -2,6 +2,7 @@
 
 Functions:
 hash_R               Hash a string using the R algorithm for list names.
+hash_R_many
 hash_var             Hash a string to an acceptable variable name.
 hash_geneid          Lowercase, no spaces at the end.
 hash_sampleid        Lowercase, no punctuation (except _), no initial X.
@@ -11,17 +12,37 @@ hash_many_sampleids
 
 """
 
+RE_NONWORD = RE_PUNCTUATION = None
+    
 def hash_R(s):
     # Hash a string using the R algorithm for list names.
+    global RE_NONWORD
+    global RE_PUNCTUATION
+
     import re
+
+    if RE_NONWORD is None:
+        RE_NONWORD = re.compile(r"[^a-zA-Z]")
+        RE_PUNCTUATION = re.compile(r"\W")
 
     #s_orig = s
     # If the string starts with a non word character, prepend an "X".
-    if re.match(r"[^a-zA-Z]", s):
+    if RE_NONWORD.match(s):
         s = "X%s" % s
     # Convert all punctuation (except for _) to ".".
-    s = re.sub(r"\W", ".", s)
+    s = RE_PUNCTUATION.sub(".", s)
     return s
+
+def hash_R_many(names):
+    hash_R("")   # make sure global variables are set
+
+    hashed = [None] * len(names)
+    for i, s in enumerate(names):
+        if RE_NONWORD.match(s):
+            s = "X%s" % s
+        s = RE_PUNCTUATION.sub(".", s)
+        hashed[i] = s
+    return hashed
 
 def hash_var(name):
     import re
