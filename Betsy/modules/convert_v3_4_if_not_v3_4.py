@@ -12,13 +12,19 @@ def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     filenames = os.listdir(single_object.identifier)
-    os.mkdir(outfile)
+    if not os.path.exists(outfile):
+        os.mkdir(outfile)
+    ver_list = []
     for filename in filenames:
         if filename == '.DS_Store':
             pass
         else:
             fileloc = os.path.join(single_object.identifier,filename)
             cel_v = affyio.guess_cel_version(fileloc)
+            if cel_v in ['cc1','v3','v4']:
+                ver_list.append(True)
+            else:
+                ver_list.append(False)
             if fileloc.endswith('.gz'):
                 newcelfname =  os.path.splitext(filename)[0]
                 #unzip the gz data
@@ -44,13 +50,15 @@ def run(parameters,objects,pipeline):
                 shutil.copyfile(cel_file,os.path.join(outfile,newcelfname))
             if fileloc.endswith('.gz'):
                 os.remove(cel_file)
-    assert module_utils.exists_nz(outfile),'the output \
-                          file %s for convert_v3_4_if_not_v3_4 fails'%outfile
-    new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline,outfile)
-    return new_objects
-   
+    if True in ver_list:
+        assert module_utils.exists_nz(outfile),'the output \
+                              file %s for convert_v3_4_if_not_v3_4 fails'%outfile
+        new_objects = get_newobjects(parameters,objects,pipeline)
+        module_utils.write_Betsy_parameters_file(
+            parameters,single_object,pipeline,outfile)
+        return new_objects
+    else:
+        return None
 
 def make_unique_hash(identifier,pipeline,parameters):
     inputid = module_utils.get_inputid(identifier)

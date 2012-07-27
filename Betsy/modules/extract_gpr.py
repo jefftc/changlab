@@ -21,18 +21,22 @@ def run(parameters,objects,pipeline,options=None):
             gpr = gpr_module.check_gpr(os.path.join(single_object.identifier,i))
             check.append(gpr)
             newfiles.append(i)
-    os.mkdir(outfile)
+    if not os.path.exists(outfile):
+        os.mkdir(outfile)
     for i in range(len(check)):
         if check[i]:
             old_file = os.path.join(single_object.identifier,newfiles[i])
             new_file = os.path.join(outfile,newfiles[i])
             shutil.copyfile(old_file,new_file)
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                              for extract_gpr fails'%outfile
-    new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(
-            parameters,single_object,pipeline,outfile)
-    return new_objects
+    if True in check:
+        assert module_utils.exists_nz(outfile),'the output file %s\
+                                  for extract_gpr fails'%outfile
+        new_objects = get_newobjects(parameters,objects,pipeline)
+        module_utils.write_Betsy_parameters_file(
+                parameters,single_object,pipeline,outfile)
+        return new_objects
+    else:
+        return None
 
 
 def make_unique_hash(identifier,pipeline,parameters):

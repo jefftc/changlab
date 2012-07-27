@@ -49,7 +49,7 @@ def run(parameters,objects,pipeline):
                         parameters,single_object,pipeline,outfile)
         return new_objects
     else:
-        raise ValueError('no idat file in the input %s' %directory)
+        return None
     
 def make_unique_hash(identifier,pipeline,parameters):
     original_file = module_utils.get_inputid(identifier)

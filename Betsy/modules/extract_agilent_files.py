@@ -35,9 +35,10 @@ def run(parameters,objects,pipeline):
         for i in range(10):
             line = f.readline()
             words =line.split()
-            postag.append(words[0])
-            if words[0] == 'FEATURES':
-                fline = set(words)
+            if len(words)>0:
+                postag.append(words[0])
+                if words[0] == 'FEATURES':
+                    fline = set(words)
         f.close()
         signal_tag =set(['gMeanSignal','rMeanSignal','gMedianSignal','rMedianSignal'])
         if (postag == ['TYPE', 'FEPARAMS', 'DATA', '*',
@@ -45,7 +46,8 @@ def run(parameters,objects,pipeline):
                     signal_tag.issubset(fline)):
            agilent_files.append(filename)
     if agilent_files:
-        os.mkdir(outfile)
+        if not os.path.exisits(outfile):
+            os.mkdir(outfile)
         for filename in agilent_files: 
             old_file = os.path.join(directory,filename)
             new_file = os.path.join(outfile,filename)
@@ -57,7 +59,7 @@ def run(parameters,objects,pipeline):
                                                  single_object,pipeline,outfile)
         return new_objects
     else:
-        raise ValueError('no agilent file in the input %s'&identifier)
+        return None
 def make_unique_hash(identifier,pipeline,parameters):
     original_file = module_utils.get_inputid(identifier)
     hash_profile={'version': 'agilent',
