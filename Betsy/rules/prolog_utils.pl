@@ -354,7 +354,19 @@ convert_parameters_file(Parameters,NewParameters):-
     
     get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
     member(Unique_Genes,[no_unique_genes,average_genes,high_var,first_gene]),
-    append(NewParameters4,[unique_genes,Unique_Genes],NewParameters).
+    append(NewParameters4,[unique_genes,Unique_Genes],NewParameters5),
+   
+    get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
+    member(Missing_Probe,[no_missing_probe,yes_missing_probe]),
+    append(NewParameters5,[missing_probe,Missing_Probe],NewParameters6),
+
+    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
+    member(Duplicate_Probe,[high_var_probe,closest_probe,yes_duplicate_probe]),
+    append(NewParameters6,[duplicate_probe,Duplicate_Probe],NewParameters7),
+    
+    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
+    member(Duplicate_Data,[no_duplicate_data,yes_duplicate_data]),
+    append(NewParameters7,[duplicate_data,Duplicate_Data],NewParameters).
     
 
  /*-------------------------------------------------------------------------*/
@@ -369,7 +381,16 @@ get_desire_parameters_file(Parameters,NewParameters):-
     get_value(Parameters,platform,unknown_platform,Platform),
     append(NewParameters2,[platform,Platform],NewParameters3),
     get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    append(NewParameters3,[unique_genes,Unique_Genes],NewParameters).
+    append(NewParameters3,[unique_genes,Unique_Genes],NewParameters4),
+
+    get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
+    append(NewParameters4,[missing_probe,Missing_Probe],NewParameters5),
+
+    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
+    append(NewParameters5,[duplicate_probe,Duplicate_Probe],NewParameters6),
+
+    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
+    append(NewParameters6,[duplicate_data,Duplicate_Data],NewParameters).
  /*-------------------------------------------------------------------------*/
 % convert the Parameters to a full length Parameters for svm_predictions, for the parameter which
 % is not specified, will assign a variable,except svm_kernel,
@@ -442,7 +463,7 @@ get_length(A,B):-
     A=n_raw, B=18;
     A=n_norm1,B=28;
     A=n_norm2,B=32;
-    A=n_file,B=38.
+    A=n_file,B=44.
 /*-------------------------------------------------------------------------*/ 
 % find the Keys in Parameters,return the key_value pair in Options, S is the initial output  
 

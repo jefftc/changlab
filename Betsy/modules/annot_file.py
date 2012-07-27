@@ -24,9 +24,9 @@ def run(parameters,objects,pipeline):
                     'Hu35KsubC', 'Hu35KsubB', 'Hu35KsubA', 'Hu35KsubD', 'MG_U74Cv2', 'HG_U133A_2',
                     'MG_U74Bv2', 'HG_U95Av2']:
         annot_affymetrix(slice_BIN,chipfilename,single_object.identifier,outfile)
-    elif chipname in ['HumanHT-12','MouseRef-8']:
+    elif chipname in ['HumanHT_12','MouseRef_8']:
         annot_illumina(slice_BIN,chipfilename,single_object.identifier,outfile)
-    elif chipname in ['HumanHT-12_control','MouseRef-8_control']:
+    elif chipname in ['HumanHT_12_control','MouseRef_8_control']:
         shutil.copyfile(single_object.identifier,outfile)
     assert module_utils.exists_nz(outfile),'the output file %s\
                                             for annot_file fails'%outfile

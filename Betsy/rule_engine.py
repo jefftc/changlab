@@ -186,6 +186,7 @@ def make_pipelines(pl_output,pl_inputs):
         swipl.source_code(p,'signature_analysis.pl')
         swipl.source_code(p,'comparison_report.pl')
         swipl.source_code(p,'gather.pl')
+        swipl.source_code(p,'david.pl')
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input +').'
             swipl.send_query(p,more_command)
@@ -216,6 +217,9 @@ def main():
       parser.add_argument('--dry_run',dest='dry_run',action='store_const',
                           const=True,default=False,
                           help='show the test case procedure')
+      parser.add_argument('--network',dest='network',type=str,
+                          default=None,
+                          help='generate the new network file')
       
       args = parser.parse_args()
       assert len(args.id) == len(args.plin),'the length of id and plin should be the equal'
@@ -243,8 +247,14 @@ def main():
                 run_pipeline(pipeline,objects)
                 print '\r'
                 k = k + 1
-                
-                
+      if args.network:
+          network_file = os.path.join(os.getcwd(),args.network)
+          original_network = Betsy_config.NETWORKFILE
+          for pipeline in pipelines:
+              analysis_list = [analysis.name for analysis in pipeline]
+              module_utils.high_light_path(original_network,analysis_list,network_file)
+              original_network = network_file
+          print 'new network file has been generated in %s'%os.path.realpath(network_file)
                   
 if __name__=='__main__':
     main()

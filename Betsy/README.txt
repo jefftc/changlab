@@ -252,7 +252,7 @@ Example:
       --input 'idat_files:<6991010018>'  
       --parameters 'preprocess:illumina' 
       --parameters 'has_missing_value:zero_fill'
-      --parameters 'platform:"HG_U133A"'
+      --parameters "platform:'HG_U133A'"
 
 Get the unique genes 
       protocol_engine.py  
@@ -290,3 +290,23 @@ no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,illumina,filter,0
 
 
 ../Betsy/rule_engine.py --plin 'input_signal_file([status,given,contents,[train]],[])' --id 'all_aml_train.res' --plin 'class_label_file([status,given,contents,[train]],[])' --id 'all_aml_train.cls' --plout 'gather([contents,[train],gene_center,mean,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,format,pcl,gene_order,by_class_neighbors,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,preprocess,unknown_preprocess,filter,0,has_missing_value,zero_fill],A)'
+
+../Betsy/protocol_engine.py 
+--protocol 'normalize_file' 
+--input 'input_signal_file:<GSE38557_mouse_dataset.txt>' 
+--parameters 'has_missing_value:zero_fill' 
+--parameters 'preprocess:unknown_preprocess' 
+--parameters "platform:'HG_U133A'" 
+--parameters 'missing_probe:no_missing_probe' 
+--parameters 'duplicate_probe:high_var_probe' 
+--parameters 'duplicate_data:no_duplicate_data'
+
+../Betsy/protocol_engine.py 
+--protocol 'normalize_file' 
+--input 'idat_files:6991010018' 
+--parameters 'has_missing_value:zero_fill' 
+--parameters 'preprocess:illumina' 
+--parameters "platform:'HG_U133A'" 
+--parameters 'missing_probe:no_missing_probe' 
+--parameters 'duplicate_probe:closest_probe' 
+--parameters 'duplicate_data:no_duplicate_data'

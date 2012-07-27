@@ -58,8 +58,10 @@ PARAMETERS = {
     'num_factors':'integer',
     'pca_gene_num':'integer',
     'unique_genes':['average_genes','high_var','first_gene'],
-    'platform':['"HG_U133A"','unknown_platform']}
-
+    'platform':["'HG_U133A'",'unknown_platform'],
+    'duplicate_probe':['yes_duplicate_probe','high_var_probe','closest_probe'],
+    'duplicate_data':['yes_duplicate_data','no_duplicate_data'],
+    'missing_probe':['yes_missing_probe','no_missing_probe']}
 
 DEFAULT = {
     'gene_center':'no_gene_center',

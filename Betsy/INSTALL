@@ -5,3 +5,7 @@ swipl
 Python modules:
 pexpect
 rpy2
+suds
+
+
+libsvm3.1

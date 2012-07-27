@@ -1,5 +1,8 @@
-
 Comments:
+--<predicate>(Parameters,Modules)
+   * Parameters: should be a list of names and values
+   * Modules : is an output avariable that will be set to collect the pipeline information. For input files,this should be an          
+               empty list [].
 --plin: the input file
      *gse_id([contents,[Contents],[])  
      *gse_id_and_platform([contents,[Contents]],[])
@@ -318,7 +321,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 46. Test run_scoresig module
 command:
-rule_engine.py --plin 'cel_files([contents,[a],version,v3_4],[])' --id 'GSE8286'  --plout "signature_score([contents,[a],format,pcl,is_logged,logged,preprocess,rma,predataset,no_predataset,has_missing_value,no_missing,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,rename_sample,no_rename,platform,'HG_U133A'],A)" 
+rule_engine.py --plin 'cel_files([contents,[a],version,v3_4],[])' --id 'GSE8286'  --plout "signature_score([contents,[a],format,pcl,is_logged,logged,preprocess,rma,predataset,no_predataset,has_missing_value,no_missing,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,rename_sample,no_rename,platform,'HG_U133A',duplicate_data,no_duplicate_data,missing_probe,no_missing_probe,duplicate_probe,closest_probe],A)" 
 --------------------------------------------------
 
 47. Test sam module
@@ -400,4 +403,30 @@ command:
 protocol_engine.py --protocol 'cluster_genes' --input 'input_signal_file:all_aml_train.res' --parameters 'has_missing_value:zero_fill' --parameters 'cluster_alg:hierarchical' --parameters 'hm_width:200' --parameters 'hm_height:1' --parameters 'preprocess:unknown_preprocess'
 --------------------------------------------------
 63.make_diffgenes_report module
-command:protocol_engine.py --protocol 'differential_expressed_gene_analysis' --input 'input_signal_file:all_aml_train.res'  --input 'class_label_file:all_aml_train.cls' --parameters 'has_missing_value:zero_fill' --parameters 'sam_delta:1.0' --parameters 'preprocess:unknown_preprocess'
+command:protocol_engine.py --protocol 'differential_expressed_gene_analysis' --input 'input_signal_file:all_aml_train.res'  --input 'class_label_file:all_aml_train.cls' --parameters 'has_missing_value:zero_fill' --parameters 'sam_delta:1.0' --parameters 'preprocess:unknown_preprocess'--------------------------------------------------
+64. Test remove_missing_probe module
+command:
+rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A',missing_probe,no_missing_probe],A)"--------------------------------------------------
+65. Test select_unique_probe module
+command:
+rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A',missing_probe,no_missing_probe,duplicate_probe,high_var_probe],A)"
+
+--------------------------------------------------
+66. Test run_david module
+command:
+rule_engine.py --plin 'gene_list_file([contents,[a]],[])' --id 'gene_list.txt'  --plout 'david([contents,[a]],A)'
+
+--------------------------------------------------
+67. Test remove_duplicate_data module
+command:
+rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A',missing_probe,no_missing_probe,duplicate_probe,high_var_probe,duplicate_data,no_duplicate_data],A)"
+
+--------------------------------------------------
+67. Test best_match_both module
+command:
+rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A',missing_probe,no_missing_probe,duplicate_probe,closest_probe,duplicate_data,no_duplicate_data],A)"
+
+
+
+
+

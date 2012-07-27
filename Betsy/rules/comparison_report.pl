@@ -120,21 +120,17 @@ make_normalize_report(Parameters,Modules):-
     % Output parameters:full length parameters of signal_file and [filetype,signal_file]
     append(NewParameters,[filetype,signal_file],NewParameters0),
     append(Past_Modules1,[annot_file,NewParameters0],Modules1),
-    
     % Input2: pca_plot_in
     get_options(Parameters,[pca_gene_num],[],Options),
     append(NewParameters,Options,NewParameters1),
     pca_plot_in(NewParameters1,Modules2),
-
     % Input3: pca_plot_out
     set_value(NewParameters,format,pcl,NewParameters2),
     get_options(Parameters,[pca_gene_num],[],Options),
     append(NewParameters2,Options,NewParameters3),
     pca_plot_out(NewParameters3,Modules3),
-
     % Input4: intensity_plot
     intensity_plot(NewParameters,Modules4),
-    
     % Conditions: if preprocess is illumina
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     (Preprocess=illumina, 
@@ -142,19 +138,14 @@ make_normalize_report(Parameters,Modules):-
     set_value(NewParameters4,is_logged,no_logged,NewParameters5),
     set_value(NewParameters5,format,gct,NewParameters6),
     set_value(NewParameters6,has_missing_value,unknown_missing,NewParameters7),
-
     % Input5: control_file
     control_file(NewParameters7,Modules8),
-
     % Input6: biotin_plot
     biotin_plot(NewParameters,Modules5),
-
     % Input7: actb_plot
     actb_plot(NewParameters,Modules6),
-
     % Input8: hyb_bar_plot
     hyb_bar_plot(NewParameters,Modules7),
-
     Modules=[Modules1,Modules2,Modules3,Modules4,Modules8,Modules5,Modules6,Modules7];
     not(member(Preprocess,[illumina])),
     Modules=[Modules1,Modules2,Modules3,Modules4]).

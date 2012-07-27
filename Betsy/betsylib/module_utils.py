@@ -9,6 +9,8 @@ import Betsy_config
 import rule_engine
 import json
 import math
+from xml.dom.minidom import parseString
+
 """contain some functions that are called by many modules"""
 
 def get_inputid(identifier):
@@ -271,3 +273,30 @@ def gunzip(filename):
         fileObjOut.close()
         assert os.path.exists(newfilename),'unzip the cel_file %s fails'%filename
         return newfilename
+    
+
+def high_light_path(network_file,pipeline,out_file):
+    f = open(network_file,'r')
+    data = f.read()
+    f.close()
+    dom = parseString(data)
+    nodes=dom.getElementsByTagName('node')
+    edges=dom.getElementsByTagName('edge')
+    for analysis in pipeline:
+        for node in nodes:
+            nodecontents = node.toxml()
+            if analysis in nodecontents:
+                node.childNodes[7].attributes['fill'] = '#ffff00'
+    for i in range(len(pipeline[:-1])):
+        label = pipeline[i]+' (pp) ' + pipeline[i+1]  
+        for edge in edges:
+            edgecontents = edge.toxml()
+            if label in edgecontents:
+                edge.childNodes[5].attributes['fill'] = 'ffff66'
+                edge.childNodes[5].attributes['width']='4'
+                
+    xmlstr = dom.toxml('utf-8')
+    f = open(out_file, 'w')
+    f.write(xmlstr)
+    f.close()
+    
