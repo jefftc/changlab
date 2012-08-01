@@ -19,6 +19,8 @@ def find_gene(name, tax_id=None):
     # or None.  If name is a RefSeq ID, be sure there is no version
     # number.  E.g. "NP_000680.2" won't be found, but "NP_000680"
     # will.
+    # tax_id   9606  human
+    #         10090  mouse
     orig_name = name
     x = find_many_genes([name], tax_id=tax_id)
     assert len(x) == 1
