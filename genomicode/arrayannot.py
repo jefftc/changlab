@@ -87,7 +87,7 @@ def guess_chip_from_probesets(x):
                 break
         else:
             possible_chips.append(chip)
-    assert possible_chips, "No match"
+    assert possible_chips, "I could not find a chip."
 
     # Sort the chips by size, from smallest to largest.
     schwartz = [(len(chip2psid[chip]), chip) for chip in possible_chips]
