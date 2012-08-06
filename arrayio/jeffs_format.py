@@ -95,7 +95,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     synonyms = {}
     for myname, stdname in MYNAME_TO_STDNAME:
         synonyms[stdname] = myname
-    X = Matrix.add_synonyms(X, synonyms)
+    #X = Matrix.add_synonyms(X, synonyms)
+    X._synonyms.update(synonyms)
     assert is_matrix(X)
     return X
 
