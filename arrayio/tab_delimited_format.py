@@ -380,8 +380,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
 
     X = Matrix.InMemoryMatrix(
         matrix, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    X = Matrix.add_synonyms(X, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #X = Matrix.add_synonyms(X, synonyms)
     return X
 
 CLEAN_RE = None

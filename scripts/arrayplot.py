@@ -912,8 +912,8 @@ def convert_to_pcl(MATRIX, label_name=None):
 
     x = Matrix.InMemoryMatrix(
         MATRIX.slice(), row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    pcl_matrix = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #pcl_matrix = Matrix.add_synonyms(x, synonyms)
     assert arrayio.pcl_format.is_matrix(pcl_matrix)
     return pcl_matrix
 
@@ -1374,7 +1374,8 @@ def read_data_set(file_or_stem, default=None):
         MATRIX._row_names[header] = x
         synonyms = {}
         synonyms[arrayio.ROW_ID] = header
-        MATRIX = Matrix.add_synonyms(MATRIX, synonyms)
+        #MATRIX = Matrix.add_synonyms(MATRIX, synonyms)
+        MATRIX._synonyms.update(synonyms)
     if not MATRIX.col_names():
         header = arrayio.tdf.SAMPLE_NAME
         MATRIX._col_order.append(header)
@@ -1382,7 +1383,8 @@ def read_data_set(file_or_stem, default=None):
         MATRIX._col_names[header] = x
         synonyms = {}
         synonyms[arrayio.COL_ID] = header
-        MATRIX = Matrix.add_synonyms(MATRIX, synonyms)
+        #MATRIX = Matrix.add_synonyms(MATRIX, synonyms)
+        MATRIX._synonyms.update(synonyms)
         
 
     # Read the clustering files.

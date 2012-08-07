@@ -98,9 +98,10 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         handle, hrows=hrows, hcols=hcols, datatype=datatype)
     # Set const.ROW_ID to be the <ID> column.
     assert len(X.row_names()) >= 2
-    synonyms = {}
-    synonyms[const.ROW_ID] = X.row_names()[1]
-    X = Matrix.add_synonyms(X, synonyms)
+    #synonyms = {}
+    #synonyms[const.ROW_ID] = X.row_names()[1]
+    #X = Matrix.add_synonyms(X, synonyms)
+    X._synonyms[const.ROW_ID] = X.row_names()[1]
     assert is_matrix(X)
     return X
 

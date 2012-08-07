@@ -28,7 +28,8 @@ SAMPLE_NAME = arrayio.tdf.SAMPLE_NAME
 
 class GeoMatrix(Matrix.AbstractMatrix):
     def __init__(self, geo_path, GSEID, GPLID, filename=None,
-                 datatype=None, subrows=None, subcols=None):
+                 datatype=None, subrows=None, subcols=None,
+                 synonyms=None):
         # filename is an optional path to the signal_rank_bin file.
         # subrows and subcols are optional lists of indexes to specify
         # a subset of this matrix.
@@ -36,7 +37,7 @@ class GeoMatrix(Matrix.AbstractMatrix):
         import arrayio
         import geolib
         
-        Matrix.AbstractMatrix.__init__(self)
+        Matrix.AbstractMatrix.__init__(self, synonyms)
         self.geo_path = geo_path
         self.GSEID, self.GPLID = GSEID, GPLID
 
@@ -211,8 +212,9 @@ def read(handle, hrows=None, hcols=None, datatype=None):
         arrayio.COL_ID : SAMPLE_NAME,
         }
 
-    X = GeoMatrix(geo_path, GSEID, GPLID, filename=filename, datatype=datatype)
-    X = Matrix.add_synonyms(X, synonyms)
+    X = GeoMatrix(
+        geo_path, GSEID, GPLID, filename=filename, datatype=datatype,
+        synonyms=synonyms)
     return X
 
 def write(X, handle):
@@ -262,8 +264,8 @@ def _geo_to_tdf(X):
     
     x = Matrix.InMemoryMatrix(
         _X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     assert arrayio.tab_delimited_format.is_matrix(x)
     return x
 
