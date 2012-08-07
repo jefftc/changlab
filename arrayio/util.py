@@ -430,6 +430,8 @@ def num_headers(matrix):
             x = matrix[i][j]
             if x.strip() == "":
                 dt = EMPTY
+            elif x.strip().lower() == "null":
+                dt = EMPTY
             elif _is_int(x):
                 dt = INT
             elif _is_float(x):

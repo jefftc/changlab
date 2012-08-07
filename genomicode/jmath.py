@@ -102,7 +102,7 @@ def _dispatch(X, single_fn, list_fn, matrix_fn):
 def safe_int(x):
     if x is None:
         return None
-    if type(x) is type("") and x.lower() in ["", "na"]:
+    if type(x) is type("") and x.lower() in ["", "na", "null"]:
         return None
     if type(x) is type("") and x.lower() == "nan":
         return None
@@ -111,7 +111,7 @@ def safe_int(x):
 def safe_float(x):
     if x is None:
         return None
-    if type(x) is type("") and x.lower() in ["", "na"]:
+    if type(x) is type("") and x.lower() in ["", "na", "null"]:
         return None
     if type(x) is type("") and x.lower() == "nan":
         return float('nan')

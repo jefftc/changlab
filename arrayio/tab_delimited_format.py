@@ -365,8 +365,9 @@ def read(handle, hrows=None, hcols=None, datatype=float):
                 try:
                     map(convert_fn, x)
                 except ValueError, err2:
+                    row = data[hrows+i]
                     raise ValueError, "%s\nProblem with row %d: %s" % (
-                        str(err2), i+1, data[hrows+i])
+                        str(err2), i+1, row)
             raise AssertionError, "Error converting values."
 
     # Set ROW_ID and COL_ID to reasonable defaults.

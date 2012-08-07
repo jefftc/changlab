@@ -34,7 +34,9 @@ static PyObject *cjmath_safe_int(PyObject *self, PyObject *args)
     if(PyString_Check(py_x)) {
 	if(PyString_AsStringAndSize(py_x, &buffer, &length) == -1)
 	    return NULL;
-	if(length == 0 || strcasecmp(buffer, "na") == 0 ||
+	if(length == 0 || 
+           strcasecmp(buffer, "na") == 0 ||
+           strcasecmp(buffer, "null") == 0 ||
 	   strcasecmp(buffer, "nan") == 0) {
 	    Py_INCREF(Py_None);
 	    return Py_None;
@@ -63,7 +65,9 @@ static PyObject *cjmath_safe_float(PyObject *self, PyObject *args)
     if(PyString_Check(py_x)) {
 	if(PyString_AsStringAndSize(py_x, &buffer, &length) == -1)
 	    return NULL;
-	if(length == 0 || strcasecmp(buffer, "na") == 0) {
+	if(length == 0 || 
+           strcasecmp(buffer, "na") == 0 ||
+           strcasecmp(buffer, "null") == 0) {
 	    Py_INCREF(Py_None);
 	    return Py_None;
 	}
