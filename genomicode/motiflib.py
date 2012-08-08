@@ -23,13 +23,12 @@ get_tfbs_tss_db      Load the TFBS around a TSS.
 
 import os, sys
 
-def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None):
+def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None,
+                      num_procs=1):
     # Return list of matrix, chrom, strand, position, NLP.
     # NLP is given in log_e.
     import genomelib
     import patser
-
-    num_jobs = 1
 
     seq = genomelib.get_sequence(chrom, start, length)
     if not matrices:
@@ -38,7 +37,7 @@ def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None):
     matrix_files = [x for x in x if x]  # Filter out missing ones.
 
     # list of sequence_num, matrix_num, (0-based) position, strand, score, nlp
-    patser_data = patser.score_tfbs(seq, matrix_files, num_jobs=num_jobs)
+    patser_data = patser.score_tfbs(seq, matrix_files, num_jobs=num_procs)
 
     # list of matrix, chrom, strand, pos, nlp
     data = []

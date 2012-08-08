@@ -363,9 +363,12 @@ def resolve_sequence(
     chrom, tss, txn_strand, prom_base, prom_length, prom_seq = x
     return gene_symbol, chrom, prom_base, prom_length, txn_strand, tss
 
-def resolve_matrices(names):
+def resolve_matrices(names, all_matrices):
     # Clean up user input.
     from genomicode import motiflib
+
+    if all_matrices:
+        names = [x[0] for x in motiflib.list_matrices()]
 
     # Parse out the matrices from the user input.
     matrices = []
@@ -441,6 +444,9 @@ def main():
         "Format: <matrix>[,<color>[,<f|o>].  Color is 0xRRGGBB format.  "
         "f(illed)|o(outline); def=f.")
     parser.add_option(
+        "--all_matrices", default=False, action="store_true",
+        help="Search all matrices.")
+    parser.add_option(
         "--upstream", dest="upstream", default=250, type="int",
         help="Number of base pairs upstream of the TSS (def 250).")
     parser.add_option(
@@ -460,7 +466,9 @@ def main():
         help="Increase the gain of the colors of the TFBS (def 1).")
     parser.add_option(
         "-s", dest="strict", default=False, action="store_true",
-        help="Use strict.")
+        help="Use strict checking of gene names.")
+    parser.add_option(
+        "--output_as_table", default=False, action="store_true")
     parser.add_option(
         "--format", dest="image_format", type="choice",
         choices=["png", "svg"], default="png",
@@ -468,10 +476,16 @@ def main():
     parser.add_option(
         "-j", "--jobname", dest="jobname", type="string", default="out",
         help="Name of output file.")
+    parser.add_option(
+        "--num_procs", dest="num_procs", type="int", default=1,
+        help="Number of jobs to run in parallel.")
 
     options, args = parser.parse_args()
     if not args:
         parser.error("Please specify a gene to analyze.")
+    if options.num_procs < 1 or options.num_procs > 100:
+        parser.error("Please specify between 1 and 100 processes.")
+        
     gene_symbols = []
     for symbol_or_file in args:
         x = resolve_symbol_or_file(symbol_or_file)
@@ -483,7 +497,7 @@ def main():
         default_transcript = 0
         skip_unknown_genes = True
 
-    if not options.matrices:
+    if not options.matrices and not options.all_matrices:
         parser.error("Please specify a matrix to plot.")
     if options.upstream < 0:
         parser.error("Upstream should be 0 or positive.")
@@ -523,7 +537,7 @@ def main():
         GENES = GENES[:options.max_genes]
 
     # Figure out the matrices to search for.
-    x = resolve_matrices(options.matrices)
+    x = resolve_matrices(options.matrices, options.all_matrices)
     matrices, matrix2color, matrix2style = x
 
     # Constants governing how the figures are drawn.
@@ -554,19 +568,28 @@ def main():
 
     image = plotlib.image(total_width, total_height)
 
+    if options.output_as_table:
+        header = [
+            "Gene Symbol", "Chromosome", "Strand", "Transcription Start",
+            "Matrix ID", "Matrix Gene Symbol", "TFBS Pos", "TFBS Strand",
+            "TFBS Offset", "P-value", "Sequence"]
+        print "\t".join(header)
+
     # Plot each gene.
     for gene_num, x in enumerate(GENES):
         gene_symbol, chrom, gen_start, gen_length, txn_strand, tss = x
-        print "%s: %+d to %+d relative to TSS at chr%s:%s:%s." % (
-            gene_symbol, -options.upstream, -options.upstream+seq_length,
-            chrom, parselib.pretty_int(tss), txn_strand)
+        if not options.output_as_table:
+            print "%s: %+d to %+d relative to TSS at chr%s:%s:%s." % (
+                gene_symbol, -options.upstream, -options.upstream+seq_length,
+                chrom, parselib.pretty_int(tss), txn_strand)
 
         # Get the TFBS from that site.
         nlp_cutoff = 0
         if options.pvalue_cutoff:
             nlp_cutoff = -math.log(options.pvalue_cutoff)
         data = motiflib.score_tfbs_genome(
-            chrom, gen_start, gen_length, matrices=matrices, nlp=nlp_cutoff)
+            chrom, gen_start, gen_length, matrices=matrices, nlp=nlp_cutoff,
+            num_procs=options.num_procs)
         
         ## # If multiple matrices for the same gene symbol hit the same
         ## # place, then keep the one with the highest NLP.
@@ -639,11 +662,18 @@ def main():
             tss_dist = genomelib.calc_tss_seq_dist(
                 tss, txn_strand, pos, m.length)
             pvalue = parselib.pretty_pvalue(math.exp(-NLP), nsig=2)
-            #print "  %-*s [%*s] %s:%s:%s (%*s:%s) %*.2f %s" % (
-            print "  %-*s [%*s] %s:%s (%*s) %-8s %s" % (
-                gs_len, m.gene_symbol, name_len, matrix, 
-                parselib.pretty_int(pos), strand, tss_dist_len,
-                parselib.pretty_int(tss_dist), pvalue, seq)
+            if options.output_as_table:
+                x = (gene_symbol, chrom, txn_strand, tss,
+                     matrix, m.gene_symbol,
+                     pos, strand, tss_dist, pvalue, seq)
+                assert len(x) == len(header)
+                print "\t".join(map(str, x))
+            else:
+                #print "  %-*s [%*s] %s:%s:%s (%*s:%s) %*.2f %s" % (
+                print "  %-*s [%*s] %s:%s (%*s) %-8s %s" % (
+                    gs_len, m.gene_symbol, name_len, matrix, 
+                    parselib.pretty_int(pos), strand, tss_dist_len,
+                    parselib.pretty_int(tss_dist), pvalue, seq)
 
         # Initialize some objects to plot the figures.
         bp_start = gen_start
