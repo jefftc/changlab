@@ -41,6 +41,10 @@ def align_rows(*matrices):
     for m in matrices:
         assert m.nrow() > 0 and m.ncol() > 0
 
+    # Make sure each of the matrices contain the row ID.
+    for m in matrices:
+        assert header in m.row_names(), "Matrix is missing row IDs."
+
     # Get the intersection of the IDs.
     all_ids = [None]*len(matrices) # matrix index -> list of hids
     for i in range(len(matrices)):
