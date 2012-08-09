@@ -341,6 +341,10 @@ def _rule_first_values_are_int(
     # RULE: If the first columns of VALUEs are INT or EMPTY, and the
     #       remaining are FLOAT or EMPTY, then the first column should
     #       be relabeled as ANNOT. (e.g. Gene IDs).
+    #
+    # <HEAD1>      <HEAD2>      <SAMPLE1>
+    # <ANNOT/STR>  <ANNOT/INT>  <VALUE/FLOAT>    Last ANNOT is INT.
+    # <ANNOT/INT>  <ANNOT/INT>  <VALUE/FLOAT>    All ANNOTs are INTs.
 
     # Find first column that contain VALUEs.
     col = None
@@ -357,35 +361,56 @@ def _rule_first_values_are_int(
     if col+1 >= num_cols:   # only 1 column of values.
         return False
 
-    # Get data type of values in first column.
-    types = [datatype[i][col] for i in range(num_rows)
-             if semtype[i][col] & VALUE]
-    dt1 = EMPTY
-    if FLOAT in types:
-        dt1 = FLOAT
-    elif INT in types:
-        dt1 = INT
+    # If there are columns of INTs followed by columns of FLOATs, then
+    # make the INTs ANNOTs.
+    types = [None] * num_cols
+    for j in range(col, num_cols):
+        x = [datatype[i][j] for i in range(num_rows)
+             if semtype[i][j] & VALUE]
+        dt = EMPTY
+        if FLOAT in x:
+            dt = FLOAT
+        elif INT in x:   # only INT if there are no FLOATs.
+            dt = INT
+        types[j] = dt
 
-    # Get data type of values in next column.
-    types = [datatype[i][col+1] for i in range(num_rows)
-             if semtype[i][col+1] & VALUE]
-    dt2 = EMPTY
-    if FLOAT in types:
-        dt2 = FLOAT
-    elif INT in types:
-        dt2 = INT
-
-    if not (dt1 == INT and dt2 == FLOAT):
+    j = col
+    while j < num_cols and types[j] == INT:
+        j += 1
+    num_INT = j - col
+    num_FLOAT = 0
+    for j in range(j, num_cols):
+        if types[j] == FLOAT:
+            num_FLOAT += 1
+    if not num_INT or not num_FLOAT:
+        return False
+    if col + num_INT + num_FLOAT != num_cols:  # some VALUEs are not FLOAT.
         return False
 
     for i in range(num_rows):
-        if semtype[i][col] & VALUE:
-            semtype[i][col] ^= VALUE
-            changed = True
+        for j in range(col, col+num_INT):
+            if semtype[i][j] & VALUE:
+                semtype[i][j] ^= VALUE
+                changed = True
     return changed
 
+
+NUM_HEADERS_CACHE = None  # tuple of (matrix, (nrow, ncol))
 def num_headers(matrix):
     """Return (# row headers, # col headers)."""
+    global NUM_HEADERS_CACHE
+
+    if NUM_HEADERS_CACHE and matrix != NUM_HEADERS_CACHE[0]:
+        NUM_HEADERS_CACHE = None
+    if NUM_HEADERS_CACHE is None:
+        x = _num_headers_h(matrix)
+        NUM_HEADERS_CACHE = (matrix, x)
+    x1, x2 = NUM_HEADERS_CACHE
+    assert matrix == x1
+    return x2
+
+    
+def _num_headers_h(matrix):
     # Try to find the number of rows and columns that contain header
     # information.
 
@@ -560,7 +585,7 @@ def num_headers(matrix):
         first_row, first_col = num_rows, num_cols
     hrows, hcols = first_row, first_col
 
-    #print hrows, hcols
+    #print "DEBUG", hrows, hcols
     #for i in range(5):
     #    print i, datatype[i][:5]
     #for i in range(5):
