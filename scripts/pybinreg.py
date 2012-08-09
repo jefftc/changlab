@@ -1048,9 +1048,10 @@ def _run_binreg_normref(
         X = [None] * test.nrow()
         for i in range(test.nrow()):
             X[i] = [test._X[i][j]] + normref._X[i]
-        x = Matrix.InMemoryMatrix(X, row_names=test._row_names)
         synonyms = { arrayio.ROW_ID : test._synonyms[arrayio.ROW_ID] }
-        test_j = Matrix.add_synonyms(x, synonyms)
+        test_j = Matrix.InMemoryMatrix(
+            X, row_names=test._row_names, synonyms=synonyms)
+        #test_j = Matrix.add_synonyms(x, synonyms)
         
         write_files_for_binreg(train0, train1, test_j, file_layout)
     

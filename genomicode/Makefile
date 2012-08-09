@@ -9,9 +9,8 @@ PLATFORM=OSX
 # Set this to point to the include files for your current installation
 # of python.
 #PYINCLUDE=/usr/local/include/python2.7
-#PYINCLUDE=/home/jefftc/include/python2.5
 #PYINCLUDE=/opt/local/include/python2.4
-#PYINCLUDE=/opt/local/Library/Frameworks/Python.framework/Versions/2.4/include/python2.4
+#PYINCLUDE=/home/jefftc/include/python2.5
 PYINCLUDE=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
 
 # Use this to pass any other flags to the C compiler.  This should be

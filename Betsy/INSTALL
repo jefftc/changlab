@@ -9,3 +9,8 @@ suds
 
 
 libsvm3.1
+
+
+
+psid2platform
+gene_id and gene_symbol needs to contain obsolete ones from gene_history

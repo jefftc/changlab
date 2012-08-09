@@ -98,6 +98,7 @@ def guess_chip_from_probesets(probesets):
                 break
         else:
             possible_chips.append(chip)
+
     for chip in chip2psid2:
         for psid in probesets:
             if psid not in chip2psid2[chip]:
@@ -111,6 +112,9 @@ def guess_chip_from_probesets(probesets):
     chip2psid = chip2psid1.copy()
     for chip in chip2psid2:
         chip2psid[chip]=chip2psid2[chip]
+
+    assert possible_chips, "I could not find a chip."
+
     # Sort the chips by size, from smallest to largest.
     schwartz = [(len(chip2psid[chip]), chip) for chip in possible_chips]
     schwartz.sort()

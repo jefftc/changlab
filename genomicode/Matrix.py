@@ -51,9 +51,6 @@ Classes:
 AbstractMatrix
 InMemoryMatrix
 
-Functions:
-add_synonyms   Add synonyms for the row and column headers.
-
 """
 # TODO
 # - allow case insensitive matching of annotations
@@ -76,16 +73,42 @@ class AbstractMatrix:
     col_names
     
     """
-    def __init__(self):
+    def __init__(self, synonyms):
         # Set some variables for caching.
         self._row_header2name2indexes = {}  # header -> name -> list of indexes
         self._col_header2name2indexes = {}  # header -> name -> list of indexes
+        assert type(synonyms) is type({})
+        self._synonyms = synonyms
+
+    def _resolve_synonym(self, header, name_fn, synonyms):
+        from types import StringType, TupleType, ListType
+
+        # Sets introduced in Python 2.4.
+        if sys.hexversion >= 0x020400F0:
+            if type(header) is type(set()):
+                header = list(header)
+
+        # header can be None, string, or list of strings.
+        if type(header) is StringType:
+            if header not in name_fn() and header in synonyms:
+                header = synonyms[header]
+        elif type(header) in [TupleType, ListType]:
+            for i in range(len(header)):
+                if header[i] not in name_fn() and header[i] in synonyms:
+                    header[i] = synonyms[header[i]]
+        else:
+            assert header is None
+        return header
 
     def _index(self, row=None, col=None, row_header=None, col_header=None):
         # Return a tuple (I_row, I_col) where I_row are the indexes of
         # the rows to take, and I_col are the indexes of the cols to
         # take.  I_row and I_col can be None, which indicates taking
         # all indexes.
+        row_header = self._resolve_synonym(
+            row_header, self.row_names, self._synonyms)
+        col_header = self._resolve_synonym(
+            col_header, self.col_names, self._synonyms)
 
         #if not hasattr(self, "_count"):
         #    self._count = 0
@@ -420,14 +443,15 @@ class InMemoryMatrix(AbstractMatrix):
     # _row_order
     # _col_order
     def __init__(
-        self, X, row_names={}, col_names={}, row_order=None, col_order=None):
+        self, X, row_names={}, col_names={}, row_order=None, col_order=None,
+        synonyms={}):
         # row_names    Dict of header -> list of names.
         # col_names    Dict of header -> list of names.
         # row_order    List of the headers, in order (optional).
         # col_order    List of the headers, in order (optional).
         import math
         
-        AbstractMatrix.__init__(self)
+        AbstractMatrix.__init__(self, synonyms)
 
         # Figure out the size of the matrix.
         nrow = ncol = None
@@ -485,6 +509,9 @@ class InMemoryMatrix(AbstractMatrix):
         assert sorted(row_order) == sorted(row_names)
         assert sorted(col_order) == sorted(col_names)
 
+        for synonym, name in synonyms.iteritems():
+            assert name in row_names or name in col_names, "unknown: %s" % name
+
         # Set the member variables of this object.
         self._X = X
         self._num_rows, self._num_cols = nrow, ncol
@@ -496,10 +523,12 @@ class InMemoryMatrix(AbstractMatrix):
     def row_names(self, header=None):
         if header is None:
             return self._row_order
+        header = self._resolve_synonym(header, self.row_names, self._synonyms)
         return self._row_names[header]
     def col_names(self, header=None):
         if header is None:
             return self._col_order
+        header = self._resolve_synonym(header, self.col_names, self._synonyms)
         return self._col_names[header]
     
     def _matrix(self, row_indexes, col_indexes):
@@ -529,10 +558,10 @@ class InMemoryMatrix(AbstractMatrix):
                 rnames[name] = []
             for name in cnames:
                 cnames[name] = []
-
+                
         x = InMemoryMatrix(
             X, row_names=rnames, col_names=cnames, row_order=self._row_order,
-            col_order=self._col_order)
+            col_order=self._col_order, synonyms=self._synonyms)
         return x
     
     def _slice(self, row_indexes, col_indexes):
@@ -606,76 +635,76 @@ def list_type(L):
     return t
 
 
-# synonyms should be part of the Matrix class.  Having it separate
-# makes it too hard to create Matrices.
-class _SynonymDecorator:
-    # Members:
-    # _matrix
-    # _synonyms
-    def __init__(self, matrix, synonyms):
-        row_names = {}.fromkeys(matrix.row_names())
-        col_names = {}.fromkeys(matrix.col_names())
+## # synonyms should be part of the Matrix class.  Having it separate
+## # makes it too hard to create Matrices.
+## class _SynonymDecorator:
+##     # Members:
+##     # _matrix
+##     # _synonyms
+##     def __init__(self, matrix, synonyms):
+##         row_names = {}.fromkeys(matrix.row_names())
+##         col_names = {}.fromkeys(matrix.col_names())
 
-        for synonym, name in synonyms.iteritems():
-            assert name in row_names or name in col_names, "unknown: %s" % name
-        self.__dict__["_matrix"] = matrix
-        self.__dict__["_synonyms"] = synonyms.copy()
-        self.__dict__["_method"] = None
-        #self._matrix = matrix
-        #self._synonyms = synonyms.copy()
-        #self._method = None
-    def _decorated_msv(
-        self, row=None, col=None, row_header=None, col_header=None):
-        if(row_header and row_header not in self._matrix.row_names() and 
-           row_header in self._synonyms):
-            row_header = self._synonyms[row_header]
-        if(col_header and col_header not in self._matrix.col_names() and 
-           col_header in self._synonyms):
-            col_header = self._synonyms[col_header]
-        fn = getattr(self._matrix, self._method)
-        assert fn, "Missing: %s" % self._method
-        x = fn(row=row, col=col, row_header=row_header, col_header=col_header)
+##         for synonym, name in synonyms.iteritems():
+##             assert name in row_names or name in col_names, "unknown: %s" % name
+##         self.__dict__["_matrix"] = matrix
+##         self.__dict__["_synonyms"] = synonyms.copy()
+##         self.__dict__["_method"] = None
+##         #self._matrix = matrix
+##         #self._synonyms = synonyms.copy()
+##         #self._method = None
+##     def _decorated_msv(
+##         self, row=None, col=None, row_header=None, col_header=None):
+##         if(row_header and row_header not in self._matrix.row_names() and 
+##            row_header in self._synonyms):
+##             row_header = self._synonyms[row_header]
+##         if(col_header and col_header not in self._matrix.col_names() and 
+##            col_header in self._synonyms):
+##             col_header = self._synonyms[col_header]
+##         fn = getattr(self._matrix, self._method)
+##         assert fn, "Missing: %s" % self._method
+##         x = fn(row=row, col=col, row_header=row_header, col_header=col_header)
 
-        # If the method creates a new Matrix, then make sure that is
-        # also decorated with the same synonyms.
-        if self._method == "matrix":
-            x = add_synonyms(x, self._synonyms)
-        return x
-    def _decorated_rc_names(self, header=None):
-        if header:
-            names = self._matrix.row_names()
-            if self._method == "col_names":
-                names = self._matrix.col_names()
-            if header not in names and header in self._synonyms:
-                header = self._synonyms[header]
-        fn = getattr(self._matrix, self._method)
-        assert fn, "Missing: %s" % self._method
-        x = fn(header=header)
-        return x
-    def __setattr__(self, name, value):
-        setattr(self._matrix, name, value)
-    def __getattr__(self, attr):
-        if attr in ["matrix", "slice", "value", "_index"]:
-            self.__dict__["_method"] = attr
-            #self._method = attr
-            return self._decorated_msv
-        elif attr in ["row_names", "col_names"]:
-            self.__dict__["_method"] = attr
-            #self._method = attr
-            return self._decorated_rc_names
-        return getattr(self._matrix, attr)
+##         # If the method creates a new Matrix, then make sure that is
+##         # also decorated with the same synonyms.
+##         if self._method == "matrix":
+##             x = add_synonyms(x, self._synonyms)
+##         return x
+##     def _decorated_rc_names(self, header=None):
+##         if header:
+##             names = self._matrix.row_names()
+##             if self._method == "col_names":
+##                 names = self._matrix.col_names()
+##             if header not in names and header in self._synonyms:
+##                 header = self._synonyms[header]
+##         fn = getattr(self._matrix, self._method)
+##         assert fn, "Missing: %s" % self._method
+##         x = fn(header=header)
+##         return x
+##     def __setattr__(self, name, value):
+##         setattr(self._matrix, name, value)
+##     def __getattr__(self, attr):
+##         if attr in ["matrix", "slice", "value", "_index"]:
+##             self.__dict__["_method"] = attr
+##             #self._method = attr
+##             return self._decorated_msv
+##         elif attr in ["row_names", "col_names"]:
+##             self.__dict__["_method"] = attr
+##             #self._method = attr
+##             return self._decorated_rc_names
+##         return getattr(self._matrix, attr)
 
-def add_synonyms(matrix, synonyms):
-    # synonyms is a dictionary of synonym -> official name.
+## def add_synonyms(matrix, synonyms):
+##     # synonyms is a dictionary of synonym -> official name.
     
-    # If matrix is already a _SynonymDecorator, then don't decorate it
-    # twice.
-    if matrix.__class__.__name__ == '_SynonymDecorator':
-        x = matrix._synonyms.copy()
-        x.update(synonyms)
-        synonyms = x
-        matrix = matrix._matrix
-    return _SynonymDecorator(matrix, synonyms)
+##     # If matrix is already a _SynonymDecorator, then don't decorate it
+##     # twice.
+##     if matrix.__class__.__name__ == '_SynonymDecorator':
+##         x = matrix._synonyms.copy()
+##         x.update(synonyms)
+##         synonyms = x
+##         matrix = matrix._matrix
+##     return _SynonymDecorator(matrix, synonyms)
 
 def is_Matrix(x):
     # Check if it's a Matrix object.  Hard to check based on class
@@ -717,14 +746,16 @@ def test_Matrix():
         "J1" : ["J1", "J2", "J3"],
         "F1" : ["F1", "F2", "F3"],
         }
-    X = InMemoryMatrix(X, row_names=row_names, col_names=col_names)
-
     synonyms = {
         "A1s" : "A1",
         "A1s2" : "A1",
         "J1s" : "J1",
         }
-    Xs = add_synonyms(X, synonyms)
+    X = InMemoryMatrix(
+        X, row_names=row_names, col_names=col_names, synonyms=synonyms)
+        #X, row_names=row_names, col_names=col_names, synonyms={})
+    Xs = X
+    #Xs = add_synonyms(X, synonyms)
 
     def d(**keywds):
         return keywds
@@ -748,7 +779,8 @@ def test_Matrix():
         (X.slice, (), d(row="G2",row_header="A2",col="J2",col_header="J1"),
          [[4]]),                                             # row+col names
         (X.slice, (0,), d(col=["S1","J1","J3"]), [[0, 2]]),  # list of cols
-        (X.slice, (), d(row="G1", row_header=["A3"]), []),    # annot non-match
+        (X.slice, (), d(row="G1", row_header=["A3"]), []),   # annot non-match
+        (Xs.slice, (), d(row="G1", row_header=["A3"]), []),  # annot non-match
         (X.value, (), d(row="G1", row_header="A1", col="S1", col_header="A1"),
          [[0]]),                                        # same row/col names
         (X.slice, (), d(col=["F2", "S1"], col_header=["A1", "F1"]),
@@ -811,5 +843,5 @@ else:
         this_module.__dict__[name] = cMatrix.__dict__[name]
 
 if __name__ == '__main__':
-    #test_Matrix()
-    test__index_strings()
+    test_Matrix()
+    #test__index_strings()

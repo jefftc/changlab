@@ -540,8 +540,8 @@ def merge_matrices(*matrices):
 
     DATA = Matrix.InMemoryMatrix(
         X_all, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    DATA = Matrix.add_synonyms(DATA, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #DATA = Matrix.add_synonyms(DATA, synonyms)
     return DATA
 
 def merge_gct_matrices(*matrices):
@@ -594,8 +594,8 @@ def merge_gct_matrices(*matrices):
 
     DATA = Matrix.InMemoryMatrix(
         X_all, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    DATA = Matrix.add_synonyms(DATA, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #DATA = Matrix.add_synonyms(DATA, synonyms)
     assert arrayio.gct_format.is_matrix(DATA)
     return DATA
 

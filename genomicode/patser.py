@@ -86,6 +86,7 @@ def score_tfbs(
         # Parse the results.
         data = []
         for i, filename in enumerate(outfiles):
+            #print open(filename).read(),; sys.exit(0)
             for x in parse(filename):
                 name, position, strand, score, ln_p_value = x
                 sequence_num = int(name)
@@ -152,7 +153,7 @@ def _make_patser_cmd(patser_bin, seq_file, matrix_file, alphabet_file):
     cmd.append("-a %s" % alphabet_file)
     cmd.append("-c")     # search complementary strand
     cmd.append("-d2")    # ignore "N"
-    cmd.append("-l 0")   # only print high scores
+    cmd.append("-l 0")   # only print high scores (gone in patser-3e)
     if is_vertical_matrix(matrix_file):
         cmd.append("-v")
     if is_weight_matrix(matrix_file):
@@ -164,7 +165,20 @@ def parse(handle):
     # yields: name, position (1-based), strand, score, ln_p_value
     from filelib import openfh
 
-    for line in openfh(handle):
+    handle = openfh(handle)
+    line = handle.readline()
+    assert line.startswith("COMMAND LINE"), "Unexpected: %s" % line.strip()
+
+    for line in handle:
+        # Check for errors.
+        if line.find("cannot execute binary file") >= 0:
+            raise AssertionError, line.strip()
+        # "-l" (item 9 on the command line) does not match any of the
+        #    legal options.
+        if line.find("does not match any of the legal options") >= 0:
+            raise AssertionError, line.strip()
+        
+        # Bug: can discard useful information.
         if line.find("position") < 0:
             continue
         cols = line.strip().split()

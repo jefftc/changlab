@@ -63,7 +63,8 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
   points(km.2$cens.x, km.2$cens.y, pch=15, cex=0.4)
 }
 
-write.km.prism <- function(filename, survival1, dead1, survival2, dead2) {
+write.km.prism <- function(filename, class1, survival1, dead1, 
+  class2, survival2, dead2) {
   # Write out results for Prism.
   if(length(survival1) != length(dead1)) stop("unaligned")
   if(length(survival2) != length(dead2)) stop("unaligned")
@@ -75,7 +76,7 @@ write.km.prism <- function(filename, survival1, dead1, survival2, dead2) {
   b.value <- c(rep("", length(dead1)), dead2)
   c.value <- dead
   data.out <- cbind(x.value, a.value, b.value, c.value)
-  colnames(data.out) <- c("Survival", "Class-1", "Class-2", "Both")
+  colnames(data.out) <- c("Survival", class1, class2, "Both")
   write.table(data.out, filename, quote=FALSE, sep="\t",
     row.names=FALSE, col.names=TRUE)
 }

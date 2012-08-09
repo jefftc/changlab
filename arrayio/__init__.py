@@ -146,8 +146,8 @@ def _res_to_gct(X):
 
     x = Matrix.InMemoryMatrix(
         X._X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     #gct_format.is_matrix(x); print gct_format.DIAGNOSIS
     assert gct_format.is_matrix(x)
     return x
@@ -198,8 +198,8 @@ def _res_to_pcl(X):
 
     x = Matrix.InMemoryMatrix(
         X._X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     #pcl_format.is_matrix(x); print pcl_format.DIAGNOSIS
     assert pcl_format.is_matrix(x)
     return x
@@ -250,8 +250,8 @@ def _gct_to_pcl(X):
 
     x = Matrix.InMemoryMatrix(
         X._X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     assert pcl_format.is_matrix(x)
     return x
     
@@ -342,8 +342,8 @@ def _jeff_to_gct(X):
 
     x = Matrix.InMemoryMatrix(
         X._X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     assert gct_format.is_matrix(x)
     return x
 
@@ -380,8 +380,8 @@ def _jeff_to_pcl(X):
 
     x = Matrix.InMemoryMatrix(
         X._X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     assert pcl_format.is_matrix(x)
     return x
 
@@ -422,8 +422,8 @@ def _pcl_to_gct(X):
 
     x = Matrix.InMemoryMatrix(
         X._X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     #gct_format.is_matrix(x)
     #print gct_format.DIAGNOSIS
     assert gct_format.is_matrix(x)
@@ -503,8 +503,8 @@ def _tdf_to_gct(X):
         
     x = Matrix.InMemoryMatrix(
         X._X, row_names=row_names, col_names=col_names,
-        row_order=row_order, col_order=col_order)
-    x = Matrix.add_synonyms(x, synonyms)
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
     assert gct_format.is_matrix(x)
     return x
 

@@ -336,6 +336,54 @@ def _rule_no_head_around_no_blank(
                 changed = True
     return changed
 
+def _rule_first_values_are_int(
+    matrix, num_rows, num_cols, datatype, semtype):
+    # RULE: If the first columns of VALUEs are INT or EMPTY, and the
+    #       remaining are FLOAT or EMPTY, then the first column should
+    #       be relabeled as ANNOT. (e.g. Gene IDs).
+
+    # Find first column that contain VALUEs.
+    col = None
+    for j in range(num_cols):
+        for i in range(num_rows):
+            if semtype[i][j] & VALUE:
+                col = j
+                break
+        if col is not None:
+            break
+    else:
+        return False
+
+    if col+1 >= num_cols:   # only 1 column of values.
+        return False
+
+    # Get data type of values in first column.
+    types = [datatype[i][col] for i in range(num_rows)
+             if semtype[i][col] & VALUE]
+    dt1 = EMPTY
+    if FLOAT in types:
+        dt1 = FLOAT
+    elif INT in types:
+        dt1 = INT
+
+    # Get data type of values in next column.
+    types = [datatype[i][col+1] for i in range(num_rows)
+             if semtype[i][col+1] & VALUE]
+    dt2 = EMPTY
+    if FLOAT in types:
+        dt2 = FLOAT
+    elif INT in types:
+        dt2 = INT
+
+    if not (dt1 == INT and dt2 == FLOAT):
+        return False
+
+    for i in range(num_rows):
+        if semtype[i][col] & VALUE:
+            semtype[i][col] ^= VALUE
+            changed = True
+    return changed
+
 def num_headers(matrix):
     """Return (# row headers, # col headers)."""
     # Try to find the number of rows and columns that contain header
@@ -393,6 +441,9 @@ def num_headers(matrix):
     #       BLANK.
     # RULE: If a cell is not blank, then it cannot have a HEAD on the
     #       top and left.
+    # RULE: If the first columns of VALUEs are INT or EMPTY, and the
+    #       remaining are FLOAT or EMPTY, then the first column should
+    #       be relabeled as ANNOT. (e.g. Gene IDs).
     RULES = [
         _rule_no_first_row_annots,
         _rule_first_row_sample,
@@ -406,6 +457,7 @@ def num_headers(matrix):
         _rule_no_values_by_head,
         _rule_head_around_blank,
         _rule_no_head_around_no_blank,
+        _rule_first_values_are_int,
         ]
 
     if not matrix:
@@ -429,6 +481,8 @@ def num_headers(matrix):
         for j in range(num_cols):
             x = matrix[i][j]
             if x.strip() == "":
+                dt = EMPTY
+            elif x.strip().lower() == "null":
                 dt = EMPTY
             elif _is_int(x):
                 dt = INT

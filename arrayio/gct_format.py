@@ -116,7 +116,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     if header1 != DESCRIPTION:
         synonyms[DESCRIPTION] = header1
     synonyms[const.ROW_ID] = header0
-    X = Matrix.add_synonyms(X, synonyms)
+    X._synonyms.update(synonyms)
+    #X = Matrix.add_synonyms(X, synonyms)
     assert is_matrix(X)
 
     # The GCT File Format description at the Broad Institute does not

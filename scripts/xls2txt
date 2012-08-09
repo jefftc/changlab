@@ -43,6 +43,20 @@ def cell2str(book, cell):
     else:
         raise AssertionError, "Unknown cell type: %s" % cell.ctype
 
+def listws_xls(filename):
+    import xlrd
+    
+    book = xlrd.open_workbook(filename, logfile=StringIO.StringIO())
+    for x in book.sheet_names():
+        print x
+
+def listws_xlsx(filename):
+    from openpyxl import load_workbook
+    
+    wb = load_workbook(filename)
+    for x in wb.get_sheet_names():
+        print x
+
 def convert_xls(filename, worksheet):
     import StringIO
     import xlrd
@@ -95,6 +109,9 @@ def main():
     parser.add_option(
         "-s", "--worksheet", dest="worksheet", type="string", default=None,
         help="Name of worksheet to parse into table")
+    parser.add_option(
+        "--list", dest="list_worksheets", action="store_true", default=False,
+        help="List the worksheets in this file.")
     options, args = parser.parse_args()
     if len(args) != 1:
         parser.error("Please specify an infile.")
@@ -102,16 +119,20 @@ def main():
     filename = args[0]
     worksheet = options.worksheet
 
-    x, ext = os.path.splitext(filename)
-    if ext.lower() == ".xls":
-        convert_xls(filename, worksheet)
-    elif ext.lower() == ".xlsx":
-        convert_xlsx(filename, worksheet)
-    else:
-        raise AssertionError, "Unknown file extension: %s" % filename
+    ext2fn = {
+        ".xls" : (convert_xls, listws_xls),
+        ".xlsx" : (convert_xlsx, listws_xlsx),
+        }
 
+    x, ext = os.path.splitext(filename)
+    ext = ext.lower()
+    assert ext in ext2fn, "Unknown file extension: %s" % filename
+    convert_fn, list_fn = ext2fn[ext]
+    if options.list_worksheets:
+        assert not options.worksheet, "No need to specify worksheet."
+        list_fn(filename)
+    else:
+        convert_fn(filename, worksheet)
 
 if __name__ == '__main__':
     main()
-
-
