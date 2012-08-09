@@ -910,7 +910,7 @@ def convert_to_pcl(MATRIX, label_name=None):
     synonyms[arrayio.ROW_ID] = pretty_id_name
     synonyms[arrayio.COL_ID] = SAMPLE_NAME
 
-    x = Matrix.InMemoryMatrix(
+    pcl_matrix = Matrix.InMemoryMatrix(
         MATRIX.slice(), row_names=row_names, col_names=col_names,
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     #pcl_matrix = Matrix.add_synonyms(x, synonyms)

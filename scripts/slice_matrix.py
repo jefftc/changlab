@@ -251,6 +251,14 @@ def find_col_indexes(MATRIX, indexes, count_headers):
         return None
     return parse_indexes(MATRIX, False, indexes, count_headers)
 
+def find_col_ids(MATRIX, ids):
+    # IDs is a list of gene IDs or names.  Combine them into a single string.
+    ids = [x.strip() for x in ids]
+    ids = ",".join(ids)
+    if not ids:
+        return None
+    return parse_names(MATRIX, False, ids)
+
 def find_col_genesets(MATRIX, genesets):
     if not genesets:
         return None
@@ -1093,6 +1101,9 @@ def main():
         help="If given, then the headers count in the column indexes.  "
         "(Column 1 is the first header).")
     group.add_argument(
+        "--select_col_ids", default=[], action="append",
+        help="Comma-separate list of IDs to include.")
+    group.add_argument(
         "--select_col_annotation", default=None, 
         help="Include only the cols where the annotation contains a "
         "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
@@ -1213,9 +1224,10 @@ def main():
     I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
-    I2 = find_col_genesets(MATRIX, args.select_col_genesets)
-    I3 = find_col_annotation(MATRIX, args.select_col_annotation)
-    I_col = _intersect_indexes(I1, I2, I3)
+    I2 = find_col_ids(MATRIX, args.select_col_ids)
+    I3 = find_col_genesets(MATRIX, args.select_col_genesets)
+    I4 = find_col_annotation(MATRIX, args.select_col_annotation)
+    I_col = _intersect_indexes(I1, I2, I3, I4)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Remove row annotations.
