@@ -36,7 +36,8 @@ def run(parameters,objects,pipeline):
     fout = file(outfile,'w')
     fout.write(result_text)
     fout.close()
-    assert module_utils.exists_nz(outfile),'the outfile for run_gather %s does not exist'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the outfile for run_gather %s does not exist'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -55,8 +56,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'gene_list_file','contents')
-    assert os.path.exists(single_object.identifier),'the input \
-                file %s for run_gather does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for run_gather does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

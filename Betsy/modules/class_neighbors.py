@@ -11,8 +11,8 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file.identifier),('cannot find label_file %s for class_neighbors'
-                                       %label_file.identifier)
+    assert os.path.exists(label_file.identifier),(
+        'cannot find label_file %s for class_neighbors'%label_file.identifier)
     import arrayio
     tmp = 'tmp.txt'
     f = file(tmp,'w')
@@ -89,7 +89,8 @@ def run(parameters,objects,pipeline):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-    assert os.path.exists(download_directory),'there is no output directory for class_neighbors'
+    assert os.path.exists(download_directory),(
+        'there is no output directory for class_neighbors')
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
     os.remove(tmp)
@@ -112,8 +113,8 @@ def run(parameters,objects,pipeline):
     f = file(outfile,'w')
     f.write('\t'.join(gene_list))
     f.close()
-    assert module_utils.exists_nz(outfile),'the output \
-                        file %s for class_neighbors fails' %outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for class_neighbors fails' %outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -126,8 +127,9 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input \
-            file %s for class_neighbors does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for class_neighbors does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_outfile(parameters,objects,pipeline):

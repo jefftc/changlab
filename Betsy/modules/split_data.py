@@ -13,8 +13,8 @@ def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     class_label_file = module_utils.find_object(parameters,
                             objects,'class_label_file','precontents')
-    assert os.path.exists(class_label_file.identifier),'class_label_file %s\
-                                     does not exist'%class_label_file.identifier
+    assert os.path.exists(class_label_file.identifier),(
+        'class_label_file %s does not exist'%class_label_file.identifier)
     result,label_line,second_line = read_label_file.read(class_label_file.identifier)
     assert parameters['contents'].startswith('[') and parameters['contents'].endswith(']')
     contents = parameters['contents'][1:-1].split(',')
@@ -38,8 +38,8 @@ def run(parameters,objects,pipeline):
     f_out = file(outfile,'w')
     arrayio.pcl_format.write(M_c,f_out)
     f_out.close()
-    assert module_utils.exists_nz(outfile),'the output\
-                                   file %s for split_data fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for split_data fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -71,7 +71,8 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','precontents')
-    assert os.path.exists(single_object.identifier),'the input\
-                        file %s for split_data does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for split_data does not exist'
+        %single_object.identifier)
     return single_object
 

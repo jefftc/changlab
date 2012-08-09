@@ -20,7 +20,8 @@ def run(parameters,objects,pipeline):
         assert num_factor >= 1, 'the num_factor should be >=1'
         M = arrayio.read(single_object.identifier)
         col_num = M.ncol()
-        assert num_factor <= col_num,'the num_factor should be less than %d'%col_num
+        assert num_factor <= col_num,(
+            'the num_factor should be less than %d'%col_num)
     tmp = 'tmp_dir'
     command = ['python', bfrm_BIN,single_object.identifier,'-f',str(num_factor), '-o',tmp]
     process = subprocess.Popen(command,shell=False,
@@ -29,10 +30,10 @@ def run(parameters,objects,pipeline):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-    assert module_utils.exists_nz(tmp),'the output dir %s\
-             for bfrm_normalize fails' %tmp
-    assert module_utils.exists_nz(os.path.join(tmp,'normalized.gct')),'the output gct file \
-             for bfrm_normalize fails'
+    assert module_utils.exists_nz(tmp),(
+        'the output dir %s for bfrm_normalize fails' %tmp)
+    assert module_utils.exists_nz(os.path.join(tmp,'normalized.gct')),(
+        'the output gct file for bfrm_normalize fails')
     out = os.path.join(tmp,'normalized.gct')
     M = arrayio.read(out)
     M_new = arrayio.convert(M,to_format = arrayio.pcl_format)
@@ -58,8 +59,8 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input file \
-        %s for bfrm_normalize does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for bfrm_normalize does not exist'%single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

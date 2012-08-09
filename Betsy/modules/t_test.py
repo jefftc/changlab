@@ -13,10 +13,12 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file.identifier),'cannot find label_file %s'%label_file.identifier
+    assert os.path.exists(label_file.identifier),(
+        'cannot find label_file %s'%label_file.identifier)
     label,label_line,second_line = read_label_file.read(label_file.identifier)
     M = arrayio.read(single_object.identifier)
-    assert len(label) == 2, ' the length of label in %s should be 2'%label_file.identifier
+    assert len(label) == 2, (
+        'the length of label in %s should be 2'%label_file.identifier)
     assert len(label[0]) == 2
     assert len(label[1]) == 2
     first = M.slice(None,label[0][0])
@@ -39,8 +41,8 @@ def run(parameters,objects,pipeline):
         f.write(str(fdr[i])+'\t')
         f.write(str(higher_group[i])+'\n')
     f.close()
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                             for t_test fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for t_test fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -60,8 +62,8 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(single_object.identifier),'the input file %s \
-                for t_test does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for t_test does not exist'%single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):
@@ -75,7 +77,7 @@ def get_newobjects(parameters,objects,pipeline):
 
 def get_higherexpression(M,label,second_line):
     higher_group = []
-    assert len(label) == 2, ' the length of label should be 2'
+    assert len(label) == 2, 'the length of label should be 2'
     assert len(label[0]) == 2
     assert len(label[1]) == 2
     first = M.slice(None,label[0][0])

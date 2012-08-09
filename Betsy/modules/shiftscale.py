@@ -11,7 +11,8 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file.identifier),'cannot find label_file %s'%label_file.identifier
+    assert os.path.exists(label_file.identifier),(
+        'cannot find label_file %s'%label_file.identifier)
     M = arrayio.read(single_object.identifier)
     result,label_line,second_line=read_label_file.read(label_file.identifier)
     assert len(result) == 2, 'for shiftscale,there should be only 2 classes'
@@ -31,8 +32,8 @@ def run(parameters,objects,pipeline):
     f = file(outfile,'w')
     arrayio.pcl_format.write(M,f)
     f.close()
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                                         for shiftscale fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for shiftscale fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -52,9 +53,10 @@ def get_outfile(parameters,objects,pipeline):
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-                               parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input\
-                    file %s for shiftscale does not exist'%single_object.identifier
+                    parameters,objects,'signal_file','contents,preprocess')
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for shiftscale does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

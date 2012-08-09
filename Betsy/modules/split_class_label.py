@@ -28,8 +28,8 @@ def run(parameters,objects,pipeline):
         new_label_line.extend(newline)
     new_second_line = [second_line[i] for i in content_index]
     read_label_file.write(outfile,new_second_line,new_label_line)
-    assert module_utils.exists_nz(outfile),'the output\
-                                file %s for split_class_label fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for split_class_label fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -60,6 +60,7 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(parameters,
                     objects,'class_label_file','precontents')
-    assert os.path.exists(single_object.identifier),'the input\
-                file %s for split_class_label does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for split_class_label does not exist'
+        %single_object.identifier)
     return single_object

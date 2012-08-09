@@ -30,8 +30,8 @@ def run(parameters,objects,pipeline):
         elif i.endswith('.rma'):
             outputfile = i
     os.rename(outputfile,outfile)
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                   for preprocess fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for preprocess fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -50,8 +50,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'cel_files','contents',['v3_4'])
-    assert os.path.exists(single_object.identifier),'the input file %s\
-               for preprocess does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for preprocess does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

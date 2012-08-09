@@ -10,8 +10,8 @@ def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(single_object.identifier)
-    assert binreg.is_logged_array_data(M),'the input file\
-                               %s should be logged'%identifier
+    assert binreg.is_logged_array_data(M),(
+        'the input file %s should be logged'%identifier)
     for i in range(len(M._X)):
         for j in range(len(M._X[i])):
             if M._X[i][j] is not None :
@@ -19,8 +19,8 @@ def run(parameters,objects,pipeline):
     f = file(outfile,'w')
     arrayio.pcl_format.write(M,f)
     f.close()
-    assert module_utils.exists_nz(outfile),'the output\
-                        file %s for unlog_signal_file fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for unlog_signal_file fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -41,8 +41,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input\
-            file %s for unlog_signal_file does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for unlog_signal_file does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

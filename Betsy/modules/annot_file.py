@@ -18,9 +18,8 @@ def run(parameters,objects,pipeline):
         raise AssertionError, 'I cannot annotate array platform :%s"'%chipname
     assert os.path.exists(chipfilename), 'the annotation file %s does not exist'%chipfilename
     if chipname in ['MG_U74Av2', 'HG_U133_Plus_2', 'Mu11KsubA', 'Mu11KsubB',
-                    'Hu6800', 'HG_U133B', 'Mouse430_2', 'Drosophila_2', 'HT_HG_U133A',
-                    'RAE230B', 'RG_U34A', 'MOE430B', 'Mapping250K_Sty', 'Mapping250K_Nsp',
-                    'Mouse430A_2', 'HG_U95A', 'MOE430A', 'HG_U133A', 'RAE230A', 'Rat230_2',
+                    'Hu6800', 'HG_U133B', 'Mouse430_2',
+                    'RG_U34A','Mouse430A_2', 'HG_U95A', 'HG_U133A', 'RAE230A',
                     'Hu35KsubC', 'Hu35KsubB', 'Hu35KsubA', 'Hu35KsubD', 'MG_U74Cv2', 'HG_U133A_2',
                     'MG_U74Bv2', 'HG_U95Av2']:
         annot_affymetrix(slice_BIN,chipfilename,single_object.identifier,outfile)
@@ -28,8 +27,12 @@ def run(parameters,objects,pipeline):
         annot_illumina(slice_BIN,chipfilename,single_object.identifier,outfile)
     elif chipname in ['HumanHT_12_control','MouseRef_8_control']:
         shutil.copyfile(single_object.identifier,outfile)
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                                            for annot_file fails'%outfile
+    elif chipname in ['entrez_ID_human','entrez_ID_mouse','entrez_ID_symbol_human',
+                      'entrez_ID_symbol_mouse']:
+        print 'we do not annot the platform %s' %chipname
+        shutil.copyfile(single_object.identifier,outfile)
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for annot_file fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -48,8 +51,8 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,parameters['filetype'],'contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input file %s\
-                          for annot_file does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+    'the input file %s for annot_file does not exist'%single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

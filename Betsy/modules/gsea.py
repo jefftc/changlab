@@ -12,8 +12,8 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file.identifier),'cannot\
-                find label_file %s for gsea'%label_file.identifier
+    assert os.path.exists(label_file.identifier),(
+        'cannot find label_file %s for gsea'%label_file.identifier)
     module_name = 'GSEA'
     gp_parameters = dict()
     gp_parameters['expression.dataset'] = single_object.identifier
@@ -47,8 +47,8 @@ def run(parameters,objects,pipeline):
     for gp_file in gp_files:
         if gp_file.endswith('.zip'):
             shutil.copy(os.path.join(download_directory,gp_file),outfile)
-    assert module_utils.exists_nz(outfile),'the output\
-                               file %s for gsea fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for gsea fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -61,8 +61,9 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(single_object.identifier),'the train\
-            file %s for signature_analysis does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the train file %s for signature_analysis does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_outfile(parameters,objects,pipeline):

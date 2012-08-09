@@ -7,8 +7,10 @@ import subprocess
 def run(parameters,objects,pipeline):
     rma_file = module_utils.find_object(parameters,objects,'signal_file','contents,pre1')
     mas_file = module_utils.find_object(parameters,objects,'signal_file','contents,pre2')
-    assert os.path.exists(rma_file.identifier),'the rma_file %s in run_scoresig does not exist'%rma_file.identifier
-    assert os.path.exists(mas_file.identifier),'the mas_file %s in run_scoresig does not exist'%mas_file.identifier
+    assert os.path.exists(rma_file.identifier),(
+        'the rma_file %s in run_scoresig does not exist'%rma_file.identifier)
+    assert os.path.exists(mas_file.identifier),(
+        'the mas_file %s in run_scoresig does not exist'%mas_file.identifier)
     outfile = get_outfile(parameters,objects,pipeline)
     import Betsy_config
     scoresig_path = Betsy_config.SCORESIG
@@ -22,8 +24,8 @@ def run(parameters,objects,pipeline):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-    assert module_utils.exists_nz(outfile),'the output \
-        file %s for run_scoresig does not exists'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for run_scoresig does not exists'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
                                             rma_file,pipeline,outfile)
@@ -45,7 +47,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(single_object.identifier),'the input file %s for run_scoresig does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for run_scoresig does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

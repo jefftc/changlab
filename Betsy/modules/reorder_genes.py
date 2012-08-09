@@ -10,7 +10,8 @@ def run(parameters,objects,pipeline):
     #read the gene order list
     gene_list_file=module_utils.find_object(parameters,
                                 objects,'gene_list_file','contents')
-    assert os.path.exists(gene_list_file.identifier),'cannot find gene_list_file %s'%gene_list_file.identifier  
+    assert os.path.exists(gene_list_file.identifier),(
+        'cannot find gene_list_file %s'%gene_list_file.identifier)  
     gene_list = open(gene_list_file.identifier,'r').read().split()
     #read the pcl signal file
     f_signal= open(single_object.identifier,'r')
@@ -27,8 +28,8 @@ def run(parameters,objects,pipeline):
     for i in range(len(indexlist)):
         f.write(content[indexlist[i]+1])
     f.close()
-    assert module_utils.exists_nz(outfile),'the output\
-                        file %s for reorder_genes fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for reorder_genes fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -48,8 +49,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
                   parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input\
-                file %s for reorder_genes does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for reorder_genes does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

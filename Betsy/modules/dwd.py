@@ -15,16 +15,16 @@ def run(parameters,objects,pipeline):
     M = arrayio.read(single_object.identifier)
     result,label_line,second_line=read_label_file.read(label_file.identifier)
     assert len(result) == 2, 'for dwd,there should be only 2 classes'
-    assert [i in ['0','1'] for i in label_line] == [True]*len(label_line),'\
-                     the label of class shoul be 0 and 1'
+    assert [i in ['0','1'] for i in label_line] == [True]*len(label_line),(
+        'the label of class shoul be 0 and 1')
     y = [i.replace('0','-1') for i in label_line]
     M_y = dwdnorm.normalize(M,y)
   
     f = file(outfile,'w')
     arrayio.pcl_format.write(M_y,f)
     f.close()
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                                         for dwd fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for dwd fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -47,8 +47,9 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input file %s\
-                            for dwd does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for dwd does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

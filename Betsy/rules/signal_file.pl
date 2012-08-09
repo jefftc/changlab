@@ -253,7 +253,29 @@ signal_file(Parameters,Modules):-
     % Output Parameters: full length parameters of signal_file
     Newadd=[convert_platform_to_HG_U133A_if_not,Parameters],
     append(Past_Modules, Newadd, Modules).
-
+/*-------------------------------------------------------------------------*/
+%get the unique genes
+signal_file(Parameters,Modules):-
+    % Conditions: Parameters has created,pcl,unknown_platform and
+    %     unique_genes in [average_genes,high_var,first_gene]
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=pcl,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    member(Unique_Genes,[average_genes,high_var,first_gene]),
+    % Input: signal_file with no_unique_genes,pcl,unknown_platform
+    Pre_unique_genes=no_unique_genes,
+    member(OldStatus,[given,created,jointed,splited]),
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,unique_genes,Pre_unique_genes,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    % Module:get_unique_genes
+    % Output Parameters: full length parameters of signal_file 
+    Newadd=[get_unique_genes,Parameters],
+    append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 %remove the missing probe
 signal_file(Parameters,Modules):-

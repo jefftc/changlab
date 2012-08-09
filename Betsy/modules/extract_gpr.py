@@ -29,8 +29,8 @@ def run(parameters,objects,pipeline,options=None):
             new_file = os.path.join(outfile,newfiles[i])
             shutil.copyfile(old_file,new_file)
     if True in check:
-        assert module_utils.exists_nz(outfile),'the output file %s\
-                                  for extract_gpr fails'%outfile
+        assert module_utils.exists_nz(outfile),(
+            'the output file %s for extract_gpr fails'%outfile)
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(
                 parameters,single_object,pipeline,outfile)
@@ -68,8 +68,10 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'gpr_files','contents')
-    assert os.path.exists(single_object.identifier),'folder %s for are_all_gpr does not exit.' %single_object.identifier
-    assert os.path.isdir(single_object.identifier),"input %s for are_all_gpr is not a folder" %single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'folder %s for are_all_gpr does not exit.' %single_object.identifier)
+    assert os.path.isdir(single_object.identifier),(
+        "input %s for are_all_gpr is not a folder" %single_object.identifier)
     return single_object
 
  

@@ -106,8 +106,8 @@ def run(parameters,objects,pipeline):
                 else:
                     raise ValueError('does not recognazie the platform')
     os.rename(out_filename,outfile)
-    assert module_utils.exists_nz(outfile),'the output \
-                       file %s for download_geo_dataset fails' %outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for download_geo_dataset fails' %outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -135,8 +135,8 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'gse_id','contents')
-    assert single_object.identifier.startswith('GSE'),'the GSEID %s\
-                         should start with GSE'%single_object.identifier
+    assert single_object.identifier.startswith('GSE'),(
+        'the GSEID %s should start with GSE'%single_object.identifier)
     return single_object
 
 def clean_cel_filename(cel_file):

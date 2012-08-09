@@ -46,14 +46,14 @@ def run(parameters,objects,pipeline):
                     signal_tag.issubset(fline)):
            agilent_files.append(filename)
     if agilent_files:
-        if not os.path.exisits(outfile):
+        if not os.path.exists(outfile):
             os.mkdir(outfile)
         for filename in agilent_files: 
             old_file = os.path.join(directory,filename)
             new_file = os.path.join(outfile,filename)
             shutil.copyfile(old_file,new_file)
-        assert module_utils.exists_nz(outfile),'the output \
-                        file %s for extract_agilent_files fails'%outfile
+        assert module_utils.exists_nz(outfile),(
+            'the output file %s for extract_agilent_files fails'%outfile)
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(parameters,
                                                  single_object,pipeline,outfile)
@@ -72,7 +72,8 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    hash_result = make_unique_hash(single_object.identifier,pipeline,parameters)
+    hash_result = make_unique_hash(
+        single_object.identifier,pipeline,parameters)
     filename = 'agilent_files_' + hash_result + '*'+ original_file
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
@@ -87,6 +88,7 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'agilent_files','contents')
-    assert os.path.exists(single_object.identifier),'the input \
-                file %s for extract_agilent_files does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for extract_agilent_files does not exist'
+        %single_object.identifier)
     return single_object

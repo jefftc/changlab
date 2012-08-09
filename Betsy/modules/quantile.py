@@ -14,8 +14,8 @@ def run(parameters,objects,pipeline):
     Y_c = arrayio.convert(Y,to_format = arrayio.pcl_format)
     arrayio.pcl_format.write(Y_c,f)
     f.close()
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                    for quantile fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for quantile fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -36,8 +36,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
                                  parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),'the input\
-                    file %s for quantile does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for quantile does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

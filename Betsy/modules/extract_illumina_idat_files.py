@@ -42,8 +42,8 @@ def run(parameters,objects,pipeline):
             old_file = os.path.join(directory,filename)
             new_file = os.path.join(outfile,newfilename)
             shutil.copyfile(old_file,new_file)
-        assert module_utils.exists_nz(outfile),'the output \
-                file %s for extract_illumina_idat_files fails'%outfile
+        assert module_utils.exists_nz(outfile),(
+            'the output file %s for extract_illumina_idat_files fails'%outfile)
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(
                         parameters,single_object,pipeline,outfile)
@@ -79,7 +79,8 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'idat_files','contents')
-    assert os.path.exists(single_object.identifier),'the input \
-     file %s for extract_illumina_idat_files does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for extract_illumina_idat_files does not exist'
+        %single_object.identifier)
     return single_object
 

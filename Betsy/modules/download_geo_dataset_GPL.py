@@ -28,8 +28,8 @@ def get_seriesmatrix_file(GSEID,GPLID):
             ftp.retrbinary('RETR '+platform_filename,f.write)
             f.close()
             platform_txtfile = platform_filename[:-3]
-            assert not os.path.exists(platform_txtfile),'the seriesmatrix\
-                          file %s already exists'%platform_txtfile
+            assert not os.path.exists(platform_txtfile),(
+                'the seriesmatrix file %s already exists'%platform_txtfile)
             #unzip the gz data
             import gzip
             fileObj = gzip.GzipFile(platform_filename, 'rb');
@@ -42,8 +42,9 @@ def get_seriesmatrix_file(GSEID,GPLID):
             fileObj.close()
             fileObjOut.close()
             os.remove(platform_filename)
-            assert os.path.exists(platform_txtfile),'the \
-                unzip %s in download_geo_dataset_GPL fails'%platform_txtfile
+            assert os.path.exists(platform_txtfile),(
+                'the unzip %s in download_geo_dataset_GPL fails'
+                %platform_txtfile)
             platform_txtfiles.append(platform_txtfile)
     ftp.close()
     return platform_txtfiles
@@ -54,8 +55,8 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     GSEID = single_object.identifier.split(',')[0]
     GPLID = single_object.identifier.split(',')[1]
-    assert GSEID.startswith('GSE'),'GSEID %s is not correct'&GSEID
-    assert GPLID.startswith('GPL'),'GPLID %s is not correct'&GPLID
+    assert GSEID.startswith('GSE'),'GSEID %s is not correct'%GSEID
+    assert GPLID.startswith('GPL'),'GPLID %s is not correct'%GPLID
     GSEID_path = module_utils.download_dataset(GSEID)
     platform_txtfiles = get_seriesmatrix_file(GSEID,GPLID)
     #get the cel file name for the GPL platform
@@ -69,8 +70,9 @@ def run(parameters,objects,pipeline):
                 if linecontent.startswith('!Sample_geo_accession'):
                     cel_line = linecontent
                     break
-            assert cel_line,'the file %s\
-            does not contain "!Sample_geo_accession"'&platform_txtfile
+            assert cel_line,(
+                'the file %s does not contain "!Sample_geo_accession"'
+                %platform_txtfile)
             filecontent = os.listdir(GSEID_path)
             cel_names = []
             for x in linecontent.split()[1:]:
@@ -92,8 +94,8 @@ def run(parameters,objects,pipeline):
                             shutil.copyfile(os.path.join(GSEID_path,cel_file),outfilename)
     else:
         os.rename(GSEID_path,outfile)
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                                    for download_geo_dataset_GPL fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for download_geo_dataset_GPL fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -122,8 +124,9 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(parameters,objects,
                         'gse_id_and_platform','contents')
-    assert len(single_object.identifier.split(','))==2,'the identifier %s\
-                            should contain GSEID and GPLID'%single_object.identifier
+    assert len(single_object.identifier.split(','))==2,(
+        'the identifier %s should contain GSEID and GPLID'
+        %single_object.identifier)
     return single_object
 
 def clean_cel_filename(cel_file):

@@ -19,8 +19,8 @@ def run(parameters,objects,pipeline):
     f = file(outfile,'w')
     arrayio.pcl_format.write(M_new,f)
     f.close()
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                             for get)unqiue_genes fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for get)unqiue_genes fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -40,8 +40,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(single_object.identifier),'the input file %s\
-                   for get_unique_genes does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for get_unique_genes does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):
@@ -51,63 +52,66 @@ def get_newobjects(parameters,objects,pipeline):
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects
 
-def average_genes(M):
-    unique_index,dup_gene_list = get_duplicated_genes(M)
-    for gene_list in dup_gene_list:
-        newmatrix=[M._X[i] for i in gene_list]
-        new = jmath.mean_matrix(newmatrix,byrow=0)
-        M._X[gene_list[0]]=new
-    M_new = M.matrix(unique_index,None)
-    return M_new
-
-def get_high_variance(M):
-    unique_index,dup_gene_list = get_duplicated_genes(M)
-    for gene_list in dup_gene_list:
-        a=[(jmath.var(M._X[i]),i) for i in gene_list]
-        a.sort()
-        index = a[-1][1]
-        first_index = unique_index.index(gene_list[0])
-        unique_index[first_index] = index
-    M_new = M.matrix(unique_index,None)
-    return M_new
-
-def pick_first_one(M):
-    unique_index,dup_gene_list = get_duplicated_genes(M)
-    ProbeId,GeneID = guess_gene_header(M)
-    probe_names = M._row_names[ProbeId]
-    for gene_list in dup_gene_list:
-        a = [(probe_names[i],i) for i in gene_list]
-        a.sort()
-        index = a[0][1]
-        first_index = unique_index.index(gene_list[0])
-        unique_index[first_index] = index
-    M_new = M.matrix(unique_index,None)
-    return M_new
-
 def get_duplicated_genes(M):
     ProbeId,GeneID = guess_gene_header(M)
     gene_names = M._row_names[GeneID]
-    unique_genes=[]
-    unique_index=[]
-    dup_genes =[]
-    dup_dict=dict()
+    name2indexes=dict()
     for i in range(M.nrow()):
         b = re.match("^[-]*",gene_names[i])
         if len(gene_names[i])==0:
             continue
         elif len(b.group())>0:
             continue
-        elif gene_names[i] not in unique_genes:
-            unique_genes.append(gene_names[i])
-            unique_index.append(i)
         else:
-            dup_genes.append(i)
-    for i in dup_genes:
-        index = gene_names.index(gene_names[i])
-        if index not in dup_dict.keys():
-            dup_dict[index]=[index]
-        dup_dict[index].append(i)
-    return unique_index,dup_dict.values()
+            if gene_names[i] not in name2indexes:
+                name2indexes[gene_names[i]]=[]
+            name2indexes[gene_names[i]].append(i)
+    return name2indexes
+
+def pick_first_one(M):
+    name2indexes = get_duplicated_genes(M)
+    ProbeId,GeneID = guess_gene_header(M)
+    probe_names = M._row_names[ProbeId]
+    for key in name2indexes.keys():
+        if len(name2indexes[key])>1:
+            a = [(probe_names[i],i) for i in name2indexes[key]]
+            a.sort()
+            index = a[0][1]
+            name2indexes[key]=[index]
+    all_index = name2indexes.values()
+    all_index.sort()
+    all_index = [i[0] for i in all_index if len(i)==1]
+    M_new = M.matrix(all_index,None)
+    return M_new
+    
+def get_high_variance(M):
+    name2indexes = get_duplicated_genes(M)
+    for key in name2indexes.keys():
+        if len(name2indexes[key])>1:
+            a=[(jmath.var(M._X[i]),i) for i in name2indexes[key]]
+            a.sort()
+            index = a[-1][1]
+            name2indexes[key]=[index]
+    all_index = name2indexes.values()
+    all_index.sort()
+    all_index = [i[0] for i in all_index if len(i)==1]
+    M_new = M.matrix(all_index,None)
+    return M_new
+
+def average_genes(M):
+    name2indexes = get_duplicated_genes(M)
+    for key in name2indexes.keys():
+        if len(name2indexes[key])>1:
+            newmatrix=[M._X[i] for i in name2indexes[key]]
+            new = jmath.mean_matrix(newmatrix,byrow=0)
+            M._X[name2indexes[key][0]]=new
+            name2indexes[key]=[name2indexes[key][0]]
+            
+    all_index = name2indexes.values()
+    all_index.sort()
+    all_index = [i[0] for i in all_index if len(i)==1]
+    M_new = M.matrix(all_index,None)
+    return M_new
 
 def guess_gene_header(M):
     headers = M._row_order

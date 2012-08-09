@@ -19,12 +19,15 @@ def run(parameters,objects,pipeline):
         actual = True
     else:
         actual = False
-    assert os.path.exists(test_file.identifier),'the test\
-                file %s for weighted_voting does not exist'%test_file.identifier
-    assert os.path.exists(test_label_file.identifier),'cannot\
-                find test_label_file %s for weighted_voting'%test_label_file.identifier
-    assert os.path.exists(train_label_file.identifier),'cannot\
-                find train_label_file %s for weighted_voting'%train_label_file.identifier
+    assert os.path.exists(test_file.identifier),(
+        'the test file %s for weighted_voting does not exist'
+        %test_file.identifier)
+    assert os.path.exists(test_label_file.identifier),(
+        'cannot find test_label_file %s for weighted_voting'
+        %test_label_file.identifier)
+    assert os.path.exists(train_label_file.identifier),(
+        'cannot find train_label_file %s for weighted_voting'
+        %train_label_file.identifier)
     module_name = 'WeightedVoting'
     gp_parameters = dict()
     gp_parameters['train.filename'] = train_identifier.identifier
@@ -68,7 +71,8 @@ def run(parameters,objects,pipeline):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-    assert os.path.exists(download_directory),'there is no output directory for weightedVoting'
+    assert os.path.exists(download_directory),(
+        'there is no output directory for weightedVoting')
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
     gp_files = os.listdir(download_directory)
@@ -94,8 +98,8 @@ def run(parameters,objects,pipeline):
                 f.write('\t'.join(i))
                 f.write('\n')
             f.close()
-    assert module_utils.exists_nz(outfile),'the output\
-                               file %s for weighted_voting fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for weighted_voting fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,train_identifier,pipeline,outfile)
@@ -108,8 +112,9 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','traincontents')
-    assert os.path.exists(single_object.identifier),'the train\
-            file %s for weighted_voting does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the train file %s for weighted_voting does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_outfile(parameters,objects,pipeline):

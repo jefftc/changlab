@@ -121,7 +121,7 @@ def main():
             predicate, identifier = inpair
             content='unknown'
         else:
-            raise ValueError('the length of input should be 2 or 3')
+            raise ValueError('--input is in the wrong format')
         assert predicate in module.INPUTS,("%s is not recognized in %s)"
                                         %(str(predicate),args.protocol))
         if os.path.exists(identifier):

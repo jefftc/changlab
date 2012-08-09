@@ -51,8 +51,8 @@ def run(parameters,objects,pipeline):
             if fileloc.endswith('.gz'):
                 os.remove(cel_file)
     if True in ver_list:
-        assert module_utils.exists_nz(outfile),'the output \
-                              file %s for convert_v3_4_if_not_v3_4 fails'%outfile
+        assert module_utils.exists_nz(outfile),(
+            'the output file %s for convert_v3_4_if_not_v3_4 fails'%outfile)
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(
             parameters,single_object,pipeline,outfile)
@@ -87,7 +87,8 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'cel_files','contents')
-    assert os.path.exists(single_object.identifier),'folder %s \
-           for convert_v3_4_if_not_v3_4 does not exit.' % single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'folder %s for convert_v3_4_if_not_v3_4 does not exit.'
+        % single_object.identifier)
     assert os.path.isdir(single_object.identifier),"input is not a folder"
     return single_object

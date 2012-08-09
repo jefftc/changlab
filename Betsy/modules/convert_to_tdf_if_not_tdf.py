@@ -11,14 +11,18 @@ def run(parameters,objects,pipeline):
     """check an input file is xls or xlsx format"""
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
+    if single_object.identifier.endswith('.gz'):
+        newfile = module_utils.gunzip(single_object.identifier)
+    else:
+        newfile = single_object.identifier
     M = None
     tmp_file = None
     try:
-        xlrd.open_workbook(single_object.identifier)
+        xlrd.open_workbook(newfile)
         tmp_file='tmp.xls'
     except Exception,XLRDError:
         try:
-            book = openpyxl.load_workbook(single_object.identifier)
+            book = openpyxl.load_workbook(newfile)
             tmp_file = 'tmp.xlsx'
         except Exception,InvalidFileException:
             tmp_file = None
@@ -27,16 +31,16 @@ def run(parameters,objects,pipeline):
         
     if not tmp_file:
         try:
-            M = arrayio.choose_format(single_object.identifier)
+            M = arrayio.choose_format(newfile)
         except Exception,x:
                 raise 
         except (SystemError,MemoryError,KeyError),x:
             raise 
     
     if M:
-        shutil.copyfile(single_object.identifier,outfile)
+        shutil.copyfile(newfile,outfile)
     elif tmp_file:
-        shutil.copyfile(single_object.identifier,tmp_file)
+        shutil.copyfile(newfile,tmp_file)
         import Betsy_config
         xls2txt_path = Betsy_config.XLS2TXT
         xls2txt_BIN = module_utils.which(xls2txt_path)
@@ -51,8 +55,8 @@ def run(parameters,objects,pipeline):
             raise ValueError(error_message)
         os.remove(tmp_file)
         f.close()
-    assert module_utils.exists_nz(outfile),'the output \
-        file %s for convert_to_tdf_if_not_tdf does not exists'%outfile
+    assert module_utils.exists_nz(outfile),(
+    'the output file %s for convert_to_tdf_if_not_tdf does not exists'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
                                             single_object,pipeline,outfile)
@@ -96,7 +100,8 @@ def get_newobjects(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'input_signal_file','contents')
-    assert os.path.exists(single_object.identifier),'the input \
-        file %s for convert_to_tdf_if_not_tdf does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+    'the input file %s for convert_to_tdf_if_not_tdf does not exist'
+    %single_object.identifier)
     return single_object
 

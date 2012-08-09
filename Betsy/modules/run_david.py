@@ -13,24 +13,12 @@ def run(parameters,objects,pipeline):
     f.close()
     in_list = text.split()
     #guess the idType
-    try:
-        chipname = arrayannot.guess_chip_from_probesets(in_list) # we can guess the platform
-        idType = platform2idtype[chipname]    #convert the platform to idtype
-        if idType == 'not in David':
-            raise ValueError('David does not handle genes in this platform')
-        else:
-            DAVIDenrich(in_list,idType,outfile)
-    except:    #cannot guess the platform,try 'GENE_SYMBOL', then 'ENTREZ_GENE_ID'
-        idType='GENE_SYMBOL'
-        try:
-            DAVIDenrich(in_list, idType, outfile)
-        except ValueError:
-            idType='ENTREZ_GENE_ID'
-            try:
-                DAVIDenrich(in_list, idType, outfile)
-            except ValueError:
-                raise ValueError('we cannot guess the right idType for David')
-    assert module_utils.exists_nz(outfile),'the outfile for run_david %s does not exist'%outfile
+    chipname = arrayannot.guess_chip_from_probesets(in_list) # we can guess the platform
+    assert chipname in platform2idtype,'David does not handle %s'%chipname
+    idType = platform2idtype[chipname]    #convert the platform to idtype
+    DAVIDenrich(in_list,idType,outfile)
+    assert module_utils.exists_nz(outfile),(
+        'the outfile for run_david %s does not exist'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -50,8 +38,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'gene_list_file','contents')
-    assert os.path.exists(single_object.identifier),'the input \
-                file %s for run_gather does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for run_gather does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):
@@ -61,13 +50,10 @@ def get_newobjects(parameters,objects,pipeline):
         outfile,'david_file',parameters,objects,single_object)
     return new_objects
 
-
-
 def DAVIDenrich(in_list, idType, outfile,bg_list=[], bgName = 'Background1',listName='List1', category = '', thd=0.1, ct=2):
     from suds.client import Client
     import os
-    if len(in_list)>=3000:
-        raise 'the number of genes to David cannot exceed 3000'
+    assert len(in_list)<3000,'the number of genes to David cannot exceed 3000'
     if len(in_list) > 0 :
         inputListIds = ','.join(in_list)  
     else:
@@ -75,22 +61,16 @@ def DAVIDenrich(in_list, idType, outfile,bg_list=[], bgName = 'Background1',list
     flagBg = False
     if len(bg_list) > 0 :
         inputBgIds = ','.join(bg_list)
-        flagBg = True
-        
+        flagBg = True  
     client = Client('http://david.abcc.ncifcrf.gov/webservice/services/DAVIDWebService?wsdl')
     client.service.authenticate('xiaoling.chen@uth.tmc.edu')
-
     listType = 0
     client.service.addList(inputListIds,idType,listName,listType)
     if flagBg:
         listType = 1
         client.service.addList(inputBgIds,idType,bgName,listType)
-
     client.service.setCategories(category)
-    try:
-        chartReport = client.service.getChartReport(thd,ct)
-    except:
-        raise ValueError(sys.exc_info()[1])
+    chartReport = client.service.getChartReport(thd,ct)
     with open(outfile, 'w') as fOut:
         fOut.write('Category\tTerm\tCount\t%\tPvalue\tGenes\tList Total\tPop Hits\tPop Total\tFold Enrichment\tBonferroni\tBenjamini\tFDR\n')
         for row in chartReport:
@@ -112,20 +92,32 @@ def DAVIDenrich(in_list, idType, outfile,bg_list=[], bgName = 'Background1',list
             fOut.write('\t'.join(rowList)+'\n')
        
 
-platform2idtype={'MG_U74Av2':'AFFYMETRIX_3PRIME_IVT_ID', 'HG_U133_Plus_2':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'Mu11KsubA':'AFFYMETRIX_3PRIME_IVT_ID','Mu11KsubB':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'Hu6800':'AFFYMETRIX_3PRIME_IVT_ID','HG_U133B':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'Mouse430_2':'AFFYMETRIX_3PRIME_IVT_ID','Drosophila_2':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'HT_HG_U133A':'AFFYMETRIX_3PRIME_IVT_ID','RAE230B':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'RG_U34A':'AFFYMETRIX_3PRIME_IVT_ID','MOE430B':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'Mouse430A_2':'AFFYMETRIX_3PRIME_IVT_ID','HG_U95A':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'MOE430A':'AFFYMETRIX_3PRIME_IVT_ID','HG_U133A':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'RAE230A':'AFFYMETRIX_3PRIME_IVT_ID','Rat230_2':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'Hu35KsubC':'AFFYMETRIX_3PRIME_IVT_ID','Hu35KsubB':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'MG_U74Cv2':'AFFYMETRIX_3PRIME_IVT_ID','HG_U133A_2':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'Hu35KsubA':'AFFYMETRIX_3PRIME_IVT_ID','Hu35KsubD':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'MG_U74Bv2':'AFFYMETRIX_3PRIME_IVT_ID','HG_U95Av2':'AFFYMETRIX_3PRIME_IVT_ID',
-                 'Mapping250K_Sty':'not in David', 'Mapping250K_Nsp':'not in David',
-                 'HumanHT_12':'ILLUMINA_ID','MouseRef_8':'ILLUMINA_ID',
-                ' HumanHT_12_control':'ILLUMINA_ID','MouseRef_8_control':'ILLUMINA_ID'}
+platform2idtype={'MG_U74Av2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'HG_U133_Plus_2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Mu11KsubA':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Mu11KsubB':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Hu6800':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'HG_U133B':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Mouse430_2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'RG_U34A':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Mouse430A_2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'HG_U95A':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'HG_U133A':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'RAE230A':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Hu35KsubC':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Hu35KsubB':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'MG_U74Cv2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'HG_U133A_2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Hu35KsubA':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'Hu35KsubD':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'MG_U74Bv2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'HG_U95Av2':'AFFYMETRIX_3PRIME_IVT_ID',
+                 'HumanHT_12':'ILLUMINA_ID',
+                 'MouseRef_8':'ILLUMINA_ID',
+                 'HumanHT_12_control':'ILLUMINA_ID',
+                 'MouseRef_8_control':'ILLUMINA_ID',
+                 'entrez_ID_human':'ENTREZ_GENE_ID',
+                 'entrez_ID_mouse':'ENTREZ_GENE_ID',
+                 'entrez_ID_symbol_human':'GENE_SYMBOL',
+                 'entrez_ID_symbol_mouse':'GENE_SYMBOL'}
 
