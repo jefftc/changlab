@@ -479,7 +479,7 @@ def _tdf_to_gct(X):
         # Use the first two columns for the name and description.
         name_i, desc_i = 0, 1
         # See if there is a ROW_ID set.  If there is, use that for NAME.
-        if hasattr(X, "_synonyms") and ROW_ID in X._synonyms:
+        if ROW_ID in X._synonyms:
             name_i = X.row_names().index(X._synonyms[ROW_ID])
             if name_i == desc_i:
                 # name_i used to be 0, and desc_i is not 0.
@@ -506,6 +506,67 @@ def _tdf_to_gct(X):
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     #x = Matrix.add_synonyms(x, synonyms)
     assert gct_format.is_matrix(x)
+    return x
+
+def _tdf_to_pcl(X):
+    from genomicode import Matrix
+    from genomicode import parselib
+    assert tab_delimited_format.is_matrix(X)
+
+    assert len(X.col_names()) >= 1
+    assert X._col_order and X._col_order[0] == tab_delimited_format.SAMPLE_NAME
+
+    # Make up default headers and names.
+    id_header = "GENE_ID"
+    name_header = "NAME"
+    geneid = ["GENE%s" % x for x in parselib.pretty_range(0, X.nrow())]
+    name = None
+    
+    # Try to find better names.
+    if not X.row_names():
+        pass
+    elif len(X.row_names()) == 1:
+        # Only 1 header, so use that for the gene ID.
+        id_header = X.row_names()[0]
+        geneid = X.row_names(id_header)
+    else:
+        # Use the first two columns for the ID and name.
+        geneid_i, name_i = 0, 1
+        # See if there is a ROW_ID set.  If there is, use that for NAME.
+        if ROW_ID in X._synonyms:
+            id_header = X._synonyms[ROW_ID]
+            geneid_i = X.row_names().index(id_header)
+            if geneid_i == name_i:
+                # geneid_i used to be 0, and name_i is not 0.
+                name_i = 0
+        assert geneid_i != name_i
+        geneid = X.row_names(X.row_names()[geneid_i])
+        name = X.row_names(X.row_names()[name_i])
+        
+    if id_header == name_header:
+        id_header = "GENE_ID"  # assume this is not the name_header
+    assert id_header != name_header
+    
+    row_order = [id_header]
+    if name is not None:
+        row_order = [id_header, name_header]
+    col_order = [X._col_order[0]]
+    row_names = {}
+    col_names = {}
+    synonyms = {}
+    
+    row_names[id_header] = geneid
+    if name_header in row_order:
+        row_names[name_header] = name
+    col_names[tab_delimited_format.SAMPLE_NAME] = X._col_names[X._col_order[0]]
+    synonyms[ROW_ID] = id_header
+    synonyms[COL_ID] = col_order[0]
+        
+    x = Matrix.InMemoryMatrix(
+        X._X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    #x = Matrix.add_synonyms(x, synonyms)
+    assert pcl_format.is_matrix(x)
     return x
 
 def _any_to_csv(X):
@@ -611,6 +672,7 @@ CONVERTERS = [
     ("jeffs_format", "pcl_format", _jeff_to_pcl),
     ("pcl_format", "gct_format", _pcl_to_gct),
     ("tab_delimited_format", "gct_format", _tdf_to_gct),
+    ("tab_delimited_format", "pcl_format", _tdf_to_pcl),
     (None, "csv_format", _any_to_csv),
     (None, "tab_delimited_format", _any_to_tdf),
     ]
