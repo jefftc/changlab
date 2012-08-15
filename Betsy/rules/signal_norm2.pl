@@ -37,7 +37,7 @@ signal_norm2(Parameters,Modules):-
    signal_norm1(NewParameters2,Modules).
 
 /*-------------------------------------------------------------------------*/
-%gene-center the signal file
+%gene_center the signal file
 signal_norm2(Parameters, Modules):-
     % Conditions: Parameters has created,gene_center in [mean,median],no_gene_normalize
     get_value(Parameters,status,created,Status),
@@ -52,9 +52,9 @@ signal_norm2(Parameters, Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,gene_center,OldGene_center,OldParameters),
     signal_norm2(OldParameters,Past_Modules),
-    % Module: centering
+    % Module: center_genes
     % Output parameters: full length parameters of signal_norm2
-    Newadd=[centering,Parameters],
+    Newadd=[center_genes,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 %gene_normalize the signal file
@@ -70,8 +70,8 @@ signal_norm2(Parameters, Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,gene_normalize,OldGene_normalize,OldParameters),
     signal_norm2(OldParameters,Past_Modules),
-    % Module:normalize
+    % Module:normalize_genes
     % Output parameters: full length parameters of signal_norm2
-    Newadd=[normalize,Parameters],
+    Newadd=[normalize_genes,Parameters],
     append(Past_Modules, Newadd, Modules).
 

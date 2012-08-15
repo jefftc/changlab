@@ -36,7 +36,7 @@ make_batch_report(Parameters,Modules):-
      get_options(Parameters,[pca_gene_num],[],Options2),
      append(NewParameters,Options2,NewParameters2),
      append(NewParameters2,[objecttype,pca_plot_out],NewParameters3),
-     Newadd=[pca_plot,NewParameters3],
+     Newadd=[plot_pca,NewParameters3],
      append(Modules1, Newadd, Modules2),
 
      % Input3: pca_plot_in
@@ -82,9 +82,9 @@ make_cluster_report(Parameters,Modules):-
     convert_cluster_parameters(Parameters,NewParameters1),
     cluster_file(NewParameters1,Past_Modules1),
     append(NewParameters1,[filetype,cluster_file],NewParameters2),
-    % Module: annot_file
+    % Module: annot_gene_metadata
     % Output parameters:the full length parameters of cluster_file and [filetype,cluster_file]
-    append(Past_Modules1,[annot_file,NewParameters2],Past_Modules2),
+    append(Past_Modules1,[annot_gene_metadata,NewParameters2],Past_Modules2),
 
     % Input2: cluster_heatmap
     get_options(Parameters,[hm_width,hm_height,color],[],Options),
@@ -116,10 +116,10 @@ make_normalize_report(Parameters,Modules):-
     % Input1: signal_file
     convert_parameters_file(Parameters,NewParameters),
     signal_file(NewParameters,Past_Modules1),
-    % Module: annot_file
+    % Module: annot_gene_metadata
     % Output parameters:full length parameters of signal_file and [filetype,signal_file]
     append(NewParameters,[filetype,signal_file],NewParameters0),
-    append(Past_Modules1,[annot_file,NewParameters0],Modules1),
+    append(Past_Modules1,[annot_gene_metadata,NewParameters0],Modules1),
     % Input2: pca_plot_in
     get_options(Parameters,[pca_gene_num],[],Options),
     append(NewParameters,Options,NewParameters1),

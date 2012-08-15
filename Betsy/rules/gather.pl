@@ -46,9 +46,9 @@ gene_list_file(Parameters,Modules):-
     get_value(NewParameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
     signal_file(OldParameters,Past_Modules_2),
-    % Module: class_neighbors
+    % Module: rank_gene_by_class_neighbors
     % Output parameters: update the parameters to full length
-    Newadd=[class_neighbors,NewParameters],
+    Newadd=[rank_gene_by_class_neighbors,NewParameters],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 
@@ -71,15 +71,15 @@ gather(Parameters,Modules):-
    (gene_list_file([contents,Contents],[]),
    % Output parameters:update the output parameters to full length
    Newadd=[contents,Contents,NewParameters],
-   % Module: run_gather
-   Modules=[run_gather,Newadd];
+   % Module: annotate_genes_with_gather
+   Modules=[annotate_genes_with_gather,Newadd];
    % Conditions: not given a gene_list_file
    not(gene_list_file([contents,Contents],[])),
    convert_parameters_file(Parameters,NewParameters1),
    % Input: gene_list_file not given
    gene_list_file(NewParameters1,Past_Modules),
    append(NewParameters1,NewParameters,NewParameters2),
-   % Module:run_gather
+   % Module:annotate_genes_with_gather
    % Output parameters:update the output parameters to full length
-   Newadd=[run_gather,NewParameters2],
+   Newadd=[annotate_genes_with_gather,NewParameters2],
    append(Past_Modules,Newadd,Modules)).

@@ -13,10 +13,12 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     label_file = module_utils.find_object(
         parameters,objects,'class_label_file','contents')
-    assert os.path.exists(label_file.identifier),'cannot find label_file %s'%label_file.identifier
+    assert os.path.exists(label_file.identifier),(
+        'cannot find label_file %s'%label_file.identifier)
     label,label_line,second_line = read_label_file.read(label_file.identifier)
     M = arrayio.read(single_object.identifier)
-    assert len(label) == 2, ' the length of label in %s should be 2'%label_file.identifier
+    assert len(label) == 2, (
+        'the length of label in %s should be 2'%label_file.identifier)
     assert len(label[0]) == 2
     assert len(label[1]) == 2
     first = M.slice(None,label[0][0])
@@ -40,8 +42,8 @@ def run(parameters,objects,pipeline):
     f.write('\t'.join(gene_list))
     f.close()
     assert len(gene_list)>0,'there is no significant genes can be found in ttest'
-    assert module_utils.exists_nz(outfile),'the output\
-                file %s for rank_gene_by_sample_ttest fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for rank_gene_by_sample_ttest fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)

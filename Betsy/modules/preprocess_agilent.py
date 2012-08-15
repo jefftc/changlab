@@ -39,8 +39,8 @@ def run(parameters,objects,pipeline):
         f.write('\n')
     f.close()
     os.remove(tmpfile)
-    assert module_utils.exists_nz(outfile),'the output\
-                 file %s for preprocess_agilent fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for preprocess_agilent fails' %outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
     parameters,single_object,pipeline,outfile)
@@ -61,8 +61,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
             parameters,objects,'agilent_files','contents',['agilent'])
-    assert os.path.exists(single_object.identifier),'the input \
-        file %s for preprocess_agilent does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for preprocess_agilent does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

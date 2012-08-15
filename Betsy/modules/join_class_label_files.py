@@ -11,18 +11,20 @@ def run(parameters,objects,pipeline):
         parameters,objects,'class_label_file','merge1')
     clf2 = module_utils.find_object(
         parameters,objects,'class_label_file','merge2')
-    assert os.path.exists(clf1.identifier),'the input \
-               clf1 %s for join_class_label_file does not exist'%clf1.identifier
-    assert os.path.exists(clf2.identifier),'the input\
-               clf2 %s for join_class_label_file does not exist'%clf2.identifier
+    assert os.path.exists(clf1.identifier),(
+        'the input clf1 %s for join_class_label_file does not exist'
+        %clf1.identifier)
+    assert os.path.exists(clf2.identifier),(
+        'the input clf2 %s for join_class_label_file does not exist'
+        %clf2.identifier)
     result1,label_line1,second_line1=read_label_file.read(clf1.identifier)
     result2,label_line2,second_line2=read_label_file.read(clf2.identifier)
     second_line1.extend(second_line2)
     label = [str(int(i)+len(result1)) for i in label_line2]
     label_line1.extend(label)
     read_label_file.write(outfile,second_line1,label_line1)
-    assert module_utils.exists_nz(outfile),'the output\
-                    file %s for join_class_label_file fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for join_class_label_file fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
                                   parameters,[clf1,clf2],pipeline,outfile)
@@ -44,8 +46,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'class_label_file','merge1')
-    assert os.path.exists(single_object.identifier),'the input\
-        file %s for join_class_label_files does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for join_class_label_files does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

@@ -17,9 +17,9 @@ gsea(Parameters,Modules):-
    set_value(NewParameters,status,OldStatus,NewParameters1),
    signal_file(NewParameters1,Past_Modules_2),
    append(Past_Modules_1,Past_Modules_2,Past_Modules),
-   % Module:gsea
+   % Module:annotate_with_gsea
    % Output parameters: update the parameters to full length
-   Newadd=[gsea,NewParameters],
+   Newadd=[annotate_with_gsea,NewParameters],
    append(Past_Modules,Newadd,Modules).
 
 
@@ -35,9 +35,9 @@ signature_score(Parameters,Modules):-
    Status=created,
    get_value(Parameters,platform,unknown_platform,Platform),
    Platform='HG_U133A',
-   get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
+   get_value_variable(Parameters,duplicate_data,Duplicate_Data),
    Duplicate_Data=no_duplicate_data,
-   get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
+   get_value_variable(Parameters,duplicate_probe,Duplicate_Probe),
    member(Duplicate_Probe,[high_var_probe,closest_probe]),
    get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
    Missing_Probe=no_missing_probe,
@@ -58,8 +58,8 @@ signature_score(Parameters,Modules):-
    % Input: signal_file with illumina
    signal_file(NewParameters2,Past_Modules),
    append([pre1,Preprocess,pre2,Preprocess],NewParameters,Write_list)),
-   % Module: run_scoresig
+   % Module: score_pathway_with_scoresig
    % Output parameters: the parameters include the pre1 and pre2
-   Newadd=[run_scoresig,Write_list],
+   Newadd=[score_pathway_with_scoresig,Write_list],
    append(Past_Modules,Newadd,Modules).
 

@@ -5,7 +5,7 @@ differential_expressed_genes(Parameters,Modules):-
     % Conditions: pcl,logged,created, diff_expr = t_test or sam
     get_value_variable(Parameters,diff_expr,Diff_expr),
     member(Diff_expr,[t_test,sam]),
-    member((Diff_expr,Module),[(t_test,t_test),(sam,sam)]),
+    member((Diff_expr,Module),[(t_test,calc_diffexp_with_ttest),(sam,calc_diffexp_with_sam)]),
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
     Format=pcl,
@@ -26,7 +26,7 @@ differential_expressed_genes(Parameters,Modules):-
     Diff_expr = t_test,
     Options = []),
     append(NewParameters,Options,NewParameters2),
-    % Module: t_test or sam
+    % Module: calc_diffexp_with_ttest or calc_diffexp_with_sam
     % Output parameters: update the output parameters to full_length
     append([diff_expr,Diff_expr],NewParameters2,Write_list),
     Newadd=[Module,Write_list],

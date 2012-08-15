@@ -36,6 +36,8 @@ def find_sorted_index(inputlist,gene_list):
     """get a list of index for mapping aftersort to inputlist"""
     indexlist = []
     for key in gene_list:
+        if key not in inputlist:
+            continue
         index = inputlist.index(key)
         try:
             inputlist.index(key,index+1)

@@ -124,7 +124,7 @@ rule_engine.py --plin 'idat_files([contents,[a],version,unknown_version],[])' --
 
 6. Test preprocess module
 command:
-rule_engine.py --plin 'cel_files([contents,[a],version,v3_4],[])' --id 'GSE8286' --plout 'signal_raw([contents,[a],format,jeffs,is_logged,logged,preprocess,rma,has_missing_value,no_missing,rename_sample,no_rename],A)'
+rule_engine.py --plin 'cel_files([contents,[a],version,v3_4],[])' --id 'GSE8286_folder' --plout 'signal_raw([contents,[a],format,jeffs,is_logged,logged,preprocess,rma,has_missing_value,no_missing,rename_sample,no_rename],A)'
 --------------------------------------------------
 
 7. Test illumina,illu_signal module
@@ -321,7 +321,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 46. Test run_scoresig module
 command:
-rule_engine.py --plin 'cel_files([contents,[a],version,v3_4],[])' --id 'GSE8286'  --plout "signature_score([contents,[a],format,pcl,is_logged,logged,preprocess,rma,predataset,no_predataset,has_missing_value,no_missing,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,rename_sample,no_rename,platform,'HG_U133A',duplicate_data,no_duplicate_data,missing_probe,no_missing_probe,duplicate_probe,closest_probe],A)" 
+rule_engine.py --plin 'cel_files([contents,[a],version,v3_4],[])' --id 'GSE8286_folder'  --plout "signature_score([contents,[a],format,pcl,is_logged,logged,preprocess,rma,predataset,no_predataset,has_missing_value,no_missing,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,rename_sample,no_rename,platform,'HG_U133A',duplicate_data,no_duplicate_data,missing_probe,no_missing_probe,duplicate_probe,closest_probe],A)" 
 --------------------------------------------------
 
 47. Test sam module
@@ -383,12 +383,12 @@ rule_engine.py --plin 'gpr_files([contents,[a],version,unknown_version],[])' --i
 
 58. Test make_heatmap module
 command:
-rule_engine.py --plin 'cel_files([contents,[a],version,unknown_version],[])' --id 'GSE8286' --plout 'cluster_heatmap([contents,[a],cluster_alg,no_cluster_alg,format,pcl,is_logged,logged,has_missing_value,no_missing,preprocess,rma,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,hm_width,500,hm_height,1],A)'
+rule_engine.py --plin 'cel_files([contents,[a],version,unknown_version],[])' --id 'GSE8286_folder' --plout 'cluster_heatmap([contents,[a],cluster_alg,no_cluster_alg,format,pcl,is_logged,logged,has_missing_value,no_missing,preprocess,rma,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,hm_width,500,hm_height,1],A)'
 --------------------------------------------------
 
 59. Test make_normalize_report and annot_file module
 command:
-protocol_engine.py  --protocol 'normalize_file' --input 'cel_files:GSE8286'  --parameters 'preprocess:rma'
+protocol_engine.py  --protocol 'normalize_file' --input 'cel_files:GSE8286_folder'  --parameters 'preprocess:rma'
 --------------------------------------------------
 60.make_batch_report module 
 command:

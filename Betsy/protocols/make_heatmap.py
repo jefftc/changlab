@@ -11,7 +11,7 @@ INPUTS = [
     'idat_files',
     'agilent_files',
     'input_signal_file',
-    'renanme_list_file']
+    'rename_list_file']
     
 OUTPUTS = ['cluster_heatmap']
 

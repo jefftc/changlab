@@ -27,9 +27,9 @@ cluster_file(Parameters,Modules):-
      % Input: signal_file
      convert_parameters_file(NewParameters,NewParameters1),
      signal_file(NewParameters1,Past_Modules),
-     % Module:clustering
+     % Module:cluster_genes
      % Output parameters: update parameters to full length
-     Newadd = [clustering,NewParameters],
+     Newadd = [cluster_genes,NewParameters],
      append(Past_Modules,Newadd,Modules).
 
  /*-------------------------------------------------------------------------*/

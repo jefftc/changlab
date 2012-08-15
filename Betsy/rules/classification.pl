@@ -73,8 +73,8 @@ weightedVoting(Parameters,Modules):-
            NewParameters,Write_list),
     get_options(Parameters,[wv_num_features,wv_minstd,wv_feature_stat],[],Options),
     append(Write_list,Options,Write_list1),
-    % Module: weighted_voting
-    Newadd=[weighted_voting,Write_list1],
+    % Module: classify_with_weighted_voting
+    Newadd=[classify_with_weighted_voting,Write_list1],
     append(Past_Modules,Newadd,Modules).
 
 /*---------------------------------------------------------------*/
@@ -96,8 +96,8 @@ loocv(Parameters,Modules):-
     append(Past_Modules_2,Past_Modules_1,Past_Modules),
     % Output parameters: update the parameters to full length
     append(List,NewParameters1,Write_list),
-    % Module:loocv
-    Newadd=[loocv,Write_list],
+    % Module:run_loocv
+    Newadd=[run_loocv,Write_list],
     append(Past_Modules,Newadd,Modules).
 
 get_CV_parameter(A,Format,List):-
@@ -107,7 +107,7 @@ get_CV_parameter(A,Format,List):-
           predict,apply_svm_model];
     A=weightedvoting,
     Format=gct,
-    List=[predict,weighted_voting].
+    List=[predict,classify_by_weighted_voting].
 /*---------------------------------------------------------------*/
 prediction_plot(Parameters,Modules):-
     % Conditions: class_plot should be svm,weightedvoting or loocv

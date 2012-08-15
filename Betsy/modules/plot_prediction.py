@@ -32,8 +32,8 @@ def run(parameters,objects,pipeline):
       col="blue", axis.lty=2, ylab="Prediction",xlab="Sample")')
     R('legend("bottomleft", legend_name, lty=1,cex=1)')
     R('dev.off()')
-    assert module_utils.exists_nz(outfile),'the output\
-                    file %s for plot_prediction fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for plot_prediction fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -51,8 +51,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'classification_file','traincontents')
-    assert os.path.exists(single_object.identifier),'the classification\
-                file %s for plot_prediction does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the classification file %s for plot_prediction does not exist'
+        %single_object.identifier)
     return single_object
 
 def get_newobjects(parameters,objects,pipeline):

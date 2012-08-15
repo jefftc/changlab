@@ -13,8 +13,9 @@ def run(parameters,objects,pipeline):
     x_training = module_utils.format_convert(training)#convert to the format libsvm accept
     training_label_file = module_utils.find_object(parameters,
                                     objects,'class_label_file','contents')
-    assert os.path.exists(training_label_file.identifier),'the training label file\
-                          %s does not exist'%training_label_file.identifier
+    assert os.path.exists(training_label_file.identifier),(
+        'the training label file %s does not exist'
+        %training_label_file.identifier)
     a,training_label,second_line = read_label_file.read(training_label_file.identifier)
     y_training = [int(x) for x in training_label]
     svm_kernel = ['linear','polynomial','RBF','sigmoid','precomputed_kernel']
@@ -27,8 +28,8 @@ def run(parameters,objects,pipeline):
     prob  = svmutil.svm_problem(y_training, x_training)
     model = svmutil.svm_train(prob,param)
     svmutil.svm_save_model(outfile,model)
-    assert module_utils.exists_nz(outfile),'the output\
-                        file %s for train_svm_model fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for train_svm_model fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -48,8 +49,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
                            parameters,objects,'signal_file','contents')
-    assert os.path.exists(single_object.identifier),'the input\
-                file %s for train_svm_model does not exist'%single_object.identifier
+    assert os.path.exists(single_object.identifier),(
+        'the input file %s for train_svm_model does not exist'
+        %single_object.identifier)
     return single_object
 
 

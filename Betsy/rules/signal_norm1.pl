@@ -56,9 +56,9 @@ signal_norm1(Parameters, Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,quantile,OldQuantile,OldParameters),
     signal_norm1(OldParameters,Past_Modules),
-    % Module: quantile
+    % Module: normalize_samples_with_quantile
     % Output parameters: full length parameters of signal_norm1
-    Newadd=[quantile,Parameters],
+    Newadd=[normalize_samples_with_quantile,Parameters],
     append(Past_Modules, Newadd, Modules).
     
 /*--------------------------------------------------------------------------*/
@@ -79,9 +79,9 @@ signal_norm1(Parameters, Modules):-
     set_value(OldParameters1,combat,OldCombat,OldParameters),
     signal_norm1(OldParameters,Past_Modules_2),
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
-    % Module: combat
+    % Module: normalize_samples_with_combat
     % Output parameters: full length parameters of signal_norm1
-    Newadd=[combat,Parameters],
+    Newadd=[normalize_samples_with_combat,Parameters],
     append(Past_Modules, Newadd, Modules).
     
 /*--------------------------------------------------------------------------*/
@@ -102,9 +102,9 @@ signal_norm1(Parameters, Modules):-
     set_value(OldParameters1,dwd,OldDwd,OldParameters),
     signal_norm1(OldParameters,Past_Modules_2),
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
-    % Module: dwd
+    % Module: normalize_samples_with_dwd
     % Output parameters: full length parameters of signal_norm1
-    Newadd=[dwd,Parameters],
+    Newadd=[normalize_samples_with_dwd,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*--------------------------------------------------------------------------*/
 % Bfrm the signal file,
@@ -120,9 +120,9 @@ signal_norm1(Parameters, Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,bfrm,OldBfrm,OldParameters),
     signal_norm1(OldParameters,Past_Modules),
-    % Module: bfrm_normalize
+    % Module: normalize_samples_with_bfrm
     % Output parameters: full length parameters of signal_norm1
-    Newadd=[bfrm_normalize,Parameters],
+    Newadd=[normalize_samples_with_bfrm,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*--------------------------------------------------------------------------*/
@@ -143,7 +143,7 @@ signal_norm1(Parameters, Modules):-
     set_value(OldParameters1,shiftscale,OldShiftscale,OldParameters),
     signal_norm1(OldParameters,Past_Modules_2),
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
-    % Module: shiftscale
+    % Module: normalize_samples_with_shiftscale
     % Output parameters: full length parameters of signal_norm1
-    Newadd=[shiftscale,Parameters],
+    Newadd=[normalize_samples_with_shiftscale,Parameters],
     append(Past_Modules, Newadd, Modules).

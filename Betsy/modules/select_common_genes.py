@@ -13,23 +13,26 @@ def run(parameters,objects,pipeline):
         parameters,objects,'signal_file','testcontents')
     training_file = module_utils.find_object(
         parameters,objects,'signal_file','traincontents')
-    assert os.path.exists(training_file.identifier),'the training file %s\
-                     for select_common_genes does not exists' %training_file.identifier
-    assert os.path.exists(test_file.identifier),'the test file %s\
-                    for select_common_genes does not exists' %test_file.identifier
+    assert os.path.exists(training_file.identifier),(
+        'the training file %s for select_common_genes does not exists'
+        %training_file.identifier)
+    assert os.path.exists(test_file.identifier),(
+        'the test file %s for select_common_genes does not exists'
+        %test_file.identifier)
     training = arrayio.read(training_file.identifier)
     test = arrayio.read(test_file.identifier)
     [M_A,M_B] = matrixlib.align_rows(training,test)
-    assert M_A.nrow()>0,'there is no common genes betwee %s \
-                             and %s'%(training_file.identifier,test_file.identifier)
+    assert M_A.nrow()>0,(
+        'there is no common genes betwee %s and %s'
+        %(training_file.identifier,test_file.identifier))
     f = file(outfile,'w')
     if parameters['contents'] == parameters['traincontents']:
         arrayio.pcl_format.write(M_A,f)
     elif parameters['contents'] == parameters['testcontents']:
         arrayio.pcl_format.write(M_B,f)
     f.close()
-    assert module_utils.exists_nz(outfile),'the output file %s\
-                           for select_common_genes fails'%outfile
+    assert module_utils.exists_nz(outfile),(
+        'the output file %s for select_common_genes fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
                          parameters,single_object,pipeline,outfile)
@@ -50,8 +53,9 @@ def get_outfile(parameters,objects,pipeline):
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents')
-    assert os.path.exists(single_object.identifier), 'the input file %s \
-        for select_common_genes does not exist' %single_object.identifier
+    assert os.path.exists(single_object.identifier), (
+        'the input file %s for select_common_genes does not exist'
+        %single_object.identifier)
     return single_object
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
