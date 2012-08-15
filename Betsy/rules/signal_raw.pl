@@ -48,30 +48,40 @@ signal_raw(Parameters,Modules):-
     convert_parameters_variable_raw(Parameters,NewParameters),
     signal_raw(NewParameters,Modules).
 /*-------------------------------------------------------------------------*/
-% generate geo_dataset with version v3_4 from cel_file with version cc;
-% or from cel_file with version unknown.
-cel_files([contents,Contents,version,v3_4], Modules):-
+% generate geo_dataset with version cc or v3_4 from cel_file with version unknown.
+cel_files([contents,Contents,version,cc_or_v3_4], Modules):-
     % Input:cel_file with version=unknown_version
-    member(Oldversion,[cc,unknown_version]),
+    Oldversion=unknown_version,
     cel_files([contents,Contents,version,Oldversion], Past_Modules),
-    % Module: convert_v3_4_if_not_v3_4
+    % Module: extract_CEL_files
     % Output parameters:[contents,Contents,version,v3_4]
-    Newadd=[convert_v3_4_if_not_v3_4, [contents,Contents,version,v3_4]],
+    Newadd=[extract_CEL_files, [contents,Contents,version,cc_or_v3_4]],
     append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+% generate geo_dataset with version v3_4 from cel_file with version cc or v3_4.
+cel_files([contents,Contents,version,v3_4], Modules):-
+    % Input:cel_file with version=cc_or_v3_4
+    Oldversion=cc_or_v3_4,
+    cel_files([contents,Contents,version,Oldversion], Past_Modules),
+    % Module: convert_CEL_to_v3_4
+    % Output parameters:[contents,Contents,version,v3_4]
+    Newadd=[convert_CEL_to_v3_v4, [contents,Contents,version,v3_4]],
+    append(Past_Modules, Newadd, Modules).
+
 /*-------------------------------------------------------------------------*/
 % generate gpr_files with version unknown from gse_id;
 % or from gse_id_and_platform
 gpr_files([contents,Contents,version,unknown_version], Modules):-
     (% Input: gse_id
     gse_id([contents,Contents],[]),
-    % Module:download_geo_dataset
+    % Module:download_geo_GSEID
     % Output parameters:[contents,Contents,version,unknown_version,filetype,gpr_files]
-    Newadd=[download_geo_dataset,[contents,Contents,version,unknown_version,filetype,gpr_files]];
+    Newadd=[download_geo_GSEID,[contents,Contents,version,unknown_version,filetype,gpr_files]];
     % Input: gse_id_and_platform
     gse_id_and_platform([contents,Contents],[]),
-    % Module:download_geo_dataset_GPL
+    % Module:download_geo_GSEID_GPLID
     % Output parameters:[contents,Contents,version,unknown_version,filetype,gpr_files]
-    Newadd=[download_geo_dataset_GPL,[contents,Contents,version,unknown_version,filetype,gpr_files]]
+    Newadd=[download_geo_GSEID_GPLID,[contents,Contents,version,unknown_version,filetype,gpr_files]]
      ),
     append( [],Newadd,Modules).
 /*-------------------------------------------------------------------------*/
@@ -80,14 +90,14 @@ gpr_files([contents,Contents,version,unknown_version], Modules):-
 cel_files([contents,Contents,version,unknown_version], Modules):-
     (% Input: gse_id
     gse_id([contents,Contents],[]),
-    % Module: download_geo_dataset
+    % Module: download_geo_GSEID
     % Output parameters: [contents,Contents,version,unknown_version,filetype,cel_files]
-    Newadd=[download_geo_dataset,[contents,Contents,version,unknown_version,filetype,cel_files]];
+    Newadd=[download_geo_GSEID,[contents,Contents,version,unknown_version,filetype,cel_files]];
     % Input: gse_id_and_platform
     gse_id_and_platform([contents,Contents],[]),
-    % Module:download_geo_dataset_GPL
+    % Module:download_geo_GSEID_GPLID
     % Output parameters:[contents,Contents,version,unknown_version,filetype,cel_files]
-    Newadd=[download_geo_dataset_GPL,[contents,Contents,version,unknown_version,filetype,cel_files]]
+    Newadd=[download_geo_GSEID_GPLID,[contents,Contents,version,unknown_version,filetype,cel_files]]
      ),
     append( [],Newadd, Modules).
 /*-------------------------------------------------------------------------*/
@@ -96,14 +106,14 @@ cel_files([contents,Contents,version,unknown_version], Modules):-
 agilent_files([contents,Contents,version,unknown_version], Modules):-
     (% Input: gse_id
     gse_id([contents,Contents],[]),
-     % Module: download_geo_dataset
+     % Module: download_geo_GSEID
      % Output parameters: [contents,Contents,version,unknown_version,filetype,agilent_files]
-    Newadd=['download_geo_dataset',[contents,Contents,version,unknown_version,filetype,agilent_files]];
+    Newadd=[download_geo_GSEID,[contents,Contents,version,unknown_version,filetype,agilent_files]];
     % Input: gse_id_and_platform
     gse_id_and_platform([contents,Contents],[]),
-    % Module:download_geo_dataset_GPL
+    % Module:download_geo_GSEID_GPLID
     % Output parameters: [contents,Contents,version,unknown_version,filetype,agilent_files]
-    Newadd=['download_geo_dataset_GPL',[contents,Contents,version,unknown_version,filetype,agilent_files]]
+    Newadd=[download_geo_GSEID_GPLID,[contents,Contents,version,unknown_version,filetype,agilent_files]]
      ),
     append([],Newadd, Modules).
 /*-------------------------------------------------------------------------*/
@@ -112,14 +122,14 @@ agilent_files([contents,Contents,version,unknown_version], Modules):-
 idat_files([contents,Contents,version,unknown_version], Modules):-
     (% Input: gse_id
     gse_id([contents,Contents],[]),
-    % Module: download_geo_dataset
+    % Module: download_geo_GSEID
     % Output parameters: [contents,Contents,version,unknown_version,filetype,idat_files]
-    Newadd=['download_geo_dataset',[contents,Contents,version,unknown_version,filetype,idat_files]];
+    Newadd=[download_geo_GSEID,[contents,Contents,version,unknown_version,filetype,idat_files]];
     % Input: gse_id_and_platform
     gse_id_and_platform([contents,Contents],[]),
-    % Module:download_geo_dataset_GPL
+    % Module:download_geo_GSEID_GPLID
     % Output parameters:[contents,Contents,version,unknown_version,filetype,idat_files]
-    Newadd=[download_geo_dataset_GPL,[contents,Contents,version,unknown_version,filetype,idat_files]]
+    Newadd=[download_geo_GSEID_GPLID,[contents,Contents,version,unknown_version,filetype,idat_files]]
      ),
     append([],Newadd, Modules).
 /*-------------------------------------------------------------------------*/
@@ -127,9 +137,9 @@ idat_files([contents,Contents,version,unknown_version], Modules):-
 gpr_files([contents,Contents,version,gpr],Modules):-
     % Input: gpr_files with unknown_version
     gpr_files([contents,Contents,version,unknown_version],Past_Modules),
-    % Module: extract_gpr
+    % Module: extract_gpr_files
     % Output parameters:[contents,Contents,version,gpr]
-    Newadd=[extract_gpr, [contents,Contents,version,gpr]],
+    Newadd=[extract_gpr_files, [contents,Contents,version,gpr]],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % generate illumina file from idat_files with unknown_version
@@ -159,9 +169,9 @@ signal_raw(Parameters,Modules):-
     Parameters=NewParameters,	
     %Input: gpr_files with gpr
     gpr_files([contents,Contents,version,gpr],Past_Modules),
-    % Module:loess
+    % Module:normalize_with_loess
     % Output parameters:  full length parameters of signal_raw 
-    Newadd=[loess,Parameters],
+    Newadd=[normalize_with_loess,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % Preprocess idat_files with illumina format to illu_folder by illumina,
@@ -174,9 +184,9 @@ illu_folder(Parameters,Modules):-
     Parameters = NewParameters1,	
     % Input: idat_files with illumina
     idat_files([contents,Contents,version,illumina],Past_Modules),
-    % Module: illumina
+    % Module: preprocess_illumina
     % Output parameters: full length parameters of signal_raw 
-    Newadd=[illumina,Parameters],
+    Newadd=[preprocess_illumina,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % get the control_file with illumina from illu_folder
@@ -184,9 +194,9 @@ control_file(Parameters,Modules):-
    convert_parameters_variable_raw(Parameters,NewParameters),
    % Input: illu_folder
    illu_folder(NewParameters,Past_Modules),
-   % Module: illu_control
+   % Module: get_illumina_control
    % Output parameters: full length parameters of signal_raw 
-   Newadd=[illu_control,NewParameters],
+   Newadd=[get_illumina_control,NewParameters],
    append(Past_Modules,Newadd,Modules).
 /*-------------------------------------------------------------------------*/
 % get the signal_raw with illumina from illu_folder
@@ -196,9 +206,9 @@ signal_raw(Parameters,Modules):-
    Preprocess=illumina,
    % Input: illu_folder
    illu_folder(Parameters,Past_Modules),
-   % Module: illu_signal
+   % Module: get_illumina_signal
    % Output parameters: full length parameters of signal_raw 
-   Newadd=[illu_signal,Parameters],
+   Newadd=[get_illumina_signal,Parameters],
    append(Past_Modules,Newadd,Modules).
 /*-------------------------------------------------------------------------*/
 % Preprocess agilent_files with agilent format to signal_file by agilent,
@@ -218,14 +228,14 @@ signal_raw(Parameters,Modules):-
 signal_raw(Parameters,Modules):-
     % Conditions: parameters has (mas5 ,no_logged contents,jeffs,no_missing) or (rma,logged,contents,jeffs,no_missing)
     get_value(Parameters,contents,[unknown],Contents),
-    member((Preprocess, Is_Logged),[(mas5, no_logged),(rma, logged)]),
+    member((Preprocess, Is_Logged,Module),[(mas5, no_logged,normalize_with_mas5),(rma, logged,normalize_with_rma)]),
     convert_parameters_raw([contents,Contents,preprocess,Preprocess, is_logged, Is_Logged,format,jeffs,has_missing_value,no_missing],NewParameters),
     Parameters=NewParameters,
     % Input: cel_files with v3_4
     cel_files([contents,Contents,version,v3_4], Past_Modules),
-    % Module:preprocess
+    % Module:normalize_with_rma or normalize_with_mas5
     % Output parameters: full length parameters of signal_raw
-    Newadd=[preprocess,NewParameters],
+    Newadd=[Module,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % log the signal file with Is_Logged is unknown_logged or no_logged.
@@ -243,9 +253,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,is_logged,OldIs_Logged,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module: log_if_not_log
+    % Module: log_signal
     % Output parameters: full length parameters of signal_raw
-    Newadd=[log_if_not_log,Parameters],
+    Newadd=[log_signal,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % change the format of signal_file to pcl.
@@ -261,9 +271,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,format,OldFormat,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module:convert_to_pcl_if_not_pcl
+    % Module:convert_signal_to_pcl
     % Output parameters: full length parameters of signal_raw
-    Newadd=[convert_to_pcl_if_not_pcl,Parameters],
+    Newadd=[convert_signal_to_pcl,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % change the Format of the signal file to tdf with Format unknown,
@@ -279,9 +289,9 @@ signal_raw(Parameters, Modules):-
     set_value(Parameters,format,OldFormat,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module:convert_to_tdf_if_not_tdf
+    % Module:convert_signal_to_tdf
     % Output parameters: full length parameters of signal_raw
-    Newadd=[convert_to_tdf_if_not_tdf,Parameters],
+    Newadd=[convert_signal_to_tdf,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*-------------------------------------------------------------------------*/
@@ -306,9 +316,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,filter,OldFilter,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module:gene_filter
+    % Module:filter_genes_by_missing_values
     % Output parameters:full length parameters of signal_raw
-    Newadd=[gene_filter,Parameters],
+    Newadd=[filter_genes_by_missing_values,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % preprocess_dataset
@@ -328,9 +338,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,predataset,OldPredataset,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module: preprocessdataset
+    % Module: preprocess_fold_change
     % Output parameters:full length parameters of signal_raw
-    Newadd=[preprocessdataset,Parameters],
+    Newadd=[preprocess_fold_change,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*--------------------------------------------------------------------------*/
@@ -351,9 +361,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,has_missing_value,Oldmissing,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module: zero_fill_if_missing
+    % Module: fill_missing_with_zeros
     % Output parameters:full length parameters of signal_raw
-    Newadd=[zero_fill_if_missing,Parameters],
+    Newadd=[fill_missing_with_zeros,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*--------------------------------------------------------------------------*/
 % median filling the missing value,
@@ -373,9 +383,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,has_missing_value,Oldmissing,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module: median_fill_if_missing
+    % Module: fill_missing_with_median
     % Output parameters:full length parameters of signal_raw
-    Newadd=[median_fill_if_missing,Parameters],
+    Newadd=[fill_missing_with_median,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*--------------------------------------------------------------------------*/

@@ -217,7 +217,7 @@ Betsy can make heatmap for a signal_file without clustering.
     --input 'input_signal_file:<path of the file>'
     --parameters 'has_missing_value:zero_fill'
     --parameters 'hm_width:200'
-    --parameters 'hm_height:1'
+    --parameters 'hm_height:10'
     The result folder will contain a png file showing the heatmap.
 =============================================================================
 Batch effect remove Usage

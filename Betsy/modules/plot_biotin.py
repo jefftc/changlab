@@ -6,7 +6,7 @@ import shutil
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    module_utils.plot_R(single_object.identifier,['biotin','housekeeping'],outfile)
+    module_utils.plot_line_keywds(single_object.identifier,['biotin','housekeeping'],outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for plot_biotin fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)

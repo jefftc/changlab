@@ -54,13 +54,36 @@ def chipname2filename_affy(chipname):
         version,filename = chip2file[chipname]
     return filename
 
-
-
 def guess_chip(filename):
     DATA = arrayio.read(filename)
     x = DATA.row_names(const.ROW_ID)
     return guess_chip_from_probesets(x)
 
+def guess_platform(filename):
+    DATA = arrayio.read(filename)
+    ids = DATA._row_order
+    chips = dict()
+    for id in ids:
+        x = DATA._row_names[id]
+        possible_chip = guess_chip_from_probesets(x)
+        if possible_chip:
+            chips[id]=possible_chip
+    if chips:
+        order_chips = ['HG_U95A','HG_U95Av2','HG_U133_Plus_2','HG_U133A_2','HG_U133A',
+                       'HG_U133B','Hu35KsubA','Hu35KsubB','Hu35KsubC','Hu35KsubD',
+                       'Hu6800','MG_U74Av2','MG_U74Bv2','Mouse430_2','Mouse430A_2',
+                       'Mu11KsubA','Mu11KsubB','RAE230A','RG_U34A','HumanHT_12',
+                       'MouseRef_8','HumanHT_12_control','MouseRef_8_control',
+                       'entrez_ID_human','entrez_ID_mouse','entrez_ID_symbol_human',
+                       'entrez_ID_symbol_mouse']
+        chip_tuple = [(chips[i],i) for i in chips.keys()]
+        order_index = [(order_chips.index(i),i,j) for i,j in chip_tuple]
+        order_index.sort()
+        outid = order_index[0][2]
+        outchip = order_index[0][1]
+        return outid,outchip
+    else:
+        return None,None
     
 def guess_chip_from_probesets(probesets):
     chip2psid1 = {}  # chip -> psid -> 1
@@ -68,6 +91,7 @@ def guess_chip_from_probesets(probesets):
     root = Betsy_config.PSID2PLATFORM
     paths = []
     possible_chips = []
+    probesets = [i for i in probesets if len(i)>0]
     uprobesets = [i.upper() for i in probesets]
     assert os.path.exists(root),'the %s does not exisits'%psid2platform
     for subfolder in os.listdir(root):
@@ -112,8 +136,6 @@ def guess_chip_from_probesets(probesets):
     chip2psid = chip2psid1.copy()
     for chip in chip2psid2:
         chip2psid[chip]=chip2psid2[chip]
-
-    assert possible_chips, "I could not find a chip."
 
     # Sort the chips by size, from smallest to largest.
     schwartz = [(len(chip2psid[chip]), chip) for chip in possible_chips]

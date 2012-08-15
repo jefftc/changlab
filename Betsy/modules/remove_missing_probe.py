@@ -8,7 +8,6 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(single_object.identifier)
     ids = M._row_order
-    print ids
     human_id = M._row_names[ids[0]]
     old_id = M._row_names[ids[1]]
     index = []

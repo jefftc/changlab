@@ -1,7 +1,7 @@
 #module_utils.py
 import hash_method
 import arrayio
-from genomicode import binreg,Matrix,jmath,matrixlib
+from genomicode import binreg,Matrix,jmath,matrixlib,mplgraph
 import rule_engine
 import os
 import read_label_file
@@ -146,6 +146,53 @@ def exists_nz(filename):
             return False
     else:
         return False
+
+def plot_line_keywds(filename,keywords,outfile):
+    M = arrayio.read(filename)
+    header = M.row_names()
+    label = M._col_names['_SAMPLE_NAME']
+    outfiles=[]
+    for keyword in keywords:
+        out=keyword+'.png'
+        lines= []
+        data=[]
+        legend_name = []
+        for i in range(M.dim()[0]):
+            if M.row_names(header[1])[i] == keyword:
+                data.append(M.slice()[i])
+                legend_name.append(M.row_names(header[0])[i])
+        assert len(data)>0,'cannot find the keywords %s in the file %s'%(keywords,filename)
+        for i in range(len(data)):
+            line = [(j,data[i][j]) for j in range(len(data[i]))]
+            lines.append(line)
+        fig=mplgraph.lineplot(*lines,legend=legend_name,box_label=label,ylim_min=0,ylabel=keyword,left=0.1)
+        fig.savefig(out)
+        outfiles.append(out)
+    import Image
+    img_w_list=[]
+    img_h_list=[]
+    imgs=[]
+    for i in range(len(outfiles)):
+        img=Image.open(outfiles[i],'r')
+        img_w,img_h=img.size
+        img_w_list.append(img_w)
+        img_h_list.append(img_h)
+        imgs.append(img)
+        
+    total_w=max(img_w_list)+30
+    total_h=sum(img_h_list)+10
+    
+    background = Image.new('RGBA', (total_w,total_h), (255, 255, 255, 255))
+    bg_w,bg_h=background.size
+    offset_w = (bg_w-max(img_w_list))/2
+    offset_h_list=[]
+    for i in range(len(img_h_list)):
+        offset_h= bg_h-sum(img_h_list[i:])
+        offset_h_list.append(offset_h)
+    for img,offset_h in zip(imgs,offset_h_list):
+        background.paste(img,(offset_w,offset_h))
+    background.save(outfile)
+    assert exists_nz(outfile),'the plot_line_keywds fails'
     
 def plot_R(filename,keywords,outfile):
     from genomicode import jmath
@@ -271,7 +318,7 @@ def gunzip(filename):
             fileObjOut.write(line)
         fileObj.close()
         fileObjOut.close()
-        assert os.path.exists(newfilename),'unzip the cel_file %s fails'%filename
+        assert os.path.exists(newfilename),'unzip the file %s fails'%filename
         return newfilename
     
 

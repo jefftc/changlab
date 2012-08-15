@@ -2,7 +2,9 @@
 import os
 import module_utils
 import shutil
-
+from genomicode import mplgraph
+import numpy
+import math
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -59,23 +61,11 @@ def plot_hyb_bar(filename,outfile):
             med_data.extend(M.slice()[i])
         if M.row_names(header[0])[i] in low:
             low_data.extend(M.slice()[i])
-    high_data.extend(med_data)
-    high_data.extend(low_data)
-    row = len(high_data)/3.0
-    assert row > 0,'input is not a control file'
-    R = jmath.start_R()
-    jmath.R_equals_vector(high_data,'y')
-    jmath.R_equals(row,'row')
-    R(' y <- matrix(y,row,3)')
-    R(' y.means <- apply(y,2,mean)')
-    R('y.sd <- apply(y,2,sd)')
-    R('library(R.utils)')
-    command = 'png2("' + outfile + '")'
-    R(command)
-    R('barx <- barplot(y.means, names.arg=c("high","med","low"), \
-      col="blue", axis.lty=1, ylab="Signal")')
-    R('arrows(barx,y.means+1.96*y.sd/10, barx, y.means-1.96*y.sd/10, \
-      angle=90, code=3, length=0.1)')
-    R('dev.off()')
+    mean=[numpy.mean(high_data),numpy.mean(med_data),numpy.mean(low_data)]
+    flag = [math.isnan(i) for i in mean]
+    assert True not in flag,'input is not a control file'
+    std=[numpy.std(high_data),numpy.std(med_data),numpy.std(low_data)]
+    fig=mplgraph.barplot(mean,std,ylabel='Signal',box_label=['high','med','low'])
+    fig.savefig(outfile)
     assert module_utils.exists_nz(outfile),'the plot_hyb_bar.py fails'
         

@@ -20,7 +20,7 @@ DEFAULTS={'PREPROCESS': 'preprocess.py', 'ARRAYPLOT': 'arrayplot.py','XLS2TXT':'
           'COMBATNORM':'combatnorm.py','RUN_COMBAT':'run_combat.R','SCORESIG':'scoresig.py',
           'RENAME':'slice_matrix.py','ANNOT_DATA_AFFY':'affymetrix','PSID2platform':'psid2platform',
           'MAPPING':'HumanHT-12_to_HG-U133_Plus_2.txt','ANNOT_DATA_ILLU':'illumina',
-          'NETWORKFILE':'betsy.xgmml'
+          'NETWORKFILE':'betsy.xgmml','ANNOTATE_MATRIX':'annotate_matrix.py'
           }
 SEARCH_PATH = [
         '/home/xchen/chencode/scripts',

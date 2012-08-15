@@ -101,8 +101,8 @@ signal_clean(Parameters,Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,contents,[unknown],OldParameters),
     signal_clean(OldParameters,Past_Modules_2),
-    % Module: pull_out_dataset
+    % Module: infer_contents
     % Output parameters:the full length parameters of signal_clean
-    Newadd=[pull_out_dataset,Parameters],
+    Newadd=[infer_contents,Parameters],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules,Newadd,Modules).
