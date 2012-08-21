@@ -1,7 +1,7 @@
 #arrayannot.py
 
 import os
-from genomicode import filelib
+from genomicode import filelib,arrayplatformlib
 import Betsy_config
 import re
 from arrayio import const
@@ -54,45 +54,35 @@ def chipname2filename_affy(chipname):
         version,filename = chip2file[chipname]
     return filename
 
-def guess_chip(filename):
-    DATA = arrayio.read(filename)
-    x = DATA.row_names(const.ROW_ID)
-    return guess_chip_from_probesets(x)
-
-def guess_platform(filename):
-    DATA = arrayio.read(filename)
-    ids = DATA._row_order
+def identify_platform_of_matrix(DATA):
+    platform_list = identify_all_platforms_of_matrix(DATA)
+    if not platform_list:
+        return None
+    out_platform = platfrom_list[0][1]
+    return out_platform
+    
+def identify_all_platforms_of_matrix(DATA):
+    ids = DATA.row_names()
     chips = dict()
     for id in ids:
-        x = DATA._row_names[id]
-        possible_chip = guess_chip_from_probesets(x)
+        x = DATA.row_names(id)
+        possible_chip = identify_platform_of_annotations(x)
         if possible_chip:
-            chips[id]=possible_chip
-    if chips:
-        order_chips = ['HG_U95A','HG_U95Av2','HG_U133_Plus_2','HG_U133A_2','HG_U133A',
-                       'HG_U133B','Hu35KsubA','Hu35KsubB','Hu35KsubC','Hu35KsubD',
-                       'Hu6800','MG_U74Av2','MG_U74Bv2','Mouse430_2','Mouse430A_2',
-                       'Mu11KsubA','Mu11KsubB','RAE230A','RG_U34A','HumanHT_12',
-                       'MouseRef_8','HumanHT_12_control','MouseRef_8_control',
-                       'entrez_ID_human','entrez_ID_mouse','entrez_ID_symbol_human',
-                       'entrez_ID_symbol_mouse']
-        chip_tuple = [(chips[i],i) for i in chips.keys()]
-        order_index = [(order_chips.index(i),i,j) for i,j in chip_tuple]
-        order_index.sort()
-        outid = order_index[0][2]
-        outchip = order_index[0][1]
-        return outid,outchip
-    else:
-        return None,None
+            chips[possible_chip]=id
+    if not chips:
+        return None
+    order_platforms = arrayplatformlib.prioritize_platforms(chips.keys())
+    return [(chips[platform],platform) for platform in order_platforms]
+
     
-def guess_chip_from_probesets(probesets):
-    chip2psid1 = {}  # chip -> psid -> 1
-    chip2psid2 = {}  # chip -> psid -> 1
-    root = Betsy_config.PSID2PLATFORM
+def identify_platform_of_annotations(annotations):
+    platform2annot_cs = {}  # chip -> psid -> 1
+    platform2annot_ci = {}  # chip -> psid -> 1
     paths = []
     possible_chips = []
-    probesets = [i for i in probesets if len(i)>0]
-    uprobesets = [i.upper() for i in probesets]
+    annotations = [i for i in annotations if len(i)>0]
+    upannotations = [i.upper() for i in annotations]
+    root = Betsy_config.PSID2PLATFORM
     assert os.path.exists(root),'the %s does not exisits'%psid2platform
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
@@ -111,21 +101,21 @@ def guess_chip_from_probesets(probesets):
         
         if subfolder == 'case_insensitive':
             for psid in text:
-                chip2psid1.setdefault(chipname, {})[psid.upper()] = 1
+                platform2annot_cs.setdefault(chipname, {})[psid.upper()] = 1
         else:
              for psid in text:
-                chip2psid2.setdefault(chipname, {})[psid] = 1
+                platform2annot_ci.setdefault(chipname, {})[psid] = 1
                 
-    for chip in chip2psid1:
-        for psid in uprobesets:
-            if psid not in chip2psid1[chip]:
+    for chip in platform2annot_cs:
+        for psid in upannotations:
+            if psid not in platform2annot_cs[chip]:
                 break
         else:
             possible_chips.append(chip)
 
-    for chip in chip2psid2:
-        for psid in probesets:
-            if psid not in chip2psid2[chip]:
+    for chip in platform2annot_ci:
+        for psid in annotations:
+            if psid not in platform2annot_ci[chip]:
                 break
         else:
             possible_chips.append(chip)  
@@ -133,12 +123,12 @@ def guess_chip_from_probesets(probesets):
     if not possible_chips:
         return None
     #combine the dict for both case_sensitive and case_insensitive into one dict
-    chip2psid = chip2psid1.copy()
-    for chip in chip2psid2:
-        chip2psid[chip]=chip2psid2[chip]
+    platform2annot = platform2annot_cs.copy()
+    for chip in platform2annot_ci:
+        platform2annot[chip]=platform2annot_ci[chip]
 
     # Sort the chips by size, from smallest to largest.
-    schwartz = [(len(chip2psid[chip]), chip) for chip in possible_chips]
+    schwartz = [(len(platform2annot[chip]), chip) for chip in possible_chips]
     schwartz.sort()
     possible_chips = [x[-1] for x in schwartz]
     # Choose the smallest chip that contains all these probe sets.

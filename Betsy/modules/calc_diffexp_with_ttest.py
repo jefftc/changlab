@@ -7,6 +7,7 @@ import os
 import rule_engine
 import arrayio
 import read_label_file
+import numpy
 from genomicode import jmath
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
@@ -27,19 +28,26 @@ def run(parameters,objects,pipeline):
     higher_group = get_higherexpression(M,label,second_line)
     bonf = jmath.cmh_bonferroni(p)
     fdr = jmath.cmh_fdr_bh(p)
+    p_copy = p[:]
+    for i in range(len(p_copy)):
+        if numpy.isnan(p_copy[i]):
+            p_copy[i]=10
+    sort_p = [(p_copy[index],index) for index in range(len(p_copy))]
+    sort_p.sort()
+    
     f=file(outfile,'w')
     header = M._row_order[:]
     header.extend(['p_value','cmh_bonferroni','cmh_fdr','higher_expression'])
     f.write('\t'.join(header))
     f.write('\n')
-    for i in range(len(p)):
+    for i in range(len(p_copy)):
         for key in M._row_order:
-            f.write(M._row_names[key][i])
+            f.write(M._row_names[key][sort_p[i][1]])
             f.write('\t')
-        f.write(str(p[i])+'\t')
-        f.write(str(bonf[i])+'\t')
-        f.write(str(fdr[i])+'\t')
-        f.write(str(higher_group[i])+'\n')
+        f.write(str(p[sort_p[i][1]])+'\t')
+        f.write(str(bonf[sort_p[i][1]])+'\t')
+        f.write(str(fdr[sort_p[i][1]])+'\t')
+        f.write(str(higher_group[sort_p[i][1]])+'\n')
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for t_test fails'%outfile)

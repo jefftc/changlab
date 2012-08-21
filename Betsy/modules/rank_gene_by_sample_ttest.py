@@ -7,6 +7,7 @@ import os
 import rule_engine
 from genomicode import jmath
 import arrayio
+import numpy
 import read_label_file
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
@@ -24,20 +25,31 @@ def run(parameters,objects,pipeline):
     first = M.slice(None,label[0][0])
     second = M.slice(None,label[1][0])
     t,p = gene_ranking.t_test(first,second)
+    for i in range(len(p)):
+        if numpy.isnan(p[i]):
+            p[i]=10
+    sort_p = [(p[index],index) for index in range(len(p))]
+    key = M._row_order[0]
+    sort_p.sort()
     gene_list=[]
     key = M._row_order[0]
     threshold = 0.05
     if 'gene_select_threshold' in parameters.keys():
         threshold = float(parameters['gene_select_threshold'])
     if parameters['gene_order'] == 't_test_p':
-        for i in range(len(p)):
-            if float(p[i]) < threshold:
-                gene_list.append(M._row_names[key][i])
+        for i in range(len(sort_p)):
+            if float(sort_p[i][0]) < threshold:
+                gene_list.append(M._row_names[key][sort_p[i][1]])
     elif parameters['gene_order'] == 't_test_fdr':
         fdr = jmath.cmh_fdr_bh(p)
         for i in range(len(fdr)):
-            if float(fdr[i]) < threshold:
-                gene_list.append(M._row_names[key][i])
+            if numpy.isnan(fdr[i]):
+                fdr[i]=10
+        sort_fdr = [(fdr[index],index) for index in range(len(fdr))]
+        sort_fdr.sort()
+        for i in range(len(fdr)):
+            if float(sort_fdr[i][0]) < threshold:
+                gene_list.append(M._row_names[key][sort_fdr[i][1]])
     f = open(outfile,'w')
     f.write('\t'.join(gene_list))
     f.close()

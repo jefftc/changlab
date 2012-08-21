@@ -16,8 +16,8 @@ def run(parameters,objects,pipeline):
     scoresig_path = Betsy_config.SCORESIG
     scoresig_BIN = module_utils.which(scoresig_path)
     assert scoresig_BIN,'cannot find the %s' %scoresig_path
-
-    command = ['python',scoresig_BIN,'-r',rma_file.identifier,'-m',mas_file.identifier,'-j','20','-o',outfile]
+    file1,file2 = module_utils.convert_to_same_platform(rma_file.identifier,mas_file.identifier)
+    command = ['python',scoresig_BIN,'-r',file1,'-m',file2,'-j','20','-o',outfile]
     process = subprocess.Popen(command,shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)

@@ -65,7 +65,7 @@ def boxplot(*args,**keywds):
             for i in range(12):
                 label[index[i]] = box_label[index[i]]
         ax = pylab.gca()
-        ax.set_xticks(range(len(data[0])))
+        ax.set_xticks(range(1,len(data)+1))
         ax.set_xticklabels(tuple(label),rotation='vertical',fontsize=tick_size)
     pylab.setp(bp['boxes'], color=box_color)
     pylab.setp(bp['whiskers'], color=whisker_color)

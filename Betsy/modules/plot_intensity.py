@@ -10,6 +10,7 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(single_object.identifier)
     data = jmath.transpose(M._X)
+    print len(data)
     tickname=M._col_names['_SAMPLE_NAME']
     fig = mplgraph.boxplot(data,xlabel='sample_name',ylabel='signal',title='signal_intensity',box_label=tickname)
     fig.savefig(outfile)

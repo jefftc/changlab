@@ -23,7 +23,7 @@ def run(parameters,objects,pipeline):
             cel_v = affyio.guess_cel_version(fileloc)
             if fileloc.endswith('.gz'):
                 newcelfname =  os.path.splitext(filename)[0]
-                cel_file=nemodule_utils.gunzip(fileloc)
+                cel_file = module_utils.gunzip(fileloc)
             else:
                 cel_file = fileloc
                 newcelfname = filename
@@ -44,13 +44,8 @@ def run(parameters,objects,pipeline):
     
 
 def make_unique_hash(identifier,pipeline,parameters):
-    inputid = module_utils.get_inputid(identifier)
-    hash_profile={'version': 'v3_4',
-                   'number of files':str(len(os.listdir(identifier))),
-                  'filenames':str(os.listdir(identifier))}
-    hash_result=hash_method.hash_parameters(
-                    inputid,pipeline,**hash_profile)
-    return hash_result
+    return module_utils.make_unique_hash(
+        identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)

@@ -40,7 +40,7 @@ Comments:
          # other parameters are the same as in signal_norm1
          # Gene_Center can be [mean,median]
          # Gene_Normalize can be [variance,sum_of_squares]
-     *gene_list_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Ppreprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)        # Gene_Order can be [by_class_neighbors,t_test_p,t_test_fdr]
+     *gene_list_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)        # Gene_Order can be [by_class_neighbors,t_test_p,t_test_fdr]
          # other parameters are the same as in siganl_norm2
      *signal_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,unique_genes,Unique_Genes,platform,Platform],A)
         # Unique_Genes can be [average_genes,high_var,first_gene]

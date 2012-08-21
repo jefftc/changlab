@@ -30,7 +30,12 @@ def run(parameters,objects,pipeline):
         delta = float(parameters['sam_delta'])
     if 'sam_foldchange' in parameters.keys():
         foldchange = float(parameters['sam_foldchange'])
-    gene_ids,result = sam(data,label_list,genenames,delta,foldchange)
+    if not os.path.exists(outfile):
+        os.mkdir(outfile)
+    pngfig = os.path.join(outfile,'sam_plot.png')
+    print pngfig
+    out_result = os.path.join(outfile,'sam_reult.txt')
+    gene_ids,result = sam(data,label_list,genenames,delta,foldchange,pngfig)
     group1s = []
     group2s = []
     sd1s = []
@@ -69,7 +74,7 @@ def run(parameters,objects,pipeline):
           'Ave_'+label2,'SD_'+label1,'SD_'+label2,'Score(d)',
           'Numerator(r)','Denominator(s+s0)',
           'Fold Change','q_value','higher_expression']
-    f=file(outfile,'w')
+    f=file(out_result,'w')
     f.write('\t'.join(header))
     f.write('\n')
     if gene_ids:
@@ -98,7 +103,7 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'sam_' + original_file + '.txt'
+    filename = 'sam_' + original_file 
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
@@ -119,7 +124,7 @@ def get_newobjects(parameters,objects,pipeline):
     new_objects.append(new_object)
     return new_objects
    
-def sam(X, Y, genenames,delta,foldchange):
+def sam(X, Y, genenames,delta,foldchange,pngfig):
     """X is a matrix slice,Y is the label list"""
     assert len(X[0]) == len(Y), 'X and Y should be equal length'
     R = jmath.start_R()
@@ -135,6 +140,11 @@ def sam(X, Y, genenames,delta,foldchange):
     R('SIG<-samr.compute.siggenes.table(S,DELTA,D,DTAB,min.foldchange=foldchange)')
     R('up<-SIG$ngenes.up')
     R('lo<-SIG$ngenes.lo')
+    R('library(R.utils)')
+    command = 'png2("'+pngfig+'")'
+    R(command)
+    R('samr.plot(S,DELTA)')
+    R('dev.off()')
     import rpy2.robjects as robjects
     R = robjects.r
     up = R['up']

@@ -14,8 +14,9 @@ def run(parameters,objects,pipeline):
     assert os.path.exists(merge_file1.identifier),'the merge_file1 %s in merge_data does not exist'%merge_file1
     assert os.path.exists(merge_file2.identifier),'the merge_file2 %s in merge_data does not exist'%merge_file2
     outfile = get_outfile(parameters,objects,pipeline)
+    file1,file2 = module_utils.convert_to_same_platform(merge_file1.identifier,merge_file2.identifier)
     f = file(outfile,'w')
-    module_utils.merge_two_files(merge_file1.identifier,merge_file2.identifier,f)
+    module_utils.merge_two_files(file1,file2.identifier,f)
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for merge_data fails'%outfile)

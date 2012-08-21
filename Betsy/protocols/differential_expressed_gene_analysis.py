@@ -12,7 +12,7 @@ INPUTS = [
     'input_signal_file',
     'renanme_list_file']
 
-OUTPUTS = ['make_diffgenes_report']
+OUTPUTS = 'make_diffgenes_report'
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',
@@ -85,8 +85,4 @@ predicate2arguments={
     'input_signal_file':(['status','given'],'[]'),
     'rename_list_file':([],'[]')}
 
-report=['the result of the gsea ',
-        'the result of the differential_expressed_genes using t_test',
-        'the result of the differential_expressed_genes using sam',
-        'the result of gather']
      

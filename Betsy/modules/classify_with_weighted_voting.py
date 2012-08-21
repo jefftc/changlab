@@ -30,9 +30,10 @@ def run(parameters,objects,pipeline):
         %train_label_file.identifier)
     module_name = 'WeightedVoting'
     gp_parameters = dict()
-    gp_parameters['train.filename'] = train_identifier.identifier
+    file1,file2 = module_utils.convert_to_same_platform(train_identifier.identifier,test_file.identifier)
+    gp_parameters['train.filename'] = file1
     gp_parameters['train.class.filename'] = train_label_file.identifier
-    gp_parameters['test.filename'] = test_file.identifier
+    gp_parameters['test.filename'] = file2
     gp_parameters['test.class.filename'] = test_label_file.identifier
     if 'wv_num_features' in parameters.keys():
         assert parameters['wv_num_features'].isdigit(

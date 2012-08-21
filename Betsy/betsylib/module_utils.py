@@ -1,7 +1,7 @@
 #module_utils.py
 import hash_method
 import arrayio
-from genomicode import binreg,Matrix,jmath,matrixlib,mplgraph
+from genomicode import binreg,Matrix,jmath,matrixlib,mplgraph,arrayannot
 import rule_engine
 import os
 import read_label_file
@@ -194,58 +194,6 @@ def plot_line_keywds(filename,keywords,outfile):
     background.save(outfile)
     assert exists_nz(outfile),'the plot_line_keywds fails'
     
-def plot_R(filename,keywords,outfile):
-    from genomicode import jmath
-    R = jmath.start_R()
-    R('library(R.utils)')
-    command = 'png2("' + outfile + '")'
-    R(command)
-    row = len(keywords)
-    jmath.R_equals(row,'row')
-    R('par(mfrow=c(row,1))')
-    M = arrayio.read(filename)
-    header = M.row_names()
-    for keyword in keywords:
-        data= []
-        legend_name = []
-        for i in range(M.dim()[0]):
-            if M.row_names(header[1])[i] == keyword:
-                data.append(M.slice()[i])
-                legend_name.append('"'+M.row_names(header[0])[i]+'"')
-       
-        assert len(data)>0,'input is not a control file'
-        max_value = max(data[0])
-        for i in range(1,len(data)):
-            max_value = max(max_value,max(data[i]))
-        R('opts = c("red","blue","yellow","green","black","orangered","indianred",\
-          "deepskyblue","pink")')
-        jmath.R_equals(max_value,'max_value')
-        jmath.R_equals_vector(data[0],'data')
-        jmath.R_equals('"'+keyword+'"','keyword')
-        R('plot(data,ylim=c(0,max_value),\
-          xlab = "",ylab = keyword,type="l",col=opts[1],axes=F)')
-        for i in range(0,len(data)):
-            jmath.R_equals(i,'i')
-            jmath.R_equals_vector(data[i],'data')
-            R('lines(data,col=opts[i+1])')
-        jmath.R_equals_vector(legend_name,'legend_name')
-        R('legend("bottomleft", legend_name,col=opts, lty=1,cex=0.8)')
-        label = ['""']*M.ncol()
-        name = M._col_names.keys()[0]
-        if M.ncol()<=12:
-            label = ['"'+M._col_names[name][i]+'"' for i in range(M.ncol())]
-        else:
-            index = [round(M.ncol()/12.0*i) for i in range(12)]
-            for i in range(12):
-                label[index[i]] = '"'+M._col_names[name][index[i]]+'"'
-        jmath.R_equals(M.ncol(),'ncol')
-        jmath.R_equals(label,'label')
-        R('axis(1,at=seq(1,ncol,by=1),lab=label,cex.axis=0.7,las=3)')
-        R('axis(2,ylim=c(0,ceiling(max_value)))')
-            
-    R('dev.off()')
-    assert exists_nz(outfile),'the plot_R fails'
-    
 def renew_parameters(parameters,key_list):
     newparameters = parameters.copy()
     for key in key_list:
@@ -347,3 +295,83 @@ def high_light_path(network_file,pipeline,out_file):
     f.write(xmlstr)
     f.close()
     
+def convert_gene_list_platform(genes,platform):
+    assert platform in platform2attributes,'we cannot convert to the platform %s'%platform
+    chip = arrayannot.guess_chip_from_probesets(genes)
+    assert chip, 'we cannot guess the platform for the input file'
+    in_attribute,in_mart = platform2attributes[chip]
+    out_attribute,out_mart = platform2attributes[platform]
+    gene_id = ['"'+i+'"' for i in genes]
+    R = jmath.start_R()
+    jmath.R_equals_vector(gene_id,'gene_id')
+    R('library(biomaRt)')
+    jmath.R_equals('"'+in_attribute+'"','in_attribute')
+    jmath.R_equals('"'+in_attribute+'"','filters')
+    jmath.R_equals('"'+in_mart+'"','in_mart')
+    R('old=useMart("ensembl",in_mart)')
+    jmath.R_equals('"'+out_attribute+'"','out_attribute')
+    jmath.R_equals('"'+out_mart+'"','out_mart')
+    R('new=useMart("ensembl",out_mart)')
+    R('homolog = getLDS(attributes=in_attribute,filters=filters,values=gene_id,mart=old,attributesL=out_attribute,martL=new)')
+    homolog=R['homolog']
+    old_id = [str(i) for i in homolog[0]]
+    human_id = [str(i) for i in homolog[1]]
+    return human_id
+
+def convert_to_same_platform(filename1,filename2,platform=None):
+    id1,platform1 = arrayannot.guess_platform(filename1)
+    id2,platform2 = arrayannot.guess_platform(filename2)
+    if platform1 == platform2:
+        return filename1,filename2
+    else:
+        import subprocess
+        import Betsy_config
+        Annot_path = Betsy_config.ANNOTATE_MATRIX
+        Annot_BIN = module_utils.which(Annot_path)
+        assert Annot_BIN,'cannot find the %s' %Annot_path
+        if platform1 == platform or platform == None:
+            filename = filename2
+            newfilename1 = filename1
+            newfilename2 = 'tmp'
+        elif platform2==platform:
+            filename = filename1
+            newfilename1 = 'tmp'
+            newfilename2 =filename2
+            
+        command = ['python', Annot_BIN,'-f',filename,'-o','tmp',"--platform",
+           platform]
+        process = subprocess.Popen(command,shell=False,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+        error_message = process.communicate()[1]
+        if error_message:
+            raise ValueError(error_message)
+        assert module_utils.exists_nz('tmp'),'the platform conversion fails'
+    return newfilename1,newfilename2
+
+platform2attributes={
+             'HG_U133_Plus_2':("affy_hg_u133_plus_2","hsapiens_gene_ensembl"),
+             'HG_U133B':("affy_hg_u133b","hsapiens_gene_ensembl"),
+             'HG_U133A':("affy_hg_u133a","hsapiens_gene_ensembl"),
+             'HG_U133A_2':("affy_hg_u133a_2","hsapiens_gene_ensembl"),
+             'HG_U95A':("affy_hg_u95a","hsapiens_gene_ensembl"),
+             'HumanHT_12':("illumina_humanht_12","hsapiens_gene_ensembl"),
+             'HG_U95Av2':("affy_hg_u95av2","hsapiens_gene_ensembl"),
+             'entrez_ID_human':("entrezgene","hsapiens_gene_ensembl"),
+             'entrez_ID_symbol_human':("hgnc_symbol","hsapiens_gene_ensembl"),
+             'Hu6800':("affy_hugenefl","hsapiens_gene_ensembl"),
+             
+             'Mouse430A_2':('affy_mouse430a_2',"mmusculus_gene_ensembl"),
+             'MG_U74Cv2':('affy_mg_u74cv2',"mmusculus_gene_ensembl"),
+             'Mu11KsubB':("affy_mu11ksubb","mmusculus_gene_ensembl"),
+             'Mu11KsubA':('affy_mu11ksuba',"mmusculus_gene_ensembl"),
+             'MG_U74Av2':("affy_mg_u74av2","mmusculus_gene_ensembl"),
+             'Mouse430_2':('affy_mouse430_2',"mmusculus_gene_ensembl"),
+             'MG_U74Bv2':('affy_mg_u74bv2',"mmusculus_gene_ensembl"),
+             'entrez_ID_mouse':("entrezgene","mmusculus_gene_ensembl"),
+             'MouseRef_8':("illumina_mousewg_6_v2","mmusculus_gene_ensembl"),
+             'entrez_ID_symbol_mouse':("mgi_symbol","mmusculus_gene_ensembl"),
+             
+             'RG_U34A':('affy_rg_u34a',"rnorvegicus_gene_ensembl"),
+             'RAE230A':('affy_rae230a',"rnorvegicus_gene_ensembl")}
+

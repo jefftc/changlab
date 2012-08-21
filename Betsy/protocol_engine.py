@@ -27,6 +27,7 @@ def filter_pipelines(protocol, inputs, in_contents,output,parameters):
         parameter_list.extend([key,parameters[key]])
     pl_output = protocol_utils.format_prolog_query(
         output, parameter_list,'Modules')
+    
     pipelines = rule_engine.make_pipelines(pl_output,pl_inputs)
     return pipelines
 
@@ -158,37 +159,35 @@ def main():
         
     if args.dry_run:
         p_n = 1
-        for output_file in module.OUTPUTS:
-            pipelines = filter_pipelines(
-            args.protocol,inputs,in_contents,output_file,
-            parameters)
-            print len(pipelines)
-            for pipeline in pipelines:
-                  print 'pipeline'+ str(p_n),'\r'
-                  p_n = p_n + 1
-                  k = 1
-                  for analysis in pipeline:
-                      print str(k) + '.',analysis.name,'\r'
-                      print 'parameters',analysis.parameters
-                      k = k + 1
-                  print '------------------------'
+        output_file = module.OUTPUTS
+        pipelines = filter_pipelines(
+        args.protocol,inputs,in_contents,output_file,
+        parameters)
+        print len(pipelines)
+        for pipeline in pipelines:
+              print 'pipeline'+ str(p_n),'\r'
+              p_n = p_n + 1
+              k = 1
+              for analysis in pipeline:
+                  print str(k) + '.',analysis.name,'\r'
+                  print 'parameters',analysis.parameters
+                  k = k + 1
+              print '------------------------'
         
 
     else:
         final_output = []
         final_parameters = []
         final_pipeline_sequence = []
-        for output in module.OUTPUTS:
-            output_file,parameters_all,pipeline_sequence_all = run_protocol(
-                args.protocol,inputs,output,
-                identifiers,in_contents,parameters)       
-            final_output.append(output_file)
-            final_parameters.append(parameters_all)
-            final_pipeline_sequence.append(pipeline_sequence_all)
+        output = module.OUTPUTS
+        output_file,parameters_all,pipeline_sequence_all = run_protocol(
+            args.protocol,inputs,output,
+            identifiers,in_contents,parameters)       
+        
         module1 = protocol_utils.import_protocol(args.protocol)
-        print module1.OUTPUTS[0]
-        module = __import__(module1.OUTPUTS[0])     
-        module.run(final_output,final_parameters,final_pipeline_sequence)
+        print module1.OUTPUTS
+        module = __import__(module1.OUTPUTS)     
+        module.run(output_file,parameters_all,pipeline_sequence_all)
         
 if __name__=='__main__':
     main()

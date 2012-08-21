@@ -19,8 +19,10 @@ def run(parameters,objects,pipeline):
     assert os.path.exists(test_file.identifier),(
         'the test file %s for select_common_genes does not exists'
         %test_file.identifier)
-    training = arrayio.read(training_file.identifier)
-    test = arrayio.read(test_file.identifier)
+    file1,file2 = module_utils.convert_to_same_platform(
+        training_file.identifier,test_file.identifier)
+    training = arrayio.read(file1)
+    test = arrayio.read(file2)
     [M_A,M_B] = matrixlib.align_rows(training,test)
     assert M_A.nrow()>0,(
         'there is no common genes betwee %s and %s'

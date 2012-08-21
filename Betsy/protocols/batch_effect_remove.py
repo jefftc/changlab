@@ -13,7 +13,7 @@ INPUTS = [
     'rename_list_file']
 
 
-OUTPUTS=['make_batch_report']
+OUTPUTS='make_batch_report'
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',

@@ -399,12 +399,23 @@ biotin_plot(Parameters,Modules):-
     % Output parameters:full length parameters of signal_raw
     Newadd=[plot_biotin,NewParameters],
     append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+control_plot(Parameters,Modules):-
+    % Input:control_file with not_illumina
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    not(member(Preprocess,[illumina])),
+    convert_parameters_file(Parameters,NewParameters),
+    signal_file(NewParameters,Past_Modules),
+    % Module:plot_control
+    % Output parameters:full length parameters of signal_file
+    Newadd=[plot_control,NewParameters],
+    append(Past_Modules, Newadd, Modules).
 
 /*-------------------------------------------------------------------------*/
 actb_plot(Parameters,Modules):-
     % Conditions: Parameters has illumina
-    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
-    Preprocess = illumina,
+    %get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    %Preprocess = illumina,
     % Input: signal_clean 
     convert_parameters_clean_out(Parameters,NewParameters),
     signal_clean(NewParameters,Past_Modules),

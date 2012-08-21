@@ -12,7 +12,7 @@ INPUTS = [
     'input_signal_file',
     'renanme_list_file']
 
-OUTPUTS = ['make_classify_report']
+OUTPUTS = 'make_classify_report'
 
 PARAMETERS = {
     'preprocess':['rma','mas5','loess','illumina_controls',

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from genomicode import arrayannot,jmath,Matrix
+from genomicode import arrayannot,jmath,Matrix,arrayplatformlib
 import arrayio
 import os
 import argparse
@@ -17,12 +17,17 @@ def main():
                         help = 'specify the platform to add',default=None)
     args = parser.parse_args()
     cwd = os.getcwd()
-    platform = args.platform
-    assert platform in platform2attributes,'we cannot convert to the platform %s'%platform
-    in_id,in_platform = arrayannot.guess_platform(args.input)
+    out_platform = args.platform
+    assert arrayplatformlib.get_bio_organism(out_platform),'we cannot convert to the platform %s'%platform
+    DATA = arrayio.read(args.input)
+    platform_list = arrayannot.identify_all_platforms_of_matrix(DATA)
+    in_id = platform_list[0][0]
+    in_platform = platform_list[0][1]
     assert in_id, 'we cannot guess the platform for the input file'
-    in_attribute,in_mart = platform2attributes[in_platform]
-    out_attribute,out_mart = platform2attributes[platform]
+    in_attribute = arrayplatformlib.get_bio_attribute(in_platform)
+    in_mart = arrayplatformlib.get_bio_organism(in_platform)
+    out_attribute = arrayplatformlib.get_bio_attribute(out_platform)
+    out_mart = arrayplatformlib.get_bio_organism(out_platform)
     M = arrayio.read(args.input)
     gene_id_old = M._row_names[in_id]
     gene_id = ['"'+i+'"' for i in gene_id_old]
@@ -55,41 +60,14 @@ def main():
             index_list.append(i)
     M_new = M.matrix(index_list,None)
     ids = M._row_order
-    c=[platform]
+    c=[out_platform]
     ids.extend(c)
     M_new._row_order=ids
-    M_new._row_names[platform]=new_id
+    M_new._row_names[out_platform]=new_id
     newfile=file(args.outpath,'w')
     arrayio.tab_delimited_format.write(M_new,newfile)
     newfile.close()
     os.chdir(cwd)
-
-platform2attributes={
-             'HG_U133_Plus_2':("affy_hg_u133_plus_2","hsapiens_gene_ensembl"),
-             'HG_U133B':("affy_hg_u133b","hsapiens_gene_ensembl"),
-             'HG_U133A':("affy_hg_u133a","hsapiens_gene_ensembl"),
-             'HG_U133A_2':("affy_hg_u133a_2","hsapiens_gene_ensembl"),
-             'HG_U95A':("affy_hg_u95a","hsapiens_gene_ensembl"),
-             'HumanHT_12':("illumina_humanht_12","hsapiens_gene_ensembl"),
-             'HG_U95Av2':("affy_hg_u95av2","hsapiens_gene_ensembl"),
-             'entrez_ID_human':("entrezgene","hsapiens_gene_ensembl"),
-             'entrez_ID_symbol_human':("hgnc_symbol","hsapiens_gene_ensembl"),
-             'Hu6800':("affy_hugenefl","hsapiens_gene_ensembl"),
-             
-             'Mouse430A_2':('affy_mouse430a_2',"mmusculus_gene_ensembl"),
-             'MG_U74Cv2':('affy_mg_u74cv2',"mmusculus_gene_ensembl"),
-             'Mu11KsubB':("affy_mu11ksubb","mmusculus_gene_ensembl"),
-             'Mu11KsubA':('affy_mu11ksuba',"mmusculus_gene_ensembl"),
-             'MG_U74Av2':("affy_mg_u74av2","mmusculus_gene_ensembl"),
-             'Mouse430_2':('affy_mouse430_2',"mmusculus_gene_ensembl"),
-             'MG_U74Bv2':('affy_mg_u74bv2',"mmusculus_gene_ensembl"),
-             'entrez_ID_mouse':("entrezgene","mmusculus_gene_ensembl"),
-             'MouseRef_8':("illumina_mousewg_6_v2","mmusculus_gene_ensembl"),
-             'entrez_ID_symbol_mouse':("mgi_symbol","mmusculus_gene_ensembl"),
-             
-             'RG_U34A':('affy_rg_u34a',"rnorvegicus_gene_ensembl"),
-             'RAE230A':('affy_rae230a',"rnorvegicus_gene_ensembl")}
-
 
     
 if __name__=='__main__':

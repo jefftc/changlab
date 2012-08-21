@@ -13,7 +13,7 @@ INPUTS = [
     'input_signal_file',
     'rename_list_file']
     
-OUTPUTS = ['cluster_heatmap']
+OUTPUTS = 'cluster_heatmap'
 
 PARAMETERS = {
     'cluster_alg':['no_cluster_alg'],
@@ -89,5 +89,3 @@ predicate2arguments={
     'input_signal_file':(['status','given'],'[]'),
     'rename_list_file':([],'[]')}
 
-report=["In this heatmap, each row contains a signature and each column \
-        contains a sample from your data set."]

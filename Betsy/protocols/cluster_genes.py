@@ -13,7 +13,7 @@ INPUTS = [
     'input_signal_file',
     'rename_list_file']
 
-OUTPUTS = ['make_cluster_report']
+OUTPUTS = 'make_cluster_report'
 
 PARAMETERS = {
     'cluster_alg':['kmeans','pca','hierarchical','som'],
@@ -63,7 +63,13 @@ PARAMETERS = {
     'num_factors':'integer',
     'pca_gene_num':'integer',
     'unique_genes':['average_genes','high_var','first_gene'],
-    'platform':["'HG_U133A'",'unknown_platform'],
+    #'platform':["'HG_U133A'",'unknown_platform'],
+    'platform':["'HG_U133_Plus_2'","'HG_U133B'","'HG_U133A'","'HG_U133A_2'",
+                "'HG_U95A'","'HumanHT_12'","'HG_U95Av2'","'entrez_ID_human'",
+                 "'entrez_ID_symbol_human'","'Hu6800'","'Mouse430A_2'", "'MG_U74Cv2'",
+                 "'Mu11KsubB','Mu11KsubA'","'MG_U74Av2'","'Mouse430_2'","'MG_U74Bv2'",
+                "'entrez_ID_mouse'","'MouseRef_8'",
+                 "'entrez_ID_symbol_mouse'","'RG_U34A'","'RAE230A'",'unknown_platform'],
     'duplicate_probe':['yes_duplicate_probe','high_var_probe','closest_probe'],
     'duplicate_data':['yes_duplicate_data','no_duplicate_data'],
     'missing_probe':['yes_missing_probe','no_missing_probe']}
@@ -90,11 +96,6 @@ predicate2arguments={
     'input_signal_file':(['status','given'],'[]'),
     'rename_list_file':([],'[]')
     }
-
-
-report=["In this heatmap, each row contains a signature and each column \
-        contains a sample from your data set.",
-        'the expression value of the data set after clustering']
 
 
 

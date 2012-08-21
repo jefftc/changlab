@@ -3,9 +3,9 @@ import hash_method
 import gene_ranking
 import module_utils
 import os
+import arrayio
 from genomicode import arrayannot
 def run(parameters,objects,pipeline):
-    #also if input is other kind of file
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     #read the gene order list
@@ -16,19 +16,18 @@ def run(parameters,objects,pipeline):
     gene_list = open(gene_list_file.identifier,'r').read().split()
     id,platform=arrayannot.guess_platform(single_object.identifier)
     chip = arrayannot.guess_chip_from_probesets(gene_list)
-    if platfrom == chip:
+    signal_file = single_object.identifier
+    if platform == chip:
         tmpfile = single_object.identifier
     else:
-        import subprocess
-        import Betsy_config
-        Annot_path = Betsy_config.ANNOTATE_MATRIX
-        Annot_BIN = module_utils.which(Annot_path)
-        assert Annot_BIN,'cannot find the %s' %Annot_path
-        if parameters['platform'] == chip:
-            infile = single_object.identifier
-            tmpfile = 'tmp'
-            pf = chip
-            command = ['python', Annot_BIN,'-f',single_object.identifier,'-o','tmp',"--platform",
+        if parameters['platform'] in[chip,'unknown_platform']:
+            import subprocess
+            import Betsy_config
+            Annot_path = Betsy_config.ANNOTATE_MATRIX
+            Annot_BIN = module_utils.which(Annot_path)
+            assert Annot_BIN,'cannot find the %s' %Annot_path
+            signal_file = 'tmp'    
+            command = ['python', Annot_BIN,'-f',single_object.identifier,'-o',signal_file,"--platform",
                chip]
             process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
@@ -36,28 +35,24 @@ def run(parameters,objects,pipeline):
             error_message = process.communicate()[1]
             if error_message:
                 raise ValueError(error_message)
-            assert module_utils.exists_nz('tmp'),'the platform conversion fails'
+            assert module_utils.exists_nz(signal_file),'the platform conversion fails'
+            id = parameters['platform']
+            
         elif parameters['platform'] == platform:
             infile = gene_list_file.identifier
-            tmpfile = 'tmp'
-            pf = platform
-        
-        
-        
+            f=file(infile,'rU')
+            genes=f.readlines()
+            f.close()
+            gene_list = module_utils.convert_gene_list_platform(genes,platform)
+            
     #read the pcl signal file
-    f_signal= open(tmpfile,'r')
-    content = f_signal.readlines()
-    f_signal.close()
-    #get the original gene list
-    original_list = []
-    for i in range(1,len(content)):
-        original_list.append(content[i].split()[0])
+    M = arrayio.read(signal_file)
+    original_list = M._row_names[id]
     #get the order index and write to the outout file
     indexlist = gene_ranking.find_sorted_index(original_list,gene_list)
+    M_new = M.matrix(indexlist,None)
     f = open(outfile,'w')
-    f.write(content[0])
-    for i in range(len(indexlist)):
-        f.write(content[indexlist[i]+1])
+    arrayio.tab_delimited_format.write(M_new,f)
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for reorder_genes fails'%outfile)
