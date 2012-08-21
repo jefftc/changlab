@@ -12,7 +12,7 @@ detect_format
 
 # Optimization: call _is_known_desc less.
 
-def read_gmx(filename, preserve_spaces=False):
+def read_gmx(filename, preserve_spaces=False, allow_duplicates=False):
     # yield name, description, list of genes
     import StringIO
     import filelib
@@ -27,7 +27,9 @@ def read_gmx(filename, preserve_spaces=False):
         print >>handle, "\t".join(x)
     handle.seek(0)
     
-    return read_gmt(handle, preserve_spaces=preserve_spaces)
+    return read_gmt(
+        handle, preserve_spaces=preserve_spaces,
+        allow_duplicates=allow_duplicates)
 
 def _transpose_gmx(matrix):
     # GMX format:
@@ -90,8 +92,9 @@ def _transpose_gmx(matrix):
 ##         genes = genesets[name]
 ##         yield name, desc, genes
 
-def read_gmt(filename, preserve_spaces=False):
+def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
     # yield name, description, list of genes
+    # genes can be duplicated.
     import filelib
     import iolib
 
@@ -105,10 +108,22 @@ def read_gmt(filename, preserve_spaces=False):
         if not preserve_spaces:
             x = [x for x in x if x]
         genes = x
+
+        if not allow_duplicates:
+            # Remove the duplicates while preserving the order.
+            nodup = []
+            seen = {}
+            for x in genes:
+                if x in seen:
+                    continue
+                seen[x] = 1
+                nodup.append(x)
+            genes = nodup
+        
         #print preserve_spaces, len(genes), len(cols)
         yield name, description, genes
 
-def read_tdf(filename, preserve_spaces=False):
+def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
     # yield name, description (always ""), list of genes
     import filelib
 
@@ -123,10 +138,21 @@ def read_tdf(filename, preserve_spaces=False):
     for i in range(len(t_matrix)):
         x = t_matrix[i]
         name, description, genes = x[0], "", x[1:]
+
+        if not allow_duplicates:
+            # Remove the duplicates while preserving the order.
+            nodup = []
+            seen = {}
+            for x in genes:
+                if x in seen:
+                    continue
+                seen[x] = 1
+                nodup.append(x)
+            genes = nodup
+        
         if len(genes) < maxlen:
             genes = genes + [""]*(maxlen-len(genes))
         yield name, description, genes
-        
 
     # BUG: This will fail is there is a geneset with no genes in it,
     # because read_gmx requires at least the name and description
@@ -138,7 +164,7 @@ def read_tdf(filename, preserve_spaces=False):
     #    description = ""
     #    yield name, description, genes
 
-def read_genesets(filename, allow_tdf=False):
+def read_genesets(filename, allow_tdf=False, allow_duplicates=False):
     # yield name, description, list of genes
     # If allow_tdf is True, will also parse filename if it is a
     # tab-delimited file where each column is a geneset.
@@ -161,7 +187,7 @@ def read_genesets(filename, allow_tdf=False):
            filename
 
     # Read the geneset file.
-    for x in read_fn(filename):
+    for x in read_fn(filename, allow_duplicates=allow_duplicates):
         yield x
 
 def read_genes(filename, *genesets, **keywds):
@@ -171,8 +197,9 @@ def read_genes(filename, *genesets, **keywds):
 
     """
     allow_tdf = keywds.get("allow_tdf", False)
+    allow_duplicates = keywds.get("allow_duplicates", False)
     for k in keywds:
-        assert k == "allow_tdf"
+        assert k in ["allow_tdf", "allow_duplicates"]
     
     if filename is None:
         return []
@@ -180,7 +207,8 @@ def read_genes(filename, *genesets, **keywds):
     # Read the geneset file.
     geneset2genes = {}
     all_genesets = []
-    for x in read_genesets(filename, allow_tdf=allow_tdf):
+    for x in read_genesets(
+        filename, allow_tdf=allow_tdf, allow_duplicates=allow_duplicates):
         name, description, genes = x
         geneset2genes[name] = genes
         all_genesets.append(name)
