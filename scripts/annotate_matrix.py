@@ -18,16 +18,16 @@ def main():
     args = parser.parse_args()
     cwd = os.getcwd()
     out_platform = args.platform
-    assert arrayplatformlib.get_bio_organism(out_platform),'we cannot convert to the platform %s'%platform
+    assert arrayplatformlib.get_bm_organism(out_platform),'we cannot convert to the platform %s'%platform
     DATA = arrayio.read(args.input)
     platform_list = arrayannot.identify_all_platforms_of_matrix(DATA)
+    assert platform_list, 'we cannot guess the platform for the input file'
     in_id = platform_list[0][0]
     in_platform = platform_list[0][1]
-    assert in_id, 'we cannot guess the platform for the input file'
-    in_attribute = arrayplatformlib.get_bio_attribute(in_platform)
-    in_mart = arrayplatformlib.get_bio_organism(in_platform)
-    out_attribute = arrayplatformlib.get_bio_attribute(out_platform)
-    out_mart = arrayplatformlib.get_bio_organism(out_platform)
+    in_attribute = arrayplatformlib.get_bm_attribute(in_platform)
+    in_mart = arrayplatformlib.get_bm_organism(in_platform)
+    out_attribute = arrayplatformlib.get_bm_attribute(out_platform)
+    out_mart = arrayplatformlib.get_bm_organism(out_platform)
     M = arrayio.read(args.input)
     gene_id_old = M._row_names[in_id]
     gene_id = ['"'+i+'"' for i in gene_id_old]

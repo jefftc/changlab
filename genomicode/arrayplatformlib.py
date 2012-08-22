@@ -1,30 +1,33 @@
 #arrayplatformlib.py
 
 class Platform:
-    def __init__(self,name,bio_attribute,bio_organism,priority):
+    def __init__(self,name,bm_attribute,bm_organism,priority):
         self.name = name
-        self.bio_attribute = bio_attribute
-        self.bio_organism = bio_organism
+        self.bm_attribute = bm_attribute
+        self.bm_organism = bm_organism
         self.priority = priority
 
     
-def get_bio_attribute(platform):
+def get_bm_attribute(platform):
     for one_platform in platforms:
         if one_platform.name == platform:
-            bio_attribute = one_platform.bio_attribute
-            return bio_attribute
+            bm_attribute = one_platform.bm_attribute
+            return bm_attribute
+    return None
 
-def get_bio_organism(platform):
+def get_bm_organism(platform):
     for one_platform in platforms:
         if one_platform.name == platform:
-            bio_organism = one_platform.bio_organism
-            return bio_organism
+            bm_organism = one_platform.bm_organism
+            return bm_organism
+    return None
 
 def get_priority(platform):
     for one_platform in platforms:
         if one_platform.name == platform:
             priority = one_platform.priority
             return priority
+    return None
 
 def prioritize_platforms(platforms_list):
     order_prioritize = [(get_priority(platform),platform) for platform in platforms_list]

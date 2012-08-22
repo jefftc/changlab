@@ -34,13 +34,14 @@ def run(parameters,objects,pipeline):
             p_copy[i]=10
     sort_p = [(p_copy[index],index) for index in range(len(p_copy))]
     sort_p.sort()
-    
     f=file(outfile,'w')
-    header = M._row_order[:]
+    header=['#']
+    header.extend(M._row_order[:])
     header.extend(['p_value','cmh_bonferroni','cmh_fdr','higher_expression'])
     f.write('\t'.join(header))
     f.write('\n')
     for i in range(len(p_copy)):
+        f.write(str(i+1)+'\t')
         for key in M._row_order:
             f.write(M._row_names[key][sort_p[i][1]])
             f.write('\t')

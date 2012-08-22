@@ -18,8 +18,7 @@ import ConfigParser
 DEFAULTS={'PREPROCESS': 'preprocess.py', 'ARRAYPLOT': 'arrayplot.py','XLS2TXT':'xls2txt',
           'GENEPATTERN':'run_genepattern.py','OUTPUTPATH':'.','BFRMNORM':'bfrmnorn.py',
           'COMBATNORM':'combatnorm.py','RUN_COMBAT':'run_combat.R','SCORESIG':'scoresig.py',
-          'RENAME':'slice_matrix.py','ANNOT_DATA_AFFY':'affymetrix','PSID2platform':'psid2platform',
-          'MAPPING':'HumanHT-12_to_HG-U133_Plus_2.txt','ANNOT_DATA_ILLU':'illumina',
+          'RENAME':'slice_matrix.py','MAPPING':'HumanHT-12_to_HG-U133_Plus_2.txt',
           'NETWORKFILE':'betsy.xgmml','ANNOTATE_MATRIX':'annotate_matrix.py'
           }
 SEARCH_PATH = [

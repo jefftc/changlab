@@ -1,8 +1,8 @@
 #arrayannot.py
 
 import os
-from genomicode import filelib,arrayplatformlib
-import Betsy_config
+import filelib,arrayplatformlib
+import config
 import re
 from arrayio import const
 import arrayio
@@ -29,7 +29,7 @@ def chipname2filename(chipname):
 
 def chipname2filename_illu(chipname):
     filename = None
-    path = Betsy_config.ANNOT_DATA_ILLU
+    path = config.annot_data_iilu
     assert os.path.exists(path),'%s does not exist'%path
     chipname=chipname.replace('_','-')
     for file in os.listdir(path):
@@ -39,7 +39,7 @@ def chipname2filename_illu(chipname):
 
 def chipname2filename_affy(chipname):
     filename = None
-    path = Betsy_config.ANNOT_DATA_AFFY
+    path = config.annot_data_affy
     assert os.path.exists(path),'%s does not exist'%path
     chip2file = {}
     for file in os.listdir(path):
@@ -62,6 +62,7 @@ def identify_platform_of_matrix(DATA):
     return out_platform
     
 def identify_all_platforms_of_matrix(DATA):
+    """return a list of (header,platform) we can identify"""
     ids = DATA.row_names()
     chips = dict()
     for id in ids:
@@ -69,9 +70,8 @@ def identify_all_platforms_of_matrix(DATA):
         possible_chip = identify_platform_of_annotations(x)
         if possible_chip:
             chips[possible_chip]=id
-    if not chips:
-        return None
     order_platforms = arrayplatformlib.prioritize_platforms(chips.keys())
+    #if chips is empty, will return an empty list
     return [(chips[platform],platform) for platform in order_platforms]
 
     
@@ -82,7 +82,7 @@ def identify_platform_of_annotations(annotations):
     possible_chips = []
     annotations = [i for i in annotations if len(i)>0]
     upannotations = [i.upper() for i in annotations]
-    root = Betsy_config.PSID2PLATFORM
+    root = config.psid2platform
     assert os.path.exists(root),'the %s does not exisits'%psid2platform
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
