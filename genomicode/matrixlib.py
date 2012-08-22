@@ -43,7 +43,8 @@ def align_rows(*matrices):
 
     # Make sure each of the matrices contain the row ID.
     for m in matrices:
-        assert header in m.row_names(), "Matrix is missing row IDs."
+        assert header in m.row_names() or header in m._synonyms, \
+            "Matrix is missing row IDs (%s)." % header
 
     # Get the intersection of the IDs.
     all_ids = [None]*len(matrices) # matrix index -> list of hids
