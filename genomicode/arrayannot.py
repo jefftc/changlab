@@ -58,7 +58,7 @@ def identify_platform_of_matrix(DATA):
     platform_list = identify_all_platforms_of_matrix(DATA)
     if not platform_list:
         return None
-    out_platform = platfrom_list[0][1]
+    out_platform = platform_list[0][1]
     return out_platform
     
 def identify_all_platforms_of_matrix(DATA):
