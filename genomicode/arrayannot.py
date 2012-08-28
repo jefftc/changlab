@@ -83,7 +83,7 @@ def identify_platform_of_annotations(annotations):
     annotations = [i for i in annotations if len(i)>0]
     upannotations = [i.upper() for i in annotations]
     root = config.psid2platform
-    assert os.path.exists(root),'the %s does not exisits'%psid2platform
+    assert os.path.exists(root),'the %s does not exisits'%root
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
             continue
