@@ -23,8 +23,13 @@ merge_matrices
 merge_gct_matrices
 
 """
-
 # Optimization: call hash_R less
+
+# _align_to_many_annots_I
+# _align_to_annot_I
+# _align_header_to_annot_I
+# 
+# _find_best_header
 
 def align_rows(*matrices):
     """Aligns matrices by ROW_ID.  Return a list of the matrices after
@@ -222,7 +227,8 @@ def describe_unaligned_rows(*matrices):
     return "\n".join(lines)
 
 def align_rows_to_annot(
-        MATRIX, row_names, header=None, hash=False, get_indexes=False):
+        MATRIX, row_names, header=None, hash=False, get_indexes=False,
+        reorder_MATRIX=False):
     # Return tuple of aligned (MATRIX, row_names).  If get_indexes is
     # True, then will return a tuple (I_MATRIX, I_row_names) of the
     # indexes to align the matrices instead.  If there are no common
@@ -230,7 +236,8 @@ def align_rows_to_annot(
     # given, then will use the row names from that header.  Otherwise,
     # will search through all possible headers for the best match.
     # XXX document hash
-    x = _align_to_annot_I(MATRIX, row_names, header, hash, True)
+    x = _align_to_annot_I(
+        MATRIX, row_names, header, hash, True, reorder_MATRIX)
     I1, I2 = x
     if get_indexes:
         return I1, I2
@@ -239,9 +246,11 @@ def align_rows_to_annot(
     return MATRIX, row_names
 
 def align_cols_to_annot(
-        MATRIX, col_names, header=None, hash=False, get_indexes=False):
+        MATRIX, col_names, header=None, hash=False, get_indexes=False,
+        reorder_MATRIX=False):
     # Return tuple of aligned (MATRIX, col_names).
-    x = _align_to_annot_I(MATRIX, col_names, header, hash, False)
+    x = _align_to_annot_I(
+        MATRIX, col_names, header, hash, False, reorder_MATRIX)
     I1, I2 = x
     if get_indexes:
         return I1, I2
@@ -250,11 +259,13 @@ def align_cols_to_annot(
     return MATRIX, col_names
 
 def align_rows_to_many_annots(
-        MATRIX, many_row_names, header=None, hash=False, get_indexes=False):
+        MATRIX, many_row_names, header=None, hash=False, get_indexes=False,
+        reorder_MATRIX=False):
     # Return tuple of aligned (MATRIX, row_names).  If get_indexes is
     # True, then return (I_MATRIX, I_row_names, index into
     # many_row_names).
-    x = _align_to_many_annots_I(MATRIX, many_row_names, header, hash, True)
+    x = _align_to_many_annots_I(
+        MATRIX, many_row_names, header, hash, True, reorder_MATRIX)
     I_matrix, I_names, index = x
     if get_indexes:
         return I_matrix, I_names, index
@@ -265,13 +276,15 @@ def align_rows_to_many_annots(
     return MATRIX, row_names
 
 def align_cols_to_many_annots(
-        MATRIX, many_col_names, header=None, hash=False, get_indexes=False):
+        MATRIX, many_col_names, header=None, hash=False, get_indexes=False,
+        reorder_MATRIX=False):
     # many_col_names is list of col_names, where col_names is a list
     # of the column names to be matched to the MATRIX.  Return tuple
     # of aligned (MATRIX, col_names).  If get_indexes is True, then
     # return (I_MATRIX, I_col_names, index into many_col_names).  XXX
     # BEST MATCH?
-    x = _align_to_many_annots_I(MATRIX, many_col_names, header, hash, False)
+    x = _align_to_many_annots_I(
+        MATRIX, many_col_names, header, hash, False, reorder_MATRIX)
     I_matrix, I_names, index = x
     if get_indexes:
         return I_matrix, I_names, index
@@ -281,10 +294,12 @@ def align_cols_to_many_annots(
     col_names = [col_names[x] for x in I_names]
     return MATRIX, col_names
 
-def _align_to_many_annots_I(MATRIX, many_names, header, hash, is_row):
+def _align_to_many_annots_I(
+        MATRIX, many_names, header, hash, is_row, reorder_MATRIX):
     best_I_matrix = best_I_names = best_index = None
     for i, names in enumerate(many_names):
-        x = _align_to_annot_I(MATRIX, names, header, hash, is_row)
+        x = _align_to_annot_I(
+            MATRIX, names, header, hash, is_row, reorder_MATRIX)
         I_matrix, I_names = x
         #print names, header, I_matrix
         if best_I_matrix is None or len(I_matrix) > len(best_I_matrix):
@@ -293,7 +308,9 @@ def _align_to_many_annots_I(MATRIX, many_names, header, hash, is_row):
             best_index = i
     return best_I_matrix, best_I_names, best_index
 
-def _align_to_annot_I(MATRIX, names, header, hash, is_row):
+def _align_to_annot_I(MATRIX, names, header, hash, is_row, reorder_MATRIX):
+    # If header is given, will only try to align that header.
+    # Otherwise, tries all headers.
     get_names = MATRIX.row_names
     if not is_row:
         get_names = MATRIX.col_names
@@ -305,13 +322,15 @@ def _align_to_annot_I(MATRIX, names, header, hash, is_row):
     
     best_I_matrix = best_I_names = None
     for header in headers:
-        x = _align_header_to_annot_I(MATRIX, names, header, hash, is_row)
+        x = _align_header_to_annot_I(
+            MATRIX, names, header, hash, is_row, reorder_MATRIX)
         I_matrix, I_names = x
         if best_I_matrix is None or len(I_matrix) > len(best_I_matrix):
             best_I_matrix, best_I_names = I_matrix, I_names
     return best_I_matrix, best_I_names
 
-def _align_header_to_annot_I(MATRIX, names, header, hash, is_row):
+def _align_header_to_annot_I(
+        MATRIX, names, header, hash, is_row, reorder_MATRIX):
     import jmath
     import hashlib
 
@@ -328,13 +347,24 @@ def _align_header_to_annot_I(MATRIX, names, header, hash, is_row):
         #h_matrix_names = [hashlib.hash_R(x) for x in matrix_names]
         h_names = hashlib.hash_R_many(names)
         h_matrix_names = hashlib.hash_R_many(matrix_names)
+
+    if reorder_MATRIX:
+        # Align MATRIX to names.
+        I_MATRIX = jmath.match(h_names, h_matrix_names)
+        I_names = []
+        for i in range(len(I_MATRIX)):
+            if I_MATRIX[i] is not None:
+                I_names.append(i)
+        I_MATRIX = [x for x in I_MATRIX if x is not None]
+    else:
+        # Align names to MATRIX.
+        I_names = jmath.match(h_matrix_names, h_names)
+        I_MATRIX = []
+        for i in range(len(I_names)):
+            if I_names[i] is not None:
+                I_MATRIX.append(i)
+        I_names = [x for x in I_names if x is not None]
     
-    I_names = jmath.match(h_matrix_names, h_names)
-    I_MATRIX = []
-    for i in range(len(I_names)):
-        if I_names[i] is not None:
-            I_MATRIX.append(i)
-    I_names = [x for x in I_names if x is not None]
     assert len(I_MATRIX) == len(I_names)
     return I_MATRIX, I_names
     

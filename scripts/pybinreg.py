@@ -1188,7 +1188,8 @@ def summarize_signature_dataset(file_layout):
     
     # Select only the signature genes.
     DATA_sig = DATA.matrix(row=gene_ids, row_header=arrayio.ROW_ID)
-    assert len(gene_ids) == DATA_sig.nrow()
+    assert len(gene_ids) == DATA_sig.nrow(), "%d %d" % (
+        len(gene_ids), DATA_sig.nrow())
 
     # Figure out whether the data is training or test.
     type2i = { "train0" : 0, "train1" : 1, "test" : 2 }
@@ -1848,6 +1849,9 @@ def main():
     # To DEBUG report.
     #if len(analyses) > 1:
     #    summarize_all_report(options.outpath, analyses, start_time)
+    # To DEBUG summary.
+    #file_layout = make_file_layout(options.outpath, analyses[0].subpath)
+    #summarize_signature_dataset(file_layout)
     #sys.exit(0)
 
     # import modules after init_params, if possible.  GenePattern
