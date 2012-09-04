@@ -3,6 +3,22 @@
 # plot.km
 # write.km.prism
 
+.calc.surv50 <- function(survival, dead) {
+  library("survival")
+  sf <- survfit(Surv(survival, dead) ~ rep("x", length(survival)))
+  s <- summary(sf)
+  surv.90 <- NA; surv.50 <- NA
+  if(min(abs(s$surv-0.90)) < 0.05) {  # within 5%
+    i <- which.min(abs(s$surv-0.90))
+    surv.90 <- s$time[i]
+  }
+  if(min(abs(s$surv-0.50)) < 0.05) {  # within 5%
+    i <- which.min(abs(s$surv-0.50))
+    surv.50 <- s$time[i]
+  }
+  list(surv.90=surv.90, surv.50=surv.50)
+}
+
 calc.km <- function(survival1, dead1, survival2, dead2) {
   # survival1 is a a vector of matrix times.  dead1 is 1/0 where 1
   # means the patient is dead and 0 otherwise.  Returns list of
@@ -17,7 +33,11 @@ calc.km <- function(survival1, dead1, survival2, dead2) {
   sd <- survdiff(Surv(survival, dead) ~ status)
   p.value <- 1-pchisq(sd$chisq, 1)
 
-  list(p.value=p.value)
+  x1 <- .calc.surv50(survival1, dead1)
+  x2 <- .calc.surv50(survival2, dead2)
+  list(p.value=p.value, 
+    surv1.50=x1$surv.50, surv1.90=x1$surv.90, 
+    surv2.50=x2$surv.50, surv2.90=x2$surv.90)
 }
 
 calc.km2 <- function(survival1, dead1, survival2, dead2) {
@@ -36,7 +56,12 @@ calc.km2 <- function(survival1, dead1, survival2, dead2) {
   p.value <- 1 - pchisq(res$score, 1)
   hr <- exp(res$coefficients)
   #summary(res)
-  list(p.value=p.value, hr=hr)
+
+  x1 <- .calc.surv50(survival1, dead1)
+  x2 <- .calc.surv50(survival2, dead2)
+  list(p.value=p.value, hr=hr,
+    surv1.50=x1$surv.50, surv1.90=x1$surv.90, 
+    surv2.50=x2$surv.50, surv2.90=x2$surv.90)
 }
 
 plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
