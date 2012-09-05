@@ -72,6 +72,8 @@ def main():
         output_data.append([M._row_names[name][i] for name in ids])
         
     R = jmath.start_R()
+    R('require(splines,quietly=TRUE)')
+    R('options(warn=-1)')
     R('source("'+config.kaplanmeierlib+'")')
     for outcome in outcomes:
         time_data = None
