@@ -139,15 +139,15 @@ def main():
         newheaders = ['p(Outer 50%)','Num Patients Low(Outer 50%)','Num Patients High(Outer 50%)',
                         '50% Survival Low(Outer 50%)','50% Survival High(Outer 50%)',
                         '90% Survival Low(Outer 50%)','90% Survival High(Outer 50%)',
-                        'Relation(Outer 50%)','Cutoff(Outer 50%)',
+                        'Relation(Outer 50%)','Signal Cutoff(Outer 50%)',
                       'p(Outer 25%)','Num Patients Low(Outer 25%)','Num Patients High(Outer 25%)',
                         '50% Survival Low(Outer 25%)','50% Survival High(Outer 25%)',
                         '90% Survival Low(Outer 25%)','90% Survival High(Outer 25%)',
-                        'Relation(Outer 25%)','Cutoff(Outer 25%)',
+                        'Relation(Outer 25%)','Signal Cutoff(Outer 25%)',
                       'p(Outer 10%)','Num Patients Low(Outer 10%)','Num Patients High(Outer 10%)',
                         '50% Survival Low(Outer 10%)','50% Survival High(Outer 10%)',
                         '90% Survival Low(Outer 10%)','90% Survival High(Outer 10%)',
-                        'Relation(Outer 10%)','Cutoff(Outer 10%)']
+                        'Relation(Outer 10%)','Signal Cutoff(Outer 10%)']
         if len(outcomes)>1:
             newheaders = [time_header+' ' + i for i in newheaders]
         headers.extend(newheaders)
