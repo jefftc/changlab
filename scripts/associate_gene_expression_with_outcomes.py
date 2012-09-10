@@ -23,13 +23,22 @@ def main():
                         help = 'specify the outpath',default=None)
     parser.add_argument('--prism_file',dest = 'prism_file',type = str,
                         help = 'specify the prism file name', default=None)
+    parser.add_argument('--cutoff',dest = 'cutoff',type = float,
+                        help = 'specify the cutoff(between 0 and 1) to calculate',
+                        default=[],action='append')
     args = parser.parse_args()
+
     input_file = args.expression_file
     assert input_file,'please specify the path of gene expression data file'
     clinical_file = args.clinical_data
     assert clinical_file,'please specify the path of clinical data'
     outcomes = args.outcome
     assert len(outcomes)>0,'please specify the time_header and dead_header'
+    cutoffs = args.cutoff
+    if not cutoffs:
+        cutoffs = [0.5]
+    for cutoff in cutoffs:
+        assert cutoff>0 and cutoff<1.0, 'cutoff should be between 0 and 1'
     genes = args.genes
     if genes:
         gene_list=[]
@@ -70,11 +79,13 @@ def main():
     output_data = []
     for i in range(len(geneid)):
         output_data.append([M._row_names[name][i] for name in ids])
-        
+    kaplanmeierlib_path = config.kaplanmeierlib
+    assert os.path.exists(kaplanmeierlib_path),(
+        'can not find the kaplanmeierlib script %s'%kaplanmeierlib_path)
     R = jmath.start_R()
     R('require(splines,quietly=TRUE)')
-    R('options(warn=-1)')
     R('source("'+config.kaplanmeierlib+'")')
+    R('ow<-options("warn")')
     for outcome in outcomes:
         time_data = None
         dead_data = None
@@ -92,17 +103,27 @@ def main():
         sample_index1 = [index for index,item in enumerate(time_data) if len(item)>0]
         sample_index2 = [index for index,item in enumerate(dead_data) if len(item)>0]
         sample_index = list(set(sample_index1).intersection(set(sample_index2)))
-        
+        for percentage in cutoffs:
+            outer = '(Outer '+ str(int(percentage*100)) +'%)'
+            newheaders = ['p '+outer,'Num Patients Low '+outer,'Num Patients High '+outer,
+                        '50% Survival Low '+outer,'50% Survival High '+outer,
+                        '90% Survival Low '+outer,'90% Survival High '+outer,
+                        'Relation '+outer,'Low Expression '+outer,'High Expression '+outer]
+            if len(outcomes)>1:
+                    newheaders = [time_header+' ' + i for i in newheaders]
+            headers.extend(newheaders)
         for i in range(len(geneid)):
             data = data_all[i]
             data_new = [data[j] for j in sample_index]
             data_order = data_new[:]
             data_order.sort()
-            for percentage in [0.5,0.25,0.1]:
-                high_point = data_order[int(round(len(data_order)*(1-percentage)))]
-                low_point = data_order[int(round(len(data_order)*percentage))]
+            for percentage in cutoffs:
+                high_point = data_order[int(round((len(data_order)-1)*(1-percentage)))]
+                low_point = data_order[int(round((len(data_order)-1)*percentage))]
                 group1_index = [index for index,item in enumerate(data) if item>=high_point and index in sample_index]
                 group2_index = [index for index,item in enumerate(data) if item<low_point and index in sample_index]
+                assert len(group1_index)>0,'there is no patient in the high expression group for cutoff%f'%percentage
+                assert len(group2_index)>0,'there is no patient in the low expression group for cutoff%f'%percentage
                 group1_month=[float(time_data[k]) for k in group1_index]
                 group2_month=[float(time_data[k]) for k in group2_index]
                 group1_dead=[int(dead_data[k]) for k in group1_index]
@@ -111,7 +132,9 @@ def main():
                 jmath.R_equals(group2_month,'group2')
                 jmath.R_equals(group1_dead,'dead1')
                 jmath.R_equals(group2_dead,'dead2')
+                R('options(warn=-1)')
                 R('a<-calc.km(group1,dead1,group2,dead2)')
+                R('options(ow)')
                 c=R['a']
                 med_high_50 = c.rx2('surv1.50')[0]
                 med_high_90 = c.rx2('surv1.90')[0]
@@ -131,32 +154,17 @@ def main():
                         else:
                             direction = 'High gene expression correlates with low survival.'
                     else:
-                        direction = ''
-                    
+                        direction = ''    
                 else:
                     direction = ''
                 output_data[i].extend([str(p_value),str(len(group2_month)),
                         str(len(group1_month)),str(med_low_50),str(med_high_50),str(med_low_90),
-                        str(med_high_90),direction,str(high_point)+'/'+str(low_point)])
-        newheaders = ['p(Outer 50%)','Num Patients Low(Outer 50%)','Num Patients High(Outer 50%)',
-                        '50% Survival Low(Outer 50%)','50% Survival High(Outer 50%)',
-                        '90% Survival Low(Outer 50%)','90% Survival High(Outer 50%)',
-                        'Relation(Outer 50%)','Signal Cutoff(Outer 50%)',
-                      'p(Outer 25%)','Num Patients Low(Outer 25%)','Num Patients High(Outer 25%)',
-                        '50% Survival Low(Outer 25%)','50% Survival High(Outer 25%)',
-                        '90% Survival Low(Outer 25%)','90% Survival High(Outer 25%)',
-                        'Relation(Outer 25%)','Signal Cutoff(Outer 25%)',
-                      'p(Outer 10%)','Num Patients Low(Outer 10%)','Num Patients High(Outer 10%)',
-                        '50% Survival Low(Outer 10%)','50% Survival High(Outer 10%)',
-                        '90% Survival Low(Outer 10%)','90% Survival High(Outer 10%)',
-                        'Relation(Outer 10%)','Signal Cutoff(Outer 10%)']
-        if len(outcomes)>1:
-            newheaders = [time_header+' ' + i for i in newheaders]
-        headers.extend(newheaders)
-        if args.prism_file:
-            assert len(geneid)==1,'multiple genes match and cannot write the prism file'
-            jmath.R_equals('"'+args.prism_file+'"','filename')
-            R('write.km.prism(filename,"High Expression",group1,dead1,"Low Expression",group2,dead2)')
+                        str(med_high_90),direction,str(low_point),str(high_point)])
+                
+            if args.prism_file:
+                assert len(geneid)==1,'multiple genes match and cannot write the prism file'
+                jmath.R_equals('"'+args.prism_file+'"','filename')
+                R('write.km.prism(filename,"High Expression",group1,dead1,"Low Expression",group2,dead2)')
     
     f = sys.stdout
     if args.outpath: 
