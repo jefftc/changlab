@@ -185,7 +185,7 @@ Also it can leave one out cross validation by these two methods.
     --parameters 'traincontents:train'
     --parameters 'testcontents:test'
     --parameters 'svm_kernel:linear'
-    --parameters 'wv_num_features:50' 
+    --parameters 'num_features:50' 
     The result folder contains one predication result for svm, one predication result for 
     weighted_voting,one predication result for leave one out cross validation on svm and one 
     leave one out cross validation on weighted_voting.

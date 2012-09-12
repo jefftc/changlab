@@ -8,8 +8,8 @@ def run(parameters,objects,pipeline,options=None):
     """generate a heatmap of input file"""
     single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
-    import Betsy_config
-    Heatmap_path = Betsy_config.ARRAYPLOT
+    import config
+    Heatmap_path = config.ARRAYPLOT
     Heatmap_BIN = module_utils.which(Heatmap_path)
     assert Heatmap_BIN,'cannot find the %s' %Heatmap_path
     command = ['python', Heatmap_BIN,single_object.identifier,'-o',outfile,"--label_arrays",
