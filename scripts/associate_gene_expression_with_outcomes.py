@@ -30,6 +30,8 @@ def main():
                         help=('specify the cutoff(between 0 and 1)'
                               'to calculate'),
                         default=[], action='append')
+    parser.add_argument('--km_plot', dest='km_plot', type=str,
+                        help='specify the file name for km plot', default=None)
     args = parser.parse_args()
     input_file = args.expression_file
     assert input_file, 'please specify the path of gene expression data file'
@@ -196,6 +198,15 @@ def main():
                 jmath.R_equals('"' + args.prism_file + '"', 'filename')
                 R(('write.km.prism(filename,"High Expression"'
                    ',group1,dead1,"Low Expression",group2,dead2)'))
+            if args.km_plot:
+                assert len(geneid) == 1, ('multiple genes match and cannot'
+                                          'plot the km file')
+                jmath.R_equals('"' + args.km_plot + '"', 'filename')
+                R('library(R.utils)')
+                R('png2(filename)')
+                R(('plot.km(group1,dead1,group2,dead2'
+                   ',col1="#FF0000",col2=NA)'))
+                R('dev.off()')
     f = sys.stdout
     if args.outpath:
         f = file(args.outpath, 'w')
