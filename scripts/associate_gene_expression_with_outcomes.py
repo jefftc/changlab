@@ -202,8 +202,7 @@ def main():
                 assert len(geneid) == 1, ('multiple genes match and cannot'
                                           'plot the km file')
                 jmath.R_equals('"' + args.km_plot + '"', 'filename')
-                R('library(R.utils)')
-                R('png2(filename)')
+                R('pdf(filename)')
                 R(('plot.km(group1,dead1,group2,dead2'
                    ',col1="#FF0000",col2=NA)'))
                 R('dev.off()')
