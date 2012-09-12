@@ -4,7 +4,6 @@ import os
 import filelib,arrayplatformlib
 import config
 import re
-from arrayio import const
 import arrayio
 
 def hash_chipname(filename):

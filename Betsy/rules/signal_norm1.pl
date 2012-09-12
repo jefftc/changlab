@@ -147,3 +147,7 @@ signal_norm1(Parameters, Modules):-
     % Output parameters: full length parameters of signal_norm1
     Newadd=[normalize_samples_with_shiftscale,Parameters],
     append(Past_Modules, Newadd, Modules).
+
+
+    
+    

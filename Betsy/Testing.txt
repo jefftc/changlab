@@ -14,6 +14,7 @@ Comments:
      *input_signal_file([contents,[Contents],status,given,is_logged,logged],[])
      *class_label_file([contents,[Contents],status,given],[])
      *rename_list_file([contents,[Contents]],[])
+     *gene_lisst_file([contentes,[Contents]],[])
 --------------------------------------------------     
 --plout: the output file
     *cel_files([contents,[Contents],version,Version],A) #Version can be [unknown_version,cc,v3_4]
@@ -21,40 +22,52 @@ Comments:
     *idat_files([contents,[Contents],version,Version],A)   #Version can be [unknown_version,illumina]
     *gpr_file([contents,[Contents],version,Version],A)  #Version can be [unknown_version,gpr]
     *signal_raw([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,has_missing_value,Has_missing_value,rename_sample,Rename,predataset,Predataset,filter,Filter],A)
-       #Format can be [jeffs,tdf,gct,pcl,unknown_format]
-       #Is_logged can be[unknown_logged,logged,no_logged]
-       #Preprocess  can be [rma,mas5,gpr,illumina,agilent,unknown_preprocess]
+       # Format can be [jeffs,tdf,gct,pcl,unknown_format]
+       # Is_logged can be[unknown_logged,logged,no_logged]
+       # Preprocess  can be [rma,mas5,gpr,illumina,agilent,unknown_preprocess]
        # Has_missing_value can be [no_missing,unknown_missing,zero_fill,median_fill]
        # Rename can be [yes_rename,no_rename]
        # Predataset can be [no_predataset,yes_predataset]
        # Filter can be any integer between 0 and 100
+
      *control_file([contents,[Contents],format,gct,is_logged,no_logged,preprocess,illumina,predataset,no_predataset],A)
+
      *signal_norm1([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat],A)
        # other parameters are the same as in signal_raw
+       # Format can be tdf
+       # Is_logged is logged
        # Quantile can be [yes_quantile,no_quantile]
        # Dwd can be [yes_dwd,no_dwd]
        # Bfrm can be [yes_bfrm,no_bfrm]
        # Shiftscale can be [yes_shiftscale,no_shiftscale]
        # Combat can be [yes_combat,no_combat]
+
      *signal_norm2([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize],A)
          # other parameters are the same as in signal_norm1
          # Gene_Center can be [mean,median]
          # Gene_Normalize can be [variance,sum_of_squares]
-     *gene_list_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)        # Gene_Order can be [by_class_neighbors,t_test_p,t_test_fdr]
+
+     *gene_list_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)        
+         # Gene_Order can be [by_class_neighbors,t_test_p,t_test_fdr]
          # other parameters are the same as in siganl_norm2
-     *signal_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,unique_genes,Unique_Genes,platform,Platform],A)
+
+     *signal_file([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,unique_genes,Unique_Genes,platform,Platform,duplicate_probe,Duplicate_Probe,duplicate_data,Duplicate_Data],A)
         # Unique_Genes can be [average_genes,high_var,first_gene]
         # Platfrom can be ['HG_U133A',unknown_platform]
+        # Duplicate_Probe can be [high_var_probe,closest_probe,yes_duplicate_probe]
+        # Duplicate_Data can be [no_duplicate_data,yes_duplicate_data]
         # other parameters are the same as in gene_list_file
-    *cluster_file([cluster_alg,Cluster_alg,k,K,contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,distance,Distance],A)'
+
+    *cluster_file([cluster_alg,Cluster_alg,k,K,contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,distance,Distance,unique_genes,Unique_Genes,platform,Platform,duplicate_probe,Duplicate_Probe,duplicate_data,Duplicate_Data]],A)'
        # Cluster_alg can be [som,pca,kmeans,hierarchical]
        # K can be any integer
        # Distance can be [euclidean,correlation]
-       # other parameters are the same as in gene_list_file
-   *cluster_heatmap([cluster_alg,Cluster_alg,k,K,contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,distance,Distance,hm_width,Hm_width,hm_height,Hm_height],A)
+       # other parameters are the same as in signal_file
+
+   *cluster_heatmap([cluster_alg,Cluster_alg,k,K,contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order,distance,Distance,hm_width,Hm_width,hm_height,Hm_height,unique_genes,Unique_Genes,platform,Platform,duplicate_probe,Duplicate_Probe,duplicate_data,Duplicate_Data]],A)
        # Hm_width can be any integer
        # Hm_height can be any integer
-       # other parameters are the same as in gene_list_file
+       # other parameters are the same as in signal_file
     * gsea([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value,quantile,Quantile,dwd,Dwd,bfrm,Bfrm,shiftscale,Shiftscale,combat,Combat,gene_center,Gene_Center,gene_normalize,Gene_Normalize,gene_order,Gene_Order],A)   
        # parameters are the same as in gene_list_file
     * pca_plot_in([contents,[Contents],format,Format,is_logged,Is_logged,preprocess,Preprocess,predataset,Predataset,has_missing_value,Has_missing_value],A)
@@ -154,7 +167,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 12. Test log_if_not_log  module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plout 'signal_raw([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,unknown_missing],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plout 'signal_raw([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,unknown_missing],A)'
 --------------------------------------------------
 
 13. Test zero_fill_if_missing module
@@ -168,7 +181,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given,is_logged,lo
 
 15. Test quantile module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given,is_logged,logged],[])' --id 'breast_19.mas5' --plout 'signal_norm1([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,yes_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given,is_logged,logged],[])' --id 'breast_19.mas5' --plout 'signal_norm1([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,yes_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat],A)'
 --------------------------------------------------
 
 16. Test bfrm_normalize module
@@ -183,21 +196,21 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 18. Test shiftscale module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_norm1([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,yes_shiftscale,combat,no_combat],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_norm1([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,yes_shiftscale,combat,no_combat,rename_sample,no_rename],A)'
 
 --------------------------------------------------
 19. Test dwd module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_norm1([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,yes_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat],A)'--------------------------------------------------
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_norm1([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,yes_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat],A)'--------------------------------------------------
 
 20. Test centering module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res'  --plout 'signal_norm2([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,mean,gene_normalize,no_gene_normalize],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res'  --plout 'signal_norm2([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,mean,gene_normalize,no_gene_normalize],A)'
 --------------------------------------------------
 
 21. Test normalize module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res'  --plout 'signal_norm2([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,variance],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res'  --plout 'signal_norm2([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,median_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,variance],A)'
 --------------------------------------------------
 
 22. Test gene_filter module
@@ -212,7 +225,7 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 24. Test convert_pcl_gct module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given,is_logged,logged],[])' --id 'breast_19.mas5' --plout 'signal_file([contents,[a],format,gct,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given,is_logged,logged],[])' --id 'breast_19.mas5' --plout 'signal_file([contents,[a],format,gct,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,unknown_platform,unique_genes,no_unique_genes],A)'
 --------------------------------------------------
 
 25. Test class_neighbors module
@@ -227,26 +240,26 @@ rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id '
 
 27. Test rank_gene_by_sample_ttest module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'gene_list_file([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,t_test_p],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'gene_list_file([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,t_test_p,platform,unknown_platform,unique_genes,no_unique_genes],A)'
 --------------------------------------------------
 
 28. Test reorder_genes module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,t_test_p],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_file([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,t_test_p,platform,unknown_platform,unique_genes,high_var],A)'
 --------------------------------------------------
 
 29. Test unlog_signal_file module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_file([contents,[a],format,pcl,is_logged,no_logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'signal_file([contents,[a],format,tdf,is_logged,no_logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order],A)'
 --------------------------------------------------
 30. Test convert_platform_to_HG_U133A_if_not module
 command:
-rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A'],A)"
+rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,tdf,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A'],A)"
 --------------------------------------------------
 
 31.Test clustering module
 command:
-rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout 'cluster_file([cluster_alg,kmeans,k,5,contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,distance,euclidean],A)'
+rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout 'cluster_file([cluster_alg,kmeans,k,5,contents,[a],format,tdf,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,distance,euclidean,unique_genes,no_unique_genes,platform,unknown_platform],A)'
 --------------------------------------------------
 
 32.Test cluster_heatmap module
@@ -326,7 +339,7 @@ rule_engine.py --plin 'cel_files([contents,[a],version,v3_4],[])' --id 'GSE8286_
 
 47. Test sam module
 command:
-rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res'  --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'differential_expressed_genes([contents,[a],format,pcl,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,diff_expr,sam,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order],A)'
+rule_engine.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res'  --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'differential_expressed_genes([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,diff_expr,sam,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order],A)'
 
 --------------------------------------------------
 
@@ -409,7 +422,7 @@ command:
 rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A',missing_probe,no_missing_probe],A)"--------------------------------------------------
 65. Test select_unique_probe module
 command:
-rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,pcl,is_logged,logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A',missing_probe,no_missing_probe,duplicate_probe,high_var_probe],A)"
+rule_engine.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '6991010018' --plout "signal_file([contents,[a],format,tdf,is_logged,no_logged,preprocess,illumina,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,mean,gene_normalize,no_gene_normalize,gene_order,no_order,platform,'HG_U133A',duplicate_probe,high_var_probe,duplicate_data,no_duplicate_data,unique_genes,no_unique_genes],A)"
 
 --------------------------------------------------
 66. Test run_david module

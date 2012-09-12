@@ -8,6 +8,7 @@ comes_before(Modules,First,Second):-
     N<N1;
     Second=none,
     member(First,Modules).
+
 /*-------------------------------------------------------------------*/
 % 
 make_batch_report(Parameters,Modules):-
@@ -96,25 +97,61 @@ make_cluster_report(Parameters,Modules):-
     cluster_heatmap(NewParameters3,Past_Modules3),
 
     Modules = [Past_Modules2,Past_Modules3].
+
 /*-------------------------------------------------------------------*/
-make_classify_report(Parameters,Modules):-
+/*make_classify_report(Parameters,Modules):-
     % Input1: svm_predictions
     convert_parameters_classify(Parameters,NewParameters),
-    svm_predictions(NewParameters,Past_Modules1),
+    append(NewParameters,[class_plot,svm],NewParameters1),
+    prediction_plot(NewParameters1,Past_Modules1),
+
+    % Input2:loocv with svm
+    append(NewParameters,[classification,svm,class_plot,loocv],NewParameters2),
+    prediction_plot(NewParameters2,Past_Modules2),
+
+    % Input3: weightedVoting
     set_value(NewParameters,format,gct,NewParameters3),
-
-    % Input2: weightedVoting
-    weightedVoting(NewParameters3,Past_Modules2),
-
-    % loocv with svm
-    append(NewParameters,[classification,svm],NewParameters1),
-    loocv(NewParameters1,Past_Modules3),
+    append(NewParameters3,[class_plot,weightedvoting],NewParameters4),
+    prediction_plot(NewParameters4,Past_Modules3),
 
     % loocv with weightedvoting
-    append(NewParameters3,[classification,weightedvoting],NewParameters2),
-    loocv(NewParameters2,Past_Modules4),
+    append(NewParameters3,[classification,weightedvoting,class_plot,loocv],NewParameters5),
+    prediction_plot(NewParameters5,Past_Modules4),
 
-    Modules=[Past_Modules1,Past_Modules2,Past_Modules3,Past_Modules4].
+    Modules=[Past_Modules1,Past_Modules2,Past_Modules3,Past_Modules4].*/
+/*-------------------------------------------------------------------*/
+make_classify_report(Parameters,Modules):-
+    convert_parameters_classify(Parameters,NewParameters),
+    % Input1: test file after common genes algin
+    convert_parameters_svm(NewParameters,NewParameters1),
+    %get_value(NewParameters1,testcontents,[],TestContents),
+    %set_value(NewParameters1,contents,TestContents,NewParameters2),
+    signal_file(NewParameters1,Past_Modules1),
+
+    % Input1: loocv with svm
+    append(NewParameters,[classification,svm],NewParameters3),
+    loocv(NewParameters3,Past_Modules2),
+
+    % Input2: svm_predictions
+    svm_predictions(NewParameters,Past_Modules3),
+
+   % Input 3: predication_pca_plot
+    append(NewParameters,[class_plot,svm],NewParameters6),
+    prediction_pca_plot(NewParameters6,Past_Modules4),
+
+    set_value(NewParameters,format,gct,NewParameters4),
+    % Input4:loocv with weightedvoting
+    append(NewParameters4,[classification,weightedvoting],NewParameters5),
+    loocv(NewParameters5,Past_Modules5),
+
+    % Input5: weightedVoting
+    weightedVoting(NewParameters4,Past_Modules6),
+   
+    % Input6: predication_pca_plot
+    append(NewParameters4,[class_plot,weightedvoting],NewParameters7),
+    prediction_pca_plot(NewParameters7,Past_Modules7),
+    Modules=[Past_Modules1,Past_Modules2,Past_Modules3,Past_Modules4,Past_Modules5,Past_Modules6,Past_Modules7].
+
 /*-------------------------------------------------------------------*/
 make_normalize_report(Parameters,Modules):-
     % Input1: signal_file

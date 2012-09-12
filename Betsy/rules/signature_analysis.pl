@@ -25,10 +25,10 @@ gsea(Parameters,Modules):-
 
 signature_score(Parameters,Modules):-
    convert_parameters_file(Parameters,NewParameters),
-   % Conditions: pcl,logged,created,'HG_U133A',no_duplicate_data,no_missing_probe,
+   % Conditions: tdf,logged,created,'HG_U133A',no_duplicate_data,no_missing_probe,
    % high_var_probe or closest_probe
    get_value(NewParameters,format,unknown_format,Format),
-   Format=pcl,
+   Format=tdf,
    get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
    Is_Logged=logged,
    get_value(NewParameters,status,created,Status),

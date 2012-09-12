@@ -4,6 +4,7 @@
              [quoted(true), portray(true), max_depth(0)]).
 
 use_module(library(lists)).
+use_module(library(assoc)).
 /*-------------------------------------------------------------------------*/
 % Given the Parameters,Key and Default, return the key_value in Parameters,
 % if Key not exisits,return the Default
@@ -52,7 +53,7 @@ convert_parameters_raw(Parameters,NewParameters):-
     NewParameters0=[contents,Contents],
  
     get_value(Parameters,format,unknown_format,Format),
-    member(Format,[tdf,jeffs,res,gct,pcl,not_pcl,unknown_format,xls,not_xls]),
+    member(Format,[tdf,jeffs,res,gct,pcl,unknown_format,xls,not_xls]),
     append(NewParameters0,[format,Format],NewParameters1),
      
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
@@ -91,14 +92,14 @@ convert_parameters_raw(Parameters,NewParameters):-
 
 /*-------------------------------------------------------------------------*/
 % convert the Parameters to a full length Parameters for signal_clean, for the parameter which
-% is not specified, will assign a default value, it should logged and pcl, has_missing_value in 
+% is not specified, will assign a default value, it should logged and tdf, has_missing_value in 
 % [median_fill,zero_fill,no_missing]
 
 convert_parameters_clean_out(Parameters,NewParameters):-
     get_value(Parameters,contents,[unknown],Contents),
     append([],[contents,Contents],NewParameters0),
 
-    append(NewParameters0,[format,pcl],NewParameters1),
+    append(NewParameters0,[format,tdf],NewParameters1),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
@@ -114,7 +115,7 @@ convert_parameters_clean_out(Parameters,NewParameters):-
     append(NewParameters4,[filter,Filter],NewParameters5),
 
     get_value(Parameters,predataset,no_predataset,Predataset),
-    member(Predataset,[yes_predataset,no_predataset]),
+    member(Predataset,[no_predataset,yes_predataset]),
     append(NewParameters5,[predataset,Predataset],NewParameters6),
 
     get_value_variable(Parameters,status,Status),
@@ -159,7 +160,7 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     append(NewParameters4,[filter,Filter],NewParameters5),
     
     get_value_variable(Parameters,predataset,Predataset),
-    member(Predataset,[yes_predataset,no_predataset]),
+    member(Predataset,[no_predataset,yes_predataset]),
     append(NewParameters5,[predataset,Predataset],NewParameters6),
 
     get_value_variable(Parameters,status,Status),
@@ -314,6 +315,8 @@ convert_parameters_norm2(Parameters,NewParameters):-
     get_value_variable(Parameters,gene_normalize,Gene_Normalize),
     member(Gene_Normalize,[variance,sum_of_squares,no_gene_normalize]),
     append(NewParameters2,[gene_normalize,Gene_Normalize],NewParameters).
+   
+    
  /*-------------------------------------------------------------------------*/
 %get the parameters list for signal_norm2
 get_desire_parameters_norm2(Parameters,NewParameters):-
@@ -332,13 +335,13 @@ get_desire_parameters_norm2(Parameters,NewParameters):-
     NewParameters=NewParameters2).
  /*-------------------------------------------------------------------------*/
 % convert the Parameters to a full length Parameters for signal_file, for the parameter which
-%  is not specified, will assign a variable, except platform,unique_genes, for this two, 
-%  will give a default value if not specified
+%  is not specified, will assign a variable, except platform
 convert_parameters_file(Parameters,NewParameters):-
     convert_parameters_norm2(Parameters,NewParameters1),
     get_value_variable(Parameters,gene_order,Gene_Order),
     member(Gene_Order,[t_test_p,t_test_fdr,by_gene_list,by_class_neighbors,no_order]),
     append(NewParameters1,[gene_order,Gene_Order],NewParameters2),
+    
     (Gene_Order=by_class_neighbors,
     get_options(Parameters,[cn_num_neighbors,cn_num_perm,cn_user_pval,cn_mean_or_median,cn_ttest_or_snr,cn_filter_data,cn_min_threshold,cn_max_threshold,cn_min_folddiff,cn_abs_diff],[],Options),
     append(NewParameters2,Options,NewParameters3);
@@ -352,21 +355,31 @@ convert_parameters_file(Parameters,NewParameters):-
     %member(Platform,['HG_U133A',unknown_platform]),
     append(NewParameters3,[platform,Platform],NewParameters4),
     
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    get_value_variable(Parameters,unique_genes,Unique_Genes),
     member(Unique_Genes,[no_unique_genes,average_genes,high_var,first_gene]),
-    append(NewParameters4,[unique_genes,Unique_Genes],NewParameters).
-   
-   /* get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
-    member(Missing_Probe,[no_missing_probe,yes_missing_probe]),
-    append(NewParameters5,[missing_probe,Missing_Probe],NewParameters6),
-
-    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
-    member(Duplicate_Probe,[high_var_probe,closest_probe,yes_duplicate_probe]),
-    append(NewParameters6,[duplicate_probe,Duplicate_Probe],NewParameters7),
+    append(NewParameters4,[unique_genes,Unique_Genes],NewParameters5),
+  
+    get_value_variable(Parameters,duplicate_probe,Duplicate_Probe),
+    (Platform = unknown_platform,
+    Duplicate_Probe = yes_duplicate_probe;
+    not(Platform = unknown_platform),
+    member(Duplicate_Probe,[high_var_probe,closest_probe,yes_duplicate_probe])),
+    append(NewParameters5,[duplicate_probe,Duplicate_Probe],NewParameters6),
     
-    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
-    member(Duplicate_Data,[no_duplicate_data,yes_duplicate_data]),
-    append(NewParameters7,[duplicate_data,Duplicate_Data],NewParameters).*/
+    /*get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
+    member(Missing_Probe,[no_missing_probe,yes_missing_probe]),
+    append(NewParameters5,[missing_probe,Missing_Probe],NewParameters6),*/
+
+    get_value_variable(Parameters,duplicate_data,Duplicate_Data),
+    (Platform = unknown_platform,
+    Duplicate_Data = yes_duplicate_data;
+    not(Platform = unknown_platform),
+    member(Duplicate_Data,[no_duplicate_data,yes_duplicate_data])),
+    append(NewParameters6,[duplicate_data,Duplicate_Data],NewParameters7),
+
+    get_value(Parameters,num_features,0,Num_features),
+    not(atom(Num_features)),
+    append(NewParameters7,[num_features,Num_features],NewParameters).
     
 
  /*-------------------------------------------------------------------------*/
@@ -378,19 +391,28 @@ get_desire_parameters_file(Parameters,NewParameters):-
     append(NewParameters1,[gene_order,Gene_Order],NewParameters2);
     not(member(gene_order,Parameters)),
     NewParameters2=NewParameters1),
-    get_value(Parameters,platform,unknown_platform,Platform),
-    append(NewParameters2,[platform,Platform],NewParameters3),
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    append(NewParameters3,[unique_genes,Unique_Genes],NewParameters).
 
-   /* get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
-    append(NewParameters4,[missing_probe,Missing_Probe],NewParameters5),
+    (member(platform,Parameters),
+    get_value(Parameters,platform,unknown_platform,Platform),
+    append(NewParameters2,[platform,Platform],NewParameters3);
+    not(member(platform,Parameters)),
+    NewParameters3=NewParameters2),
+    
+    (member(unique_genes,Parameters),
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    append(NewParameters3,[unique_genes,Unique_Genes],NewParameters4);
+    not(member(unique_genes,Parameters)),
+    NewParameters4=NewParameters3),
 
     get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
-    append(NewParameters5,[duplicate_probe,Duplicate_Probe],NewParameters6),
+    append(NewParameters4,[duplicate_probe,Duplicate_Probe],NewParameters5),
 
     get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
-    append(NewParameters6,[duplicate_data,Duplicate_Data],NewParameters).*/
+    append(NewParameters5,[duplicate_data,Duplicate_Data],NewParameters6),
+
+    get_value(Parameters,num_features,0,Num_features),
+    not(atom(Num_features)),
+    append(NewParameters6,[num_features,Num_features],NewParameters).
  /*-------------------------------------------------------------------------*/
 % convert the Parameters to a full length Parameters for svm_predictions, for the parameter which
 % is not specified, will assign a variable,except svm_kernel,
@@ -398,7 +420,7 @@ get_desire_parameters_file(Parameters,NewParameters):-
 convert_parameters_svm(Parameters,NewParameters):-
     convert_parameters_file(Parameters,NewParameters1),
     get_value(NewParameters1,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,svm_kernel,linear,Svm_Kernel),
     member(Svm_Kernel,[linear,polynomial,rbf,sigmoid,precomputed_kernel]),
     append(NewParameters1,[svm_kernel,Svm_Kernel],NewParameters2),
@@ -419,11 +441,11 @@ convert_parameters_classify(Parameters,NewParameters):-
     get_value(NewParameters1,status,created,Status),
     Status=created,
     get_value(NewParameters1,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,svm_kernel,linear,Svm_Kernel),
     member(Svm_Kernel,[linear,polynomial,rbf,sigmoid,precomputed_kernel]),
     append(NewParameters1,[svm_kernel,Svm_Kernel],NewParameters2),
-    get_options(Parameters,[wv_num_features,wv_minstd,wv_feature_stat],[],Options),
+    get_options(Parameters,[wv_minstd,wv_feature_stat],[],Options),
     append(NewParameters2,Options,NewParameters3),
     get_value_variable(Parameters,traincontents,TrainContents),
     get_value_variable(Parameters,testcontents,TestContents),
@@ -463,7 +485,7 @@ get_length(A,B):-
     A=n_raw, B=18;
     A=n_norm1,B=28;
     A=n_norm2,B=32;
-    A=n_file,B=38.
+    A=n_file,B=44.
 /*-------------------------------------------------------------------------*/ 
 % find the Keys in Parameters,return the key_value pair in Options, S is the initial output  
 

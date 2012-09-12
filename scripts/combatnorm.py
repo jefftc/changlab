@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from genomicode import jmath
+from genomicode import jmath,config
 import arrayio
 import os
 import argparse
@@ -22,7 +22,8 @@ def main():
     cwd = os.getcwd()
     filename = os.path.split(args.input)[-1]
     dirname = os.path.join(cwd,(filename +'_combat'))
-    os.mkdir(dirname)
+    if not os.path.exists(dirname):
+        os.mkdir(dirname)
     M = arrayio.read(args.input)
     os.chdir(dirname)
     data = M.slice()
@@ -52,8 +53,7 @@ def main():
     f.close()
     #run combat
     import R
-    import Betsy_config
-    run_combat = Betsy_config.RUN_COMBAT
+    run_combat = config.run_combat 
     assert os.path.exists(run_combat),'cannot find the %s' %run_combat
     R.run_R(run_combat)
     assert module_utils.exists_nz('Adjusted_EIF.dat_.xls'),'the \

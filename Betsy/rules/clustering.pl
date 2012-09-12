@@ -19,9 +19,9 @@ convert_cluster_parameters(Parameters,NewParameters):-
 % generate the cluster_file from signal_file with format pcl.    
 cluster_file(Parameters,Modules):-
      convert_cluster_parameters(Parameters,NewParameters),
-     % Conditions: pcl,logged,
+     % Conditions: tdf,logged,
      get_value(NewParameters,format,unknown_format,Format),
-     Format=pcl,
+     Format=tdf,
      get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
      Is_Logged=logged,
      % Input: signal_file
@@ -29,11 +29,11 @@ cluster_file(Parameters,Modules):-
      signal_file(NewParameters1,Past_Modules),
      % Module:cluster_genes
      % Output parameters: update parameters to full length
-     Newadd = [cluster_genes,NewParameters],
+     set_value(NewParameters1,format,pcl,Parameters1),
+     Newadd = [convert_signal_to_pcl,Parameters1,cluster_genes,NewParameters],
      append(Past_Modules,Newadd,Modules).
 
  /*-------------------------------------------------------------------------*/
-
 % generate the cluster_heatmap from cluster_file
 cluster_heatmap(Parameters,Modules):-
     % Conditions: cluster_alg not no_cluster_alg
@@ -45,7 +45,7 @@ cluster_heatmap(Parameters,Modules):-
     Cluster_Alg=no_cluster_alg,
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     % Input: signal_file
