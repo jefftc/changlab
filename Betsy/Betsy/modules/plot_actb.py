@@ -20,7 +20,9 @@ def run(parameters,objects,pipeline):
             column_id = i
             break
     if not column_id:
-        id,platform = arrayannot.guess_platform(filename)
+        x = arrayannot.identify_all_platforms_of_matrix(M)
+        id = x[0][0]
+        platform = x[0][1]
         if platform in ['HG_U133_Plus_2','HG_U133B','HG_U133A','HG_U133A_2','HG_U95A',
                         'HumanHT_12','HG_U95Av2','entrez_ID_human','entrez_ID_symbol_human','Hu6800']:
             out_platform = 'entrez_ID_symbol_human'

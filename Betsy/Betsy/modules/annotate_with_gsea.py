@@ -6,7 +6,7 @@ from genomicode import jmath,arrayannot
 import config
 import subprocess
 import read_label_file
-
+import arrayio
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -18,7 +18,9 @@ def run(parameters,objects,pipeline):
     gp_parameters = dict()
     gp_parameters['expression.dataset'] = single_object.identifier
     gp_parameters['phenotype.labels'] = label_file.identifier
-    chipname = arrayannot.guess_chip(single_object.identifier)
+    M = arrayio.read(single_object.identifier)
+    x = arrayannot.identify_all_platforms_of_matrix(M)
+    chipname = x[0][1]
     gp_parameters['chip.platform']= chipname+'.chip'
     gp_path = config.GENEPATTERN
     gp_module = module_utils.which(gp_path)

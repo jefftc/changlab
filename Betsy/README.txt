@@ -29,8 +29,9 @@ Preprocess Usage
       --parameters 'preprocess:rma' 
 	------------------------------------------------------------
 
-	The output will be pcl format, without missing value and logged with base 2.
-      Also the result folder will contain pca_plot,intensity_plot.
+	The output will be tdf format with annotations, 
+      without missing value and logged with base 2.
+      Also the result folder will contain pca_plot,intensity_plot,actb_plot,control_plot.
 
 2)Betsy can preprocess with illumina for illumina idat files.
 
@@ -41,42 +42,21 @@ Preprocess Usage
       --protocol 'normalize_file' 
       --input 'idat_files:<6991010018>'   
       --parameters 'has_missing_value:zero_fill'
+      --parameters 'preprocess:illumina'
 
-	The output will be pcl format, without missing value and logged with base 2.
+	The output will be tdf format with annotations, 
+      without missing value and logged with base 2.
       Also the result folder will contain pca_plot,intensity_plot,
-	hyb_bar_plot,actb_plot,biotin_plot.
-	--------------------------------------------------------------------
-3) Betsy can preprocess with loess for gpr files.
-      Example:
-      When given a folder contains gpr files, the command is
+	hyb_bar_plot,actb_plot,biotin_plot,control file.
 
-      protocol_engine.py  
-	--protocol 'normalize_file' 
-	--input 'gpr_files:<path_of_folder>'  
-	--parameters 'has_missing_value:zero_fill'
-
-     The output will be pcl format, without missing value and logged with base 2.
-     Also the result folder will contain pca_plot,intensity_plot.
-	--------------------------------------------------------------------
-4) Betsy can preprocess with loess for agilent files.
-      Example:
-      When given a folder contains agilent files, the command is
-
-      protocol_engine.py
-      --protocol 'normalize_file' 
-      --input 'agilent_files:<path_of_folder>' 
-      --parameters 'has_missing_value:zero_fill'
-
-     The output will be pcl format, without missing value and logged with base 2.
-     Also the result folder will contain pca_plot,intensity_plot.
 
 =============================================================================
 Process Usage
 1) Betsy can do preprocessdataset,log,unlog,gene_filter,quantile,combat, shiftscale,dwd,gene_center,
     gene_normalize,gene_order for signal files
     Example:
-    When given a signal_file,do preprocessdataset, quantile, gene_center=mean, gene_normalize=variance, 
-    the output format is gct. The command is
+    When given a signal_file,do preprocessdataset, quantile, gene_center=mean,   gene_normalize=variance.
+    The command is
  
     protocol_engine.py
     --protocol 'normalize_file'
@@ -85,14 +65,14 @@ Process Usage
     --parameters 'quantile:yes_quantile'
     --parameters 'gene_center:mean'
     --parameters 'gene_normalize:variance'
-    --parameters 'format:gct'
     --parameters 'has_missing_value:zero_fill'
 
-     The result folder will contain output signal_file,pca_plot,intensity_plot.
+     The result folder will contain output signal_file 
+     with annotation,pca_plot,intensity_plot,actb_plot,control_plot.
     --------------------------------------------------------------------
     When given a signal_file and gene_list_file, fill the missing value with median, 
     and quantile, gene_center=mean and extract the genes in gene_list_file from signal_file. 
-    The output format is pcl. The command is
+    The output format is tdf. The command is
     protocol_engine.py
     --protocol 'normalize_file'
     --input 'input_signal_file:<path of the file>'
@@ -102,7 +82,8 @@ Process Usage
     --parameters 'has_missing_value:median_fill'
     --parameters 'gene_order:by_gene_list'
 
-    The result folder will contain output signal_file,pca_plot,intensity_plot.
+    The result folder will contain output signal_file 
+    with annotation,pca_plot,intensity_plot,atcb_plot,control_plot.
      --------------------------------------------------------------------
 2) Betsy can merge several signal_file or split a signal_file into several signal_file 
     according to the labels.
@@ -116,7 +97,8 @@ Process Usage
     --parameters 'has_missing_value:zero_fill'
     --parameters 'contents:pos,neg'
 
-     The result folder will contain output signal_file,pca_plot,intensity_plot.
+     The result folder will contain output signal_file
+     with annotations,pca_plot,intensity_plot,actb_plot,control_plot
     --------------------------------------------------------------------
     When given a signal_file and its class_label_file, split them into two signal_file 
     according to the labels. The command is:
@@ -127,7 +109,7 @@ Process Usage
     --parameters 'has_missing_value:zero_fill'
     --parameters 'contents:pos'
     The result folder will contain output signal_file contains positive samples,
-    pca_plot,intensity_plot.
+    pca_plot,intensity_plot,actb_plot,control_plot.
 
 =============================================================================
 Clustering Usage
@@ -201,7 +183,6 @@ Example:
     --input 'input_signal_file:<path of the file>'
     --input 'class_label_file:<path of the class_label_file>'
     --parameters 'has_missing_value:zero_fill'
-    --parameters 'diff_expr:sam'
     --parameters 'sam_delta:1.0'
 
    The result folder will contain a result file for the analysis.
@@ -230,66 +211,4 @@ When given a signal_file and class_label_file, try five different batch_effect r
      --input 'class_label_file:<path of the file>'
      --parameters 'has_missing_value:zero_fill'
      --parameters 'num_factors:1'
-=============================================================================
-New features
-Convert the illumina platform to affymetrix platform
-Example:
-	protocol_engine.py  
-      --protocol 'normalize_file' 
-      --input 'idat_files:<6991010018>'   
-      --parameters 'has_missing_value:zero_fill'
-      --parameters "platform:'HG_U133A'"
 
-Get the unique genes 
-      protocol_engine.py  
-      --protocol 'normalize_file' 
-      --input 'idat_files:<6991010018>'  
-      --parameters 'has_missing_value:zero_fill'
-      --parameters 'unique_genes:average_genes'
-=============================================================================
-Command example for rule_engine.py
-rule_engine.py 
---plin 'gse_id([contents,[a]],[])' 
---id 'GSE8286' 
---plout 'signal_file([contents,[a],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,no_missing,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,preprocess,rma,filter,0,rename_sample,no_rename],Modules)' 
---dry_run 
-
-../Betsy/rule_engine.py 
---plin 'input_signal_file([contents,[unknown],status,given],[])' 
---id 'all_aml_train.res' 
---plin 'class_label_file([contents,[unknown],status,given],[])' 
---id 'all_aml_train.cls' 
---plout 'gsea([contents,[unknown],preprocess,unknown_preprocess,gene_center,no_gene_center,combat,no_combat,format,gct,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename,unique_genes,first_gene],Modules)' 
---dry_run
-
-../Betsy/rule_engine.py 
---plin 'gse_id([contents,[unknown]],[])' 
---id 'GSE8286' 
---plout 'signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,shiftscale,no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,filter,0,rename_sample,no_rename,preprocess,rma],Modules)'
-
-../Betsy/rule_engine.py 
---plin 'idat_files([version,unknown_version,contents,[unknown]],[])' 
---id '6991010018' 
---plout "signature_score([contents,[unknown],gene_center,no_gene_center,combat,no_combat,format,pcl,gene_order,no_order,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,has_missing_value,zero_fill,shiftscale,
-no_shiftscale,bfrm,no_bfrm,dwd,no_dwd,num_factors,2,preprocess,illumina,filter,0,rename_sample,no_rename,platform,'HG_U133A'],Modules)"
-
-
-../Betsy/rule_engine.py --plin 'input_signal_file([status,given,contents,[train]],[])' --id 'all_aml_train.res' --plin 'class_label_file([status,given,contents,[train]],[])' --id 'all_aml_train.cls' --plout 'gather([contents,[train],gene_center,mean,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,format,pcl,gene_order,by_class_neighbors,gene_normalize,no_gene_normalize,is_logged,logged,quantile,no_quantile,predataset,no_predataset,preprocess,unknown_preprocess,filter,0,has_missing_value,zero_fill],A)'
-
-../Betsy/protocol_engine.py 
---protocol 'normalize_file' 
---input 'input_signal_file:<GSE38557_mouse_dataset.txt>' 
---parameters 'has_missing_value:zero_fill'  
---parameters "platform:'HG_U133A'" 
---parameters 'missing_probe:no_missing_probe' 
---parameters 'duplicate_probe:high_var_probe' 
---parameters 'duplicate_data:no_duplicate_data'
-
-../Betsy/protocol_engine.py 
---protocol 'normalize_file' 
---input 'idat_files:6991010018' 
---parameters 'has_missing_value:zero_fill' 
---parameters "platform:'HG_U133A'" 
---parameters 'missing_probe:no_missing_probe' 
---parameters 'duplicate_probe:closest_probe' 
---parameters 'duplicate_data:no_duplicate_data'

@@ -46,10 +46,10 @@ make_batch_report(Parameters,Modules):-
      Modules=[Modules1,Modules2,Modules3].
 /*-------------------------------------------------------------------*/
 make_diffgenes_report(Parameters,Modules):-
-   % Conditions: Parameters has pcl,logged,no_order,created
+   % Conditions: Parameters has tdf,logged,no_order,created
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(NewParameters,gene_order,no_order,Gene_Order),

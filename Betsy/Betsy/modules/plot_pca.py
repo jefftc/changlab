@@ -18,14 +18,15 @@ def run(parameters,objects,pipeline):
         N = int(parameters['pca_gene_num'])
     else:
         N = 500
+    N = min(N,M.nrow())
     index = pcalib.select_genes_var(X,N)
     M_new = M.matrix(index,None)
     tmp = 'tmp'
     f = file(tmp,'w')
     arrayio.tab_delimited_format.write(M_new,f)
     f.close()
-    if label_file:
-        a,b,c=read_label_file.read(label_file.identifier)
+    a,b,c = read_label_file.read(label_file.identifier)
+    if len(a)>1:
         colors = ['r','b','g','y']
         opts = [colors[int(i)] for i in b]
         legend = [c[int(i)] for i in b]

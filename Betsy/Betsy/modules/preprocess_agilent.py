@@ -10,6 +10,7 @@ def run(parameters,objects,pipeline):
     
     cwd = os.getcwd()
     R = jmath.start_R()
+    R('require(limma,quietly=TRUE)')
     R('library(marray)')
     os.chdir(single_object.identifier)
     try:

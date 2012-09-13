@@ -36,6 +36,7 @@ PARAMETERS = {
     'traincontents':'list',
     'testcontents':'list',
     'contents':'list',
+    'num_features':'integer',
     'ill_manifest':'string',
     'ill_chip':'string',
     'ill_bg_mode':['ill_yes','ill_no'],
@@ -58,7 +59,6 @@ PARAMETERS = {
     'num_factors':'integer',
     'pca_gene_num':'integer',
     'unique_genes':['average_genes','high_var','first_gene','no_unique_genes'],
-    #'platform':["'HG_U133A'",'unknown_platform'],
     'platform':["'HG_U133_Plus_2'","'HG_U133B'","'HG_U133A'","'HG_U133A_2'",
                 "'HG_U95A'","'HumanHT_12'","'HG_U95Av2'","'entrez_ID_human'",
                  "'entrez_ID_symbol_human'","'Hu6800'","'Mouse430A_2'", "'MG_U74Cv2'",
@@ -77,7 +77,7 @@ DEFAULT = {
     'predataset':'no_predataset','bfrm':'no_bfrm',
     'is_logged':'logged','rename_sample':'no_rename',
     'gene_order':'no_order','format':'tdf',
-    'unique_genes':'no_unique_genes'
+    'unique_genes':'no_unique_genes','num_features':'0'
     }
 
 predicate2arguments={

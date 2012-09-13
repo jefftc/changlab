@@ -63,7 +63,6 @@ PARAMETERS = {
     'num_factors':'integer',
     'pca_gene_num':'integer',
     'unique_genes':['average_genes','high_var','first_gene','no_unique_genes'],
-    #'platform':["'HG_U133A'",'unknown_platform'],
     'platform':["'HG_U133_Plus_2'","'HG_U133B'","'HG_U133A'","'HG_U133A_2'",
                 "'HG_U95A'","'HumanHT_12'","'HG_U95Av2'","'entrez_ID_human'",
                  "'entrez_ID_symbol_human'","'Hu6800'","'Mouse430A_2'", "'MG_U74Cv2'",
