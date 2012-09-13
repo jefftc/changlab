@@ -8,6 +8,7 @@ num_headers  Guess the number of headers in a matrix.
 CHAR, INT, FLOAT, EMPTY = 1, 2, 4, 8
 HEAD, SAMPLE, ANNOT, VALUE, BLANK = 1, 2, 4, 8, 16
 
+
 def _rule_no_first_row_annots(matrix, num_rows, num_cols, datatype, semtype):
     # No ANNOT in the first row.
     changed = False
@@ -16,6 +17,7 @@ def _rule_no_first_row_annots(matrix, num_rows, num_cols, datatype, semtype):
             semtype[0][j] ^= ANNOT
             changed = True
     return changed
+
 
 def _rule_first_row_sample(matrix, num_rows, num_cols, datatype, semtype):
     # SAMPLE can only be in the first row.
@@ -26,6 +28,7 @@ def _rule_first_row_sample(matrix, num_rows, num_cols, datatype, semtype):
                 semtype[i][j] ^= SAMPLE
                 changed = True
     return changed
+
 
 def _rule_first_row_col_head(matrix, num_rows, num_cols, datatype, semtype):
     # HEAD can only be in the first row or column.
@@ -63,6 +66,7 @@ def _rule_first_row_col_head(matrix, num_rows, num_cols, datatype, semtype):
     ##         if value_type_is | datatype[i][j] != value_type_is:
     ##             semtype[i][j] ^= VALUE
 
+
 def _rule_no_values_then_is_head(
     matrix, num_rows, num_cols, datatype, semtype):
     # If there are no VALUES in a column, then the first row, from
@@ -76,19 +80,20 @@ def _rule_no_values_then_is_head(
                 break
         if any_values:
             continue
-        for jj in range(j+1):
+        for jj in range(j + 1):
             assert semtype[0][jj] & HEAD, "Missing header."
             if semtype[0][jj] != HEAD:
                 semtype[0][jj] = HEAD
                 changed = True
     return changed
 
+
 def _rule_no_broken_values(matrix, num_rows, num_cols, datatype, semtype):
     # In each row or column, the VALUEs can only appear at the end.
     changed = False
     for i in range(num_rows):
         in_value = True
-        for j in range(num_cols-1, -1, -1):
+        for j in range(num_cols - 1, -1, -1):
             if in_value and not (semtype[i][j] & VALUE):
                 in_value = False
             elif not in_value and (semtype[i][j] & VALUE):
@@ -96,13 +101,14 @@ def _rule_no_broken_values(matrix, num_rows, num_cols, datatype, semtype):
                 changed = True
     for j in range(num_cols):
         in_value = True
-        for i in range(num_rows-1, -1, -1):
+        for i in range(num_rows - 1, -1, -1):
             if in_value and not (semtype[i][j] & VALUE):
                 in_value = False
             elif not in_value and (semtype[i][j] & VALUE):
                 semtype[i][j] ^= VALUE
                 changed = True
     return changed
+
 
 def _rule_no_broken_head1(matrix, num_rows, num_cols, datatype, semtype):
     # In each row, the header must start from column 0.  There can't
@@ -127,12 +133,13 @@ def _rule_no_broken_head1(matrix, num_rows, num_cols, datatype, semtype):
                 changed = True
     return changed
 
+
 def _rule_no_broken_head2(matrix, num_rows, num_cols, datatype, semtype):
     # If a cell is a HEAD, then all cells preceeding can only be HEAD.
     changed = False
 
     in_header = False
-    for j in range(num_cols-1, -1, -1):
+    for j in range(num_cols - 1, -1, -1):
         if semtype[0][j] == HEAD:
             in_header = True
         elif in_header and semtype[0][j] != HEAD:
@@ -140,7 +147,7 @@ def _rule_no_broken_head2(matrix, num_rows, num_cols, datatype, semtype):
             changed = True
 
     in_header = False
-    for i in range(num_rows-1, -1, -1):
+    for i in range(num_rows - 1, -1, -1):
         if semtype[i][0] == HEAD:
             in_header = True
         elif in_header and semtype[i][0] != HEAD:
@@ -190,7 +197,7 @@ def _rule_no_broken_head2(matrix, num_rows, num_cols, datatype, semtype):
     ##     else:
     ##         new_row, new_col = max_row, max_col+1
     ##         just_added_row = False
-        
+
     ##     all_blank = True
     ##     for i in range(1, new_row+1):
     ##         for j in range(1, new_col+1):
@@ -221,6 +228,7 @@ def _rule_no_broken_head2(matrix, num_rows, num_cols, datatype, semtype):
     ##     for i in range(max_row+1, num_rows):
     ##         semtype[i][j] = ANNOT
 
+
 def _rule_no_broken_blank(matrix, num_rows, num_cols, datatype, semtype):
     # BLANKs can only be preceeded by BLANKs from (1, 1).  BLANKs must
     # have headers in the first row and column.
@@ -245,6 +253,7 @@ def _rule_no_broken_blank(matrix, num_rows, num_cols, datatype, semtype):
             changed = True
             continue
     return changed
+
 
 def _rule_known_headers(matrix, num_rows, num_cols, datatype, semtype):
     # If the first row or column (except for (0, 0), because PCL files
@@ -282,6 +291,7 @@ def _rule_known_headers(matrix, num_rows, num_cols, datatype, semtype):
                 changed = True
     return changed
 
+
 def _rule_no_values_by_head(
     matrix, num_rows, num_cols, datatype, semtype):
     # There are no VALUEs under column HEAD or to the right of row
@@ -303,6 +313,7 @@ def _rule_no_values_by_head(
                 changed = True
     return changed
 
+
 def _rule_head_around_blank(matrix, num_rows, num_cols, datatype, semtype):
     # RULE: If a cell has a HEAD on top and left, it must be BLANK.
     changed = False
@@ -316,7 +327,8 @@ def _rule_head_around_blank(matrix, num_rows, num_cols, datatype, semtype):
                 semtype[i][j] = BLANK
                 changed = True
     return changed
-    
+
+
 def _rule_no_head_around_no_blank(
     matrix, num_rows, num_cols, datatype, semtype):
     # RULE: If a cell is not blank, then it cannot have a HEAD on the
@@ -335,6 +347,7 @@ def _rule_no_head_around_no_blank(
                 semtype[i][0] ^= HEAD
                 changed = True
     return changed
+
 
 def _rule_first_values_are_int(
     matrix, num_rows, num_cols, datatype, semtype):
@@ -358,7 +371,7 @@ def _rule_first_values_are_int(
     else:
         return False
 
-    if col+1 >= num_cols:   # only 1 column of values.
+    if col + 1 >= num_cols:   # only 1 column of values.
         return False
 
     # If there are columns of INTs followed by columns of FLOATs, then
@@ -388,7 +401,7 @@ def _rule_first_values_are_int(
         return False
 
     for i in range(num_rows):
-        for j in range(col, col+num_INT):
+        for j in range(col, col + num_INT):
             if semtype[i][j] & VALUE:
                 semtype[i][j] ^= VALUE
                 changed = True
@@ -396,6 +409,8 @@ def _rule_first_values_are_int(
 
 
 NUM_HEADERS_CACHE = None  # tuple of (matrix, (nrow, ncol))
+
+
 def num_headers(matrix):
     """Return (# row headers, # col headers)."""
     global NUM_HEADERS_CACHE
@@ -409,7 +424,7 @@ def num_headers(matrix):
     assert matrix == x1
     return x2
 
-    
+
 def _num_headers_h(matrix):
     # Try to find the number of rows and columns that contain header
     # information.
@@ -500,8 +515,8 @@ def _num_headers_h(matrix):
     num_rows = len(matrix)
 
     # Figure out the data type for each cell in the matrix.
-    CHAR, INT, FLOAT, EMPTY = 1, 2, 4, 8
-    datatype = [[None]*num_cols for i in range(num_rows)]
+    #CHAR, INT, FLOAT, EMPTY = 1, 2, 4, 8
+    datatype = [[None] * num_cols for i in range(num_rows)]
     for i in range(num_rows):
         for j in range(num_cols):
             x = matrix[i][j]
@@ -518,8 +533,8 @@ def _num_headers_h(matrix):
             datatype[i][j] = dt
 
     # Make an initial guess at the semantic types of each cell.
-    HEAD, SAMPLE, ANNOT, VALUE, BLANK = 1, 2, 4, 8, 16
-    semtype = [[0]*num_cols for i in range(num_rows)]
+    #HEAD, SAMPLE, ANNOT, VALUE, BLANK = 1, 2, 4, 8, 16
+    semtype = [[0] * num_cols for i in range(num_rows)]
     for i in range(num_rows):
         for j in range(num_cols):
             x = datatype[i][j]
@@ -550,14 +565,14 @@ def _num_headers_h(matrix):
 
     # Look for the VALUEs.  Start looking at the bottom right of the
     # MATRIX, and add one column and row at a time.
-    first_row, first_col = num_rows-1, num_cols-1
+    first_row, first_col = num_rows - 1, num_cols - 1
     just_added_row = False
     while True:
         if not just_added_row:
-            new_row, new_col = first_row-1, first_col
+            new_row, new_col = first_row - 1, first_col
             just_added_row = True
         else:
-            new_row, new_col = first_row, first_col-1
+            new_row, new_col = first_row, first_col - 1
             just_added_row = False
         # Make sure the rows and cols are in bounds.
         if new_row < 0 or new_col < 0:
@@ -586,9 +601,9 @@ def _num_headers_h(matrix):
     hrows, hcols = first_row, first_col
 
     #print "DEBUG", hrows, hcols
-    #for i in range(5):
+    #for i in range(min(20, len(datatype))):
     #    print i, datatype[i][:5]
-    #for i in range(5):
+    #for i in range(min(20, len(datatype))):
     #    print i, semtype[i][:5]
     #import sys; sys.exit(0)
 
@@ -605,11 +620,13 @@ def _num_headers_h(matrix):
     assert hrows < MAX_HEADER_ROWS, "Too many header rows."
     return hrows, hcols
 
+
 def _all_numeric(vec):
     for n in vec:
         if not _is_numeric(n):
             return False
     return True
+
 
 def _is_numeric(n):
     # empty strings are not numeric.
@@ -621,6 +638,7 @@ def _is_numeric(n):
         return False
     return True
 
+
 def _is_int(n):
     try:
         int(n)
@@ -628,12 +646,14 @@ def _is_int(n):
         return False
     return True
 
+
 def _is_float(n):
     try:
         float(n)
     except ValueError, x:
         return False
     return True
+
 
 def _is_float_not_int(n):
     if _is_int(n):

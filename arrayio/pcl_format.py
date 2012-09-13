@@ -28,9 +28,14 @@ def is_format(locator_str, hrows=None, hcols=None):
     if not filelib.exists(locator_str):
         return False
 
-    # Read 5 lines and count the headers.
+    # Read NUM_LINES lines and count the headers.  Previously, we read
+    # only 5 lines, and had problems.  In a matrix, one of the
+    # annotation columns had spaces in the first 5 lines, so it was
+    # mistakenly annotated as part of the matrix, rather than part of
+    # the annotations.
+    NUM_LINES = 25
     handle = filelib.openfh(locator_str)
-    lines = [handle.readline() for i in range(5)]
+    lines = [handle.readline() for i in range(NUM_LINES)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]
     matrix = [line.rstrip("\r\n").split("\t") for line in lines]

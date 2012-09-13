@@ -159,13 +159,14 @@ def read(handle, hrows=None, hcols=None, datatype=float):
 
     # If the rows and cols not explicitly specified, then try to guess
     # them from the file.
+    #print "HEADERS 1", hrows, hcols
     if hrows is None or hcols is None:
         hr, hc = util.num_headers(data)
         if hrows is None:
             hrows = hr
         if hcols is None:
             hcols = hc
-    #print "HEADERS", hrows, hcols
+    #print "HEADERS 2", hrows, hcols
     #num_genes, num_arrays = num_rows-hrows, num_cols-hcols
 
     # Pull out the row names from the columns.
