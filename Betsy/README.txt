@@ -1,3 +1,4 @@
+
 Preprocess Usage
 
 1)Betsy can preprocess with rma or mas5 for Affymetrix cel data. 

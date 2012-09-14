@@ -36,9 +36,6 @@ def get_outfile(parameters,objects,pipeline):
     filename = 'signal_'+original_file+'.pcl'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
-
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents,preprocess',pipeline)
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(

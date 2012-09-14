@@ -39,7 +39,7 @@ def get_outfile(parameters,objects,pipeline):
 
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
         'the input file %s for get_unique_genes does not exist'
         %single_object.identifier)

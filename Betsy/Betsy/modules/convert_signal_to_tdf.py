@@ -107,7 +107,7 @@ def get_identifier(parameters,objects):
         parameters,objects,'input_signal_file','contents')
     if not single_object:
         single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
     'the input file %s for convert_signal_to_tdf does not exist'
     %single_object.identifier)

@@ -39,7 +39,7 @@ def get_outfile(parameters,objects,pipeline):
 
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'signal_file','merge1,format')
+        parameters,objects,'signal_file','merge1,format,preprocess')
     assert os.path.exists(single_object.identifier),(
         'the input file %s for merge_data does not exist'%identifier)
     return single_object

@@ -69,7 +69,7 @@ def get_newobjects(parameters,objects,pipeline):
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'signal_file','precontents')
+        parameters,objects,'signal_file','precontents,preprocess')
     assert os.path.exists(single_object.identifier),(
         'the input file %s for split_data does not exist'
         %single_object.identifier)

@@ -62,7 +62,7 @@ def make_unique_hash(identifier,pipeline,parameters):
 
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
         'the train file %s for signature_analysis does not exist'
         %single_object.identifier)

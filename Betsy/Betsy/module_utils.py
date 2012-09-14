@@ -338,26 +338,26 @@ def convert_to_same_platform(filename1,filename2,platform=None):
         import subprocess
         import config
         Annot_path = config.ANNOTATE_MATRIX
-        Annot_BIN = module_utils.which(Annot_path)
+        Annot_BIN = which(Annot_path)
         assert Annot_BIN,'cannot find the %s' %Annot_path
         if platform1 == platform or platform == None:
             filename = filename2
             newfilename1 = filename1
-            newfilename2 = 'tmp'
+            newfilename2 = filename2
         elif platform2==platform:
             filename = filename1
             newfilename1 = 'tmp'
             newfilename2 =filename2
-            
-        command = ['python', Annot_BIN,'-f',filename,'-o','tmp',"--platform",
-           platform]
-        process = subprocess.Popen(command,shell=False,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-        error_message = process.communicate()[1]
-        if error_message:
-            raise ValueError(error_message)
-        assert module_utils.exists_nz('tmp'),'the platform conversion fails'
+        if platform:
+            command = ['python', Annot_BIN,'-f',filename,'-o','tmp',"--platform",
+               platform]
+            process = subprocess.Popen(command,shell=False,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+            error_message = process.communicate()[1]
+            if error_message:
+                raise ValueError(error_message)
+            assert module_utils.exists_nz('tmp'),'the platform conversion fails'
     return newfilename1,newfilename2
 
 platform2attributes={

@@ -46,7 +46,7 @@ def get_newobjects(parameters,objects,pipeline):
 
 def get_duplicated_probe(M):
     platform_list = arrayannot.identify_all_platforms_of_matrix(M)
-    assert len(platform_list)>=2,'the number of header identified should be at least 2'
+    #assert len(platform_list)>=2,'the number of header identified should be at least 2'
     if platform_list[0][0] == M._row_order[-1]:
         probeID = platform_list[1][0]
     else:

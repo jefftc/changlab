@@ -352,6 +352,8 @@ signal_file(Parameters,Modules):-
     Status=created,
     get_value(Parameters,num_features,0,Num_features),
     Num_features=0,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes=no_unique_genes,
     get_value(NewParameters,is_logged,unknown_logged,Is_logged),
     Is_logged=logged,
     % Input: signal_file with traincontents,tdf,different status,

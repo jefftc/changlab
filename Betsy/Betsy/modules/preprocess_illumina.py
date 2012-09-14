@@ -92,7 +92,6 @@ def run(parameters,objects,pipeline):
 
     if 'ill_custom_manifest' in parameters.keys():
         gp_parameters['custom.manifest'] = str(parameters['ill_custom_manifest'])
-
     gp_path = config.GENEPATTERN
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path

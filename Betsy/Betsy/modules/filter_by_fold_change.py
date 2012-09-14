@@ -42,12 +42,10 @@ def get_outfile(parameters,objects,pipeline):
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
 
-    return module_utils.get_outfile(
-        parameters,objects,'signal_file','contents',pipeline)
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
         'the input file for filter_by_fold_change does not exist')
     return single_object
