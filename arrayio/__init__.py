@@ -23,7 +23,8 @@ def choose_format(locator, hrows=None, hcols=None):
     return None
 
 def guess_format(X):
-    # Return a module that describes a matrix or None.
+    # Return a module that describes a Matrix X or None.
+    assert type(X) is not type(""), "X should be a Matrix object."
     for format in FORMATS:
         if format.is_matrix(X):
             return format
