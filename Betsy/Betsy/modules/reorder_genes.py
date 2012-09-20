@@ -14,41 +14,43 @@ def run(parameters, objects, pipeline):
     assert os.path.exists(gene_list_file.identifier), (
         'cannot find gene_list_file %s' % gene_list_file.identifier)
     gene_list = open(gene_list_file.identifier, 'r').read().split()
-    M = arrayio.read(single_object.identifier)
-    x = arrayannot.identify_all_platforms_of_matrix(M)
-    id = x[0][0]
-    platform = x[0][1]
-    chip = arrayannot.identify_platform_of_annotations(gene_list)
-    signal_file = single_object.identifier
-    if platform == chip:
-        tmpfile = single_object.identifier
-    else:
-        if parameters['platform'] in[chip, 'unknown_platform']:
-            import subprocess
-            import config
-            Annot_path = config.ANNOTATE_MATRIX
-            Annot_BIN = module_utils.which(Annot_path)
-            assert Annot_BIN, 'cannot find the %s' % Annot_path
-            signal_file = 'tmp'    
-            command = ['python', Annot_BIN, '-f', single_object.identifier,
-                       '-o', signal_file, "--platform", chip]
-            process = subprocess.Popen(command, shell=False,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-            error_message = process.communicate()[1]
-            if error_message:
-                raise ValueError(error_message)
-            assert module_utils.exists_nz(signal_file), 'the platform conversion fails'
-            id = parameters['platform']
-        elif parameters['platform'] == platform:
-            infile = gene_list_file.identifier
-            f=file(infile, 'rU')
-            genes=f.readlines()
-            f.close()
-            gene_list = module_utils.convert_gene_list_platform(
-                genes, platform)
+##    M = arrayio.read(single_object.identifier)
+##    x = arrayannot.identify_all_platforms_of_matrix(M)
+##    id = x[0][0]
+##    platform = x[0][1]
+##    chip = arrayannot.identify_platform_of_annotations(gene_list)
+##    signal_file = single_object.identifier
+##    if platform == chip:
+##        tmpfile = single_object.identifier
+##    else:
+##        if parameters['platform'] in[chip, 'unknown_platform']:
+##            import subprocess
+##            import config
+##            Annot_path = config.ANNOTATE_MATRIX
+##            Annot_BIN = module_utils.which(Annot_path)
+##            assert Annot_BIN, 'cannot find the %s' % Annot_path
+##            signal_file = 'tmp'    
+##            command = ['python', Annot_BIN, '-f', single_object.identifier,
+##                       '-o', signal_file, "--platform", chip]
+##            process = subprocess.Popen(command, shell=False,
+##                                stdout=subprocess.PIPE,
+##                                stderr=subprocess.PIPE)
+##            error_message = process.communicate()[1]
+##            if error_message:
+##                raise ValueError(error_message)
+##            assert module_utils.exists_nz(signal_file), 'the platform conversion fails'
+##            id = parameters['platform']
+##        elif parameters['platform'] == platform:
+##            infile = gene_list_file.identifier
+##            f=file(infile, 'rU')
+##            genes=f.readlines()
+##            f.close()
+##            gene_list = module_utils.convert_gene_list_platform(
+##                genes, platform)
     #read the tdf signal file
-    M = arrayio.read(signal_file)
+    M = arrayio.read(single_object.identifier) #tmp
+    id=M._row_order[0] #tmp
+    #M = arrayio.read(signal_file)
     original_list = M._row_names[id]
     #get the order index and write to the outout file
     indexlist = gene_ranking.find_sorted_index(original_list, gene_list)

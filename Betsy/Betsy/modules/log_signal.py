@@ -24,7 +24,7 @@ def run(parameters,objects,pipeline):
         arrayio.tab_delimited_format.write(M_c,f)
         f.close()
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for log_if_not_log fails'%outfile)
+        'the output file %s for log_signal fails'%outfile)
 
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(

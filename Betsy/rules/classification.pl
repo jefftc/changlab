@@ -129,13 +129,11 @@ prediction_plot(Parameters,Modules):-
 
 /*---------------------------------------------------------------*/
 prediction_pca_plot(Parameters,Modules):-
-    % Conditions: class_plot should be svm,weightedvoting or loocv
+    % Conditions: class_plot should be svm,weightedvoting
     get_value_variable(Parameters,class_plot,Class_plot),
-    member(Class_plot,[svm,weightedvoting,loocv]),
-    % Input: loocv,weightedVoting or svm_predictions
-    (Class_plot=loocv,
-    loocv(Parameters,Past_Modules);
-    Class_plot=weightedvoting,
+    member(Class_plot,[svm,weightedvoting]),
+    % Input: weightedVoting or svm_predictions
+    (Class_plot=weightedvoting,
     weightedVoting(Parameters,Past_Modules);
     Class_plot=svm,
     svm_predictions(Parameters,Past_Modules)),

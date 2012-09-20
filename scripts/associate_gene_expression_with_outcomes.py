@@ -16,7 +16,7 @@ def main():
     parser.add_argument(dest='clinical_data', type=str,
                         help='specify the clinical data file', default=None)
     parser.add_argument('--outcome', dest='outcome', type=str,
-                        help=('specify time_header and dead_header'
+                        help=('specify time_header and dead_header '
                               'in the format<time_header>,<dead_header>'),
                         default=[], action='append')
     parser.add_argument('--genes', dest='genes', type=str,
@@ -27,7 +27,7 @@ def main():
     parser.add_argument('--prism_file', dest='prism_file', type=str,
                         help='specify the prism file name', default=None)
     parser.add_argument('--cutoff', dest='cutoff', type=float,
-                        help=('specify the cutoff(between 0 and 1)'
+                        help=('specify the cutoff(between 0 and 1) '
                               'to calculate'),
                         default=[], action='append')
     parser.add_argument('--km_plot', dest='km_plot', type=str,
@@ -61,7 +61,7 @@ def main():
         n = len(list(set(sample_name).intersection(set(clinical_dict[g]))))
         if n > 0:
             name_in_clinical = clinical_dict[g]
-    assert name_in_clinical, ('cannot match the sample name in'
+    assert name_in_clinical, ('cannot match the sample name in '
                               'clinical data and gene expression data')
     #align the sample order of gene expression file and clinical data
     x = matrixlib.align_cols_to_annot(
@@ -77,7 +77,7 @@ def main():
                                   enumerate(M.row_names(column_name))
                                   if item == gene]
                     row_index.extend(index_list)
-        assert row_index, ('we cannot find the genes you given'
+        assert row_index, ('we cannot find the genes you given '
                            'in the expression data')
         M = M.matrix(row_index, None)
     ids = M._row_order
@@ -145,11 +145,11 @@ def main():
                 group2_index = [index for index, item in enumerate(data)
                                 if item < low_point and index
                                 in sample_index]
-                assert len(group1_index) > 0, ('there is no patient'
-                                               'in the high expression group'
+                assert len(group1_index) > 0, ('there is no patient '
+                                               'in the high expression group '
                                                'for cutoff%f' % percentage)
-                assert len(group2_index) > 0, ('there is no patient'
-                                               'in the low expression group'
+                assert len(group2_index) > 0, ('there is no patient '
+                                               'in the low expression group '
                                                'for cutoff%f' % percentage)
                 group1_month = [float(time_data[k]) for k in group1_index]
                 group2_month = [float(time_data[k]) for k in group2_index]
@@ -171,35 +171,59 @@ def main():
                 if p_value < 0.05:
                     if 'NA' not in [str(med_high_50), str(med_low_50)]:
                         if med_high_50 > med_low_50:
-                            direction = ('High gene expression correlates'
+                            direction = ('High gene expression correlates '
                                          'with high survival.')
                         else:
-                            direction = ('High gene expression correlates'
+                            direction = ('High gene expression correlates '
+                                         'with low survival.')
+                    elif [str(med_high_50), str(med_low_50)] != ['NA', 'NA']:
+                        index = [str(med_high_50), str(med_low_50)].index('NA')
+                        if index == 0:
+                            direction = ('High gene expression correlates '
+                                         'with high survival.')
+                        else:
+                            direction = ('High gene expression correlates '
                                          'with low survival.')
                     elif  'NA' not in [str(med_high_90), str(med_low_90)]:
                         if med_high_90 > med_low_90:
-                            direction = ('High gene expression correlates'
+                            direction = ('High gene expression correlates '
                                          'with high survival.')
                         else:
-                            direction = ('High gene expression correlates'
+                            direction = ('High gene expression correlates '
+                                         'with low survival.')
+                    elif [str(med_high_90), str(med_low_90)] != ['NA', 'NA']:
+                        index = [str(med_high_90), str(med_low_90)].index('NA')
+                        if index == 0:
+                            direction = ('High gene expression correlates '
+                                         'with high survival.')
+                        else:
+                            direction = ('High gene expression correlates '
                                          'with low survival.')
                     else:
                         direction = ''
                 else:
                     direction = ''
+                if str(med_low_50) == 'NA':
+                    med_low_50 = ''
+                if str(med_high_50) == 'NA':
+                    med_high_50 = ''
+                if str(med_low_90) == 'NA':
+                    med_low_90 = ''
+                if str(med_high_90) == 'NA':
+                    med_high_90 = ''
                 output_data[i].extend([str(p_value), str(len(group2_month)),
                                        str(len(group1_month)), str(med_low_50),
                                        str(med_high_50), str(med_low_90),
                                        str(med_high_90), direction,
                                        str(low_point), str(high_point)])
             if args.prism_file:
-                assert len(geneid) == 1, ('multiple genes match and cannot'
+                assert len(geneid) == 1, ('multiple genes match and cannot '
                                           'write the prism file')
                 jmath.R_equals('"' + args.prism_file + '"', 'filename')
                 R(('write.km.prism(filename,"High Expression"'
                    ',group1,dead1,"Low Expression",group2,dead2)'))
             if args.km_plot:
-                assert len(geneid) == 1, ('multiple genes match and cannot'
+                assert len(geneid) == 1, ('multiple genes match and cannot '
                                           'plot the km file')
                 jmath.R_equals('"' + args.km_plot + '"', 'filename')
                 R('pdf(filename)')

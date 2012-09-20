@@ -191,3 +191,7 @@ make_normalize_report(Parameters,Modules):-
     not(member(Preprocess,[illumina])),
     control_plot(NewParameters,Modules9),
     Modules=[Modules1,Modules2,Modules3,Modules4,Modules5,Modules9]).
+
+/*-------------------------------------------------------------------*/
+make_heatmap_report(Parameters,Modules):-
+    cluster_heatmap(Parameters,Modules).

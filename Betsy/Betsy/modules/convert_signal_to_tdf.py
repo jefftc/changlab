@@ -6,6 +6,7 @@ import xlrd
 import module_utils
 import openpyxl
 import arrayio
+import subprocess
 def run(parameters,objects,pipeline):
     """check an input file is xls or xlsx format"""
     single_object = get_identifier(parameters,objects)
@@ -40,8 +41,8 @@ def run(parameters,objects,pipeline):
         shutil.copyfile(newfile,outfile)
     elif tmp_file:
         shutil.copyfile(newfile,tmp_file)
-        import Betsy_config
-        xls2txt_path = Betsy_config.XLS2TXT
+        import config
+        xls2txt_path = config.XLS2TXT
         xls2txt_BIN = module_utils.which(xls2txt_path)
         assert xls2txt_BIN,'cannot find the %s' %xls2txt_path
         f = file(outfile,'w')

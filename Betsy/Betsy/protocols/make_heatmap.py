@@ -13,7 +13,7 @@ INPUTS = [
     'input_signal_file',
     'rename_list_file']
     
-OUTPUTS = 'cluster_heatmap'
+OUTPUTS = 'make_heatmap_report'
 
 PARAMETERS = {
     'cluster_alg':['no_cluster_alg'],

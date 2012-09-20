@@ -1,4 +1,4 @@
-#cluster_heatmap.py
+#make_heatmap_report.py
 
 import config
 import module_utils

@@ -322,36 +322,36 @@ def convert_gene_list_platform(genes,platform):
     jmath.R_equals('"'+out_mart+'"','out_mart')
     R('new=useMart("ensembl",out_mart)')
     R('homolog = getLDS(attributes=in_attribute,filters=filters,values=gene_id,mart=old,attributesL=out_attribute,martL=new)')
-    homolog=R['homolog']
+    homolog = R['homolog']
     old_id = [str(i) for i in homolog[0]]
     human_id = [str(i) for i in homolog[1]]
     return human_id
 
-def convert_to_same_platform(filename1,filename2,platform=None):
+def convert_to_same_platform(filename1, filename2, platform=None):
     M1 = arrayio.read(filename1)
     platform1 = arrayannot.identify_platform_of_matrix(M1)
     M2 = arrayio.read(filename2)
     platform2 = arrayannot.identify_platform_of_matrix(M2)
     if platform1 == platform2:
-        return filename1,filename2
+        return filename1, filename2
     else:
         import subprocess
         import config
         Annot_path = config.ANNOTATE_MATRIX
         Annot_BIN = which(Annot_path)
-        assert Annot_BIN,'cannot find the %s' %Annot_path
-        if platform1 == platform or platform == None:
+        assert Annot_BIN,'cannot find the %s' % Annot_path
+        if platform1 == platform:
             filename = filename2
             newfilename1 = filename1
-            newfilename2 = filename2
-        elif platform2==platform:
+            newfilename2 = 'tmp'
+        elif platform2 == platform:
             filename = filename1
             newfilename1 = 'tmp'
-            newfilename2 =filename2
+            newfilename2 = filename2
         if platform:
-            command = ['python', Annot_BIN,'-f',filename,'-o','tmp',"--platform",
+            command = ['python', Annot_BIN, '-f', filename, '-o', 'tmp', "--platform",
                platform]
-            process = subprocess.Popen(command,shell=False,
+            process = subprocess.Popen(command, shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
             error_message = process.communicate()[1]
@@ -360,7 +360,7 @@ def convert_to_same_platform(filename1,filename2,platform=None):
             assert module_utils.exists_nz('tmp'),'the platform conversion fails'
     return newfilename1,newfilename2
 
-platform2attributes={
+platform2attributes = {
              'HG_U133_Plus_2':("affy_hg_u133_plus_2","hsapiens_gene_ensembl"),
              'HG_U133B':("affy_hg_u133b","hsapiens_gene_ensembl"),
              'HG_U133A':("affy_hg_u133a","hsapiens_gene_ensembl"),

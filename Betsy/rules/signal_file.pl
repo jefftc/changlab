@@ -79,7 +79,7 @@ signal_file(Parameters,Modules):-
 /*--------------------------------------------------------------------------*/
 %rank genes by class_neighbors
 signal_file(Parameters,Modules):-
-    % Conditions: Parameters has created,pcl,by_class_neighbors
+    % Conditions: Parameters has created,tdf,by_class_neighbors
     %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,status,created,Status),
     Status=created,
@@ -95,9 +95,9 @@ signal_file(Parameters,Modules):-
     Unique_Genes = no_unique_genes,
     get_value(Parameters,num_features,0,Num_features),
     Num_features=0,
-    % Input: class_label_file and signal_file with pcl,no_order and different status
+    % Input: class_label_file and signal_file with tdf,no_order and different status
     %   unknown_platform,no_unique_genes and logged
-    % Input: class_label_file and signal_file with pcl,no_order and different status
+    % Input: class_label_file and signal_file with tdf,no_order and different status
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
@@ -163,8 +163,8 @@ signal_file(Parameters,Modules):-
     Num_features>0,
     get_value(Parameters,platform,unknown_platform,Platform),
     Platform=unknown_platform,
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    Unique_Genes = no_unique_genes,
+    %get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    %Unique_Genes = no_unique_genes,
     % Input: signal_file with num_features=0,tdf,different status
     member(OldStatus,[given,created,jointed,splited]),
     set_value(Parameters,status,OldStatus,OldParameters1),
@@ -199,7 +199,7 @@ signal_file(Parameters,Modules):-
     Num_features=0,
     get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
     member(Unique_Genes,[average_genes,high_var,first_gene]),
-    % Input: signal_file with no_unique_genes,pcl,unknown_platform
+    % Input: signal_file with no_unique_genes,tdf,unknown_platform
     Pre_unique_genes=no_unique_genes,
     member(OldStatus,[given,created,jointed,splited]),
     set_value(Parameters,status,OldStatus,OldParameters1),

@@ -14,27 +14,32 @@ def run(parameters,objects,pipeline):
     assert slice_BIN,'cannot find the %s' %slice_path
     M = arrayio.read(single_object.identifier)
     chipname = arrayannot.identify_platform_of_matrix(M)
-    chipfilename = arrayannot.chipname2filename(chipname)
-    if not chipfilename:
-        raise AssertionError, 'I cannot annotate array platform :%s"'%chipname
-    assert os.path.exists(chipfilename), 'the annotation file %s does not exist'%chipfilename
-    if chipname in ['MG_U74Av2', 'HG_U133_Plus_2', 'Mu11KsubA', 'Mu11KsubB',
-                    'Hu6800', 'HG_U133B', 'Mouse430_2',
-                    'RG_U34A','Mouse430A_2', 'HG_U95A', 'HG_U133A', 'RAE230A',
-                    'Hu35KsubC', 'Hu35KsubB', 'Hu35KsubA', 'Hu35KsubD', 'MG_U74Cv2', 'HG_U133A_2',
-                    'MG_U74Bv2', 'HG_U95Av2']:
-        annot_affymetrix(slice_BIN,chipfilename,single_object.identifier,outfile)
-    elif chipname in ['HumanHT_12','MouseRef_8']:
-        annot_illumina(slice_BIN,chipfilename,single_object.identifier,outfile)
-    elif chipname in ['HumanHT_12_control','MouseRef_8_control']:
-        shutil.copyfile(single_object.identifier,outfile)
-    elif chipname in ['entrez_ID_human','entrez_ID_mouse','entrez_ID_symbol_human',
-                      'entrez_ID_symbol_mouse']:
-        print 'we do not annot the platform %s' %chipname
-        shutil.copyfile(single_object.identifier,outfile)
+    if chipname:
+        chipfilename = arrayannot.chipname2filename(chipname)
+        if not chipfilename:
+            raise AssertionError, 'I cannot annotate array platform :%s"'% chipname
+        assert os.path.exists(chipfilename), 'the annotation file %s does not exist'% chipfilename
+        if chipname in ['MG_U74Av2', 'HG_U133_Plus_2', 'Mu11KsubA', 'Mu11KsubB',
+                        'Hu6800', 'HG_U133B', 'Mouse430_2',
+                        'RG_U34A','Mouse430A_2', 'HG_U95A', 'HG_U133A', 'RAE230A',
+                        'Hu35KsubC', 'Hu35KsubB', 'Hu35KsubA', 'Hu35KsubD', 'MG_U74Cv2', 'HG_U133A_2',
+                        'MG_U74Bv2', 'HG_U95Av2']:
+            annot_affymetrix(slice_BIN, chipfilename, single_object.identifier, outfile)
+        elif chipname in ['HumanHT_12','MouseRef_8']:
+            annot_illumina(slice_BIN, chipfilename, single_object.identifier, outfile)
+        elif chipname in ['HumanHT_12_control','MouseRef_8_control']:
+            shutil.copyfile(single_object.identifier, outfile)
+        elif chipname in ['entrez_ID_human', 'entrez_ID_mouse', 'entrez_ID_symbol_human',
+                          'entrez_ID_symbol_mouse']:
+            print 'we do not annot the platform %s' % chipname
+            shutil.copyfile(single_object.identifier, outfile)
+        new_objects = get_newobjects(parameters, objects, pipeline)
+    else:
+        print 'we do not annot the platform %s' % chipname
+        new_objects = objects[:]
+        shutil.copyfile(single_object.identifier, outfile)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for annot_file fails'%outfile)
-    new_objects = get_newobjects(parameters,objects,pipeline)
+            'the output file %s for annot_file fails'% outfile)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
     
