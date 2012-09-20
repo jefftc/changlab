@@ -168,49 +168,28 @@ def main():
                 med_low_50 = c.rx2('surv2.50')[0]
                 med_low_90 = c.rx2('surv2.90')[0]
                 p_value = c.rx2('p.value')[0]
-                if p_value < 0.05:
-                    if 'NA' not in [str(med_high_50), str(med_low_50)]:
-                        if med_high_50 > med_low_50:
-                            direction = ('High gene expression correlates '
-                                         'with high survival.')
-                        else:
-                            direction = ('High gene expression correlates '
-                                         'with low survival.')
-                    elif [str(med_high_50), str(med_low_50)] != ['NA', 'NA']:
-                        index = [str(med_high_50), str(med_low_50)].index('NA')
-                        if index == 0:
-                            direction = ('High gene expression correlates '
-                                         'with high survival.')
-                        else:
-                            direction = ('High gene expression correlates '
-                                         'with low survival.')
-                    elif  'NA' not in [str(med_high_90), str(med_low_90)]:
-                        if med_high_90 > med_low_90:
-                            direction = ('High gene expression correlates '
-                                         'with high survival.')
-                        else:
-                            direction = ('High gene expression correlates '
-                                         'with low survival.')
-                    elif [str(med_high_90), str(med_low_90)] != ['NA', 'NA']:
-                        index = [str(med_high_90), str(med_low_90)].index('NA')
-                        if index == 0:
-                            direction = ('High gene expression correlates '
-                                         'with high survival.')
-                        else:
-                            direction = ('High gene expression correlates '
-                                         'with low survival.')
-                    else:
-                        direction = ''
-                else:
+                MAX_SURV = 1e10
+                med_high, med_low = med_high_50, med_low_50
+                if (str(med_high), str(med_low)) == ('NA', 'NA'):
+                    med_high, med_low = med_high_90, med_low_90
+                if str(med_high) == 'NA':
+                    med_high = MAX_SURV
+                if str(med_low) == 'NA':
+                    med_low = MAX_SURV
+                assert med_low <= MAX_SURV and med_high <= MAX_SURV
+                direction = ''
+                if med_high > med_low:
+                    direction = ('High gene expression correlates '
+                                 'with high survival.')
+                elif med_high < med_low:
+                    direction = ('High gene expression correlates '
+                                 'with low survival.')
+                if p_value >= 0.05:
                     direction = ''
-                if str(med_low_50) == 'NA':
-                    med_low_50 = ''
-                if str(med_high_50) == 'NA':
-                    med_high_50 = ''
-                if str(med_low_90) == 'NA':
-                    med_low_90 = ''
-                if str(med_high_90) == 'NA':
-                    med_high_90 = ''
+                med_low_50 = '' if (str(med_low_50) == 'NA') else med_low_50
+                med_high_50 = '' if (str(med_high_50) == 'NA') else med_high_50
+                med_low_90 = '' if (str(med_low_90) == 'NA') else med_low_90
+                med_high_90 = '' if (str(med_high_90) == 'NA') else med_high_90
                 output_data[i].extend([str(p_value), str(len(group2_month)),
                                        str(len(group1_month)), str(med_low_50),
                                        str(med_high_50), str(med_low_90),
