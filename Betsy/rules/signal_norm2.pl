@@ -16,6 +16,7 @@ signal_norm2(Parameters,Modules):-
     % Input: signal_norm2 with full length Parameters
     convert_parameters_norm2(Parameters,NewParameters),
     signal_norm2(NewParameters,Modules).
+    
 /*-------------------------------------------------------------------------*/
 % Input interface
 % generate signal_norm2 from signal_norm1 with no_gene_center/no_gene_normalize
@@ -36,12 +37,15 @@ signal_norm2(Parameters,Modules):-
    append(NewParameters,Options,NewParameters2),
    signal_norm1(NewParameters2,Modules).
 
+   
 /*-------------------------------------------------------------------------*/
 %gene_center the signal file
 signal_norm2(Parameters, Modules):-
     % Conditions: Parameters has created,gene_center in [mean,median],no_gene_normalize
     get_value(Parameters,status,created,Status),
     Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=tdf,
     get_value(Parameters,gene_center,no_gene_center,Gene_Center),
     member(Gene_Center,[mean,median]),
     get_value(Parameters,gene_normalize,no_gene_normalize,Gene_Normalize),
@@ -54,7 +58,8 @@ signal_norm2(Parameters, Modules):-
     signal_norm2(OldParameters,Past_Modules),
     % Module: center_genes
     % Output parameters: full length parameters of signal_norm2
-    Newadd=[center_genes,Parameters],
+    set_value(Parameters,format,pcl,Parameters1),
+    Newadd=[convert_signal_to_pcl,Parameters1,center_genes,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 %gene_normalize the signal file
@@ -62,6 +67,8 @@ signal_norm2(Parameters, Modules):-
     % Conditions:Parameters has created,gene_normalize in [variance,sum_of_squares]
     get_value(Parameters,status,created,Status),
     Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=tdf,
     get_value(Parameters,gene_normalize,no_gene_normalize,Gene_Normalize),
     member(Gene_Normalize, [variance, sum_of_squares]),
     % Input: signal_norm2 with no_gene_normalize and different status
@@ -72,6 +79,11 @@ signal_norm2(Parameters, Modules):-
     signal_norm2(OldParameters,Past_Modules),
     % Module:normalize_genes
     % Output parameters: full length parameters of signal_norm2
-    Newadd=[normalize_genes,Parameters],
+    set_value(Parameters,format,pcl,Parameters1),
+    Newadd=[convert_signal_to_pcl,Parameters1,normalize_genes,Parameters],
     append(Past_Modules, Newadd, Modules).
+
+
+
+
 

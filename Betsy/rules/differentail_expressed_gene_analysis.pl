@@ -8,7 +8,7 @@ differential_expressed_genes(Parameters,Modules):-
     member((Diff_expr,Module),[(t_test,calc_diffexp_with_ttest),(sam,calc_diffexp_with_sam)]),
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(NewParameters,status,created,Status),

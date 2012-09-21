@@ -72,6 +72,57 @@ def boxplot(*args,**keywds):
     pylab.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
     return fig
 
+##def scatter(*args,**keywds):
+##    """Return the figure object.
+##    x1,x2       List of list for the two dimension data.
+##    xlabel      what label to put on x axis.
+##    ylabel      what label to put on y axis.
+##    title       what label to put on title.
+##    left        the left margin distance
+##    right       the right margin distance
+##    top          the top margin distance
+##    bottom      the bottom margin distance
+##    label       a list of label for each point
+##    color       list of color for each point or a single color for all the points
+##    legend      list of text for legend
+##    """
+##    assert len(args) == 2, "Input data should be two dimension"
+##    [x1, x2] = args
+##    xlabel = keywds.get("xlabel",None)
+##    ylabel = keywds.get("ylabel",None)
+##    title = keywds.get("title",None)
+##    labels = keywds.get('label',None)
+##    legend = keywds.get('legend',None)
+##    color = keywds.get('color','b')
+##    left = keywds.get("left",0.17)
+##    right = keywds.get("right",0.88)
+##    top = keywds.get("top",0.86)
+##    bottom = keywds.get("bottom",0.13)
+##    assert [x1,x2],'No data provided for the box plot.'
+##    #check the inputs
+##    if labels:
+##        assert len(labels)==len(x1)
+##    fig=pylab.figure()
+##    pylab.scatter(x1,x2,marker = 'o',s=50,c=color)
+##    if xlabel:
+##        pylab.xlabel(xlabel)
+##    if ylabel:
+##        pylab.ylabel(ylabel)
+##    if title:
+##        pylab.title(title)
+##    pylab.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+##    if labels:
+##        txt_height = 0.08*(pylab.ylim()[1] - pylab.ylim()[0])
+##        txt_width = 0.04*(pylab.xlim()[1] - pylab.xlim()[0])
+##        text_positions = get_text_positions(x1, x2, txt_width, txt_height)
+##        for label, x, y,t in zip(labels, x1, x2,text_positions):
+##            pylab.annotate(
+##        label, 
+##        xy = (x, y),xytext = (x-txt_width, t*1.05),
+##        textcoords = 'data',size=6,
+##        #bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
+##        arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+##    return fig
 def scatter(*args,**keywds):
     """Return the figure object.
     x1,x2       List of list for the two dimension data.
@@ -84,6 +135,7 @@ def scatter(*args,**keywds):
     bottom      the bottom margin distance
     label       a list of label for each point
     color       list of color for each point or a single color for all the points
+    legend      list of text for legend for each point
     """
     assert len(args) == 2, "Input data should be two dimension"
     [x1, x2] = args
@@ -91,6 +143,7 @@ def scatter(*args,**keywds):
     ylabel = keywds.get("ylabel",None)
     title = keywds.get("title",None)
     labels = keywds.get('label',None)
+    legend = keywds.get('legend',None)
     color = keywds.get('color','b')
     left = keywds.get("left",0.17)
     right = keywds.get("right",0.88)
@@ -100,8 +153,20 @@ def scatter(*args,**keywds):
     #check the inputs
     if labels:
         assert len(labels)==len(x1)
-    fig=pylab.figure()    
-    pylab.scatter(x1,x2,marker = 'o',s=50,c=color)
+    if legend:
+        assert len(legend)==len(x1)
+    if len(color)>1:
+        assert len(color)==len(x1)
+    fig=pylab.figure()
+    if len(color)>1 and legend:
+        old_legend = numpy.array(legend)
+        legend = reduce(lambda x, y: x if y in x else x + [y], legend, [])
+        color = reduce(lambda x, y: x if y in x else x + [y], color, [])
+        for l,t in zip(legend,color):
+            pylab.scatter(numpy.array(x1)[old_legend==l],numpy.array(x2)[old_legend==l],label=l,marker = 'o',s=50,c=t)
+        pylab.legend()
+    elif not legend:  
+        pylab.scatter(x1,x2,marker = 'o',s=50,c=color)
     if xlabel:
         pylab.xlabel(xlabel)
     if ylabel:
@@ -118,7 +183,7 @@ def scatter(*args,**keywds):
         label, 
         xy = (x, y),xytext = (x-txt_width, t*1.05),
         textcoords = 'data',size=6,
-        bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
+        #bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
         arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
     return fig
 
@@ -216,28 +281,37 @@ def lineplot(*args,**keywds):
 def barplot(*args,**keywds):
     """Return the pylab figure object.
     mean       List of means for the data.
-    std        List of standard variation
+    std        List of standard variation.
     xlabel      what label to put on x axis.
     ylabel      what label to put on y axis.
     title       what label to put on title.
     box_label   what to put in xticklabel.
     tick_size   what font size of the tick label.
-    left        the left margin distance
-    right       the right margin distance
-    top          the top margin distance
-    bottom      the bottom margin distance
+    left        the left margin distance.
+    right       the right margin distance.
+    top          the top margin distance.
+    bottom      the bottom margin distance.
+    xtick_rotation rotation the box_label in vertical.
+    ylim       (min,max) of the limit of y_axis.
+    ytick_pos   List of position to put yticks.
+    yticks      List of ticks to put in y_axis.
     """
-    assert len(args) == 2, "Specify data"
-    mean,std = args
+    assert len(args) >=1, "Specify data"
+    if len(args)==1:
+        mean, = args
+        std = [0]*len(mean)
+    elif len(args)==2:
+        mean,std = args
     xlabel = keywds.get("xlabel",None)
     ylabel = keywds.get("ylabel",None)
     title = keywds.get("title",None)
     box_label = keywds.get("box_label",None)
     tick_size = keywds.get("tick_size",10)
-    left = keywds.get("left",0.12)
+    left = keywds.get("left",0.085)
     right = keywds.get("right",0.95)
     top = keywds.get("top",0.9)
-    bottom = keywds.get("bottom",0.15)
+    bottom = keywds.get("bottom",0.35)
+    xtick_rotation  = keywds.get('xtick_rotation',None)
     assert mean,'No data provided for the bar plot.'
     #check the inputs
     if box_label:
@@ -254,6 +328,19 @@ def barplot(*args,**keywds):
     if title:
         pylab.title(title)
     if box_label:
-        pylab.xticks(ind+width/2., box_label )
+        if len(mean)<=12:
+            label = box_label
+        else:
+            label = ['']*len(mean)
+            index = [int(round(len(mean)/12.0*i)) for i in range(12)]
+            for i in range(12):
+                label[index[i]] = box_label[index[i]]
+        
+        pylab.xticks(ind+width/2.,label,rotation=xtick_rotation)
+    if keywds.get('ylim'):
+        pylab.ylim(keywds.get('ylim'))
+    if keywds.get('ytick_pos') and keywds.get('yticks'):
+        pylab.yticks(keywds.get('ytick_pos'),keywds.get('yticks'))
+        
     pylab.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
     return fig

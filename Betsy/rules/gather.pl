@@ -6,23 +6,22 @@ gene_list_file(Parameters,Modules):-
     %    status=created,gene_order=t_test_p or t_test_fdr
     length(Parameters,N),
     N>2,
-    convert_parameters_file(Parameters,NewParameters),
+    convert_parameters_norm2(Parameters,NewParameters),
     get_value(NewParameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
-    get_value(NewParameters,gene_order,no_order,Gene_Order),
+    get_value(Parameters,gene_order,no_order,Gene_Order),
     member(Gene_Order,[t_test_p,t_test_fdr]),
-    OldGene_Order=no_order,
-    % Input: signal_file and class_label_file
-    set_value(NewParameters,status,OldStatus,OldParameters1),
-    set_value(OldParameters1,gene_order,OldGene_Order,OldParameters),
+    % Input: signal_norm2 and class_label_file
+    set_value(NewParameters,status,OldStatus,OldParameters),
     get_value(NewParameters,contents,[unknown],Contents),
     get_value(NewParameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
-    signal_file(OldParameters,Past_Modules_2),
+    signal_norm2(OldParameters,Past_Modules_2),
     % Module: rank_gene_by_sample_ttest
     % Output parameters: update the parameters to full length
-    Newadd=[rank_gene_by_sample_ttest,NewParameters],
+    append(NewParameters,[gene_order,Gene_Order],NewParameters1),
+    Newadd=[rank_gene_by_sample_ttest,NewParameters1],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 /*--------------------------------------------------------------------------*/
@@ -36,6 +35,8 @@ gene_list_file(Parameters,Modules):-
     get_value(NewParameters,status,created,Status),
     Status=created,
     member(OldStatus,[given,created,jointed,splited]),
+    get_value(NewParameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes = no_unique_genes,
     get_value(NewParameters,gene_order,no_order,Gene_Order),
     Gene_Order=by_class_neighbors,
     OldGene_Order=no_order,

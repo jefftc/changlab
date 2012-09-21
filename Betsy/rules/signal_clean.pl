@@ -27,7 +27,7 @@ signal_clean(Parameters,Modules):-
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
     member(Has_Missing_Value,[no_missing,zero_fill,median_fill]),
     % Input: signal_raw with logged,pcl and already check_missing

@@ -246,7 +246,7 @@ signal_raw(Parameters,Modules):-
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     % Input: signal_raw has no_logged or unknown_logged,different status,pcl
     member(OldStatus,[given,created,jointed,splited]),
     member(OldIs_Logged,[unknown_logged,no_logged]),
@@ -258,26 +258,26 @@ signal_raw(Parameters,Modules):-
     Newadd=[log_signal,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
-% change the format of signal_file to pcl.
+% change the format of signal_file to tdf.
 signal_raw(Parameters,Modules):-
-    % Conditions: Parameters has created,pcl
+    % Conditions: Parameters has created,tdf
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    % Input: signal_raw with different status and format is in [tdf,res,gct,jeffs]
+    Format=tdf,
+    % Input: signal_raw with different status and format is in [pcl,res,gct,jeffs,unknown_format]
     member(OldStatus,[given,created,jointed,splited]),
-    member(OldFormat,[tdf,res,gct,jeffs]),
+    member(OldFormat,[pcl,res,gct,jeffs,unknown_format]),
     set_value(Parameters,format,OldFormat,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module:convert_signal_to_pcl
+    % Module:convert_signal_to_tdf
     % Output parameters: full length parameters of signal_raw
-    Newadd=[convert_signal_to_pcl,Parameters],
+    Newadd=[convert_signal_to_tdf,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % change the Format of the signal file to tdf with Format unknown,
-signal_raw(Parameters, Modules):-
+/*signal_raw(Parameters, Modules):-
     % Conditions: Parameters has tdf and created
     get_value(Parameters,format,unknown_format,Format),
     Format=tdf,
@@ -292,7 +292,7 @@ signal_raw(Parameters, Modules):-
     % Module:convert_signal_to_tdf
     % Output parameters: full length parameters of signal_raw
     Newadd=[convert_signal_to_tdf,Parameters],
-    append(Past_Modules, Newadd, Modules).
+    append(Past_Modules, Newadd, Modules).*/
 
 /*-------------------------------------------------------------------------*/
 % filter genes with the missing value
@@ -304,7 +304,7 @@ signal_raw(Parameters,Modules):-
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
     Has_Missing_Value=unknown_missing,
     get_value(Parameters,filter,0,Filter),
@@ -329,7 +329,7 @@ signal_raw(Parameters,Modules):-
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     member(Is_Logged,[no_logged,unknown_logged]),
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,predataset,no_predataset,Predataset),
     Predataset=yes_predataset,
     % Input: signal_raw with no_predataset,unknown_logged or no_logged,pcl and different status
@@ -352,7 +352,7 @@ signal_raw(Parameters,Modules):-
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
     Has_Missing_Value = zero_fill,
     % Input: signal_raw with logged,pcl,unknown_missing and different status
@@ -374,7 +374,7 @@ signal_raw(Parameters,Modules):-
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
     Has_Missing_Value = median_fill,
     % Input: signal_raw with logged,pcl,unknown_missing and different status
@@ -398,7 +398,7 @@ signal_raw(Parameters,Modules):-
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
     Is_Logged=logged,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,has_missing_value,unknown_missing,Has_Missing_Value),
     member(Has_Missing_Value,[median_fill,zero_fill,no_missing]),
     get_value(Parameters,rename_sample,no_rename,Rename_sample),

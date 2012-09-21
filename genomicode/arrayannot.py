@@ -4,7 +4,6 @@ import os
 import filelib,arrayplatformlib
 import config
 import re
-from arrayio import const
 import arrayio
 
 def hash_chipname(filename):
@@ -29,7 +28,7 @@ def chipname2filename(chipname):
 
 def chipname2filename_illu(chipname):
     filename = None
-    path = config.annot_data_iilu
+    path = config.annot_data_illu
     assert os.path.exists(path),'%s does not exist'%path
     chipname=chipname.replace('_','-')
     for file in os.listdir(path):

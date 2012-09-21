@@ -127,9 +127,9 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
             x = fmt_module.read(filename)
             matrices.append(x)
     finally:
-        for file_ in temp_files:
-            if os.path.exists(file_):
-                os.unlink(file_)
+        for f in temp_files:
+            if os.path.exists(f):
+                os.unlink(f)
 
     return fmt_module, matrices
 
@@ -458,10 +458,10 @@ def remove_col_ids(MATRIX, remove_col_ids):
     return x
 
 
-def find_row_indexes(MATRIX, indexes):
+def find_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
-    return parse_indexes(MATRIX, True, indexes, False)
+    return parse_indexes(MATRIX, True, indexes, count_headers)
 
 
 def find_row_ids(MATRIX, ids):
@@ -1251,7 +1251,7 @@ def main():
         return
 
     # Slice to a submatrix.
-    I1 = find_row_indexes(MATRIX, args.select_row_indexes)
+    I1 = find_row_indexes(MATRIX, args.select_row_indexes, False)
     I2 = find_row_ids(MATRIX, args.select_row_ids)
     I3 = find_row_genesets(MATRIX, args.select_row_genesets)
     I4 = find_row_annotation(MATRIX, args.select_row_annotation)

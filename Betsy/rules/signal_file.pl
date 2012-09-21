@@ -27,42 +27,42 @@ signal_file(Parameters,Modules):-
    N=N1,
    get_value(Parameters,gene_order,no_order,Gene_Order),
    Gene_Order=no_order,
+   get_value(Parameters,num_features,0,Num_features),
+   Num_features=0,
    get_value(Parameters,platform,unknown_platform,Platform),
    Platform=unknown_platform,
    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-   Unique_Genes=no_unique_genes,
-   /*get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
-   Missing_Probe=yes_missing_probe,
+   Unique_Genes=no_unique_genes, 
    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
    Duplicate_Probe=yes_duplicate_probe,
    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
-   Duplicate_Data=yes_duplicate_data,*/
+   Duplicate_Data=yes_duplicate_data,
    % Input: signal_norm2
    get_desire_parameters_norm2(Parameters,NewParameters),
-   get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,num_factors],[],Options),
+   get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,num_factors,normalize_order],[],Options),
    append(NewParameters,Options,NewParameters2),
    signal_norm2(NewParameters2,Modules).
 
 /*--------------------------------------------------------------------------*/
 % rank genes by sample_ttest
 signal_file(Parameters,Modules):-
-    % Conditions:Parameters has created,pcl,gene_order in [t_test_p,t_test_fdr]
+    % Conditions:Parameters has created,tdf,gene_order in [t_test_p,t_test_fdr]
     %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    Unique_Genes=no_unique_genes,
+    Format = tdf,
     get_value(Parameters,is_logged,unknown_logged,Is_logged),
     Is_logged=logged,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
     get_value(Parameters,gene_order,no_order,Gene_Order),
     member(Gene_Order,[t_test_p,t_test_fdr]),
-    % Input: class_label_file and signal_file with no_order,pcl,different status
-    %    unknown_platform,no_unique_genes and logged
-    get_value(Parameters,gene_order,no_order,Gene_Order),
-    member(Gene_Order,[t_test_p,t_test_fdr]),
-    % Input: class_label_file and signal_file with no_order,pcl,different status
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes = no_unique_genes,
+    get_value(Parameters,num_features,0,Num_features),
+    Num_features=0,
+    % Input: class_label_file and signal_file with no_order,tdf,different status
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
@@ -79,21 +79,25 @@ signal_file(Parameters,Modules):-
 /*--------------------------------------------------------------------------*/
 %rank genes by class_neighbors
 signal_file(Parameters,Modules):-
-    % Conditions: Parameters has created,pcl,by_class_neighbors
+    % Conditions: Parameters has created,tdf,by_class_neighbors
     %   unknown_platform,no_unique_genes and logged
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,gene_order,no_order,Gene_Order),
     Gene_Order=by_class_neighbors,
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    Unique_Genes=no_unique_genes,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
     get_value(Parameters,is_logged,unknown_logged,Is_logged),
     Is_logged=logged,
-    % Input: class_label_file and signal_file with pcl,no_order and different status
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes = no_unique_genes,
+    get_value(Parameters,num_features,0,Num_features),
+    Num_features=0,
+    % Input: class_label_file and signal_file with tdf,no_order and different status
     %   unknown_platform,no_unique_genes and logged
-    % Input: class_label_file and signal_file with pcl,no_order and different status
+    % Input: class_label_file and signal_file with tdf,no_order and different status
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
@@ -112,21 +116,24 @@ signal_file(Parameters,Modules):-
 % if input is gene_list_file, gene ordering from signal_file with GeneOrder=no_order; 
 
 signal_file(Parameters,Modules):-
-    % Conditions:Parameters has created,by_gene_list,pcl
-    %   unknown_platform,no_unique_genes and logged
+    % Conditions:Parameters has created,by_gene_list,tdf
+    %   unknown_platform and logged,num_features=0
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    Unique_Genes=no_unique_genes,
+    Format=tdf,
     get_value(Parameters,is_logged,unknown_logged,Is_logged),
     Is_logged=logged,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(Parameters,num_features,0,Num_features),
+    Num_features=0,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes = no_unique_genes,
     get_value(Parameters,gene_order,no_order,Gene_Order),
     Gene_Order=by_gene_list,
     % Input: gene_list_file and signal_file with created,pcl,no_order
     %   unknown_platform,no_unique_genes and logged
-
     get_value(Parameters,gene_order,no_order,Gene_Order),
     Gene_Order=by_gene_list,
     % Input: gene_list_file and signal_file with created,pcl,no_order
@@ -141,24 +148,171 @@ signal_file(Parameters,Modules):-
     % Output Parameters: full length parameters of signal_file
     Newadd=[reorder_genes,Parameters],
     append(Past_Modules, Newadd, Modules).
+/*--------------------------------------------------------------------------*/
+% select genes according to num_features
+signal_file(Parameters,Modules):-
+    % Conditions:Parameters has created,tdf,num_features>0
+    %   unknown_platform,no_unique_genes and logged
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format = tdf,
+    get_value(Parameters,is_logged,unknown_logged,Is_logged),
+    Is_logged=logged,
+    get_value(Parameters,num_features,0,Num_features),
+    Num_features>0,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    %get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    %Unique_Genes = no_unique_genes,
+    % Input: signal_file with num_features=0,tdf,different status
+    member(OldStatus,[given,created,jointed,splited]),
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,num_features,0,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    % Module:select_num_genes
+    (member(traincontents,Parameters),
+    member(testcontents,Parameters),
+    get_value(Parameters,traincontents,[unknown],TrainContents),
+    get_value(Parameters,testcontents,[unknown],TestContents),
+    set_value(Parameters,contents,TrainContents,NewParameters1),
+    set_value(Parameters,contents,TestContents,NewParameters2),
+    % Output Parameters: full length parameters of signal_file
+    Newadd=[select_num_genes,NewParameters1,select_num_genes,NewParameters2];
+    not(member(traincontents,Parameters)),
+    Newadd=[select_num_genes,Parameters]),
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+%get the unique genes
+signal_file(Parameters,Modules):-
+    % Conditions: Parameters has created,tdf,unknown_platform and
+    %     unique_genes in [average_genes,high_var,first_gene]
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=tdf,
+    get_value(Parameters,is_logged,logged,Is_logged),
+    Is_logged=logged,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(Parameters,num_features,0,Num_features),
+    Num_features=0,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    member(Unique_Genes,[average_genes,high_var,first_gene]),
+    % Input: signal_file with no_unique_genes,tdf,unknown_platform
+    Pre_unique_genes=no_unique_genes,
+    member(OldStatus,[given,created,jointed,splited]),
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,unique_genes,Pre_unique_genes,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    % Module:get_unique_genes
+    % Output Parameters: full length parameters of signal_file 
+    Newadd=[get_unique_genes,Parameters],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+%convert the unknown_platform to desired platform
+signal_file(Parameters,Modules):-
+    % Conditions: Parameters has created,tdf,logged,not unknown_platform
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=tdf,
+    get_value(Parameters,is_logged,logged,Is_logged),
+    Is_logged=logged,
+    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
+    Duplicate_Probe = yes_duplicate_probe,
+    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
+    Duplicate_Data = yes_duplicate_data,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    not(Platform=unknown_platform),
+    % Input: signal_file with unknown_platform,pcl,logged,different status
+    Pre_platform=unknown_platform,
+    member(OldStatus,[given,created,jointed,splited]),
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,platform,Pre_platform,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    % Module:add_newplatform_probeids
+    % Output Parameters: full length parameters of signal_file
+    Newadd=[add_newplatform_probeids,Parameters],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+% select_unique_probe
+signal_file(Parameters,Modules):-
+    % Conditions: Parameters has created,tdf,not unknwon_platform and
+    % duplicate_probe in  [high_var_probe,closest_probe]
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=tdf,
+    get_value(Parameters,is_logged,logged,Is_logged),
+    Is_logged=logged,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    not(Platform=unknown_platform),
+    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
+    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
+    (Duplicate_Probe=high_var_probe,
+     Duplicate_Data=yes_duplicate_data,
+     Module=select_probe_by_high_variance;
+     Duplicate_Probe=closest_probe,
+     Duplicate_Data=no_duplicate_data,
+     Module=select_probe_by_best_match),
+    % Input: signal_file with no_unique_genes,tdf,not unknwon_platform,yes_duplicate_probe
+    Pre_duplicate_probe=yes_duplicate_probe,
+    Pre_duplicate_data=yes_duplicate_data,
+    member(OldStatus,[given,created,jointed,splited]),
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,duplicate_probe,Pre_duplicate_probe,OldParameters2),
+    set_value(OldParameters2,duplicate_data,Pre_duplicate_data,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    % Module:select_probe_by_high_variance or select_probe_by_best_match
+    % Output Parameters: full length parameters of signal_file 
+    Newadd=[Module,Parameters],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+% remove_duplicate_data
+signal_file(Parameters,Modules):-
+    % Conditions: Parameters has created,tdf,not unknown_platform and no_duplicate_data
+    % no_missing_probe,duplicate_probe in  [high_var_probe,closest_probe]
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format=tdf,
+    get_value(Parameters,is_logged,logged,Is_logged),
+    Is_logged=logged,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    not(Platform=unknown_platform),
+    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
+    Duplicate_Probe=high_var_probe,
+    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
+    Duplicate_Data=no_duplicate_data,
+    % Input: signal_file with no_unique_genes,tdf,not unknown_platform,yes_duplicate_data
+    Pre_duplicate_data=yes_duplicate_data,
+    member(OldStatus,[given,created,jointed,splited]),
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,duplicate_data,Pre_duplicate_data,OldParameters),
+    signal_file(OldParameters,Past_Modules),
+    % Module:remove_duplicate_data,
+    % Output Parameters: full length parameters of signal_file 
+    Newadd=[remove_duplicate_data,Parameters],
+    append(Past_Modules, Newadd, Modules).
 
 /*-------------------------------------------------------------------------*/
-% change the pcl format of signal_file to gct.
+% change tdf format of signal_file to gct.
 signal_file(Parameters,Modules):-
     % Conditions: Parameters has created,gct
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
     Format=gct,
-    % Input: signal_file with pcl and different status
-    Pre_format=pcl,
+    % Input: signal_file with tdf and different status
+    Pre_format=tdf,
     member(OldStatus,[given,created,jointed,splited]),
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,format,Pre_format,OldParameters),
     signal_file(OldParameters,Past_Modules),
-    % Module:convert_pcl_to_gct
+    % Module:convert_signal_to_gct
     % Output Parameters: full length parameters of signal_file
-    Newadd=[convert_pcl_to_gct,Parameters],
+    Newadd=[convert_signal_to_gct,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*-------------------------------------------------------------------------*/
@@ -168,10 +322,10 @@ signal_file(Parameters,Modules):-
     get_value(Parameters,status,created,Status),
     Status=created,
     get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(Parameters,is_logged,logged,Is_logged),
     Is_logged=no_logged,
-    % Input: signal_file with pcl,logged and different status
+    % Input: signal_file with tdf,logged and different status
     Pre_islogged=logged,
     member(OldStatus,[given,created,jointed,splited]),
     set_value(Parameters,status,OldStatus,OldParameters1),
@@ -193,12 +347,16 @@ signal_file(Parameters,Modules):-
     get_value(Parameters,testcontents,[unknown],TestContents),
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
-    Format=pcl,
+    Format=tdf,
     get_value(NewParameters,status,created,Status),
     Status=created,
+    get_value(Parameters,num_features,0,Num_features),
+    Num_features=0,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes=no_unique_genes,
     get_value(NewParameters,is_logged,unknown_logged,Is_logged),
     Is_logged=logged,
-    % Input: signal_file with traincontents,pcl,different status,
+    % Input: signal_file with traincontents,tdf,different status,
     %     logged,unknown_platform and  signal_file with testcontents,pcl,
     %     different status,logged,unknown_platform
     % Input: signal_file with traincontents,pcl,different status and 
@@ -219,57 +377,10 @@ signal_file(Parameters,Modules):-
     % Module:select_common_genes
     % Output parameters: full length parameters of signal_file and 
     %     [testcontents,TestContents,traincontents,TrainContents]
-    Newadd1=[select_common_genes,Write_list1],
-    Newadd2=[select_common_genes,Write_list2],
+    Newadd1=[select_common_genes,Write_list2],
+    Newadd2=[select_common_genes,Write_list1],
     append(Newadd1,Newadd2,Newadd),
     append(Past_Modules,Newadd,Modules).
-/*-------------------------------------------------------------------------*/
-%convert the unknown_platform to desired platform
-signal_file(Parameters,Modules):-
-    % Conditions: Parameters has created,pcl,logged,'HG_U133A'
-    get_value(Parameters,status,created,Status),
-    Status=created,
-    get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    get_value(Parameters,is_logged,logged,Is_logged),
-    Is_logged=logged,
-    get_value(Parameters,gene_order,no_order,Gene_Order),
-    Gene_Order=no_order,
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    Unique_Genes=no_unique_genes,
-    get_value(Parameters,platform,unknown_platform,Platform),
-    not(Platform=unknown_platform),
-    % Input: signal_file with unknown_platform,pcl,logged,different status
-    Pre_platform=unknown_platform,
-    member(OldStatus,[given,created,jointed,splited]),
-    set_value(Parameters,status,OldStatus,OldParameters1),
-    set_value(OldParameters1,platform,Pre_platform,OldParameters),
-    signal_file(OldParameters,Past_Modules),
-    % Module:add_newplatform_probeids
-    % Output Parameters: full length parameters of signal_file
-    Newadd=[add_newplatform_probeids,Parameters],
-    append(Past_Modules, Newadd, Modules).
-/*-------------------------------------------------------------------------*/
-%get the unique genes
-signal_file(Parameters,Modules):-
-    % Conditions: Parameters has created,pcl,unknown_platform and
-    %     unique_genes in [average_genes,high_var,first_gene]
-    get_value(Parameters,status,created,Status),
-    Status=created,
-    get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
-    member(Unique_Genes,[average_genes,high_var,first_gene]),
-    % Input: signal_file with no_unique_genes,pcl,unknown_platform
-    Pre_unique_genes=no_unique_genes,
-    member(OldStatus,[given,created,jointed,splited]),
-    set_value(Parameters,status,OldStatus,OldParameters1),
-    set_value(OldParameters1,unique_genes,Pre_unique_genes,OldParameters),
-    signal_file(OldParameters,Past_Modules),
-    % Module:get_unique_genes
-    % Output Parameters: full length parameters of signal_file 
-    Newadd=[get_unique_genes,Parameters],
-    append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 %remove the missing probe
 /*signal_file(Parameters,Modules):-
@@ -294,73 +405,13 @@ signal_file(Parameters,Modules):-
     Newadd=[remove_missing_probes,Parameters],
     append(Past_Modules, Newadd, Modules).*/
 /*-------------------------------------------------------------------------*/
-% select_unique_probe
-/*signal_file(Parameters,Modules):-
-    % Conditions: Parameters has created,pcl,'HG_U133A' and
-    % no_missing_probe,duplicate_probe in  [high_var_probe,closest_probe]
-    get_value(Parameters,status,created,Status),
-    Status=created,
-    get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    get_value(Parameters,platform,unknown_platform,Platform),
-    Platform='HG_U133A',
-    get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
-    Missing_Probe = no_missing_probe,
-    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
-    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
-    (Duplicate_Probe=high_var_probe,
-     Duplicate_Data=yes_duplicate_data,
-     Module=select_probe_by_high_variance;
-     Duplicate_Probe=closest_probe,
-     Duplicate_Data=no_duplicate_data,
-     Module=select_probe_by_best_match),
-    % Input: signal_file with no_unique_genes,pcl,'HG_U133A',yes_duplicate_probe
-    Pre_duplicate_probe=yes_duplicate_probe,
-    Pre_duplicate_data=yes_duplicate_data,
-    member(OldStatus,[given,created,jointed,splited]),
-    set_value(Parameters,status,OldStatus,OldParameters1),
-    set_value(OldParameters1,duplicate_probe,Pre_duplicate_probe,OldParameters2),
-    set_value(OldParameters2,duplicate_data,Pre_duplicate_data,OldParameters),
-    signal_file(OldParameters,Past_Modules),
-    % Module:select_probe_by_high_variance or select_probe_by_best_match
-    % Output Parameters: full length parameters of signal_file 
-    Newadd=[Module,Parameters],
-    append(Past_Modules, Newadd, Modules).*/
-/*-------------------------------------------------------------------------*/
-% remove_duplicate_data
-/*signal_file(Parameters,Modules):-
-    % Conditions: Parameters has created,pcl,'HG_U133A' and no_duplicate_data
-    % no_missing_probe,duplicate_probe in  [high_var_probe,closest_probe]
-    get_value(Parameters,status,created,Status),
-    Status=created,
-    get_value(Parameters,format,unknown_format,Format),
-    Format=pcl,
-    get_value(Parameters,platform,unknown_platform,Platform),
-    Platform='HG_U133A',
-    get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
-    Missing_Probe = no_missing_probe,
-    get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
-    Duplicate_Probe=high_var_probe,
-    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
-    Duplicate_Data=no_duplicate_data,
-    % Input: signal_file with no_unique_genes,pcl,'HG_U133A',yes_duplicate_data
-    Pre_duplicate_data=yes_duplicate_data,
-    member(OldStatus,[given,created,jointed,splited]),
-    set_value(Parameters,status,OldStatus,OldParameters1),
-    set_value(OldParameters1,duplicate_data,Pre_duplicate_data,OldParameters),
-    signal_file(OldParameters,Past_Modules),
-    % Module:remove_duplicate_data,
-    % Output Parameters: full length parameters of signal_file 
-    Newadd=[remove_duplicate_data,Parameters],
-    append(Past_Modules, Newadd, Modules).*/
-/*-------------------------------------------------------------------------*/
 pca_plot_out(Parameters,Modules):-
     % Input: signal_file with pcl,unknown_platform and class_label_file
     convert_parameters_file(Parameters,NewParameters1),
-    set_value(NewParameters1,format,pcl,NewParameters2),
+    set_value(NewParameters1,format,tdf,NewParameters2),
     signal_file(NewParameters2,Past_Modules_2),
     get_options(Parameters,[pca_gene_num],[],Options),
-    append(NewParameters1,Options,NewParameters3),
+    append(NewParameters2,Options,NewParameters3),
     append(NewParameters3,[objecttype,pca_plot_out],NewParameters),
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),

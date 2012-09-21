@@ -25,10 +25,10 @@ gsea(Parameters,Modules):-
 
 signature_score(Parameters,Modules):-
    convert_parameters_file(Parameters,NewParameters),
-   % Conditions: pcl,logged,created,'HG_U133A',no_duplicate_data,no_missing_probe,
+   % Conditions: tdf,logged,created,'HG_U133A',no_duplicate_data
    % high_var_probe or closest_probe
    get_value(NewParameters,format,unknown_format,Format),
-   Format=pcl,
+   Format=tdf,
    get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
    Is_Logged=logged,
    get_value(NewParameters,status,created,Status),
@@ -39,8 +39,6 @@ signature_score(Parameters,Modules):-
    Duplicate_Data=no_duplicate_data,
    get_value_variable(Parameters,duplicate_probe,Duplicate_Probe),
    member(Duplicate_Probe,[high_var_probe,closest_probe]),
-   get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
-   Missing_Probe=no_missing_probe,
    member(OldStatus,[given,jointed,splited,created]),
    set_value(NewParameters,status,OldStatus,NewParameters2),
    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
