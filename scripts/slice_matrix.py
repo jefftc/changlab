@@ -49,7 +49,9 @@
 # _intersect_indexes
 # _dedup_indexes
 
-import os, sys
+import os
+import sys
+
 
 def _clean(s):
     s = s.replace("\t", " ")
@@ -57,6 +59,7 @@ def _clean(s):
     if s.startswith('"') and s.endswith('"'):
         s = s[1:-1]
     return s
+
 
 def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
                   clean_only):
@@ -76,8 +79,9 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
 
             # Make a temporary files for each matrix file.
             for filename in filenames:
-                x, f = tempfile.mkstemp(dir="."); os.close(x)
-                temp_files.append(f)
+                x, file_ = tempfile.mkstemp(dir=".")
+                os.close(x)
+                temp_files.append(file_)
             assert len(filenames) == len(temp_files)
 
             # Clean up the files.
@@ -102,7 +106,7 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
                     # Clean up the data.
                     cols = [_clean(x) for x in cols]
 
-                    outhandle.write("\t".join(cols)+"\n")
+                    outhandle.write("\t".join(cols) + "\n")
                 outhandle.close()
 
             # Use the cleaned files.
@@ -110,17 +114,16 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
 
         if clean_only:
             if len(filenames) != 1:
-                raise NotImplementedError, "Can not clean and merge."
+                raise NotImplementedError("Can not clean and merge.")
             sys.stdout.write(open(filenames[0]).read())
             sys.exit(0)
 
         # Read the files.
         matrices = []
         for filename in filenames:
-            fmt_module = arrayio.choose_format(filename)
-            assert fmt_module,"I could not figure out the format of file: %s"%\
-                filename
-                #print filename, fmt_module.__name__
+            fmt_module = arrayio.guess_format(filename)
+            assert fmt_module, \
+                "I could not figure out the format of file: %s" % filename
             x = fmt_module.read(filename)
             matrices.append(x)
     finally:
@@ -129,6 +132,7 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
                 os.unlink(f)
 
     return fmt_module, matrices
+
 
 def parse_indexes(MATRIX, is_row, s, count_headers):
     # Examples:
@@ -146,25 +150,27 @@ def parse_indexes(MATRIX, is_row, s, count_headers):
     I = []
     for s, e in parselib.parse_ranges(s):
         if count_headers:
-            s, e = s-num_headers, e-num_headers
+            s, e = s - num_headers, e - num_headers
         assert s >= 1
-        s, e = s-1, min(e, max_index)
+        s, e = s - 1, min(e, max_index)
         I.extend(range(s, e))
     return I
+
 
 def parse_names(MATRIX, is_row, s):
     # Examples:
     # E2F1,E2F3,PCNA
     names = s.split(",")
-    params = { "row" : names }
+    params = {"row": names}
     if not is_row:
-        params = { "col" : names }
+        params = {"col": names}
 
     I_row, I_col = MATRIX._index(**params)
     I = I_row
     if not is_row:
         I = I_col
     return I
+
 
 def parse_geneset(MATRIX, is_row, geneset):
     # Return a list of indexes that match the desired gene sets.
@@ -176,16 +182,17 @@ def parse_geneset(MATRIX, is_row, geneset):
         return []
     filename, genesets = _parse_file_gs(geneset)
 
-    keywds = { "allow_tdf" : True }
+    keywds = {"allow_tdf": True}
     genes = genesetlib.read_genes(filename, *genesets, **keywds)
-    params = { "row" : genes }
+    params = {"row": genes}
     if not is_row:
-        params = { "col" : genes }
+        params = {"col": genes}
     I_row, I_col = MATRIX._index(**params)
     I = I_row
     if not is_row:
         I = I_col
     return I
+
 
 def _parse_file_gs(geneset):
     # Parse a geneset specified by the user.  geneset is in the format
@@ -197,6 +204,7 @@ def _parse_file_gs(geneset):
     filename, genesets = x[0], x[1:]
     return filename, genesets
 
+
 def _parse_file_annot(annotation):
     # annotations is in the format:
     # <txt_file>,<header>,<value>[,<value,...]
@@ -205,6 +213,7 @@ def _parse_file_annot(annotation):
     assert len(x) >= 3
     filename, header, values = x[0], x[1], x[2:]
     return filename, header, values
+
 
 def _read_annot_file(filename):
     # Return (header2annots, all_headers, all_annots).
@@ -223,6 +232,7 @@ def _read_annot_file(filename):
     for annots in all_annots[1:]:
         assert len(annots) == len(all_annots[0])
     return header2annots, all_headers, all_annots
+
 
 def _parse_file_num_annot(annotation):
     # annotations is in the format:
@@ -247,10 +257,12 @@ def _parse_file_num_annot(annotation):
         values[i] = modifier, value
     return filename, header, values
 
+
 def find_col_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
     return parse_indexes(MATRIX, False, indexes, count_headers)
+
 
 def find_col_ids(MATRIX, ids):
     # IDs is a list of gene IDs or names.  Combine them into a single string.
@@ -260,10 +272,12 @@ def find_col_ids(MATRIX, ids):
         return None
     return parse_names(MATRIX, False, ids)
 
+
 def find_col_genesets(MATRIX, genesets):
     if not genesets:
         return None
     return parse_geneset(MATRIX, False, genesets)
+
 
 def find_col_annotation(MATRIX, col_annotation):
     # Format: <txt_file>,<header>,<value>[,<value,...]
@@ -295,11 +309,13 @@ def find_col_annotation(MATRIX, col_annotation):
 ##     # Search for a col_annot in the MATRIX that matches a column in
 ##     # the annotation file.
 ##     for annot_header in header_order:
-##         matrix_header = _find_col_header(MATRIX, header2annots[annot_header])
+##         matrix_header = _find_col_header(
+##             MATRIX, header2annots[annot_header])
 ##         if matrix_header is not None:
 ##             break
 ##     else:
-##         raise AssertionError, "I could not align the annotation file to " + \"the matrix."
+##         raise AssertionError("I could not align the annotation file to " + \
+##               "the matrix.")
 ##     annot = header2annots[annot_header]
 ##     matrix_annot = MATRIX.col_names(matrix_header)
 ##     h_annot = [hashlib.hash_R(x) for x in annot]
@@ -317,12 +333,14 @@ def find_col_annotation(MATRIX, col_annotation):
 ##     assert h_annot == h_matrix_annot
 
 ##     # Identify the lines that match the annotations.
-##     assert header in header2annots, "I could not find the header: %s" % header
+##     assert header in header2annots, \
+##         "I could not find the header: %s" % header
 ##     I = []
 ##     for i, annot in enumerate(header2annots[header]):
 ##         if annot in values:
 ##             I.append(i)
     return I
+
 
 def relabel_col_ids(MATRIX, geneset, ignore_missing):
     import arrayio
@@ -361,7 +379,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         MATRIX, all_genes, hash=True, get_indexes=True)
     I_matrix, I_geneset, index = x
     if len(I_matrix) == 0:
-        raise AssertionError, "Matrixes doesn't match any gene sets."
+        raise AssertionError("Matrixes doesn't match any gene sets.")
     elif len(I_matrix) != MATRIX.ncol() and not ignore_missing:
         # No matches.  Try to diagnose.
         gs = all_genesets[index]
@@ -371,7 +389,8 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         missing = [col_names[i] for i in range(len(col_names))
                    if i not in I_matrix]
         print >>sys.stderr, \
-            "Matrix best matches column '%s' [%d:%d]." %(gs, nm, MATRIX.ncol())
+            "Matrix best matches column '%s' [%d:%d]." % (
+            gs, nm, MATRIX.ncol())
         MAX_TO_SHOW = 5
         if len(missing) > MAX_TO_SHOW:
             print >>sys.stderr, \
@@ -380,7 +399,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
             print >>sys.stderr, "Missing:"
         for x_ in missing[:MAX_TO_SHOW]:
             print >>sys.stderr, x_
-        raise AssertionError, "I could not match the matrix to a geneset."
+        raise AssertionError("I could not match the matrix to a geneset.")
 
     # Add the new column names to the MATRIX.
     MATRIX_new = MATRIX.matrix()
@@ -398,6 +417,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
 
     return MATRIX_new
 
+
 def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
     import arrayio
 
@@ -413,6 +433,7 @@ def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
         I.append(i)
     x = MATRIX.matrix(None, I)
     return x
+
 
 def remove_col_ids(MATRIX, remove_col_ids):
     import arrayio
@@ -436,10 +457,12 @@ def remove_col_ids(MATRIX, remove_col_ids):
     x = MATRIX.matrix(None, I)
     return x
 
+
 def find_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
     return parse_indexes(MATRIX, True, indexes, count_headers)
+
 
 def find_row_ids(MATRIX, ids):
     # IDs is a list of gene IDs or names.  Combine them into a single string.
@@ -449,10 +472,12 @@ def find_row_ids(MATRIX, ids):
         return None
     return parse_names(MATRIX, True, ids)
 
+
 def find_row_genesets(MATRIX, genesets):
     if not genesets:
         return None
     return parse_geneset(MATRIX, True, genesets)
+
 
 def find_row_annotation(MATRIX, row_annotation):
     # Format: <txt_file>,<header>,<value>[,<value,...]
@@ -480,6 +505,7 @@ def find_row_annotation(MATRIX, row_annotation):
         if annots[ia] in values:
             I.append(im)
     return I
+
 
 def find_row_numeric_annotation(MATRIX, row_annotation):
     # Format: <txt_file>,<header>,<value>[,<value,...]
@@ -518,10 +544,11 @@ def find_row_numeric_annotation(MATRIX, row_annotation):
             elif modifier == ">=":
                 match = (x >= value)
             else:
-                raise AssertionError, "Unknown modifier: %s" % modifier
+                raise AssertionError("Unknown modifier: %s" % modifier)
         if match:
             I.append(im)
     return I
+
 
 def find_row_mean_var(MATRIX, filter_mean, filter_var):
     from genomicode import pcalib
@@ -547,6 +574,7 @@ def find_row_mean_var(MATRIX, filter_mean, filter_var):
     I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
     return I
 
+
 def dedup_row_by_var(MATRIX, header):
     from genomicode import jmath
     if not header:
@@ -561,7 +589,7 @@ def dedup_row_by_var(MATRIX, header):
             annot2i[annot] = []
         annot2i[annot].append(i)
 
-    vars = jmath.var(MATRIX._X)
+    variances = jmath.var(MATRIX._X)
 
     I = []
     for annot, indexes in annot2i.iteritems():
@@ -570,13 +598,14 @@ def dedup_row_by_var(MATRIX, header):
             continue
         max_var = max_i = None
         for i in indexes:
-            if max_var is None or vars[i] > max_var:
-                max_var = vars[i]
+            if max_var is None or variances[i] > max_var:
+                max_var = variances[i]
                 max_i = i
         assert max_i is not None
         I.append(max_i)
     I.sort()
     return I
+
 
 def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     import arrayio
@@ -584,7 +613,7 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     if not align_row_file:
         return None
     assert os.path.exists(align_row_file), \
-           "File not found: %s" % align_row_file
+        "File not found: %s" % align_row_file
 
     ALIGN = arrayio.read(align_row_file)
     # Try all the headers and see if we can find a hit.
@@ -617,8 +646,9 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
                 print id_
         message = ("%d IDs from the align file are missing from the "
                    "matrix file." % len(missing))
-        raise AssertionError, message
+        raise AssertionError(message)
     return I
+
 
 def align_cols(MATRIX, align_col_file, ignore_missing_cols):
     import arrayio
@@ -672,12 +702,11 @@ def align_cols(MATRIX, align_col_file, ignore_missing_cols):
             for id_ in sorted(missing):
                 print id_
         message = "I could not find %d IDs." % len(missing)
-        raise AssertionError, message
+        raise AssertionError(message)
     return I
 
+
 def add_row_id(MATRIX, header):
-    from genomicode import genesetlib
-    from genomicode import matrixlib
     from genomicode import parselib
 
     if not header:
@@ -690,6 +719,7 @@ def add_row_id(MATRIX, header):
     MATRIX_new._row_order.insert(0, header)
     MATRIX_new._row_names[header] = x
     return MATRIX_new
+
 
 def add_row_annot(MATRIX, row_annots):
     # row_annot should be in the format <gmx/gmt_file>[,<geneset>].
@@ -740,6 +770,7 @@ def add_row_annot(MATRIX, row_annots):
 
     return MATRIX_new
 
+
 def remove_row_annot(MATRIX, name):
     assert name in MATRIX.row_names(), "I could not find name: %s" % name
     MATRIX_clean = MATRIX.matrix()
@@ -752,6 +783,7 @@ def remove_row_annot(MATRIX, name):
     # Bug: Does not remove from the synonyms list.
     return MATRIX_clean
 
+
 def rename_row_annot(MATRIX, row_annot):
     if row_annot is None:
         return MATRIX
@@ -759,9 +791,9 @@ def rename_row_annot(MATRIX, row_annot):
     x = row_annot.split(",", 1)
     old_name, new_name = x
     assert old_name in MATRIX.row_names(), \
-           "I could not find name: %s" % old_name
+        "I could not find name: %s" % old_name
     assert new_name not in MATRIX.row_names(), \
-           "Row name %s already exists." % new_name
+        "Row name %s already exists." % new_name
 
     MATRIX_clean = MATRIX.matrix()
     Mc = MATRIX_clean
@@ -782,6 +814,7 @@ def rename_row_annot(MATRIX, row_annot):
         Mc.__dict__["_synonyms"] = synonyms
     return MATRIX_clean
 
+
 def move_row_annot(MATRIX, move_row_annot):
     if move_row_annot is None:
         return MATRIX
@@ -798,10 +831,11 @@ def move_row_annot(MATRIX, move_row_annot):
         "Invalid annotation index: %d" % old_index
     assert new_index >= 1 and new_index <= len(order), \
         "Invalid annotation index: %d" % new_index
-    x = order.pop(old_index-1)
-    order.insert(new_index-1, x)
+    x = order.pop(old_index - 1)
+    order.insert(new_index - 1, x)
     MATRIX_clean._row_order = order
     return MATRIX_clean
+
 
 def center_genes_mean(MATRIX):
     from genomicode import jmath
@@ -812,7 +846,8 @@ def center_genes_mean(MATRIX):
         # Subtract the mean.
         X_i = X[i]
         m = jmath.mean(X_i)
-        X[i] = [x-m for x in X_i]
+        X[i] = [x - m for x in X_i]
+
 
 def center_genes_median(MATRIX):
     from genomicode import jmath
@@ -823,7 +858,8 @@ def center_genes_median(MATRIX):
         # Subtract the median.
         X_i = X[i]
         m = jmath.median(X_i)
-        X[i] = [x-m for x in X_i]
+        X[i] = [x - m for x in X_i]
+
 
 def normalize_genes_var(MATRIX):
     from genomicode import jmath
@@ -834,13 +870,13 @@ def normalize_genes_var(MATRIX):
         X_i = X[i]
         m = jmath.mean(X_i)
         # Subtract the mean.
-        X_i = [x-m for x in X_i]
+        X_i = [x - m for x in X_i]
         # Normalize to stddev of 1.
         s = jmath.stddev(X_i)
         if s != 0:
-            X_i = [x/s for x in X_i]
+            X_i = [x / s for x in X_i]
         # Add the mean back.
-        X_i = [x+m for x in X_i]
+        X_i = [x + m for x in X_i]
         X[i] = X_i
 
 ## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
@@ -1021,6 +1057,7 @@ def normalize_genes_var(MATRIX):
 ##         return name
 ##     return None
 
+
 def _intersect_indexes(*indexes):
     # None means take all indexes.
     indexes = [x for x in indexes if x is not None]
@@ -1032,6 +1069,7 @@ def _intersect_indexes(*indexes):
     for ind in indexes[1:]:
         I = [i for i in I if i in ind]
     return I
+
 
 def _dedup_indexes(I):
     # Get rid of duplicate indexes, preserving the original order of
@@ -1047,6 +1085,7 @@ def _dedup_indexes(I):
             seen[I[i]] = 1
             i += 1
     return I
+
 
 def main():
     import argparse
@@ -1094,8 +1133,7 @@ def main():
     group = parser.add_argument_group(title="Column operations")
     group.add_argument(
         "--select_col_indexes", default=None,
-        help="Which columns to include e.g. 1-5,8 (1-based, inclusive)."
-       )
+        help="Which columns to include e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
         "--col_indexes_include_headers", default=False, action="store_true",
         help="If given, then the headers count in the column indexes.  "
@@ -1134,8 +1172,7 @@ def main():
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
         "--select_row_indexes", default=None,
-        help="Which rows to include e.g. 1-50,75 (1-based, inclusive)."
-       )
+        help="Which rows to include e.g. 1-50,75 (1-based, inclusive).")
     group.add_argument(
         "--select_row_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.")
