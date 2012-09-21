@@ -13,7 +13,7 @@ def run(parameters,objects,pipeline,options=None):
     Heatmap_BIN = module_utils.which(Heatmap_path)
     assert Heatmap_BIN,'cannot find the %s' %Heatmap_path
     command = ['python', Heatmap_BIN,single_object.identifier,'-o',outfile,"--label_arrays",
-               "--grid","--label_genes"]
+               "--label_genes",'--no_autoscale']#"--grid"
     if 'color' in parameters.keys():
         color=['--color' , parameters['color'].replace('_','-')]
         command.extend(color)
@@ -28,7 +28,7 @@ def run(parameters,objects,pipeline,options=None):
     if error_message:
         raise ValueError(error_message)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for cluster_heatmap fails' %outfile)
+        'the output file %s for make_heatmap fails' %outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -46,7 +46,7 @@ def get_identifier(parameters,objects):
         single_object = module_utils.find_object(
             parameters,objects,'cluster_file','contents')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for cluster_heatmap does not exist'
+        'the input file %s for make_heatmap does not exist'
         %single_object.identifier)
     return single_object
 

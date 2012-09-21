@@ -123,7 +123,7 @@ def run_pipeline(pipeline, objects):
     outfile_list = []
     try:
         output_path = config.OUTPUTPATH
-        assert os.path.exists(output_path), 'the output_path does not exist'
+        assert os.path.exists(output_path), 'the output_path %s does not exist' % output_path
         for  i in range(len(pipeline)):
             pipeline_sequence = [analysis.name for
                                  analysis in pipeline[0:i + 1]]

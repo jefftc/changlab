@@ -29,15 +29,15 @@ def run(parameters,objects,pipeline):
     if error_message:
         raise ValueError(error_message)
     result_files = os.listdir(os.getcwd())
-    result_formats = {'kmeans': 'cdt','pca':'pca_gene.coords.txt',#or 'pc.txt'
-           'hierarchical':'cdt','som':'txt'}
+    result_formats = {'kmeans': 'cdt', 'pca':'pca_gene.coords.txt',#or 'pc.txt'
+           'hierarchical':'cdt', 'som':'txt'}
     result_format = result_formats[parameters['cluster_alg']]
     for result_file in result_files:
         if result_file.endswith(result_format):
             os.rename(result_file,outfile)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for clustering fails'%outfile)
-    new_objects = get_newobjects(parameters,objects,pipeline)
+        'the output file %s for clustering fails' % outfile)
+    new_objects = get_newobjects(parameters,objects, pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
     return new_objects
