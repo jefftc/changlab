@@ -18,10 +18,8 @@ get_tfbs_tss_db      Load the TFBS around a TSS.
 """
 # _query_db
 
+import os
 
-
-
-import os, sys
 
 def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None,
                       num_procs=1):
@@ -59,6 +57,7 @@ def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None,
 
     return data
 
+
 def _load_matrices_h():
     import config
     import filelib
@@ -74,7 +73,7 @@ def _load_matrices_h():
     # Load the lengths.
     matid2length = {}
     for d in filelib.read_row(
-        config.motiflib_MATID2LENGTH, "matid:s length:d"):
+            config.motiflib_MATID2LENGTH, "matid:s length:d"):
         matid2length[d.matid] = d.length
 
     # Load the matrix information.
@@ -96,7 +95,10 @@ def _load_matrices_h():
         matrices.append(x)
     return matrices
 
+
 MATRIX_CACHE = None
+
+
 def load_matrices():
     # Return a list of objects with members:
     # matid        matrix ID
@@ -108,13 +110,15 @@ def load_matrices():
     if not MATRIX_CACHE:
         MATRIX_CACHE = _load_matrices_h()
     return MATRIX_CACHE
-    
+
+
 def list_matrices():
     # Return a list of matrix_id, gene_symbol
     matrix_db = load_matrices()
     x = [(d.matid, d.gene_symbol) for d in matrix_db]
     return x
-    
+
+
 def matid2matrix(matid):
     # Return a matrix object (see load_matrices).
     matrix_db = load_matrices()
@@ -123,16 +127,19 @@ def matid2matrix(matid):
     assert len(x) == 1, "Multiple matches for matid %s" % matid
     return x[0]
 
+
 def gene2matrices(gene_symbol):
     ugene_symbol = gene_symbol.upper()
     matrices = load_matrices()
     x = [x for x in matrices if x.gene_symbol.upper() == ugene_symbol]
     return x
 
+
 def is_matrix_id(matid):
     matrix_db = load_matrices()
     x = [x for x in matrix_db if x.matid.upper() == matid.upper()]
     return len(x) > 0
+
 
 def find_matrix_file(matrix_file_or_id):
     # Take a matrix ID and return the name of the file or None.
@@ -142,24 +149,24 @@ def find_matrix_file(matrix_file_or_id):
         return matrix_file_or_id
     # If it's not a file, it must be an ID.
     matrix_id = matrix_file_or_id
-    
+
     opj = os.path.join
     files = [
         opj(config.motiflib_JASPAR_DB, "%s.pfm" % matrix_id),
         opj(config.motiflib_TRANSFAC_DB, "%s.pfm" % matrix_id),
         #opj(config.MOTIFSEARCH, "matrices/%s.matrix" % matrix_id),
-        ]
-    for file in files:
-        if os.path.exists(file):
-            return file
+    ]
+    for filename in files:
+        if os.path.exists(filename):
+            return filename
     return None
     #raise AssertionError, "Cannot find matrix file for %s" % matrix_id
+
 
 def get_tfbs_genome_db(chrom, start, end, matrices=None, nlp=None):
     # Return list of matrix, chrom, strand, position, NLP.
     # NLP is given in log_e.
 
-    import bisect
     assert start >= 0 and end >= 0
     assert start <= end
 
@@ -214,6 +221,7 @@ def get_tfbs_genome_db(chrom, start, end, matrices=None, nlp=None):
         num += 1
     return data[:num]
 
+
 def get_tfbs_tss_db(chrom, txn_start, txn_end, txn_strand, bp_upstream, length,
                     matrices=None, nlp=None):
     # Return list of matrix, chrom, strand, gen_pos, tss, tss_pos, NLP.
@@ -221,7 +229,7 @@ def get_tfbs_tss_db(chrom, txn_start, txn_end, txn_strand, bp_upstream, length,
     # tss_pos is the position of the matrix relative to the TSS.
     # NLP is given in log_e.
     import genomelib
-    
+
     x = genomelib.transcript2genome(
         txn_start, txn_end, txn_strand, bp_upstream, length)
     gen_start, gen_end = x
@@ -236,6 +244,7 @@ def get_tfbs_tss_db(chrom, txn_start, txn_end, txn_strand, bp_upstream, length,
         x = matrix, chrom, mat_strand, mat_pos, tss, tss_pos, nlp
         results.append(x)
     return results
+
 
 def _query_db(*args, **keywds):
     import cx_Oracle
