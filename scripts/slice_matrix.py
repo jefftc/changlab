@@ -121,7 +121,7 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
         # Read the files.
         matrices = []
         for filename in filenames:
-            fmt_module = arrayio.guess_format(filename)
+            fmt_module = arrayio.choose_format(filename)
             assert fmt_module, \
                 "I could not figure out the format of file: %s" % filename
             x = fmt_module.read(filename)
