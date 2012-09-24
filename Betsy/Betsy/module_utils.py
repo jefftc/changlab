@@ -290,7 +290,7 @@ def high_light_path(network_file,pipeline,out_file):
         for node in nodes:
             nodecontents = node.toxml()
             if analysis in nodecontents:
-                node.childNodes[7].attributes['fill'] = '#ffff00'
+                node.childNodes[3].attributes['fill'] = '#ffff00'
     for i in range(len(pipeline[:-1])):
         label = '"'+pipeline[i]+' (pp) ' + pipeline[i+1]  +'"'
         for edge in edges:
