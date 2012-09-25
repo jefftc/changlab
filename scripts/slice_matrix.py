@@ -458,6 +458,20 @@ def remove_col_ids(MATRIX, remove_col_ids):
     return x
 
 
+def toupper_col_ids(MATRIX, toupper_col_ids):
+    from arrayio import tab_delimited_format as tdf
+
+    if not toupper_col_ids:
+        return MATRIX
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    MATRIX = MATRIX.matrix()
+    x = MATRIX.col_names(tdf.SAMPLE_NAME)
+    x = [x.upper() for x in x]
+    MATRIX._col_names[tdf.SAMPLE_NAME] = x
+    return MATRIX
+
+
 def find_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
@@ -1136,8 +1150,9 @@ def main():
         help="Which columns to include e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
         "--col_indexes_include_headers", default=False, action="store_true",
-        help="If given, then the headers count in the column indexes.  "
-        "(Column 1 is the first header).")
+        help="If not given (default), then column 1 is the first column "
+        "with data.  If given, then column 1 is the very first column in "
+        "the file, including the headers.")
     group.add_argument(
         "--select_col_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.")
@@ -1152,6 +1167,10 @@ def main():
     group.add_argument(
         "--remove_col_ids", default=None,
         help="Comma-separated list of IDs to remove.")
+    group.add_argument(
+        "--toupper_col_ids", default=False, action="store_true",
+        help="Convert column IDs to upper case.  "
+        "(Done after relabel, remove, but before filtering duplicates.)")
     group.add_argument(
         "--relabel_col_ids", default=None,
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
@@ -1291,6 +1310,10 @@ def main():
 
     # Remove col IDs.  Do this after relabeling.
     MATRIX = remove_col_ids(MATRIX, args.remove_col_ids)
+
+    # Convert col IDs to upper case.  Do after relabeling and
+    # removing, but before filtering duplicates.
+    MATRIX = toupper_col_ids(MATRIX, args.toupper_col_ids)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.filter_duplicate_cols)

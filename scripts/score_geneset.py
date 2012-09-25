@@ -64,7 +64,8 @@ def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
     results = {}
     for (sample, score) in zip(sample_names, scores):
         key = matrix_name, gs_name, sample
-        assert key not in results, "Duplicate: %s" % key
+        #assert key not in results, "Duplicate: %s" % str(key)
+        assert key not in results, "Duplicate: %s" % sample
         results[key] = score
     return results
 
@@ -82,6 +83,7 @@ def score_many(jobs, lock=None):
         MATRIX = file2matrix[matrix_file]
         x = score_gene_set(
             gs_name, pos_genes, neg_genes, matrix_name, MATRIX, lock=lock)
+        # TODO: should make sure we don't overwrite previous results.
         results.update(x)
     return results
 
