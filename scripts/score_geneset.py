@@ -3,7 +3,8 @@
 import sys, os
 
 # parse_geneset
-# score_genes
+# score_gene_set
+# score_many
 
 def parse_geneset(geneset):
     # Return tuple of (positive_geneset, negative_geneset).
@@ -21,35 +22,20 @@ def parse_geneset(geneset):
     return pos, neg
 
 def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
-    from genomicode import matrixlib
-    from genomicode import jmath
+    from genomicode import genesetlib
 
-    all_genes = pos_genes + neg_genes
-    x = matrixlib.find_best_row_header(MATRIX, all_genes)
-    header, num_found, found, not_found = x
-    assert num_found, "I could not find any genes in gene set %s." % name
+    x = genesetlib.score_geneset(MATRIX, pos_genes, neg_genes)
+    MATRIX_p, MATRIX_n, num_matches, scores = x
 
-    MATRIX_p = MATRIX.matrix(row=pos_genes, row_header=header)
-    MATRIX_n = MATRIX.matrix(row=neg_genes, row_header=header)
-
-    num_rows = MATRIX_p.nrow() + MATRIX_n.nrow()
     if lock:
         lock.acquire()
-    x = "Gene set %s contains %d genes and matched %d rows in %s."
-    print x % (name, len(all_genes), num_rows, matrix_name)
+    x = "Gene set %s contains %d genes and matched %d rows in %s." 
+    print x % (name, len(pos_genes)+len(neg_genes), num_matches, matrix_name)
     sys.stdout.flush()
     if lock:
         lock.release()
 
-    X_p = MATRIX_p._X
-    X_n = []
-    for x in MATRIX_n._X:
-        x = [-x for x in x]
-        X_n.append(x)
-    X_pn = X_p + X_n
-    score = jmath.mean(X_pn, byrow=False)
-
-    return score
+    return scores
 
 def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
                    lock=None):

@@ -8,6 +8,9 @@ read_genes      Read a list of genes that belong in a geneset.
 
 detect_format
 
+score_geneset
+score_geneset_I
+
 """
 
 # Optimization: call _is_known_desc less.
@@ -396,8 +399,43 @@ def detect_format(filename):
         return GMT
     
     return None
+
+def score_geneset(MATRIX, pos_genes, neg_genes):
+    # Return MATRIX_p, MATRIX_n, num_matches, list of scores
+    import matrixlib
+
+    all_genes = pos_genes + neg_genes
+    x = matrixlib.find_best_row_header(MATRIX, all_genes)
+    header, num_found, found, not_found = x
+    assert num_found, "I could not find any genes in gene set %s." % name
+
+    (pos_I, x) = MATRIX._index(row=pos_genes, row_header=header)
+    (neg_I, x) = MATRIX._index(row=neg_genes, row_header=header)
+    MATRIX_p = MATRIX.matrix(pos_I, None)
+    MATRIX_n = MATRIX.matrix(neg_I, None)
+
+    x = score_geneset_I(MATRIX._X, pos_I, neg_I)
+    x, x, num_rows, scores = x
+    return MATRIX_p, MATRIX_n, num_rows, scores
+
+def score_geneset_I(X, pos_I, neg_I):
+    # Return X_p, X_n, num_matches, list of scores
+    import jmath
+    
+    X_p = [X[i] for i in pos_I]
+    X_n_orig = [X[i] for i in neg_I]
+    X_n = []
+    for x in X_n_orig:
+        x = [-x for x in x]
+        X_n.append(x)
+    X_pn = X_p + X_n
+    
+    num_rows = len(X_pn)
+    scores = jmath.mean(X_pn, byrow=False)
+    
+    return X_p, X_n_orig, num_rows, scores
         
-                
+
 def test_detect_format():
     from StringIO import StringIO
     
