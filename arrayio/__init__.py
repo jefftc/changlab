@@ -205,6 +205,28 @@ def _res_to_pcl(X):
     assert pcl_format.is_matrix(x)
     return x
     
+def _res_to_tdf(X):
+    from genomicode import Matrix
+    assert res_format.is_matrix(X)
+    
+    # Figure out the annotation names for the row name and description.
+    acc_header, desc_header, call_header = X.row_names()
+    if X._synonyms[ROW_ID] != acc_header:
+        acc_header, desc_header = desc_header, acc_header
+    assert X._synonyms[ROW_ID] == acc_header
+
+    row_order = [acc_header, desc_header, call_header]
+    col_order = X._col_order
+    row_names = X._row_names
+    col_names = X._col_names
+    synonyms = X._synonyms
+
+    x = Matrix.InMemoryMatrix(
+        X._X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    assert tab_delimited_format.is_matrix(x)
+    return x
+    
 ## def _gct_to_odf(X):
 ##     from genomicode import Matrix
 ##     assert gct_format.is_matrix(X)
@@ -668,6 +690,7 @@ CONVERTERS = [
     # Most specific to most general.
     ("res_format", "gct_format", _res_to_gct),
     ("res_format", "pcl_format", _res_to_pcl),
+    ("res_format", "tab_delimited_format", _res_to_tdf),
     ("gct_format", "pcl_format", _gct_to_pcl),
     ("jeffs_format","gct_format", _jeff_to_gct),
     ("jeffs_format", "pcl_format", _jeff_to_pcl),
