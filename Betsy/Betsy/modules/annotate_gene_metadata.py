@@ -29,8 +29,8 @@ def run(parameters,objects,pipeline):
             annot_illumina(slice_BIN, chipfilename, single_object.identifier, outfile)
         elif chipname in ['HumanHT_12_control','MouseRef_8_control']:
             shutil.copyfile(single_object.identifier, outfile)
-        elif chipname in ['entrez_ID_human', 'entrez_ID_mouse', 'entrez_ID_symbol_human',
-                          'entrez_ID_symbol_mouse']:
+        elif chipname in ['Entrez_ID_human', 'Entrez_ID_mouse', 'Entrez_symbol_human',
+                          'Entrez_symbol_mouse']:
             print 'we do not annot the platform %s' % chipname
             shutil.copyfile(single_object.identifier, outfile)
         new_objects = get_newobjects(parameters, objects, pipeline)

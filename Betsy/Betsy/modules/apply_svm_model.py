@@ -29,7 +29,6 @@ def run(parameters,objects,pipeline):
         y_test = [int(x) for x in test_label]
     else:
         y_test = [0] * test.ncol()
-        actual_label = [''] * test.ncol()
     p_label,p_acc,p_val = svmutil.svm_predict(y_test,x_test,model)
     train_label_file= module_utils.find_object(
         parameters,objects,'class_label_file','traincontents')
@@ -40,12 +39,22 @@ def run(parameters,objects,pipeline):
                               train_label_file.identifier)
     prediction_index = [int(i) for i in p_label]
     prediction = [second_line[i] for i in prediction_index]
-    result = [['Sample_name','Predicted_class','Confidence','Actual_class']]
     name = test._col_names.keys()[0]
     sample_name = test._col_names[name]
-    for i in range(len(sample_name)):
-        result.append(
-            [sample_name[i],prediction[i],str(p_val[i][0]),actual_label[i]])
+    if test_label_file:
+        result = [['Sample_name','Predicted_class','Confidence','Actual_class','Correct?']]
+        for i in range(len(sample_name)):
+            if prediction[i] == actual_label[i]:
+                correct = 'yes'
+            else:
+                correct = 'no'
+            result.append(
+                [sample_name[i],prediction[i],str(p_val[i][0]),actual_label[i],correct])
+    else:
+        result = [['Sample_name','Predicted_class','Confidence']]
+        for i in range(len(sample_name)):
+            result.append(
+                [sample_name[i],prediction[i],str(p_val[i][0])])
     f = file(outfile,'w')
     for i in result:
         f.write('\t'.join(i))

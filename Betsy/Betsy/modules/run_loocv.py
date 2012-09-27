@@ -22,7 +22,7 @@ def run(parameters,objects,pipeline):
         train_model = __import__(parameters['train_model'])
     predict_model = __import__(parameters['predict'])
     f = file(outfile,'w')
-    f.write('\t'.join(['sample_name','Predicted_class','Confidence','Actual_class']))
+    f.write('\t'.join(['sample_name','Predicted_class','Confidence','Actual_class','Correct?']))
     f.write('\n')
     for i in range(M.ncol()):
         test_index = i

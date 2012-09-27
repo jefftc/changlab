@@ -58,9 +58,9 @@ platforms = [Platform('HG_U95A',"affy_hg_u95a","hsapiens_gene_ensembl",1),
              Platform('RAE230A','affy_rae230a',"rnorvegicus_gene_ensembl",20),
              Platform('HumanHT_12',"illumina_humanht_12","hsapiens_gene_ensembl",21),
              Platform('MouseRef_8',"illumina_mousewg_6_v2","mmusculus_gene_ensembl",22),
-             Platform('entrez_ID_human',"entrezgene","hsapiens_gene_ensembl",23),
-             Platform('entrez_ID_mouse',"entrezgene","mmusculus_gene_ensembl",24),
-             Platform('entrez_ID_symbol_human',"hgnc_symbol","hsapiens_gene_ensembl",25),
-             Platform('entrez_ID_symbol_mouse',"mgi_symbol","mmusculus_gene_ensembl",26),
+             Platform('Entrez_ID_human',"entrezgene","hsapiens_gene_ensembl",23),
+             Platform('Entrez_ID_mouse',"entrezgene","mmusculus_gene_ensembl",24),
+             Platform('Entrez_symbol_human',"hgnc_symbol","hsapiens_gene_ensembl",25),
+             Platform('Entrez_symbol_mouse',"mgi_symbol","mmusculus_gene_ensembl",26),
              ]
 

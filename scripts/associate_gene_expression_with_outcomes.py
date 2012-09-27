@@ -115,99 +115,93 @@ def main():
                          enumerate(dead_data) if len(item) > 0]
         sample_index = list(set(sample_index1).intersection(
             set(sample_index2)))
-        for percentage in cutoffs:
-            outer = '(Outer ' + str(int(percentage * 100)) + '%)'
-            newheaders = ['p ' + outer, 'Num Patients Low ' + outer,
-                          'Num Patients High ' + outer,
-                          '50% Survival Low ' + outer,
-                          '50% Survival High ' + outer,
-                          '90% Survival Low ' + outer,
-                          '90% Survival High ' + outer,
-                          'Relation ' + outer,
-                          'Low Expression ' + outer,
-                          'High Expression ' + outer]
-            if len(outcomes) > 1:
-                newheaders = [time_header + ' ' + i for i in newheaders]
-            headers.extend(newheaders)
+        new_cutoffs = [0]
+        new_cutoffs.extend(cutoffs)
+        new_cutoffs.append(1)
+        name = [''] * (len(new_cutoffs) - 1)
+        for j in range(len(new_cutoffs) - 1):
+            name[j] = str(str(int(new_cutoffs[j] * 100)) + '-' +
+                          str(int(new_cutoffs[j + 1] * 100)) + '%')
+        newheader = ['p-value']
+        num_samples = ['Num Samples (' + k + ')' for k in name]
+        ave_expression = ['Average Expression (' + k + ')'for k in name]
+        surv90_header = ['90% Survival (' + k + ')' for k in name]
+        surv50_header = ['50% Survival (' + k + ')' for k in name]
+        newheader.extend(num_samples)
+        newheader.extend(ave_expression)
+        newheader.extend(surv90_header)
+        newheader.extend(surv50_header)
+        newheader.append('Relationship')
+        if len(outcomes) > 1:
+            newheader = [time_header + ' ' + i for i in newheader]
+        headers.extend(newheader)
+        survival = [time_data[i] for i in sample_index]
+        jmath.R_equals(survival, 'survival')
+        dead = [dead_data[i] for i in sample_index]
+        jmath.R_equals(dead, 'dead')
+        jmath.R_equals(cutoffs, 'cutoffs')
         for i in range(len(geneid)):
             data = data_all[i]
             data_new = [data[j] for j in sample_index]
-            data_order = data_new[:]
-            data_order.sort()
-            for percentage in cutoffs:
-                high_point = data_order[
-                    int(round((len(data_order) - 1) * (1 - percentage)))]
-                low_point = data_order[
-                    int(round((len(data_order) - 1) * percentage))]
-                group1_index = [index for index, item in enumerate(data)
-                                if item >= high_point and index
-                                in sample_index]
-                group2_index = [index for index, item in enumerate(data)
-                                if item < low_point and index
-                                in sample_index]
-                assert len(group1_index) > 0, ('there is no patient '
-                                               'in the high expression group '
-                                               'for cutoff%f' % percentage)
-                assert len(group2_index) > 0, ('there is no patient '
-                                               'in the low expression group '
-                                               'for cutoff%f' % percentage)
-                group1_month = [float(time_data[k]) for k in group1_index]
-                group2_month = [float(time_data[k]) for k in group2_index]
-                group1_dead = [int(dead_data[k]) for k in group1_index]
-                group2_dead = [int(dead_data[k]) for k in group2_index]
-                jmath.R_equals(group1_month, 'group1')
-                jmath.R_equals(group2_month, 'group2')
-                jmath.R_equals(group1_dead, 'dead1')
-                jmath.R_equals(group2_dead, 'dead2')
-                R('options(warn=-1)')
-                R('a<-calc.km(group1,dead1,group2,dead2)')
-                R('options(ow)')
-                c = R['a']
-                med_high_50 = c.rx2('surv1.50')[0]
-                med_high_90 = c.rx2('surv1.90')[0]
-                med_low_50 = c.rx2('surv2.50')[0]
-                med_low_90 = c.rx2('surv2.90')[0]
-                p_value = c.rx2('p.value')[0]
-                MAX_SURV = 1e10
-                med_high, med_low = med_high_50, med_low_50
-                if (str(med_high), str(med_low)) == ('NA', 'NA'):
-                    med_high, med_low = med_high_90, med_low_90
-                if str(med_high) == 'NA':
-                    med_high = MAX_SURV
-                if str(med_low) == 'NA':
-                    med_low = MAX_SURV
-                assert med_low <= MAX_SURV and med_high <= MAX_SURV
-                direction = ''
-                if med_high > med_low:
-                    direction = ('High gene expression correlates '
-                                 'with high survival.')
-                elif med_high < med_low:
-                    direction = ('High gene expression correlates '
-                                 'with low survival.')
-                if p_value >= 0.05:
-                    direction = ''
-                med_low_50 = '' if (str(med_low_50) == 'NA') else med_low_50
-                med_high_50 = '' if (str(med_high_50) == 'NA') else med_high_50
-                med_low_90 = '' if (str(med_low_90) == 'NA') else med_low_90
-                med_high_90 = '' if (str(med_high_90) == 'NA') else med_high_90
-                output_data[i].extend([str(p_value), str(len(group2_month)),
-                                       str(len(group1_month)), str(med_low_50),
-                                       str(med_high_50), str(med_low_90),
-                                       str(med_high_90), direction,
-                                       str(low_point), str(high_point)])
+            jmath.R_equals(data_new, 'F')
+            R('group <- group.by.value(F, cutoffs)')
+            group = R['group']
+            R('name <- rep("", length(survival))')
+            avg = [0] * len(name)
+            num_group = [0] * len(name)
+            for k in range(len(name)):
+                jmath.R_equals('"' + name[k] + '"',
+                               'name[group ==' + str(k) + ']')
+                group_data = [data_new[j] for j in range(len(group))
+                              if group[j] == k]
+                avg[k] = str(sum(group_data) / len(group_data))
+                num_group[k] = str(len(group_data))
+            R('x <- calc.km.multi(survival, dead, name)')
+            R('options(ow)')
+            c = R['x']
+            p_value = c.rx2('p.value')[0]
+            surv90 = [''] * len(name)
+            surv50 = [''] * len(name)
+            for k in range(len(name)):
+                surv90[k] = c.rx2('surv').rx2(name[k]).rx2('surv.90')[0]
+                surv50[k] = c.rx2('surv').rx2(name[k]).rx2('surv.50')[0]
+            MAX_SURV = 1e10
+            med_high, med_low = surv50[-1], surv50[0]
+            direction = ''
+            if (str(med_high), str(med_low)) == ('NA', 'NA'):
+                med_high, med_low = surv90[-1], surv90[0]
+            if str(med_high) == 'NA':
+                med_high = MAX_SURV
+            if str(med_low) == 'NA':
+                med_low = MAX_SURV
+            assert med_low <= MAX_SURV and med_high <= MAX_SURV
+            if med_high > med_low:
+                direction = ('Low expression has worse survival.')
+            elif med_high < med_low:
+                direction = ('High expression has worse survival.')
+            if p_value >= 0.05:
+                direction = ''                                   
+            surv90 = ['' if (str(k) == 'NA') else str(k) for k in surv90]
+            surv50 = ['' if (str(k) == 'NA') else str(k) for k in surv50]
+            single_data = [str(p_value)]
+            single_data.extend(num_group)
+            single_data.extend(avg)
+            single_data.extend(surv90)
+            single_data.extend(surv50)
+            single_data.append(direction)
+            output_data[i].extend(single_data)
             if args.prism_file:
                 assert len(geneid) == 1, ('multiple genes match and cannot '
                                           'write the prism file')
                 jmath.R_equals('"' + args.prism_file + '"', 'filename')
-                R(('write.km.prism(filename,"High Expression"'
-                   ',group1,dead1,"Low Expression",group2,dead2)'))
+                R('write.km.prism.multi(filename,survival, dead, name)')
             if args.km_plot:
                 assert len(geneid) == 1, ('multiple genes match and cannot '
                                           'plot the km file')
                 jmath.R_equals('"' + args.km_plot + '"', 'filename')
+                R('col <- list("' + name[0] + '"="#FF0000")')
                 R('pdf(filename)')
-                R(('plot.km(group1,dead1,group2,dead2'
-                   ',col1="#FF0000",col2=NA)'))
+                R('plot.km.multi(survival, dead, name, col=col)')
                 R('dev.off()')
     f = sys.stdout
     if args.outpath:

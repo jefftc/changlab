@@ -3,7 +3,7 @@
 import os
 import module_utils
 import subprocess
-from genomicode import arrayannot,jmath,Matrix
+from genomicode import arrayannot,jmath,Matrix,arrayplatformlib
 import shutil
 import arrayio
 
@@ -91,8 +91,8 @@ platform2attributes={
                  'HG_U95A':("affy_hg_u95a","hsapiens_gene_ensembl"),
                  'HumanHT_12':("illumina_humanht_12","hsapiens_gene_ensembl"),
                  'HG_U95Av2':("affy_hg_u95av2","hsapiens_gene_ensembl"),
-                 'entrez_ID_human':("entrezgene","hsapiens_gene_ensembl"),
-                 'entrez_ID_symbol_human':("hgnc_symbol","hsapiens_gene_ensembl"),
+                 'Entrez_ID_human':("entrezgene","hsapiens_gene_ensembl"),
+                 'Entrez_symbol_human':("hgnc_symbol","hsapiens_gene_ensembl"),
                  'Hu6800':("affy_hugenefl","hsapiens_gene_ensembl"),
                  
                  'Mouse430A_2':('affy_mouse430a_2',"mmusculus_gene_ensembl"),
@@ -102,9 +102,9 @@ platform2attributes={
                  'MG_U74Av2':("affy_mg_u74av2","mmusculus_gene_ensembl"),
                  'Mouse430_2':('affy_mouse430_2',"mmusculus_gene_ensembl"),
                  'MG_U74Bv2':('affy_mg_u74bv2',"mmusculus_gene_ensembl"),
-                 'entrez_ID_mouse':("entrezgene","mmusculus_gene_ensembl"),
+                 'Entrez_ID_mouse':("entrezgene","mmusculus_gene_ensembl"),
                  'MouseRef_8':("illumina_mousewg_6_v2","mmusculus_gene_ensembl"),
-                 'entrez_ID_symbol_mouse':("mgi_symbol","mmusculus_gene_ensembl"),
+                 'Entrez_symbol_mouse':("mgi_symbol","mmusculus_gene_ensembl"),
                  
                  'RG_U34A':('affy_rg_u34a',"rnorvegicus_gene_ensembl"),
                  'RAE230A':('affy_rae230a',"rnorvegicus_gene_ensembl")}

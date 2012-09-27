@@ -86,14 +86,21 @@ def run(parameters,objects,pipeline):
             text = f.readlines()
             assert text[1][0:12]=='HeaderLines='
             start=int(text[1][12:-1])
-            newresult=[['Sample_name','Predicted_class','Confidence','Actual_class']]
+            if actual:
+                newresult=[['Sample_name','Predicted_class','Confidence','Actual_class','Correct?']]
+            else:
+                newresult=[['Sample_name','Predicted_class','Confidence']]
             for i in text[start+2:]:
                 line = i.split()
                 n = len(line)
                 if actual:
-                    newline = [' '.join(line[0:n-4]),line[n-3],line[n-2],line[n-4]]
+                    if line[n-3] == line[n-4]:
+                        correct = 'yes'
+                    else:
+                        correct = 'no'
+                    newline = [' '.join(line[0:n-4]),line[n-3],line[n-2],line[n-4],correct]
                 else:
-                    newline = [' '.join(line[0:n-4]),line[n-3],line[n-2],'']
+                    newline = [' '.join(line[0:n-4]),line[n-3],line[n-2]]
                 newresult.append(newline)
             f=file(outfile,'w')
             for i in newresult:
@@ -101,7 +108,7 @@ def run(parameters,objects,pipeline):
                 f.write('\n')
             f.close()
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for weighted_voting fails'%outfile)
+        'the output file %s for classify_with_weighted_voting fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,train_identifier,pipeline,outfile)
@@ -115,7 +122,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','traincontents')
     assert os.path.exists(single_object.identifier),(
-        'the train file %s for weighted_voting does not exist'
+        'the train file %s for classify_with_weighted_voting does not exist'
         %single_object.identifier)
     return single_object
 
