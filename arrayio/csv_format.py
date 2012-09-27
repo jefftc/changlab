@@ -11,7 +11,7 @@ is_format
 is_matrix
 
 """
-import os, sys
+
 
 def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
@@ -26,9 +26,11 @@ def is_format(locator_str, hrows=None, hcols=None):
         return True
     return False
 
+
 def is_matrix(X):
     # Any matrix can be csv format.
     return True
+
 
 def read(handle, hrows=None, hcols=None, datatype=float):
     import csv
@@ -45,6 +47,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     outhandle.seek(0)
     return tab_delimited_format.read(
         outhandle, hrows=hrows, hcols=hcols, datatype=datatype)
+
 
 def write(X, handle):
     # Who wants to write CSV?

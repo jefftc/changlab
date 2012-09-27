@@ -18,9 +18,8 @@ is_format
 is_matrix
 
 """
-import os, sys
-
 SAMPLE_NAME = "_SAMPLE_NAME"
+
 
 def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
@@ -42,18 +41,20 @@ def is_format(locator_str, hrows=None, hcols=None):
     for line in lines:
         if "\t" not in line:
             return False
-    
+
     # All rows should contain the same number of columns.
     matrix = [line.rstrip("\r\n").split("\t") for line in lines]
     for cols in matrix:
         if len(cols) != len(matrix[0]):
             return False
-        
+
     return True
+
 
 def is_matrix(X):
     # Any matrix can be a tab-delimited format.
     return True
+
 
 def read(handle, hrows=None, hcols=None, datatype=float):
     import math
@@ -98,7 +99,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # Detect this case and insert a dummy header.
     all_one_fewer = True
     for i in range(1, len(data)):
-        if num_cols_all[i] != num_cols_all[0]+1:
+        if num_cols_all[i] != num_cols_all[0] + 1:
             all_one_fewer = False
             break
     # This can happen either if the length of the first row is one
@@ -109,7 +110,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         header_row = data[0]
         header_row.insert("ROW_NAMES", 0)
         num_cols_all[0] += 1
-    
+
     # Make sure each line has the same number of columns.
     if num_cols_all:
         num_cols = num_cols_all[0]
@@ -118,7 +119,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
             if filename:
                 f = " [%s]" % filename
             error_msg = "Header%s has %d columns but line %d has %d." % (
-                f, num_cols, i+1, nc)
+                f, num_cols, i + 1, nc)
             assert nc == num_cols, error_msg
     #print num_rows, num_cols; sys.exit(0)
 
@@ -132,7 +133,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     value = None
     if len(non_empty) == 1:
         value = jmath.safe_float(non_empty[0])
-    if value is not None and abs(value-1.00) < 1E-10:
+    if value is not None and abs(value - 1.00) < 1E-10:
         for i in range(num_rows):
             data[i][-1] = ""
 
@@ -180,18 +181,18 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         else:
             # No header row.  Make default name for these annotations.
             ndigits = int(math.ceil(math.log(hcols, 10)))
-            row_order = ["ANNOT%*d" % (ndigits, i+1) for i in range(hcols)]
+            row_order = ["ANNOT%*d" % (ndigits, i + 1) for i in range(hcols)]
         # Strip extraneous whitespace from the header names.
         # Not necessary.  Handled now in split_tdf.
         #row_order = [x.strip() for x in row_order]
-        
+
         # Sometimes the format detection can go wrong and a GCT file
         # will slip through to here.  If this occurs, a "duplicate
         # header" exception will be generated.  Check for this and
         # generate a more meaningful error message.
         if(row_order[0] == "#1.2" and len(row_order) > 1 and
            row_order[1] == "" and row_order[-1] == ""):
-            raise AssertionError, "ERROR: It looks like a GCT file was missed."
+            raise AssertionError("ERROR: It looks like a GCT file was missed.")
         for i, header in enumerate(row_order):
             names = [x[i] for x in data[hrows:]]
             assert header not in row_names, "duplicate header: %s" % header
@@ -234,7 +235,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     else:
         # Assume that I was passed a function.
         convert_fn = datatype
-        
+
     if convert_fn:
         check_each_row = False
         try:
@@ -255,10 +256,10 @@ def read(handle, hrows=None, hcols=None, datatype=float):
                 try:
                     map(convert_fn, x)
                 except ValueError, err2:
-                    row = data[hrows+i]
-                    raise ValueError, "%s\nProblem with row %d: %s" % (
-                        str(err2), i+1, row)
-            raise AssertionError, "Error converting values."
+                    row = data[hrows + i]
+                    raise ValueError("%s\nProblem with row %d: %s" % (
+                        str(err2), i + 1, row))
+            raise AssertionError("Error converting values.")
 
     # Set ROW_ID and COL_ID to reasonable defaults.
     synonyms = {}
@@ -276,11 +277,13 @@ def read(handle, hrows=None, hcols=None, datatype=float):
 
 CLEAN_RE = None
 CLEAN_DISALLOWED = None
+
+
 def _clean(s, disallowed=None):
     # Make sure there are no disallowed characters in the string s.
     global CLEAN_RE
     global CLEAN_DISALLOWED
-    
+
     import re
 
     disallowed = disallowed or "\r\n\t"
@@ -291,10 +294,12 @@ def _clean(s, disallowed=None):
     s = s.strip()
     return s
 
+
 def _clean_many(l, disallowed=None):
     l = [_clean(x, disallowed=disallowed) for x in l]
     return l
-    
+
+
 def write(X, handle):
     from genomicode import iolib
 
@@ -321,7 +326,7 @@ def write(X, handle):
     for header in col_names:
         if header == SAMPLE_NAME:
             continue
-        x = [header] + [""]*(len(row_names)-1) + X.col_names(header)
+        x = [header] + [""] * (len(row_names) - 1) + X.col_names(header)
         M_out.append(x)
         #x = _clean_many(map(str, x))
         #print >>handle, "\t".join(x)
@@ -340,4 +345,3 @@ def write(X, handle):
         x = names + values
         M_out.append(x)
     iolib.cleanwrite(M_out, handle)
-

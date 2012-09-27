@@ -19,11 +19,11 @@ is_format
 is_matrix
 
 """
-import os
 
 # GORDER/EORDER seems to be optional.
 ROW_HEADERS = ["GID", "NAME", "GWEIGHT", "GORDER"]
 COL_HEADERS = ["AID", "EWEIGHT", "EORDER"]
+
 
 def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
@@ -90,7 +90,6 @@ def is_matrix(X):
     return True
 
 def read(handle, hrows=None, hcols=None, datatype=float):
-    from genomicode import Matrix
     import const
     import tab_delimited_format
 

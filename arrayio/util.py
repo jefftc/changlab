@@ -408,6 +408,56 @@ def _rule_first_values_are_int(
     return changed
 
 
+def _rule_scale_factor_no_value(
+    matrix, num_rows, num_cols, datatype, semtype):
+    # RULE: If the column header is SCALE_FACTOR, the row contains
+    #       ANNOT and not VALUE.
+    #
+    # <HEAD>        <HEAD>   <HEAD>   <SAMPLE>  <SAMPLE>
+    # DESCRIPTION   <BLANK>  <BLANK>  <ANNOT>   <ANNOT>
+    # SCALE_FACTOR  <BLANK>  <BLANK>  <ANNOT>   <ANNOT>
+    #
+    # res_format generates the DESCRIPTION and SCALE_FACTOR column
+    # annotations.  Unfortunately, SCALE_FACTOR contains all numbers,
+    # so it can be interpreted as gene expression values.  Make sure
+    # this is interpreted as an annotation.
+
+    # Look for SCALE_FACTOR in the matrix.
+    if num_cols < 2:
+        return False
+    sf_row = None
+    for i in range(num_rows):
+        x = matrix[i][0].upper().strip()
+        if x.startswith("SCALE") and x.endswith("FACTOR"):
+            sf_row = i
+            break
+    if sf_row is None:
+        return False
+
+    col = None
+    for j in range(1, num_cols):
+        if semtype[sf_row][j] != BLANK:
+            col = j
+            break
+
+    # Make sure all the cells can be ANNOTs.
+    all_annot = True
+    for j in range(col, num_cols):
+        if not (semtype[sf_row][j] & ANNOT):
+            all_annot = False
+            break
+    if not all_annot:
+        return False
+
+    # Make sure not of the cells can be VALUEs.
+    changed = False
+    for j in range(col, num_cols):
+        if semtype[sf_row][j] & VALUE:
+            changed = True
+            semtype[sf_row][j] ^= VALUE
+    return changed
+
+
 NUM_HEADERS_CACHE = None  # tuple of (matrix, (nrow, ncol))
 
 
@@ -484,6 +534,8 @@ def _num_headers_h(matrix):
     # RULE: If the first columns of VALUEs are INT or EMPTY, and the
     #       remaining are FLOAT or EMPTY, then the first column should
     #       be relabeled as ANNOT. (e.g. Gene IDs).
+    # RULE: If the column header is SCALE_FACTOR, the row contains
+    #       ANNOT and not VALUE.
     RULES = [
         _rule_no_first_row_annots,
         _rule_first_row_sample,
@@ -498,6 +550,7 @@ def _num_headers_h(matrix):
         _rule_head_around_blank,
         _rule_no_head_around_no_blank,
         _rule_first_values_are_int,
+        _rule_scale_factor_no_value,
         ]
 
     if not matrix:

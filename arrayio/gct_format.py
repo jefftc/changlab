@@ -18,7 +18,7 @@ is_format
 is_matrix
 
 """
-import os
+
 
 def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
@@ -54,7 +54,10 @@ def is_format(locator_str, hrows=None, hcols=None):
     #    return False
     return True
 
+
 DIAGNOSIS = ""
+
+
 def is_matrix(X):
     global DIAGNOSIS
     import tab_delimited_format as tdf
@@ -64,7 +67,7 @@ def is_matrix(X):
     if not hasattr(X, "col_names") or not hasattr(X, "row_names"):
         DIAGNOSIS = "No annotations."
         return False
-    
+
     if tdf.SAMPLE_NAME not in X.col_names():
         DIAGNOSIS = "No samples."
         return False
@@ -84,8 +87,8 @@ def is_matrix(X):
     #    return False
     return True
 
+
 def read(handle, hrows=None, hcols=None, datatype=float):
-    from genomicode import Matrix
     import const
     import tab_delimited_format
     from genomicode import filelib
@@ -134,8 +137,9 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     #    header0, len(dups))
     #assert not dups, "%s column has duplicated names: %s" % (
     #    header0, dups)
-    
+
     return X
+
 
 def write(X, handle):
     import tab_delimited_format

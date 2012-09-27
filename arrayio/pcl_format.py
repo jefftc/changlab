@@ -16,11 +16,11 @@ is_format
 is_matrix
 
 """
-import os
 
 # GORDER/EORDER seems to be optional.
 ROW_HEADERS = ["NAME", "GWEIGHT", "GORDER"]
 COL_HEADERS = ["EWEIGHT", "EORDER"]
+
 
 def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
@@ -51,7 +51,7 @@ def is_format(locator_str, hrows=None, hcols=None):
     for cols in matrix:
         if len(cols) != len(matrix[0]):
             return False
-        
+
     nr, nc = util.num_headers(matrix)
     nrow = hrows or nr
     ncol = hcols or nc
@@ -80,7 +80,10 @@ def is_format(locator_str, hrows=None, hcols=None):
                 return False
     return True
 
+
 DIAGNOSIS = ""
+
+
 def is_matrix(X):
     global DIAGNOSIS
     import tab_delimited_format as tdf
@@ -113,6 +116,7 @@ def is_matrix(X):
             DIAGNOSIS = "Unknown col header: %s." % name
             return False
     return True
+
 
 def read(handle, hrows=None, hcols=None, datatype=float):
     import StringIO
@@ -156,8 +160,9 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     assert is_matrix(X)
     return X
 
+
 def write(X, handle):
     import tab_delimited_format
-    
+
     assert is_matrix(X)
     tab_delimited_format.write(X, handle)

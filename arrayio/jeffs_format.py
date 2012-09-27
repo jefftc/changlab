@@ -13,7 +13,6 @@ is_format
 is_matrix
 
 """
-import os
 import const
 
 ROW_HEADERS = ["Probe.Set.ID", "Description", "LocusLink", "Gene.Symbol"]
@@ -25,10 +24,11 @@ MYNAME_TO_STDNAME = [
     ("Gene.Symbol", const.GENE_SYMBOL),
     ]
 
+
 def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
     import util
-    
+
     if hrows not in [None, 1]:
         return False
     if hcols not in [None, 4]:
@@ -37,7 +37,7 @@ def is_format(locator_str, hrows=None, hcols=None):
     if not filelib.exists(locator_str):
         # This will only work if locator_str is a string.
         return False
-    
+
     # Read 5 lines and check the headers.  If the file is small, this
     # may contain fewer than 5 lines.
     handle = filelib.openfh(locator_str)
@@ -58,9 +58,9 @@ def is_format(locator_str, hrows=None, hcols=None):
     nr, nc = util.num_headers(matrix)
     if nc > 4:
         return False
-    
+
     return True
-    
+
     #handle = filelib.openfh(locator_str)
     #x = handle.readline()
     #handle.close()   # need to close it properly, or gunzip might not die.
@@ -69,9 +69,10 @@ def is_format(locator_str, hrows=None, hcols=None):
     #    return True
     #return False
 
+
 def is_matrix(X):
-    import tab_delimited_format as tdf
-    
+    #import tab_delimited_format as tdf
+
     if not hasattr(X, "row_names") or not hasattr(X, "col_names"):
         return False
     # Should only include SAMPLE_NAME.
@@ -84,13 +85,13 @@ def is_matrix(X):
             return False
     return True
 
+
 def read(handle, hrows=None, hcols=None, datatype=float):
-    from genomicode import Matrix
     import tab_delimited_format as tdf
 
     assert hrows is None or hrows == 1
     assert hcols is None or hcols == 4
-    
+
     X = tdf.read(handle, hrows=1, hcols=4, datatype=datatype)
     synonyms = {}
     for myname, stdname in MYNAME_TO_STDNAME:
@@ -100,8 +101,9 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     assert is_matrix(X)
     return X
 
+
 def write(X, handle):
     import tab_delimited_format
-    
+
     assert is_matrix(X)
     tab_delimited_format.write(X, handle)
