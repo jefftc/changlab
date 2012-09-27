@@ -128,6 +128,7 @@ group.by.value <- function(values, breakpoints) {
 # belongs to, e.g. c("LO", "LO", "MED", "MED", "HIGH") or c(0, 0, 1,
 # 1, 2).
 calc.km.multi <- function(survival, dead, group) {
+  library("survival")
   if(length(survival) != length(dead)) stop("unaligned")
   if(length(survival) != length(group)) stop("unaligned")
 
@@ -135,7 +136,7 @@ calc.km.multi <- function(survival, dead, group) {
   res <- coxph(Surv(survival, dead) ~ status, method="breslow")
   # rho=0 does log-rank test
   sd <- survdiff(Surv(survival, dead) ~ status, rho=0)
-  df <- length(unique(name))-1
+  df <- length(unique(group))-1
   p.value <- 1 - pchisq(res$score, df)
   hr <- exp(res$coefficients)
 
