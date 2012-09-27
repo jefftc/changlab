@@ -1,7 +1,12 @@
 # calc.km
-# calc.km2   Different algorithm.
+# calc.km2               Different algorithm.
+# calc.km.multi          Can do multiple groups.
+# 
 # plot.km
+# plot.km.multi
+# 
 # write.km.prism
+# write.km.multi.prism   Write out for multiple groups.
 
 .calc.surv50 <- function(survival, dead) {
   library("survival")
@@ -17,6 +22,44 @@
     surv.50 <- s$time[i]
   }
   list(surv.90=surv.90, surv.50=surv.50)
+}
+
+.calc.km.curve <- function(survival, dead) {
+  O <- order(survival)
+  survival <- survival[O]; dead <- dead[O]
+
+  surv.x <- c(0)      # Start with 100% survival at time 0.
+  surv.y <- c(1.00)
+  cens.x <- c()
+  cens.y <- c()
+
+  for(i in 1:length(survival)) {
+    if(dead[i]) {
+      x <- survival[i]
+      remaining.patients <- length(survival) - i + 1
+      # Percent of the remaining patients have now died.
+      perc <- 1/(remaining.patients)
+      # Calculate percent survival.
+      y <- surv.y[length(surv.y)] * (1-perc)
+      surv.x <- c(surv.x, x, x)
+      surv.y <- c(surv.y, surv.y[length(surv.y)], y)
+    } else {
+      # Censor this value.
+      cens.x <- c(cens.x, survival[i])
+      cens.y <- c(cens.y, surv.y[length(surv.y)])
+    }
+  }
+
+  # If the last point was censored, then extend the survival line all
+  # the way out to that patient.
+  if(length(cens.x) && cens.x[length(cens.x)] > surv.x[length(surv.x)]) {
+    x <- cens.x[length(cens.x)]
+    y <- surv.y[length(surv.y)]
+    surv.x <- c(surv.x, x)
+    surv.y <- c(surv.y, y)
+  }
+
+  list(surv.x=surv.x, surv.y=surv.y, cens.x=cens.x, cens.y=cens.y)
 }
 
 calc.km <- function(survival1, dead1, survival2, dead2) {
@@ -64,6 +107,47 @@ calc.km2 <- function(survival1, dead1, survival2, dead2) {
     surv2.50=x2$surv.50, surv2.90=x2$surv.90)
 }
 
+
+# Split a vector of numeric values into groups.  The groups are split
+# according to breakpoints, which is a vector of numbers from 0 to 1.
+# For example, breakpoints of c(0.25, 0.50, 0.75) will split the
+# values into 4 groups, the ones in the lower 25%, 25-50%, 50-75%, and
+# greater than 75%.  breakpoints c(0.10) will split into two groups,
+# 0-10%, and 10-100%.
+group.by.value <- function(values, breakpoints) {
+  # Make sure breakpoints are sorted, all >= 0 and <= 1.
+  cutoffs <- sort(breakpoints)
+  if((min(cutoffs) < 0) | (max(cutoffs > 1))) stop("bad breakpoints")
+  values.r <- rank(values)
+  ranks <- sapply(cutoffs, function(x) round(x*(length(values)-1))+1)
+  group <- sapply(values.r, function(x) sum(x >= ranks))
+  group
+}
+
+# group should be a vector that indicates which group each sample
+# belongs to, e.g. c("LO", "LO", "MED", "MED", "HIGH") or c(0, 0, 1,
+# 1, 2).
+calc.km.multi <- function(survival, dead, group) {
+  if(length(survival) != length(dead)) stop("unaligned")
+  if(length(survival) != length(group)) stop("unaligned")
+
+  status <- factor(group)
+  res <- coxph(Surv(survival, dead) ~ status, method="breslow")
+  # rho=0 does log-rank test
+  sd <- survdiff(Surv(survival, dead) ~ status, rho=0)
+  df <- length(unique(name))-1
+  p.value <- 1 - pchisq(res$score, df)
+  hr <- exp(res$coefficients)
+
+  surv <- list()
+  for(g in unique(group)) {
+    km <- .calc.surv50(survival[g==group], dead[g==group])
+    surv[[as.character(g)]] <- km
+  }
+
+  list(p.value=p.value, hr=hr, surv=surv)
+}
+
 plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
   if(is.na(col1))
     col1 <- "#000000"
@@ -77,8 +161,8 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
   xlim <- c(0, max(survival))
   ylim <- c(0, 1.00)
 
-  km.1 <- calc.km.curve(survival1, dead1)
-  km.2 <- calc.km.curve(survival2, dead2)
+  km.1 <- .calc.km.curve(survival1, dead1)
+  km.2 <- .calc.km.curve(survival2, dead2)
 
   plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, xlab="", ylab="")
   lines(km.1$surv.x, km.1$surv.y, col=col1)
@@ -86,6 +170,27 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
   # Draw the censor lines.
   points(km.1$cens.x, km.1$cens.y, pch=15, cex=0.4)
   points(km.2$cens.x, km.2$cens.y, pch=15, cex=0.4)
+}
+
+plot.km.multi <- function(survival, dead, group, col=NA) {
+  if(is.na(col))
+    col <- list()
+  if(length(survival) != length(dead)) stop("unaligned")
+  if(length(survival) != length(group)) stop("unaligned")
+
+  xlim <- c(0, max(survival))
+  ylim <- c(0, 1.00)
+
+  plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, xlab="", ylab="")
+  for(g in group) {
+    co <- col[[as.character(g)]]
+    if(is.null(co))
+      co <- "#000000"
+    km <- .calc.km.curve(survival[g==group], dead[g==group])
+    lines(km$surv.x, km$surv.y, col=co)
+    # Draw the censor lines.
+    points(km$cens.x, km$cens.y, pch=15, cex=0.4)
+  }
 }
 
 write.km.prism <- function(filename, class1, survival1, dead1, 
@@ -106,40 +211,21 @@ write.km.prism <- function(filename, class1, survival1, dead1,
     row.names=FALSE, col.names=TRUE)
 }
 
-calc.km.curve <- function(survival, dead) {
-  O <- order(survival)
-  survival <- survival[O]; dead <- dead[O]
+# Write out results for Prism.
+write.km.prism.multi <- function(filename, survival, dead, group) {
+  if(length(survival) != length(dead)) stop("unaligned")
+  if(length(survival) != length(group)) stop("unaligned")
 
-  surv.x <- c(0)      # Start with 100% survival at time 0.
-  surv.y <- c(1.00)
-  cens.x <- c()
-  cens.y <- c()
-
-  for(i in 1:length(survival)) {
-    if(dead[i]) {
-      x <- survival[i]
-      remaining.patients <- length(survival) - i + 1
-      # Percent of the remaining patients have now died.
-      perc <- 1/(remaining.patients)
-      # Calculate percent survival.
-      y <- surv.y[length(surv.y)] * (1-perc)
-      surv.x <- c(surv.x, x, x)
-      surv.y <- c(surv.y, surv.y[length(surv.y)], y)
-    } else {
-      # Censor this value.
-      cens.x <- c(cens.x, survival[i])
-      cens.y <- c(cens.y, surv.y[length(surv.y)])
-    }
+  all.groups <- sort(unique(group))
+  data.out <- survival
+  for(g in all.groups) {
+    x <- rep("", length(dead))
+    x[group==g] <- dead[group==g]
+    data.out <- cbind(data.out, x)
   }
-
-  # If the last point was censored, then extend the survival line all
-  # the way out to that patient.
-  if(length(cens.x) && cens.x[length(cens.x)] > surv.x[length(surv.x)]) {
-    x <- cens.x[length(cens.x)]
-    y <- surv.y[length(surv.y)]
-    surv.x <- c(surv.x, x)
-    surv.y <- c(surv.y, y)
-  }
-
-  list(surv.x=surv.x, surv.y=surv.y, cens.x=cens.x, cens.y=cens.y)
+  data.out <- cbind(data.out, dead)
+  colnames(data.out) <- c("Survival", all.groups, "All")
+  write.table(data.out, filename, quote=FALSE, sep="\t",
+    row.names=FALSE, col.names=TRUE)
 }
+
