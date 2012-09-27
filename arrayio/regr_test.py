@@ -1,5 +1,3 @@
-import os, sys
-
 def print_fn(obj):
     return str(obj)
 
@@ -105,13 +103,13 @@ def test(fn, args, keywds, standard):
         #print output
         #print standard
     MAXLEN = 20
-    output = hash(output)[:MAXLEN]
-    standard = hash(standard)[:MAXLEN]
-    args = hash(args)[:MAXLEN]
+    output = _hash(output)[:MAXLEN]
+    standard = _hash(standard)[:MAXLEN]
+    args = _hash(args)[:MAXLEN]
     x = status, args, output, standard
     print "\t".join(map(str, x))
 
-def hash(x):
+def _hash(x):
     x = str(x)
     x = x.replace("\t", "\\t")
     x = x.replace("\n", "\\n")
@@ -122,9 +120,9 @@ def test_gct_format():
     from arrayio import gct_format
 
     filename = "samples/0988.gct"
-    file = "samples/0159_cl.rma"
+    file_ = "samples/0159_cl.rma"
     test(gct_format.is_format, (filename,), {}, "True")
-    test(gct_format.is_format, (file,), {}, "False")
+    test(gct_format.is_format, (file_,), {}, "False")
     
     DATA = gct_format.read(open(filename))
     test(DATA.dim, (), {}, "(500, 59)")

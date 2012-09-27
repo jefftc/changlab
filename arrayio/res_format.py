@@ -1,7 +1,8 @@
 """Implement RES format from GenePattern.
 
 Format described at:
-http://www.broad.mit.edu/cancer/software/genepattern/tutorial/gp_fileformats.html
+http://www.broad.mit.edu/cancer/software/genepattern/tutorial/
+  gp_fileformats.html
 
 Description    Accession    <Sample>  <EMPTY>    [...]
 <EMPTY>        <desc1>                <desc2>    [...]
@@ -27,7 +28,7 @@ is_format
 is_matrix
 
 """
-import os
+
 
 def is_format(locator_str, hrows=None, hcols=None):
     from genomicode import filelib
@@ -49,7 +50,7 @@ def is_format(locator_str, hrows=None, hcols=None):
         return False
 
     # Line 1 contains 1 more column than line 2.
-    if len(matrix[0]) != len(matrix[1])+1:
+    if len(matrix[0]) != len(matrix[1]) + 1:
         return False
 
     if len(matrix[0]) < 2:
@@ -60,13 +61,16 @@ def is_format(locator_str, hrows=None, hcols=None):
 
     return True
 
+
 DIAGNOSIS = ""
+
+
 def is_matrix(X):
     global DIAGNOSIS
     import tab_delimited_format as tdf
-    
+
     DIAGNOSIS = ""
-    
+
     if not hasattr(X, "col_names") or not hasattr(X, "row_names"):
         DIAGNOSIS = "No annotations."
         return False
@@ -79,6 +83,7 @@ def is_matrix(X):
         DIAGNOSIS = "Improper column headers."
         return False
     return True
+
 
 def read(handle, hrows=None, hcols=None, datatype=float):
     from genomicode import filelib
@@ -96,7 +101,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     assert len(data) >= 3, "Invalid RES file."
 
     # Do some checking on the format.
-    assert len(data[0]) == len(data[1])+1
+    assert len(data[0]) == len(data[1]) + 1
     x = sorted([x.upper() for x in data[0][:2]])
     assert x == ["ACCESSION", "DESCRIPTION"]
     assert len(data[2]) == 1, "%d: %s" % (len(data[2]), repr(data[2]))
@@ -104,11 +109,11 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # Parse out the number of genes and delete the row.
     num_genes = int(data[2][0])
     del data[2]
-    assert len(data) == num_genes+2  # data + 2 headers
+    assert len(data) == num_genes + 2  # data + 2 headers
 
     # GenePattern creates files where the last column is all blank.
     # If this is the case, then delete it.
-    blank_last_col = True
+    #blank_last_col = True
     x = [x[-1] for x in data if x[-1]]
     if not x:
         # Last column is all blank so delete it.
@@ -126,7 +131,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     # Parse out the sample_description.
     sample_description = []
     for i, x in enumerate(data[1]):
-        if i%2 == 0:
+        if i % 2 == 0:
             assert not x
         else:
             assert x
@@ -142,10 +147,10 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         j = x.lower().find(sf)
         if j < 0:
             continue
-        assert x[j-1] == "/"
-        assert x[j+len(sf)] == "="
-        scale_factors[i] = float(sample_description[i][j+len(sf)+1:])
-        sample_description[i] = sample_description[i][:j-1]
+        assert x[j - 1] == "/"
+        assert x[j + len(sf)] == "="
+        scale_factors[i] = float(sample_description[i][j + len(sf) + 1:])
+        sample_description[i] = sample_description[i][:j - 1]
 
     # Parse out the description and accession columns.
     accession_header = data[0][0]
@@ -159,7 +164,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         accession, description = description, accession
     assert (accession_header.upper(), description_header.upper()) == \
            ("ACCESSION", "DESCRIPTION")
-    
+
     # Accession should be unique.
     x = {}.fromkeys(accession).keys()
     assert len(x) == len(accession)
@@ -169,15 +174,15 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     calls = []
     for row in data[2:]:
         row = row[2:]
-        x0 = [x for (i, x) in enumerate(row) if i%2==0]
-        x1 = [x for (i, x) in enumerate(row) if i%2==1]
+        x0 = [x for (i, x) in enumerate(row) if i % 2 == 0]
+        x1 = [x for (i, x) in enumerate(row) if i % 2 == 1]
         assert len(x0) == len(x1)
         for x in x1:
             assert x.upper() in ["A", "P", "M"], x
         matrix.append(x0)
         calls.append(x1)
     assert len(matrix) == num_genes
-        
+
     # Should have some way of specifying no conversion.
     if datatype is None:
         convert_fn = None   # default
@@ -187,7 +192,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         convert_fn = jmath.safe_float
     else:
         convert_fn = datatype
-        
+
     if convert_fn:
         matrix = [map(convert_fn, x) for x in matrix]
 
@@ -195,13 +200,13 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     col_names = {}
     row_order = data[0][:2] + ["CALL"]
     col_order = [tdf.SAMPLE_NAME, "DESCRIPTION", "SCALE_FACTOR"]
-    
+
     row_names[accession_header] = accession
     row_names[description_header] = description
     # Store the calls as row annotations.  The gene annotation "CALL"
     # is a string of A, P, or M, with one call per sample.
     row_names["CALL"] = ["".join(x) for x in calls]
-    
+
     col_names[tdf.SAMPLE_NAME] = sample_names
     col_names["DESCRIPTION"] = sample_description
     col_names["SCALE_FACTOR"] = scale_factors
@@ -217,6 +222,7 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     #is_matrix(X); print DIAGNOSIS
     assert is_matrix(X)
     return X
+
 
 def write(X, handle):
     raise NotImplementedError
