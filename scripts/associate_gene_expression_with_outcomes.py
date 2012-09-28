@@ -6,55 +6,6 @@ import argparse
 import numpy
 import sys
 
-def calc_km(survival, dead, group, name):
-    R = jmath.start_R()
-    jmath.R_equals(survival, 'survival')
-    jmath.R_equals(dead, 'dead')
-    R('name <- rep("", length(survival))')
-    avg = [0] * len(name)
-    num_group = [0] * len(name)
-    for k in range(len(name)):
-        jmath.R_equals('"' + name[k] + '"',
-                       'name[group ==' + str(k) + ']')
-        group_data = [data_new[j] for j in range(len(group))
-                      if group[j] == k]
-        avg[k] = str(sum(group_data) / len(group_data))
-        num_group[k] = str(len(group_data))
-    R('x <- calc.km.multi(survival, dead, name)')
-    R('options(ow)')
-    c = R['x']
-    p_value = c.rx2('p.value')[0]
-    surv90 = [''] * len(name)
-    surv50 = [''] * len(name)
-    for k in range(len(name)):
-        surv90[k] = c.rx2('surv').rx2(name[k]).rx2('surv.90')[0]
-        surv50[k] = c.rx2('surv').rx2(name[k]).rx2('surv.50')[0]
-    MAX_SURV = 1e10
-    med_high, med_low = surv50[-1], surv50[0]
-    direction = ''
-    if (str(med_high), str(med_low)) == ('NA', 'NA'):
-        med_high, med_low = surv90[-1], surv90[0]
-    if str(med_high) == 'NA':
-        med_high = MAX_SURV
-    if str(med_low) == 'NA':
-        med_low = MAX_SURV
-    assert med_low <= MAX_SURV and med_high <= MAX_SURV
-    if med_high > med_low:
-        direction = ('Low expression has shorter survival.')
-    elif med_high < med_low:
-        direction = ('High expression has shorter survival.')
-    if p_value >= 0.05:
-        direction = ''                                   
-    surv90 = ['' if (str(k) == 'NA') else str(k) for k in surv90]
-    surv50 = ['' if (str(k) == 'NA') else str(k) for k in surv50]
-    single_data = [str(p_value)]
-    single_data.extend(num_group)
-    single_data.extend(avg)
-    single_data.extend(surv90)
-    single_data.extend(surv50)
-    single_data.append(direction)
-    return single_data
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -188,7 +139,9 @@ def main():
             newheader = [time_header + ' ' + i for i in newheader]
         headers.extend(newheader)
         survival = [time_data[i] for i in sample_index]
+        jmath.R_equals(survival, 'survival')
         dead = [dead_data[i] for i in sample_index]
+        jmath.R_equals(dead, 'dead')
         jmath.R_equals(cutoffs, 'cutoffs')
         for i in range(len(geneid)):
             data = data_all[i]
@@ -196,7 +149,49 @@ def main():
             jmath.R_equals(data_new, 'F')
             R('group <- group.by.value(F, cutoffs)')
             group = R['group']
-            single_data = calc_km(survival, dead, group, name)
+            R('name <- rep("", length(survival))')
+            avg = [0] * len(name)
+            num_group = [0] * len(name)
+            for k in range(len(name)):
+                jmath.R_equals('"' + name[k] + '"',
+                               'name[group ==' + str(k) + ']')
+                group_data = [data_new[j] for j in range(len(group))
+                              if group[j] == k]
+                avg[k] = str(sum(group_data) / len(group_data))
+                num_group[k] = str(len(group_data))
+            R('x <- calc.km.multi(survival, dead, name)')
+            R('options(ow)')
+            c = R['x']
+            p_value = c.rx2('p.value')[0]
+            surv90 = [''] * len(name)
+            surv50 = [''] * len(name)
+            for k in range(len(name)):
+                surv90[k] = c.rx2('surv').rx2(name[k]).rx2('surv.90')[0]
+                surv50[k] = c.rx2('surv').rx2(name[k]).rx2('surv.50')[0]
+            MAX_SURV = 1e10
+            med_high, med_low = surv50[-1], surv50[0]
+            direction = ''
+            if (str(med_high), str(med_low)) == ('NA', 'NA'):
+                med_high, med_low = surv90[-1], surv90[0]
+            if str(med_high) == 'NA':
+                med_high = MAX_SURV
+            if str(med_low) == 'NA':
+                med_low = MAX_SURV
+            assert med_low <= MAX_SURV and med_high <= MAX_SURV
+            if med_high > med_low:
+                direction = ('Low expression has shorter survival.')
+            elif med_high < med_low:
+                direction = ('High expression has shorter survival.')
+            if p_value >= 0.05:
+                direction = ''                                   
+            surv90 = ['' if (str(k) == 'NA') else str(k) for k in surv90]
+            surv50 = ['' if (str(k) == 'NA') else str(k) for k in surv50]
+            single_data = [str(p_value)]
+            single_data.extend(num_group)
+            single_data.extend(avg)
+            single_data.extend(surv90)
+            single_data.extend(surv50)
+            single_data.append(direction)
             output_data[i].extend(single_data)
             filestem = '' if not args.filestem else args.filestem + '.'
             outcome_tmp = outcome.replace(',', '.')
