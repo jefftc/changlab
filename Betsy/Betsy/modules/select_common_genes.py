@@ -1,7 +1,7 @@
 #select_common_genes.py
 import sys
 import arrayio
-import module_utils
+from Betsy import module_utils
 import os
 from genomicode import matrixlib
 

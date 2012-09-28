@@ -1,6 +1,6 @@
 #plot_hyb_bar.py
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
 from genomicode import mplgraph
 import numpy

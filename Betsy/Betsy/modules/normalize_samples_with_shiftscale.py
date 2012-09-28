@@ -1,9 +1,9 @@
 #normalize_sampels_with_shiftscale.py
 
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
-import read_label_file
+from Betsy import read_label_file
 from genomicode import shiftscalenorm
 import arrayio
 def run(parameters,objects,pipeline):

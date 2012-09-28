@@ -1,6 +1,6 @@
 #get_unique_genes.py
 import os
-import module_utils
+from Betsy import module_utils
 from genomicode import jmath
 import arrayio
 import re

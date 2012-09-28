@@ -1,6 +1,6 @@
 #normalize_genes.py
 import os
-import module_utils
+from Betsy import module_utils
 import subprocess
 def run(parameters,objects,pipeline):
     """variance or sum_of_square"""

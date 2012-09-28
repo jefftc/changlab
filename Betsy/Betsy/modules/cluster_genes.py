@@ -2,7 +2,7 @@
 
 import os
 import subprocess
-import module_utils
+from Betsy import module_utils
 
 def run(parameters,objects,pipeline):
     """clustering the input file"""

@@ -1,10 +1,9 @@
 #extract_CEL_files.py
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
 import gzip
-import module_utils
-import hash_method
+
 def run(parameters,objects,pipeline):
     """extract tge cel files with cc or v3_4"""
     from genomicode import affyio

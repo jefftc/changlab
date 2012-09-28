@@ -1,12 +1,12 @@
 #annotate_with_gsea.py
-import module_utils
+import subprocess
 import shutil
 import os
-from genomicode import jmath,arrayannot
-import config
-import subprocess
-import read_label_file
 import arrayio
+from genomicode import jmath, arrayannot
+from Betsy import module_utils, config, read_label_file
+
+
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)

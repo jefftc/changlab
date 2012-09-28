@@ -1,10 +1,10 @@
 #normalize_with_loess.py
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
 import gzip
 from genomicode import smarray
-import gpr_module
+from Betsy import gpr_module
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)

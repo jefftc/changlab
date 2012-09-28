@@ -1,11 +1,11 @@
 #classify_with_weighted_voting.py
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
 from genomicode import jmath
-import config
+from Betsy import config
 import subprocess
-import read_label_file
+from Betsy import read_label_file
 
 def run(parameters,objects,pipeline):
     train_identifier = get_identifier(parameters,objects)

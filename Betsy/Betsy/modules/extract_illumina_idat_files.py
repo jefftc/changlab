@@ -1,10 +1,10 @@
 #extract_illumina_idat_files.py
 
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
 import zipfile
-import hash_method
+
 
 def extract_all(zipName):
     z = zipfile.ZipFile(zipName)

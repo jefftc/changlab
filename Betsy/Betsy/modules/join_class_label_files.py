@@ -1,6 +1,6 @@
 #join_class_label_file.py
-import read_label_file
-import module_utils
+from Betsy import read_label_file
+from Betsy import module_utils
 import shutil
 import os
 

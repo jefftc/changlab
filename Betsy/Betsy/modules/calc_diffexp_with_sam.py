@@ -1,12 +1,11 @@
 #calc_diffexp_with_sam.py
-import hash_method
-import module_utils
+import subprocess
 import shutil
 import os
 import arrayio
-import read_label_file
 from genomicode import jmath
-import subprocess
+from Betsy import module_utils, read_label_file
+
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)

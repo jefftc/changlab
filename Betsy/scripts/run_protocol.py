@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #protocol_engine.py
-import rule_engine
+from Betsy import rule_engine
 import argparse
 import os
-import protocol_utils
-import module_utils
+from Betsy import protocol_utils
+from Betsy import module_utils
 
 
 def filter_pipelines(protocol, inputs, in_contents, output, parameters):
@@ -179,7 +179,8 @@ def main():
             parameters)
         module1 = protocol_utils.import_protocol(args.protocol)
         print module1.OUTPUTS
-        module = __import__(module1.OUTPUTS)
+        module = __import__('Betsy.modules.' + module1.OUTPUTS, globals(),
+                            locals(), [module1.OUTPUTS], -2)
         module.run(output_file, parameters_all, pipeline_sequence_all)
 if __name__ == '__main__':
     main()

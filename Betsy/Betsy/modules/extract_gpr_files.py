@@ -2,9 +2,8 @@
 import os
 import gzip
 import shutil
-import module_utils
-import hash_method
-import gpr_module
+from Betsy import module_utils
+from Betsy import gpr_module
 
 def run(parameters,objects,pipeline,options=None):
     """extract the files that are gpr format"""

@@ -2,8 +2,8 @@
 import svmutil
 import sys
 import arrayio
-import read_label_file
-import module_utils
+from Betsy import read_label_file
+from Betsy import module_utils
 import os
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)

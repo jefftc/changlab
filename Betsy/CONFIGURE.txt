@@ -14,7 +14,6 @@ In ~/.bashrc ,add these three lines.
 
 export PYTHONPATH="gitpath"
 export PYTHONPATH="gitpath/Betsy/Betsy:${PYTHONPATH}"
-export PYTHONPATH="gitpath/Betsy/Betsy/modules:${PYTHONPATH}"
 
 --------------------------------------------------------------
 2.Under your home directory, have a ~/.genomicoderc file. change the "gitpath" to your own path,there are four lines need to be changed.

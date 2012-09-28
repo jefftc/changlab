@@ -1,10 +1,10 @@
 #convert_CEL_to_v3_v4.py
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
 import gzip
-import module_utils
-import hash_method
+
+
 def run(parameters,objects,pipeline):
     """convert the cel file with ccl or v3_4 to v3_4"""
     from genomicode import affyio

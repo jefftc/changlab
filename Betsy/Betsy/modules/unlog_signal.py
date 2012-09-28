@@ -1,7 +1,7 @@
 #unlog_signal.py
 import os
 import shutil
-import module_utils
+from Betsy import module_utils
 from genomicode import binreg
 def run(parameters,objects,pipeline):
     """unlog the pcl file"""

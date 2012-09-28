@@ -1,6 +1,6 @@
 #select_probe_by_high_variance.py
 import os
-import module_utils
+from Betsy import module_utils
 import arrayio
 from genomicode import jmath
 def run(parameters,objects,pipeline):

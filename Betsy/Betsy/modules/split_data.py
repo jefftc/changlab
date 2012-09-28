@@ -1,11 +1,10 @@
 #split_data.py
 
-import module_utils
+from Betsy import module_utils,read_label_file
 import os
 import arrayio
-import hash_method
 import shutil
-import read_label_file
+ 
 
 def run(parameters,objects,pipeline):
     """extract one signal file to another signal file according to contents"""

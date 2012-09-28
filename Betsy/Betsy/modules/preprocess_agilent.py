@@ -1,5 +1,5 @@
 #agilent.py
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
 from genomicode import jmath

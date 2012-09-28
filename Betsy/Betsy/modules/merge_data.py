@@ -1,9 +1,9 @@
 #merge_data.py
 
-import module_utils
+from Betsy import module_utils
 import os
 import arrayio
-import hash_method
+
 
 def run(parameters,objects,pipeline):
     """merge two signal file to generate a joined signal file"""

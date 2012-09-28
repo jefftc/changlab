@@ -1,7 +1,7 @@
 #run_loocv.py
 import arrayio
-import read_label_file
-import module_utils
+from Betsy import read_label_file
+from Betsy import module_utils
 import os
 import svmutil
 

@@ -1,6 +1,6 @@
 #remove_duplicate_data.py
 import os
-import module_utils
+from Betsy import module_utils
 import arrayio
 from genomicode import arrayannot
 

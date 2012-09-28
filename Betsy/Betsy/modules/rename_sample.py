@@ -1,15 +1,15 @@
 #rename_sample.py
 import os
 import shutil
-import module_utils
+from Betsy import module_utils
 import arrayio
 import subprocess
+from Betsy import config
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     rename_file = module_utils.find_object(parameters,objects,
                                           'rename_list_file','contents')
     outfile = get_outfile(parameters,objects,pipeline)
-    import config
     rename_path = config.RENAME
     rename_BIN = module_utils.which(rename_path)
     assert rename_BIN,'cannot find the %s' %rename_path

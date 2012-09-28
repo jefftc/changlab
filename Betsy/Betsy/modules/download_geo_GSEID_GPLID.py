@@ -2,7 +2,7 @@
 import os
 import shutil
 from ftplib import FTP
-import module_utils
+from Betsy import module_utils
 import string
 import gzip
 

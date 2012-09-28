@@ -1,15 +1,13 @@
 #normalize_samples_with_bfrm.py
 import os
-import hash_method
 import subprocess
-import module_utils
+from Betsy import module_utils,config
 import shutil
 import arrayio
 import tempfile
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
-    import config
     bfrm_path = config.BFRMNORM
     bfrm_BIN = module_utils.which(bfrm_path)
     assert bfrm_BIN,'cannot find the %s' %bfrm_path

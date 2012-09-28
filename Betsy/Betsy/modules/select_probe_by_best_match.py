@@ -1,8 +1,8 @@
 #select_probe_by_best_match.py
 import os
-import module_utils
+from Betsy import module_utils
 import arrayio
-import config
+from Betsy import config
 from genomicode import filelib,arrayannot
 
 def run(parameters,objects,pipeline):

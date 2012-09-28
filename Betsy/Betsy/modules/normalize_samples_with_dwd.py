@@ -1,11 +1,12 @@
 #normalize_samples_with_dwd.py
 
 import os
-import module_utils
+from Betsy import module_utils, read_label_file
 import shutil
-import read_label_file
 from genomicode import dwdnorm
 import arrayio
+
+
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
