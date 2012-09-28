@@ -3,9 +3,10 @@
 import shutil
 import os
 import arrayio
+import sys
 from Betsy import read_label_file
 from genomicode import jmath
-import sys
+
 
 def main(filename,label_file,outfile,delta,foldchange):
     label,label_line,second_line = read_label_file.read(label_file)
@@ -142,4 +143,5 @@ def sam(X, Y, genenames,delta,foldchange,pngfig):
     return gene_ids,[scores,numerators,denominators,foldchanges,q_values]
 
 if __name__ == '__main__':
-    main(sys.argv[1],sys.argv[2],sys.argv[3],float(sys.argv[4]),float(sys.argv[5]))
+    main(sys.argv[1],sys.argv[2],sys.argv[3],float(sys.argv[4]),
+         float(sys.argv[5]))

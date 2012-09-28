@@ -7,6 +7,46 @@ import numpy
 import sys
 
 
+def calc_km(survival, dead, group, name):
+    R = jmath.start_R()
+    jmath.R_equals(survival, 'survival')
+    jmath.R_equals(dead, 'dead')
+    R('name <- rep("", length(survival))')
+    avg = [0] * len(name)
+    num_group = [0] * len(name)
+    for k in range(len(name)):
+        jmath.R_equals('"' + name[k] + '"',
+                       'name[group ==' + str(k) + ']')
+    R('x <- calc.km.multi(survival, dead, name)')
+    R('options(ow)')
+    c = R['x']
+    p_value = c.rx2('p.value')[0]
+    surv90 = [''] * len(name)
+    surv50 = [''] * len(name)
+    for k in range(len(name)):
+        surv90[k] = c.rx2('surv').rx2(name[k]).rx2('surv.90')[0]
+        surv50[k] = c.rx2('surv').rx2(name[k]).rx2('surv.50')[0]
+    MAX_SURV = 1e10
+    med_high, med_low = surv50[-1], surv50[0]
+    direction = ''
+    if (str(med_high), str(med_low)) == ('NA', 'NA'):
+        med_high, med_low = surv90[-1], surv90[0]
+    if str(med_high) == 'NA':
+        med_high = MAX_SURV
+    if str(med_low) == 'NA':
+        med_low = MAX_SURV
+    assert med_low <= MAX_SURV and med_high <= MAX_SURV
+    if med_high > med_low:
+        direction = ('Low expression has shorter survival.')
+    elif med_high < med_low:
+        direction = ('High expression has shorter survival.')
+    if p_value >= 0.05:
+        direction = ''
+    surv90 = ['' if (str(k) == 'NA') else str(k) for k in surv90]
+    surv50 = ['' if (str(k) == 'NA') else str(k) for k in surv50]
+    return p_value, surv90, surv50, direction
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='associate the gene expression with outcomes')
@@ -19,15 +59,18 @@ def main():
                         help=('gene to analyze.  It can appear anywhere '
                               'in the annotations of the expression_file. '
                               'To specify multiple genes, use this parameter '
-                              'multiple times."'), default=None, action='append')
+                              'multiple times."'),
+                        default=None, action='append')
     parser.add_argument('--cutoff', dest='cutoff', type=str,
-                        help=('comma-separated list of breakpoints (between 0 and 1),'
-                              'e.g. 0.25,0.50'), default=None)
+                        help=('comma-separated list of breakpoints '
+                              '(between 0 and 1),e.g. 0.25,0.50'),
+                        default=None)
     parser.add_argument('-o', dest='filestem', type=str,
                         help='prefix used to name files.  e.g. "myanalysis".',
                         default=None)
-    parser.add_argument('--write_prism', dest='write_prism', action="store_true",
-                        help='write Prism-formatted output', default=False)
+    parser.add_argument('--write_prism', dest='write_prism',
+                        action="store_true", default=False
+                        help='write Prism-formatted output')
     parser.add_argument('--plot_km', dest='plot_km', action="store_true",
                         help='write PDF-formatted Kaplan-Meier plot',
                         default=False)
@@ -40,9 +83,9 @@ def main():
     assert len(outcomes) > 0, 'please specify the time_header and dead_header'
     cutoffs = args.cutoff
     if cutoffs:
-       cutoffs = cutoffs.split(',')
-       cutoffs = [float(i) for i in cutoffs]
-       cutoffs.sort()
+        cutoffs = cutoffs.split(',')
+        cutoffs = [float(i) for i in cutoffs]
+        cutoffs.sort()
     if not cutoffs:
         cutoffs = [0.5]
     for cutoff in cutoffs:
@@ -139,9 +182,7 @@ def main():
             newheader = [time_header + ' ' + i for i in newheader]
         headers.extend(newheader)
         survival = [time_data[i] for i in sample_index]
-        jmath.R_equals(survival, 'survival')
         dead = [dead_data[i] for i in sample_index]
-        jmath.R_equals(dead, 'dead')
         jmath.R_equals(cutoffs, 'cutoffs')
         for i in range(len(geneid)):
             data = data_all[i]
@@ -149,43 +190,15 @@ def main():
             jmath.R_equals(data_new, 'F')
             R('group <- group.by.value(F, cutoffs)')
             group = R['group']
-            R('name <- rep("", length(survival))')
             avg = [0] * len(name)
             num_group = [0] * len(name)
             for k in range(len(name)):
-                jmath.R_equals('"' + name[k] + '"',
-                               'name[group ==' + str(k) + ']')
                 group_data = [data_new[j] for j in range(len(group))
                               if group[j] == k]
                 avg[k] = str(sum(group_data) / len(group_data))
                 num_group[k] = str(len(group_data))
-            R('x <- calc.km.multi(survival, dead, name)')
-            R('options(ow)')
-            c = R['x']
-            p_value = c.rx2('p.value')[0]
-            surv90 = [''] * len(name)
-            surv50 = [''] * len(name)
-            for k in range(len(name)):
-                surv90[k] = c.rx2('surv').rx2(name[k]).rx2('surv.90')[0]
-                surv50[k] = c.rx2('surv').rx2(name[k]).rx2('surv.50')[0]
-            MAX_SURV = 1e10
-            med_high, med_low = surv50[-1], surv50[0]
-            direction = ''
-            if (str(med_high), str(med_low)) == ('NA', 'NA'):
-                med_high, med_low = surv90[-1], surv90[0]
-            if str(med_high) == 'NA':
-                med_high = MAX_SURV
-            if str(med_low) == 'NA':
-                med_low = MAX_SURV
-            assert med_low <= MAX_SURV and med_high <= MAX_SURV
-            if med_high > med_low:
-                direction = ('Low expression has shorter survival.')
-            elif med_high < med_low:
-                direction = ('High expression has shorter survival.')
-            if p_value >= 0.05:
-                direction = ''                                   
-            surv90 = ['' if (str(k) == 'NA') else str(k) for k in surv90]
-            surv50 = ['' if (str(k) == 'NA') else str(k) for k in surv50]
+            p_value, surv90, surv50, direction = calc_km(survival,
+                                                         dead, group, name)
             single_data = [str(p_value)]
             single_data.extend(num_group)
             single_data.extend(avg)
@@ -196,7 +209,8 @@ def main():
             filestem = '' if not args.filestem else args.filestem + '.'
             outcome_tmp = outcome.replace(',', '.')
             if args.write_prism:
-                prism_file = filestem  + outcome_tmp + '.' + geneid[i] + '.prism.txt'
+                prism_file = str(filestem + outcome_tmp + '.' + geneid[i] +
+                                 '.prism.txt')
                 jmath.R_equals('"' + prism_file + '"', 'filename')
                 R('write.km.prism.multi(filename,survival, dead, name)')
             if args.plot_km:

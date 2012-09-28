@@ -25,7 +25,8 @@ def run(parameters,objects,pipeline):
         foldchange = float(parameters['sam_foldchange'])
     if not os.path.exists(outfile):
         os.mkdir(outfile)
-    sam_script = os.path.join(os.path.dirname(os.path.realpath(__file__)),'sam_script.py')
+    sam_script = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                              'sam_script.py')
     cmd = ['python', sam_script, single_object.identifier,
            label_file.identifier, outfile, str(delta), str(foldchange)]
     process = subprocess.Popen(cmd, shell=False,
