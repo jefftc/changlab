@@ -12,13 +12,10 @@ def calc_km(survival, dead, group, name):
     jmath.R_equals(survival, 'survival')
     jmath.R_equals(dead, 'dead')
     R('name <- rep("", length(survival))')
-    avg = [0] * len(name)
-    num_group = [0] * len(name)
     for k in range(len(name)):
         jmath.R_equals('"' + name[k] + '"',
                        'name[group ==' + str(k) + ']')
     R('x <- calc.km.multi(survival, dead, name)')
-    R('options(ow)')
     c = R['x']
     p_value = c.rx2('p.value')[0]
     surv90 = [''] * len(name)
@@ -69,7 +66,7 @@ def main():
                         help='prefix used to name files.  e.g. "myanalysis".',
                         default=None)
     parser.add_argument('--write_prism', dest='write_prism',
-                        action="store_true", default=False
+                        action="store_true", default=False,
                         help='write Prism-formatted output')
     parser.add_argument('--plot_km', dest='plot_km', action="store_true",
                         help='write PDF-formatted Kaplan-Meier plot',
@@ -139,7 +136,6 @@ def main():
     R = jmath.start_R()
     R('require(splines,quietly=TRUE)')
     R('source("' + config.kaplanmeierlib + '")')
-    R('ow<-options("warn")')
     for outcome in outcomes:
         time_data = None
         dead_data = None
