@@ -1103,6 +1103,7 @@ def _dedup_indexes(I):
 
 def main():
     import argparse
+    import arrayio
     from genomicode import jmath
     from genomicode import matrixlib
     from genomicode import quantnorm
@@ -1353,7 +1354,12 @@ def main():
     handle = sys.stdout
     #if args.outfile:
     #    handle = open(args.outfile, 'w')
-    fmt_module.write(MATRIX, handle)
+
+    # Cannot always write in the same format.  For example, if you add
+    # annotations that aren't handled by that format.  To be safe,
+    # convert to a TDF and write that out.
+    MATRIX = arrayio.convert(MATRIX, to_format=arrayio.tdf)
+    arrayio.tdf.write(MATRIX, handle)
 
 
 if __name__ == '__main__':
