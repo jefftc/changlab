@@ -1,7 +1,7 @@
 #center_genes.py
 import os
 import subprocess
-import module_utils
+from Betsy import module_utils
 
 def run(parameters,objects,pipeline):
     """mean or median"""
@@ -14,8 +14,8 @@ def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     
-    process = subprocess.Popen([CLUSTER_BIN,'-f',single_object.identifier,
-                                '-cg',center_parameter,'-u',outfile],
+    process = subprocess.Popen([CLUSTER_BIN, '-f', single_object.identifier,
+                                '-cg', center_parameter, '-u', outfile],
                                 shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -35,12 +35,14 @@ def run(parameters,objects,pipeline):
 def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
+
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
     filename = 'signal_centering_'+original_file+'.pcl'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
+
 
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
@@ -49,6 +51,7 @@ def get_identifier(parameters,objects):
         'the input file %s for centering does not exist'
         %single_object.identifier)
     return single_object
+
 
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)

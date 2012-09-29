@@ -1,7 +1,7 @@
 #add_HG_U133A_probeids.py
 
 import os
-import module_utils
+from Betsy import module_utils
 import subprocess
 from genomicode import arrayannot,jmath,Matrix,arrayplatformlib
 import shutil

@@ -1,9 +1,9 @@
 #rank_gene_by_class_neighbors.py
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
 from genomicode import jmath
-import config
+from Betsy import config
 import subprocess
 
 def run(parameters,objects,pipeline):

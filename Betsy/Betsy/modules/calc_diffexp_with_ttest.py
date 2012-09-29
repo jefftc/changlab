@@ -1,13 +1,12 @@
 #calc_diffexp_with_ttest.py
-import hash_method
-import gene_ranking
-import module_utils
 import shutil
 import os
 import arrayio
-import read_label_file
 import numpy
 from genomicode import jmath
+from Betsy import gene_ranking, module_utils, read_label_file 
+
+
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)

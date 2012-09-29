@@ -1,6 +1,6 @@
 #get_illumina_control.py
 
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
 

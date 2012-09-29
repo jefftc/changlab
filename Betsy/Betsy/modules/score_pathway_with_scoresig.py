@@ -1,7 +1,6 @@
 #score_pathway_with_scoresig.py
 import os
-import hash_method
-import module_utils
+from Betsy import module_utils
 import subprocess
 def run(parameters, objects, pipeline):
     rma_file = module_utils.find_object(parameters,objects, 'signal_file', 'contents,pre1')

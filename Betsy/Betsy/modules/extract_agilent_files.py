@@ -1,9 +1,9 @@
 #extract_agilent_files.py
 
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
-import hash_method
+from Betsy import hash_method
 import zipfile
 
 def extract_all(zipName):

@@ -1,8 +1,10 @@
 #fill_missing_with_zeros.py
 import os
 import shutil
-import module_utils
+from Betsy import module_utils
 import arrayio
+
+
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -23,6 +25,7 @@ def run(parameters,objects,pipeline):
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
     return new_objects
+
     
 def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(
@@ -33,7 +36,9 @@ def get_outfile(parameters,objects,pipeline):
     original_file = module_utils.get_inputid(single_object.identifier)
     filename = 'signal_zero_fill_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(),filename)
-    return outfile    
+    return outfile
+
+
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
@@ -42,12 +47,14 @@ def get_identifier(parameters,objects):
         %single_object.identifier)
     return single_object
 
+
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects
+
     
 def is_missing(identifier):
     import arrayio

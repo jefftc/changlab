@@ -45,9 +45,9 @@ def format_prolog_query(
     return query
 
 def import_protocol(protocol):
-    protocol_name = 'protocols.'+protocol
-    mod = __import__(protocol_name)
-    mod = getattr(mod, protocol)
+    protocol_name = 'Betsy.protocols.' + protocol
+    mod = __import__(protocol_name, globals(), locals(),
+                     [protocol], -2)
     return mod
 
 def pretty_hostname():

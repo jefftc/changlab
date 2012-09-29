@@ -1,12 +1,12 @@
 #plot_actb.py
 
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
 from genomicode import mplgraph,arrayannot
 import arrayio
 import subprocess
-import config
+from Betsy import config
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)

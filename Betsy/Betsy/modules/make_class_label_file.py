@@ -1,7 +1,7 @@
 #make_class_label_file.py
-import module_utils
+from Betsy import module_utils
 import os
-import read_label_file
+from Betsy import read_label_file
 import shutil
 
 def run(parameters,objects,pipeline):

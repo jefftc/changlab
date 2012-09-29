@@ -1,12 +1,11 @@
 #calc_diffexp_with_sam.py
-import hash_method
-import module_utils
+import subprocess
 import shutil
 import os
 import arrayio
-import read_label_file
 from genomicode import jmath
-import subprocess
+from Betsy import module_utils, read_label_file
+
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
@@ -26,7 +25,8 @@ def run(parameters,objects,pipeline):
         foldchange = float(parameters['sam_foldchange'])
     if not os.path.exists(outfile):
         os.mkdir(outfile)
-    sam_script = os.path.join(os.path.dirname(os.path.realpath(__file__)),'sam_script.py')
+    sam_script = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                              'sam_script.py')
     cmd = ['python', sam_script, single_object.identifier,
            label_file.identifier, outfile, str(delta), str(foldchange)]
     process = subprocess.Popen(cmd, shell=False,

@@ -1,8 +1,8 @@
 #normalize_with_rma.py
 import os
-import module_utils
+from Betsy import module_utils
 import subprocess
-import hash_method
+
 
 def run(parameters,objects,pipeline):
     """preprocess the inputfile with RMA 

@@ -1,11 +1,10 @@
 #preprocess_illumina.py
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
-import config
+from Betsy import config
 import zipfile
 import subprocess
-import plot_biotin
 import arrayio
 
 def zip_directory(dir, zip_file):

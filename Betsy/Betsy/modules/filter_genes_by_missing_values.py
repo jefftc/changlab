@@ -1,6 +1,6 @@
 #filter_genes_by_missing_values.py
 import os
-import module_utils
+from Betsy import module_utils
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)

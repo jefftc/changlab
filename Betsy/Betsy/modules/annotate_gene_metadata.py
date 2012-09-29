@@ -1,11 +1,12 @@
 #annotate_gene_metadata.py
 import os
-import module_utils
 import subprocess
-import config
 import shutil
-from genomicode import filelib,arrayannot
 import arrayio
+from Betsy import module_utils, config
+from genomicode import filelib,arrayannot
+
+
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)

@@ -1,6 +1,6 @@
 #remove_missing_probe.py
 import os
-import module_utils
+from Betsy import module_utils
 import arrayio
 
 def run(parameters,objects,pipeline):

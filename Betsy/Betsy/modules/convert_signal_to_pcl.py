@@ -1,6 +1,6 @@
 #convert_signal_to_pcl.py
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
 
 def run(parameters,objects,pipeline):

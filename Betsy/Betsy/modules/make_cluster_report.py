@@ -1,11 +1,11 @@
 #make_cluster_report.py
 
-import config
-import module_utils
-import hash_method
+from Betsy import config
+from Betsy import module_utils
+from Betsy import hash_method
 import os
 import shutil
-import protocol_utils
+from Betsy import protocol_utils
 import imghdr
 import time
 def run(outfiles,parameters,pipelines):

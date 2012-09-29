@@ -1,7 +1,7 @@
 ##annotate_genes_with_david.py
 
 import os
-import module_utils
+from Betsy import module_utils
 from genomicode import arrayannot
 
 def run(parameters,objects,pipeline):
@@ -52,7 +52,6 @@ def get_newobjects(parameters,objects,pipeline):
 
 def DAVIDenrich(in_list, idType, outfile,bg_list=[], bgName = 'Background1',listName='List1', category = '', thd=0.1, ct=2):
     from suds.client import Client
-    import os
     assert len(in_list)<3000,'the number of genes to David cannot exceed 3000'
     if len(in_list) > 0 :
         inputListIds = ','.join(in_list)  

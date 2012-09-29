@@ -1,14 +1,12 @@
 #cluster_heatmap.py
 import os
-import hash_method
 import subprocess
-import module_utils
+from Betsy import module_utils, config
 
 def run(parameters,objects,pipeline,options=None):
     """generate a heatmap of input file"""
     single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
-    import config
     Heatmap_path = config.ARRAYPLOT
     Heatmap_BIN = module_utils.which(Heatmap_path)
     assert Heatmap_BIN,'cannot find the %s' %Heatmap_path

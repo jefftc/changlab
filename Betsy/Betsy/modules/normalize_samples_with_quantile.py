@@ -1,7 +1,7 @@
 #normalize_samples_with_quantile.py
 
 import os
-import module_utils
+from Betsy import module_utils
 from genomicode import quantnorm
 import arrayio
 

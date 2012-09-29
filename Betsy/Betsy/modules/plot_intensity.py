@@ -1,6 +1,6 @@
 #plot_intensity.py
 import os
-import module_utils
+from Betsy import module_utils
 import shutil
 import math
 from genomicode import mplgraph,jmath

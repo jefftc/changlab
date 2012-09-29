@@ -1,12 +1,11 @@
 #add_newplatform_probeids.py
 
 import os
-import module_utils
-import subprocess
-import config
-from genomicode import arrayannot,jmath,Matrix,arrayplatformlib
 import shutil
+import subprocess
 import arrayio
+from Betsy import module_utils, config
+from genomicode import arrayannot,jmath,Matrix,arrayplatformlib
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)

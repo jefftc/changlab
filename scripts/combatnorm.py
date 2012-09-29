@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-from genomicode import jmath,config
 import arrayio
 import os
 import argparse
-import read_label_file
-import module_utils
+from Betsy import read_label_file, module_utils
+from genomicode import jmath, config
 
 def main():
     

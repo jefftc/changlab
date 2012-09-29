@@ -1,6 +1,6 @@
 #annotate_genes_with_gather.py
 import os
-import module_utils
+from Betsy import module_utils
 import urllib
 import urllib2
 

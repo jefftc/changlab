@@ -1,6 +1,6 @@
 # select_num_genes.py
 import os
-import module_utils
+from Betsy import module_utils
 
 def run(parameters,objects,pipeline):
     """select a num of genes according to num_features"""

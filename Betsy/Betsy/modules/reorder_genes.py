@@ -1,7 +1,6 @@
 #reorder_genes.py
-import hash_method
-import gene_ranking
-import module_utils
+from Betsy import gene_ranking
+from Betsy import module_utils
 import os
 import arrayio
 from genomicode import arrayannot
@@ -25,7 +24,7 @@ def run(parameters, objects, pipeline):
 ##    else:
 ##        if parameters['platform'] in[chip, 'unknown_platform']:
 ##            import subprocess
-##            import config
+##            from Betsy import config
 ##            Annot_path = config.ANNOTATE_MATRIX
 ##            Annot_BIN = module_utils.which(Annot_path)
 ##            assert Annot_BIN, 'cannot find the %s' % Annot_path

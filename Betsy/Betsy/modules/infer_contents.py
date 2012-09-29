@@ -1,10 +1,11 @@
 #infer_contents.py
-import module_utils
+from Betsy import module_utils
 import os
 import arrayio
-import hash_method
 import shutil
-import read_label_file
+from Betsy import read_label_file
+
+
 def run(parameters,objects,pipeline):
     """pull out the signal file if the class label file is given"""
     class_label_file = module_utils.find_object(parameters,

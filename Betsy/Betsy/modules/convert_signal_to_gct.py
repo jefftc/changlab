@@ -1,6 +1,6 @@
 #convert_signal_to_gct.py
 import os
-import module_utils
+from Betsy import module_utils
 
 def run(parameters,objects,pipeline):
     """convert signal file to gct format"""
@@ -13,7 +13,7 @@ def run(parameters,objects,pipeline):
     arrayio.gct_format.write(M_c,f)
     f.close()
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for convert_pcl_gct fails'%outfile)
+        'the output file %s for convert_pcl_gct fails' % outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)

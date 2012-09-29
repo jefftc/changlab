@@ -4,7 +4,9 @@ from genomicode import affyio
 import shutil
 import gzip
 import string
-import module_utils
+from Betsy import module_utils
+
+
 def run(parameters,objects,pipeline):
     """given a database ID and database,download and untar the data folder"""
     #download the tar folder from geo
