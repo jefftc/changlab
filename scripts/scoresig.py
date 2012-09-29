@@ -358,6 +358,7 @@ def run_one_pybinreg(cmd, outpath, outfile):
     if not os.path.exists(outpath):
         os.mkdir(outpath)
 
+    #print cmd  # DEBUG
     p = subprocess.Popen(
         cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
@@ -366,7 +367,7 @@ def run_one_pybinreg(cmd, outpath, outfile):
 
     binreg_out = r.read()
     open(outfile, 'w').write(binreg_out)
-    check_pybinreg(outpath, outfile)
+    check_pybinreg(outpath, outfile, cmd)
 
 def run_many_pybinreg(jobs, num_procs):
     # jobs should be a list of cmd, outpath, outfile.
@@ -385,13 +386,17 @@ def run_many_pybinreg(jobs, num_procs):
 
     for x in jobs:
         cmd, outpath, outfile = x
-        check_pybinreg(outpath, outfile)
+        check_pybinreg(outpath, outfile, cmd)
 
-def check_pybinreg(outpath, outfile):
+def check_pybinreg(outpath, outfile, cmd=None):
     if os.path.exists(os.path.join(outpath, "probabilities.txt")):
         # BinReg completed successfully.
         return
     # Problem with BinReg.
+    print >>sys.stderr, "Problem running pybinreg.py."
+    if cmd:
+        print >>sys.stderr, cmd+"\n"
+    
     print >>sys.stderr, "I could not find a probabilities.txt file in %s." % (
         outpath)
 

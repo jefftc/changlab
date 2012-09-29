@@ -1788,8 +1788,11 @@ def _cluster(MATRIX, *args, **params):
     w, r = p.stdin, p.stdout
     w.close()
     output = r.read()
+    #print output
     if output.find("cluster: command not found") >= 0:
         raise AssertionError, "cluster: command not found"
+    elif output.find("cluster: No such file or directory") >= 0:
+        raise AssertionError, output.strip()
     elif output.find("command not found") >= 0:
         raise AssertionError, "%s: command not found" % cluster
     elif output.find("Error reading file") >= 0:
