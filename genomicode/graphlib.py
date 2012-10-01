@@ -1280,7 +1280,7 @@ def plot_heatmap(infile, outfile, xpix, ypix, **keywds):
     # mean that arrayplot.py or cluster is missing.
     if not os.path.exists(outfile):
         print >>sys.stderr, output
-        raise AssertionError, "Failed to make dataset."
+        raise AssertionError, "Failed to make dataset.\n%s" % cmd
     return output
 
 def plot_heatmap_cmd(

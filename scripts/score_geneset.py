@@ -114,8 +114,9 @@ def main():
            "Please specify an expression data set to score."
     expression_files = []
     for x in args.expression_files:
-        x = glob.glob(x)
-        expression_files.extend(x)
+        xg = glob.glob(x)
+        assert xg, "I could not find the expression file: %s" % x
+        expression_files.extend(xg)
     for x in expression_files:
         assert os.path.exists(x), \
            "I could not find the expression file: %s" % x

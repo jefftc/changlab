@@ -121,6 +121,8 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
         # Read the files.
         matrices = []
         for filename in filenames:
+            assert os.path.exists(filename), \
+                "I could not find the file: %s" % filename
             fmt_module = arrayio.choose_format(filename)
             assert fmt_module, \
                 "I could not figure out the format of file: %s" % filename
@@ -223,11 +225,17 @@ def _read_annot_file(filename):
     header2annots = {}
     all_headers = []
     all_annots = []
-    for x in genesetlib.read_tdf(filename):
+    for x in genesetlib.read_tdf(
+            filename, preserve_spaces=True, allow_duplicates=True):
         name, x, annots = x
         header2annots[name] = annots
         all_headers.append(name)
         all_annots.append(annots)
+        #if name == "Distance":
+        #    print "Found"
+        #    x = [x for x in annots if str(x) == ""]
+        #    print "NUM BLANK", len(x)
+        
     assert all_headers
     for annots in all_annots[1:]:
         assert len(annots) == len(all_annots[0])
