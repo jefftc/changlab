@@ -7,22 +7,22 @@ import numpy
 import sys
 
 
-def calc_km(survival, dead, group, name):
+def calc_km(survival, dead, group):
     R = jmath.start_R()
     jmath.R_equals(survival, 'survival')
     jmath.R_equals(dead, 'dead')
-    R('name <- rep("", length(survival))')
-    for k in range(len(name)):
-        jmath.R_equals('"' + name[k] + '"',
-                       'name[group ==' + str(k) + ']')
-    R('x <- calc.km.multi(survival, dead, name)')
+    new_group = ['"' + i + '"' for i in group]
+    jmath.R_equals(new_group, 'group')
+    R('x <- calc.km.multi(survival, dead, group)')
     c = R['x']
     p_value = c.rx2('p.value')[0]
-    surv90 = [''] * len(name)
-    surv50 = [''] * len(name)
-    for k in range(len(name)):
-        surv90[k] = c.rx2('surv').rx2(name[k]).rx2('surv.90')[0]
-        surv50[k] = c.rx2('surv').rx2(name[k]).rx2('surv.50')[0]
+    unique_group = list(set(group))
+    unique_group.sort()
+    surv90 = [''] * len(unique_group)
+    surv50 = [''] * len(unique_group)
+    for k in range(len(unique_group)):
+        surv90[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.90')[0]
+        surv50[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.50')[0]
     MAX_SURV = 1e10
     med_high, med_low = surv50[-1], surv50[0]
     direction = ''
@@ -188,13 +188,16 @@ def main():
             group = R['group']
             avg = [0] * len(name)
             num_group = [0] * len(name)
+            group_name = [""] * len(group)
             for k in range(len(name)):
                 group_data = [data_new[j] for j in range(len(group))
                               if group[j] == k]
                 avg[k] = str(sum(group_data) / len(group_data))
                 num_group[k] = str(len(group_data))
+            for k in range(len(group)):
+                group_name[k] = name[group[k]]
             p_value, surv90, surv50, direction = calc_km(survival,
-                                                         dead, group, name)
+                                                         dead, group_name)
             single_data = [str(p_value)]
             single_data.extend(num_group)
             single_data.extend(avg)
