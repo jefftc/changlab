@@ -8,12 +8,12 @@ gitpath/Betsy/Betsy.cfg
 gitpath is the path where you have your git folder.
 You have to change it to your own path in the follow command that have "gitpath".
 -------------------------------------------------------
-1.Include Betsy/Betsy and Betsy/Betsy/modules to PYTHONPATH
+1.Include Betsy to PYTHONPATH
 
-In ~/.bashrc ,add these three lines.
+In ~/.bashrc ,add these two lines.
 
 export PYTHONPATH="gitpath"
-export PYTHONPATH="gitpath/Betsy/Betsy:${PYTHONPATH}"
+export PYTHONPATH="gitpath/Betsy:${PYTHONPATH}"
 
 --------------------------------------------------------------
 2.Under your home directory, have a ~/.genomicoderc file. change the "gitpath" to your own path,there are four lines need to be changed.

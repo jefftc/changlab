@@ -389,7 +389,7 @@ run_rule.py --plin 'input_signal_file([contents,[train],status,given],[])' --id 
 
 53. Test classify_with_weighted_voting module
 command:
-run_rule.py --plin 'input_signal_file([contents,[train],status,given],[])' --id 'all_aml_train.res' --plin 'input_signal_file([contents,[test],status,given],[])' --id 'all_aml_test.res' --plin 'class_label_file([contents,[train],status,given],[])' --id 'all_aml_train.cls' --plin 'class_label_file([contents,[test],status,given],[])' --id 'all_aml_test.cls'  --plout 'weightedVoting([format,gct,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,unique_genes,no_unique_genes,traincontents,[train],testcontents,[test]],A)'
+run_rule.py --plin 'input_signal_file([contents,[train],status,given],[])' --id 'all_aml_train.res' --plin 'input_signal_file([contents,[test],status,given],[])' --id 'all_aml_test.res' --plin 'class_label_file([contents,[train],status,given],[])' --id 'all_aml_train.cls' --plin 'class_label_file([contents,[test],status,given],[])' --id 'all_aml_test.cls'  --plout 'weightedVoting([format,gct,is_logged,no_logged,preprocess,unknown_preprocess,predataset,yes_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,unique_genes,no_unique_genes,num_features,50,traincontents,[train],testcontents,[test]],A)'
 --------------------------------------------------
 
 54. Test plot_prediction module

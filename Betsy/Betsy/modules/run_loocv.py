@@ -19,8 +19,11 @@ def run(parameters,objects,pipeline):
     full_index = range(M.ncol())
     train_model = None
     if 'train_model' in parameters.keys():
-        train_model = __import__(parameters['train_model'])
-    predict_model = __import__(parameters['predict'])
+        train_model = __import__('Betsy.modules.' + parameters['train_model'],globals(),
+                                 locals(),[parameters['train_model']],-2)
+        
+    predict_model = __import__('Betsy.modules.' + parameters['predict'],globals(),
+                                 locals(),[parameters['predict']],-2)
     f = file(outfile,'w')
     f.write('\t'.join(['sample_name','Predicted_class','Confidence','Actual_class','Correct?']))
     f.write('\n')
