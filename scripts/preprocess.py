@@ -11,6 +11,7 @@ def find_annotation_file(chipname):
         "HG-U133B" : "HG-U133B_annot.csv.gz",
         "HG-U133_Plus_2" : "HG-U133_Plus_2_annot.csv.gz",
         "Mouse430A_2" : "Mouse430A_2_annot.csv.gz",
+        "Mouse430_2" : "Mouse430_2.na31.annot.csv.gz",
         "RAE230A" : "RAE230A.na26.annot.csv.gz",
         "HT_HG-U133A" : "HT_HG-U133A.na31.annot.csv.gz",
         "HG_U95Av2" : "HG_U95Av2_annot.csv.gz",
