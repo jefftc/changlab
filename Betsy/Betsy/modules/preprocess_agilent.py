@@ -7,7 +7,6 @@ from genomicode import jmath
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    
     cwd = os.getcwd()
     R = jmath.start_R()
     R('require(limma,quietly=TRUE)')

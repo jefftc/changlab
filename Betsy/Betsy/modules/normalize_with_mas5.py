@@ -1,6 +1,6 @@
 #normalize_with_mas5.py
 import os
-from Betsy import module_utils
+from Betsy import module_utils,config
 import subprocess
 
 
@@ -10,7 +10,6 @@ def run(parameters,objects,pipeline):
     #preprocess the cel file to text signal file
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    import config
     PREPROCESS_path = config.PREPROCESS
     PREPROCESS_BIN = module_utils.which(PREPROCESS_path)
     assert PREPROCESS_BIN,'cannot find the %s' %PREPROCESS_path
