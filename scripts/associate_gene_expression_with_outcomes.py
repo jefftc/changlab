@@ -56,7 +56,7 @@ def main():
                         help=('gene to analyze.  It can appear anywhere '
                               'in the annotations of the expression_file. '
                               'To specify multiple genes, use this parameter '
-                              'multiple times."'),
+                              'multiple times.'),
                         default=None, action='append')
     parser.add_argument('--cutoff', dest='cutoff', type=str,
                         help=('comma-separated list of breakpoints '
@@ -69,7 +69,7 @@ def main():
                         action="store_true", default=False,
                         help='write Prism-formatted output')
     parser.add_argument('--plot_km', dest='plot_km', action="store_true",
-                        help='write PDF-formatted Kaplan-Meier plot',
+                        help='write PNG-formatted Kaplan-Meier plot',
                         default=False)
     args = parser.parse_args()
     input_file = args.expression_file
@@ -206,16 +206,15 @@ def main():
             single_data.append(direction)
             output_data[i].extend(single_data)
             filestem = '' if not args.filestem else args.filestem + '.'
-            outcome_tmp = outcome.replace(',', '.')
             new_group = ['"' + j + '"' for j in group_name]
             jmath.R_equals(new_group, 'name')
             if args.write_prism:
-                prism_file = str(filestem + outcome_tmp + '.' + geneid[i] +
+                prism_file = str(filestem + time_header + '.' + geneid[i] +
                                  '.prism.txt')
                 jmath.R_equals('"' + prism_file + '"', 'filename')
                 R('write.km.prism.multi(filename,survival, dead, name)')
             if args.plot_km:
-                km_plot = filestem + outcome_tmp + '.' + geneid[i] + '.km.png'
+                km_plot = filestem + time_header + '.' + geneid[i] + '.km.png'
                 jmath.R_equals('"' + km_plot + '"', 'filename')
                 R('col <- list("' + name[0] + '"="#FF0000")')
                 R('bitmap(file=filename,type="png256")')
