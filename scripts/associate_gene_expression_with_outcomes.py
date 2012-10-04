@@ -207,16 +207,18 @@ def main():
             output_data[i].extend(single_data)
             filestem = '' if not args.filestem else args.filestem + '.'
             outcome_tmp = outcome.replace(',', '.')
+            new_group = ['"' + j + '"' for j in group_name]
+            jmath.R_equals(new_group, 'name')
             if args.write_prism:
                 prism_file = str(filestem + outcome_tmp + '.' + geneid[i] +
                                  '.prism.txt')
                 jmath.R_equals('"' + prism_file + '"', 'filename')
                 R('write.km.prism.multi(filename,survival, dead, name)')
             if args.plot_km:
-                km_plot = filestem + outcome_tmp + '.' + geneid[i] + '.km.pdf'
+                km_plot = filestem + outcome_tmp + '.' + geneid[i] + '.km.png'
                 jmath.R_equals('"' + km_plot + '"', 'filename')
                 R('col <- list("' + name[0] + '"="#FF0000")')
-                R('pdf(filename)')
+                R('bitmap(file=filename,type="png256")')
                 R('plot.km.multi(survival, dead, name, col=col)')
                 R('dev.off()')
     f = sys.stdout
