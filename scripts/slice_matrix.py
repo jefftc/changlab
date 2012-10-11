@@ -567,6 +567,7 @@ def find_row_numeric_annotation(MATRIX, row_annotation):
                 match = (x >= value)
             else:
                 raise AssertionError("Unknown modifier: %s" % modifier)
+        #print x, modifier, value, match
         if match:
             I.append(im)
     return I
@@ -757,7 +758,8 @@ def add_row_annot(MATRIX, row_annots):
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     num_genes = None
-    for x in genesetlib.read_genesets(filename, allow_tdf=True):
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
         geneset, description, genes = x
         geneset2genes[geneset] = genes
         if num_genes is None:
@@ -772,7 +774,8 @@ def add_row_annot(MATRIX, row_annots):
     x = matrixlib.align_rows_to_many_annots(
         MATRIX, all_genes, hash=True, get_indexes=True)
     I_matrix, I_geneset, x = x
-    assert len(I_matrix), "I could not match the matrix to a geneset."
+    assert not MATRIX.nrow() or len(I_matrix), \
+        "I could not match the matrix to a geneset."
     #x = _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes)
     #assert x, "I could not match the matrix to a geneset."
     #I_matrix, I_geneset = x
@@ -1088,8 +1091,8 @@ def _intersect_indexes(*indexes):
 
     # Only want the indexes that occur in them all.  Preserve order.
     I = indexes[0]
-    for ind in indexes[1:]:
-        I = [i for i in I if i in ind]
+    for x in indexes[1:]:
+        I = [i for i in I if i in x]
     return I
 
 
@@ -1237,7 +1240,7 @@ def main():
         "--add_row_id", default=None,
         help="Add a unique row ID.  This should be the name of the header.")
     group.add_argument(
-        "--add_row_annot", default=None,
+        "--add_row_annot", action="append", default=[],
         help="Add a geneset as a new annotation for the matrix.  "
         "The format should be: <txt/gmx/gmt_file>,<geneset>[,<geneset>].  "
         "Each geneset in the file should contain the same number of "
@@ -1303,7 +1306,8 @@ def main():
     MATRIX = add_row_id(MATRIX, args.add_row_id)
 
     # Add row annotations.
-    MATRIX = add_row_annot(MATRIX, args.add_row_annot)
+    for annot in args.add_row_annot:
+        MATRIX = add_row_annot(MATRIX, annot)
 
     # Rename the row annotations.  Do this after removing and adding.
     for x in args.rename_row_annot:
