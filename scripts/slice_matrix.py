@@ -221,7 +221,8 @@ def _read_annot_file(filename):
     # Return (header2annots, all_headers, all_annots).
     from genomicode import genesetlib
 
-    assert os.path.exists(filename)
+    assert os.path.exists(filename), "I could not find annotation file: %s" % \
+        filename
     header2annots = {}
     all_headers = []
     all_annots = []
@@ -366,7 +367,8 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     ext = os.path.splitext(filename)[1].lower()
-    for x in genesetlib.read_genesets(filename, allow_tdf=True):
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
         geneset, description, genes = x
 
         # Bug: sometimes will mis-identify TDF files as GMX.  The
@@ -520,6 +522,10 @@ def find_row_annotation(MATRIX, row_annotation):
         MATRIX, all_annots, hash=True, get_indexes=True)
     I_matrix, I_annots, index = x
     assert len(I_matrix) == len(I_annots)
+    #import arrayio
+    #print index
+    #for (m, a) in zip(I_matrix, I_annots):
+    #    print m, a, MATRIX.row_names(arrayio.ROW_ID)[m], all_annots[index][a]
 
     annots = header2annots[header]
     I = []
@@ -757,7 +763,8 @@ def add_row_annot(MATRIX, row_annots):
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     num_genes = None
-    for x in genesetlib.read_genesets(filename, allow_tdf=True):
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
         geneset, description, genes = x
         geneset2genes[geneset] = genes
         if num_genes is None:
