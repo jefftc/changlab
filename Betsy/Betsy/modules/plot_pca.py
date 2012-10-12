@@ -6,7 +6,7 @@ import shutil
 from Betsy import read_label_file
 from genomicode import pcalib
 import arrayio
-
+import matplotlib.cm as cm
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -27,7 +27,17 @@ def run(parameters,objects,pipeline):
     f.close()
     a,b,c = read_label_file.read(label_file.identifier)
     if len(a)>1:
-        colors = ['r','b','g','y']
+        colors = []
+        for i in range(5):
+            colors.append(cm.hot(i/5.0,1))
+            colors.append(cm.autumn(i/5.0,i))
+            colors.append(cm.cool(i/5.0,i))
+            colors.append(cm.jet(i/5.0,i))
+            colors.append(cm.spring(i/5.0,i))
+            colors.append(cm.prism(i/5.0,i))
+            colors.append(cm.summer(i/5.0,i))
+            colors.append(cm.winter(i/5.0,i))
+        #colors = ['r','b','g','y']
         opts = [colors[int(i)] for i in b]
         legend = [c[int(i)] for i in b]
         module_utils.plot_pca(tmp,outfile,opts,legend)
