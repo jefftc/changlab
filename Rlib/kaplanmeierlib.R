@@ -149,7 +149,8 @@ calc.km.multi <- function(survival, dead, group) {
   list(p.value=p.value, hr=hr, surv=surv)
 }
 
-plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
+plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA, 
+  main=NA, sub=NA, xlab="", ylab="") {
   if(is.na(col1))
     col1 <- "#000000"
   if(is.na(col2))
@@ -165,7 +166,8 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA) {
   km.1 <- .calc.km.curve(survival1, dead1)
   km.2 <- .calc.km.curve(survival2, dead2)
 
-  plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, xlab="", ylab="")
+  plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, 
+    main=main, sub=sub, xlab=xlab, ylab=ylab)
   lines(km.1$surv.x, km.1$surv.y, col=col1)
   lines(km.2$surv.x, km.2$surv.y, col=col2)
   # Draw the censor lines.

@@ -221,7 +221,8 @@ def _read_annot_file(filename):
     # Return (header2annots, all_headers, all_annots).
     from genomicode import genesetlib
 
-    assert os.path.exists(filename)
+    assert os.path.exists(filename), "I could not find annotation file: %s" % \
+        filename
     header2annots = {}
     all_headers = []
     all_annots = []
@@ -366,7 +367,8 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     ext = os.path.splitext(filename)[1].lower()
-    for x in genesetlib.read_genesets(filename, allow_tdf=True):
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
         geneset, description, genes = x
 
         # Bug: sometimes will mis-identify TDF files as GMX.  The
@@ -520,6 +522,10 @@ def find_row_annotation(MATRIX, row_annotation):
         MATRIX, all_annots, hash=True, get_indexes=True)
     I_matrix, I_annots, index = x
     assert len(I_matrix) == len(I_annots)
+    #import arrayio
+    #print index
+    #for (m, a) in zip(I_matrix, I_annots):
+    #    print m, a, MATRIX.row_names(arrayio.ROW_ID)[m], all_annots[index][a]
 
     annots = header2annots[header]
     I = []
@@ -567,6 +573,8 @@ def find_row_numeric_annotation(MATRIX, row_annotation):
                 match = (x >= value)
             else:
                 raise AssertionError("Unknown modifier: %s" % modifier)
+        #print x, modifier, value, match
+        # Accepts matches for any of the values.
         if match:
             I.append(im)
     return I
@@ -757,7 +765,8 @@ def add_row_annot(MATRIX, row_annots):
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     num_genes = None
-    for x in genesetlib.read_genesets(filename, allow_tdf=True):
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
         geneset, description, genes = x
         geneset2genes[geneset] = genes
         if num_genes is None:
@@ -772,7 +781,8 @@ def add_row_annot(MATRIX, row_annots):
     x = matrixlib.align_rows_to_many_annots(
         MATRIX, all_genes, hash=True, get_indexes=True)
     I_matrix, I_geneset, x = x
-    assert len(I_matrix), "I could not match the matrix to a geneset."
+    assert not MATRIX.nrow() or len(I_matrix), \
+        "I could not match the matrix to a geneset."
     #x = _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes)
     #assert x, "I could not match the matrix to a geneset."
     #I_matrix, I_geneset = x
@@ -1088,8 +1098,8 @@ def _intersect_indexes(*indexes):
 
     # Only want the indexes that occur in them all.  Preserve order.
     I = indexes[0]
-    for ind in indexes[1:]:
-        I = [i for i in I if i in ind]
+    for x in indexes[1:]:
+        I = [i for i in I if i in x]
     return I
 
 
@@ -1209,12 +1219,13 @@ def main():
         help="Include only the rows where the annotation contains a "
         "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
     group.add_argument(
-        "--select_row_numeric_annotation", default=None,
+        "--select_row_numeric_annotation", default=[], action="append",
         help="Include only the rows where the annotation contains a "
         "numeric value.  Format: <txt_file>,<header>,<value>[,<value,...].  "
         'If <value> starts with a "<", then will only find the rows where '
         "the annotation is less than <value>.  "
-        'The analogous constraint will be applied for ">".')
+        'The analogous constraint will be applied for ">".  '
+        "Accepts the match if any of the <value>s are true.")
     group.add_argument(
         "--select_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
@@ -1237,7 +1248,7 @@ def main():
         "--add_row_id", default=None,
         help="Add a unique row ID.  This should be the name of the header.")
     group.add_argument(
-        "--add_row_annot", default=None,
+        "--add_row_annot", action="append", default=[],
         help="Add a geneset as a new annotation for the matrix.  "
         "The format should be: <txt/gmx/gmt_file>,<geneset>[,<geneset>].  "
         "Each geneset in the file should contain the same number of "
@@ -1283,8 +1294,9 @@ def main():
     I2 = find_row_ids(MATRIX, args.select_row_ids)
     I3 = find_row_genesets(MATRIX, args.select_row_genesets)
     I4 = find_row_annotation(MATRIX, args.select_row_annotation)
-    I5 = find_row_numeric_annotation(
-        MATRIX, args.select_row_numeric_annotation)
+    I5 = [find_row_numeric_annotation(MATRIX, annot)
+          for annot in args.select_row_numeric_annotation]
+    I5 = _intersect_indexes(*I5)
     I6 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
     I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     I1 = find_col_indexes(
@@ -1303,7 +1315,8 @@ def main():
     MATRIX = add_row_id(MATRIX, args.add_row_id)
 
     # Add row annotations.
-    MATRIX = add_row_annot(MATRIX, args.add_row_annot)
+    for annot in args.add_row_annot:
+        MATRIX = add_row_annot(MATRIX, annot)
 
     # Rename the row annotations.  Do this after removing and adding.
     for x in args.rename_row_annot:
