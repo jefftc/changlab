@@ -574,6 +574,7 @@ def find_row_numeric_annotation(MATRIX, row_annotation):
             else:
                 raise AssertionError("Unknown modifier: %s" % modifier)
         #print x, modifier, value, match
+        # Accepts matches for any of the values.
         if match:
             I.append(im)
     return I
@@ -1218,12 +1219,13 @@ def main():
         help="Include only the rows where the annotation contains a "
         "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
     group.add_argument(
-        "--select_row_numeric_annotation", default=None,
+        "--select_row_numeric_annotation", default=[], action="append",
         help="Include only the rows where the annotation contains a "
         "numeric value.  Format: <txt_file>,<header>,<value>[,<value,...].  "
         'If <value> starts with a "<", then will only find the rows where '
         "the annotation is less than <value>.  "
-        'The analogous constraint will be applied for ">".')
+        'The analogous constraint will be applied for ">".  '
+        "Accepts the match if any of the <value>s are true.")
     group.add_argument(
         "--select_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
@@ -1292,8 +1294,9 @@ def main():
     I2 = find_row_ids(MATRIX, args.select_row_ids)
     I3 = find_row_genesets(MATRIX, args.select_row_genesets)
     I4 = find_row_annotation(MATRIX, args.select_row_annotation)
-    I5 = find_row_numeric_annotation(
-        MATRIX, args.select_row_numeric_annotation)
+    I5 = [find_row_numeric_annotation(MATRIX, annot)
+          for annot in args.select_row_numeric_annotation]
+    I5 = _intersect_indexes(*I5)
     I6 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
     I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     I1 = find_col_indexes(
