@@ -14,10 +14,10 @@ comes_before(Modules,First,Second):-
 make_batch_report(Parameters,Modules):-
     % Conditions: desire batch methods and order
     member((Options,First,Second),[([quantile,yes_quantile,dwd,no_dwd,combat,no_combat,bfrm,no_bfrm,shiftscale,no_shiftscale],normalize_samples_with_quantile,none),
-([quantile,yes_quantile,dwd,yes_dwd,combat,no_combat,bfrm,no_bfrm,shiftscale,no_shiftscale],normalize_samples_with_quantile,normalize_samples_with_dwd),
-([quantile,yes_quantile,shiftscale,yes_shiftscale,combat,no_combat,bfrm,no_bfrm,dwd,no_dwd],normalize_samples_with_quantile,normalize_samples_with_shiftscale),
 ([bfrm,yes_bfrm,quantile,no_quantile,shiftscale,no_shiftscale,combat,no_combat,dwd,no_dwd],normalize_samples_with_bfrm,none),
-([quantile,yes_quantile,combat,yes_combat,shiftscale,no_shiftscale,dwd,no_dwd,bfrm,no_bfrm],normalize_samples_with_quantile,normalize_samples_with_combat)]),
+([quantile,yes_quantile,combat,yes_combat,shiftscale,no_shiftscale,dwd,no_dwd,bfrm,no_bfrm],normalize_samples_with_quantile,normalize_samples_with_combat),
+([quantile,yes_quantile,dwd,yes_dwd,combat,no_combat,bfrm,no_bfrm,shiftscale,no_shiftscale],normalize_samples_with_quantile,normalize_samples_with_dwd),
+([quantile,yes_quantile,shiftscale,yes_shiftscale,combat,no_combat,bfrm,no_bfrm,dwd,no_dwd],normalize_samples_with_quantile,normalize_samples_with_shiftscale)]),
      %Input1: signal_norm1 with created and desired batch methods
      convert_parameters_clean_out(Parameters,NewParameters1),
 
