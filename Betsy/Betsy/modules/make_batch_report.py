@@ -78,9 +78,9 @@ def run(outfiles,parameters,pipelines):
         name = 'Figure 1: This pca plot shows the similarities among your samples after quantile'
         w(htmllib.B(name))
         w(htmllib.P())
-        #----------------------------------------------------------------------------
+    #----------------------------------------------------------------------------
         w(htmllib.P())
-        w('I generated a file that contains the gene expression values of your dataset after quantile and dwd')
+        w('I generated a file that contains the gene expression values of your dataset after bfrm')
         w(htmllib.P())
         w(htmllib.A(result_files[3], result_files[3]))
         w(htmllib.P())
@@ -101,12 +101,12 @@ def run(outfiles,parameters,pipelines):
         w(htmllib.P())
 
         w(htmllib.P())
-        name = 'Figure 2: This pca plot shows the similarities among your samples after quantile and dwd'
+        name = 'Figure 2: This pca plot shows the similarities among your samples after bfrm'
         w(htmllib.B(name))
         w(htmllib.P())
         #----------------------------------------------------------------------------
         w(htmllib.P())
-        w('I generated a file that contains the gene expression values of your dataset after quantile and shiftscale')
+        w('I generated a file that contains the gene expression values of your dataset after quantile and combat')
         w(htmllib.P())
         w(htmllib.A(result_files[6], result_files[6]))
         w(htmllib.P())
@@ -127,12 +127,13 @@ def run(outfiles,parameters,pipelines):
         w(htmllib.P())
 
         w(htmllib.P())
-        name = 'Figure 3: This pca plot shows the similarities among your samples after quantile and shiftscale'
+        name = 'Figure 3: This pca plot shows the similarities among your samples after quantile and combat'
         w(htmllib.B(name))
         w(htmllib.P())
         #----------------------------------------------------------------------------
+        
         w(htmllib.P())
-        w('I generated a file that contains the gene expression values of your dataset after bfrm')
+        w('I generated a file that contains the gene expression values of your dataset after quantile and dwd')
         w(htmllib.P())
         w(htmllib.A(result_files[9], result_files[9]))
         w(htmllib.P())
@@ -153,12 +154,12 @@ def run(outfiles,parameters,pipelines):
         w(htmllib.P())
 
         w(htmllib.P())
-        name = 'Figure 4: This pca plot shows the similarities among your samples after bfrm'
+        name = 'Figure 4: This pca plot shows the similarities among your samples after quantile and dwd'
         w(htmllib.B(name))
         w(htmllib.P())
         #----------------------------------------------------------------------------
         w(htmllib.P())
-        w('I generated a file that contains the gene expression values of your dataset after quantile and combat')
+        w('I generated a file that contains the gene expression values of your dataset after quantile and shiftscale')
         w(htmllib.P())
         w(htmllib.A(result_files[12], result_files[12]))
         w(htmllib.P())
@@ -179,10 +180,10 @@ def run(outfiles,parameters,pipelines):
         w(htmllib.P())
 
         w(htmllib.P())
-        name = 'Figure 5: This pca plot shows the similarities among your samples after quantile and combat'
+        name = 'Figure 5: This pca plot shows the similarities among your samples after quantile and shiftscale'
         w(htmllib.B(name))
         w(htmllib.P())
-        #----------------------------------------------------------------------------
+       #----------------------------------------------------------------------------
         w(htmllib.HR())
         w(htmllib.A("<methods_normalization>",name="methods_normalization"))
         w(htmllib.CENTER(htmllib.H2("Methods")))
@@ -208,7 +209,8 @@ def run(outfiles,parameters,pipelines):
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
         w(htmllib.P())
         #----------------------------------------------------------------------------
-        w(htmllib.H3("2.Quantile and Dwd File"))
+        
+        w(htmllib.H3("2.Bfrm File"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
         for i in range(len(pipelines[3])):
@@ -229,8 +231,8 @@ def run(outfiles,parameters,pipelines):
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
         w(htmllib.P())
-        #----------------------------------------------------------------------------
-        w(htmllib.H3("3.Quantile and Shiftscale File"))
+       #----------------------------------------------------------------------------
+        w(htmllib.H3("3.Quantile and Combat File"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
         for i in range(len(pipelines[6])):
@@ -252,7 +254,7 @@ def run(outfiles,parameters,pipelines):
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
         w(htmllib.P())
         #----------------------------------------------------------------------------
-        w(htmllib.H3("4.Bfrm File"))
+        w(htmllib.H3("4.Quantile and Dwd File"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
         for i in range(len(pipelines[9])):
@@ -273,8 +275,8 @@ def run(outfiles,parameters,pipelines):
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
         w(htmllib.P())
-       #----------------------------------------------------------------------------
-        w(htmllib.H3("5.Quantile and Combat File"))
+        #----------------------------------------------------------------------------
+        w(htmllib.H3("5.Quantile and Shiftscale File"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
         for i in range(len(pipelines[12])):
@@ -295,7 +297,6 @@ def run(outfiles,parameters,pipelines):
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
         w(htmllib.P())
-
         # Write out the footer.
         time_str = parselib.pretty_date(time.time())
         #hostname = pretty_hostname()
