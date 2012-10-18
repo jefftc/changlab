@@ -56,9 +56,12 @@ def is_format(locator_str, hrows=None, hcols=None):
     nrow = hrows or nr
     ncol = hcols or nc
 
-    if nrow == 0 and ncol == 0:
+    # PCL requires at least the gene IDs.
+    if ncol == 0:
         return False
-    nrow = max(nrow, 1)
+    #if nrow == 0 and ncol == 0:
+    #    return False
+    nrow = max(nrow, 1)  # what is this for???
     if nrow < 1 or nrow > 3:
         return False
     # PCL format has at most 4 header columns.
