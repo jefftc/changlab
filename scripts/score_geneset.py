@@ -99,7 +99,7 @@ def main():
         help="Score all gene sets in the files.")
     parser.add_argument(
         "--automatch", dest="automatch", action="store_true", default=False,
-        help="Will match _UP with _DN.")
+        help="Will match _UP with _DN (or _DOWN).")
     parser.add_argument(
         "--libpath", dest="libpath", action="append", default=[],
         help="Add to the Python library search path.")
@@ -168,9 +168,11 @@ def main():
             if gs1.find(",") >= 0:
                 i += 1
                 continue
+            if ugs1.endswith("_DOWN"):
+                ugs1 = ugs1[:-5] + "_DN"
             if ugs1.endswith("_DN") and ugs2.endswith("_UP") and \
                    ugs1[:-3] == ugs2[:-3]:
-                x = "%s,%s" % (gs1, gs2)
+                x = "%s,%s" % (gs2, gs1)
                 genesets[i] = x
                 del genesets[i+1]
             else:
