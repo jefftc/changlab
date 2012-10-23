@@ -59,3 +59,9 @@ gp_user=xiaolingchen
 gp_passwd=baby2008
 gp_server=http://genepattern.broadinstitute.org/gp/pages/index.jsf
 
+
+annot_data_affy=/home/jchang/projects/normalize/data/affymetrix
+annot_data_illu=/home/jchang/projects/normalize/data/illumina
+
+psid2platform=/home/jchang/projects/normalize/data/psid2platform
+kaplanmeierlib=/home/jchang/changlab/Rlib/kaplanmeierlib.R
