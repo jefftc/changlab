@@ -21,6 +21,7 @@ find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA,
   FOLD.CHANGE=0) {
   # X must be logged.
   # Y should be the labels for two classes.  NA will be filtered out.
+  # FOLD.CHANGE should not be logged.
   # 
   # samr.plot(RESULTS$S, RESULTS$DELTA, min.foldchange=2)
   library("samr")
