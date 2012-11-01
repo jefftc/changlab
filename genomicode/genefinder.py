@@ -14,18 +14,27 @@ find_many_genes_detailed
 # TODO:
 # fuzzy match of gene names
 
-def find_gene(name, tax_id=None):
+def find_gene(name, tax_id=None, ignore_ambiguous_names=False):
     # Return gene_id, symbol, name, tax_id, organism, name_from_query
     # or None.  If name is a RefSeq ID, be sure there is no version
     # number.  E.g. "NP_000680.2" won't be found, but "NP_000680"
     # will.
-    # tax_id   9606  human
+    #
+    # tax_id   9606  human   (should be given as an integer)
     #         10090  mouse
+    #
+    # If the name is ambiguous, will raise an exception.  If
+    # ignore_ambiguous_names is a true value, will return None instead.
+    
+    # Optimization: an empty string will be ambiguous.
+    name = str(name)
     orig_name = name
     x = find_many_genes([name], tax_id=tax_id)
     assert len(x) == 1
     num_matches, gene_id, symbol, name, tax_id, organism, name_from_query =x[0]
     if num_matches == 0:
+        return None
+    if num_matches > 1 and ignore_ambiguous_names:
         return None
     if num_matches > 1:
         msg = 'Multiple matches (%d) found for "%s".' % (
@@ -95,9 +104,13 @@ def find_many_genes(genes, tax_id=None):
     return clean
 
 def find_many_genes_detailed(genes, tax_id=None):
-    # Return list of gene_id, symbol, name, tax_id, organism,
-    #   name_from_query, source_db, name_in_db.
-    # May not be in the same order as the query.
+    """Return list of (gene_id, symbol, name, tax_id, organism,
+    name_from_query, source_db, name_in_db).  May not be in the same
+    order as the query.
+
+    gene_id and tax_id are integers.  Everything else is a string.
+
+    """
     import itertools
     import config
     import dblib
@@ -170,26 +183,33 @@ def find_many_genes_detailed(genes, tax_id=None):
             gene_id, source_db, name_in_db, is_official = x
         
             x = _lookup_gene(gene_id)
-            id, symbol, name, tax_id, organism = x
-            x = gene_id, symbol, name, tax_id, organism, name_from_query, \
+            id, symbol, name, tax_id_, organism = x
+            x = gene_id, symbol, name, tax_id_, organism, name_from_query, \
                 source_db, name_in_db
             clean.append(x)
 
     # If tax_id is given, then only return hits from that tax_id.
     if tax_id:
+        tax_id = int(tax_id)
         clean = [x for x in clean if x[3] == tax_id]
             
     return clean
 
 def _lookup_gene(id):
-    # Return id, symbol, name, tax_id, organism.  If not found, then
-    # everything (except for the id) will be empty strings.
+    """id should be the Entez ID of a gene, given as an integer.
+    
+    Return id, symbol, name, tax_id, organism.  id and tax_id will be
+    integers.  Everything else is a string.  If not found, then
+    everything (except for the id) will be empty strings.
+    
+    """
     import config
     import dblib
 
+    id = int(id)
     symbol = name = tax_id = organism = ""
     table = _find_entrez_gene_table()
-    q = "SELECT symbol, name, tax_id, organism FROM %s WHERE gene_id=%d" % (
+    q = "SELECT symbol, name, tax_id, organism FROM %s WHERE gene_id=%s" % (
         table, id)
     x = dblib.query(
         q, config.gm_user, config.gm_passwd, config.gm_db, config.gm_host)
