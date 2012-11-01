@@ -1,25 +1,13 @@
 #!/usr/bin/env python
 
 import os, sys
+from genomicode import arrayplatformlib
+
 
 def find_annotation_file(chipname):
     from genomicode import config
-
-    chipname2annotfile = {
-        "HG-U133A" : "HG-U133A_annot.csv.gz",
-        "HG-U133A_2" : "HG-U133A_2.na30.annot.csv.gz",
-        "HG-U133B" : "HG-U133B_annot.csv.gz",
-        "HG-U133_Plus_2" : "HG-U133_Plus_2_annot.csv.gz",
-        "Mouse430A_2" : "Mouse430A_2_annot.csv.gz",
-        "Mouse430_2" : "Mouse430_2.na31.annot.csv.gz",
-        "RAE230A" : "RAE230A.na26.annot.csv.gz",
-        "HT_HG-U133A" : "HT_HG-U133A.na31.annot.csv.gz",
-        "HG_U95Av2" : "HG_U95Av2_annot.csv.gz",
-        }
-    assert chipname in chipname2annotfile, "I have no annotations for %s" % \
-           chipname
-    file = chipname2annotfile[chipname]
-    filename = os.path.join(config.normalize_AFFYMETRIX, file)
+    chipname = chipname.replace('-','_')
+    filename = arrayplatformlib.chipname2filename(chipname)
     assert os.path.exists(filename), "I could not find annotation file %s." % \
            filename
     filename = os.path.realpath(filename)
@@ -27,7 +15,6 @@ def find_annotation_file(chipname):
 
 def find_normscript():
     from genomicode import config
-    
     file = "normscript.R"
     filename = os.path.join(config.normalize_RLIB, file)
     assert os.path.exists(filename), "I could not find normscript.R."
@@ -99,7 +86,6 @@ def main():
     for (file, cn) in file2chipname.items():
         if options.platform and cn != options.platform:
             del file2chipname[file]
-
     # Make sure files exist.
     assert file2chipname, "no files in path: %s" % path
 
@@ -115,7 +101,7 @@ def main():
         x = ", ".join(x)
         assert len(chipnames) == 1, "multiple platforms: %s" % x
     chipname = chipnames[0]
-
+    
     # Choose the annotation file for the chip name.
     annotfile = find_annotation_file(chipname)
     # Should allow the user to generate a file that's not annotated.
