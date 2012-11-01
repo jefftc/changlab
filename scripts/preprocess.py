@@ -57,9 +57,12 @@ def main():
         # Guess the filestem based on the name of the path.
         x = os.path.split(path)[1]
         x = os.path.splitext(x)[0]
+        assert x, "File name is missing from: %s" % path
         x = x.replace("_cel", "")   # For ArrayExpress paths
         x = x.replace(".CEL", "")   # For ArrayExpress paths
         filestem = x
+    assert filestem is not None and type(filestem) is type("")
+    assert filestem.strip()
     
     outfile = "%s.%s" % (filestem, algorithm.lower())
     if options.noclobber and os.path.exists(outfile):
