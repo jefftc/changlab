@@ -1,4 +1,4 @@
-#batch_effect_remove.py
+#geneset_analysis.py
 
 INPUTS = [
     'gse_id',
@@ -10,10 +10,11 @@ INPUTS = [
     'idat_files',
     'agilent_files',
     'input_signal_file',
-    'rename_list_file']
+    'rename_list_file',
+    'geneset_file']
 
 
-OUTPUTS = 'make_batch_report'
+OUTPUTS = 'make_geneset_report'
 
 PARAMETERS = {
     'preprocess': ['rma', 'mas5', 'loess', 'illumina_controls',
@@ -69,18 +70,25 @@ PARAMETERS = {
     'duplicate_probe': ['yes_duplicate_probe', 'high_var_probe',
                         'closest_probe'],
     'duplicate_data': ['yes_duplicate_data', 'no_duplicate_data'],
+    'automatch': ['yes_automatch','no_automatch'],
+    'geneset':'string',
+    'allgenes': ['yes_allgenes','no_allgenes'],
     'has_annotation_gene_id':['yes_gene_id','no_gene_id']}
-
+ 
 
 DEFAULT = {
-    'gene_center': 'no_gene_center',
-    'gene_normalize': 'no_gene_normalize',
+    'gene_center': 'mean',
+    'gene_normalize': 'variance',
     'filter': '0', 'predataset': 'no_predataset',
     'is_logged': 'logged', 'rename_sample': 'no_rename',
     'gene_order': 'no_order', 'format': 'tdf',
     'duplicate_probe': 'yes_duplicate_probe',
     'duplicate_data': 'yes_duplicate_data',
-    'unique_genes': 'no_unique_genes'}
+    'unique_genes': 'high_var',
+    'has_annotation_gene_id': 'yes_gene_id',
+    'dwd':'no_dwd','combat':'no_combat',
+    'shiftscale':'no_shiftscale','bfrm':'no_bfrm',
+    'quantile':'yes_quantile'}
 
 predicate2arguments = {
     'gse_id': ([], '[]'),
@@ -92,4 +100,5 @@ predicate2arguments = {
     'class_label_file': (['status', 'given'], '[]'),
     'gene_list_file': ([], '[]'),
     'input_signal_file': (['status', 'given'], '[]'),
-    'rename_list_file': ([], '[]')}
+    'rename_list_file': ([], '[]'),
+    'geneset_file':([],'[]')}

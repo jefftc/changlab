@@ -22,6 +22,8 @@ svm_model(Parameters,Modules):-
     Format=tdf,
     get_value(NewParameters1,status,created,Status),
     Status=created,
+    get_value(NewParameters1,is_logged,unknown_logged,Is_logged),
+    Is_logged=logged,
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     % Input: signal_file and class_label_file
@@ -77,38 +79,11 @@ weightedVoting(Parameters,Modules):-
     append(Past_Modules,Newadd,Modules).
 
 /*---------------------------------------------------------------*/
-randomforest(Parameters,Modules):-
-    % get the full length parameters
-    convert_parameters_classify(Parameters,NewParameters1),
-    % Conditions: if traincontents in Parameters, 
-    % the traindata and testdata need to be aligned
-    member(traincontents,Parameters),
-    get_value(NewParameters1,traincontents,[unknown],TrainContents),
-    get_value(Parameters,traincontents,[unknown],TrainContents),
-    % Input: signal_file and class_label_file 
-    signal_file(NewParameters1,Past_Modules_1),
-    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
-    class_label_file([contents,TrainContents,preprocess,Preprocess,status,_],Past_Modules_2),
-    % Input: test_data
-    get_value(Parameters,testcontents,[unknown],TestContents),
-    %convert_parameters_file(Parameters,NewParameters2),
-    %set_value(NewParameters2,contents,TestContents,NewParameters3),
-    %signal_file(NewParameters3,Past_Modules_3),
-    class_label_file([contents,TestContents,preprocess,Preprocess,status,_],Past_Modules_4),
-    % Module: classify_with_random_forest
-    % Output parameters: update the input Parameters to a full length and the contents
-    append(Past_Modules_2,Past_Modules_1,Past_Modules_5),
-    %append(Past_Modules_4,Past_Modules_3,Past_Modules_6),
-    append(Past_Modules_5,Past_Modules_4,Past_Modules),
-    Newadd=[classify_with_random_forest,NewParameters1],
-    append(Past_Modules,Newadd,Modules).
-
-/*---------------------------------------------------------------*/
 loocv(Parameters,Modules):-
     % Conditions: classification should be svm or weightedvoting 
     %             and format is the required format
     get_value_variable(Parameters,classification,Classification),
-    member(Classification,[svm,weightedvoting,randomforest]),
+    member(Classification,[svm,weightedvoting]),
     get_CV_parameter(Classification,Required_format,List),
     convert_parameters_file(Parameters,NewParameters),
     get_value(NewParameters,format,unknown_format,Format),
@@ -122,9 +97,7 @@ loocv(Parameters,Modules):-
     signal_file(NewParameters1,Past_Modules_1);
     Classification=weightedvoting,
     set_value(NewParameters1,num_features,0,NewParameters2),
-    signal_file(NewParameters2,Past_Modules_1);
-    Classification=randomforest,
-    signal_file(NewParameters1,Past_Modules_1)),
+    signal_file(NewParameters2,Past_Modules_1)),
     append(Past_Modules_2,Past_Modules_1,Past_Modules),
     % Output parameters: update the parameters to full length
     append(List,NewParameters1,Write_list),
@@ -139,62 +112,38 @@ get_CV_parameter(A,Format,List):-
           predict,apply_svm_model];
     A=weightedvoting,
     Format=gct,
-    List=[predict,classify_with_weighted_voting];
-    A=randomforest,
-    Format=tdf,
-    List=[predict,classify_with_random_forest].
+    List=[predict,classify_with_weighted_voting].
 /*---------------------------------------------------------------*/
 prediction_plot(Parameters,Modules):-
     % Conditions: class_plot should be svm,weightedvoting or loocv
-    get_value(Parameters,class_plot,unknown_plot,Class_plot),
-    member(Class_plot,[svm,weightedvoting,loocv,randomforest]),
+    get_value_variable(Parameters,class_plot,Class_plot),
+    member(Class_plot,[svm,weightedvoting,loocv]),
     % Input: loocv,weightedVoting or svm_predictions
     (Class_plot=loocv,
     loocv(Parameters,Past_Modules);
     Class_plot=weightedvoting,
     weightedVoting(Parameters,Past_Modules);
     Class_plot=svm,
-    svm_predictions(Parameters,Past_Modules);
-    Class_plot=randomforest,
-    randomforest(Parameters,Past_Modules)),
+    svm_predictions(Parameters,Past_Modules)),
+    % Output parameters:update the parameters include class_plot
+    append(Parameters,[class_plot,Class_plot],NewParameters),
     % Module:plot_prediction
-    Newadd=[plot_prediction,Parameters],
+    Newadd=[plot_prediction,NewParameters],
     append(Past_Modules,Newadd,Modules).
 
-/*---------------------------------------------------------------*/
-/*prediction_pca_plot(Parameters,Modules):-
-    % Conditions: class_plot should be svm,weightedvoting
-    get_value_variable(Parameters,class_plot,Class_plot),
-    member(Class_plot,[svm,weightedvoting,randomforest]),
-    % Input: weightedVoting or svm_predictions
-    (Class_plot=weightedvoting,
-    weightedVoting(Parameters,Past_Modules);
-    Class_plot=svm,
-    svm_predictions(Parameters,Past_Modules);
-    Class_plot=randomforest,
-    randomforest(Parameters,Past_Modules)),
-    % Output parameters:update the parameters include class_plot
-    append(Parameters,[class_plot,Class_plot],NewParameters3),
-    % Module:plot_prediction_pca
-    Newadd=[plot_prediction_pca,NewParameters3],
-    append(Past_Modules,Newadd,Modules).*/
 /*---------------------------------------------------------------*/
 prediction_pca_plot(Parameters,Modules):-
     % Conditions: class_plot should be svm,weightedvoting
     get_value_variable(Parameters,class_plot,Class_plot),
-    member(Class_plot,[svm,weightedvoting,randomforest]),
+    member(Class_plot,[svm,weightedvoting]),
     % Input: weightedVoting or svm_predictions
     (Class_plot=weightedvoting,
-    weightedVoting(Parameters,Past_Modules_1);
+    weightedVoting(Parameters,Past_Modules);
     Class_plot=svm,
-    svm_predictions(Parameters,Past_Modules_1);
-    Class_plot=randomforest,
-    randomforest(Parameters,Past_Modules)),
-    append(Parameters,[objecttype,prediction],Parameters1),
-    pca_analysis(Parameters1,Past_Modules_2),
+    svm_predictions(Parameters,Past_Modules)),
     % Output parameters:update the parameters include class_plot
     append(Parameters,[class_plot,Class_plot],NewParameters3),
     % Module:plot_prediction_pca
     Newadd=[plot_prediction_pca,NewParameters3],
-    append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules,Newadd,Modules).
+

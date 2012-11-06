@@ -1,20 +1,22 @@
-#make_cluster_report.py
-
+#make_geneset_report.py
 from Betsy import config
 from Betsy import module_utils
 from Betsy import hash_method
 import os
 import shutil
-from Betsy import protocol_utils
 import imghdr
 import time
-def run(outfiles,parameters,pipelines):
+from genomicode import parselib
+from genomicode import htmllib
+
+
+def run(outfiles, parameters, pipelines):
     OUTPUTPATH = config.OUTPUTPATH
     inputid = module_utils.get_inputid(outfiles[0])
     folder_string = hash_method.hash_parameters(
-            inputid,pipelines[0],**parameters[0])
-    folder_name = 'cluster_report_BETSYHASH1_'+folder_string
-    result_folder = os.path.join(OUTPUTPATH,folder_name)
+            inputid, pipelines[0], **parameters[0])
+    folder_name = 'geneset_report_BETSYHASH1_' + folder_string
+    result_folder = os.path.join(OUTPUTPATH, folder_name)
     if not os.path.exists(result_folder):
         os.mkdir(result_folder)
     result_files = []
@@ -22,18 +24,17 @@ def run(outfiles,parameters,pipelines):
     for j in range(len(outfiles)):
         filename = os.path.split(outfiles[j])[-1]
         folder = os.path.split(os.path.split(outfiles[j])[0])[-1]
-        final_output = folder+'_'+ filename
+        final_output = folder + '_' + filename
         result_files.append(final_output)
-        result_file = os.path.join(result_folder,final_output)
+        result_file = os.path.join(result_folder, final_output)
         if not os.path.exists(result_file):
             if os.path.isdir(outfiles[j]):
-                shutil.copytree(outfiles[j],result_file)
+                shutil.copytree(outfiles[j], result_file)
             else:
-                shutil.copyfile(outfiles[j],result_file)
+                shutil.copyfile(outfiles[j], result_file)
 
     #write the report.html
-    from genomicode import parselib
-    from genomicode import htmllib
+    
     def highlight(s):
         return htmllib.SPAN(s, style="background-color:yellow")
     def smaller(s):
@@ -45,28 +46,31 @@ def run(outfiles,parameters,pipelines):
         lines = []
         w = lines.append
         w("<HTML>")
-        title = "Clustering Results"
+        title = "Geneset Analysis Results"
         x = parselib.remove_all_tags(title)
         w(htmllib.HEAD(htmllib.TITLE(x)))
         w("<BODY>")
         w(htmllib.CENTER(htmllib.H1(title)))
-        w('I generated a file that contains the expression values of the data set after clustering')
+        w('I generated a file that contains the analysis result of the geneset')
         w(htmllib.P())
         w(htmllib.A(result_files[0], result_files[0]))
         w(htmllib.P())
-        w(htmllib.A("Methods",href="#methods_clustering"))
+        w(htmllib.A("Methods",href="#methods"))
         w(htmllib.P())
-        w(htmllib.A(htmllib.IMG(height=500,
-            src=result_files[1]), href=result_files[1]))
-        w(htmllib.P())
-        name = 'Figure 1: In this heatmap, each row contains a signature and each column \
-        contains a sample from your data set.'
-        w(htmllib.B(name))
+        filenames = os.listdir(result_files[1])
+        c=0
+        for filename in filenames:
+            c=c+1
+            w(htmllib.A(htmllib.IMG(height=500,
+                src=os.path.join(result_files[1],filename)), href=os.path.join(result_files[1],filename)))
+            w(htmllib.P())
+            name = 'Figure '+ str(c) + ': Geneset Plot.'
+            w(htmllib.B(name))
         
         w(htmllib.HR())
-        w(htmllib.A("<methods_clustering>",name="methods_clustering"))
+        w(htmllib.A("<methods>",name="methods"))
         w(htmllib.CENTER(htmllib.H2("Methods")))
-        w(htmllib.H3("1.Cluster File"))
+        w(htmllib.H3("1.Result File"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
         for i in range(len(pipelines[0])):

@@ -1,31 +1,42 @@
-#center_genes.py
+#analyze_geneset.py
 import os
 import subprocess
-from Betsy import module_utils
+from Betsy import module_utils,config
 
 
 def run(parameters, objects, pipeline):
-    """mean or median"""
-    CLUSTER_BIN = 'cluster'
-    center_alg = {'mean': 'a', 'median': 'm'}
-    try:
-        center_parameter = center_alg[parameters['gene_center']]
-    except:
-        raise ValueError("Centering parameter is not recognized")
+    """analyze geneset"""
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
-    process = subprocess.Popen([CLUSTER_BIN, '-f', single_object.identifier,
-                                '-cg', center_parameter, '-u', outfile],
-                               shell=False,
+    score_geneset_path = config.SCORE_GENE
+    score_geneset_BIN = module_utils.which(score_geneset_path)
+    assert score_geneset_BIN,'cannot find the %s' %score_geneset_path
+    geneset_object = module_utils.find_object(
+        parameters, objects, 'geneset_file', 'contents')
+    assert os.path.exists(single_object.identifier), (
+        'the geneset_file %s for analyze_geneset does not exist'
+        % single_object.identifier)
+    geneset = parameters['geneset']
+    allgenes = parameters['allgenes']
+    automatch = parameters['automatch']
+    command = ['python', score_geneset_BIN, '-o', outfile,
+               '--geneset_file', geneset_object.identifier,
+               single_object.identifier]
+    if allgenes == 'yes_allgenes':
+        command.append('--all')
+    if automatch == 'yes_automatch':
+        command.append('--automatch')
+    genesets = geneset.split('/')
+    for gene in genesets:
+        command.extend(['-g', gene])
+    process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-    outputfile = outfile + '.nrm'
-    os.rename(outputfile, outfile)
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for centering fails' % outfile)
+        'the output file %s for analyze_geneset fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters, single_object, pipeline, outfile)
@@ -39,16 +50,16 @@ def make_unique_hash(identifier, pipeline, parameters):
 def get_outfile(parameters, objects, pipeline):
     single_object = get_identifier(parameters, objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'signal_centering_' + original_file + '.pcl'
+    filename = 'score_geneset_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
 def get_identifier(parameters, objects):
     single_object = module_utils.find_object(
-        parameters, objects, 'signal_file', 'contents,preprocess')
+        parameters, objects, 'signal_file', 'contents')
     assert os.path.exists(single_object.identifier), (
-        'the input file %s for centering does not exist'
+        'the input file %s for analyze_geneset does not exist'
         % single_object.identifier)
     return single_object
 
@@ -57,5 +68,6 @@ def get_newobjects(parameters, objects, pipeline):
     outfile = get_outfile(parameters, objects, pipeline)
     single_object = get_identifier(parameters, objects)
     new_objects = module_utils.get_newobjects(
-        outfile, 'signal_file', parameters, objects, single_object)
+        outfile, 'geneset_analysis', parameters, objects, single_object)
     return new_objects
+

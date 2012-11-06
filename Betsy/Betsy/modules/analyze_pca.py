@@ -1,36 +1,26 @@
-#plot_pca.py
+#analyze_pca.py
 import os
-from Betsy import module_utils
-import shutil
-from Betsy import read_label_file
+from genomicode import pcalib
 import arrayio
-import matplotlib.cm as cm
-
+from Betsy import module_utils
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    label_file = module_utils.find_object(
-        parameters,objects,'class_label_file','contents')
-    a,b,c = read_label_file.read(label_file.identifier)
-    if len(a)>1:
-        colors = []
-        for i in range(5):
-            colors.append(cm.hot(i/5.0,1))
-            colors.append(cm.autumn(i/5.0,i))
-            colors.append(cm.cool(i/5.0,i))
-            colors.append(cm.jet(i/5.0,i))
-            colors.append(cm.spring(i/5.0,i))
-            colors.append(cm.prism(i/5.0,i))
-            colors.append(cm.summer(i/5.0,i))
-            colors.append(cm.winter(i/5.0,i))
-        opts = [colors[int(i)] for i in b]
-        legend = [c[int(i)] for i in b]
-        module_utils.plot_pca(single_object.identifier,outfile,opts,legend)
+    M = arrayio.read(single_object.identifier)
+    X = M._X
+    if 'pca_gene_num' in parameters.keys():
+        N = int(parameters['pca_gene_num'])
     else:
-        module_utils.plot_pca(single_object.identifier,outfile)
+        N = 500
+    N = min(N,M.nrow())
+    index = pcalib.select_genes_var(X,N)
+    M_new = M.matrix(index,None)
+    f = file(outfile,'w')
+    arrayio.tab_delimited_format.write(M_new,f)
+    f.close()
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for pca_plot fails'%outfile)
+        'the output file %s for analyze_pca fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
                                              single_object,pipeline,outfile)
@@ -43,15 +33,15 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = parameters['objecttype']+'_'+original_file+'.png'
+    filename = parameters['objecttype']+'_pca_'+original_file+'.tdf'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'pca_matrix','contents,preprocess')
+        parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for pca_plot does not exist'
+        'the input file %s for analyze_pca does not exist'
         %single_object.identifier)
     return single_object
 
@@ -59,8 +49,5 @@ def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
-        outfile,'pca_plot',parameters,objects,single_object)
+        outfile,'pca_matrix',parameters,objects,single_object)
     return new_objects
-
-
-

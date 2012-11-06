@@ -23,6 +23,7 @@ def run(parameters,objects,pipeline):
         if not "Loading required package: Biobase" in error_message:
             raise ValueError(error_message)
     outputfiles = os.listdir(os.getcwd())
+    outputfile = None
     for i in outputfiles:
         if i.endswith('.rma'):
             outputfile = i

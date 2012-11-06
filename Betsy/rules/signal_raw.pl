@@ -13,7 +13,7 @@
 :- dynamic class_label_file/2.
 :- dynamic gene_list_file/2.
 :- dynamic rename_list_file/2.
-
+:- dynamic geneset_file/2.
 /*-------------------------------------------------------------------------*/
 % Input interface
 % given a input_signal_file,generate signal_file that will have a full length of parameters

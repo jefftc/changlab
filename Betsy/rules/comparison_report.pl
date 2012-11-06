@@ -86,10 +86,10 @@ make_cluster_report(Parameters,Modules):-
     % Input1: cluster_file 
     convert_cluster_parameters(Parameters,NewParameters1),
     cluster_file(NewParameters1,Past_Modules1),
-    append(NewParameters1,[filetype,cluster_file],NewParameters2),
-    % Module: annot_gene_metadata
+    append(NewParameters1,[filetype,cluster_file,annotate_type,all],NewParameters2),
+    % Module: annot_probe
     % Output parameters:the full length parameters of cluster_file and [filetype,cluster_file]
-    append(Past_Modules1,[annotate_gene_metadata,NewParameters2],Past_Modules2),
+    append(Past_Modules1,[annotate_probe,NewParameters2],Past_Modules2),
 
     % Input2: cluster_heatmap
     get_options(Parameters,[hm_width,hm_height,color],[],Options),
@@ -205,10 +205,10 @@ make_normalize_report(Parameters,Modules):-
     % Input1: signal_file
     convert_parameters_file(Parameters,NewParameters),
     signal_file(NewParameters,Past_Modules1),
-    % Module: annot_gene_metadata
+    % Module: annot_probe
     % Output parameters:full length parameters of signal_file and [filetype,signal_file]
-    append(NewParameters,[filetype,signal_file],NewParameters0),
-    append(Past_Modules1,[annotate_gene_metadata,NewParameters0],Modules1),
+    append(NewParameters,[filetype,signal_file,annotate_type,all],NewParameters0),
+    append(Past_Modules1,[annotate_probe,NewParameters0],Modules1),
     % Input2: pca_plot_in
     get_options(Parameters,[pca_gene_num],[],Options),
     append(NewParameters,Options,NewParameters1),
@@ -233,9 +233,11 @@ make_normalize_report(Parameters,Modules):-
     control_file(NewParameters7,Modules6),
     % Input7: biotin_plot
     biotin_plot(NewParameters,Modules7),
-    % Input8: hyb_bar_plot
-    hyb_bar_plot(NewParameters,Modules8),
-    Modules=[Modules1,Modules2,Modules3,Modules4,Modules5,Modules7,Modules8,Modules6];
+    % Input8: housekeeping_plot
+    housekeeping_plot(NewParameters,Modules8),
+    % Input9: hyb_bar_plot
+    hyb_bar_plot(NewParameters,Modules9),
+    Modules=[Modules1,Modules2,Modules3,Modules4,Modules5,Modules7,Modules8,Modules9,Modules6];
     not(member(Preprocess,[illumina])),
     control_plot(NewParameters,Modules9),
     Modules=[Modules1,Modules2,Modules3,Modules4,Modules5,Modules9]).
@@ -243,3 +245,11 @@ make_normalize_report(Parameters,Modules):-
 /*-------------------------------------------------------------------*/
 make_heatmap_report(Parameters,Modules):-
     cluster_heatmap(Parameters,Modules).
+
+/*-------------------------------------------------------------------*/
+make_geneset_report(Parameters,Modules):-
+    % Input1:geneset_analysis
+    geneset_analysis(Parameters,Modules1),
+    % Input2:geneset_plot
+    geneset_plot(Parameters,Modules2),
+    Modules=[Modules1,Modules2].

@@ -3,7 +3,7 @@
 import os
 import sys
 import argparse
-from Betsy import module_utils
+from Betsy import module_utils,config
 from Betsy import rule_engine
 
 def main():

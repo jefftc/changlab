@@ -11,6 +11,8 @@ barplot
 import numpy
 import pylab
 from matplotlib import axis
+import matplotlib.pyplot as plt
+
 
 def boxplot(*args,**keywds):
     """Return the pylab figure object.
@@ -174,6 +176,7 @@ def scatter(*args,**keywds):
     if title:
         pylab.title(title)
     pylab.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     if labels:
         txt_height = 0.08*(pylab.ylim()[1] - pylab.ylim()[0])
         txt_width = 0.04*(pylab.xlim()[1] - pylab.xlim()[0])

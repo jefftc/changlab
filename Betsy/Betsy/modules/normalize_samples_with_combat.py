@@ -16,7 +16,8 @@ def run(parameters,objects,pipeline):
     combat_BIN = module_utils.which(combat_path)
     assert combat_BIN,'cannot find the %s' %combat_path
 
-    command = ['python', combat_BIN,'-f',single_object.identifier,'-o',outfile,'-label',label_file.identifier]
+    command = ['python', combat_BIN,'-f',single_object.identifier,'-o',
+               outfile,'-label',label_file.identifier]
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)

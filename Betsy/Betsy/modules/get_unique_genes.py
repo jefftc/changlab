@@ -1,9 +1,10 @@
 #get_unique_genes.py
 import os
 from Betsy import module_utils
-from genomicode import jmath
+from genomicode import jmath,arrayplatformlib,arrayannot
 import arrayio
 import re
+
 
 def run(parameters,objects,pipeline):
     """get unique genes"""
@@ -26,9 +27,11 @@ def run(parameters,objects,pipeline):
         parameters,single_object,pipeline,outfile)
     return new_objects
 
+
 def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(
         identifier,pipeline,parameters)
+
 
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
@@ -36,6 +39,7 @@ def get_outfile(parameters,objects,pipeline):
     filename = 'signal_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
+
 
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
@@ -45,12 +49,14 @@ def get_identifier(parameters,objects):
         %single_object.identifier)
     return single_object
 
+
 def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
         outfile,'signal_file',parameters,objects,single_object)
     return new_objects
+
 
 def get_duplicated_genes(M):
     ProbeId,GeneID = guess_gene_header(M)
@@ -68,6 +74,7 @@ def get_duplicated_genes(M):
             name2indexes[gene_names[i]].append(i)
     return name2indexes
 
+
 def pick_first_one(M):
     name2indexes = get_duplicated_genes(M)
     ProbeId,GeneID = guess_gene_header(M)
@@ -83,7 +90,8 @@ def pick_first_one(M):
     all_index = [i[0] for i in all_index if len(i)==1]
     M_new = M.matrix(all_index,None)
     return M_new
-    
+
+
 def get_high_variance(M):
     name2indexes = get_duplicated_genes(M)
     for key in name2indexes.keys():
@@ -98,6 +106,7 @@ def get_high_variance(M):
     M_new = M.matrix(all_index,None)
     return M_new
 
+
 def average_genes(M):
     name2indexes = get_duplicated_genes(M)
     for key in name2indexes.keys():
@@ -106,7 +115,6 @@ def average_genes(M):
             new = jmath.mean_matrix(newmatrix,byrow=0)
             M._X[name2indexes[key][0]]=new
             name2indexes[key]=[name2indexes[key][0]]
-            
     all_index = name2indexes.values()
     all_index.sort()
     all_index = [i[0] for i in all_index if len(i)==1]
@@ -114,40 +122,25 @@ def average_genes(M):
     return M_new
 
 def guess_gene_header(M):
-    headers = M._row_order
-    if headers == ['Probe.Set.ID','NAME']:# the signal file header when running rma or mas5 preprocess
-        ProbeID = 'Probe.Set.ID'
-        GeneID = 'NAME'
-        return ProbeID,GeneID
-    elif headers == ['NAME','Description']: #the control file header when runnning illumina 
-        ProbeID = 'NAME'
-        GeneID = 'Description'
-        return ProbeID,GeneID
-    elif headers == ['GeneID','NAME']: #the signal file header when running illumina
-        ProbeID = 'GeneID'
-        GeneID ='NAME'
-        return ProbeID,GeneID
-    #try to guess the header
-    for header in headers: 
-        if header in ['Gene ID','Gene.ID','GeneID',
-                          'GeneSymbol','Gene Symbol','Gene.Symbol']:
-            GeneID = header
-            ProbeID = headers[0]
-            return ProbeID,GeneID
-    if len(headers) == 2:
-        newlist1 = list(set(M._row_names[headers[0]]))
-        newlist2 = list(set(M._row_names[headers[1]]))
-        #the first one is unique and second one is not unique
-        if len(newlist1) == M.nrow() and len(newlist2) < M.nrow(): 
-            ProbeID = headers[0]
-            GeneID = headers[1]
-            return ProbeID,GeneID
-        #the first second is unique and first one is not unique
-        elif len(newlist2) == M.nrow() and len(newlist1) < M.nrow():
-            ProbeID = headers[1]
-            GeneID = headers[0]
-            return ProbeID,GeneID
-        else:
-            raise AssertionError, 'we cannot guess the gene header'
-    else:   
-        raise AssertionError, 'we cannot guess the gene header'
+    all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
+    ids = M._row_order
+    probe_header = all_platforms[0][0]
+    probe_id = M._row_names[probe_header]
+    annotate_header = 'Gene_ID'
+    value_list = arrayannot.annotate_probes(probe_id, annotate_header)
+    value_list = [i.lower() for i in value_list]
+    new_ids = ids[:]
+    new_ids.remove(probe_header)
+    column=[]
+    for id in new_ids:
+        flag = True
+        gene_list = M._row_names[id]
+        for gene in gene_list:
+            if gene.lower() not in value_list:
+                flag = False
+                break
+        if flag:
+            ProbeID = probe_header
+            GeneID = id
+            return ProbeID, GeneID
+    assert flag,'we cannot guess the header of this file'

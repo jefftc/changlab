@@ -212,4 +212,15 @@ When given a signal_file and class_label_file, try five different batch_effect r
      --input 'class_label_file:<path of the file>'
      --parameters 'has_missing_value:zero_fill'
      --parameters 'num_factors:1'
+=============================================================================
+Geneset Analysis Usage
+Example:
+When given a signal_file and a gene set file, try do geneset score analysis and plot the result.
 
+run_protocol.py \
+--protocol 'geneset_analysis' \
+--input 'input_signal_file:se2fplate6_48.illu.gz' \
+--input 'geneset_file:genesets.gmt' \
+--parameters 'has_missing_value:zero_fill' \
+--parameters 'preprocess:unknown_preprocess' \
+--parameters "geneset:'E2F1n_affy_150_UP,E2F1n_affy_150_DOWN'"

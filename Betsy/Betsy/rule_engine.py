@@ -122,7 +122,8 @@ def run_pipeline(pipeline, objects):
     outfile_list = []
     try:
         output_path = config.OUTPUTPATH
-        assert os.path.exists(output_path), 'the output_path %s does not exist' % output_path
+        assert os.path.exists(output_path), (
+            'the output_path %s does not exist' % output_path)
         for  i in range(len(pipeline)):
             pipeline_sequence = [analysis.name for
                                  analysis in pipeline[0:i + 1]]
@@ -130,7 +131,7 @@ def run_pipeline(pipeline, objects):
             module_name = analysis.name
             print str(i + 1) + '.' + module_name
             module = __import__('modules.' + module_name, globals(),
-                                locals(),[module_name],-1)
+                                locals(), [module_name], -1)
             single_object = module.get_identifier(analysis.parameters, objects)
             hash_string = module.make_unique_hash(
                 single_object.identifier, pipeline_sequence,
@@ -189,6 +190,8 @@ def make_pipelines(pl_output, pl_inputs):
         swipl.source_code(p, 'comparison_report.pl')
         swipl.source_code(p, 'gather.pl')
         swipl.source_code(p, 'david.pl')
+        swipl.source_code(p, 'geneset_analysis.pl')
+        swipl.source_code(p, 'pca_analysis.pl')
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input + ').'
             swipl.send_query(p, more_command)
@@ -205,5 +208,3 @@ def make_pipelines(pl_output, pl_inputs):
         pipeline = parse_text_pipeline(line)
         pipelines.extend(pipeline)
     return pipelines
-
-

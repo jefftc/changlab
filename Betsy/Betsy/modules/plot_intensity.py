@@ -11,7 +11,8 @@ def run(parameters,objects,pipeline):
     M = arrayio.read(single_object.identifier)
     data = jmath.transpose(M._X)
     tickname=M._col_names['_SAMPLE_NAME']
-    fig = mplgraph.boxplot(data,xlabel='sample_name',ylabel='signal',title='signal_intensity',box_label=tickname)
+    fig = mplgraph.boxplot(data,xlabel='Sample Name',ylabel='Signal',
+                           title='Signal Intensity',box_label=tickname)
     fig.savefig(outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for plot intensity fails'%outfile)

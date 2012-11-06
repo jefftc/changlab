@@ -1,5 +1,4 @@
 #plot_prediction_pca.py
-
 import os
 from Betsy import module_utils
 import shutil
@@ -15,18 +14,6 @@ def run(parameters,objects,pipeline):
     assert os.path.exists(legend_object.identifier),(
         'the prediction file %s for plot_prediction_pca does not exist'
         %legend_object.identifier)
-    M = arrayio.read(single_object.identifier)
-    X = M._X
-    if 'pca_gene_num' in parameters.keys():
-        N = int(parameters['pca_gene_num'])
-    else:
-        N = 500
-    index = pcalib.select_genes_var(X,N)
-    M_new = M.matrix(index,None)
-    tmp = 'tmp'
-    f = file(tmp,'w')
-    arrayio.tab_delimited_format.write(M_new,f)
-    f.close()
     result_data = genesetlib.read_tdf(legend_object.identifier,
                                       preserve_spaces=True,allow_duplicates=True)
     for i in result_data:
@@ -44,9 +31,7 @@ def run(parameters,objects,pipeline):
         c = colors[index]
         for i in legend_dict[key]:
             color[i]=c
-    module_utils.plot_pca(tmp,outfile,color,legend)
-    
-    os.remove(tmp)
+    module_utils.plot_pca(single_object.identifier,outfile,color,legend)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for plot_prediction_pca fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
@@ -58,15 +43,13 @@ def make_unique_hash(identifier,pipeline,parameters):
         identifier,pipeline,parameters)
 
 def get_outfile(parameters,objects,pipeline):
-    #single_object = get_identifier(parameters,objects)
-    #original_file = module_utils.get_inputid(single_object.identifier)
     filename = 'prediction_pca_plot.png'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
     
 def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
-        parameters,objects,'signal_file','testcontents,preprocess')
+        parameters,objects,'pca_matrix','testcontents,preprocess')
     assert os.path.exists(single_object.identifier),(
         'the input file %s for plot_prediction_pca does not exist'
         %single_object.identifier)

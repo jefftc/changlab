@@ -92,24 +92,29 @@ def run(outfiles,parameters,pipelines):
         name = 'Figure 3: This plot shows the values of ACTB and TUBB genes'
         w(htmllib.B(name))
         w(htmllib.P())
-        if len(result_files)==8:
-            w(htmllib.A(htmllib.IMG(height=1000,
+        if len(result_files)==9:
+            w(htmllib.A(htmllib.IMG(height=500,
                 src=result_files[5]), href=result_files[5]))
-            name = 'Figure 4: This plot shows the value of biotin and housekeeping control genes'
+            name = 'Figure 4: This plot shows the value of biotin control genes'
+            w(htmllib.P())
+            w(htmllib.B(name))
+            w(htmllib.P())
+            w(htmllib.A(htmllib.IMG(height=500,
+                src=result_files[6]), href=result_files[6]))
+            name = 'Figure 5: This plot shows the value of  housekeeping control genes'
+            
         else:
             w(htmllib.A(htmllib.IMG(height=500,
                 src=result_files[5]), href=result_files[5]))
             name = 'Figure 4: This plot shows the average values control genes'
         w(htmllib.P())
-        
-        
         w(htmllib.B(name))
-        if len(result_files)==8:
+        if len(result_files)==9:
             w(htmllib.P())
             w(htmllib.A(htmllib.IMG(height=500,
-                src=result_files[6]), href=result_files[6]))
+                src=result_files[7]), href=result_files[7]))
             w(htmllib.P())
-            name = 'Figure 5: This barplot shows the disctribution control values'
+            name = 'Figure 6: This barplot shows the disctribution control values'
             w(htmllib.B(name))
             w(htmllib.P())
            
@@ -146,12 +151,12 @@ def run(outfiles,parameters,pipelines):
         w(htmllib.H3("4. Control signal"))
         w('I made two plots that show the values of control signal.')
         w(htmllib.P())
-        if len(result_files)==8:
+        if len(result_files)==9:
             w(htmllib.H3("5. Control signal"))
             w('I made a bar plot that shows the hybridization controls.')
             w(htmllib.P())
             w('The control file is ')
-            w(htmllib.A(result_files[7], result_files[7]))
+            w(htmllib.A(result_files[8], result_files[8]))
             w(htmllib.P())
         # Write out the footer.
         time_str = parselib.pretty_date(time.time())

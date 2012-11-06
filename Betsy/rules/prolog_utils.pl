@@ -365,10 +365,6 @@ convert_parameters_file(Parameters,NewParameters):-
     not(Platform = unknown_platform),
     member(Duplicate_Probe,[high_var_probe,closest_probe,yes_duplicate_probe])),
     append(NewParameters5,[duplicate_probe,Duplicate_Probe],NewParameters6),
-    
-    /*get_value(Parameters,missing_probe,yes_missing_probe,Missing_Probe),
-    member(Missing_Probe,[no_missing_probe,yes_missing_probe]),
-    append(NewParameters5,[missing_probe,Missing_Probe],NewParameters6),*/
 
     get_value_variable(Parameters,duplicate_data,Duplicate_Data),
     (Platform = unknown_platform,
@@ -379,8 +375,15 @@ convert_parameters_file(Parameters,NewParameters):-
 
     get_value(Parameters,num_features,0,Num_features),
     not(atom(Num_features)),
-    append(NewParameters7,[num_features,Num_features],NewParameters).
+    append(NewParameters7,[num_features,Num_features],NewParameters8),
     
+    get_value(Parameters,has_annotation_gene_id,no_gene_id,Has_annotation_gene_id),
+    member(Has_annotation_gene_id,[no_gene_id,yes_gene_id]),
+    append(NewParameters8,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters).
+
+    /*get_value(Parameters,has_annotations,no_annotations,Has_annotations),
+    member(Has_annotations,[no_annotations,yes_annotations]),
+    append(NewParameters9,[has_annotations,Has_annotations],NewParameters).*/
 
  /*-------------------------------------------------------------------------*/
 %get the parameters list for signal_file
@@ -412,7 +415,14 @@ get_desire_parameters_file(Parameters,NewParameters):-
 
     get_value(Parameters,num_features,0,Num_features),
     not(atom(Num_features)),
-    append(NewParameters6,[num_features,Num_features],NewParameters).
+    append(NewParameters6,[num_features,Num_features],NewParameters7),
+    
+    get_value(Parameters,has_annotation_gene_id,no_gene_id,Has_annotation_gene_id),
+    append(NewParameters7,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters).
+
+    /*get_value(Parameters,has_annotations,no_annotations,Has_annotations),
+    append(NewParameters8,[has_annotations,Has_annotations],NewParameters).*/
+    
  /*-------------------------------------------------------------------------*/
 % convert the Parameters to a full length Parameters for svm_predictions, for the parameter which
 % is not specified, will assign a variable,except svm_kernel,
@@ -485,7 +495,7 @@ get_length(A,B):-
     A=n_raw, B=18;
     A=n_norm1,B=28;
     A=n_norm2,B=32;
-    A=n_file,B=44.
+    A=n_file,B=46.
 /*-------------------------------------------------------------------------*/ 
 % find the Keys in Parameters,return the key_value pair in Options, S is the initial output  
 

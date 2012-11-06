@@ -20,7 +20,7 @@ def run(parameters,objects,pipeline):
                         M._X[i][j] = 1
                     M._X[i][j]=math.log(float(M._X[i][j]),2)
         f = file(outfile,'w')
-        M_c = arrayio.convert(M,to_format=arrayio.pcl_format)
+        M_c = arrayio.convert(M,to_format=arrayio.tab_delimited_format)
         arrayio.tab_delimited_format.write(M_c,f)
         f.close()
     assert module_utils.exists_nz(outfile),(

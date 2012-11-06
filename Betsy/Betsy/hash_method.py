@@ -1,6 +1,8 @@
 #hash_method.py
 import os
-def hash_parameters(inputid,pipeline,**parameters):
+
+
+def hash_parameters(inputid, pipeline, **parameters):
     """given a file parameters,generate a hash string"""
     from hashlib import md5
     hashstring = inputid + ' '.join(pipeline)
@@ -11,9 +13,10 @@ def hash_parameters(inputid,pipeline,**parameters):
     hash_result = hash.hexdigest()
     return hash_result
 
+
 def get_file_checksum(identifier):
     from hashlib import md5, sha1
-    chunk_size = 1048576 # 1024 B * 1024 B = 1048576 B = 1 MB
+    chunk_size = 1048576  # 1024 B * 1024 B = 1048576 B = 1 MB
     file_md5_checksum = md5()
     file_sha1_checksum = sha1()
     with open(identifier, "rb") as f:
@@ -32,13 +35,13 @@ def get_file_checksum(identifier):
 
 def get_input_checksum(identifier):
     from hashlib import md5
-    chunk_size = 1048576 # 1024 B * 1024 B = 1048576 B = 1 MB
+    chunk_size = 1048576  # 1024 B * 1024 B = 1048576 B = 1 MB
     file_md5_checksum = md5()
     if os.path.isdir(identifier):
         files = os.listdir(identifier)
         byte_size = 0
         for filename in files:
-            with open(os.path.join(identifier,filename),"rb") as f:
+            with open(os.path.join(identifier, filename), "rb") as f:
                 byte = f.read(chunk_size)
                 byte_size += len(byte)
                 while byte:
@@ -56,4 +59,3 @@ def get_input_checksum(identifier):
     byte_size = str(byte_size)
     md5_checksum = file_md5_checksum.hexdigest()
     return md5_checksum
-

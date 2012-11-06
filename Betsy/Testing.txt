@@ -460,5 +460,16 @@ run_rule.py --plin 'idat_files([contents,[a],version,illumina],[])' --id '699101
 command:
 run_rule.py --plin 'input_signal_file([contents,[a]],[])' --id 'all_aml_train.res' --plout "signal_file([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,unique_genes,no_unique_genes,num_features,100],A)"
 
+--------------------------------------------------
+69. Test classify_with_random_forest module
+run_rule.py --plin 'input_signal_file([contents,[train],status,given],[])' --id 'all_aml_train.res' --plin 'input_signal_file([contents,[test],status,given],[])' --id 'all_aml_test.res' --plin 'class_label_file([contents,[train],status,given],[])' --id 'all_aml_train.cls' --plin 'class_label_file([contents,[test],status,given],[])' --id 'all_aml_test.cls'  --plout 'randomforest([format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,unique_genes,no_unique_genes,num_features,50,traincontents,[train],testcontents,[test]],A)'
 
 
+69. Test classify_with_random_forest module
+run_rule.py --plin 'input_signal_file([contents,[train],status,given],[])' --id 'all_aml_train.res' --plin 'input_signal_file([contents,[test],status,given],[])' --id 'all_aml_test.res' --plin 'class_label_file([contents,[train],status,given],[])' --id 'all_aml_train.cls' --plin 'class_label_file([contents,[test],status,given],[])' --id 'all_aml_test.cls'  --plout 'prediction_plot([format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,t_test_p,unique_genes,no_unique_genes,num_features,50,traincontents,[train],testcontents,[test],class_plot,randomforest],A)'
+
+
+70. Test analyze_geneset module
+/home/xchen/chencode/Betsy/scripts/run_rule.py --plin 'input_signal_file([contents,[a]],[])' --id 'se2fplate6_48.illu.gz' --plin 'geneset_file([contents,[a]],[])' --id 'genesets.gmt' --plout "geneset_analysis([contents,[a],is_logged,logged,dwd,no_dwd,quantile,yes_quantile,shiftscale,no_shiftscale,bfrm,no_bfrm,combat,no_combat,preprocess,unknown_preprocess,has_missing_value,zero_fill,filter,0,unique_genes,high_var,gene_center,mean,gene_normalize,variance,format,tdf,predataset,no_predataset,rename_sample,no_rename,gene_order,no_order,geneset,'E2F1n_affy_150_UP',has_annotation_gene_id,yes_gene_id],A)" --dry_run
+
+ /home/xchen/chencode/Betsy/scripts/run_protocol.py --protocol 'normalize_file' --input 'idat_files:6991010018' --parameters 'preprocess:illumina' --parameters 'has_missing_value:zero_fill'
