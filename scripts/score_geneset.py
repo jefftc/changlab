@@ -48,8 +48,8 @@ def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
     assert len(sample_names) == len(scores)
     
     results = {}
-    for (sample, score) in zip(sample_names, scores):
-        key = matrix_name, gs_name, sample
+    for i, (sample, score) in enumerate(zip(sample_names, scores)):
+        key = matrix_name, gs_name, i, sample
         #assert key not in results, "Duplicate: %s" % str(key)
         assert key not in results, "Duplicate: %s" % sample
         results[key] = score
@@ -221,7 +221,7 @@ def main():
     lock = manager.Lock()
     pool = multiprocessing.Pool(args.num_procs)
 
-    scores = {}   # (matrix, geneset, sample) -> score
+    scores = {}   # (matrix, geneset, index, sample) -> score
     results = []  # AsyncResults
     for batch in batched_jobs:
         fn_keywds = {}
@@ -239,7 +239,7 @@ def main():
         x = x.get()
         scores.update(x)
         
-    x = [(x[0], x[2]) for x in scores]
+    x = [(x[0], x[2], x[3]) for x in scores]
     x = sorted({}.fromkeys(x))
     all_matrix_samples = x
     x = [x[1] for x in scores]
@@ -250,8 +250,8 @@ def main():
     header = ["FILE", "SAMPLE"] + all_genesets
     print >>outhandle, "\t".join(header)
     for x in all_matrix_samples:
-        matrix, sample = x
-        x = [scores[(matrix, x, sample)] for x in all_genesets]
+        matrix, index, sample = x
+        x = [scores[(matrix, x, index, sample)] for x in all_genesets]
         x = [matrix, sample] + x
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))
