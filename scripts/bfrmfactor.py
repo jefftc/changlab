@@ -348,7 +348,7 @@ def create_control_vars(MATRIX, num_control_vars):
 
     # Select the affymetrix control variables.
     ids = MATRIX.row_names(affx_name)
-    I = [i for (i, id) in enumerate(ids) if bfrm.is_affx(id)]
+    I = [i for (i, id_) in enumerate(ids) if bfrm.is_affx(id_)]
     assert I
     AFFX = MATRIX.matrix(I, None)
     max_control_vars = min(AFFX.nrow(), AFFX.ncol())

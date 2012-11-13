@@ -15,6 +15,7 @@
 # find_col_annotation
 # relabel_col_ids
 # remove_duplicate_cols
+# rename_duplicate_cols
 # remove_col_ids
 #
 # find_row_indexes
@@ -444,6 +445,31 @@ def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
     x = MATRIX.matrix(None, I)
     return x
 
+
+def rename_duplicate_cols(MATRIX, rename_duplicate_cols):
+    import arrayio
+
+    if not rename_duplicate_cols:
+        return MATRIX
+    headers = MATRIX.col_names(arrayio.COL_ID)
+    name2I = {}  # name -> list of indexes
+    for i, name in enumerate(headers):
+        if name not in name2I:
+            name2I[name] = []
+        name2I[name].append(i)
+
+    nodup = headers[:]
+    for (name, I) in name2I.iteritems():
+        if len(I) < 2:
+            continue
+        for i in range(len(I)):
+            nodup[I[i]] = "%s (%d)" % (name, i+1)
+
+    MATRIX = MATRIX.matrix()  # don't change the original
+    x = MATRIX._resolve_synonym(
+        arrayio.COL_ID, MATRIX.col_names, MATRIX._synonyms)
+    MATRIX._col_names[x] = nodup
+    return MATRIX
 
 def remove_col_ids(MATRIX, remove_col_ids):
     import arrayio
@@ -1206,6 +1232,10 @@ def main():
     group.add_argument(
         "--filter_duplicate_cols", default=False, action="store_true",
         help="If a column is found multiple times, keep only the first one.")
+    group.add_argument(
+        "--rename_duplicate_cols", default=False, action="store_true",
+        help="If multiple columns have the same header, make their names "
+        "unique.")
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
@@ -1339,6 +1369,9 @@ def main():
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.filter_duplicate_cols)
+
+    # Rename duplicate columns.
+    MATRIX = rename_duplicate_cols(MATRIX, args.rename_duplicate_cols)
 
     # Align to the align_file.  Do this as close to the end as
     # possible, after everything else removed and added.
