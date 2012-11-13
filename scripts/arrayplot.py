@@ -674,6 +674,7 @@ def make_layout(
         # to match up the genes with the clusters.
         # Also should add dendrogram if the clusters were supplied by
         # the user in a gtr file.
+        #print "Making gd_layout."
         assert gene_tree_scale > 0
         assert gene_tree_thickness > 0
         width, height = boxwidth, boxheight
@@ -688,6 +689,7 @@ def make_layout(
     #   cluster_alg == "hierarchical" and MATRIX.nrow() > 1):
     if(cluster_data.array_tree and array_tree_scale > 0 and
        cluster_alg == "hierarchical" and MATRIX.nrow() > 1):
+        #print "Making ad_layout."
         assert array_tree_scale > 0
         assert array_tree_thickness > 0
         width, height = boxwidth, boxheight
@@ -1561,12 +1563,17 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
         
 
 def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
+    import arrayio
     from genomicode import clusterio
 
     if dim == "GENE":
-        ids = MATRIX.row_names("GID")
+        n = "GID"  # Use the gene ID if available.
+        assert n in MATRIX.row_names(), "Gene dendrogram not available."
+        ids = MATRIX.row_names(n)
     elif dim == "ARRAY":
-        ids = MATRIX.col_names("AID")
+        n = "AID"
+        assert n in MATRIX.col_names(), "Array dendrogram not available."
+        ids = MATRIX.col_names(n)
     else:
         raise AssertionError, "Unknown dim: %s" % dim
 

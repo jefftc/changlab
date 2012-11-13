@@ -1243,7 +1243,8 @@ def main():
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive).")
     group.add_argument(
         "--select_row_ids", default=[], action="append",
-        help="Comma-separate list of IDs to include.")
+        help="Comma-separated list of IDs (e.g. probes, gene names) "
+        "to include.")
     group.add_argument(
         "--select_row_annotation", default=None,
         help="Include only the rows where the annotation contains a "
