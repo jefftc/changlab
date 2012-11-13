@@ -1,4 +1,4 @@
-#rank_gene_by_class_neighbors.py
+#rank_genes_by_class_neighbors.py
 from Betsy import module_utils
 import shutil
 import os
@@ -114,7 +114,7 @@ def run(parameters,objects,pipeline):
     f.write('\t'.join(gene_list))
     f.close()
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for class_neighbors fails' %outfile)
+        'the output file %s for rank_genes_by_class_neighbors fails' %outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -128,7 +128,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for class_neighbors does not exist'
+        'the input file %s for rank_genes_by_class_neighbors does not exist'
         %single_object.identifier)
     return single_object
 

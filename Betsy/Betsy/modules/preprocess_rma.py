@@ -1,4 +1,4 @@
-#normalize_with_rma.py
+#preprocess_rma.py
 import os
 from Betsy import module_utils,config
 import subprocess
@@ -29,7 +29,7 @@ def run(parameters,objects,pipeline):
             outputfile = i
     os.rename(outputfile,outfile)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for normalize_with_rma fails'%outfile)
+        'the output file %s for preprocess_rma fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -49,7 +49,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'cel_files','contents',['v3_4'])
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for normalize_with_rma does not exist'
+        'the input file %s for preprocess_rma does not exist'
         %single_object.identifier)
     return single_object
 

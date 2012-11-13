@@ -1,4 +1,4 @@
-#convert_platform.py
+#add_crossplatform_probeid.py
 
 import os
 import shutil
@@ -31,7 +31,7 @@ def run(parameters, objects, pipeline):
         if error_message:
             raise ValueError(error_message)
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for convert_platform fails' % outfile)
+        'the output file %s for add_crossplatform_probeid fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(parameters, single_object,
                                              pipeline, outfile)
@@ -56,7 +56,7 @@ def get_identifier(parameters, objects):
     single_object = module_utils.find_object(
         parameters, objects, 'signal_file', 'contents,preprocess')
     assert os.path.exists(single_object.identifier), (
-        'the input file %s for convert_platform'
+        'the input file %s for add_crossplatform_probeid'
         % single_object.identifier)
     return single_object
 

@@ -1,4 +1,4 @@
-#plot_prediction_pca.py
+#plot_sample_pca_with_predictions.py
 import os
 from Betsy import module_utils
 import shutil
@@ -12,7 +12,7 @@ def run(parameters,objects,pipeline):
     legend_object = module_utils.find_object(
         parameters,objects,'classification_file','traincontents')
     assert os.path.exists(legend_object.identifier),(
-        'the prediction file %s for plot_prediction_pca does not exist'
+        'the prediction file %s for plot_sample_pca_with_predictions does not exist'
         %legend_object.identifier)
     result_data = genesetlib.read_tdf(legend_object.identifier,
                                       preserve_spaces=True,allow_duplicates=True)
@@ -33,7 +33,7 @@ def run(parameters,objects,pipeline):
             color[i]=c
     module_utils.plot_pca(single_object.identifier,outfile,color,legend)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for plot_prediction_pca fails'%outfile)
+        'the output file %s for plot_sample_pca_with_predictions fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -51,7 +51,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'pca_matrix','testcontents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for plot_prediction_pca does not exist'
+        'the input file %s for plot_sample_pca_with_predictions does not exist'
         %single_object.identifier)
     return single_object
 

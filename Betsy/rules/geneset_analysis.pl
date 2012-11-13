@@ -15,7 +15,7 @@ geneset_analysis(Parameters,Modules):-
     signal_file(NewParameters,Past_Modules),
     get_value(NewParameters,contents,unknown_contents,Contents),
     geneset_file([contents,Contents],[]),
-    Newadd=[analyze_geneset,NewParameters1],
+    Newadd=[score_pathway_with_geneset,NewParameters1],
     append(Past_Modules,Newadd,Modules).
 /*-------------------------------------------------------------------*/
 convert_parameters_geneset(Parameters,Parameters1):-
@@ -32,5 +32,5 @@ convert_parameters_geneset(Parameters,Parameters1):-
 geneset_plot(Parameters,Modules):-
     convert_parameters_geneset(Parameters,NewParameters),
     geneset_analysis(NewParameters,Past_Modules),
-    Newadd=[plot_geneset,NewParameters],
+    Newadd=[plot_geneset_score_bar,NewParameters],
     append(Past_Modules,Newadd,Modules).

@@ -16,9 +16,9 @@ pca_analysis(Parameters,Modules):-
     get_options(Parameters,[pca_gene_num],[],Options),
     append(NewParameters2,Options,NewParameters3),
     append(NewParameters3,[objecttype,Objecttype],NewParameters),
-    % Module:analyze_pca
+    % Module:analyze_samples_pca
     % Output parameters:full length parameters of signal_file
-    Newadd=[analyze_pca,NewParameters],
+    Newadd=[analyze_samples_pca,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 pca_plot_out(Parameters,Modules):-
@@ -30,7 +30,7 @@ pca_plot_out(Parameters,Modules):-
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
     % Module:plot_pca
     % Output parameters: full length parameters of signal_file 
-    Newadd=[plot_pca,NewParameters],
+    Newadd=[plot_sample_pca,NewParameters],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
@@ -41,8 +41,8 @@ pca_plot_in(Parameters,Modules):-
     get_value(Parameters,contents,[unknown],Contents),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
-    % Module:plot_pca
+    % Module:plot_sample_pca
     % Output parameters:full length parameters of signal_clean
-    Newadd=[plot_pca,NewParameters],
+    Newadd=[plot_sample_pca,NewParameters],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).

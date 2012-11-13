@@ -19,7 +19,7 @@ gsea(Parameters,Modules):-
    append(Past_Modules_1,Past_Modules_2,Past_Modules),
    % Module:annotate_with_gsea
    % Output parameters: update the parameters to full length
-   Newadd=[annotate_with_gsea,NewParameters],
+   Newadd=[annotate_genes_with_gsea,NewParameters],
    append(Past_Modules,Newadd,Modules).
 
 

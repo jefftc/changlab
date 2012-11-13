@@ -228,12 +228,12 @@ signal_raw(Parameters,Modules):-
 signal_raw(Parameters,Modules):-
     % Conditions: parameters has (mas5 ,no_logged contents,jeffs,no_missing) or (rma,logged,contents,jeffs,no_missing)
     get_value(Parameters,contents,[unknown],Contents),
-    member((Preprocess, Is_Logged,Module),[(mas5, no_logged,normalize_with_mas5),(rma, logged,normalize_with_rma)]),
+    member((Preprocess, Is_Logged,Module),[(mas5, no_logged,preprocess_mas5),(rma, logged,preprocess_rma)]),
     convert_parameters_raw([contents,Contents,preprocess,Preprocess, is_logged, Is_Logged,format,jeffs,has_missing_value,no_missing],NewParameters),
     Parameters=NewParameters,
     % Input: cel_files with v3_4
     cel_files([contents,Contents,version,v3_4], Past_Modules),
-    % Module:normalize_with_rma or normalize_with_mas5
+    % Module:preprocess_rma or preprocess_mas5
     % Output parameters: full length parameters of signal_raw
     Newadd=[Module,NewParameters],
     append(Past_Modules, Newadd, Modules).
@@ -275,24 +275,7 @@ signal_raw(Parameters,Modules):-
     % Output parameters: full length parameters of signal_raw
     Newadd=[convert_signal_to_tdf,Parameters],
     append(Past_Modules, Newadd, Modules).
-/*-------------------------------------------------------------------------*/
-% change the Format of the signal file to tdf with Format unknown,
-/*signal_raw(Parameters, Modules):-
-    % Conditions: Parameters has tdf and created
-    get_value(Parameters,format,unknown_format,Format),
-    Format=tdf,
-    get_value(Parameters,status,created,Status),
-    Status=created,
-    % Input: signal_raw has unknown_format and different status
-    OldFormat=unknown_format,
-    member(OldStatus,[given,created,jointed,splited]),
-    set_value(Parameters,format,OldFormat,OldParameters1),
-    set_value(OldParameters1,status,OldStatus,OldParameters),
-    signal_raw(OldParameters,Past_Modules),
-    % Module:convert_signal_to_tdf
-    % Output parameters: full length parameters of signal_raw
-    Newadd=[convert_signal_to_tdf,Parameters],
-    append(Past_Modules, Newadd, Modules).*/
+
 
 /*-------------------------------------------------------------------------*/
 % filter genes with the missing value
@@ -338,9 +321,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,predataset,OldPredataset,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module: preprocess_fold_change
+    % Module: filter_genes_by_fold_change
     % Output parameters:full length parameters of signal_raw
-    Newadd=[preprocess_fold_change,Parameters],
+    Newadd=[filter_genes_by_fold_change,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*--------------------------------------------------------------------------*/
@@ -412,7 +395,7 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,rename_sample,OldRename,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module: rename_sample
+    % Module: relabel_samples
     % Output parameters:full length parameters of signal_raw
-    Newadd=[rename_sample,Parameters],
+    Newadd=[relabel_samples,Parameters],
     append(Past_Modules, Newadd, Modules).

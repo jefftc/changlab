@@ -1,4 +1,4 @@
-#get_unique_genes.py
+#remove_duplicate_genes.py
 import os
 from Betsy import module_utils
 from genomicode import jmath,arrayplatformlib,arrayannot
@@ -7,7 +7,7 @@ import re
 
 
 def run(parameters,objects,pipeline):
-    """get unique genes"""
+    """remove duplicate genes"""
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(single_object.identifier)
@@ -21,7 +21,7 @@ def run(parameters,objects,pipeline):
     arrayio.tab_delimited_format.write(M_new,f)
     f.close()
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for get)unqiue_genes fails'%outfile)
+        'the output file %s for remove_duplicate_genes fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -45,7 +45,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for get_unique_genes does not exist'
+        'the input file %s for remove_duplicate_genes does not exist'
         %single_object.identifier)
     return single_object
 

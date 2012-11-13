@@ -42,9 +42,9 @@ svm_predictions(Parameters,Modules):-
     convert_parameters_svm(Parameters,NewParameters),
     % Input: svm_model
     svm_model(NewParameters,Past_Modules),
-    % Module:apply_svm_model
+    % Module:classify_with_svm
     % Output parameters: update the Parameters to full length 
-    Newadd=[apply_svm_model,NewParameters],
+    Newadd=[classify_with_svm,NewParameters],
     append(Past_Modules,Newadd,Modules).
 
 /*---------------------------------------------------------------*/
@@ -136,7 +136,7 @@ get_CV_parameter(A,Format,List):-
     A=svm,
     Format=tdf,
     List=[train_model,train_svm_model,
-          predict,apply_svm_model];
+          predict,classify_with_svm];
     A=weightedvoting,
     Format=gct,
     List=[predict,classify_with_weighted_voting];
@@ -194,7 +194,7 @@ prediction_pca_plot(Parameters,Modules):-
     pca_analysis(Parameters1,Past_Modules_2),
     % Output parameters:update the parameters include class_plot
     append(Parameters,[class_plot,Class_plot],NewParameters3),
-    % Module:plot_prediction_pca
-    Newadd=[plot_prediction_pca,NewParameters3],
+    % Module:plot_sample_pca_with_predictions
+    Newadd=[plot_sample_pca_with_predictions,NewParameters3],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules,Newadd,Modules).

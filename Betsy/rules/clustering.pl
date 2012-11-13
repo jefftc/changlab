@@ -17,7 +17,7 @@ convert_cluster_parameters(Parameters,NewParameters):-
 
  /*-------------------------------------------------------------------------*/
 % generate the cluster_file from signal_file with format pcl.    
-cluster_file(Parameters,Modules):-
+/*cluster_file(Parameters,Modules):-
      convert_cluster_parameters(Parameters,NewParameters),
      % Conditions: tdf,logged,
      get_value(NewParameters,format,unknown_format,Format),
@@ -31,6 +31,26 @@ cluster_file(Parameters,Modules):-
      % Output parameters: update parameters to full length
      set_value(NewParameters1,format,pcl,Parameters1),
      Newadd = [convert_signal_to_pcl,Parameters1,cluster_genes,NewParameters],
+     append(Past_Modules,Newadd,Modules).*/
+ /*-------------------------------------------------------------------------*/
+% generate the cluster_file from signal_file with format pcl.    
+cluster_file(Parameters,Modules):-
+     member((Method,Module),[(som,cluster_genes_by_som),(pca,cluster_genes_by_pca),(kmeans,cluster_genes_by_kmeans),(hierarchical,cluster_genes_by_hierarchical)]),
+     get_value(Parameters,cluster_alg,no_cluster_alg,Cluster_Alg),
+     Method=Cluster_Alg,
+     convert_cluster_parameters(Parameters,NewParameters),
+     % Conditions: tdf,logged,
+     get_value(NewParameters,format,unknown_format,Format),
+     Format=tdf,
+     get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
+     Is_Logged=logged,
+     % Input: signal_file
+     convert_parameters_file(NewParameters,NewParameters1),
+     signal_file(NewParameters1,Past_Modules),
+     % Module:cluster_genes_by_som,etc.
+     % Output parameters: update parameters to full length
+     set_value(NewParameters1,format,pcl,Parameters1),
+     Newadd = [convert_signal_to_pcl,Parameters1,Module,NewParameters],
      append(Past_Modules,Newadd,Modules).
 
  /*-------------------------------------------------------------------------*/
@@ -55,8 +75,8 @@ cluster_heatmap(Parameters,Modules):-
     % Output parameters: update parameters to full length and includes options
     get_options(Parameters,[hm_width,hm_height,color],[],Options),
     append(NewParameters1,Options,NewParameters2),
-    % Module: make_heatmap
-    Newadd = [make_heatmap,NewParameters2],
+    % Module: plot_signal_heatmap
+    Newadd = [plot_signal_heatmap,NewParameters2],
     append(Past_Modules,Newadd,Modules).
 
 

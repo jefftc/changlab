@@ -1,4 +1,4 @@
-#cluster_heatmap.py
+#plot_signal_heatmap.py
 import os
 import subprocess
 from Betsy import module_utils, config
@@ -26,7 +26,7 @@ def run(parameters,objects,pipeline,options=None):
     if error_message:
         raise ValueError(error_message)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for make_heatmap fails' %outfile)
+        'the output file %s for plot_signal_heatmap fails' %outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -44,7 +44,7 @@ def get_identifier(parameters,objects):
         single_object = module_utils.find_object(
             parameters,objects,'cluster_file','contents')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for make_heatmap does not exist'
+        'the input file %s for plot_signal_heatmap does not exist'
         %single_object.identifier)
     return single_object
 

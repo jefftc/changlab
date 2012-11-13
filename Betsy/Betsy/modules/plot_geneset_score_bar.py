@@ -1,4 +1,4 @@
-#plot_geneset.py
+#plot_geneset_score_bar.py
 
 import os
 from Betsy import module_utils
@@ -30,7 +30,7 @@ def run(parameters,objects,pipeline):
         output = os.path.join(outfile,ylabel)
         fig.savefig(output+'.png')
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for plot_geneset fails'%outfile)
+        'the output file %s for plot_geneset_score_bar fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
                       parameters,single_object,pipeline,outfile)
@@ -54,7 +54,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'geneset_analysis','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for plot_geneset does not exist'
+        'the input file %s for plot_geneset_score_bar does not exist'
         %single_object.identifier)
     return single_object
 

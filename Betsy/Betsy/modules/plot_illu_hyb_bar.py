@@ -1,4 +1,4 @@
-#plot_hyb_bar.py
+#plot_illu_hyb_bar.py
 import os
 from Betsy import module_utils
 import shutil
@@ -30,7 +30,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'control_file','contents')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for plot_hyb_bar does not exist'
+        'the input file %s for plot_ilu_hyb_bar does not exist'
         %single_object.identifier)
     return single_object
 
@@ -38,7 +38,7 @@ def get_newobjects(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     single_object = get_identifier(parameters,objects)
     new_objects = module_utils.get_newobjects(
-        outfile,'plot_hyb_bar',parameters,objects,single_object)
+        outfile,'plot_illu_hyb_bar',parameters,objects,single_object)
     return new_objects
 
 def plot_hyb_bar(filename,outfile):
@@ -67,5 +67,5 @@ def plot_hyb_bar(filename,outfile):
     std=[numpy.std(high_data),numpy.std(med_data),numpy.std(low_data)]
     fig=mplgraph.barplot(mean,std,ylabel='Signal',box_label=['high','med','low'])
     fig.savefig(outfile)
-    assert module_utils.exists_nz(outfile),'the plot_hyb_bar.py fails'
+    assert module_utils.exists_nz(outfile),'the plot_illu_hyb_bar.py fails'
         

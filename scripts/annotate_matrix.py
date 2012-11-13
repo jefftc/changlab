@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from genomicode import arrayannot,jmath,Matrix,arrayplatformlib
+from genomicode import jmath,Matrix,arrayplatformlib
 import arrayio
 import os
 import argparse
@@ -23,7 +23,7 @@ def main():
     for out_platform in out_platforms:
         assert arrayplatformlib.get_bm_organism(out_platform),'we cannot convert to the platform %s'%out_platform
     DATA = arrayio.read(args.input)
-    platform_list = arrayannot.identify_all_platforms_of_matrix(DATA)
+    platform_list = arrayplatformlib.identify_all_platforms_of_matrix(DATA)
     assert platform_list, 'we cannot guess the platform for the input file'
     in_id = platform_list[0][0]
     in_platform = platform_list[0][1]

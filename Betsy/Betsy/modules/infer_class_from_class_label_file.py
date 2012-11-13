@@ -1,4 +1,4 @@
-#infer_contents.py
+#infer_class_from_class_label_file.py
 from Betsy import module_utils
 import os
 import arrayio
@@ -18,7 +18,7 @@ def run(parameters,objects,pipeline):
     if M.dim()[1]==len(label_line):
         shutil.copyfile(single_object.identifier,outfile)
         assert module_utils.exists_nz(outfile),(
-            'the output file %s for pull_out_dataset fails'%outfile)
+            'the output file %s for infer_class_from_class_label_file fails'%outfile)
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(
             parameters,single_object,pipeline,outfile)
@@ -32,7 +32,7 @@ def make_unique_hash(identifier,pipeline,parameters):
 def get_outfile(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'signal_pullout_' + original_file + '.tdf'
+    filename = 'signal_infer_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(),filename)
     return outfile
     
@@ -41,7 +41,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(parameters,
                                 objects,'signal_file','preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for pull_out_dataset does not exist'
+        'the input file %s for infer_class_from_class_label_file does not exist'
         %single_object.identifier)
     return single_object
 

@@ -1,4 +1,4 @@
-#apply_svm_model.py
+#classify_with_svm.py
 import svmutil
 import sys
 import arrayio
@@ -22,7 +22,7 @@ def run(parameters, objects, pipeline):
     model = svmutil.svm_load_model(model_file.identifier)
     if test_label_file:
         assert os.path.exists(test_label_file.identifier), (
-            'the test_label_file %s for svm test does not exist'
+            'the test_label_file %s for classify_with_svm does not exist'
             % test_label_file.identifier)
         a, test_label, second_line = read_label_file.read(
             test_label_file.identifier)
@@ -34,7 +34,7 @@ def run(parameters, objects, pipeline):
     train_label_file = module_utils.find_object(
         parameters, objects, 'class_label_file', 'traincontents')
     assert os.path.exists(train_label_file.identifier), (
-        'the train_label_file %s for svm test does not exist'
+        'the train_label_file %s for classify_with_svm does not exist'
         % train_label_file.identifier)
     result, label_line, second_line = read_label_file.read(
         train_label_file.identifier)
@@ -64,7 +64,7 @@ def run(parameters, objects, pipeline):
         f.write('\n')
     f.close()
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for svm test fails' % outfile)
+        'the output file %s for classify_with_svm fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters, single_object, pipeline, outfile)
@@ -87,7 +87,7 @@ def get_identifier(parameters, objects):
     single_object = module_utils.find_object(
         parameters, objects, 'signal_file', 'testcontents')
     assert os.path.exists(single_object.identifier), (
-        'the test file %s for svm test does not exist'
+        'the test file %s for classify_with_svm does not exist'
         % single_object.identifier)
     return single_object
 

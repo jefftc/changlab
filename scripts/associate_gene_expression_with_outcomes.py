@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-from genomicode import filelib, jmath, genesetlib, config, matrixlib
-import arrayio
 import os
 import argparse
 import numpy
 import sys
+import arrayio
+from genomicode import filelib, jmath, genesetlib, config, matrixlib
 
 
 def calc_km(survival, dead, group):
@@ -44,6 +44,44 @@ def calc_km(survival, dead, group):
     return p_value, surv90, surv50, direction
 
 
+def get_cutoffs(cutoffs):
+    if cutoffs:
+        cutoffs = cutoffs.split(',')
+        cutoffs = [float(i) for i in cutoffs]
+        cutoffs.sort()
+    if not cutoffs:
+        cutoffs = [0.5]
+    for cutoff in cutoffs:
+        assert cutoff > 0 and cutoff < 1.0, 'cutoff should be between 0 and 1'
+    return cutoffs
+
+
+def get_genes(genes):
+    if genes:
+        gene_list = []
+        for i in genes:
+            gene_list.extend(i.split(','))
+        return gene_list
+    else:
+        return None
+
+
+def intersect_clinical_matrix_sample_name(M, clinical_data):
+    sample_name = M._col_names['_SAMPLE_NAME']
+    name_in_clinical = None
+    clinical_dict = dict()
+    for g in clinical_data:
+        name, description, values = g
+        clinical_dict[name] = values
+    for g in clinical_dict:
+        n = len(list(set(sample_name).intersection(set(clinical_dict[g]))))
+        if n > 0:
+            name_in_clinical = clinical_dict[g]
+    assert name_in_clinical, ('cannot match the sample name in '
+                              'clinical data and gene expression data')
+    return clinical_dict, name_in_clinical
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='associate the gene expression with outcomes')
@@ -78,57 +116,27 @@ def main():
     assert clinical_file, 'please specify the path of clinical data'
     outcomes = args.outcome
     assert len(outcomes) > 0, 'please specify the time_header and dead_header'
-    cutoffs = args.cutoff
-    if cutoffs:
-        cutoffs = cutoffs.split(',')
-        cutoffs = [float(i) for i in cutoffs]
-        cutoffs.sort()
-    if not cutoffs:
-        cutoffs = [0.5]
-    for cutoff in cutoffs:
-        assert cutoff > 0 and cutoff < 1.0, 'cutoff should be between 0 and 1'
-    genes = args.gene
-    if genes:
-        gene_list = []
-        for i in genes:
-            gene_list.extend(i.split(','))
+    cutoffs = get_cutoffs(args.cutoff)
+    gene_list = get_genes(args.gene)
     M = arrayio.read(input_file)
     clinical_data = genesetlib.read_tdf(
         clinical_file, preserve_spaces=True, allow_duplicates=True)
-    sample_name = M._col_names['_SAMPLE_NAME']
-    name_in_clinical = None
-    clinical_dict = dict()
-    for g in clinical_data:
-        clinical_dict[g[0]] = g[2]
-    for g in clinical_dict:
-        n = len(list(set(sample_name).intersection(set(clinical_dict[g]))))
-        if n > 0:
-            name_in_clinical = clinical_dict[g]
-    assert name_in_clinical, ('cannot match the sample name in '
-                              'clinical data and gene expression data')
+    clinical_dict, name_in_clinical = intersect_clinical_matrix_sample_name(
+        M, clinical_data)
     #align the sample order of gene expression file and clinical data
     x = matrixlib.align_cols_to_annot(
         M, name_in_clinical, reorder_MATRIX=True)
     M, colnames = x
-    #if given genes,get the row index of match genes
-    if genes:
-        row_index = []
-        for gene in gene_list:
-            for column_name in M._row_order:
-                if gene in M.row_names(column_name):
-                    index_list = [index for index, item in
-                                  enumerate(M.row_names(column_name))
-                                  if item == gene]
-                    row_index.extend(index_list)
-        assert row_index, ('we cannot find the genes you given '
-                           'in the expression data')
-        M = M.matrix(row_index, None)
+    #if given genes,get of match genes
+    if gene_list:
+        x = matrixlib.align_rows_to_annot(M, gene_list, reorder_MATRIX=True)
+        M, rownames = x
     ids = M._row_order
-    geneid = M._row_names[ids[0]]
+    geneids = M._row_names[ids[0]]
     headers = ids[:]
     data_all = M.slice()
     output_data = []
-    for i in range(len(geneid)):
+    for i in range(len(geneids)):
         output_data.append([M._row_names[name][i] for name in ids])
     kaplanmeierlib_path = config.kaplanmeierlib
     assert os.path.exists(kaplanmeierlib_path), (
@@ -136,18 +144,28 @@ def main():
     R = jmath.start_R()
     R('require(splines,quietly=TRUE)')
     R('source("' + config.kaplanmeierlib + '")')
+    new_cutoffs = [0] + cutoffs + [1]
+    name = [''] * (len(new_cutoffs) - 1)
+    for j in range(len(new_cutoffs) - 1):
+        name[j] = "%d - %d" % (new_cutoffs[j] * 100, new_cutoffs[j + 1] * 100)
+    num_samples = ['Num Samples (' + k + ')' for k in name]
+    ave_expression = ['Average Expression (' + k + ')'for k in name]
+    surv90_header = ['90% Survival (' + k + ')' for k in name]
+    surv50_header = ['50% Survival (' + k + ')' for k in name]
+    newheader = (['p-value'] + num_samples + ave_expression
+                 + surv90_header + surv50_header + ['Relationship'])
+    all_time_header = []
+    all_dead_header = []
+    all_sample_index = []
+    all_time_data = []
+    all_dead_data = []
     for outcome in outcomes:
-        time_data = None
-        dead_data = None
         x = outcome.split(',')
         assert len(x) == 2, (
             'the outcome format should be <time_header>,<dead_header>')
         time_header, dead_header = x
-        for g in clinical_dict:
-            if g == time_header:
-                time_data = clinical_dict[g]
-            if g == dead_header:
-                dead_data = clinical_dict[g]
+        time_data = clinical_dict.get(time_header)
+        dead_data = clinical_dict.get(dead_header)
         assert time_data, 'there is no column named %s' % time_header
         assert dead_data, 'there is no column named %s' % dead_header
         #only consider the sample who has month and dead information
@@ -157,32 +175,29 @@ def main():
                          enumerate(dead_data) if len(item) > 0]
         sample_index = list(set(sample_index1).intersection(
             set(sample_index2)))
-        new_cutoffs = [0]
-        new_cutoffs.extend(cutoffs)
-        new_cutoffs.append(1)
-        name = [''] * (len(new_cutoffs) - 1)
-        for j in range(len(new_cutoffs) - 1):
-            name[j] = str(str(int(new_cutoffs[j] * 100)) + '-' +
-                          str(int(new_cutoffs[j + 1] * 100)) + '%')
-        newheader = ['p-value']
-        num_samples = ['Num Samples (' + k + ')' for k in name]
-        ave_expression = ['Average Expression (' + k + ')'for k in name]
-        surv90_header = ['90% Survival (' + k + ')' for k in name]
-        surv50_header = ['50% Survival (' + k + ')' for k in name]
-        newheader.extend(num_samples)
-        newheader.extend(ave_expression)
-        newheader.extend(surv90_header)
-        newheader.extend(surv50_header)
-        newheader.append('Relationship')
+        all_time_header.append(time_header)
+        all_dead_header.append(dead_header)
+        all_sample_index.append(sample_index)
+        all_time_data.append(time_data)
+        all_dead_data.append(dead_data)
+    for k in range(len(outcomes)):
         if len(outcomes) > 1:
-            newheader = [time_header + ' ' + i for i in newheader]
-        headers.extend(newheader)
-        survival = [time_data[i] for i in sample_index]
-        dead = [dead_data[i] for i in sample_index]
-        jmath.R_equals(cutoffs, 'cutoffs')
-        for i in range(len(geneid)):
+            newheader1 = [all_time_header[k] + ' ' + i for i in newheader]
+        else:
+            newheader1 = newheader
+        headers.extend(newheader1)
+    all_group_name = [[]] * len(outcomes)
+    all_survival = []
+    all_dead = []
+    jmath.R_equals(cutoffs, 'cutoffs')
+    for h in range(len(outcomes)):
+        survival = [all_time_data[h][i] for i in all_sample_index[h]]
+        dead = [all_dead_data[h][i] for i in all_sample_index[h]]
+        all_survival.append(survival)
+        all_dead.append(dead)
+        for i in range(len(geneids)):
             data = data_all[i]
-            data_new = [data[j] for j in sample_index]
+            data_new = [data[j] for j in all_sample_index[h]]
             jmath.R_equals(data_new, 'F')
             R('group <- group.by.value(F, cutoffs)')
             group = R['group']
@@ -198,23 +213,25 @@ def main():
                 group_name[k] = name[group[k]]
             p_value, surv90, surv50, direction = calc_km(survival,
                                                          dead, group_name)
-            single_data = [str(p_value)]
-            single_data.extend(num_group)
-            single_data.extend(avg)
-            single_data.extend(surv90)
-            single_data.extend(surv50)
-            single_data.append(direction)
+            single_data = ([str(p_value)] + num_group + avg + surv90
+                           + surv50 + [direction])
             output_data[i].extend(single_data)
-            filestem = '' if not args.filestem else args.filestem + '.'
-            new_group = ['"' + j + '"' for j in group_name]
+            all_group_name[h].append(group_name)
+    filestem = '' if not args.filestem else args.filestem + '.'
+    for h in range(len(outcomes)):
+        jmath.R_equals(all_survival[h], 'survival')
+        jmath.R_equals(all_dead[h], 'dead')
+        for i in range(len(geneids)):
+            new_group = ['"' + j + '"' for j in all_group_name[h][i]]
             jmath.R_equals(new_group, 'name')
             if args.write_prism:
-                prism_file = str(filestem + time_header + '.' + geneid[i] +
-                                 '.prism.txt')
+                prism_file = str(filestem + all_time_header[h] + '.'
+                                 + geneids[i] + '.prism.txt')
                 jmath.R_equals('"' + prism_file + '"', 'filename')
                 R('write.km.prism.multi(filename,survival, dead, name)')
             if args.plot_km:
-                km_plot = filestem + time_header + '.' + geneid[i] + '.km.png'
+                km_plot = (filestem + all_time_header[h] + '.'
+                           + geneids[i] + '.km.png')
                 jmath.R_equals('"' + km_plot + '"', 'filename')
                 R('col <- list("' + name[0] + '"="#FF0000")')
                 R('bitmap(file=filename,type="png256")')
@@ -225,7 +242,7 @@ def main():
         outfile = args.filestem + '.stats.txt'
         f = file(outfile, 'w')
     print >> f, '\t'.join(headers)
-    for i in range(len(geneid)):
+    for i in range(len(geneids)):
         print >> f, '\t'.join(output_data[i])
     f.close()
 

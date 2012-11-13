@@ -18,10 +18,10 @@ gene_list_file(Parameters,Modules):-
     get_value(NewParameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
     signal_norm2(OldParameters,Past_Modules_2),
-    % Module: rank_gene_by_sample_ttest
+    % Module: rank_genes_by_sample_ttest
     % Output parameters: update the parameters to full length
     append(NewParameters,[gene_order,Gene_Order],NewParameters1),
-    Newadd=[rank_gene_by_sample_ttest,NewParameters1],
+    Newadd=[rank_genes_by_sample_ttest,NewParameters1],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 /*--------------------------------------------------------------------------*/
@@ -47,9 +47,9 @@ gene_list_file(Parameters,Modules):-
     get_value(NewParameters,preprocess,unknown_preprocess,Preprocess),
     class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
     signal_file(OldParameters,Past_Modules_2),
-    % Module: rank_gene_by_class_neighbors
+    % Module: rank_genes_by_class_neighbors
     % Output parameters: update the parameters to full length
-    Newadd=[rank_gene_by_class_neighbors,NewParameters],
+    Newadd=[rank_genes_by_class_neighbors,NewParameters],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 

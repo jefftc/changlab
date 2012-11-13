@@ -1,4 +1,4 @@
-#plot_actb.py
+#plot_actb_line.py
 
 import os
 from Betsy import module_utils
@@ -61,7 +61,7 @@ def run(parameters,objects,pipeline):
                           ylim_min=0,ylabel='Gene Expression Value')
     fig.savefig(outfile)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for plot_actb fails'%outfile)
+        'the output file %s for plot_actb_line fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
                       parameters,single_object,pipeline,outfile)
@@ -82,7 +82,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for plot_actb does not exist'
+        'the input file %s for plot_actb_line does not exist'
         %single_object.identifier)
     return single_object
 

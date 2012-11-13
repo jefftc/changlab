@@ -1,4 +1,4 @@
-#make_batch_report.py
+#make_batchnorm_report.py
 from Betsy import config
 from Betsy import module_utils
 from Betsy import hash_method

@@ -1,22 +1,22 @@
-#plot_control.py
+#plot_affy_affx_line.py
 import os
 from Betsy import module_utils
 import shutil
-from genomicode import mplgraph,arrayannot,jmath
+from genomicode import mplgraph,arrayplatformlib,jmath
 import arrayio
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(single_object.identifier)
-    platforms = arrayannot.identify_all_platforms_of_matrix(M)
+    platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
     id = platforms[0][0]
     platform = platforms[0][1]
     if platform:
         if platform in ['HumanHT_12','MouseRef_8',
                         'HumanHT_12_control','MouseRef_8_control',
                         'entrez_ID_human','entrez_ID_mouse',
-                        'entrez_ID_symbol_human',
-                        'entrez_ID_symbol_mouse']:
+                        'entrez_symbol_human',
+                        'entrez_symbol_mouse']:
             return None
         else:
             M=arrayio.read(single_object.identifier)
@@ -34,7 +34,7 @@ def run(parameters,objects,pipeline):
                                 ylabel='Gene Expression Value',box_label=label)
             f.savefig(outfile)
             assert module_utils.exists_nz(outfile),(
-            'the output file %s for plot_control fails'%outfile)
+            'the output file %s for plot_affy_affx_line fails'%outfile)
             new_objects = get_newobjects(parameters,objects,pipeline)
             module_utils.write_Betsy_parameters_file(
                       parameters,single_object,pipeline,outfile)
@@ -55,7 +55,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for plot_control does not exist'
+        'the input file %s for plot_affy_affx_line does not exist'
         %single_object.identifier)
     return single_object
 

@@ -46,8 +46,8 @@ class_label_file([contents,Contents,preprocess,Preprocess,status,splited],Module
     class_label_file([contents,C,preprocess,Preprocess,status,given],Past_Modules),
     is_subset(Contents,C),
     not(Contents=C),
-    % Module: split_class_label
+    % Module: split_class_label_file
     % Output parameters: [contents,Contents,precontents,C]
-    Newadd=[split_class_label,[contents,Contents,precontents,C]],
+    Newadd=[split_class_label_file,[contents,Contents,precontents,C]],
     append(Past_Modules,Newadd,Modules).
 /*----------------------------------------------------------------------*/

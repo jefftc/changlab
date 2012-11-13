@@ -75,9 +75,9 @@ signal_file(Parameters,Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,gene_order,OldGene_Order,OldParameters),
     signal_file(OldParameters,Past_Modules_2),
-    % Module:ranek_gene_by_sample_ttest,reorder_genes
+    % Module:ranek_genes_by_sample_ttest,reorder_genes
     % Output Parameters: full length parameters of signal_file
-    Newadd=[rank_gene_by_sample_ttest,Parameters,reorder_genes,Parameters],
+    Newadd=[rank_genes_by_sample_ttest,Parameters,reorder_genes,Parameters],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 /*--------------------------------------------------------------------------*/
@@ -110,9 +110,9 @@ signal_file(Parameters,Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,gene_order,OldGene_Order,OldParameters),
     signal_file(OldParameters,Past_Modules_2),
-    % Module: rank_gene_by_class_neighbors,reorder_genes
+    % Module: rank_genes_by_class_neighbors,reorder_genes
     % Output Parameters: full length parameters of signal_file
-    Newadd=[rank_gene_by_class_neighbors,Parameters,reorder_genes,Parameters],
+    Newadd=[rank_genes_by_class_neighbors,Parameters,reorder_genes,Parameters],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
     append(Past_Modules, Newadd, Modules).
 /*--------------------------------------------------------------------------*/
@@ -169,7 +169,7 @@ signal_file(Parameters,Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,num_features,0,OldParameters),
     signal_file(OldParameters,Past_Modules),
-    % Module:select_num_genes
+    % Module:select_first_n_genes
     (member(traincontents,Parameters),
     member(testcontents,Parameters),
     get_value(Parameters,traincontents,[unknown],TrainContents),
@@ -178,9 +178,9 @@ signal_file(Parameters,Modules):-
     set_value(NewParameters,contents,TrainContents,NewParameters1),
     set_value(NewParameters,contents,TestContents,NewParameters2),
     % Output Parameters: full length parameters of signal_file
-    Newadd=[select_num_genes,NewParameters1,select_num_genes,NewParameters2];
+    Newadd=[select_first_n_genes,NewParameters1,select_first_n_genes,NewParameters2];
     not(member(traincontents,Parameters)),
-    Newadd=[select_num_genes,Parameters]),
+    Newadd=[select_first_n_genes,Parameters]),
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 %annotate_gene_id
@@ -207,10 +207,10 @@ signal_file(Parameters,Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,has_annotation_gene_id,Pre_has_annotation_gene_id,OldParameters),
     signal_file(OldParameters,Past_Modules),
-    % Module:annotate_probe
+    % Module:annotate_probes
     % Output Parameters: full length parameters of signal_file 
     append(Parameters,[filetype,signal_file,annotate_type,gene_id],NewParameters),
-    Newadd=[annotate_probe,NewParameters],
+    Newadd=[annotate_probes,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 %get the unique genes
@@ -237,9 +237,9 @@ signal_file(Parameters,Modules):-
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,unique_genes,Pre_unique_genes,OldParameters),
     signal_file(OldParameters,Past_Modules),
-    % Module:get_unique_genes
+    % Module:remove_duplicate_genes
     % Output Parameters: full length parameters of signal_file 
-    Newadd=[get_unique_genes,Parameters],
+    Newadd=[remove_duplicate_genes,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 %convert the unknown_platform to desired platform
@@ -253,19 +253,17 @@ signal_file(Parameters,Modules):-
     Is_logged=logged,
     get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
     Duplicate_Probe = yes_duplicate_probe,
-    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
-    Duplicate_Data = yes_duplicate_data,
     get_value(Parameters,platform,unknown_platform,Platform),
     not(Platform=unknown_platform),
-    % Input: signal_file with unknown_platform,pcl,logged,different status
+    % Input: signal_file with unknown_platform,tdf,logged,different status
     Pre_platform=unknown_platform,
     member(OldStatus,[given,created,jointed,splited]),
     set_value(Parameters,status,OldStatus,OldParameters1),
     set_value(OldParameters1,platform,Pre_platform,OldParameters),
     signal_file(OldParameters,Past_Modules),
-    % Module:convert_platform
+    % Module:add_crossplatform_probeid
     % Output Parameters: full length parameters of signal_file
-    Newadd=[convert_platform,Parameters],
+    Newadd=[add_crossplatform_probeid,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % select_unique_probe
@@ -278,31 +276,24 @@ signal_file(Parameters,Modules):-
     Format=tdf,
     get_value(Parameters,is_logged,logged,Is_logged),
     Is_logged=logged,
-    get_value(Parameters,platform,unknown_platform,Platform),
-    not(Platform=unknown_platform),
-    get_value(Parameters,duplicate_data,yes_duplicate_data,Duplicate_Data),
     get_value(Parameters,duplicate_probe,yes_duplicate_probe,Duplicate_Probe),
     (Duplicate_Probe=high_var_probe,
-     Duplicate_Data=yes_duplicate_data,
-     Module=select_probe_by_high_variance;
+     Module=remove_duplicate_probes;
      Duplicate_Probe=closest_probe,
-     Duplicate_Data=no_duplicate_data,
      Module=select_probe_by_best_match),
     % Input: signal_file with no_unique_genes,tdf,not unknwon_platform,yes_duplicate_probe
     Pre_duplicate_probe=yes_duplicate_probe,
-    Pre_duplicate_data=yes_duplicate_data,
     member(OldStatus,[given,created,jointed,splited]),
     set_value(Parameters,status,OldStatus,OldParameters1),
-    set_value(OldParameters1,duplicate_probe,Pre_duplicate_probe,OldParameters2),
-    set_value(OldParameters2,duplicate_data,Pre_duplicate_data,OldParameters),
+    set_value(OldParameters1,duplicate_probe,Pre_duplicate_probe,OldParameters),
     signal_file(OldParameters,Past_Modules),
-    % Module:select_probe_by_high_variance or select_probe_by_best_match
+    % Module:remove_duplicate_probes or select_probe_by_best_match
     % Output Parameters: full length parameters of signal_file 
     Newadd=[Module,Parameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 % remove_duplicate_data
-signal_file(Parameters,Modules):-
+/*signal_file(Parameters,Modules):-
     % Conditions: Parameters has created,tdf,not unknown_platform and no_duplicate_data
     % no_missing_probe,duplicate_probe in  [high_var_probe,closest_probe]
     get_value(Parameters,status,created,Status),
@@ -326,7 +317,7 @@ signal_file(Parameters,Modules):-
     % Module:remove_duplicate_data,
     % Output Parameters: full length parameters of signal_file 
     Newadd=[remove_duplicate_data,Parameters],
-    append(Past_Modules, Newadd, Modules).
+    append(Past_Modules, Newadd, Modules).*/
 
 /*-------------------------------------------------------------------------*/
 % change tdf format of signal_file to gct.
@@ -465,9 +456,9 @@ biotin_plot(Parameters,Modules):-
     convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,
                          format,gct],NewParameters),
     control_file(NewParameters,Past_Modules),
-    % Module:plot_biotin
+    % Module:plot_illu_biotin_line
     % Output parameters:full length parameters of signal_raw
-    Newadd=[plot_biotin,NewParameters],
+    Newadd=[plot_illu_biotin_line,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 housekeeping_plot(Parameters,Modules):-
@@ -478,9 +469,9 @@ housekeeping_plot(Parameters,Modules):-
     convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,
                          format,gct],NewParameters),
     control_file(NewParameters,Past_Modules),
-    % Module:plot_housekeeping
+    % Module:plot_illu_housekeeping_line
     % Output parameters:full length parameters of signal_raw
-    Newadd=[plot_housekeeping,NewParameters],
+    Newadd=[plot_illu_housekeeping_line,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 control_plot(Parameters,Modules):-
@@ -489,9 +480,9 @@ control_plot(Parameters,Modules):-
     not(member(Preprocess,[illumina])),
     convert_parameters_file(Parameters,NewParameters),
     signal_file(NewParameters,Past_Modules),
-    % Module:plot_control
+    % Module:plot_affy_affx_line
     % Output parameters:full length parameters of signal_file
-    Newadd=[plot_control,NewParameters],
+    Newadd=[plot_affy_affx_line,NewParameters],
     append(Past_Modules, Newadd, Modules).
 
 /*-------------------------------------------------------------------------*/
@@ -502,9 +493,9 @@ actb_plot(Parameters,Modules):-
     % Input: signal_clean 
     convert_parameters_clean_out(Parameters,NewParameters),
     signal_clean(NewParameters,Past_Modules),
-    % Module:plot_actb
+    % Module:plot_actb_line
     % Output parameters:full length parameters of signal_clean
-    Newadd=[plot_actb,NewParameters],
+    Newadd=[plot_actb_line,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 hyb_bar_plot(Parameters,Modules):-
@@ -516,17 +507,17 @@ hyb_bar_plot(Parameters,Modules):-
     convert_parameters_raw([contents,Contents,preprocess,illumina,is_logged,no_logged,
                          format,gct],NewParameters),
     control_file(NewParameters,Past_Modules),
-    % Module:plot_hyb_bar
+    % Module:plot_illu_hyb_bar
     % Output parameters:full length parameters of signal_raw
-    Newadd=[plot_hyb_bar,NewParameters],
+    Newadd=[plot_illu_hyb_bar,NewParameters],
     append(Past_Modules, Newadd, Modules).
 /*-------------------------------------------------------------------------*/
 intensity_plot(Parameters,Modules):-
     % Input:signal_file
     convert_parameters_file(Parameters,NewParameters),
     signal_file(NewParameters,Past_Modules),
-    % Module:plot_intensity
+    % Module:plot_intensity_boxplot
     % Output parameters:full length parameters of signal_file
-    Newadd=[plot_intensity,NewParameters],
+    Newadd=[plot_intensity_boxplot,NewParameters],
     append(Past_Modules, Newadd, Modules).
 

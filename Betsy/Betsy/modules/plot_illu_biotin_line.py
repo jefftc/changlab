@@ -1,4 +1,4 @@
-#plot_biotin.py
+#plot_illu_biotin_line.py
 import os
 from Betsy import module_utils
 import shutil
@@ -8,7 +8,7 @@ def run(parameters,objects,pipeline):
     outfile = get_outfile(parameters,objects,pipeline)
     module_utils.plot_line_keywd(single_object.identifier,'biotin',outfile)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for plot_biotin fails'%outfile)
+        'the output file %s for plot_illu_biotin_line fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
     return new_objects
@@ -28,7 +28,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'control_file','contents')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for plot_biotin does not exist'
+        'the input file %s for plot_illu_biotin_line does not exist'
         %single_object.identifier)
     return single_object
 
