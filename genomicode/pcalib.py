@@ -13,7 +13,7 @@ select_genes_var
 import os, sys
 
 def svd_project_cols(X, K):
-    # Return ncol x K matrix.
+    # Return (ncol x K matrix, array of percent variance).
     import numpy
 
     assert len(X) and len(X[0])
@@ -28,7 +28,9 @@ def svd_project_cols(X, K):
     # Y  k x ncol
     X_hat = numpy.dot(numpy.transpose(U[:,:K]), X)
     X_hat = numpy.transpose(X_hat).tolist()
-    return X_hat
+    # percent variance of each vector.
+    perc_var = [float(x)/sum(s) for x in s]
+    return X_hat, perc_var
 
 def choose_colors(group):
     # group should be a list of 0-based integers.  Can be None if no

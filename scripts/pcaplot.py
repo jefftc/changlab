@@ -118,7 +118,7 @@ def main():
         parser.error("I could not find file %s." % filename)
 
     num_genes = options.genes
-    K = 10  # number of dimensions
+    #K = 10  # number of dimensions
 
     MATRIX = read_matrix(filename)
     if options.log_transform:
@@ -141,8 +141,8 @@ def main():
         MATRIX = MATRIX.matrix(I, None)
 
     # Calculate the principal components and plot them.
-    K = min(K, MATRIX.nrow(), MATRIX.ncol())
-    principal_components = pcalib.svd_project_cols(MATRIX._X, K)
+    K = min(MATRIX.nrow(), MATRIX.ncol())
+    principal_components, perc_var = pcalib.svd_project_cols(MATRIX._X, K)
     X = [x[0] for x in principal_components]
     Y = [x[1] for x in principal_components]
     color = None
@@ -160,7 +160,7 @@ def main():
         # Write out the principal components.
         assert cluster is None or len(cluster) == len(principal_components)
         x = ["PC%02d" % i for i in range(K)]
-        x = ["Index", "Sample", "Cluster", "Color"] + x
+        x = ["Index", "Sample", "Percent Variance", "Cluster", "Color"] + x
         print "\t".join(x)
         for i in range(len(principal_components)):
             x = MATRIX.col_names(arrayio.COL_ID)[i]
@@ -170,7 +170,7 @@ def main():
             clust = ""
             if cluster is not None:
                 clust = cluster[i]
-            x = [i+1, x, clust, c] + principal_components[i]
+            x = [i+1, x, perc_var[i], clust, c] + principal_components[i]
             print "\t".join(map(str, x))
 
 

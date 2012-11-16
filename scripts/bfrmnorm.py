@@ -396,8 +396,8 @@ def summarize_pca(povray, file_layout, matrices):
 
     FL = file_layout
     K = 3
-    PC_orig = pcalib.svd_project_cols(DATA_orig._X, K)
-    PC_final = pcalib.svd_project_cols(DATA_final._X, K)
+    PC_orig, x = pcalib.svd_project_cols(DATA_orig._X, K)
+    PC_final, x = pcalib.svd_project_cols(DATA_final._X, K)
     _write_svd_coord(FL.DS_PROC_COORD, PC_orig, samples, dataset)
     _write_svd_coord(FL.DS_FINAL_COORD, PC_final, samples, dataset)
     _make_scatter(povray, FL.DS_PROC_COORD, FL.DS_PROC_POV, FL.DS_PROC_SCATTER)
