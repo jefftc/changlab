@@ -159,7 +159,7 @@ def main():
     if options.verbose:
         # Write out the principal components.
         assert cluster is None or len(cluster) == len(principal_components)
-        x = ["PC%02d (%.2f%%)" % (i, perc_var[i]) for i in range(K)]
+        x = ["PC%02d (%.2f%%)" % (i, 100*perc_var[i]) for i in range(K)]
         header = ["Index", "Sample", "Cluster", "Color"] + x
         print "\t".join(header)
         for i in range(len(principal_components)):
