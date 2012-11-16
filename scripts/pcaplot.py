@@ -159,9 +159,9 @@ def main():
     if options.verbose:
         # Write out the principal components.
         assert cluster is None or len(cluster) == len(principal_components)
-        x = ["PC%02d" % i for i in range(K)]
-        x = ["Index", "Sample", "Percent Variance", "Cluster", "Color"] + x
-        print "\t".join(x)
+        x = ["PC%02d (%.2f%%)" % (i, perc_var[i]) for i in range(K)]
+        header = ["Index", "Sample", "Cluster", "Color"] + x
+        print "\t".join(header)
         for i in range(len(principal_components)):
             x = MATRIX.col_names(arrayio.COL_ID)[i]
             c = ""
@@ -170,7 +170,8 @@ def main():
             clust = ""
             if cluster is not None:
                 clust = cluster[i]
-            x = [i+1, x, perc_var[i], clust, c] + principal_components[i]
+            x = [i+1, x, clust, c] + principal_components[i]
+            assert len(x) == len(header)
             print "\t".join(map(str, x))
 
 
