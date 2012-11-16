@@ -44,7 +44,7 @@ def calc_km(survival, dead, group):
     return p_value, surv90, surv50, direction
 
 
-def get_cutoffs(cutoffs):
+def parse_cutoffs(cutoffs):
     if cutoffs:
         cutoffs = cutoffs.split(',')
         cutoffs = [float(i) for i in cutoffs]
@@ -56,7 +56,7 @@ def get_cutoffs(cutoffs):
     return cutoffs
 
 
-def get_genes(genes):
+def parse_genes(genes):
     if genes:
         gene_list = []
         for i in genes:
@@ -116,8 +116,8 @@ def main():
     assert clinical_file, 'please specify the path of clinical data'
     outcomes = args.outcome
     assert len(outcomes) > 0, 'please specify the time_header and dead_header'
-    cutoffs = get_cutoffs(args.cutoff)
-    gene_list = get_genes(args.gene)
+    cutoffs = parse_cutoffs(args.cutoff)
+    gene_list = parse_genes(args.gene)
     M = arrayio.read(input_file)
     clinical_data = genesetlib.read_tdf(
         clinical_file, preserve_spaces=True, allow_duplicates=True)
@@ -135,6 +135,7 @@ def main():
     geneids = M._row_names[ids[0]]
     headers = ids[:]
     data_all = M.slice()
+    #add the gene annotation column to the output_data
     output_data = []
     for i in range(len(geneids)):
         output_data.append([M._row_names[name][i] for name in ids])
@@ -144,6 +145,7 @@ def main():
     R = jmath.start_R()
     R('require(splines,quietly=TRUE)')
     R('source("' + config.kaplanmeierlib + '")')
+    #generate output headers 
     new_cutoffs = [0] + cutoffs + [1]
     name = [''] * (len(new_cutoffs) - 1)
     for j in range(len(new_cutoffs) - 1):
@@ -154,6 +156,8 @@ def main():
     surv50_header = ['50% Survival (' + k + ')' for k in name]
     newheader = (['p-value'] + num_samples + ave_expression
                  + surv90_header + surv50_header + ['Relationship'])
+    #get the time_header, dead_header,time_data,dead_data,
+    #and sample_index for each outcome
     all_time_header = []
     all_dead_header = []
     all_sample_index = []
@@ -180,12 +184,14 @@ def main():
         all_sample_index.append(sample_index)
         all_time_data.append(time_data)
         all_dead_data.append(dead_data)
+    #update the output headers
     for k in range(len(outcomes)):
         if len(outcomes) > 1:
             newheader1 = [all_time_header[k] + ' ' + i for i in newheader]
         else:
             newheader1 = newheader
         headers.extend(newheader1)
+    #calculate the survival analysis for each gene in each outcome
     all_group_name = [[]] * len(outcomes)
     all_survival = []
     all_dead = []
@@ -217,6 +223,7 @@ def main():
                            + surv50 + [direction])
             output_data[i].extend(single_data)
             all_group_name[h].append(group_name)
+    #generate the prism file and the km plot for each gene in each outcome
     filestem = '' if not args.filestem else args.filestem + '.'
     for h in range(len(outcomes)):
         jmath.R_equals(all_survival[h], 'survival')
@@ -237,6 +244,7 @@ def main():
                 R('bitmap(file=filename,type="png256")')
                 R('plot.km.multi(survival, dead, name, col=col)')
                 R('dev.off()')
+    #write the output data
     f = sys.stdout
     if args.filestem:
         outfile = args.filestem + '.stats.txt'
