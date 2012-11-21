@@ -4,7 +4,16 @@ import argparse
 import numpy
 import sys
 import arrayio
-from genomicode import filelib, jmath, genesetlib, config, matrixlib
+from genomicode import filelib, jmath, genesetlib, config, matrixlib, Matrix
+
+
+def guess_file_type(filename):
+    M = arrayio.read(filename)
+    headers = M._row_order
+    if headers == ['FILE', 'SAMPLE']:
+        return 'geneset_file'
+    else:
+        return 'gene_expression_file'
 
 
 def calc_km(survival, dead, group):
@@ -82,10 +91,27 @@ def intersect_clinical_matrix_sample_name(M, clinical_data):
     return clinical_dict, name_in_clinical
 
 
+def convert_genesetfile2matrix(filename):
+    matrix = [x for x in filelib.read_cols(filename)]
+    matrix = jmath.transpose(matrix)
+    col_names = {}
+    col_names['_SAMPLE_NAME'] = matrix[1][1:]
+    row_names = {}
+    row_names['geneset'] = []
+    data = []
+    for line in matrix[2:]:
+        single_data = [float(i) for i in line[1:]]
+        data.append(single_data)
+        row_names['geneset'].append(line[0])
+    M = Matrix.InMemoryMatrix(data, row_names=row_names, col_names=col_names)
+    return M
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='associate the gene expression with outcomes')
-    parser.add_argument(dest='expression_file', type=str, default=None)
+    parser.add_argument(dest='expression_file', type=str, default=None,
+                        help='gene expression file or geneset score file')
     parser.add_argument(dest='clinical_data', type=str, default=None)
     parser.add_argument('--outcome', dest='outcome', type=str,
                         help=('format <time_header>,<dead_header>'),
@@ -96,6 +122,11 @@ def main():
                               'To specify multiple genes, use this parameter '
                               'multiple times.'),
                         default=None, action='append')
+    parser.add_argument('--geneset', dest='geneset', type=str,
+                        help=('geneset to analyze. '
+                              'To specify multiple genes, use this parameter '
+                              'multiple times.'),
+                        default=[], action='append')
     parser.add_argument('--cutoff', dest='cutoff', type=str,
                         help=('comma-separated list of breakpoints '
                               '(between 0 and 1),e.g. 0.25,0.50'),
@@ -111,14 +142,26 @@ def main():
                         default=False)
     args = parser.parse_args()
     input_file = args.expression_file
-    assert input_file, 'please specify the path of gene expression data file'
+    assert input_file, ('please specify the path of gene expression data '
+                        'file or geneset score file')
+    file_type = guess_file_type(input_file)
     clinical_file = args.clinical_data
     assert clinical_file, 'please specify the path of clinical data'
     outcomes = args.outcome
     assert len(outcomes) > 0, 'please specify the time_header and dead_header'
     cutoffs = parse_cutoffs(args.cutoff)
     gene_list = parse_genes(args.gene)
-    M = arrayio.read(input_file)
+    geneset_list = args.geneset
+    if gene_list and geneset_list:
+        assert 'we only accept gene or geneset at each time, not both'
+    if file_type == 'gene_expression_file' and geneset_list:
+        assert 'gene_expression_file cannot run with geneset'
+    if file_type == 'geneset_file' and gene_list:
+        assert 'geneset_file cannot run with gene'
+    if file_type == 'gene_expression_file':
+        M = arrayio.read(input_file)
+    elif file_type == 'geneset_file':
+        M = convert_genesetfile2matrix(input_file)
     clinical_data = genesetlib.read_tdf(
         clinical_file, preserve_spaces=True, allow_duplicates=True)
     clinical_dict, name_in_clinical = intersect_clinical_matrix_sample_name(
@@ -127,10 +170,12 @@ def main():
     x = matrixlib.align_cols_to_annot(
         M, name_in_clinical, reorder_MATRIX=True)
     M, colnames = x
-    #if given genes,get of match genes
+    #if given genes or geneset,get of match genes or geneset
     if gene_list:
         x = matrixlib.align_rows_to_annot(M, gene_list, reorder_MATRIX=True)
-        M, rownames = x
+    if geneset_list:
+        x = matrixlib.align_rows_to_annot(M, geneset_list, reorder_MATRIX=True)
+    M, rownames = x
     ids = M._row_order
     geneids = M._row_names[ids[0]]
     headers = ids[:]
@@ -145,7 +190,7 @@ def main():
     R = jmath.start_R()
     R('require(splines,quietly=TRUE)')
     R('source("' + config.kaplanmeierlib + '")')
-    #generate output headers 
+    #generate output headers
     new_cutoffs = [0] + cutoffs + [1]
     name = [''] * (len(new_cutoffs) - 1)
     for j in range(len(new_cutoffs) - 1):
