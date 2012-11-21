@@ -87,7 +87,7 @@ def intersect_clinical_matrix_sample_name(M, clinical_data):
         if n > 0:
             name_in_clinical = clinical_dict[g]
     assert name_in_clinical, ('cannot match the sample name in '
-                              'clinical data and gene expression data')
+                              'clinical data and gene data')
     return clinical_dict, name_in_clinical
 
 
@@ -196,7 +196,10 @@ def main():
     for j in range(len(new_cutoffs) - 1):
         name[j] = "%d - %d" % (new_cutoffs[j] * 100, new_cutoffs[j + 1] * 100)
     num_samples = ['Num Samples (' + k + ')' for k in name]
-    ave_expression = ['Average Expression (' + k + ')'for k in name]
+    if file_type == 'gene_expression_file':
+        ave_expression = ['Average Expression (' + k + ')'for k in name]
+    elif file_type == 'geneset_file':
+        ave_expression = ['Average gene set score (' + k + ')'for k in name]
     surv90_header = ['90% Survival (' + k + ')' for k in name]
     surv50_header = ['50% Survival (' + k + ')' for k in name]
     newheader = (['p-value'] + num_samples + ave_expression
@@ -264,6 +267,8 @@ def main():
                 group_name[k] = name[group[k]]
             p_value, surv90, surv50, direction = calc_km(survival,
                                                          dead, group_name)
+            if file_type == 'geneset_file':
+                direction = direction.replace('expression','gene set score')
             single_data = ([str(p_value)] + num_group + avg + surv90
                            + surv50 + [direction])
             output_data[i].extend(single_data)
