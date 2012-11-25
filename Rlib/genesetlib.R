@@ -1,5 +1,6 @@
-# read.gmt
 # write.gmt
+# read.gmt
+# write.gmx
 
 # A geneset is a list with members:
 # NAME
@@ -7,7 +8,7 @@
 # GENES
 
 
-write.gmt <- function(filename, genesets) {
+.format.gmt <- function(genesets) {
   maxlen <- max(unlist(lapply(genesets, function(x) length(x$GENES))))
   data.out <- c()
   for(gs in genesets) {
@@ -18,6 +19,11 @@ write.gmt <- function(filename, genesets) {
     x <- c(gs$NAME, description, x)
     data.out <- rbind(data.out, x)
   }
+  data.out
+}
+
+write.gmt <- function(filename, genesets) {
+  data.out <- .format.gmt(genesets)
   write.table(data.out, filename, quote=FALSE, sep="\t",
     row.names=FALSE, col.names=FALSE)
 }
@@ -39,4 +45,11 @@ read.gmt <- function(filename) {
     genesets[[NAME]] <- x
   }
   genesets
+}
+
+write.gmx <- function(filename, genesets) {
+  data.out <- .format.gmt(genesets)
+  data.out <- t(data.out)
+  write.table(data.out, filename, quote=FALSE, sep="\t",
+    row.names=FALSE, col.names=FALSE)
 }
