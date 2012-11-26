@@ -14,6 +14,7 @@
 # find_col_genesets
 # find_col_annotation
 # relabel_col_ids
+# reorder_col_indexes
 # remove_duplicate_cols
 # rename_duplicate_cols
 # remove_col_ids
@@ -429,6 +430,17 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     return MATRIX_new
 
 
+def reorder_col_indexes(MATRIX, indexes, count_headers):
+    if not indexes:
+        return MATRIX
+    I_given = parse_indexes(MATRIX, False, indexes, count_headers)
+    # Add back any indexes that weren't explicitly given by the user.
+    I_other = [i for i in range(MATRIX.ncol()) if i not in I_given]
+    I_all = I_given + I_other
+    MATRIX_new = MATRIX.matrix(None, I_all)
+    return MATRIX_new
+
+
 def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
     import arrayio
 
@@ -777,7 +789,7 @@ def add_row_id(MATRIX, header):
     return MATRIX_new
 
 
-def add_row_annot(MATRIX, row_annots):
+def add_row_annot(MATRIX, row_annots, allow_unaligned_row_annot):
     # row_annot should be in the format <gmx/gmt_file>[,<geneset>].
     from genomicode import genesetlib
     from genomicode import matrixlib
@@ -805,22 +817,27 @@ def add_row_annot(MATRIX, row_annots):
     # Find an alignment between one of the matrix row_names and the
     # genesets.
     x = matrixlib.align_rows_to_many_annots(
-        MATRIX, all_genes, hash=True, get_indexes=True)
+        MATRIX, all_genes, hash=True, get_indexes=True, reorder_MATRIX=False)
     I_matrix, I_geneset, x = x
     assert not MATRIX.nrow() or len(I_matrix), \
         "I could not match the matrix to a geneset."
-    #x = _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes)
-    #assert x, "I could not match the matrix to a geneset."
-    #I_matrix, I_geneset = x
-    MATRIX_new = MATRIX.matrix(I_matrix, None)
+
+    MATRIX_new = MATRIX
+    if not allow_unaligned_row_annot:
+        MATRIX_new = MATRIX.matrix(I_matrix, None)
 
     # Add the new annotations to the MATRIX.
     for gs in genesets:
         assert gs in geneset2genes, "Missing geneset: %s" % gs
         assert gs not in MATRIX.row_names(), "duplicate name: %s" % gs
 
-        x = geneset2genes[gs]
-        genes = [x[i] for i in I_geneset]
+        genes = [""] * MATRIX.nrow()
+        for (im, ig) in zip(I_matrix, I_geneset):
+            genes[im] = geneset2genes[gs][ig]
+
+        if not allow_unaligned_row_annot:
+            # MATRIX_new can be subset of MATRIX.
+            genes = [genes[i] for i in I_matrix]
 
         assert len(genes) == MATRIX_new.nrow()
         MATRIX_new._row_order.append(gs)
@@ -1210,19 +1227,13 @@ def main():
         help="Include only the samples from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
+        "--reorder_col_indexes", default=None,
+        help="Change the order of the data columns.  Give the indexes "
+        "in the order that they should occur in the file, e.g. 1-5,8 "
+        "(1-based, inclusive).")
+    group.add_argument(
         "--remove_col_ids", default=None,
         help="Comma-separated list of IDs to remove.")
-    group.add_argument(
-        "--toupper_col_ids", default=False, action="store_true",
-        help="Convert column IDs to upper case.  "
-        "(Done after relabel, remove, but before filtering duplicates.)")
-    group.add_argument(
-        "--relabel_col_ids", default=None,
-        help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
-        "One of the genesets in the file must match the current column IDs.")
-    group.add_argument(
-        "--ignore_missing_labels", default=False, action="store_true",
-        help="Any column labels that can't be found will not be relabeled.")
     group.add_argument(
         "--align_col_file", default=None,
         help="Align the cols to this other matrix file.")
@@ -1233,9 +1244,20 @@ def main():
         "--filter_duplicate_cols", default=False, action="store_true",
         help="If a column is found multiple times, keep only the first one.")
     group.add_argument(
+        "--toupper_col_ids", default=False, action="store_true",
+        help="Convert column IDs to upper case.  "
+        "(Done after relabel, remove, but before filtering duplicates.)")
+    group.add_argument(
         "--rename_duplicate_cols", default=False, action="store_true",
         help="If multiple columns have the same header, make their names "
         "unique.")
+    group.add_argument(
+        "--relabel_col_ids", default=None,
+        help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
+        "One of the genesets in the file must match the current column IDs.")
+    group.add_argument(
+        "--ignore_missing_labels", default=False, action="store_true",
+        help="Any column labels that can't be found will not be relabeled.")
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
@@ -1285,6 +1307,11 @@ def main():
         "Each geneset in the file should contain the same number of "
         "genes as the matrix.  One of the genesets should be align-able "
         "to the IDs of this matrix.")
+    group.add_argument(
+        "--allow_unaligned_row_annot", default=False, action="store_true",
+        help="If the matrix contains rows not in the annotation file, "
+        "fill them with empty annotations (rather than dropping the "
+        "row).")
     group.add_argument(
         "--remove_row_annot", action="append", default=[],
         help="Remove this annotations from the matrix.")
@@ -1338,6 +1365,11 @@ def main():
     I_col = _intersect_indexes(I1, I2, I3, I4)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
+    # Reorder the column by indexes.  Do this before removing columns.
+    # Do this before adding or removing annotations.
+    MATRIX = reorder_col_indexes(
+        MATRIX, args.reorder_col_indexes, args.col_indexes_include_headers)
+
     # Remove row annotations.
     for name in args.remove_row_annot:
         MATRIX = remove_row_annot(MATRIX, name)
@@ -1347,7 +1379,7 @@ def main():
 
     # Add row annotations.
     for annot in args.add_row_annot:
-        MATRIX = add_row_annot(MATRIX, annot)
+        MATRIX = add_row_annot(MATRIX, annot, args.allow_unaligned_row_annot)
 
     # Rename the row annotations.  Do this after removing and adding.
     for x in args.rename_row_annot:
