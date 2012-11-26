@@ -9,6 +9,8 @@ def run(parameters, objects, pipeline):
     outfile = get_outfile(parameters, objects, pipeline)
     M = arrayio.read(single_object.identifier)
     all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
+    if not all_platforms:
+        raise ValueError('we cannot guess the platform and annotate the file')
     ids = M._row_order
     probe_header = all_platforms[0][0]
     probe_id = M._row_names[probe_header]

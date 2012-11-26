@@ -205,10 +205,10 @@ make_normalize_report(Parameters,Modules):-
     % Input1: signal_file
     convert_parameters_file(Parameters,NewParameters),
     signal_file(NewParameters,Past_Modules1),
-    % Module: annot_probe
+    % Module: annot_probes
     % Output parameters:full length parameters of signal_file and [filetype,signal_file]
     append(NewParameters,[filetype,signal_file,annotate_type,all],NewParameters0),
-    append(Past_Modules1,[annotate_probe,NewParameters0],Modules1),
+    append(Past_Modules1,[annotate_probes,NewParameters0],Modules1),
     % Input2: pca_plot_in
     get_options(Parameters,[pca_gene_num],[],Options),
     append(NewParameters,Options,NewParameters1),

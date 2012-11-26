@@ -28,7 +28,10 @@ def run(parameters,objects,pipeline):
     firstline=text[0].split()
     f.close()
     firstindex = firstline.index('"ProbeName"')
-    secondindex = firstline.index('"Sequence"')
+    if '"Sequence"' in firstline:
+        secondindex = firstline.index('"Sequence"')
+    else:
+        secondindex = firstline.index('"ControlType"')
     sample = range(secondindex+1,len(firstline))
     f=open(outfile,'w')
     for i in text:
