@@ -40,9 +40,8 @@ def run(parameters, objects, pipeline):
                 if words[0] == 'FEATURES':
                     fline = set(words)
         f.close()
-        signal_tag1 = set(['gMeanSignal', 'rMeanSignal'])
-        signal_tag2 = set(['gMedianSignal', 'rMedianSignal'])
-        if signal_tag1.issubset(fline) or signal_tag2.issubset(fline):
+        signal_tag = set(['gProcessedSignal','rProcessedSignal'])
+        if signal_tag.issubset(fline):
             if postag == ['TYPE', 'FEPARAMS', 'DATA', '*', 'TYPE', 'STATS',
                           'DATA', '*', 'TYPE', 'FEATURES']:
                 agilent_files.append(filename)
