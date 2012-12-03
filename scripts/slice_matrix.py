@@ -138,7 +138,10 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
     return fmt_module, matrices
 
 
-def parse_indexes(MATRIX, is_row, s, count_headers):
+def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
+    # is_row is a boolean for whether these are row indexes.  Takes
+    # 1-based indexes and returns a list of (start, end), 0-based
+    # exclusive ends.
     # Examples:
     # 5
     # 1,5,10
@@ -152,12 +155,18 @@ def parse_indexes(MATRIX, is_row, s, count_headers):
         num_headers = len(MATRIX._row_names)
 
     I = []
-    for s, e in parselib.parse_ranges(s):
+    for s, e in parselib.parse_ranges(indexes_str):
         if count_headers:
             s, e = s - num_headers, e - num_headers
         assert s >= 1
         s, e = s - 1, min(e, max_index)
         I.extend(range(s, e))
+
+    # Make sure there are no duplicate indexes.
+    I = sorted(I)
+    for i in range(1, len(I)):
+        assert I[i] > I[i-1]
+        
     return I
 
 
@@ -486,9 +495,10 @@ def rename_duplicate_cols(MATRIX, rename_duplicate_cols):
 def remove_col_ids(MATRIX, remove_col_ids):
     import arrayio
 
-    if remove_col_ids is None:
+    if not remove_col_ids:
         return MATRIX
-    x = remove_col_ids.split(",")
+    x = ",".join(remove_col_ids)
+    x = x.split(",")
     col_ids = [x.strip() for x in x]
     names = MATRIX.col_names(arrayio.COL_ID)
 
@@ -912,42 +922,65 @@ def move_row_annot(MATRIX, move_row_annot):
     return MATRIX_clean
 
 
-def center_genes_mean(MATRIX):
+def center_genes_mean(MATRIX, indexes):
     from genomicode import jmath
+
+    I = []
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the mean.
         X_i = X[i]
-        m = jmath.mean(X_i)
+        X_sub = X_i
+        if I:
+            X_sub = [X_i[j] for j in I]
+        m = jmath.mean(X_sub)
         X[i] = [x - m for x in X_i]
 
 
-def center_genes_median(MATRIX):
+def center_genes_median(MATRIX, indexes):
     from genomicode import jmath
+
+    I = []
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the median.
         X_i = X[i]
-        m = jmath.median(X_i)
+        X_sub = X_i
+        if I:
+            X_sub = [X_i[j] for j in I]
+        m = jmath.median(X_sub)
         X[i] = [x - m for x in X_i]
 
 
-def normalize_genes_var(MATRIX):
+def normalize_genes_var(MATRIX, indexes):
     from genomicode import jmath
+
+    I = []
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, False)
 
     # Normalize the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
         X_i = X[i]
-        m = jmath.mean(X_i)
+        X_sub = X_i
+        if I:
+            X_sub = [X_i[j] for j in I]
+        
+        m = jmath.mean(X_sub)
+        s = jmath.stddev(X_sub)
+        
         # Subtract the mean.
         X_i = [x - m for x in X_i]
         # Normalize to stddev of 1.
-        s = jmath.stddev(X_i)
         if s != 0:
             X_i = [x / s for x in X_i]
         # Add the mean back.
@@ -1202,10 +1235,20 @@ def main():
         choices=["mean", "median"],
         help="Center each gene by: mean, median.")
     parser.add_argument(
+        "--gc_subset_indexes", dest="gc_subset_indexes", default=None,
+        help="Will center the genes based on the mean (or median) of"
+        "this subset of the samples.  Given as indexes, e.g. 1-5,8 "
+        "(1-based, inclusive).")
+    parser.add_argument(
         "--gn", "--gene_normalize", dest="gene_normalize", default=None,
         choices=["ss", "var"],
         help="Normalize each gene by: ss (sum of squares), var (variance).")
-
+    parser.add_argument(
+        "--gn_subset_indexes", dest="gn_subset_indexes", default=None,
+        help="Will normalize the genes based on the variance (or sum "
+        "of squares) of this subset of the samples.  Given as indexes, "
+        "e.g. 1-5,8 (1-based, inclusive).")
+        
     group = parser.add_argument_group(title="Column operations")
     group.add_argument(
         "--select_col_indexes", default=None,
@@ -1232,7 +1275,7 @@ def main():
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).")
     group.add_argument(
-        "--remove_col_ids", default=None,
+        "--remove_col_ids", default=[], action="append",
         help="Comma-separated list of IDs to remove.")
     group.add_argument(
         "--align_col_file", default=None,
@@ -1428,14 +1471,14 @@ def main():
 
     # Preprocess the expression values.
     if args.gene_center == "mean":
-        center_genes_mean(MATRIX)
+        center_genes_mean(MATRIX, args.gc_subset_indexes)
     elif args.gene_center == "median":
-        center_genes_median(MATRIX)
+        center_genes_median(MATRIX, args.gc_subset_indexes)
 
     if args.gene_normalize == "ss":
         raise NotImplementedError
     elif args.gene_normalize == "var":
-        normalize_genes_var(MATRIX)
+        normalize_genes_var(MATRIX, args.gn_subset_indexes)
 
     # Write the outfile (in the same format).
     handle = sys.stdout
