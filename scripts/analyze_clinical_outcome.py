@@ -153,11 +153,11 @@ def main():
     gene_list = parse_genes(args.gene)
     geneset_list = args.geneset
     if gene_list and geneset_list:
-        assert 'we only accept gene or geneset at each time, not both'
+        raise AssertionError('we only accept gene or geneset at each time, not both')
     if file_type == 'gene_expression_file' and geneset_list:
-        assert 'gene_expression_file cannot run with geneset'
+        raise AssertionError('gene_expression_file cannot run with geneset')
     if file_type == 'geneset_file' and gene_list:
-        assert 'geneset_file cannot run with gene'
+        raise AssertionError('geneset_file cannot run with gene')
     if file_type == 'gene_expression_file':
         M = arrayio.read(input_file)
     elif file_type == 'geneset_file':
@@ -178,6 +178,7 @@ def main():
     M, rownames = x
     ids = M._row_order
     geneids = M._row_names[ids[0]]
+    assert geneids, 'we cannot match any gene or geneset as required'
     headers = ids[:]
     data_all = M.slice()
     #add the gene annotation column to the output_data
