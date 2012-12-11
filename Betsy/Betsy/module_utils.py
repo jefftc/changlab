@@ -154,20 +154,17 @@ def find_object(parameters, objects, objecttype,
 
 
 def exists_nz(filename):
-    if os.path.exists(filename):
-        size = os.path.getsize(filename)
-        if size > 0:
-            if not os.path.isdir(filename):
-                return True
-            else:
-                if os.listdir(filename):
-                    return True
-                else:
-                    return False
-        else:
-            return False
-    else:
+    """check if the filename exists and not empty"""
+    if not os.path.exists(filename): # does not exist
         return False
+    if os.path.isdir(filename):  # is directory and not empty
+        if os.listdir(filename):
+            return True
+        return False
+    size = os.path.getsize(filename) #is file and not empty
+    if size > 0:
+       return True   
+    return False
 
 
 
@@ -251,10 +248,10 @@ def renew_parameters(parameters, key_list):
 def is_number(s):
     try:
         float(s)
-        return True
     except ValueError:
         return False
-    
+    return True
+
 
 def download_ftp(host, path, filename):
     from ftplib import FTP
