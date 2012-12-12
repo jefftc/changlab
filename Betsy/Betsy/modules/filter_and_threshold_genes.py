@@ -1,4 +1,4 @@
-#filter_genes_by_fold_change.py
+#filter_and_threshold_genes.py
 import os
 from Betsy import module_utils
 
@@ -30,7 +30,7 @@ def run(parameters,objects,pipeline):
     arrayio.tab_delimited_format.write(M_c,f)
     f.close()
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for filter_genes_by_fold_change fails'%outfile)
+        'the output file %s for filter_and_threshold_genes fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
         parameters,single_object,pipeline,outfile)
@@ -51,7 +51,7 @@ def get_identifier(parameters,objects):
     single_object = module_utils.find_object(
         parameters,objects,'signal_file','contents,preprocess')
     assert os.path.exists(single_object.identifier),(
-        'the input file %s for filter_genes_by_fold_change does not exist'
+        'the input file %s for filter_and_threshold_genes does not exist'
         %single_object.identifier)
     return single_object
 
