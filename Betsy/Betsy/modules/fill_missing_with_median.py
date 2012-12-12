@@ -59,6 +59,7 @@ def get_newobjects(parameters, objects, pipeline):
         outfile, 'signal_file', parameters, objects, single_object)
     return new_objects
 
+
 def is_missing(identifier):
     import arrayio
     M = arrayio.read(identifier)
