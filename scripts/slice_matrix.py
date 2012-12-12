@@ -18,6 +18,7 @@
 # remove_duplicate_cols
 # rename_duplicate_cols
 # remove_col_ids
+# remove_col_indexes
 #
 # find_row_indexes
 # find_row_ids
@@ -140,9 +141,9 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
     # is_row is a boolean for whether these are row indexes.  Takes
-    # 1-based indexes and returns a list of (start, end), 0-based
-    # exclusive ends.
-    # Examples:
+    # 1-based indexes and returns a list of 0-based indexes.
+    # 
+    # Example inputs:
     # 5
     # 1,5,10
     # 1-99,215-300
@@ -373,6 +374,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     assert len(genesets) == 1
     #print filename
     #print genesets
+    
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
@@ -417,7 +419,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
             print >>sys.stderr, \
                 "Missing (showing %d of %d):" % (MAX_TO_SHOW, len(missing))
         else:
-            print >>sys.stderr, "Missing:"
+            print >>sys.stderr, "Missing from annotation:"
         for x_ in missing[:MAX_TO_SHOW]:
             print >>sys.stderr, x_
         raise AssertionError("I could not match the matrix to a geneset.")
@@ -492,6 +494,7 @@ def rename_duplicate_cols(MATRIX, rename_duplicate_cols):
     MATRIX._col_names[x] = nodup
     return MATRIX
 
+
 def remove_col_ids(MATRIX, remove_col_ids):
     import arrayio
 
@@ -514,6 +517,20 @@ def remove_col_ids(MATRIX, remove_col_ids):
         ", ".join(sorted(not_found))
     x = MATRIX.matrix(None, I)
     return x
+
+
+def remove_col_indexes(MATRIX, remove_col_indexes, count_headers):
+    import arrayio
+
+    if not remove_col_indexes:
+        return None
+    I = []
+    for indexes in remove_col_indexes:
+        x = parse_indexes(MATRIX, False, indexes, count_headers)
+        I.extend(x)
+
+    I_all = [x for x in range(MATRIX.ncol()) if x not in I]
+    return I_all
 
 
 def toupper_col_ids(MATRIX, toupper_col_ids):
@@ -1278,6 +1295,9 @@ def main():
         "--remove_col_ids", default=[], action="append",
         help="Comma-separated list of IDs to remove.")
     group.add_argument(
+        "--remove_col_indexes", default=[], action="append",
+        help="Comma-separated list of indexes to remove.")
+    group.add_argument(
         "--align_col_file", default=None,
         help="Align the cols to this other matrix file.")
     group.add_argument(
@@ -1402,10 +1422,12 @@ def main():
     I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
-    I2 = find_col_ids(MATRIX, args.select_col_ids)
-    I3 = find_col_genesets(MATRIX, args.select_col_genesets)
-    I4 = find_col_annotation(MATRIX, args.select_col_annotation)
-    I_col = _intersect_indexes(I1, I2, I3, I4)
+    I2 = remove_col_indexes(
+        MATRIX, args.remove_col_indexes, args.col_indexes_include_headers)
+    I3 = find_col_ids(MATRIX, args.select_col_ids)
+    I4 = find_col_genesets(MATRIX, args.select_col_genesets)
+    I5 = find_col_annotation(MATRIX, args.select_col_annotation)
+    I_col = _intersect_indexes(I1, I2, I3, I4, I5)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Reorder the column by indexes.  Do this before removing columns.
