@@ -3,7 +3,7 @@ import os
 import shutil
 from Betsy import module_utils
 import arrayio
-
+import numpy
 
 def run(parameters, objects, pipeline):
     single_object = get_identifier(parameters, objects)
@@ -15,10 +15,10 @@ def run(parameters, objects, pipeline):
         f_out = file(outfile, 'w')
         X = M.slice()
         for i in range(M.dim()[0]):
-            med = X[i]
+            med = numpy.median([j for j in X[i] if j])
             for j in range(M.dim()[1]):
                 if M._X[i][j] is None:
-                    M._X[i][j] = str(med)
+                    M._X[i][j] = med
         arrayio.tab_delimited_format.write(M, f_out)
         f_out.close()
     assert module_utils.exists_nz(outfile), (
@@ -59,26 +59,3 @@ def get_newobjects(parameters, objects, pipeline):
         outfile, 'signal_file', parameters, objects, single_object)
     return new_objects
 
-
-def is_missing(identifier):
-    import arrayio
-    M = arrayio.read(identifier)
-    has_missing = False
-    for i in range(M.dim()[0]):
-        for j in range(M.dim()[1]):
-            if M._X[i][j] is None:
-                has_missing = True
-                break
-        if has_missing:
-            break
-    return has_missing
-
-
-def get_median(input_list):
-    new_list = sorted(input_list)
-    if len(new_list) % 2 == 1:
-        return new_list[(len(new_list) + 1) / 2 - 1]
-    else:
-        lower = new_list[len(new_list) / 2 - 1]
-        upper = new_list[len(new_list) / 2]
-        return (float(lower + upper)) / 2
