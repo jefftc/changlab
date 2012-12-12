@@ -1,7 +1,7 @@
 ##annotate_genes_with_david.py
 import os
 from Betsy import module_utils
-from genomicode import arrayannot
+from genomicode import arrayplatformlib
 
 
 def run(parameters, objects, pipeline):
@@ -13,7 +13,7 @@ def run(parameters, objects, pipeline):
     f.close()
     in_list = text.split()
     # guess the idType
-    chipname = arrayannot.identify_platform_of_annotations(in_list)
+    chipname = arrayplatformlib.identify_platform_of_annotations(in_list)
     assert chipname in platform2idtype, 'David does not handle %s' % chipname
     idType = platform2idtype[chipname]    # convert the platform to idtype
     DAVIDenrich(in_list, idType, outfile)

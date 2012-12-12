@@ -472,4 +472,7 @@ run_rule.py --plin 'input_signal_file([contents,[train],status,given],[])' --id 
 70. Test analyze_geneset module
 /home/xchen/chencode/Betsy/scripts/run_rule.py --plin 'input_signal_file([contents,[a]],[])' --id 'se2fplate6_48.illu.gz' --plin 'geneset_file([contents,[a]],[])' --id 'genesets.gmt' --plout "geneset_analysis([contents,[a],is_logged,logged,dwd,no_dwd,quantile,yes_quantile,shiftscale,no_shiftscale,bfrm,no_bfrm,combat,no_combat,preprocess,unknown_preprocess,has_missing_value,zero_fill,filter,0,unique_genes,high_var,gene_center,mean,gene_normalize,variance,format,tdf,predataset,no_predataset,rename_sample,no_rename,gene_order,no_order,geneset,'E2F1n_affy_150_UP',has_annotation_gene_id,yes_gene_id],A)" --dry_run
 
+
+run_rule.py --plin 'agilent_files([contents,[a],version,agilent],[])' --id 'agilent_expression' --plout 'ma_plot([contents,[a],version,agilent],A)'
+
  /home/xchen/chencode/Betsy/scripts/run_protocol.py --protocol 'normalize_file' --input 'idat_files:6991010018' --parameters 'preprocess:illumina' --parameters 'has_missing_value:zero_fill'

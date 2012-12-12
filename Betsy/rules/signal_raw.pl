@@ -399,3 +399,17 @@ signal_raw(Parameters,Modules):-
     % Output parameters:full length parameters of signal_raw
     Newadd=[relabel_samples,Parameters],
     append(Past_Modules, Newadd, Modules).
+
+/*--------------------------------------------------------------------------*/
+% plot MA figures for agilent_files
+ma_plot(Parameters,Modules):-
+    % Conditions: Parameters has contents,agilent,no_logged,tdf
+    get_value(Parameters,contents,[unknown],Contents),
+    get_value(Parameters,version,unknown_version,Version),
+    Version=agilent,
+    % Input: agilent_files with agilent
+    agilent_files([contents,Contents,version,agilent],Past_Modules),
+    % Module: plot_MA
+    % Output parameters: full length parameters of signal_raw 
+    Newadd=[plot_MA,Parameters],append(Past_Modules, Newadd, Modules).
+
