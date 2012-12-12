@@ -59,3 +59,15 @@ def get_newobjects(parameters, objects, pipeline):
         outfile, 'signal_file', parameters, objects, single_object)
     return new_objects
 
+def is_missing(identifier):
+    import arrayio
+    M = arrayio.read(identifier)
+    has_missing = False
+    for i in range(M.dim()[0]):
+       for j in range(M.dim()[1]):
+           if M._X[i][j] == None:
+               has_missing = True
+               break
+       if has_missing:
+            break
+    return has_missing
