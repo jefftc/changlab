@@ -39,6 +39,9 @@ def run(parameters,objects,pipeline):
             if float(sort_p[i][0]) < threshold:
                 gene_list.append(M._row_names[key][sort_p[i][1]])
     elif parameters['gene_order'] == 't_test_fdr':
+        for i in range(len(p)):
+            if p[i] == 10:
+                p[i]= ''
         fdr = jmath.cmh_fdr_bh(p)
         for i in range(len(fdr)):
             if numpy.isnan(fdr[i]):
