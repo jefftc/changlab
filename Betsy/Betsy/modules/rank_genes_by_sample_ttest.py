@@ -24,7 +24,7 @@ def run(parameters,objects,pipeline):
     second = M.slice(None,label[1][0])
     t,p = gene_ranking.t_test(first,second)
     for i in range(len(p)):
-        if numpy.isnan(p[i]):
+        if not p[i]:
             p[i]=10
     sort_p = [(p[index],index) for index in range(len(p))]
     key = M._row_order[0]
@@ -39,6 +39,9 @@ def run(parameters,objects,pipeline):
             if float(sort_p[i][0]) < threshold:
                 gene_list.append(M._row_names[key][sort_p[i][1]])
     elif parameters['gene_order'] == 't_test_fdr':
+        for i in range(len(p)):
+            if p[i] == 10:
+                p[i]= ''
         fdr = jmath.cmh_fdr_bh(p)
         for i in range(len(fdr)):
             if numpy.isnan(fdr[i]):

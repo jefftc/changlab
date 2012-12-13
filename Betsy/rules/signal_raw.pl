@@ -321,9 +321,9 @@ signal_raw(Parameters,Modules):-
     set_value(Parameters,predataset,OldPredataset,OldParameters1),
     set_value(OldParameters1,status,OldStatus,OldParameters),
     signal_raw(OldParameters,Past_Modules),
-    % Module: filter_genes_by_fold_change
+    % Module: filter_and_threshold_genes
     % Output parameters:full length parameters of signal_raw
-    Newadd=[filter_genes_by_fold_change,Parameters],
+    Newadd=[filter_and_threshold_genes,Parameters],
     append(Past_Modules, Newadd, Modules).
 
 /*--------------------------------------------------------------------------*/

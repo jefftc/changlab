@@ -118,7 +118,7 @@ def main():
         else:
             raise ValueError('--input is in the wrong format')
         assert predicate in module.INPUTS, (
-            "%s is not recognized in %s)"
+            "%s is not a recognized input for the %s protocol"
             % (str(predicate), args.protocol))
         if os.path.exists(identifier):
             identifier = os.path.realpath(identifier)

@@ -24,12 +24,19 @@ def run(parameters, objects, pipeline):
     first = M.slice(None, label[0][0])
     second = M.slice(None, label[1][0])
     t, p = gene_ranking.t_test(first, second)
+##    p_copy = p[:]
+##    for i in range(len(p_copy)):
+##        if numpy.isnan(p_copy[i]):
+##            p_copy[i] = ''
+##    higher_group = get_higherexpression(M, label, second_line)
+##    bonf = jmath.cmh_bonferroni(p_copy)
+##    fdr = jmath.cmh_fdr_bh(p_copy)
     higher_group = get_higherexpression(M, label, second_line)
     bonf = jmath.cmh_bonferroni(p)
     fdr = jmath.cmh_fdr_bh(p)
     p_copy = p[:]
     for i in range(len(p_copy)):
-        if numpy.isnan(p_copy[i]):
+        if not p_copy[i]:
             p_copy[i] = 10
     sort_p = [(p_copy[index], index) for index in range(len(p_copy))]
     sort_p.sort()

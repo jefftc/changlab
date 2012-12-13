@@ -73,7 +73,8 @@ PARAMETERS = {
     'automatch': ['yes_automatch','no_automatch'],
     'geneset':'string',
     'allgenes': ['yes_allgenes','no_allgenes'],
-    'has_annotation_gene_id':['yes_gene_id','no_gene_id']}
+    'has_annotation_gene_id':['yes_gene_id','no_gene_id'],
+    'group_fc':['yes_group_fc','no_group_fc']}
  
 
 DEFAULT = {
