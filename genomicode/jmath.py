@@ -511,26 +511,54 @@ def assert_equal_matrix(X1, X2, precision=1E-6):
     return max_diff
 
 def cmh_bonferroni(p_values):
-    m = len(p_values)
+    # p_values should be a list of float or None.  Will return a
+    # parallel list of Bonferroni corrected p-values or None.
 
-    x = [p*m for p in p_values]
-    bonf = [min(x, 1) for x in x]
+    # Check types of p_values.
+    for x in p_values:
+        assert type(x) in [type(None), type(0.0), type(0)]
+
+    x = [x for x in p_values if x is not None]
+    m = len(x)
+    bonf = [None] * len(p_values)
+    for i in range(len(p_values)):
+        if p_values[i] is None:
+            continue
+        bonf[i] = min(p_values[i]*m, 1)
+    #x = [p*m for p in p_values]
+    #bonf = [min(x, 1) for x in x]
     return bonf
     
 def cmh_fdr_bh(p_values):
-    m = len(p_values)
+    # Check types of p_values.
+    for x in p_values:
+        assert type(x) in [type(None), type(0.0), type(0)]
+    p_clean = []
+    p_I = []
+    for i, p in enumerate(p_values):
+        if p is None:
+            continue
+        p_I.append(i)
+        p_clean.append(p)
+    
+    m = len(p_clean)
 
     # Sort p.values in increasing order.
-    O = order(p_values)
+    O = order(p_clean)
     I = range(1, m+1)
     O_rev = order([I[o] for o in O])
-    p_values = [p_values[o] for o in O]
+    p_clean = [p_clean[o] for o in O]
 
     k = range(1, m+1)
-    x = [float(m)/k[i] * p_values[i] for i in range(len(p_values))]
+    x = [float(m)/k[i] * p_clean[i] for i in range(len(p_clean))]
     x = [min(x, 1) for x in x]
     x = [min(x[i:]) for i in range(len(x))]
-    fdr = [x[o] for o in O_rev]
+    fdr_clean = [x[o] for o in O_rev]
+
+
+    fdr = [None] * len(p_values)
+    for f, i in zip(fdr_clean, p_I):
+        fdr[i] = f
     return fdr
 
 def fisher_z_item(R, N):
