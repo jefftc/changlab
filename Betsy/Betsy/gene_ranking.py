@@ -26,23 +26,23 @@ def t_test(X, Y, exact=True):
     p_value = []
     assert len(X) == len(Y), 'X and Y should be equal length'
     for i in range(len(X)):
-        for j in range(len(X[i])):
-            if  numpy.isnan(X[i][j]):
-                X[i][j]='NA'
-        for j in range(len(Y[i])):
-            if  numpy.isnan(Y[i][j]):
-                Y[i][j]='NA' 
+        X[i] = ['NA' if numpy.isnan(x) else x for x in X[i]]
+        Y[i] = ['NA' if numpy.isnan(x) else x for x in Y[i]]
         jmath.R_equals(X[i],'x')
         jmath.R_equals(Y[i],'y')
         R('a<-try(t.test(x,y,exact=exact), silent=TRUE)')
         R('if (is(a, "try-error")) p=NA else p=a$p.value')
-        #R('if (is(a, "try-error")) t=NA else t=a$t')
+        R('if (is(a,"try-error")) t=NA else t=a$t')
+        R('if (is.null(t)) t=NA')
         p = R['p']
-        #print p
-        #t = R['t']
-        #t_value.append(t[0])
+        if not p[0]:
+            p = [None]
+        t = R['t']
+        if not t[0]:
+            t = [None]
+        t_value.append(t[0])
         p_value.append(p[0])
-    return None, p_value
+    return t_value, p_value
 
 
 def correlation(M, Y):
