@@ -123,6 +123,7 @@ def main():
     MATRIX = read_matrix(filename)
     if options.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+    assert MATRIX.nrow() and MATRIX.ncol(), "Empty matrix."
 
     cluster = None
     if options.cluster and options.cluster_file:
@@ -137,6 +138,7 @@ def main():
 
     # Select a subset of the genes.
     if num_genes:
+        assert MATRIX.ncol() > 1, "Not enough samples to select genes."
         I = pcalib.select_genes_var(MATRIX._X, num_genes)
         MATRIX = MATRIX.matrix(I, None)
 

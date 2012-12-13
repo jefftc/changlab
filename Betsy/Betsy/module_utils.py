@@ -84,7 +84,6 @@ def merge_two_files(A_file, B_file, handle):
         x = M_A._col_names[name] + newsample_list
         col_names[name] = x
     M_c = Matrix.InMemoryMatrix(X, row_names, col_names, row_order)
-    #M_c = arrayio.convert(M,to_format=arrayio.pcl_format)
     arrayio.tab_delimited_format.write(M_c, handle)
 
 
@@ -155,20 +154,18 @@ def find_object(parameters, objects, objecttype,
 
 
 def exists_nz(filename):
-    if os.path.exists(filename):
-        size = os.path.getsize(filename)
-        if size > 0:
-            if not os.path.isdir(filename):
-                return True
-            else:
-                if os.listdir(filename):
-                    return True
-                else:
-                    return False
-        else:
-            return False
-    else:
+    """check if the filename exists and not empty"""
+    if not os.path.exists(filename): # does not exist
         return False
+    if os.path.isdir(filename):  # is directory and not empty
+        if os.listdir(filename):
+            return True
+        return False
+    size = os.path.getsize(filename) #is file and not empty
+    if size > 0:
+       return True   
+    return False
+
 
 
 def plot_line_keywds(filename, keywords, outfile):
@@ -251,21 +248,26 @@ def renew_parameters(parameters, key_list):
 def is_number(s):
     try:
         float(s)
-        return True
     except ValueError:
         return False
+    return True
 
 
 def download_ftp(host, path, filename):
     from ftplib import FTP
+    import socket
     try:
         ftp = FTP(host)
+    except (socket.error, socket.gaierror), e:
+        raise AssertionError('Error:cannot reach %s' % host)
+    try:
         ftp.login()
-    except Exception, e:
-        raise ValueError(e)
+    except ftplib.error_perm, e:
+        ftp.quit()
+        raise AssertionError('Error:cannot login anonymously')
     try:
         ftp.cwd(path)
-    except FTP.error_perm, x:
+    except ftplib.error_perm, x:
         if str(x).find('No such file') >= 0:
             raise AssertionError('cannot find the %s' % path)
     filelist = []   # to store all files

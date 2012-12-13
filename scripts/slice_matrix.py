@@ -530,6 +530,24 @@ def toupper_col_ids(MATRIX, toupper_col_ids):
     return MATRIX
 
 
+def apply_re_col_ids(MATRIX, apply_re_col_ids):
+    import re
+    from arrayio import tab_delimited_format as tdf
+
+    if not apply_re_col_ids:
+        return MATRIX
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    MATRIX = MATRIX.matrix()
+    names = MATRIX.col_names(tdf.SAMPLE_NAME)
+    for i in range(len(names)):
+        m = re.match(apply_re_col_ids, names[i])
+        if m:
+            names[i] = m.group(1)
+    MATRIX._col_names[tdf.SAMPLE_NAME] = names
+    return MATRIX
+
+
 def find_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
@@ -1301,6 +1319,9 @@ def main():
     group.add_argument(
         "--ignore_missing_labels", default=False, action="store_true",
         help="Any column labels that can't be found will not be relabeled.")
+    group.add_argument(
+        "--apply_re_col_ids", default=None,
+        help="Apply a regular expression to the column IDs and take group 1.")
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
@@ -1442,6 +1463,7 @@ def main():
     # Convert col IDs to upper case.  Do after relabeling and
     # removing, but before filtering duplicates.
     MATRIX = toupper_col_ids(MATRIX, args.toupper_col_ids)
+    MATRIX = apply_re_col_ids(MATRIX, args.apply_re_col_ids)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.filter_duplicate_cols)
