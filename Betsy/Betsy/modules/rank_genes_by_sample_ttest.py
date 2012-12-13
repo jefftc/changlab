@@ -24,7 +24,7 @@ def run(parameters,objects,pipeline):
     second = M.slice(None,label[1][0])
     t,p = gene_ranking.t_test(first,second)
     for i in range(len(p)):
-        if numpy.isnan(p[i]):
+        if not p[i]:
             p[i]=10
     sort_p = [(p[index],index) for index in range(len(p))]
     key = M._row_order[0]

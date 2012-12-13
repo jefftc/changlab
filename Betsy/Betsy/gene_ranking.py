@@ -38,6 +38,7 @@ def t_test(X, Y, exact=True):
         R('if (is(a, "try-error")) p=NA else p=a$p.value')
         #R('if (is(a, "try-error")) t=NA else t=a$t')
         p = R['p']
+        #print p
         #t = R['t']
         #t_value.append(t[0])
         p_value.append(p[0])
