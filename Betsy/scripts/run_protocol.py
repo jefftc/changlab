@@ -28,7 +28,9 @@ def filter_pipelines(protocol, inputs, in_contents, output, parameters):
         parameter_list.extend([key, parameters[key]])
     pl_output = protocol_utils.format_prolog_query(
         output, parameter_list, 'Modules')
+    print 'Start generate pipelines'
     pipelines = rule_engine.make_pipelines(pl_output, pl_inputs)
+    print '%d pipelines has been generated' %len(pipelines)
     return pipelines
 
 
@@ -56,6 +58,7 @@ def run_protocol(protocol, inputs, output, identifiers,
     parameters_all = []
     pipeline_sequence_all = []
     k = 1
+    print 'Start running pipelines'
     for pipeline in pipelines:
         print  'pipeline' + str(k) + ':', '\r'
         out_files = rule_engine.run_pipeline(pipeline, objects)
@@ -65,6 +68,7 @@ def run_protocol(protocol, inputs, output, identifiers,
             output_files_all.append(out_files[-1])
             parameters_all.append(pipeline[-1].parameters)
             pipeline_sequence_all.append(pipeline_sequence)
+    print 'all pipelines has completed successfully'
     return output_files_all, parameters_all, pipeline_sequence_all
 
 

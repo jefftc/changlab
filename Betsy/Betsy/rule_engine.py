@@ -151,17 +151,21 @@ def run_pipeline(pipeline, objects):
                     new_objects = module.run(
                         analysis.parameters, objects, pipeline_sequence)
                     if not new_objects:
+                        print 'This module has completed unsuccessfully'
                         break
                 outfile_list.append(outfile)
                 objects = new_objects[:]
                 if analysis == pipeline[-1]:
                     if module_utils.exists_nz(outfile):
                         OUTPUT = outfile_list
+                        print 'This pipeline has completed successfully'
                         print 'File: ', OUTPUT[-1] + '\r'
                         print '\r'
                     else:
+                        print 'This pipeline has completed unsuccessfully'
                         raise ValueError(
                             'there is no output for this pipeline')
+                    
             finally:
                 os.chdir(cwd)
     except Exception, x:
