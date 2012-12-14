@@ -22,6 +22,7 @@ def run(parameters,objects,pipeline):
         fold_change = abs(jmath.mean(first[i])-jmath.mean(second[i]))
         if fold_change >= 1:
             I_good.append(i)
+    assert I_good, 'there is no gene is significant in fold change with 2'
     f = file(outfile,'w')
     M_c = M.matrix(I_good,None)
     arrayio.tab_delimited_format.write(M_c,f)
