@@ -41,6 +41,8 @@ def get_input_checksum(identifier):
         files = os.listdir(identifier)
         byte_size = 0
         for filename in files:
+            if os.path.isdir(os.path.join(identifier,filename)):
+                continue
             with open(os.path.join(identifier, filename), "rb") as f:
                 byte = f.read(chunk_size)
                 byte_size += len(byte)

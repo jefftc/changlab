@@ -74,7 +74,7 @@ PARAMETERS = {
     'geneset':'string',
     'allgenes': ['yes_allgenes','no_allgenes'],
     'has_annotation_gene_id':['yes_gene_id','no_gene_id'],
-    'group_fc':['yes_group_fc','no_group_fc']}
+    'group_fc':'integer'}
  
 
 DEFAULT = {

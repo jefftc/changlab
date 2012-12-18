@@ -20,11 +20,11 @@ gene_list_file(Parameters,Modules):-
     signal_norm2(OldParameters,Past_Modules_2),
     % Module: rank_genes_by_sample_ttest
     % Output parameters: update the parameters to full length
-    get_value(Parameters,group_fc,no_group_fc,Group_fc),
-    (Group_fc=yes_group_fc,
+    get_value(Parameters,group_fc,0,Group_fc),
+    (Group_fc>0,
     append(NewParameters,[group_fc,Group_fc],NewParameters1),
     Newadd1=[filter_genes_by_fold_change_across_classes,NewParameters1];
-    Group_fc=no_group_fc,
+    Group_fc=0,
     NewParameters1=NewParameters,
     Newadd1=[]),
     append(NewParameters1,[gene_order,Gene_Order],NewParameters2),
@@ -58,11 +58,11 @@ gene_list_file(Parameters,Modules):-
     signal_file(OldParameters,Past_Modules_2),
     % Module: rank_genes_by_class_neighbors
     % Output parameters: update the parameters to full length
-    get_value(Parameters,group_fc,no_group_fc,Group_fc),
-    (Group_fc=yes_group_fc,
+    get_value(Parameters,group_fc,0,Group_fc),
+    (Group_fc>0,
     append(NewParameters,[group_fc,Group_fc],NewParameters1),
     Newadd1=[filter_genes_by_fold_change_across_classes,NewParameters1];
-    Group_fc=no_group_fc,
+    Group_fc=0,
     NewParameters1=NewParameters,
     Newadd1=[]),
     append(NewParameters1,[gene_order,Gene_Order],NewParameters2),

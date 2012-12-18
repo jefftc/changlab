@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#protocol_engine.py
+#run_protocol.py
 from Betsy import rule_engine
 import argparse
 import os
