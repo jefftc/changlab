@@ -29,7 +29,7 @@ def run(parameters, objects, pipeline):
         % (training_file.identifier, test_file.identifier))
     f = file(outfile, 'w')
     if parameters['contents'] == parameters['traincontents']:
-        arrayio.pcl_format.write(M_A, f)
+        arrayio.tab_delimited_format.write(M_A, f)
     elif parameters['contents'] == parameters['testcontents']:
         arrayio.tab_delimited_format.write(M_B, f)
     f.close()

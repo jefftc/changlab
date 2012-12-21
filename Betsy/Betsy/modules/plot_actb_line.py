@@ -3,7 +3,7 @@
 import os
 from Betsy import module_utils
 import shutil
-from genomicode import mplgraph,arrayannot
+from genomicode import mplgraph,arrayplatformlib
 import arrayio
 import subprocess
 from Betsy import config
@@ -20,7 +20,7 @@ def run(parameters,objects,pipeline):
             column_id = i
             break
     if not column_id:
-        x = arrayannot.identify_all_platforms_of_matrix(M)
+        x = arrayplatformlib.identify_all_platforms_of_matrix(M)
         id = x[0][0]
         platform = x[0][1]
         if platform in ['HG_U133_Plus_2','HG_U133B','HG_U133A','HG_U133A_2','HG_U95A',
