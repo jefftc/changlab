@@ -3,7 +3,7 @@ from Betsy import gene_ranking
 from Betsy import module_utils
 import os
 import arrayio
-from genomicode import arrayannot
+from genomicode import arrayplatformlib
 def run(parameters, objects, pipeline):
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
@@ -14,11 +14,11 @@ def run(parameters, objects, pipeline):
         'cannot find gene_list_file %s' % gene_list_file.identifier)
     gene_list = open(gene_list_file.identifier, 'r').read().split()
     M = arrayio.read(single_object.identifier)
-    x = arrayannot.identify_all_platforms_of_matrix(M)
+    x = arrayplatformlib.identify_all_platforms_of_matrix(M)
     if x:
         id = x[0][0]
         platform = x[0][1]
-        chip = arrayannot.identify_platform_of_annotations(gene_list)
+        chip = arrayplatformlib.identify_platform_of_annotations(gene_list)
         signal_file = single_object.identifier
         if platform == chip:
             tmpfile = single_object.identifier

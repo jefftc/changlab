@@ -6,7 +6,9 @@
 # plot.km.multi
 # 
 # write.km.prism
-# write.km.multi.prism   Write out for multiple groups.
+# write.km.prism.multi   Write out for multiple groups.
+#
+# group.by.value
 
 .calc.surv50 <- function(survival, dead) {
   library("survival")
@@ -62,6 +64,17 @@
   list(surv.x=surv.x, surv.y=surv.y, cens.x=cens.x, cens.y=cens.y)
 }
 
+##stratify.by.expression <- function(num.groups, expression, survival, dead) {
+##  if(!length(expression)) 
+##    stop("missing expression data")
+##  if(length(expression) != length(survival))
+##    stop("unaligned")
+##  if(length(expression) != length(dead))
+##    stop("unaligned")
+##  if((num.groups < 1) | (num.groups > length(expression)))
+##    stop("invalid num.groups")
+##}
+
 calc.km <- function(survival1, dead1, survival2, dead2) {
   # survival1 is a a vector of matrix times.  dead1 is 1/0 where 1
   # means the patient is dead and 0 otherwise.  Returns list of
@@ -108,22 +121,6 @@ calc.km2 <- function(survival1, dead1, survival2, dead2) {
 }
 
 
-# Split a vector of numeric values into groups.  The groups are split
-# according to breakpoints, which is a vector of numbers from 0 to 1.
-# For example, breakpoints of c(0.25, 0.50, 0.75) will split the
-# values into 4 groups, the ones in the lower 25%, 25-50%, 50-75%, and
-# greater than 75%.  breakpoints c(0.10) will split into two groups,
-# 0-10%, and 10-100%.
-group.by.value <- function(values, breakpoints) {
-  # Make sure breakpoints are sorted, all >= 0 and <= 1.
-  cutoffs <- sort(breakpoints)
-  if((min(cutoffs) < 0) | (max(cutoffs > 1))) stop("bad breakpoints")
-  values.r <- rank(values)
-  ranks <- sapply(cutoffs, function(x) round(x*(length(values)-1))+1)
-  group <- sapply(values.r, function(x) sum(x >= ranks))
-  group
-}
-
 # group should be a vector that indicates which group each sample
 # belongs to, e.g. c("LO", "LO", "MED", "MED", "HIGH") or c(0, 0, 1,
 # 1, 2).
@@ -131,6 +128,8 @@ calc.km.multi <- function(survival, dead, group) {
   library("survival")
   if(length(survival) != length(dead)) stop("unaligned")
   if(length(survival) != length(group)) stop("unaligned")
+
+  group.all <- sort(unique(group))
 
   status <- factor(group)
   res <- coxph(Surv(survival, dead) ~ status, method="breslow")
@@ -140,13 +139,17 @@ calc.km.multi <- function(survival, dead, group) {
   p.value <- 1 - pchisq(res$score, df)
   hr <- exp(res$coefficients)
 
+  num.samples <- list()
+  for(g in group.all)
+    num.samples[[as.character(g)]] <- sum(group == g)
+
   surv <- list()
-  for(g in unique(group)) {
+  for(g in group.all) {
     km <- .calc.surv50(survival[g==group], dead[g==group])
     surv[[as.character(g)]] <- km
   }
 
-  list(p.value=p.value, hr=hr, surv=surv)
+  list(p.value=p.value, hr=hr, surv=surv, num.samples=num.samples)
 }
 
 plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA, 
@@ -175,24 +178,39 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA,
   points(km.2$cens.x, km.2$cens.y, pch=15, cex=0.4)
 }
 
-plot.km.multi <- function(survival, dead, group, col=NA) {
-  if(is.na(col))
+# col is a list of NAME -> color (e.g. "#FF0000")
+plot.km.multi <- function(survival, dead, group, col=NA, main="", sub="",
+  xlab="", ylab="") {
+  if(all(is.na(col)))
     col <- list()
   if(length(survival) != length(dead)) stop("unaligned")
   if(length(survival) != length(group)) stop("unaligned")
 
-  xlim <- c(0, max(survival))
-  ylim <- c(0, 1.00)
+  km <- calc.km.multi(survival, dead, group)
 
-  plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, xlab="", ylab="")
-  for(g in group) {
+  xlim <- c(0, max(survival))
+  ylim <- c(0, 100)
+
+  lwd <- 2
+  plot(NA, type="n", axes=FALSE, xlim=xlim, ylim=ylim, xlab="", ylab="")
+  box(lwd=lwd)
+  axis(1, lwd=lwd, cex.axis=1.5)
+  axis(2, lwd=lwd, cex.axis=1.5)
+  title(main=main, xlab=xlab, ylab=ylab, sub=sub, 
+    cex.lab=1.5, cex.sub=1.5, col.sub="#A60400", cex.main=2.0)
+  for(g in unique(group)) {
     co <- col[[as.character(g)]]
     if(is.null(co))
       co <- "#000000"
     km <- .calc.km.curve(survival[g==group], dead[g==group])
-    lines(km$surv.x, km$surv.y, col=co)
+    lines(km$surv.x, km$surv.y*100, col=co, lwd=lwd)
     # Draw the censor lines.
-    points(km$cens.x, km$cens.y, pch=15, cex=0.4)
+    points(km$cens.x, km$cens.y*100, pch=15, cex=0.8)
+  }
+  if(!all(is.na(col))) {
+    leg <- names(col)
+    fill <- sapply(leg, function(x) col[[x]])
+    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=1.5)
   }
 }
 
@@ -232,3 +250,22 @@ write.km.prism.multi <- function(filename, survival, dead, group) {
     row.names=FALSE, col.names=TRUE)
 }
 
+# Split a vector of numeric values into groups.  The groups are split
+# according to breakpoints, which is a vector of numbers from 0 to 1.
+# For example, breakpoints of c(0.25, 0.50, 0.75) will split the
+# values into 4 groups, the ones in the lower 25%, 25-50%, 50-75%, and
+# greater than 75%.  breakpoints c(0.10) will split into two groups,
+# 0-10%, and 10-100%.
+# 
+# Groups are specified by numbers starting from 0.  Group 0 are the
+# expression values lower than breakpoints[1].  So if breakpoints[1]
+# is 0, then the lowest index will be 1.
+group.by.value <- function(values, breakpoints) {
+  # Make sure breakpoints are sorted, all >= 0 and <= 1.
+  cutoffs <- sort(breakpoints)
+  if((min(cutoffs) < 0) | (max(cutoffs > 1))) stop("bad breakpoints")
+  values.r <- rank(values)
+  ranks <- sapply(cutoffs, function(x) round(x*(length(values)-1))+1)
+  group <- sapply(values.r, function(x) sum(x >= ranks))
+  group
+}

@@ -39,13 +39,48 @@ signal_file(Parameters,Modules):-
    Duplicate_Data=yes_duplicate_data,
    get_value(Parameters,has_annotation_gene_id,no_gene_id,Has_annotation_gene_id),
    Has_annotation_gene_id=no_gene_id,
-   /*get_value(Parameters,has_annotations,no_annotations,Has_annotations),
-   Has_annotations=no_annotations,*/
+   get_value(Parameters,group_fc,0,Group_fc),
+   Group_fc=0,
    % Input: signal_norm2
    get_desire_parameters_norm2(Parameters,NewParameters),
    get_options(Parameters,[ill_manifest,ill_chip,ill_bg_mode,ill_coll_mode,ill_clm,ill_custom_chip,num_factors,normalize_order],[],Options),
    append(NewParameters,Options,NewParameters2),
    signal_norm2(NewParameters2,Modules).
+/*--------------------------------------------------------------------------*/
+% filter genes by fold change across classes
+signal_file(Parameters,Modules):-
+    % Conditions:Parameters has created,tdf,gene_order in [t_test_p,t_test_fdr]
+    %   unknown_platform,no_unique_genes and logged
+    get_value(Parameters,status,created,Status),
+    Status=created,
+    get_value(Parameters,format,unknown_format,Format),
+    Format = tdf,
+    get_value(Parameters,is_logged,unknown_logged,Is_logged),
+    Is_logged=logged,
+    get_value(Parameters,platform,unknown_platform,Platform),
+    Platform=unknown_platform,
+    get_value(Parameters,group_fc,0,Group_fc),
+    Group_fc>0,
+    get_value(Parameters,gene_order,no_order,Gene_Order),
+    Gene_Order=no_order,
+    get_value(Parameters,unique_genes,no_unique_genes,Unique_Genes),
+    Unique_Genes = no_unique_genes,
+    get_value(Parameters,num_features,0,Num_features),
+    Num_features=0,
+    % Input: class_label_file and signal_file with no_order,tdf,different status
+    get_value(Parameters,contents,[unknown],Contents),
+    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    class_label_file([contents,Contents,preprocess,Preprocess,status,_],Past_Modules_1),
+    OldGroup_fc=0,
+    member(OldStatus,[given,created,jointed,splited]),
+    set_value(Parameters,status,OldStatus,OldParameters1),
+    set_value(OldParameters1,group_fc,OldGroup_fc,OldParameters),
+    signal_file(OldParameters,Past_Modules_2),
+    % Module:filter_genes_by_fold_change_across_classes
+    % Output Parameters: full length parameters of signal_file
+    Newadd=[filter_genes_by_fold_change_across_classes,Parameters],
+    append(Past_Modules_1,Past_Modules_2,Past_Modules),
+    append(Past_Modules, Newadd, Modules).
 
 /*--------------------------------------------------------------------------*/
 % rank genes by sample_ttest
@@ -521,3 +556,4 @@ intensity_plot(Parameters,Modules):-
     Newadd=[plot_intensity_boxplot,NewParameters],
     append(Past_Modules, Newadd, Modules).
 
+/*--------------------------------------------------------------------------*/

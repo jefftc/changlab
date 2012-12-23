@@ -3,7 +3,7 @@ import subprocess
 import shutil
 import os
 import arrayio
-from genomicode import jmath, arrayannot
+from genomicode import jmath, arrayplatformlib
 from Betsy import module_utils, config, read_label_file
 
 
@@ -19,7 +19,7 @@ def run(parameters, objects, pipeline):
     gp_parameters['expression.dataset'] = single_object.identifier
     gp_parameters['phenotype.labels'] = label_file.identifier
     M = arrayio.read(single_object.identifier)
-    x = arrayannot.identify_all_platforms_of_matrix(M)
+    x = arrayplatformlib.identify_all_platforms_of_matrix(M)
     chipname = x[0][1]
     gp_parameters['chip.platform'] = chipname + '.chip'
     gp_path = config.GENEPATTERN

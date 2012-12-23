@@ -18,6 +18,7 @@
 # remove_duplicate_cols
 # rename_duplicate_cols
 # remove_col_ids
+# remove_col_indexes
 #
 # find_row_indexes
 # find_row_ids
@@ -138,8 +139,11 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
     return fmt_module, matrices
 
 
-def parse_indexes(MATRIX, is_row, s, count_headers):
-    # Examples:
+def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
+    # is_row is a boolean for whether these are row indexes.  Takes
+    # 1-based indexes and returns a list of 0-based indexes.
+    # 
+    # Example inputs:
     # 5
     # 1,5,10
     # 1-99,215-300
@@ -152,12 +156,18 @@ def parse_indexes(MATRIX, is_row, s, count_headers):
         num_headers = len(MATRIX._row_names)
 
     I = []
-    for s, e in parselib.parse_ranges(s):
+    for s, e in parselib.parse_ranges(indexes_str):
         if count_headers:
             s, e = s - num_headers, e - num_headers
         assert s >= 1
         s, e = s - 1, min(e, max_index)
         I.extend(range(s, e))
+
+    # Make sure there are no duplicate indexes.
+    I = sorted(I)
+    for i in range(1, len(I)):
+        assert I[i] > I[i-1]
+        
     return I
 
 
@@ -364,6 +374,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     assert len(genesets) == 1
     #print filename
     #print genesets
+    
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
@@ -408,7 +419,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
             print >>sys.stderr, \
                 "Missing (showing %d of %d):" % (MAX_TO_SHOW, len(missing))
         else:
-            print >>sys.stderr, "Missing:"
+            print >>sys.stderr, "Missing from annotation:"
         for x_ in missing[:MAX_TO_SHOW]:
             print >>sys.stderr, x_
         raise AssertionError("I could not match the matrix to a geneset.")
@@ -483,12 +494,14 @@ def rename_duplicate_cols(MATRIX, rename_duplicate_cols):
     MATRIX._col_names[x] = nodup
     return MATRIX
 
+
 def remove_col_ids(MATRIX, remove_col_ids):
     import arrayio
 
-    if remove_col_ids is None:
+    if not remove_col_ids:
         return MATRIX
-    x = remove_col_ids.split(",")
+    x = ",".join(remove_col_ids)
+    x = x.split(",")
     col_ids = [x.strip() for x in x]
     names = MATRIX.col_names(arrayio.COL_ID)
 
@@ -506,6 +519,20 @@ def remove_col_ids(MATRIX, remove_col_ids):
     return x
 
 
+def remove_col_indexes(MATRIX, remove_col_indexes, count_headers):
+    import arrayio
+
+    if not remove_col_indexes:
+        return None
+    I = []
+    for indexes in remove_col_indexes:
+        x = parse_indexes(MATRIX, False, indexes, count_headers)
+        I.extend(x)
+
+    I_all = [x for x in range(MATRIX.ncol()) if x not in I]
+    return I_all
+
+
 def toupper_col_ids(MATRIX, toupper_col_ids):
     from arrayio import tab_delimited_format as tdf
 
@@ -517,6 +544,24 @@ def toupper_col_ids(MATRIX, toupper_col_ids):
     x = MATRIX.col_names(tdf.SAMPLE_NAME)
     x = [x.upper() for x in x]
     MATRIX._col_names[tdf.SAMPLE_NAME] = x
+    return MATRIX
+
+
+def apply_re_col_ids(MATRIX, apply_re_col_ids):
+    import re
+    from arrayio import tab_delimited_format as tdf
+
+    if not apply_re_col_ids:
+        return MATRIX
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    MATRIX = MATRIX.matrix()
+    names = MATRIX.col_names(tdf.SAMPLE_NAME)
+    for i in range(len(names)):
+        m = re.match(apply_re_col_ids, names[i])
+        if m:
+            names[i] = m.group(1)
+    MATRIX._col_names[tdf.SAMPLE_NAME] = names
     return MATRIX
 
 
@@ -912,42 +957,65 @@ def move_row_annot(MATRIX, move_row_annot):
     return MATRIX_clean
 
 
-def center_genes_mean(MATRIX):
+def center_genes_mean(MATRIX, indexes):
     from genomicode import jmath
+
+    I = []
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the mean.
         X_i = X[i]
-        m = jmath.mean(X_i)
+        X_sub = X_i
+        if I:
+            X_sub = [X_i[j] for j in I]
+        m = jmath.mean(X_sub)
         X[i] = [x - m for x in X_i]
 
 
-def center_genes_median(MATRIX):
+def center_genes_median(MATRIX, indexes):
     from genomicode import jmath
+
+    I = []
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the median.
         X_i = X[i]
-        m = jmath.median(X_i)
+        X_sub = X_i
+        if I:
+            X_sub = [X_i[j] for j in I]
+        m = jmath.median(X_sub)
         X[i] = [x - m for x in X_i]
 
 
-def normalize_genes_var(MATRIX):
+def normalize_genes_var(MATRIX, indexes):
     from genomicode import jmath
+
+    I = []
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, False)
 
     # Normalize the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
         X_i = X[i]
-        m = jmath.mean(X_i)
+        X_sub = X_i
+        if I:
+            X_sub = [X_i[j] for j in I]
+        
+        m = jmath.mean(X_sub)
+        s = jmath.stddev(X_sub)
+        
         # Subtract the mean.
         X_i = [x - m for x in X_i]
         # Normalize to stddev of 1.
-        s = jmath.stddev(X_i)
         if s != 0:
             X_i = [x / s for x in X_i]
         # Add the mean back.
@@ -1202,10 +1270,20 @@ def main():
         choices=["mean", "median"],
         help="Center each gene by: mean, median.")
     parser.add_argument(
+        "--gc_subset_indexes", dest="gc_subset_indexes", default=None,
+        help="Will center the genes based on the mean (or median) of"
+        "this subset of the samples.  Given as indexes, e.g. 1-5,8 "
+        "(1-based, inclusive).")
+    parser.add_argument(
         "--gn", "--gene_normalize", dest="gene_normalize", default=None,
         choices=["ss", "var"],
         help="Normalize each gene by: ss (sum of squares), var (variance).")
-
+    parser.add_argument(
+        "--gn_subset_indexes", dest="gn_subset_indexes", default=None,
+        help="Will normalize the genes based on the variance (or sum "
+        "of squares) of this subset of the samples.  Given as indexes, "
+        "e.g. 1-5,8 (1-based, inclusive).")
+        
     group = parser.add_argument_group(title="Column operations")
     group.add_argument(
         "--select_col_indexes", default=None,
@@ -1232,8 +1310,11 @@ def main():
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).")
     group.add_argument(
-        "--remove_col_ids", default=None,
+        "--remove_col_ids", default=[], action="append",
         help="Comma-separated list of IDs to remove.")
+    group.add_argument(
+        "--remove_col_indexes", default=[], action="append",
+        help="Comma-separated list of indexes to remove.")
     group.add_argument(
         "--align_col_file", default=None,
         help="Align the cols to this other matrix file.")
@@ -1258,6 +1339,9 @@ def main():
     group.add_argument(
         "--ignore_missing_labels", default=False, action="store_true",
         help="Any column labels that can't be found will not be relabeled.")
+    group.add_argument(
+        "--apply_re_col_ids", default=None,
+        help="Apply a regular expression to the column IDs and take group 1.")
 
     group = parser.add_argument_group(title="Row operations")
     group.add_argument(
@@ -1359,10 +1443,12 @@ def main():
     I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
-    I2 = find_col_ids(MATRIX, args.select_col_ids)
-    I3 = find_col_genesets(MATRIX, args.select_col_genesets)
-    I4 = find_col_annotation(MATRIX, args.select_col_annotation)
-    I_col = _intersect_indexes(I1, I2, I3, I4)
+    I2 = remove_col_indexes(
+        MATRIX, args.remove_col_indexes, args.col_indexes_include_headers)
+    I3 = find_col_ids(MATRIX, args.select_col_ids)
+    I4 = find_col_genesets(MATRIX, args.select_col_genesets)
+    I5 = find_col_annotation(MATRIX, args.select_col_annotation)
+    I_col = _intersect_indexes(I1, I2, I3, I4, I5)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Reorder the column by indexes.  Do this before removing columns.
@@ -1399,6 +1485,7 @@ def main():
     # Convert col IDs to upper case.  Do after relabeling and
     # removing, but before filtering duplicates.
     MATRIX = toupper_col_ids(MATRIX, args.toupper_col_ids)
+    MATRIX = apply_re_col_ids(MATRIX, args.apply_re_col_ids)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.filter_duplicate_cols)
@@ -1428,14 +1515,14 @@ def main():
 
     # Preprocess the expression values.
     if args.gene_center == "mean":
-        center_genes_mean(MATRIX)
+        center_genes_mean(MATRIX, args.gc_subset_indexes)
     elif args.gene_center == "median":
-        center_genes_median(MATRIX)
+        center_genes_median(MATRIX, args.gc_subset_indexes)
 
     if args.gene_normalize == "ss":
         raise NotImplementedError
     elif args.gene_normalize == "var":
-        normalize_genes_var(MATRIX)
+        normalize_genes_var(MATRIX, args.gn_subset_indexes)
 
     # Write the outfile (in the same format).
     handle = sys.stdout

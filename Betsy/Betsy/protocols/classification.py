@@ -78,7 +78,8 @@ PARAMETERS = {
     'duplicate_probe': ['yes_duplicate_probe', 'high_var_probe',
                         'closest_probe'],
     'duplicate_data': ['yes_duplicate_data', 'no_duplicate_data'],
-    'has_annotation_gene_id':['yes_gene_id','no_gene_id']}
+    'has_annotation_gene_id':['yes_gene_id','no_gene_id'],
+    'group_fc':'integer'}
 
 
 DEFAULT = {

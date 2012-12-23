@@ -58,27 +58,21 @@ make_diffgenes_report(Parameters,Modules):-
     Status=created,
     member(OldStatus,[given,jointed,splited,created]),
     set_value(NewParameters,status,OldStatus,NewParameters1),
-
     % Input1: differential_expressed_genes with t_test
     append(NewParameters1,[diff_expr,t_test],NewParameters2),
     differential_expressed_genes(NewParameters2,Modules1),
-    
     % Input2: differential_expressed_genes with sam
     append(NewParameters1,[diff_expr,sam],NewParameters3),
     differential_expressed_genes(NewParameters3,Modules2),
-
     % Input3: cluster_heatmap with t_test_p gene_order and threshold 0.05
     set_value(NewParameters1,gene_order,t_test_p,NewParameters4),
     append(NewParameters4,[cluster_alg,no_cluster_alg,hm_width,50,hm_height,1],NewParameters5),
     cluster_heatmap(NewParameters5,Modules3),
-
     % Input4: gather with t_test_p
     gather(NewParameters4,Modules4),
-
     % Input5: gsea
     set_value(NewParameters1,format,gct,NewParameters6),
     gsea(NewParameters6,Modules5),
-
     Modules = [Modules1,Modules2,Modules3,Modules4,Modules5].
 
 /*-------------------------------------------------------------------*/

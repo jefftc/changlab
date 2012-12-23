@@ -1,21 +1,47 @@
 #gene_ranking.py
 import arrayio
 import read_label_file
+from genomicode import jmath
+import numpy
 
+##def t_test(X, Y, exact=True):
+##    """X,Y is a matrix slice"""
+##    import rpy2.robjects as robjects
+##    R = robjects.r
+##    t_value = []
+##    p_value = []
+##    assert len(X) == len(Y), 'X and Y should be equal length'
+##    for i in range(len(X)):
+##        x = robjects.FloatVector(X[i])
+##        y = robjects.FloatVector(Y[i])
+##        result = R['t.test'](x, y, exact=exact)
+##        t_value.append(list(result.rx2('statistic').rx2('t'))[0])
+##        p_value.append(list(result.rx2("p.value"))[0])
+##    return t_value, p_value
 
 def t_test(X, Y, exact=True):
     """X,Y is a matrix slice"""
-    import rpy2.robjects as robjects
-    R = robjects.r
+    R = jmath.start_R()
     t_value = []
     p_value = []
     assert len(X) == len(Y), 'X and Y should be equal length'
     for i in range(len(X)):
-        x = robjects.FloatVector(X[i])
-        y = robjects.FloatVector(Y[i])
-        result = R['t.test'](x, y, exact=exact)
-        t_value.append(list(result.rx2('statistic').rx2('t'))[0])
-        p_value.append(list(result.rx2("p.value"))[0])
+        X[i] = ['NA' if numpy.isnan(x) else x for x in X[i]]
+        Y[i] = ['NA' if numpy.isnan(x) else x for x in Y[i]]
+        jmath.R_equals(X[i],'x')
+        jmath.R_equals(Y[i],'y')
+        R('a<-try(t.test(x,y,exact=exact), silent=TRUE)')
+        R('if (is(a, "try-error")) p=NA else p=a$p.value')
+        R('if (is(a,"try-error")) t=NA else t=a$t')
+        R('if (is.null(t)) t=NA')
+        p = R['p']
+        if not p[0]:
+            p = [None]
+        t = R['t']
+        if not t[0]:
+            t = [None]
+        t_value.append(t[0])
+        p_value.append(p[0])
     return t_value, p_value
 
 

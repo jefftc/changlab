@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#protocol_engine.py
+#run_protocol.py
 from Betsy import rule_engine
 import argparse
 import os
@@ -28,12 +28,14 @@ def filter_pipelines(protocol, inputs, in_contents, output, parameters):
         parameter_list.extend([key, parameters[key]])
     pl_output = protocol_utils.format_prolog_query(
         output, parameter_list, 'Modules')
+    print 'Start generate pipelines'
     pipelines = rule_engine.make_pipelines(pl_output, pl_inputs)
+    print '%d pipelines has been generated' %len(pipelines)
     return pipelines
 
 
 def run_protocol(protocol, inputs, output, identifiers,
-                 in_contents, parameters):
+                 in_contents, parameters,clean_up=True):
     """given the Inputs and Output and Parameters dictionary,
        run the pipelines,
        return a list of final result file,
@@ -56,8 +58,10 @@ def run_protocol(protocol, inputs, output, identifiers,
     parameters_all = []
     pipeline_sequence_all = []
     k = 1
+    print 'Start running pipelines'
     for pipeline in pipelines:
         print  'pipeline' + str(k) + ':', '\r'
+        #out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
         out_files = rule_engine.run_pipeline(pipeline, objects)
         k = k + 1
         if out_files:
@@ -65,6 +69,7 @@ def run_protocol(protocol, inputs, output, identifiers,
             output_files_all.append(out_files[-1])
             parameters_all.append(pipeline[-1].parameters)
             pipeline_sequence_all.append(pipeline_sequence)
+    print 'all pipelines has completed successfully'
     return output_files_all, parameters_all, pipeline_sequence_all
 
 
@@ -88,6 +93,11 @@ def main():
                         action='store_const', default=False,
                         const=True,
                         help='shows the protocol details')
+    parser.add_argument('--dont_cleanup',
+                        dest='clean_up',
+                        action='store_const', default=True,
+                        const=False,
+                        help='do not clean up the temp folder')
     args = parser.parse_args()
     if not args.protocol:
         raise parser.error('please specify the protocol')
@@ -118,7 +128,7 @@ def main():
         else:
             raise ValueError('--input is in the wrong format')
         assert predicate in module.INPUTS, (
-            "%s is not recognized in %s)"
+            "%s is not a recognized input for the %s protocol"
             % (str(predicate), args.protocol))
         if os.path.exists(identifier):
             identifier = os.path.realpath(identifier)
@@ -176,11 +186,13 @@ def main():
         output = module.OUTPUTS
         output_file, parameters_all, pipeline_sequence_all = run_protocol(
             args.protocol, inputs, output, identifiers, in_contents,
-            parameters)
+            parameters,clean_up=args.clean_up)
         module1 = protocol_utils.import_protocol(args.protocol)
         print module1.OUTPUTS
         module = __import__('Betsy.modules.' + module1.OUTPUTS, globals(),
                             locals(), [module1.OUTPUTS], -2)
         module.run(output_file, parameters_all, pipeline_sequence_all)
+
+        
 if __name__ == '__main__':
     main()

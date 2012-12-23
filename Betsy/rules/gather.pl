@@ -20,10 +20,19 @@ gene_list_file(Parameters,Modules):-
     signal_norm2(OldParameters,Past_Modules_2),
     % Module: rank_genes_by_sample_ttest
     % Output parameters: update the parameters to full length
-    append(NewParameters,[gene_order,Gene_Order],NewParameters1),
-    Newadd=[rank_genes_by_sample_ttest,NewParameters1],
+    get_value(Parameters,group_fc,0,Group_fc),
+    (Group_fc>0,
+    append(NewParameters,[group_fc,Group_fc],NewParameters1),
+    Newadd1=[filter_genes_by_fold_change_across_classes,NewParameters1];
+    Group_fc=0,
+    NewParameters1=NewParameters,
+    Newadd1=[]),
+    append(NewParameters1,[gene_order,Gene_Order],NewParameters2),
+    Newadd=[rank_genes_by_sample_ttest,NewParameters2],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
-    append(Past_Modules, Newadd, Modules).
+    append(Past_Modules, Newadd1, Modules1),
+    append(Modules1,Newadd,Modules).
+   
 /*--------------------------------------------------------------------------*/
 %rank genes by class_neighbors
 gene_list_file(Parameters,Modules):-
@@ -49,9 +58,18 @@ gene_list_file(Parameters,Modules):-
     signal_file(OldParameters,Past_Modules_2),
     % Module: rank_genes_by_class_neighbors
     % Output parameters: update the parameters to full length
-    Newadd=[rank_genes_by_class_neighbors,NewParameters],
+    get_value(Parameters,group_fc,0,Group_fc),
+    (Group_fc>0,
+    append(NewParameters,[group_fc,Group_fc],NewParameters1),
+    Newadd1=[filter_genes_by_fold_change_across_classes,NewParameters1];
+    Group_fc=0,
+    NewParameters1=NewParameters,
+    Newadd1=[]),
+    append(NewParameters1,[gene_order,Gene_Order],NewParameters2),
+    Newadd=[rank_genes_by_class_neighbors,NewParameters2],
     append(Past_Modules_1,Past_Modules_2,Past_Modules),
-    append(Past_Modules, Newadd, Modules).
+    append(Past_Modules, Newadd1, Modules1),
+    append(Modules1,Newadd,Modules).
 
 /*--------------------------------------------------------------------------*/
 % convert the parameters of gather into full length of version

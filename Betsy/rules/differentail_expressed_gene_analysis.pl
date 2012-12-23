@@ -2,7 +2,7 @@
 
 %% differential_expressed_genes(+Parameters,-Modules)
 differential_expressed_genes(Parameters,Modules):-
-    % Conditions: pcl,logged,created, diff_expr = t_test or sam
+    % Conditions: tdf,logged,created, diff_expr = t_test or sam
     get_value_variable(Parameters,diff_expr,Diff_expr),
     member(Diff_expr,[t_test,sam]),
     member((Diff_expr,Module),[(t_test,calc_diffexp_with_ttest),(sam,calc_diffexp_with_sam)]),

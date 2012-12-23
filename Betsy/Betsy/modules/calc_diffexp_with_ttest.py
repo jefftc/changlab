@@ -29,7 +29,7 @@ def run(parameters, objects, pipeline):
     fdr = jmath.cmh_fdr_bh(p)
     p_copy = p[:]
     for i in range(len(p_copy)):
-        if numpy.isnan(p_copy[i]):
+        if not p_copy[i]:
             p_copy[i] = 10
     sort_p = [(p_copy[index], index) for index in range(len(p_copy))]
     sort_p.sort()
@@ -40,6 +40,9 @@ def run(parameters, objects, pipeline):
                    'cmh_fdr', 'higher_expression'])
     f.write('\t'.join(header))
     f.write('\n')
+    p = [' ' if not x else x for x in p]
+    bonf = [' ' if not x else x for x in bonf]
+    fdr = [' ' if not x else x for x in fdr]
     for i in range(len(p_copy)):
         f.write(str(i + 1) + '\t')
         for key in M._row_order:

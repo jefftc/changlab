@@ -556,6 +556,8 @@ def guess_cel_version(filename):
     #handle.seek(0)   # in case filename was a file handle
     data = handle.read(100)
     handle.close()   # close or gunzip may not die
+    assert data, "Empty CEL file: %s" % filename
+    assert len(data) == 100, "CEL file is truncated: %s" % filename
 
     # Check to see if it has the magic numbers for version 4.
     size = struct.calcsize("<ii")

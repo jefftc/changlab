@@ -1,4 +1,4 @@
-%prolog_utils.pl
+ %prolog_utils.pl
 
 :- set_prolog_flag(toplevel_print_options,
              [quoted(true), portray(true), max_depth(0)]).
@@ -369,7 +369,11 @@ convert_parameters_file(Parameters,NewParameters):-
     
     get_value(Parameters,has_annotation_gene_id,no_gene_id,Has_annotation_gene_id),
     member(Has_annotation_gene_id,[no_gene_id,yes_gene_id]),
-    append(NewParameters7,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters).
+    append(NewParameters7,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters8),
+
+    get_value(Parameters,group_fc,0,Group_fc),
+    not(atom(Group_fc)),
+    append(NewParameters8,[group_fc,Group_fc],NewParameters).
 
 
  /*-------------------------------------------------------------------------*/
@@ -402,7 +406,11 @@ get_desire_parameters_file(Parameters,NewParameters):-
     append(NewParameters5,[num_features,Num_features],NewParameters6),
     
     get_value(Parameters,has_annotation_gene_id,no_gene_id,Has_annotation_gene_id),
-    append(NewParameters6,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters).
+    append(NewParameters6,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters7),
+
+    get_value(Parameters,group_fc,0,Group_fc),
+    not(atom(Group_fc)),
+    append(NewParameters7,[group_fc,Group_fc],NewParameters).
     
  /*-------------------------------------------------------------------------*/
 % convert the Parameters to a full length Parameters for svm_predictions, for the parameter which
@@ -476,7 +484,7 @@ get_length(A,B):-
     A=n_raw, B=18;
     A=n_norm1,B=28;
     A=n_norm2,B=32;
-    A=n_file,B=44.
+    A=n_file,B=46.
 /*-------------------------------------------------------------------------*/ 
 % find the Keys in Parameters,return the key_value pair in Options, S is the initial output  
 

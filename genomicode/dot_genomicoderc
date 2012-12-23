@@ -13,6 +13,7 @@ sigdb_path=/home/jchang/projects/genepattern/data/SIGDB/sigdb
 
 pybinreg=/home/jchang/changlab/scripts/pybinreg.py
 arrayplot=/home/jchang/changlab/scripts/arrayplot.py
+slice_matrix=/home/jchang/changlab/scripts/slice_matrix.py
 
 [NORMALIZE_PY]
 normalize_AFFYMETRIX=/home/changlab/data/normalize/affymetrix

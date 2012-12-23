@@ -9,7 +9,7 @@ import json
 import config
 import module_utils
 import re
-
+import time
 
 def plstring2dataobject(pl_inputs, identifiers):
     assert len(pl_inputs) == len(identifiers), 'the length\
@@ -115,6 +115,76 @@ def make_module_wd(working_dir):
     os.mkdir(working_dir)
 
 
+##def run_module(analysis,objects,pipeline_sequence,clean_up=True):
+##    cwd = os.getcwd()
+##    output_path = config.OUTPUTPATH
+##    assert os.path.exists(output_path), (
+##            'the output_path %s does not exist' % output_path)
+##    module_name = analysis.name
+##    module = __import__('modules.' + module_name, globals(),
+##                        locals(), [module_name], -1)
+##    single_object = module.get_identifier(analysis.parameters, objects)
+##    hash_string = module.make_unique_hash(
+##        single_object.identifier, pipeline_sequence,
+##        analysis.parameters)
+##    working_dir = os.path.join(output_path, make_module_wd_name(
+##        module_name, hash_string))
+##    outfile = module.get_outfile(
+##            analysis.parameters, objects, pipeline_sequence)
+##    final_outfile = os.path.join(working_dir,os.path.split(outfile)[-1])
+##    temp_dir = working_dir + '_temp'
+##    try:
+##        if not os.path.exists(working_dir):
+##           os.mkdir(temp_dir)
+##           os.chdir(temp_dir)
+##           temp_objects = module.run(
+##                analysis.parameters, objects, pipeline_sequence)
+##           temp_outfile = os.path.split(outfile)[-1]
+##           try:
+##               os.mkdir(working_dir)
+##           except Exception, e:
+##               while not os.path.isfile(os.path.join(working_dir,'stdout.txt')):
+##                   time.sleep(1)
+##           if module_utils.exists_nz(temp_outfile):
+##               shutil.copytree(temp_dir,working_dir)#copy files
+##        os.chdir(working_dir)
+##        new_objects = module.get_newobjects(
+##            analysis.parameters, objects, pipeline_sequence)
+##        return final_outfile,new_objects
+##    finally:
+##        if clean_up and os.path.exists(temp_dir):
+##            shutil.rmtree(temp_dir) 
+##        os.chdir(cwd)
+##
+##
+##def run_pipeline(pipeline, objects, clean_up=True):
+##    OUTPUT = None
+##    outfile_list = []
+##    try:
+##        for  i in range(len(pipeline)):
+##            pipeline_sequence = [analysis.name for
+##                                 analysis in pipeline[0:i + 1]]
+##            analysis = pipeline[i]
+##            module_name = analysis.name
+##            print str(i + 1) + '.' + module_name
+##            outfile,new_objects = run_module(
+##                analysis,objects,pipeline_sequence,clean_up=clean_up)
+##            outfile_list.append(outfile)
+##            objects = new_objects[:]
+##            if analysis == pipeline[-1]:
+##                if module_utils.exists_nz(outfile):
+##                    OUTPUT = outfile_list
+##                    print 'This pipeline has completed successfully'
+##                    print 'File: ', OUTPUT[-1] + '\r'
+##                    print '\r'
+##                else:
+##                    print 'This pipeline has completed unsuccessfully'
+##                    raise ValueError(
+##                        'there is no output for this pipeline')
+##    except Exception, x:
+##            raise
+##    return OUTPUT
+                    
 def run_pipeline(pipeline, objects):
     """run a single pipeline"""
     cwd = os.getcwd()
@@ -122,8 +192,8 @@ def run_pipeline(pipeline, objects):
     outfile_list = []
     try:
         output_path = config.OUTPUTPATH
-        assert os.path.exists(output_path), (
-            'the output_path %s does not exist' % output_path)
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
         for  i in range(len(pipeline)):
             pipeline_sequence = [analysis.name for
                                  analysis in pipeline[0:i + 1]]
@@ -151,17 +221,21 @@ def run_pipeline(pipeline, objects):
                     new_objects = module.run(
                         analysis.parameters, objects, pipeline_sequence)
                     if not new_objects:
+                        print 'This module has completed unsuccessfully'
                         break
                 outfile_list.append(outfile)
                 objects = new_objects[:]
                 if analysis == pipeline[-1]:
                     if module_utils.exists_nz(outfile):
                         OUTPUT = outfile_list
+                        print 'This pipeline has completed successfully'
                         print 'File: ', OUTPUT[-1] + '\r'
                         print '\r'
                     else:
+                        print 'This pipeline has completed unsuccessfully'
                         raise ValueError(
                             'there is no output for this pipeline')
+                    
             finally:
                 os.chdir(cwd)
     except Exception, x:
