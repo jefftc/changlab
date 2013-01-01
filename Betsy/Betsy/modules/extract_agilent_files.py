@@ -29,6 +29,8 @@ def run(parameters, objects, pipeline):
     for filename in os.listdir(directory):
         if filename in ['.DS_Store', '._.DS_Store', '.Rapp.history']:
             continue
+        if os.path.isdir(os.path.join(directory,filename)):
+            continue
         postag = []
         fline = []
         f = open(os.path.join(directory, filename), 'r')

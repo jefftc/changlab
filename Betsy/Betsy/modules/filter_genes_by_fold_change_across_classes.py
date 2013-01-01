@@ -2,6 +2,9 @@
 import os
 from Betsy import module_utils, read_label_file
 from genomicode import jmath
+import math
+
+
 def run(parameters,objects,pipeline):
     import arrayio
     single_object = get_identifier(parameters,objects)
@@ -13,6 +16,7 @@ def run(parameters,objects,pipeline):
         label_object.identifier)
     class_num = len(label)
     assert class_num == 2, 'the number of class is not 2'
+    fc = int(parameters['group_fc'])
     M = arrayio.read(single_object.identifier)
     first = M.slice(None, label[0][0])
     second = M.slice(None, label[1][0])
@@ -20,7 +24,7 @@ def run(parameters,objects,pipeline):
     I_good = []
     for i in range(M.nrow()):
         fold_change = abs(jmath.mean(first[i])-jmath.mean(second[i]))
-        if fold_change >= 1:
+        if fold_change >= math.log(fc,2):
             I_good.append(i)
     assert I_good, 'there is no gene is significant in fold change with 2'
     f = file(outfile,'w')

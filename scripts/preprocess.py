@@ -16,7 +16,7 @@ def find_annotation_file(chipname):
 def find_normscript():
     from genomicode import config
     file = "normscript.R"
-    filename = os.path.join(config.normalize_RLIB, file)
+    filename = os.path.join(config.changlab_Rlib, file)
     assert os.path.exists(filename), "I could not find normscript.R."
     filename = os.path.realpath(filename)
     return filename

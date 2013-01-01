@@ -1,4 +1,4 @@
-%prolog_utils.pl
+ %prolog_utils.pl
 
 :- set_prolog_flag(toplevel_print_options,
              [quoted(true), portray(true), max_depth(0)]).
@@ -371,8 +371,8 @@ convert_parameters_file(Parameters,NewParameters):-
     member(Has_annotation_gene_id,[no_gene_id,yes_gene_id]),
     append(NewParameters7,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters8),
 
-    get_value(Parameters,group_fc,no_group_fc,Group_fc),
-    member(Group_fc,[no_group_fc,yes_group_fc]),
+    get_value(Parameters,group_fc,0,Group_fc),
+    not(atom(Group_fc)),
     append(NewParameters8,[group_fc,Group_fc],NewParameters).
 
 
@@ -408,7 +408,8 @@ get_desire_parameters_file(Parameters,NewParameters):-
     get_value(Parameters,has_annotation_gene_id,no_gene_id,Has_annotation_gene_id),
     append(NewParameters6,[has_annotation_gene_id,Has_annotation_gene_id],NewParameters7),
 
-    get_value(Parameters,group_fc,no_group_fc,Group_fc),
+    get_value(Parameters,group_fc,0,Group_fc),
+    not(atom(Group_fc)),
     append(NewParameters7,[group_fc,Group_fc],NewParameters).
     
  /*-------------------------------------------------------------------------*/

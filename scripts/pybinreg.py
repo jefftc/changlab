@@ -1924,13 +1924,13 @@ def main():
     if params.dwd:
         dwd_normalize_matrices(
             train0, train1, test, matlab=options.matlab,
-            dwd_path=options.dwd_path)
+            dwd_path=options.BatchAdjust)
         write_dataset(file_layout.DS_DWD, train0, train1, test)
 
     if params.dwd_bild:
         dwd_normalize_matrices(
             train0, train1, test, version="bild", matlab=options.matlab,
-            dwd_path=options.dwd_path)
+            dwd_path=options.BatchAdjust)
         write_dataset(file_layout.DS_DWD_BILD, train0, train1, test)
 
     if params.shiftscale:

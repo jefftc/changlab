@@ -27,6 +27,7 @@
 # find_row_numeric_annotation
 # find_row_mean_var
 # find_row_missing_values
+# find_row_var
 # dedup_row_by_var
 #
 # align_rows
@@ -693,7 +694,6 @@ def find_row_mean_var(MATRIX, filter_mean, filter_var):
 def find_row_missing_values(MATRIX, perc_missing):
     # perc_missing of 0.25 means remove all rows with 25% or more
     # missing values.
-
     if perc_missing is None:
         return None
     assert perc_missing > 0 and perc_missing <= 1
@@ -707,6 +707,17 @@ def find_row_missing_values(MATRIX, perc_missing):
         # row.
         if pm < perc_missing:
             I.append(i)
+    return I
+            
+
+def find_row_var(MATRIX, select_var):
+    from genomicode import pcalib
+    if select_var is None:
+        return None
+    select_var = int(select_var)
+    assert select_var >= 1 and select_var <= MATRIX.nrow()
+    I = pcalib.select_genes_var(MATRIX._X, select_var)
+    #print select_var, len(I)
     return I
 
 
@@ -1412,11 +1423,11 @@ def main():
         "with the highest variance.  The value of this parameter should "
         "be the header of the column that contains duplicate annotations.")
     group.add_argument(
-        "--filter_row_by_mean", default=None,
+        "--filter_row_by_mean", default=None, type=float,
         help="Remove this percentage of rows that have the lowest mean.  "
         "Should be between 0 and 1.")
     group.add_argument(
-        "--filter_row_by_var", default=None,
+        "--filter_row_by_var", default=None, type=float,
         help="Remove this percentage of rows that have the lowest variance.  "
         "Should be between 0 and 1.")
     group.add_argument(
@@ -1424,6 +1435,9 @@ def main():
         help="Remove the rows that has at least this percent of missing "
         "values.  e.g. 0.25 means remove all rows with 25% or more missing "
         "values.")
+    group.add_argument(
+        "--select_row_var", default=None, type=int,
+        help="Keep this number of rows with the highest variance.")
 
     group.add_argument(
         "--add_row_id", default=None,
@@ -1485,8 +1499,9 @@ def main():
     I5 = _intersect_indexes(*I5)
     I6 = find_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I7 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
-    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6, I7)
+    I7 = find_row_var(MATRIX, args.select_row_var)
+    I8 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6, I7, I8)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     I2 = remove_col_indexes(

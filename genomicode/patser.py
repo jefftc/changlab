@@ -27,8 +27,8 @@ def score_tfbs(
 
     # In practice, parallelization of these jobs don't help things run
     # faster unless there are hundreds of matrices.
-    patser_bin = patser_bin or config.patser_PATSER_BIN
-    alphabet_file = alphabet_file or config.patser_ALPHABET_FILE
+    patser_bin = patser_bin or config.patser
+    alphabet_file = alphabet_file or config.patser_alphabet
     num_jobs = num_jobs or 1
 
     assert num_jobs >= 1

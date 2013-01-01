@@ -130,6 +130,7 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   med.1 <- med.1[I]
   med.2 <- med.2[I]
 
+  # BUG: will break if p-value is NA.
   x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
   p.values <- unlist(lapply(x, function(x) x$p.value))
   nl10p <- -log(p.values, 10)

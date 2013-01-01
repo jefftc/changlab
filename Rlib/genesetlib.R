@@ -24,7 +24,7 @@
 
 write.gmt <- function(filename, genesets) {
   data.out <- .format.gmt(genesets)
-  write.table(data.out, filename, quote=FALSE, sep="\t",
+  write.table(data.out, file=filename, quote=FALSE, sep="\t",
     row.names=FALSE, col.names=FALSE)
 }
 

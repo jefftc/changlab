@@ -20,11 +20,8 @@ def find_dwd(default_path):
     
     search_paths = [
         default_path,
-        config.dwd_path,
+        config.BatchAdjust,
         "BatchAdjust",
-        "/home/jchang/projects/normalize/data/BatchAdjust",
-        "/home/jefftc/projects/normalize/data/BatchAdjust",
-        "/home/vis/jefftc/projects/normalize/data/BatchAdjust",
         ]
     path = None
     for spath in search_paths:
