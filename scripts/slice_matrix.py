@@ -26,6 +26,7 @@
 # find_row_annotation
 # find_row_numeric_annotation
 # find_row_mean_var
+# find_row_var
 # dedup_row_by_var
 #
 # align_rows
@@ -685,6 +686,17 @@ def find_row_mean_var(MATRIX, filter_mean, filter_var):
         # Calculate the number of genes to keep.
         num_genes_var = int((1.0 - filter_var) * nrow)
     I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+    return I
+
+
+def find_row_var(MATRIX, select_var):
+    from genomicode import pcalib
+    if select_var is None:
+        return None
+    select_var = int(select_var)
+    assert select_var >= 1 and select_var <= MATRIX.nrow()
+    I = pcalib.select_genes_var(MATRIX._X, select_var)
+    #print select_var, len(I)
     return I
 
 
@@ -1380,6 +1392,9 @@ def main():
         "--filter_row_var", default=None,
         help="Remove this percentage of rows that have the lowest variance.  "
         "Should be between 0 and 1.")
+    group.add_argument(
+        "--select_row_var", default=None,
+        help="Keep this number of rows with the highest variance.")
 
     group.add_argument(
         "--add_row_id", default=None,
@@ -1440,7 +1455,8 @@ def main():
           for annot in args.select_row_numeric_annotation]
     I5 = _intersect_indexes(*I5)
     I6 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
-    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
+    I7 = find_row_var(MATRIX, args.select_row_var)
+    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6, I7)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     I2 = remove_col_indexes(

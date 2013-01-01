@@ -78,10 +78,11 @@ def selap_predict_raw(
     return x
 
 def find_selap(default_path):
+    import config
+
     search_paths = [
         default_path,
-        "/home/jchang/projects/genepattern/data/SELAPver3",
-        "/Volumes/Users/jchang/projects/genepattern/data/SELAPver3",
+        config.selap_path,
         ]
     path = None
     for spath in search_paths:

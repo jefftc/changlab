@@ -44,7 +44,7 @@ def get_sequence(chrom, start, length, ra_path=None):
     import config
 
     _assert_chrom(chrom)
-    ra_path = ra_path or config.genomelib_RA_CHROM_HG18
+    ra_path = ra_path or config.RA_CHROM_HG18
     filename = os.path.join(ra_path, "chr%s.ra" % chrom)
     x = read_ra(filename, start, length, "c")
     return "".join(x)
@@ -82,7 +82,7 @@ def len_chrom(chrom, ra_path=None):
     import stat
     import config
 
-    ra_path = ra_path or config.genomelib_RA_CHROM_HG18
+    ra_path = ra_path or config.RA_CHROM_HG18
     filename = os.path.join(ra_path, "%s.ra" % chrom)
     size = os.stat(filename)[stat.ST_SIZE]
     return size
@@ -115,7 +115,7 @@ def get_gene_coords(gene_symbol, gene_file=None):
     import filelib
 
     # Find the transcript info for this gene.
-    gene_file = gene_file or config.gene_HG18
+    gene_file = gene_file or config.knowngene_hg18
     genes = load_genes(gene_file)
     gene_symbol = gene_symbol.upper()
     genes = [x for x in genes if x.gene_symbol.upper() == gene_symbol]
@@ -209,7 +209,7 @@ def find_nearby_tss(chrom, base, max_bases, gene_file=None):
     
     _assert_chrom(chrom)
 
-    gene_file = gene_file or config.gene_HG18
+    gene_file = gene_file or config.knowngene_hg18
     genes = load_genes(gene_file, chrom)
     assert genes, "No genes on chromosome %s." % chrom
 
@@ -228,7 +228,7 @@ def find_overlapping_genes(chrom, base, length, gene_file=None):
     
     _assert_chrom(chrom)
 
-    gene_file = gene_file or config.gene_HG18
+    gene_file = gene_file or config.knowngene_hg18
     genes = load_genes(gene_file, chrom)
     #genes = [x for x in genes if x.chrom == chrom]
     assert genes, "No genes on chromosome %s." % chrom
@@ -433,7 +433,7 @@ def load_genes(gene_file=None, chrom=None):
 
     import config
 
-    gene_file = gene_file or config.gene_HG18
+    gene_file = gene_file or config.knowngene_hg18
     
     if GENES_KEY != gene_file:
         data = _load_genes_h(gene_file)
@@ -455,7 +455,7 @@ def _load_genes_h(gene_file):
     import config
     import filelib
 
-    gene_file = gene_file or config.gene_HG18
+    gene_file = gene_file or config.knowngene_hg18
     gene_data = _load_gene_file(gene_file)
 
     genes = []

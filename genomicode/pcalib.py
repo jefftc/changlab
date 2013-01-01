@@ -59,14 +59,19 @@ def choose_colors(group):
     return color
 
 def plot_scatter(
-    X, Y, out_file, group=None, color=None, label=None, title=None,
-    pov_file=None, povray=None):
+    X, Y, out_file, group=None, color=None, height=None, width=None,
+    label=None, title=None, pov_file=None, povray=None):
     # group should be a list of 0-N indicating the groupings of the
     # data points.  It should be the same length of X and Y.
     # Returns the output from povray.
     import tempfile
     import graphlib
     import filelib
+
+    if width is None or height is None:
+        width, height = 1024, 768
+    assert width >= 16 and width < 4096*16
+    assert height >= 16 and height < 4096*16
 
     if not len(X):
         return None
@@ -89,8 +94,8 @@ def plot_scatter(
         if pov_file is None:
             is_tempfile = True
             x, pov_file = tempfile.mkstemp(suffix=".pov", dir="."); os.close(x)
-            
-        plot_width, plot_height = 1024, 768
+
+        plot_width, plot_height = width, height
         points = zip(X, Y)
         graph = graphlib.scatter(
             points, color=color,
@@ -128,17 +133,32 @@ def select_genes_mv(X, num_genes_mean=None, num_genes_var=None):
         assert type(num_genes_var) is type(0)
         assert num_genes_var <= len(X), "%d %d" % (num_genes_var, len(X))
     
-    means = jmath.mean(X)
-    vars = jmath.var(X)
+    # BUG: If many genes have the same mean or variance, then may
+    # return more than num_genes_mean or num_genes_var.
+    #cutoff_mean = min(means)
+    #cutoff_var = min(vars)
+    #if num_genes_mean:
+    #    cutoff_mean = sorted(means)[-num_genes_mean]
+    #if num_genes_var:
+    #    cutoff_var = sorted(vars)[-num_genes_var]
+    #I = [i for i in range(len(vars))
+    #     if means[i] >= cutoff_mean and vars[i] >= cutoff_var]
 
-    cutoff_mean = min(means)
-    cutoff_var = min(vars)
+    I_mean = range(len(X))
+    I_var = range(len(X))
     if num_genes_mean:
-        cutoff_mean = sorted(means)[-num_genes_mean]
+        means = jmath.mean(X)
+        I_mean = jmath.order(means, decreasing=1)[:num_genes_mean]
     if num_genes_var:
-        cutoff_var = sorted(vars)[-num_genes_var]
-    I = [i for i in range(len(vars))
-         if means[i] >= cutoff_mean and vars[i] >= cutoff_var]
+        vars = jmath.var(X)
+        I_var = jmath.order(vars, decreasing=1)[:num_genes_var]
+    I_mean = {}.fromkeys(I_mean)
+    I_var = {}.fromkeys(I_var)
+    I = [i for i in range(len(X)) if i in I_mean and i in I_var]
+    #for i in range(len(X)):
+    #    x = i, vars[i], int(i in I)
+    #    print "\t".join(map(str, x))
+    #import sys; sys.exit(0)
     return I
 
 def select_genes_var(X, num_genes):

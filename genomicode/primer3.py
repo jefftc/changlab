@@ -29,7 +29,7 @@ def primer3_core(
     import subprocess
     import config
 
-    primer3_core_app = primer3_core_app or config.primer3_PRIMER3_BIN
+    primer3_core_app = primer3_core_app or config.primer3
     outhandle = outhandle or sys.stdout
 
     # Set the parameters to the webpage defaults.

@@ -24,7 +24,6 @@ def find_bfrm_bin(default_path=None):
     search_paths = [
         default_path,
         config.bfrm, 
-        "/home/jchang/projects/bfrm/data/bfrm_20_4/bfrm64",
         ]
     path = None
     for spath in search_paths:
@@ -41,9 +40,6 @@ def find_bfrm_normalize(default_path=None):
     search_paths = [
         default_path,
         config.bfrm_normalize_path,
-        "/home/jchang/projects/genepattern/data/BFRM_normalize",
-        "/home/jefftc/projects/genepattern/BFRM_normalize",
-        "/home/jefftc/projects/genepattern/data/BFRM_normalize",
         ]
     path = None
     for spath in search_paths:
@@ -73,9 +69,6 @@ def find_bfrm_project(default_path=None):
     search_paths = [
         default_path,
         config.bfrm_project_path,
-        "/home/jchang/projects/genepattern/data/BFRM_project",
-        "/home/jefftc/projects/genepattern/BFRM_project",
-        "/home/jefftc/projects/genepattern/data/BFRM_project",
         ]
     path = None
     for spath in search_paths:
