@@ -26,6 +26,7 @@
 # find_row_annotation
 # find_row_numeric_annotation
 # find_row_mean_var
+# find_row_missing_values
 # dedup_row_by_var
 #
 # align_rows
@@ -40,6 +41,7 @@
 # center_genes_mean
 # center_genes_median
 # normalize_genes_var
+# median_fill_genes
 #
 # _match_rownames_to_geneset       DEPRECATED
 # _match_colnames_to_geneset       DEPRECATED
@@ -688,6 +690,26 @@ def find_row_mean_var(MATRIX, filter_mean, filter_var):
     return I
 
 
+def find_row_missing_values(MATRIX, perc_missing):
+    # perc_missing of 0.25 means remove all rows with 25% or more
+    # missing values.
+
+    if perc_missing is None:
+        return None
+    assert perc_missing > 0 and perc_missing <= 1
+
+    I = []  # indexes to keep.
+    for i in range(len(MATRIX._X)):
+        x = [x for x in MATRIX._X[i] if x is None]
+        num_missing = len(x)
+        pm = float(num_missing) / len(MATRIX._X[i])
+        # If the percent missing is less than cutoff, then keep this
+        # row.
+        if pm < perc_missing:
+            I.append(i)
+    return I
+
+
 def dedup_row_by_var(MATRIX, header):
     from genomicode import jmath
     if not header:
@@ -1022,6 +1044,19 @@ def normalize_genes_var(MATRIX, indexes):
         X_i = [x + m for x in X_i]
         X[i] = X_i
 
+def median_fill_genes(MATRIX):
+    from genomicode import jmath
+
+    # Median-fill the genes in place.
+    X = MATRIX._X
+    for i in range(len(X)):
+        m = jmath.safe_median(X[i])
+        for j in range(len(X[i])):
+            if X[i][j] is None:
+                #print "FILLING", i, j
+                X[i][j] = m
+
+
 ## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
 ##     # Return tuple of (I_matrix, I_geneset) or None if no match can be
 ##     # found.  Will find the largest match possible.
@@ -1283,6 +1318,10 @@ def main():
         help="Will normalize the genes based on the variance (or sum "
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
+    parser.add_argument(
+        "--fill_missing_values_median", default=False, action="store_true",
+        help="Fill missing values with the median of the row.  Performed "
+        "after logging, but before centering and normalizing.")
         
     group = parser.add_argument_group(title="Column operations")
     group.add_argument(
@@ -1373,13 +1412,18 @@ def main():
         "with the highest variance.  The value of this parameter should "
         "be the header of the column that contains duplicate annotations.")
     group.add_argument(
-        "--filter_row_mean", default=None,
+        "--filter_row_by_mean", default=None,
         help="Remove this percentage of rows that have the lowest mean.  "
         "Should be between 0 and 1.")
     group.add_argument(
-        "--filter_row_var", default=None,
+        "--filter_row_by_var", default=None,
         help="Remove this percentage of rows that have the lowest variance.  "
         "Should be between 0 and 1.")
+    group.add_argument(
+        "--filter_row_by_missing_values", default=None, type=float,
+        help="Remove the rows that has at least this percent of missing "
+        "values.  e.g. 0.25 means remove all rows with 25% or more missing "
+        "values.")
 
     group.add_argument(
         "--add_row_id", default=None,
@@ -1439,8 +1483,10 @@ def main():
     I5 = [find_row_numeric_annotation(MATRIX, annot)
           for annot in args.select_row_numeric_annotation]
     I5 = _intersect_indexes(*I5)
-    I6 = find_row_mean_var(MATRIX, args.filter_row_mean, args.filter_row_var)
-    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6)
+    I6 = find_row_mean_var(
+        MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
+    I7 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6, I7)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     I2 = remove_col_indexes(
@@ -1504,6 +1550,11 @@ def main():
     if args.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
 
+    # Median fill.  Do after logging, but before quantile, centering,
+    # and normalizing.
+    if args.fill_missing_values_median:
+        median_fill_genes(MATRIX)
+
     # Quantile normalize, if requested.
     if args.quantile:
         MATRIX = quantnorm.normalize(MATRIX)
@@ -1514,6 +1565,7 @@ def main():
     MATRIX = MATRIX.matrix(I, None)
 
     # Preprocess the expression values.
+    
     if args.gene_center == "mean":
         center_genes_mean(MATRIX, args.gc_subset_indexes)
     elif args.gene_center == "median":

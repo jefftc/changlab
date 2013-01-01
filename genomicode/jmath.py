@@ -23,6 +23,7 @@ mysum
 mean
 safe_mean
 median
+safe_median
 var
 stddev
 cov
@@ -243,6 +244,23 @@ def median_matrix(X, byrow=1):
     
 def median(X, byrow=1):
     return _dispatch(X, None, _fn(median_list), _fn(median_matrix,byrow=byrow))
+
+def safe_median_list(X):
+    import math
+    assert len(X) > 0
+    X = [x for x in X if x is not None and not math.isnan(x)]
+    if not X:
+        return 0
+    return median_list(X)
+
+def safe_median_matrix(X, byrow=1):
+    if not byrow:
+        X = transpose(X)
+    return [safe_median_list(x) for x in X]
+
+def safe_median(X, byrow=1):
+    return _dispatch(
+        X, None, _fn(safe_median_list), _fn(safe_median_matrix, byrow=byrow))
 
 def var_list(X):
     assert len(X) > 0
