@@ -134,6 +134,7 @@ def get_newobjects(parameters, objects, pipeline):
 def get_identifier(parameters, objects):
     single_object = module_utils.find_object(parameters, objects,
                                              'gse_id_and_platform', 'contents')
+    assert ',' in single_object.identifier, 'the format shoule be GSExx,GPLxx'
     assert len(single_object.identifier.split(',')) == 2, (
         'the identifier %s should contain GSEID and GPLID'
         % single_object.identifier)

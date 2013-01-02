@@ -30,10 +30,10 @@ def main():
         if os.path.exists(identifiers[i]):
             identifiers[i] = os.path.realpath(identifiers[i])
     objects = rule_engine.plstring2dataobject(pl_inputs, identifiers)
-    print 'Start generate pipelines'
+    print 'Generating pipelines...'
     pipelines = rule_engine.make_pipelines(pl_output, pl_inputs)
     assert pipelines, 'no pipelines can be generated'
-    print '%d pipelines has been generated' %len(pipelines)
+    print '%d pipelines have been generated.\n' %len(pipelines)
     if args.dry_run:
         print len(pipelines)
         for pipeline in pipelines:
@@ -43,14 +43,13 @@ def main():
             print '------------------------'
         print len(pipelines)
     else:
-        print 'Start running pipelines'
         k = 1
         for pipeline in pipelines:
-            print  'pipeline' + str(k) + ':', '\r'
+            print  'Pipeline' + str(k) + ': Preprocessing the signal file.', '\r'
             rule_engine.run_pipeline(pipeline, objects)
             print '\r'
             k = k + 1
-        print 'All pipelines has completed successfully'
+        print 'All pipelines have completed successfully.'
     if args.network:
         network_file = os.path.join(os.getcwd(), args.network)
         original_network = config.NETWORKFILE
