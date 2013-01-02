@@ -4,7 +4,7 @@ read_gmx
 read_gmt
 read_tdf
 read_genesets   Read the genesets in a geneset file.
-read_genes      Read a list of genes that belong in a geneset.
+read_genes      Return a list of genes that belong in a specific geneset.
 
 detect_format
 
@@ -221,6 +221,8 @@ def read_genes(filename, *genesets, **keywds):
         genesets = all_genesets
     all_genes = []
     for gs in genesets:
+        if gs is None:
+            continue
         assert gs in geneset2genes, "Unknown geneset: %s" % gs
         genes = geneset2genes[gs]
         all_genes.extend(genes)
@@ -407,7 +409,7 @@ def score_geneset(MATRIX, pos_genes, neg_genes):
     all_genes = pos_genes + neg_genes
     x = matrixlib.find_best_row_header(MATRIX, all_genes)
     header, num_found, found, not_found = x
-    assert num_found, "I could not find any genes in gene set %s." % name
+    assert num_found, "I could not find any genes in the gene set."
 
     (pos_I, x) = MATRIX._index(row=pos_genes, row_header=header)
     (neg_I, x) = MATRIX._index(row=neg_genes, row_header=header)

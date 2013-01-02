@@ -1,52 +1,61 @@
-[GENERAL]
+[GENERAL APPLICATIONS]
 python=/usr/local/bin/python
 matlab=/usr/local/bin/matlab
 povray=/usr/local/bin/povray
+
+
+[BIOINFORMATICS SOFTWARE]
+primer3=/usr/local/bin/primer3_core
+patser=/usr/local/bin/patser-v3b
 cluster=/usr/local/bin/cluster
-bfrm=/home/jchang/projects/bfrm/data/bfrm_20_4/bfrm64
+BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
 
-binreg20_path=/home/changlab/SIGNATURE/BinReg2.0
-bfrm_normalize_path=/home/changlab/SIGNATURE/BFRM_normalize
-bfrm_project_path=/home/changlab/SIGNATURE/BFRM_project
-dwd_path=/home/changlab/SIGNATURE/BatchAdjust
-sigdb_path=/home/jchang/projects/genepattern/data/SIGDB/sigdb
 
+[BINREG]
+bfrm=/data/genomidata/bfrm64
+sigdb_path=/data/genomidata/SIGDB/sigdb
+binreg20_path=/data/genomidata/SIGNATURE/BinReg2.0
+bfrm_normalize_path=/data/genomidata/SIGNATURE/BFRM_normalize
+bfrm_project_path=/data/genomidata/SIGNATURE/BFRM_project
+selap_path=/data/genomidata/SIGANTURE/SELAPver3
+
+
+[CHANG LAB]
 pybinreg=/home/jchang/changlab/scripts/pybinreg.py
 arrayplot=/home/jchang/changlab/scripts/arrayplot.py
-slice_matrix=/home/jchang/changlab/scripts/slice_matrix.py
 
-[NORMALIZE_PY]
-normalize_AFFYMETRIX=/home/changlab/data/normalize/affymetrix
-normalize_RLIB=/home/changlab/changlab/Rlib
+changliab_Rlib=/home/jchang/changlab/Rlib
+kaplanmeierlib=/home/jchang/changlab/Rlib/kaplanmeierlib.R
 
 
-
-[PATSER]
-patser_PATSER_BIN=/home/jchang/projects/motifsearch/patser/patser-v3b
-patser_ALPHABET_FILE=/home/jchang/projects/motifsearch/alphabet.prom_500_100
-
-motiflib_JASPAR_DB=/home/jchang/projects/motifsearch/data/JASPAR_CORE_2008
-motiflib_TRANSFAC_DB=/home/jchang/projects/motifsearch/data/transfac.12_1.pfm
-motiflib_JASPAR_INFO=/home/jchang/projects/motifsearch/jasparid2info
-motiflib_TRANSFAC_INFO=/home/jchang/projects/motifsearch/matid2info
-motiflib_MATID2LENGTH=/home/jchang/projects/motifsearch/matid2length
+[GENOME SEQUENCE DATA]
+RA_CHROM_HG18=/data/genomidata/ra_chrom_hg18
+RA_CHROM_MM9=/data/genomidata/ra_chrom_mm9
+knowngene_hg18=/data/genomidata/hg18.knownGene.110312.txt
 
 
-[GENOMELIB]
-genomelib_RA_CHROM_HG18=/home/jchang/projects/scgenome/data/data.hg18/ra_chrom
-genomelib_RA_CHROM_MM9=/home/jchang/projects/scgenome/data/data.mm9/ra_chrom
+[MICROARRAY DATA]
+annot_data_affy=/data/genomidata/affymetrix/annotation
+annot_data_illu=/data/genomidata/illumina/annotation
+psid2platform=/data/genomidata/psid2platform
+illumina_HUMANHT12_CONTROL=/data/genomidata/illumina/HumanHT-12.control.txt
 
 
-[TSS]
-gene_HG18=/home/jchang/projects/tss/data/hg18.knownGene.110312.txt
+
+[TRANSCRIPTION FACTOR DATA]
+patser_alphabet=/data/genomidata/alphabet.prom_500_100
+JASPAR_DB=/data/genomidata/JASPAR_CORE_2008
+TRANSFAC_DB=/data/genomidata/transfac.12_1.pfm
+JASPAR_info=/data/genomidata/jasparid2info
+TRANSFAC_info=/data/genomidata/matid2info
+matid2length=/data/genomidata/matid2length
 
 
-[PRIMER3]
-primer3_PRIMER3_BIN=primer3_core
 
-
-[ILLUMINA]
-illumina_HUMANHT12_CONTROL=/home/jchang/projects/illumina/data/HumanHT-12.control.txt
+[GENE PATTERN]
+gp_user=xiaolingchen
+gp_passwd=baby2008
+gp_server=http://genepattern.broadinstitute.org/gp/pages/index.jsf
 
 
 [GENE MAP]
@@ -54,15 +63,3 @@ gm_user=genemap
 gm_passwd=g33m4p
 gm_db=genemap
 gm_host=
-
-
-gp_user=xiaolingchen
-gp_passwd=baby2008
-gp_server=http://genepattern.broadinstitute.org/gp/pages/index.jsf
-
-
-annot_data_affy=/home/jchang/projects/normalize/data/affymetrix
-annot_data_illu=/home/jchang/projects/normalize/data/illumina
-
-psid2platform=/home/jchang/projects/normalize/data/psid2platform
-kaplanmeierlib=/home/jchang/changlab/Rlib/kaplanmeierlib.R

@@ -163,6 +163,8 @@ def povray(
     args.append("-D")   # don't show output.
     args.append("-J")   # turn off jitter.
     if outfile:
+        if " " in outfile:
+            outfile = '"%s"' % outfile
         args.append("+O%s" % outfile)
     if height is not None:
         args.append("-H%d" % height)
@@ -174,12 +176,16 @@ def povray(
     if quality is not None:
         assert quality >= 0 and quality <= 9
         args.append("-Q%d" % quality)
+    if " " in filename:
+        filename = '"%s"' % filename
     args.append(filename)
 
-    cmd = "%s %s" % (povray_bin, " ".join(args))
-    #print cmd
+    #cmd = "%s %s" % (povray_bin, " ".join(args))
+    cmd = [povray_bin] + args
+    #print subprocess.list2cmdline(cmd)
+    #import sys; sys.exit(0)
     p = subprocess.Popen(
-        cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
+        cmd, bufsize=0, stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
     w, r = p.stdin, p.stdout
     w.close()

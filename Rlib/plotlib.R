@@ -17,6 +17,7 @@
 # sample.colorbars      Print out all different color schemes.
 # my.groupplot
 # my.pca
+# my.boxplot
 #
 # INTERNAL FUNCTIONS
 # matrix2color
@@ -436,4 +437,26 @@ sample.colorbars <- function() {
     title(col.names[i])
     i <- i + 1
   }
+}
+
+my.boxplot <- function(X, labels=TRUE, col=NULL, main="", xlab="", ylab="", 
+  leg=NULL, fill=NULL, cex.labels=1.25, cex.legend=1, vert.labels=TRUE,
+  ylim=NULL, cex.lab=1.5, sub="", cex.sub=1.5)
+{
+  las <- 0
+  if(vert.labels)
+    las <- 3
+  at <- NULL
+  if(length(labels) > 1)
+    at <- 1:length(labels)
+  lwd <- 2
+  boxplot(X, col=col, xlab="", ylab="", axes=FALSE, pch=19, cex=1, ylim=ylim)
+  box(lwd=lwd)
+  axis(1, lwd=lwd, cex.axis=cex.labels, labels=labels, at=at, las=las)
+  axis(2, lwd=lwd, cex.axis=1.5)
+  title(main=main, xlab=xlab, ylab=ylab, cex.lab=cex.lab, cex.main=2.0, 
+    sub=sub, cex.sub=cex.sub)
+  if(length(leg))
+    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend,
+      bg="#FFFFFF")
 }

@@ -104,6 +104,9 @@ def main():
         "", "--title", dest="title", default=None, type="str",
         help="Put a title on the plot.")
     parser.add_option(
+        "", "--width", dest="width", default=None, type="int",
+        help="Width (in pixels) of the plot.")
+    parser.add_option(
         "-v", "--verbose", dest="verbose", default=False, action="store_true",
         help="")
     
@@ -116,6 +119,9 @@ def main():
     filename, outfile = args
     if not os.path.exists(filename):
         parser.error("I could not find file %s." % filename)
+    if options.width is not None:
+        assert options.width > 10, "too small"
+        assert options.width < 4096*16, "width too big"
 
     num_genes = options.genes
     #K = 10  # number of dimensions
@@ -154,9 +160,12 @@ def main():
     if options.label:
         LABEL = MATRIX.col_names(arrayio.COL_ID)
     assert not LABEL or len(LABEL) == len(X), "%d %d" % (len(X), len(LABEL))
+    height = width = None
+    if options.width is not None:
+        height, width = int(options.width*0.75), options.width
     pcalib.plot_scatter(
         X, Y, outfile, group=cluster, color=color, title=options.title,
-        label=LABEL)
+        label=LABEL, height=height, width=width)
 
     if options.verbose:
         # Write out the principal components.

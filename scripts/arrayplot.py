@@ -845,7 +845,7 @@ def _choose_gene_label(MATRIX):
 
     # Prioritize some potential ones.
     IDS = [
-        arrayio.GENE_SYMBOL, "Gene.Symbol",
+        arrayio.GENE_SYMBOL, "Gene.Symbol", "Gene Symbol", 
         #arrayio.GENE_DESCRIPTION, "Description",
         "DESCRIPTION",       # For GCT files.  Use the pretty name.
         "NAME",
@@ -1164,6 +1164,7 @@ def cluster_matrix(
             
         filestem = _cluster(MATRIX, cluster=cluster, *args)
         files = find_data_files(filestem)
+        #print filestem, files
         assert "cdt" in files, "No cdt file produced."
         MATRIX, cluster_data = read_data_set(filestem, cluster_data)
         _cleanup_cluster(filestem)
@@ -1804,6 +1805,8 @@ def _cluster(MATRIX, *args, **params):
         raise AssertionError, "%s: command not found" % cluster
     elif output.find("Error reading file") >= 0:
         raise AssertionError, "%s\n%s" % (cmd, output)
+    elif output.find("cluster <options> graphfile") >= 0:
+        raise AssertionError, "ran Graphviz cluster, not Cluster 3.0"
 
     return filestem
 
