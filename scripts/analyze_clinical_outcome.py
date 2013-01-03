@@ -122,16 +122,16 @@ def get_km_plot_attribute(new_group, name, file_type, geneid):
                            for single_name in name_update]
         elif file_type == 'geneset_file':
             new_name = [single_name.replace(
-                name[0], 'Low ' + geneids[i] + ' Score')
+                name[0], 'Low ' + geneid + ' Score')
                 for single_name in new_name]
             new_name = [single_name.replace(
-                name[1], 'High ' + geneids[i] + ' Score')
+                name[1], 'High ' + geneid + ' Score')
                 for single_name in new_name]
             name_update = [single_name.replace(
-                name[0], 'Low ' + geneids[i] + ' Score')
+                name[0], 'Low ' + geneid + ' Score')
                 for single_name in name]
             name_update = [single_name.replace(
-                name[1], 'High ' + geneids[i] + ' Score')
+                name[1], 'High ' + geneid + ' Score')
                 for single_name in name_update]
         color_command = ('col <- list("' + name_update[0] + '"="#1533AD","'
                          + name_update[1] + '"="#FFB300")')
@@ -224,6 +224,8 @@ def main():
                         help='the x label for Kaplan-Meier plot')
     parser.add_argument('--ylab', dest='ylab', default=False,
                         help='the y label for Kaplan-Meier plot')
+    parser.add_argument('--title', dest='title', default=False,
+                        help='the title for Kaplan-Meier plot')
     args = parser.parse_args()
     input_file = args.expression_file
     assert input_file, ('please specify the path of gene expression data '
@@ -391,6 +393,8 @@ def main():
                     jmath.R_equals('"' + args.xlab + '"', 'xlab')
                 if args.ylab:
                     jmath.R_equals('"' + args.ylab + '"', 'ylab')
+                if args.title:
+                    jmath.R_equals('"' + args.title + '"', 'title')
                 R('bitmap(file=filename,type="png256")')
                 R('plot.km.multi(survival, dead, new_name,'
                   'col=col, main=title, sub=sub,xlab=xlab,ylab=ylab)')
