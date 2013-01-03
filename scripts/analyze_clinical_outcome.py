@@ -220,12 +220,12 @@ def main():
     parser.add_argument('--plot_km', dest='plot_km', action="store_true",
                         help='write PNG-formatted Kaplan-Meier plot',
                         default=False)
-    parser.add_argument('--xlab', dest='xlab', default=False,
+    parser.add_argument('--xlab', dest='xlab', default=False, type=str,
                         help='the x label for Kaplan-Meier plot')
-    parser.add_argument('--ylab', dest='ylab', default=False,
+    parser.add_argument('--ylab', dest='ylab', default=False, type=str,
                         help='the y label for Kaplan-Meier plot')
     parser.add_argument('--title', dest='title', default=False,
-                        help='the title for Kaplan-Meier plot')
+                        type=str, help='the title for Kaplan-Meier plot')
     args = parser.parse_args()
     input_file = args.expression_file
     assert input_file, ('please specify the path of gene expression data '
