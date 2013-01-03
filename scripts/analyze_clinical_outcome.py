@@ -4,7 +4,8 @@ import argparse
 import numpy
 import sys
 import arrayio
-from genomicode import filelib, jmath, genesetlib, config, matrixlib, Matrix
+from genomicode import filelib, jmath, genesetlib, config
+from genomicode import matrixlib, Matrix, colorlib
 
 
 def guess_file_type(filename):
@@ -107,6 +108,85 @@ def convert_genesetfile2matrix(filename):
     return M
 
 
+def get_km_plot_attribute(new_group, name, file_type, geneid):
+    """generate new group name and color list for km_plot"""
+    if len(name) == 2:
+        if file_type == 'gene_expression_file':
+            new_name = [single_name.replace(name[0], 'Low Expression')
+                        for single_name in new_group]
+            new_name = [single_name.replace(name[1], 'High Expression')
+                        for single_name in new_name]
+            name_update = [single_name.replace(name[0], 'Low Expression')
+                           for single_name in name]
+            name_update = [single_name.replace(name[1], 'High Expression')
+                           for single_name in name_update]
+        elif file_type == 'geneset_file':
+            new_name = [single_name.replace(
+                name[0], 'Low ' + geneids[i] + ' Score')
+                for single_name in new_name]
+            new_name = [single_name.replace(
+                name[1], 'High ' + geneids[i] + ' Score')
+                for single_name in new_name]
+            name_update = [single_name.replace(
+                name[0], 'Low ' + geneids[i] + ' Score')
+                for single_name in name]
+            name_update = [single_name.replace(
+                name[1], 'High ' + geneids[i] + ' Score')
+                for single_name in name_update]
+        color_command = ('col <- list("' + name_update[0] + '"="#1533AD","'
+                         + name_update[1] + '"="#FFB300")')
+    elif len(name) > 2:
+        if file_type == 'gene_expression_file':
+            new_name = [single_name.replace(
+                name[0], 'Lowest ' + name[0] + '% Expression')
+                for single_name in new_group]
+            new_name = [single_name.replace(
+                name[-1], 'Highest ' + name[-1] + '% Expression')
+                for single_name in new_name]
+            name_update = [single_name.replace(
+                name[0], 'Lowest ' + name[0] + '% Expression')
+                for single_name in name]
+            name_update = [single_name.replace(
+                name[-1], 'Highest ' + name[-1] + '% Expression')
+                for single_name in name_update]
+            for k in range(len(name) - 2):
+                new_name = [single_name.replace(
+                    name[1 + k], 'Middle ' + name[1 + k] + '% Expression')
+                    for single_name in new_name]
+                name_update = [single_name.replace(
+                    name[1 + k], 'Middle ' + name[1 + k] + '% Expression')
+                    for single_name in name_update]
+        elif file_type == 'geneset_file':
+            new_name = [single_name.replace(
+                name[0], 'Lowest ' + name[0] + '%' + geneid + ' Score')
+                for single_name in new_group]
+            new_name = [single_name.replace(
+                name[-1], 'Highest ' + name[-1] + '%' + geneid + ' Score')
+                for single_name in new_name]
+            name_update = [single_name.replace(
+                name[0], 'Lowest ' + name[0] + '%' + geneid + ' Score')
+                for single_name in name]
+            name_update = [single_name.replace(
+                name[-1], 'Highest ' + name[-1] + '%' + geneid + ' Score')
+                for single_name in name_update]
+            for k in range(len(name) - 2):
+                new_name = [single_name.replace(
+                    name[1 + k], 'Middle ' + name[1 + k] + '% '
+                    + geneid + ' Score') for single_name in new_name]
+                name_update = [single_name.replace(
+                    name[1 + k], 'Middle ' + name[1 + k] + '% '
+                    + geneid + ' Score') for single_name in name_update]
+        color_list = colorlib.bild_colors(len(name))
+        color_command = 'col <- list('
+        for k in range(len(color_list)):
+            new_color = [hex(int(L * 255))[2:] for L in color_list[k]]
+            color_hex = '#' + new_color[0] + new_color[1] + new_color[2]
+            color_command = (color_command + '"'
+                             + name_update[k] + '"="' + color_hex + '",')
+        color_command = color_command[:-1] + ')'
+    return new_name, color_command
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='associate the gene expression with outcomes')
@@ -140,6 +220,10 @@ def main():
     parser.add_argument('--plot_km', dest='plot_km', action="store_true",
                         help='write PNG-formatted Kaplan-Meier plot',
                         default=False)
+    parser.add_argument('--xlab', dest='xlab', default=False,
+                        help='the x label for Kaplan-Meier plot')
+    parser.add_argument('--ylab', dest='ylab', default=False,
+                        help='the y label for Kaplan-Meier plot')
     args = parser.parse_args()
     input_file = args.expression_file
     assert input_file, ('please specify the path of gene expression data '
@@ -153,7 +237,8 @@ def main():
     gene_list = parse_genes(args.gene)
     geneset_list = args.geneset
     if gene_list and geneset_list:
-        raise AssertionError('we only accept gene or geneset at each time, not both')
+        raise AssertionError('we only accept gene '
+                             'or geneset at each time, not both')
     if file_type == 'gene_expression_file' and geneset_list:
         raise AssertionError('gene_expression_file cannot run with geneset')
     if file_type == 'geneset_file' and gene_list:
@@ -244,6 +329,7 @@ def main():
     all_group_name = [[]] * len(outcomes)
     all_survival = []
     all_dead = []
+    all_p_value = [[]] * len(outcomes)
     jmath.R_equals(cutoffs, 'cutoffs')
     for h in range(len(outcomes)):
         survival = [all_time_data[h][i] for i in all_sample_index[h]]
@@ -269,11 +355,12 @@ def main():
             p_value, surv90, surv50, direction = calc_km(survival,
                                                          dead, group_name)
             if file_type == 'geneset_file':
-                direction = direction.replace('expression','gene set score')
+                direction = direction.replace('expression', 'gene set score')
             single_data = ([str(p_value)] + num_group + avg + surv90
                            + surv50 + [direction])
             output_data[i].extend(single_data)
             all_group_name[h].append(group_name)
+            all_p_value[h].append(p_value)
     #generate the prism file and the km plot for each gene in each outcome
     filestem = '' if not args.filestem else args.filestem + '.'
     for h in range(len(outcomes)):
@@ -290,10 +377,23 @@ def main():
             if args.plot_km:
                 km_plot = (filestem + all_time_header[h] + '.'
                            + geneids[i] + '.km.png')
+                new_name, color_command = get_km_plot_attribute(
+                    new_group, name, file_type, geneids[i])
+                jmath.R_equals(new_name, 'new_name')
+                R(color_command)
                 jmath.R_equals('"' + km_plot + '"', 'filename')
-                R('col <- list("' + name[0] + '"="#FF0000")')
+                jmath.R_equals('"' + geneids[i] + '"', 'title')
+                jmath.R_equals('"p_value=' + str(all_p_value[h][i])
+                               + '"', 'sub')
+                R('xlab<-""')
+                R('ylab<-""')
+                if args.xlab:
+                    jmath.R_equals('"' + args.xlab + '"', 'xlab')
+                if args.ylab:
+                    jmath.R_equals('"' + args.ylab + '"', 'ylab')
                 R('bitmap(file=filename,type="png256")')
-                R('plot.km.multi(survival, dead, name, col=col)')
+                R('plot.km.multi(survival, dead, new_name,'
+                  'col=col, main=title, sub=sub,xlab=xlab,ylab=ylab)')
                 R('dev.off()')
     #write the output data
     f = sys.stdout
