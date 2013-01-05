@@ -136,6 +136,8 @@ def write_Betsy_parameters_file(parameters, single_object, pipeline, outfile):
 
 def find_object(parameters, objects, objecttype,
                 attribute_key, opt_attribute=None):
+    """find an object given by objecttype and attribute_key
+       from a list of existing objects, if not found, return None"""
     single_object = None
     # split the compared parameter key
     attribute_keys = attribute_key.split(',')
@@ -143,12 +145,12 @@ def find_object(parameters, objects, objecttype,
     if opt_attribute:
         compare_attribute.extend(opt_attribute)
     for single_object in objects:
-        flag = True
+        attribute_match_flag = True
         if objecttype == single_object.objecttype:
             for i in compare_attribute:
                 if i not in single_object.attributes:
-                    flag = False
-            if flag:
+                    attribute_match_flag = False
+            if attribute_match_flag :
                 return single_object
     return None
 

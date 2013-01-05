@@ -4,7 +4,8 @@ import argparse
 import numpy
 import sys
 import arrayio
-from genomicode import filelib, jmath, genesetlib, config, matrixlib, Matrix
+from genomicode import filelib, jmath, genesetlib, config
+from genomicode import matrixlib, Matrix, colorlib
 
 
 def guess_file_type(filename):
@@ -20,8 +21,8 @@ def calc_km(survival, dead, group):
     R = jmath.start_R()
     jmath.R_equals(survival, 'survival')
     jmath.R_equals(dead, 'dead')
-    new_group = ['"' + i + '"' for i in group]
-    jmath.R_equals(new_group, 'group')
+    sample_group_name = ['"' + i + '"' for i in group]
+    jmath.R_equals(sample_group_name, 'group')
     R('x <- calc.km.multi(survival, dead, group)')
     c = R['x']
     p_value = c.rx2('p.value')[0]
@@ -62,6 +63,7 @@ def parse_cutoffs(cutoffs):
         cutoffs = [0.5]
     for cutoff in cutoffs:
         assert cutoff > 0 and cutoff < 1.0, 'cutoff should be between 0 and 1'
+    cutoffs = [0] + cutoffs + [1]
     return cutoffs
 
 
@@ -107,6 +109,54 @@ def convert_genesetfile2matrix(filename):
     return M
 
 
+def colortuple2hex(R, G, B):
+    R = hex(int(R * 255))[2:]
+    G = hex(int(G * 255))[2:]
+    B = hex(int(B * 255))[2:]
+    color_hex = '#' + R + G + B
+    return color_hex
+
+
+def make_color_command(group_names):
+    """given group_names,generate a command string for R"""
+    if len(group_names) == 2:
+        colors = ['#1533AD', '#FFB300']
+    else:
+        x = colorlib.bild_colors(len(group_names))
+        x = [colortuple2hex(*x) for x in x]
+        colors = x
+    color_command = 'col<-list('
+    for i in range(len(group_names)):
+        color_command = (color_command + '"'
+                         + group_names[i] + '"="' + colors[i] + '",')
+    color_command = color_command[:-1] + ')'
+    return color_command
+
+
+def make_group_names(cutoffs, file_type):
+    """given the cutoffs and file_type,
+       generate group name"""
+    score_or_expression = 'Expression'
+    if file_type == 'geneset_file':
+        score_or_expression = 'Score'
+    name = [''] * (len(cutoffs) - 1)
+    percentage_name = [''] * (len(cutoffs) - 1)
+    if len(cutoffs) - 1 == 2:
+        name[0] = 'Low ' + score_or_expression
+        name[1] = 'High ' + score_or_expression
+    elif len(cutoffs) - 1 > 2:
+        for j in range(len(cutoffs) - 1):
+            percentage_name[j] = "%d - %d" % (
+                cutoffs[j] * 100, cutoffs[j + 1] * 100)
+        name[0] = 'Lowest ' + percentage_name[0] + '% ' + score_or_expression
+        name[-1] = ('Highest ' + percentage_name[-1] + '% '
+                    + score_or_expression)
+        for k in range(len(name) - 2):
+            name[k + 1] = ('Middle ' + percentage_name[k + 1] +
+                           '% ' + score_or_expression)
+    return name
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='associate the gene expression with outcomes')
@@ -140,6 +190,12 @@ def main():
     parser.add_argument('--plot_km', dest='plot_km', action="store_true",
                         help='write PNG-formatted Kaplan-Meier plot',
                         default=False)
+    parser.add_argument('--xlab', dest='xlab', default=None, type=str,
+                        help='the x label for Kaplan-Meier plot')
+    parser.add_argument('--ylab', dest='ylab', default=None, type=str,
+                        help='the y label for Kaplan-Meier plot')
+    parser.add_argument('--title', dest='title', default=None,
+                        type=str, help='the title for Kaplan-Meier plot')
     args = parser.parse_args()
     input_file = args.expression_file
     assert input_file, ('please specify the path of gene expression data '
@@ -153,7 +209,8 @@ def main():
     gene_list = parse_genes(args.gene)
     geneset_list = args.geneset
     if gene_list and geneset_list:
-        raise AssertionError('we only accept gene or geneset at each time, not both')
+        raise AssertionError('we only accept gene '
+                             'or geneset at each time, not both')
     if file_type == 'gene_expression_file' and geneset_list:
         raise AssertionError('gene_expression_file cannot run with geneset')
     if file_type == 'geneset_file' and gene_list:
@@ -192,10 +249,7 @@ def main():
     R('require(splines,quietly=TRUE)')
     R('source("' + config.kaplanmeierlib + '")')
     #generate output headers
-    new_cutoffs = [0] + cutoffs + [1]
-    name = [''] * (len(new_cutoffs) - 1)
-    for j in range(len(new_cutoffs) - 1):
-        name[j] = "%d - %d" % (new_cutoffs[j] * 100, new_cutoffs[j + 1] * 100)
+    name = make_group_names(cutoffs, file_type)
     num_samples = ['Num Samples (' + k + ')' for k in name]
     if file_type == 'gene_expression_file':
         ave_expression = ['Average Expression (' + k + ')'for k in name]
@@ -203,8 +257,8 @@ def main():
         ave_expression = ['Average gene set score (' + k + ')'for k in name]
     surv90_header = ['90% Survival (' + k + ')' for k in name]
     surv50_header = ['50% Survival (' + k + ')' for k in name]
-    newheader = (['p-value'] + num_samples + ave_expression
-                 + surv90_header + surv50_header + ['Relationship'])
+    output_header = (['p-value'] + num_samples + ave_expression
+                     + surv90_header + surv50_header + ['Relationship'])
     #get the time_header, dead_header,time_data,dead_data,
     #and sample_index for each outcome
     all_time_header = []
@@ -236,15 +290,16 @@ def main():
     #update the output headers
     for k in range(len(outcomes)):
         if len(outcomes) > 1:
-            newheader1 = [all_time_header[k] + ' ' + i for i in newheader]
+            tmp_header = [all_time_header[k] + ' ' + i for i in output_header]
         else:
-            newheader1 = newheader
-        headers.extend(newheader1)
+            tmp_header = output_header
+        headers.extend(tmp_header)
     #calculate the survival analysis for each gene in each outcome
     all_group_name = [[]] * len(outcomes)
     all_survival = []
     all_dead = []
-    jmath.R_equals(cutoffs, 'cutoffs')
+    all_p_value = [[]] * len(outcomes)
+    jmath.R_equals(cutoffs[1:-1], 'cutoffs')
     for h in range(len(outcomes)):
         survival = [all_time_data[h][i] for i in all_sample_index[h]]
         dead = [all_dead_data[h][i] for i in all_sample_index[h]]
@@ -252,15 +307,15 @@ def main():
         all_dead.append(dead)
         for i in range(len(geneids)):
             data = data_all[i]
-            data_new = [data[j] for j in all_sample_index[h]]
-            jmath.R_equals(data_new, 'F')
+            data_select = [data[j] for j in all_sample_index[h]]
+            jmath.R_equals(data_select, 'F')
             R('group <- group.by.value(F, cutoffs)')
             group = R['group']
             avg = [0] * len(name)
             num_group = [0] * len(name)
             group_name = [""] * len(group)
             for k in range(len(name)):
-                group_data = [data_new[j] for j in range(len(group))
+                group_data = [data_select[j] for j in range(len(group))
                               if group[j] == k]
                 avg[k] = str(sum(group_data) / len(group_data))
                 num_group[k] = str(len(group_data))
@@ -269,19 +324,20 @@ def main():
             p_value, surv90, surv50, direction = calc_km(survival,
                                                          dead, group_name)
             if file_type == 'geneset_file':
-                direction = direction.replace('expression','gene set score')
+                direction = direction.replace('expression', 'gene set score')
             single_data = ([str(p_value)] + num_group + avg + surv90
                            + surv50 + [direction])
             output_data[i].extend(single_data)
             all_group_name[h].append(group_name)
+            all_p_value[h].append(p_value)
     #generate the prism file and the km plot for each gene in each outcome
     filestem = '' if not args.filestem else args.filestem + '.'
     for h in range(len(outcomes)):
         jmath.R_equals(all_survival[h], 'survival')
         jmath.R_equals(all_dead[h], 'dead')
         for i in range(len(geneids)):
-            new_group = ['"' + j + '"' for j in all_group_name[h][i]]
-            jmath.R_equals(new_group, 'name')
+            sample_group_name = ['"' + j + '"' for j in all_group_name[h][i]]
+            jmath.R_equals(sample_group_name, 'name')
             if args.write_prism:
                 prism_file = str(filestem + all_time_header[h] + '.'
                                  + geneids[i] + '.prism.txt')
@@ -290,10 +346,22 @@ def main():
             if args.plot_km:
                 km_plot = (filestem + all_time_header[h] + '.'
                            + geneids[i] + '.km.png')
+                R(make_color_command(name))
                 jmath.R_equals('"' + km_plot + '"', 'filename')
-                R('col <- list("' + name[0] + '"="#FF0000")')
+                jmath.R_equals('"' + geneids[i] + '"', 'title')
+                jmath.R_equals('"p_value=' + str(all_p_value[h][i])
+                               + '"', 'sub')
+                R('xlab<-""')
+                R('ylab<-""')
+                if args.xlab:
+                    jmath.R_equals('"' + args.xlab + '"', 'xlab')
+                if args.ylab:
+                    jmath.R_equals('"' + args.ylab + '"', 'ylab')
+                if args.title:
+                    jmath.R_equals('"' + args.title + '"', 'title')
                 R('bitmap(file=filename,type="png256")')
-                R('plot.km.multi(survival, dead, name, col=col)')
+                R('plot.km.multi(survival, dead, name,'
+                  'col=col, main=title, sub=sub, xlab=xlab, ylab=ylab)')
                 R('dev.off()')
     #write the output data
     f = sys.stdout

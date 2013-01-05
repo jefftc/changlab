@@ -199,7 +199,7 @@ def run_pipeline(pipeline, objects):
                                  analysis in pipeline[0:i + 1]]
             analysis = pipeline[i]
             module_name = analysis.name
-            print str(i + 1) + '.' + module_name
+            print str(i + 1) + '.[' + time.strftime('%l:%M%p') + '] ' + module_name
             module = __import__('modules.' + module_name, globals(),
                                 locals(), [module_name], -1)
             single_object = module.get_identifier(analysis.parameters, objects)
@@ -228,8 +228,8 @@ def run_pipeline(pipeline, objects):
                 if analysis == pipeline[-1]:
                     if module_utils.exists_nz(outfile):
                         OUTPUT = outfile_list
-                        print 'This pipeline has completed successfully'
-                        print 'File: ', OUTPUT[-1] + '\r'
+                        print '['+ time.strftime('%l:%M%p') + '] Completed successfully and generated a file:'
+                        print OUTPUT[-1] + '\r'
                         print '\r'
                     else:
                         print 'This pipeline has completed unsuccessfully'
