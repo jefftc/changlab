@@ -229,10 +229,11 @@ def main():
     M, colnames = x
     #if given genes or geneset,get of match genes or geneset
     if gene_list:
-        x = matrixlib.align_rows_to_annot(M, gene_list, reorder_MATRIX=True)
+        x = M._index(row=gene_list)
     if geneset_list:
-        x = matrixlib.align_rows_to_annot(M, geneset_list, reorder_MATRIX=True)
-    M, rownames = x
+        x = M._index(row=geneset_list)
+    index_list, rownames = x
+    M = M.matrix(index_list,None)
     ids = M._row_order
     geneids = M._row_names[ids[0]]
     assert geneids, 'we cannot match any gene or geneset as required'
