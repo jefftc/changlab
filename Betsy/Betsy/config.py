@@ -18,20 +18,16 @@ import ConfigParser
 ##with open('Betsy.cfg','wb') as configfile:
 ##    config.write(configfile)
 
-DEFAULTS = {'PREPROCESS': 'preprocess.py', 'ARRAYPLOT': 'arrayplot.py',
-            'XLS2TXT': 'xls2txt', 'GENEPATTERN': 'run_genepattern.py',
-            'OUTPUTPATH': '.', 'BFRMNORM': 'bfrmnorn.py',
-            'COMBATNORM': 'combatnorm.py', 'RUN_COMBAT': 'run_combat.R',
-            'SCORESIG': 'scoresig.py', 'RENAME': 'slice_matrix.py',
-            'MAPPING': 'HumanHT-12_to_HG-U133_Plus_2.txt',
+DEFAULTS = {'OUTPUTPATH': '.',
             'NETWORKFILE': 'betsy.xgmml',
-            'ANNOTATE_MATRIX': 'annotate_matrix.py'
+            'ANNOTATE_MATRIX': 'annotate_matrix.py',
+            'SCORE_GENE': 'score_geneset.py'
             }
 SEARCH_PATH = ['/home/xchen/chencode/scripts',
                "/usr/local/bin",
                "/usr/bin",
                '/opt/local/bin',
-               os.environ['HOME'] + '/bin'
+               os.environ['HOME'] + '/bin',
                '/home/changlab/changlab/scripts'
                ]
 

@@ -2,6 +2,7 @@
 import os
 from Betsy import module_utils
 import subprocess
+from genomicode import config
 def run(parameters, objects, pipeline):
     rma_file = module_utils.find_object(parameters,objects, 'signal_file', 'contents,pre1')
     mas_file = module_utils.find_object(parameters,objects, 'signal_file', 'contents,pre2')
@@ -10,8 +11,7 @@ def run(parameters, objects, pipeline):
     assert os.path.exists(mas_file.identifier), (
         'the mas_file %s in run_scoresig does not exist'% mas_file.identifier)
     outfile = get_outfile(parameters, objects, pipeline)
-    import config
-    scoresig_path = config.SCORESIG
+    scoresig_path = config.scoresig
     scoresig_BIN = module_utils.which(scoresig_path)
     assert scoresig_BIN,'cannot find the %s' %scoresig_path
     file1,file2 = module_utils.convert_to_same_platform(rma_file.identifier,mas_file.identifier)

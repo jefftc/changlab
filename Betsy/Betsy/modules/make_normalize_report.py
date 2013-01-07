@@ -7,6 +7,8 @@ import shutil
 from Betsy import protocol_utils
 import imghdr
 import time
+
+
 def run(outfiles,parameters,pipelines):
     OUTPUTPATH = config.OUTPUTPATH
     inputid = module_utils.get_inputid(outfiles[0])

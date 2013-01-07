@@ -52,11 +52,11 @@ def main():
     f.close()
     #run combat
     import R
-    run_combat = config.run_combat 
+    run_combat = config.run_combat
     assert os.path.exists(run_combat),'cannot find the %s' %run_combat
     R.run_R(run_combat)
-    assert module_utils.exists_nz('Adjusted_EIF.dat_.xls'),'the \
-                       adjusted_EIF.dat_.xls does not exist'
+    assert module_utils.exists_nz('Adjusted_EIF.dat_.xls'),('the '
+                       'adjusted_EIF.dat_.xls does not exist')
     f=file('Adjusted_EIF.dat_.xls','r')
     text = f.read().split('\n')
     f.close()

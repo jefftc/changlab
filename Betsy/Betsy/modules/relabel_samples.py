@@ -4,13 +4,13 @@ import shutil
 from Betsy import module_utils
 import arrayio
 import subprocess
-from Betsy import config
+from genomicode import config
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     rename_file = module_utils.find_object(parameters,objects,
                                           'rename_list_file','contents')
     outfile = get_outfile(parameters,objects,pipeline)
-    rename_path = config.RENAME
+    rename_path = config.slice_matrix
     rename_BIN = module_utils.which(rename_path)
     assert rename_BIN,'cannot find the %s' %rename_path
     command=['python',rename_BIN,single_object.identifier,'--relabel_col_ids',

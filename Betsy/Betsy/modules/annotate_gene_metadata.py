@@ -3,14 +3,14 @@ import os
 import subprocess
 import shutil
 import arrayio
-from Betsy import module_utils, config
-from genomicode import filelib, arrayannot
+from Betsy import module_utils
+from genomicode import filelib, arrayannot, config
 
 
 def run(parameters, objects, pipeline):
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
-    slice_path = config.RENAME
+    slice_path = config.slice_matrix
     slice_BIN = module_utils.which(slice_path)
     assert slice_BIN, 'cannot find the %s' % slice_path
     M = arrayio.read(single_object.identifier)

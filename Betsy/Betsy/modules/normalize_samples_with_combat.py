@@ -1,8 +1,8 @@
 #normalize_samples_with_combat.py
 import os
 import subprocess
-from Betsy import module_utils, config, read_label_file
-
+from Betsy import module_utils, read_label_file
+from genomicode import config
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
@@ -12,10 +12,9 @@ def run(parameters,objects,pipeline):
     assert os.path.exists(label_file.identifier),'cannot find label_file %s'%label_file.identifier
     result,label_line,second_line=read_label_file.read(label_file.identifier)
     assert len(result) >= 2, 'for combat,there should be equal or larger than 2 classes'
-    combat_path = config.COMBATNORM
+    combat_path = config.combatnorm
     combat_BIN = module_utils.which(combat_path)
     assert combat_BIN,'cannot find the %s' %combat_path
-
     command = ['python', combat_BIN,'-f',single_object.identifier,'-o',
                outfile,'-label',label_file.identifier]
     process = subprocess.Popen(command,shell=False,

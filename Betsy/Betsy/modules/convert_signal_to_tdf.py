@@ -7,7 +7,7 @@ from Betsy import module_utils
 import openpyxl
 import arrayio
 import subprocess
-
+from genomicode import config
 
 def run(parameters, objects, pipeline):
     """check an input file is xls or xlsx format"""
@@ -33,8 +33,7 @@ def run(parameters, objects, pipeline):
             raise
     if tmp_file:
         shutil.copyfile(newfile, tmp_file)
-        import config
-        xls2txt_path = config.XLS2TXT
+        xls2txt_path = config.xls2txt
         xls2txt_BIN = module_utils.which(xls2txt_path)
         assert xls2txt_BIN, 'cannot find the %s' % xls2txt_path
         f = file('tmp1.txt', 'w')

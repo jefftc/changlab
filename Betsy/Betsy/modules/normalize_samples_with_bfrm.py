@@ -1,14 +1,16 @@
 #normalize_samples_with_bfrm.py
 import os
 import subprocess
-from Betsy import module_utils,config
+from Betsy import module_utils
 import shutil
 import arrayio
 import tempfile
+from genomicode import config
+
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
-    bfrm_path = config.BFRMNORM
+    bfrm_path = config.bfrmnorm
     bfrm_BIN = module_utils.which(bfrm_path)
     assert bfrm_BIN,'cannot find the %s' %bfrm_path
     num_factor = 10

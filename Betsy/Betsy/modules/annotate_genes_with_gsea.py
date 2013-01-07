@@ -3,8 +3,8 @@ import subprocess
 import shutil
 import os
 import arrayio
-from genomicode import jmath, arrayplatformlib
-from Betsy import module_utils, config, read_label_file
+from genomicode import jmath, arrayplatformlib, config
+from Betsy import module_utils, read_label_file
 
 
 def run(parameters, objects, pipeline):
@@ -22,7 +22,7 @@ def run(parameters, objects, pipeline):
     x = arrayplatformlib.identify_all_platforms_of_matrix(M)
     chipname = x[0][1]
     gp_parameters['chip.platform'] = chipname + '.chip'
-    gp_path = config.GENEPATTERN
+    gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module, 'cannot find the %s' % gp_path
     command = [gp_module, module_name]

@@ -2,7 +2,7 @@
 from Betsy import module_utils
 import shutil
 import os
-from Betsy import config
+from genomicode import config
 import zipfile
 import subprocess
 import arrayio
@@ -91,7 +91,7 @@ def run(parameters,objects,pipeline):
 
     if 'ill_custom_manifest' in parameters.keys():
         gp_parameters['custom.manifest'] = str(parameters['ill_custom_manifest'])
-    gp_path = config.GENEPATTERN
+    gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path
     command = [gp_module, module_name]

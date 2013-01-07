@@ -1,7 +1,7 @@
 #annotate_probes.py
 from genomicode import arrayannot,arrayplatformlib
 import arrayio
-from Betsy import module_utils, config
+from Betsy import module_utils
 import os
 
 def run(parameters, objects, pipeline):

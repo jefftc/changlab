@@ -2,13 +2,12 @@
 import os
 from Betsy import module_utils
 import arrayio
-from Betsy import config
-from genomicode import filelib,arrayannot
+from genomicode import filelib,arrayannot, config
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    mapfile = config.MAPPING
+    mapfile = config.HumanHT_12_to_HG_u133_Plus_2
     assert os.path.exists(mapfile),'mapping file %s does not exist'%mapfile
     result=[]
     for d in filelib.read_row(mapfile,header=True):

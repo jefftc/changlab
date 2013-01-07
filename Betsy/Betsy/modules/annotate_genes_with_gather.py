@@ -12,7 +12,7 @@ def run(parameters, objects, pipeline):
     kwargs = {'cmd': "report",
               'tax_id': '9606',
               'network': 0,
-              'homologs': 1,
+              'homologs': 0,
               'annot_type': 'gene_ontology'}
     network = {'yes_network': 1, 'no_network': 0}
     homologs = {'yes_homologs': 1, 'no_homologs': 0}

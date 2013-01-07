@@ -1,8 +1,8 @@
 #preprocess_rma.py
 import os
-from Betsy import module_utils,config
+from Betsy import module_utils
 import subprocess
-
+from genomicode import config
 
 def run(parameters,objects,pipeline):
     """preprocess the inputfile with RMA 
@@ -10,7 +10,7 @@ def run(parameters,objects,pipeline):
     #preprocess the cel file to text signal file
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
-    PREPROCESS_path = config.PREPROCESS
+    PREPROCESS_path = config.preprocess
     PREPROCESS_BIN = module_utils.which(PREPROCESS_path)
     assert PREPROCESS_BIN,'cannot find the %s' %PREPROCESS_path
     command = ['python', PREPROCESS_BIN, 'RMA', 

@@ -37,7 +37,7 @@ make_batch_report(Parameters,Modules):-
      get_options(Parameters,[pca_gene_num],[],Options2),
      append(NewParameters,Options2,NewParameters2),
      append(NewParameters2,[objecttype,pca_plot_out],NewParameters3),
-     Newadd=[plot_sample_pca,NewParameters3],
+     Newadd=[analyze_samples_pca,NewParameters3,plot_sample_pca,NewParameters3],
      append(Modules1, Newadd, Modules2),
 
      % Input3: pca_plot_in

@@ -1,0 +1,74 @@
+[GENERAL APPLICATIONS]
+python=/usr/local/bin/python
+matlab=/usr/local/bin/matlab
+povray=/usr/local/bin/povray
+
+
+[BIOINFORMATICS SOFTWARE]
+primer3=/usr/local/bin/primer3_core
+patser=/usr/local/bin/patser-v3b
+cluster=/usr/local/bin/cluster
+BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
+
+
+[BINREG]
+bfrm=/data/genomidata/bfrm64
+sigdb_path=/data/genomidata/SIGDB/sigdb
+binreg20_path=/data/genomidata/SIGNATURE/BinReg2.0
+bfrm_normalize_path=/data/genomidata/SIGNATURE/BFRM_normalize
+bfrm_project_path=/data/genomidata/SIGNATURE/BFRM_project
+selap_path=/data/genomidata/SIGANTURE/SELAPver3
+
+
+[CHANG LAB]
+pybinreg=/home/xchen/chencode/scripts/pybinreg.py
+arrayplot=/home/xchen/chencode/scripts/arrayplot.py
+preprocess = /home/xchen/chencode/scripts/preprocess.py
+xls2txt = /home/xchen/chencode/scripts/xls2txt
+genepattern=/home/xchen/chencode/scripts/run_genepattern.py
+bfrmnorm=/home/xchen/chencode/scripts/bfrmnorm.py
+combatnorm=/home/xchen/chencode/scripts/combatnorm.py
+run_combat=/home/xchen/chencode/scripts/run_combat.R
+scoresig=/home/xchen/chencode/scripts/scoresig.py
+slice_matrix=/home/xchen/chencode/scripts/slice_matrix.py
+
+changlab_Rlib=/home/xchen/chencode/Rlib
+kaplanmeierlib=/home/xchen/chencode/Rlib/kaplanmeierlib.R
+
+
+[GENOME SEQUENCE DATA]
+RA_CHROM_HG18=/data/genomidata/ra_chrom_hg18
+RA_CHROM_MM9=/data/genomidata/ra_chrom_mm9
+knowngene_hg18=/data/genomidata/hg18.knownGene.110312.txt
+
+
+[MICROARRAY DATA]
+annot_data_affy=/data/genomidata/affymetrix/annotation
+annot_data_illu=/data/genomidata/illumina/annotation
+psid2platform=/data/genomidata/psid2platform
+HumanHT_12_to_HG_u133_Plus_2=/home/changlab/data/mapping/HumanHT-12_to_HG-U133_Plus_2.txt
+illumina_HUMANHT12_CONTROL=/data/genomidata/illumina/HumanHT-12.control.txt
+
+
+
+[TRANSCRIPTION FACTOR DATA]
+patser_alphabet=/data/genomidata/alphabet.prom_500_100
+JASPAR_DB=/data/genomidata/JASPAR_CORE_2008
+TRANSFAC_DB=/data/genomidata/transfac.12_1.pfm
+JASPAR_info=/data/genomidata/jasparid2info
+TRANSFAC_info=/data/genomidata/matid2info
+matid2length=/data/genomidata/matid2length
+
+
+
+[GENE PATTERN]
+gp_user=xiaolingchen
+gp_passwd=baby2008
+gp_server=http://genepattern.broadinstitute.org/gp/pages/index.jsf
+
+
+[GENE MAP]
+gm_user=genemap
+gm_passwd=g33m4p
+gm_db=genemap
+gm_host=

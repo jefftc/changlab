@@ -2,8 +2,8 @@
 import shutil
 import os
 import subprocess
-from genomicode import jmath
-from Betsy import module_utils, read_label_file, config
+from genomicode import jmath, config
+from Betsy import module_utils, read_label_file
 
 
 def run(parameters, objects, pipeline):
@@ -53,7 +53,7 @@ def run(parameters, objects, pipeline):
         gp_parameters['feature.selection.statistic'] = str(
             wv_feature_stat.index(parameters[
                 'wv_feature_stat']))
-    gp_path = config.GENEPATTERN
+    gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module, 'cannot find the %s' % gp_path
     command = [gp_module, module_name]

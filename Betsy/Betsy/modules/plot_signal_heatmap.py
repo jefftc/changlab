@@ -1,13 +1,15 @@
 #plot_signal_heatmap.py
 import os
 import subprocess
-from Betsy import module_utils, config
+from Betsy import module_utils
+from genomicode import config
+
 
 def run(parameters,objects,pipeline,options=None):
     """generate a heatmap of input file"""
     single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
-    Heatmap_path = config.ARRAYPLOT
+    Heatmap_path = config.arrayplot
     Heatmap_BIN = module_utils.which(Heatmap_path)
     assert Heatmap_BIN,'cannot find the %s' %Heatmap_path
     command = ['python', Heatmap_BIN,single_object.identifier,'-o',outfile,"--label_arrays",

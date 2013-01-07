@@ -2,9 +2,9 @@
 from Betsy import module_utils
 import shutil
 import os
-from genomicode import jmath
-from Betsy import config
+from genomicode import jmath, config
 import subprocess
+
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)
@@ -67,7 +67,7 @@ def run(parameters,objects,pipeline):
         assert module_utils.isnumber(parameters['cn_min_folddiff']),'cn_min_folddiff should be number'
         gp_parameters['min.fold.diff'] = str(parameters['cn_min_folddiff'])
         
-    gp_path = config.GENEPATTERN
+    gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path
     command = [gp_module, module_name]
