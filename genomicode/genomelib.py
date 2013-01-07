@@ -224,6 +224,8 @@ def find_nearby_tss(chrom, base, max_bases, gene_file=None):
     return genes
 
 def find_overlapping_genes(chrom, base, length, gene_file=None):
+    # Format of chrom: "1", "8", "X", "Y", etc...
+    # Return a list of objects (see load_genes for description).
     import config
     
     _assert_chrom(chrom)
@@ -460,6 +462,12 @@ def _load_genes_h(gene_file):
 
     genes = []
     for d in gene_data:
+        # Ignore weird chromosomes, e.g.:
+        # chr6_apd_hap1
+        # chr17_ctg5_hap1
+        # chr1_gl00191_random
+        if d.chrom.find("_") >= 0:
+            continue
         chrom = d.chrom
         assert chrom.startswith("chr")
         chrom = chrom[3:]

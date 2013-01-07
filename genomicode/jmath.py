@@ -31,7 +31,9 @@ cor
 order
 rank
 max
+which_max
 svd
+eig
 
 log_add
 
@@ -473,6 +475,13 @@ def max_matrix(X, byrow=1):
 def max(X, byrow=1):
     return _dispatch(X, None, _fn(max_list), _fn(max_matrix, byrow=byrow))
 
+def which_max(X):
+    max_val = max_i = None
+    for i in range(len(X)):
+        if max_val is None or X[i] > max_val:
+            max_val, max_i = X[i], i
+    return max_i
+
 def svd(X):
     # Return U, S, Vt.
     # U   nrow x k  columns are principal components
@@ -488,6 +497,33 @@ def svd(X):
     s = s.tolist()
     V = numpy.transpose(V).tolist()
     return U, s, V
+
+
+def eig(X):
+    # Return:
+    # list of eigenvalues, sorted in decreasing order
+    # matrix of right eigenvectors (each column is a vector)
+    # X x = lambda x
+    import numpy
+
+    # Bug: should check if X is square.
+    w, v = numpy.linalg.eig(X)
+    w = w.tolist()
+    v = v.tolist()
+
+    # For complex numbers, just sort by the real part.
+    w_real = w
+    if type(w[0]) is type(complex()):
+        w_real = [x.real for x in w]
+    
+    O = order(w_real, decreasing=1)
+    vt = transpose(v)   # transpose from columns to rows
+    w = [w[i] for i in O]
+    vt = [vt[i] for i in O]
+    v = transpose(vt)
+    
+    return w, v
+    
 
 def log_add(logx, logy):
     # return log(x+y), given log(x) and log(y), checking for overflow
