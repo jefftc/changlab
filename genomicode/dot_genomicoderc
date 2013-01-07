@@ -21,11 +21,21 @@ selap_path=/data/genomidata/SIGANTURE/SELAPver3
 
 
 [CHANG LAB]
-pybinreg=/home/jchang/changlab/scripts/pybinreg.py
-arrayplot=/home/jchang/changlab/scripts/arrayplot.py
+pybinreg=/home/xchen/chencode/scripts/pybinreg.py
+arrayplot=/home/xchen/chencode/scripts/arrayplot.py
+preprocess = /home/xchen/chencode/scripts/preprocess.py
+xls2txt = /home/xchen/chencode/scripts/xls2txt
+genepattern=/home/xchen/chencode/scripts/run_genepattern.py
+bfrmnorm=/home/xchen/chencode/scripts/bfrmnorm.py
+combatnorm=/home/xchen/chencode/scripts/combatnorm.py
+run_combat=/home/xchen/chencode/scripts/run_combat.R
+scoresig=/home/xchen/chencode/scripts/scoresig.py
+slice_matrix=/home/xchen/chencode/scripts/slice_matrix.py
+annotate_matrix=/home/xchen/chencode/scripts/annotate_matrix.py
+score_geneset=/home/xchen/chencode/scripts/score_geneset.py
 
-changliab_Rlib=/home/jchang/changlab/Rlib
-kaplanmeierlib=/home/jchang/changlab/Rlib/kaplanmeierlib.R
+changlab_Rlib=/home/xchen/chencode/Rlib
+kaplanmeierlib=/home/xchen/chencode/Rlib/kaplanmeierlib.R
 
 
 [GENOME SEQUENCE DATA]
@@ -38,6 +48,7 @@ knowngene_hg18=/data/genomidata/hg18.knownGene.110312.txt
 annot_data_affy=/data/genomidata/affymetrix/annotation
 annot_data_illu=/data/genomidata/illumina/annotation
 psid2platform=/data/genomidata/psid2platform
+HumanHT_12_to_HG_u133_Plus_2=/home/changlab/data/mapping/HumanHT-12_to_HG-U133_Plus_2.txt
 illumina_HUMANHT12_CONTROL=/data/genomidata/illumina/HumanHT-12.control.txt
 
 

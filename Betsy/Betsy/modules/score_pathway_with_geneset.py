@@ -1,14 +1,14 @@
 #score_pathway_with_geneset.py
 import os
 import subprocess
-from Betsy import module_utils,config
-
+from Betsy import module_utils
+from genomicode import config
 
 def run(parameters, objects, pipeline):
     """analyze geneset"""
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
-    score_geneset_path = config.SCORE_GENE
+    score_geneset_path = config.score_geneset
     score_geneset_BIN = module_utils.which(score_geneset_path)
     assert score_geneset_BIN,'cannot find the %s' %score_geneset_path
     geneset_object = module_utils.find_object(

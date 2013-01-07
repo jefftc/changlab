@@ -98,5 +98,5 @@ outputpath= <write your own output path here>
 --------------------------------------------------------------------
 4.symlink the gitpath/Betsy/Betsy.cfg to ~/.betsyrc 
 using the command in linux:
-ln gitpath/Betsy/Betsy.cfg ~/.betsyrc
+ln -s gitpath/Betsy/Betsy.cfg ~/.betsyrc
 

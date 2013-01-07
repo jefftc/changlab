@@ -3,7 +3,7 @@ from Betsy import gene_ranking
 from Betsy import module_utils
 import os
 import arrayio
-from genomicode import arrayplatformlib
+from genomicode import arrayplatformlib, config
 def run(parameters, objects, pipeline):
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
@@ -25,8 +25,7 @@ def run(parameters, objects, pipeline):
         else:
             if parameters['platform'] in[chip, 'unknown_platform']:
                 import subprocess
-                from Betsy import config
-                Annot_path = config.ANNOTATE_MATRIX
+                Annot_path = config.annotate_matrix
                 Annot_BIN = module_utils.which(Annot_path)
                 assert Annot_BIN, 'cannot find the %s' % Annot_path
                 signal_file = 'tmp'    

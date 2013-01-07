@@ -4,7 +4,6 @@ import arrayio
 from genomicode import binreg, Matrix, jmath, matrixlib, mplgraph,arrayplatformlib
 import os
 import read_label_file
-import config
 import json
 import math
 from xml.dom.minidom import parseString
@@ -391,8 +390,8 @@ def convert_to_same_platform(filename1, filename2, platform=None):
         return filename1, filename2
     else:
         import subprocess
-        import config
-        Annot_path = config.ANNOTATE_MATRIX
+        from genomicode import config
+        Annot_path = config.annotate_matrix
         Annot_BIN = which(Annot_path)
         assert Annot_BIN, 'cannot find the %s' % Annot_path
         if platform1 == platform:

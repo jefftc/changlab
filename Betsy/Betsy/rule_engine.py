@@ -184,6 +184,7 @@ def make_module_wd(working_dir):
 ##    except Exception, x:
 ##            raise
 ##    return OUTPUT
+
                     
 def run_pipeline(pipeline, objects):
     """run a single pipeline"""

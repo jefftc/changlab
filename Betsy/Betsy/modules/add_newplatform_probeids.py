@@ -4,8 +4,8 @@ import os
 import shutil
 import subprocess
 import arrayio
-from Betsy import module_utils, config
-from genomicode import arrayannot, jmath, Matrix, arrayplatformlib
+from Betsy import module_utils
+from genomicode import arrayannot, jmath, Matrix, arrayplatformlib, config
 
 
 def run(parameters, objects, pipeline):
@@ -19,7 +19,7 @@ def run(parameters, objects, pipeline):
     if chipname == platform:
         shutil.copyfile(single_object.identifier, outfile)
     else:
-        Annot_path = config.ANNOTATE_MATRIX
+        Annot_path = config.annotate_matrix
         Annot_BIN = module_utils.which(Annot_path)
         assert Annot_BIN, 'cannot find the %s' % Annot_path
         command = ['python', Annot_BIN, '-f', single_object.identifier,
