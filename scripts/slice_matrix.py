@@ -1433,7 +1433,7 @@ def main():
     group.add_argument(
         "--filter_row_by_missing_values", default=None, type=float,
         help="Remove the rows that has at least this percent of missing "
-        "values.  e.g. 0.25 means remove all rows with 25% or more missing "
+        "bvalues.  e.g. 0.25 means remove all rows with 25%% or more missing "
         "values.")
     group.add_argument(
         "--select_row_var", default=None, type=int,
