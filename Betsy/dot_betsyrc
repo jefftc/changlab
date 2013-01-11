@@ -1,3 +1,4 @@
 [Section1]
 outputpath= /home/xchen/chencode/examples/sample_analysis
 networkfile=/home/xchen/chencode/Betsy/betsy.xgmml
+module_timeout=60

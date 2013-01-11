@@ -10,22 +10,23 @@ def run(parameters, objects, pipeline, options=None):
     """extract the files that are gpr format"""
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
+    directory = module_utils.unzip_if_zip(single_object.identifier)
     check = []
     newfiles = []
-    files = os.listdir(single_object.identifier)
+    files = os.listdir(directory)
     for i in files:
         if i == '.DS_Store':
             pass
         else:
             gpr = gpr_module.check_gpr(
-                os.path.join(single_object.identifier, i))
+                os.path.join(directory, i))
             check.append(gpr)
             newfiles.append(i)
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     for i in range(len(check)):
         if check[i]:
-            old_file = os.path.join(single_object.identifier, newfiles[i])
+            old_file = os.path.join(directory, newfiles[i])
             new_file = os.path.join(outfile, newfiles[i])
             shutil.copyfile(old_file, new_file)
     if True in check:
@@ -64,6 +65,4 @@ def get_identifier(parameters, objects):
         parameters, objects, 'gpr_files', 'contents')
     assert os.path.exists(single_object.identifier), (
         'folder %s for are_all_gpr does not exit.' % single_object.identifier)
-    assert os.path.isdir(single_object.identifier), (
-        "input %s for are_all_gpr is not a folder" % single_object.identifier)
     return single_object

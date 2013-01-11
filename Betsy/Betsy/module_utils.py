@@ -7,7 +7,7 @@ import read_label_file
 import json
 import math
 from xml.dom.minidom import parseString
-
+import zipfile
 
 """contain some functions that are called by many modules"""
 
@@ -443,3 +443,23 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
             ylabel='Principal Component 2', color=opts)
     fig.savefig(result_fig)
     assert exists_nz(result_fig), 'the plot_pca.py fails'
+
+
+def extract_from_zip(zipName):
+    z = zipfile.ZipFile(zipName)
+    for f in z.namelist():
+        if f.endswith('/'):
+            os.makedirs(f)
+        else:
+            z.extract(f)
+
+
+def unzip_if_zip(input_name):
+    if zipfile.is_zipfile(input_name):
+        directory = os.path.split(input_name)[-1]
+        directory = os.path.splitext(directory)[0]
+        directory = os.path.join(os.getcwd(), directory)
+        extract_from_zip(input_name)
+    else:
+        directory = input_name
+    return directory

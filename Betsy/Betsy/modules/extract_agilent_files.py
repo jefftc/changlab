@@ -3,28 +3,12 @@ from Betsy import module_utils
 import shutil
 import os
 from Betsy import hash_method
-import zipfile
-
-
-def extract_all(zipName):
-    z = zipfile.ZipFile(zipName)
-    for f in z.namelist():
-        if f.endswith('/'):
-            os.makedirs(f)
-        else:
-            z.extract(f)
 
 
 def run(parameters, objects, pipeline):
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
-    if zipfile.is_zipfile(single_object.identifier):
-        directory = os.path.split(single_object.identifier)[-1]
-        directory = os.path.splitext(directory)[0]
-        directory = os.path.join(os.getcwd(), directory)
-        extract_all(single_object.identifier)
-    else:
-        directory = single_object.identifier
+    directory = module_utils.unzip_if_zip(single_object.identifier)
     agilent_files = []
     for filename in os.listdir(directory):
         if filename in ['.DS_Store', '._.DS_Store', '.Rapp.history']:

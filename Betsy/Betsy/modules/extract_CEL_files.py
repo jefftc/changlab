@@ -2,15 +2,15 @@
 import os
 from Betsy import module_utils
 import shutil
-import gzip
 
 
 def run(parameters, objects, pipeline):
-    """extract tge cel files with cc or v3_4"""
+    """extract the cel files with cc or v3_4"""
     from genomicode import affyio
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
-    filenames = os.listdir(single_object.identifier)
+    directory = module_utils.unzip_if_zip(single_object.identifier)
+    filenames = os.listdir(directory)
     ver_list = []
     if not os.path.exists(outfile):
         os.mkdir(outfile)
@@ -18,7 +18,7 @@ def run(parameters, objects, pipeline):
         if filename == '.DS_Store':
             pass
         else:
-            fileloc = os.path.join(single_object.identifier, filename)
+            fileloc = os.path.join(directory, filename)
             cel_v = affyio.guess_cel_version(fileloc)
             if cel_v in ['cc1', 'v3', 'v4']:
                 shutil.copyfile(fileloc, os.path.join(outfile, filename))
@@ -62,5 +62,4 @@ def get_identifier(parameters, objects):
     assert os.path.exists(single_object.identifier), (
         'folder %s for extract_CEl_files does not exit.'
         % single_object.identifier)
-    assert os.path.isdir(single_object.identifier), "input is not a folder"
     return single_object

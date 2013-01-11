@@ -60,8 +60,8 @@ def run_protocol(protocol, inputs, output, identifiers,
     k = 1
     for pipeline in pipelines:
         print  'Pipeline' + str(k) + ': Preprocessing the signal file.', '\r'
-        #out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
-        out_files = rule_engine.run_pipeline(pipeline, objects)
+        out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+        #out_files = rule_engine.run_pipeline(pipeline, objects)
         k = k + 1
         if out_files:
             pipeline_sequence = [analysis.name for analysis in pipeline]
