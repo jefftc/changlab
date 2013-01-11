@@ -39,7 +39,6 @@ def run(outfiles,parameters,pipelines):
         return htmllib.SPAN(s, style="background-color:yellow")
     def smaller(s):
         return htmllib.FONT(s, size=-1)
-    
     cwd = os.getcwd()
     os.chdir(result_folder)
     module = protocol_utils.import_protocol('normalize_file')

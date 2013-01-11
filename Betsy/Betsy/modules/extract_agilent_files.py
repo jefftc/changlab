@@ -10,7 +10,9 @@ def run(parameters, objects, pipeline):
     outfile = get_outfile(parameters, objects, pipeline)
     directory = module_utils.unzip_if_zip(single_object.identifier)
     agilent_files = []
-    for filename in os.listdir(directory):
+    filenames = os.listdir(directory)
+    assert filenames, 'The input folder or zip file is empty.'
+    for filename in filenames:
         if filename in ['.DS_Store', '._.DS_Store', '.Rapp.history']:
             continue
         if os.path.isdir(os.path.join(directory,filename)):
@@ -31,6 +33,7 @@ def run(parameters, objects, pipeline):
             if postag == ['TYPE', 'FEPARAMS', 'DATA', '*', 'TYPE', 'STATS',
                           'DATA', '*', 'TYPE', 'FEATURES']:
                 agilent_files.append(filename)
+                
     if agilent_files:
         if not os.path.exists(outfile):
             os.mkdir(outfile)
@@ -45,6 +48,7 @@ def run(parameters, objects, pipeline):
                                                  pipeline, outfile)
         return new_objects
     else:
+        print 'There is no agilent file in the input.'
         return None
 
 

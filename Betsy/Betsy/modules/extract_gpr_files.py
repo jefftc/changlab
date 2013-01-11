@@ -14,6 +14,7 @@ def run(parameters, objects, pipeline, options=None):
     check = []
     newfiles = []
     files = os.listdir(directory)
+    assert files, 'The input folder or zip file is empty.'
     for i in files:
         if i == '.DS_Store':
             pass
@@ -37,6 +38,7 @@ def run(parameters, objects, pipeline, options=None):
             parameters, single_object, pipeline, outfile)
         return new_objects
     else:
+        print 'There is no gpr file in the input.'
         return None
 
 

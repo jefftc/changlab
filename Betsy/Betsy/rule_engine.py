@@ -245,7 +245,7 @@ def make_pipelines(pl_output, pl_inputs):
         p = swipl.connect()
         file_names = os.listdir(pl_lib)
         for file_name in file_names:
-            if file_name.endswith('.pl'):
+            if file_name.endswith('.pl') and not file_name.startswith('._'):
                 swipl.source_code(p, file_name)
         for one_input in pl_inputs:
             more_command = 'asserta(' + one_input + ').'

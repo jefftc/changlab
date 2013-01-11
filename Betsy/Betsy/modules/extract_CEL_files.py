@@ -11,6 +11,7 @@ def run(parameters, objects, pipeline):
     outfile = get_outfile(parameters, objects, pipeline)
     directory = module_utils.unzip_if_zip(single_object.identifier)
     filenames = os.listdir(directory)
+    assert filenames,'The input folder or zip file is empty.'
     ver_list = []
     if not os.path.exists(outfile):
         os.mkdir(outfile)
@@ -25,6 +26,7 @@ def run(parameters, objects, pipeline):
                 ver_list.append(True)
             else:
                 ver_list.append(False)
+   
     if True in ver_list:
         assert module_utils.exists_nz(outfile), (
             'the output file %s for extract_CEL_files fails' % outfile)
@@ -33,6 +35,7 @@ def run(parameters, objects, pipeline):
             parameters, single_object, pipeline, outfile)
         return new_objects
     else:
+        print 'There is no cel file in the input.'
         return None
 
 

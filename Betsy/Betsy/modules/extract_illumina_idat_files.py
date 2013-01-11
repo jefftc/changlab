@@ -9,7 +9,9 @@ def run(parameters, objects, pipeline):
     outfile = get_outfile(parameters, objects, pipeline)
     directory = module_utils.unzip_if_zip(single_object.identifier)
     illumina_file = []
-    for filename in os.listdir(directory):
+    filenames = os.listdir(directory)
+    assert filenames, 'The input folder or zip file is empty.'
+    for filename in filenames:
         if filename in ['.DS_Store', '._.DS_Store', '.Rapp.history']:
             continue
         if filename.endswith('.idat'):
@@ -32,6 +34,7 @@ def run(parameters, objects, pipeline):
             parameters, single_object, pipeline, outfile)
         return new_objects
     else:
+        print 'There is no illumina idat file in the input.'
         return None
 
 

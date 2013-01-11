@@ -217,9 +217,9 @@ make_normalize_report(Parameters,Modules):-
     % Input 5:actb_plot
     actb_plot(NewParameters,Modules5),
     % Conditions: if preprocess is illumina
-    get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
+    get_value(NewParameters,preprocess,unknown_preprocess,Preprocess),
     (Preprocess=illumina, 
-    convert_parameters_raw(Parameters,NewParameters4), 
+    convert_parameters_raw(NewParameters,NewParameters4), 
     set_value(NewParameters4,is_logged,no_logged,NewParameters5),
     set_value(NewParameters5,format,gct,NewParameters6),
     set_value(NewParameters6,has_missing_value,unknown_missing,NewParameters7),

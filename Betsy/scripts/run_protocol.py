@@ -30,6 +30,8 @@ def filter_pipelines(protocol, inputs, in_contents, output, parameters):
         output, parameter_list, 'Modules')
     print 'Generating pipelines...'
     pipelines = rule_engine.make_pipelines(pl_output, pl_inputs)
+    assert pipelines, ('No pipeline has been generated, '
+                                'please check your command.')
     print '%d pipelines have been generated.\n' %len(pipelines)
     return pipelines
 
@@ -185,6 +187,8 @@ def main():
         output_file, parameters_all, pipeline_sequence_all = run_protocol(
             args.protocol, inputs, output, identifiers, in_contents,
             parameters,clean_up=args.clean_up)
+        assert output_file, ('No output file is generated and '
+                             'no report can be generated')
         module1 = protocol_utils.import_protocol(args.protocol)
         print module1.OUTPUTS
         module = __import__('Betsy.modules.' + module1.OUTPUTS, globals(),

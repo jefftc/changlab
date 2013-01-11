@@ -32,7 +32,8 @@ def main():
     objects = rule_engine.plstring2dataobject(pl_inputs, identifiers)
     print 'Generating pipelines...'
     pipelines = rule_engine.make_pipelines(pl_output, pl_inputs)
-    assert pipelines, 'no pipelines can be generated'
+    assert pipelines, ('No pipeline has been generated, '
+                       'please check your command.')
     print '%d pipelines have been generated.\n' %len(pipelines)
     if args.dry_run:
         print len(pipelines)
