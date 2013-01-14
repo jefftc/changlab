@@ -20,7 +20,7 @@ def run(parameters, objects, pipeline):
     if annotate_type == 'all':
         annotate_header = arrayplatformlib.annotate_header
     elif annotate_type == 'gene_id':
-        annotate_header = ['Gene_ID']
+        annotate_header = ['Gene ID']
     dictionary = arrayannot.annotate_probes_multiple(probe_id, annotate_header)
     column=[]
     for id in new_ids:
@@ -37,10 +37,14 @@ def run(parameters, objects, pipeline):
                 column.append((key,id))
     header = [i[0] for i in column]
     miss_header = list(set(annotate_header).difference(set(header)))
+    original_ids = ids[:]
     for col in miss_header:
-        ids.append(col)
+        col_1 = col
+        if col in original_ids:
+            col_1 = col +'_1'
+        ids.append(col_1)
         M._row_order = ids
-        M._row_names[col] = dictionary[col]
+        M._row_names[col_1] = dictionary[col]
     f = file(outfile, 'w')
     arrayio.tab_delimited_format.write(M, f)
     f.close()

@@ -63,6 +63,6 @@ def get_identifier(parameters, objects):
     single_object = module_utils.find_object(
         parameters, objects, 'cel_files', 'contents')
     assert os.path.exists(single_object.identifier), (
-        'folder %s for extract_CEl_files does not exit.'
+        'input %s for extract_CEL_files does not exist.'
         % single_object.identifier)
     return single_object

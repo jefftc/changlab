@@ -206,10 +206,18 @@ platforms = [Platform('HG_U95A',"affy_hg_u95a","hsapiens_gene_ensembl",1),
              ]
 
 
-annotate_header = ['Description', 'Gene_symbol', 'Gene_ID', 'Swissprot_ID']
-affy_headers = {'Description': 'Target Description','Gene_symbol':'Gene Symbol',
-               'Gene_ID':'Entrez Gene','Swissprot_ID': 'SwissProt'}
-illu_headers = {'Description': 'Definition','Gene_symbol':'Symbol',
-               'Gene_ID':'Entrez_Gene_ID','Swissprot_ID':'swissport_id'}
-biomart_headers = {'Description': 'description', 'Gene_symbol':'hgnc_symbol',
-                  'Gene_ID':'entrezgene', 'Swissprot_ID': 'uniprot_swissprot'}
+##annotate_header = ['Description', 'Gene_symbol', 'Gene_ID', 'Swissprot_ID']
+##affy_headers = {'Description': 'Target Description','Gene_symbol':'Gene Symbol',
+##               'Gene_ID':'Entrez Gene','Swissprot_ID': 'SwissProt'}
+##illu_headers = {'Description': 'Definition','Gene_symbol':'Symbol',
+##               'Gene_ID':'Entrez_Gene_ID','Swissprot_ID':'swissport_id'}
+##biomart_headers = {'Description': 'description', 'Gene_symbol':'hgnc_symbol',
+##                  'Gene_ID':'entrezgene', 'Swissprot_ID': 'uniprot_swissprot'}
+
+annotate_header = ['Gene Symbol', 'Gene ID', 'Swiss-Prot ID']
+affy_headers = {'Gene Symbol':'Gene Symbol',
+               'Gene ID':'Entrez Gene','Swiss-Prot ID': 'SwissProt'}
+illu_headers = {'Gene Symbol':'Symbol',
+               'Gene ID':'Entrez_Gene_ID','Swiss-Prot ID':'swissport_id'}
+biomart_headers = {'Gene Symbol':'hgnc_symbol',
+                  'Gene ID':'entrezgene', 'Swiss-Prot ID': 'uniprot_swissprot'}
