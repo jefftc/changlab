@@ -67,6 +67,7 @@ int_simpson_adaptive
 fisher_test
 wilcox_test
 shapiro_test
+
 start_R
 R_equals
 R2py_matrix
@@ -1029,23 +1030,34 @@ def start_R():
         R = robjects.r
     return R
 
+def _fmt_R_var(var):
+    if type(var) is type(""):
+        if var.startswith("RVAR:"):
+            var = var[5:]
+        else:
+            var = '"%s"' % var
+    var = str(var)
+    return var
+
 def R_equals_item(x, varname):
+    x = _fmt_R_var(x)
     R("%s <- %s" % (varname, x))
     return varname
 
 def R_equals_vector(X, varname):
     # Should use FloatVector instead of string converstion.
+    X = [_fmt_R_var(x) for x in X]
     X_str = ",".join(map(str, X))
     R("%s <- c(%s)" % (varname, X_str))
     return varname
 
-def R_equals_matrix(M, varname,by_row=False):
+def R_equals_matrix(M, varname, by_row=True):
     # Bug: Only works with floats.
     temp_varname = "JMATH.R.TMP"
     R = start_R()
     x = flatten(M)
     x = robjects.FloatVector(x)
-    x = robjects.r["matrix"](x, nrow=nrow(M), ncol=ncol(M),byrow=by_row)
+    x = robjects.r["matrix"](x, nrow=nrow(M), ncol=ncol(M), byrow=by_row)
 
     # Set to a temporary variable first.  varname may not be a
     # variable, e.g. "OBJ$member".
@@ -1059,9 +1071,23 @@ def R_equals_matrix(M, varname,by_row=False):
 
 def R_equals(X, varname):
     # Should rename to R_setvalue or something.
+    # Also should re-order the variables.
     return _dispatch(
         X, _fn(R_equals_item, varname), _fn(R_equals_vector, varname),
         _fn(R_equals_matrix, varname))
+
+def R_var(name):
+    return "RVAR:%s" % name
+
+def R_fn(fn_name, *args, **keywds):
+    from genomicode import jmath
+    R = jmath.start_R()
+    params = [_fmt_R_var(x) for x in args]
+    for key, value in keywds.iteritems():
+        value = _fmt_R_var(value)
+        params.append("%s=%s" % (key, value))
+    cmd = "%s(%s)" % (fn_name, ", ".join(params))
+    R(cmd)
 
 def R2py_matrix(m):
     # m should be a rpy2.robjects.Matrix object.

@@ -29,7 +29,8 @@ def svd_project_cols(X, K):
     X_hat = numpy.dot(numpy.transpose(U[:,:K]), X)
     X_hat = numpy.transpose(X_hat).tolist()
     # percent variance of each vector.
-    perc_var = [float(x)/sum(s) for x in s]
+    x = [float(x*x) for x in x]
+    perc_var = [y/sum(x) for y in x]
     return X_hat, perc_var
 
 def choose_colors(group):

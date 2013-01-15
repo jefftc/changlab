@@ -847,7 +847,7 @@ def align_cols(MATRIX, align_col_file, ignore_missing_cols):
         if len(missing) < 10:
             for id_ in sorted(missing):
                 print id_
-        message = "I could not find %d IDs." % len(missing)
+        message = "I could not find %d column IDs." % len(missing)
         raise AssertionError(message)
     return I
 
@@ -1408,7 +1408,8 @@ def main():
     group.add_argument(
         "--select_row_numeric_annotation", default=[], action="append",
         help="Include only the rows where the annotation contains a "
-        "numeric value.  Format: <txt_file>,<header>,<value>[,<value,...].  "
+        "specific numeric value.  "
+        "Format: <txt_file>,<header>,<value>[,<value>,...].  "
         'If <value> starts with a "<", then will only find the rows where '
         "the annotation is less than <value>.  "
         'The analogous constraint will be applied for ">".  '
