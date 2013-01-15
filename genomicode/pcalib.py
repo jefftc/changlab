@@ -29,7 +29,7 @@ def svd_project_cols(X, K):
     X_hat = numpy.dot(numpy.transpose(U[:,:K]), X)
     X_hat = numpy.transpose(X_hat).tolist()
     # percent variance of each vector.
-    x = [float(x*x) for x in x]
+    x = [float(x*x) for x in s]
     perc_var = [y/sum(x) for y in x]
     return X_hat, perc_var
 
