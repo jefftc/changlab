@@ -26,8 +26,8 @@ def t_test(X, Y, exact=True):
     p_value = []
     assert len(X) == len(Y), 'X and Y should be equal length'
     for i in range(len(X)):
-        X[i] = ['NA' if numpy.isnan(x) else x for x in X[i]]
-        Y[i] = ['NA' if numpy.isnan(x) else x for x in Y[i]]
+        X[i] = [jmath.R_var('NA') if numpy.isnan(x) else x for x in X[i]]
+        Y[i] = [jmath.R_var('NA') if numpy.isnan(x) else x for x in Y[i]]
         jmath.R_equals(X[i],'x')
         jmath.R_equals(Y[i],'y')
         R('a<-try(t.test(x,y,exact=exact), silent=TRUE)')

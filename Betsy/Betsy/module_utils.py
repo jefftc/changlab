@@ -361,16 +361,15 @@ def convert_gene_list_platform(genes, platform):
     in_mart = arrayplatformlib.get_bm_organism(chip)
     out_attribute = arrayplatformlib.get_bm_attribute(platform)
     out_mart = arrayplatformlib.get_bm_organism(platform)
-    gene_id = ['"' + i + '"' for i in genes]
     R = jmath.start_R()
-    jmath.R_equals_vector(gene_id, 'gene_id')
+    jmath.R_equals_vector(genes, 'gene_id')
     R('library(biomaRt)')
-    jmath.R_equals('"' + in_attribute + '"', 'in_attribute')
-    jmath.R_equals('"' + in_attribute + '"', 'filters')
-    jmath.R_equals('"' + in_mart + '"', 'in_mart')
+    jmath.R_equals(in_attribute, 'in_attribute')
+    jmath.R_equals(in_attribute, 'filters')
+    jmath.R_equals(in_mart, 'in_mart')
     R('old=useMart("ensembl",in_mart)')
-    jmath.R_equals('"' + out_attribute + '"', 'out_attribute')
-    jmath.R_equals('"' + out_mart + '"', 'out_mart')
+    jmath.R_equals(out_attribute, 'out_attribute')
+    jmath.R_equals(out_mart, 'out_mart')
     R('new=useMart("ensembl",out_mart)')
     R(str('homolog = getLDS(attributes=in_attribute,') +
       str('filters=filters,values=gene_id,mart=old,') +
@@ -420,7 +419,7 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
     from genomicode import jmath, mplgraph
     import arrayio
     R = jmath.start_R()
-    jmath.R_equals("\'" + filename + "\'", 'filename')
+    jmath.R_equals(filename, 'filename')
     M = arrayio.read(filename)
     labels = M._col_names['_SAMPLE_NAME']
     data = M.slice()
@@ -445,6 +444,7 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
     assert exists_nz(result_fig), 'the plot_pca.py fails'
 
 
+    
 def extract_from_zip(zipName):
     z = zipfile.ZipFile(zipName)
     for f in z.namelist():
@@ -463,3 +463,12 @@ def unzip_if_zip(input_name):
     else:
         directory = input_name
     return directory
+
+def replace_matrix_header(M, old_header, new_header):
+    ids = M._row_order
+    column_value = M._row_names[old_header]
+    ids = [x.replace(old_header, new_header)
+           if x == old_header else x for x in ids]
+    M._row_names[new_header] = column_value
+    M._row_order = ids
+    return M, ids

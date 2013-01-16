@@ -1,13 +1,12 @@
 #convert_signal_to_tdf.py
 import os
-from Betsy import hash_method
-import shutil
-import xlrd
 from Betsy import module_utils
+import shutil
+import xlrd 
 import openpyxl
 import arrayio
 import subprocess
-from genomicode import config
+from genomicode import config, arrayplatformlib, arrayannot
 
 def run(parameters, objects, pipeline):
     """check an input file is xls or xlsx format"""
@@ -54,9 +53,9 @@ def run(parameters, objects, pipeline):
     except (SystemError, MemoryError, KeyError), x:
         raise
     if M:
-        f = file(outfile, 'w')
-        M = arrayio.read(tmp1_file)
+        M = check_gct_header(tmp1_file)
         M_c = arrayio.convert(M, to_format=arrayio.tab_delimited_format)
+        f = file(outfile, 'w')
         arrayio.tab_delimited_format.write(M_c, f)
         f.close()
     assert module_utils.exists_nz(outfile), (
@@ -109,3 +108,42 @@ def get_identifier(parameters, objects):
         'the input file %s for convert_signal_to_tdf does not exist'
         % single_object.identifier)
     return single_object
+
+
+def check_gct_header(filename):
+    M_name = arrayio.choose_format(filename)
+    M = arrayio.read(filename)
+    ids = M._row_order
+    if M_name.__name__ == 'arrayio.gct_format':
+        all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
+        if all_platforms:
+             probe_ids = M._row_names[all_platforms[0][0]]
+             for platform in all_platforms:
+                if 'Entrez' not in platform[1]:
+                    old_header = platform[0]
+                    new_header = 'Probe ID'
+                    M, ids = module_utils.replace_matrix_header(
+                        M, old_header, new_header)
+                elif 'Entrez' in platform[1]:
+                    old_header = platform[0]
+                    new_header = 'Entrez ID'
+                    M, ids = module_utils.replace_matrix_header(
+                        M, old_header, new_header)
+             annotate_header = arrayplatformlib.annotate_header
+             dictionary = arrayannot.annotate_probes_multiple(
+                 probe_ids, annotate_header)      
+             old_ids = ids
+             for id in old_ids:
+                flag = True
+                for key in dictionary.keys():
+                    flag = True
+                    value_list = dictionary[key]
+                    gene_list = M._row_names[id]
+                    for gene in gene_list:
+                        if gene not in value_list:
+                            flag = False
+                            break
+                    if flag:
+                        M, ids = module_utils.replace_matrix_header(
+                            M, id, key)
+    return M

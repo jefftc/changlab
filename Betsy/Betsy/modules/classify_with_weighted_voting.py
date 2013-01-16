@@ -2,7 +2,7 @@
 import shutil
 import os
 import subprocess
-from genomicode import jmath, config
+from genomicode import config
 from Betsy import module_utils, read_label_file
 
 

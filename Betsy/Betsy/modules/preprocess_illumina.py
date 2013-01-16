@@ -98,7 +98,6 @@ def run(parameters,objects,pipeline):
     for key in gp_parameters.keys():
         a = ['--parameters',key+':'+ gp_parameters[key]]
         command.extend(a)
-    
     download_directory = None
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,

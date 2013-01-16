@@ -29,12 +29,12 @@ def main():
     """given the module_name and the module parameters
        in dict, call module in Genepatttern"""
     R = jmath.start_R()
-    username = '\"' + config.gp_user + '\"'
-    password = '\"' + config.gp_passwd + '\"'
-    servername = '\"'+ config.gp_server + '\"'
-    jmath.R_equals(password,'password')
-    jmath.R_equals(servername,'servername')
-    jmath.R_equals(username,'username')
+    username = config.gp_user
+    password = config.gp_passwd 
+    servername = config.gp_server
+    jmath.R_equals(password, 'password')
+    jmath.R_equals(servername, 'servername')
+    jmath.R_equals(username, 'username')
     command = "\'" + args.module_name + "\'"
     for key in parameters.keys():
         command = command + ',' + key + '=' + '\"' + parameters[key] + '\"'

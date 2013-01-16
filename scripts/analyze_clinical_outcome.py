@@ -21,8 +21,7 @@ def calc_km(survival, dead, group):
     R = jmath.start_R()
     jmath.R_equals(survival, 'survival')
     jmath.R_equals(dead, 'dead')
-    sample_group_name = ['"' + i + '"' for i in group]
-    jmath.R_equals(sample_group_name, 'group')
+    jmath.R_equals(group, 'group')
     R('x <- calc.km.multi(survival, dead, group)')
     c = R['x']
     p_value = c.rx2('p.value')[0]
@@ -233,6 +232,7 @@ def main():
     if geneset_list:
         x = M._index(row=geneset_list)
     index_list, rownames = x
+    
     M = M.matrix(index_list,None)
     ids = M._row_order
     geneids = M._row_names[ids[0]]
@@ -302,8 +302,8 @@ def main():
     all_p_value = [[]] * len(outcomes)
     jmath.R_equals(cutoffs[1:-1], 'cutoffs')
     for h in range(len(outcomes)):
-        survival = [all_time_data[h][i] for i in all_sample_index[h]]
-        dead = [all_dead_data[h][i] for i in all_sample_index[h]]
+        survival = [float(all_time_data[h][i]) for i in all_sample_index[h]]
+        dead = [int(all_dead_data[h][i]) for i in all_sample_index[h]]
         all_survival.append(survival)
         all_dead.append(dead)
         for i in range(len(geneids)):
@@ -337,29 +337,28 @@ def main():
         jmath.R_equals(all_survival[h], 'survival')
         jmath.R_equals(all_dead[h], 'dead')
         for i in range(len(geneids)):
-            sample_group_name = ['"' + j + '"' for j in all_group_name[h][i]]
+            sample_group_name = all_group_name[h][i]
             jmath.R_equals(sample_group_name, 'name')
             if args.write_prism:
                 prism_file = str(filestem + all_time_header[h] + '.'
                                  + geneids[i] + '.prism.txt')
-                jmath.R_equals('"' + prism_file + '"', 'filename')
+                jmath.R_equals(prism_file, 'filename')
                 R('write.km.prism.multi(filename,survival, dead, name)')
             if args.plot_km:
                 km_plot = (filestem + all_time_header[h] + '.'
                            + geneids[i] + '.km.png')
                 R(make_color_command(name))
-                jmath.R_equals('"' + km_plot + '"', 'filename')
-                jmath.R_equals('"' + geneids[i] + '"', 'title')
-                jmath.R_equals('"p_value=' + str(all_p_value[h][i])
-                               + '"', 'sub')
+                jmath.R_equals(km_plot, 'filename')
+                jmath.R_equals(geneids[i], 'title')
+                jmath.R_equals('p_value=' + str(all_p_value[h][i]), 'sub')
                 R('xlab<-""')
                 R('ylab<-""')
                 if args.xlab:
-                    jmath.R_equals('"' + args.xlab + '"', 'xlab')
+                    jmath.R_equals(args.xlab , 'xlab')
                 if args.ylab:
-                    jmath.R_equals('"' + args.ylab + '"', 'ylab')
+                    jmath.R_equals(args.ylab, 'ylab')
                 if args.title:
-                    jmath.R_equals('"' + args.title + '"', 'title')
+                    jmath.R_equals(args.title, 'title')
                 R('bitmap(file=filename,type="png256")')
                 R('plot.km.multi(survival, dead, name,'
                   'col=col, main=title, sub=sub, xlab=xlab, ylab=ylab)')

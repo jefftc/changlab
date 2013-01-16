@@ -207,7 +207,10 @@ def run_pipeline(pipeline, objects, clean_up=True):
     """run a single pipeline"""
     OUTPUT = None
     outfile_list = []
-    LOG_FILENAME = os.path.join(config.OUTPUTPATH, 'traceback.txt')
+    output_path = config.OUTPUTPATH
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    LOG_FILENAME = os.path.join(output_path, 'traceback.txt')
     logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
     try:
         for  i in range(len(pipeline)):

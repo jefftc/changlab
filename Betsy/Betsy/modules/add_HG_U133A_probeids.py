@@ -57,16 +57,15 @@ def get_newobjects(parameters,objects,pipeline):
 
 def convert_others_to_hg_u133plus2(M,attributes,mart):
     ids = M._row_order
-    gene_id_old = M._row_names[ids[0]]
-    gene_id = ['"'+i+'"' for i in gene_id_old]
+    gene_id = M._row_names[ids[0]]
     R = jmath.start_R()
     jmath.R_equals_vector(gene_id,'gene_id')
     R('library(biomaRt)')
     R('human=useMart("ensembl","hsapiens_gene_ensembl")')
     command = 'old=useMart("ensembl",'+'"'+mart+'")'
     R(command)
-    jmath.R_equals('"'+attributes+'"','filters')
-    jmath.R_equals('"'+attributes+'"','attributes')
+    jmath.R_equals(attributes,'filters')
+    jmath.R_equals(attributes,'attributes')
     R('homolog = getLDS(attributes=attributes,filters=filters,values=gene_id,mart=old,attributesL="affy_hg_u133_plus_2",martL=human)')
     #R('homolog = getLDS(attributes=attributes,filters=filters,values=gene_id,mart=old,attributesL="entrezgene",martL=human)')
     homolog=R['homolog']

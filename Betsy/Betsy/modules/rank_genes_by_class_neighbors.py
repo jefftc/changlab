@@ -2,7 +2,7 @@
 from Betsy import module_utils
 import shutil
 import os
-from genomicode import jmath, config
+from genomicode import config
 import subprocess
 
 

@@ -3,7 +3,6 @@ import subprocess
 import shutil
 import os
 import arrayio
-from genomicode import jmath
 from Betsy import module_utils, read_label_file
 
 
