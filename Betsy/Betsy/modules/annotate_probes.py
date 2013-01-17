@@ -43,7 +43,8 @@ def run(parameters, objects, pipeline):
         if col in original_ids:
             col_1 = col + '_1'
             col_2 = col + '_2'
-            M, ids = module_utils.replace_matrix_header(M,col,col_1)
+            M = module_utils.replace_matrix_header(M,col,col_1)
+            ids = M._row_order
         ids.append(col_2)
         M._row_order = ids
         M._row_names[col_2] = dictionary[col]

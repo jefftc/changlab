@@ -26,6 +26,8 @@ def main():
             key,value = i.split(':')
             assert ':' not in value,'parameters should be in key:value format'
             parameters[key] = value
+    if not os.path.exists(args.outpath):
+        os.mkdir(args.outpath)
     """given the module_name and the module parameters
        in dict, call module in Genepatttern"""
     R = jmath.start_R()
@@ -39,17 +41,14 @@ def main():
     for key in parameters.keys():
         command = command + ',' + key + '=' + '\"' + parameters[key] + '\"'
     cwd = os.getcwd()
-    os.chdir(args.outpath)
     try:
+        os.chdir(args.outpath)
         fullcommand = 'result<-run.analysis(gp.client,' + command + ')'
         R('library(GenePattern)')
         R('gp.client <- gp.login(servername, username, password)')
         R(fullcommand)
-        R('download.directory <- job.result.get.job.number(result)')
-        R('download.directory <- as.character(download.directory)')
-        R('job.result.download.files(result, download.directory)')
-        download_directory = os.path.realpath(R('download.directory')[0])
-        print download_directory
+        jmath.R_equals(args.outpath,'outpath')
+        R('job.result.download.files(result, outpath)')
     finally:
         os.chdir(cwd)
 

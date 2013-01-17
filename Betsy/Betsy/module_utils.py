@@ -443,7 +443,6 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
     fig.savefig(result_fig)
     assert exists_nz(result_fig), 'the plot_pca.py fails'
 
-
     
 def extract_from_zip(zipName):
     z = zipfile.ZipFile(zipName)
@@ -464,11 +463,14 @@ def unzip_if_zip(input_name):
         directory = input_name
     return directory
 
+
 def replace_matrix_header(M, old_header, new_header):
+    M = M.matrix()
+    assert old_header in M._row_order
+    M._row_names[new_header] = M._row_names[old_header]
+    del M._row_names[old_header]
     ids = M._row_order
-    column_value = M._row_names[old_header]
     ids = [x.replace(old_header, new_header)
            if x == old_header else x for x in ids]
-    M._row_names[new_header] = column_value
     M._row_order = ids
-    return M, ids
+    return M

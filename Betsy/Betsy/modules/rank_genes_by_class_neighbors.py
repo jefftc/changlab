@@ -14,7 +14,7 @@ def run(parameters,objects,pipeline):
     assert os.path.exists(label_file.identifier),(
         'cannot find label_file %s for class_neighbors'%label_file.identifier)
     import arrayio
-    tmp = 'tmp.txt'
+    tmp = os.path.join(os.getcwd(),'tmp.txt')
     f = file(tmp,'w')
     M = arrayio.read(single_object.identifier)
     M_c = arrayio.convert(M,to_format=arrayio.gct_format)
@@ -70,22 +70,15 @@ def run(parameters,objects,pipeline):
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path
-    command = [gp_module, module_name]
+    download_directory = os.path.join(os.getcwd(),'class_neighbors_result')
+    command = [gp_module, module_name,'-o', download_directory]
     for key in gp_parameters.keys():
         a = ['--parameters',key+':'+ gp_parameters[key]]
         command.extend(a)
-    
-    download_directory = None
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
     process.wait()
-    out_text =  process.stdout.read()
-    out_lines = out_text.split('\n')
-    for out_line in out_lines:
-        if out_line != 'Loading required package: rJava' and len(out_line)>0:
-            download_directory = out_line
-            break
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)

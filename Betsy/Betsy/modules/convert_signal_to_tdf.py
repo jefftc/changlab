@@ -6,32 +6,32 @@ import xlrd
 import openpyxl
 import arrayio
 import subprocess
-from genomicode import config, arrayplatformlib, arrayannot
+from genomicode import config, arrayplatformlib
 
 def run(parameters, objects, pipeline):
     """check an input file is xls or xlsx format"""
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     if single_object.identifier.endswith('.gz'):
-        newfile = module_utils.gunzip(single_object.identifier)
+        unzip_file = module_utils.gunzip(single_object.identifier)
     else:
-        newfile = single_object.identifier
+        unzip_file = single_object.identifier
     M = None
-    tmp_file = None
-    tmp1_file = newfile
+    xls_file = None
+    txt_file = unzip_file
     try:
-        xlrd.open_workbook(newfile)
-        tmp_file = 'tmp.xls'
+        xlrd.open_workbook(unzip_file)
+        xls_file = 'tmp.xls'
     except Exception, XLRDError:
         try:
-            book = openpyxl.load_workbook(newfile)
-            tmp_file = 'tmp.xlsx'
+            book = openpyxl.load_workbook(unzip_file)
+            xls_file = 'tmp.xlsx'
         except Exception, InvalidFileException:
-            tmp_file = None
+            xls_file = None
         except (SystemError, MemoryError, KeyError), x:
             raise
-    if tmp_file:
-        shutil.copyfile(newfile, tmp_file)
+    if xls_file:
+        shutil.copyfile(unzip_file, xls_file)
         xls2txt_path = config.xls2txt
         xls2txt_BIN = module_utils.which(xls2txt_path)
         assert xls2txt_BIN, 'cannot find the %s' % xls2txt_path
@@ -45,19 +45,13 @@ def run(parameters, objects, pipeline):
             raise ValueError(error_message)
         os.remove(tmp_file)
         f.close()
-        tmp1_file = 'tmp1.txt'
-    try:
-        M = arrayio.choose_format(tmp1_file)
-    except Exception, x:
-        raise
-    except (SystemError, MemoryError, KeyError), x:
-        raise
-    if M:
-        M = check_gct_header(tmp1_file)
-        M_c = arrayio.convert(M, to_format=arrayio.tab_delimited_format)
-        f = file(outfile, 'w')
-        arrayio.tab_delimited_format.write(M_c, f)
-        f.close()
+        txt_file = 'tmp1.txt'
+    M = arrayio.choose_format(txt_file)
+    M = guess_and_change_gct_header(txt_file)
+    M_c = arrayio.convert(M, to_format=arrayio.tab_delimited_format)
+    f = file(outfile, 'w')
+    arrayio.tab_delimited_format.write(M_c, f)
+    f.close()
     assert module_utils.exists_nz(outfile), (
         'the output file %s for convert_signal_to_tdf does not exists'
         % outfile)
@@ -110,40 +104,47 @@ def get_identifier(parameters, objects):
     return single_object
 
 
-def check_gct_header(filename):
+def guess_and_change_gct_header(filename):
     M_name = arrayio.choose_format(filename)
     M = arrayio.read(filename)
     ids = M._row_order
-    if M_name.__name__ == 'arrayio.gct_format':
-        all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
-        if all_platforms:
-             probe_ids = M._row_names[all_platforms[0][0]]
-             for platform in all_platforms:
-                if 'Entrez' not in platform[1]:
-                    old_header = platform[0]
-                    new_header = 'Probe ID'
-                    M, ids = module_utils.replace_matrix_header(
-                        M, old_header, new_header)
-                elif 'Entrez' in platform[1]:
-                    old_header = platform[0]
-                    new_header = 'Entrez ID'
-                    M, ids = module_utils.replace_matrix_header(
-                        M, old_header, new_header)
-             annotate_header = arrayplatformlib.annotate_header
-             dictionary = arrayannot.annotate_probes_multiple(
-                 probe_ids, annotate_header)      
-             old_ids = ids
-             for id in old_ids:
-                flag = True
-                for key in dictionary.keys():
-                    flag = True
-                    value_list = dictionary[key]
-                    gene_list = M._row_names[id]
-                    for gene in gene_list:
-                        if gene not in value_list:
-                            flag = False
-                            break
-                    if flag:
-                        M, ids = module_utils.replace_matrix_header(
-                            M, id, key)
+    if not M_name.__name__ == 'arrayio.gct_format':
+        return M
+    all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
+    if not all_platforms:
+        return M
+    old_header = all_platforms[0][0]
+    platform = all_platforms[0][1]
+    new_header = platform2header[platform]
+    M = module_utils.replace_matrix_header(M, old_header, new_header)
     return M
+
+platform2header = {'Agilent_Human1A':'Probe ID',
+                   'HG_U133A_2':'Probe ID',
+                   'HG_U133A':'Probe ID',
+                   'HG_U133B':'Probe ID',
+                   'HG_U133_Plus_2':'Probe ID',
+                   'HG_U95A':'Probe ID',
+                   'HG_U95Av2':'Probe ID',
+                   'Hu35KsubA':'Probe ID',
+                   'Hu35KsubB':'Probe ID',
+                   'Hu35KsubC':'Probe ID',
+                   'Hu35KsubD':'Probe ID',
+                   'Hu6800':'Probe ID',
+                   'HumanHT_12_control':'Probe ID',
+                   'HumanHT_12':'Probe ID',
+                   'MG_U74Av2':'Probe ID',
+                   'MG_U74Bv2':'Probe ID',
+                   'MG_U74Cv2':'Probe ID',
+                   'Mouse430_2':'Probe ID',
+                   'Mouse430A_2':'Probe ID',
+                   'MouseRef_8_control':'Probe ID',
+                   'MouseRef_8':'Probe ID',
+                   'Mu11KsubA':'Probe ID',
+                   'Mu11KsubB':'Probe ID',
+                   'RAE230A':'Probe ID',
+                   'RG_U34A':'Probe ID',
+                   'Entrez_ID_human':'Gene ID',
+                   'Entrez_ID_mouse':'Gene ID',
+                   'Entrez_symbol_human':'Gene symbol',
+                   'Entrez_symbol_mouse':'Gene symbol'}
