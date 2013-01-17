@@ -218,7 +218,8 @@ def run_pipeline(pipeline, objects, clean_up=True):
                                  analysis in pipeline[0:i + 1]]
             analysis = pipeline[i]
             module_name = analysis.name
-            print str(i + 1) + '.[' + time.strftime('%l:%M%p') + '] ' + module_name
+            print '[' + time.strftime('%l:%M%p') + '] ' + str(i + 1) + '.' + module_name
+            sys.stdio.flush()
             outfile,new_objects = run_module(
                 analysis,objects,pipeline_sequence,clean_up=clean_up)
             outfile_list.append(outfile)
@@ -230,6 +231,7 @@ def run_pipeline(pipeline, objects, clean_up=True):
                            '] Completed successfully and generated a file:')
                     print  OUTPUT[-1] + '\r'
                     print '\r'
+                    sys.stdio.flush()
                 else:
                     print 'This pipeline has completed unsuccessfully'
                     raise ValueError(
