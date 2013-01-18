@@ -48,7 +48,6 @@ def plot_hyb_bar(filename,outfile):
     high_data = []
     med_data = []
     low_data = []
-    from genomicode import jmath
     import arrayio
     M = arrayio.read(filename)
     header = M.row_names()

@@ -29,29 +29,21 @@ def main():
     """given the module_name and the module parameters
        in dict, call module in Genepatttern"""
     R = jmath.start_R()
-    username = '\"' + config.gp_user + '\"'
-    password = '\"' + config.gp_passwd + '\"'
-    servername = '\"'+ config.gp_server + '\"'
-    jmath.R_equals(password,'password')
-    jmath.R_equals(servername,'servername')
-    jmath.R_equals(username,'username')
+    username = config.gp_user
+    password = config.gp_passwd 
+    servername = config.gp_server
+    jmath.R_equals(password, 'password')
+    jmath.R_equals(servername, 'servername')
+    jmath.R_equals(username, 'username')
     command = "\'" + args.module_name + "\'"
     for key in parameters.keys():
         command = command + ',' + key + '=' + '\"' + parameters[key] + '\"'
-    cwd = os.getcwd()
-    os.chdir(args.outpath)
-    try:
-        fullcommand = 'result<-run.analysis(gp.client,' + command + ')'
-        R('library(GenePattern)')
-        R('gp.client <- gp.login(servername, username, password)')
-        R(fullcommand)
-        R('download.directory <- job.result.get.job.number(result)')
-        R('download.directory <- as.character(download.directory)')
-        R('job.result.download.files(result, download.directory)')
-        download_directory = os.path.realpath(R('download.directory')[0])
-        print download_directory
-    finally:
-        os.chdir(cwd)
+    fullcommand = 'result<-run.analysis(gp.client,' + command + ')'
+    R('library(GenePattern)')
+    R('gp.client <- gp.login(servername, username, password)')
+    R(fullcommand)
+    jmath.R_equals(args.outpath,'outpath')
+    R('job.result.download.files(result, outpath)')
 
 if __name__=='__main__':
     main()

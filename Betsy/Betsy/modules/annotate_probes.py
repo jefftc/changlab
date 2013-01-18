@@ -39,12 +39,15 @@ def run(parameters, objects, pipeline):
     miss_header = list(set(annotate_header).difference(set(header)))
     original_ids = ids[:]
     for col in miss_header:
-        col_1 = col
+        col_2 = col
         if col in original_ids:
-            col_1 = col +'_1'
-        ids.append(col_1)
+            col_1 = col + '_1'
+            col_2 = col + '_2'
+            M = module_utils.replace_matrix_header(M,col,col_1)
+            ids = M._row_order
+        ids.append(col_2)
         M._row_order = ids
-        M._row_names[col_1] = dictionary[col]
+        M._row_names[col_2] = dictionary[col]
     f = file(outfile, 'w')
     arrayio.tab_delimited_format.write(M, f)
     f.close()

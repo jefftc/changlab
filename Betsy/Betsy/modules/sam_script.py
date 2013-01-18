@@ -80,7 +80,7 @@ def sam(X, Y, genenames,delta,foldchange,pngfig):
     """X is a matrix slice,Y is the label list"""
     assert len(X[0]) == len(Y), 'X and Y should be equal length'
     R = jmath.start_R()
-    jmath.R_equals_matrix(X,'x',True)
+    jmath.R_equals_matrix(X,'x')
     jmath.R_equals(genenames,'genenames')
     jmath.R_equals(Y,'y')
     jmath.R_equals(foldchange,'foldchange')

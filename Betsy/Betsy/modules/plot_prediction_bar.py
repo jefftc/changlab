@@ -2,7 +2,7 @@
 import sys
 from Betsy import module_utils
 import os
-from genomicode import jmath,mplgraph,filelib
+from genomicode import mplgraph,filelib
 
 def run(parameters,objects,pipeline):
     single_object = get_identifier(parameters,objects)

@@ -29,7 +29,7 @@ def run(parameters,objects,pipeline):
     else:
         zipfile_name = os.path.split(single_object.identifier)[-1]+'.zip'
         zip_directory(single_object.identifier,zipfile_name)
-        gp_parameters['idat.zip'] = zipfile_name
+        gp_parameters['idat.zip'] = os.path.join(os.getcwd(),zipfile_name)
     gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
     gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
     manifiest = ['HumanHT-12_V3_0_R2_11283641_A.txt',
@@ -90,38 +90,35 @@ def run(parameters,objects,pipeline):
         gp_parameters['chip'] = str(parameters['ill_custom_chip'])
 
     if 'ill_custom_manifest' in parameters.keys():
-        gp_parameters['custom.manifest'] = str(parameters['ill_custom_manifest'])
+        gp_parameters['custom.manifest'] = str(
+            parameters['ill_custom_manifest'])
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path
-    command = [gp_module, module_name]
+    download_directory = os.path.join(os.getcwd(),'illumina_result')
+    command = [gp_module, module_name, '-o', download_directory]
     for key in gp_parameters.keys():
         a = ['--parameters',key+':'+ gp_parameters[key]]
         command.extend(a)
-    
-    download_directory = None
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
     process.wait()
-    out_text =  process.stdout.read()
-    out_lines = out_text.split('\n')
-    for out_line in out_lines:
-        if out_line != 'Loading required package: rJava' and len(out_line)>0:
-            download_directory = out_line
-            break
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
     goal_file = None
-    
-    assert os.path.exists(download_directory),'there is no output directory for illumina'
+    assert os.path.exists(download_directory),(
+        'there is no output directory for illumina')
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files,'gene_pattern get error'
-    os.rename(download_directory,outfile)
+    if not os.path.exists(outfile):
+        os.mkdir(outfile)
     for result_file in result_files:
+        if result_file == 'System.out':
+            continue
         result_path = os.path.join(outfile,result_file)
-        M = arrayio.read(result_path)
+        M = arrayio.read(os.path.join(download_directory,result_file))
         a = M._col_names['_SAMPLE_NAME']
         b = sorted(a)
         index = []

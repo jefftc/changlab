@@ -31,20 +31,19 @@ def main():
     in_mart = arrayplatformlib.get_bm_organism(in_platform)
     M = arrayio.read(args.input)
     R = jmath.start_R()
-    gene_id_old = M._row_names[in_id]
-    gene_id = ['"'+i+'"' for i in gene_id_old]
+    gene_id = M._row_names[in_id]
     jmath.R_equals_vector(gene_id,'gene_id')
     R('library(biomaRt)')
-    jmath.R_equals('"'+in_attribute+'"','in_attribute')
-    jmath.R_equals('"'+in_attribute+'"','filters')
-    jmath.R_equals('"'+in_mart+'"','in_mart')
+    jmath.R_equals(in_attribute,'in_attribute')
+    jmath.R_equals(in_attribute,'filters')
+    jmath.R_equals(in_mart,'in_mart')
     R('old=useMart("ensembl",in_mart)')
     id_pair = []
     for out_platform in out_platforms:
         out_attribute = arrayplatformlib.get_bm_attribute(out_platform)
         out_mart = arrayplatformlib.get_bm_organism(out_platform)
-        jmath.R_equals('"'+out_attribute+'"','out_attribute')
-        jmath.R_equals('"'+out_mart+'"','out_mart')
+        jmath.R_equals(out_attribute,'out_attribute')
+        jmath.R_equals(out_mart,'out_mart')
         R('new=useMart("ensembl",out_mart)')
         R('homolog = getLDS(attributes=in_attribute,filters=filters,values=gene_id,mart=old,attributesL=out_attribute,martL=new)')
         homolog=R['homolog']

@@ -21,7 +21,7 @@ def run(parameters,objects,pipeline):
     R('xnorm.loc <- maNorm(x.read, norm = "loess")')
     R('x.norm <- maNormScale(xnorm.loc, norm = "p")')
     tmpfile = 'tmp.txt'
-    jmath.R_equals('\"' + tmpfile + '\"','tmpfile')
+    jmath.R_equals(tmpfile,'tmpfile')
     R('write.marray(x.norm,tmpfile)')
     f=open(tmpfile,'r')
     text=f.readlines()
