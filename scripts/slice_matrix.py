@@ -786,7 +786,7 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         missing = []  # In the align file, but not in my file.
         for id_ in ids_A:
             if id_ not in ids_M:
-                missing.append(id)
+                missing.append(id_)
         if len(missing) < 10:
             for id_ in sorted(missing):
                 print id_
