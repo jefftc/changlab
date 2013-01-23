@@ -177,7 +177,7 @@ def find_many_genes_detailed(genes, tax_id=None):
 
         hits_by_query[name_from_query] = hits
         
-    clean = []
+    clean = {}
     for (name_from_query, hits) in hits_by_query.iteritems():
         for x in hits:
             gene_id, source_db, name_in_db, is_official = x
@@ -186,7 +186,8 @@ def find_many_genes_detailed(genes, tax_id=None):
             id, symbol, name, tax_id_, organism = x
             x = gene_id, symbol, name, tax_id_, organism, name_from_query, \
                 source_db, name_in_db
-            clean.append(x)
+            clean[x] = 1  # no duplicates
+    clean = sorted(clean)
 
     # If tax_id is given, then only return hits from that tax_id.
     if tax_id:

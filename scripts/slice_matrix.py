@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Functions:
+# _clean
 # read_matrices
 #
 # parse_indexes
@@ -9,8 +10,10 @@
 # _parse_file_gs
 # _parse_file_annot
 # _read_annot_file
+# _parse_file_num_annot
 #
 # find_col_indexes
+# find_col_ids
 # find_col_genesets
 # find_col_annotation
 # relabel_col_ids
@@ -19,6 +22,9 @@
 # rename_duplicate_cols
 # remove_col_ids
 # remove_col_indexes
+# toupper_col_ids
+# apply_re_col_ids
+# add_suffix_col_ids
 #
 # find_row_indexes
 # find_row_ids
@@ -29,6 +35,7 @@
 # find_row_missing_values
 # find_row_var
 # dedup_row_by_var
+# reverse_rows
 #
 # align_rows
 # align_cols
@@ -568,6 +575,20 @@ def apply_re_col_ids(MATRIX, apply_re_col_ids):
     return MATRIX
 
 
+def add_suffix_col_ids(MATRIX, suffix):
+    from arrayio import tab_delimited_format as tdf
+
+    if not suffix:
+        return MATRIX
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    MATRIX = MATRIX.matrix()
+    names = MATRIX.col_names(tdf.SAMPLE_NAME)
+    names = [x+suffix for x in names]
+    MATRIX._col_names[tdf.SAMPLE_NAME] = names
+    return MATRIX
+
+
 def find_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
@@ -753,6 +774,14 @@ def dedup_row_by_var(MATRIX, header):
     return I
 
 
+def reverse_rows(MATRIX, reverse):
+    if not reverse:
+        return MATRIX
+    I = range(MATRIX.nrow()-1, -1, -1)
+    MATRIX_new = MATRIX.matrix(I, None)
+    return MATRIX_new
+
+
 def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     import arrayio
 
@@ -786,7 +815,7 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
         missing = []  # In the align file, but not in my file.
         for id_ in ids_A:
             if id_ not in ids_M:
-                missing.append(id)
+                missing.append(id_)
         if len(missing) < 10:
             for id_ in sorted(missing):
                 print id_
@@ -1303,38 +1332,40 @@ def main():
     #parser.add_argument(
     #    "-o", default=None, metavar="OUTFILE", dest="outfile",
     #    help="Save to this file.  By default, writes output to STDOUT.")
-    parser.add_argument(
+
+    group = parser.add_argument_group(title="Normalization")
+    group.add_argument(
         "-l", "--log_transform", dest="log_transform", default=False,
         action="store_true",
         help="Log transform the data.")
-    parser.add_argument(
+    group.add_argument(
         "-q", "--quantile", dest="quantile", action="store_true",
         default=False,
         help="Quantile normalize the data.")
-    parser.add_argument(
+    group.add_argument(
         "--gc", "--gene_center", dest="gene_center", default=None,
         choices=["mean", "median"],
         help="Center each gene by: mean, median.")
-    parser.add_argument(
+    group.add_argument(
         "--gc_subset_indexes", dest="gc_subset_indexes", default=None,
         help="Will center the genes based on the mean (or median) of"
         "this subset of the samples.  Given as indexes, e.g. 1-5,8 "
         "(1-based, inclusive).")
-    parser.add_argument(
+    group.add_argument(
         "--gn", "--gene_normalize", dest="gene_normalize", default=None,
         choices=["ss", "var"],
         help="Normalize each gene by: ss (sum of squares), var (variance).")
-    parser.add_argument(
+    group.add_argument(
         "--gn_subset_indexes", dest="gn_subset_indexes", default=None,
         help="Will normalize the genes based on the variance (or sum "
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
-    parser.add_argument(
+    group.add_argument(
         "--fill_missing_values_median", default=False, action="store_true",
         help="Fill missing values with the median of the row.  Performed "
         "after logging, but before centering and normalizing.")
         
-    group = parser.add_argument_group(title="Column operations")
+    group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
         "--select_col_indexes", default=None,
         help="Which columns to include e.g. 1-5,8 (1-based, inclusive).")
@@ -1355,25 +1386,27 @@ def main():
         help="Include only the samples from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
-        "--reorder_col_indexes", default=None,
-        help="Change the order of the data columns.  Give the indexes "
-        "in the order that they should occur in the file, e.g. 1-5,8 "
-        "(1-based, inclusive).")
-    group.add_argument(
         "--remove_col_ids", default=[], action="append",
         help="Comma-separated list of IDs to remove.")
     group.add_argument(
         "--remove_col_indexes", default=[], action="append",
         help="Comma-separated list of indexes to remove.")
     group.add_argument(
+        "--remove_duplicate_cols", default=False, action="store_true",
+        help="If a column is found multiple times, keep only the first one.")
+    group.add_argument(
+        "--reorder_col_indexes", default=None,
+        help="Change the order of the data columns.  Give the indexes "
+        "in the order that they should occur in the file, e.g. 1-5,8 "
+        "(1-based, inclusive).")
+    group.add_argument(
         "--align_col_file", default=None,
         help="Align the cols to this other matrix file.")
     group.add_argument(
         "--ignore_missing_cols", default=False, action="store_true",
         help="Ignore any cols that can't be found in the align_col_file.")
-    group.add_argument(
-        "--filter_duplicate_cols", default=False, action="store_true",
-        help="If a column is found multiple times, keep only the first one.")
+
+    group = parser.add_argument_group(title="Column annotations")
     group.add_argument(
         "--toupper_col_ids", default=False, action="store_true",
         help="Convert column IDs to upper case.  "
@@ -1392,8 +1425,11 @@ def main():
     group.add_argument(
         "--apply_re_col_ids", default=None,
         help="Apply a regular expression to the column IDs and take group 1.")
+    group.add_argument(
+        "--add_suffix_col_ids", default=None,
+        help="Add a suffix to each column ID.")
 
-    group = parser.add_argument_group(title="Row operations")
+    group = parser.add_argument_group(title="Row filtering")
     group.add_argument(
         "--select_row_indexes", default=None,
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive).")
@@ -1419,11 +1455,6 @@ def main():
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
-        "--dedup_row_by_var", default=None,
-        help="If multiple rows have the same annotation, select the one "
-        "with the highest variance.  The value of this parameter should "
-        "be the header of the column that contains duplicate annotations.")
-    group.add_argument(
         "--filter_row_by_mean", default=None, type=float,
         help="Remove this percentage of rows that have the lowest mean.  "
         "Should be between 0 and 1.")
@@ -1437,9 +1468,24 @@ def main():
         "bvalues.  e.g. 0.25 means remove all rows with 25%% or more missing "
         "values.")
     group.add_argument(
+        "--dedup_row_by_var", default=None,
+        help="If multiple rows have the same annotation, select the one "
+        "with the highest variance.  The value of this parameter should "
+        "be the header of the column that contains duplicate annotations.")
+    group.add_argument(
         "--select_row_var", default=None, type=int,
         help="Keep this number of rows with the highest variance.")
+    group.add_argument(
+        "--reverse_rows", default=False, action="store_true",
+        help="Reverse the order of the rows.")
+    group.add_argument(
+        "--align_row_file", default=None,
+        help="Align the rows to this other matrix file.")
+    group.add_argument(
+        "--ignore_missing_rows", default=False, action="store_true",
+        help="Ignore any rows that can't be found in the align_row_file.")
 
+    group = parser.add_argument_group(title="Row annotations")
     group.add_argument(
         "--add_row_id", default=None,
         help="Add a unique row ID.  This should be the name of the header.")
@@ -1467,12 +1513,6 @@ def main():
         help="Move this header.  "
         "The format should be: <header>,<old_index>,<new_index>.  "
         "The indexes are 1-based.")
-    group.add_argument(
-        "--align_row_file", default=None,
-        help="Align the rows to this other matrix file.")
-    group.add_argument(
-        "--ignore_missing_rows", default=False, action="store_true",
-        help="Ignore any rows that can't be found in the align_row_file.")
 
     args = parser.parse_args()
     assert len(args.filename) >= 1
@@ -1513,6 +1553,9 @@ def main():
     I_col = _intersect_indexes(I1, I2, I3, I4, I5)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
+    # Reverse the rows.  Do after all the selection.
+    MATRIX = reverse_rows(MATRIX, args.reverse_rows)
+
     # Reorder the column by indexes.  Do this before removing columns.
     # Do this before adding or removing annotations.
     MATRIX = reorder_col_indexes(
@@ -1548,9 +1591,10 @@ def main():
     # removing, but before filtering duplicates.
     MATRIX = toupper_col_ids(MATRIX, args.toupper_col_ids)
     MATRIX = apply_re_col_ids(MATRIX, args.apply_re_col_ids)
+    MATRIX = add_suffix_col_ids(MATRIX, args.add_suffix_col_ids)
 
     # Filter after relabeling.
-    MATRIX = remove_duplicate_cols(MATRIX, args.filter_duplicate_cols)
+    MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
 
     # Rename duplicate columns.
     MATRIX = rename_duplicate_cols(MATRIX, args.rename_duplicate_cols)
