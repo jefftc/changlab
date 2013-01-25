@@ -113,7 +113,7 @@ def run(outfiles, parameters, pipelines):
         name = 'Table 1: Table of genes used in classification'
         w(htmllib.B(name))
         w(htmllib.P())
-        nfeature = int(parameters[8]['num_features'])
+        nfeature = int(parameters[6]['num_features'])
         if nfeature == 0:
             nfeature = 10
         M = arrayio.read(result_files[0])
@@ -145,14 +145,14 @@ def run(outfiles, parameters, pipelines):
         whole_row.append(y)
         x = htmllib.TR(
             htmllib.TD(htmllib.A(htmllib.IMG(height=400,
-            src=result_files[7]), href=result_files[7]), align="CENTER") +
+            src=result_files[9]), href=result_files[9]), align="CENTER") +
             htmllib.TD(htmllib.A(htmllib.IMG(height=400,
-            src=result_files[9]), href=result_files[9]), align="CENTER") 
+            src=result_files[7]), href=result_files[7]), align="CENTER") 
             )
         whole_row.append(x)
         x = htmllib.TR(
-        htmllib.TH(htmllib.A("Figure 2. Loocv result on training data",result_files[6]), align="CENTER") +
-        htmllib.TH(htmllib.A("Figure 3. Prediction result on test data",result_files[8]), align="CENTER") 
+        htmllib.TH(htmllib.A("Figure 2. Loocv result on training data",result_files[8]), align="CENTER") +
+        htmllib.TH(htmllib.A("Figure 3. Prediction result on test data",result_files[6]), align="CENTER") 
         )
         whole_row.append(x)
         w(htmllib.TABLE("\n".join(whole_row), border=None, cellpadding=3, cellspacing=0))
@@ -190,8 +190,8 @@ def run(outfiles, parameters, pipelines):
         w(htmllib.H3("Prediction Result"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
-        for i in range(len(pipelines[8])):
-            w('&nbsp&nbsp &nbsp&nbsp &nbsp&nbsp &nbsp&nbsp' +str(i+1)+'. '+pipelines[8][i])
+        for i in range(len(pipelines[6])):
+            w('&nbsp&nbsp &nbsp&nbsp &nbsp&nbsp &nbsp&nbsp' +str(i+1)+'. '+pipelines[6][i])
             w(htmllib.P())
         w('I used the following parameters:')
         rows = []
@@ -200,10 +200,10 @@ def run(outfiles, parameters, pipelines):
             htmllib.TH("Value", align="LEFT") 
             )
         rows.append(x)
-        for key in parameters[8].keys():
+        for key in parameters[6].keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +
-            htmllib.TD(parameters[8][key], align="LEFT") 
+            htmllib.TD(parameters[6][key], align="LEFT") 
             )
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))

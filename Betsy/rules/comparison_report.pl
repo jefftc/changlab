@@ -93,59 +93,6 @@ make_cluster_report(Parameters,Modules):-
     Modules = [Past_Modules2,Past_Modules3].
 
 /*-------------------------------------------------------------------*/
-/*make_classify_report(Parameters,Modules):-
-    % Input1: svm_predictions
-    convert_parameters_classify(Parameters,NewParameters),
-    append(NewParameters,[class_plot,svm],NewParameters1),
-    prediction_plot(NewParameters1,Past_Modules1),
-
-    % Input2:loocv with svm
-    append(NewParameters,[classification,svm,class_plot,loocv],NewParameters2),
-    prediction_plot(NewParameters2,Past_Modules2),
-
-    % Input3: weightedVoting
-    set_value(NewParameters,format,gct,NewParameters3),
-    append(NewParameters3,[class_plot,weightedvoting],NewParameters4),
-    prediction_plot(NewParameters4,Past_Modules3),
-
-    % loocv with weightedvoting
-    append(NewParameters3,[classification,weightedvoting,class_plot,loocv],NewParameters5),
-    prediction_plot(NewParameters5,Past_Modules4),
-
-    Modules=[Past_Modules1,Past_Modules2,Past_Modules3,Past_Modules4].*/
-/*-------------------------------------------------------------------*/
-/*make_classify_report(Parameters,Modules):-
-    convert_parameters_classify(Parameters,NewParameters),
-    % Input0: test file after common genes aglin
-    convert_parameters_svm(NewParameters,NewParameters1),
-    %get_value(NewParameters1,testcontents,[],TestContents),
-    %set_value(NewParameters1,contents,TestContents,NewParameters2),
-    signal_file(NewParameters1,Past_Modules1),
-
-    % Input2: loocv with svm
-    append(NewParameters,[classification,svm],NewParameters3),
-    loocv(NewParameters3,Past_Modules2),
-    
-    % Input2: svm_predictions
-    svm_predictions(NewParameters,Past_Modules3),
-
-   % Input 3: predication_pca_plot
-    append(NewParameters,[class_plot,svm],NewParameters6),
-    prediction_pca_plot(NewParameters6,Past_Modules4),
-
-    set_value(NewParameters,format,gct,NewParameters4),
-    % Input4:loocv with weightedvoting
-    append(NewParameters4,[classification,weightedvoting],NewParameters5),
-    loocv(NewParameters5,Past_Modules5),
-
-    % Input5: weightedVoting
-    weightedVoting(NewParameters4,Past_Modules6),
-   
-    % Input6: predication_pca_plot
-    append(NewParameters4,[class_plot,weightedvoting],NewParameters7),
-    prediction_pca_plot(NewParameters7,Past_Modules7),
-    Modules=[Past_Modules1,Past_Modules2,Past_Modules3,Past_Modules4,Past_Modules5,Past_Modules6,Past_Modules7].*/
-/*-------------------------------------------------------------------*/
 make_classify_report(Parameters,Modules):-
     convert_parameters_classify(Parameters,NewParameters),
     % Input1: test file after common genes aglin
@@ -174,20 +121,20 @@ make_classify_report(Parameters,Modules):-
     prediction_pca_plot(NewParameters6,Past_Modules6),
 
     set_value(NewParameters,format,gct,NewParameters7),
-    % Input7:loocv with weightedvoting
-    append(NewParameters7,[classification,weightedvoting],NewParameters8),
-    loocv(NewParameters8,Past_Modules7),
-
-    % Input 8:prediction_plot for loocv with weightedvoting
-    append(NewParameters7,[classification,weightedvoting,class_plot,loocv],NewParameters9),
-    prediction_plot(NewParameters9,Past_Modules8),
-
-    % Input9: weightedVoting
-    weightedVoting(NewParameters7,Past_Modules9),
+    % Input7: weightedVoting
+    weightedVoting(NewParameters7,Past_Modules7),
    
-    % Input10: prediction_plot for weightedVoting
+    % Input8: prediction_plot for weightedVoting
     append(NewParameters7,[class_plot,weightedvoting,classification,weightedvoting],NewParameters10),
-    prediction_plot(NewParameters10,Past_Modules10),
+    prediction_plot(NewParameters10,Past_Modules8),
+
+    % Input9:loocv with weightedvoting
+    append(NewParameters7,[classification,weightedvoting],NewParameters8),
+    loocv(NewParameters8,Past_Modules9),
+
+    % Input 10:prediction_plot for loocv with weightedvoting
+    append(NewParameters7,[classification,weightedvoting,class_plot,loocv],NewParameters9),
+    prediction_plot(NewParameters9,Past_Modules10),
 
     % Input11: predication_pca_plot
     prediction_pca_plot(NewParameters10,Past_Modules11),

@@ -223,4 +223,4 @@ run_protocol.py \
 --input 'geneset_file:genesets.gmt' \
 --parameters 'has_missing_value:zero_fill' \
 --parameters 'preprocess:unknown_preprocess' \
---parameters 'geneset:"E2F1n_affy_150_UP,E2F1n_affy_150_DOWN"'
+--parameters geneset:"E2F1n_affy_150_UP,E2F1n_affy_150_DN"

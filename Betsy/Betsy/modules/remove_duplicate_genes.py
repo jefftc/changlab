@@ -126,7 +126,7 @@ def guess_gene_header(M):
     ids = M._row_order
     probe_header = all_platforms[0][0]
     probe_id = M._row_names[probe_header]
-    annotate_header = 'Gene_ID'
+    annotate_header = 'Gene ID'
     value_list = arrayannot.annotate_probes(probe_id, annotate_header)
     value_list = [i.lower() for i in value_list]
     new_ids = ids[:]

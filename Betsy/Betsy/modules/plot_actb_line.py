@@ -25,10 +25,10 @@ def run(parameters,objects,pipeline):
         platform = x[0][1]
         if platform in ['HG_U133_Plus_2','HG_U133B','HG_U133A','HG_U133A_2','HG_U95A',
                         'HumanHT_12','HG_U95Av2','entrez_ID_human','entrez_symbol_human','Hu6800']:
-            out_platform = 'entrez_symbol_human'
+            out_platform = 'Entrez_symbol_human'
         elif platform in ['Mouse430A_2','MG_U74Cv2', 'Mu11KsubB','Mu11KsubA','MG_U74Av2',
              'Mouse430_2', 'MG_U74Bv2','entrez_ID_mouse','MouseRef_8','entrez_symbol_mouse']:
-            out_platform= 'entrez_symbol_mouse'
+            out_platform= 'Entrez_symbol_mouse'
         Annot_path = config.annotate_matrix
         Annot_BIN = module_utils.which(Annot_path)
         assert Annot_BIN,'cannot find the %s' %Annot_path

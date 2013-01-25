@@ -94,3 +94,19 @@ predicate2arguments = {
     'gene_list_file': ([], '[]'),
     'input_signal_file': (['status', 'given'], '[]'),
     'rename_list_file': ([], '[]')}
+
+pipeline_label = ['Normalizing the samples with quantile method.',
+                  'Plotting PCA plot for samples after quantile normalization.',
+                  'Plotting PCA plot for samples before quantile normalization.',
+                  'Normalizing the samples with bfrm method.',
+                  'Plotting PCA plot for samples after bfrm normalization.',
+                  'Plotting PCA plot for samples before bfrm normalization.',
+                  'Normalizing the samples with quantile and combat method.',
+                  'Plotting PCA plot for samples after quantile and combat normalization.',
+                  'Plotting PCA plot for samples before quantile and combat normalization.',
+                  'Normalizing the samples with quantile and dwd method.',
+                  'Plotting PCA plot for samples after quantile and dwd normalization.',
+                  'Plotting PCA plot for samples before quantile and dwd normalization.',
+                  'Normalizing the samples with quantile and shiftscale method.',
+                  'Plotting PCA plot for samples after quantile and shiftscale normalization.',
+                  'Plotting PCA plot for samples before quantile and shiftscale normalization.']

@@ -80,6 +80,9 @@ def run(parameters, objects, pipeline):
             gp_file = os.path.join(download_directory, gp_file)
             f = file(gp_file, 'r')
             text = f.readlines()
+            f.close()
+            os.rename(os.path.join(download_directory, gp_file),
+                      os.path.join(download_directory, 'prediction.odf'))
             assert text[1][0: 12] == 'HeaderLines='
             start = int(text[1][12: -1])
             if actual:

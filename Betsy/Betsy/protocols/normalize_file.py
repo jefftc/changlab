@@ -94,3 +94,22 @@ predicate2arguments = {
     'gene_list_file': ([], '[]'),
     'input_signal_file': (['status', 'given'], '[]'),
     'rename_list_file': ([], '[]')}
+
+pipeline_label = ['Preprocessing the signal file.',
+                  'Making a PCA plot of the samples before normalization.',
+                  'Making a PCA plot of the samples after normalization.',
+                  'Making a boxplot of the signal intensities.',
+                  'Plotting the actb genes.',
+                  'Plotting the control probes.']
+
+pipeline_label_illumina = [
+                  'Preprocessing the signal file.',
+                  'Making a PCA plot of the samples before normalization.',
+                  'Making a PCA plot of the samples after normalization.',
+                  'Making a boxplot of the signal intensities.',
+                  'Plotting the actb genes.',
+                  'Plotting the biotin genes.',
+                  'Plotting the housekeeping genes.',
+                  'Plotting the hyb genes.',
+                  'Plotting the control probes.']
+                 

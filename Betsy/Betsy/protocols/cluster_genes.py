@@ -101,3 +101,7 @@ predicate2arguments = {
     'gene_list_file': ([], '[]'),
     'input_signal_file': (['status', 'given'], '[]'),
     'rename_list_file': ([], '[]')}
+
+
+pipeline_label = ['Clustering the samples.',
+                  'Plotting a heatmap of the samples.']

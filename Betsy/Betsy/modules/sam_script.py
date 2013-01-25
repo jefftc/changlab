@@ -15,7 +15,7 @@ def main(filename,label_file,outfile,delta,foldchange):
     label_list = [int(i)+1 for i in label_line]
     key = M._row_names.keys()
     genenames = M._row_names[key[0]]
-    genenames = [str('\"'+i+'\"') for i in genenames]
+    genenames = [str(i) for i in genenames]
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     pngfig = os.path.join(outfile,'sam_plot.png')
