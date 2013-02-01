@@ -15,6 +15,43 @@ def guess_chip_platform(M):
     chipname = platform2gpplatform.get(platform)
     return chipname
 
+DATABASE2GENESET = {
+    "positional" : "c1.all.v3.0.symbols.gmt [Positional]",
+    "curated" : "c2.all.v3.0.symbols.gmt [Curated]",
+    "curated:canonical" : "c2.cp.v3.0.symbols.gmt [Curated]",
+    "curated:biocarta" : "c2.cp.biocarta.v3.0.symbols.gmt [Curated]",
+    "curated:kegg" : "c2.cp.kegg.v3.0.symbols.gmt [Curated]",
+    "curated:reactome" : "c2.cp.reactome.v3.0.symbols.gmt [Curated]",
+    "motif" : "c3.all.v3.0.symbols.gmt [Motif]",
+    "motif:tfactor" : "c3.tft.v3.0.symbols.gmt [Motif]",
+    "computational" : "c4.all.v3.0.symbols.gmt [Computational]",
+    "gene_ontology" : "c5.all.v3.0.symbols.gmt [Gene Ontology]",
+    "gene_ontology:process" : "c5.bp.v3.0.symbols.gmt [Gene Ontology]",
+    }
+DEFAULT_DATABASE = "gene_ontology:process"
+
+def format_gene_set_database(database):
+    # Valid values for GenePattern gene.set.database:
+    # c1.all.v3.0.symbols.gmt [Positional]
+    # c2.all.v3.0.symbols.gmt [Curated]
+    # c2.cgp.v3.0.symbols.gmt [Curated]        chemical & genetic pertubations
+    # c2.cp.v3.0.symbols.gmt [Curated]            canonical pathways
+    # c2.cp.biocarta.v3.0.symbols.gmt [Curated]   Biocarta
+    # c2.cp.kegg.v3.0.symbols.gmt [Curated]       KEGG
+    # c2.cp.reactome.v3.0.symbols.gmt [Curated]   Reactome
+    # c3.all.v3.0.symbols.gmt [Motif]
+    # c3.mir.v3.0.symbols.gmt [Motif]             miRNA targets
+    # c3.tft.v3.0.symbols.gmt [Motif]             transcription factor targets
+    # c4.all.v3.0.symbols.gmt [Computational]
+    # c4.cgn.v3.0.symbols.gmt [Computational]     cancer gene neighborhoods
+    # c4.cm.v3.0.symbols.gmt [Computational]      cancer modules
+    # c5.all.v3.0.symbols.gmt [Gene Ontology]
+    # c5.bp.v3.0.symbols.gmt [Gene Ontology]      biological process
+    # c5.cc.v3.0.symbols.gmt [Gene Ontology]      cellular component
+    # c5.mf.v3.0.symbols.gmt [Gene Ontology]      molecular function
+    assert database in DATABASE2GENESET, "Unknown database: %s" % database
+    return DATABASE2GENESET[database]
+
 
 def write_cls_file(outhandle, name0, name1, classes):
     # Only handles categorical CLS files with 2 classes.
@@ -84,27 +121,39 @@ def main():
     
     parser = argparse.ArgumentParser(description="Do a GSEA analysis.")
     parser.add_argument("expression_file", help="Gene expression file.")
+    parser.add_argument("outpath", help="Where to save the files.")
     
-    parser.add_argument(
+    group = parser.add_argument_group(title="Class Labels")
+    group.add_argument(
         "--cls_file", default=None, help="Class label file.")
-    parser.add_argument(
-        "--platform", default=None,
-        help="Specify the GenePattern chip platform to use, "
-        "e.g. GENE_SYMBOL.chip")
-    parser.add_argument(
+    group.add_argument(
         "--indexes1", default=None,
         help="Which columns in group 1, E.g. 1-5,8 (1-based, "
         "inclusive).  All other samples will be in group 2.")
-    parser.add_argument(
+    group.add_argument(
         "--indexes_include_headers", default=False, action="store_true",
         help="If not given (default), then column 1 is the first column "
         "with data.  If given, then column 1 is the very first column in "
         "the file, including the headers.")
-    parser.add_argument("--name1", default=None, help="Name for group 1.")
-    parser.add_argument("--name2", default=None, help="Name for group 2.")
-    parser.add_argument(
-        "-o", "--outpath", default=None, type=str,
-        help="Where to save the files.")
+    group.add_argument("--name1", default=None, help="Name for group 1.")
+    group.add_argument("--name2", default=None, help="Name for group 2.")
+
+    group = parser.add_argument_group(title="Other Parameters")
+    group.add_argument(
+        "--platform", default=None,
+        help="The platform (GenePattern chip) of the expression data, "
+        "e.g. GENE_SYMBOL.chip, HG_U133A_2.chip")
+    x = sorted(DATABASE2GENESET)
+    x = [x.replace(DEFAULT_DATABASE, "%s (DEFAULT)" % x) for x in x]
+    x = ", ".join(x)
+    x = "Which database to search.  Possible values are: %s." % x
+    group.add_argument("--database", default=DEFAULT_DATABASE, help=x)
+    group.add_argument("--database_file", default=None,
+        help="Search a GMT or GMX file instead of the default databases.")
+    group.add_argument(
+        "--no_collapse_dataset", default=False, action="store_true",
+        help="See GenePattern documentation.  You probably will not have "
+        "to change this.")
 
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
@@ -143,6 +192,14 @@ def main():
     assert platform, "I could not find a platform for this file."
     #print platform
 
+    database_file = None
+    if args.database_file:
+        database_file= os.path.realpath(args.database_file)
+        assert os.path.exists(database_file), (
+            "I could not find file: %s" % database_file)
+    else:
+        gene_set_database = format_gene_set_database(args.database)
+
     # Set up file names.
     opj = os.path.join
     x = os.path.splitext(os.path.split(args.expression_file)[1])[0]
@@ -159,23 +216,33 @@ def main():
     arrayio.gct_format.write(MATRIX, open(gct_full, 'w'))
     open(cls_full, 'w').write(cls_data)
 
+    collapse_dataset = "true"
+    if args.no_collapse_dataset:
+        collapse_dataset = "false"
+
     # Set up the analysis.
     params = {
         "expression.dataset" : gct_file,
         "phenotype.labels" : cls_file,
-        "chip.platform" : platform
+        "chip.platform" : platform,
+        "collapse.dataset" : collapse_dataset,
         }
+    if database_file:
+        params["gene.sets.database.file"] = database_file
+    else:
+        params["gene.sets.database"] = gene_set_database
 
     cmd = [
         config.genepattern,
         "-o", ".",
         "GSEA"
         ]
-    for (key, value) in params.iteritems():
+    for (key, value) in reversed(list(params.iteritems())):
         x = ["--parameters", "%s:%s" % (key, value)]
         cmd.extend(x)
 
-    # Run the analysis in the outpath.
+    # Run the analysis in the outpath.  GSEA leaves a file
+    # "System.out" in the current directory.
     cwd = os.getcwd()
     try:
         os.chdir(args.outpath)
@@ -186,11 +253,15 @@ def main():
     finally:
         os.chdir(cwd)
 
+    error_file = os.path.join(args.outpath, "stderr.txt")
+    assert not os.path.exists(error_file), (
+        "Error generated by GenePattern:\n%s" % open(error_file).read())
+
     # Unzip the zipped results in the outpath.
-    assert os.path.exists(out_full), (
-        "Problem finding output file: %s" % out_full)
+    assert os.path.exists(out_full), "Output file is missing: %s" % out_full
     zfile = zipfile.ZipFile(out_full)
     zfile.extractall(args.outpath)
+    os.unlink(out_full)
                 
     x = os.path.join(args.outpath, "index.html")
     assert os.path.exists(x), "I could not find the GSEA output: %s" % x
