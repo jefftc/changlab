@@ -4,6 +4,7 @@ import re
 import arrayio
 from genomicode import filelib, config
 
+all_platforms = None
 
 class Platform:
     def __init__(self,name,bm_attribute,bm_organism,priority):
@@ -95,35 +96,9 @@ def chipname2filename_affy(chipname):
     return filename
 
 
-def identify_platform_of_matrix(DATA):
-    platform_list = identify_all_platforms_of_matrix(DATA)
-    if not platform_list:
-        return None
-    out_platform = platform_list[0][1]
-    return out_platform
-
-
-def identify_all_platforms_of_matrix(DATA):
-    """return a list of (header,platform) we can identify"""
-    ids = DATA.row_names()
-    chips = dict()
-    for id in ids:
-        x = DATA.row_names(id)
-        possible_chip = identify_platform_of_annotations(x)
-        if possible_chip:
-            chips[possible_chip]=id
-    order_platforms = prioritize_platforms(chips.keys())
-    #if chips is empty, will return an empty list
-    return [(chips[platform],platform) for platform in order_platforms]
-
-    
-def identify_platform_of_annotations(annotations):
-    platform2annot_cs = {}  # chip -> psid -> 1
-    platform2annot_ci = {}  # chip -> psid -> 1
+def _read_annotations_h():
     paths = []
-    possible_chips = []
-    annotations = [i for i in annotations if len(i)>0]
-    upannotations = [i.upper() for i in annotations]
+    result = []
     root = config.psid2platform
     assert os.path.exists(root),'the %s does not exisits'%root
     for subfolder in os.listdir(root):
@@ -140,41 +115,99 @@ def identify_platform_of_annotations(annotations):
         text = [i.strip() for i in text if len(i.strip())>0]
         f.close()
         chipname = os.path.splitext(platform)[-2] #remove the '.txt'
-        
         if subfolder == 'case_insensitive':
-            for psid in text:
-                platform2annot_cs.setdefault(chipname, {})[psid.upper()] = 1
+            result.append((chipname,False,text))
         else:
-             for psid in text:
-                platform2annot_ci.setdefault(chipname, {})[psid] = 1
-                
-    for chip in platform2annot_cs:
-        for psid in upannotations:
-            if psid not in platform2annot_cs[chip]:
-                break
-        else:
-            possible_chips.append(chip)
+            result.append((chipname,True,text))
+    return result
 
-    for chip in platform2annot_ci:
-        for psid in annotations:
-            if psid not in platform2annot_ci[chip]:
-                break
-        else:
-            possible_chips.append(chip)  
-    
-    if not possible_chips:
+
+def read_annotations():
+    global all_platforms
+    if not all_platforms:
+        all_platforms = _read_annotations_h()
+    return all_platforms
+
+
+def score_platforms(annotations):
+    all_platforms = read_annotations()
+    results = []
+    for x in all_platforms:
+        chipname, case_sensitive, gene = x
+        y = compare_annotations(annotations,gene,case_sensitive)
+        number_shared_annots, only1, only2, match = y
+        results.append((chipname,match))
+    results.sort(key=lambda x: x[1],reverse=True)
+    return results
+
+
+def compare_annotations(annot1, annot2, case_sensitive):
+    if not case_sensitive:
+        annot1 = [psid.upper() for psid in annot1]
+        annot2 = [psid.upper() for psid in annot2]
+    num_shared_annots = len(set(annot1).intersection(set(annot2)))
+    num_annot1_only = len(set(annot1)) - num_shared_annots
+    num_annot2_only = len(set(annot2)) - num_shared_annots
+    share_percentage = float(num_shared_annots)/min(len(set(annot1)),len(set(annot2)))
+    return num_shared_annots, num_annot1_only, num_annot2_only, share_percentage
+
+
+
+def score_platform_of_annotations(annotations):
+    platform = None
+    match = None
+    possible_platforms = score_platforms(annotations)
+    if possible_platforms[0][1] > 0:
+        platform, match = possible_platforms[0]
+    return platform, match
+
+
+def score_all_platforms_of_matrix(DATA):
+    """return a list of (header,platform) we can guess"""
+    ids = DATA.row_names()
+    chips = dict()
+    for id in ids:
+        x = DATA.row_names(id)
+        possible_chip, match = score_platform_of_annotations(x)
+        if possible_chip:
+            chips[possible_chip]=(id, match)
+    order_platforms = prioritize_platforms(chips.keys())
+    #if chips is empty, will return an empty list
+    return [(chips[platform][0],platform,chips[platform][1]) for platform in order_platforms]
+
+
+def score_platform_of_matrix(DATA):
+    platform_list = score_all_platforms_of_matrix(DATA)
+    if not platform_list:
         return None
-    #combine the dict for both case_sensitive and case_insensitive into one dict
-    platform2annot = platform2annot_cs.copy()
-    for chip in platform2annot_ci:
-        platform2annot[chip]=platform2annot_ci[chip]
+    out_platform = platform_list[0][1]
+    out_platform_match = platform_list[0][2]
+    return out_platform, out_platform_match
 
-    # Sort the chips by size, from smallest to largest.
-    schwartz = [(len(platform2annot[chip]), chip) for chip in possible_chips]
-    schwartz.sort()
-    possible_chips = [x[-1] for x in schwartz]
-    # Choose the smallest chip that contains all these probe sets.
-    return possible_chips[0]
+
+def identify_platform_of_annotations(annotations):
+    platform, match = score_platform_of_annotations(annotations)
+    if match == 1:
+        return platform
+    return None
+
+
+def identify_all_platforms_of_matrix(DATA):
+    """return a list of (header,platform) we can identify"""
+    platform_list = score_all_platforms_of_matrix(DATA)
+    result = []
+    for x in platform_list:
+        header, platform, match = x
+        if match == 1:
+            result.append((header, platform))
+    return result
+
+    
+def identify_platform_of_matrix(DATA):
+    out_platform, match = score_platform_of_matrix(DATA)
+    if match == 1:
+        return out_platform
+    return None
 
 
 platforms = [Platform('HG_U95A',"affy_hg_u95a","hsapiens_gene_ensembl",1),

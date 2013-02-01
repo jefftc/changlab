@@ -288,7 +288,7 @@ run_rule.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all
 
 33. Test annotate_with_gsea module
 command:
-run_rule.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'gsea([contents,[a],format,gct,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,unique_genes,no_unique_genes],A)'
+run_rule.py --plin 'input_signal_file([contents,[a],status,given],[])' --id 'all_aml_train.res' --plin 'class_label_file([contents,[a],status,given],[])' --id 'all_aml_train.cls' --plout 'gsea([contents,[a],format,tdf,is_logged,logged,preprocess,unknown_preprocess,predataset,no_predataset,has_missing_value,zero_fill,quantile,no_quantile,dwd,no_dwd,bfrm,no_bfrm,shiftscale,no_shiftscale,combat,no_combat,gene_center,no_gene_center,gene_normalize,no_gene_normalize,gene_order,no_order,unique_genes,no_unique_genes],A)'
 --------------------------------------------------
 
 34. Test plot_pca module

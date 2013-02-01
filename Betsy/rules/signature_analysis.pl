@@ -4,7 +4,7 @@ gsea(Parameters,Modules):-
    convert_parameters_file(Parameters,NewParameters),
    % Conditions:gct,logged,created
    get_value(NewParameters,format,unknown_format,Format),
-   Format=gct,
+   Format=tdf,
    get_value(NewParameters,is_logged,unknown_logged,Is_Logged),
    Is_Logged=logged,
    get_value(NewParameters,status,created,Status),

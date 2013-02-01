@@ -14,22 +14,17 @@ def run(parameters, objects, pipeline):
         parameters, objects, 'class_label_file', 'contents')
     assert os.path.exists(label_file.identifier), (
         'cannot find label_file %s for gsea' % label_file.identifier)
-    module_name = 'GSEA'
-    gp_parameters = dict()
-    gp_parameters['expression.dataset'] = single_object.identifier
-    gp_parameters['phenotype.labels'] = label_file.identifier
+    gsea_path = config.gsea
+    gsea_module = module_utils.which(gsea_path)
+    assert gsea_module, 'cannot find the %s' % gsea_path
     M = arrayio.read(single_object.identifier)
     x = arrayplatformlib.identify_all_platforms_of_matrix(M)
     chipname = x[0][1]
-    gp_parameters['chip.platform'] = chipname + '.chip'
-    gp_path = config.genepattern
-    gp_module = module_utils.which(gp_path)
-    assert gp_module, 'cannot find the %s' % gp_path
+    platform = chipname + '.chip'
     download_directory = os.path.join(os.getcwd(),'gsea_result')
-    command = [gp_module, module_name,'-o',download_directory]
-    for key in gp_parameters.keys():
-        a = ['--parameters', key + ':' + gp_parameters[key]]
-        command.extend(a)
+    command = [gsea_module, single_object.identifier, '--cls_file',
+               label_file.identifier, '--platform', platform,
+               '-o',download_directory]
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
@@ -37,14 +32,9 @@ def run(parameters, objects, pipeline):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-    assert os.path.exists(download_directory), (
+    assert module_utils.exists_nz(download_directory), (
         'there is no output directory for GSEA')
-    gp_files = os.listdir(download_directory)
-    assert 'stderr.txt' not in gp_files, 'gene_pattern get error'
-    for gp_file in gp_files:
-        if gp_file.endswith('.zip'):
-            shutil.copy(os.path.join(
-                download_directory, gp_file), outfile)
+    shutil.copytree(download_directory, outfile)
     assert module_utils.exists_nz(outfile), (
         'the output file %s for annotate_genes_with_gsea fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
@@ -70,7 +60,7 @@ def get_identifier(parameters, objects):
 def get_outfile(parameters, objects, pipeline):
     single_object = get_identifier(parameters, objects)
     original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'gsea_' + original_file + '.zip'
+    filename = 'gsea_' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 

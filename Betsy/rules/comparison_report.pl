@@ -71,7 +71,7 @@ make_diffgenes_report(Parameters,Modules):-
     % Input4: gather with t_test_p
     gather(NewParameters4,Modules4),
     % Input5: gsea
-    set_value(NewParameters1,format,gct,NewParameters6),
+    set_value(NewParameters1,format,tdf,NewParameters6),
     gsea(NewParameters6,Modules5),
     Modules = [Modules1,Modules2,Modules3,Modules4,Modules5].
 
