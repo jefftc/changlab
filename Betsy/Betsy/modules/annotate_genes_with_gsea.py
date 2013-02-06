@@ -24,7 +24,7 @@ def run(parameters, objects, pipeline):
     download_directory = os.path.join(os.getcwd(),'gsea_result')
     command = [gsea_module, single_object.identifier, '--cls_file',
                label_file.identifier, '--platform', platform,
-               '-o',download_directory]
+               download_directory]
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
