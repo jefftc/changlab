@@ -62,7 +62,8 @@ def blat(sequence, delay=60):
     # hyperlink format, returns 1-based inclusive coordinates.
     params = {
         "org" : "Human",
-        "db" : "hg18",
+        #"db" : "hg18",
+        "db" : "hg19",
         "type" : "BLAT's guess",
         "sort" : "query,score",
         "output" : "psl",

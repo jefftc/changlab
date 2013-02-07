@@ -13,6 +13,7 @@ import sys, os
 # plot_sequence
 # plot_tfbs
 #
+# resolve_genome_files
 # resolve_symbol_or_file
 # resolve_sequence
 # resolve_matrices
@@ -312,6 +313,36 @@ def plot_label(plotlib, image, label_layout, gene_symbol):
     fontsize = plotlib.fit_fontsize_to_height(height)
     plotlib.text(image, x, y, gene_symbol, fontsize, COLOR)
 
+
+def resolve_genome_files(genome):
+    from genomicode import config
+
+    ra_chrom_var = "RA_CHROM_%s" % genome.upper()
+    knowngene_var = "knowngene_%s" % genome.lower()
+
+    errors = []
+    if not hasattr(config, ra_chrom_var):
+        x = "The ra_chrom file for %s is not configured." % genome
+        errors.append(x)
+    if not hasattr(config, knowngene_var):
+        x = "The knowngene file for %s is not configured." % genome
+        errors.append(x)
+    assert not errors, "\n".join(errors)
+
+    ra_chrom_path = getattr(config, ra_chrom_var)
+    knowngene_file = getattr(config, knowngene_var)
+    if not os.path.exists(ra_chrom_path):
+        x = "I could not find the ra_chrom path: %s." % ra_chrom_path
+        errors.append(x)
+    if not os.path.exists(knowngene_file):
+        x = "I could not find the knowngene file: %s." % knowngene_file
+        errors.append(x)
+    assert not errors, "\n".join(errors)
+
+    x = ra_chrom_path, knowngene_file
+    return x
+
+
 def resolve_symbol_or_file(name):
     from genomicode import filelib
     
@@ -321,8 +352,8 @@ def resolve_symbol_or_file(name):
     return symbols
 
 def resolve_sequence(
-    name, bp_upstream, length, default_transcript=None,
-    skip_unknown_genes=False):
+    name, bp_upstream, length, ra_chrom_path, knowngene_file, 
+    default_transcript=None, skip_unknown_genes=False):
     from genomicode import parselib
     from genomicode import genomelib
 
@@ -333,8 +364,9 @@ def resolve_sequence(
         assert transcript_num, "Invalid gene symbol: %r" % name
         transcript_num = int(transcript_num)
 
-    # BUG: Should be able to specify tss_file, ra_path.
-    proms = genomelib.get_promoters(gene_symbol, -bp_upstream, length)
+    proms = genomelib.get_promoters(
+        gene_symbol, -bp_upstream, length, gene_file=knowngene_file,
+        ra_path=ra_chrom_path)
     if not proms and skip_unknown_genes:
         return None
     assert proms, "I could not find gene: %s" % gene_symbol
@@ -438,6 +470,7 @@ def main():
     usage = "usage: %prog [options] <GENE SYMBOL>[,#] [...]"
     parser = OptionParser(usage=usage, version="%prog 01")
 
+    # Matrix options.
     parser.add_option(
         "-m", "--matrix", dest="matrices", default=[], action="append",
         help="Plot binding sites for this matrix or gene.  "
@@ -446,6 +479,11 @@ def main():
     parser.add_option(
         "--all_matrices", default=False, action="store_true",
         help="Search all matrices.")
+
+    # Gene options.
+    parser.add_option(
+        "--genome", default="hg19",
+        help="Genome to search, e.g. hg19 (default), mm11.")
     parser.add_option(
         "--upstream", dest="upstream", default=250, type="int",
         help="Number of base pairs upstream of the TSS (def 250).")
@@ -453,11 +491,18 @@ def main():
         "--downstream", dest="downstream", default=50, type="int",
         help="Number of base pairs downstream of the TSS (def 50).")
     parser.add_option(
-        "--max_genes", dest="max_genes", default=None, type="int",
-        help="Maximum number of genes to plot.")
+        "-s", dest="strict", default=False, action="store_true",
+        help="Use strict checking of gene names.")
+
+    # Plotting options.
+    parser.add_option(
+        "--output_as_table", default=False, action="store_true")
     parser.add_option(
         "--pvalue", dest="pvalue_cutoff", default=None, type="float",
         help="p-value cutoff.")
+    parser.add_option(
+        "--max_genes", dest="max_genes", default=None, type="int",
+        help="Maximum number of genes to plot.")
     parser.add_option(
         "-l", dest="label", default=False, action="store_true",
         help="Label the gene names.")
@@ -465,14 +510,11 @@ def main():
         "-g", dest="gain", default=1, type="float",
         help="Increase the gain of the colors of the TFBS (def 1).")
     parser.add_option(
-        "-s", dest="strict", default=False, action="store_true",
-        help="Use strict checking of gene names.")
-    parser.add_option(
-        "--output_as_table", default=False, action="store_true")
-    parser.add_option(
         "--format", dest="image_format", type="choice",
         choices=["png", "svg"], default="png",
         help="Image format: png (default) or svg.")
+
+    # Running options.
     parser.add_option(
         "-j", "--jobname", dest="jobname", type="string", default="out",
         help="Name of output file.")
@@ -485,7 +527,9 @@ def main():
         parser.error("Please specify a gene to analyze.")
     if options.num_procs < 1 or options.num_procs > 100:
         parser.error("Please specify between 1 and 100 processes.")
-        
+
+    ra_chrom_path, knowngene_file = resolve_genome_files(options.genome)
+         
     gene_symbols = []
     for symbol_or_file in args:
         x = resolve_symbol_or_file(symbol_or_file)
@@ -524,7 +568,7 @@ def main():
     for name in gene_symbols:
         # Figure out where the gene lies on the chromosome.
         x = resolve_sequence(
-            name, options.upstream, seq_length,
+            name, options.upstream, seq_length, ra_chrom_path, knowngene_file,
             default_transcript=default_transcript,
             skip_unknown_genes=skip_unknown_genes)
         if x is None:
@@ -589,7 +633,7 @@ def main():
             nlp_cutoff = -math.log(options.pvalue_cutoff)
         data = motiflib.score_tfbs_genome(
             chrom, gen_start, gen_length, matrices=matrices, nlp=nlp_cutoff,
-            num_procs=options.num_procs)
+            num_procs=options.num_procs, ra_path=ra_chrom_path)
         
         ## # If multiple matrices for the same gene symbol hit the same
         ## # place, then keep the one with the highest NLP.
@@ -649,7 +693,8 @@ def main():
             right_flank = FLANK
             seq_pos = pos - left_flank
             seq_len = m.length + left_flank + right_flank
-            seq = genomelib.get_sequence(chrom, seq_pos, seq_len)
+            seq = genomelib.get_sequence(
+                chrom, seq_pos, seq_len, ra_path=ra_chrom_path)
             s1 = seq[:left_flank]
             s2 = seq[left_flank:left_flank+m.length]
             s3 = seq[left_flank+m.length:]

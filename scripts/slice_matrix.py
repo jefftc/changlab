@@ -36,6 +36,7 @@
 # find_row_var
 # dedup_row_by_var
 # reverse_rows
+# rename_duplicate_rows
 #
 # align_rows
 # align_cols
@@ -782,6 +783,32 @@ def reverse_rows(MATRIX, reverse):
     return MATRIX_new
 
 
+def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
+    import arrayio
+
+    if not rename_duplicate_rows:
+        return MATRIX
+    names = MATRIX.row_names(arrayio.ROW_ID)
+    name2I = {}  # name -> list of indexes
+    for i, name in enumerate(names):
+        if name not in name2I:
+            name2I[name] = []
+        name2I[name].append(i)
+
+    nodup = names[:]
+    for (name, I) in name2I.iteritems():
+        if len(I) < 2:
+            continue
+        for i in range(len(I)):
+            nodup[I[i]] = "%s_%d" % (name, i+1)
+
+    MATRIX = MATRIX.matrix()  # don't change the original
+    x = MATRIX._resolve_synonym(
+        arrayio.ROW_ID, MATRIX.row_names, MATRIX._synonyms)
+    MATRIX._row_names[x] = nodup
+    return MATRIX
+
+
 def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     import arrayio
 
@@ -1513,6 +1540,10 @@ def main():
         help="Move this header.  "
         "The format should be: <header>,<old_index>,<new_index>.  "
         "The indexes are 1-based.")
+    group.add_argument(
+        "--rename_duplicate_rows", default=False, action="store_true",
+        help="If multiple rows have the same ID, make their names "
+        "unique.")
 
     args = parser.parse_args()
     assert len(args.filename) >= 1
@@ -1596,7 +1627,8 @@ def main():
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
 
-    # Rename duplicate columns.
+    # Rename duplicate rows and columns.
+    MATRIX = rename_duplicate_rows(MATRIX, args.rename_duplicate_rows)
     MATRIX = rename_duplicate_cols(MATRIX, args.rename_duplicate_cols)
 
     # Align to the align_file.  Do this as close to the end as

@@ -40,8 +40,11 @@ kaplanmeierlib=/home/xchen/chencode/Rlib/kaplanmeierlib.R
 
 [GENOME SEQUENCE DATA]
 RA_CHROM_HG18=/data/genomidata/ra_chrom_hg18
-RA_CHROM_MM9=/data/genomidata/ra_chrom_mm9
+RA_CHROM_HG19=/data/genomidata/ra_chrom_hg19
+RA_CHROM_MM10=/data/genomidata/ra_chrom_mm10
 knowngene_hg18=/data/genomidata/hg18.knownGene.110312.txt
+knowngene_hg19=/data/genomidata/hg19.knownGene.130104.txt
+knowngene_mm10=/data/genomidata/mm10.knownGene.130207.txt
 
 
 [MICROARRAY DATA]

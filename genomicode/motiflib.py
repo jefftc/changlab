@@ -21,13 +21,13 @@ import os
 
 
 def score_tfbs_genome(chrom, start, length, matrices=None, nlp=None,
-                      num_procs=1):
+                      num_procs=1, ra_path=None):
     # Return list of matrix, chrom, strand, position, NLP.
     # NLP is given in log_e.
     import genomelib
     import patser
 
-    seq = genomelib.get_sequence(chrom, start, length)
+    seq = genomelib.get_sequence(chrom, start, length, ra_path=ra_path)
     if not matrices:
         matrices = [x[0] for x in list_matrices()]
     x = [find_matrix_file(x) for x in matrices]

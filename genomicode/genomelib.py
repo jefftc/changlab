@@ -32,6 +32,8 @@ read_ra
 write_ra
 
 """
+# _get_default_ra_chrom
+# _get_default_knowngene
 # _load_gene_file
 # _overlaps
 # _safe_split_int
@@ -39,12 +41,18 @@ write_ra
 
 import os, sys
 
+def _get_default_ra_chrom():
+    import config
+    return config.RA_CHROM_HG19
+
+def _get_default_knowngene():
+    import config
+    return config.knowngene_hg19
+
 def get_sequence(chrom, start, length, ra_path=None):
     # Low complexity sequences will be in lower case.
-    import config
-
     _assert_chrom(chrom)
-    ra_path = ra_path or config.RA_CHROM_HG18
+    ra_path = ra_path or _get_default_ra_chrom()
     filename = os.path.join(ra_path, "chr%s.ra" % chrom)
     x = read_ra(filename, start, length, "c")
     return "".join(x)
@@ -80,9 +88,8 @@ def get_transcript(
 
 def len_chrom(chrom, ra_path=None):
     import stat
-    import config
 
-    ra_path = ra_path or config.RA_CHROM_HG18
+    ra_path = ra_path or _get_default_ra_chrom()
     filename = os.path.join(ra_path, "%s.ra" % chrom)
     size = os.stat(filename)[stat.ST_SIZE]
     return size
@@ -111,11 +118,9 @@ def get_gene_coords(gene_symbol, gene_file=None):
     # Will return multiple objects if this gene has different
     # transcripts.  Objects will be sorted so that first object is the
     # one whose transcription start is most upstream.
-    import config
-    import filelib
 
     # Find the transcript info for this gene.
-    gene_file = gene_file or config.knowngene_hg18
+    gene_file = gene_file or _get_default_knowngene()
     genes = load_genes(gene_file)
     gene_symbol = gene_symbol.upper()
     genes = [x for x in genes if x.gene_symbol.upper() == gene_symbol]
@@ -137,8 +142,6 @@ def get_promoters(gene_symbol, prom_offset, prom_length, gene_file=None,
                   ra_path=None):
     # Return list of (chrom, tss, strand, prom_base, prom_length, prom_seq).
     # Will revcomp promoters on the - strand.
-    import config
-
     genes = get_gene_coords(gene_symbol, gene_file=gene_file)
     transcripts = filter_unique_tss(genes)
     if not transcripts:
@@ -205,11 +208,9 @@ def find_nearby_tss(chrom, base, max_bases, gene_file=None):
     # Return a list of genes based on distance to the transcription
     # start site.  max_bases is the maximum number of bases to the
     # tss.  base should be 0-based.
-    import config
-    
     _assert_chrom(chrom)
 
-    gene_file = gene_file or config.knowngene_hg18
+    gene_file = gene_file or _get_default_knowngene()
     genes = load_genes(gene_file, chrom)
     assert genes, "No genes on chromosome %s." % chrom
 
@@ -226,11 +227,9 @@ def find_nearby_tss(chrom, base, max_bases, gene_file=None):
 def find_overlapping_genes(chrom, base, length, gene_file=None):
     # Format of chrom: "1", "8", "X", "Y", etc...
     # Return a list of objects (see load_genes for description).
-    import config
-    
     _assert_chrom(chrom)
 
-    gene_file = gene_file or config.knowngene_hg18
+    gene_file = gene_file or _get_default_knowngene()
     genes = load_genes(gene_file, chrom)
     #genes = [x for x in genes if x.chrom == chrom]
     assert genes, "No genes on chromosome %s." % chrom
@@ -433,9 +432,7 @@ def load_genes(gene_file=None, chrom=None):
     # Genes are sorted by chrom, txn_start.
     global GENES_KEY, GENES_ALL, GENES_CHROM
 
-    import config
-
-    gene_file = gene_file or config.knowngene_hg18
+    gene_file = gene_file or _get_default_knowngene()
     
     if GENES_KEY != gene_file:
         data = _load_genes_h(gene_file)
@@ -454,10 +451,9 @@ def load_genes(gene_file=None, chrom=None):
     
 def _load_genes_h(gene_file):
     # This function is really slow for some reason.
-    import config
     import filelib
 
-    gene_file = gene_file or config.knowngene_hg18
+    gene_file = gene_file or _get_default_knowngene()
     gene_data = _load_gene_file(gene_file)
 
     genes = []
