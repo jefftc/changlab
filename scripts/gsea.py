@@ -53,6 +53,42 @@ def format_gene_set_database(database):
     return DATABASE2GENESET[database]
 
 
+def read_cls_file(filename):
+    # Only handles categorical CLS files with 2 classes.
+    from genomicode import filelib
+    
+    # Space or tab-delimited format.
+    # <num samples> <num classes> 1
+    # # <class name 0> <class name 1> ...
+    # <0/1 or class name> ...
+    handle = filelib.openfh(filename)
+    x = [x for x in handle if x.strip()]
+    assert len(x) == 3, "CLS file should contain 3 lines."
+    line1, line2, line3 = x
+
+    # Parse the first line.
+    x = line1.strip().split()
+    assert len(x) == 3
+    assert x[2] == "1"
+    num_samples, num_classes = int(x[0]), int(x[1])
+
+    # Parse the second line.
+    x = line2.strip().split()
+    assert x
+    assert x[0] == "#"
+    assert len(x) == num_classes+1
+    class_names = x[1:]
+
+    # Parse the third line.
+    x = line3.strip().split()
+    assert len(x) == num_samples
+    classes = x
+    for x in classes:
+        assert x in class_names or \
+            (int(x) >= 0 and int(x) < num_classes)
+
+    return class_names, classes
+    
 def write_cls_file(outhandle, name0, name1, classes):
     # Only handles categorical CLS files with 2 classes.
     # classes should be a list of 0/1 or class names.
@@ -177,7 +213,11 @@ def main():
 
     # Make a CLS file, if necessary.
     if args.cls_file:
-        cls_data = open(args.cls_file).read()
+        names, classes = read_cls_file(args.cls_file)
+        assert len(names) == 2, "I must have 2 classes."
+        handle = StringIO.StringIO()
+        write_cls_file(handle, names[0], names[1], classes)
+        cls_data = handle.getvalue()
     else:
         handle = StringIO.StringIO()
         make_cls_file(
