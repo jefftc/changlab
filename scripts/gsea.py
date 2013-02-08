@@ -149,7 +149,6 @@ def main():
     import argparse
     import subprocess
     import StringIO
-    import tempfile
     import zipfile
 
     import arrayio
@@ -209,7 +208,6 @@ def main():
         os.mkdir(args.outpath)
 
     MATRIX = arrayio.read(args.expression_file)
-    MATRIX = arrayio.convert(MATRIX, to_format=arrayio.gct_format)
 
     # Make a CLS file, if necessary.
     if args.cls_file:
@@ -224,6 +222,10 @@ def main():
             handle, MATRIX, args.indexes1, args.indexes_include_headers,
             args.name1, args.name2)
         cls_data = handle.getvalue()
+
+    # Convert the format after making CLS file, or else args.indexes1
+    # with args.indexes_include_headers might be off.
+    MATRIX = arrayio.convert(MATRIX, to_format=arrayio.gct_format)
 
     # Figure out the platform.
     platform = args.platform
