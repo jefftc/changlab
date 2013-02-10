@@ -227,6 +227,10 @@ def main():
     # with args.indexes_include_headers might be off.
     MATRIX = arrayio.convert(MATRIX, to_format=arrayio.gct_format)
 
+    # BUG: Should check the names of the samples to make sure they
+    # don't contain spaces or other punctuation.  GSEA seems to be
+    # sensitive to these things.
+
     # Figure out the platform.
     platform = args.platform
     if platform is None:
