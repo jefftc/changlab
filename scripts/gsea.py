@@ -1,32 +1,47 @@
 #!/usr/bin/env python
 
+# Still some problems with the platforms.
+# 1.  Convert to GCT may discard the correct annotations.
+# 2.  What if the file already contains gene symbols?  I'm not sure
+# how to specify this for GenePattern.  For the website, we may be
+# able to leave it blank.  But this doesn't seem to work through the R
+# interface.
+
+
+
+# Mapping from arrayplatformlib to GenePattern.
 platform2gpplatform = {
     "HG_U133A" : "HG_U133A.chip",
     "HG_U133A_2" : "HG_U133A_2.chip",
     "HG_U133_Plus_2" : "HG_U133_Plus_2.chip",
-    "Entrez_symbol_human" : "GENE_SYMBOL.chip",
+    #"Entrez_symbol_human" : None,
+    # Missing entrez_ID_human
     }
 
 def guess_chip_platform(M):
     # Return the GenePattern chip.platform for this matrix.
     from genomicode import arrayplatformlib
-    
+
     platform = arrayplatformlib.identify_platform_of_matrix(M)
+    if platform is None:
+        return None
+    assert platform in platform2gpplatform, \
+        "I don't know how to convert %s to a GenePattern platform." % platform
     chipname = platform2gpplatform.get(platform)
     return chipname
 
 DATABASE2GENESET = {
-    "positional" : "c1.all.v3.0.symbols.gmt [Positional]",
-    "curated" : "c2.all.v3.0.symbols.gmt [Curated]",
-    "curated:canonical" : "c2.cp.v3.0.symbols.gmt [Curated]",
-    "curated:biocarta" : "c2.cp.biocarta.v3.0.symbols.gmt [Curated]",
-    "curated:kegg" : "c2.cp.kegg.v3.0.symbols.gmt [Curated]",
-    "curated:reactome" : "c2.cp.reactome.v3.0.symbols.gmt [Curated]",
-    "motif" : "c3.all.v3.0.symbols.gmt [Motif]",
-    "motif:tfactor" : "c3.tft.v3.0.symbols.gmt [Motif]",
-    "computational" : "c4.all.v3.0.symbols.gmt [Computational]",
-    "gene_ontology" : "c5.all.v3.0.symbols.gmt [Gene Ontology]",
-    "gene_ontology:process" : "c5.bp.v3.0.symbols.gmt [Gene Ontology]",
+    "positional" : "c1.all.v3.0.symbols.gmt",
+    "curated" : "c2.all.v3.0.symbols.gmt",
+    "curated:canonical" : "c2.cp.v3.0.symbols.gmt",
+    "curated:biocarta" : "c2.cp.biocarta.v3.0.symbols.gmt",
+    "curated:kegg" : "c2.cp.kegg.v3.0.symbols.gmt",
+    "curated:reactome" : "c2.cp.reactome.v3.0.symbols.gmt",
+    "motif" : "c3.all.v3.0.symbols.gmt",
+    "motif:tfactor" : "c3.tft.v3.0.symbols.gmt",
+    "computational" : "c4.all.v3.0.symbols.gmt",
+    "gene_ontology" : "c5.all.v3.0.symbols.gmt",
+    "gene_ontology:process" : "c5.bp.v3.0.symbols.gmt",
     }
 DEFAULT_DATABASE = "gene_ontology:process"
 
@@ -150,6 +165,7 @@ def main():
     import subprocess
     import StringIO
     import zipfile
+    import shutil
 
     import arrayio
     from genomicode import config
@@ -157,6 +173,9 @@ def main():
     parser = argparse.ArgumentParser(description="Do a GSEA analysis.")
     parser.add_argument("expression_file", help="Gene expression file.")
     parser.add_argument("outpath", help="Where to save the files.")
+    parser.add_argument(
+        "--clobber", default=False, action="store_true",
+        help="Overwrite outpath, if it already exists.")
     
     group = parser.add_argument_group(title="Class Labels")
     group.add_argument(
@@ -177,7 +196,7 @@ def main():
     group.add_argument(
         "--platform", default=None,
         help="The platform (GenePattern chip) of the expression data, "
-        "e.g. GENE_SYMBOL.chip, HG_U133A_2.chip")
+        "e.g. HG_U133A_2.chip")
     x = sorted(DATABASE2GENESET)
     x = [x.replace(DEFAULT_DATABASE, "%s (DEFAULT)" % x) for x in x]
     x = ", ".join(x)
@@ -185,10 +204,15 @@ def main():
     group.add_argument("--database", default=DEFAULT_DATABASE, help=x)
     group.add_argument("--database_file", default=None,
         help="Search a GMT or GMX file instead of the default databases.")
+    # GenePattern uses the platform (chip file) to convert the IDs in
+    # the Gene Symbols.  If the IDs are already gene symbols, then an
+    # arbitrary platform should be given (since it requires this
+    # parameter), and collapse should be turned off.
     group.add_argument(
         "--no_collapse_dataset", default=False, action="store_true",
-        help="See GenePattern documentation.  You probably will not have "
-        "to change this.")
+        help="Do not 1) convert gene IDs to gene symbols, and 2) "
+        "collapse duplicate gene symbols.  Set this if the gene IDs are "
+        "already gene symbols.")
 
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
@@ -204,8 +228,11 @@ def main():
         assert not args.name1
         assert not args.name2
     assert args.outpath, "Please specify an outpath."
-    if not os.path.exists(args.outpath):
-        os.mkdir(args.outpath)
+    assert not os.path.exists(args.outpath) or args.clobber, \
+        "Outpath %s already exists." % args.outpath
+    if os.path.exists(args.outpath):
+        shutil.rmtree(args.outpath)
+    os.mkdir(args.outpath)
 
     MATRIX = arrayio.read(args.expression_file)
 
@@ -225,26 +252,29 @@ def main():
 
     # Convert the format after making CLS file, or else args.indexes1
     # with args.indexes_include_headers might be off.
+    # BUG: What if the conversion to GCT discards the proper platform
+    # of this matrix?
     MATRIX = arrayio.convert(MATRIX, to_format=arrayio.gct_format)
 
     # BUG: Should check the names of the samples to make sure they
     # don't contain spaces or other punctuation.  GSEA seems to be
     # sensitive to these things.
 
-    # Figure out the platform.
-    platform = args.platform
-    if platform is None:
-        platform = guess_chip_platform(MATRIX)
-    assert platform, "I could not find a platform for this file."
-    #print platform
-
     database_file = None
     if args.database_file:
-        database_file= os.path.realpath(args.database_file)
+        database_file = os.path.realpath(args.database_file)
         assert os.path.exists(database_file), (
             "I could not find file: %s" % database_file)
-    else:
-        gene_set_database = format_gene_set_database(args.database)
+    # Required, even if gene.sets.database.file is given.
+    gene_set_database = format_gene_set_database(args.database)
+
+    # If no database file is given, then we need to know the platform
+    # for the expression data.  (If one is given, we let the user make
+    # sure the platforms match.)
+    platform = args.platform
+    if platform is None and not database_file:
+        platform = guess_chip_platform(MATRIX)
+        assert platform, "I could not find a platform for this file."
 
     # Set up file names.
     opj = os.path.join
@@ -257,10 +287,19 @@ def main():
     gct_full = opj(args.outpath, gct_file)
     cls_full = opj(args.outpath, cls_file)
     out_full = opj(args.outpath, out_file)
+    db_full = None
+    if database_file:
+        db_file = os.path.split(database_file)[1]
+        db_full = opj(args.outpath, db_file)
 
-    # Write the gene expression and class label files.
+    # Write the gene expression, class label, and database files.  It
+    # is better to have local copies of the files.  It is unclear how
+    # to upload files to GenePattern if the file names have spaces in
+    # them.  Get around this by making all the files local.
     arrayio.gct_format.write(MATRIX, open(gct_full, 'w'))
     open(cls_full, 'w').write(cls_data)
+    if database_file:
+        open(db_full, 'w').write(open(database_file).read())
 
     collapse_dataset = "true"
     if args.no_collapse_dataset:
@@ -270,14 +309,18 @@ def main():
     params = {
         "expression.dataset" : gct_file,
         "phenotype.labels" : cls_file,
-        "chip.platform" : platform,
         "collapse.dataset" : collapse_dataset,
         }
-    if database_file:
-        params["gene.sets.database.file"] = database_file
-    else:
-        params["gene.sets.database"] = gene_set_database
-
+    # platform is required, even if collapse.dataset is false.  If no
+    # platform is given, then specify a default one.
+    params["chip.platform"] = platform
+    if params["chip.platform"] is None:
+        params["chip.platform"] = "HG_U133A.chip"
+    if db_file:
+        params["gene.sets.database.file"] = db_file
+    # Required, even if gene.sets.database.file is given.
+    params["gene.sets.database"] = gene_set_database
+ 
     cmd = [
         config.genepattern,
         "-o", ".",
@@ -286,6 +329,9 @@ def main():
     for (key, value) in reversed(list(params.iteritems())):
         x = ["--parameters", "%s:%s" % (key, value)]
         cmd.extend(x)
+    #for x in cmd:
+    #    print x
+    #import sys; sys.exit(0)
 
     # Run the analysis in the outpath.  GSEA leaves a file
     # "System.out" in the current directory.
@@ -304,7 +350,8 @@ def main():
         "Error generated by GenePattern:\n%s" % open(error_file).read())
 
     # Unzip the zipped results in the outpath.
-    assert os.path.exists(out_full), "Output file is missing: %s" % out_full
+    assert os.path.exists(out_full), "ERROR: Output file is missing [%s]." % \
+        out_full
     zfile = zipfile.ZipFile(out_full)
     zfile.extractall(args.outpath)
     os.unlink(out_full)
