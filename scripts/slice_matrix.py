@@ -23,6 +23,7 @@
 # remove_col_ids
 # remove_col_indexes
 # toupper_col_ids
+# hash_col_ids
 # apply_re_col_ids
 # add_suffix_col_ids
 #
@@ -554,6 +555,21 @@ def toupper_col_ids(MATRIX, toupper_col_ids):
     MATRIX = MATRIX.matrix()
     x = MATRIX.col_names(tdf.SAMPLE_NAME)
     x = [x.upper() for x in x]
+    MATRIX._col_names[tdf.SAMPLE_NAME] = x
+    return MATRIX
+
+
+def hash_col_ids(MATRIX, hash_col_ids):
+    from arrayio import tab_delimited_format as tdf
+    from genomicode import hashlib
+
+    if not hash_col_ids:
+        return MATRIX
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    MATRIX = MATRIX.matrix()
+    x = MATRIX.col_names(tdf.SAMPLE_NAME)
+    x = [hashlib.hash_var(x) for x in x]
     MATRIX._col_names[tdf.SAMPLE_NAME] = x
     return MATRIX
 
@@ -1439,6 +1455,9 @@ def main():
         help="Convert column IDs to upper case.  "
         "(Done after relabel, remove, but before filtering duplicates.)")
     group.add_argument(
+        "--hash_col_ids", default=False, action="store_true",
+        help="Hash the column IDs to [a-zA-Z0-9_].")
+    group.add_argument(
         "--rename_duplicate_cols", default=False, action="store_true",
         help="If multiple columns have the same header, make their names "
         "unique.")
@@ -1623,6 +1642,7 @@ def main():
     MATRIX = toupper_col_ids(MATRIX, args.toupper_col_ids)
     MATRIX = apply_re_col_ids(MATRIX, args.apply_re_col_ids)
     MATRIX = add_suffix_col_ids(MATRIX, args.add_suffix_col_ids)
+    MATRIX = hash_col_ids(MATRIX, args.hash_col_ids)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
