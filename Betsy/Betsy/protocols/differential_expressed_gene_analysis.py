@@ -32,8 +32,6 @@ PARAMETERS = {
     'filter': 'integer',
     'format': ['tdf', 'gct'],
     'is_logged': ['no_logged', 'logged'],
-    'traincontents': 'list',
-    'testcontents': 'list',
     'contents': 'list',
     'diff_expr': ['t_test', 'sam'],
     'sam_foldchange': 'float',

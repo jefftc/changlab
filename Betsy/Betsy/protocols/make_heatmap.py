@@ -34,8 +34,6 @@ PARAMETERS = {
     'has_missing_value': ['no_missing', 'median_fill', 'zero_fill',
                           'unknown_missing'],
     'is_logged': ['no_logged', 'logged'],
-    'traincontents': 'list',
-    'testcontents': 'list',
     'contents': 'list',
     'hm_width': 'integer',
     'hm_height': 'integer',

@@ -33,8 +33,6 @@ PARAMETERS = {
                           'unknown_missing'],
     'format': ['tdf', 'gct'],
     'is_logged': ['no_logged', 'logged'],
-    'traincontents': 'list',
-    'testcontents': 'list',
     'contents': 'list',
     'ill_manifest': 'string',
     'ill_chip': 'string',

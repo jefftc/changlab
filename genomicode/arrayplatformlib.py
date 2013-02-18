@@ -179,7 +179,7 @@ def score_all_platforms_of_matrix(DATA):
 def score_platform_of_matrix(DATA):
     platform_list = score_all_platforms_of_matrix(DATA)
     if not platform_list:
-        return None
+        return None, 0
     out_platform = platform_list[0][1]
     out_platform_match = platform_list[0][2]
     return out_platform, out_platform_match
