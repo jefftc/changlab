@@ -100,4 +100,3 @@ predicate2arguments = {
     'rename_list_file': ([], '[]')}
 
 
-pipeline_label = ['Plotting a heatmap of the samples.']

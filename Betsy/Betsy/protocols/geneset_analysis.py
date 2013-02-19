@@ -102,5 +102,4 @@ predicate2arguments = {
     'rename_list_file': ([], '[]'),
     'geneset_file':([],'[]')}
 
-pipeline_label = ['Doing geneset analysis on the samples.',
-                  'Plotting geneset analysis result.']
+

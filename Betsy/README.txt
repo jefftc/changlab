@@ -124,7 +124,6 @@ Betsy can do clustering for a signal_file and plot the heatmap.
     --protocol 'cluster_genes'
     --input 'input_signal_file:<path of the file>'
     --parameters 'has_missing_value:zero_fill'
-    --parameters 'gene_center:mean'
     --parameters 'gene_normalize:variance'
     --parameters 'cluster_alg:hierarchical'
     --parameters 'hm_width:200'

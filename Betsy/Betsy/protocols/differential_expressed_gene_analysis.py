@@ -97,9 +97,4 @@ predicate2arguments = {
     'rename_list_file': ([], '[]')}
 
 
-pipeline_label = ['Doing differential expressed genes analysis with t-test.',
-                  'Doing differential expressed genes analysis with sam.',
-                  'Plotting the heatmap of gene ordered by t-test p-value.',
-                  'Doing gather analysis on the important genes.',
-                  'Doing GSEA on the signal file.']
                   

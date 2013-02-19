@@ -36,15 +36,6 @@ def filter_pipelines(protocol, inputs, in_contents, output, parameters):
     return pipelines
 
 
-def get_pipeline_label(protocol,n_pipelines):
-    module = protocol_utils.import_protocol(protocol)
-    n = n_pipelines/len(module.pipeline_label)
-    if not len(module.pipeline_label)%n_pipelines :
-        return module.pipeline_label * n
-    elif not len(module.pipeline_label_illumina) % n_pipelines:
-        return module.pipeline_label_illumina * n
-    raise ValueError('Cannot find the pipeline labels.')
-
 
 def run_protocol(protocol, inputs, output, identifiers,
                  in_contents, parameters,clean_up=True):
@@ -70,11 +61,12 @@ def run_protocol(protocol, inputs, output, identifiers,
     parameters_all = []
     pipeline_sequence_all = []
     k = 1
-    pipeline_labels = get_pipeline_label(protocol, len(pipelines))
     for pipeline in pipelines:
-        print  'Pipeline' + str(k) + ': '+ pipeline_labels[k-1] + '\r'
+        pipeline_label = pipeline[-1].parameters['label']
+        pipeline_label = pipeline_label.replace('_',' ')
+        pipeline = pipeline[:-1]
+        print  'Pipeline' + str(k) + ': '+ pipeline_label + '.\r'
         out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
-        #out_files = rule_engine.run_pipeline(pipeline, objects)
         k = k + 1
         if out_files:
             pipeline_sequence = [analysis.name for analysis in pipeline]

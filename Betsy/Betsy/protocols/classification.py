@@ -106,16 +106,5 @@ predicate2arguments = {
     'rename_list_file': ([], '[]')}
 
 
-pipeline_label = ['Preprocessing the signal file.',
-                  'Classifying by SVM.',
-                  'Plotting prediction results with SVM.',
-                  'LOOCV classifying by SVM.',
-                  'Plotting prediction results with LOOCV SVM.',
-                  'Plot pca plot colored by SVM prediction results.',
-                  'Classifying by weighted voting.',
-                  'Plotting prediction results with weighted voting.',
-                  'LOOCV classifying by weighted voting.',
-                  'Plotting prediction results with LOOCV weighted voting.',
-                  'Plot pca plot colored by weighted voting prediction results.']
-                  
+
                   
