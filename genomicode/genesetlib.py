@@ -6,14 +6,45 @@ read_tdf
 read_genesets   Read the genesets in a geneset file.
 read_genes      Return a list of genes that belong in a specific geneset.
 
+write_gmt
+
 detect_format
 
 score_geneset
 score_geneset_I
 
 """
-
 # Optimization: call _is_known_desc less.
+
+class GeneSet:
+    def __init__(self, name, description, genes):
+        assert type(name) is type("")
+        assert type(description) is type("") or description is None
+        assert type(genes) is type([])
+
+        if description is None or description.strip() == "":
+            description = "na"
+            
+        # No duplicate genes, preserve order.
+        nodup = []
+        for g in genes:
+            if g not in nodup:
+                nodup.append(g)
+        genes = nodup
+        
+        self.name = name
+        self.description = description
+        self.genes = genes
+
+
+def write_gmt(filename, genesets):
+    handle = filename
+    if type(handle) is type(""):
+        handle = open(filename, 'w')
+    for gs in genesets:
+        x = [gs.name, gs.description] + gs.genes
+        print >>handle, "\t".join(map(str, x))
+
 
 def read_gmx(filename, preserve_spaces=False, allow_duplicates=False):
     # yield name, description, list of genes
@@ -33,6 +64,7 @@ def read_gmx(filename, preserve_spaces=False, allow_duplicates=False):
     return read_gmt(
         handle, preserve_spaces=preserve_spaces,
         allow_duplicates=allow_duplicates)
+
 
 def _transpose_gmx(matrix):
     # GMX format:
@@ -59,6 +91,7 @@ def _transpose_gmx(matrix):
         t_matrix.append(x)
     # The rows are not guaranteed to be the same length.
     return t_matrix
+
 
 ## def read_gmx(filename):
 ##     # yield name, description, list of genes
@@ -95,6 +128,7 @@ def _transpose_gmx(matrix):
 ##         genes = genesets[name]
 ##         yield name, desc, genes
 
+
 def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
     # yield name, description, list of genes
     # genes can be duplicated.
@@ -125,6 +159,7 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
         
         #print preserve_spaces, len(genes), len(cols)
         yield name, description, genes
+
 
 def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
     # yield name, description (always ""), list of genes
@@ -167,6 +202,7 @@ def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
     #    description = ""
     #    yield name, description, genes
 
+
 def read_genesets(filename, allow_tdf=False, allow_duplicates=False):
     # yield name, description, list of genes
     # If allow_tdf is True, will also parse filename if it is a
@@ -192,6 +228,7 @@ def read_genesets(filename, allow_tdf=False, allow_duplicates=False):
     # Read the geneset file.
     for x in read_fn(filename, allow_duplicates=allow_duplicates):
         yield x
+
 
 def read_genes(filename, *genesets, **keywds):
     """Return a list of genes from the desired gene sets.  If no
@@ -239,6 +276,7 @@ def read_genes(filename, *genesets, **keywds):
             i += 1
     return all_genes
 
+
 def _is_known_desc(desc):
     ldesc = desc.lower()
     if ldesc == "na":
@@ -248,6 +286,7 @@ def _is_known_desc(desc):
     if ldesc == "":
         return True
     return False
+
 
 def detect_format(filename):
     # Return "GMX", "GMT", or None.
@@ -402,6 +441,7 @@ def detect_format(filename):
     
     return None
 
+
 def score_geneset(MATRIX, pos_genes, neg_genes):
     # Return MATRIX_p, MATRIX_n, num_matches, list of scores
     import matrixlib
@@ -419,6 +459,7 @@ def score_geneset(MATRIX, pos_genes, neg_genes):
     x = score_geneset_I(MATRIX._X, pos_I, neg_I)
     x, x, num_rows, scores = x
     return MATRIX_p, MATRIX_n, num_rows, scores
+
 
 def score_geneset_I(X, pos_I, neg_I):
     # Return X_p, X_n, num_matches, list of scores
