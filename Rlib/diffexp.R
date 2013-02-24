@@ -129,6 +129,7 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   genenames <- genenames[I]
   med.1 <- med.1[I]
   med.2 <- med.2[I]
+  diff <- diff[I]
 
   # BUG: will break if p-value is NA.
   x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
