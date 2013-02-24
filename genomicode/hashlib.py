@@ -10,6 +10,8 @@ hash_sampleid        Lowercase, no punctuation (except _), no initial X.
 hash_many_geneids
 hash_many_sampleids
 
+uniquify_by_num      Make list of names unique by adding numbers to duplicates.
+
 """
 
 RE_NONWORD = RE_PUNCTUATION = None
@@ -90,3 +92,20 @@ def hash_many_geneids(ids):
 
 def hash_many_sampleids(ids):
     return [hash_sampleid(x) for x in ids]
+
+
+def uniquify_by_num(ids):
+    id2I = {}  # id -> list of indexes
+    for i, id in enumerate(ids):
+        if id not in id2I:
+            id2I[id] = []
+        id2I[id].append(i)
+
+    nodup = ids[:]
+    for (id, I) in id2I.iteritems():
+        if len(I) < 2:
+            continue
+        for i in range(len(I)):
+            nodup[I[i]] = "%s_%d" % (id, i+1)
+    return nodup
+    
