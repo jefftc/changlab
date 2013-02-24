@@ -474,12 +474,6 @@ def _add_deletions_to_alignment(library, alignment):
             x = i_seqset, i_sequence, i_base
             all_bases.append(x)
 
-            #align = indexes2align.get(x)
-            #if not align:
-            #    node = MAIN, i_seqset, i_sequence, i_base
-            #    align = node, "DELETE", sequence[i_base], "-"
-            #full_alignment.append(align)
-
     # Make a list of the bases that are matched.
     indexes2align = {}  # Either (i_seqset, i_sequence, i_base) or INSERTEND.
     for align in alignment:
@@ -636,7 +630,7 @@ def read_library(filename):
         assert len(cols) >= 3
         is_random = cols[0]
         name = cols[1]
-        sequences = [x.strip() for x in cols[0:] if x.strip()]
+        sequences = [x.strip() for x in cols[2:] if x.strip()]
         assert is_random in ["0", "1"]
         assert len(sequences) >= 1
         x = name, int(is_random), sequences
