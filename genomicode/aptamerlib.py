@@ -315,13 +315,13 @@ def _calc_transition_probs(library, p_main, p_insert, p_delete):
     return probabilities
 
     
-def _calc_emission_probs(library, p_match, p_mismatch):
+def _calc_emission_probs(library, base2emission, p_match, p_mismatch):
     # Make a list of all the emissions.
     emissions = {}
     for x in _iter_main_graph(library):
         name, seqset, sequence, base, i_seqset, i_sequence, i_base = x
-        for x in sequence:
-            emissions[x] = 1
+        e = base2emission.get(base, base)
+        emissions[e] = 1
     assert "START" not in emissions
     assert "END" not in emissions
     emissions = ["START", "END"] + sorted(emissions)
@@ -334,13 +334,13 @@ def _calc_emission_probs(library, p_match, p_mismatch):
     for x in _iter_main_graph(library):
         name, seqset, sequence, base, i_seqset, i_sequence, i_base = x
         node = MAIN, i_seqset, i_sequence, i_base
-        
+
         probs = {}
         for e in emissions_in_library:
             p = p_match
-            if base != e:
+            if base2emission.get(base, base) != e:
                 p = p_mismatch
-            probs[base] = p
+            probs[e] = p
         # Normalize the probabilities to 1.0.
         total = sum(probs.values())
         for b in probs:
@@ -366,7 +366,8 @@ def _calc_emission_probs(library, p_match, p_mismatch):
     return probabilities
              
 
-def make_markov_model(library, p_insert=None, p_delete=None, p_mismatch=None):
+def make_markov_model(
+        library, base2emission, p_insert=None, p_delete=None, p_mismatch=None):
     # Return a MarkovModel.
     import numpy
     from Bio import MarkovModel
@@ -386,7 +387,8 @@ def make_markov_model(library, p_insert=None, p_delete=None, p_mismatch=None):
     # Calculate the transition probabilities.
     transition_probs = _calc_transition_probs(
         library, p_main, p_insert, p_delete)
-    emission_probs = _calc_emission_probs(library, p_match, p_mismatch)
+    emission_probs = _calc_emission_probs(
+        library, base2emission, p_match, p_mismatch)
     #for (start, end) in sorted(transition_probs):
     #    x = transition_probs[(start, end)], start, end
     #    print "\t".join(map(str, x))
@@ -504,7 +506,7 @@ def _add_deletions_to_alignment(library, alignment):
     return full_alignment
 
 
-def _score_sequence_h(mm, library, sequence):
+def _score_sequence_h(mm, library, base2emission, sequence):
     # Return score, list of (node, match_type, base, base in sequence).
     import math
     from Bio import MarkovModel
@@ -547,7 +549,7 @@ def _score_sequence_h(mm, library, sequence):
         if node[0] == MAIN:
             base_in_lib = seq[i_base]
         match_type = "MATCH"
-        if base_in_lib != base_in_seq:
+        if base2emission.get(base_in_lib, base_in_lib) != base_in_seq:
             match_type = "MISMATCH"
         x = node, match_type, base_in_lib, base_in_seq
         alignment.append(x)
@@ -555,7 +557,7 @@ def _score_sequence_h(mm, library, sequence):
     return lscore, alignment
 
 
-def score_sequence(mm, library, sequence):
+def score_sequence(mm, library, base2emission, sequence):
     # Return score, is_revcomp,
     # list of (node, match_type, base, base in sequence).
     from Bio import Seq
@@ -563,8 +565,8 @@ def score_sequence(mm, library, sequence):
     # Score both the sequence and its reverse complement.  Return the
     # one with the higher score.
     sequence_rc = Seq.Seq(sequence).reverse_complement().tostring()
-    x1 = _score_sequence_h(mm, library, sequence)
-    x2 = _score_sequence_h(mm, library, sequence_rc)
+    x1 = _score_sequence_h(mm, library, base2emission, sequence)
+    x2 = _score_sequence_h(mm, library, base2emission, sequence_rc)
     lscore1, alignment1 = x1
     lscore2, alignment2 = x2
 
