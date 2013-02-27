@@ -287,7 +287,6 @@ def main():
     gct_full = opj(args.outpath, gct_file)
     cls_full = opj(args.outpath, cls_file)
     out_full = opj(args.outpath, out_file)
-    db_full = None
     if database_file:
         db_file = os.path.split(database_file)[1]
         db_full = opj(args.outpath, db_file)
@@ -316,7 +315,7 @@ def main():
     params["chip.platform"] = platform
     if params["chip.platform"] is None:
         params["chip.platform"] = "HG_U133A.chip"
-    if db_file:
+    if database_file:
         params["gene.sets.database.file"] = db_file
     # Required, even if gene.sets.database.file is given.
     params["gene.sets.database"] = gene_set_database
