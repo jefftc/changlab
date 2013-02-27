@@ -563,7 +563,7 @@ def _num_headers_h(matrix):
     # This is REALLY SLOW for big matrices.  Optimize by assuming a
     # maximum number of header rows.  Just look at the first rows for
     # the header.
-    MAX_HEADER_ROWS = 25
+    MAX_HEADER_ROWS = 50
     matrix = matrix[:MAX_HEADER_ROWS]
     num_rows = len(matrix)
 
