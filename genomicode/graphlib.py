@@ -1420,6 +1420,7 @@ def find_tall_heatmap_size(
         else:
             ypix = 1.0
             xpix = float(max_megapixels) / nrow / ncol / ypix * 1024.0 * 1024.0
+        assert xpix >= 1 and ypix >= 1, "Plot exceeds megapixel limit."
 
     xpix, ypix = int(xpix), int(ypix)
     #height = nrow * ypix
