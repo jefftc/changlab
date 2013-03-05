@@ -11,7 +11,7 @@ def read_matrix(filename):
 
     return arrayio.read(filename)
 
-def _parse_cluster(options_cluster, MATRIX):
+def _parse_cluster(options_cluster, indexes_include_headers, MATRIX):
     # Return a vector of clusters, where each cluster is an integer
     # from 0 to K-1.  K is the total number of clusters.  The length
     # of the vector should be the same as the number of samples in the
@@ -23,6 +23,8 @@ def _parse_cluster(options_cluster, MATRIX):
         ranges = parselib.parse_ranges(s)
         for s, e in ranges:
             for i in range(s-1, e):
+                if indexes_include_headers:
+                    i -= len(MATRIX._row_names)
                 assert i < MATRIX.ncol(), "Index %d out of range" % i
                 assert i not in index2cluster, \
                        "Index %d in multiple clusters" % i
@@ -94,6 +96,11 @@ def main():
         "-c", "--cluster", dest="cluster", default=[], action="append",
         help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
     parser.add_option(
+        "--indexes_include_headers", default=False, action="store_true",
+        help="If not given (default), then index 1 is the first column "
+        "with data.  If given, then index 1 is the very first column "
+        "in the file, including the headers.")
+    parser.add_option(
         "", "--cluster_file", dest="cluster_file", default=None, 
         help="A KGG format file of the clusters for the samples.  "
         "Clusters in this file can be 0-based or 1-based.")
@@ -135,7 +142,8 @@ def main():
     if options.cluster and options.cluster_file:
         parser.error("Cannot specify clusters and a cluster file.")
     if options.cluster:
-        cluster = _parse_cluster(options.cluster, MATRIX)
+        cluster = _parse_cluster(
+            options.cluster, options.indexes_include_headers, MATRIX)
     if options.cluster_file:
         if not os.path.exists(options.cluster_file):
             parser.error(
