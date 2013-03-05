@@ -29,6 +29,7 @@
 #
 # find_row_indexes
 # find_row_ids
+# find_row_random
 # find_row_genesets
 # find_row_annotation
 # find_row_numeric_annotation
@@ -619,6 +620,17 @@ def find_row_ids(MATRIX, ids):
     if not ids:
         return None
     return parse_names(MATRIX, True, ids)
+
+
+def find_row_random(MATRIX, num_rows):
+    import random
+    if not num_rows:
+        return None
+    num_rows = int(num_rows)
+    assert num_rows > 0 and num_rows < MATRIX.nrow()
+
+    I = sorted(random.sample(range(MATRIX.nrow()), num_rows))
+    return I
 
 
 def find_row_genesets(MATRIX, genesets):
@@ -1484,6 +1496,9 @@ def main():
         help="Comma-separated list of IDs (e.g. probes, gene names) "
         "to include.")
     group.add_argument(
+        "--select_row_random", default=None,
+        help="Select this number of random rows.")
+    group.add_argument(
         "--select_row_annotation", default=None,
         help="Include only the rows where the annotation contains a "
         "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
@@ -1583,16 +1598,17 @@ def main():
     # Slice to a submatrix.
     I1 = find_row_indexes(MATRIX, args.select_row_indexes, False)
     I2 = find_row_ids(MATRIX, args.select_row_ids)
-    I3 = find_row_genesets(MATRIX, args.select_row_genesets)
-    I4 = find_row_annotation(MATRIX, args.select_row_annotation)
-    I5 = [find_row_numeric_annotation(MATRIX, annot)
-          for annot in args.select_row_numeric_annotation]
-    I5 = _intersect_indexes(*I5)
-    I6 = find_row_mean_var(
+    I3 = find_row_random(MATRIX, args.select_row_random)
+    I4 = find_row_genesets(MATRIX, args.select_row_genesets)
+    I5 = find_row_annotation(MATRIX, args.select_row_annotation)
+    x = [find_row_numeric_annotation(MATRIX, annot)
+         for annot in args.select_row_numeric_annotation]
+    I6 = _intersect_indexes(*x)
+    I7 = find_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I7 = find_row_var(MATRIX, args.select_row_var)
-    I8 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
-    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6, I7, I8)
+    I8 = find_row_var(MATRIX, args.select_row_var)
+    I9 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6, I7, I8, I9)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     I2 = remove_col_indexes(
