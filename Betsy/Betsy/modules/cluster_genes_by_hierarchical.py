@@ -9,7 +9,7 @@ def run(parameters, objects, pipeline):
     CLUSTER_BIN = 'cluster'
     distance_para = {'correlation': '1', 'euclidean': '7'}
     dist = distance_para[parameters['distance']]  
-    com_parameter = ['-m', 'm', '-e', '1', '-g', dist]
+    com_parameter = ['-m', 's', '-e', '1', '-g', dist]
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     command = [CLUSTER_BIN, '-f', single_object.identifier, '-u', outfile]

@@ -53,13 +53,18 @@ def run(parameters,objects,pipeline):
             if M._row_names[column_id][i].upper() == keyword:
                 data.append(M.slice()[i])
                 legend_name.append(keyword+'('+M._row_names[header_name[0]][i]+')')
-        assert len(data)>0,'input does not contain symbol column'
     for i in range(len(data)):
         line = [(j,data[i][j]) for j in range(len(data[i]))]
         lines.append(line)
-    fig=mplgraph.lineplot(*lines,legend=legend_name,box_label=label,
+        fig=mplgraph.lineplot(*lines,legend=legend_name,box_label=label,
                           ylim_min=0,ylabel='Gene Expression Value')
-    fig.savefig(outfile)
+        fig.savefig(outfile)
+    if not lines:
+        import matplotlib.pyplot as plt
+        plt.clf()
+        plt.plot([0,0,0,0])
+        plt.title('no ACTB or TUBB probes are found')
+        plt.savefig(outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for plot_actb_line fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)

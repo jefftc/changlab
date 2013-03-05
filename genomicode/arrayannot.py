@@ -33,8 +33,11 @@ def annotate_probe_affymetrix_file(probe_ids,annotation):
         annot_index = header.index(new_annotation)
         result = [''] * len(probe_ids)
         for i in range(len(probe_ids)):
-            gindex = matrix[index].index(probe_ids[i])
-            result[i] = matrix[annot_index][gindex]
+            if probe_ids[i] in matrix[index]:
+                gindex = matrix[index].index(probe_ids[i])
+                result[i] = matrix[annot_index][gindex]
+            else:
+                result[i] = ' '
         return result
 
 
@@ -63,8 +66,11 @@ def annotate_probe_illumina_file(probe_ids, annotation):
         annot_index = header.index(new_annotation)
         result = [''] * len(probe_ids)
         for i in range(len(probe_ids)):
-            gindex = matrix[index].index(probe_ids[i])
-            result[i] = matrix[annot_index][gindex]
+            if probe_ids[i] in matrix[index]:
+                gindex = matrix[index].index(probe_ids[i])
+                result[i] = matrix[annot_index][gindex]
+            else:
+                result[i] = ' '
         return result
         
 

@@ -40,11 +40,13 @@ def main():
         line = [str(i) for i in line]
         f.write('\t'.join(line)+'\n')
     f.close()
+    os.chdir(cwd)
     #write SIF file
     a,b,c = read_label_file.read(args.label_file)
     batch = [str(int(i)+1) for i in b]
     arraynames = ['Array%d'%(i+1) for i in range(M.ncol())]
     sif_header=['Array name','Sample name','Batch']
+    os.chdir(dirname)
     f = file(SIF,'w')
     f.write('\t'.join(sif_header)+'\n')
     for i in range(M.ncol()):
@@ -54,7 +56,9 @@ def main():
     import R
     run_combat = config.run_combat
     assert os.path.exists(run_combat),'cannot find the %s' %run_combat
-    R.run_R(run_combat)
+    combat = config.combat
+    assert os.path.exists(combat),'cannot find the %s' %combat
+    R.run_R([run_combat,combat])
     assert module_utils.exists_nz('Adjusted_EIF.dat_.xls'),('the '
                        'adjusted_EIF.dat_.xls does not exist')
     f=file('Adjusted_EIF.dat_.xls','r')
@@ -66,7 +70,7 @@ def main():
     for i in range(M.nrow()):
         M._X[i]=text[i+1].split('\t')
     newfile=file(args.outpath,'w')
-    arrayio.pcl_format.write(M,newfile)
+    arrayio.tab_delimited_format.write(M,newfile)
     newfile.close()
     os.chdir(cwd)
 

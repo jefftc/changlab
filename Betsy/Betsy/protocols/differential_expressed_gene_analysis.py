@@ -97,4 +97,12 @@ predicate2arguments = {
     'rename_list_file': ([], '[]')}
 
 
-                  
+common_parameters=['preprocess','gene_center','gene_normalize',
+                   'has_missing_value','format','is_logged', 'unique_genes',
+                   'filter', 'gene_order','predataset','num_features','group_fc']
+
+normalize_parameters = ['quantile','dwd','bfrm','shiftscale','combat']
+
+optional_parameters = ['contents','gene_select_threshold', 'rename_sample',
+                       'num_factors', 'pca_gene_num', 'platform','duplicate_probe',
+                       'duplicate_data', 'has_annotation_gene_id']                  
