@@ -255,6 +255,7 @@ def is_number(s):
 
 
 def download_ftp(host, path, filename):
+    import ftplib
     from ftplib import FTP
     import socket
     try:
@@ -444,13 +445,18 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
     assert exists_nz(result_fig), 'the plot_pca.py fails'
 
     
-def extract_from_zip(zipName):
-    z = zipfile.ZipFile(zipName)
-    for f in z.namelist():
-        if f.endswith('/'):
-            os.makedirs(f)
-        else:
-            z.extract(f)
+##def extract_from_zip(zipName):
+##    z = zipfile.ZipFile(zipName)
+##    for f in z.namelist():
+##        if f.endswith('/'):
+##            os.makedirs(f)
+##        else:
+##            z.extract(f)
+
+    
+def extract_from_zip(zipName,outdir):
+    zip = zipfile.ZipFile(zipName)
+    zip.extractall(path=outdir)
 
 
 def unzip_if_zip(input_name):
@@ -458,7 +464,10 @@ def unzip_if_zip(input_name):
         directory = os.path.split(input_name)[-1]
         directory = os.path.splitext(directory)[0]
         directory = os.path.join(os.getcwd(), directory)
-        extract_from_zip(input_name)
+        extract_from_zip(input_name,directory)
+        for dirname in os.listdir(directory):
+            if not dirname == '__MACOSX':
+                directory = os.path.join(directory,dirname)
     else:
         directory = input_name
     return directory
