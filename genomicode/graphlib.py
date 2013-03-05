@@ -1351,9 +1351,12 @@ def plot_heatmap_cmd(
 def find_tall_heatmap_size(
     nrow, ncol, min_box_height=None, min_box_width=None,
     max_box_height=None, max_box_width=None,
-    max_total_height=None, max_total_width=None, height_width_ratio=None):
+    max_total_height=None, max_total_width=None, height_width_ratio=None,
+    max_megapixels=None):
     # Return tuple of the pixels for each box as (xpix, ypix).
     # Minimum sizes take precedence over maximum sizes.
+    # max_megapixels take precedence over everything.
+    import math
 
     # Set some defaults.
     min_box_height = min_box_height or 1.0
@@ -1376,28 +1379,47 @@ def find_tall_heatmap_size(
     
     # Start with the minimum size.
     ypix = min_box_height
-    # Set the width to match the height.
     total_y = ypix * nrow
+    # Use the height to find the right width.
     total_x = total_y / height_width_ratio
-    #print total_x, total_y
     xpix = float(total_x) / ncol
-    # If the width is too small, then use this to set the minimum.
+    #print total_x, total_y
+    
+    # If the width is too small, then set the width to the minimum and
+    # use it to set the height.
     if xpix < min_box_width:
         xpix = min_box_width
         total_x = xpix * ncol
         total_y = total_x * height_width_ratio
         ypix = float(total_y) / nrow
         assert ypix >= min_box_height
-        
-    # Increase size up to the maximum allowed.
-    max_xpix = min(max_box_width, float(max_total_width) / ncol)
-    max_ypix = min(max_box_height, float(max_total_height) / nrow)
+
+    # Increase the size up to the maximum allowed.
+    max_xpix = max(min(max_box_width, float(max_total_width) / ncol), 1.0)
+    max_ypix = max(min(max_box_height, float(max_total_height) / nrow), 1.0)
     x_ratio = max_xpix / xpix
     y_ratio = max_ypix / ypix
     ratio = min(y_ratio, x_ratio)
     if ratio > 1.0:
         xpix, ypix = xpix*ratio, ypix*ratio
     #print xpix, ypix
+
+    # Decrease the size to fit max_megapixels.
+    megapixels = nrow * xpix * ncol * ypix / 1024.0 / 1024.0
+    if max_megapixels is not None and megapixels > max_megapixels:
+        assert max_megapixels > 0
+        ratio = math.sqrt(max_megapixels / megapixels)
+        invratio = 1.0 / ratio
+        if invratio < xpix and invratio < ypix:
+            # Try to just scale both dimensions.
+            xpix = xpix * ratio
+            ypix = ypix * ratio
+        elif ncol*ypix > nrow*xpix:
+            xpix = 1.0
+            ypix = float(max_megapixels) / nrow / xpix / ncol * 1024.0 * 1024.0
+        else:
+            ypix = 1.0
+            xpix = float(max_megapixels) / nrow / ncol / ypix * 1024.0 * 1024.0
 
     xpix, ypix = int(xpix), int(ypix)
     #height = nrow * ypix
@@ -1408,7 +1430,8 @@ def find_tall_heatmap_size(
 def find_wide_heatmap_size(
     nrow, ncol, min_box_height=None, min_box_width=None,
     max_box_height=None, max_box_width=None,
-    max_total_height=None, max_total_width=None, height_width_ratio=None):
+    max_total_height=None, max_total_width=None, height_width_ratio=None,
+    max_megapixels=None):
     inv_height_width_ratio = height_width_ratio
     if inv_height_width_ratio is not None:
         inv_height_width_ratio = 1.0 / inv_height_width_ratio
@@ -1417,7 +1440,8 @@ def find_wide_heatmap_size(
         min_box_height=min_box_width, min_box_width=min_box_height,
         max_box_height=max_box_width, max_box_width=max_box_height,
         max_total_height=max_total_width, max_total_width=max_total_height,
-        height_width_ratio=inv_height_width_ratio)
+        height_width_ratio=inv_height_width_ratio,
+        max_megapixels=max_megapixels)
     xpix, ypix = x
     xpix, ypix = ypix, xpix
     #height = nrow * ypix
