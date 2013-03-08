@@ -6,14 +6,14 @@
 # _connect_mysql
 # _disconnect_mysql
 
-def query(query, user, passwd, db, host):
+def query(query, user, passwd, db, host, port):
     import time
     import MySQLdb
 
     start = time.time()
     num_tries = 0
     while 1:
-        DB = _connect_mysql(user, passwd, db, host)
+        DB = _connect_mysql(user, passwd, db, host, port)
         cursor = DB.cursor()
         num_tries += 1
         try:
@@ -21,7 +21,7 @@ def query(query, user, passwd, db, host):
         except MySQLdb.OperationalError, x:
             if (str(x).find("MySQL server has gone away") >= 0 and
                 num_tries < 5):
-                _disconnect_mysql(user, db, host)
+                _disconnect_mysql(user, db, host, port)
                 continue
             elif str(x).find("packet bigger than 'max_allowed_packet'") >= 0:
                 x = "%s\n%s\n%d bytes" % (str(x), query, len(query))
@@ -50,8 +50,8 @@ def _dnslookup(hostname):
     import socket
     return socket.gethostbyname(hostname)
 
-DB_CACHE = {}  # (user, db, host) -> DB object
-def _connect_mysql(user, passwd, db, host):
+DB_CACHE = {}  # (user, db, host, port) -> DB object
+def _connect_mysql(user, passwd, db, host, port):
     # Return a DB object.
     global DB_CACHE
     import time
@@ -66,7 +66,7 @@ def _connect_mysql(user, passwd, db, host):
     if host and not re.match("^[.\d]+$", host):
         host = _dnslookup(host)
 
-    key = user, db, host
+    key = user, db, host, port
     if key in DB_CACHE:
         return DB_CACHE[key]
 
@@ -83,7 +83,12 @@ def _connect_mysql(user, passwd, db, host):
     start = time.time()
     while 1:
         try:
-            DB = MySQLdb.connect(user=user, passwd=passwd, db=db, host=host)
+            if host and port is not None:
+                port = int(port)
+                DB = MySQLdb.connect(
+                    user=user, passwd=passwd, db=db, host=host, port=port)
+            else:
+                DB = MySQLdb.connect(user=user, passwd=passwd, db=db)
         except MySQLdb.OperationalError, x:
             for err in known_db_errors:
                 if str(x).find(err) >= 0:
@@ -97,9 +102,9 @@ def _connect_mysql(user, passwd, db, host):
     DB_CACHE[key] = DB
     return DB
 
-def _disconnect_mysql(user, db, host):
+def _disconnect_mysql(user, db, host, port):
     global DB_CACHE
-    key = user, db, host
+    key = user, db, host, port
     if key not in DB_CACHE:
         return
     DB_CACHE[key].close()

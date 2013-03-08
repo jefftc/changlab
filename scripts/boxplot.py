@@ -9,8 +9,7 @@ def main():
     from genomicode import config
     from genomicode import jmath
 
-    # DOCUMENT: outfile is a PDF file.
-    usage = "usage: %prog [options] filename outfile"
+    usage = "usage: %prog [options] filename outfile.pdf"
     parser = OptionParser(usage=usage, version="%prog 01")
 
     parser.add_option(

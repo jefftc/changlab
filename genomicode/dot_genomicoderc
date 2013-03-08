@@ -78,4 +78,5 @@ gp_server=http://genepattern.broadinstitute.org/gp/pages/index.jsf
 gm_user=genemap
 gm_passwd=g33m4p
 gm_db=genemap
-gm_host=
+gm_host=localhost
+gm_port=3306
