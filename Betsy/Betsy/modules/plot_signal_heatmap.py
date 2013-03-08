@@ -22,9 +22,6 @@ def run(parameters,objects,pipeline,options=None):
     nrow = M.nrow()
     ncol = M.ncol()
     ratio = float(nrow)/ncol
-    print ratio
-    print nrow
-    print ncol
     max_box_height = None
     max_box_width = None
     if 'hm_width' in parameters.keys():
@@ -34,15 +31,14 @@ def run(parameters,objects,pipeline,options=None):
     if ratio >= 4:
         x,y=graphlib.find_tall_heatmap_size(nrow,ncol,
                                             max_box_height=max_box_height,
-                                            max_box_width=max_box_width)
+                                            max_box_width=max_box_width,
+                                            max_megapixels=128)
     else:
         x,y=graphlib.find_wide_heatmap_size(nrow,ncol,
                                             max_box_height=max_box_height,
-                                            max_box_width=max_box_width)
-    print x,y
-    
+                                            max_box_width=max_box_width,
+                                            max_megapixels=128)
     command.extend(['-x',str(x),'-y',str(y)])
-    print command
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)

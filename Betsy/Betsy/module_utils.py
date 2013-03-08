@@ -125,7 +125,8 @@ def write_Betsy_parameters_file(parameters, single_object, pipeline, outfile):
     else:
         text = ['Module input:', (single_object.objecttype,
                                   single_object.identifier),
-                'Module output:', outfile,
+                #'Module output:', outfile,
+                'Module output:',os.path.split(outfile)[-1],
                 'Module output parameters:', parameters,
                 'Pipeline module sequence:', pipeline]
     newtext = json.dumps(text, sort_keys=True, indent=4)

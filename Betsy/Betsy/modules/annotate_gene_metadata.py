@@ -30,7 +30,7 @@ def run(parameters, objects, pipeline):
                         'MG_U74Bv2', 'HG_U95Av2']:
             annot_affymetrix(slice_BIN, chipfilename, single_object.identifier,
                              outfile)
-        elif chipname in ['HumanHT_12', 'MouseRef_8']:
+        elif chipname in ['HumanHT_12', 'HumanWG_6','MouseRef_8']:
             annot_illumina(slice_BIN, chipfilename, single_object.identifier,
                            outfile)
         elif chipname in ['HumanHT_12_control', 'MouseRef_8_control']:
