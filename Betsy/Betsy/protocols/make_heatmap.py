@@ -61,7 +61,7 @@ PARAMETERS = {
     'unique_genes': ['average_genes', 'high_var', 'first_gene',
                     'no_unique_genes'],
     'platform': ["'HG_U133_Plus_2'", "'HG_U133B'", "'HG_U133A'",
-                 "'HG_U133A_2'", "'HG_U95A'", "'HumanHT_12'", "'HG_U95Av2'",
+                 "'HG_U133A_2'", "'HG_U95A'", "'HumanHT_12'", "'HumanWG_6'","'HG_U95Av2'",
                  "'Entrez_ID_human'", "'Entrez_symbol_human'", "'Hu6800'",
                  "'Mouse430A_2'", "'MG_U74Cv2'", "'Mu11KsubB'", "'Mu11KsubA'",
                  "'MG_U74Av2'", "'Mouse430_2'", "'MG_U74Bv2'",

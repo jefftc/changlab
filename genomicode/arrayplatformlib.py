@@ -142,13 +142,15 @@ def score_platforms(annotations):
 
 
 def compare_annotations(annot1, annot2, case_sensitive):
+    """annot_2 is the one from platform"""
     if not case_sensitive:
         annot1 = [psid.upper() for psid in annot1]
         annot2 = [psid.upper() for psid in annot2]
     num_shared_annots = len(set(annot1).intersection(set(annot2)))
     num_annot1_only = len(set(annot1)) - num_shared_annots
     num_annot2_only = len(set(annot2)) - num_shared_annots
-    share_percentage = float(num_shared_annots)/min(len(set(annot1)),len(set(annot2)))
+    #share_percentage1 = float(num_shared_annots)/min(len(set(annot1)),len(set(annot2)))
+    share_percentage = float(num_shared_annots)/len(set(annot1))
     return num_shared_annots, num_annot1_only, num_annot2_only, share_percentage
 
 
@@ -231,11 +233,12 @@ platforms = [Platform('HG_U95A',"affy_hg_u95a","hsapiens_gene_ensembl",1),
              Platform('RG_U34A','affy_rg_u34a',"rnorvegicus_gene_ensembl",19),
              Platform('RAE230A','affy_rae230a',"rnorvegicus_gene_ensembl",20),
              Platform('HumanHT_12',"illumina_humanht_12","hsapiens_gene_ensembl",21),
-             Platform('MouseRef_8',"illumina_mousewg_6_v2","mmusculus_gene_ensembl",22),
-             Platform('Entrez_ID_human',"entrezgene","hsapiens_gene_ensembl",23),
-             Platform('Entrez_ID_mouse',"entrezgene","mmusculus_gene_ensembl",24),
-             Platform('Entrez_symbol_human',"hgnc_symbol","hsapiens_gene_ensembl",25),
-             Platform('Entrez_symbol_mouse',"mgi_symbol","mmusculus_gene_ensembl",26),
+             Platform('HumanWG_6',"illumina_humanwg_6_v3","hsapiens_gene_ensembl",22),
+             Platform('MouseRef_8',"illumina_mousewg_6_v2","mmusculus_gene_ensembl",23),
+             Platform('Entrez_ID_human',"entrezgene","hsapiens_gene_ensembl",24),
+             Platform('Entrez_ID_mouse',"entrezgene","mmusculus_gene_ensembl",25),
+             Platform('Entrez_symbol_human',"hgnc_symbol","hsapiens_gene_ensembl",26),
+             Platform('Entrez_symbol_mouse',"mgi_symbol","mmusculus_gene_ensembl",27),
              ]
 
 

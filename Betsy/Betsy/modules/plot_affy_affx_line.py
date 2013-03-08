@@ -17,7 +17,12 @@ def run(parameters,objects,pipeline):
                         'entrez_ID_human','entrez_ID_mouse',
                         'entrez_symbol_human',
                         'entrez_symbol_mouse']:
-            return None
+            import matplotlib.pyplot as plt
+            plt.clf()
+            plt.plot([0,0,0,0])
+            plt.title('no AFFX plot can be generated')
+            plt.savefig(outfile)
+            
         else:
             M=arrayio.read(single_object.identifier)
             label = M._col_names['_SAMPLE_NAME']
@@ -33,12 +38,12 @@ def run(parameters,objects,pipeline):
             f=mplgraph.lineplot(line,ylim_min=0,
                                 ylabel='Gene Expression Value',box_label=label)
             f.savefig(outfile)
-            assert module_utils.exists_nz(outfile),(
+        assert module_utils.exists_nz(outfile),(
             'the output file %s for plot_affy_affx_line fails'%outfile)
-            new_objects = get_newobjects(parameters,objects,pipeline)
-            module_utils.write_Betsy_parameters_file(
+        new_objects = get_newobjects(parameters,objects,pipeline)
+        module_utils.write_Betsy_parameters_file(
                       parameters,single_object,pipeline,outfile)
-            return new_objects
+        return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):
     return module_utils.make_unique_hash(
