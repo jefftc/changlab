@@ -132,9 +132,12 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   diff <- diff[I]
 
   # BUG: will break if p-value is NA.
-  x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
-  p.values <- unlist(lapply(x, function(x) x$p.value))
-  nl10p <- -log(p.values, 10)
+  p.values <- c()
+  nl10p <- c()
+  if(nrow(X.1) >= 1) {
+    x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
+    p.values <- unlist(lapply(x, function(x) x$p.value))
+  }
   fdr <- fdr.correct.bh(p.values)
   bonf <- bonferroni.correct(p.values)
 
@@ -148,14 +151,21 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   med.2 <- med.2[I]
   diff <- diff[I]
   p.values <- p.values[I]
-  nl10p <- nl10p[I]
   fdr <- fdr[I]
   bonf <- bonf[I]
-  
+
+  nl10p <- c()
+  nl10fdr <- c()
+  nl10bonf <- c()
+  if(length(p.values)) {
+    nl10p <- -log(p.values, 10)
+    nl10fdr <- -log(fdr, 10)  
+    nl10bonf <- -log(bonf, 10)
+  }
+
   direction <- rep(sprintf("Higher in %s", Y.all[1]), length(med.1))
   direction[med.2 > med.1] <- sprintf("Higher in %s", Y.all[2])
-  DATA <- cbind(geneid, genenames, 
-    nl10p, -log(fdr, 10), -log(bonf, 10), diff, 
+  DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, diff, 
     direction, X.1, X.2)
   colnames(DATA) <- c("Gene.ID", "Gene.Name", "NL10P", 
     "log_10 FDR", "log_10 Bonf", "Delta", "Direction", 

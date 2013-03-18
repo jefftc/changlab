@@ -13,6 +13,8 @@
 
 
 fdr.correct.bh <- function(p.values) {
+  if(!length(p.values))
+    return(NULL)
   m <- length(p.values)
 
   # Sort p.values in increasing order.
@@ -28,6 +30,8 @@ fdr.correct.bh <- function(p.values) {
 }
 
 bonferroni.correct <- function(p.values) {
+  if(!length(p.values))
+    return(NULL)
   m <- length(p.values)
   bonf.p <- p.values*m
   sapply(bonf.p, function(x) min(x, 1))
