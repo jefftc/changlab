@@ -7,6 +7,7 @@ read_genesets   Read the genesets in a geneset file.
 read_genes      Return a list of genes that belong in a specific geneset.
 
 write_gmt
+write_gmx
 
 detect_format
 
@@ -43,6 +44,27 @@ def write_gmt(filename, genesets):
         handle = open(filename, 'w')
     for gs in genesets:
         x = [gs.name, gs.description] + gs.genes
+        print >>handle, "\t".join(map(str, x))
+
+
+def write_gmx(filename, genesets):
+    handle = filename
+    if type(handle) is type(""):
+        handle = open(filename, 'w')
+
+    matrix = []
+    for gs in genesets:
+        x = [gs.name, gs.description] + gs.genes
+        matrix.append(x)
+
+    # Make sure each row of the matrix is the same length.
+    maxlen = max([len(x) for x in matrix])
+    for i in range(len(matrix)):
+        x = [""] * (maxlen-len(matrix[i]))
+        matrix[i].extend(x)
+
+    for i in range(len(matrix[0])):
+        x = [x[i] for x in matrix]
         print >>handle, "\t".join(map(str, x))
 
 
