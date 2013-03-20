@@ -3,6 +3,7 @@
 # Functions:
 # _clean
 # read_matrices
+# has_missing_values
 #
 # parse_indexes
 # parse_names
@@ -151,6 +152,13 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
                 os.unlink(f)
 
     return fmt_module, matrices
+
+
+def has_missing_values(MATRIX):
+    for x in MATRIX._X:
+        if None in x:
+            return True
+    return False
 
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
@@ -863,6 +871,7 @@ def dedup_row_by_var(MATRIX, header):
             annot2i[annot] = []
         annot2i[annot].append(i)
 
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     variances = jmath.var(MATRIX._X)
 
     I = []
@@ -1160,6 +1169,7 @@ def center_genes_mean(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the mean.
@@ -1179,6 +1189,7 @@ def center_genes_median(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the median.
@@ -1198,6 +1209,7 @@ def normalize_genes_var(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Normalize the genes in place.
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     X = MATRIX._X
     for i in range(len(X)):
         X_i = X[i]

@@ -1,7 +1,7 @@
 """
 
-read_gmx
-read_gmt
+read_gmx        Each column is a gene set.
+read_gmt        Each row is a gene set.
 read_tdf
 read_genesets   Read the genesets in a geneset file.
 read_genes      Return a list of genes that belong in a specific geneset.

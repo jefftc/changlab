@@ -6,6 +6,7 @@ import sys
 import arrayio
 from genomicode import filelib, jmath, genesetlib, config
 from genomicode import matrixlib, Matrix, colorlib
+from genomicode import hashlib
 
 
 def guess_file_type(filename):
@@ -76,20 +77,59 @@ def parse_genes(genes):
         return None
 
 
-def intersect_clinical_matrix_sample_name(M, clinical_data):
+def align_matrix_with_clinical_data(M, clinical_dict):
+    import arrayio
+
+    assert clinical_dict, "No clinical data."
+
     sample_name = M._col_names['_SAMPLE_NAME']
-    name_in_clinical = None
-    clinical_dict = dict()
-    for g in clinical_data:
-        name, description, values = g
-        clinical_dict[name] = values
-    for g in clinical_dict:
-        n = len(list(set(sample_name).intersection(set(clinical_dict[g]))))
-        if n > 0:
-            name_in_clinical = clinical_dict[g]
-    assert name_in_clinical, ('cannot match the sample name in '
-                              'clinical data and gene data')
-    return clinical_dict, name_in_clinical
+
+    # Figure out the header in the clinical data that contains these
+    # samples.
+    name2count = {}
+    for name, values in clinical_dict.iteritems():
+        count = len(set(sample_name).intersection(values))
+        name2count[name] = count
+    best_name = best_count = None
+    for name, count in name2count.iteritems():
+        if best_count is None or count > best_count:
+            best_name, best_count = name, count
+    assert best_count > 0, \
+           "I could not align the matrix with the clinical data."
+    clinical_name = clinical_dict[best_name]
+
+    # From the clinical data, only keep the samples that occur in the
+    # matrix.
+    I = [i for (i, name) in enumerate(clinical_name) if name in sample_name]
+    clinical_clean = {}
+    for name, values in clinical_dict.iteritems():
+        values_clean = [values[i] for i in I]
+        clinical_clean[name] = values_clean
+    clinical_dict = clinical_clean
+
+    # Realign the matrix to match the clinical data.
+    x = matrixlib.align_cols_to_annot(
+        M, clinical_dict[best_name], reorder_MATRIX=True)
+    M, colnames = x
+    assert colnames == clinical_dict[best_name]
+
+    return M, clinical_dict
+
+
+## def intersect_clinical_matrix_sample_name(M, clinical_data):
+##     sample_name = M._col_names['_SAMPLE_NAME']
+##     name_in_clinical = None
+##     clinical_dict = dict()
+##     for g in clinical_data:
+##         name, description, values = g
+##         clinical_dict[name] = values
+##     for g in clinical_dict:
+##         n = len(list(set(sample_name).intersection(set(clinical_dict[g]))))
+##         if n > 0:
+##             name_in_clinical = clinical_dict[g]
+##     assert name_in_clinical, ('cannot match the sample name in '
+##                               'clinical data and gene data')
+##     return clinical_dict, name_in_clinical
 
 
 def convert_genesetfile2matrix(filename):
@@ -158,7 +198,7 @@ def make_group_names(cutoffs, file_type):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='associate the gene expression with outcomes')
+        description='Associate gene expression patterns with outcomes.')
     parser.add_argument(dest='expression_file', type=str, default=None,
                         help='gene expression file or geneset score file')
     parser.add_argument(dest='clinical_data', type=str, default=None)
@@ -195,6 +235,7 @@ def main():
                         help='the y label for Kaplan-Meier plot')
     parser.add_argument('--title', dest='title', default=None,
                         type=str, help='the title for Kaplan-Meier plot')
+
     args = parser.parse_args()
     input_file = args.expression_file
     assert input_file, ('please specify the path of gene expression data '
@@ -210,39 +251,46 @@ def main():
     if gene_list and geneset_list:
         raise AssertionError('we only accept gene '
                              'or geneset at each time, not both')
-    if file_type == 'gene_expression_file' and geneset_list:
-        raise AssertionError('gene_expression_file cannot run with geneset')
-    if file_type == 'geneset_file' and gene_list:
-        raise AssertionError('geneset_file cannot run with gene')
-    if file_type == 'gene_expression_file':
+    
+    if file_type == "gene_expression_file":
+        assert gene_list, "Please specify a gene to analyze."
+        assert not geneset_list, 'gene_expression_file cannot run with geneset'
         M = arrayio.read(input_file)
-    elif file_type == 'geneset_file':
+    elif file_type == "geneset_file":
+        assert geneset_list, "Please specify a gene set to analyze."
+        assert not gene_list, 'geneset_file cannot run with gene'
         M = convert_genesetfile2matrix(input_file)
-    clinical_data = genesetlib.read_tdf(
-        clinical_file, preserve_spaces=True, allow_duplicates=True)
-    clinical_dict, name_in_clinical = intersect_clinical_matrix_sample_name(
-        M, clinical_data)
-    #align the sample order of gene expression file and clinical data
-    x = matrixlib.align_cols_to_annot(
-        M, name_in_clinical, reorder_MATRIX=True)
-    M, colnames = x
+    else:
+        raise AssertionError, "Unknown file type: %s" % file_type
+
+    clinical_dict = {}
+    for x in genesetlib.read_tdf(
+        clinical_file, preserve_spaces=True, allow_duplicates=True):
+        name, description, values = x
+        clinical_dict[name] = values
+        
+    x = align_matrix_with_clinical_data(M, clinical_dict)
+    M, clinical_dict = x
+
+
     #if given genes or geneset,get of match genes or geneset
+    assert gene_list or geneset_list
     if gene_list:
         x = M._index(row=gene_list)
-    if geneset_list:
+    elif geneset_list:
         x = M._index(row=geneset_list)
     index_list, rownames = x
+    assert index_list, 'we cannot match any gene or geneset as required'
+
+    M = M.matrix(index_list, None)
+    headers = M.row_names()
+    geneids = M.row_names(headers[0])
     
-    M = M.matrix(index_list,None)
-    ids = M._row_order
-    geneids = M._row_names[ids[0]]
-    assert geneids, 'we cannot match any gene or geneset as required'
-    headers = ids[:]
-    data_all = M.slice()
     #add the gene annotation column to the output_data
     output_data = []
     for i in range(len(geneids)):
-        output_data.append([M._row_names[name][i] for name in ids])
+        output_data.append([M.row_names(name)[i] for name in M.row_names()])
+        
     kaplanmeierlib_path = config.kaplanmeierlib
     assert os.path.exists(kaplanmeierlib_path), (
         'can not find the kaplanmeierlib script %s' % kaplanmeierlib_path)
@@ -295,6 +343,7 @@ def main():
         else:
             tmp_header = output_header
         headers.extend(tmp_header)
+        
     #calculate the survival analysis for each gene in each outcome
     all_group_name = [[]] * len(outcomes)
     all_survival = []
@@ -307,7 +356,7 @@ def main():
         all_survival.append(survival)
         all_dead.append(dead)
         for i in range(len(geneids)):
-            data = data_all[i]
+            data = M.value(i, None)
             data_select = [data[j] for j in all_sample_index[h]]
             jmath.R_equals(data_select, 'F')
             R('group <- group.by.value(F, cutoffs)')
@@ -345,12 +394,13 @@ def main():
                 jmath.R_equals(prism_file, 'filename')
                 R('write.km.prism.multi(filename,survival, dead, name)')
             if args.plot_km:
-                km_plot = (filestem + all_time_header[h] + '.'
-                           + geneids[i] + '.km.png')
+                geneid_clean = hashlib.hash_var(geneids[i])
+                km_plot = "%s%s.%s.km.png" % (
+                    filestem, all_time_header[h], geneid_clean)
                 R(make_color_command(name))
                 jmath.R_equals(km_plot, 'filename')
                 jmath.R_equals(geneids[i], 'title')
-                jmath.R_equals('p_value=' + str(all_p_value[h][i]), 'sub')
+                jmath.R_equals('p_value=%.2g' % all_p_value[h][i], 'sub')
                 R('xlab<-""')
                 R('ylab<-""')
                 if args.xlab:
@@ -359,7 +409,10 @@ def main():
                     jmath.R_equals(args.ylab, 'ylab')
                 if args.title:
                     jmath.R_equals(args.title, 'title')
-                R('bitmap(file=filename,type="png256")')
+                #R('bitmap(file=filename,type="png256")')
+                jmath.R_fn(
+                    "bitmap", file=jmath.R_var("filename"), type="png256",
+                     height=1600, width=1600, units="px", res=300)
                 R('plot.km.multi(survival, dead, name,'
                   'col=col, main=title, sub=sub, xlab=xlab, ylab=ylab)')
                 R('dev.off()')

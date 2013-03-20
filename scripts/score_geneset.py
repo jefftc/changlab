@@ -3,6 +3,7 @@
 import sys, os
 
 # parse_geneset
+# has_missing_values
 # score_gene_set
 # score_many
 
@@ -20,6 +21,13 @@ def parse_geneset(geneset):
     if len(x) == 2:
         neg = x[1]
     return pos, neg
+
+
+def has_missing_values(MATRIX):
+    for x in MATRIX._X:
+        if None in x:
+            return True
+    return False
 
 def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
     from genomicode import genesetlib
@@ -67,6 +75,8 @@ def score_many(jobs, lock=None):
             x = arrayio.read(matrix_file)
             file2matrix[matrix_file] = x
         MATRIX = file2matrix[matrix_file]
+        assert not has_missing_values(MATRIX), \
+               "Matrix %s has missing values." % matrix_name
         x = score_gene_set(
             gs_name, pos_genes, neg_genes, matrix_name, MATRIX, lock=lock)
         # TODO: should make sure we don't overwrite previous results.
