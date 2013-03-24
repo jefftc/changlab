@@ -1,3 +1,5 @@
+# clean.genes
+#
 # write.gmt
 # read.gmt
 # write.gmx
@@ -20,6 +22,24 @@
     data.out <- rbind(data.out, x)
   }
   data.out
+}
+
+clean.genes <- function(genes) {
+  x <- genes
+  x <- x[x != "---"]
+  x <- x[x != ""]
+  x <- x[!is.na(x)]
+
+  # Sort numerically, of possible.
+  ow <- options("warn")
+  options(warn=-1)
+  nx <- as.numeric(x)
+  options(ow)
+  if(!any(is.na(nx)))
+    x <- nx
+  x <- sort(x)
+  x <- x[!duplicated(x)]
+  as.character(x)
 }
 
 write.gmt <- function(filename, genesets) {

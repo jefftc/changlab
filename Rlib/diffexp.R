@@ -85,10 +85,13 @@ find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA,
 
 # requires statlib.R
 find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0) {
+  FOLD.CHANGE=0, NPROCS=1) {
+  library(multicore)
   # X must be logged.
   # Y should be the labels for two classes.  NA will be filtered out.
   # FOLD.CHANGE should not be logged.
+
+  if(ncol(X) != length(Y)) stop("X and Y not aligned")
 
   I <- which(!is.na(Y))
   X <- X[,I]
@@ -101,6 +104,8 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   Y[Y.orig == Y.all[1]] <- 1
   Y[Y.orig == Y.all[2]] <- 2
   if(any(is.na(Y))) stop("bad")
+  if(sum(Y == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+  if(sum(Y == 2, na.rm=TRUE) <= 1) stop("not enough samples")
 
   if((length(geneid) == 1)  && is.na(geneid)) {
     ndigits <- floor(log(nrow(X), 10)) + 1
@@ -114,7 +119,7 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   if(nrow(X) != length(geneid)) stop("unaligned")
   if(nrow(X) != length(genenames)) stop("unaligned")
 
-  X.1 <- X[,Y == 1]   # BUG: will break if only 1 member of a class
+  X.1 <- X[,Y == 1]
   X.2 <- X[,Y == 2]
 
   # Find the genes that match the fold change criteria.
@@ -122,9 +127,9 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   med.2 <- apply(X.2, 1, mean)
   diff <- abs(med.2 - med.1)
   I <- diff >= log(FOLD.CHANGE, 2)
-  X <- X[I,]
-  X.1 <- X.1[I,]
-  X.2 <- X.2[I,]
+  X <- matrix(X[I,], ncol=ncol(X), dimnames=list(NULL, colnames(X)))
+  X.1 <- matrix(X.1[I,], ncol=ncol(X.1), dimnames=list(NULL, colnames(X.1)))
+  X.2 <- matrix(X.2[I,], ncol=ncol(X.2), dimnames=list(NULL, colnames(X.2)))
   geneid <- geneid[I]
   genenames <- genenames[I]
   med.1 <- med.1[I]
@@ -135,16 +140,18 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   p.values <- c()
   nl10p <- c()
   if(nrow(X.1) >= 1) {
-    x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
+    #x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
+    x <- mclapply(1:nrow(X.1), mc.cores=NPROCS, FUN=function(i) 
+      t.test(X.1[i,], X.2[i,]))
     p.values <- unlist(lapply(x, function(x) x$p.value))
   }
   fdr <- fdr.correct.bh(p.values)
   bonf <- bonferroni.correct(p.values)
 
   I <- which(p.values < 0.05)
-  X <- X[I,]
-  X.1 <- X.1[I,]
-  X.2 <- X.2[I,]
+  X <- matrix(X[I,], ncol=ncol(X), dimnames=list(NULL, colnames(X)))
+  X.1 <- matrix(X.1[I,], ncol=ncol(X.1), dimnames=list(NULL, colnames(X.1)))
+  X.2 <- matrix(X.2[I,], ncol=ncol(X.2), dimnames=list(NULL, colnames(X.2)))
   geneid <- geneid[I]
   genenames <- genenames[I]
   med.1 <- med.1[I]
@@ -167,8 +174,8 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   direction[med.2 > med.1] <- sprintf("Higher in %s", Y.all[2])
   DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, diff, 
     direction, X.1, X.2)
-  colnames(DATA) <- c("Gene.ID", "Gene.Name", "NL10P", 
-    "log_10 FDR", "log_10 Bonf", "Delta", "Direction", 
+  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
+    "NL10 FDR", "NL10 Bonf", "Delta", "Direction", 
     colnames(X.1), colnames(X.2))
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA)
