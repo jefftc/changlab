@@ -5,9 +5,10 @@ import shutil
 from Betsy import read_label_file
 import arrayio
 import matplotlib.cm as cm
+from time import strftime,localtime
 
-
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     label_file = module_utils.find_object(
@@ -33,7 +34,8 @@ def run(parameters,objects,pipeline):
         'the output file %s for pca_sample_plot fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
-                                             single_object,pipeline,outfile)
+                                             [single_object,label_file],
+                                             pipeline,outfile,starttime,user,jobname)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

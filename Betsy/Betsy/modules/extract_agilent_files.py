@@ -3,9 +3,10 @@ from Betsy import module_utils
 import shutil
 import os
 from Betsy import hash_method
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     directory = module_utils.unzip_if_zip(single_object.identifier)
@@ -45,7 +46,8 @@ def run(parameters, objects, pipeline):
             'the output file %s for extract_agilent_files fails' % outfile)
         new_objects = get_newobjects(parameters, objects, pipeline)
         module_utils.write_Betsy_parameters_file(parameters, single_object,
-                                                 pipeline, outfile)
+                                                 pipeline, outfile,starttime,
+                                                 user,jobname)
         return new_objects
     else:
         print 'There is no agilent file in the input.'

@@ -2,10 +2,11 @@
 import os
 import subprocess
 from Betsy import module_utils
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
     """clustering the input file"""
+    starttime = strftime(module_utils.FMT, localtime())
     CLUSTER_BIN = 'cluster'
     distance_para = {'correlation': '1', 'euclidean': '7'}
     if not int(parameters['k']):
@@ -42,7 +43,7 @@ def run(parameters, objects, pipeline):
         'the output file %s for clustering fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, single_object, pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

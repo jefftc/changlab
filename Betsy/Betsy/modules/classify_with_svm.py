@@ -4,9 +4,10 @@ import sys
 import arrayio
 import os
 from Betsy import read_label_file, module_utils
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     model_file = module_utils.find_object(
@@ -67,7 +68,8 @@ def run(parameters, objects, pipeline):
         'the output file %s for classify_with_svm fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, [single_object,model_file,test_label_file],
+        pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

@@ -2,8 +2,11 @@
 import os
 from Betsy import module_utils
 import subprocess
-def run(parameters,objects,pipeline):
+from time import strftime,localtime
+
+def run(parameters,objects,pipeline,user,jobname):
     """variance or sum_of_square"""
+    starttime = strftime(module_utils.FMT, localtime())
     norm_para = ["variance","sum_of_squares"]
     if parameters['gene_normalize'] not in norm_para:
         raise ValueError("Cannot recognizd the normalize parameter")
@@ -35,7 +38,8 @@ def run(parameters,objects,pipeline):
         'the output file %s for normalize fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                           parameters,single_object,pipeline,outfile)
+                           parameters,single_object,pipeline,outfile,
+                           starttime,user,jobname)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

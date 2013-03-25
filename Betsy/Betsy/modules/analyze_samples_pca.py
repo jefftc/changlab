@@ -3,8 +3,11 @@ import os
 from genomicode import pcalib
 import arrayio
 from Betsy import module_utils
+from time import strftime,localtime
 
-def run(parameters,objects,pipeline):
+
+def run(parameters,objects,pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(single_object.identifier)
@@ -23,7 +26,8 @@ def run(parameters,objects,pipeline):
         'the output file %s for analyze_samples_pca fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
-                                             single_object,pipeline,outfile)
+                                             single_object,pipeline,outfile,
+                                             starttime,user,jobname)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

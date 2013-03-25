@@ -4,9 +4,11 @@ import subprocess
 from Betsy import module_utils
 from genomicode import config, graphlib
 import arrayio
+from time import strftime,localtime
 
-def run(parameters,objects,pipeline,options=None):
+def run(parameters,objects,pipeline,user,jobname):
     """generate a heatmap of input file"""
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters,objects)
     outfile =  get_outfile(parameters,objects,pipeline)
     Heatmap_path = config.arrayplot
@@ -49,7 +51,7 @@ def run(parameters,objects,pipeline,options=None):
         'the output file %s for plot_signal_heatmap fails' %outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline,outfile)
+        parameters,single_object,pipeline,outfile,starttime,user,jobname)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):

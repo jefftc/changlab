@@ -2,10 +2,11 @@
 import os
 from Betsy import module_utils
 import shutil
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
     """extract the cel files with cc or v3_4"""
+    starttime = strftime(module_utils.FMT, localtime())
     from genomicode import affyio
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
@@ -32,7 +33,7 @@ def run(parameters, objects, pipeline):
             'the output file %s for extract_CEL_files fails' % outfile)
         new_objects = get_newobjects(parameters, objects, pipeline)
         module_utils.write_Betsy_parameters_file(
-            parameters, single_object, pipeline, outfile)
+            parameters, single_object, pipeline, outfile,starttime,user,jobname)
         return new_objects
     else:
         print 'There is no cel file in the input.'

@@ -4,9 +4,10 @@ import shutil
 import os
 import arrayio
 from Betsy import module_utils, read_label_file
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     label_file = module_utils.find_object(
@@ -38,7 +39,8 @@ def run(parameters, objects, pipeline):
         'the output file %s for calc_diffexp_with_sam fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, [single_object,label_file], pipeline, outfile,
+        starttime,user,jobname)
     return new_objects
 
 

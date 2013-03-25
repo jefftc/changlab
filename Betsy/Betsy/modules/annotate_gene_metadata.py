@@ -5,9 +5,10 @@ import shutil
 import arrayio
 from Betsy import module_utils
 from genomicode import filelib, arrayannot, config
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     slice_path = config.slice_matrix
@@ -47,7 +48,7 @@ def run(parameters, objects, pipeline):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for annot_file fails' % outfile)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, single_object, pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

@@ -5,7 +5,10 @@ import arrayio
 from Betsy import read_label_file
 from Betsy import module_utils
 import os
-def run(parameters,objects,pipeline):
+from time import strftime,localtime
+
+def run(parameters,objects,pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     training = arrayio.read(single_object.identifier)
@@ -31,7 +34,8 @@ def run(parameters,objects,pipeline):
         'the output file %s for train_svm_model fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline,outfile)
+        parameters,[single_object,training_label_file],pipeline,
+        outfile,starttime,user,jobname)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):

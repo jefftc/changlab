@@ -2,10 +2,11 @@
 import os
 from Betsy import module_utils
 from genomicode import arrayplatformlib
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
     """run David"""
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     f = file(single_object.identifier, 'r')
@@ -21,7 +22,7 @@ def run(parameters, objects, pipeline):
         'the outfile for run_david %s does not exist' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, single_object, pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

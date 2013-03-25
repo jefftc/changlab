@@ -1,8 +1,10 @@
 #filter_genes_by_missing_values.py
 import os
 from Betsy import module_utils
+from time import strftime,localtime
 
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     import arrayio
@@ -24,7 +26,8 @@ def run(parameters,objects,pipeline):
     assert module_utils.exists_nz(outfile),(
         'the output file %s for gene_filter fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(parameters,single_object,pipeline,outfile)
+    module_utils.write_Betsy_parameters_file(parameters,single_object,
+                                             pipeline,outfile,starttime,user,jobname)
     return new_objects
     
 def make_unique_hash(identifier,pipeline,parameters):

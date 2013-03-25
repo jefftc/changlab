@@ -5,9 +5,10 @@ import arrayio
 import os
 from Betsy import read_label_file, module_utils
 from genomicode import jmath
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     train_file = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     train_label_file = module_utils.find_object(
@@ -78,7 +79,8 @@ def run(parameters, objects, pipeline):
         'the output file %s for classify_with_random_forest fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, train_file, pipeline, outfile)
+        parameters, [train_file,test_file,train_label_file,test_label_file] ,
+        pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

@@ -5,7 +5,7 @@ from ftplib import FTP
 from Betsy import module_utils
 import string
 import gzip
-
+from time import strftime,localtime
 
 def get_seriesmatrix_file(GSEID, GPLID):
     'download series matrix and unzip'
@@ -50,8 +50,9 @@ def get_seriesmatrix_file(GSEID, GPLID):
     return platform_txtfiles
 
 
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
     """given a database ID and GPLID, get the cel files"""
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     GSEID = single_object.identifier.split(',')[0]
@@ -103,7 +104,7 @@ def run(parameters, objects, pipeline):
         'the output file %s for download_geo_dataset_GPL fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, single_object, pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

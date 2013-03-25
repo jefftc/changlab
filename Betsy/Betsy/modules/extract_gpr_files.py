@@ -4,10 +4,11 @@ import gzip
 import shutil
 from Betsy import module_utils
 from Betsy import gpr_module
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline, options=None):
+def run(parameters, objects, pipeline, user,jobname):
     """extract the files that are gpr format"""
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     directory = module_utils.unzip_if_zip(single_object.identifier)
@@ -35,7 +36,7 @@ def run(parameters, objects, pipeline, options=None):
             'the output file %s for extract_gpr fails' % outfile)
         new_objects = get_newobjects(parameters, objects, pipeline)
         module_utils.write_Betsy_parameters_file(
-            parameters, single_object, pipeline, outfile)
+            parameters, single_object, pipeline, outfile,starttime,user,jobname)
         return new_objects
     else:
         print 'There is no gpr file in the input.'

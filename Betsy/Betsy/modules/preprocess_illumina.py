@@ -6,6 +6,7 @@ from genomicode import config
 import zipfile
 import subprocess
 import arrayio
+from time import strftime,localtime
 
 def zip_directory(dir, zip_file):
     zip = zipfile.ZipFile(zip_file, 'w',
@@ -19,7 +20,8 @@ def zip_directory(dir, zip_file):
             zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
     zip.close()
 
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     module_name = 'IlluminaExpressionFileCreator'
@@ -132,7 +134,7 @@ def run(parameters,objects,pipeline):
         'the output file %s for illumina fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                    parameters,single_object,pipeline,outfile)
+                    parameters,single_object,pipeline,outfile,starttime,user,jobname)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

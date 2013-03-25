@@ -4,7 +4,10 @@ from Betsy import module_utils
 import os
 import arrayio
 from genomicode import arrayplatformlib, config
-def run(parameters, objects, pipeline):
+from time import strftime,localtime
+
+def run(parameters, objects, pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     #read the gene order list
@@ -60,7 +63,8 @@ def run(parameters, objects, pipeline):
         'the output file %s for reorder_genes fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, [single_object,gene_list_file], pipeline,
+        outfile,starttime,user,jobname)
     return new_objects
 
 

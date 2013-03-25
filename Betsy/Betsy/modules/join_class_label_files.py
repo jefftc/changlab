@@ -3,8 +3,10 @@ from Betsy import read_label_file
 from Betsy import module_utils
 import shutil
 import os
+from time import strftime,localtime
 
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     outfile = get_outfile(parameters,objects,pipeline)
     clf1 = module_utils.find_object(
         parameters,objects,'class_label_file','merge1')
@@ -26,7 +28,8 @@ def run(parameters,objects,pipeline):
         'the output file %s for join_class_label_file fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-                                  parameters,[clf1,clf2],pipeline,outfile)
+                                  parameters,[clf1,clf2],pipeline,
+                                  outfile,starttime,user,jobname)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

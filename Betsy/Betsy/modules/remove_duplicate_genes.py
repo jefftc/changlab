@@ -4,10 +4,11 @@ from Betsy import module_utils
 from genomicode import jmath,arrayplatformlib,arrayannot
 import arrayio
 import re
+from time import strftime,localtime
 
-
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
     """remove duplicate genes"""
+    starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
     M = arrayio.read(single_object.identifier)
@@ -24,7 +25,7 @@ def run(parameters,objects,pipeline):
         'the output file %s for remove_duplicate_genes fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline,outfile)
+        parameters,single_object,pipeline,outfile,starttime,user,jobname)
     return new_objects
 
 

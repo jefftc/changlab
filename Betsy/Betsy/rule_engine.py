@@ -11,7 +11,7 @@ import module_utils
 import re
 import time
 import tempfile
-
+import getpass
 
 def plstring2dataobject(pl_inputs, identifiers):
     assert len(pl_inputs) == len(identifiers), 'the length\
@@ -143,7 +143,7 @@ def copy_result_folder(working_dir, temp_dir, temp_outfile):
             raise
 
 
-def run_module(analysis,objects,pipeline_sequence,clean_up=True):
+def run_module(analysis,objects,pipeline_sequence,user=getpass.getuser(),job_name='',clean_up=True):
     output_path = config.OUTPUTPATH
     assert os.path.exists(output_path), (
             'the output_path %s does not exist' % output_path)
@@ -166,7 +166,7 @@ def run_module(analysis,objects,pipeline_sequence,clean_up=True):
         os.chdir(temp_dir)
         try:
             temp_objects = module.run(
-                analysis.parameters, objects, pipeline_sequence)
+                analysis.parameters, objects, pipeline_sequence,user,job_name)
             if temp_objects:
                 f = file(os.path.join(temp_dir, 'stdout.txt'),'w')
                 f.write('This module runs successully.')
@@ -203,7 +203,7 @@ def run_module(analysis,objects,pipeline_sequence,clean_up=True):
     return final_outfile, new_objects
 
 
-def run_pipeline(pipeline, objects, clean_up=True):
+def run_pipeline(pipeline, objects, user=getpass.getuser(),job_name='',clean_up=True):
     """run a single pipeline"""
     OUTPUT = None
     outfile_list = []
@@ -221,7 +221,7 @@ def run_pipeline(pipeline, objects, clean_up=True):
             print '[' + time.strftime('%l:%M%p') + '] ' + str(i + 1) + '.' + module_name
             sys.stdout.flush()
             outfile,new_objects = run_module(
-                analysis,objects,pipeline_sequence,clean_up=clean_up)
+                analysis,objects,pipeline_sequence,user=user,job_name=job_name,clean_up=clean_up)
             outfile_list.append(outfile)
             objects = new_objects[:]
             if analysis == pipeline[-1]:

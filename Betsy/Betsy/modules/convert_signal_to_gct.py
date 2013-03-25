@@ -1,10 +1,11 @@
 #convert_signal_to_gct.py
 import os
 from Betsy import module_utils
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
     """convert signal file to gct format"""
+    starttime = strftime(module_utils.FMT, localtime())
     import arrayio
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
@@ -17,7 +18,7 @@ def run(parameters, objects, pipeline):
         'the output file %s for convert_pcl_gct fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, single_object, pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

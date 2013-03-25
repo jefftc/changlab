@@ -3,10 +3,11 @@ import os
 from Betsy import module_utils
 import shutil
 import gzip
+from time import strftime,localtime
 
-
-def run(parameters, objects, pipeline):
+def run(parameters, objects, pipeline,user,jobname):
     """convert the cel file with ccl or v3_4 to v3_4"""
+    starttime = strftime(module_utils.FMT, localtime())
     from genomicode import affyio
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
@@ -38,7 +39,7 @@ def run(parameters, objects, pipeline):
         'the output file %s for convert_CEL_to_v3_v4 fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile)
+        parameters, single_object, pipeline, outfile,starttime,user,jobname)
     return new_objects
 
 

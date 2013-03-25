@@ -5,7 +5,7 @@ import argparse
 import os
 from Betsy import protocol_utils
 from Betsy import module_utils
-
+import getpass
 
 def filter_pipelines(protocol, inputs, in_contents, output, parameters):
     """given the Inputs and Output and Parameters dictionary,
@@ -38,7 +38,7 @@ def filter_pipelines(protocol, inputs, in_contents, output, parameters):
 
 
 def run_protocol(protocol, inputs, output, identifiers,
-                 in_contents, parameters,clean_up=True):
+                 in_contents, parameters,user=getpass.getuser(),job_name='',clean_up=True):
     """given the Inputs and Output and Parameters dictionary,
        run the pipelines,
        return a list of final result file,
@@ -66,7 +66,7 @@ def run_protocol(protocol, inputs, output, identifiers,
         pipeline_label = pipeline_label.replace('_',' ')
         pipeline = pipeline[:-1]
         print  'Pipeline' + str(k) + ': '+ pipeline_label + '.\r'
-        out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+        out_files = rule_engine.run_pipeline(pipeline, objects,user=user,job_name=job_name,clean_up=clean_up)
         k = k + 1
         if out_files:
             pipeline_sequence = [analysis.name for analysis in pipeline]
@@ -97,6 +97,14 @@ def main():
                         action='store_const', default=False,
                         const=True,
                         help='shows the protocol details')
+    parser.add_argument('--user',
+                        dest='user', default=getpass.getuser(),
+                        type=str,
+                        help='the username who run the command')
+    parser.add_argument('--job_name',
+                        dest='job_name', default='',
+                        type=str,
+                        help='the name of this job')
     parser.add_argument('--dont_cleanup',
                         dest='clean_up',
                         action='store_const', default=True,
@@ -189,14 +197,14 @@ def main():
         output = module.OUTPUTS
         output_file, parameters_all, pipeline_sequence_all = run_protocol(
             args.protocol, inputs, output, identifiers, in_contents,
-            parameters,clean_up=args.clean_up)
+            parameters,user=args.user,job_name = args.job_name,clean_up=args.clean_up)
         assert output_file, ('No output file is generated and '
                              'no report can be generated')
         module1 = protocol_utils.import_protocol(args.protocol)
         print module1.OUTPUTS
         module = __import__('Betsy.modules.' + module1.OUTPUTS, globals(),
                             locals(), [module1.OUTPUTS], -2)
-        module.run(output_file, parameters_all, pipeline_sequence_all)
+        module.run(output_file, parameters_all,pipeline_sequence_all, args.user,args.job_name)
 
         
 if __name__ == '__main__':

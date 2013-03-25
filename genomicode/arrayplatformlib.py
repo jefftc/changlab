@@ -136,21 +136,19 @@ def score_platforms(annotations):
         chipname, case_sensitive, gene = x
         y = compare_annotations(annotations,gene,case_sensitive)
         number_shared_annots, only1, only2, match = y
-        results.append((chipname,match))
-    results.sort(key=lambda x: x[1],reverse=True)
+        results.append((chipname,number_shared_annots,match))
+    results.sort(key=lambda x: (x[2],x[1]),reverse=True)
     return results
 
 
 def compare_annotations(annot1, annot2, case_sensitive):
-    """annot_2 is the one from platform"""
     if not case_sensitive:
         annot1 = [psid.upper() for psid in annot1]
         annot2 = [psid.upper() for psid in annot2]
     num_shared_annots = len(set(annot1).intersection(set(annot2)))
     num_annot1_only = len(set(annot1)) - num_shared_annots
     num_annot2_only = len(set(annot2)) - num_shared_annots
-    #share_percentage1 = float(num_shared_annots)/min(len(set(annot1)),len(set(annot2)))
-    share_percentage = float(num_shared_annots)/len(set(annot1))
+    share_percentage = float(num_shared_annots)/min(len(set(annot1)),len(set(annot2)))
     return num_shared_annots, num_annot1_only, num_annot2_only, share_percentage
 
 
@@ -160,7 +158,7 @@ def score_platform_of_annotations(annotations):
     match = None
     possible_platforms = score_platforms(annotations)
     if possible_platforms[0][1] > 0:
-        platform, match = possible_platforms[0]
+        platform, number_shared_annots,match = possible_platforms[0]
     return platform, match
 
 

@@ -3,9 +3,11 @@ from Betsy import module_utils
 import os
 from Betsy import read_label_file
 import shutil
+from time import strftime,localtime
 
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
     """generate the class_label_file for signal data"""
+    starttime = strftime(module_utils.FMT, localtime())
     import arrayio
     single_object = get_identifier(parameters,objects)
     outfile = get_outfile(parameters,objects,pipeline)
@@ -19,7 +21,7 @@ def run(parameters,objects,pipeline):
 
     new_objects = get_newobjects(parameters,objects,pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline,outfile)
+        parameters,single_object,pipeline,outfile,starttime,user,jobname)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

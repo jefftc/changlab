@@ -3,10 +3,11 @@
 from Betsy import module_utils
 import os
 import arrayio
+from time import strftime,localtime
 
-
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
     """merge two signal file to generate a joined signal file"""
+    starttime = strftime(module_utils.FMT, localtime())
     merge_file1 = module_utils.find_object(parameters,objects,'signal_file','merge1,format')
     merge_file2 = module_utils.find_object(parameters,objects,'signal_file','merge2,format')
     assert os.path.exists(merge_file1.identifier),'the merge_file1 %s in merge_data does not exist'%merge_file1
@@ -19,7 +20,9 @@ def run(parameters,objects,pipeline):
     assert module_utils.exists_nz(outfile),(
         'the output file %s for merge_data fails'%outfile)
     new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(parameters,[merge_file1,merge_file2],pipeline,outfile)
+    module_utils.write_Betsy_parameters_file(parameters,
+                                             [merge_file1,merge_file2],
+                                             pipeline,outfile,starttime,user,jobname)
     return new_objects
 
 def make_unique_hash(identifier,pipeline,parameters):

@@ -3,7 +3,10 @@ import os
 from Betsy import module_utils
 import subprocess
 from genomicode import config
-def run(parameters, objects, pipeline):
+from time import strftime,localtime
+
+def run(parameters, objects, pipeline,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     rma_file = module_utils.find_object(parameters,objects, 'signal_file', 'contents,pre1')
     mas_file = module_utils.find_object(parameters,objects, 'signal_file', 'contents,pre2')
     assert os.path.exists(rma_file.identifier), (
@@ -26,7 +29,8 @@ def run(parameters, objects, pipeline):
         'the output file %s for run_scoresig does not exists'% outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(parameters,
-                                            rma_file, pipeline, outfile)
+                                            [rma_file,mas_file],
+                                             pipeline, outfile,starttime,user,jobname)
     return new_objects
     
 def make_unique_hash(identifier, pipeline, parameters):

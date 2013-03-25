@@ -3,8 +3,11 @@ import os
 import shutil
 from Betsy import module_utils
 from genomicode import binreg
-def run(parameters,objects,pipeline):
+from time import strftime,localtime
+
+def run(parameters,objects,pipeline,user,jobname):
     """unlog the pcl file"""
+    starttime = strftime(module_utils.FMT, localtime())
     import arrayio
     import math
     single_object = get_identifier(parameters,objects)
@@ -23,7 +26,7 @@ def run(parameters,objects,pipeline):
         'the output file %s for unlog_signal_file fails' % outfile)
     new_objects = get_newobjects(parameters, objects, pipeline)
     module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline,outfile)
+        parameters, single_object, pipeline,outfile,starttime,user,jobname)
     return new_objects
 
 

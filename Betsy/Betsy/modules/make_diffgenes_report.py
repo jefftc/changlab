@@ -8,7 +8,10 @@ from Betsy import protocol_utils
 import imghdr
 import time
 from genomicode import parselib,htmllib
-def run(outfiles,parameters,pipelines):
+from time import strftime,localtime
+
+def run(outfiles,parameters,pipelines,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     OUTPUTPATH = config.OUTPUTPATH
     inputid = module_utils.get_inputid(outfiles[0])
     folder_string = hash_method.hash_parameters(
@@ -153,12 +156,14 @@ def run(outfiles,parameters,pipelines):
         w("</HTML>")
         x = "\n".join(lines) + "\n"
         open('report.html', 'w').write(x)
+        module_utils.write_Betsy_report_parameters_file(
+             outfiles,'report.html')
     except:
         raise 
     finally:
         os.chdir(cwd)
     
-    print 'Report:'+ os.path.join(result_folder,'report.html')
+    print 'Report:'+ os.path.join(result_folder,'report.html',starttime,user,jobname)
     
 def write_table(header,data,N):
     rows = []

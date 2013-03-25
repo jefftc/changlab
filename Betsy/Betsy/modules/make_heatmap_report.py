@@ -8,7 +8,10 @@ import shutil
 from Betsy import protocol_utils
 import imghdr
 import time
-def run(outfiles,parameters,pipelines):
+from time import strftime,localtime
+
+def run(outfiles,parameters,pipelines,user,jobname):
+    starttime = strftime(module_utils.FMT, localtime())
     OUTPUTPATH = config.OUTPUTPATH
     inputid = module_utils.get_inputid(outfiles[0])
     folder_string = hash_method.hash_parameters(
@@ -99,6 +102,8 @@ def run(outfiles,parameters,pipelines):
         w("</HTML>")
         x = "\n".join(lines) + "\n"
         open('report.html', 'w').write(x)
+        module_utils.write_Betsy_report_parameters_file(
+             outfiles,'report.html',starttime,user,jobname)
     except:
         raise 
     finally:

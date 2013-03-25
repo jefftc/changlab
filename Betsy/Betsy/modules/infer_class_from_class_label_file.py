@@ -4,10 +4,11 @@ import os
 import arrayio
 import shutil
 from Betsy import read_label_file
+from time import strftime,localtime
 
-
-def run(parameters,objects,pipeline):
+def run(parameters,objects,pipeline,user,jobname):
     """pull out the signal file if the class label file is given"""
+    starttime = strftime(module_utils.FMT, localtime())
     class_label_file = module_utils.find_object(parameters,
                         objects,'class_label_file','contents')
     assert os.path.exists(class_label_file.identifier)
@@ -21,7 +22,8 @@ def run(parameters,objects,pipeline):
             'the output file %s for infer_class_from_class_label_file fails'%outfile)
         new_objects = get_newobjects(parameters,objects,pipeline)
         module_utils.write_Betsy_parameters_file(
-            parameters,single_object,pipeline,outfile)
+            parameters,[single_object,class_label_file],pipeline,outfile,
+            starttime,user,jobname)
         return new_objects
     else:
         raise ValueError('the pull_out_dataset fails')

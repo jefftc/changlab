@@ -8,9 +8,12 @@ import json
 import math
 from xml.dom.minidom import parseString
 import zipfile
-
+import time
+from time import strftime,localtime
+from stat import *
 """contain some functions that are called by many modules"""
 
+FMT = "%a %b %d %H:%M:%S %Y"
 
 class Analysis:
     def __init__(self, name, parameters):
@@ -114,21 +117,59 @@ def format_convert(X):
     return data
 
 
-def write_Betsy_parameters_file(parameters, single_object, pipeline, outfile):
+def write_Betsy_parameters_file(parameters, single_object,
+                                pipeline, outfile,starttime,user,job_name):
+    st = os.stat(outfile)
+    modified_time = time.asctime(time.localtime(st[ST_MTIME]))
     f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')
     if isinstance(single_object, list):
         text = ['Module input:', [(i.objecttype, i.identifier)
                                   for i in single_object],
-                'Module output:', outfile,
+                'Module output:', os.path.split(outfile)[-1],
                 'Module output parameters:', parameters,
-                'Pipeline module sequence:', pipeline]
+                'Pipeline module sequence:', pipeline,
+                'Start time:',starttime,
+                'Finish time:',modified_time,
+                'User:',user,
+                'Jobname:',job_name]
     else:
         text = ['Module input:', (single_object.objecttype,
                                   single_object.identifier),
-                #'Module output:', outfile,
                 'Module output:',os.path.split(outfile)[-1],
                 'Module output parameters:', parameters,
-                'Pipeline module sequence:', pipeline]
+                'Pipeline module sequence:', pipeline,
+                'Start time:',starttime,
+                'Finish time:',modified_time,
+                'User:',user,
+                'Jobname:',job_name]
+    newtext = json.dumps(text, sort_keys=True, indent=4)
+    f.write(newtext)
+    f.close()
+
+
+def write_Betsy_report_parameters_file(inputs,outfile,starttime,user,job_name):
+    st = os.stat(outfile)
+    modified_time = time.asctime(time.localtime(st[ST_MTIME]))
+    f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')
+    if isinstance(inputs, list):
+        text = ['Module input:', [('', i)
+                                  for i in inputs],
+                'Module output:', os.path.split(outfile)[-1],
+                'Module output parameters:', '',
+                'Pipeline module sequence:', '',
+                'Start time:',starttime,
+                'Finish time:',modified_time,
+                'User:',user,
+                'Jobname:',job_name]
+    else:
+        text = ['Module input:', ('', inputs),
+                'Module output:',os.path.split(outfile)[-1],
+                'Module output parameters:', '',
+                'Pipeline module sequence:', '',
+                'Start time:',starttime,
+                'Finish time:',modified_time,
+                'User:',user,
+                'Jobname:',job_name]
     newtext = json.dumps(text, sort_keys=True, indent=4)
     f.write(newtext)
     f.close()
