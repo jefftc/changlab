@@ -3,6 +3,7 @@
 # Functions:
 # _clean
 # read_matrices
+# has_missing_values
 #
 # parse_indexes
 # parse_names
@@ -17,6 +18,7 @@
 # find_col_genesets
 # find_col_annotation
 # relabel_col_ids
+# append_col_ids
 # reorder_col_indexes
 # remove_duplicate_cols
 # rename_duplicate_cols
@@ -150,6 +152,13 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
                 os.unlink(f)
 
     return fmt_module, matrices
+
+
+def has_missing_values(MATRIX):
+    for x in MATRIX._X:
+        if None in x:
+            return True
+    return False
 
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
@@ -449,6 +458,83 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     assert len(I_matrix) == len(I_geneset)
     for i in range(len(I_matrix)):
         names[I_matrix[i]] = genes[I_geneset[i]]
+    MATRIX_new._col_names[name] = names
+
+    return MATRIX_new
+
+
+def append_col_ids(MATRIX, geneset, ignore_missing):
+    import arrayio
+    from genomicode import genesetlib
+    from genomicode import matrixlib
+
+    if not geneset:
+        return MATRIX
+    filename, genesets = _parse_file_gs(geneset)
+    assert len(genesets) == 1
+    
+    # Read all genesets out of the geneset file.
+    geneset2genes = {}
+    all_genesets = []  # preserve the order of the genesets
+    all_genes = []
+    ext = os.path.splitext(filename)[1].lower()
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
+        geneset, description, genes = x
+
+        # Bug: sometimes will mis-identify TDF files as GMX.  The
+        # first row will be interpreted as a description instead of a
+        # gene (or annotation).  If the extension of the file isn't
+        # gmx or gmt, then assume it's some sort of tdf file.
+        #if not genesetlib._is_known_desc(description) and \
+        #       ext not in [".gmx", ".gmt"]:
+        if ext not in [".gmx", ".gmt"]:
+            genes = [description] + genes
+
+        geneset2genes[geneset] = genes
+        all_genesets.append(geneset)
+        all_genes.append(genes)
+
+    # Find an alignment between the sample names and the genesets.
+    x = matrixlib.align_cols_to_many_annots(
+        MATRIX, all_genes, hash=True, get_indexes=True)
+    I_matrix, I_geneset, index = x
+    if len(I_matrix) == 0:
+        raise AssertionError("Matrixes doesn't match any gene sets.")
+    elif len(I_matrix) != MATRIX.ncol() and not ignore_missing:
+        # No matches.  Try to diagnose.
+        gs = all_genesets[index]
+        nm = len(I_matrix)
+        missing = []
+        col_names = MATRIX.col_names(arrayio.COL_ID)
+        missing = [col_names[i] for i in range(len(col_names))
+                   if i not in I_matrix]
+        print >>sys.stderr, \
+            "Matrix best matches column '%s' [%d:%d]." % (
+            gs, nm, MATRIX.ncol())
+        MAX_TO_SHOW = 5
+        if len(missing) > MAX_TO_SHOW:
+            print >>sys.stderr, \
+                "Missing (showing %d of %d):" % (MAX_TO_SHOW, len(missing))
+        else:
+            print >>sys.stderr, "Missing from annotation:"
+        for x_ in missing[:MAX_TO_SHOW]:
+            print >>sys.stderr, x_
+        raise AssertionError("I could not match the matrix to a geneset.")
+
+    # Add the new column names to the MATRIX.
+    MATRIX_new = MATRIX.matrix()
+    name = arrayio.COL_ID
+    if name not in MATRIX_new._col_names:
+        name = MATRIX_new._synonyms[name]
+    assert name in MATRIX_new._col_names, "I can not find the sample names."
+    names = MATRIX_new.col_names(name)
+    gs = genesets[0]
+    genes = geneset2genes[gs]
+    assert len(I_matrix) == len(I_geneset)
+    for i in range(len(I_matrix)):
+        names[I_matrix[i]] = "%s %s" % (
+            names[I_matrix[i]], genes[I_geneset[i]])
     MATRIX_new._col_names[name] = names
 
     return MATRIX_new
@@ -785,6 +871,7 @@ def dedup_row_by_var(MATRIX, header):
             annot2i[annot] = []
         annot2i[annot].append(i)
 
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     variances = jmath.var(MATRIX._X)
 
     I = []
@@ -1082,6 +1169,7 @@ def center_genes_mean(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the mean.
@@ -1101,6 +1189,7 @@ def center_genes_median(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the median.
@@ -1120,6 +1209,7 @@ def normalize_genes_var(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Normalize the genes in place.
+    assert not has_missing_values(MATRIX), "Matrix has missing values."
     X = MATRIX._X
     for i in range(len(X)):
         X_i = X[i]
@@ -1478,6 +1568,11 @@ def main():
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
+        "--append_col_ids", default=None,
+        help="Append this to the column IDs.  "
+        "Format: <txt/gmx/gmt_file>,<geneset>.  "
+        "One of the genesets in the file must match the current column IDs.")
+    group.add_argument(
         "--ignore_missing_labels", default=False, action="store_true",
         help="Any column labels that can't be found will not be relabeled.")
     group.add_argument(
@@ -1649,6 +1744,8 @@ def main():
     # Relabel the column IDs.
     MATRIX = relabel_col_ids(
         MATRIX, args.relabel_col_ids, args.ignore_missing_labels)
+    MATRIX = append_col_ids(
+        MATRIX, args.append_col_ids, args.ignore_missing_labels)
 
     # Remove col IDs.  Do this after relabeling.
     MATRIX = remove_col_ids(MATRIX, args.remove_col_ids)

@@ -107,6 +107,8 @@ def read_cls_file(filename):
 def write_cls_file(outhandle, name0, name1, classes):
     # Only handles categorical CLS files with 2 classes.
     # classes should be a list of 0/1 or class names.
+    from genomicode import hashlib
+    
     for x in classes:
         assert x in [0, 1, "0", "1", name0, name1]
     
@@ -121,7 +123,9 @@ def write_cls_file(outhandle, name0, name1, classes):
     x = [num_samples, 2, 1] + [""]*(num_samples-3)
     print >>outhandle, "\t".join(map(str, x))
 
-    x = ["#", name0, name1] + [""]*(num_samples-3)
+    hname0, hname1 = hashlib.hash_var(name0), hashlib.hash_var(name1)
+    assert hname0 != hname1
+    x = ["#", hname0, hname1] + [""]*(num_samples-3)
     print >>outhandle, "\t".join(map(str, x))
 
     print >>outhandle, "\t".join(map(str, classes))

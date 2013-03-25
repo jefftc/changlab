@@ -82,7 +82,7 @@ def main():
     from genomicode import pcalib
     from genomicode import colorlib
 
-    usage = "usage: %prog [options] filename outfile"
+    usage = "usage: %prog [options] filename outfile.png"
     parser = OptionParser(usage=usage, version="%prog 01")
 
     parser.add_option(
