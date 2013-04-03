@@ -23,6 +23,8 @@ import os, sys
 # summarize_factor_geneset
 #
 # _read_model
+# _read_nucleus_file
+# _read_nucleus_geneset
 
 def make_file_layout(outpath):
     from genomicode import filelayout
@@ -159,13 +161,9 @@ def write_h(filename, DESIGN, CONTROL):
         print >>handle, "\t".join(map(str, x))
     handle.close()
 
-def write_evol(filename, DATA, nucleus_file):
+def write_evol(filename, DATA, gene_names):
     # EVOL contains the 1-based indexes of the genes.
-    assert os.path.exists(nucleus_file)
-    x = open(nucleus_file).read()
-    names = x.strip().split()
-    
-    x = DATA._index(row=names)
+    x = DATA._index(row=gene_names)
     I_row, I_col = x
     assert I_row is not None
     assert I_row, "I could not find any of the nucleus genes."
@@ -193,7 +191,7 @@ def assert_cols_aligned(matrix1, matrix2):
 
 def run_bfrm(
     file_layout, bfrm_bin, num_control_vars, num_factors, design_file,
-    nucleus_file, max_factors, max_genes):
+    nucleus, max_factors, max_genes):
     import random
     import time
     import subprocess
@@ -222,7 +220,7 @@ def run_bfrm(
     # Set the number of latent factors.
     if num_factors:
         x = "Running analysis with %d factors." % num_factors
-        if nucleus_file:
+        if nucleus:   # will do evolutionary search
             x = "Starting analysis with %d factors." % num_factors
         if num_factors == 1:
             x = x.replace("factors", "factor")
@@ -258,9 +256,9 @@ def run_bfrm(
         params = bfrm.set_params_h(params, h)
 
     # If the nucleus was provided, then set up an evolutionary search.
-    if nucleus_file:
+    if nucleus:
         print "Enabling evolutionary search."
-        write_evol(file_layout.BFRM_EVOL, DATA, nucleus_file)
+        write_evol(file_layout.BFRM_EVOL, DATA, nucleus)
         params = bfrm.set_params_evol(
             params, file_layout.BFRM_EVOL, max_factors, max_genes)
 
@@ -538,6 +536,32 @@ def _read_model(file_layout, factor_cutoff=None):
         file_layout.BFRM, param_file=param_file, factor_cutoff=factor_cutoff)
     return model
 
+def _read_nucleus_file(filename):
+    assert os.path.exists(filename), "I could not find file: %s" % filename
+    x = open(filename).read()
+    names = x.strip().split()
+    return names
+
+def _read_nucleus_geneset(geneset):
+    # Parse a geneset specified by the user.  geneset is in the format
+    # of <filename>[,<geneset>,<geneset>,...].  Return a list of
+    # genes.
+    from genomicode import genesetlib
+    
+    x = geneset.split(",")
+    assert len(x) >= 1
+    filename, genesets = x[0], x[1:]
+    assert os.path.exists(filename), "I could not find file: %s" % filename
+    
+    data = []
+    for geneset in genesets:
+        genes = genesetlib.read_genes(filename, geneset, allow_tdf=True)
+        assert genes, "I could not find the gene set: %s" % geneset
+        x = filename, geneset, genes
+        data.extend(genes)
+    return data
+
+
 def main():
     from optparse import OptionParser, OptionGroup
     
@@ -591,7 +615,14 @@ def main():
         help="A file containing a matrix with additional design variables.")
     group.add_option(
         "--nucleus_file", dest="nucleus_file", default=None,
-        help="A file that contains the genes to start the evolution.")
+        help="A file that contains the genes to start the evolution.  "
+        "This should be a text file that contains a whitespace-separated "
+        "list of genes.  If this or --nucleus_geneset is given, "
+        "the evolutionary search will be turned on.")
+    group.add_option(
+        "--nucleus_geneset", dest="nucleus_geneset", default=None,
+        help="A gene set that contains the genes to start the evolution.  "
+        "Format: <gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_option(
         "--evol_max_factors", dest="evol_max_factors", default=None,
         help="Maximum number of factors for the evolution.")
@@ -626,9 +657,18 @@ def main():
     filename, = args
     assert os.path.exists(filename), "File not found: %s" % filename
 
+    if options.nucleus_file and options.nucleus_geneset:
+        parser.error("Please specify either nucleus_file or nucleus_geneset.")
+    nucleus = None
     if options.nucleus_file:
-        assert os.path.exists(options.nucleus_file), "I could not find: %s" % \
-               options.nucleus_file
+        nucleus = _read_nucleus_file(options.nucleus_file)
+    elif options.nucleus_geneset:
+        nucleus = _read_nucleus_geneset(options.nucleus_geneset)
+
+    # Not sure if this is necessary.  Don't know if BFRM will provide
+    # a default if not given.
+    if nucleus:
+        assert options.num_factors, "Please specify number of factors."
 
     # Set up the files.
     file_layout = make_file_layout(options.outpath)
@@ -663,8 +703,7 @@ def main():
         run_bfrm(
             file_layout, options.bfrm_bin, options.num_control_vars,
             options.num_factors, options.design_file, 
-            options.nucleus_file,
-            options.evol_max_factors, options.evol_max_genes)
+            nucleus, options.evol_max_factors, options.evol_max_genes)
 
     # Generate output files.
     summarize_factor_scores(
