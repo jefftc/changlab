@@ -33,11 +33,16 @@ def calc_km(survival, dead, group):
     for k in range(len(unique_group)):
         surv90[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.90')[0]
         surv50[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.50')[0]
+    med_low,med_high=surv50[-1], surv50[0]
+    if 'Low' in unique_group[0] and 'High' in unique_group[-1]:
+        med_low, med_high=surv50[0], surv50[-1]
     MAX_SURV = 1e10
     med_high, med_low = surv50[-1], surv50[0]
     direction = ''
     if (str(med_high), str(med_low)) == ('NA', 'NA'):
-        med_high, med_low = surv90[-1], surv90[0]
+        med_low, med_high=surv90[-1], surv90[0]
+        if 'Low' in unique_group[0] and 'High' in unique_group[-1]:
+            med_low,med_high=surv90[0], surv90[-1]
     if str(med_high) == 'NA':
         med_high = MAX_SURV
     if str(med_low) == 'NA':
@@ -281,11 +286,9 @@ def main():
         x = M._index(row=geneset_list)
     index_list, rownames = x
     assert index_list, 'we cannot match any gene or geneset as required'
-
     M = M.matrix(index_list, None)
     headers = M.row_names()
     geneids = M.row_names(headers[0])
-    
     #add the gene annotation column to the output_data
     output_data = []
     for i in range(len(geneids)):

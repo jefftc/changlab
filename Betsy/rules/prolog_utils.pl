@@ -484,7 +484,9 @@ get_length(A,B):-
     A=n_raw, B=18;
     A=n_norm1,B=28;
     A=n_norm2,B=32;
-    A=n_file,B=46.
+    A=n_file,B=46;
+    A=n_sam,B=16;
+    A=n_vcf,B=20.
 /*-------------------------------------------------------------------------*/ 
 % find the Keys in Parameters,return the key_value pair in Options, S is the initial output  
 

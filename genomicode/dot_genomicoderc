@@ -10,6 +10,10 @@ patser=/usr/local/bin/patser-v3b
 cluster=/usr/local/bin/cluster
 BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
 
+Gatk=/usr/local/bin/GenomeAnalysisTK-2.4-9/GenomeAnalysisTL.jar
+Mark_duplicates=/usr/local/bin/picard-tools-1.87/MarkDuplicates.jar
+AddOrReplaceReadGroups=/usr/local/bin/picard-tools-1.87/AddOrReplaceReadGroups.jar
+
 
 [BINREG]
 bfrm=/data/genomidata/bfrm64
@@ -48,6 +52,8 @@ knowngene_hg18=/data/genomidata/hg18.knownGene.110312.txt
 knowngene_hg19=/data/genomidata/hg19.knownGene.130104.txt
 knowngene_mm10=/data/genomidata/mm10.knownGene.130207.txt
 
+fly_ref=/data/biocore/reference_genome/Drosophila_melanogaster/NCBI/build5.3/Sequence/BWAIndex/genome.fa
+human_ref=...
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation
