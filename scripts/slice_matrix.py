@@ -4,6 +4,7 @@
 # _clean
 # read_matrices
 # has_missing_values
+# transpose_matrix
 #
 # parse_indexes
 # parse_names
@@ -159,6 +160,44 @@ def has_missing_values(MATRIX):
         if None in x:
             return True
     return False
+
+
+def transpose_matrix(MATRIX, transpose):
+    from genomicode import jmath
+    from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
+
+    if transpose is None:
+        return MATRIX
+
+    x = transpose.split(",")
+    assert len(x) == 2, "Format: <old row ID>,<new row ID>."
+    old_row_id, new_row_id = x
+
+    assert old_row_id in MATRIX.row_names(), "missing header : %s" % (
+        old_row_id)
+    #print MATRIX.col_names()
+    #print MATRIX.row_names()
+    #import sys; sys.exit(0)
+
+    X = jmath.transpose(MATRIX._X)
+    row_order = [new_row_id]
+    col_order = [tdf.SAMPLE_NAME]
+    row_names = {
+        row_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    col_names = {
+        col_order[0] : MATRIX.row_names(old_row_id),
+        }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_t = Matrix.InMemoryMatrix(
+        X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_t
 
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
@@ -1472,6 +1511,13 @@ def main():
     parser.add_argument(
         "--clean_only", default=False, action="store_true",
         help="Only read_as_csv and remove_comments.")
+    parser.add_argument(
+        "--transpose", default=None, 
+        help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
+        "<old row ID> is the header of the column in the original file that "
+        "should be used for the headers in the transposed file.  "
+        "<new row ID> is what should be the name of the column of the IDs "
+        "in the transposed file.")
     # If the user chooses an outfile, will need to implement it for
     # clean_only as well.
     #parser.add_argument(
@@ -1689,6 +1735,8 @@ def main():
         MATRIX = matrixlib.merge_matrices(*matrices)
     if not MATRIX.nrow():
         return
+
+    MATRIX = transpose_matrix(MATRIX, args.transpose)
 
     # Slice to a submatrix.
     I1 = find_row_indexes(MATRIX, args.select_row_indexes, False)
