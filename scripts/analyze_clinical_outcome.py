@@ -32,11 +32,14 @@ def calc_km(survival, dead, group):
     for k in range(len(unique_group)):
         surv90[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.90')[0]
         surv50[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.50')[0]
+    low_index = high_index = None
     for i in range(len(unique_group)):
         if 'Low' in unique_group[i]:
             low_index = i
         if 'High' in unique_group[i]:
             high_index = i
+    assert low_index is not None, "I could not find the Low group."
+    assert high_index is not None, "I could not find the High group."
     med_low,med_high=surv50[low_index], surv50[high_index]
     MAX_SURV = 1e10
     direction = ''
