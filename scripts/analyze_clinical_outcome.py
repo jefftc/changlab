@@ -27,21 +27,21 @@ def calc_km(survival, dead, group):
     c = R['x']
     p_value = c.rx2('p.value')[0]
     unique_group = list(set(group))
-    unique_group.sort()
     surv90 = [''] * len(unique_group)
     surv50 = [''] * len(unique_group)
     for k in range(len(unique_group)):
         surv90[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.90')[0]
         surv50[k] = c.rx2('surv').rx2(unique_group[k]).rx2('surv.50')[0]
-    med_low,med_high=surv50[0], surv50[-1]
-    if 'Low' in unique_group[-1] and 'High' in unique_group[0]:
-        med_low, med_high=surv50[-1], surv50[0]
+    for i in range(len(unique_group)):
+        if 'Low' in unique_group[i]:
+            low_index = i
+        if 'High' in unique_group[i]:
+            high_index = i
+    med_low,med_high=surv50[low_index], surv50[high_index]
     MAX_SURV = 1e10
     direction = ''
     if (str(med_high), str(med_low)) == ('NA', 'NA'):
-        med_low, med_high=surv90[0], surv90[-1]
-        if 'Low' in unique_group[-1] and 'High' in unique_group[0]:
-            med_low,med_high=surv90[-1], surv90[0]
+        med_low, med_high=surv90[low_index], surv90[high_index]
     if str(med_high) == 'NA':
         med_high = MAX_SURV
     if str(med_low) == 'NA':
