@@ -37,7 +37,7 @@ load.model <- function(root, param.file="params.dat") {
   if(!file.exists(param.file))
     param.file <- file.path(root, param.file)
   if(!file.exists(param.file))
-    stop("missing parameter file")
+    stop(sprintf("missing parameter file: %s", param.file))
   params.dat <- read.delim(param.file, 
       sep=" ", header=FALSE, as.is=TRUE, comment.char="#", quote="")
 
