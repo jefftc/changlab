@@ -198,7 +198,7 @@ def sum_matrix(X, byrow=1):
     return [sum(x) for x in X]
 
 def mysum(X, byrow=1):
-    return _dispatch(X, None, _fn(sum_list), _fn(sum_matrix, byrow=byrow))
+    return _dispatch(X, None, sum_list, _fn(sum_matrix, byrow=byrow))
 
 def mean_list(X):
     assert len(X) > 0
@@ -210,7 +210,7 @@ def mean_matrix(X, byrow=1):
     return [mean_list(x) for x in X]
 
 def mean(X, byrow=1):
-    return _dispatch(X, None, _fn(mean_list), _fn(mean_matrix, byrow=byrow))
+    return _dispatch(X, None, mean_list, _fn(mean_matrix, byrow=byrow))
 
 def safe_mean_list(X):
     import math
@@ -227,7 +227,7 @@ def safe_mean_matrix(X, byrow=1):
 
 def safe_mean(X, byrow=1):
     return _dispatch(
-        X, None, _fn(safe_mean_list), _fn(safe_mean_matrix, byrow=byrow))
+        X, None, safe_mean_list, _fn(safe_mean_matrix, byrow=byrow))
 
 def median_list(X):
     assert len(X) > 0

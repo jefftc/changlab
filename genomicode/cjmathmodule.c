@@ -89,15 +89,22 @@ static char cjmath_mean_list__doc__[] =
 static PyObject *cjmath_mean_list(PyObject *self, PyObject *args)
 {
     PyObject *py_X;
-    float *X;
+    float *X = NULL;
     int length;
     float m;
 
     if(!PyArg_ParseTuple(args, "O", &py_X))
-	return NULL;
+        return NULL;
     if(!(py2c_fvector(py_X, &X, &length)))
-	return NULL; 
+        return NULL; 
     
+    // Make sure not empty list.
+    if(length <= 0) {
+        PyErr_SetString(PyExc_AssertionError, "empty list");
+        if(X != NULL)
+            free(X);
+        return NULL;
+    }
     m = mean(X, length);
     free(X);
     return PyFloat_FromDouble((double)m);
