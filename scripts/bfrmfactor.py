@@ -409,6 +409,7 @@ def summarize_factor_scores(
         max_total_height=768, max_total_width=1024)
     xpix, ypix = x
     ypix = min(ypix, xpix*4)
+    # TODO: Don't show array label if there are too many samples.
     x = graphlib.plot_heatmap(
         file_layout.FACTOR_SCORES, file_layout.FACTOR_SCORES_PNG,
         xpix, ypix,

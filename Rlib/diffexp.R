@@ -1,5 +1,7 @@
 # find.de.genes.sam    Use SAM to find differentially expressed genes.
 # find.de.genes.ttest
+# find.de.genes.ebayes
+# find.de.genes.2cnoref.ebayes
 
 
 matrix2dataframe <- function(M) {
@@ -75,6 +77,13 @@ find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA,
     x <- matrix(X[SCORE[["Row"]],], ncol=ncol(X))
     DATA <- matrix2dataframe(cbind(as.matrix(SCORE), Direction, x))
     names(DATA) <- c(names(SCORE), "Direction", Y.orig)
+
+    # Convert "Fold Change" to log_2.
+    I <- which(names(DATA) == "Fold Change")
+    if(length(I) != 1) stop("missing Fold Change")
+    lfc <- abs(log(DATA[,I], 2))
+    DATA[,I] <- lfc
+    names(DATA)[I] <- "Log_2 Fold Change"
 
     if(!all(geneid[DATA[["Row"]]] == DATA[["Gene ID"]])) stop("unaligned")
   }
@@ -175,8 +184,125 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, diff, 
     direction, X.1, X.2)
   colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-    "NL10 FDR", "NL10 Bonf", "Delta", "Direction", 
+    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
     colnames(X.1), colnames(X.2))
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA)
+}
+
+
+find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0) {
+  library(limma)
+  # X must be logged.
+  # Y should be the labels for two classes.  NA will be filtered out.
+
+  if(ncol(X) != length(Y)) stop("X and Y not aligned")
+
+  I <- which(!is.na(Y))
+  X <- X[,I]
+  Y <- Y[I]
+
+  Y.all <- sort(unique(Y.orig))
+  if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
+
+  GROUP1 <- rep(0, length(Y))
+  GROUP2 <- rep(0, length(Y))
+  GROUP1[Y == Y.all[1]] <- 1
+  GROUP2[Y == Y.all[2]] <- 1
+  if(sum(GROUP1 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+  if(sum(GROUP2 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+
+  if((length(geneid) == 1)  && is.na(geneid)) {
+    ndigits <- floor(log(nrow(X), 10)) + 1
+    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
+  }
+  if((length(genenames) == 1) && is.na(genenames)) {
+    genenames <- geneid
+  }
+  if(ncol(X) != length(Y)) stop("unaligned")
+  if(nrow(X) != length(geneid)) stop("unaligned")
+  if(nrow(X) != length(genenames)) stop("unaligned")
+
+  design <- cbind(GROUP1=GROUP1, GROUP2=GROUP2)
+  fit <- lmFit(X, design=design)
+  fit2 <- contrasts.fit(fit, c(-1, 1))
+  fit2 <- eBayes(fit2)
+  TOP <- topTable(fit2, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
+    number=nrow(fit2))
+  if(!nrow(TOP)) {
+    DATA <- matrix(NA, 0, 7+ncol(X))
+    colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
+      "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+      colnames(X))
+    DATA <- matrix2dataframe(DATA)
+    return(list(DATA=DATA, fit=fit2, TOP=TOP))
+  }
+
+  nl10p <- -log(TOP[["P.Value"]], 10)
+  nl10fdr <- -log(TOP[["adj.P.Val"]], 10)
+  bonf <- bonferroni.correct(TOP[["P.Value"]])
+  nl10bonf <- -log(bonf, 10)
+  diff <- abs(TOP[["logFC"]])
+  I <- as.numeric(rownames(TOP))
+  X.1 <- X[I, Y == Y.all[1]]
+  X.2 <- X[I, Y == Y.all[2]]
+
+  direction <- rep(sprintf("Higher in %s", Y.all[1]), nrow(TOP))
+  direction[TOP[["logFC"]] > 0] <- sprintf("Higher in %s", Y.all[2])
+  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, diff, 
+    direction, X.1, X.2)
+  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
+    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+    colnames(X.1), colnames(X.2))
+  DATA <- matrix2dataframe(DATA)
+  list(DATA=DATA, fit=fit2, TOP=TOP)
+}
+
+
+
+find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0) {
+  library(limma)
+  # X must be logged.
+
+  if((length(geneid) == 1)  && is.na(geneid)) {
+    ndigits <- floor(log(nrow(X), 10)) + 1
+    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
+  }
+  if((length(genenames) == 1) && is.na(genenames)) {
+    genenames <- geneid
+  }
+  if(nrow(X) != length(geneid)) stop("unaligned")
+  if(nrow(X) != length(genenames)) stop("unaligned")
+
+  fit <- lmFit(X)
+  fit <- eBayes(fit)
+  TOP <- topTable(fit, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
+    number=nrow(fit))
+  if(!nrow(TOP)) {
+    DATA <- matrix(NA, 0, 7+ncol(X))
+    colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
+      "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+      colnames(X))
+    DATA <- matrix2dataframe(DATA)
+    return(list(DATA=DATA, fit=fit, TOP=TOP))
+  }
+
+  nl10p <- -log(TOP[["P.Value"]], 10)
+  nl10fdr <- -log(TOP[["adj.P.Val"]], 10)
+  bonf <- bonferroni.correct(TOP[["P.Value"]])
+  nl10bonf <- -log(bonf, 10)
+  diff <- abs(TOP[["logFC"]])
+  direction <- rep("High", nrow(TOP))
+  direction[TOP[["logFC"]] < 0] <- "Low"
+
+  I <- as.numeric(rownames(TOP))
+  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, diff, 
+    direction, X[I,])
+  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
+    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+    colnames(X))
+  DATA <- matrix2dataframe(DATA)
+  list(DATA=DATA, fit=fit, TOP=TOP)
 }

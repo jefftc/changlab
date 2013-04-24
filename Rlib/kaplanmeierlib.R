@@ -210,7 +210,8 @@ plot.km.multi <- function(survival, dead, group, col=NA, main="", sub="",
   if(!all(is.na(col))) {
     leg <- names(col)
     fill <- sapply(leg, function(x) col[[x]])
-    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=1.5)
+    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=1.5, 
+      inset=0.05)
   }
 }
 

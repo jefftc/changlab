@@ -31,6 +31,8 @@ float mean(float *X, int length)
     float sum;
     float sum0, sum1, sum2, sum3;
 
+    // Bug: What if length is 0?
+
     sum = 0;
     sum0 = sum1 = sum2 = sum3 = 0;
     for(i=0; i<=length-4; i+=4) {

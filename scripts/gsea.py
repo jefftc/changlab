@@ -150,6 +150,7 @@ def make_cls_file(outhandle, MATRIX, indexes1, count_headers, name1, name2):
 
     I = []
     for s, e in parselib.parse_ranges(indexes1):
+        #print s, e, num_headers
         if count_headers:
             s, e = s - num_headers, e - num_headers
         assert s >= 1, "Index out of range: %s" % s
