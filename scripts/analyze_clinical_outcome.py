@@ -45,10 +45,10 @@ def parse_gene_sets(geneset):
 def parse_cutoffs(cutoffs):
     # Comma-separated list of breakpoints, e.g. 0.25,0.50.  If None,
     # then default to just 0.50.
-    # Return list of [0.25, 0.50].  List is guaranteed to be sorted
-    # with no duplicates.  Numbers indicate internal breakpoints, so 0
-    # and 1 will be removed.  All numbers will be > 0 and < 1.  
-    
+    # Return list, e.g. [0.25, 0.50], that:
+    # - is sorted
+    # - has no duplicates
+    # - all numbers > 0 and < 1 (no 0 or 1)
     cutoffs = cutoffs or "0.50"
     
     cutoffs = cutoffs.split(',')
@@ -212,7 +212,7 @@ def calc_association(survival, dead, scores, cutoffs):
     # Return a dictionary with keys:
     # survival             list of <float>
     # dead                 list of <int>
-    # group                list of <int>
+    # group                list of <int>  [0, length(cutoffs)]
     # p_value              <float>
     # num_samples          dict of <group> : <int>
     # mean_score           dict of <group> : <float>
