@@ -1,8 +1,26 @@
 #arrayannot.py
 import os
 import subprocess
+import tempfile
 import arrayio
 from genomicode import jmath, config, filelib, arrayplatformlib
+
+def create_annot_file_affymetrix(filename):
+    slice_BIN = config.slice_matrix
+    command = ['python', slice_BIN, '--remove_comments', '#',
+                '--read_as_csv', '--clean_only', filename]
+    annot_file = tempfile.mktemp()
+    f = file(annot_file, 'w')
+    process = subprocess.Popen(command, shell=False,
+                           stdout=f,
+                           stderr=subprocess.PIPE)
+    error_message = process.communicate()[1]
+    if error_message:
+            raise ValueError(error_message)
+    f.close()
+    matrix = [x for x in filelib.read_cols(annot_file)]
+    os.remove(annot_file)
+    return matrix
 
 
 def annotate_probe_affymetrix_file(probe_ids,annotation):
@@ -13,18 +31,7 @@ def annotate_probe_affymetrix_file(probe_ids,annotation):
     if not filename:
         return None
     else:
-        slice_BIN = config.slice_matrix
-        command1 = ['python', slice_BIN, '--remove_comments', '#',
-                    '--read_as_csv', '--clean_only', filename]
-        f = file('annot.txt', 'w')
-        process = subprocess.Popen(command1, shell=False,
-                               stdout=f,
-                               stderr=subprocess.PIPE)
-        error_message = process.communicate()[1]
-        if error_message:
-                raise ValueError(error_message)
-        f.close()
-        matrix = [x for x in filelib.read_cols('annot.txt')]
+        matrix = create_annot_file_affymetrix(filename)
         header = matrix[0]
         matrix = jmath.transpose(matrix[1:])
         if new_annotation not in header:
@@ -50,11 +57,10 @@ def annotate_probe_illumina_file(probe_ids, annotation):
         text = f.readlines()
         start = text.index('[Probes]\n')
         end = text.index('[Controls]\n')
-        f = file('annot.txt', 'w')
+        matrix = []
         for i in range(start + 1, end):
-            f.write(text[i])
-        f.close()
-        matrix = [x for x in filelib.read_cols('annot.txt')]
+            cols = text[i].rstrip("\r\n").split('\t')
+            matrix.append(cols)
         header = matrix[0]
         matrix = jmath.transpose(matrix[1:])
         if new_annotation not in header:
