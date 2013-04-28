@@ -18,6 +18,7 @@
 # find_col_ids
 # find_col_genesets
 # find_col_annotation
+# find_col_re
 # relabel_col_ids
 # append_col_ids
 # reorder_col_indexes
@@ -427,6 +428,24 @@ def find_col_annotation(MATRIX, col_annotation):
     return I
 
 
+def find_col_regex(MATRIX, col_regex):
+    import re
+    from arrayio import tab_delimited_format as tdf
+
+    if not col_regex:
+        return None
+
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    names = MATRIX.col_names(tdf.SAMPLE_NAME)
+    I = []
+    for i in range(len(names)):
+        m = re.match(col_regex, names[i])
+        if m:
+            I.append(i)
+    return I
+
+
 def relabel_col_ids(MATRIX, geneset, ignore_missing):
     import arrayio
     from genomicode import genesetlib
@@ -661,8 +680,6 @@ def remove_col_ids(MATRIX, remove_col_ids):
 
 
 def remove_col_indexes(MATRIX, remove_col_indexes, count_headers):
-    import arrayio
-
     if not remove_col_indexes:
         return None
     I = []
@@ -1591,6 +1608,9 @@ def main():
         help="Include only the samples from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
+        "--select_col_regex", default=None,
+        help="Include columns that match this regular expression.")
+    group.add_argument(
         "--remove_col_ids", default=[], action="append",
         help="Comma-separated list of IDs to remove.")
     group.add_argument(
@@ -1784,7 +1804,8 @@ def main():
     I3 = find_col_ids(MATRIX, args.select_col_ids)
     I4 = find_col_genesets(MATRIX, args.select_col_genesets)
     I5 = find_col_annotation(MATRIX, args.select_col_annotation)
-    I_col = _intersect_indexes(I1, I2, I3, I4, I5)
+    I6 = find_col_regex(MATRIX, args.select_col_regex)
+    I_col = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Reverse the rows.  Do after all the selection.

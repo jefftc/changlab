@@ -109,8 +109,19 @@ def write_cls_file(outhandle, name0, name1, classes):
     # classes should be a list of 0/1 or class names.
     from genomicode import hashlib
     
+    # Check the classes variable.
+    assert classes
+    #for x in classes:
+    #    assert x in [0, 1, "0", "1", name0, name1]
+    uniq_classes = []
     for x in classes:
-        assert x in [0, 1, "0", "1", name0, name1]
+        if x not in uniq_classes:
+            uniq_classes.append(x)
+    assert len(uniq_classes) == 2, "Only 2 classes allowed."
+    sorted_classes = sorted(map(str, uniq_classes))
+    assert sorted_classes in [["0", "1"], sorted([name0, name1])]
+    # Make sure order of the classes is consistent with the names.
+    assert str(uniq_classes[0]) in ["0", name0], "classes out of order"
     
     if type(outhandle) is type(""):
         outhandle = open(outhandle, 'w')
@@ -131,15 +142,14 @@ def write_cls_file(outhandle, name0, name1, classes):
     print >>outhandle, "\t".join(map(str, classes))
 
 
-def make_cls_file(outhandle, MATRIX, indexes1, count_headers, name1, name2):
-    # indexes is a string.
+def resolve_classes(MATRIX, indexes1, count_headers, name1, name2):
+    # indexes1 is a string.
+    # Return name1, name2, classes.  classes is 0/1.
     from genomicode import parselib
     
-    if type(outhandle) is type(""):
-        outhandle = open(outhandle, 'w')
-        
     max_index = MATRIX.ncol()
     num_headers = len(MATRIX._row_names)
+    assert max_index, "empty matrix"
     
     assert indexes1 and type(indexes1) is type("")
     name1 = name1 or "group1"
@@ -161,8 +171,48 @@ def make_cls_file(outhandle, MATRIX, indexes1, count_headers, name1, name2):
     classes = [1]*MATRIX.ncol()
     for i in I:
         classes[i] = 0
-    write_cls_file(outhandle, name1, name2, classes)
+
+    x = name1, name2, classes
+    return x
+
+
+def fix_class_order(MATRIX, name1, name2, classes):
+    # Make sure classes are in the right order.  If not, reorder the
+    # matrix so that the samples for the first class come first.
+
+    assert classes
+
+    # Convert classes to 0/1.
+    clean = []
+    for c in classes:
+        if c in ["0", "1"]:
+            c = int(c)
+        elif c in [name1, name2]:
+            c = int(c == name2)
+        assert c in [0, 1], "Unknown class: %s" % c
+        clean.append(c)
+    classes = clean
+
+    # If the classes are in the right order, don't need to do anything.
+    if classes[0] == 0:
+        x = MATRIX, name1, name2, classes
+        return x
     
+    indexes0, indexes1 = [], []
+    for i, c in enumerate(classes):
+        assert c in [0, 1]
+        if c == 0:
+            indexes0.append(i)
+        else:
+            indexes1.append(i)
+    O = indexes0 + indexes1
+
+    classes = [classes[i] for i in O]
+    MATRIX = MATRIX.matrix(None, O)
+
+    x = MATRIX, name1, name2, classes
+    return x
+
 
 def main():
     import os
@@ -181,6 +231,9 @@ def main():
     parser.add_argument(
         "--clobber", default=False, action="store_true",
         help="Overwrite outpath, if it already exists.")
+    parser.add_argument(
+        "--dry_run", default=False, action="store_true",
+        help="Set up the file, but do not run GSEA.")
     
     group = parser.add_argument_group(title="Class Labels")
     group.add_argument(
@@ -215,10 +268,11 @@ def main():
     # parameter), and collapse should be turned off.
     group.add_argument(
         "--no_collapse_dataset", default=False, action="store_true",
-        help="Do not 1) convert gene IDs to gene symbols, and 2) "
+        help="Do not 1) convert gene IDs to gene symbols, and do not 2) "
         "collapse duplicate gene symbols.  Set this if the gene IDs are "
-        "already gene symbols.")
-
+        "already unique gene symbols.  Also, can use this if you "
+        "provide the database_file and the gene IDs match the ones "
+        "in our gene expression file.")
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
         "File not found: %s" % args.expression_file
@@ -245,15 +299,19 @@ def main():
     if args.cls_file:
         names, classes = read_cls_file(args.cls_file)
         assert len(names) == 2, "I must have 2 classes."
-        handle = StringIO.StringIO()
-        write_cls_file(handle, names[0], names[1], classes)
-        cls_data = handle.getvalue()
+        name1, name2 = names
     else:
-        handle = StringIO.StringIO()
-        make_cls_file(
-            handle, MATRIX, args.indexes1, args.indexes_include_headers,
+        x = resolve_classes(
+            MATRIX, args.indexes1, args.indexes_include_headers,
             args.name1, args.name2)
-        cls_data = handle.getvalue()
+        name1, name2, classes = x
+
+    x = fix_class_order(MATRIX, name1, name2, classes)
+    MATRIX, name1, name2, classes = x
+
+    handle = StringIO.StringIO()
+    write_cls_file(handle, name1, name2, classes)
+    cls_data = handle.getvalue()
 
     # Convert the format after making CLS file, or else args.indexes1
     # with args.indexes_include_headers might be off.
@@ -324,6 +382,9 @@ def main():
         params["gene.sets.database.file"] = db_file
     # Required, even if gene.sets.database.file is given.
     params["gene.sets.database"] = gene_set_database
+
+    if args.dry_run:
+        return
  
     cmd = [
         config.genepattern,
