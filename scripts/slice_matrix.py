@@ -43,6 +43,7 @@
 # dedup_row_by_var
 # reverse_rows
 # reorder_row_indexes
+# reorder_row_cluster
 # rename_duplicate_rows
 #
 # align_rows
@@ -968,6 +969,22 @@ def reorder_row_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
+def reorder_row_cluster(MATRIX, cluster):
+    from genomicode import jmath
+    
+    if not cluster:
+        return MATRIX
+    if not MATRIX.nrow() or not MATRIX.ncol():
+        return MATRIX
+
+    R = jmath.start_R()
+    jmath.R_equals(MATRIX._X, "X")
+    I = list(R("hclust(dist(X))$order"))   # 1-based indexes
+    I = [x-1 for x in I]
+    MATRIX_new = MATRIX.matrix(I, None)
+    return MATRIX_new
+
+
 def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
     import arrayio
 
@@ -1725,6 +1742,9 @@ def main():
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --row_indexes_include_headers.")
     group.add_argument(
+        "--reorder_row_cluster", default=False, action="store_true",
+        help="Cluster the rows.")
+    group.add_argument(
         "--align_row_file", default=None,
         help="Align the rows to this other matrix file.")
     group.add_argument(
@@ -1807,9 +1827,6 @@ def main():
     I6 = find_col_regex(MATRIX, args.select_col_regex)
     I_col = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     MATRIX = MATRIX.matrix(I_row, I_col)
-
-    # Reverse the rows.  Do after all the selection.
-    MATRIX = reverse_rows(MATRIX, args.reverse_rows)
 
     # Reorder the rows and columns by indexes.  Do this before
     # removing columns.  Do this before adding or removing
@@ -1897,6 +1914,13 @@ def main():
         raise NotImplementedError
     elif args.gene_normalize == "var":
         normalize_genes_var(MATRIX, args.gn_subset_indexes)
+
+    # Cluster the rows.  Do this after normalizing, zero-fill, log.
+    MATRIX = reorder_row_cluster(MATRIX, args.reorder_row_cluster)
+
+    # Reverse the rows.  Do after all the selection.  Do after
+    # aligning to a file.
+    MATRIX = reverse_rows(MATRIX, args.reverse_rows)
 
     # Write the outfile (in the same format).
     handle = sys.stdout
