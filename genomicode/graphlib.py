@@ -4,7 +4,6 @@ Color is tuple of (R, G, B) where RGB is from 0.0 to 1.0.
 
 
 
-
 Functions:
 scatter
 line
@@ -24,6 +23,7 @@ position_labels
 """
 # _make_graph
 # _set_default_color
+# _set_default_point_size
 # _set_default_shape
 # _set_default_label
 # _set_default_error_bar
@@ -479,9 +479,11 @@ class Graph:
         assert len(points) == len(color)
         assert len(points) == len(shape)
         assert len(onpoint_labels) == len(onpoint_label_color)
+        assert len(point_size) == len(points)
         
-        RADIUS = 0.8*self.UNIT*point_size      # Radius of each point.
-        HEIGHT = 0                             # Bottom of each point.
+        #RADIUS = 0.8*self.UNIT*point_size  # Radius of each point.
+        RADIUS = 0.8*self.UNIT             # Radius of each point.
+        HEIGHT = 0                         # Bottom of each point.
         if self._zstack:
             HEIGHT = max([z+depth for (name, z, depth) in self._zstack])
         
@@ -509,14 +511,14 @@ class Graph:
             z_virt = None
             if len(points[i]) == 3:
                 z_virt = points[i][2]
-            
+
+            RAD = RADIUS*point_size[i]
             x_pix, y_pix = self._virtx2pix(x_virt), self._virty2pix(y_virt)
             z_pix = HEIGHT   # Bottom of each point.
             if z_virt is not None:
-                z_pix = self._virtz2pix(z_virt)-RADIUS
+                z_pix = self._virtz2pix(z_virt)-RAD
             point_coords[i] = (
-                x_pix-RADIUS, y_pix-RADIUS, z_pix,
-                RADIUS*2, RADIUS*2, RADIUS*2)
+                x_pix-RAD, y_pix-RAD, z_pix, RAD*2, RAD*2, RAD*2)
 
             # Don't draw points that are off the drawing area.
             if x_pix<self.GRAPH_X or x_pix >= self.GRAPH_X+self.GRAPH_WIDTH:
@@ -531,11 +533,11 @@ class Graph:
                 on_label_col = colorlib.choose_contrasting_bw(col)
 
             # Draw the point.
-            coord = x_pix, y_pix, z_pix+RADIUS
+            coord = x_pix, y_pix, z_pix+RAD
             self._plotter.sphere(
-                self._image, coord, RADIUS, col, shape=shape[i],
+                self._image, coord, RAD, col, shape=shape[i],
                 finish=gc.METALLIC, shadow=shadow)
-            x = "points", z_pix, RADIUS*2
+            x = "points", z_pix, RAD*2
             if x not in self._zstack:
                 self._zstack.append(x)
 
@@ -553,30 +555,32 @@ class Graph:
                 y_max = min(y_pix+err_l, self.GRAPH_Y+self.GRAPH_HEIGHT)
                 err_height = y_max - y_min
 
+                ER = ERROR_RADIUS * point_size[i]
+                EW = ERROR_WIDTH * point_size[i]
                 # Vertical error bar, from top to bottom.
                 self._plotter.cylinder(
-                    self._image, (x_pix, y_min, z_pix+RADIUS),
-                    (0, err_height, 0), ERROR_RADIUS, col,
+                    self._image, (x_pix, y_min, z_pix+RAD),
+                    (0, err_height, 0), ER, col,
                     finish=gc.METALLIC)
                 # Top horizontal bar.
                 if y_pix-err_u >= self.GRAPH_Y:
                     self._plotter.cylinder(
                         self._image,
-                        (x_pix-ERROR_WIDTH/2, y_pix-err_u, z_pix+RADIUS),
-                        (ERROR_WIDTH, 0, 0), ERROR_RADIUS, col,
+                        (x_pix-EW/2, y_pix-err_u, z_pix+RAD),
+                        (EW, 0, 0), ER, col,
                         finish=gc.METALLIC)
                 # Bottom horizontal bar.
                 if y_pix+err_l < self.GRAPH_Y+self.GRAPH_HEIGHT:
                     self._plotter.cylinder(
                         self._image,
-                        (x_pix-ERROR_WIDTH/2, y_pix+err_l, z_pix+RADIUS),
-                        (ERROR_WIDTH, 0, 0), ERROR_RADIUS, col,
+                        (x_pix-EW/2, y_pix+err_l, z_pix+RAD),
+                        (EW, 0, 0), ER, col,
                         finish=gc.METALLIC)
 
                 # Include the error bars into point_coords.
-                radius = max(RADIUS, ERROR_RADIUS)
-                y = min(y_pix-err_u-ERROR_RADIUS, y_pix-RADIUS)
-                h = max(err_total+ERROR_RADIUS*2, RADIUS*2)
+                radius = max(RAD, ER)
+                y = min(y_pix-err_u-ER, y_pix-RAD)
+                h = max(err_total+ER*2, RAD*2)
                 point_coords[i] = (
                     x_pix-radius, y, z_pix, radius*2, h, radius*2)
 
@@ -585,7 +589,7 @@ class Graph:
             if label:
                 self._plotter.text(
                     self._image, label, 
-                    (x_pix, y_pix, z_pix+RADIUS*2),
+                    (x_pix, y_pix, z_pix+RAD*2),
                     ON_LABEL_DEPTH, ON_LABEL_FONTSIZE, on_label_col,
                     center_x=True, center_y=True)
 
@@ -977,6 +981,7 @@ def scatter(*args, **keywds):
     assert points, "No points provided for scatter plot."
 
     # Check the inputs
+    point_size = _set_default_point_size(point_size, len(points))
     color = _set_default_color(color, len(points))
     shape = _set_default_shape(shape, len(points))
     onpoint_label = _set_default_label(onpoint_label, len(points))
@@ -986,6 +991,7 @@ def scatter(*args, **keywds):
     #overpoint_label_orientation = _set_default_label(
     #    overpoint_label_orientation, len(points))
     error_bar = _set_default_error_bar(error_bar)
+    assert len(point_size) == len(points)
     assert len(color) == len(points)
     assert len(shape) == len(points)
     assert len(onpoint_label) == len(points)
@@ -1049,10 +1055,6 @@ def line(*args, **keywds):
     graph = keywds.get("graph", None)
     plotter = keywds.get("plotter", None)
 
-    # The points on the line should be smaller than the points in the
-    # scatter plot.
-    point_size = point_size * 0.80 * line_size
-    
     # Check the inputs
     lines = args
     for line in lines:
@@ -1068,10 +1070,16 @@ def line(*args, **keywds):
             if len(x) == 3:
                 Z.append(x[2])
     
+    point_size = _set_default_point_size(point_size, len(lines))
     color = _set_default_color(color, len(lines))
     shape = _set_default_shape(shape, len(lines))
+    assert len(point_size) == len(lines)
     assert len(color) == len(lines)
     assert len(shape) == len(lines)
+
+    # The points on the line should be smaller than the points in the
+    # scatter plot.
+    point_size = [x*0.80*line_size for x in point_size]
 
     if not graph:
         Z_min = Z_max = None
@@ -1637,6 +1645,19 @@ def _set_default_color(color, n):
         assert isnum(c[0]) and isnum(c[1]) and isnum(c[2]), \
                "Does not look like color: %s" % str(c)        
     return color
+
+def _set_default_point_size(size, n):
+    # Return a list of sizes.
+    import operator
+    if size is None:
+        size = 1.0
+    if type(size) is type(0) or type(size) is type(0.0):
+        size = [size]
+    assert operator.isSequenceType(size)
+    if len(size) == 1:
+        size = size * n
+    assert len(size) == n
+    return size
 
 def _set_default_shape(shape, n):
     # Return a list of shapes.
