@@ -116,7 +116,7 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   if(sum(Y == 1, na.rm=TRUE) <= 1) stop("not enough samples")
   if(sum(Y == 2, na.rm=TRUE) <= 1) stop("not enough samples")
 
-  if((length(geneid) == 1)  && is.na(geneid)) {
+  if((length(geneid) == 1) && is.na(geneid)) {
     ndigits <- floor(log(nrow(X), 10)) + 1
     geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
   }
@@ -130,6 +130,11 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
 
   X.1 <- X[,Y == 1]
   X.2 <- X[,Y == 2]
+  if(is.null(colnames(X.1)))
+    colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
+  if(is.null(colnames(X.2)))
+    colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
+
 
   # Find the genes that match the fold change criteria.
   med.1 <- apply(X.1, 1, mean)
@@ -190,7 +195,6 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   list(DATA=DATA)
 }
 
-
 find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA, 
   FOLD.CHANGE=0) {
   library(limma)
@@ -203,7 +207,7 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   X <- X[,I]
   Y <- Y[I]
 
-  Y.all <- sort(unique(Y.orig))
+  Y.all <- sort(unique(Y))
   if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
 
   GROUP1 <- rep(0, length(Y))
@@ -247,6 +251,10 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   I <- as.numeric(rownames(TOP))
   X.1 <- X[I, Y == Y.all[1]]
   X.2 <- X[I, Y == Y.all[2]]
+  if(is.null(colnames(X.1)))
+    colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
+  if(is.null(colnames(X.2)))
+    colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
 
   direction <- rep(sprintf("Higher in %s", Y.all[1]), nrow(TOP))
   direction[TOP[["logFC"]] > 0] <- sprintf("Higher in %s", Y.all[2])

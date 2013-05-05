@@ -68,114 +68,6 @@ def format_gene_set_database(database):
     return DATABASE2GENESET[database]
 
 
-def read_cls_file(filename):
-    # Only handles categorical CLS files with 2 classes.
-    from genomicode import filelib
-    
-    # Space or tab-delimited format.
-    # <num samples> <num classes> 1
-    # # <class name 0> <class name 1> ...
-    # <0/1 or class name> ...
-    handle = filelib.openfh(filename)
-    x = [x for x in handle if x.strip()]
-    assert len(x) == 3, "CLS file should contain 3 lines."
-    line1, line2, line3 = x
-
-    # Parse the first line.
-    x = line1.strip().split()
-    assert len(x) == 3
-    assert x[2] == "1"
-    num_samples, num_classes = int(x[0]), int(x[1])
-
-    # Parse the second line.
-    x = line2.strip().split()
-    assert x
-    assert x[0] == "#"
-    assert len(x) == num_classes+1
-    class_names = x[1:]
-
-    # Parse the third line.
-    x = line3.strip().split()
-    assert len(x) == num_samples
-    classes = x
-    for x in classes:
-        assert x in class_names or \
-            (int(x) >= 0 and int(x) < num_classes)
-
-    return class_names, classes
-    
-def write_cls_file(outhandle, name0, name1, classes):
-    # Only handles categorical CLS files with 2 classes.
-    # classes should be a list of 0/1 or class names.
-    from genomicode import hashlib
-    
-    # Check the classes variable.
-    assert classes
-    #for x in classes:
-    #    assert x in [0, 1, "0", "1", name0, name1]
-    uniq_classes = []
-    for x in classes:
-        if x not in uniq_classes:
-            uniq_classes.append(x)
-    assert len(uniq_classes) == 2, "Only 2 classes allowed."
-    sorted_classes = sorted(map(str, uniq_classes))
-    assert sorted_classes in [["0", "1"], sorted([name0, name1])]
-    # Make sure order of the classes is consistent with the names.
-    assert str(uniq_classes[0]) in ["0", name0], "classes out of order"
-    
-    if type(outhandle) is type(""):
-        outhandle = open(outhandle, 'w')
-
-    # Space or tab-delimited format.
-    # <num samples> <num classes> 1
-    # # <class name 0> <class name 1> ...
-    # <0/1 or class name> ...
-    num_samples = len(classes)
-    x = [num_samples, 2, 1] + [""]*(num_samples-3)
-    print >>outhandle, "\t".join(map(str, x))
-
-    hname0, hname1 = hashlib.hash_var(name0), hashlib.hash_var(name1)
-    assert hname0 != hname1
-    x = ["#", hname0, hname1] + [""]*(num_samples-3)
-    print >>outhandle, "\t".join(map(str, x))
-
-    print >>outhandle, "\t".join(map(str, classes))
-
-
-def resolve_classes(MATRIX, indexes1, count_headers, name1, name2):
-    # indexes1 is a string.
-    # Return name1, name2, classes.  classes is 0/1.
-    from genomicode import parselib
-    
-    max_index = MATRIX.ncol()
-    num_headers = len(MATRIX._row_names)
-    assert max_index, "empty matrix"
-    
-    assert indexes1 and type(indexes1) is type("")
-    name1 = name1 or "group1"
-    name2 = name2 or "group2"
-    if name1 == name2:
-        name1 = "%s-1" % name1
-        name2 = "%s-2" % name2
-
-    I = []
-    for s, e in parselib.parse_ranges(indexes1):
-        #print s, e, num_headers
-        if count_headers:
-            s, e = s - num_headers, e - num_headers
-        assert s >= 1, "Index out of range: %s" % s
-        assert e <= max_index, "Index out of range: %s" % e
-        s, e = s - 1, min(e, max_index)
-        I.extend(range(s, e))
-
-    classes = [1]*MATRIX.ncol()
-    for i in I:
-        classes[i] = 0
-
-    x = name1, name2, classes
-    return x
-
-
 def fix_class_order(MATRIX, name1, name2, classes):
     # Make sure classes are in the right order.  If not, reorder the
     # matrix so that the samples for the first class come first.
@@ -224,6 +116,7 @@ def main():
 
     import arrayio
     from genomicode import config
+    from genomicode import arraysetlib
     
     parser = argparse.ArgumentParser(description="Do a GSEA analysis.")
     parser.add_argument("expression_file", help="Gene expression file.")
@@ -297,12 +190,12 @@ def main():
 
     # Make a CLS file, if necessary.
     if args.cls_file:
-        names, classes = read_cls_file(args.cls_file)
+        names, classes = arraysetlib.read_cls_file(args.cls_file)
         assert len(names) == 2, "I must have 2 classes."
         name1, name2 = names
     else:
-        x = resolve_classes(
-            MATRIX, args.indexes1, args.indexes_include_headers,
+        x = arraysetlib.resolve_classes(
+            MATRIX, args.indexes1, None, args.indexes_include_headers,
             args.name1, args.name2)
         name1, name2, classes = x
 
@@ -310,7 +203,7 @@ def main():
     MATRIX, name1, name2, classes = x
 
     handle = StringIO.StringIO()
-    write_cls_file(handle, name1, name2, classes)
+    arraysetlib.write_cls_file(handle, name1, name2, classes)
     cls_data = handle.getvalue()
 
     # Convert the format after making CLS file, or else args.indexes1
