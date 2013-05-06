@@ -133,8 +133,14 @@ def copy_result_folder(working_dir, temp_dir, temp_outfile):
             shutil.copytree(os.path.join(temp_dir,temp_outfile),
                                      os.path.join(working_dir,temp_outfile))
         else:
+            #change to copy other files
+            all_files = os.listdir(temp_dir)
+            extra_files = list(set(all_files)-set([temp_outfile,'Betsy_parameters.txt','stdout.txt']))
             shutil.copyfile(os.path.join(temp_dir,temp_outfile),
                                      os.path.join(working_dir,temp_outfile))
+            for extra_file in extra_files:
+                shutil.copyfile(os.path.join(temp_dir,extra_file),
+                                     os.path.join(working_dir,extra_file))
         shutil.copyfile(os.path.join(temp_dir,'stdout.txt'),
                                      os.path.join(working_dir,'stdout.txt'))
     finally:
