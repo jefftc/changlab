@@ -22,6 +22,7 @@
 # relabel_col_ids
 # append_col_ids
 # reorder_col_indexes
+# reorder_col_alphabetical
 # remove_duplicate_cols
 # rename_duplicate_cols
 # remove_col_ids
@@ -610,6 +611,19 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
     I_other = [i for i in range(MATRIX.ncol()) if i not in I_given]
     I_all = I_given + I_other
     MATRIX_new = MATRIX.matrix(None, I_all)
+    return MATRIX_new
+
+
+def reorder_col_alphabetical(MATRIX, alphabetize):
+    import arrayio
+    from genomicode import jmath
+    
+    if not alphabetize:
+        return MATRIX
+    
+    col_names = MATRIX.col_names(arrayio.COL_ID)
+    I = jmath.order(col_names)
+    MATRIX_new = MATRIX.matrix(None, I)
     return MATRIX_new
 
 
@@ -1642,6 +1656,9 @@ def main():
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --col_indexes_include_headers.")
     group.add_argument(
+        "--reorder_col_alphabetical", default=False, action="store_true",
+        help="Sort the columns alphabetically.")
+    group.add_argument(
         "--align_col_file", default=None,
         help="Align the cols to this other matrix file.")
     group.add_argument(
@@ -1835,6 +1852,7 @@ def main():
         MATRIX, args.reorder_row_indexes, args.row_indexes_include_headers)
     MATRIX = reorder_col_indexes(
         MATRIX, args.reorder_col_indexes, args.col_indexes_include_headers)
+    MATRIX = reorder_col_alphabetical(MATRIX, args.reorder_col_alphabetical)
 
     # Remove row annotations.
     for name in args.remove_row_annot:

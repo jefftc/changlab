@@ -166,6 +166,7 @@ def main():
         "already unique gene symbols.  Also, can use this if you "
         "provide the database_file and the gene IDs match the ones "
         "in our gene expression file.")
+    
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
         "File not found: %s" % args.expression_file

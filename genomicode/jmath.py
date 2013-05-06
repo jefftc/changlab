@@ -1036,6 +1036,9 @@ def _fmt_R_var(var):
             var = var[5:]
         else:
             var = '"%s"' % var
+    elif type(var) in [type([]), type(())]:
+        x = [_fmt_R_var(x) for x in var]
+        var = "c(%s)" % ", ".join(x)
     var = str(var)
     return var
 
@@ -1080,13 +1083,18 @@ def R_var(name):
     return "RVAR:%s" % name
 
 def R_fn(fn_name, *args, **keywds):
-    from genomicode import jmath
-    R = jmath.start_R()
+    retval = keywds.get("RETVAL")
+    if "RETVAL" in keywds:
+        del keywds["RETVAL"]
+    R = start_R()
     params = [_fmt_R_var(x) for x in args]
     for key, value in keywds.iteritems():
         value = _fmt_R_var(value)
         params.append("%s=%s" % (key, value))
     cmd = "%s(%s)" % (fn_name, ", ".join(params))
+    if retval:
+        cmd = "%s <- %s" % (retval, cmd)
+    #print cmd
     R(cmd)
 
 def R2py_matrix(m):

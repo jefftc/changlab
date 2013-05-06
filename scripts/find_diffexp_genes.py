@@ -4,9 +4,6 @@
 def choose_gene_names(MATRIX):
     # Return tuple of (header for gene_id, header for gene_names).
     # Either of the headers can be None.
-    from arrayio import const
-    from genomicode import arrayplatformlib
-
     geneid_header = genename_header = None
     
     if not MATRIX.row_names():
@@ -25,7 +22,6 @@ def find_diffexp_genes(
     # classes must be 0, 1, None.
     import os
     
-    from genomicode import filelib
     from genomicode import config
     from genomicode import jmath
 
@@ -74,7 +70,7 @@ def find_diffexp_genes(
         jmath.R_equals(sample_name, "sample.name")
         jmath.R('colnames(X) <- sample.name')
 
-    geneid = genename = None
+    geneid = genenames = None
     if geneid_header:
         geneid = MATRIX.row_names(geneid_header)
         jmath.R_equals(geneid, "geneid")
@@ -132,14 +128,9 @@ def main():
     import os
     import sys
     import argparse
-    import subprocess
-    import StringIO
-    import zipfile
-    import shutil
     import tempfile
 
     import arrayio
-    from genomicode import config
     from genomicode import arraysetlib
     from genomicode import binreg
     from genomicode import jmath
