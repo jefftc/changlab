@@ -10,7 +10,7 @@ patser=/usr/local/bin/patser-v3b
 cluster=/usr/local/bin/cluster
 BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
 
-Gatk=/usr/local/bin/GenomeAnalysisTK-2.4-9/GenomeAnalysisTL.jar
+Gatk=/usr/local/bin/GenomeAnalysisTK-2.4-9/GenomeAnalysisTK.jar
 Mark_duplicates=/usr/local/bin/picard-tools-1.87/MarkDuplicates.jar
 AddOrReplaceReadGroups=/usr/local/bin/picard-tools-1.87/AddOrReplaceReadGroups.jar
 

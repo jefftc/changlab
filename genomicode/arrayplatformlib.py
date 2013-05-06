@@ -163,7 +163,7 @@ def score_platform_of_annotations(annotations):
 
 
 def score_all_platforms_of_matrix(DATA):
-    """return a list of (header,platform) we can guess"""
+    """return a list of (header,platform,match) we can guess"""
     ids = DATA.row_names()
     chips = dict()
     for id in ids:
