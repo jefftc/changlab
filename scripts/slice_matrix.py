@@ -18,9 +18,11 @@
 # find_col_ids
 # find_col_genesets
 # find_col_annotation
+# find_col_re
 # relabel_col_ids
 # append_col_ids
 # reorder_col_indexes
+# reorder_col_alphabetical
 # remove_duplicate_cols
 # rename_duplicate_cols
 # remove_col_ids
@@ -41,6 +43,8 @@
 # find_row_var
 # dedup_row_by_var
 # reverse_rows
+# reorder_row_indexes
+# reorder_row_cluster
 # rename_duplicate_rows
 #
 # align_rows
@@ -224,10 +228,12 @@ def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
         s, e = s - 1, min(e, max_index)
         I.extend(range(s, e))
 
-    # Make sure there are no duplicate indexes.
-    I = sorted(I)
-    for i in range(1, len(I)):
-        assert I[i] > I[i-1]
+    # Remove duplicated indexes.  Need to preserve order.
+    nodup = []
+    for i in I:
+        if i not in nodup:
+            nodup.append(i)
+    I = nodup
         
     return I
 
@@ -424,6 +430,24 @@ def find_col_annotation(MATRIX, col_annotation):
     return I
 
 
+def find_col_regex(MATRIX, col_regex):
+    import re
+    from arrayio import tab_delimited_format as tdf
+
+    if not col_regex:
+        return None
+
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    names = MATRIX.col_names(tdf.SAMPLE_NAME)
+    I = []
+    for i in range(len(names)):
+        m = re.match(col_regex, names[i])
+        if m:
+            I.append(i)
+    return I
+
+
 def relabel_col_ids(MATRIX, geneset, ignore_missing):
     import arrayio
     from genomicode import genesetlib
@@ -590,6 +614,19 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
+def reorder_col_alphabetical(MATRIX, alphabetize):
+    import arrayio
+    from genomicode import jmath
+    
+    if not alphabetize:
+        return MATRIX
+    
+    col_names = MATRIX.col_names(arrayio.COL_ID)
+    I = jmath.order(col_names)
+    MATRIX_new = MATRIX.matrix(None, I)
+    return MATRIX_new
+
+
 def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
     import arrayio
 
@@ -658,8 +695,6 @@ def remove_col_ids(MATRIX, remove_col_ids):
 
 
 def remove_col_indexes(MATRIX, remove_col_indexes, count_headers):
-    import arrayio
-
     if not remove_col_indexes:
         return None
     I = []
@@ -933,6 +968,33 @@ def reverse_rows(MATRIX, reverse):
     if not reverse:
         return MATRIX
     I = range(MATRIX.nrow()-1, -1, -1)
+    MATRIX_new = MATRIX.matrix(I, None)
+    return MATRIX_new
+
+
+def reorder_row_indexes(MATRIX, indexes, count_headers):
+    if not indexes:
+        return MATRIX
+    I_given = parse_indexes(MATRIX, True, indexes, count_headers)
+    # Add back any indexes that weren't explicitly given by the user.
+    I_other = [i for i in range(MATRIX.nrow()) if i not in I_given]
+    I_all = I_given + I_other
+    MATRIX_new = MATRIX.matrix(I_all, None)
+    return MATRIX_new
+
+
+def reorder_row_cluster(MATRIX, cluster):
+    from genomicode import jmath
+    
+    if not cluster:
+        return MATRIX
+    if not MATRIX.nrow() or not MATRIX.ncol():
+        return MATRIX
+
+    R = jmath.start_R()
+    jmath.R_equals(MATRIX._X, "X")
+    I = list(R("hclust(dist(X))$order"))   # 1-based indexes
+    I = [x-1 for x in I]
     MATRIX_new = MATRIX.matrix(I, None)
     return MATRIX_new
 
@@ -1577,6 +1639,9 @@ def main():
         help="Include only the samples from this geneset.  "
         "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
+        "--select_col_regex", default=None,
+        help="Include columns that match this regular expression.")
+    group.add_argument(
         "--remove_col_ids", default=[], action="append",
         help="Comma-separated list of IDs to remove.")
     group.add_argument(
@@ -1589,7 +1654,10 @@ def main():
         "--reorder_col_indexes", default=None,
         help="Change the order of the data columns.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
-        "(1-based, inclusive).")
+        "(1-based, inclusive).  Can use --col_indexes_include_headers.")
+    group.add_argument(
+        "--reorder_col_alphabetical", default=False, action="store_true",
+        help="Sort the columns alphabetically.")
     group.add_argument(
         "--align_col_file", default=None,
         help="Align the cols to this other matrix file.")
@@ -1632,6 +1700,11 @@ def main():
     group.add_argument(
         "--select_row_indexes", default=None,
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive).")
+    group.add_argument(
+        "--row_indexes_include_headers", default=False, action="store_true",
+        help="If not given (default), then row 1 is the first row "
+        "with data.  If given, then row 1 is the very first row in "
+        "the file, including the headers.")
     group.add_argument(
         "--select_row_ids", default=[], action="append",
         help="Comma-separated list of IDs (e.g. probes, gene names) "
@@ -1680,6 +1753,14 @@ def main():
     group.add_argument(
         "--reverse_rows", default=False, action="store_true",
         help="Reverse the order of the rows.")
+    group.add_argument(
+        "--reorder_row_indexes", default=None,
+        help="Change the order of the data rows.  Give the indexes "
+        "in the order that they should occur in the file, e.g. 1-5,8 "
+        "(1-based, inclusive).  Can use --row_indexes_include_headers.")
+    group.add_argument(
+        "--reorder_row_cluster", default=False, action="store_true",
+        help="Cluster the rows.")
     group.add_argument(
         "--align_row_file", default=None,
         help="Align the rows to this other matrix file.")
@@ -1739,7 +1820,8 @@ def main():
     MATRIX = transpose_matrix(MATRIX, args.transpose)
 
     # Slice to a submatrix.
-    I1 = find_row_indexes(MATRIX, args.select_row_indexes, False)
+    I1 = find_row_indexes(
+        MATRIX, args.select_row_indexes, args.row_indexes_include_headers)
     I2 = find_row_ids(MATRIX, args.select_row_ids)
     I3 = find_row_random(MATRIX, args.select_row_random)
     I4 = find_row_genesets(MATRIX, args.select_row_genesets)
@@ -1759,16 +1841,18 @@ def main():
     I3 = find_col_ids(MATRIX, args.select_col_ids)
     I4 = find_col_genesets(MATRIX, args.select_col_genesets)
     I5 = find_col_annotation(MATRIX, args.select_col_annotation)
-    I_col = _intersect_indexes(I1, I2, I3, I4, I5)
+    I6 = find_col_regex(MATRIX, args.select_col_regex)
+    I_col = _intersect_indexes(I1, I2, I3, I4, I5, I6)
     MATRIX = MATRIX.matrix(I_row, I_col)
 
-    # Reverse the rows.  Do after all the selection.
-    MATRIX = reverse_rows(MATRIX, args.reverse_rows)
-
-    # Reorder the column by indexes.  Do this before removing columns.
-    # Do this before adding or removing annotations.
+    # Reorder the rows and columns by indexes.  Do this before
+    # removing columns.  Do this before adding or removing
+    # annotations.
+    MATRIX = reorder_row_indexes(
+        MATRIX, args.reorder_row_indexes, args.row_indexes_include_headers)
     MATRIX = reorder_col_indexes(
         MATRIX, args.reorder_col_indexes, args.col_indexes_include_headers)
+    MATRIX = reorder_col_alphabetical(MATRIX, args.reorder_col_alphabetical)
 
     # Remove row annotations.
     for name in args.remove_row_annot:
@@ -1848,6 +1932,13 @@ def main():
         raise NotImplementedError
     elif args.gene_normalize == "var":
         normalize_genes_var(MATRIX, args.gn_subset_indexes)
+
+    # Cluster the rows.  Do this after normalizing, zero-fill, log.
+    MATRIX = reorder_row_cluster(MATRIX, args.reorder_row_cluster)
+
+    # Reverse the rows.  Do after all the selection.  Do after
+    # aligning to a file.
+    MATRIX = reverse_rows(MATRIX, args.reverse_rows)
 
     # Write the outfile (in the same format).
     handle = sys.stdout
