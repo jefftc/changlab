@@ -9,17 +9,21 @@ def create_annot_file_affymetrix(filename):
     slice_BIN = config.slice_matrix
     command = ['python', slice_BIN, '--remove_comments', '#',
                 '--read_as_csv', '--clean_only', filename]
-    annot_file = tempfile.mktemp()
-    f = file(annot_file, 'w')
-    process = subprocess.Popen(command, shell=False,
-                           stdout=f,
-                           stderr=subprocess.PIPE)
-    error_message = process.communicate()[1]
-    if error_message:
+    annot_file = None
+    try:
+        x,annot_file = tempfile.mkstemp(dir=".");os.close(x)
+        f = file(annot_file, 'w')
+        process = subprocess.Popen(command, shell=False,
+                               stdout=f,
+                               stderr=subprocess.PIPE)
+        f.close()
+        error_message = process.communicate()[1]
+        if error_message:
             raise ValueError(error_message)
-    f.close()
-    matrix = [x for x in filelib.read_cols(annot_file)]
-    os.remove(annot_file)
+        matrix = [x for x in filelib.read_cols(annot_file)]
+    finally:
+        if annot_file and os.path.exists(annot_file):
+            os.remove(annot_file)
     return matrix
 
 
