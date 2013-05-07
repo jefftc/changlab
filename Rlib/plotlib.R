@@ -441,7 +441,7 @@ sample.colorbars <- function() {
 
 my.boxplot <- function(X, labels=TRUE, col=NULL, main="", xlab="", ylab="", 
   leg=NULL, fill=NULL, cex.labels=1.25, cex.legend=1, vert.labels=TRUE,
-  ylim=NULL, cex.lab=1.5, sub="", cex.sub=1.5)
+  ylim=NULL, cex.lab=1.5, sub="", cex.sub=1.5, x.legend=NULL)
 {
   las <- 0
   if(vert.labels)
@@ -449,6 +449,9 @@ my.boxplot <- function(X, labels=TRUE, col=NULL, main="", xlab="", ylab="",
   at <- NULL
   if(length(labels) > 1)
     at <- 1:length(labels)
+  if(is.null(x.legend))
+    x.legend <- "bottomleft"
+
   lwd <- 2
   boxplot(X, col=col, xlab="", ylab="", axes=FALSE, pch=19, cex=1, ylim=ylim)
   box(lwd=lwd)
@@ -457,6 +460,6 @@ my.boxplot <- function(X, labels=TRUE, col=NULL, main="", xlab="", ylab="",
   title(main=main, xlab=xlab, ylab=ylab, cex.lab=cex.lab, cex.main=2.0, 
     sub=sub, cex.sub=cex.sub)
   if(length(leg))
-    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend,
-      bg="#FFFFFF")
+    legend(x.legend, legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend,
+      bg="#FFFFFF", inset=0.05)
 }
