@@ -442,7 +442,7 @@ def find_col_regex(MATRIX, col_regex):
     names = MATRIX.col_names(tdf.SAMPLE_NAME)
     I = []
     for i in range(len(names)):
-        m = re.match(col_regex, names[i])
+        m = re.search(col_regex, names[i])
         if m:
             I.append(i)
     return I

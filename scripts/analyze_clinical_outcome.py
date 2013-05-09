@@ -742,10 +742,14 @@ def main():
     x = read_clinical_annotations(M, args.outcome_file)
     M, clinical_annots = x
 
-    # Make sure each of the outcomes are in the clinical annotations.
-    for x1, x2 in outcomes:
-        assert x1 in clinical_annots, "Missing clinical annotation: %s" % x1
-        assert x2 in clinical_annots, "Missing clinical annotation: %s" % x2
+    # Make sure at least one of the outcomes are in the clinical
+    # annotations.
+    outcomes = [(x1, x2) for (x1, x2) in outcomes
+                if x1 in clinical_annots and x2 in clinical_annots]
+    assert outcomes, "No clinical annotations found."
+    #for x1, x2 in outcomes:
+    #    assert x1 in clinical_annots, "Missing clinical annotation: %s" % x1
+    #    assert x2 in clinical_annots, "Missing clinical annotation: %s" % x2
 
     # Select the genes or gene sets of interest.
     x = genes or gene_sets
@@ -771,7 +775,7 @@ def main():
         gene_outcome_scores[(time_header, dead_header, i)] = x
 
     # Files generated:
-    # <filestem>.stats.txt           Or to STDOUT if no <filestem> given.
+    # <filestem>.stats.txt      Or to STDOUT if no <filestem> given.
     # <filestem>.<outcome>.<gene_id>.km.png      K-M plot.
     # <filestem>.<outcome>.<gene_id>.prism.txt   Prism format for K-M analysis.
     # <filestem>.<outcome>.<gene_id>.groups.png  Group for each sample.
