@@ -4,15 +4,26 @@
 def choose_gene_names(MATRIX):
     # Return tuple of (header for gene_id, header for gene_names).
     # Either of the headers can be None.
-    geneid_header = genename_header = None
-    
-    if not MATRIX.row_names():
-        return geneid_header, genename_header
+    from genomicode import arrayplatformlib
 
-    # TODO: Find better way of choosing these.
-    geneid_header = MATRIX.row_names()[0]
-    if len(MATRIX.row_names()) > 1:
-        genename_header = MATRIX.row_names()[1]
+    if not MATRIX.row_names():
+        return None, None
+    if len(MATRIX.row_names()) == 1:
+        return MATRIX.row_names()[0], None
+    if len(MATRIX.row_names()) == 2:
+        return MATRIX.row_names()
+
+    # By default, set as the first two rows.
+    geneid_header, genename_header = MATRIX.row_names()[:2]
+
+    # If I can find a better header for the annotation, then use it.
+    x = arrayplatformlib.score_all_platforms_of_matrix(MATRIX)
+    for header, platform, score in x:
+        if score < 0.5:
+            continue
+        if platform == "entrez_ID_symbol_human":
+            genename_header = header
+            
     return geneid_header, genename_header
     
     
@@ -240,7 +251,7 @@ def main():
             os.close(w)
             r = os.fdopen(r)
             for line in r:
-                #sys.stdout.write(line)   # output from R library
+                sys.stdout.write(line)   # output from R library
                 pass
             os.waitpid(pid, 0)
 

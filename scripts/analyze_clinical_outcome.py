@@ -14,6 +14,7 @@
 # read_expression_or_geneset_scores
 # read_clinical_annotations
 # align_matrix_with_clinical_data
+# get_gene_name
 #
 # calc_association
 # calc_km
@@ -247,6 +248,34 @@ def discretize_scores(scores, cutoffs, zscore, expression_or_score):
     return group_names, groups
 
 
+def get_gene_name(MATRIX, gene_i):
+    from genomicode import arrayplatformlib as apl
+
+    # Try finding a gene symbol.
+    header = apl.find_header(MATRIX, apl.GENE_SYMBOL)
+    if header is not None:
+        gene_name = MATRIX.row_names(header)[gene_i]
+        if gene_name:
+            return gene_name
+
+    # Try finding the gene ID.
+    header = apl.find_header(MATRIX, apl.GENE_ID)
+    if header is not None:
+        gene_name = MATRIX.row_names(header)[gene_i]
+        if gene_name:
+            return "GeneID %s" % gene_name
+
+    # Just us a probe ID.
+    header = apl.find_header(MATRIX, apl.PROBE_ID)
+    if header is not None:
+        gene_name = MATRIX.row_names(header)[gene_i]
+        if gene_name:
+            return "ProbeID %s" % gene_name
+
+    # Just return the index of the gene
+    return "Gene %04d" % gene_i
+
+
 def calc_association(survival, dead, scores, cutoffs, zscore,
                      expression_or_score):
     # Return a dictionary with keys:
@@ -273,7 +302,7 @@ def calc_association(survival, dead, scores, cutoffs, zscore,
     assert I, "No valid samples."
 
     survival = [float(survival[i]) for i in I]
-    dead = [int(dead[i]) for i in I]
+    dead = [int(float(dead[i])) for i in I]  # might be 0.0, 1.0
     scores = [scores[i] for i in I]
 
     # Figure out the groupings.
@@ -827,7 +856,8 @@ def main():
 
 
         # Write out Prism, Kaplan-Meier curves, etc.
-        gene_id = M.row_names(M.row_names()[0])[gene_i]
+        # Better way to pick gene ID.
+        gene_id = get_gene_name(M, gene_i)
         gene_id_h = hashlib.hash_var(gene_id)
 
         if args.write_prism:

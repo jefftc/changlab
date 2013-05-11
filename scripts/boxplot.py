@@ -51,6 +51,7 @@ def main():
     if args.height is not None:
         assert args.height > 10, "too small"
         assert args.height < 4096*16, "height too big"
+    # XXX change mar_bottom to scale.
     assert args.mar_bottom >= 0 and args.mar_bottom < 100
     assert args.mar_left >= 0 and args.mar_left < 100
     assert args.xlabel_size > 0 and args.xlabel_size < 100

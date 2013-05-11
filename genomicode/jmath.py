@@ -30,6 +30,7 @@ cov
 cor
 order
 rank
+min
 max
 which_max
 svd
@@ -464,6 +465,19 @@ def rank(X, byrow=1):
 
 max_ = max
 min_ = min
+
+def min_list(X):
+    return min_(X)
+
+def min_matrix(X, byrow=1):
+    if not byrow:
+        X = transpose(X)
+    X_min = [min_list(x) for x in X]
+    return X_min
+
+def min(X, byrow=1):
+    return _dispatch(X, None, _fn(min_list), _fn(min_matrix, byrow=byrow))
+
 def max_list(X):
     return max_(X)
 
