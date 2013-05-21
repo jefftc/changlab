@@ -12,16 +12,17 @@ PLATFORM=OSX
 #PYINCLUDE=/opt/local/include/python2.4
 #PYINCLUDE=/home/jefftc/include/python2.5
 PYINCLUDE=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
+NUMPYINCLUDE=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/numpy/core/include/numpy/
 
 # Use this to pass any other flags to the C compiler.  This should be
 # at least -I$(PYINCLUDE).
-MORECFLAGS=-I$(PYINCLUDE)
+MORECFLAGS=-I$(PYINCLUDE) -I$(NUMPYINCLUDE)
 
 # Use this to pass any other flags to the linker.
 MORELDFLAGS=
 
 # Specify the files to make.
-all: ciolib.so cMatrix.so cjmath.so cgeolib.so ccoherencelib.so cGeneSet.so
+all: ciolib.so cMatrix.so cjmath.so cgeolib.so ccoherencelib.so cGeneSet.so cMarkovModel.so
 .PHONY: all
 
 cjmath.so: cjmathmodule.o mathlib.o

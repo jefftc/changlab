@@ -1,14 +1,14 @@
 """
 
 Glossary:
-sequence   Ordered list of nucleotides, e.g. ACTGCTAA
-seqset     Set of alternative sequences.
-library    Ordered list of seqsets.
+sequence         Ordered list of nucleotides, e.g. "ACTGCTAA"
+seqset           Set of alternative sequences, e.g. ["AC", "TG", "TT"]
+library          Ordered list of (name, is_random, seqset).
 
 graph            Consists of nodes and edges that indicate topology.
-main graph       Nodes and edges for a sequence with no inserts or deletions.
-insertion graph  Nodes and edges for insertions.
-deletion graph   Nodes and edges for deletions.
+main graph       Nodes and edges that model a sequence with no inserts or dels
+insertion graph  Nodes and edges that model insertions.
+deletion graph   Nodes and edges that model deletions.
  
 Each seqset has a name given by the user.  The names are hashed to
 guarantee that they are unique.
@@ -23,6 +23,56 @@ node            tuple of (node_type, <seqset>, <alternative>, <base>).
 <base>          Index of base of sequence.
 START, END      Special nodes for the start and end of the graph.
 INSERTEND       Special node that absorbs inserts at end of library.
+node_type       Constants: START, MAIN, INSERT, END, INSERT-END.
+
+
+Nodes
+-----
+(MAIN, <seqset>, <alternative>, <base>)
+(INSERT, <seqset>, <alternative>, <base>)
+(START,)
+(END,)
+(INSERTEND,)
+
+
+Emission probabilities
+----------------------
+p_mismatch   Non-matching bases.    Default 0.10.
+
+o p_mismatch is the relative probability density that a node in the
+  MAIN graph emits a non-matching base.  The rest of the probability
+  density is reserved for matches.
+o In the INSERT node, each of the bases can be emitted with equal
+  probability.
+o The START node and the END node emit START and END with 100%
+  probability, respectively.
+
+These are technically relative weights, rather than probabilities.
+So, with the default weights, a match gets 9 times the density than a
+mismatch.  We do it this way because we don't know how many possible
+mismatches there are.  So if the alphabet has 3 possible mismatches,
+or if it has 10, a match always has 9 times the density.
+
+
+
+Transition probabilities
+------------------------
+p_insert     Inserting one base.    Default (1-p_match).
+p_delbase    Deleting one base.     Default (1-p_match)**2 (transition and mm).
+p_delchunk   Deleting one chunk.    Default (1-p_match)**2 (transition and mm).
+
+o p_insert is the probability of a transition from any node (including
+  an INSERT node) to an INSERT node.
+o p_delbase is the probability of a transition from a MAIN node to
+  another MAIN node that is one base away.
+o p_delchunk is the probability of a transition from a MAIN node to
+  another MAIN node that skips an entire seqset.
+o The rest of the probability density is reserved for transitions from
+  any node to a MAIN node (without deletions).
+
+As with the emissions, these are relative weights, rather than
+probabilities.
+
 
 
 Functions:
@@ -40,21 +90,21 @@ parse_node
 # _get_all_nodes
 # _get_first_nodes
 # _get_next_nodes
-# _node_index
+# _node_dist
 # 
 # _make_main_graph
 # _make_insertion_graph
 # _make_deletion_graph
 #
+# _calc_emission_probs
 # _calc_transition_probs
-# _calc_emissions_probs
 #
 # _add_deletions_to_alignment
 
 
+START = "START"
 MAIN = "MAIN"
 INSERT = "INSERT"
-START = "START"
 END = "END"
 INSERTEND = "INSERT-END"
 
@@ -117,39 +167,111 @@ def _get_next_nodes(library, i_seqset, i_sequence, i_base):
     return next_nodes
 
 
-def _node_index(library, node):
-    # Rough measure of the distance of a node from the START node.
-    # The index of a node is not unique.  All alternatives in a seqset
-    # will have the same indexes.  The distance may be inaccurate if
-    # alternatives in a seqset have different lengths.
+def _node_dist(library, start_node, end_node):
+    # Return the distance from the start_node to the end_node as a
+    # tuple of (total_bases, num_seqset, num_bases).  total_bases is
+    # the minimum number of bases from the start_node to the end_node.
+    # num_seqset and num_bases is the minimum number of seqsets and
+    # bases that need to be traversed.
 
-    # Optimization: Can cache the calculation of iseqset2index for
-    # efficiency.
-    # index of seqset, START, END, or INSERTEND to the node index.
-    iseqset2index = {}
+    # Possible cases:
+    # 1.  Both are START or both are END (or INSERTEND).
+    # 2.  start_node is START and end_node is END (or INSERTEND).
+    # 3.  start_node is START and end_node is internal.
+    # 4.  start_node is internal and end_node is END (or INSERTEND).
+    # 5.  Nodes are in the same seqset, same sequence.
+    # 6.  Nodes are in different seqsets.
+    #
+    # There is no distance between bases inserted at the end.
 
-    iseqset2index[START] = 0
-    
-    node_index = 1
-    for i, (name, is_random, seqset) in enumerate(library):
-        longest_seq = None
-        for seq in seqset:
-            if longest_seq is None or len(seq) > longest_seq:
-                longest_seq = len(seq)
-        assert longest_seq
-        iseqset2index[i] = node_index
-        node_index += longest_seq
-    iseqset2index[END] = node_index
-    iseqset2index[INSERTEND] = node_index
+    min_bases = []  # minimum number of bases in each seqset.
+    for name, is_random, seqset in library:
+        seqlens = [len(x) for x in seqset]
+        x = min(seqlens)
+        min_bases.append(x)
 
-    if node[0] in [MAIN, INSERT]:
-        i_seqset, i_sequence, i_base = node[1:]
-        index = iseqset2index[i_seqset] + i_base
+    assert start_node[0] in [MAIN, START, END, INSERT, INSERTEND]
+    assert end_node[0] in [MAIN, START, END, INSERT, INSERTEND]
+
+    # Case 1.
+    if start_node[0] == START and end_node[0] == START:
+        total_bases, num_seqset, num_bases = 0, 0, 0
+    elif start_node[0] in ["END", "INSERTEND"] and \
+           end_node[0] in ["END", "INSERTEND"]:
+        total_bases, num_seqset, num_bases = 0, 0, 0
+    # Case 2.
+    elif start_node[0] == START and end_node[0] in ["END", "INSERTEND"]:
+        total_bases = sum(min_bases)
+        num_seqset = len(min_bases)
+        num_bases = 0
+    # Case 3.
+    elif start_node[0] == START:
+        i_seqset2, i_sequence2, i_base2 = end_node[1:]
+        total_bases = sum(min_bases[:i_seqset2]) + i_base2
+        num_seqset = i_seqset2
+        num_bases = i_base2
+    # Case 4.
+    elif end_node[0] in ["END", "INSERTEND"]:
+        i_seqset1, i_sequence1, i_base1 = start_node[1:]
+        sequence1 = library[i_seqset1][-1][i_sequence1]
+        num_seqset = len(library) - i_seqset1
+        num_bases = len(sequence1) - i_base1
+        total_bases = sum(min_bases[(i_seqset1+1):]) + num_bases
+    # Case 5:
+    elif start_node[1] == end_node[1]:
+        i_seqset1, i_sequence1, i_base1 = start_node[1:]
+        i_seqset2, i_sequence2, i_base2 = end_node[1:]
+        assert i_sequence1 == i_sequence2
+        assert i_base2 >= i_base1
+        num_bases = i_base2 - i_base1
+        num_seqset = 0
+        total_bases = num_bases
+    # Case 6.
     else:
-        assert node[0] in iseqset2index
-        index = iseqset2index[node[0]]
+        i_seqset1, i_sequence1, i_base1 = start_node[1:]
+        i_seqset2, i_sequence2, i_base2 = end_node[1:]
+        assert i_seqset2 > i_seqset1
+        sequence1 = library[i_seqset1][-1][i_sequence1]
+        num_seqset = i_seqset2 - i_seqset1
+        num_bases = (len(sequence1) - i_base1) + i_base2
+        total_bases = sum(min_bases[(i_seqset1+1):i_seqset2]) + num_bases
 
-    return index
+    return total_bases, num_seqset, num_bases
+
+
+## def _node_index(library, node):
+##     # Rough measure of the distance of a node from the START node.
+##     # The index of a node is not unique.  All alternatives in a seqset
+##     # will have the same indexes.  The distance may be inaccurate if
+##     # alternatives in a seqset have different lengths.
+
+##     # Optimization: Can cache the calculation of iseqset2index for
+##     # efficiency.
+##     # index of seqset, START, END, or INSERTEND to the node index.
+##     iseqset2index = {}
+
+##     iseqset2index[START] = 0
+    
+##     node_index = 1
+##     for i, (name, is_random, seqset) in enumerate(library):
+##         longest_seq = None
+##         for seq in seqset:
+##             if longest_seq is None or len(seq) > longest_seq:
+##                 longest_seq = len(seq)
+##         assert longest_seq
+##         iseqset2index[i] = node_index
+##         node_index += longest_seq
+##     iseqset2index[END] = node_index
+##     iseqset2index[INSERTEND] = node_index
+
+##     if node[0] in [MAIN, INSERT]:
+##         i_seqset, i_sequence, i_base = node[1:]
+##         index = iseqset2index[i_seqset] + i_base
+##     else:
+##         assert node[0] in iseqset2index
+##         index = iseqset2index[node[0]]
+
+##     return index
     
 
 def _make_main_graph(library):
@@ -187,7 +309,7 @@ def _make_insertion_graph(library):
         assert insert_node not in graph
         graph[insert_node] = [insert_node, main_node]
     # INSERTEND absorbs all remaining bases until the END.
-    graph[(INSERTEND,)] = [(INSERTEND,),  (END,)]
+    graph[(INSERTEND,)] = [(INSERTEND,), (END,)]
 
     # Each node points to the insert of the next node.
     for x in _iter_main_graph(library):
@@ -210,10 +332,11 @@ def _make_insertion_graph(library):
 def _make_deletion_graph(library):
     graph = {}  # state -> list of next states
 
-    # START points to everything.
+    # START points to everything.  Any number of the initial bases can
+    # be deleted.
     nodes = []
     for x in _iter_main_graph(library):
-        name, seqset, sequence, base, i_seqset, i_sequence, i_base = x
+        x, x, x, x, i_seqset, i_sequence, i_base = x
         x = (MAIN, i_seqset, i_sequence, i_base)
         nodes.append(x)
     graph[(START,)] = nodes
@@ -248,7 +371,7 @@ def _make_deletion_graph(library):
                 
     # Everything points to END.
     for x in _iter_main_graph(library):
-        name, seqset, sequence, base, i_seqset, i_sequence, i_base = x
+        x, x, x, x, i_seqset, i_sequence, i_base = x
         node = (MAIN, i_seqset, i_sequence, i_base)
         if node not in graph:
             graph[node] = []
@@ -269,54 +392,8 @@ def _make_deletion_graph(library):
     return graph
 
 
-def _calc_transition_probs(library, p_main, p_insert, p_delete):
-    # Return a dictionary of (node1, node2) -> transition probability.
-    import math
-
-    # Transition probabilities.
-    assert abs(p_insert + p_delete + p_main - 1.0) < 0.01
-
-    # Make the graph.
-    main_graph = _make_main_graph(library)
-    insert_graph = _make_insertion_graph(library)
-    delete_graph = _make_deletion_graph(library)
-
-    # DEBUG: Print out the topology of the graph.
-    #for node in sorted(insert_graph):
-    #    next_nodes = sorted(insert_graph[node])
-    #    print node, next_nodes
-    #import sys; sys.exit(0)
-
-    # Make a list of all nodes in all graphs.
-    nodes = _get_all_nodes(main_graph, insert_graph, delete_graph)
-
-    # (start node, next node) -> probability
-    probabilities = {}
-    for start_node in nodes:
-        probs = {}  # next_node -> p
-        for next_node in main_graph.get(start_node, []):
-            probs[next_node] = p_main
-        for next_node in insert_graph.get(start_node, []):
-            probs[next_node] = p_insert
-        i_start = _node_index(library, start_node)
-        for next_node in delete_graph.get(start_node, []):
-            i_next = _node_index(library, next_node)
-            assert i_next-i_start >= 2
-            probs[next_node] = math.pow(p_delete, i_next-i_start-1)
-        if not probs:  # no next nodes
-            continue
-
-        # Normalize the probabilities to 1.0.
-        total = sum(probs.values())
-        for next_node in probs:
-            probs[next_node] = probs[next_node] / total
-        for next_node, p in probs.iteritems():
-            probabilities[(start_node, next_node)] = p
-    return probabilities
-
-    
-def _calc_emission_probs(library, base2emission, p_match, p_mismatch):
-    # Make a list of all the emissions.
+def _calc_emission_probs(library, base2emission, p_mismatch):
+    # Make a list of all the bases that can be emitted.
     emissions = {}
     for x in _iter_main_graph(library):
         name, seqset, sequence, base, i_seqset, i_sequence, i_base = x
@@ -334,11 +411,12 @@ def _calc_emission_probs(library, base2emission, p_match, p_mismatch):
     for x in _iter_main_graph(library):
         name, seqset, sequence, base, i_seqset, i_sequence, i_base = x
         node = MAIN, i_seqset, i_sequence, i_base
+        emission = base2emission.get(base, base)  # what this base emits
 
-        probs = {}
+        probs = {}   # base -> probability
         for e in emissions_in_library:
-            p = p_match
-            if base2emission.get(base, base) != e:
+            p = 1.0-p_mismatch
+            if e != emission:
                 p = p_mismatch
             probs[e] = p
         # Normalize the probabilities to 1.0.
@@ -366,29 +444,123 @@ def _calc_emission_probs(library, base2emission, p_match, p_mismatch):
     return probabilities
              
 
+def _calc_transition_probs(library, p_insert, p_delbase, p_delchunk):
+    # Return a dictionary of (node1, node2) -> transition probability.
+    import math
+
+    # Transition probabilities.
+    p_main = 1.0 - (p_insert + p_delbase + p_delchunk)
+    assert p_insert >= 0 and p_insert < 0.5
+    assert p_delbase >= 0 and p_delbase < 0.5
+    assert p_delchunk >= 0 and p_delchunk < 0.5
+    assert p_main > 0 and p_main <= 1.0
+
+    # Make the graph.
+    main_graph = _make_main_graph(library)
+    insert_graph = _make_insertion_graph(library)
+    delete_graph = _make_deletion_graph(library)
+
+    # DEBUG: Print out the topology of the graph.
+    #for node in sorted(insert_graph):
+    #    next_nodes = sorted(insert_graph[node])
+    #    print node, next_nodes
+    #import sys; sys.exit(0)
+
+    # Make a list of all nodes in all graphs.
+    nodes = _get_all_nodes(main_graph, insert_graph, delete_graph)
+
+    # (start node, next node) -> probability
+    probabilities = {}
+    for start_node in nodes:
+        probs = {}  # next_node -> p
+        for next_node in main_graph.get(start_node, []):
+            probs[next_node] = p_main
+        for next_node in insert_graph.get(start_node, []):
+            assert next_node[0] in ["MAIN", "END", "INSERT", "INSERT-END"], \
+                   repr(next_node)
+            p = p_main
+            if next_node[0] in ["INSERT", "INSERT-END"]:
+                p = p_insert
+            probs[next_node] = p
+        for next_node in delete_graph.get(start_node, []):
+            x = _node_dist(library, start_node, next_node)
+            total_bases, num_seqsets, num_bases = x
+            # If deleting a seqset is lower probability than deleting
+            # the individual bases, then just model as deleting the
+            # individual bases.
+            p1 = pow(p_delbase, total_bases)
+            p2 = (pow(p_delbase, num_bases) *
+                  pow(p_delchunk, num_seqsets))
+            probs[next_node] = max(p1, p2)
+        if not probs:  # no next nodes
+            continue
+        #print "MAIN", main_graph.get(start_node, [])
+        #print "INSERT", insert_graph.get(start_node, [])
+        #print "DELETE", delete_graph.get(start_node, [])
+        #print start_node, probs
+
+        # If there are any non-insertion or deletion nodes, distribute
+        # remaining probability mass to them.
+        ## num_nodes = len([x for x in probs.itervalues() if x is None])
+        ## if num_nodes:
+        ##     p = sum([x for x in probs.itervalues() if x is not None])
+        ##     p_main = (1.0 - p) / num_nodes
+        ##     for next_node in probs:
+        ##         if probs[next_node] is None:
+        ##             probs[next_node] = p_main
+        ##     #print num_nodes, p_main
+        ##     #if p_main < 0.20:
+        ##     #    for n, x in probs.iteritems():
+        ##     #        print n, x
+
+        ## # Otherwise, normalize the probabilities to 1.0.  This can
+        ## # happen, for example, if we decide to treat transitions into
+        ## # and out of INSERT nodes as insertions.
+        ## else:
+        # Normalize the probabilities to 1.0.
+        total = sum(probs.values())
+        for next_node in probs:
+            probs[next_node] = probs[next_node] / total
+        #print start_node, probs
+        #import sys; sys.exit(0)
+        #if len(main_graph.get(start_node, [])) >= 4:
+        #    print "HERE"
+        #    for n, x in probs.iteritems():
+        #        print n, x
+        #    print "DONE"
+
+        # Make sure probabilities sum to 1.
+        #assert abs(sum(probs.values()) - 1.0) < 1E-10
+        
+        for next_node, p in probs.iteritems():
+            probabilities[(start_node, next_node)] = p
+    return probabilities
+
+    
 def make_markov_model(
-        library, base2emission, p_insert=None, p_delete=None, p_mismatch=None):
+    library, base2emission, p_mismatch=None, p_insert=None,
+    p_delbase=None, p_delchunk=None):
     # Return a MarkovModel.
     import numpy
-    from Bio import MarkovModel
+    from genomicode import MarkovModel
 
-    p_mismatch = p_mismatch or 0.10
-    p_match = 1.0 - p_mismatch
+    if p_mismatch is None:
+        p_mismatch = 0.1
+    if p_insert is None:
+        p_insert = p_mismatch
+    if p_delbase is None:
+        p_delbase = p_mismatch**2   # transition and mismatch
+    if p_delchunk is None:
+        p_delchunk = p_mismatch**2  # transition and mismatch
     assert p_mismatch >= 0 and p_mismatch < 0.50
-    assert p_match > 0 and p_match <= 1.0
-    
-    p_insert = p_insert or p_mismatch
-    p_delete = p_delete or (p_mismatch**2)  # transition and mismatch
-    p_main = 1.0 - p_insert - p_delete
     assert p_insert >= 0 and p_insert < 0.50
-    assert p_delete >= 0 and p_delete < 0.50
-    assert p_main >= 0 and p_main <= 1.0
+    assert p_delbase >= 0 and p_delbase < 0.50
+    assert p_delchunk >= 0 and p_delchunk < 0.50
 
     # Calculate the transition probabilities.
     transition_probs = _calc_transition_probs(
-        library, p_main, p_insert, p_delete)
-    emission_probs = _calc_emission_probs(
-        library, base2emission, p_match, p_mismatch)
+        library, p_insert, p_delbase, p_delchunk)
+    emission_probs = _calc_emission_probs(library, base2emission, p_mismatch)
     #for (start, end) in sorted(transition_probs):
     #    x = transition_probs[(start, end)], start, end
     #    print "\t".join(map(str, x))
@@ -423,6 +595,9 @@ def make_markov_model(
     
     N = len(nodes)
     M = len(emissions)
+    #p_initial = [0.0] * N
+    #p_emission = [[0.0]*M for i in range(N)]
+    #p_transition = [[0.0]*N for i in range(N)]
     p_initial = numpy.zeros(N)
     p_emission = numpy.zeros((N,M))
     p_transition = numpy.zeros((N,N))
@@ -509,7 +684,7 @@ def _add_deletions_to_alignment(library, alignment):
 def _score_sequence_h(mm, library, base2emission, sequence):
     # Return score, list of (node, match_type, base, base in sequence).
     import math
-    from Bio import MarkovModel
+    from genomicode import MarkovModel
     
     # Add "START" and "END" emissions to the ends.
     assert type(sequence) is type("")
@@ -518,6 +693,7 @@ def _score_sequence_h(mm, library, base2emission, sequence):
     # Score the alignment.
     alignments = MarkovModel.find_states(mm, sequence)
     states, score = alignments[0]
+    score = max(score, 1E-100)
     lscore = math.log(score)
 
     #print sequence
@@ -557,23 +733,71 @@ def _score_sequence_h(mm, library, base2emission, sequence):
     return lscore, alignment
 
 
+def guess_sequence_orientation(sequence, library):
+    # Return 1, 0, or -1.  1 if the sequence is in the right
+    # orientation, -1 if it needs to be reverse complemented, and 0 if
+    # I can't tell.
+    from Bio import Seq
+    from Bio import pairwise2
+
+    sequence_rc = Seq.Seq(sequence).reverse_complement().tostring()
+
+    # First, see if it matches the first seqset of the library exactly.
+    for seq in library[0][-1]:
+        if sequence[:len(seq)] == seq:
+            return 1
+        if sequence_rc[:len(seq)] == seq:
+            return -1
+
+    # If it doesn't match exactly, see if it matches to within 2
+    # mismatches.
+    for seq in library[0][-1]:
+        if len(seq) < 6:  # if sequence too short, hard to align.
+            continue
+        score = pairwise2.align.globalxx(
+            sequence[:len(seq)], seq, score_only=True)
+        if score >= len(seq)-2:
+            return 1
+        score = pairwise2.align.globalxx(
+            sequence_rc[:len(seq)], seq, score_only=True)
+        if score >= len(seq)-2:
+            return -1
+
+    # I can't tell.
+    return 0
+
+
 def score_sequence(mm, library, base2emission, sequence):
     # Return score, is_revcomp,
     # list of (node, match_type, base, base in sequence).
     from Bio import Seq
+    from Bio import pairwise2
 
-    # Score both the sequence and its reverse complement.  Return the
-    # one with the higher score.
-    sequence_rc = Seq.Seq(sequence).reverse_complement().tostring()
-    x1 = _score_sequence_h(mm, library, base2emission, sequence)
-    x2 = _score_sequence_h(mm, library, base2emission, sequence_rc)
-    lscore1, alignment1 = x1
-    lscore2, alignment2 = x2
+    assert library
 
-    lscore, is_revcomp, alignment = lscore1, False, alignment1
-    if lscore2 > lscore1:
-        lscore, is_revcomp, alignment = lscore2, True, alignment2
-
+    orientation = guess_sequence_orientation(sequence, library)
+    
+    if orientation == 1:
+        x = _score_sequence_h(mm, library, base2emission, sequence)
+        lscore, alignment = x
+        is_revcomp = False
+    elif orientation == -1:
+        sequence_rc = Seq.Seq(sequence).reverse_complement().tostring()
+        x = _score_sequence_h(mm, library, base2emission, sequence_rc)
+        lscore, alignment = x
+        is_revcomp = True
+    else:
+        # Score both the sequence and its reverse complement.  Return the
+        # one with the higher score.
+        sequence_rc = Seq.Seq(sequence).reverse_complement().tostring()
+        x1 = _score_sequence_h(mm, library, base2emission, sequence)
+        x2 = _score_sequence_h(mm, library, base2emission, sequence_rc)
+        lscore1, alignment1 = x1
+        lscore2, alignment2 = x2
+        lscore, is_revcomp, alignment = lscore1, False, alignment1
+        if lscore2 > lscore1:
+            lscore, is_revcomp, alignment = lscore2, True, alignment2
+        
     #for x in alignment:
     #    print repr(x)
     #import sys; sys.exit(0)
@@ -664,4 +888,5 @@ def parse_node(node_str):
     x = node_str.split(":")
     assert len(x) >= 1 and len(x) <= 4
     return tuple(x)
+
 
