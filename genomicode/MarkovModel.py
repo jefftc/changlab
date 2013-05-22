@@ -508,8 +508,10 @@ def find_states(markov_model, output):
     results = _viterbi(N, lp_initial, lp_transition, lp_emission, output)
 
     for i in range(len(results)):
-        states, score = results[i]
-        results[i] = [mm.states[x] for x in states], numpy.exp(score)
+        states, scores = results[i]
+        states = [mm.states[x] for x in states]
+        scores = [numpy.exp(x) for x in scores]
+        results[i] = states, scores
     return results
 
 
@@ -547,15 +549,13 @@ def _viterbi(N, lp_initial, lp_transition, lp_emission, output):
     # The Viterbi algorithm finds the most likely set of states for a
     # given output.  Returns a list of states.
 
-    argmax = numpy.argmax
     T = len(output)
 
     # Store the best scores.
-    T = len(output)
     scores = numpy.zeros((N, T))
     scores[:,0] = lp_initial + lp_emission[:,output[0]]
     # Store the backtrace in a NxT matrix.
-    backtrace = []    # list of indexes of states in previous timestep.
+    backtrace = []    # list of indexes of states in previous step.
     for i in range(N):
         backtrace.append([None] * T)
 
@@ -567,7 +567,7 @@ def _viterbi(N, lp_initial, lp_transition, lp_emission, output):
         
     # 99% of the time is spent in this loop.
     _viterbi_h(scores, backtrace, N, T, output, lp_trans_j, lp_emission)
-    
+
     ## for t in range(1, T):
     ##     k = output[t]
     ##     # Make a new numpy.array to ensure that it is contiguous.
@@ -597,7 +597,7 @@ def _viterbi(N, lp_initial, lp_transition, lp_emission, output):
     results = []       # return values.  list of (states, score)
     indexes = _argmaxes(scores[:,T-1])      # pick the first place
     for i in indexes:
-        in_process.append((T-1, [i], scores[i][T-1]))
+        in_process.append((T-1, [i], [scores[i][T-1]]))
     while in_process:
         t, states, score = in_process.pop()
         if t == 0:
@@ -606,7 +606,7 @@ def _viterbi(N, lp_initial, lp_transition, lp_emission, output):
             indexes = backtrace[states[0]][t]
             #for i in indexes:
             #    in_process.append((t-1, [i]+states, score))
-            x = [(t-1, [i]+states, score) for i in indexes]
+            x = [(t-1, [i]+states, [scores[i][t-1]]+score) for i in indexes]
             in_process.extend(x)
     return results
 

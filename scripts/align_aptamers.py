@@ -6,30 +6,9 @@ DEF_INSERT = DEF_MISMATCH
 DEF_DELBASE = DEF_MISMATCH**2
 DEF_DELCHUNK = DEF_MISMATCH**2
 
-
-
-def parse_fastq(filename):
-    # Iterator that yields tuples (title, sequence, quality).
-    from genomicode import filelib
-
-    # Format of FASTQ files:
-    # @4GEOU:00042:00049                          Title
-    # ACTGCTAATTCACACTGGATTAGTTGGGCTACTTCATCGT    Sequence
-    # +                                           Always "+"
-    # =<>>A77.7.54>4444.46-444,44*3333:9:44443    Quality
-    
-    handle = filelib.openfh(filename)
-    while True:
-        x = [handle.readline() for i in range(4)]
-        lines = [x.strip() for x in x]
-        if not lines[0]:
-            break
-        title, sequence, x, quality = lines
-        assert x == "+"
-        assert len(sequence) == len(quality)
-        assert quality
-
-        yield title, sequence, quality
+OUT_TABLE = "TABLE"
+OUT_MARKOV = "MARKOV_MODEL"
+OUT_ALIGNMENT = "ALIGNMENT"
 
 def _parse_base2emission(base2emission_list):
     # base2emission is a list of "<lib_base>:<seq_base>".  Return a
@@ -43,9 +22,99 @@ def _parse_base2emission(base2emission_list):
         assert lib_base not in base2emission, "multiple: %s" % lib_base
         base2emission[lib_base] = seq_base
     return base2emission
+
+
+def _write_table(library, alignment, title, score, is_revcomp, outhandle):
+    from genomicode import aptamerlib
+    #for x in alignment:
+    #    print "ALIGN", repr(x)
+    #print "SCORE", score
+
+    # Get the indexes of the regions that are random.
+    I_random = [i for i in range(len(library)) if library[i].is_random]
+    I_barcode = [i for i in range(len(library)) if library[i].is_barcode]
+    assert len(I_random) >= 1, "No random region."
+    assert len(I_barcode) <= 1, "Too many barcodes."
+
+    # Count the matches and mismatches.
+    counts = {}
+    for x in alignment:
+        node, log_score, match_type, base_in_lib, base_in_seq = x
+        assert node.node_type in [
+            aptamerlib.INSERT, aptamerlib.MAIN, aptamerlib.INSERTEND]
+        if node.node_type == aptamerlib.INSERTEND:  # not in random region
+            continue
+        if not library[node.i_seqset].is_random: # only count random region
+            continue
+        counts[match_type] = counts.get(match_type, 0) + 1
+    num_matches = counts.get("MATCH", 0)
+    num_mismatches = counts.get("MISMATCH", 0)
+    num_deletions = counts.get("DELETE", 0)
+    num_insertions = counts.get("INSERT", 0)
+
+    # Pull out the random region.
+    ideal_seq, real_seq = aptamerlib.pretty_sequences(alignment)
+    ideal_seqs = ideal_seq.split("*")
+    actual_seqs = real_seq.split("*")
+    assert len(ideal_seqs) >= len(library)
+    assert len(actual_seqs) >= len(library)
+    x1 = [ideal_seqs[i] for i in I_random]
+    #x2 = [actual_seqs[i] for i in I_random]
+    ideal_random = "".join(x1)
+    #actual_random = "".join(x2)
+    x1 = [ideal_seqs[i] for i in I_barcode]
+    #x2 = [actual_seqs[i] for i in I_barcode]
+    ideal_barcode = "".join(x1)
+    #actual_barcode = "".join(x2)
+    random_region = ideal_random.replace("-", "")
+    barcode = ideal_barcode.replace("-", "")
+
+    # Write the results.
+    total_errors = num_mismatches + num_insertions + num_deletions
+
+    # Percent match is hard to calculate.  Should take into
+    # account insertions and deletions somehow.
+    #perc_match = "%.1f" % (100*float(num_matches) / len(random_region))
+    x = title, int(is_revcomp), score, barcode, random_region, \
+        len(random_region), total_errors, \
+        num_matches, num_mismatches, num_insertions, num_deletions, \
+        ideal_seq, real_seq
+    print >>outhandle, "\t".join(map(str, x))
     
 
-def _align_aptamers_h(mm, library, base2emission, title, sequence, lock):
+def _write_alignment(alignment, title, outhandle):
+    from genomicode import aptamerlib
+    
+    ideal_seq, real_seq = aptamerlib.pretty_sequences(alignment)
+    print >>outhandle, title
+    print >>outhandle, ideal_seq
+    print >>outhandle, real_seq
+    print >>outhandle
+
+
+def _write_markov_model(library, alignment, title, sequence, score, is_revcomp,
+                        outhandle):
+    from genomicode import aptamerlib
+    
+    print >>outhandle, "%s %s %s" % ("="*10, title, "="*10)
+    print >>outhandle, "%s %.2f %d" % (sequence, score, int(is_revcomp))
+    for i, x in enumerate(alignment):
+        node, log_score, match_type, base_in_lib, base_in_seq = x
+        node_str = str(node)
+        if node.i_seqset is not None:
+            seqset_name = library[node.i_seqset].name
+        else:
+            assert node.node_type == aptamerlib.INSERTEND
+            node_str = "END"
+            seqset_name = ""
+        x = node_str, seqset_name, match_type, \
+            base_in_lib, base_in_seq, "%.2f" % log_score
+        print >>outhandle, "\t".join(map(str, x))
+    print >>outhandle
+
+
+def _align_aptamers_h(
+    mm, library, base2emission, title, sequence, output, lock):
     import sys
     import StringIO
     from genomicode import aptamerlib
@@ -53,67 +122,16 @@ def _align_aptamers_h(mm, library, base2emission, title, sequence, lock):
     x = aptamerlib.score_sequence(mm, library, base2emission, sequence)
     score, is_revcomp, alignment = x
 
-    # Get the indexes of the regions that are random.
-    I_random = [i for (i, (name, is_random, seqset)) in enumerate(library)
-                if is_random]
-
     outhandle = StringIO.StringIO()
-    if 1:
-        ideal_seq, real_seq = aptamerlib.pretty_sequences(alignment)
-
-        ideal_seqs = ideal_seq.split("*")
-        actual_seqs = real_seq.split("*")
-        assert len(ideal_seqs) >= len(library)
-        assert len(actual_seqs) >= len(library)
-
-        # Pull out the random region.
-        x1 = [ideal_seqs[i] for i in I_random]
-        x2 = [actual_seqs[i] for i in I_random]
-        ideal_random = "".join(x1)
-        actual_random = "".join(x2)
-
-        # Count the matches and mismatches.
-        assert len(ideal_random) == len(actual_random)
-        num_matches = num_mismatches = num_insertions = num_deletions = 0
-        for (ideal, actual) in zip(ideal_random, actual_random):
-            assert not (ideal == "-" and actual == "-")
-            if base2emission.get(ideal, ideal) == actual:
-                num_matches += 1
-            elif actual == "-":
-                num_deletions += 1
-            elif ideal == "-":
-                num_insertions += 1
-            else:
-                num_mismatches += 1
-        
-        # Write the results.
-        random_region = ideal_random.replace("-", "")
-        total_errors = num_mismatches + num_insertions + num_deletions
-        perc_match = "%.1f" % (100*float(num_matches) / len(random_region))
-        x = title, int(is_revcomp), score, random_region, \
-            len(random_region), perc_match, total_errors, \
-            num_matches, num_mismatches, num_insertions, num_deletions, \
-            ideal_seq, real_seq
-        print >>outhandle, "\t".join(map(str, x))
+    if output == OUT_TABLE:
+        _write_table(library, alignment, title, score, is_revcomp, outhandle)
+    elif output == OUT_ALIGNMENT:
+        _write_alignment(alignment, title, outhandle)
+    elif output == OUT_MARKOV:
+        _write_markov_model(
+            library, alignment, title, sequence, score, is_revcomp, outhandle)
     else:
-        # Alternate output format.
-        print >>outhandle, "%s %s %s" % ("="*10, title, "="*10)
-        print >>outhandle, sequence
-        print >>outhandle, score, is_revcomp
-        for i, x in enumerate(alignment):
-            node, match_type, base_in_lib, base_in_seq = x
-            node_str = aptamerlib.format_node(node)
-            if len(node) >= 4:
-                x, i_seqset, i_sequence, i_base = node
-                seqset_name = library[i_seqset][0]
-            else:
-                assert node[0] == aptamerlib.INSERTEND
-                node_str = "END"
-                seqset_name = ""
-            x = node_str, seqset_name, match_type, \
-                base_in_lib, base_in_seq
-            print >>outhandle, "\t".join(map(str, x))
-        print >>outhandle
+        raise AssertionError, "Unknown output format: %s" % output
         
     lock.acquire()
     sys.stdout.write(outhandle.getvalue())
@@ -135,11 +153,26 @@ def main():
     parser.add_argument(
         "sequence_file", help="FASTQ-formatted sequence file.")
     parser.add_argument(
-        "-j", dest="num_procs", type=int, default=1,
-        help="Number of jobs to run in parallel.")
+        "--output_format", choices=[OUT_TABLE, OUT_MARKOV, OUT_ALIGNMENT],
+        default=OUT_TABLE, 
+        help="What kind of output to generate.")
     parser.add_argument(
         "--max_alignments", type=int,
         help="Maximum number of sequences to align.")
+    parser.add_argument(
+        "-j", dest="num_procs", type=int, default=1,
+        help="Number of jobs to run in parallel.")
+    parser.add_argument(
+        "--min_seqlen", type=int, default=None,
+        help="Discard sequences less than this minimum length.")
+    parser.add_argument(
+        "--lib2seq", default=[], action="append",
+        help="Map the bases in the library to bases in the sequencing.  "
+        "If the library contains non-standard bases (i.e. not ACGT), "
+        "please indicate how they are read in the sequencing in the format: "
+        "<lib_base>:<seq_base>.  E.g. 5:T means that a 5 in the "
+        "library is read as a T in the sequence.  If there are "
+        "multiple mappings, use this option multiple times.")
 
     group = parser.add_argument_group(title="Model Specification")
     group.add_argument(
@@ -154,14 +187,6 @@ def main():
     group.add_argument(
         "--delete_chunk", type=float, default=DEF_DELCHUNK,
         help="Probability of a deletion (default %0.2f)." % DEF_DELCHUNK)
-    group.add_argument(
-        "--lib2seq", default=[], action="append",
-        help="Map the bases in the library to bases in the sequencing.  "
-        "If the library contains non-standard bases (i.e. not ACGT), "
-        "please indicate how they are read in the sequencing in the format: "
-        "<lib_base>:<seq_base>.  E.g. 5:T means that a 5 in the "
-        "library is read as a T in the sequence.  If there are "
-        "multiple mappings, use this option multiple times.")
     
     args = parser.parse_args()
 
@@ -170,6 +195,8 @@ def main():
     assert os.path.exists(args.sequence_file), \
            "File not found: %s" % args.sequence_file
     assert args.num_procs >= 1 and args.num_procs < 256
+    assert args.min_seqlen is None or (
+        args.min_seqlen >= 0 and args.min_seqlen < 100)
 
     assert args.mismatch >= 0 and args.mismatch < 0.5, \
            "mismatch (%s) should be between 0 and 0.5" % args.mismatch
@@ -194,21 +221,28 @@ def main():
     lock = manager.Lock()
     pool = multiprocessing.Pool(args.num_procs)
 
-    header = [
-        "Title", "Is Revcomp", "Score", "Random Region",
-        "Length", "Percent Aligned", "Total Errors", 
-        "Num Matches", "Num Mismatches", "Num Insertions", "Num Deletions",
-        "Ideal Sequence", "Observed Sequence"]
-    print "\t".join(header)
-    sys.stdout.flush()
+    if args.output_format == OUT_TABLE:
+        header = [
+            "Title", "Is Revcomp", "Score", "Barcode", "Random Region",
+            "Length", "Total Errors", 
+            "Num Matches", "Num Mismatches", "Num Insertions", "Num Deletions",
+            "Ideal Sequence", "Observed Sequence"]
+        print "\t".join(header)
+        sys.stdout.flush()   # needed for multiprocessing
     results = []
-    for i, x in enumerate(parse_fastq(args.sequence_file)):
+    for i, x in enumerate(aptamerlib.parse_fastq(args.sequence_file)):
         title, sequence, quality = x
 
         if args.max_alignments is not None and i >= args.max_alignments:
             break
+        if args.min_seqlen is not None and len(sequence) < args.min_seqlen:
+            continue
+        #if title.find("00013:00070") < 0:
+        #    continue
 
-        params = mm, library, base2emission, title, sequence, lock
+        params = (
+            mm, library, base2emission, title, sequence, args.output_format,
+            lock)
         keywds = {}
         if args.num_procs == 1:
             _align_aptamers_h(*params, **keywds)
