@@ -1,5 +1,6 @@
 #normalize_file.py
 
+# Prolog predicate names.
 INPUTS = [
     'gse_id',
     'class_label_file',
@@ -12,9 +13,10 @@ INPUTS = [
     'input_signal_file',
     'rename_list_file']
 
+# Prolog predicate name.
 OUTPUTS = 'make_normalize_report'
 
-
+# <parameter> : list of valid options
 PARAMETERS = {
     'preprocess': ['rma', 'mas5', 'loess', 'illumina_controls',
                    'illumina', 'agilent', 'unknown_preprocess'],
@@ -71,6 +73,7 @@ PARAMETERS = {
     'has_annotation_gene_id':['yes_gene_id','no_gene_id'],
     'group_fc':'integer'}
 
+# <parameter> : default value
 DEFAULT = {
     'gene_center': 'no_gene_center',
     'gene_normalize': 'no_gene_normalize', 'quantile': 'no_quantile',
@@ -81,6 +84,7 @@ DEFAULT = {
     'gene_order': 'no_order', 'format': 'tdf',
     'unique_genes': 'no_unique_genes', 'num_features': '0'}
 
+# <input predicate name> : information for converting to fact
 predicate2arguments = {
     'gse_id': ([], '[]'),
     'gse_id_and_platform': ([], '[]'),
@@ -94,13 +98,15 @@ predicate2arguments = {
     'rename_list_file': ([], '[]')}
 
 
-                 
+# For organizing the website.  List of <parameters>.
 common_parameters=['preprocess','gene_center','gene_normalize',
                    'has_missing_value','format','is_logged', 'unique_genes',
                    'filter', 'gene_order','predataset','num_features','group_fc']
 
+# for organizing the website
 normalize_parameters = ['quantile','dwd','bfrm','shiftscale','combat']
 
+# for organizing the website
 optional_parameters = ['contents','gene_select_threshold', 'rename_sample',
                        'num_factors', 'pca_gene_num', 'platform','duplicate_probe',
                        'duplicate_data', 'has_annotation_gene_id']
