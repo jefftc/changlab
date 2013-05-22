@@ -1903,7 +1903,8 @@ def main():
     I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
     MATRIX = MATRIX.matrix(None, I_col)
 
-    # Log transform, if requested.
+    # Log transform, if requested.  Do before other changes to
+    # expression values (quantile, center, normalize).
     if args.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
 
@@ -1912,7 +1913,7 @@ def main():
     if args.fill_missing_values_median:
         median_fill_genes(MATRIX)
 
-    # Quantile normalize, if requested.
+    # Quantile normalize, if requested.  After log.
     if args.quantile:
         MATRIX = quantnorm.normalize(MATRIX)
 
@@ -1922,7 +1923,6 @@ def main():
     MATRIX = MATRIX.matrix(I, None)
 
     # Preprocess the expression values.
-    
     if args.gene_center == "mean":
         center_genes_mean(MATRIX, args.gc_subset_indexes)
     elif args.gene_center == "median":

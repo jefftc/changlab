@@ -1,12 +1,23 @@
 #!/usr/bin/env python
 
+# Possibilities:
+# 1.  Search database on GSEA.  Use some sort of gene ID.
+#     A.  If provide platform, then use it.
+#     B.  Try to guess platform.
+#     C.  If Gene Symbol, turn off collapse_dataset.
+#     D.  If Gene ID, convert to Gene Symbol (not implemented).
+# 2.  Search own database (with database_file).
+#     A.  collapse_dataset should be off.
+#     B.  IDs in expression should match IDs in database.
+
+# GenePattern uses the platform (chip file) to convert the IDs in the
+# Gene Symbols.  If the IDs are already gene symbols, then no platform
+# should be given (since it requires this parameter) and collapse
+# should be turned off.
+
+
 # Still some problems with the platforms.
 # 1.  Convert to GCT may discard the correct annotations.
-# 2.  What if the file already contains gene symbols?  I'm not sure
-# how to specify this for GenePattern.  For the website, we may be
-# able to leave it blank.  But this doesn't seem to work through the R
-# interface.
-
 
 
 # Mapping from arrayplatformlib to GenePattern.
@@ -14,7 +25,8 @@ platform2gpplatform = {
     "HG_U133A" : "HG_U133A.chip",
     "HG_U133A_2" : "HG_U133A_2.chip",
     "HG_U133_Plus_2" : "HG_U133_Plus_2.chip",
-    #"Entrez_symbol_human" : None,
+    "Entrez_symbol_human" : None,
+    "entrez_ID_symbol_human" : None,
     # Missing entrez_ID_human
     }
 
@@ -23,8 +35,7 @@ def guess_chip_platform(M):
     from genomicode import arrayplatformlib
 
     platform = arrayplatformlib.identify_platform_of_matrix(M)
-    if platform is None:
-        return None
+    assert platform, "I could not guess the platform for this file."
     assert platform in platform2gpplatform, \
         "I don't know how to convert %s to a GenePattern platform." % platform
     chipname = platform2gpplatform.get(platform)
@@ -106,6 +117,27 @@ def fix_class_order(MATRIX, name1, name2, classes):
     return x
 
 
+def check_matrix(X):
+    import re
+    import arrayio
+
+    assert arrayio.gct_format.is_matrix(X)
+
+    # Make sure gene IDs (NAME) is unique and non-empty.
+    assert X.row_names()[0].upper() == "NAME"
+    seen = {}
+    for i, name in enumerate(X.row_names("NAME")):
+        assert name.strip(), "Empty gene ID in row %d." % (i+1)
+        assert name not in seen, "Duplicate gene ID: %s" % name
+        seen[name] = 1
+
+    # Make sure sample names don't contain spaces or other
+    # punctuation.  GSEA seems to be sensitive to these things.
+    for i, name in enumerate(X.col_names(arrayio.tdf.SAMPLE_NAME)):
+        assert not re.search("[^a-zA-Z0-9_-]", name), \
+               "Bad sample name: %s" % name
+        
+
 def main():
     import os
     import argparse
@@ -147,7 +179,9 @@ def main():
     group.add_argument(
         "--platform", default=None,
         help="The platform (GenePattern chip) of the expression data, "
-        "e.g. HG_U133A_2.chip")
+        "e.g. HG_U133A_2.chip.  You should leave this blank if the IDs "
+        "in the gene expression data set are gene symbols.  Allowed "
+        "values can be found on the GenePattern/GSEA website.")
     x = sorted(DATABASE2GENESET)
     x = [x.replace(DEFAULT_DATABASE, "%s (DEFAULT)" % x) for x in x]
     x = ", ".join(x)
@@ -155,10 +189,6 @@ def main():
     group.add_argument("--database", default=DEFAULT_DATABASE, help=x)
     group.add_argument("--database_file", default=None,
         help="Search a GMT or GMX file instead of the default databases.")
-    # GenePattern uses the platform (chip file) to convert the IDs in
-    # the Gene Symbols.  If the IDs are already gene symbols, then an
-    # arbitrary platform should be given (since it requires this
-    # parameter), and collapse should be turned off.
     group.add_argument(
         "--no_collapse_dataset", default=False, action="store_true",
         help="Do not 1) convert gene IDs to gene symbols, and do not 2) "
@@ -213,10 +243,6 @@ def main():
     # of this matrix?
     MATRIX = arrayio.convert(MATRIX, to_format=arrayio.gct_format)
 
-    # BUG: Should check the names of the samples to make sure they
-    # don't contain spaces or other punctuation.  GSEA seems to be
-    # sensitive to these things.
-
     database_file = None
     if args.database_file:
         database_file = os.path.realpath(args.database_file)
@@ -224,6 +250,7 @@ def main():
             "I could not find file: %s" % database_file)
     # Required, even if gene.sets.database.file is given.
     gene_set_database = format_gene_set_database(args.database)
+    
 
     # If no database file is given, then we need to know the platform
     # for the expression data.  (If one is given, we let the user make
@@ -231,7 +258,9 @@ def main():
     platform = args.platform
     if platform is None and not database_file:
         platform = guess_chip_platform(MATRIX)
-        assert platform, "I could not find a platform for this file."
+        # If gene symbols already provided, then turn off collapse_dataset.
+        if platform is None:  # Gene Symbol
+            args.no_collapse_dataset = True
 
     # Set up file names.
     opj = os.path.join
@@ -252,6 +281,7 @@ def main():
     # is better to have local copies of the files.  It is unclear how
     # to upload files to GenePattern if the file names have spaces in
     # them.  Get around this by making all the files local.
+    check_matrix(MATRIX)
     arrayio.gct_format.write(MATRIX, open(gct_full, 'w'))
     open(cls_full, 'w').write(cls_data)
     if database_file:
@@ -288,8 +318,7 @@ def main():
     for (key, value) in reversed(list(params.iteritems())):
         x = ["--parameters", "%s:%s" % (key, value)]
         cmd.extend(x)
-    #for x in cmd:
-    #    print x
+    #print " ".join(cmd)
     #import sys; sys.exit(0)
 
     # Run the analysis in the outpath.  GSEA leaves a file
@@ -298,11 +327,19 @@ def main():
     try:
         os.chdir(args.outpath)
         p = subprocess.Popen(
-            cmd, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            close_fds=True)
+            cmd, bufsize=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, close_fds=True)
+        w, r = p.stdin, p.stdout
+        w.close()
+        # Check for errors in the output.
+        x = r.read()
+        # Get rid of GenePattern garbage.
+        data = x.replace("Loading required package: rJava", "")
         p.wait()
     finally:
         os.chdir(cwd)
+    assert not data.strip(), data
+
 
     error_file = os.path.join(args.outpath, "stderr.txt")
     assert not os.path.exists(error_file), (

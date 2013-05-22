@@ -3,6 +3,9 @@
 # find.de.genes.ebayes
 # find.de.genes.2cnoref.ebayes
 
+# TODO: 
+# - ttest  Add mean expression, num samples for each class.
+# - sam    Add mean expression, num samples for each class.
 
 matrix2dataframe <- function(M) {
   x <- matrix(unlist(M), nrow(M), ncol(M))
@@ -175,6 +178,11 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   fdr <- fdr[I]
   bonf <- bonf[I]
 
+  mean.1 <- apply(X.1, 1, mean)
+  mean.2 <- apply(X.2, 1, mean)
+  nsamp.1 <- ncol(X.1)
+  nsamp.2 <- ncol(X.2)
+
   nl10p <- c()
   nl10fdr <- c()
   nl10bonf <- c()
@@ -186,10 +194,12 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
 
   direction <- rep(sprintf("Higher in %s", Y.all[1]), length(med.1))
   direction[med.2 > med.1] <- sprintf("Higher in %s", Y.all[2])
-  DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, diff, 
-    direction, X.1, X.2)
-  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+  DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, 
+    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
+  colnames(DATA) <- c("Gene ID", "Gene Name", 
+    "NL10P", "NL10 FDR", "NL10 Bonf", 
+    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+    "Log_2 Fold Change", "Direction", 
     colnames(X.1), colnames(X.2))
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA)
@@ -236,8 +246,10 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
     number=nrow(fit2))
   if(!nrow(TOP)) {
     DATA <- matrix(NA, 0, 7+ncol(X))
-    colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-      "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+    colnames(DATA) <- c("Gene ID", "Gene Name", 
+      "NL10P", "NL10 FDR", "NL10 Bonf", 
+      sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+      "Log_2 Fold Change", "Direction", 
       colnames(X))
     DATA <- matrix2dataframe(DATA)
     return(list(DATA=DATA, fit=fit2, TOP=TOP))
@@ -256,12 +268,19 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   if(is.null(colnames(X.2)))
     colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
 
+  mean.1 <- apply(X.1, 1, mean)
+  mean.2 <- apply(X.2, 1, mean)
+  nsamp.1 <- ncol(X.1)
+  nsamp.2 <- ncol(X.2)
+
   direction <- rep(sprintf("Higher in %s", Y.all[1]), nrow(TOP))
   direction[TOP[["logFC"]] > 0] <- sprintf("Higher in %s", Y.all[2])
-  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, diff, 
-    direction, X.1, X.2)
-  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, 
+    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
+  colnames(DATA) <- c("Gene ID", "Gene Name", 
+    "NL10P", "NL10 FDR", "NL10 Bonf", 
+    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+    "Log_2 Fold Change", "Direction", 
     colnames(X.1), colnames(X.2))
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA, fit=fit2, TOP=TOP)

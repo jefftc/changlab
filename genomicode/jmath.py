@@ -30,6 +30,7 @@ cov
 cor
 order
 rank
+min
 max
 which_max
 svd
@@ -464,6 +465,19 @@ def rank(X, byrow=1):
 
 max_ = max
 min_ = min
+
+def min_list(X):
+    return min_(X)
+
+def min_matrix(X, byrow=1):
+    if not byrow:
+        X = transpose(X)
+    X_min = [min_list(x) for x in X]
+    return X_min
+
+def min(X, byrow=1):
+    return _dispatch(X, None, _fn(min_list), _fn(min_matrix, byrow=byrow))
+
 def max_list(X):
     return max_(X)
 
@@ -534,7 +548,7 @@ def log_add(logx, logy):
         return logy
     elif logx - logy > 100:
         return logx
-    minxy = min(logx, logy)
+    minxy = min_(logx, logy)
     return minxy + math.log(math.exp(logx-minxy) + math.exp(logy-minxy))
 
 def equal_matrix(X1, X2, precision=1E-8):
@@ -579,7 +593,7 @@ def cmh_bonferroni(p_values):
     for i in range(len(p_values)):
         if p_values[i] is None:
             continue
-        bonf[i] = min(p_values[i]*m, 1)
+        bonf[i] = min_(p_values[i]*m, 1)
     #x = [p*m for p in p_values]
     #bonf = [min(x, 1) for x in x]
     return bonf
@@ -606,8 +620,8 @@ def cmh_fdr_bh(p_values):
 
     k = range(1, m+1)
     x = [float(m)/k[i] * p_clean[i] for i in range(len(p_clean))]
-    x = [min(x, 1) for x in x]
-    x = [min(x[i:]) for i in range(len(x))]
+    x = [min_(x, 1) for x in x]
+    x = [min_(x[i:]) for i in range(len(x))]
     fdr_clean = [x[o] for o in O_rev]
 
 
@@ -821,9 +835,9 @@ def pparzen(x, X_obs, X_count, h=1, eps=1E-10):
     # x_min-h*sqrt(-2*log(A)) = x
     #print "PPARZEN"
     N = sum(X_count)
-    A = eps*N*h*math.sqrt(2*math.pi)/max(X_count)
+    A = eps*N*h*math.sqrt(2*math.pi)/max_(X_count)
     B = h*math.sqrt(-2*math.log(A))
-    a = min(X_obs) - B
+    a = min_(X_obs) - B
     b = x
     #print a, b, h, eps
     #print a, b, X_obs, X_count
@@ -860,10 +874,10 @@ def qparzen(q, X_obs, X_count, h=1, eps=1E-10):
     # distribution.  pparzen will need to take a lower and upper
     # bound.
     N = sum(X_count)
-    A = eps*N*h*math.sqrt(2*math.pi)/max(X_count)
+    A = eps*N*h*math.sqrt(2*math.pi)/max_(X_count)
     B = h*math.sqrt(-2*math.log(A))
     # Search over the range of all the observed values.
-    x_min, x_max = min(X_obs)-B, max(X_obs)+B
+    x_min, x_max = min_(X_obs)-B, max_(X_obs)+B
 
     q_cur = 0.0
     while abs(q_cur-q) > eps:

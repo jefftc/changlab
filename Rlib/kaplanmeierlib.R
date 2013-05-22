@@ -179,8 +179,15 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA,
 }
 
 # col is a list of NAME -> color (e.g. "#FF0000")
-plot.km.multi <- function(survival, dead, group, col=NA, main="", sub="",
-  xlab="", ylab="") {
+plot.km.multi <- function(survival, dead, group, col=NA, 
+  main="", cex.main=NULL, main.line=NA, xlab="", ylab="", sub="", 
+  cex.sub=NULL, sub.line=NA, cex.legend=NULL) {
+  if(is.null(cex.main))
+    cex.main <- 2.0
+  if(is.null(cex.sub))
+    cex.sub <- 1.5
+  if(is.null(cex.legend))
+    cex.legend <- 1.5
   if(all(is.na(col)))
     col <- list()
   if(length(survival) != length(dead)) stop("unaligned")
@@ -193,11 +200,15 @@ plot.km.multi <- function(survival, dead, group, col=NA, main="", sub="",
 
   lwd <- 2
   plot(NA, type="n", axes=FALSE, xlim=xlim, ylim=ylim, xlab="", ylab="")
+  usr <- par("usr")
+  rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF")
   box(lwd=lwd)
   axis(1, lwd=lwd, cex.axis=1.5)
   axis(2, lwd=lwd, cex.axis=1.5)
-  title(main=main, xlab=xlab, ylab=ylab, sub=sub, 
-    cex.lab=1.5, cex.sub=1.5, col.sub="#A60400", cex.main=2.0)
+  title(main=main, cex.main=cex.main, line=main.line)
+  title(xlab=xlab, ylab=ylab, cex.lab=1.5)
+  title(sub=sub, cex.sub=cex.sub, col.sub="#A60400", line=sub.line)
+
   for(g in unique(group)) {
     co <- col[[as.character(g)]]
     if(is.null(co))
@@ -210,7 +221,7 @@ plot.km.multi <- function(survival, dead, group, col=NA, main="", sub="",
   if(!all(is.na(col))) {
     leg <- names(col)
     fill <- sapply(leg, function(x) col[[x]])
-    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=1.5, 
+    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend, 
       inset=0.05)
   }
 }
