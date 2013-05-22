@@ -165,7 +165,9 @@ def main():
     parser.add_argument(
         "--min_seqlen", type=int, default=None,
         help="Discard sequences less than this minimum length.")
-    parser.add_argument(
+    
+    group = parser.add_argument_group(title="Alphabet")
+    group.add_argument(
         "--lib2seq", default=[], action="append",
         help="Map the bases in the library to bases in the sequencing.  "
         "If the library contains non-standard bases (i.e. not ACGT), "
@@ -174,7 +176,7 @@ def main():
         "library is read as a T in the sequence.  If there are "
         "multiple mappings, use this option multiple times.")
 
-    group = parser.add_argument_group(title="Model Specification")
+    group = parser.add_argument_group(title="Probabilities")
     group.add_argument(
         "--mismatch", type=float, default=DEF_MISMATCH,
         help="Probability of a mismatch (default %0.2f)." % DEF_MISMATCH)
