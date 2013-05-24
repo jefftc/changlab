@@ -144,22 +144,13 @@ def read_annotation_descriptor(annotation_descriptor, annotations):
     return header2annots
 
 
-def _annotate_genes_h(
-    geneset, background, annot2genes, annotations, min_genes):
+def _annotate_genes_h(geneset, background, annot2genes, annotations):
     import math
     from genomicode import jmath
 
     scores = {}
     for annot in annotations:
-        # Make a list of all the genes with this annotation (that
-        # shows up in our background list.
-        x = annot2genes[annot]
-        x = [x for x in x if x in background]
-        annot_genes = x
-        if not annot_genes:
-            continue
-        if min_genes is not None and len(annot_genes) < min_genes:
-            continue
+        annot_genes = annot2genes[annot]
 
         total_genes = len(background)
         genes_in_list = len(geneset)
@@ -188,14 +179,13 @@ def _annotate_genes_h(
         x = [x for x in geneset if x in annot_genes]
         x = sorted(x)
         L1A1_genes = x
-
         
         x = L1A1, L1A0, L0A1, L0A0, fe, nl10p, L1A1_genes
         scores[annot] = x
     return scores
 
 
-def annotate_genes(geneset, background, annot2genes, min_genes, num_procs):
+def annotate_genes(geneset, background, annot2genes, num_procs):
     import multiprocessing
     
     pool = multiprocessing.Pool(num_procs)
@@ -212,7 +202,7 @@ def annotate_genes(geneset, background, annot2genes, min_genes, num_procs):
     results = []
     for annots in proc2annots.itervalues():
         fn = _annotate_genes_h
-        args = geneset, background, annot2genes, annots, min_genes
+        args = geneset, background, annot2genes, annots
         keywds = {}
         if num_procs == 1:
             x = fn(*args)
@@ -250,7 +240,7 @@ def main():
         "their genes will be combined.  "
         "Format: <gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
-        "--background_geneset", default=None,
+        "--background", default=None,
         help="Genes are selected from this background geneset.  "
         "Format: <gmx/gmt_file>,<geneset>")
     group.add_argument(
@@ -264,30 +254,35 @@ def main():
         help="A text file that contains more information about the "
         "annotations.  "
         "One of the columns should contain descriptors that match the "
-        "names of the annotations given in the annotation file.  ")
+        "names of the annotations given in the annotation file.  "
+        "This is not used for the scoring, only for the output.")
     group.add_argument(
         "--gene_descriptor", default=None,
         help="A text file that contains alternate names for the genes.  "
         "One of the columns should contain IDs that match geneset.  "
         "gene_name_header should contain the name of the genes to show "
-        "in the output file.  "
+        "in the output file.  This is only used for the output.  "
         "Format: <filename>,<gene_name_header>")
     
     
     args = parser.parse_args()
     assert args.geneset, "Please specify a gene set."
-    assert args.background_geneset, "Please specify a background gene set."
+    assert args.background, "Please specify a background gene set."
     assert args.annotation, "Please specify an annotation file."
     if args.num_procs < 1 or args.num_procs > 100:
         parser.error("Please specify between 1 and 100 processes.")
+    assert args.min_genes >= 0, "Need a positive min_genes."
 
     # Read the gene sets.
     x1 = read_geneset(args.geneset)
-    x2 = read_geneset(args.background_geneset)
+    x2 = read_geneset(args.background)
     assert len(x1) >= 1
     assert len(x2) == 1
     background = x2[0][-1]
-    # Save the gene sets individually.
+    assert background, "No genes in background."
+    assert len(background) >= 10, "Very few genes in background."
+    
+    # Save the gene sets into separate gene sets.
     geneset2genes = {}
     for x in x1:
         filename, gs_name, genes = x
@@ -297,6 +292,7 @@ def main():
     for genes in geneset2genes.itervalues():
         geneset.extend(genes)
     geneset = sorted({}.fromkeys(geneset))
+    assert geneset, "No genes in gene set."
 
     # Make sure each gene is in the background.
     missing = [x for x in geneset if x not in background]
@@ -312,10 +308,41 @@ def main():
     # Read the annotations.
     x = read_annotations(args.annotation)
     annot2genes = x
+    assert annot2genes, "No annotations read."
+
+    # For each of the annotations, keep only the genes that show up in
+    # our background list.
+    clean = {}
+    for annot, genes in annot2genes.iteritems():
+        x = [x for x in genes if x in background]
+        if not x:
+            continue
+        clean[annot] = x
+    if not clean:
+        assert annot2genes
+        genes = annot2genes[sorted(annot2genes)[0]]
+        x = [
+            "None of the background genes are annotated.",
+            "Genes look like: %s" % ",".join(genes[:3]),
+            "Background looks like: %s" % ",".join(background[:3])
+            ]
+        assert clean, "\n".join(x)
+    annot2genes = clean
+
+    # Filter out annotations that does not meet our min_genes criteria.
+    if args.min_genes:
+        clean = {}
+        for annot, genes in annot2genes.iteritems():
+            if len(genes) < args.min_genes:
+                continue
+            clean[annot] = genes
+        assert clean, "None of the annotations have >= %d genes." % \
+               args.min_genes
+        annot2genes = clean
+    assert annot2genes, "No annotations."
 
     # Calculate the score for each of the annotations.
-    scores = annotate_genes(
-        geneset, background, annot2genes, args.min_genes, args.num_procs)
+    scores = annotate_genes(geneset, background, annot2genes, args.num_procs)
     all_annots = sorted(scores)
 
     # Do multiple hypothesis correction.
