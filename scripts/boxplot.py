@@ -33,7 +33,7 @@ def main():
         help="Width (in pixels) of the plot.")
     parser.add_argument(
         "--mar_left", default=4, type=float,
-        help="Margin at bottom of plot.  Default 4.")
+        help="Margin at left of plot.  Default 4.")
     parser.add_argument(
         "--mar_bottom", default=5, type=float,
         help="Margin at bottom of plot.  Default 5.")
