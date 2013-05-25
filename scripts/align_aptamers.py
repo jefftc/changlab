@@ -113,16 +113,13 @@ def _write_markov_model(library, alignment, title, sequence, score, is_revcomp,
     print >>outhandle
 
 
-def _align_aptamers_h(
-    mm, library, base2emission, title, sequence, output, lock):
-    import sys
-    import StringIO
+def _align_aptamers_h_h(
+    mm, library, base2emission, title, sequence, output, outhandle):
     from genomicode import aptamerlib
     
     x = aptamerlib.score_sequence(mm, library, base2emission, sequence)
     score, is_revcomp, alignment = x
 
-    outhandle = StringIO.StringIO()
     if output == OUT_TABLE:
         _write_table(library, alignment, title, score, is_revcomp, outhandle)
     elif output == OUT_ALIGNMENT:
@@ -133,6 +130,34 @@ def _align_aptamers_h(
     else:
         raise AssertionError, "Unknown output format: %s" % output
         
+
+def _align_aptamers_h(
+    start, skip, sequence_file, max_alignments, min_seqlen,
+    mm, library, base2emission, output_format, lock):
+    import sys
+    import StringIO
+    from genomicode import aptamerlib
+
+    outhandle = StringIO.StringIO()
+    for i, x in enumerate(aptamerlib.parse_fastq(sequence_file)):
+        title, sequence, quality = x
+        if i % skip != start:
+            continue
+        if max_alignments is not None and i >= max_alignments:
+            break
+        if min_seqlen is not None and len(sequence) < min_seqlen:
+            continue
+        #if title.find("00013:00070") < 0:
+        #    continue
+        _align_aptamers_h_h(
+            mm, library, base2emission, title, sequence, output_format,
+            outhandle)
+        if len(outhandle.getvalue()) >= 32*1024:  # 512 kb
+            lock.acquire()
+            sys.stdout.write(outhandle.getvalue())
+            sys.stdout.flush()
+            lock.release()
+            outhandle = StringIO.StringIO()
     lock.acquire()
     sys.stdout.write(outhandle.getvalue())
     sys.stdout.flush()
@@ -198,7 +223,7 @@ def main():
            "File not found: %s" % args.sequence_file
     assert args.num_procs >= 1 and args.num_procs < 256
     assert args.min_seqlen is None or (
-        args.min_seqlen >= 0 and args.min_seqlen < 100)
+        args.min_seqlen >= 0 and args.min_seqlen < 100), args.min_seqlen
 
     assert args.mismatch >= 0 and args.mismatch < 0.5, \
            "mismatch (%s) should be between 0 and 0.5" % args.mismatch
@@ -231,26 +256,20 @@ def main():
             "Ideal Sequence", "Observed Sequence"]
         print "\t".join(header)
         sys.stdout.flush()   # needed for multiprocessing
+        
     results = []
-    for i, x in enumerate(aptamerlib.parse_fastq(args.sequence_file)):
-        title, sequence, quality = x
-
-        if args.max_alignments is not None and i >= args.max_alignments:
-            break
-        if args.min_seqlen is not None and len(sequence) < args.min_seqlen:
-            continue
-        #if title.find("00013:00070") < 0:
-        #    continue
-
-        params = (
-            mm, library, base2emission, title, sequence, args.output_format,
-            lock)
+    for i in range(args.num_procs):
+        fn_args = (
+            i, args.num_procs,
+            args.sequence_file, args.max_alignments, args.min_seqlen,
+            mm, library, base2emission, args.output_format, lock)
         keywds = {}
         if args.num_procs == 1:
-            _align_aptamers_h(*params, **keywds)
+            _align_aptamers_h(*fn_args, **keywds)
         else:
-            x = pool.apply_async(_align_aptamers_h, params, keywds)
+            x = pool.apply_async(_align_aptamers_h, fn_args, keywds)
             results.append(x)
+    
     pool.close()
     pool.join()
     for x in results:
