@@ -154,6 +154,8 @@ def _align_aptamers_h_h(
 
 
 def _append_to_file_or_handle(file_or_handle, s):
+    if file_or_handle is None:
+        return
     handle = file_or_handle
     if type(file_or_handle) is type(""):
         handle = open(file_or_handle, 'a')
@@ -204,7 +206,7 @@ def _align_aptamers_h(
             lock.acquire()
             for h, c in files:
                 _append_to_file_or_handle(h, c.getvalue())
-                c.truncate()
+                c.truncate(0)
             lock.release()
     lock.acquire()
     for h, c in files:
