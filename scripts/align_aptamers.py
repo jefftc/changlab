@@ -201,7 +201,9 @@ def _align_aptamers_h(
         _align_aptamers_h_h(
             mm, library, base2emission, title, sequence, 
             table_cache, alignment_cache, markov_cache)
-        # Markov output is ~17x size of table output.
+
+        # ~266 bytes per alignment.  Markov output is ~17x size of
+        # table output.
         if len(table_cache.getvalue()) >= 256*1024:
             lock.acquire()
             for h, c in files:
