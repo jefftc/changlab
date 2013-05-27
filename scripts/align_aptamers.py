@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
 
-DEF_MISMATCH = 0.1
-DEF_MATCH = 1.0 - DEF_MISMATCH
-DEF_INSERT = DEF_MISMATCH
-DEF_DELBASE = DEF_MATCH*DEF_MISMATCH*DEF_MATCH
-DEF_DELCHUNK = DEF_DELBASE*DEF_MATCH*DEF_MATCH
-#DEF_DELBASE = DEF_MISMATCH*DEF_MISMATCH
-#DEF_DELCHUNK = DEF_MISMATCH*DEF_MISMATCH
+DEF_MATCH = 0.9
+DEF_MISMATCH = (1.0-DEF_MATCH)
 
-OUT_TABLE = "TABLE"
-OUT_MARKOV = "MARKOV_MODEL"
-OUT_ALIGNMENT = "ALIGNMENT"
+DEF_NOINDEL = 0.9
+DEF_INSERT = (1.0-DEF_NOINDEL)
+DEF_DELETE = (1.0-DEF_NOINDEL)
+
+
+#OUT_TABLE = "TABLE"
+#OUT_MARKOV = "MARKOV_MODEL"
+#OUT_ALIGNMENT = "ALIGNMENT"
+
 
 def _parse_titles(titles):
     # ["title1,title2", "title3"]
@@ -135,31 +136,55 @@ def _write_markov_format(
 
 
 def _align_aptamers_h_h(
-    mm, library, base2emission, title, sequence, output, outhandle):
+    mm, library, base2emission, title, sequence, 
+    table_handle, alignment_handle, markov_handle):
     from genomicode import aptamerlib
     
     x = aptamerlib.score_sequence(mm, library, base2emission, sequence)
     score, is_revcomp, alignment = x
 
-    if output == OUT_TABLE:
-        _write_table(library, alignment, title, score, is_revcomp, outhandle)
-    elif output == OUT_ALIGNMENT:
-        _write_alignment(alignment, title, outhandle)
-    elif output == OUT_MARKOV:
+    assert table_handle
+    _write_table(library, alignment, title, score, is_revcomp, table_handle)
+    if alignment_handle:
+        _write_alignment(alignment, title, alignment_handle)
+    if markov_handle:
         _write_markov_format(
-            library, alignment, title, sequence, score, is_revcomp, outhandle)
-    else:
-        raise AssertionError, "Unknown output format: %s" % output
+            library, alignment, title, sequence, score, is_revcomp,
+            markov_handle)
+
+
+def _append_to_file_or_handle(file_or_handle, s):
+    handle = file_or_handle
+    if type(file_or_handle) is type(""):
+        handle = open(file_or_handle, 'a')
+    handle.write(s)
+    handle.flush()
+    if type(file_or_handle) is type(""):
+        handle.close()
+    
         
 
 def _align_aptamers_h(
     start, skip, sequence_file, max_alignments, min_seqlen, titles, 
-    mm, library, base2emission, output_format, lock):
+    mm, library, base2emission, alignment_file, markov_file,
+    lock):
     import sys
-    import StringIO
+    from StringIO import StringIO
     from genomicode import aptamerlib
 
-    outhandle = StringIO.StringIO()
+    table_handle = sys.stdout   # can't pass handle to multiproc function
+
+    table_cache = StringIO()
+    alignment_cache = StringIO()
+    markov_cache = StringIO()
+
+    files = [
+        (table_handle, table_cache),
+        (alignment_file, alignment_cache),
+        (markov_file, markov_cache),
+        ]
+    files = [x for x in files if x[0]]  # no missing handles
+    
     for i, x in enumerate(aptamerlib.parse_fastq(sequence_file)):
         title, sequence, quality = x
         if i % skip != start:
@@ -171,33 +196,31 @@ def _align_aptamers_h(
         if titles and title not in titles:
             continue
 
-        #if title.find("00013:00070") < 0:
-        #    continue
         _align_aptamers_h_h(
-            mm, library, base2emission, title, sequence, output_format,
-            outhandle)
-        if len(outhandle.getvalue()) >= 32*1024:  # 512 kb
+            mm, library, base2emission, title, sequence, 
+            table_cache, alignment_cache, markov_cache)
+        # Markov output is ~17x size of table output.
+        if len(table_cache.getvalue()) >= 256*1024:
             lock.acquire()
-            sys.stdout.write(outhandle.getvalue())
-            sys.stdout.flush()
+            for h, c in files:
+                _append_to_file_or_handle(h, c.getvalue())
+                c.truncate()
             lock.release()
-            outhandle = StringIO.StringIO()
     lock.acquire()
-    sys.stdout.write(outhandle.getvalue())
-    sys.stdout.flush()
+    for h, c in files:
+        _append_to_file_or_handle(h, c.getvalue())
     lock.release()
 
 
-def write_markov_model(library, base2emission,
-                       p_mismatch, p_insert, p_delbase, p_delchunk):
+def write_markov_model(library, base2emission, p_mismatch, p_insert, p_delete):
     from genomicode import aptamerlib
 
-    # (node1, node2) -> p_transition
-    transition_probs = aptamerlib._calc_transition_probs(
-        library, p_insert, p_delbase, p_delchunk)
     # (node, base) -> p_emission
     emission_probs = aptamerlib._calc_emission_probs(
         library, base2emission, p_mismatch)
+    # (node1, node2) -> p_transition
+    transition_probs = aptamerlib._calc_transition_probs(
+        library, p_mismatch, p_insert, p_delete)
 
     # Make a list of all nodes.
     all_nodes = {}
@@ -213,7 +236,7 @@ def write_markov_model(library, base2emission,
     all_bases = sorted(all_bases)
 
     # Sort the nodes.
-    all_nodes = sorted(all_nodes, key=aptamerlib._node2sortkey)
+    all_nodes = sorted(all_nodes)
 
     # Print the total number of nodes.
     x = 0, "", "META", "TOTAL_NODES", len(all_nodes)
@@ -225,6 +248,11 @@ def write_markov_model(library, base2emission,
     print "\t".join(map(str, x))
 
     for i, node1 in enumerate(all_nodes):
+        x = "%s-%s-%s-%s" % (
+            node1.node_type, node1.i_seqset, node1.i_sequence, node1.i_base)
+        x = i+1, node1, "META", "NODE", x
+        print "\t".join(map(str, x))
+        
         # Count the number of transitions.
         x = [node2 for node2 in all_nodes
              if (node1, node2) in transition_probs]
@@ -270,9 +298,13 @@ def main():
         "--show_markov_model_only", default=False, action="store_true",
         help="Print out the markov model and exit (for debugging).")
     parser.add_argument(
-        "--output_format", choices=[OUT_TABLE, OUT_MARKOV, OUT_ALIGNMENT],
-        default=OUT_TABLE, 
-        help="What kind of output to generate.")
+        "--alignment_file", help="File to store the alignments.")
+    parser.add_argument(
+        "--markov_file", help="File to store the model for each alignment.")
+    #parser.add_argument(
+    #    "--output_format", choices=[OUT_TABLE, OUT_MARKOV, OUT_ALIGNMENT],
+    #    default=OUT_TABLE, 
+    #    help="What kind of output to generate.")
     parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,
         help="Number of jobs to run in parallel.")
@@ -307,11 +339,8 @@ def main():
         "--insert", type=float, default=DEF_INSERT,
         help="Probability of an insertion (default %0.2f)." % DEF_INSERT)
     group.add_argument(
-        "--delete_base", type=float, default=DEF_DELBASE,
-        help="Probability of a deletion (default %0.2f)." % DEF_DELBASE)
-    group.add_argument(
-        "--delete_chunk", type=float, default=DEF_DELCHUNK,
-        help="Probability of a deletion (default %0.2f)." % DEF_DELCHUNK)
+        "--delete", type=float, default=DEF_DELETE,
+        help="Probability of a deletion (default %0.2f)." % DEF_DELETE)
     
     args = parser.parse_args()
 
@@ -323,51 +352,52 @@ def main():
     assert args.min_seqlen is None or (
         args.min_seqlen >= 0 and args.min_seqlen < 100), args.min_seqlen
 
-    assert args.mismatch >= 0 and args.mismatch < 0.5, \
+    assert args.mismatch > 0 and args.mismatch < 0.5, \
            "mismatch (%s) should be between 0 and 0.5" % args.mismatch
-    assert args.insert >= 0 and args.insert < 0.5, \
+    assert args.insert > 0 and args.insert < 0.5, \
            "insert (%s) should be between 0 and 0.5" % args.insert
-    assert args.delete_base >= 0 and args.delete_base < 0.5, \
-           "delete_base (%s) should be between 0 and 0.5" % args.delete_base
-    assert args.delete_chunk >= 0 and args.delete_chunk < 0.5, \
-           "delete_chunk (%s) should be between 0 and 0.5" % args.delete_chunk
-    assert args.insert + args.delete_base + args.delete_chunk <= 0.5, \
-           "Too much probability allocated for indels."
+    assert args.delete > 0 and args.delete < 0.5, \
+           "delete (%s) should be between 0 and 0.5" % args.delete_base
     titles = _parse_titles(args.titles)
 
     base2emission = _parse_base2emission(args.lib2seq)
 
     library = aptamerlib.read_library(args.library_file)
     mm = aptamerlib.make_markov_model(
-        library, base2emission, p_mismatch=args.mismatch, p_insert=args.insert,
-        p_delbase=args.delete_base, p_delchunk=args.delete_chunk)
+        library, base2emission, args.mismatch, args.insert, args.delete)
 
     if args.show_markov_model_only:
         write_markov_model(
-            library, base2emission, args.mismatch, args.insert,
-            args.delete_base, args.delete_chunk)
+            library, base2emission, args.mismatch, args.insert, args.delete)
         return
+
+    alignment_handle = markov_handle = None
+    if args.alignment_file:
+        open(args.alignment_file, 'w')
+    if args.markov_file:
+        open(args.markov_file, 'w')
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
     pool = multiprocessing.Pool(args.num_procs)
 
-    if args.output_format == OUT_TABLE:
-        header = [
-            "Title", "Is Revcomp", "Score", "Barcode", "Random Region",
-            "Length", "Total Errors", 
-            "Num Matches", "Num Mismatches", "Num Insertions", "Num Deletions",
-            "Ideal Sequence", "Observed Sequence"]
-        print "\t".join(header)
-        sys.stdout.flush()   # needed for multiprocessing
+    header = [
+        "Title", "Is Revcomp", "Score", "Barcode", "Random Region",
+        "Length", "Total Errors", 
+        "Num Matches", "Num Mismatches", "Num Insertions", "Num Deletions",
+        "Ideal Sequence", "Observed Sequence"]
+    print "\t".join(header)
+    sys.stdout.flush()   # needed for multiprocessing
         
     results = []
     for i in range(args.num_procs):
         fn_args = (
-            i, args.num_procs,
-            args.sequence_file, args.max_alignments, args.min_seqlen, titles,
-            mm, library, base2emission, args.output_format, lock)
+            i, args.num_procs, args.sequence_file,
+            args.max_alignments, args.min_seqlen, titles,
+            mm, library, base2emission,
+            args.alignment_file, args.markov_file, lock)
         keywds = {}
+        
         if args.num_procs == 1:
             _align_aptamers_h(*fn_args, **keywds)
         else:

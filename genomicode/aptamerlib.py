@@ -50,20 +50,13 @@ or if it has 10, a match always has 9 times the density.
 Transition probabilities
 ------------------------
 p_insert     Inserting one base.    Default (1-p_match).
-p_delbase    Deleting one base.     Default (1-p_match)*p_match*p_match.
-p_delchunk   Deleting one chunk.    Default p_delbase * p_match*p_match.
-
+p_delete     Deleting one base.     Default p_insert.
 o p_insert is the probability of a transition from any node (including
   an INSERT node) to an INSERT node.
-o p_delbase is the probability of a transition from a MAIN node to
-  another MAIN node that is one base away.
-  Default should be p_trans * p_mismatch * p_trans.
-o p_delchunk is the probability of a transition from a MAIN node to
-  another MAIN node that skips an entire seqset.
-  Default should be p_del * p_match * p_trans (chunk with one base
-  deletion, and one base match).
-o The rest of the probability density is reserved for transitions from
-  any node to a MAIN node (without deletions).
+o p_delete is the probability of deleting one base.  By default, this
+  is the same as p_insert.  If the probabilities for deletions and
+  insertions are equal, this means that an insertion in one sequence
+  is the same as an insertion in the other sequence.
 
 As with the emissions, these are relative weights, rather than
 probabilities.
@@ -80,42 +73,12 @@ parse_node
 read_library
 parse_fastq
 
+
+Classes:
+Node            One node in the network.
+SequenceSet     A set of alternative sequences.
+
 """
-
-class Node:
-    def __init__(self, node_type, i_seqset=None, i_sequence=None, i_base=None):
-        assert node_type in [MAIN, START, END, INSERT, INSERTEND]
-        self.node_type = node_type
-        self.i_seqset = i_seqset
-        self.i_sequence = i_sequence
-        self.i_base = i_base
-    def __str__(self):
-        x = [self.node_type]
-        if self.i_seqset is not None:
-            x += [self.i_seqset, self.i_sequence, self.i_base]
-        return "Node(%s)" % (", ".join(map(str, x)))
-    def __hash__(self):
-        return hash(
-            (self.node_type, self.i_seqset, self.i_sequence, self.i_base))
-    def __eq__(self, other):
-        return (self.node_type == other.node_type and 
-                self.i_seqset == other.i_seqset and 
-                self.i_sequence == other.i_sequence and 
-                self.i_base == other.i_base)
-    def __cmp__(self, other):
-        x1 = self.node_type, self.i_seqset, self.i_sequence, self.i_base
-        x2 = other.node_type, other.i_seqset, other.i_sequence, other.i_base
-        return cmp(x1, x2)
-
-
-
-class SequenceSet:
-    def __init__(self, name, is_barcode, is_random, alternates):
-        self.name = name
-        self.is_barcode = is_barcode
-        self.is_random = is_random
-        self.alternates = alternates[:]
-
 
 # _iter_main_graph
 # _get_all_nodes
@@ -139,6 +102,60 @@ INSERT = "INSERT"
 END = "END"
 INSERTEND = "INSERT-END"
 
+
+class Node:
+    def __init__(self, node_type, i_seqset=None, i_sequence=None, i_base=None):
+        assert node_type in [MAIN, START, END, INSERT, INSERTEND]
+        self.node_type = node_type
+        self.i_seqset = i_seqset
+        self.i_sequence = i_sequence
+        self.i_base = i_base
+    def __str__(self):
+        x = [self.node_type]
+        if self.i_seqset is not None:
+            x += [self.i_seqset, self.i_sequence, self.i_base]
+        return "Node(%s)" % (", ".join(map(str, x)))
+    def __hash__(self):
+        x = self.node_type, self.i_seqset, self.i_sequence, self.i_base
+        return hash(x)
+    def _sortkey(self):
+        # (order1, i_seqset, i_sequence, i_base, order2)
+        nt2order1 = {
+            START : 0,
+            INSERT : 1,
+            MAIN : 1,
+            INSERTEND : 2,
+            END : 3,
+            }
+        nt2order2 = {
+            START : 0,
+            INSERT : 0,
+            MAIN : 1,
+            INSERTEND : 0,
+            END : 0,
+            }
+        assert self.node_type in nt2order1
+        assert self.node_type in nt2order2
+        order1 = nt2order1[self.node_type]
+        order2 = nt2order2[self.node_type]
+        x = order1, self.i_seqset, self.i_sequence, self.i_base, order2
+        return x
+    def __cmp__(self, other):
+        x1 = self._sortkey()
+        x2 = other._sortkey()
+        return cmp(x1, x2)
+
+
+class SequenceSet:
+    def __init__(self, name, is_barcode, is_random, alternates):
+        # alternates is a list of the alternative sequences (as
+        # strings).
+        self.name = name
+        self.is_barcode = is_barcode
+        self.is_random = is_random
+        self.alternates = alternates[:]
+
+
 def _iter_main_graph(library):
     for i_seqset, seqset in enumerate(library):
         name = library[i_seqset].name
@@ -148,30 +165,6 @@ def _iter_main_graph(library):
                        i_seqset, i_sequence, i_base)
 
 
-def _node2sortkey(node):
-    # (order1, i_seqset, i_sequence, i_base, order2)
-    nt2order1 = {
-        START : 0,
-        INSERT : 1,
-        MAIN : 1,
-        INSERTEND : 2,
-        END : 3,
-        }
-    nt2order2 = {
-        START : 0,
-        INSERT : 0,
-        MAIN : 1,
-        INSERTEND : 0,
-        END : 0,
-        }
-    assert node.node_type in nt2order1
-    assert node.node_type in nt2order2
-    order1 = nt2order1[node.node_type]
-    order2 = nt2order2[node.node_type]
-    x = order1, node.i_seqset, node.i_sequence, node.i_base, order2
-    return x
-    
-
 def _get_all_nodes(*graphs):
     # Return a list of all nodes in a graph (multiple graphs).
     nodes = {}
@@ -180,7 +173,7 @@ def _get_all_nodes(*graphs):
             nodes[node] = 1
             for node in next_nodes:
                 nodes[node] = 1
-    return sorted(nodes, key=_node2sortkey)
+    return nodes
 
 
 def _get_first_nodes(library):
@@ -224,10 +217,12 @@ def _get_next_nodes(library, i_seqset, i_sequence, i_base):
 
 def _node_dist(library, start_node, end_node):
     # Return the distance from the start_node to the end_node as a
-    # tuple of (total_bases, num_seqset, num_bases).  total_bases is
-    # the minimum number of bases from the start_node to the end_node.
-    # num_seqset and num_bases is the minimum number of (random
-    # region) seqsets and bases that need to be traversed.
+    # tuple of (total_bases, num_seqsets, seqset_sizes, num_bases).
+    # total_bases is the minimum number of bases from the start_node
+    # to the end_node.  num_seqset and num_bases is the minimum number
+    # of (random region) seqsets and bases that need to be traversed.
+    # seqset_sizes is a list of the minimum number of bases in each of
+    # the seqsets.  The length of seqset_sizes is num_seqsets.
 
     # Possible cases:
     # 1.  Both are START or both are END (or INSERTEND).
@@ -250,27 +245,28 @@ def _node_dist(library, start_node, end_node):
 
     # Case 1.
     if start_node.node_type == START and end_node.node_type == START:
-        total_bases, num_seqset, num_bases = 0, 0, 0
+        total_bases, num_seqset, seqset_sizes, num_bases = 0, 0, [], 0
     elif start_node.node_type in ["END", "INSERTEND"] and \
            end_node.node_type in ["END", "INSERTEND"]:
-        total_bases, num_seqset, num_bases = 0, 0, 0
+        total_bases, num_seqset, seqset_sizes, num_bases = 0, 0, [], 0
     # Case 2:
     elif start_node.i_seqset == end_node.i_seqset:
         assert start_node.i_sequence == end_node.i_sequence
         assert start_node.i_base < end_node.i_base
-        num_bases = end_node.i_base - start_node.i_base
-        num_seqset = 0
-        total_bases = num_bases
+        total_bases = end_node.i_base - start_node.i_base
+        num_seqset, seqset_sizes = 0, []
+        num_bases = total_bases
     # Case 3-6.
     else:
         total_bases = num_bases = num_seqset = 0
+        seqset_sizes = []
         start_i = 0
         if start_node.node_type != START:
             start_i = start_node.i_seqset+1
             seqset = library[start_node.i_seqset]
             seq = seqset.alternates[start_node.i_sequence]
-            num_bases += len(seq)-start_node.i_base
-            total_bases += len(seq)-start_node.i_base
+            num_bases += len(seq)-(start_node.i_base+1)
+            total_bases += len(seq)-(start_node.i_base+1)
         end_i = len(library)
         if end_node.node_type != END:
             end_i = end_node.i_seqset
@@ -280,11 +276,13 @@ def _node_dist(library, start_node, end_node):
             seqset = library[i]
             if seqset.is_random:
                 num_seqset += 1
+                seqset_sizes.append(min_bases[i])
             else:
                 num_bases += min_bases[i]
             total_bases += min_bases[i]
-            
-    return total_bases, num_seqset, num_bases
+
+    assert len(seqset_sizes) == num_seqset
+    return total_bases, num_seqset, seqset_sizes, num_bases
 
 
 def _make_main_graph(library):
@@ -408,6 +406,9 @@ def _make_deletion_graph(library):
 
 def _calc_emission_probs(library, base2emission, p_mismatch):
     # Can cache _iter_main_graph to optimize.
+
+    assert p_mismatch > 0 and p_mismatch < 0.5
+    p_match = 1.0 - p_mismatch
     
     # Make a list of all the bases that can be emitted.
     emissions = {}
@@ -432,14 +433,16 @@ def _calc_emission_probs(library, base2emission, p_mismatch):
 
         probs = {}   # base -> probability
         for e in emissions_in_library:
-            p = 1.0-p_mismatch
+            p = p_match
             if e != emission:
                 p = p_mismatch
             probs[e] = p
+            
         # Normalize the probabilities to 1.0.
-        total = sum(probs.values())
-        for b in probs:
-            probs[b] = probs[b] / total
+        #total = sum(probs.values())
+        #for b in probs:
+        #    probs[b] = probs[b] / total
+        
         for b, p in probs.iteritems():
             probabilities[(node, b)] = p
     
@@ -448,11 +451,13 @@ def _calc_emission_probs(library, base2emission, p_mismatch):
         x, x, x, x, i_seqset, i_sequence, i_base = x
         node = Node(INSERT, i_seqset, i_sequence, i_base)
         for e in emissions_in_library:
-            probabilities[(node, e)] = 1.0/len(emissions_in_library)
+            #probabilities[(node, e)] = 1.0/len(emissions_in_library)
+            probabilities[(node, e)] = p_mismatch
 
     # Set emission probabilities for INSERTEND.
     for e in emissions_in_library:
-        probabilities[(Node(INSERTEND), e)] = 1.0/len(emissions_in_library)
+        #probabilities[(Node(INSERTEND), e)] = 1.0/len(emissions_in_library)
+        probabilities[(Node(INSERTEND), e)] = p_mismatch
 
     # Set emission probabilities for start and end.
     probabilities[(Node(START), "START")] = 1.0
@@ -461,13 +466,15 @@ def _calc_emission_probs(library, base2emission, p_mismatch):
     return probabilities
              
 
-def _calc_transition_probs(library, p_insert, p_delbase, p_delchunk):
+def _calc_transition_probs(library, p_mismatch, p_insert, p_delete):
     # Return a dictionary of (node1, node2) -> transition probability.
 
     # Transition probabilities.
-    assert p_insert >= 0 and p_insert < 0.5
-    assert p_delbase >= 0 and p_delbase < 0.5
-    assert p_delchunk >= 0 and p_delchunk < 0.5
+    assert p_mismatch > 0 and p_mismatch < 0.5
+    assert p_insert > 0 and p_insert < 0.5
+    assert p_delete > 0 and p_delete < 0.5
+    p_match = 1.0 - p_mismatch
+    p_noindel = 1.0 - min(p_insert, p_delete)
 
     # Make the graph.
     main_graph = _make_main_graph(library)
@@ -480,34 +487,55 @@ def _calc_transition_probs(library, p_insert, p_delbase, p_delchunk):
     # Calculate all the probabilities.  The probabilities will not be
     # normalized and may not sum to 1.
     probabilities = {}   # node -> next_node -> probability.
-    for start_node in nodes:
-        p_main = 1.0 - (p_insert + p_delbase + p_delchunk)
-        if start_node.node_type == INSERT:
-            # INSERT nodes do not go to DELETE.
-            p_main = 1.0 - p_insert
-
+    for start_node in sorted(nodes):
+        #print "%s-%s-%s-%s" % (
+        #    start_node.node_type, start_node.i_seqset,
+        #    start_node.i_sequence, start_node.i_base)
+        
         probs = {}  # next_node -> p
         for next_node in main_graph.get(start_node, []):
-            probs[next_node] = p_main
+            probs[next_node] = p_noindel
         for next_node in insert_graph.get(start_node, []):
             assert next_node.node_type in [MAIN, END, INSERT, INSERTEND]
-            p = p_main
+            p = p_noindel
             if next_node.node_type in [INSERT, INSERTEND]:
                 p = p_insert
             probs[next_node] = p
         for next_node in delete_graph.get(start_node, []):
             assert next_node not in probs
             x = _node_dist(library, start_node, next_node)
-            total_bases, num_seqsets, num_bases = x
-            #print start_node, next_node, total_bases, num_seqsets, num_bases
+            total_bases, num_seqsets, seqset_sizes, num_bases = x
             assert total_bases >= 1
             assert num_bases >= 1
+
             # If deleting a seqset is lower probability than deleting
             # the individual bases, then just model as deleting the
             # individual bases.
-            p1 = pow(p_delbase, total_bases-1)
-            p2 = (pow(p_delbase, num_bases-1) *
-                  pow(p_delchunk, num_seqsets))
+
+            # Deleting a single base (direct transition to a MAIN
+            # node) should be equivalent to a delete transition (to a
+            # DELETE node), mismatch, then a noindel transition back
+            # to MAIN.
+            # 
+            # Deleting two bases would be a 2*(p_delete * p_mismatch)
+            # * noindel.
+            p_delb = p_delete*p_mismatch
+            p1 = pow(p_delb, total_bases-1) * p_noindel
+
+            # Deleting a 2-base chunk should be equivalent to a
+            # deleting a base, matching the next base, and then
+            # transitioning to the beginning of the next chunk.
+            #   p_delete*p_mismatch      Deleting a base.
+            #   p_noindel                To next base.
+            #   p_match                  Match the next base.
+            #   p_noindel                Next chunk.
+            #
+            # Deleting a 3-base chunk would be:
+            #   p_delete*p_mismatch * (p_noindel*p_match)*2 * p_noindel
+            p2 = pow(p_delb, num_bases-1) * p_noindel    # leftover bases
+            for size in seqset_sizes:
+                p2 *= p_delb * pow(p_noindel*p_match, size-1)
+                 
             probs[next_node] = max(p1, p2)
         if not probs:  # no next nodes
             continue
@@ -532,20 +560,27 @@ def _calc_transition_probs(library, p_insert, p_delbase, p_delchunk):
     # 3.  To INSERTEND (not currently used).
     # 4.  To END (not currently used).
 
+    norm_factor = None
     normalized = {}  # start_node -> next_nodes -> p
-    for start_node in probabilities:
+    for start_node in sorted(probabilities):
         probs = probabilities[start_node]
-        total = sum(probs.values())
-        for next_node in probs:
-            probs[next_node] = probs[next_node] / total
+
+        if norm_factor is None:
+            total = sum(probs.values())
+            norm_factor = 1.0 / total
+
+        # Don't bother normalizing this.
+        #for next_node in probs:
+        #    probs[next_node] = probs[next_node] * norm_factor
 
         # Make sure probabilities sum to 1.
-        assert abs(sum(probs.values()) - 1.0) < 1E-10
+        #assert abs(sum(probs.values()) - 1.0) < 1E-10
         # Make sure probabilities sum to <= 1.
         #total = sum(probs.values())
         #assert total <= 1+1E-8, "%s Prob: %s" % (start_node, total)
             
         normalized[start_node] = probs
+        
 
     clean = {}
     for start_node in probabilities:
@@ -554,145 +589,19 @@ def _calc_transition_probs(library, p_insert, p_delbase, p_delchunk):
             clean[(start_node, next_node)] = p
     return clean
     
-        
-    ##     # Normalize the probabilities.  If this is not in the random
-    ##     # region, normalize the probabilities so that they sum to 1.
-    ##     # If it is the random region, normalize the probabilities for
-    ##     # all nodes the same way.
-    ##     is_random = False
-    ##     if start_node.node_type == MAIN and \
-    ##            library[start_node.i_seqset].is_random:
-    ##         is_random = True
-    ##     if not is_random or start_node.node_type == INSERT:
-    ##         total = sum(probs.values())
-    ##         nf = 1.0 / total
-    ##     elif norm_factor is None:
-    ##         total = sum(probs.values())
-    ##         norm_factor = 1.0 / total
-    ##         nf = norm_factor
-    ##     else:
-    ##         nf = norm_factor
 
-    ##     if is_random:
-    ##         nns = sorted(probs, key=_node2sortkey)
-    ##         for n in nns:
-    ##             x = "HERE", start_node, n, probs[n]
-    ##             print "\t".join(map(str, x))
-
-    ##     for next_node in probs:
-    ##         probs[next_node] = probs[next_node] * nf
-
-    ##     # Make sure probabilities sum to 1.
-    ##     #assert abs(sum(probs.values()) - 1.0) < 1E-10
-    ##     # Make sure probabilities sum to <= 1.
-    ##     total = sum(probs.values())
-    ##     assert total <= 1+1E-8, "%s Prob: %s" % (start_node, total)
-        
-    ##     for next_node, p in probs.iteritems():
-    ##         probabilities[(start_node, next_node)] = p
-
-
-    ## # Make sure START is the first node.
-    ## #assert nodes
-    ## #assert nodes[0].node_type == START
-    
-    ## # (start node, next node) -> probability
-    ## norm_factor = None
-    ## probabilities = {}
-    ## for start_node in nodes:
-    ##     p_main = 1.0 - (p_insert + p_delbase + p_delchunk)
-    ##     if start_node.node_type == INSERT:
-    ##         # INSERT nodes do not go to DELETE.
-    ##         p_main = 1.0 - p_insert
-
-    ##     probs = {}  # next_node -> p
-    ##     for next_node in main_graph.get(start_node, []):
-    ##         probs[next_node] = p_main
-    ##     for next_node in insert_graph.get(start_node, []):
-    ##         assert next_node.node_type in [MAIN, END, INSERT, INSERTEND]
-    ##         p = p_main
-    ##         if next_node.node_type in [INSERT, INSERTEND]:
-    ##             p = p_insert
-    ##         probs[next_node] = p
-
-    ##     for next_node in delete_graph.get(start_node, []):
-    ##         assert next_node not in probs
-    ##         x = _node_dist(library, start_node, next_node)
-    ##         total_bases, num_seqsets, num_bases = x
-    ##         #print start_node, next_node, total_bases, num_seqsets, num_bases
-    ##         assert total_bases >= 1
-    ##         assert num_bases >= 1
-    ##         # If deleting a seqset is lower probability than deleting
-    ##         # the individual bases, then just model as deleting the
-    ##         # individual bases.
-    ##         p1 = pow(p_delbase, total_bases-1)
-    ##         p2 = (pow(p_delbase, num_bases-1) *
-    ##               pow(p_delchunk, num_seqsets))
-    ##         probs[next_node] = max(p1, p2)
-    ##     if not probs:  # no next nodes
-    ##         continue
-
-    ##     # Normalize the probabilities.  If this is not in the random
-    ##     # region, normalize the probabilities so that they sum to 1.
-    ##     # If it is the random region, normalize the probabilities for
-    ##     # all nodes the same way.
-    ##     is_random = False
-    ##     if start_node.node_type == MAIN and \
-    ##            library[start_node.i_seqset].is_random:
-    ##         is_random = True
-    ##     if not is_random or start_node.node_type == INSERT:
-    ##         total = sum(probs.values())
-    ##         nf = 1.0 / total
-    ##     elif norm_factor is None:
-    ##         total = sum(probs.values())
-    ##         norm_factor = 1.0 / total
-    ##         nf = norm_factor
-    ##     else:
-    ##         nf = norm_factor
-
-    ##     if is_random:
-    ##         nns = sorted(probs, key=_node2sortkey)
-    ##         for n in nns:
-    ##             x = "HERE", start_node, n, probs[n]
-    ##             print "\t".join(map(str, x))
-
-    ##     for next_node in probs:
-    ##         probs[next_node] = probs[next_node] * nf
-
-    ##     # Make sure probabilities sum to 1.
-    ##     #assert abs(sum(probs.values()) - 1.0) < 1E-10
-    ##     # Make sure probabilities sum to <= 1.
-    ##     total = sum(probs.values())
-    ##     assert total <= 1+1E-8, "%s Prob: %s" % (start_node, total)
-        
-    ##     for next_node, p in probs.iteritems():
-    ##         probabilities[(start_node, next_node)] = p
-    ## return probabilities
-
-    
-def make_markov_model(
-    library, base2emission, p_mismatch=None, p_insert=None,
-    p_delbase=None, p_delchunk=None):
+def make_markov_model(library, base2emission, p_mismatch, p_insert, p_delete):
     # Return a MarkovModel.
     import numpy
     from genomicode import MarkovModel
 
-    if p_mismatch is None:
-        p_mismatch = 0.1
-    if p_insert is None:
-        p_insert = p_mismatch
-    if p_delbase is None:
-        p_delbase = p_mismatch**2   # transition and mismatch
-    if p_delchunk is None:
-        p_delchunk = p_mismatch**2  # transition and mismatch
-    assert p_mismatch >= 0 and p_mismatch < 0.50
-    assert p_insert >= 0 and p_insert < 0.50
-    assert p_delbase >= 0 and p_delbase < 0.50
-    assert p_delchunk >= 0 and p_delchunk < 0.50
+    assert p_mismatch > 0 and p_mismatch < 0.50
+    assert p_insert > 0 and p_insert < 0.50
+    assert p_delete > 0 and p_delete < 0.50
 
     # Calculate the transition probabilities.
     transition_probs = _calc_transition_probs(
-        library, p_insert, p_delbase, p_delchunk)
+        library, p_mismatch, p_insert, p_delete)
     emission_probs = _calc_emission_probs(library, base2emission, p_mismatch)
     #for (start, end) in sorted(transition_probs):
     #    x = transition_probs[(start, end)], start, end
@@ -828,7 +737,8 @@ def _score_sequence_h(mm, library, base2emission, sequence):
     # Score the alignment.
     alignments = MarkovModel.find_states(mm, sequence_u)
     states, scores = alignments[0]
-    log_scores = [math.log(max(x, 1E-100)) for x in scores]
+    log_scores = [
+        math.log(max(x, MarkovModel.VERY_SMALL_NUMBER)) for x in scores]
     lscore = log_scores[-1]
 
     #print sequence
