@@ -32,14 +32,14 @@ def main():
         "--width", default=None, type=int,
         help="Width (in pixels) of the plot.")
     parser.add_argument(
-        "--mar_left", default=4, type=float,
-        help="Margin at left of plot.  Default 4.")
+        "--mar_left", default=1.0, type=float,
+        help="Scale margin at left of plot.  Default 1.0 (no scaling).")
     parser.add_argument(
-        "--mar_bottom", default=5, type=float,
-        help="Margin at bottom of plot.  Default 5.")
+        "--mar_bottom", default=1.0, type=float,
+        help="Scale margin at bottom of plot.  Default 1.0.")
     parser.add_argument(
-        "--xlabel_size", default=1.25, type=float,
-        help="Size of labels on X-axis.  Default 1.25.")
+        "--xlabel_size", default=1.0, type=float,
+        help="Scale the size of the labels on X-axis.  Default 1.0.")
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -51,10 +51,9 @@ def main():
     if args.height is not None:
         assert args.height > 10, "too small"
         assert args.height < 4096*16, "height too big"
-    # XXX change mar_bottom to scale.
-    assert args.mar_bottom >= 0 and args.mar_bottom < 100
-    assert args.mar_left >= 0 and args.mar_left < 100
-    assert args.xlabel_size > 0 and args.xlabel_size < 100
+    assert args.mar_bottom > 0 and args.mar_bottom < 10
+    assert args.mar_left > 0 and args.mar_left < 10
+    assert args.xlabel_size > 0 and args.xlabel_size < 10
         
     height = args.height or 1600
     width = args.width or 1600
@@ -83,7 +82,7 @@ def main():
     at = jmath.R_var("NULL")
     if labels:
         at = range(1, len(labels)+1)
-    cex_labels = args.xlabel_size
+    cex_labels = 1.25*args.xlabel_size
     cex_legend = 1
     cex_lab = 1.5
     cex_sub = 1.5
@@ -100,8 +99,9 @@ def main():
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    bottom, left, top, right = args.mar_bottom, args.mar_left, 4, 2
-    R("op <- par(mar=c(%g, %g, %g, %g)+0.1)" % (bottom, left, top, right))
+    x = 5*args.mar_bottom, 4*args.mar_left, 4, 2
+    mar = [x+0.1 for x in x]
+    jmath.R_fn("par", mar=mar, RETVAL="op")
         
     jmath.R_fn(
         "boxplot", jmath.R_var("X"), col=col, main=main, xlab="", ylab="",

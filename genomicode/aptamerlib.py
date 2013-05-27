@@ -50,15 +50,18 @@ or if it has 10, a match always has 9 times the density.
 Transition probabilities
 ------------------------
 p_insert     Inserting one base.    Default (1-p_match).
-p_delbase    Deleting one base.     Default (1-p_match)**2 (transition and mm).
-p_delchunk   Deleting one chunk.    Default (1-p_match)**2 (transition and mm).
+p_delbase    Deleting one base.     Default (1-p_match)*p_match*p_match.
+p_delchunk   Deleting one chunk.    Default p_delbase * p_match*p_match.
 
 o p_insert is the probability of a transition from any node (including
   an INSERT node) to an INSERT node.
 o p_delbase is the probability of a transition from a MAIN node to
   another MAIN node that is one base away.
+  Default should be p_trans * p_mismatch * p_trans.
 o p_delchunk is the probability of a transition from a MAIN node to
   another MAIN node that skips an entire seqset.
+  Default should be p_del * p_match * p_trans (chunk with one base
+  deletion, and one base match).
 o The rest of the probability density is reserved for transitions from
   any node to a MAIN node (without deletions).
 
@@ -145,6 +148,30 @@ def _iter_main_graph(library):
                        i_seqset, i_sequence, i_base)
 
 
+def _node2sortkey(node):
+    # (order1, i_seqset, i_sequence, i_base, order2)
+    nt2order1 = {
+        START : 0,
+        INSERT : 1,
+        MAIN : 1,
+        INSERTEND : 2,
+        END : 3,
+        }
+    nt2order2 = {
+        START : 0,
+        INSERT : 0,
+        MAIN : 1,
+        INSERTEND : 0,
+        END : 0,
+        }
+    assert node.node_type in nt2order1
+    assert node.node_type in nt2order2
+    order1 = nt2order1[node.node_type]
+    order2 = nt2order2[node.node_type]
+    x = order1, node.i_seqset, node.i_sequence, node.i_base, order2
+    return x
+    
+
 def _get_all_nodes(*graphs):
     # Return a list of all nodes in a graph (multiple graphs).
     nodes = {}
@@ -153,7 +180,7 @@ def _get_all_nodes(*graphs):
             nodes[node] = 1
             for node in next_nodes:
                 nodes[node] = 1
-    return sorted(nodes)
+    return sorted(nodes, key=_node2sortkey)
 
 
 def _get_first_nodes(library):
@@ -247,8 +274,8 @@ def _node_dist(library, start_node, end_node):
         end_i = len(library)
         if end_node.node_type != END:
             end_i = end_node.i_seqset
-            num_bases += end_node.i_base
-            total_bases += end_node.i_base
+            num_bases += end_node.i_base + 1   # base 0 is 1 base
+            total_bases += end_node.i_base + 1
         for i in range(start_i, end_i):
             seqset = library[i]
             if seqset.is_random:
@@ -256,7 +283,7 @@ def _node_dist(library, start_node, end_node):
             else:
                 num_bases += min_bases[i]
             total_bases += min_bases[i]
-
+            
     return total_bases, num_seqset, num_bases
 
 
@@ -387,13 +414,12 @@ def _calc_emission_probs(library, base2emission, p_mismatch):
     for x in _iter_main_graph(library):
         x, x, x, base, x, x, x = x
         e = base2emission.get(base, base)
+        e = e.upper()   # do case insensitive search
         emissions[e] = 1
     assert "START" not in emissions
     assert "END" not in emissions
-    x = sorted([x.upper() for x in emissions])   # do case insensitive search
-    emissions = ["START", "END"] + x
-    emissions_in_library = emissions[2:]
-
+    emissions_in_library = sorted(emissions)
+    emissions = ["START", "END"] + emissions_in_library
 
     probabilities = {}  # (node, emission) -> p
     
@@ -439,29 +465,27 @@ def _calc_transition_probs(library, p_insert, p_delbase, p_delchunk):
     # Return a dictionary of (node1, node2) -> transition probability.
 
     # Transition probabilities.
-    p_main = 1.0 - (p_insert + p_delbase + p_delchunk)
     assert p_insert >= 0 and p_insert < 0.5
     assert p_delbase >= 0 and p_delbase < 0.5
     assert p_delchunk >= 0 and p_delchunk < 0.5
-    assert p_main > 0 and p_main <= 1.0
 
     # Make the graph.
     main_graph = _make_main_graph(library)
     insert_graph = _make_insertion_graph(library)
     delete_graph = _make_deletion_graph(library)
 
-    # DEBUG: Print out the topology of the graph.
-    #for node in sorted(insert_graph):
-    #    next_nodes = sorted(insert_graph[node])
-    #    print node, next_nodes
-    #import sys; sys.exit(0)
-
     # Make a list of all nodes in all graphs.
     nodes = _get_all_nodes(main_graph, insert_graph, delete_graph)
 
-    # (start node, next node) -> probability
-    probabilities = {}
+    # Calculate all the probabilities.  The probabilities will not be
+    # normalized and may not sum to 1.
+    probabilities = {}   # node -> next_node -> probability.
     for start_node in nodes:
+        p_main = 1.0 - (p_insert + p_delbase + p_delchunk)
+        if start_node.node_type == INSERT:
+            # INSERT nodes do not go to DELETE.
+            p_main = 1.0 - p_insert
+
         probs = {}  # next_node -> p
         for next_node in main_graph.get(start_node, []):
             probs[next_node] = p_main
@@ -471,62 +495,179 @@ def _calc_transition_probs(library, p_insert, p_delbase, p_delchunk):
             if next_node.node_type in [INSERT, INSERTEND]:
                 p = p_insert
             probs[next_node] = p
-
         for next_node in delete_graph.get(start_node, []):
+            assert next_node not in probs
             x = _node_dist(library, start_node, next_node)
             total_bases, num_seqsets, num_bases = x
+            #print start_node, next_node, total_bases, num_seqsets, num_bases
+            assert total_bases >= 1
+            assert num_bases >= 1
             # If deleting a seqset is lower probability than deleting
             # the individual bases, then just model as deleting the
             # individual bases.
-            p1 = pow(p_delbase, total_bases)
-            p2 = (pow(p_delbase, num_bases) *
+            p1 = pow(p_delbase, total_bases-1)
+            p2 = (pow(p_delbase, num_bases-1) *
                   pow(p_delchunk, num_seqsets))
             probs[next_node] = max(p1, p2)
-            #if start_node[0] == START:
-            #    print "DEL", start_node, next_node, x, probs[next_node]
         if not probs:  # no next nodes
             continue
-        #print "MAIN", main_graph.get(start_node, [])
-        #print "INSERT", insert_graph.get(start_node, [])
-        #print "DELETE", delete_graph.get(start_node, [])
-        #print start_node, probs
+        probabilities[start_node] = probs
 
-        # If there are any non-insertion or deletion nodes, distribute
-        # remaining probability mass to them.
-        ## num_nodes = len([x for x in probs.itervalues() if x is None])
-        ## if num_nodes:
-        ##     p = sum([x for x in probs.itervalues() if x is not None])
-        ##     p_main = (1.0 - p) / num_nodes
-        ##     for next_node in probs:
-        ##         if probs[next_node] is None:
-        ##             probs[next_node] = p_main
-        ##     #print num_nodes, p_main
-        ##     #if p_main < 0.20:
-        ##     #    for n, x in probs.iteritems():
-        ##     #        print n, x
 
-        ## # Otherwise, normalize the probabilities to 1.0.  This can
-        ## # happen, for example, if we decide to treat transitions into
-        ## # and out of INSERT nodes as insertions.
-        ## else:
-        # Normalize the probabilities to 1.0.
+    # Normalize the probabilities.
+
+    # If we normalize the probabilities for each node, then later
+    # deletions will have higher probability than earlier deletions
+    # (because they have fewer transitions).  The algorithm will favor
+    # deleting later bases.
+    #
+    # To solve this, keep track of the normalization for the first
+    # node in the random region.  This should have the most
+    # transitions.  Normalize all the nodes in the random region the
+    # same way.
+
+    # The START node has the most transitions.  Transitions:
+    # 1.  To all MAIN nodes.
+    # 2.  To INSERT of MAIN node in seqset 0.
+    # 3.  To INSERTEND (not currently used).
+    # 4.  To END (not currently used).
+
+    normalized = {}  # start_node -> next_nodes -> p
+    for start_node in probabilities:
+        probs = probabilities[start_node]
         total = sum(probs.values())
         for next_node in probs:
             probs[next_node] = probs[next_node] / total
-        #print start_node, probs
-        #import sys; sys.exit(0)
-        #if len(main_graph.get(start_node, [])) >= 4:
-        #    print "HERE"
-        #    for n, x in probs.iteritems():
-        #        print n, x
-        #    print "DONE"
 
         # Make sure probabilities sum to 1.
-        #assert abs(sum(probs.values()) - 1.0) < 1E-10
-        
+        assert abs(sum(probs.values()) - 1.0) < 1E-10
+        # Make sure probabilities sum to <= 1.
+        #total = sum(probs.values())
+        #assert total <= 1+1E-8, "%s Prob: %s" % (start_node, total)
+            
+        normalized[start_node] = probs
+
+    clean = {}
+    for start_node in probabilities:
+        probs = probabilities[start_node]
         for next_node, p in probs.iteritems():
-            probabilities[(start_node, next_node)] = p
-    return probabilities
+            clean[(start_node, next_node)] = p
+    return clean
+    
+        
+    ##     # Normalize the probabilities.  If this is not in the random
+    ##     # region, normalize the probabilities so that they sum to 1.
+    ##     # If it is the random region, normalize the probabilities for
+    ##     # all nodes the same way.
+    ##     is_random = False
+    ##     if start_node.node_type == MAIN and \
+    ##            library[start_node.i_seqset].is_random:
+    ##         is_random = True
+    ##     if not is_random or start_node.node_type == INSERT:
+    ##         total = sum(probs.values())
+    ##         nf = 1.0 / total
+    ##     elif norm_factor is None:
+    ##         total = sum(probs.values())
+    ##         norm_factor = 1.0 / total
+    ##         nf = norm_factor
+    ##     else:
+    ##         nf = norm_factor
+
+    ##     if is_random:
+    ##         nns = sorted(probs, key=_node2sortkey)
+    ##         for n in nns:
+    ##             x = "HERE", start_node, n, probs[n]
+    ##             print "\t".join(map(str, x))
+
+    ##     for next_node in probs:
+    ##         probs[next_node] = probs[next_node] * nf
+
+    ##     # Make sure probabilities sum to 1.
+    ##     #assert abs(sum(probs.values()) - 1.0) < 1E-10
+    ##     # Make sure probabilities sum to <= 1.
+    ##     total = sum(probs.values())
+    ##     assert total <= 1+1E-8, "%s Prob: %s" % (start_node, total)
+        
+    ##     for next_node, p in probs.iteritems():
+    ##         probabilities[(start_node, next_node)] = p
+
+
+    ## # Make sure START is the first node.
+    ## #assert nodes
+    ## #assert nodes[0].node_type == START
+    
+    ## # (start node, next node) -> probability
+    ## norm_factor = None
+    ## probabilities = {}
+    ## for start_node in nodes:
+    ##     p_main = 1.0 - (p_insert + p_delbase + p_delchunk)
+    ##     if start_node.node_type == INSERT:
+    ##         # INSERT nodes do not go to DELETE.
+    ##         p_main = 1.0 - p_insert
+
+    ##     probs = {}  # next_node -> p
+    ##     for next_node in main_graph.get(start_node, []):
+    ##         probs[next_node] = p_main
+    ##     for next_node in insert_graph.get(start_node, []):
+    ##         assert next_node.node_type in [MAIN, END, INSERT, INSERTEND]
+    ##         p = p_main
+    ##         if next_node.node_type in [INSERT, INSERTEND]:
+    ##             p = p_insert
+    ##         probs[next_node] = p
+
+    ##     for next_node in delete_graph.get(start_node, []):
+    ##         assert next_node not in probs
+    ##         x = _node_dist(library, start_node, next_node)
+    ##         total_bases, num_seqsets, num_bases = x
+    ##         #print start_node, next_node, total_bases, num_seqsets, num_bases
+    ##         assert total_bases >= 1
+    ##         assert num_bases >= 1
+    ##         # If deleting a seqset is lower probability than deleting
+    ##         # the individual bases, then just model as deleting the
+    ##         # individual bases.
+    ##         p1 = pow(p_delbase, total_bases-1)
+    ##         p2 = (pow(p_delbase, num_bases-1) *
+    ##               pow(p_delchunk, num_seqsets))
+    ##         probs[next_node] = max(p1, p2)
+    ##     if not probs:  # no next nodes
+    ##         continue
+
+    ##     # Normalize the probabilities.  If this is not in the random
+    ##     # region, normalize the probabilities so that they sum to 1.
+    ##     # If it is the random region, normalize the probabilities for
+    ##     # all nodes the same way.
+    ##     is_random = False
+    ##     if start_node.node_type == MAIN and \
+    ##            library[start_node.i_seqset].is_random:
+    ##         is_random = True
+    ##     if not is_random or start_node.node_type == INSERT:
+    ##         total = sum(probs.values())
+    ##         nf = 1.0 / total
+    ##     elif norm_factor is None:
+    ##         total = sum(probs.values())
+    ##         norm_factor = 1.0 / total
+    ##         nf = norm_factor
+    ##     else:
+    ##         nf = norm_factor
+
+    ##     if is_random:
+    ##         nns = sorted(probs, key=_node2sortkey)
+    ##         for n in nns:
+    ##             x = "HERE", start_node, n, probs[n]
+    ##             print "\t".join(map(str, x))
+
+    ##     for next_node in probs:
+    ##         probs[next_node] = probs[next_node] * nf
+
+    ##     # Make sure probabilities sum to 1.
+    ##     #assert abs(sum(probs.values()) - 1.0) < 1E-10
+    ##     # Make sure probabilities sum to <= 1.
+    ##     total = sum(probs.values())
+    ##     assert total <= 1+1E-8, "%s Prob: %s" % (start_node, total)
+        
+    ##     for next_node, p in probs.iteritems():
+    ##         probabilities[(start_node, next_node)] = p
+    ## return probabilities
 
     
 def make_markov_model(

@@ -718,9 +718,10 @@ def main():
         'parameter multiple times.  Format: <time_header>,<dead_header>')
     group.add_argument(
         '--gene', default=[], action='append',
-        help='Name or ID of gene to analyze.  I will search for this gene '
-        'in the annotations of the expression_file.  '
-        'To analyze more than one gene, use this parameter multiple times.')
+        help='Comma separated name or ID of genes to analyze.  '
+        'I will search for this gene in the annotations of the '
+        'expression_file.  '
+        'You can use this parameter multiple times to search more genes.')
     group.add_argument(
         '--geneset', default=[], action='append',
         help='Name of the geneset to analyze. To specify multiple gene sets, '

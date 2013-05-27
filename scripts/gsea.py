@@ -256,7 +256,7 @@ def main():
     # for the expression data.  (If one is given, we let the user make
     # sure the platforms match.)
     platform = args.platform
-    if platform is None and not database_file:
+    if platform is None and not database_file and not args.no_collapse_dataset:
         platform = guess_chip_platform(MATRIX)
         # If gene symbols already provided, then turn off collapse_dataset.
         if platform is None:  # Gene Symbol

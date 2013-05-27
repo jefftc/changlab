@@ -2,13 +2,24 @@
 
 
 DEF_MISMATCH = 0.1
+DEF_MATCH = 1.0 - DEF_MISMATCH
 DEF_INSERT = DEF_MISMATCH
-DEF_DELBASE = DEF_MISMATCH**2
-DEF_DELCHUNK = DEF_MISMATCH**2
+DEF_DELBASE = DEF_MATCH*DEF_MISMATCH*DEF_MATCH
+DEF_DELCHUNK = DEF_DELBASE*DEF_MATCH*DEF_MATCH
+#DEF_DELBASE = DEF_MISMATCH*DEF_MISMATCH
+#DEF_DELCHUNK = DEF_MISMATCH*DEF_MISMATCH
 
 OUT_TABLE = "TABLE"
 OUT_MARKOV = "MARKOV_MODEL"
 OUT_ALIGNMENT = "ALIGNMENT"
+
+def _parse_titles(titles):
+    # ["title1,title2", "title3"]
+    all_titles = []
+    for x in titles:
+        x = x.split(",")
+        all_titles.extend(x)
+    return all_titles
 
 def _parse_base2emission(base2emission_list):
     # base2emission is a list of "<lib_base>:<seq_base>".  Return a
@@ -92,23 +103,33 @@ def _write_alignment(alignment, title, outhandle):
     print >>outhandle
 
 
-def _write_markov_model(library, alignment, title, sequence, score, is_revcomp,
-                        outhandle):
+def _write_markov_format(
+    library, alignment, title, sequence, score, is_revcomp, outhandle):
+    import math
     from genomicode import aptamerlib
     
     print >>outhandle, "%s %s %s" % ("="*10, title, "="*10)
     print >>outhandle, "%s %.2f %d" % (sequence, score, int(is_revcomp))
+    prev_score = 0.0
     for i, x in enumerate(alignment):
         node, log_score, match_type, base_in_lib, base_in_seq = x
         node_str = str(node)
+        
+        score_diff = 0.0
+        if log_score < prev_score:
+            log_score_diff = log_score - prev_score
+            prev_score = log_score
+            score_diff = math.exp(log_score_diff)
+        score_diff = "%.3g" % score_diff
+        
         if node.i_seqset is not None:
             seqset_name = library[node.i_seqset].name
         else:
             assert node.node_type == aptamerlib.INSERTEND
             node_str = "END"
             seqset_name = ""
-        x = node_str, seqset_name, match_type, \
-            base_in_lib, base_in_seq, "%.2f" % log_score
+        x = i+1, node_str, seqset_name, match_type, \
+            base_in_lib, base_in_seq, "%.2f" % log_score, score_diff
         print >>outhandle, "\t".join(map(str, x))
     print >>outhandle
 
@@ -128,7 +149,7 @@ def _align_aptamers_h(
     elif output == OUT_ALIGNMENT:
         _write_alignment(alignment, title, outhandle)
     elif output == OUT_MARKOV:
-        _write_markov_model(
+        _write_markov_format(
             library, alignment, title, sequence, score, is_revcomp, outhandle)
     else:
         raise AssertionError, "Unknown output format: %s" % output
@@ -138,6 +159,71 @@ def _align_aptamers_h(
     sys.stdout.flush()
     lock.release()
 
+
+def write_markov_model(library, base2emission,
+                       p_mismatch, p_insert, p_delbase, p_delchunk):
+    from genomicode import aptamerlib
+
+    # (node1, node2) -> p_transition
+    transition_probs = aptamerlib._calc_transition_probs(
+        library, p_insert, p_delbase, p_delchunk)
+    # (node, base) -> p_emission
+    emission_probs = aptamerlib._calc_emission_probs(
+        library, base2emission, p_mismatch)
+
+    # Make a list of all nodes.
+    all_nodes = {}
+    for node1, node2 in transition_probs:
+        all_nodes[node1] = 1
+        all_nodes[node2] = 1
+
+    # Make a list of all bases.
+    all_bases = {}
+    for node, base in emission_probs:
+        assert node in all_nodes
+        all_bases[base] = 1
+    all_bases = sorted(all_bases)
+
+    # Sort the nodes.
+    all_nodes = sorted(all_nodes, key=aptamerlib._node2sortkey)
+
+    # Print the total number of nodes.
+    x = 0, "", "META", "TOTAL_NODES", len(all_nodes)
+    print "\t".join(map(str, x))
+
+    # Print the number of main nodes.
+    x = [x for x in all_nodes if x.node_type == aptamerlib.MAIN]
+    x = 0, "", "META", "MAIN_NODES", len(x)
+    print "\t".join(map(str, x))
+
+    for i, node1 in enumerate(all_nodes):
+        # Count the number of transitions.
+        x = [node2 for node2 in all_nodes
+             if (node1, node2) in transition_probs]
+        x = i+1, node1, "META", "NUM_TRANSITIONS", len(x)
+        print "\t".join(map(str, x))
+
+        # Count the unused probability mass.
+        p = [transition_probs[(node1, node2)] for node2 in all_nodes
+             if (node1, node2) in transition_probs]
+        unused = 1.0 - sum(p)
+        x = i+1, node1, "META", "UNUSED_P", "%.3g" % unused
+        print "\t".join(map(str, x))
+        
+        for base in all_bases:
+            if (node1, base) not in emission_probs:
+                continue
+            p = emission_probs[(node1, base)]
+            p_str = "%.3g" % p
+            x = i+1, node1, "EMISSION", base, p_str
+            print "\t".join(map(str, x))
+        for node2 in all_nodes:
+            if (node1, node2) not in transition_probs:
+                continue
+            p = transition_probs[(node1, node2)]
+            p_str = "%.3g" % p
+            x = i+1, node1, "TRANSITION", node2, p_str
+            print "\t".join(map(str, x))
 
 def main():
     import os
@@ -153,18 +239,27 @@ def main():
     parser.add_argument(
         "sequence_file", help="FASTQ-formatted sequence file.")
     parser.add_argument(
+        "--show_markov_model_only", default=False, action="store_true",
+        help="Print out the markov model and exit (for debugging).")
+    parser.add_argument(
         "--output_format", choices=[OUT_TABLE, OUT_MARKOV, OUT_ALIGNMENT],
         default=OUT_TABLE, 
         help="What kind of output to generate.")
     parser.add_argument(
-        "--max_alignments", type=int,
-        help="Maximum number of sequences to align.")
-    parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,
         help="Number of jobs to run in parallel.")
-    parser.add_argument(
+
+    group = parser.add_argument_group(title="Filter")
+    group.add_argument(
+        "--max_alignments", type=int,
+        help="Maximum number of sequences to align.")
+    group.add_argument(
         "--min_seqlen", type=int, default=None,
         help="Discard sequences less than this minimum length.")
+    group.add_argument(
+        "--titles", default=[], action="append",
+        help="Want reads with these titles.  "
+        "Comma-separated titles, parameter can be used multiple times.")
     
     group = parser.add_argument_group(title="Alphabet")
     group.add_argument(
@@ -210,6 +305,7 @@ def main():
            "delete_chunk (%s) should be between 0 and 0.5" % args.delete_chunk
     assert args.insert + args.delete_base + args.delete_chunk <= 0.5, \
            "Too much probability allocated for indels."
+    titles = _parse_titles(args.titles)
 
     base2emission = _parse_base2emission(args.lib2seq)
 
@@ -218,6 +314,11 @@ def main():
         library, base2emission, p_mismatch=args.mismatch, p_insert=args.insert,
         p_delbase=args.delete_base, p_delchunk=args.delete_chunk)
 
+    if args.show_markov_model_only:
+        write_markov_model(
+            library, base2emission, args.mismatch, args.insert,
+            args.delete_base, args.delete_chunk)
+        return
 
     manager = multiprocessing.Manager()
     lock = manager.Lock()
@@ -238,6 +339,8 @@ def main():
         if args.max_alignments is not None and i >= args.max_alignments:
             break
         if args.min_seqlen is not None and len(sequence) < args.min_seqlen:
+            continue
+        if titles and title not in titles:
             continue
         #if title.find("00013:00070") < 0:
         #    continue

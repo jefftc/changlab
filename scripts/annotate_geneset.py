@@ -235,14 +235,17 @@ def main():
 
     group = parser.add_argument_group(title="Required arguments")
     group.add_argument(
+        "--background", default=None,
+        help="Genes are selected from this background geneset.  "
+        "Format: <gmx/gmt_file>,<geneset>")
+    group.add_argument(
         "--geneset", default=None,
         help="Annotate this geneset.  If multiple gene sets are provided, "
         "their genes will be combined.  "
         "Format: <gmx/gmt_file>[,<geneset>,<geneset>,...]")
     group.add_argument(
-        "--background", default=None,
-        help="Genes are selected from this background geneset.  "
-        "Format: <gmx/gmt_file>,<geneset>")
+        "--ignore_genes_not_in_background", default=False, action="store_true",
+        help="Ignore any gene in the gene set that is not in the background.")
     group.add_argument(
         "--annotation", default=None,
         help="A gene set file that contain the annotations for the genes.  "
@@ -287,6 +290,11 @@ def main():
     for x in x1:
         filename, gs_name, genes = x
         geneset2genes[gs_name] = genes
+    if args.ignore_genes_not_in_background:
+        for gs_name, genes in geneset2genes.iteritems():
+            g = [x for x in genes if x in background]
+            assert g, "All genes from %s are missing in background." % gs_name
+            geneset2genes[gs_name] = g
     # Combine the genes in the gene sets.
     geneset = []
     for genes in geneset2genes.itervalues():
@@ -302,8 +310,10 @@ def main():
         x = ", ".join(missing)
         assert False, "Genes are missing from the background: %s" % x
     elif missing:
-        assert False, "%d genes are missing from the background." % len(
-            missing)
+        x = missing[:5] + ["..."]
+        x = ", ".join(x)
+        assert False, "%d genes are missing from the background: %s" % (
+            len(missing), x)
 
     # Read the annotations.
     x = read_annotations(args.annotation)
