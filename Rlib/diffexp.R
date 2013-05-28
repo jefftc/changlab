@@ -3,6 +3,9 @@
 # find.de.genes.ebayes
 # find.de.genes.2cnoref.ebayes
 
+# TODO: 
+# - ttest  Add mean expression, num samples for each class.
+# - sam    Add mean expression, num samples for each class.
 
 matrix2dataframe <- function(M) {
   x <- matrix(unlist(M), nrow(M), ncol(M))
@@ -175,6 +178,11 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   fdr <- fdr[I]
   bonf <- bonf[I]
 
+  mean.1 <- apply(X.1, 1, mean)
+  mean.2 <- apply(X.2, 1, mean)
+  nsamp.1 <- ncol(X.1)
+  nsamp.2 <- ncol(X.2)
+
   nl10p <- c()
   nl10fdr <- c()
   nl10bonf <- c()
@@ -186,10 +194,12 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
 
   direction <- rep(sprintf("Higher in %s", Y.all[1]), length(med.1))
   direction[med.2 > med.1] <- sprintf("Higher in %s", Y.all[2])
-  DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, diff, 
-    direction, X.1, X.2)
-  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+  DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, 
+    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
+  colnames(DATA) <- c("Gene ID", "Gene Name", 
+    "NL10P", "NL10 FDR", "NL10 Bonf", 
+    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+    "Log_2 Fold Change", "Direction", 
     colnames(X.1), colnames(X.2))
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA)
@@ -210,14 +220,12 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   Y.all <- sort(unique(Y))
   if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
 
-  GROUP1 <- rep(0, length(Y))
-  GROUP2 <- rep(0, length(Y))
-  GROUP1[Y == Y.all[1]] <- 1
-  GROUP2[Y == Y.all[2]] <- 1
+  GROUP1 <- as.numeric(Y == Y.all[1])
+  GROUP2 <- as.numeric(Y == Y.all[2])
   if(sum(GROUP1 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
   if(sum(GROUP2 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
 
-  if((length(geneid) == 1)  && is.na(geneid)) {
+  if((length(geneid) == 1) && is.na(geneid)) {
     ndigits <- floor(log(nrow(X), 10)) + 1
     geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
   }
@@ -232,12 +240,18 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   fit <- lmFit(X, design=design)
   fit2 <- contrasts.fit(fit, c(-1, 1))
   fit2 <- eBayes(fit2)
-  TOP <- topTable(fit2, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
-    number=nrow(fit2))
+  # p.value cutoff is for adjusted p-values.  We want non-adjusted p-values.
+  #TOP <- topTable(fit2, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
+  #  number=nrow(fit2))
+  TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), 
+    lfc=log(FOLD.CHANGE, 2))
+  TOP <- TOP[TOP[["P.Value"]] < 0.05,]
   if(!nrow(TOP)) {
-    DATA <- matrix(NA, 0, 7+ncol(X))
-    colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-      "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+    DATA <- matrix(NA, 0, 7+length(Y.all)*2+ncol(X))
+    colnames(DATA) <- c("Gene ID", "Gene Name", 
+      "NL10P", "NL10 FDR", "NL10 Bonf", 
+      sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+      "Log_2 Fold Change", "Direction", 
       colnames(X))
     DATA <- matrix2dataframe(DATA)
     return(list(DATA=DATA, fit=fit2, TOP=TOP))
@@ -249,19 +263,30 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   nl10bonf <- -log(bonf, 10)
   diff <- abs(TOP[["logFC"]])
   I <- as.numeric(rownames(TOP))
-  X.1 <- X[I, Y == Y.all[1]]
-  X.2 <- X[I, Y == Y.all[2]]
+  X.1 <- matrix(X[I, Y == Y.all[1]], nrow=length(I))
+  X.2 <- matrix(X[I, Y == Y.all[2]], nrow=length(I))
+  if(length(colnames(X)) > 1) {
+    colnames(X.1) <- colnames(X)[Y == Y.all[1]]
+    colnames(X.2) <- colnames(X)[Y == Y.all[2]]
+  }
   if(is.null(colnames(X.1)))
     colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
   if(is.null(colnames(X.2)))
     colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
 
+  mean.1 <- apply(X.1, 1, mean)
+  mean.2 <- apply(X.2, 1, mean)
+  nsamp.1 <- ncol(X.1)
+  nsamp.2 <- ncol(X.2)
+
   direction <- rep(sprintf("Higher in %s", Y.all[1]), nrow(TOP))
   direction[TOP[["logFC"]] > 0] <- sprintf("Higher in %s", Y.all[2])
-  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, diff, 
-    direction, X.1, X.2)
-  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
+  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, 
+    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
+  colnames(DATA) <- c("Gene ID", "Gene Name", 
+    "NL10P", "NL10 FDR", "NL10 Bonf", 
+    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+    "Log_2 Fold Change", "Direction", 
     colnames(X.1), colnames(X.2))
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA, fit=fit2, TOP=TOP)
@@ -286,8 +311,8 @@ find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA,
 
   fit <- lmFit(X)
   fit <- eBayes(fit)
-  TOP <- topTable(fit, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
-    number=nrow(fit))
+  TOP <- topTable(fit, adjust="fdr", lfc=log(FOLD.CHANGE, 2), number=nrow(fit))
+  TOP <- TOP[TOP[["P.Value"]] < 0.05,]
   if(!nrow(TOP)) {
     DATA <- matrix(NA, 0, 7+ncol(X))
     colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 

@@ -68,7 +68,7 @@ def write_cls_file(outhandle, name0, name1, classes):
     for x in classes:
         if x not in uniq_classes:
             uniq_classes.append(x)
-    assert len(uniq_classes) == 2, "Only 2 classes allowed."
+    assert len(uniq_classes) == 2, "Need exactly 2 classes."
     sorted_classes = sorted(map(str, uniq_classes))
     assert sorted_classes in [["0", "1"], sorted([name0, name1])]
     # Make sure order of the classes is consistent with the names.

@@ -6,7 +6,7 @@ import os
 import argparse
 
 def main():
-    all_platforms = [platform.name for platform in arrayplatformlib.platforms]
+    all_platforms = [platform.name for platform in arrayplatformlib.PLATFORMS]
     parser = argparse.ArgumentParser(
         description = 'annotate the matrix')
     parser.add_argument('-o',dest = 'outpath',type = str,

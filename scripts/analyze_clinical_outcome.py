@@ -14,6 +14,7 @@
 # read_expression_or_geneset_scores
 # read_clinical_annotations
 # align_matrix_with_clinical_data
+# get_gene_name
 #
 # calc_association
 # calc_km
@@ -247,6 +248,36 @@ def discretize_scores(scores, cutoffs, zscore, expression_or_score):
     return group_names, groups
 
 
+def get_gene_name(MATRIX, gene_i):
+    from genomicode import arrayplatformlib as apl
+
+    probe_id = gene_id = gene_symbol = None
+
+    # Try finding a gene symbol.
+    header = apl.find_header(MATRIX, apl.GENE_SYMBOL)
+    if header is not None:
+        gene_symbol = MATRIX.row_names(header)[gene_i]
+
+    # Try finding the gene ID.
+    header = apl.find_header(MATRIX, apl.GENE_ID)
+    if header is not None:
+        gene_id = MATRIX.row_names(header)[gene_i]
+
+    # Just us a probe ID.
+    header = apl.find_header(MATRIX, apl.PROBE_ID)
+    if header is not None:
+        probe_id = MATRIX.row_names(header)[gene_i]
+
+    if probe_id and gene_symbol:
+        return "%s_%s" % (gene_symbol, probe_id)
+    if probe_id:
+        return probe_id
+    if gene_symbol:
+        return gene_symbol
+    # Just return the index of the gene
+    return "Gene %04d" % gene_i
+
+
 def calc_association(survival, dead, scores, cutoffs, zscore,
                      expression_or_score):
     # Return a dictionary with keys:
@@ -273,7 +304,7 @@ def calc_association(survival, dead, scores, cutoffs, zscore,
     assert I, "No valid samples."
 
     survival = [float(survival[i]) for i in I]
-    dead = [int(dead[i]) for i in I]
+    dead = [int(float(dead[i])) for i in I]  # might be 0.0, 1.0
     scores = [scores[i] for i in I]
 
     # Figure out the groupings.
@@ -488,10 +519,12 @@ def write_prism_file(filename, survival, dead, group_indexes, group_names):
     R('write.km.prism.multi(filename, survival, dead, group)')
 
 
-def plot_km(filename, survival, dead, group_indexes,
-            p_value, gene_id, group_names, xlab, ylab, title):
+def plot_km(
+    filename, survival, dead, group_indexes, p_value, gene_id, group_names,
+    mar_bottom, mar_left, mar_top, title, title_size, mar_title,
+    subtitle_size, mar_subtitle, xlab, ylab, legend_size):
     from genomicode import colorlib
-    from genomicode.jmath import R_equals, R_fn
+    from genomicode.jmath import R_equals, R_fn, R_var
     
     R = start_and_init_R()
     
@@ -511,32 +544,63 @@ def plot_km(filename, survival, dead, group_indexes,
     cmd = "col <- list(%s)" % (", ".join(cmd))
     R(cmd)
 
+    # Convert mar_title to the line parameter for title.  mar_title is
+    # a scaling factor from 0 to infinity.  line=1 is the default, and
+    # -10 and +10 should indicate the outer bounds.  Convert mar_title
+    # to main.line according to:
+    # mar_title  main.line
+    #     0-1     -3 to 1
+    #     1-5      1 to 5
+    assert mar_title >= 0
+    if mar_title < 1:
+        main_line = mar_title*4 - 3
+    else:
+        main_line = mar_title
+
+    # Convert mar_subtitle to the line parameter for title.
+    # mar_subtitle is a scaling factor from 0 to infinity.  line=4 is
+    # the default, and -10 and +10 should indicate the outer bounds.
+    # Convert mar_subtitle to sub.line according to:
+    # mar_subtitle  sub.line
+    #     0-1       -6 to  4
+    #     1-7        4 to 10
+    assert mar_subtitle >= 0
+    if mar_subtitle < 1:
+        sub_line = mar_subtitle*10 - 6
+    else:
+        sub_line = mar_subtitle + 3
+
     group = [group_names[i] for i in group_indexes]
-    R_equals(survival, 'survival')
-    R_equals(dead, 'dead')
-    R_equals(group, 'group')
-    R_equals('p_value=%.2g' % p_value, 'sub')
-    
-    R('xlab <- ""')
-    R('ylab <- ""')
-    R_equals(gene_id, 'title')
-    if xlab:
-        R_equals(xlab, 'xlab')
-    if ylab:
-        R_equals(ylab, 'ylab')
-    if title:
-        R_equals(title, 'title')
-        
+
+    xlab = xlab or ""
+    ylab = ylab or ""
+    sub = "p=%.2g" % p_value
+    title = title or gene_id
+    cex_main = 2.0 * title_size
+    cex_sub = 1.5 * subtitle_size
+    cex_legend = 1.5 * legend_size
+
     R_fn(
         "bitmap", file=filename, type="png256",
          height=1600, width=1600, units="px", res=300)
+
+    # Set the margins.
+    x = 5*mar_bottom, 4*mar_left, 4*mar_top, 2
+    mar = [x+0.1 for x in x]
+    R_fn("par", mar=mar, RETVAL="op")
+    
     # Suppress warning message.  See calc_km.
-    R('ow <- options("warn")')
-    R('options(warn=-1)')
-    R('plot.km.multi(survival, dead, group, '
-      'col=col, main=title, sub=sub, xlab=xlab, ylab=ylab)')
-    R('options(ow)')
-    R('dev.off()')
+    R_fn('options', "warn", RETVAL='ow')
+    R_fn('options', warn=-1)
+    R_fn(
+        'plot.km.multi', survival, dead, group, col=R_var('col'),
+        main=title, sub=sub, xlab=xlab, ylab=ylab,
+        **{ 'cex.main' : cex_main, 'main.line' : main_line,
+            'cex.sub' : cex_sub, 'sub.line' : sub_line,
+            'cex.legend' : cex_legend })
+    R_fn('options', R_var('ow'))
+    R_fn("par", R_var('op'))
+    R_fn('dev.off')
     
 
 def plot_groups(filename, scores, group_names, groups):
@@ -654,9 +718,10 @@ def main():
         'parameter multiple times.  Format: <time_header>,<dead_header>')
     group.add_argument(
         '--gene', default=[], action='append',
-        help='Name or ID of gene to analyze.  I will search for this gene '
-        'in the annotations of the expression_file.  '
-        'To analyze more than one gene, use this parameter multiple times.')
+        help='Comma separated name or ID of genes to analyze.  '
+        'I will search for this gene in the annotations of the '
+        'expression_file.  '
+        'You can use this parameter multiple times to search more genes.')
     group.add_argument(
         '--geneset', default=[], action='append',
         help='Name of the geneset to analyze. To specify multiple gene sets, '
@@ -698,14 +763,41 @@ def main():
         '--plot_groups', action='store_true', default=False,
         help='Make a scatter plot showing the groups for each sample '
         '(PNG format).')
+
+    
+    group = parser.add_argument_group(title='Formatting the Kaplan-Meier Plot')
     group.add_argument(
-        '--xlab', default=None, 
+        "--km_mar_left", default=1.0, type=float,
+        help="Scale margin at left of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--km_mar_bottom", default=1.0, type=float,
+        help="Scale margin at bottom of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--km_mar_top", default=1.0, type=float,
+        help="Scale margin at top of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        '--km_title', default=None, help='Title for the Kaplan-Meier plot.')
+    group.add_argument(
+        '--km_title_size', default=1.0, type=float,
+        help='Scale the size of the title.  Default 1.0 (no scaling).')
+    group.add_argument(
+        '--km_mar_title', default=1.0, type=float, 
+        help="Scale margin for the title.  Default 1.0 (no scaling).")
+    group.add_argument(
+        '--km_subtitle_size', default=1.0, type=float,
+        help='Scale the size of the subtitle.  Default 1.0 (no scaling).')
+    group.add_argument(
+        '--km_mar_subtitle', default=1.0, type=float, 
+        help="Scale margin for the subtitle.  Default 1.0 (no scaling).")
+    group.add_argument(
+        '--km_xlab', default=None, 
         help='x-axis label for the Kaplan-Meier plot.')
     group.add_argument(
-        '--ylab', default=None, 
+        '--km_ylab', default=None, 
         help='y-axis label for the Kaplan-Meier plot.')
     group.add_argument(
-        '--title', default=None, help='Title for the Kaplan-Meier plot.')
+        '--km_legend_size', default=1.0, type=float,
+        help='Scale the size of the legend.  Default 1.0 (no scaling).')
 
     args = parser.parse_args()
 
@@ -728,6 +820,15 @@ def main():
     if not args.cutoff and not args.zscore:
         args.cutoff = "0.50"
 
+    assert args.km_mar_bottom > 0 and args.km_mar_bottom < 10
+    assert args.km_mar_left > 0 and args.km_mar_left < 10
+    assert args.km_mar_top > 0 and args.km_mar_top < 10
+    assert args.km_title_size > 0 and args.km_title_size < 10
+    assert args.km_mar_title > 0 and args.km_mar_title < 10
+    assert args.km_subtitle_size > 0 and args.km_subtitle_size < 10
+    assert args.km_mar_subtitle > 0 and args.km_mar_subtitle < 10
+    assert args.km_legend_size > 0 and args.km_legend_size < 10
+    
     # Clean up the input.
     genes = parse_genes(args.gene)
     gene_sets = parse_gene_sets(args.geneset)
@@ -742,10 +843,14 @@ def main():
     x = read_clinical_annotations(M, args.outcome_file)
     M, clinical_annots = x
 
-    # Make sure each of the outcomes are in the clinical annotations.
-    for x1, x2 in outcomes:
-        assert x1 in clinical_annots, "Missing clinical annotation: %s" % x1
-        assert x2 in clinical_annots, "Missing clinical annotation: %s" % x2
+    # Make sure at least one of the outcomes are in the clinical
+    # annotations.
+    outcomes = [(x1, x2) for (x1, x2) in outcomes
+                if x1 in clinical_annots and x2 in clinical_annots]
+    assert outcomes, "No clinical annotations found."
+    #for x1, x2 in outcomes:
+    #    assert x1 in clinical_annots, "Missing clinical annotation: %s" % x1
+    #    assert x2 in clinical_annots, "Missing clinical annotation: %s" % x2
 
     # Select the genes or gene sets of interest.
     x = genes or gene_sets
@@ -771,7 +876,7 @@ def main():
         gene_outcome_scores[(time_header, dead_header, i)] = x
 
     # Files generated:
-    # <filestem>.stats.txt           Or to STDOUT if no <filestem> given.
+    # <filestem>.stats.txt      Or to STDOUT if no <filestem> given.
     # <filestem>.<outcome>.<gene_id>.km.png      K-M plot.
     # <filestem>.<outcome>.<gene_id>.prism.txt   Prism format for K-M analysis.
     # <filestem>.<outcome>.<gene_id>.groups.png  Group for each sample.
@@ -823,7 +928,8 @@ def main():
 
 
         # Write out Prism, Kaplan-Meier curves, etc.
-        gene_id = M.row_names(M.row_names()[0])[gene_i]
+        # Better way to pick gene ID.
+        gene_id = get_gene_name(M, gene_i)
         gene_id_h = hashlib.hash_var(gene_id)
 
         if args.write_prism:
@@ -838,7 +944,10 @@ def main():
             plot_km(
                 filename, SURV["survival"], SURV["dead"], SURV["groups"],
                 SURV["p_value"], gene_id, SURV["group_names"], 
-                args.xlab, args.ylab, args.title)
+                args.km_mar_bottom, args.km_mar_left, args.km_mar_top,
+                args.km_title, args.km_title_size, args.km_mar_title,
+                args.km_subtitle_size, args.km_mar_subtitle, 
+                args.km_xlab, args.km_ylab, args.km_legend_size)
         if args.plot_groups:
             filename = "%s%s.%s.groups.png" % (
                 filestem, time_header, gene_id_h)

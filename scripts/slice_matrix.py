@@ -19,6 +19,7 @@
 # find_col_genesets
 # find_col_annotation
 # find_col_re
+# replace_col_ids
 # relabel_col_ids
 # append_col_ids
 # reorder_col_indexes
@@ -255,13 +256,12 @@ def parse_names(MATRIX, is_row, s):
 
 def parse_geneset(MATRIX, is_row, geneset):
     # Return a list of indexes that match the desired gene sets.
-    # If no genesets are specified, return the indexes that match any
-    # of the genesets.
     from genomicode import genesetlib
 
     if not geneset:
         return []
     filename, genesets = _parse_file_gs(geneset)
+    assert len(genesets) >= 1
 
     keywds = {"allow_tdf": True}
     genes = genesetlib.read_genes(filename, *genesets, **keywds)
@@ -442,10 +442,34 @@ def find_col_regex(MATRIX, col_regex):
     names = MATRIX.col_names(tdf.SAMPLE_NAME)
     I = []
     for i in range(len(names)):
-        m = re.match(col_regex, names[i])
+        m = re.search(col_regex, names[i])
         if m:
             I.append(i)
     return I
+
+
+def replace_col_ids(MATRIX, replace_str, ignore_missing):
+    # replace_str in format of: <from>,<to>.
+    import arrayio
+    from genomicode import genesetlib
+    from genomicode import matrixlib
+
+    if not replace_str:
+        return MATRIX
+    x = replace_str.split(",")
+    assert len(x) == 2, "format should be: <from>,<to>"
+    from_str, to_str = x
+
+    MATRIX_new = MATRIX.matrix()
+    name = arrayio.COL_ID
+    if name not in MATRIX_new._col_names:
+        name = MATRIX_new._synonyms[name]
+    assert name in MATRIX_new._col_names, "I can not find the sample names."
+    x = MATRIX_new.col_names(name)
+    x = [x.replace(from_str, to_str) for x in x]
+    MATRIX_new._col_names[name] = x
+
+    return MATRIX_new
 
 
 def relabel_col_ids(MATRIX, geneset, ignore_missing):
@@ -1636,7 +1660,7 @@ def main():
     group.add_argument(
         "--select_col_genesets", default=None,
         help="Include only the samples from this geneset.  "
-        "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
     group.add_argument(
         "--select_col_regex", default=None,
         help="Include columns that match this regular expression.")
@@ -1676,6 +1700,10 @@ def main():
         "--rename_duplicate_cols", default=False, action="store_true",
         help="If multiple columns have the same header, make their names "
         "unique.")
+    group.add_argument(
+        "--replace_col_ids", default=None,
+        help="Replace strings within the column IDs.  Format: <from>,<to>.  "
+        "Instances of <from> will be replaced with <to>.")
     group.add_argument(
         "--relabel_col_ids", default=None,
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
@@ -1727,7 +1755,7 @@ def main():
     group.add_argument(
         "--select_row_genesets", default=None,
         help="Include only the IDs from this geneset.  "
-        "Format: <txt/gmx/gmt_file>[,<geneset>,<geneset>,...]")
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
     group.add_argument(
         "--filter_row_by_mean", default=None, type=float,
         help="Remove this percentage of rows that have the lowest mean.  "
@@ -1873,6 +1901,8 @@ def main():
         MATRIX = move_row_annot(MATRIX, x)
 
     # Relabel the column IDs.
+    MATRIX = replace_col_ids(
+        MATRIX, args.replace_col_ids, args.ignore_missing_labels)
     MATRIX = relabel_col_ids(
         MATRIX, args.relabel_col_ids, args.ignore_missing_labels)
     MATRIX = append_col_ids(
@@ -1902,7 +1932,8 @@ def main():
     I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
     MATRIX = MATRIX.matrix(None, I_col)
 
-    # Log transform, if requested.
+    # Log transform, if requested.  Do before other changes to
+    # expression values (quantile, center, normalize).
     if args.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
 
@@ -1911,7 +1942,7 @@ def main():
     if args.fill_missing_values_median:
         median_fill_genes(MATRIX)
 
-    # Quantile normalize, if requested.
+    # Quantile normalize, if requested.  After log.
     if args.quantile:
         MATRIX = quantnorm.normalize(MATRIX)
 
@@ -1921,7 +1952,6 @@ def main():
     MATRIX = MATRIX.matrix(I, None)
 
     # Preprocess the expression values.
-    
     if args.gene_center == "mean":
         center_genes_mean(MATRIX, args.gc_subset_indexes)
     elif args.gene_center == "median":

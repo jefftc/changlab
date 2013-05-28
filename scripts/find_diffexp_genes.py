@@ -4,26 +4,38 @@
 def choose_gene_names(MATRIX):
     # Return tuple of (header for gene_id, header for gene_names).
     # Either of the headers can be None.
-    geneid_header = genename_header = None
-    
-    if not MATRIX.row_names():
-        return geneid_header, genename_header
+    from genomicode import arrayplatformlib
 
-    # TODO: Find better way of choosing these.
-    geneid_header = MATRIX.row_names()[0]
-    if len(MATRIX.row_names()) > 1:
-        genename_header = MATRIX.row_names()[1]
+    if not MATRIX.row_names():
+        return None, None
+    if len(MATRIX.row_names()) == 1:
+        return MATRIX.row_names()[0], None
+    if len(MATRIX.row_names()) == 2:
+        return MATRIX.row_names()
+
+    # By default, set as the first two rows.
+    geneid_header, genename_header = MATRIX.row_names()[:2]
+
+    # If I can find a better header for the annotation, then use it.
+    x = arrayplatformlib.score_all_platforms_of_matrix(MATRIX)
+    for header, platform, score in x:
+        if score < 0.5:
+            continue
+        if platform == "entrez_ID_symbol_human":
+            genename_header = header
+            
     return geneid_header, genename_header
     
     
 def find_diffexp_genes(
-    outfile, algorithm, MATRIX, name1, name2, classes, fold_change,
+    outfile, gmt_file, algorithm, MATRIX, name1, name2, classes, fold_change,
     DELTA, num_procs):
     # classes must be 0, 1, None.
     import os
     
     from genomicode import config
     from genomicode import jmath
+    from genomicode import genesetlib
 
     algorithm2function = {
         "ttest" : "find.de.genes.ttest",
@@ -122,6 +134,54 @@ def find_diffexp_genes(
         print >>outhandle, "\t".join(map(str, x))
         outhandle.flush()
     outhandle.close()
+
+    # Write out the gene sets in GMT format, if requested.
+    if not gmt_file:
+        return
+    assert "Direction" in header, 'I could not find the "Direction" column.'
+    assert "Gene ID" in header, 'I could not find the "Gene ID" column.'
+    assert "Gene Name" in header, 'I could not find the "Gene Name" column.'
+    I_direction = header.index("Direction")
+    I_geneid = header.index("Gene ID")
+    I_genename = header.index("Gene Name")
+
+    # "Higher in <name1>"
+    # "Higher in <name2>"
+    possible_directions = ["Higher in %s" % name1, "Higher in %s" % name2]
+    direction = [x[I_direction] for x in DATA_py]
+    for x in direction:
+        assert x.startswith("Higher in ")
+        assert x in possible_directions
+    samples = [x.replace("Higher in ", "") for x in direction]
+
+    genesets = []  # list of (<SAMPLE>, [UP|DN])
+    for s in samples:
+        assert s in [name1, name2]
+        # Make genesets relative to name2.  (Assume name1 is control).
+        d = "UP"
+        if s == name1:
+            s, d = name2, "DN"
+        genesets.append((s, d))
+    genesets_all = sorted({}.fromkeys(genesets))
+
+    outhandle = open(gmt_file, 'w')
+    for geneset in genesets_all:
+        sample, direct = geneset
+        I = [i for (i, gs) in enumerate(genesets) if gs == geneset]
+        gid = [DATA_py[i][I_geneid] for i in I]
+        gn = [DATA_py[i][I_genename] for i in I]
+        gid = genesetlib.clean_genes(gid)
+        gn = genesetlib.clean_genes(gn)
+        # <SAMPLE>_[ID|NAME]_[UP|DN]
+        if gid:
+            x = "%s_%s_%s" % (sample, "ID", direct)
+            x = [x, "na"] +  gid
+            print >>outhandle, "\t".join(x)
+        if gn:
+            x = "%s_%s_%s" % (sample, "NAME", direct)
+            x = [x, "na"] + gn
+            print >>outhandle, "\t".join(x)
+    outhandle.close()
     
 
 def main():
@@ -140,10 +200,6 @@ def main():
     parser.add_argument("expression_file", help="Gene expression file.")
 
     parser.add_argument(
-        "--algorithm", dest="algorithm", 
-        choices=["ttest", "sam", "ebayes"], default="ebayes",
-        help="Which algorithm to use.")
-    parser.add_argument(
         "-l", "--log_the_data", dest="log_the_data", 
         choices=["yes", "no", "auto"], default="auto",
         help="Log the data before analyzing.  "
@@ -151,11 +207,18 @@ def main():
     parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,
         help="Number of processors to use.")
-
     parser.add_argument(
+        "--gmt_file", help="Save the results in GMT format.")
+    
+    group = parser.add_argument_group(title="Algorithm Parameters")
+    group.add_argument(
+        "--algorithm", dest="algorithm", 
+        choices=["ttest", "sam", "ebayes"], default="ebayes",
+        help="Which algorithm to use.")
+    group.add_argument(
         "--fold_change", type=float, default=None,
         help="Minimum change in gene expression.")
-    parser.add_argument(
+    group.add_argument(
         "--DELTA", type=float, default=1.0,
         help="DELTA parameter for SAM analysis.  (Default 1.0).")
 
@@ -240,7 +303,7 @@ def main():
             os.close(w)
             r = os.fdopen(r)
             for line in r:
-                #sys.stdout.write(line)   # output from R library
+                sys.stdout.write(line)   # output from R library
                 pass
             os.waitpid(pid, 0)
 
@@ -252,8 +315,9 @@ def main():
             w = os.fdopen(w, 'w')
             os.dup2(w.fileno(), sys.stdout.fileno())
             find_diffexp_genes(
-                outfile, args.algorithm, MATRIX, name1, name2, classes,
-                args.fold_change, args.DELTA, args.num_procs)
+                outfile, args.gmt_file, args.algorithm, MATRIX,
+                name1, name2, classes, args.fold_change, args.DELTA,
+                args.num_procs)
             sys.exit(0)
     finally:
         if pid:

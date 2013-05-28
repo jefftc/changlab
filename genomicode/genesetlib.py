@@ -14,6 +14,8 @@ detect_format
 score_geneset
 score_geneset_I
 
+clean_genes
+
 """
 # Optimization: call _is_known_desc less.
 
@@ -499,7 +501,34 @@ def score_geneset_I(X, pos_I, neg_I):
     scores = jmath.mean(X_pn, byrow=False)
     
     return X_p, X_n_orig, num_rows, scores
+
+
+def int_if_possible(x):
+    try:
+        x = int(x)
+    except ValueError:
+        pass
+    return x
         
+
+def clean_genes(genes):
+    x = genes
+    x = [x.strip() for x in x if x.strip()]
+    x = [x for x in x if x != "---"]
+    # Sort numerically, of possible.
+    x = [int_if_possible(x) for x in x]
+    x = sorted(x)
+    seen = {}
+    i = 0
+    while i < len(x):
+        if x[i] in seen:
+            del x[i]
+        else:
+            seen[x[i]] = 1
+            i += 1
+    x = [str(x) for x in x]
+    return x
+
 
 def test_detect_format():
     from StringIO import StringIO

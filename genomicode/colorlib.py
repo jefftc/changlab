@@ -17,6 +17,10 @@ yahoo_weather_colors
 choose_contrasting_color
 choose_contrasting_bw
 
+rgb2hex
+rgb2hsl
+hsl2rgb
+
 """
 
 def _matrix2color(matrix, pos):

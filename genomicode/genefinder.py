@@ -72,7 +72,8 @@ def find_many_genes(genes, tax_id=None):
     # Return list of (num_matches, gene_id, symbol, name, tax_id,
     # organism, name_from_query) that is parallel to genes.  If there
     # are no matches or multiple matches, values (other than
-    # num_matches and name_from_query) are set to None.
+    # num_matches and name_from_query) are set to None.  gene_id and
+    # tax_id are integers.
     
     x = find_many_genes_detailed(genes, tax_id=tax_id)
     results = [(x[0], x[1], x[2], x[3], x[4], x[5]) for x in x]

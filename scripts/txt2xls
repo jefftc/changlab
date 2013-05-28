@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+def _convert_type(x):
+    try:
+        x = float(x)
+    except ValueError:
+        pass
+    else:
+        return x
+    
+    try:
+        x = int(x)
+    except ValueError:
+        pass
+    else:
+        return x
+    
+    return x
+    
+
+def main():
+    import os
+    import sys
+    import argparse
+    import xlwt
+    from genomicode import filelib
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "filename", help="Tab-delimited text file to convert.")
+    parser.add_argument(
+        "-b", "--bold_row1", default=False, action="store_true",
+        help="Make the first row bold.")
+    args = parser.parse_args()
+
+    assert args.filename
+    assert os.path.exists(args.filename), "File not found: %s" % args.filename
+
+    sheetname = os.path.split(args.filename)[1]
+
+    bold_font = xlwt.Font()
+    bold_font.bold = True
+
+    default_style = xlwt.XFStyle()
+    int_style = xlwt.XFStyle()
+    int_style.num_format_str = "general"
+    float_style = xlwt.XFStyle()
+    float_style.num_format_str = "general"
+
+    type2style = {
+        type(0) : int_style,
+        type(0.0) : float_style,
+        }
+    
+    wb = xlwt.Workbook()
+    ws = wb.add_sheet(sheetname)
+    
+    matrix = [x for x in filelib.read_cols(args.filename)]
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            matrix[i][j] = _convert_type(matrix[i][j])
+
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            style = type2style.get(type(matrix[i][j]), default_style)
+            #print matrix[i][j], type(matrix[i][j]), style.num_format_str
+            old_font = style.font
+            if args.bold_row1 and i == 0:
+                style.font = bold_font
+            ws.write(i, j, matrix[i][j], style)
+            style.font = old_font
+    
+    wb.save(sys.stdout)
+
+    
+if __name__ == '__main__':
+    main()
