@@ -1,0 +1,231 @@
+(dp1
+S'_user_agent'
+p2
+(dp3
+S'os'
+p4
+(dp5
+S'name'
+p6
+S'Macintosh'
+p7
+ssS'is_tablet'
+p8
+I00
+sS'is_mobile'
+p9
+I00
+sS'flavor'
+p10
+(dp11
+S'version'
+p12
+S'X 10.6'
+p13
+sg6
+S'MacOS'
+p14
+ssS'browser'
+p15
+(dp16
+g12
+S'18.0'
+p17
+sg6
+S'Firefox'
+p18
+sssS'myfile3'
+p19
+S''
+sS'myfile2'
+p20
+S''
+sS'myfile1'
+p21
+S'no_table.myfile1.aca7aa31999f43ae.616c6c5f616d6c5f747261696e2e726573.res'
+p22
+sS'cmd'
+p23
+(lp24
+S'python'
+p25
+aS'/home/xchen/chencode/Betsy/scripts/run_protocol.py'
+p26
+aS'--protocol'
+p27
+aS'normalize_file'
+p28
+aS'--input'
+p29
+aS'input_signal_file:/home/xchen/chencode/upload/no_table.myfile1.aca7aa31999f43ae.616c6c5f616d6c5f747261696e2e726573.res'
+p30
+aS'--parameters'
+p31
+aS'has_missing_value:zero_fill'
+p32
+aS'--parameters'
+p33
+aS'preprocess:unknown_preprocess'
+p34
+asS'myfile6'
+p35
+S''
+sS'myfile5'
+p36
+S''
+sS'myfile4'
+p37
+S''
+sS'_formkey[no_table/create]'
+p38
+S'30dc1119-6e13-4b12-9295-93b0a727c9e9'
+p39
+sS'command'
+p40
+S'run_protocol.py  --protocol normalize_file --input input_signal_file:myfile1   --parameters has_missing_value:zero_fill --parameters preprocess:unknown_preprocess'
+p41
+sS'output'
+p42
+(lp43
+S'Generating pipelines...'
+p44
+aS'6 pipelines have been generated.'
+p45
+aS''
+aS'Pipeline1: Preprocessing the signal file.\r'
+p46
+aS'[ 2:12PM] 1.convert_signal_to_tdf'
+p47
+aS'[ 2:12PM] 2.log_signal'
+p48
+aS'[ 2:12PM] 3.fill_missing_with_zeros'
+p49
+aS'[ 2:12PM] 4.annotate_probes'
+p50
+aS'[ 2:12PM] Completed successfully and generated a file:'
+p51
+aS'/home/xchen/chencode/examples/sample_analysis/annotate_probes_BETSYHASH1_380924e2b188b62a49f1f6c3b05755fa/signal_file_annot_table.myfile1.aca7aa31999f43ae.616c6c5f616d6c5f747261696e2e726573.txt\r'
+p52
+aS'\r'
+aS'Pipeline2: Making a PCA plot of the samples before normalization.\r'
+p53
+aS'[ 2:12PM] 1.convert_signal_to_tdf'
+p54
+aS'[ 2:12PM] 2.log_signal'
+p55
+aS'[ 2:12PM] 3.fill_missing_with_median'
+p56
+aS'[ 2:13PM] 4.make_class_label_file'
+p57
+aS'[ 2:13PM] 5.convert_signal_to_tdf'
+p58
+aS'[ 2:13PM] 6.log_signal'
+p59
+aS'[ 2:13PM] 7.fill_missing_with_zeros'
+p60
+aS'[ 2:13PM] 8.analyze_samples_pca'
+p61
+aS'[ 2:13PM] 9.plot_sample_pca'
+p62
+aS'[ 2:13PM] Completed successfully and generated a file:'
+p63
+aS'/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_ed149637818ec407d482e02d92a1fdfa/pca_plot_in_table.myfile1.aca7aa31999f43ae.616c6c5f616d6c5f747261696e2e726573.png\r'
+p64
+aS'\r'
+aS'Pipeline3: Making a PCA plot of the samples after normalization.\r'
+p65
+aS'[ 2:13PM] 1.convert_signal_to_tdf'
+p66
+aS'[ 2:13PM] 2.log_signal'
+p67
+aS'[ 2:13PM] 3.fill_missing_with_median'
+p68
+aS'[ 2:13PM] 4.make_class_label_file'
+p69
+aS'[ 2:13PM] 5.convert_signal_to_tdf'
+p70
+aS'[ 2:13PM] 6.log_signal'
+p71
+aS'[ 2:13PM] 7.fill_missing_with_zeros'
+p72
+aS'[ 2:13PM] 8.analyze_samples_pca'
+p73
+aS'[ 2:13PM] 9.plot_sample_pca'
+p74
+aS'[ 2:13PM] Completed successfully and generated a file:'
+p75
+aS'/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_bd8df53c5edacfb69433d53df5639b53/pca_plot_out_table.myfile1.aca7aa31999f43ae.616c6c5f616d6c5f747261696e2e726573.png\r'
+p76
+aS'\r'
+aS'Pipeline4: Making a boxplot of the signal intensities.\r'
+p77
+aS'[ 2:13PM] 1.convert_signal_to_tdf'
+p78
+aS'[ 2:13PM] 2.log_signal'
+p79
+aS'[ 2:13PM] 3.fill_missing_with_zeros'
+p80
+aS'[ 2:13PM] 4.plot_intensity_boxplot'
+p81
+aS'[ 2:13PM] Completed successfully and generated a file:'
+p82
+aS'/home/xchen/chencode/examples/sample_analysis/plot_intensity_boxplot_BETSYHASH1_029a8a5f9799791551e814c2fa937aaf/intensity_table.myfile1.aca7aa31999f43ae.616c6c5f616d6c5f747261696e2e726573.png\r'
+p83
+aS'\r'
+aS'Pipeline5: Plotting the actb genes.\r'
+p84
+aS'[ 2:13PM] 1.convert_signal_to_tdf'
+p85
+aS'[ 2:13PM] 2.log_signal'
+p86
+aS'[ 2:13PM] 3.fill_missing_with_zeros'
+p87
+aS'[ 2:13PM] 4.plot_actb_line'
+p88
+aS'Hu6800'
+p89
+aS'Traceback (most recent call last):'
+p90
+aS'  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>'
+p91
+aS'    main()'
+p92
+aS'  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 200, in main'
+p93
+aS'    parameters,clean_up=args.clean_up)'
+p94
+aS'  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 76, in run_protocol'
+p95
+aS'    out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)'
+p96
+aS'  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline'
+p97
+aS'    analysis,objects,pipeline_sequence,clean_up=clean_up)'
+p98
+aS'  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module'
+p99
+aS'    analysis.parameters, objects, pipeline_sequence)'
+p100
+aS'  File "/home/xchen/chencode/Betsy/Betsy/modules/plot_actb_line.py", line 43, in run'
+p101
+aS'    raise ValueError(error_message)'
+p102
+aS'ValueError: Traceback (most recent call last):'
+p103
+aS'  File "/home/xchen/chencode/scripts/annotate_matrix.py", line 98, in <module>'
+p104
+aS'    main()'
+p105
+aS'  File "/home/xchen/chencode/scripts/annotate_matrix.py", line 24, in main'
+p106
+aS"    assert arrayplatformlib.get_bm_organism(out_platform),'we cannot convert to the platform %s'%out_platform"
+p107
+aS'AssertionError: we cannot convert to the platform entrez_symbol_human'
+p108
+aS''
+aS''
+asS'_session_hash'
+p109
+S'3af529b1fbb5c71d89bbf3572ec4986c'
+p110
+s.

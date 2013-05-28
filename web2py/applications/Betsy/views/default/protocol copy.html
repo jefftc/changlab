@@ -1,0 +1,86 @@
+{{extend 'layout.html'}}
+{{=form_queue}}
+<center><h1>  {{=protocol_label}}</h1></center>
+{{=form.custom.begin}}
+{{=form.custom.submit}}
+<table width="100%">
+<tr><td><td><td>
+    <h2> inputs</h2>
+{{labels = form.custom.widget.keys()}}
+{{left_labels=labels[:]}}
+{{for label in labels:}}
+    {{if label in protocol_inputs:}}
+    	{{left_labels.remove(label)}}
+    	{{left_labels.remove(label+'_content')}}
+    	{{=label}}:{{=form.custom.widget[label]}}<br/>
+    	{{=label+'_content'}}:{{=form.custom.widget[label+'_content']}}<br/>
+    {{pass}}
+ {{pass}}   
+{{for i in range(4):}}
+    {{label='myfile'+str(i)}}    
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{=label+'_content'}}:{{=form.custom.widget[label+'_content']}}<br/>
+    {{=label+'_path'}}:{{=form.custom.widget[label+'_path']}}<br/>
+    {{left_labels.remove(label+'_content')}}
+    {{left_labels.remove(label+'_path')}}
+    {{left_labels.remove(label)}}
+{{pass}}
+
+ </td><td><td><td>
+    <h2> common parameters</h2>
+{{for label in labels:}}
+	{{if label in protocol_common:}}
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{left_labels.remove(label)}}
+    {{pass}}
+{{pass}}
+    </td></td><td><td>
+<h2>normalize parameters</h2>
+{{for label in labels:}}
+	{{if label in protocol_normalize:}}
+    	{{=label}}:{{=form.custom.widget[label]}} <br/>
+    	{{left_labels.remove(label)}}
+    {{pass}}
+{{pass}}
+</td></td></td><td>
+<h2>optional parameters</h2>
+{{for label in labels:}}
+	{{if label in protocol_option:}}
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{left_labels.remove(label)}}
+    {{pass}}
+{{pass}}
+
+</tr></tr></tr></tr>
+</table>
+
+<table width="60%">
+<tr><td><td>
+<h2> Illumina parameters</h2>
+{{for label in labels:}}
+{{if label.startswith('ill'):}}
+	{{left_labels.remove(label)}}
+	{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+{{pass}}
+    </td><td><td>
+<h2> class neighbor parameters</h2>
+{{for label in labels:}}
+{{if label.startswith('cn'):}}
+	{{left_labels.remove(label)}}
+	{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+{{pass}}
+    </td></td><td>
+
+
+{{left_labels.remove('id')}}
+{{if left_labels:}}
+<h2> {{=protocol_label}} parameters</h2>
+{{for label in left_labels:}}
+{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+{{pass}}
+</td></td></td>
+</table>
+{{=form.custom.end}}

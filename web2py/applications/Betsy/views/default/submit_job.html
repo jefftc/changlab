@@ -1,0 +1,5 @@
+{{extend 'layout.html'}}
+<h1>This is what Betsy is running:</h1>
+{{for i in session.output:}}
+<h2>{{=i}}</h2>
+{{pass}}

@@ -1,0 +1,64 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[10:37AM] 1.convert_signal_to_tdf
+[10:37AM] 2.log_signal
+[10:37AM] 3.fill_missing_with_zeros
+[10:37AM] 4.annotate_probes
+[10:37AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_probes_BETSYHASH1_83ef0d1463210d68bab91eeef3f6c983/signal_file_annot_path.a1ca96fa479f14f4.616c6c5f616d6c5f746573742e726573.txt
+
+Pipeline2: Making a PCA plot of the samples before normalizeion.
+[10:37AM] 1.convert_signal_to_tdf
+[10:37AM] 2.log_signal
+[10:37AM] 3.fill_missing_with_median
+[10:37AM] 4.make_class_label_file
+[10:37AM] 5.convert_signal_to_tdf
+[10:37AM] 6.log_signal
+[10:37AM] 7.fill_missing_with_zeros
+[10:37AM] 8.analyze_samples_pca
+[10:37AM] 9.plot_sample_pca
+[10:37AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_9a90b196d641272c2d518cef606a293c/pca_plot_in_path.a1ca96fa479f14f4.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline3: Making a PCA plot of the samples after normalizeion.
+[10:37AM] 1.convert_signal_to_tdf
+[10:37AM] 2.log_signal
+[10:37AM] 3.fill_missing_with_median
+[10:37AM] 4.make_class_label_file
+[10:37AM] 5.convert_signal_to_tdf
+[10:37AM] 6.log_signal
+[10:37AM] 7.fill_missing_with_zeros
+[10:37AM] 8.analyze_samples_pca
+[10:38AM] 9.plot_sample_pca
+[10:38AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_d17240570efcb0021c2bf7c26ecbda3b/pca_plot_out_path.a1ca96fa479f14f4.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline4: Making a boxplot of the signal intensities.
+[10:38AM] 1.convert_signal_to_tdf
+[10:38AM] 2.log_signal
+[10:38AM] 3.fill_missing_with_zeros
+[10:38AM] 4.plot_intensity_boxplot
+[10:38AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_intensity_boxplot_BETSYHASH1_80ae8a5f2fc36630b69e0a84c2f5ac15/intensity_path.a1ca96fa479f14f4.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline5: Plotting the actb genes.
+[10:38AM] 1.convert_signal_to_tdf
+[10:38AM] 2.log_signal
+[10:38AM] 3.fill_missing_with_zeros
+[10:38AM] 4.plot_actb_line
+[10:38AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_actb_line_BETSYHASH1_24d80dc645e62c8d20dad7ba61751d92/actb_plot_path.a1ca96fa479f14f4.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline6: Plotting the control probes.
+[10:38AM] 1.convert_signal_to_tdf
+[10:38AM] 2.log_signal
+[10:38AM] 3.fill_missing_with_zeros
+[10:38AM] 4.plot_affy_affx_line
+[10:38AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_affy_affx_line_BETSYHASH1_6d2fc1902dec55c594e93bbead719047/control_plot_path.a1ca96fa479f14f4.616c6c5f616d6c5f746573742e726573.png
+
+All pipelines have completed successfully.
+make_normalize_report
+Report:/home/xchen/chencode/examples/sample_analysis/normalize_report_BETSYHASH1_17de7e8e461bbb9de34874338672b20a/report.html

@@ -1,0 +1,14 @@
+ERROR:root:Got exception on extract_CEL_files .run()
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/extract_CEL_files.py", line 13, in run
+    filenames = os.listdir(directory)
+OSError: [Errno 2] No such file or directory: '/tmp/tmpypW3Kv/no_table.myfile1.bc835f77183fbf3e.475345383238365f666f6c6465722e7a6970'
+ERROR:root:Got exception on extract_CEL_files .run()
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/extract_CEL_files.py", line 13, in run
+    filenames = os.listdir(directory)
+OSError: [Errno 2] No such file or directory: '/tmp/tmp3J2r0i/no_table.myfile1.a7212a567a90318a.475345383238365f666f6c6465722e7a6970'

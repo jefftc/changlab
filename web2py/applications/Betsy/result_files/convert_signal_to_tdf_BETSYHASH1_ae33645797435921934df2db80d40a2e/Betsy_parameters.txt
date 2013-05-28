@@ -1,0 +1,24 @@
+[
+    "Module input:", 
+    [
+        "input_signal_file", 
+        "/home/xchen/chencode/upload/no_table.myfile1.a9f0589e6b566198.4368616e675f415230303431302e70636c.pcl"
+    ], 
+    "Module output:", 
+    "/tmp/tmpiFrR7f/signal_table.myfile1.a9f0589e6b566198.4368616e675f415230303431302e70636c.tdf", 
+    "Module output parameters:", 
+    {
+        "contents": "[unknown]", 
+        "filter": "0", 
+        "format": "tdf", 
+        "has_missing_value": "unknown_missing", 
+        "is_logged": "unknown_logged", 
+        "predataset": "no_predataset", 
+        "preprocess": "unknown_preprocess", 
+        "rename_sample": "no_rename"
+    }, 
+    "Pipeline module sequence:", 
+    [
+        "convert_signal_to_tdf"
+    ]
+]

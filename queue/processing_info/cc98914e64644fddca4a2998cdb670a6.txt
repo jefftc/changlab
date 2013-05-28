@@ -1,0 +1,37 @@
+Generating pipelines...
+9 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[ 1:57PM] 1.extract_illumina_idat_files
+/home/xchen/chencode/upload/no_table.myfile0_path.b53cdc73ea8149f0.363939313031303031382e7a6970.zip
+6991010018/
+6991010018/6991010018_L_Grn.idat
+6991010018/6991010018_E_Grn.idat
+6991010018/6991010018_G_Grn.idat
+6991010018/6991010018_K_Grn.idat
+6991010018/6991010018_C_Grn.idat
+6991010018/.DS_Store
+__MACOSX/
+__MACOSX/6991010018/
+__MACOSX/6991010018/._.DS_Store
+6991010018/6991010018_D_Grn.idat
+6991010018/6991010018_J_Grn.idat
+6991010018/6991010018_B_Grn.idat
+6991010018/6991010018_H_Grn.idat
+6991010018/6991010018_F_Grn.idat
+6991010018/6991010018_A_Grn.idat
+6991010018/6991010018_I_Grn.idat
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 203, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 192, in main
+    parameters,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/extract_illumina_idat_files.py", line 12, in run
+    filenames = os.listdir(directory)
+OSError: [Errno 2] No such file or directory: '/tmp/tmpDGYz9p/no_table.myfile0_path.b53cdc73ea8149f0.363939313031303031382e7a6970'

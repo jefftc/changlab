@@ -1,0 +1,11 @@
+Generating pipelines...
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 203, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 192, in main
+    parameters,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 48, in run_protocol
+    parameters)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 33, in filter_pipelines
+    assert pipelines, ('No pipeline has been generated, '
+AssertionError: No pipeline has been generated, please check your command.

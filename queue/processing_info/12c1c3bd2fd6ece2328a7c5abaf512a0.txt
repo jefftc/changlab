@@ -1,0 +1,36 @@
+Generating pipelines...
+2 pipelines have been generated.
+
+Pipeline1: Clustering the samples.
+[10:46AM] 1.convert_signal_to_tdf
+[10:46AM] 2.log_signal
+[10:47AM] 3.fill_missing_with_zeros
+[10:47AM] 4.relabel_samples
+[10:47AM] 5.convert_signal_to_pcl
+[10:47AM] 6.center_genes
+[10:47AM] 7.convert_signal_to_pcl
+[10:47AM] 8.normalize_genes
+[10:47AM] 9.convert_signal_to_pcl
+[10:47AM] 10.cluster_genes_by_kmeans
+[10:47AM] 11.annotate_probe
+[10:59AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_probe_BETSYHASH1_83e7aa90ac3f6c296a49f3b066a1b3c0/cluster_file_annot_path.aac56a487b7b3fcd.4368616e675f415230303431302e70636c.txt
+
+Pipeline2: Plotting a heatmap of the samples.
+[10:59AM] 1.convert_signal_to_tdf
+[10:59AM] 2.log_signal
+[10:59AM] 3.fill_missing_with_zeros
+[10:59AM] 4.relabel_samples
+[10:59AM] 5.convert_signal_to_pcl
+[10:59AM] 6.center_genes
+[10:59AM] 7.convert_signal_to_pcl
+[10:59AM] 8.normalize_genes
+[10:59AM] 9.convert_signal_to_pcl
+[10:59AM] 10.cluster_genes_by_kmeans
+[10:59AM] 11.plot_signal_heatmap
+[11:00AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_signal_heatmap_BETSYHASH1_d0acea71ea598abc68beb2f32184fc28/heatmappath.aac56a487b7b3fcd.4368616e675f415230303431302e70636c.png
+
+All pipelines have completed successfully.
+make_cluster_report
+Report:/home/xchen/chencode/examples/sample_analysis/cluster_report_BETSYHASH1_8667978b42318c4f134fe76327c7dd32/report.html

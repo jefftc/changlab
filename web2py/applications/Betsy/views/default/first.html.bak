@@ -1,0 +1,4 @@
+{{extend 'layout.html'}}
+<h1>Please type your comamnd for Betsy</h1>
+
+{{=form_queue}}

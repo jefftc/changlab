@@ -1,0 +1,30 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[11:59AM] 1.convert_signal_to_tdf
+[11:59AM] 2.log_signal
+[11:59AM] 3.fill_missing_with_zeros
+[11:59AM] 4.annotate_probes
+[11:59AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_probes_BETSYHASH1_b7dfaf5147a82dbdc4733809c34352f9/signal_file_annot_path.a5c89dce7de45618.616c6c5f616d6c5f746573742e726573.txt
+
+Pipeline2: Making a PCA plot of the samples before normalizeion.
+[11:59AM] 1.convert_signal_to_tdf
+[11:59AM] 2.log_signal
+[11:59AM] 3.fill_missing_with_median
+[11:59AM] 4.make_class_label_file
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 200, in main
+    parameters,user=args.user,job_name = args.job_name,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence,user,job_name)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/make_class_label_file.py", line 24, in run
+    parameters,single_object,pipeline,outfile,starttime,user,jobnames)
+NameError: global name 'jobnames' is not defined

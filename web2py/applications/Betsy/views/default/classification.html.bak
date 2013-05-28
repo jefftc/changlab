@@ -1,0 +1,80 @@
+{{extend 'layout.html'}}
+{{=form_queue}}
+
+<center><h1>   Classification</h1></center>
+{{=form.custom.submit}}
+<table width="100%">
+<tr><td><td><td>
+    <h2> inputs</h2>
+{{labels = form.custom.widget.keys()}}
+    {{left_labels=labels[:]}}
+{{=form.custom.begin}}
+{{for label in labels:}}
+    {{if label in classification_inputs:}}
+    {{left_labels.remove(label)}}
+    	{{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{pass}}
+ {{pass}}   
+{{for i in range(4):}}
+    {{label='myfile'+str(i)}}  
+    {{left_labels.remove(label)}}  
+    {{left_labels.remove(label+'_path')}} 
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{=label+'_path'}}:{{=form.custom.widget[label+'_path']}}<br/>
+{{pass}}
+
+ </td><td><td><td>
+    <h2> common parameters</h2>
+{{for label in labels:}}
+	{{if label in common_parameters:}}
+    {{left_labels.remove(label)}}
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{pass}}
+{{pass}}
+    </td></td><td><td>
+<h2>normalize parameters</h2>
+{{for label in labels:}}
+	{{if label in Normalize_parameters:}}
+    	{{left_labels.remove(label)}}
+    	{{=label}}:{{=form.custom.widget[label]}} <br/>
+    {{pass}}
+{{pass}}
+</td></td></td><td>
+<h2>optional parameters</h2>
+{{for label in labels:}}
+	{{if label in optional_parameters:}}
+    {{left_labels.remove(label)}}
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{pass}}
+{{pass}}
+
+</tr></tr></tr></tr>
+</table>
+
+
+<table width="60%">
+<tr><td><td>
+<h2> Illumina parameters</h2>
+{{for label in labels:}}
+{{if label.startswith('ill'):}}
+	{{left_labels.remove(label)}}
+	{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+{{pass}}
+    </td><td><td>
+<h2> class neighbor parameters</h2>
+{{for label in labels:}}
+{{if label.startswith('cn'):}}
+	{{left_labels.remove(label)}}
+	{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+{{pass}}
+    </td></td><td>
+    <h2> classification parameters</h2>
+{{left_labels.remove('id')}}
+{{for label in left_labels:}}
+{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+</td></td></td>
+</table>
+{{=form.custom.end}}

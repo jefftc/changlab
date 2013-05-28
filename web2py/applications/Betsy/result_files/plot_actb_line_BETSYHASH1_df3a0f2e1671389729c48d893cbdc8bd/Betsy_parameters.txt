@@ -1,0 +1,27 @@
+[
+    "Module input:", 
+    [
+        "signal_file", 
+        "/home/xchen/web2py/applications/Betsy/result_files/fill_missing_with_zeros_BETSYHASH1_2d0f986baa4600829833476f9a34e920/signal_zero_fill_table.myfile1.a9f0589e6b566198.4368616e675f415230303431302e70636c.tdf"
+    ], 
+    "Module output:", 
+    "/tmp/tmpHfW29J/actb_plot_table.myfile1.a9f0589e6b566198.4368616e675f415230303431302e70636c.png", 
+    "Module output parameters:", 
+    {
+        "contents": "[unknown]", 
+        "filter": "0", 
+        "format": "tdf", 
+        "has_missing_value": "zero_fill", 
+        "is_logged": "logged", 
+        "predataset": "no_predataset", 
+        "preprocess": "unknown_preprocess", 
+        "rename_sample": "no_rename"
+    }, 
+    "Pipeline module sequence:", 
+    [
+        "convert_signal_to_tdf", 
+        "log_signal", 
+        "fill_missing_with_zeros", 
+        "plot_actb_line"
+    ]
+]

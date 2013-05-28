@@ -1,0 +1,84 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[ 4:21PM] 1.convert_signal_to_tdf
+[ 4:21PM] 2.filter_and_threshold_genes
+[ 4:21PM] 3.log_signal
+[ 4:21PM] 4.fill_missing_with_zeros
+[ 4:21PM] 5.normalize_samples_with_quantile
+[ 4:22PM] 6.convert_signal_to_pcl
+[ 4:22PM] 7.center_genes
+[ 4:22PM] 8.convert_signal_to_pcl
+[ 4:22PM] 9.normalize_genes
+[ 4:22PM] 10.annotate_probes
+[ 4:32PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_probes_BETSYHASH1_18b594bccb98b66c3c308e2583641739/signal_file_annot_path.b7c45ae7b01a71d5.6272656173745f31392e6d617335.txt
+
+Pipeline2: Making a PCA plot of the samples before normalizeion.
+[ 4:32PM] 1.convert_signal_to_tdf
+[ 4:32PM] 2.log_signal
+[ 4:32PM] 3.fill_missing_with_median
+[ 4:32PM] 4.make_class_label_file
+[ 4:32PM] 5.convert_signal_to_tdf
+[ 4:33PM] 6.filter_and_threshold_genes
+[ 4:33PM] 7.log_signal
+[ 4:33PM] 8.fill_missing_with_zeros
+[ 4:33PM] 9.analyze_samples_pca
+[ 4:33PM] 10.plot_sample_pca
+[ 4:33PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_9a71b755cb01f935060aaae242f8f181/pca_plot_in_path.b7c45ae7b01a71d5.6272656173745f31392e6d617335.png
+
+Pipeline3: Making a PCA plot of the samples after normalizeion.
+[ 4:33PM] 1.convert_signal_to_tdf
+[ 4:33PM] 2.log_signal
+[ 4:33PM] 3.fill_missing_with_median
+[ 4:33PM] 4.make_class_label_file
+[ 4:33PM] 5.convert_signal_to_tdf
+[ 4:33PM] 6.filter_and_threshold_genes
+[ 4:33PM] 7.log_signal
+[ 4:33PM] 8.fill_missing_with_zeros
+[ 4:33PM] 9.normalize_samples_with_quantile
+[ 4:33PM] 10.convert_signal_to_pcl
+[ 4:33PM] 11.center_genes
+[ 4:33PM] 12.convert_signal_to_pcl
+[ 4:33PM] 13.normalize_genes
+[ 4:33PM] 14.analyze_samples_pca
+[ 4:34PM] 15.plot_sample_pca
+[ 4:34PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_d1080f06c92906d74408c446f0e553e3/pca_plot_out_path.b7c45ae7b01a71d5.6272656173745f31392e6d617335.png
+
+Pipeline4: Making a boxplot of the signal intensities.
+[ 4:34PM] 1.convert_signal_to_tdf
+[ 4:34PM] 2.filter_and_threshold_genes
+[ 4:34PM] 3.log_signal
+[ 4:34PM] 4.fill_missing_with_zeros
+[ 4:34PM] 5.normalize_samples_with_quantile
+[ 4:34PM] 6.convert_signal_to_pcl
+[ 4:34PM] 7.center_genes
+[ 4:34PM] 8.convert_signal_to_pcl
+[ 4:34PM] 9.normalize_genes
+[ 4:34PM] 10.plot_intensity_boxplot
+[ 4:34PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_intensity_boxplot_BETSYHASH1_40c9cccec99c9aa5f3b847007ad601b7/intensity_path.b7c45ae7b01a71d5.6272656173745f31392e6d617335.png
+
+Pipeline5: Plotting the actb genes.
+[ 4:34PM] 1.convert_signal_to_tdf
+[ 4:34PM] 2.filter_and_threshold_genes
+[ 4:34PM] 3.log_signal
+[ 4:34PM] 4.fill_missing_with_zeros
+[ 4:34PM] 5.plot_actb_line
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 203, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 192, in main
+    parameters,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/plot_actb_line.py", line 56, in run
+    assert len(data)>0,'input does not contain symbol column'
+AssertionError: input does not contain symbol column

@@ -1,0 +1,49 @@
+Generating pipelines...
+5 pipelines have been generated.
+
+Pipeline1: Doing differential expressed genes analysis with t test.
+[10:11AM] 1.convert_signal_to_tdf
+[10:11AM] 2.log_signal
+[10:11AM] 3.fill_missing_with_zeros
+[10:11AM] 4.calc_diffexp_with_ttest
+[10:11AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/calc_diffexp_with_ttest_BETSYHASH1_c292d4e6d4d895b1bf3e5b30bdd1d466/t_testpath.b3bd109a517ce24e.616c6c5f616d6c5f747261696e2e726573.txt
+
+Pipeline2: Doing differential expressed genes analysis with sam.
+[10:11AM] 1.convert_signal_to_tdf
+[10:11AM] 2.log_signal
+[10:11AM] 3.fill_missing_with_zeros
+[10:11AM] 4.calc_diffexp_with_sam
+[10:12AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/calc_diffexp_with_sam_BETSYHASH1_a762dd586231e64d66dd30ccc6508c37/sam_path.b3bd109a517ce24e.616c6c5f616d6c5f747261696e2e726573
+
+Pipeline3: Plotting the heatmap of gene ordered by t test p value.
+[10:12AM] 1.convert_signal_to_tdf
+[10:12AM] 2.log_signal
+[10:12AM] 3.fill_missing_with_zeros
+[10:12AM] 4.rank_genes_by_sample_ttest
+[10:12AM] 5.reorder_genes
+[10:12AM] 6.plot_signal_heatmap
+[10:12AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_signal_heatmap_BETSYHASH1_f71af24a919d8f902657d9fe7fa4bcbb/heatmappath.b3bd109a517ce24e.616c6c5f616d6c5f747261696e2e726573.png
+
+Pipeline4: Doing gather analysis on the important genes.
+[10:12AM] 1.convert_signal_to_tdf
+[10:12AM] 2.log_signal
+[10:12AM] 3.fill_missing_with_zeros
+[10:12AM] 4.rank_genes_by_sample_ttest
+[10:12AM] 5.annotate_genes_with_gather
+[10:18AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_genes_with_gather_BETSYHASH1_fbd2a77e3542147104f7020e0666f050/gather_ttestpath.b3bd109a517ce24e.616c6c5f616d6c5f747261696e2e726573.txt
+
+Pipeline5: Doing GSEA on the signal file.
+[10:18AM] 1.convert_signal_to_tdf
+[10:18AM] 2.log_signal
+[10:18AM] 3.fill_missing_with_zeros
+[10:18AM] 4.annotate_genes_with_gsea
+[10:21AM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_genes_with_gsea_BETSYHASH1_3d6d67e8fc335150b0a1ebec984c880a/gsea_path.b3bd109a517ce24e.616c6c5f616d6c5f747261696e2e726573
+
+All pipelines have completed successfully.
+make_diffgenes_report
+Report:/home/xchen/chencode/examples/sample_analysis/diffgenes_report_BETSYHASH1_98fffb81235e404d6ce5f39cc263fba9/report.html

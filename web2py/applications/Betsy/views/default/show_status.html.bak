@@ -1,0 +1,40 @@
+{{extend 'layout.html'}}
+
+<h1>This is the jobs status:</h1>
+<table
+<h1>
+<td>Jobnumber </td>
+<td>   Jobname </td>
+<td>   Status  </td>
+<td>  Started  </td>
+<td>  Ended   </td>
+<td> Submitted   </td>
+<td> Command</td>
+<td> User</td>
+<td> Disk space</td>
+<td> Completation time</td></h1>
+{{c=0}}
+{{total_size=0}}
+<ul>{{for row in form:}}
+    <tr>
+    {{if row.User==auth.user.first_name+auth.user.last_name:}}
+    	<td>{{=A(row.Jobnumber, _href=URL('show_job',args=row.id))}}</td>
+    	<td>{{=row.Jobname}}</td>
+    	<td>{{=row.Status}}</td>
+    	<td>{{=row.Started}}</td>
+    	<td>{{=row.Ended}}</td>
+    	<td>{{=row.Submitted}}</td>
+    	<td>{{=row.Command}}</td>
+    	<td>{{=row.User}}</td>
+    	{{disk_space,complete_time=summarize_jobs(auth.user.first_name+auth.user.last_name,row.Jobname)}}
+        <td>{{=disk_space}} bytes</td>
+		<td>{{=complete_time}} seconds</td>
+        <td>{{=A('delete', _href=URL('delete_job',args=row.Jobname))}}/></td><br/>
+    	</tr>
+    {{c=c+1}}
+    {{total_size=total_size+disk_space}}
+    {{pass}}
+{{pass}}</ul>
+</table>
+<h1>total_jobs:{{=c}}<br/></h1>
+<h1>total disk space:{{=total_size}} bytes</h1>

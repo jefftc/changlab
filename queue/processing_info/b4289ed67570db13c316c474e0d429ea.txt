@@ -1,0 +1,4 @@
+usage: run_protocol.py [-h] [--protocol PROTOCOL] [--input INPUT]
+                       [--parameters PARAMETERS] [--dry_run]
+                       [--describe_protocol] [--user USER] [--dont_cleanup]
+run_protocol.py: error: unrecognized arguments: liu

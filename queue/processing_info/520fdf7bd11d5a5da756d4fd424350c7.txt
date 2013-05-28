@@ -1,0 +1,32 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[10:51AM] 1.convert_signal_to_tdf
+[10:51AM] 2.log_signal
+[10:51AM] 3.fill_missing_with_zeros
+[10:51AM] 4.convert_signal_to_tdf
+[10:51AM] 5.log_signal
+[10:51AM] 6.fill_missing_with_zeros
+[10:51AM] 7.merge_data
+[10:51AM] 8.annotate_probes
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 203, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 192, in main
+    parameters,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/annotate_probes.py", line 24, in run
+    dictionary = arrayannot.annotate_probes_multiple(probe_id, annotate_header)
+  File "/home/xchen/chencode/genomicode/arrayannot.py", line 110, in annotate_probes_multiple
+    result = annotate_probes(probe_ids,annotation)
+  File "/home/xchen/chencode/genomicode/arrayannot.py", line 119, in annotate_probes
+    result = annotate_probe_affymetrix_file(probe_ids,annotation)
+  File "/home/xchen/chencode/genomicode/arrayannot.py", line 36, in annotate_probe_affymetrix_file
+    gindex = matrix[index].index(probe_ids[i])
+ValueError: 'AFFX-r2-Hs18SrRNA-3_s_at' is not in list
