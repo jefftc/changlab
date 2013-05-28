@@ -104,7 +104,7 @@ make_cluster_report(Parameters,Modules):-
     append(NewParameters1,[filetype,cluster_file,annotate_type,all],NewParameters2),
     % Module: annot_probe
     % Output parameters:the full length parameters of cluster_file and [filetype,cluster_file]
-    append(Past_Modules1,[annotate_probe,NewParameters2],Past_Modules2),
+    append(Past_Modules1,[annotate_probes,NewParameters2],Past_Modules2),
     append(Past_Modules2,[pipeline_label,[label,'Clustering_the_samples']],Past_Modules2_1),
 
     % Input2: cluster_heatmap

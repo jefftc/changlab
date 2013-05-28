@@ -452,7 +452,6 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
-
     if not geneset:
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
