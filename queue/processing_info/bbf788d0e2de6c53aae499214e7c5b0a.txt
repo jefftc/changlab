@@ -1,0 +1,19 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[ 1:26PM] 1.extract_CEL_files
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 200, in main
+    parameters,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 76, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/extract_CEL_files.py", line 13, in run
+    filenames = os.listdir(directory)
+OSError: [Errno 2] No such file or directory: '/tmp/tmpmDffr0/no_table.myfile1.a44b022552f7b77f.475345383238365f666f6c6465722e7a6970'

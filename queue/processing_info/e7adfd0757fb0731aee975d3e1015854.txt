@@ -1,0 +1,21 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[11:09AM] 1.convert_signal_to_tdf
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 200, in main
+    parameters,user=args.user,job_name = args.job_name,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence,user,job_name)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/convert_signal_to_tdf.py", line 63, in run
+    pipeline, outfile,starttime,user,jobname)
+  File "/home/xchen/chencode/Betsy/Betsy/module_utils.py", line 122, in write_Betsy_parameters_file
+    modified_time = time.asctime(time.localtime(st[ST_MTIME]))
+NameError: global name 'ST_MTIME' is not defined

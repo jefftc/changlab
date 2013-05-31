@@ -1,0 +1,19 @@
+Generating pipelines...
+9 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[ 2:21PM] 1.extract_illumina_idat_files
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 200, in main
+    parameters,user=args.user,job_name = args.job_name,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence,user,job_name)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/extract_illumina_idat_files.py", line 13, in run
+    filenames = os.listdir(directory)
+OSError: [Errno 20] Not a directory: '/home/xchen/chencode/upload/no_table.myfile0_path.97fa569757540020.616c6c5f616d6c5f746573742e726573.res'

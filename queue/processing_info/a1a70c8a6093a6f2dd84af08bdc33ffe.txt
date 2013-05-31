@@ -1,0 +1,69 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[ 1:48PM] 1.convert_signal_to_tdf
+[ 1:48PM] 2.log_signal
+[ 1:48PM] 3.fill_missing_with_zeros
+[ 1:48PM] 4.annotate_probes
+[ 1:48PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_probes_BETSYHASH1_ba0349b0d47dc6134b0580a85dc2658a/signal_file_annot_path.ba301f95b8e60c39.616c6c5f616d6c5f746573742e726573.txt
+
+Pipeline2: Making a PCA plot of the samples before normalizeion.
+[ 1:48PM] 1.convert_signal_to_tdf
+[ 1:48PM] 2.log_signal
+[ 1:48PM] 3.fill_missing_with_median
+[ 1:48PM] 4.make_class_label_file
+[ 1:48PM] 5.convert_signal_to_tdf
+[ 1:49PM] 6.log_signal
+[ 1:49PM] 7.fill_missing_with_zeros
+[ 1:49PM] 8.analyze_samples_pca
+[ 1:49PM] 9.plot_sample_pca
+[ 1:49PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_1dc9e9741cc03c6e8b6017944a0c1dc8/pca_plot_in_path.ba301f95b8e60c39.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline3: Making a PCA plot of the samples after normalizeion.
+[ 1:49PM] 1.convert_signal_to_tdf
+[ 1:49PM] 2.log_signal
+[ 1:49PM] 3.fill_missing_with_median
+[ 1:49PM] 4.make_class_label_file
+[ 1:49PM] 5.convert_signal_to_tdf
+[ 1:49PM] 6.log_signal
+[ 1:49PM] 7.fill_missing_with_zeros
+[ 1:49PM] 8.analyze_samples_pca
+[ 1:49PM] 9.plot_sample_pca
+[ 1:49PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_9528c2bf2f643072bd70ef0ed0eedd0b/pca_plot_out_path.ba301f95b8e60c39.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline4: Making a boxplot of the signal intensities.
+[ 1:49PM] 1.convert_signal_to_tdf
+[ 1:49PM] 2.log_signal
+[ 1:49PM] 3.fill_missing_with_zeros
+[ 1:49PM] 4.plot_intensity_boxplot
+[ 1:49PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_intensity_boxplot_BETSYHASH1_259f1fa9470f877df0f339a6b24c3047/intensity_path.ba301f95b8e60c39.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline5: Plotting the actb genes.
+[ 1:49PM] 1.convert_signal_to_tdf
+[ 1:49PM] 2.log_signal
+[ 1:49PM] 3.fill_missing_with_zeros
+[ 1:49PM] 4.plot_actb_line
+[ 1:49PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_actb_line_BETSYHASH1_143f67f1f8815e0e58647a3283855fcf/actb_plot_path.ba301f95b8e60c39.616c6c5f616d6c5f746573742e726573.png
+
+Pipeline6: Plotting the control probes.
+[ 1:49PM] 1.convert_signal_to_tdf
+[ 1:49PM] 2.log_signal
+[ 1:49PM] 3.fill_missing_with_zeros
+[ 1:49PM] 4.plot_affy_affx_line
+[ 1:49PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_affy_affx_line_BETSYHASH1_bc0a1212771977849ec9022479b432f1/control_plot_path.ba301f95b8e60c39.616c6c5f616d6c5f746573742e726573.png
+
+All pipelines have completed successfully.
+make_normalize_report
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 207, in main
+    module.run(output_file, parameters_all,pipeline_sequence_all, user=args.user,job_name=args.job_name)
+TypeError: run() got an unexpected keyword argument 'job_name'

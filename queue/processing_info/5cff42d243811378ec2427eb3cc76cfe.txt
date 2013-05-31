@@ -1,0 +1,108 @@
+Generating pipelines...
+9 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[ 3:01PM] 1.extract_illumina_idat_files
+[ 3:01PM] 2.preprocess_illumina
+[ 3:03PM] 3.get_illumina_signal
+[ 3:03PM] 4.convert_signal_to_tdf
+[ 3:03PM] 5.log_signal
+[ 3:03PM] 6.fill_missing_with_zeros
+[ 3:03PM] 7.annotate_probes
+[ 3:15PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/annotate_probes_BETSYHASH1_82349a6205b6dc0d9a8d6f1014f2477b/signal_file_annot_path.txt
+
+Pipeline2: Making a PCA plot of the samples before normalizeion.
+[ 3:15PM] 1.extract_illumina_idat_files
+[ 3:15PM] 2.preprocess_illumina
+[ 3:15PM] 3.get_illumina_signal
+[ 3:15PM] 4.convert_signal_to_tdf
+[ 3:15PM] 5.log_signal
+[ 3:15PM] 6.fill_missing_with_median
+[ 3:15PM] 7.make_class_label_file
+[ 3:15PM] 8.extract_illumina_idat_files
+[ 3:15PM] 9.preprocess_illumina
+[ 3:17PM] 10.get_illumina_signal
+[ 3:17PM] 11.convert_signal_to_tdf
+[ 3:18PM] 12.log_signal
+[ 3:18PM] 13.fill_missing_with_zeros
+[ 3:18PM] 14.analyze_samples_pca
+[ 3:18PM] 15.plot_sample_pca
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_e258c7dbea78c42b045edd38a7ae5fd4/pca_plot_in_path.png
+
+Pipeline3: Making a PCA plot of the samples after normalizeion.
+[ 3:18PM] 1.extract_illumina_idat_files
+[ 3:18PM] 2.preprocess_illumina
+[ 3:18PM] 3.get_illumina_signal
+[ 3:18PM] 4.convert_signal_to_tdf
+[ 3:18PM] 5.log_signal
+[ 3:18PM] 6.fill_missing_with_median
+[ 3:18PM] 7.make_class_label_file
+[ 3:18PM] 8.extract_illumina_idat_files
+[ 3:18PM] 9.preprocess_illumina
+[ 3:18PM] 10.get_illumina_signal
+[ 3:18PM] 11.convert_signal_to_tdf
+[ 3:18PM] 12.log_signal
+[ 3:18PM] 13.fill_missing_with_zeros
+[ 3:18PM] 14.analyze_samples_pca
+[ 3:18PM] 15.plot_sample_pca
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_5e7965d7d557e46246258ef168d743e3/pca_plot_out_path.png
+
+Pipeline4: Making a boxplot of the signal intensities.
+[ 3:18PM] 1.extract_illumina_idat_files
+[ 3:18PM] 2.preprocess_illumina
+[ 3:18PM] 3.get_illumina_signal
+[ 3:18PM] 4.convert_signal_to_tdf
+[ 3:18PM] 5.log_signal
+[ 3:18PM] 6.fill_missing_with_zeros
+[ 3:18PM] 7.plot_intensity_boxplot
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_intensity_boxplot_BETSYHASH1_4944f13957ae83b712a8581c1717dd82/intensity_path.png
+
+Pipeline5: Plotting the actb genes.
+[ 3:18PM] 1.extract_illumina_idat_files
+[ 3:18PM] 2.preprocess_illumina
+[ 3:18PM] 3.get_illumina_signal
+[ 3:18PM] 4.convert_signal_to_tdf
+[ 3:18PM] 5.log_signal
+[ 3:18PM] 6.fill_missing_with_zeros
+[ 3:18PM] 7.plot_actb_line
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_actb_line_BETSYHASH1_65bcbe2c4cc5a7d0511b86bcabfa7e39/actb_plot_path.png
+
+Pipeline6: Plotting the biotin genes.
+[ 3:18PM] 1.extract_illumina_idat_files
+[ 3:18PM] 2.preprocess_illumina
+[ 3:18PM] 3.get_illumina_control
+[ 3:18PM] 4.plot_illu_biotin_line
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_illu_biotin_line_BETSYHASH1_45a5b3bd69050b61d2deb2556433d1c9/biotin_plot_path.png
+
+Pipeline7: Plotting the housekeeping genes.
+[ 3:18PM] 1.extract_illumina_idat_files
+[ 3:18PM] 2.preprocess_illumina
+[ 3:18PM] 3.get_illumina_control
+[ 3:18PM] 4.plot_illu_housekeeping_line
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_illu_housekeeping_line_BETSYHASH1_254d23f95b3edbded40aaff5245ddee0/housekeeping_plot_path.png
+
+Pipeline8: Plotting the hyb genes.
+[ 3:18PM] 1.extract_illumina_idat_files
+[ 3:18PM] 2.preprocess_illumina
+[ 3:18PM] 3.get_illumina_control
+[ 3:18PM] 4.plot_illu_hyb_bar
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_illu_hyb_bar_BETSYHASH1_89d760d7e0ddd544759ae4c543a2a52a/hyb_bar_path.png
+
+Pipeline9: Plotting the control probes.
+[ 3:18PM] 1.extract_illumina_idat_files
+[ 3:18PM] 2.preprocess_illumina
+[ 3:18PM] 3.get_illumina_control
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/get_illumina_control_BETSYHASH1_61251fd6190dab353069f70aa11433d8/control_illumina_path.gct
+
+All pipelines have completed successfully.
+make_normalize_report
+Report:/home/xchen/chencode/examples/sample_analysis/normalize_report_BETSYHASH1_62a2ee9ec6e0a8e62ab9a1577bdf659b/report.html

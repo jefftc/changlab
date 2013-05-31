@@ -1,0 +1,29 @@
+[
+    "Module input:", 
+    [
+        "signal_file", 
+        "/home/xchen/web2py/applications/Betsy/result_files/convert_signal_to_tdf_BETSYHASH1_1ded487f58c76460954387f9a16c01f6/signal_table.myfile1.a9f0589e6b566198.4368616e675f415230303431302e70636c.tdf"
+    ], 
+    "Module output:", 
+    "/tmp/tmpEUBXpL/signal_log_table.myfile1.a9f0589e6b566198.4368616e675f415230303431302e70636c.tdf", 
+    "Module output parameters:", 
+    {
+        "contents": "[unknown]", 
+        "filter": "0", 
+        "format": "tdf", 
+        "has_missing_value": "unknown_missing", 
+        "is_logged": "logged", 
+        "predataset": "no_predataset", 
+        "preprocess": "unknown_preprocess", 
+        "rename_sample": "no_rename"
+    }, 
+    "Pipeline module sequence:", 
+    [
+        "convert_signal_to_tdf", 
+        "log_signal", 
+        "fill_missing_with_median", 
+        "make_class_label_file", 
+        "convert_signal_to_tdf", 
+        "log_signal"
+    ]
+]

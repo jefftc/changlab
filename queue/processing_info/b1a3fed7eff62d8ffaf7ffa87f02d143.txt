@@ -1,0 +1,28 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+[ 2:22PM] 1.convert_signal_to_tdf
+[ 2:22PM] 2.log_signal
+[ 2:22PM] 3.fill_missing_with_median
+[ 2:22PM] 4.annotate_probes
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 200, in main
+    parameters,user=args.user,job_name = args.job_name,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,user=user,job_name=job_name,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence,user,job_name)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/annotate_probes.py", line 58, in run
+    new_objects = get_newobjects(parameters, objects, pipeline)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/annotate_probes.py", line 86, in get_newobjects
+    outfile = get_outfile(parameters, objects, pipeline)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/annotate_probes.py", line 69, in get_outfile
+    single_object = get_identifier(parameters, objects)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/annotate_probes.py", line 81, in get_identifier
+    % single_object.identifier)
+AssertionError: the input file /home/xchen/chencode/examples/sample_analysis/fill_missing_with_median_BETSYHASH1_0375648c38b7c7e94c3dfbc648894af5/signal_median_fill_path.af69459af4678b6c.616c6c5f616d6c5f746573742e726573.tdf for annot_probes does not exist

@@ -1,0 +1,100 @@
+{{extend 'layout.html'}}
+{{=form_queue}}
+<center><h1>  {{=pretty_name}}</h1></center>
+{{=form.custom.begin}}
+{{=form.custom.submit}}
+<table width="100%">
+<tr><td><td><td>
+    <h2> inputs</h2>
+{{labels = form.custom.widget.keys()}}
+{{left_labels=labels[:]}}
+{{for label in labels:}}
+    {{if label in protocol_inputs:}}
+    	{{left_labels.remove(label)}}
+    	{{left_labels.remove(label+'_content')}}
+    	{{=label}}:{{=form.custom.widget[label]}}<br/>
+    	{{=label+'_content'}}:{{=form.custom.widget[label+'_content']}}<br/>
+    {{pass}}
+ {{pass}}  
+
+{{for i in range(4):}}
+    {{label='myfile'+str(i)}}    
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{=label+'_content'}}:{{=form.custom.widget[label+'_content']}}<br/>
+    {{=label+'_path'}}:{{=form.custom.widget[label+'_path']}}<br/>
+    {{left_labels.remove(label+'_content')}}
+    {{left_labels.remove(label+'_path')}}
+    {{left_labels.remove(label)}}
+{{pass}}
+ 
+ </td><td><td><td>
+    <h2> {{=column_name[0]}}</h2>
+{{for label in labels:}}
+    {{if label in protocol_parameters.keys():}}
+    	{{if  protocol_parameters[label].category==column_name[0]:}}
+    	{{=label}}:{{=form.custom.widget[label]}}<br/>
+    	{{left_labels.remove(label)}}
+    	{{pass}}
+    {{pass}}
+{{pass}}
+    </td></td><td><td>
+<h2>{{=column_name[1]}}</h2>
+{{for label in labels:}}
+{{if label in protocol_parameters.keys():}}
+{{if  protocol_parameters[label].category==column_name[1]:}}
+    	{{=label}}:{{=form.custom.widget[label]}} <br/>
+    	{{left_labels.remove(label)}}
+    {{pass}}
+    {{pass}}
+{{pass}}
+</td></td></td><td>
+<h2>{{=column_name[2]}}</h2>
+{{for label in labels:}}
+{{if label in protocol_parameters.keys():}}
+{{if  protocol_parameters[label].category==column_name[2]:}}
+    {{=label}}:{{=form.custom.widget[label]}}<br/>
+    {{left_labels.remove(label)}}
+    {{pass}}
+    {{pass}}
+{{pass}}
+
+</tr></tr></tr></tr>
+</table>
+
+<table width="60%">
+<tr><td><td>
+    <h2> {{=column_name[3]}}</h2>
+{{for label in labels:}}
+{{if label in protocol_parameters.keys():}}
+{{if  protocol_parameters[label].category==column_name[3]:}}
+	{{left_labels.remove(label)}}
+	{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+{{pass}}
+    {{pass}}
+    </td><td><td>
+    <h2> {{=column_name[4]}}</h2>
+{{for label in labels:}}
+{{if label in protocol_parameters.keys():}}
+{{if  protocol_parameters[label].category==column_name[4]:}}
+	{{left_labels.remove(label)}}
+	{{=label}}:{{=form.custom.widget[label]}}<br/>
+{{pass}}
+{{pass}}
+    {{pass}}
+    </td></td><td>
+
+{{left_labels.remove('id')}}
+{{if left_labels and column_name[5]==5:}}
+<h2>  {{=column_name[5]}}</h2>
+		{{for label in left_labels:}}
+			{{if label in protocol_parameters.keys():}}
+				{{if  protocol_parameters[label].category==column_name[5]:}}
+					{{=label}}:{{=form.custom.widget[label]}}<br/>
+				{{pass}}
+			{{pass}}
+		{{pass}}
+{{pass}}
+</td></td></td>
+</table>
+{{=form.custom.end}}

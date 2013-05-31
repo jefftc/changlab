@@ -1,0 +1,19 @@
+{{extend 'layout.html'}} 
+<h2>What would you like for me to do?</h2>
+<table width="100%">
+<tr><td><td><td>
+    <h1><center>Preprocess</center></h1>
+    <h2><span class="print_underline" style="width: 400px">{{=A(label_showname[labels[0]],_href=URL('protocol',args=labels[0]))}}</span><br /></h2>
+<h2><span class="print_underline" style="width: 325px">{{=A(label_showname[labels[2]],_href=URL('protocol',args=labels[2]))}}</span><br /></h2>
+</td><td><td><td>
+    <h1><center>Visualize</center></h1>
+    <h2><span class="print_underline" style="width: 250px">{{=A(label_showname[labels[3]],_href=URL('protocol',args=labels[3]))}}</span><br /></h2>
+</td></td><td>
+<h1><center>Analyze</center></h1>
+<h2><span class="print_underline" style="width: 510px">{{=A(label_showname[labels[5]],_href=URL('protocol',args=labels[5]))}}</span><br /></h2>
+<h2><span class="print_underline" style="width: 355px">{{=A(label_showname[labels[6]],_href=URL('protocol',args=labels[6]))}}</span><br /></h2>
+<h2><span class="print_underline" style="width: 240px">{{=A(label_showname[labels[4]],_href=URL('protocol',args=labels[4]))}}</span><br /></h2>
+<h2><span class="print_underline" style="width: 250px">{{=A(label_showname[labels[1]],_href=URL('protocol',args=labels[1]))}}</span><br /></h2>
+</tr></tr></tr>
+</table>
+{{=form_queue}}

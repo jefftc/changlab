@@ -1,0 +1,83 @@
+Generating pipelines...
+15 pipelines have been generated.
+
+Pipeline1: Normalizing the samples with quantile method.
+[ 3:10PM] 1.convert_signal_to_tdf
+[ 3:10PM] 2.log_signal
+[ 3:10PM] 3.fill_missing_with_zeros
+[ 3:10PM] 4.normalize_samples_with_quantile
+[ 3:10PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/normalize_samples_with_quantile_BETSYHASH1_20f9788a2ed0a42490eb68625275f48b/signal_quantile_path.82ddcb6972736cc3.616c6c5f616d6c5f747261696e2e726573.tdf
+
+Pipeline2: Plotting PCA plot for samples after quantile normalization.
+[ 3:10PM] 1.convert_signal_to_tdf
+[ 3:10PM] 2.log_signal
+[ 3:10PM] 3.fill_missing_with_zeros
+[ 3:10PM] 4.normalize_samples_with_quantile
+[ 3:10PM] 5.analyze_samples_pca
+[ 3:10PM] 6.plot_sample_pca
+[ 3:10PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_0f06a3fe133aa651459259eeb7b70552/pca_plot_out_path.82ddcb6972736cc3.616c6c5f616d6c5f747261696e2e726573.png
+
+Pipeline3: Plotting PCA plot for samples before quantile normalization.
+[ 3:10PM] 1.convert_signal_to_tdf
+[ 3:10PM] 2.log_signal
+[ 3:10PM] 3.fill_missing_with_zeros
+[ 3:10PM] 4.analyze_samples_pca
+[ 3:10PM] 5.plot_sample_pca
+[ 3:10PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_c1927585baafe18e28d91b027abdc590/pca_plot_in_path.82ddcb6972736cc3.616c6c5f616d6c5f747261696e2e726573.png
+
+Pipeline4: Normalizing the samples with bfrm method.
+[ 3:10PM] 1.convert_signal_to_tdf
+[ 3:10PM] 2.log_signal
+[ 3:10PM] 3.fill_missing_with_zeros
+[ 3:10PM] 4.normalize_samples_with_bfrm
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/normalize_samples_with_bfrm_BETSYHASH1_fe0fd486c4cb983be0deef8ec9d57644/signal_bfrm_path.82ddcb6972736cc3.616c6c5f616d6c5f747261696e2e726573.tdf
+
+Pipeline5: Plotting PCA plot for samples after bfrm normalization.
+[ 3:18PM] 1.convert_signal_to_tdf
+[ 3:18PM] 2.log_signal
+[ 3:18PM] 3.fill_missing_with_zeros
+[ 3:18PM] 4.normalize_samples_with_bfrm
+[ 3:18PM] 5.analyze_samples_pca
+[ 3:18PM] 6.plot_sample_pca
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_1f4aeacd0de5bf2877ce2ea0a8138c38/pca_plot_out_path.82ddcb6972736cc3.616c6c5f616d6c5f747261696e2e726573.png
+
+Pipeline6: Plotting PCA plot for samples before bfrm normalization.
+[ 3:18PM] 1.convert_signal_to_tdf
+[ 3:18PM] 2.log_signal
+[ 3:18PM] 3.fill_missing_with_zeros
+[ 3:18PM] 4.analyze_samples_pca
+[ 3:18PM] 5.plot_sample_pca
+[ 3:18PM] Completed successfully and generated a file:
+/home/xchen/chencode/examples/sample_analysis/plot_sample_pca_BETSYHASH1_c1927585baafe18e28d91b027abdc590/pca_plot_in_path.82ddcb6972736cc3.616c6c5f616d6c5f747261696e2e726573.png
+
+Pipeline7: Normalizing the samples with quantile and combat method.
+[ 3:18PM] 1.convert_signal_to_tdf
+[ 3:18PM] 2.log_signal
+[ 3:18PM] 3.fill_missing_with_zeros
+[ 3:18PM] 4.normalize_samples_with_quantile
+[ 3:18PM] 5.normalize_samples_with_combat
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 203, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 192, in main
+    parameters,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 69, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 224, in run_pipeline
+    analysis,objects,pipeline_sequence,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 169, in run_module
+    analysis.parameters, objects, pipeline_sequence)
+  File "/home/xchen/chencode/Betsy/Betsy/modules/normalize_samples_with_combat.py", line 25, in run
+    raise ValueError(error_message)
+ValueError: Traceback (most recent call last):
+  File "/home/xchen/chencode/scripts/combatnorm.py", line 77, in <module>
+    main()
+  File "/home/xchen/chencode/scripts/combatnorm.py", line 60, in main
+    assert module_utils.exists_nz('Adjusted_EIF.dat_.xls'),('the '
+AssertionError: the adjusted_EIF.dat_.xls does not exist
+

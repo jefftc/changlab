@@ -1,0 +1,14 @@
+Generating pipelines...
+6 pipelines have been generated.
+
+Pipeline1: Preprocessing the signal file.
+Traceback (most recent call last):
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 211, in <module>
+    main()
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 200, in main
+    parameters,clean_up=args.clean_up)
+  File "/home/xchen/chencode/Betsy/scripts/run_protocol.py", line 76, in run_protocol
+    out_files = rule_engine.run_pipeline(pipeline, objects,clean_up=clean_up)
+  File "/home/xchen/chencode/Betsy/Betsy/rule_engine.py", line 212, in run_pipeline
+    os.mkdir(output_path)
+OSError: [Errno 2] No such file or directory: '/home/xchen/chencode/examples/Betsy/sample_analysis'

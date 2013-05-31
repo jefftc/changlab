@@ -1,0 +1,10 @@
+{{extend 'layout.html'}}
+<h1>Job number: {{=job.Jobnumber}}</h1>
+<h2>{{=info}}</h2>
+{{for i in range(len(text)):}}
+{{if text[i]==newtext[i]:}}
+		{{=text[i]}}<br />
+	{{else:}}
+{{=A(newtext[i],_href=URL('result_folder',args=newtext[i]))}}<br />
+    {{pass}}
+{{pass}}
