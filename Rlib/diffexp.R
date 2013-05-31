@@ -294,6 +294,7 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
 
 
 
+# 2-color no reference
 find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA, 
   FOLD.CHANGE=0) {
   library(limma)
@@ -327,8 +328,8 @@ find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA,
   bonf <- bonferroni.correct(TOP[["P.Value"]])
   nl10bonf <- -log(bonf, 10)
   diff <- abs(TOP[["logFC"]])
-  direction <- rep("High", nrow(TOP))
-  direction[TOP[["logFC"]] < 0] <- "Low"
+  direction <- rep("High Expression", nrow(TOP))
+  direction[TOP[["logFC"]] < 0] <- "Low Expression"
 
   I <- as.numeric(rownames(TOP))
   DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, diff, 

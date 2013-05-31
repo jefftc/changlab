@@ -375,7 +375,6 @@ def main():
             library, base2emission, args.mismatch, args.insert, args.delete)
         return
 
-    alignment_handle = markov_handle = None
     if args.alignment_file:
         open(args.alignment_file, 'w')
     if args.markov_file:

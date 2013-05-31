@@ -28,10 +28,12 @@ def choose_gene_names(MATRIX):
     
     
 def find_diffexp_genes(
-    outfile, gmt_file, algorithm, MATRIX, name1, name2, classes, fold_change,
+    outfile, gmt_file, gmt_p_cutoff, gmt_fdr_cutoff,
+    algorithm, MATRIX, name1, name2, classes, fold_change,
     DELTA, num_procs):
     # classes must be 0, 1, None.
     import os
+    import math
     
     from genomicode import config
     from genomicode import jmath
@@ -144,6 +146,16 @@ def find_diffexp_genes(
     I_direction = header.index("Direction")
     I_geneid = header.index("Gene ID")
     I_genename = header.index("Gene Name")
+    I_NL10P = header.index("NL10P")
+    I_NL10FDR = header.index("NL10 FDR")
+
+    assert not (gmt_p_cutoff and gmt_fdr_cutoff)
+    if gmt_p_cutoff:
+        nl10p_cutoff = -math.log(gmt_p_cutoff, 10)
+        DATA_py = [x for x in DATA_py if float(x[I_NL10P]) > nl10p_cutoff]
+    elif gmt_fdr_cutoff:
+        nl10fdr_cutoff = -math.log(gmt_fdr_cutoff, 10)
+        DATA_py = [x for x in DATA_py if float(x[I_NL10FDR]) > nl10fdr_cutoff]
 
     # "Higher in <name1>"
     # "Higher in <name2>"
@@ -209,6 +221,12 @@ def main():
         help="Number of processors to use.")
     parser.add_argument(
         "--gmt_file", help="Save the results in GMT format.")
+    parser.add_argument(
+        "--gmt_p_cutoff", default=None, type=float,
+        help="Put genes with p-value less than this value into GMT file.")
+    parser.add_argument(
+        "--gmt_fdr_cutoff", default=None, type=float,
+        help="Put genes with FDR less than this value into GMT file.")
     
     group = parser.add_argument_group(title="Algorithm Parameters")
     group.add_argument(
@@ -247,6 +265,13 @@ def main():
     if args.fold_change is not None:
         assert args.fold_change >= 0 and args.fold_change < 1000
     assert args.DELTA > 0 and args.DELTA < 100
+    if args.gmt_fdr_cutoff is not None:
+        assert args.gmt_file, "Found --gmt_fdr_cutoff but no --gmt_cutoff."
+        assert args.gmt_fdr_cutoff > 0.0 and args.gmt_fdr_cutoff < 1.0
+        assert args.gmt_p_cutoff is None, "Cannot have both FDR and p cutoff."
+    if args.gmt_p_cutoff is not None:
+        assert args.gmt_file, "Found --gmt_p_cutoff but no --gmt_cutoff."
+        assert args.gmt_p_cutoff > 0.0 and args.gmt_p_cutoff < 1.0
     
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
@@ -315,9 +340,9 @@ def main():
             w = os.fdopen(w, 'w')
             os.dup2(w.fileno(), sys.stdout.fileno())
             find_diffexp_genes(
-                outfile, args.gmt_file, args.algorithm, MATRIX,
-                name1, name2, classes, args.fold_change, args.DELTA,
-                args.num_procs)
+                outfile, args.gmt_file, args.gmt_p_cutoff, args.gmt_fdr_cutoff,
+                args.algorithm, MATRIX, name1, name2, classes,
+                args.fold_change, args.DELTA, args.num_procs)
             sys.exit(0)
     finally:
         if pid:
