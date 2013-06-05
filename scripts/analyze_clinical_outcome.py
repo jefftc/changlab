@@ -748,7 +748,7 @@ def main():
     group.add_argument(
         '--zscore', default=None, help='Z-score cutoff, e.g. 1.0.')
 
-    group = parser.add_argument_group(title='Ouput')
+    group = parser.add_argument_group(title='Output')
     group.add_argument(
         '-o', dest='filestem', default=None,
         help='Prefix used to name files.  e.g. "myanalysis".')
@@ -858,12 +858,11 @@ def main():
     assert M.nrow(), "I could not find any of the genes or gene sets."
 
     # Calculate the association of each gene and each outcome.
-    # (time_header, dead_header, gene_index) -> returned from calc_association
-    
     expression_or_score = "Expression"
     if gene_sets:
         expression_or_score = "Score"
 
+    # (time_header, dead_header, gene_index) -> returned from calc_association
     gene_outcome_scores = {}  
     for x in itertools.product(outcomes, range(M.nrow())):
         (time_header, dead_header), i = x
