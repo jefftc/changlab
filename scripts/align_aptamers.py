@@ -8,10 +8,29 @@ DEF_NOINDEL = 0.9
 DEF_INSERT = (1.0-DEF_NOINDEL)
 DEF_DELETE = (1.0-DEF_NOINDEL)
 
+# Have different probabilities for INDELs in random region.  Lower
+# probability means less likely to have insertions and deletions here.
+DEF_INSERT_RANDOM = DEF_INSERT/2.0
+DEF_DELETE_RANDOM = DEF_DELETE/2.0   # NOT USED
+
 
 #OUT_TABLE = "TABLE"
 #OUT_MARKOV = "MARKOV_MODEL"
 #OUT_ALIGNMENT = "ALIGNMENT"
+
+
+# _parse_titles
+# _parse_base2emission
+#
+# _write_table
+# _write_alignment
+# _write_markov_format
+#
+# _align_aptamers_h_h
+# _align_aptamers_h
+# _append_to_file_or_handle
+#
+# write_markov_model
 
 
 def _parse_titles(titles):
@@ -71,14 +90,15 @@ def _write_table(library, alignment, title, score, is_revcomp, outhandle):
     assert len(ideal_seqs) >= len(library)
     assert len(actual_seqs) >= len(library)
     x1 = [ideal_seqs[i] for i in I_random]
-    #x2 = [actual_seqs[i] for i in I_random]
+    x2 = [actual_seqs[i] for i in I_random]
     ideal_random = "".join(x1)
-    #actual_random = "".join(x2)
+    actual_random = "".join(x2)
     x1 = [ideal_seqs[i] for i in I_barcode]
-    #x2 = [actual_seqs[i] for i in I_barcode]
+    x2 = [actual_seqs[i] for i in I_barcode]
     ideal_barcode = "".join(x1)
-    #actual_barcode = "".join(x2)
-    random_region = ideal_random.replace("-", "")
+    actual_barcode = "".join(x2)
+    #random_region = ideal_random.replace("-", "")
+    random_region = actual_random
     barcode = ideal_barcode.replace("-", "")
 
     # Write the results.
@@ -216,7 +236,8 @@ def _align_aptamers_h(
     lock.release()
 
 
-def write_markov_model(library, base2emission, p_mismatch, p_insert, p_delete):
+def write_markov_model(library, base2emission, p_mismatch, p_insert, p_delete,
+                       p_insert_random, p_delete_random):
     from genomicode import aptamerlib
 
     # (node, base) -> p_emission
@@ -224,7 +245,8 @@ def write_markov_model(library, base2emission, p_mismatch, p_insert, p_delete):
         library, base2emission, p_mismatch)
     # (node1, node2) -> p_transition
     transition_probs = aptamerlib._calc_transition_probs(
-        library, p_mismatch, p_insert, p_delete)
+        library, p_mismatch, p_insert, p_delete,
+        p_insert_random, p_delete_random)
 
     # Make a list of all nodes.
     all_nodes = {}
@@ -345,6 +367,14 @@ def main():
     group.add_argument(
         "--delete", type=float, default=DEF_DELETE,
         help="Probability of a deletion (default %0.2f)." % DEF_DELETE)
+    group.add_argument(
+        "--insert_random", type=float, default=DEF_INSERT_RANDOM,
+        help="Probability of an insertion in the random region "
+        "(default %0.2f)." % DEF_INSERT_RANDOM)
+    group.add_argument(
+        "--delete_random", type=float, default=DEF_DELETE_RANDOM,
+        help="Probability of a deletion in the random region "
+        "(default %0.2f).  NOT USED." % DEF_DELETE_RANDOM)
     
     args = parser.parse_args()
 
@@ -361,18 +391,26 @@ def main():
     assert args.insert > 0 and args.insert < 0.5, \
            "insert (%s) should be between 0 and 0.5" % args.insert
     assert args.delete > 0 and args.delete < 0.5, \
-           "delete (%s) should be between 0 and 0.5" % args.delete_base
+           "delete (%s) should be between 0 and 0.5" % args.delete
+    assert args.insert_random > 0 and args.insert_random < 0.5, \
+           "insert_random (%s) should be between 0 and 0.5" % \
+           args.insert_random
+    assert args.delete_random > 0 and args.delete_random < 0.5, \
+           "delete_random (%s) should be between 0 and 0.5" % \
+           args.delete_random
     titles = _parse_titles(args.titles)
 
     base2emission = _parse_base2emission(args.lib2seq)
 
     library = aptamerlib.read_library(args.library_file)
     mm = aptamerlib.make_markov_model(
-        library, base2emission, args.mismatch, args.insert, args.delete)
+        library, base2emission, args.mismatch, args.insert, args.delete,
+        args.insert_random, args.delete_random)
 
     if args.show_markov_model_only:
         write_markov_model(
-            library, base2emission, args.mismatch, args.insert, args.delete)
+            library, base2emission, args.mismatch, args.insert, args.delete,
+            args.insert_random, args.delete_random)
         return
 
     if args.alignment_file:

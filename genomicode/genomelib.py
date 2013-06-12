@@ -350,7 +350,7 @@ def calc_seq_seq_sep(base1, length1, base2, length2):
 def read_fasta(fh):
     # Return a tuple of (title, sequence)
     for x in read_fasta_many(fh):
-        return x
+        yield x
 
 def read_fasta_many(fh):
     # Yield tuples of (title, sequence)

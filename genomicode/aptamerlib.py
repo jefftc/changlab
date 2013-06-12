@@ -466,15 +466,18 @@ def _calc_emission_probs(library, base2emission, p_mismatch):
     return probabilities
              
 
-def _calc_transition_probs(library, p_mismatch, p_insert, p_delete):
+def _calc_transition_probs(library, p_mismatch, p_insert, p_delete,
+                           p_insert_random, p_delete_random):
     # Return a dictionary of (node1, node2) -> transition probability.
 
     # Transition probabilities.
     assert p_mismatch > 0 and p_mismatch < 0.5
     assert p_insert > 0 and p_insert < 0.5
     assert p_delete > 0 and p_delete < 0.5
+    assert p_insert_random > 0 and p_insert_random < 0.5
+    assert p_delete_random > 0 and p_delete_random < 0.5
     p_match = 1.0 - p_mismatch
-    p_noindel = 1.0 - min(p_insert, p_delete)
+    p_noindel = 1.0 - min(p_insert, p_delete, p_insert_random, p_delete_random)
 
     # Make the graph.
     main_graph = _make_main_graph(library)
@@ -488,6 +491,7 @@ def _calc_transition_probs(library, p_mismatch, p_insert, p_delete):
     # normalized and may not sum to 1.
     probabilities = {}   # node -> next_node -> probability.
     for start_node in sorted(nodes):
+        # start_node can be START, MAIN, INSERT, INSERTEND, END.
         #print "%s-%s-%s-%s" % (
         #    start_node.node_type, start_node.i_seqset,
         #    start_node.i_sequence, start_node.i_base)
@@ -496,10 +500,33 @@ def _calc_transition_probs(library, p_mismatch, p_insert, p_delete):
         for next_node in main_graph.get(start_node, []):
             probs[next_node] = p_noindel
         for next_node in insert_graph.get(start_node, []):
+            assert start_node.node_type in [START, MAIN, INSERT, INSERTEND], \
+                   start_node.node_type
             assert next_node.node_type in [MAIN, END, INSERT, INSERTEND]
             p = p_noindel
-            if next_node.node_type in [INSERT, INSERTEND]:
+
+            # We have a different insertion penalty for the random
+            # region as for other regions.
+            # 1.  If the next node is INSERT or INSERTEND, use p_insert.
+            # 2.  If the next node is INSERT or INSERTEND and both
+            #     this and the next node are in the random region, use
+            #     p_insert_random.
+
+            next_type = next_node.node_type
+            start_random = next_random = None
+            if start_node.i_seqset is not None:
+                start_random = library[start_node.i_seqset].is_random
+            if next_node.i_seqset is not None:
+                next_random = library[next_node.i_seqset].is_random
+            
+            # Case 1.
+            if next_type in [INSERT, INSERTEND]:
                 p = p_insert
+            # Case 2.
+            if next_type in [INSERT, INSERTEND] and \
+               start_random and next_random:
+                p = p_insert_random
+                
             probs[next_node] = p
         for next_node in delete_graph.get(start_node, []):
             assert next_node not in probs
@@ -590,7 +617,8 @@ def _calc_transition_probs(library, p_mismatch, p_insert, p_delete):
     return clean
     
 
-def make_markov_model(library, base2emission, p_mismatch, p_insert, p_delete):
+def make_markov_model(library, base2emission, p_mismatch, p_insert, p_delete,
+                      p_insert_random, p_delete_random):
     # Return a MarkovModel.
     import numpy
     from genomicode import MarkovModel
@@ -598,10 +626,13 @@ def make_markov_model(library, base2emission, p_mismatch, p_insert, p_delete):
     assert p_mismatch > 0 and p_mismatch < 0.50
     assert p_insert > 0 and p_insert < 0.50
     assert p_delete > 0 and p_delete < 0.50
+    assert p_insert_random > 0 and p_insert_random < 0.50
+    assert p_delete_random > 0 and p_delete_random < 0.50
 
     # Calculate the transition probabilities.
     transition_probs = _calc_transition_probs(
-        library, p_mismatch, p_insert, p_delete)
+        library, p_mismatch, p_insert, p_delete,
+        p_insert_random, p_delete_random)
     emission_probs = _calc_emission_probs(library, base2emission, p_mismatch)
     #for (start, end) in sorted(transition_probs):
     #    x = transition_probs[(start, end)], start, end
