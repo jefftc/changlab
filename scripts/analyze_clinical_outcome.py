@@ -91,7 +91,7 @@ def parse_zscore(zscore):
         return None
 
     zscore = float(zscore)
-    assert zscore > 0.10 and zscore < 100
+    #assert zscore > 0.10 and zscore < 100
     return zscore
 
 
@@ -225,7 +225,8 @@ def align_matrix_with_clinical_data(M, clinical_dict):
     return M, clinical_dict
 
 
-def discretize_scores(scores, cutoffs, zscore, expression_or_score):
+def discretize_scores(
+    scores, cutoffs, hi_zscore, lo_zscore, expression_or_score):
     # Discretize into groups based on cutoffs or zscore.  Return tuple
     # of (group_names, groups).  group_names is a list of the names of
     # each group.  groups is a list of integers from 0 to
@@ -237,8 +238,8 @@ def discretize_scores(scores, cutoffs, zscore, expression_or_score):
         for x in groups:
             assert x >= 0 and x <= len(cutoffs)+1
         group_names = make_group_names(cutoffs, expression_or_score)
-    elif zscore:
-        groups = discretize_by_zscore(scores, zscore)
+    elif hi_zscore or lo_zscore:
+        groups = discretize_by_zscore(scores, hi_zscore, lo_zscore)
         group_names = make_zscore_names(expression_or_score)
     else:
         raise AssertionError
@@ -278,7 +279,7 @@ def get_gene_name(MATRIX, gene_i):
     return "Gene %04d" % gene_i
 
 
-def calc_association(survival, dead, scores, cutoffs, zscore,
+def calc_association(survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
                      expression_or_score):
     # Return a dictionary with keys:
     # survival             list of <float>
@@ -307,8 +308,15 @@ def calc_association(survival, dead, scores, cutoffs, zscore,
     dead = [int(float(dead[i])) for i in I]  # might be 0.0, 1.0
     scores = [scores[i] for i in I]
 
+    # GraphPad Prism filters out the 0's.  Do the same thing here.
+    I = [i for (i, x) in enumerate(survival) if x > 0]
+    survival = [survival[i] for i in I]
+    dead = [dead[i] for i in I]
+    scores = [scores[i] for i in I]
+
     # Figure out the groupings.
-    x = discretize_scores(scores, cutoffs, zscore, expression_or_score)
+    x = discretize_scores(
+        scores, cutoffs, hi_zscore, lo_zscore, expression_or_score)
     group_names, groups = x
 
     # Calculate the KM model.
@@ -453,7 +461,7 @@ def discretize_by_value(values, breakpoints):
     return groups
 
 
-def discretize_by_zscore(values, zscore):
+def discretize_by_zscore(values, hi_zscore, lo_zscore):
     # Return a list that specifies the group for each member of
     # values.  Group 0 are values <= -zscore, 1 are -zscore < value <
     # zscore, and 2 are values >= zscore.
@@ -461,17 +469,16 @@ def discretize_by_zscore(values, zscore):
 
     R = start_and_init_R()
 
-    jmath.R_equals(range(len(values)), 'x')
-    jmath.R_equals(values, 'y')
-    R('M <- find.outliers(x, y, z.cutoff=1)')
+    jmath.R_equals(values, 'x')
+    R('M <- find.outliers(x, z.cutoff=1)')
     M = R['M']
     z = list(M.rx2('z'))
 
     groups = [1] * len(z)
     for i in range(len(z)):
-        if z[i] <= -zscore:
+        if lo_zscore is not None and z[i] <= lo_zscore:
             groups[i] = 0
-        elif z[i] >= zscore:
+        elif hi_zscore is not None and z[i] >= hi_zscore:
             groups[i] = 2
     return groups
 
@@ -606,10 +613,13 @@ def plot_km(
 def plot_groups(filename, scores, group_names, groups):
     from genomicode import colorlib
     from genomicode.jmath import R_fn, R_equals, R_var
+    from genomicode import jmath
     
     start_and_init_R()
     #R = start_and_init_R()
 
+    mar = [x+0.1 for x in [5, 6, 4, 2]]
+    
     # Set the colors.
     assert len(group_names) >= 2
     colors = ['#1533AD', '#FFB300']
@@ -618,14 +628,18 @@ def plot_groups(filename, scores, group_names, groups):
         x = [colortuple2hex(*x) for x in x]
         colors = x
     col = [colors[x] for x in groups]
-    R_equals(col, 'col')
-    
-    mar = [x+0.1 for x in [5, 6, 4, 2]]
     
     x = range(len(scores))
     y = scores
+
+    # Sort the scores from lowest to highest.
+    O = jmath.order(y)
+    y = [y[i] for i in O]
+    col= [col[i] for i in O]
+    
     R_equals(x, 'x')
     R_equals(y, 'y')
+    R_equals(col, 'col')
 
     R_fn(
         "bitmap", filename, type="png256", height=1600, width=1600,
@@ -650,7 +664,7 @@ def plot_groups(filename, scores, group_names, groups):
     R_fn("title", main="", xlab="", ylab="Gene Expression", sub="",
          **{"cex.lab":1.5, "cex.sub":1, "col.sub":"#A60400", "cex.main":1.0})
     R_fn(
-        "legend", "bottomleft", legend=group_names, fill=colors, inset=0.05,
+        "legend", "topleft", legend=group_names, fill=colors, inset=0.05,
         cex=1.25, **{"box.lwd":1.5})
     R_fn("par", R_var("op"))
     R_fn("dev.off")
@@ -746,7 +760,11 @@ def main():
         'e.g. 0.25,0.50,0.75.  Default is to use cutoff of 0.50.  '
         'I will use this strategy unless a --zscore is given.')
     group.add_argument(
-        '--zscore', default=None, help='Z-score cutoff, e.g. 1.0.')
+        '--hi_zscore', default=None, type=float,
+        help='High Z-score cutoff, e.g. 1.0.')
+    group.add_argument(
+        '--lo_zscore', default=None, type=float,
+        help='Low Z-score cutoff, e.g. -1.0.')
 
     group = parser.add_argument_group(title='Output')
     group.add_argument(
@@ -816,9 +834,12 @@ def main():
     assert not (args.gene and args.geneset), (
         'Please specify either a gene or a gene set, not both.')
 
-    assert not (args.cutoff and args.zscore)
-    if not args.cutoff and not args.zscore:
+    if args.cutoff:
+        assert not args.hi_zscore and not args.lo_zscore
+    if not args.cutoff and not args.hi_zscore and not args.lo_zscore:
         args.cutoff = "0.50"
+    if args.hi_zscore and args.lo_zscore:
+        assert args.hi_zscore > args.lo_zscore
 
     assert args.km_mar_bottom > 0 and args.km_mar_bottom < 10
     assert args.km_mar_left > 0 and args.km_mar_left < 10
@@ -833,7 +854,8 @@ def main():
     genes = parse_genes(args.gene)
     gene_sets = parse_gene_sets(args.geneset)
     cutoffs = parse_cutoffs(args.cutoff)
-    zscore = parse_zscore(args.zscore)
+    hi_zscore = parse_zscore(args.hi_zscore)
+    lo_zscore = parse_zscore(args.lo_zscore)
     outcomes = parse_outcomes(args.outcome)
     filestem = parse_filestem(args.filestem)
 
@@ -871,7 +893,8 @@ def main():
         scores = M.value(i, None)
 
         x = calc_association(
-            survival, dead, scores, cutoffs, zscore, expression_or_score)
+            survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
+            expression_or_score)
         gene_outcome_scores[(time_header, dead_header, i)] = x
 
     # Files generated:
