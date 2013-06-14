@@ -244,8 +244,6 @@ def discretize_scores(
     else:
         raise AssertionError
             
-    # Make sure there's at least 2 groups.
-    assert len({}.fromkeys(groups)) >= 2, "Need at least 2 groups."
     return group_names, groups
 
 
@@ -294,6 +292,9 @@ def calc_association(survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
     # surv90               dict of <group> : <float> or None
     # hi_score_short_surv  <boolean> or None (no difference in surv)
     # relationship         <string>
+    #
+    # Can return None if the results can't be calculated, e.g. if
+    # there are not enough samples, or not enough groups.
     from genomicode import jmath
     
     # Select only the samples with both survival, dead, and score
@@ -318,6 +319,13 @@ def calc_association(survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
     x = discretize_scores(
         scores, cutoffs, hi_zscore, lo_zscore, expression_or_score)
     group_names, groups = x
+
+    # May not have two groups, e.g. if there are no outliers.  If this
+    # happens, then return None.
+    uniq_groups = sorted({}.fromkeys(groups))
+    if len(uniq_groups) < 2:
+        return None
+
 
     # Calculate the KM model.
     surv = calc_km(survival, dead, groups)
@@ -895,6 +903,8 @@ def main():
         x = calc_association(
             survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
             expression_or_score)
+        if x is None:
+            continue
         gene_outcome_scores[(time_header, dead_header, i)] = x
 
     # Files generated:
@@ -928,7 +938,10 @@ def main():
     for x in itertools.product(outcomes, range(M.nrow())):
         (time_header, dead_header), gene_i = x
 
-        SURV = gene_outcome_scores[(time_header, dead_header, gene_i)]
+        x = time_header, dead_header, gene_i
+        SURV = gene_outcome_scores.get(x)
+        if not SURV:   # if couldn't be calculated, e.g. not enough groups
+            continue
 
         gene_names = [M.row_names(x)[gene_i] for x in M.row_names()]
         outcome = time_header

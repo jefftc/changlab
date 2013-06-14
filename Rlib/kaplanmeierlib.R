@@ -259,6 +259,10 @@ plot.km.multi <- function(survival, dead, group, col=NA,
   if(!all(is.na(col))) {
     leg <- names(col)
     fill <- sapply(leg, function(x) col[[x]])
+    # Only label the lines if it exists on the plot.
+    I <- !is.na(match(leg, group))
+    leg <- leg[I]
+    fill <- fill[I]
     legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend, 
       inset=0.05)
   }
