@@ -10,18 +10,56 @@
 #
 # group.by.value
 
+# Estimate the survival time based on the closest survival.
+.est.survival <- function(surv.table, survival) {
+  # surv.table
+  # time   survival
+  # 25.2   0.75
+  # 38.4   0.50
+  # 40.8   0.25
+  # 50.4   0.00
+
+  time <- NA
+
+  # Look for the closest one.  If one found within 5%, return it.
+  if(min(abs(surv.table$surv-survival)) < 0.05) {  # within 5%
+    i <- which.min(abs(surv.table$surv-survival))
+    time <- surv.table$time[i]
+  } 
+  # If the survival if higher than the highest survival, then
+  # extrapolate the time.
+  # No.  Should use next lower time.
+  #else if(survival > surv.table$surv[1]) {
+  #  surv1 <- surv.table$surv[1]
+  #  time1 <- surv.table$time[1]
+  #  frac <- (1.0-survival)/(1.0-surv1)
+  #  time <- frac * time1
+  #} 
+  # If the survival if lower than the lowest survival, then
+  # the time is indefinite.
+  else if(survival < surv.table$surv[length(surv.table$surv)]) {
+    time <- NA
+  }
+  # Otherwise, the survival goes to the next lowest time.  E.g. if
+  # looking for 60% survival, use the 50% survival time.
+  else {
+    I <- which(surv.table$surv < survival)
+    if(length(I) < 1) stop("broken")
+    time <- surv.table$time[I[1]]
+  }
+  
+  time
+}
+
 .calc.surv50 <- function(survival, dead) {
   library("survival")
+  surv.50 <- NA
+  surv.90 <- NA
   sf <- survfit(Surv(survival, dead) ~ rep("x", length(survival)))
   s <- summary(sf)
-  surv.90 <- NA; surv.50 <- NA
-  if(min(abs(s$surv-0.90)) < 0.05) {  # within 5%
-    i <- which.min(abs(s$surv-0.90))
-    surv.90 <- s$time[i]
-  }
-  if(min(abs(s$surv-0.50)) < 0.05) {  # within 5%
-    i <- which.min(abs(s$surv-0.50))
-    surv.50 <- s$time[i]
+  if(length(s$surv) > 0) {
+    surv.90 <- .est.survival(s, 0.90)
+    surv.50 <- .est.survival(s, 0.50)
   }
   list(surv.90=surv.90, surv.50=surv.50)
 }
@@ -221,6 +259,10 @@ plot.km.multi <- function(survival, dead, group, col=NA,
   if(!all(is.na(col))) {
     leg <- names(col)
     fill <- sapply(leg, function(x) col[[x]])
+    # Only label the lines if it exists on the plot.
+    I <- !is.na(match(leg, group))
+    leg <- leg[I]
+    fill <- fill[I]
     legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend, 
       inset=0.05)
   }

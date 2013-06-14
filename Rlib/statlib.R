@@ -85,7 +85,7 @@ normalize.quant <- function(M) {
   N
 }
 
-find.outliers <- function(x, y, perc.init=NULL, z.cutoff=NULL, max.iter=NULL) {
+find.outliers <- function(x, perc.init=NULL, z.cutoff=NULL, max.iter=NULL) {
   # Find outlier points.  Model the points with a linear regression
   # line, and calculate the z-score of each point.
   # Algorithm is modified from RANSAC.
@@ -96,18 +96,22 @@ find.outliers <- function(x, y, perc.init=NULL, z.cutoff=NULL, max.iter=NULL) {
   # max.iter   Maximum number of iterations before convergence.
   # 
   # Returns a list with members:
-  # x      Original data (independent variable).
-  # y      Original data (dependent variable).
-  # y.hat  Prediction of y, given linear model.
+  # x      Original data.
+  # x.hat  Prediction of x, given linear model.
   # coef   Coefficients of linear model.
   # rmsd   RMSD of each point (parallel to y).
   # z      Z-score of each point (parallel to y).
+
+  # Sort x from increasing to decreasing
+  O <- order(x)
+  I.rev <- rep(NA, length(O))
+  I.rev[O] <- 1:length(O)
+  x <- x[O]
 
   if(is.null(perc.init)) perc.init <- 0.5
   if(is.null(z.cutoff)) z.cutoff <- 1
   if(is.null(max.iter)) max.iter <- 100
 
-  if(length(x) != length(y)) stop("x and y not same length.")
   if(perc.init < 0 | perc.init > 1) stop("perc.init out of range")
   if(z.cutoff < 0.1) stop("z.cutoff too small")
   if(max.iter < 5) stop("too few iterations")
@@ -115,24 +119,83 @@ find.outliers <- function(x, y, perc.init=NULL, z.cutoff=NULL, max.iter=NULL) {
   # Initialize the model with the middle 50% of points.
   p1 <- (1.0-perc.init)/2.0
   p2 <- p1 + perc.init
-  x.s <- sort(x)
-  c1 <- x.s[p1*length(x)]
-  c2 <- x.s[p2*length(x)]
+  c1 <- x[p1*length(x)]
+  c2 <- x[p2*length(x)]
   I.model <- (x >= c1) & (x < c2)  # which points are in the model
+
 
   max.iter <- 100
   for(i in 1:max.iter) {
-    m <- glm(y[I.model] ~ x[I.model])
-    y.hat <- as.numeric(cbind(1, x) %*% m$coef)
-    rmsd <- sqrt((y.hat-y)**2)
+    I <- 1:length(x)
+    m <- glm(x[I.model] ~ I[I.model])
+    x.hat <- as.numeric(cbind(1, I) %*% m$coef)
+    rmsd <- sqrt((x.hat-x)**2)
     z <- rmsd / sqrt(var(rmsd))
-    z[y.hat > y] <- -z[y.hat > y]
+    z[x.hat > x] <- -z[x.hat > x]
 
     old.model <- I.model
     I.model <- abs(z) < z.cutoff
     if(all(I.model == old.model)) break
   }
 
-  list(x=x, y=y, y.hat=y.hat, coef=m$coef, rmsd=rmsd, z=z)
+  list(
+    x=x[I.rev], 
+    x.hat=x.hat[I.rev], 
+    coef=m$coef, 
+    rmsd=rmsd[I.rev], 
+    z=z[I.rev], 
+    niter=i)
 }
+
+
+##find.outliers <- function(x, y, perc.init=NULL, z.cutoff=NULL, max.iter=NULL) {
+##  # Find outlier points.  Model the points with a linear regression
+##  # line, and calculate the z-score of each point.
+##  # Algorithm is modified from RANSAC.
+##  # 
+##  # Parameters:
+##  # perc.init  Percent of points to include initially.  (0.0-1.0).
+##  # z.cutoff   Points less than this z-score will be included in model.
+##  # max.iter   Maximum number of iterations before convergence.
+##  # 
+##  # Returns a list with members:
+##  # x      Original data (independent variable).
+##  # y      Original data (dependent variable).
+##  # y.hat  Prediction of y, given linear model.
+##  # coef   Coefficients of linear model.
+##  # rmsd   RMSD of each point (parallel to y).
+##  # z      Z-score of each point (parallel to y).
+##
+##  if(is.null(perc.init)) perc.init <- 0.5
+##  if(is.null(z.cutoff)) z.cutoff <- 1
+##  if(is.null(max.iter)) max.iter <- 100
+##
+##  if(length(x) != length(y)) stop("x and y not same length.")
+##  if(perc.init < 0 | perc.init > 1) stop("perc.init out of range")
+##  if(z.cutoff < 0.1) stop("z.cutoff too small")
+##  if(max.iter < 5) stop("too few iterations")
+##
+##  # Initialize the model with the middle 50% of points.
+##  p1 <- (1.0-perc.init)/2.0
+##  p2 <- p1 + perc.init
+##  x.s <- sort(x)
+##  c1 <- x.s[p1*length(x)]
+##  c2 <- x.s[p2*length(x)]
+##  I.model <- (x >= c1) & (x < c2)  # which points are in the model
+##
+##  max.iter <- 100
+##  for(i in 1:max.iter) {
+##    m <- glm(y[I.model] ~ x[I.model])
+##    y.hat <- as.numeric(cbind(1, x) %*% m$coef)
+##    rmsd <- sqrt((y.hat-y)**2)
+##    z <- rmsd / sqrt(var(rmsd))
+##    z[y.hat > y] <- -z[y.hat > y]
+##
+##    old.model <- I.model
+##    I.model <- abs(z) < z.cutoff
+##    if(all(I.model == old.model)) break
+##  }
+##
+##  list(x=x, y=y, y.hat=y.hat, coef=m$coef, rmsd=rmsd, z=z, niter=i)
+##}
 

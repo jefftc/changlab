@@ -2,12 +2,26 @@
 
 import sys, os
 
-# parse_geneset
+# _parse_gene_names
+# _parse_geneset
 # has_missing_values
 # score_gene_set
+# score_gene
 # score_many
 
-def parse_geneset(geneset):
+
+def _parse_gene_names(gene_name_list):
+    # This can a list of comma separated genes, e.g.
+    # ["E2F1", "E2F2,E2F3"]
+    # Need to separate them out.
+    gene_names = []
+    for x in gene_name_list:
+        x = x.split(",")
+        gene_names.extend(x)
+    return gene_names
+
+
+def _parse_geneset(geneset):
     # Return tuple of (positive_geneset, negative_geneset).
     # negative_geneset can be None.
     
@@ -29,6 +43,7 @@ def has_missing_values(MATRIX):
             return True
     return False
 
+
 def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
     from genomicode import genesetlib
 
@@ -45,11 +60,12 @@ def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
 
     return scores
 
+
 def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
                    lock=None):
+    # Return dict of (matrix_name, gs_name, sample) -> score.
     import arrayio
     
-    # Return dict of (matrix_name, gs_name, sample) -> score.
     scores = _score_gene_set_h(
         MATRIX, matrix_name, gs_name, pos_genes, neg_genes, lock)
     sample_names = MATRIX.col_names(arrayio.COL_ID)
@@ -62,6 +78,28 @@ def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
         assert key not in results, "Duplicate: %s" % sample
         results[key] = score
     return results
+
+
+def score_gene(gene_name, matrix_name, MATRIX, lock=None):
+    # Return dict of (matrix_name, gene_name, sample) -> score.
+    import arrayio
+    from genomicode import genesetlib
+
+    I_row, x = MATRIX._index(row=gene_name)
+    if not I_row:
+        return {}
+    I = I_row[0]
+    scores = MATRIX._X[I]
+    sample_names = MATRIX.col_names(arrayio.COL_ID)
+    assert len(sample_names) == len(scores)
+    
+    results = {}
+    for i, (sample, score) in enumerate(zip(sample_names, scores)):
+        key = matrix_name, gene_name, i, sample
+        assert key not in results, "Duplicate: %s" % sample
+        results[key] = score
+    return results
+
 
 def score_many(jobs, lock=None):
     import arrayio
@@ -77,11 +115,17 @@ def score_many(jobs, lock=None):
         MATRIX = file2matrix[matrix_file]
         assert not has_missing_values(MATRIX), \
                "Matrix %s has missing values." % matrix_name
-        x = score_gene_set(
-            gs_name, pos_genes, neg_genes, matrix_name, MATRIX, lock=lock)
+        if pos_genes or neg_genes:
+            x = score_gene_set(
+                gs_name, pos_genes, neg_genes, matrix_name, MATRIX, lock=lock)
+        else:
+            assert pos_genes is None
+            assert neg_genes is None
+            x = score_gene(gs_name, matrix_name, MATRIX, lock=lock)
         # TODO: should make sure we don't overwrite previous results.
         results.update(x)
     return results
+
 
 def main():
     import argparse
@@ -92,33 +136,41 @@ def main():
 
     parser.add_argument(
         "expression_files", nargs="+", help="Data set(s) to score.")
-
-    # Assumes that there are no commas in names of gene sets.
     parser.add_argument(
-        "--geneset_file", dest="geneset_files", action="append", default=[],
-        help="File(s) with gene sets.  Should be in gmx or gmt format.")
-    parser.add_argument(
-        "-g", dest="gene_set", action="append", default=[],
-        help="Name of the gene set to score.  If you want to score both "
-        "the positively and negatively correlated genes, specify both "
-        "gene sets using the format: <positive_geneset>,<negative_geneset>.  "
-        "You can use this option multiple times to score more than one gene "
-        "set.")
-    parser.add_argument(
-        "--all", dest="all_gene_sets", action="store_true", default=False,
-        help="Score all gene sets in the files.")
-    parser.add_argument(
-        "--automatch", dest="automatch", action="store_true", default=False,
-        help="Will match _UP with _DN (or _DOWN).")
+        "-o", dest="outfile", default=None, help="Name of file for results.")
     parser.add_argument(
         "--libpath", dest="libpath", action="append", default=[],
         help="Add to the Python library search path.")
     parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,
         help="Number of jobs to run in parallel.")
-    parser.add_argument(
-        "-o", dest="outfile", default=None, help="Name of file for results.")
+
+    # Assumes that there are no commas in names of gene sets.
+    group = parser.add_argument_group(title="Gene Set")
+    group.add_argument(
+        "--geneset_file", dest="geneset_files", action="append", default=[],
+        help="File(s) with gene sets.  Should be in gmx or gmt format.")
+    group.add_argument(
+        "-g", dest="gene_set", action="append", default=[],
+        help="Name of the gene set to score.  If you want to score both "
+        "the positively and negatively correlated genes, specify both "
+        "gene sets using the format: <positive_geneset>,<negative_geneset>.  "
+        "You can use this option multiple times to score more than one gene "
+        "set.")
+    group.add_argument(
+        "--all", dest="all_gene_sets", action="store_true", default=False,
+        help="Score all gene sets in the files.")
+    group.add_argument(
+        "--automatch", action="store_true", default=False,
+        help="Will match _UP with _DN (or _DOWN).")
     
+    group = parser.add_argument_group(
+        title="Genes", description="Add gene expression to output.")
+    parser.add_argument(
+        "--gene_names", default=[], action="append",
+        help="Comma-separated list of IDs (e.g. probes, gene names) "
+        "to include.")
+
     args = parser.parse_args()
     assert args.expression_files, \
            "Please specify an expression data set to score."
@@ -154,6 +206,8 @@ def main():
     
     genepattern.fix_environ_path()
 
+    gene_names = _parse_gene_names(args.gene_names)
+    
     msg = "Reading gene set file."
     if len(args.geneset_files) > 1:
         msg = "Reading gene set files."
@@ -193,9 +247,10 @@ def main():
 
     print "Setting up jobs."; sys.stdout.flush()
     # list of gs_name, pos_genes, neg_genes, matrix_name, matrix_file
+    # list of gene_name, None, None, matrix_name, matrix_file
     jobs = []
     for geneset in genesets:
-        pos_gs, neg_gs = parse_geneset(geneset)
+        pos_gs, neg_gs = _parse_geneset(geneset)
         assert pos_gs in geneset2genes, \
                "I could not find gene set: %s" % pos_gs
         if neg_gs:
@@ -211,6 +266,11 @@ def main():
         for matrix_name, matrix_file in zip(matrix_names, expression_files):
             x = gs_name, pos_genes, neg_genes, matrix_name, matrix_file
             jobs.append(x)
+    for name in gene_names:
+        for matrix_name, matrix_file in zip(matrix_names, expression_files):
+            x = name, None, None, matrix_name, matrix_file
+            jobs.append(x)
+        
 
     # Group the jobs into batches such that jobs that use the same
     # matrix are in the same batch.
@@ -234,13 +294,13 @@ def main():
     scores = {}   # (matrix, geneset, index, sample) -> score
     results = []  # AsyncResults
     for batch in batched_jobs:
+        fn_args = (batch,)
         fn_keywds = {}
         fn_keywds["lock"] = lock
         if args.num_procs == 1:
             x = score_many(batch)
             scores.update(x)
         else:
-            fn_args = (batch,)
             x = pool.apply_async(score_many, fn_args, fn_keywds)
             results.append(x)
     pool.close()
@@ -268,6 +328,7 @@ def main():
     outhandle.close()
     
     print "Done."
+
     
 if __name__ == '__main__':
     main()

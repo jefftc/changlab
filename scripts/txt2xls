@@ -56,6 +56,11 @@ def main():
     ws = wb.add_sheet(sheetname)
     
     matrix = [x for x in filelib.read_cols(args.filename)]
+    # Clean up unicode stuff.
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            matrix[i][j] = matrix[i][j].decode("utf-8")
+    
     for i in range(len(matrix)):
         for j in range(len(matrix[i])):
             matrix[i][j] = _convert_type(matrix[i][j])

@@ -2198,8 +2198,12 @@ def main():
 
     # Parse the input arguments.
     options, args = parser.parse_args()
-    if len(args) != 1:
+    if not args:
         parser.error("Please specify an infile.")
+    if len(args) > 1:
+        parser.error(
+            "Please specify a single infile.  Found %d: %s." %
+            (len(args), ", ".join(args)))
     infile, = args
     if not os.path.exists(infile):
         parser.error("I could not find file %s." % infile)
