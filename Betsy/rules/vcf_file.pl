@@ -1,5 +1,13 @@
 %vcf_file
 %Output interface
+:- set_prolog_flag(toplevel_print_options,
+             [quoted(true), portray(true), max_depth(0)]).
+
+:-dynamic bam_file/2.
+:-dynamic sam_file/2.
+:-dynamic fastq_file/2.
+:-dynamic input_sam_file/2.
+
 vcf_file(Parameters,Modules):-
     % Conditions: the Parameters is not full length
     get_desire_parameters_vcf(Parameters,NewParameters1),
@@ -67,11 +75,12 @@ vcf_file(Parameters,Modules):-
       get_value(Parameters,duplicates_marked,no_marked,Duplicates_marked),
       Duplicates_marked=yes_marked,
      
-      get_value(Parameters,ref,human,Ref),
+      get_value(Parameters,ref,hg19,Ref),
       get_value(Parameters,recalibration,no_recalibration,Recalibration),
-      (Ref=human,
-      Recalibration=yes_recalibration;
-      Ref=fly,
+      (member(Ref,[hg18,hg19,mm9,dm3]),
+      member(Recalibration,[yes_recalibration,no_recalibration]);
+      %Recalibration=yes_recalibration;
+      member(Ref,[dm3,mm9]),
       Recalibration=no_recalibration),
       
 	get_value(Parameters,has_header,no_fixed,Has_header),
@@ -175,4 +184,3 @@ get_desire_parameters_vcf(Parameters,NewParameters):-
     append(NewParameters2,[reheader,Reheader],NewParameters);
     not(member(reheader,Parameters)),
     NewParameters=NewParameters2).
-

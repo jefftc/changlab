@@ -23,13 +23,12 @@ def protocol():
     protocol_parameters,protocol_parameters_dict,protocol_inputs,column_name,pretty_name = x
     fields = create_form(protocol_inputs,protocol_parameters)
     form=SQLFORM.factory(*fields)
-    form_queue = FORM(INPUT(_type='submit',_value='show jobs status'))
+    form_queue = FORM(INPUT(_type='submit',_value='show jobs status',_style ='height: 80px;width:120px;font-size: 18px;font-weight:bold'))
     if form.process().accepted:
         form_value = form.vars
         input_file,command_parameters = create_command(form_value)
         session.parameters = command_parameters
         session.input_file = input_file
-        #session.protocol = session.label
         session.protocol= request.args[0]
         redirect(URL('submit_job'))
     if form_queue.process().accepted:
@@ -40,7 +39,7 @@ def protocol():
 
 def show_status():
     import subprocess
-    all_cmd = ['python','/home/xchen/queue/queue.py','--list']    
+    all_cmd = ['python','/home/xchen/chencode/queue/queue.py','--list']    
     process = subprocess.Popen(all_cmd, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
@@ -67,7 +66,7 @@ def show_job():
     newtext=''
     if  this_job.Status in ['running','completed']:
         hash_string = hash_command(this_job.Submitted,this_job.Command)
-        pro_file = os.path.join('/home/xchen/queue/processing_info/', hash_string+'.txt')
+        pro_file = os.path.join('/home/xchen/chencode/queue/processing_info/', hash_string+'.txt')
         f=file(pro_file,'r')
         text = f.read().split('\n')
         f.close()
@@ -92,7 +91,7 @@ def submit_job():
                           for x in range(6))
     cmd = ['python', '/home/xchen/chencode/Betsy/scripts/run_protocol.py', 
            '--protocol', session.protocol,'--user',str(auth.user.first_name+ auth.user.last_name),'--job_name',jobname] + session.input_file  + session.parameters
-    all_cmd = ['python','/home/xchen/queue/queue.py' ,'--user',str(auth.user.first_name+ auth.user.last_name),'-j', jobname, ' ' .join(cmd)]
+    all_cmd = ['python','/home/xchen/chencode/queue/queue.py' ,'--user',str(auth.user.first_name+ auth.user.last_name),'-j', jobname, ' ' .join(cmd)]
     process = subprocess.Popen(all_cmd, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)    
@@ -109,7 +108,7 @@ def result_folder():
 
 def delete_job():
     jobname = request.args(0)
-    cmd = ['python','/home/xchen2/queue/queue.py','--kill',jobname]
+    cmd = ['python','/home/xchen/chencode/queue/queue.py','--kill',jobname]
     process = subprocess.Popen(cmd, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)    

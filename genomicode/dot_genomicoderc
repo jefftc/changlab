@@ -52,8 +52,16 @@ knowngene_hg18=/data/genomidata/hg18.knownGene.110312.txt
 knowngene_hg19=/data/genomidata/hg19.knownGene.130104.txt
 knowngene_mm10=/data/genomidata/mm10.knownGene.130207.txt
 
-fly_ref=/data/biocore/reference_genome/Drosophila_melanogaster/NCBI/build5.3/Sequence/BWAIndex/genome.fa
-human_ref=...
+dm3_ref=/data/biocore/reference_genome/Drosophila_melanogaster/NCBI/build5.3/Sequence/BWAIndex/genome.fa
+hg18_ref=/data/biocore/genomes/Broad/Homo_sapiens_assembly18.fasta
+hg19_ref=/data/biocore/genomes/Broad/ucsc.hg19.fasta
+mm9_ref=É
+hg19_dbsnp=/data/biocore/GATK/hg19/dbsnp_137.hg19.vcf
+hg19_indels=/data/biocore/GATK/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf
+hg18_dbsnp=/data/biocore/GATK/hg18/dbsnp_137.hg18.vcf
+hg18_indels=/data/biocore/GATK/hg18/Mills_and_1000G_gold_standard.indels.hg18.vcf
+rna_hum =/home/xchen/try_RSEM/ref/hg19
+rna_mouse=É
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation

@@ -9,13 +9,19 @@ def run(parameters, objects, pipeline,user,jobname):
     starttime = strftime(module_utils.FMT, localtime())
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
-    
-    ref = config.fly_ref
-    ref = '/home/xchen/try_GATK/exampleFiles/exampleFASTA.fasta'
-    assert os.path.exists(ref),'the ref file %s does not exsits' %ref
+    species = parameters['ref']
+    if species == 'hg18':
+       ref_file = config.hg18_ref
+    elif species == 'hg19':
+       ref_file = config.hg19_ref
+    elif species == 'dm3':
+       ref_file = config.dm3_ref
+    elif species == 'mm9':
+       ref_file= config.mm9_ref
+    assert os.path.exists(ref_file),'the ref file %s does not exsits' %ref_file
     #command = ['samtools','mpileup','-uf',ref,single_object.identifier,'|',
     #           'bcftools','view', '-bvcg','-','>',outfile]
-    command = ['samtools','mpileup','-uf',ref,single_object.identifier]
+    command = ['samtools','mpileup','-uf',ref_file,single_object.identifier]
     f=file(outfile,'w')
     try:
         process=subprocess.Popen(command,shell=False,

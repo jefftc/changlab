@@ -2,99 +2,73 @@
 {{=form_queue}}
 <center><h1>  {{=pretty_name}}</h1></center>
 {{=form.custom.begin}}
-{{=form.custom.submit}}
 <table width="100%">
-<tr><td><td><td>
-    <h2> inputs</h2>
+    <tr><td>
+  <h2> Input</h2>
+        <h3>  Please upload your data in one of these ways.</h3>
+        </td><td><td>
+        <font size="5">{{=form.custom.submit}}</font>
+        </td></tr>
+</table>
 {{labels = form.custom.widget.keys()}}
 {{left_labels=labels[:]}}
-{{for label in labels:}}
+<!--{{for label in labels:}}
     {{if label in protocol_inputs:}}
     	{{left_labels.remove(label)}}
     	{{left_labels.remove(label+'_content')}}
-    	{{=label}}:{{=form.custom.widget[label]}}<br/>
-    	{{=label+'_content'}}:{{=form.custom.widget[label+'_content']}}<br/>
+    	{{=label}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label]}}<br/>
+    	{{=label+'_content'}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label+'_content']}}<br/>
     {{pass}}
- {{pass}}  
-
-{{for i in range(4):}}
+ {{pass}} --> 
+<table>
+ <tr>
+{{for i in range(10):}}
     {{label='myfile'+str(i)}}    
-    {{=label}}:{{=form.custom.widget[label]}}<br/>
-    {{=label+'_content'}}:{{=form.custom.widget[label+'_content']}}<br/>
-    {{=label+'_path'}}:{{=form.custom.widget[label+'_path']}}<br/>
+    {{=label}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label]}}&nbsp;&nbsp;&nbsp;
+    {{=label+'_content'}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label+'_content']}}<br/>
+{{=label+'_id'}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label+'_id']}} <font size="5">&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</font> 
+    {{=label+'_path'}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label+'_path']}}<br/>
     {{left_labels.remove(label+'_content')}}
     {{left_labels.remove(label+'_path')}}
+     {{left_labels.remove(label+'_id')}}
+    
     {{left_labels.remove(label)}}
 {{pass}}
+ {{left_labels.remove('id')}}
  
- </td><td><td><td>
-    <h2> {{=column_name[0]}}</h2>
-{{for label in labels:}}
-    {{if label in protocol_parameters.keys():}}
-    	{{if  protocol_parameters[label].category==column_name[0]:}}
-    	{{=label}}:{{=form.custom.widget[label]}}<br/>
-    	{{left_labels.remove(label)}}
+{{for i in range(len(column_name)):}}
+ <tr><td><td><td>
+ <h2> {{=column_name[i]}}</h2>
+     </td><td><td><td>
+	{{for label in labels:}}
+    	{{if label in protocol_parameters.keys():}}
+    		{{if  protocol_parameters[label].category==column_name[i]:}}
+     <p style="line-height: 78%;"> {{=protocol_parameters[label].pretty_name}}</p><br/>
+    			{{left_labels.remove(label)}}
+    		{{pass}}
     	{{pass}}
-    {{pass}}
-{{pass}}
-    </td></td><td><td>
-<h2>{{=column_name[1]}}</h2>
-{{for label in labels:}}
-{{if label in protocol_parameters.keys():}}
-{{if  protocol_parameters[label].category==column_name[1]:}}
-    	{{=label}}:{{=form.custom.widget[label]}} <br/>
-    	{{left_labels.remove(label)}}
-    {{pass}}
-    {{pass}}
-{{pass}}
-</td></td></td><td>
-<h2>{{=column_name[2]}}</h2>
-{{for label in labels:}}
-{{if label in protocol_parameters.keys():}}
-{{if  protocol_parameters[label].category==column_name[2]:}}
-    {{=label}}:{{=form.custom.widget[label]}}<br/>
-    {{left_labels.remove(label)}}
-    {{pass}}
-    {{pass}}
-{{pass}}
-
-</tr></tr></tr></tr>
-</table>
-
-<table width="60%">
-<tr><td><td>
-    <h2> {{=column_name[3]}}</h2>
-{{for label in labels:}}
-{{if label in protocol_parameters.keys():}}
-{{if  protocol_parameters[label].category==column_name[3]:}}
-	{{left_labels.remove(label)}}
-	{{=label}}:{{=form.custom.widget[label]}}<br/>
-{{pass}}
-{{pass}}
-    {{pass}}
-    </td><td><td>
-    <h2> {{=column_name[4]}}</h2>
-{{for label in labels:}}
-{{if label in protocol_parameters.keys():}}
-{{if  protocol_parameters[label].category==column_name[4]:}}
-	{{left_labels.remove(label)}}
-	{{=label}}:{{=form.custom.widget[label]}}<br/>
-{{pass}}
-{{pass}}
-    {{pass}}
-    </td></td><td>
-
-{{left_labels.remove('id')}}
-{{if left_labels and column_name[5]==5:}}
-<h2>  {{=column_name[5]}}</h2>
-		{{for label in left_labels:}}
-			{{if label in protocol_parameters.keys():}}
-				{{if  protocol_parameters[label].category==column_name[5]:}}
-					{{=label}}:{{=form.custom.widget[label]}}<br/>
-				{{pass}}
-			{{pass}}
+	{{pass}}
+     </td></td><td><td>
+     	{{for label in labels:}}
+    		{{if label in protocol_parameters.keys():}}
+    			{{if  protocol_parameters[label].category==column_name[i]:}}
+					{{=form.custom.widget[label]}}<br/>
+    			
+    			{{pass}}
+    		{{pass}}
 		{{pass}}
+</td></td></td><td>
+
 {{pass}}
-</td></td></td>
+    
+<tr><td><td></td>
+    <td><td></td>
+         <td><td>
+         <h2> <center>{{=form.custom.submit}}</center></h2>
+    </td></td>
+</tr>
 </table>
+
+
+    
 {{=form.custom.end}}

@@ -43,7 +43,6 @@ def run(outfiles,parameters,pipelines,user,jobname):
     
     cwd = os.getcwd()
     os.chdir(result_folder)
-    module = protocol_utils.import_protocol('normalize_file')
     try:
         lines = []
         w = lines.append

@@ -14,8 +14,8 @@ ILLUMINA = 'Illumina Normalize Parameters'
 CLASS_NEIGHBORS='Class Neighbor Parameters'
 
 class Parameter:
-    def __init__(self,name,pretty_name,default_value,
-                 type,choices,category,description):
+    def __init__(self,name,pretty_name=None,default_value=None,
+                 type=None,choices=None,category=None,description=None):
         self.name = name
         self.pretty_name = pretty_name
         self.default = default_value
@@ -26,6 +26,7 @@ class Parameter:
 
         
 def get_result_folder(protocol, outfiles, parameters, pipeline, foldername):
+    """generate the result folder of a pipeline"""
     OUTPUTPATH = config.OUTPUTPATH
     inputid = module_utils.get_inputid(outfiles[0][0])
     folder_string = hash_method.hash_parameters(
@@ -84,13 +85,6 @@ def pretty_hostname():
     return hostname
 
 
-##def check_parameters(parameters):
-##    allow_type = ['string', 'float', 'integer', 'list']
-##    for value in parameters.itervalues():
-##        if not isinstance(value, list):
-##            assert value in allow_type, '%s is not a allow type' % value
-##    return True
-
 def check_parameters(PARAMETERS):
     allow_type = ['string', 'float', 'integer', 'list']
     for parameter in PARAMETERS:
@@ -98,28 +92,6 @@ def check_parameters(PARAMETERS):
             assert parameter.type in allow_type, '%s is not a allow type' % parameter.type
     return True
 
-
-##def check_default(default, parameters):
-##    for key in default.keys():
-##        assert key in parameters.keys(), '%s is not a valid parameter' % key
-##        value = str(default[key])
-##        if isinstance(parameters[key], list):
-##            assert value in parameters[key], (
-##                '%s is not correct value for %s' % (value, key))
-##        elif parameters[key] == 'float':
-##            assert module_utils.isnumber(value), (
-##                '%s is not a float number for %s' % (value, key))
-##        elif parameters[key] == 'string':
-##            assert isinstance(value, str), '%s is not a string for %s' % (
-##                str(value), key)
-##        elif parameters[key] == 'integer':
-##            assert value.isdigit(), '%s is not a digit for %s' % (
-##                str(value), key)
-##        elif parameters[key] == 'list':
-##            assert isinstance(value, str), (
-##                '%s is not a string which will convert to a list for %s' % (
-##                    str(value), key))
-##    return True
 
 
 def check_default(PARAMETERS):

@@ -39,7 +39,7 @@ def job_submit(job_name, command_line,user):
         'A job name %s already exisits, please give a different job name'
         %job_name)
     submitted = datetime.datetime.now()
-    submitted = submitted.strftime('%D:%H:%M:%S')
+    submitted = submitted.strftime('%m/%d%l:%M%p')
     info_file = os.path.join(processing_info,
                              hash_command(submitted,command_line) + '.txt')
     try:
@@ -55,7 +55,7 @@ def job_submit(job_name, command_line,user):
         job_information = process.communicate()[1]
         job_number = job_information.split()[1]
         add2log((job_number, job_name,
-                 'pending','NA','NA', submitted, str(command_line),user))
+                 'pending',' ',' ', submitted, str(command_line),user))
         return job_number
     finally:
         os.remove(filename)
@@ -134,14 +134,14 @@ def update_log(job_number=None, status=None):
     keys = log_dict.keys()
     keys.sort()
     check_time = datetime.datetime.now()
-    check_time = check_time.strftime('%D:%H:%M:%S')
+    check_time = check_time.strftime('%m/%d%l:%M%p')
     for key in keys:
         job_status = log_dict[key][1]
         job_start = log_dict[key][2]
         job_end = log_dict[key][3]
-        if job_status == 'running' and job_start == 'NA':
+        if job_status == 'running' and job_start == ' ':
             log_dict[key][2]= check_time
-        if job_status in ['completed','killed'] and job_end == 'NA':
+        if job_status in ['completed','killed'] and job_end == ' ':
             log_dict[key][3] = check_time
         f.write('\t'.join([key]+log_dict[key])+'\n')
     f.close()

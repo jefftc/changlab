@@ -1,28 +1,26 @@
 #cluster_genes.py
-
 from Betsy.protocol_utils import Parameter
-from Betsy import protocol_utils
 
 PRETTY_NAME="Cluster data set."
-COMMON = protocol_utils.COMMON
-NORMALIZE = protocol_utils.NORMALIZE
-OPTIONAL = protocol_utils.OPTIONAL
-ILLUMINA = protocol_utils.ILLUMINA
-CLASS_NEIGHBORS = protocol_utils.CLASS_NEIGHBORS
+COMMON = 'Common Parameters'
+NORMALIZE = 'Normalize Parameters'
+OPTIONAL = 'Optional Parameters'
+ILLUMINA = 'Illumina Normalize Parameters'
+CLASS_NEIGHBORS='Class Neighbor Parameters'
 CLUSTER = 'Cluster parameters'
-column_name=[COMMON,NORMALIZE,OPTIONAL,ILLUMINA,CLASS_NEIGHBORS,CLUSTER]
+CATEGORIES=[COMMON,NORMALIZE,OPTIONAL,ILLUMINA,CLASS_NEIGHBORS,CLUSTER]
 
 #input predicates
 INPUTS = [
     'gse_id',
-    'class_label_file',
-    'gene_list_file',
     'gse_id_and_platform',
     'cel_files',
     'gpr_files',
     'idat_files',
     'agilent_files',
     'input_signal_file',
+    'class_label_file',
+    'gene_list_file',
     'rename_list_file']
 
 #output predicates
@@ -42,116 +40,112 @@ predicate2arguments = {
     'rename_list_file': ([], '[]')}
 
 #parameter objects
-preprocess = Parameter('preprocess','Preprocess',
-                         None, None, ['rma', 'mas5',
+PARAMETERS=[Parameter('preprocess',pretty_name='Preprocess',
+                         choices=['rma', 'mas5',
                         'loess', 'illumina_controls',
                         'illumina', 'agilent',
-                        'unknown_preprocess'],COMMON,
-                        '')
-gene_center = Parameter('gene_center','Gene Center',
-                        'no_gene_center', None,
-                        ['mean', 'median', 'no_gene_center'],
-                        COMMON,'')
-gene_normalize = Parameter('gene_normalize','Gene Normalize',
-                           'no_gene_normalize',None,
-                           ['variance', 'sum_of_squares', 'no_gene_normalize'],
-                           NORMALIZE,'')
-quantile = Parameter('quantile','Quantile','no_quantile', None,
-                     ['yes_quantile', 'no_quantile'],COMMON,'')
-dwd = Parameter('dwd','Dwd','no_dwd',None,['yes_dwd', 'no_dwd'],
-                NORMALIZE,'')
-bfrm = Parameter('bfrm','BFRM','no_bfrm',None,
-                 ['yes_bfrm', 'no_bfrm'],NORMALIZE,'')
-shiftscale = Parameter('shiftscale','Shift Scale','no_shiftscale',None,
-                       ['yes_shiftscale', 'no_shiftscale'],NORMALIZE,'')
-combat = Parameter('combat','Combat','no_combat',None,
-                   ['yes_combat', 'no_combat'],NORMALIZE,'')
-gene_order = Parameter('gene_order','Gene Order','no_order',None,
-                       ['t_test_p', 't_test_fdr', 'by_gene_list', 'no_order',
-                   'by_class_neighbors'],COMMON,'')
-predataset = Parameter('predataset','Predataset Process','no_predataset',None,
-                       ['yes_predataset', 'no_predataset'],COMMON,'')
-filtering = Parameter('filter','Filter','0','integer',None,COMMON,'')
-has_missing_value = Parameter('has_missing_value','How to fill missing value',
-                              None,None,['no_missing', 'median_fill', 'zero_fill',
-                          'unknown_missing'],COMMON,'')
-is_logged = Parameter('is_logged','Logged or Not','logged',None,['no_logged', 'logged'],
-                      COMMON,'')
-contents = Parameter('contents','Contents',None,'list',None,OPTIONAL,'')
-num_features = Parameter('num_features','Feature Number','0','integer',None,COMMON,'')
-illu_manifest = Parameter('ill_manifest', 'Illumina Manifest File',None,
-                          'string',None,ILLUMINA,'')
-illu_chip= Parameter('ill_chip', 'Illumina chip File',None,'string',None,ILLUMINA,'')
-illu_clm = Parameter('ill_clm', 'Illumina clm File',None,'string',None,ILLUMINA,'')
-illu_custom_chip = Parameter('ill_custom_chip', 'Illumina Custom Chip File',None,
-                             'string',None,ILLUMINA,'')
-illu_custom_manifest = Parameter('ill_custom_manifest', 'Illumina Custom Manifest File',
-                                 None,'string',None,ILLUMINA,'')
-illu_bg_mode = Parameter('ill_bg_mode', 'Illumina Background Mode',None,None,
-                         ['ill_yes', 'ill_no'],ILLUMINA,'')
-illu_coll_mode = Parameter('ill_coll_mode', 'Illumina Coll Mode',None,None,
-                           ['ill_none', 'ill_max', 'ill_median'],ILLUMINA,'')
-
-cn_num_neighbors = Parameter('cn_num_neighbors','Class Neighbors Number',None,'integer',None,
-                          CLASS_NEIGHBORS,'')
-cn_num_perm = Parameter('cn_num_perm','Class Permutation Number',None,'integer',None,
-                          CLASS_NEIGHBORS,'')
-cn_user_pval = Parameter('cn_user_pval','Class User Pval',None,'float',None,
-                          CLASS_NEIGHBORS,'')
-cn_mean_or_median = Parameter('cn_mean_or_median','Class Neighbors Mean or Median',None,None,
-                             ['cn_mean', 'cn_median'],CLASS_NEIGHBORS,'')
-cn_ttest_or_snr = Parameter('cn_ttest_or_snr','Class Neighbors ttest or snr',None,None,
-                            ['cn_test', 'cn_snr'],CLASS_NEIGHBORS,'')
-cn_filter_data = Parameter('cn_filter_data','Class Neighbors',None,None,
-                           ['cn_yes', 'cn_no'],CLASS_NEIGHBORS,'')
-cn_min_threshold = Parameter('cn_min_threshold','Class neighbors Min Threshold',None, 'float',
-                             None,CLASS_NEIGHBORS,'')
-cn_max_threshold = Parameter('cn_max_threshold','Class neighbors Max Threshold',None, 'float',
-                             None,CLASS_NEIGHBORS,'')
-cn_min_folddiff = Parameter('cn_min_folddiff','Class neighbors Min Fold Diff',None, 'float',
-                             None,CLASS_NEIGHBORS,'')
-cn_abs_folddiff = Parameter('cn_abs_diff','Class neighbors Abs Diff',None, 'float',
-                             None,CLASS_NEIGHBORS,'')
-gene_select_threshold = Parameter('gene_select_threshold','Gene Selection Threshold',None, 'float',
-                             None,OPTIONAL,'')
-rename_sample = Parameter('rename_sample','Rename Sample','no_rename',None,
-                          ['yes_rename', 'no_rename'], OPTIONAL,'')
-num_factors = Parameter('num_factors','Number of Factors',None,'integer',None,
-                           OPTIONAL,'')
-pca_gene_num = Parameter('pca_gene_num','PCA Gene Number',None,'integer',None,
-                           OPTIONAL,'')
-unique_genes = Parameter('unique_genes','Unique Genes','no_unique_genes',None,
-                         ['average_genes', 'high_var', 'first_gene','no_unique_genes'],
-                         COMMON,'')
-platform = Parameter('platform','Platform',None,None,["'HG_U133_Plus_2'", "'HG_U133B'", "'HG_U133A'",
+                        'unknown_preprocess'],category=COMMON),
+            Parameter('gene_center',pretty_name='Gene Center',
+                        default_value='no_gene_center', 
+                        choices=['mean', 'median', 'no_gene_center'],
+                        category=COMMON),
+            Parameter('gene_normalize',pretty_name='Gene Normalize',
+                           default_value='no_gene_normalize',
+                           choices=['variance', 'sum_of_squares', 'no_gene_normalize'],
+                           category=COMMON),
+            Parameter('quantile',pretty_name='Quantile',default_value='no_quantile', 
+                     choices=['yes_quantile', 'no_quantile'],category=NORMALIZE),
+            Parameter('dwd',pretty_name='Dwd',default_value='no_dwd',choices=['yes_dwd', 'no_dwd'],
+                category=NORMALIZE),
+            Parameter('bfrm',pretty_name='BFRM',default_value='no_bfrm',
+                 choices=['yes_bfrm', 'no_bfrm'],category=NORMALIZE),
+            Parameter('shiftscale',pretty_name='Shift Scale',default_value='no_shiftscale',
+                       choices=['yes_shiftscale', 'no_shiftscale'],category=NORMALIZE),
+            Parameter('combat',pretty_name='Combat',default_value='no_combat',
+                   choices=['yes_combat', 'no_combat'],category=NORMALIZE),
+            Parameter('gene_order',pretty_name='Gene Order',default_value='no_order',
+                       choices=['t_test_p', 't_test_fdr', 'by_gene_list', 'no_order',
+                   'by_class_neighbors'],category=COMMON),
+            Parameter('predataset',pretty_name='Predataset Process',default_value='no_predataset',
+                       choices=['yes_predataset', 'no_predataset'],category=COMMON),
+            Parameter('filter',pretty_name='Filter',default_value='0',type='integer',
+                      category=COMMON),
+            Parameter('has_missing_value',pretty_name='How to fill missing value',
+                              choices=['no_missing', 'median_fill', 'zero_fill',
+                          'unknown_missing'],category=COMMON),
+            Parameter('is_logged',pretty_name='Logged or Not',default_value='logged',
+                      choices=['no_logged', 'logged'],category=COMMON),
+            Parameter('contents',pretty_name='Contents',type='list',category=OPTIONAL),
+            Parameter('num_features',pretty_name='Feature Number',default_value='0',
+                         type='integer',category=COMMON),
+            Parameter('ill_manifest', pretty_name='Illumina Manifest File',
+                          type='string',category=ILLUMINA),
+            Parameter('ill_chip', pretty_name='Illumina chip File',type='string',
+                     category=ILLUMINA),
+            Parameter('ill_clm', pretty_name='Illumina clm File',type='string',
+                     category=ILLUMINA),
+            Parameter('ill_custom_chip', pretty_name='Illumina Custom Chip File',
+                             type='string',category=ILLUMINA),
+            Parameter('ill_custom_manifest', pretty_name='Illumina Custom Manifest File',
+                                 type='string',category=ILLUMINA),
+            Parameter('ill_bg_mode', pretty_name='Illumina Background Mode',
+                         choices=['ill_yes', 'ill_no'],category=ILLUMINA),
+            Parameter('ill_coll_mode', pretty_name='Illumina Coll Mode',
+                           choices=['ill_none', 'ill_max', 'ill_median'],category=ILLUMINA),
+            Parameter('cn_num_neighbors',pretty_name='Class Neighbors Number',
+                             type='integer',category=CLASS_NEIGHBORS),
+            Parameter('cn_num_perm',pretty_name='Class Permutation Number',
+                        type='integer',category=CLASS_NEIGHBORS),
+            Parameter('cn_user_pval',pretty_name='Class User Pval',type='float',
+                          category=CLASS_NEIGHBORS),
+            Parameter('cn_mean_or_median',pretty_name='Class Neighbors Mean or Median',
+                              choices=['cn_mean', 'cn_median'],category=CLASS_NEIGHBORS),
+            Parameter('cn_ttest_or_snr',pretty_name='Class Neighbors ttest or snr',
+                            choices=['cn_test', 'cn_snr'],category=CLASS_NEIGHBORS),
+            Parameter('cn_filter_data',pretty_name='Class Neighbors',
+                           choices=['cn_yes', 'cn_no'],category=CLASS_NEIGHBORS),
+            Parameter('cn_min_threshold',pretty_name='Class neighbors Min Threshold',
+                             type='float',category=CLASS_NEIGHBORS),
+            Parameter('cn_max_threshold',pretty_name='Class neighbors Max Threshold',
+                             type='float',category=CLASS_NEIGHBORS),
+            Parameter('cn_min_folddiff',pretty_name='Class neighbors Min Fold Diff',
+                            type='float',category=CLASS_NEIGHBORS),
+            Parameter('cn_abs_diff','Class neighbors Abs Diff',None, 'float',
+                             None,CLASS_NEIGHBORS,''),
+            Parameter('gene_select_threshold',pretty_name='Gene Selection Threshold',
+                                  type= 'float',category=OPTIONAL),
+            Parameter('rename_sample',pretty_name='Rename Sample',default_value='no_rename',
+                          choices=['yes_rename', 'no_rename'], category=OPTIONAL),
+            Parameter('num_factors',pretty_name='Number of Factors',type='integer',
+                           category=OPTIONAL),
+            Parameter('pca_gene_num',pretty_name='PCA Gene Number',type='integer',
+                           category=OPTIONAL),
+            Parameter('unique_genes',pretty_name='Unique Genes',default_value='no_unique_genes',
+                         choices=['average_genes', 'high_var', 'first_gene','no_unique_genes'],
+                         category=COMMON),
+            Parameter('platform',pretty_name='Platform',choices=["'HG_U133_Plus_2'", "'HG_U133B'", "'HG_U133A'",
                  "'HG_U133A_2'", "'HG_U95A'", "'HumanHT_12'", "'HumanWG_6'","'HG_U95Av2'",
                  "'Entrez_ID_human'", "'Entrez_symbol_human'", "'Hu6800'",
                  "'Mouse430A_2'", "'MG_U74Cv2'", "'Mu11KsubB'", "'Mu11KsubA'",
                  "'MG_U74Av2'", "'Mouse430_2'", "'MG_U74Bv2'",
                  "'Entrez_ID_mouse'", "'MouseRef_8'", "'Entrez_symbol_mouse'",
-                 "'RG_U34A'", "'RAE230A'", 'unknown_platform'],OPTIONAL,'')
-duplicate_probe = Parameter('duplicate_probe','Duplicate Probe',None,None,
-                            ['yes_duplicate_probe', 'high_var_probe','closest_probe'],OPTIONAL,'')
-has_annotation_gene_id = Parameter('has_annotation_gene_id','Annotation Gene Id',None,None,
-                                   ['yes_gene_id','no_gene_id'],OPTIONAL,'')
-group_fc = Parameter('group_fc', 'Fold Change',None,'integer',None,COMMON,'')
-cluster_alg = Parameter('cluster_alg', 'Cluster algorithm','kmeans',
-                        None,['kmeans', 'pca', 'hierarchical', 'som'],CLUSTER,'')
-color = Parameter('color', 'Color',None,None,['red_green', 'blue_yellow'],CLUSTER,'')
-hm_width = Parameter('hm_width', 'Heatmap Width',None,'integer',None,CLUSTER,'')
-hm_height = Parameter('hm_height', 'Heatmap Height',None,'integer',None,CLUSTER,'')
-distance = Parameter('distance', 'Distance','correlation',None,['correlation', 'euclidean'],CLUSTER,'')
-k_value = Parameter('k', 'K value','5','integer',None,CLUSTER,'')
+                 "'RG_U34A'", "'RAE230A'", 'unknown_platform'],category=OPTIONAL),
+            Parameter('duplicate_probe',pretty_name='Duplicate Probe',
+                            choices=['yes_duplicate_probe', 'high_var_probe','closest_probe'],
+                            category=OPTIONAL),
+            Parameter('has_annotation_gene_id',pretty_name='Annotation Gene Id',
+                                   choices=['yes_gene_id','no_gene_id'],category=OPTIONAL),
+            Parameter('group_fc', pretty_name='Fold Change',type='integer',category=COMMON),
+            Parameter('cluster_alg', pretty_name='Cluster algorithm',default_value='kmeans',
+                        choices=['kmeans', 'pca', 'hierarchical', 'som'],category=CLUSTER),
+            Parameter('color', pretty_name='Color',choices=['red_green', 'blue_yellow'],category=CLUSTER),
+            Parameter('hm_width', pretty_name='Heatmap Width',type='integer',category=CLUSTER),
+            Parameter('hm_height', pretty_name='Heatmap Height',type='integer',category=CLUSTER),
+            Parameter('distance', pretty_name='Distance',default_value='correlation',
+                      choices=['correlation', 'euclidean'],category=CLUSTER),
+            Parameter('k', pretty_name='K value',default_value='5',type='integer',category=CLUSTER)]
 
-PARAMETERS_list = [preprocess,gene_center,gene_normalize,quantile,dwd,bfrm,shiftscale,combat,gene_order,
-              predataset,filtering,has_missing_value,is_logged,contents,num_features,
-              illu_manifest,illu_chip,illu_clm,illu_custom_chip,illu_custom_manifest,illu_bg_mode,
-              illu_coll_mode,cn_num_neighbors,cn_num_perm,cn_user_pval,cn_mean_or_median,
-              cn_ttest_or_snr,cn_filter_data,cn_min_threshold,cn_max_threshold,cn_min_folddiff,
-              cn_abs_folddiff,gene_select_threshold,rename_sample,num_factors,pca_gene_num,
-              unique_genes,platform,duplicate_probe,has_annotation_gene_id,group_fc,cluster_alg,
-                   color,hm_width,hm_height,distance,k_value]
 
-PARAMETERS = dict()
-for parameter in PARAMETERS_list:
-    PARAMETERS[parameter.name]=parameter
+
+
+
