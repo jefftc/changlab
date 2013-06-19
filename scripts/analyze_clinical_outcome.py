@@ -25,9 +25,10 @@
 # make_group_names
 # make_zscore_names
 #
-# write_prism_file
 # plot_km
 # plot_groups
+# write_km_prism_file
+# write_group_prism_file
 #
 # start_and_init_R
 # colortuple2hex
@@ -473,20 +474,36 @@ def discretize_by_zscore(values, hi_zscore, lo_zscore):
     # Return a list that specifies the group for each member of
     # values.  Group 0 are values <= -zscore, 1 are -zscore < value <
     # zscore, and 2 are values >= zscore.
-    from genomicode import jmath
+    from genomicode.jmath import R_equals, R_fn, R_var
+
+    z_model = 1.0
 
     R = start_and_init_R()
 
-    jmath.R_equals(values, 'x')
-    R('M <- find.outliers(x, z.cutoff=1)')
+    R_equals(values, 'x')
+    params = {
+        "z.model" : z_model,
+        }
+    if hi_zscore is not None:
+        params["z.outlier.hi"] = hi_zscore
+    if lo_zscore is not None:
+        params["z.outlier.lo"] = lo_zscore
+    R_fn('find.outliers', R_var("x"), RETVAL="M", **params)
     M = R['M']
-    z = list(M.rx2('z'))
+    ## z = list(M.rx2('z'))
+    outlier = list(M.rx2('outlier'))
 
-    groups = [1] * len(z)
-    for i in range(len(z)):
-        if lo_zscore is not None and z[i] <= lo_zscore:
+    ## groups = [1] * len(z)
+    ## for i in range(len(z)):
+    ##     if lo_zscore is not None and z[i] <= lo_zscore:
+    ##         groups[i] = 0
+    ##     elif hi_zscore is not None and z[i] >= hi_zscore:
+    ##         groups[i] = 2
+    groups = [1] * len(outlier)
+    for i in range(len(outlier)):
+        if outlier[i] == -1:
             groups[i] = 0
-        elif hi_zscore is not None and z[i] >= hi_zscore:
+        elif outlier[i] == 1:
             groups[i] = 2
     return groups
 
@@ -520,18 +537,6 @@ def make_zscore_names(expression_or_score):
         "High Outlier",
         ]
     return names
-
-
-def write_prism_file(filename, survival, dead, group_indexes, group_names):
-    from genomicode import jmath
-    
-    R = start_and_init_R()
-    jmath.R_equals(filename, 'filename')
-    group = [group_names[i] for i in group_indexes]
-    jmath.R_equals(survival, 'survival')
-    jmath.R_equals(dead, 'dead')
-    jmath.R_equals(group, 'group')
-    R('write.km.prism.multi(filename, survival, dead, group)')
 
 
 def plot_km(
@@ -618,6 +623,18 @@ def plot_km(
     R_fn('dev.off')
     
 
+def write_km_prism_file(filename, survival, dead, group_indexes, group_names):
+    from genomicode import jmath
+    
+    R = start_and_init_R()
+    jmath.R_equals(filename, 'filename')
+    group = [group_names[i] for i in group_indexes]
+    jmath.R_equals(survival, 'survival')
+    jmath.R_equals(dead, 'dead')
+    jmath.R_equals(group, 'group')
+    R('write.km.prism.multi(filename, survival, dead, group)')
+
+
 def plot_groups(filename, scores, group_names, groups):
     from genomicode import colorlib
     from genomicode.jmath import R_fn, R_equals, R_var
@@ -636,6 +653,12 @@ def plot_groups(filename, scores, group_names, groups):
         x = [colortuple2hex(*x) for x in x]
         colors = x
     col = [colors[x] for x in groups]
+
+    # Only keep the group_names and colors that occur in the groups.
+    assert len(colors) == len(group_names)
+    uniq_groups = sorted({}.fromkeys(groups))
+    colors = [colors[i] for i in uniq_groups]
+    group_names = [group_names[i] for i in uniq_groups]
     
     x = range(len(scores))
     y = scores
@@ -678,6 +701,27 @@ def plot_groups(filename, scores, group_names, groups):
     R_fn("dev.off")
     
 
+def write_km_group_file(filename, scores, group_names, groups):
+    from genomicode import colorlib
+    from genomicode.jmath import R_fn, R_equals, R_var
+    from genomicode import jmath
+    
+    R = start_and_init_R()
+
+    assert len(scores) == len(groups)
+    group2scores = {}
+    for g, s in zip(groups, scores):
+        if g not in group2scores:
+            group2scores[g] = []
+        group2scores[g].append(s)
+
+    R("DATA <- list()")
+    for i in sorted(group2scores):
+        R_equals(group2scores[i], "x")
+        R('DATA[["%s"]] <- x' % group_names[i])
+    R_fn('write.boxplot', filename, R_var('DATA'))
+
+
 GLOBAL_R = None
 def start_and_init_R():
     global GLOBAL_R
@@ -689,13 +733,16 @@ def start_and_init_R():
         assert os.path.exists(config.changlab_Rlib)
         km_lib = os.path.join(config.changlab_Rlib, "kaplanmeierlib.R")
         stat_lib = os.path.join(config.changlab_Rlib, "statlib.R")
+        prism_lib = os.path.join(config.changlab_Rlib, "prismlib.R")
         assert os.path.exists(km_lib), "File not found: %s" % km_lib
         assert os.path.exists(stat_lib), "File not found: %s" % stat_lib
+        assert os.path.exists(prism_lib), "File not found: %s" % prism_lib
 
         R = jmath.start_R()
         R('require(splines, quietly=TRUE)')
         R('source("%s")' % km_lib)
         R('source("%s")' % stat_lib)
+        R('source("%s")' % prism_lib)
         GLOBAL_R = R
     return GLOBAL_R
 
@@ -910,8 +957,9 @@ def main():
     # Files generated:
     # <filestem>.stats.txt      Or to STDOUT if no <filestem> given.
     # <filestem>.<outcome>.<gene_id>.km.png      K-M plot.
-    # <filestem>.<outcome>.<gene_id>.prism.txt   Prism format for K-M analysis.
+    # <filestem>.<outcome>.<gene_id>.km.txt      Prism format for K-M analysis.
     # <filestem>.<outcome>.<gene_id>.groups.png  Group for each sample.
+    # <filestem>.<outcome>.<gene_id>.groups.txt  Prism format.
 
     # Write the output in a table with headers:
     # <headers>            # From the expression or gene set file.
@@ -968,9 +1016,9 @@ def main():
         gene_id_h = hashlib.hash_var(gene_id)
 
         if args.write_prism:
-            filename = "%s%s.%s.prism.txt" % (
+            filename = "%s%s.%s.km.txt" % (
                 filestem, time_header, gene_id_h)
-            write_prism_file(
+            write_km_prism_file(
                 filename, SURV["survival"], SURV["dead"], SURV["groups"],
                 SURV["group_names"])
         if args.plot_km:
@@ -987,6 +1035,11 @@ def main():
             filename = "%s%s.%s.groups.png" % (
                 filestem, time_header, gene_id_h)
             plot_groups(
+                filename, SURV["scores"], SURV["group_names"], SURV["groups"])
+        if args.plot_km:
+            filename = "%s%s.%s.groups.txt" % (
+                filestem, time_header, gene_id_h)
+            write_km_group_file(
                 filename, SURV["scores"], SURV["group_names"], SURV["groups"])
 
             
