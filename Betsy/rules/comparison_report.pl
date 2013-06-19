@@ -205,7 +205,7 @@ make_normalize_report(Parameters,Modules):-
 
     % Input 5:actb_plot
     actb_plot(NewParameters,Modules5_1),
-    append(Modules5_1,[pipeline_label,[label,'Plotting_the_actb_genes']],Modules5),
+    append(Modules5_1,[pipeline_label,[label,'Plotting_the_ACTB_housekeeping_gene']],Modules5),
 
     % Conditions: if preprocess is illumina
     get_value(NewParameters,preprocess,unknown_preprocess,Preprocess),
@@ -220,11 +220,11 @@ make_normalize_report(Parameters,Modules):-
 
     % Input7: biotin_plot
     biotin_plot(NewParameters,Modules7_1),
-    append(Modules7_1,[pipeline_label,[label,'Plotting_the_biotin_genes']],Modules7),
+    append(Modules7_1,[pipeline_label,[label,'Plotting_the_biotin_signal']],Modules7),
 
     % Input8: housekeeping_plot
     housekeeping_plot(NewParameters,Modules8_1),
-    append(Modules8_1,[pipeline_label,[label,'Plotting_the_housekeeping_genes']],Modules8),
+    append(Modules8_1,[pipeline_label,[label,'Plotting_the_Illumina_housekeeping_genes']],Modules8),
 
     % Input9: hyb_bar_plot
     hyb_bar_plot(NewParameters,Modules9_1),
@@ -233,7 +233,7 @@ make_normalize_report(Parameters,Modules):-
     Modules=[Modules1,Modules2,Modules3,Modules4,Modules5,Modules7,Modules8,Modules9,Modules6];
     not(member(Preprocess,[illumina])),
     control_plot(NewParameters,Modules9_1),
-    append(Modules9_1,[pipeline_label,[label,'Plotting_the_control_probes']],Modules9),
+    append(Modules9_1,[pipeline_label,[label,'Extracting_the_signal_values_of_the_control_probes']],Modules9),
     Modules=[Modules1,Modules2,Modules3,Modules4,Modules5,Modules9]).
 
 /*-------------------------------------------------------------------*/
@@ -245,9 +245,29 @@ make_geneset_report(Parameters,Modules):-
     % Input1:geneset_analysis
     geneset_analysis(Parameters,Modules1),
     append(Modules1,[pipeline_label,[label,'Doing_geneset_analysis_on_the_samples']],Modules1_1),
-
     % Input2:geneset_plot
     geneset_plot(Parameters,Modules2),
     append(Modules2,[pipeline_label,[label,'Plotting_geneset_analysis_result']],Modules2_1),
-
     Modules=[Modules1_1,Modules2_1].
+/*-------------------------------------------------------------------*/
+
+make_call_variants_report(Parameters,Modules):-
+    convert_vcf_parameters(Parameters,NewParameters1),
+    % Input1: vcf_file with standard call variants
+    append(NewParameters1,[reheader,standard],NewParameters2),
+    vcf_file(NewParameters2,Past_Modules1),
+    append(Past_Modules1,[pipeline_label,[label,'call_variants_by_GATK']],Past_Modules2),
+    % Input2: call_variants_by_mpileup
+    append(NewParameters1,[reheader,bcftool,filter,yes_filter],NewParameters3),
+    vcf_file(NewParameters3,Past_Modules3),
+    append(Past_Modules3,[pipeline_label,[label,'call_variants_by_mpileup']],Past_Modules4),
+    Modules = [Past_Modules2,Past_Modules4].
+
+
+/*-------------------------------------------------------------------------*/
+convert_vcf_parameters(Parameters,NewParameters):-
+    get_value(Parameters,contents,[unknown],Contents),
+    get_value(Parameters,read,single,Read),
+    get_value(Parameters,ref,hg19,Ref),
+    get_value(Parameters,recalibration,no_recalibration,Recalibration),
+    NewParameters=[contents,Contents,read,Read,ref,Ref,recalibration,Recalibration].

@@ -13,10 +13,18 @@ def run(parameters, objects, pipeline,user,jobname):
     GATK_BIN = module_utils.which(GATK_path)
     assert os.path.exists(GATK_path),(
         'cannot find the %s' %GATK_path)
-    ref = config.fly_ref
-    assert os.path.exists(ref),'the ref file %s does not exsits' %ref
+    species = parameters['ref']
+    if species == 'hg18':
+       ref_file = config.hg18_ref
+    elif species == 'hg19':
+       ref_file = config.hg19_ref
+    elif species == 'dm3':
+       ref_file = config.dm3_ref
+    elif species == 'mm9':
+       ref_file= config.mm9_ref
+    assert os.path.exists(ref_file),'the ref file %s does not exsits' %ref_file
     command = ['java','-jar',GATK_path,'-T','UnifiedGenotyper',
-              '-R',ref,'-I',single_object.identifier,
+              '-R',ref_file,'-I',single_object.identifier,
                '-o',outfile,'-rf', 'BadCigar','-stand_call_conf','50.0',
                '-stand_emit_conf', '10.0']
     process=subprocess.Popen(command,shell=False,

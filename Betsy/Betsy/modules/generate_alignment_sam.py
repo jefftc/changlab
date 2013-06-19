@@ -11,10 +11,14 @@ def run(parameters, objects, pipeline,user,jobname):
     single_object = get_identifier(parameters, objects)
     outfile = get_outfile(parameters, objects, pipeline)
     species = parameters['ref']
-    if species == 'human':
-       ref_file = config.human_ref
-    elif species == 'fly':
-       ref_file = config.fly_ref
+    if species == 'hg18':
+       ref_file = config.hg18_ref
+    elif species == 'hg19':
+       ref_file = config.hg19_ref
+    elif species == 'dm3':
+       ref_file = config.dm3_ref
+    elif species == 'mm9':
+       ref_file= config.mm9_ref
     assert os.path.exists(ref_file),'the ref_file %s does not exist' % ref_file
     read = parameters['read']
     if read == 'single':

@@ -124,8 +124,8 @@ def main():
         assert len(i.split(':')) == 2, (
             'parameters should format like key:value')
     module = protocol_utils.import_protocol(args.protocol)
-    protocol_utils.check_parameters(module.PARAMETERS_list)
-    protocol_utils.check_default(module.PARAMETERS_list)
+    protocol_utils.check_parameters(module.PARAMETERS)
+    protocol_utils.check_default(module.PARAMETERS)
     inputs = []
     identifiers = []
     in_dataset_ids = []
@@ -148,30 +148,31 @@ def main():
         in_contents.append(content)
         identifiers.append(identifier)
     parameters = dict()
-    keys = module.PARAMETERS.keys()
-    for parameter in module.PARAMETERS_list:
+    PARAMETERS_dict = dict()
+    for parameter in module.PARAMETERS:
+        PARAMETERS_dict[parameter.name]=parameter
         if parameter.default:
             parameters[parameter.name]=parameter.default
-    
+    keys = PARAMETERS_dict.keys()
     if args.parameters:
         for i in args.parameters:
             parpair = i.split(':')
             key, value = parpair
             assert key in keys, (
                 '%s is not a valid parameter key in %s' % (key, args.protocol)) 
-            if module.PARAMETERS[key].type == 'float':   
+            if PARAMETERS_dict[key].type == 'float':   
                 assert module_utils.is_number(value), (
                     '%s is not a number' % value)
                 parameters[key] = str(value)
-            elif module.PARAMETERS[key].type == 'integer':
+            elif PARAMETERS_dict[key].type == 'integer':
                 assert value.isdigit(), '%s is not a number' % value
                 parameters[key] = str(value)
-            elif module.PARAMETERS[key].type == 'list':
+            elif PARAMETERS_dict[key].type == 'list':
                 parameters[key] = '[' + value + ']'
-            elif module.PARAMETERS[key].type == 'string':
+            elif PARAMETERS_dict[key].type == 'string':
                 parameters[key] = '\'' + value + '\''
             else:
-                assert value in module.PARAMETERS[key].choices, (
+                assert value in PARAMETERS_dict[key].choices, (
                     '%s is not a valid parameter value in %s'
                     % (value, args.protocol))
                 parameters[key] = str(value)
@@ -186,11 +187,14 @@ def main():
             args.protocol, inputs, in_contents, output_file,
             parameters)
         for pipeline in pipelines:
-            print 'pipeline' + str(p_n), '\r'
+            pipeline_label = pipeline[-1].parameters['label']
+            pipeline_label = pipeline_label.replace('_',' ')
+            pipeline = pipeline[:-1]
+            print  'Pipeline ' + str(p_n) + ': '+ pipeline_label + '.\r'
             p_n = p_n + 1
             k = 1
             for analysis in pipeline:
-                print str(k) + '.', analysis.name, '\r'
+                print str(k) + '. ', analysis.name, '\r'
                 print 'parameters', analysis.parameters
                 k = k + 1
             print '------------------------'
