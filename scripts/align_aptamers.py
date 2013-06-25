@@ -1,6 +1,21 @@
 #!/usr/bin/env python
 
 
+# _parse_titles
+# _parse_base2emission
+#
+# _write_table
+# _write_alignment
+# _write_markov_format
+#
+# _align_aptamers_h_h
+# _align_aptamers_h
+# _append_to_file_or_handle
+#
+# write_markov_model
+
+
+
 DEF_MATCH = 0.9
 DEF_MISMATCH = (1.0-DEF_MATCH)
 
@@ -17,20 +32,6 @@ DEF_DELETE_RANDOM = DEF_DELETE/2.0   # NOT USED
 #OUT_TABLE = "TABLE"
 #OUT_MARKOV = "MARKOV_MODEL"
 #OUT_ALIGNMENT = "ALIGNMENT"
-
-
-# _parse_titles
-# _parse_base2emission
-#
-# _write_table
-# _write_alignment
-# _write_markov_format
-#
-# _align_aptamers_h_h
-# _align_aptamers_h
-# _append_to_file_or_handle
-#
-# write_markov_model
 
 
 def _parse_titles(titles):
@@ -99,7 +100,8 @@ def _write_table(library, alignment, title, score, is_revcomp, outhandle):
     actual_barcode = "".join(x2)
     #random_region = ideal_random.replace("-", "")
     random_region = actual_random
-    barcode = ideal_barcode.replace("-", "")
+    #barcode = ideal_barcode.replace("-", "")
+    barcode = actual_barcode
 
     # Write the results.
     total_errors = num_mismatches + num_insertions + num_deletions
