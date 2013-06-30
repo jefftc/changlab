@@ -16,7 +16,7 @@
 # my.colorbar
 # sample.colorbars      Print out all different color schemes.
 # my.groupplot
-# my.pca
+# my.pcaplot
 # my.boxplot
 #
 # INTERNAL FUNCTIONS
