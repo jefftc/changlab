@@ -373,7 +373,7 @@ class RowIterator:
 
         self._line = line
         self._cols = cols
-        data._iter = self
+        #data._iter = self
         data._line = line
         data._cols = cols
         data._header = self._header
