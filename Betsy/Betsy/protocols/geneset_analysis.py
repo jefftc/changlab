@@ -25,9 +25,11 @@ predicate2arguments = {
 
 #parameter objects
 PARAMETERS=[Parameter('automatch', pretty_name='Auto Match',choices=['yes_automatch','no_automatch'],
-                      category=SCORE_PATHWAY),
-            Parameter('geneset', pretty_name='Gene Set',type='string',category=SCORE_PATHWAY),
-            Parameter('allgenes', pretty_name='All genes',choices=['yes_allgenes','no_allgenes'],category=SCORE_PATHWAY)]
+                      category=SCORE_PATHWAY,description='will match _UP with _DN (or _DOWN)'),
+            Parameter('geneset', pretty_name='Gene Set',type='string',category=SCORE_PATHWAY,
+                      description='geneset names sperate by ","'),
+            Parameter('allgenes', pretty_name='All genes',choices=['yes_allgenes','no_allgenes'],
+                      category=SCORE_PATHWAY,description='score all gene sets in the files')]
 
 
     

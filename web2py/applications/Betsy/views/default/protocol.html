@@ -16,8 +16,9 @@
 <table>
  <tr>
 {{for i in range(10):}}
-    {{label='myfile'+str(i)}}    
+    {{label='myfile'+str(i)}}  
     {{=label}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label]}}&nbsp;&nbsp;&nbsp;
+    
     {{=label+'_content'}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label+'_content']}}<br/>
 {{=label+'_id'}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label+'_id']}} <font size="5">&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</font> 
     {{=label+'_path'}}&nbsp;&nbsp;&nbsp;{{=form.custom.widget[label+'_path']}}<br/>
@@ -26,8 +27,9 @@
     {{left_labels.remove(label+'_id')}}
     {{left_labels.remove(label)}}
 {{pass}}
+ <tr><td><td><td>
  {{left_labels.remove('id')}}
- 
+ <p style="line-height: 78%;font-size:20px;"> &nbsp;&nbsp;&nbsp; * required field</p><br/>
 {{for i in range(len(column_name)):}}
  <tr><td><td><td>
  <h2> {{=column_name[i]}}</h2>
@@ -35,8 +37,17 @@
 	{{for label in labels:}}
     	{{if label in protocol_parameters.keys():}}
     		{{if  protocol_parameters[label].category==column_name[i]:}}
-     <p style="line-height: 78%;"> {{=protocol_parameters[label].pretty_name}}</p><br/>
-    			{{left_labels.remove(label)}}
+     {{if protocol_parameters[label].require:}}
+     <p style="line-height: 78%;font-size:20px;">*{{=protocol_parameters[label].pretty_name}}</p>
+     {{else:}}
+     <p style="line-height: 78%;font-size:20px;"> {{=protocol_parameters[label].pretty_name}}</p>
+         {{pass}}
+     {{if protocol_parameters[label].description:}}
+         <p style="line-height: 78%;font-size:15px;"> {{=protocol_parameters[label].description}}</p><br/>
+     {{else:}}
+     </p><br/>
+     {{pass}}
+    {{left_labels.remove(label)}}
     		{{pass}}
     	{{pass}}
 	{{pass}}
@@ -44,7 +55,7 @@
      	{{for label in labels:}}
     		{{if label in protocol_parameters.keys():}}
     			{{if  protocol_parameters[label].category==column_name[i]:}}
-					{{=form.custom.widget[label]}}<br/>
+{{=form.custom.widget[label]}}<br/><br/><p></p>
     			
     			{{pass}}
     		{{pass}}

@@ -60,8 +60,8 @@ hg19_dbsnp=/data/biocore/GATK/hg19/dbsnp_137.hg19.vcf
 hg19_indels=/data/biocore/GATK/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf
 hg18_dbsnp=/data/biocore/GATK/hg18/dbsnp_137.hg18.vcf
 hg18_indels=/data/biocore/GATK/hg18/Mills_and_1000G_gold_standard.indels.hg18.vcf
-rna_hum =/home/xchen/try_RSEM/ref/hg19
-rna_mouse=É
+rna_hum =/home/xchen/try_RSEM/ref/human
+rna_mouse=/home/xchen/try_RSEM/ref/mouse
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation

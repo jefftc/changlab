@@ -57,7 +57,7 @@ convert_parameters_raw(Parameters,NewParameters):-
     append(NewParameters0,[format,Format],NewParameters1),
      
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
-    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent]),
+    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,rsem]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
     
     get_value(Parameters,is_logged,unknown_logged,Is_Logged),
@@ -101,7 +101,7 @@ convert_parameters_clean_out(Parameters,NewParameters):-
 
     append(NewParameters0,[format,tdf],NewParameters1),
     get_value(Parameters,preprocess,unknown_preprocess,Preprocess),
-    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent]),
+    member(Preprocess,[rma,mas5,loess,unknown_preprocess,illumina,agilent,rsem]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
 
     append(NewParameters2,[is_logged,logged],NewParameters3),
@@ -144,7 +144,7 @@ convert_parameters_variable_raw(Parameters,NewParameters):-
     append(NewParameters0,[format,Format],NewParameters1),
     
     get_value_variable(Parameters,preprocess,Preprocess),
-    member(Preprocess,[rma,mas5,loess,agilent,illumina,unknown_preprocess]),
+    member(Preprocess,[rma,mas5,loess,agilent,illumina,unknown_preprocess,rsem]),
     append(NewParameters1,[preprocess,Preprocess],NewParameters2),
 
     get_value_variable(Parameters,is_logged,Is_Logged),

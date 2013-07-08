@@ -46,10 +46,11 @@ def main():
     else:
         k = 1
         for pipeline in pipelines:
-            pipeline_label = pipeline[-1].parameters['label']
-            pipeline_label = pipeline_label.replace('_',' ')
-            pipeline = pipeline[:-1]
-            print  'Pipeline' + str(k) + ': '+ pipeline_label + '.\r'
+            if 'label' in pipeline[-1].parameters:
+                pipeline_label = pipeline[-1].parameters['label']
+                pipeline_label = pipeline_label.replace('_',' ')
+                pipeline = pipeline[:-1]
+                print  'Pipeline' + str(k) + ': '+ pipeline_label + '.\r'
             rule_engine.run_pipeline(pipeline, objects)
             print '\r'
             k = k + 1

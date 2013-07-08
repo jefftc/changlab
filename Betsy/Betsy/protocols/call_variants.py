@@ -1,7 +1,7 @@
 #call_variants.py
 
 from Betsy.protocol_utils import Parameter
-PRETTY_NAME="Calling Variants for Next Generation Sequence Data"
+PRETTY_NAME="Calling Variants for Next Generation Sequence Data."
 COMMON = 'Common Parameters'
 OPTIONAL = 'Optional Parameters'
 CATEGORIES=[COMMON,OPTIONAL]
@@ -19,17 +19,19 @@ predicate2arguments = {
     'fastq_file': (['read','single','ref','hg19'], '[]')}
 
 PARAMETERS=[Parameter('contents',pretty_name='Contents',
-                      type='list',category=OPTIONAL),
+                      type='list',category=OPTIONAL,description='output group information'),
             Parameter('read',pretty_name='Single or Paired',
                       default_value='single',choices=['single','pair'],
-                      category=COMMON),
+                      category=COMMON,description='single or paired'),
             Parameter('ref',pretty_name='Reference genome',default_value='hg19',
-                      choices=['hg18','hg19','dm3','mm9'],category=COMMON),
+                      choices=['hg18','hg19','dm3','mm9'],category=COMMON,
+                      description='select a specie of your data'),
             Parameter('recalibration',pretty_name='Base Quality Score Recalibration',
                       default_value='no_recalibration',choices=['no_recalibration','yes_recalibration'],
-                      category=COMMON),
+                      category=COMMON,description='do the recalibration for human species'),
             Parameter('reheader',pretty_name='Reheader',default_value='standard',
-                      choices=['standard','bcftool'],category=COMMON)]
+                      choices=['standard','bcftool'],category=COMMON,
+                      description='method of calling variants')]
 
    #Parameter('format',pretty_name='File Format',default_value='unknown_format',
             #            choices=['unknown_format','sai', 'sam','bam'],category=COMMON),

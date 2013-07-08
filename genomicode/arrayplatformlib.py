@@ -349,6 +349,10 @@ PLATFORMS = [
     Platform(
         'Entrez_symbol_mouse', "mgi_symbol", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 27),
+    Platform(
+        'ensembl_human',"ensembl_gene_id","hsapiens_gene_ensembl",PROBE_ID, 28),
+    Platform(
+        'ensembl_mouse',"ensembl_gene_id","mmusculus_gene_ensembl",PROBE_ID, 29),
     ]
 
 
@@ -356,20 +360,20 @@ annotate_header = [
     'Description', 'Gene Symbol', 'Gene ID', 'Swiss-Prot ID']
 
 affy_headers = {
-    'Description' : 'Target Description',
-    'Gene Symbol' : 'Gene Symbol',
-    'Gene ID' : 'Entrez Gene',
-    'Swiss-Prot ID' : 'SwissProt'
+    'Description' : ['Target Description'],
+    'Gene Symbol' : ['Gene Symbol'],
+    'Gene ID' : ['Entrez Gene'],
+    'Swiss-Prot ID' : ['SwissProt']
     }
 illu_headers = {
-    'Description' : 'Definition',
-    'Gene Symbol' : 'Symbol',
-    'Gene ID' : 'Entrez_Gene_ID',
-    'Swiss-Prot ID' : 'swissport_id'
+    'Description' : ['Definition'],
+    'Gene Symbol' : ['Symbol'],
+    'Gene ID' : ['Entrez_Gene_ID'],
+    'Swiss-Prot ID' : ['swissport_id']
     }
 biomart_headers = {
-    'Description' : 'description',
-    'Gene Symbol' : 'hgnc_symbol',
-    'Gene ID' : 'entrezgene',
-    'Swiss-Prot ID' : 'uniprot_swissprot'
+    'Description' : ['description'],
+    'Gene Symbol' : ['hgnc_symbol','mgi_symbol'],
+    'Gene ID' : ['entrezgene'],
+    'Swiss-Prot ID' : ['uniprot_swissprot']
     }

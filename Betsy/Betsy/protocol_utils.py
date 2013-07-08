@@ -15,7 +15,7 @@ CLASS_NEIGHBORS='Class Neighbor Parameters'
 
 class Parameter:
     def __init__(self,name,pretty_name=None,default_value=None,
-                 type=None,choices=None,category=None,description=None):
+                 type=None,choices=None,category=None,description=None,require=None):
         self.name = name
         self.pretty_name = pretty_name
         self.default = default_value
@@ -23,6 +23,7 @@ class Parameter:
         self.choices = choices
         self.category = category
         self.description = description
+        self.require=require
 
         
 def get_result_folder(protocol, outfiles, parameters, pipeline, foldername):

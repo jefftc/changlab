@@ -15,6 +15,7 @@
 :- dynamic rename_list_file/2.
 :- dynamic geneset_file/2.
 :- dynamic geneset_analysis/2.
+:- dynamic rna_seq_files/2.
 /*-------------------------------------------------------------------------*/
 % Input interface
 % given a input_signal_file,generate signal_file that will have a full length of parameters
@@ -48,6 +49,30 @@ signal_raw(Parameters,Modules):-
     N<N1,
     convert_parameters_variable_raw(Parameters,NewParameters),
     signal_raw(NewParameters,Modules).
+
+/*-------------------------------------------------------------------------*/
+% generate rna_seq_files with format and ref
+rna_seq_files([contents,Contents,format,fa_or_sam], Modules):-
+    % Input:rna_seq_files with unknown_format
+    rna_seq_files([contents,Contents,format,unknown_format], Past_Modules),
+    % Module: extract_rna_files
+    % Output parameters:[contents,Contents,format,fa_or_sam]
+    Newadd=[extract_rna_files, [contents,Contents,format,fa_or_sam]],
+    append(Past_Modules, Newadd, Modules).
+/*-------------------------------------------------------------------------*/
+% Preprocess rna_seq_files to signal_raw by rsem,
+signal_raw(Parameters,Modules):-
+    % Conditions: Parameters has rsem, no_logged and tdf
+    get_value(Parameters,contents,[unknown],Contents),
+    convert_parameters_raw([contents,Contents,preprocess,rsem,is_logged,no_logged,format,tdf],NewParameters),
+    Parameters=NewParameters,	
+    %Input: rna_seq_files with format fa_or_sam
+    rna_seq_files([contents,Contents,format,fa_or_sam],Past_Modules),
+    % Module:normalize_with_rsem
+    % Output parameters:  full length parameters of signal_raw 
+    Newadd=[normalize_with_rsem,Parameters],
+    append(Past_Modules, Newadd, Modules).
+
 /*-------------------------------------------------------------------------*/
 % generate geo_dataset with version cc or v3_4 from cel_file with version unknown.
 cel_files([contents,Contents,version,cc_or_v3_4], Modules):-
