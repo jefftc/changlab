@@ -45,34 +45,146 @@ consequent = make_data
 
 
 all_modules = [
+    #cel_files
+    Module(
+        "download_geo_GSEID",
+        antecedent("gse_id", platform="unknown"),
+        consequent("cel_files", cel_version = "unknown")),
+    Module(
+        "download_geo_GSEID_GPLID",
+        antecedent("gse_id_and_platform",platform="GPL"),
+        consequent("cel_files", cel_version = "unknown")),
+    Module(
+        "extract_CEL_files",
+        antecedent("cel_files", cel_version="unknown"),
+        consequent("cel_files", cel_version = "cc_or_v3_4")),
+    Module(
+        "convert_CEL_to_v3_4",
+        antecedent("cel_files", cel_version="cc_or_v3_4"),
+        consequent("cel_files", cel_version = "v3_4")),
     Module(
         "preprocess_rma",
         antecedent("cel_files", cel_version="v3_4"),
-        consequent("signal_file",
-                  logged="yes", preprocess="rma", quantile_norm="yes")),
+        consequent("signal_raw",
+                  logged="yes", preprocess="rma",
+                   format='jeffs',missing=[None,"no"])),
     Module(
         "preprocess_mas5",
         antecedent("cel_files", cel_version="v3_4"),
-        consequent("signal_file", logged="no", preprocess="mas5")),
+        consequent("signal_raw", logged=[None,"no"], preprocess="mas5",format='jeffs',
+                   missing=[None,"no"])),
+    #-----------------------------------------------------------------------
+    #agilent_files
     Module(
-        "quantile_norm",
-        antecedent("signal_file", quantile_norm=[None, "no"]),
-        consequent("signal_file", quantile_norm="yes")),
+        "download_geo_GSEID",
+        antecedent("gse_id", platform="unknown"),
+        consequent("agilent_files", version = "unknown")),
+    Module(
+        "download_geo_GSEID_GPLID",
+        antecedent("gse_id_and_platform",platform="GPL"),
+        consequent("agilent_files", version = "unknown")),
+    Module(
+        "extract_agilent_files",
+        antecedent("agilent_files", version="unknown"),
+        consequent("agilent_files", version = "agilent")),
+    Module(
+        "preprocess_agilent",
+        antecedent("agilent_files", version="agilent"),
+        consequent("signal_raw", format = "tdf",logged=[None,"no"],preprocess='agilent',missing='unknown')),
+    #-----------------------------------------------------------------------
+    #idat_files
+    Module(
+        "download_geo_GSEID",
+        antecedent("gse_id", platform="unknown"),
+        consequent("idat_files", version = "unknown")),
+    Module(
+        "download_geo_GSEID_GPLID",
+        antecedent("gse_id_and_platform",platform="GPL"),
+        consequent("idat_files", version = "unknown")),
+    Module(
+        "extract_illumina_idat_files",
+        antecedent("idat_files", version="unknown"),
+        consequent("idat_files", version = "illumina")),
+    Module(
+        "preprocess_illumina",
+        antecedent("idat_files", version="illumina"),
+        consequent("illu_folder", format = "gct",logged=[None,"no"],preprocess='illumina',missing='unknown')),
+    Module(
+        "get_illumina_signal",
+        antecedent("illu_folder", preprocess='illumina'),
+        consequent("signal_raw", preprocess='illumina',logged=[None,"no"],missing='unknown')),
+
+    #-----------------------------------------------------------------------
+    #gpr_files
+    Module(
+        "download_geo_GSEID",
+        antecedent("gse_id", platform="unknown"),
+        consequent("gpr_files", version = "unknown")),
+    Module(
+        "download_geo_GSEID_GPLID",
+        antecedent("gse_id_and_platform",platform="GPL"),
+        consequent("gpr_files", version = "unknown")),
+    Module(
+        "extract_gpr_files",
+        antecedent("gpr_files", version="unknown"),
+        consequent("gpr_files", version = "gpr")),
+    Module(
+        "normalize_with_loess",
+        antecedent("gpr_files", version="gpr"),
+        consequent("signal_raw", format = "tdf",logged=[None,"no"],preprocess='loess',missing='unknown')),
+    #-----------------------------------------------------------------------
+    Module(
+        "filter_genes_by_missing_values",
+        antecedent("signal_raw", format='tdf',logged="yes",missing=["yes","unknown"],filter=[None,"no"]),
+        consequent("signal_raw", format='tdf',logged="yes",missing=["yes","unknown"],filter=20)),###integer value
+    Module(
+        "fill_missing_with_median",
+        antecedent("signal_raw", format='tdf',logged="yes",missing=["yes","unknown"]),
+        consequent("signal_raw", format='tdf',logged="yes",missing="median")),
+    Module(
+        "fill_missing_with_zeros",
+        antecedent("signal_raw", format='tdf',logged="yes",missing=["yes","unknown"]),
+        consequent("signal_raw", format='tdf',logged="yes",missing="zero")),
+    Module(
+        "convert_signal_to_tdf",
+        antecedent("signal_raw", format=['pcl','res','gct','jeffs','unknown','xls']),
+        consequent("signal_raw", format='tdf')),
     Module(
         "log_signal",
-        antecedent("signal_file", logged=[None, "no"]),
-        consequent("signal_file", logged="yes")),
+        antecedent("signal_raw", logged=[None, "no"],format='tdf'),
+        consequent("signal_raw", logged="yes",format='tdf')),
+    Module(
+        "filter_and_threshold_genes",
+        antecedent("signal_raw", logged=[None, "no"],format='tdf',predataset=[None,'no']),
+        consequent("signal_raw", logged=[None, "no"],format='tdf',predataset="yes")),
+    Module(#require a rename_list_file
+        "relabel_samples",
+        antecedent("signal_raw", logged="yes",format='tdf',missing=[None,"no","median","zero"],
+                   rename_sample = [None,"no"]),
+        consequent("signal_raw", logged="yes",format='tdf',missing=[None,"no","median","zero"],
+                   rename_sample = "yes")),
+    #------------------------------------------------------------------
+    Module(
+        "quantile_norm",
+        antecedent("signal_raw", quantile_norm=[None, "no"],gene_center=[None,"no"],
+                   gene_normalize=[None, "no"],format='tdf',missing=[None,"no","median","zero"]),
+        consequent("signal_file", quantile_norm="yes",gene_center=[None,"no"],
+                   gene_normalize=[None, "no"],format='tdf',missing=[None,"no","median","zero"])),
+    #------------------------------------------------------------------
     Module(
         "gene_center",
-        antecedent("signal_file", gene_center=[None, "no"]),
-        consequent("signal_file", gene_center=["mean", "median"])),
+        antecedent("signal_file", gene_center=[None, "no"],logged="yes",
+                   gene_normalize=[None, "no"],format='tdf',missing=[None,"no","median","zero"]),
+        consequent("signal_file", gene_center=["mean", "median"],logged="yes",
+                   gene_normalize=[None, "no"],format='tdf',missing=[None,"no","median","zero"])),
     Module(
         "gene_normalize",
-        antecedent("signal_file", gene_normalize=[None, "no"]),
+        antecedent("signal_file", gene_normalize=[None, "no"],logged="yes",format='tdf',
+                   missing=[None,"no","median","zero"]),
         consequent("signal_file", 
-            gene_normalize=["variance", "sum_of_squares"])),
-    ]
-
+            gene_normalize=["variance", "sum_of_squares"],logged="yes",format='tdf',
+                   missing=[None,"no","median","zero"]))]
+   
 
 def _item2seq(x):
     import operator
@@ -135,6 +247,10 @@ def _backchain_data(module, out_data):
     back_data = []
     keys = sorted(module.in_data.attributes)
     values_list = [_item2seq(module.in_data.attributes[x]) for x in keys]
+##    for k, v in zip(keys, values_list):
+##        attributes[k] = v
+##    x = Data(datatype, attributes)
+##    back_data.append(x)
     for values in itertools.product(values_list):
         for k, v in zip(keys, values):
             attributes[k] = v
@@ -177,9 +293,10 @@ def find_pipelines(moduledb, in_data, out_data):
 
 def test_bie():
     pipelines = find_pipelines(
-        all_modules, make_data("cel_files"),
-        make_data("signal_file", preprocess="rma", quantile_norm="yes",
-                  logged="yes"))
+        all_modules, make_data("gse_id",platform='unknown'),
+        make_data("signal_file", preprocess='rma',logged='yes',filter='no',missing=None,
+                  predataset='no',rename_sample='no',format='tdf',gene_center='mean',
+                  quantile_norm='yes'))
     for i, (modules, data) in enumerate(pipelines):
         print "PIPELINE %d" % (i+1)
         for i in range(len(modules)):
