@@ -98,7 +98,10 @@ def convert_xlsx(filename, worksheet):
 def safe_encode(x):
     if x is None:
         return ""
-    return unicode(x).encode("utf-8")
+    x = unicode(x).encode("utf-8")
+    x = x.replace("\n", " ")
+    x = x.replace("  ", " ")
+    return x
 
 def main():
     from optparse import OptionParser

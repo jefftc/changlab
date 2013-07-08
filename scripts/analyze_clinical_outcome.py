@@ -635,11 +635,15 @@ def write_km_prism_file(filename, survival, dead, group_indexes, group_names):
     R('write.km.prism.multi(filename, survival, dead, group)')
 
 
-def plot_groups(filename, scores, group_names, groups):
+def plot_groups(filename, scores, group_names, groups, unlog):
     from genomicode import colorlib
     from genomicode.jmath import R_fn, R_equals, R_var
     from genomicode import jmath
     
+    assert len(scores) == len(groups)
+    if unlog:
+        scores = [2**x for x in scores]
+
     start_and_init_R()
     #R = start_and_init_R()
 
@@ -701,14 +705,17 @@ def plot_groups(filename, scores, group_names, groups):
     R_fn("dev.off")
     
 
-def write_km_group_file(filename, scores, group_names, groups):
+def write_km_group_file(filename, scores, group_names, groups, unlog):
     from genomicode import colorlib
     from genomicode.jmath import R_fn, R_equals, R_var
     from genomicode import jmath
     
+    assert len(scores) == len(groups)
+    if unlog:
+        scores = [2**x for x in scores]
+    
     R = start_and_init_R()
 
-    assert len(scores) == len(groups)
     group2scores = {}
     for g, s in zip(groups, scores):
         if g not in group2scores:
@@ -810,7 +817,7 @@ def main():
         'be detected with a specific z-score cutoff.'
         )
     group.add_argument(
-        '--cutoff', default=None,
+        '--rank_cutoff', default=None,
         help='Comma-separated list of breakpoints (between 0 and 1), '
         'e.g. 0.25,0.50,0.75.  Default is to use cutoff of 0.50.  '
         'I will use this strategy unless a --zscore is given.')
@@ -826,17 +833,11 @@ def main():
         '-o', dest='filestem', default=None,
         help='Prefix used to name files.  e.g. "myanalysis".')
     group.add_argument(
-        '--write_prism', action='store_true',
-        default=False,
-        help='Write a text file that can be imported into GraphPad Prism.')
+        '--no_plots', action='store_true', default=False,
+        help="Don't produce any plots or Prism files.")
     group.add_argument(
-        '--plot_km', action='store_true', default=False,
-        help='Write PNG-formatted Kaplan-Meier plot.')
-    group.add_argument(
-        '--plot_groups', action='store_true', default=False,
-        help='Make a scatter plot showing the groups for each sample '
-        '(PNG format).')
-
+        '--unlog_group_plot', action='store_true', default=False,
+        help='Plot the group plot on an un-logged scale.')
     
     group = parser.add_argument_group(title='Formatting the Kaplan-Meier Plot')
     group.add_argument(
@@ -889,10 +890,10 @@ def main():
     assert not (args.gene and args.geneset), (
         'Please specify either a gene or a gene set, not both.')
 
-    if args.cutoff:
+    if args.rank_cutoff:
         assert not args.hi_zscore and not args.lo_zscore
-    if not args.cutoff and not args.hi_zscore and not args.lo_zscore:
-        args.cutoff = "0.50"
+    if not args.rank_cutoff and not args.hi_zscore and not args.lo_zscore:
+        args.rank_cutoff = "0.50"
     if args.hi_zscore and args.lo_zscore:
         assert args.hi_zscore > args.lo_zscore
 
@@ -908,7 +909,7 @@ def main():
     # Clean up the input.
     genes = parse_genes(args.gene)
     gene_sets = parse_gene_sets(args.geneset)
-    cutoffs = parse_cutoffs(args.cutoff)
+    cutoffs = parse_cutoffs(args.rank_cutoff)
     hi_zscore = parse_zscore(args.hi_zscore)
     lo_zscore = parse_zscore(args.lo_zscore)
     outcomes = parse_outcomes(args.outcome)
@@ -1010,37 +1011,41 @@ def main():
         print >>outhandle, "\t".join(map(str, x))
 
 
+        if args.no_plots:
+            continue
+
         # Write out Prism, Kaplan-Meier curves, etc.
         # Better way to pick gene ID.
         gene_id = get_gene_name(M, gene_i)
         gene_id_h = hashlib.hash_var(gene_id)
 
-        if args.write_prism:
-            filename = "%s%s.%s.km.txt" % (
-                filestem, time_header, gene_id_h)
-            write_km_prism_file(
-                filename, SURV["survival"], SURV["dead"], SURV["groups"],
-                SURV["group_names"])
-        if args.plot_km:
-            filename = "%s%s.%s.km.png" % (
-                filestem, time_header, gene_id_h)
-            plot_km(
-                filename, SURV["survival"], SURV["dead"], SURV["groups"],
-                SURV["p_value"], gene_id, SURV["group_names"], 
-                args.km_mar_bottom, args.km_mar_left, args.km_mar_top,
-                args.km_title, args.km_title_size, args.km_mar_title,
-                args.km_subtitle_size, args.km_mar_subtitle, 
-                args.km_xlab, args.km_ylab, args.km_legend_size)
-        if args.plot_groups:
-            filename = "%s%s.%s.groups.png" % (
-                filestem, time_header, gene_id_h)
-            plot_groups(
-                filename, SURV["scores"], SURV["group_names"], SURV["groups"])
-        if args.plot_km:
-            filename = "%s%s.%s.groups.txt" % (
-                filestem, time_header, gene_id_h)
-            write_km_group_file(
-                filename, SURV["scores"], SURV["group_names"], SURV["groups"])
+        # Make the Kaplan-Meier plot.
+        filename = "%s%s.%s.km.png" % (filestem, time_header, gene_id_h)
+        plot_km(
+            filename, SURV["survival"], SURV["dead"], SURV["groups"],
+            SURV["p_value"], gene_id, SURV["group_names"], 
+            args.km_mar_bottom, args.km_mar_left, args.km_mar_top,
+            args.km_title, args.km_title_size, args.km_mar_title,
+            args.km_subtitle_size, args.km_mar_subtitle, 
+            args.km_xlab, args.km_ylab, args.km_legend_size)
+        
+        # Write out a Prism file for the Kaplan-Meier plot.
+        filename = "%s%s.%s.km.txt" % (filestem, time_header, gene_id_h)
+        write_km_prism_file(
+            filename, SURV["survival"], SURV["dead"], SURV["groups"],
+            SURV["group_names"])
+
+        # Make the group plot.
+        filename = "%s%s.%s.groups.png" % (filestem, time_header, gene_id_h)
+        plot_groups(
+            filename, SURV["scores"], SURV["group_names"], SURV["groups"],
+            args.unlog_group_plot)
+
+        # Write out a Prism file for the group plot.
+        filename = "%s%s.%s.groups.txt" % (filestem, time_header, gene_id_h)
+        write_km_group_file(
+            filename, SURV["scores"], SURV["group_names"], SURV["groups"],
+            args.unlog_group_plot)
 
             
 if __name__ == '__main__':
