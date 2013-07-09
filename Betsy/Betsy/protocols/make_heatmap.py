@@ -165,7 +165,10 @@ PARAMETERS=[Parameter('preprocess',pretty_name='Preprocess',
             Parameter('hm_width', pretty_name='Heatmap Width',type='integer',
                       category=CLUSTER,description='heatmap width'),
             Parameter('hm_height', pretty_name='Heatmap Height',type='integer',category=CLUSTER,
-                      description='heatmap height')]
+                      description='heatmap height'),
+            Parameter('cluster_alg', pretty_name='Cluster algorithm',default_value='no_cluster_alg',
+                        choices=['no_cluster_alg'],category=CLUSTER,
+                      description='cluster algorithm')]#
 
 
 
