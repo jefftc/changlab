@@ -10,9 +10,11 @@
 # parse_names
 # parse_geneset
 # _parse_file_gs
+# _parse_file_string
+# _parse_file_num
 # _parse_file_annot
-# _read_annot_file
 # _parse_file_num_annot
+# _read_annot_file
 #
 # find_col_indexes
 # find_col_ids
@@ -35,6 +37,8 @@
 #
 # find_row_indexes
 # find_row_ids
+# find_row_string
+# find_row_numeric
 # find_row_random
 # find_row_genesets
 # find_row_annotation
@@ -284,6 +288,40 @@ def _parse_file_gs(geneset):
     assert len(x) >= 1
     filename, genesets = x[0], x[1:]
     return filename, genesets
+
+
+def _parse_file_string(annotation):
+    # annotations is in the format:
+    # <header>,<value>[,<value,...]
+    # Return a tuple of <header>, list <value>.
+    x = annotation.split(",")
+    assert len(x) >= 2
+    header, values = x[0], x[1:]
+    return header, values
+
+
+def _parse_file_num(annotation):
+    # annotations is in the format:
+    # <header>,<value>[,<value,...]
+    # <value> can optionally start with modifiers "<", "<=", ">=" or ">".
+    # Return a tuple of <header>, list of (<modifier>, <value>).
+    # If no modifier is specified, then <modifier> is "=".  <value> is
+    # a floating point number.
+    x = annotation.split(",")
+    assert len(x) >= 2
+    header, values = x[0], x[1:]
+    for i in range(len(values)):
+        value = values[i]
+        modifier = "="
+        if value[:2] in ["<=", ">="]:
+            modifier = value[:2]
+            value = value[2:]
+        elif value[0] in "<>=":
+            modifier = value[0]
+            value = value[1:]
+        value = float(value)
+        values[i] = modifier, value
+    return header, values
 
 
 def _parse_file_annot(annotation):
@@ -803,6 +841,62 @@ def find_row_ids(MATRIX, ids):
     if not ids:
         return None
     return parse_names(MATRIX, True, ids)
+
+
+def find_row_string(MATRIX, row_annotation):
+    # Format: <header>,<value>[,<value,...]
+    from genomicode import matrixlib
+
+    if not row_annotation:
+        return None
+
+    x = _parse_file_string(row_annotation)
+    header, values = x
+
+    assert header in MATRIX.row_names(), "Missing header: %s" % header
+    annots = MATRIX.row_names(header)
+    I = []
+    for i, annot in enumerate(annots):
+        # Accepts matches for any of the values.
+        if annot in values:
+            I.append(i)
+    return I
+
+
+def find_row_numeric(MATRIX, row_annotation):
+    # Format: <header>,<value>[,<value,...]
+    from genomicode import matrixlib
+
+    if not row_annotation:
+        return None
+
+    x = _parse_file_num(row_annotation)
+    header, values = x
+
+    assert header in MATRIX.row_names(), "Missing header: %s" % header
+    annots = MATRIX.row_names(header)
+    I = []
+    for i in range(len(annots)):
+        x = float(annots[i])
+        match = True
+        for (modifier, value) in values:
+            if modifier == "=":
+                match = abs(x-value) < 1E-10
+            elif modifier == "<":
+                match = (x < value)
+            elif modifier == ">":
+                match = (x > value)
+            elif modifier == "<=":
+                match = (x <= value)
+            elif modifier == ">=":
+                match = (x >= value)
+            else:
+                raise AssertionError("Unknown modifier: %s" % modifier)
+        #print x, modifier, value, match
+        # Accepts matches for any of the values.
+        if match:
+            I.append(i)
+    return I
 
 
 def find_row_random(MATRIX, num_rows):
@@ -1737,6 +1831,21 @@ def main():
         help="Comma-separated list of IDs (e.g. probes, gene names) "
         "to include.")
     group.add_argument(
+        "--select_row_string", default=[], action="append",
+        help="Include only the rows where the columns contains a "
+        "specific string value.  "
+        "Format: <header>,<value>[,<value>,...].  "
+        "Accepts the row if any of the <value>s match.")
+    group.add_argument(
+        "--select_row_numeric", default=[], action="append",
+        help="Include only the rows where the columns contains a "
+        "specific numeric value.  "
+        "Format: <header>,<value>[,<value>,...].  "
+        'If <value> starts with a "<", then will only find the rows where '
+        "the annotation is less than <value>.  "
+        'The analogous constraint will be applied for ">".  '
+        "Accepts the match if any of the <value>s are true.")
+    group.add_argument(
         "--select_row_random", default=None,
         help="Select this number of random rows.")
     group.add_argument(
@@ -1847,20 +1956,25 @@ def main():
     MATRIX = transpose_matrix(MATRIX, args.transpose)
 
     # Slice to a submatrix.
-    I1 = find_row_indexes(
+    I01 = find_row_indexes(
         MATRIX, args.select_row_indexes, args.row_indexes_include_headers)
-    I2 = find_row_ids(MATRIX, args.select_row_ids)
-    I3 = find_row_random(MATRIX, args.select_row_random)
-    I4 = find_row_genesets(MATRIX, args.select_row_genesets)
-    I5 = find_row_annotation(MATRIX, args.select_row_annotation)
+    I02 = find_row_ids(MATRIX, args.select_row_ids)
+    x = [find_row_string(MATRIX, annot) for annot in args.select_row_string]
+    I03 = _intersect_indexes(*x)
+    x = [find_row_numeric(MATRIX, annot) for annot in args.select_row_numeric]
+    I04 = _intersect_indexes(*x)
+    I05 = find_row_random(MATRIX, args.select_row_random)
+    I06 = find_row_genesets(MATRIX, args.select_row_genesets)
+    I07 = find_row_annotation(MATRIX, args.select_row_annotation)
     x = [find_row_numeric_annotation(MATRIX, annot)
          for annot in args.select_row_numeric_annotation]
-    I6 = _intersect_indexes(*x)
-    I7 = find_row_mean_var(
+    I08 = _intersect_indexes(*x)
+    I09 = find_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I8 = find_row_var(MATRIX, args.select_row_var)
-    I9 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
-    I_row = _intersect_indexes(I1, I2, I3, I4, I5, I6, I7, I8, I9)
+    I10 = find_row_var(MATRIX, args.select_row_var)
+    I11 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I_row = _intersect_indexes(
+        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11)
     I1 = find_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     I2 = remove_col_indexes(

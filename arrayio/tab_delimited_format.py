@@ -74,7 +74,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     if type(handle) is type(""):
         filename = handle
     handle = filelib.openfh(handle)
-    data = iolib.split_tdf(handle.read(), strip=True)
+    x = handle.read()
+    data = iolib.split_tdf(x, strip=True)
 
     # Sometimes people insert blank rows or columns inside the matrix.
     # Remove all of those.

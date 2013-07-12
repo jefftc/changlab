@@ -133,7 +133,7 @@ static PyObject *ciolib_split_tdf(
     char *string;
     PyObject *py_strip;
     int strip;
-    int start, end, s, e;
+    long start, end, s, e;
     PyObject *py_matrix, *py_row, *py_item;
 
     static char *kwlist[] = {"data", "strip", NULL};
