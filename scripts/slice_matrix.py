@@ -61,6 +61,7 @@
 # rename_row_annot
 # move_row_annot
 #
+# set_min_value
 # center_genes_mean
 # center_genes_median
 # normalize_genes_var
@@ -425,6 +426,7 @@ def find_col_annotation(MATRIX, col_annotation):
     I_matrix, I_annots, index = x
     assert len(I_matrix) == len(I_annots)
 
+    assert header in header2annots, "Missing header: %s" % header
     annots = header2annots[header]
     I = []
     for (im, ia) in zip(I_matrix, I_annots):
@@ -1379,6 +1381,14 @@ def move_row_annot(MATRIX, move_row_annot):
     return MATRIX_clean
 
 
+def set_min_value(MATRIX, value):
+    MATRIX = [x[:] for x in MATRIX]  # Make a copy.
+    for i in range(len(MATRIX)):
+        for j in range(len(MATRIX[i])):
+            MATRIX[i][j] = max(MATRIX[i][j], value)
+    return MATRIX
+
+
 def center_genes_mean(MATRIX, indexes):
     from genomicode import jmath
 
@@ -1734,6 +1744,9 @@ def main():
         "--fill_missing_values_median", default=False, action="store_true",
         help="Fill missing values with the median of the row.  Performed "
         "after logging, but before centering and normalizing.")
+    group.add_argument(
+        "--min_value", default=None, type=float,
+        help="Set the minimum value for this matrix.  Done before logging.")
         
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
@@ -2045,6 +2058,9 @@ def main():
     MATRIX = MATRIX.matrix(I_row, None)
     I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
     MATRIX = MATRIX.matrix(None, I_col)
+
+    if args.min_value is not None:
+        MATRIX._X = set_min_value(MATRIX._X, args.min_value)
 
     # Log transform, if requested.  Do before other changes to
     # expression values (quantile, center, normalize).

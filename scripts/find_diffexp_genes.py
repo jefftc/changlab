@@ -21,7 +21,7 @@ def choose_gene_names(MATRIX):
     for header, platform, score in x:
         if score < 0.5:
             continue
-        if platform == "entrez_ID_symbol_human":
+        if platform in ["entrez_ID_symbol_human", "entrez_ID_symbol_mouse"]:
             genename_header = header
             
     return geneid_header, genename_header
@@ -295,6 +295,9 @@ def main():
         log_data = not binreg.is_logged_array_data(MATRIX)
     if log_data:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+        for i in range(len(MATRIX._X)):
+            for j in range(len(MATRIX._X[i])):
+                MATRIX._X[i][j] = max(MATRIX._X[i][j], 0)
     
 
     # Make a CLS file, if necessary.
