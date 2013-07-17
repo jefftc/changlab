@@ -101,7 +101,7 @@ def backchain(moduledb, out_data):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 64
+    MAX_NETWORK_SIZE = 128
     nodes.append(out_data)
     stack = [0]
     while stack:
@@ -154,18 +154,18 @@ def test_bie():
     #in_data = make_data("gse_id", platform='unknown')
     in_data = make_data("gse_id")
     #out_data = make_data(
-    #    "signal_file", preprocess='rma', logged='yes', filter='no',
-    #    missing=None, predataset='no', rename_sample='no', format='tdf',
+    #    "signal_file", format='tdf',preprocess='rma', logged='yes',
+    #    filter='no', missing=None, predataset='no', rename_sample='no', 
     #    gene_center='mean', quantile_norm='yes')
     out_data = make_data(
-        "signal_file", filter='no', format='tdf', gene_center='no',
-        gene_normalize='no', logged='yes', missing='zero', predataset='no', 
-        preprocess='rma', quantile_norm='yes', rename_sample='no')
+        "signal_file", format='tdf', preprocess='rma', logged='yes',
+        filter='no', missing='zero', predataset='no', rename_sample='no',
+        gene_center='no', gene_normalize='no', quantile_norm='yes')
     #out_data = make_data(
-    #    "signal_raw", filter='no', format='tdf', logged='yes',
+    #    "signal_file", filter='no', format='tdf', logged='yes',
     #    preprocess='rma')
     #out_data = make_data(
-    #    "signal_raw", preprocess='rma', logged='yes')
+    #    "signal_file", preprocess='rma', logged='yes')
     
     x = backchain(all_modules, out_data)
     nodes, transitions = x
@@ -563,14 +563,14 @@ all_modules = [
         "preprocess_rma",
         antecedent("cel_files", cel_version="v3_4"),
         consequent(
-            "signal_raw", logged="yes", preprocess="rma", format='jeffs',
-            missing=[None, "no"])),
+            "signal_file", logged="yes", preprocess="rma", format='jeffs',
+            missing="no")),
     Module(
         "preprocess_mas5",
         antecedent("cel_files", cel_version="v3_4"),
         consequent(
-            "signal_raw", logged=[None, "no"], preprocess="mas5",
-            format='jeffs', missing=[None, "no"])),
+            "signal_file", logged="no", preprocess="mas5",
+            format="jeffs", missing="no")),
     
     #-----------------------------------------------------------------------
     # agilent_files
@@ -590,8 +590,8 @@ all_modules = [
         "preprocess_agilent",
         antecedent("agilent_files", version="agilent"),
         consequent(
-            "signal_raw", format="tdf", logged=[None,"no"],
-            preprocess='agilent', missing='unknown')),
+            "signal_file", format="tdf", logged="yes",
+            preprocess="agilent", missing="yes")),
     
     #-----------------------------------------------------------------------
     # idat_files
@@ -611,13 +611,13 @@ all_modules = [
         "preprocess_illumina",
         antecedent("idat_files", version="illumina"),
         consequent(
-            "illu_folder", format="gct", logged=[None, "no"],
+            "illu_folder", format="gct", logged="no",
             preprocess='illumina', missing='unknown')),
     Module(
         "get_illumina_signal",
         antecedent("illu_folder", preprocess='illumina'),
         consequent(
-            "signal_raw", preprocess='illumina', logged=[None,"no"],
+            "signal_file", preprocess='illumina', logged="no",
             missing='unknown')),
 
     #-----------------------------------------------------------------------
@@ -638,69 +638,69 @@ all_modules = [
         "normalize_with_loess",
         antecedent("gpr_files", version="gpr"),
         consequent(
-            "signal_raw", format="tdf", logged=[None,"no"], preprocess='loess',
-            missing='unknown')),
+            "signal_file", format="tdf", logged="yes",
+            preprocess="loess", missing="unknown")),
+    
     #-----------------------------------------------------------------------
     Module(
         "filter_genes_by_missing_values",
         antecedent(
-            "signal_raw", format='tdf', logged="yes",
-            missing=["yes","unknown"], filter=[None,"no"]),
+            "signal_file", format='tdf', logged="yes",
+            missing=["yes", "unknown"], filter=[None, "no"]),
         consequent(
-            "signal_raw", format='tdf', logged="yes",
-            missing=["yes","unknown"], filter=20)),###integer value
+            "signal_file", format='tdf', logged="yes",
+            missing=["yes", "unknown"], filter=20)), ###integer value
     Module(
         "fill_missing_with_median",
         antecedent(
-            "signal_raw", format='tdf', logged="yes",
-            missing=["yes","unknown"]),
+            "signal_file", format='tdf', logged="yes",
+            missing=["yes", "unknown"]),
         consequent(
-            "signal_raw", format='tdf', logged="yes", missing="median")),
+            "signal_file", format='tdf', logged="yes", missing="median")),
     Module(
         "fill_missing_with_zeros",
         antecedent(
-            "signal_raw", format='tdf', logged="yes",
-            missing=["yes","unknown"]),
-        consequent("signal_raw", format='tdf', logged="yes", missing="zero")),
+            "signal_file", format='tdf', logged="yes",
+            missing=["yes", "unknown"]),
+        consequent("signal_file", format='tdf', logged="yes", missing="zero")),
     Module(
         "convert_signal_to_tdf",
         antecedent(
-            "signal_raw",
+            "signal_file",
             format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        consequent("signal_raw", format='tdf')),
+        consequent("signal_file", format='tdf')),
     Module(
         "log_signal",
-        antecedent("signal_raw", logged=[None, "no"], format='tdf'),
-        consequent("signal_raw", logged="yes", format='tdf')),
+        antecedent("signal_file", logged=[None, "no"], format='tdf'),
+        consequent("signal_file", logged="yes", format='tdf')),
     Module(
         "filter_and_threshold_genes",
         antecedent(
-            "signal_raw", logged=[None, "no"], format='tdf',
+            "signal_file", logged=[None, "no"], format='tdf',
             predataset=[None, 'no']),
         consequent(
-            "signal_raw", logged=[None, "no"], format='tdf',
+            "signal_file", logged=[None, "no"], format='tdf',
             predataset="yes")),
     Module( #require a rename_list_file
         "relabel_samples",
         antecedent(
-            "signal_raw", logged="yes", format='tdf',
+            "signal_file", logged="yes", format='tdf',
             missing=[None, "no", "median", "zero"],
             rename_sample=[None, "no"]),
         consequent(
-            "signal_raw", logged="yes", format='tdf',
-            missing=[None,"no","median","zero"], rename_sample="yes")),
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"], rename_sample="yes")),
     
     #------------------------------------------------------------------
     Module(
         "quantile_norm",
         antecedent(
-            "signal_raw", quantile_norm=[None, "no"], gene_center=[None,"no"],
-            gene_normalize=[None, "no"], format='tdf',
-            missing=[None, "no", "median", "zero"]),
+            "signal_file", quantile_norm=[None, "no"], format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"]),
         consequent(
-            "signal_file", quantile_norm="yes", gene_center=[None,"no"],
-            gene_normalize=[None, "no"], format='tdf',
-            missing=[None, "no", "median", "zero"])),
+            "signal_file", quantile_norm="yes", format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"])),
+    
     #------------------------------------------------------------------
     Module(
         "gene_center",
