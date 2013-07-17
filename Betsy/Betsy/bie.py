@@ -16,6 +16,7 @@ antecedent       Synonym for make_data.
 consequent       Synonym for make_data.
 
 backchain
+prune_network_by_start
 
 test_bie
 
@@ -23,6 +24,7 @@ test_bie
 Classes:
 Data
 Module
+Network
 
 """
 
@@ -87,6 +89,14 @@ class Module:
         return x
 
 
+# nodes are Data or Module objects.  Data transition to Modules, and
+# Modules transition to Data.
+class Network:
+    def __init__(self, nodes, transitions):
+        self.nodes = nodes[:]
+        self.transitions = transitions.copy()
+
+
 def make_data(datatype, **params):
     return Data(datatype, params)
 
@@ -96,8 +106,7 @@ consequent = make_data
 
 
 def backchain(moduledb, out_data):
-    # Network of Data or Module nodes.  Data transitions to Module,
-    # and Module transitions to Data.
+    # Return a Network object.
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
@@ -147,12 +156,112 @@ def backchain(moduledb, out_data):
                     transitions[back_id].append(node_id)
         else:
             raise AssertionError, "Unknown node type: %s" % node_type
-    return nodes, transitions
+    return Network(nodes, transitions)
+
+
+def _is_compatible_with_start(data, start_data):
+    if data.datatype != start_data.datatype:
+        return False
+
+    data_attr = data.attributes
+    start_attr = start_data.attributes
+    
+    x = data_attr.keys() + start_attr.keys()
+    all_attributes = sorted({}.fromkeys(x))
+
+    # Case 1.  Attribute in data but not start_data.
+    #          User does not care.  Is still compatible.
+    # Case 2.  Attribute in start_data but not data.
+    #          Incompatible.
+    # Case 3.  Attribute values are items in both.
+    #          Compatible if the items are equal.
+    # Case 4.  Attribute values is item in data and sequence in start.
+    #          User has a specific item.  Start can accept multiple items.
+    #          Compatible if item is in start sequence.
+    # Case 5.  Attribute values is sequence in data and item in start.
+    #          Incompatible.  Value in user is ambiguous, but start
+    #          requires a specific value.
+    # Case 6.  Attribute values is sequence in data and start.
+    #          Compatible only if sequences are the same.
+
+    compatible = True
+    for key in all_attributes:
+        key_in_data = key in data_attr
+        key_in_start = key in start_attr
+        
+        data_is_item = key_in_data and _is_item(data_attr[key])
+        start_is_item = key_in_start and _is_item(start_attr[key])
+        data_is_list = key_in_data and not _is_item(data_attr[key])
+        start_is_list = key_in_start and not _is_item(start_attr[key])
+        
+        # Case 1.
+        if key_in_data and not key_in_start:
+            pass
+        # Case 2.
+        elif not key_in_data and key_in_start:
+            compatible = False
+        # Case 3.
+        elif data_is_item and start_is_item:
+            if start_attr[key] != data_attr[key]:
+                compatible = False
+        # Case 4.
+        elif data_is_item and start_is_list:
+            if data_attr[key] not in start_attr[key]:
+                compatible = False
+        # Case 5.
+        elif data_is_list and start_is_item:
+            compatible = False
+        # Case 6.
+        elif data_is_list and start_is_list:
+            if sorted(data_attr[key]) != sorted(start_attr[key]):
+                compatible = False
+        else:
+            raise NotImplementedError
+    return compatible
             
         
+def prune_network_by_start(network, start_data):
+    # Look for the nodes that are compatible with start_data.
+    node_ids = []  # list of node_ids.
+    for i, n in enumerate(network.nodes):
+        if n.__class__.__name__ != "Data":
+            continue
+        if _is_compatible_with_start(n, start_data):
+            node_ids.append(i)
+
+    # For each of these node_ids, do forward chaining to find all
+    # nodes that these ones can connect to.
+    start_ids = {}
+    stack = node_ids[:]
+    while stack:
+        node_id = stack.pop(0)
+        start_ids[node_id] = 1
+        for next_id in network.transitions.get(node_id, []):
+            if next_id not in start_ids:
+                stack.append(next_id)
+    start_ids = sorted(start_ids)
+    
+    new_nodes = [network.nodes[i] for i in start_ids]
+    new_transitions = {}
+    for node_id, next_ids in network.transitions.iteritems():
+        if node_id not in start_ids:
+            continue
+        for next_id in next_ids:
+            if next_id not in start_ids:
+                continue
+            new_node_id = start_ids.index(node_id)
+            new_next_id = start_ids.index(next_id)
+            if new_node_id not in new_transitions:
+                new_transitions[new_node_id] = []
+            new_transitions[new_node_id].append(new_next_id)
+
+    return Network(new_nodes, new_transitions)
+
+
 def test_bie():
     #in_data = make_data("gse_id", platform='unknown')
-    in_data = make_data("gse_id")
+    #in_data = make_data("gse_id")
+    in_data = make_data("signal_file", logged="yes")
     #out_data = make_data(
     #    "signal_file", format='tdf',preprocess='rma', logged='yes',
     #    filter='no', missing=None, predataset='no', rename_sample='no', 
@@ -167,11 +276,12 @@ def test_bie():
     #out_data = make_data(
     #    "signal_file", preprocess='rma', logged='yes')
     
-    x = backchain(all_modules, out_data)
-    nodes, transitions = x
+    network = backchain(all_modules, out_data)
+    network = prune_network_by_start(network, in_data)
+    
     print "DONE FINDING PIPELINES"
-    _print_network(nodes, transitions)
-    _plot_network_gv("out.png", nodes, transitions)
+    _print_network(network)
+    _plot_network_gv("out.png", network)
     #_print_many_pipelines(pipelines, verbose=True)
     #_print_many_pipelines(pipelines, verbose=False)
     #for i, (modules, data) in enumerate(pipelines):
@@ -428,20 +538,20 @@ def _print_line(line, prefix0, prefixn, width):
 ##         print
 
 
-def _print_network(nodes, transitions):
+def _print_network(network):
     line_width = 72
-    for i in range(len(nodes)):
+    for i in range(len(network.nodes)):
         p_step = "%d.  " % i
         p_space = " " * (len(p_step)+2)
-        _print_line(str(nodes[i]), p_step, p_space, line_width)
+        _print_line(str(network.nodes[i]), p_step, p_space, line_width)
     print
 
-    for i in sorted(transitions):
-        x = [i, "->"] + transitions[i]
+    for i in sorted(network.transitions):
+        x = [i, "->"] + network.transitions[i]
         print "\t".join(map(str, x))
     
 
-def _plot_network_gv(filename, nodes, transitions):
+def _plot_network_gv(filename, network):
     from genomicode import graphviz
     
     gv_nodes = []
@@ -449,7 +559,7 @@ def _plot_network_gv(filename, nodes, transitions):
     gv_node2attr = {}
 
     id2name = {}
-    for node_id, n in enumerate(nodes):
+    for node_id, n in enumerate(network.nodes):
         node2attr = {}
         node2attr["style"] = "filled"
         if n.__class__.__name__ == "Data":
@@ -466,7 +576,7 @@ def _plot_network_gv(filename, nodes, transitions):
         gv_nodes.append(node_name)
         gv_node2attr[node_name] = node2attr
 
-    for node_id, next_ids in transitions.iteritems():
+    for node_id, next_ids in network.transitions.iteritems():
         for nid in next_ids:
             x1 = id2name[node_id]
             x2 = id2name[nid]
