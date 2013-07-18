@@ -259,17 +259,21 @@ def prune_network_by_start(network, start_data):
 
 
 def test_bie():
-    #in_data = make_data("gse_id", platform='unknown')
+    in_data = make_data("gse_id", platform='unknown')
     #in_data = make_data("gse_id")
-    in_data = make_data("signal_file", logged="yes")
+    #in_data = make_data("signal_file", logged="yes")
     #out_data = make_data(
     #    "signal_file", format='tdf',preprocess='rma', logged='yes',
     #    filter='no', missing=None, predataset='no', rename_sample='no', 
     #    gene_center='mean', quantile_norm='yes')
     out_data = make_data(
-        "signal_file", format='tdf', preprocess='rma', logged='yes',
+        "signal_file", format='tdf',preprocess='rma',logged='yes',
         filter='no', missing='zero', predataset='no', rename_sample='no',
-        gene_center='no', gene_normalize='no', quantile_norm='yes')
+         quantile_norm='yes',dwd_norm='no',gene_order='class_neighbors',
+        shiftscale_norm='no',combat_norm='no',bfrm_norm='yes',gene_center='mean',
+        gene_normalize='variance',group_fc='int',
+        num_features='int',annotate="yes",unique_genes='average_genes',platform='str',
+        duplicate_probe='high_var_probe')
     #out_data = make_data(
     #    "signal_file", filter='no', format='tdf', logged='yes',
     #    preprocess='rma')
@@ -700,8 +704,8 @@ all_modules = [
         "preprocess_agilent",
         antecedent("agilent_files", version="agilent"),
         consequent(
-            "signal_file", format="tdf", logged="yes",
-            preprocess="agilent", missing="yes")),
+            "signal_file", format="tdf", logged="no",
+            preprocess="agilent", missing="unknown")),
     
     #-----------------------------------------------------------------------
     # idat_files
@@ -722,14 +726,58 @@ all_modules = [
         antecedent("idat_files", version="illumina"),
         consequent(
             "illu_folder", format="gct", logged="no",
-            preprocess='illumina', missing='unknown')),
+            preprocess='illumina', missing='unknown',
+            ill_manifest=['HumanHT-12_V3_0_R2_11283641_A.txt',
+                    'HumanHT-12_V4_0_R2_15002873_B.txt',
+                    'HumanHT-12_V3_0_R3_11283641_A.txt',
+                    'HumanHT-12_V4_0_R1_15002873_B.txt',
+                    'HumanMI_V1_R2_XS0000122-MAP.txt',
+                    'HumanMI_V2_R0_XS0000124-MAP.txt',
+                    'HumanRef-8_V2_0_R4_11223162_A.txt',
+                    'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
+                    'HumanRef-8_V3_0_R2_11282963_A.txt',
+                    'HumanRef-8_V3_0_R3_11282963_A.txt',
+                    'HumanWG-6_V2_0_R4_11223189_A.txt',
+                    'HumanWG-6_V3_0_R2_11282955_A.txt',
+                    'HumanWG-6_V3_0_R3_11282955_A.txt',
+                    'MouseMI_V1_R2_XS0000127-MAP.txt',
+                    'MouseMI_V2_R0_XS0000129-MAP.txt',
+                    'MouseRef-8_V1_1_R4_11234312_A.txt',
+                    'MouseRef-8_V2_0_R2_11278551_A.txt',
+                    'MouseRef-8_V2_0_R3_11278551_A.txt',
+                    'MouseWG-6_V1_1_R4_11234304_A.txt',
+                    'MouseWG-6_V2_0_R2_11278593_A.txt',
+                    'MouseWG-6_V2_0_R3_11278593_A.txt',
+                    'RatRef-12_V1_0_R5_11222119_A.txt'],
+            ill_chip=['ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
+                'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+                'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
+                'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
+                'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
+                'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
+                'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
+                'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
+                'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
+                'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
+                'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
+                'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'],
+            ill_bg_mode=['false','true'],
+            ill_coll_mode=['none','max','median'],
+            ill_clm='string',
+            ill_custom_chip='string',
+            ill_custom_manifest='string')),
     Module(
         "get_illumina_signal",
         antecedent("illu_folder", preprocess='illumina'),
         consequent(
             "signal_file", preprocess='illumina', logged="no",
-            missing='unknown')),
-
+            missing='unknown',format='gct')),
+   Module(
+        "get_illumina_control",
+        antecedent("illu_folder", preprocess='illumina'),
+        consequent(
+            "control_file", preprocess='illumina', logged="no",
+            missing='unknown',format='gct')),
     #-----------------------------------------------------------------------
     # gpr_files
     Module(
@@ -748,91 +796,368 @@ all_modules = [
         "normalize_with_loess",
         antecedent("gpr_files", version="gpr"),
         consequent(
-            "signal_file", format="tdf", logged="yes",
+            "signal_file", format="tdf", logged="no",
             preprocess="loess", missing="unknown")),
     
     #-----------------------------------------------------------------------
     Module(
+        "convert_signal_to_tdf",
+        antecedent(
+            "signal_file",
+            format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls'],
+            quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],filter=[None,'no'],
+            predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent("signal_file", format='tdf',quantile_norm=[None,'no'],
+            bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],filter=[None,'no'],
+            predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
+        "log_signal",
+        antecedent("signal_file", logged=[None, "no",'unknown'], format='tdf',
+            quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],
+            predataset='no',rename_sample='no',filter=[None,'no'],group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent("signal_file", logged="yes", format='tdf',
+            quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],
+            predataset='no',rename_sample='no',filter=[None,'no'],group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
         "filter_genes_by_missing_values",
         antecedent(
-            "signal_file", format='tdf', logged="yes",
-            missing=["yes", "unknown"], filter=[None, "no"]),
+            "signal_file", format='tdf', logged="yes",missing=["yes", "unknown"], filter=[None, "no"],
+            quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],
+            predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
         consequent(
-            "signal_file", format='tdf', logged="yes",
-            missing=["yes", "unknown"], filter=20)), ###integer value
+            "signal_file", format='tdf', logged="yes", missing=["yes", "unknown"], filter=20,
+            quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],
+            predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')), ###integer value
     Module(
         "fill_missing_with_median",
         antecedent(
             "signal_file", format='tdf', logged="yes",
-            missing=["yes", "unknown"]),
+            missing=["yes", "unknown"],quantile_norm=[None,'no'],bfrm_norm=[None,'no'],
+            combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],
+            predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
         consequent(
-            "signal_file", format='tdf', logged="yes", missing="median")),
+            "signal_file", format='tdf', logged="yes", missing="median",
+            quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm=[None,'no'],gene_center=[None,'no'],gene_normalize=[None,'no'],
+            predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
     Module(
         "fill_missing_with_zeros",
         antecedent(
             "signal_file", format='tdf', logged="yes",
-            missing=["yes", "unknown"]),
-        consequent("signal_file", format='tdf', logged="yes", missing="zero")),
-    Module(
-        "convert_signal_to_tdf",
-        antecedent(
-            "signal_file",
-            format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        consequent("signal_file", format='tdf')),
-    Module(
-        "log_signal",
-        antecedent("signal_file", logged=[None, "no"], format='tdf'),
-        consequent("signal_file", logged="yes", format='tdf')),
+            missing=["yes", "unknown"],quantile_norm=[None,'no'],bfrm_norm=[None,'no'],
+            combat_norm=[None,'no'],shiftscale_norm=[None,'no'],dwd_norm=[None,'no'],gene_center=[None,'no'],
+            gene_normalize=[None,'no'],predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent("signal_file", format='tdf', logged="yes", missing="zero",
+            quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],shiftscale_norm=[None,'no'],
+            dwd_norm='no',gene_center=[None,'no'],gene_normalize=[None,'no'],
+            predataset='no',rename_sample='no',group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
     Module(
         "filter_and_threshold_genes",
         antecedent(
-            "signal_file", logged=[None, "no"], format='tdf',
-            predataset=[None, 'no']),
+            "signal_file", logged=[None, "no"], format='tdf',predataset=[None, 'no']),
         consequent(
-            "signal_file", logged=[None, "no"], format='tdf',
-            predataset="yes")),
+            "signal_file", logged=[None, "no"], format='tdf',predataset="yes")),
     Module( #require a rename_list_file
         "relabel_samples",
         antecedent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[None, "no", "median", "zero"],
-            rename_sample=[None, "no"]),
+            "signal_file", logged="yes", format='tdf',missing=[None, "no", "median", "zero"],
+            rename_sample=[None, "no"],quantile_norm=[None,'no'],bfrm_norm=[None,'no'],
+            combat_norm=[None,'no'],shiftscale_norm=[None,'no'],dwd_norm=[None,'no'],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[None, "no", "median", "zero"], rename_sample="yes")),
-    
+            "signal_file", logged="yes", format='tdf',missing=[None, "no", "median", "zero"],
+            rename_sample="yes",quantile_norm=[None,'no'],bfrm_norm=[None,'no'],combat_norm=[None,'no'],
+            shiftscale_norm=[None,'no'],dwd_norm=[None,'no'],gene_center=[None,'no'],
+            gene_normalize=[None,'no'],group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
     #------------------------------------------------------------------
     Module(
-        "quantile_norm",
+        "normalize_samples_with_quantile",
         antecedent(
             "signal_file", quantile_norm=[None, "no"], format='tdf',
-            logged="yes", missing=[None, "no", "median", "zero"]),
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
         consequent(
             "signal_file", quantile_norm="yes", format='tdf',
-            logged="yes", missing=[None, "no", "median", "zero"])),
-    
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
+        "normalize_samples_with_combat",#requir class label file
+        antecedent(
+            "signal_file", combat_norm=[None, "no"], format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent(
+            "signal_file", combat_norm="yes", format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
+        "normalize_samples_with_dwd",#requir class label file
+        antecedent(
+            "signal_file", dwd_norm=[None, "no"], format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent(
+            "signal_file", dwd_norm="yes", format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
+        "normalize_samples_with_bfrm",
+        antecedent(
+            "signal_file", bfrm_norm=[None, "no"], format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent(
+            "signal_file", bfrm_norm="yes", format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
+        "normalize_samples_with_shiftscale",#require class label file
+        antecedent(
+            "signal_file", shiftscale_norm=[None, "no"], format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent(
+            "signal_file", shiftscale_norm="yes", format='tdf',
+            logged="yes", missing=[None, "no", "median", "zero"],
+            gene_center=[None,'no'],gene_normalize=[None,'no'],
+            group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
     #------------------------------------------------------------------
+##    Module(   #may cause loop in the network 
+##        "convert_signal_to_pcl",
+##        antecedent(
+##            "signal_file", logged="yes",
+##            format='tdf', missing=[None, "no", "median", "zero"]),
+##        consequent(
+##            "signal_file",logged="yes", format='pcl',
+##            missing=[None, "no", "median", "zero"])),
     Module(
         "gene_center",
         antecedent(
             "signal_file", gene_center=[None, "no"], logged="yes",
             gene_normalize=[None, "no"], format='tdf',
-            missing=[None, "no", "median", "zero"]),
+            missing=[None, "no", "median", "zeros"],group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
         consequent(
             "signal_file", gene_center=["mean", "median"], logged="yes",
             gene_normalize=[None, "no"], format='tdf',
-            missing=[None, "no", "median", "zero"])),
+            missing=[None, "no", "median", "zero"],group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
     Module(
         "gene_normalize",
         antecedent(
             "signal_file", gene_normalize=[None, "no"], logged="yes",
-            format='tdf', missing=[None, "no", "median", "zero"]),
+            format='tdf', missing=[None, "no", "median", "zero"],group_fc=[None,'no'],
+            gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
         consequent(
             "signal_file", gene_normalize=["variance", "sum_of_squares"],
             logged="yes", format='tdf',
-            missing=[None, "no", "median", "zero"])),
+            missing=[None, "no", "median", "zero"],group_fc=[None,'no'],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    #------------------------------------------------------------------
+    Module(
+        "filter_genes_by_fold_change_across_classes", #require class_label_file
+        antecedent(
+            "signal_file", group_fc=[None, "no"], logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent(
+            "signal_file", group_fc="int",logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
+        "rank_genes_by_sample_ttest", #require class_label_file,generate gene_list_file and need reorder_genes
+        antecedent(
+            "signal_file", logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            gene_order=[None,'no'],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            gene_order=["t_test_p","t_test_fdr"],
+            num_features='all',annotate=[None,'no'],unique_genes=[None,'no'],
+            platform='unknown_platform',duplicate_probe='yes')),
+    Module(
+        "rank_genes_by_class_neighbors", #require class_label_file,generate gene_list_file and need reorder_genes
+        antecedent(
+            "signal_file", logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',gene_order=[None,'no'],
+            unique_genes=[None,'no'],num_features='all',annotate=[None,'no'],duplicate_probe='yes'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',gene_order='class_neighbors',
+            unique_genes=[None,'no'],num_features='all',annotate=[None,'no'],duplicate_probe='yes')),
+    Module(
+        "reorder_genes", #require gene_list_file
+        antecedent(
+            "signal_file",logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',gene_order=[None,'no'],
+            unique_genes=[None,'no'],num_features='all',annotate=[None,'no'],duplicate_probe='yes'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',gene_order=['gene_list'],
+            unique_genes=[None,'no'],num_features='all',annotate=[None,'no'],duplicate_probe='yes')),
+    Module(
+        'annotate_probes',
+        antecedent(
+            "signal_file",logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',unique_genes=[None,'no'],
+            num_features='all',annotate=[None,"no"],duplicate_probe='yes'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',unique_genes=[None,'no'],
+            num_features="all",annotate="yes",duplicate_probe='yes')),
+    Module(
+        'remove_duplicate_genes',
+        antecedent(
+            "signal_file",logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',
+            unique_genes=[None,'no'],num_features='all',annotate='yes',duplicate_probe='yes'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',
+            unique_genes=['average_genes','high_var','first_gene'],
+            num_features='all',annotate='yes',duplicate_probe='yes')),
+    Module(
+        'select_first_n_genes',
+        antecedent(
+            "signal_file",logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',num_features='all',duplicate_probe='yes'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',
+            num_features='int',duplicate_probe='yes')),
+    
+    
+    Module(
+        'add_crossplatform_probeid',
+        antecedent(
+            "signal_file",logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            platform='unknown_platform',duplicate_probe='yes'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            platform='str',duplicate_probe='yes')),
+    Module(
+        'remove_duplicate_probes',
+        antecedent(
+            "signal_file",logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            duplicate_probe='yes',platform='str'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            duplicate_probe='high_var_probe',platform='str')),
+    Module(
+        'select_probe_by_best_match',
+        antecedent(
+            "signal_file",logged="yes",
+            format='tdf', missing=[None, "no", "median", "zero"],
+            duplicate_probe='yes',platform='str'),
+        consequent(
+            "signal_file", logged="yes", format='tdf',
+            missing=[None, "no", "median", "zero"],
+            duplicate_probe='closest_probe',platform='str')),
+##    Module(#this may cause loop
+##        'convert_signal_to_gct',
+##        antecedent(
+##            "signal_file",
+##            format='tdf', missing=[None, "no", "median", "zero"]),
+##        consequent(
+##            "signal_file",
+##            format='gct',missing=[None, "no", "median", "zero"]
+##            )),
+##    Module(#this may cause loop
+##        'unlog_signal',
+##        antecedent(
+##            "signal_file",
+##            format='tdf', logged='yes',
+##            missing=[None, "no", "median", "zero"]),
+##        consequent(
+##            "signal_file",
+##            format='tdf',missing=[None, "no", "median", "zero"],
+##            logged='no')),
     ]
-   
 
 if __name__ == '__main__':
     test_bie()
