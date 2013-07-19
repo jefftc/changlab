@@ -87,7 +87,8 @@ vcf_file(Parameters,Modules):-
       Has_header=yes_fixed,
 
       get_value(Parameters,reheader,standard,Reheader),
-      
+      get_value(Parameters,annotate,no_annotate,Annotate),
+      Annotate=no_annotate,
       % Input:sam_file
       convert_parameters_sam(Parameters,NewParameters),
       sam_file(NewParameters,Past_Modules),
@@ -120,6 +121,26 @@ vcf_file(Parameters,Modules):-
       % Module: filter_vcf_file
       %Output parameters:full length parameters of vcf_file
       Newadd=[filter_vcf_file,Parameters],
+      append(Past_Modules,Newadd,Modules).
+/*-------------------------------------------------------------------------*/
+% annotate the vcf_file
+vcf_file(Parameters,Modules):-
+      length(Parameters,N),
+      get_length(n_vcf,N1),
+      N=N1,
+      get_value(Parameters,annotate,no_annotate,Annotate),
+	Annotate=yes_annotate,
+      get_value(Parameters,filter,no_filter,Filter),
+      Filter=yes_filter,
+      % Input:vcf_file
+      Oldannotate = no_annotate,
+      set_value(Parameters,annotate,Oldannotate,OldParameters),
+
+      vcf_file(OldParameters,Past_Modules),
+
+      % Module: annotate_vcf_file
+      %Output parameters:full length parameters of vcf_file
+      Newadd=[annotate_vcf_file,Parameters],
       append(Past_Modules,Newadd,Modules).
 
 /*-------------------------------------------------------------------------*/
@@ -169,7 +190,11 @@ convert_parameters_variable_vcf(Parameters,NewParameters):-
     
     get_value_variable(Parameters,reheader,Reheader),
     member(Reheader,[standard,bcftool]),
-    append(NewParameters2,[reheader,Reheader],NewParameters).
+    append(NewParameters2,[reheader,Reheader],NewParameters3),
+
+    get_value_variable(Parameters,annotate,Annotate),
+    member(Annotate,[yes_annotate,no_annotate]),
+    append(NewParameters3,[annotate,Annotate],NewParameters).
 /*-------------------------------------------------------------------------*/
 get_desire_parameters_vcf(Parameters,NewParameters):-
     get_desire_parameters_sam(Parameters,NewParameters1),
@@ -181,6 +206,12 @@ get_desire_parameters_vcf(Parameters,NewParameters):-
 
     (member(reheader,Parameters),
     get_value_variable(Parameters,reheader,Reheader),
-    append(NewParameters2,[reheader,Reheader],NewParameters);
+    append(NewParameters2,[reheader,Reheader],NewParameters3);
     not(member(reheader,Parameters)),
-    NewParameters=NewParameters2).
+    NewParameters3=NewParameters2),
+
+    (member(annotate,Parameters),
+    get_value_variable(Parameters,annotate,Annotate),
+    append(NewParameters3,[annotate,Annotate],NewParameters);
+    not(member(annotate,Parameters)),
+    NewParameters=NewParameters3).

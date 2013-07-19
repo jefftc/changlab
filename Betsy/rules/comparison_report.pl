@@ -270,4 +270,5 @@ convert_vcf_parameters(Parameters,NewParameters):-
     get_value(Parameters,read,single,Read),
     get_value(Parameters,ref,hg19,Ref),
     get_value(Parameters,recalibration,no_recalibration,Recalibration),
-    NewParameters=[contents,Contents,read,Read,ref,Ref,recalibration,Recalibration].
+    get_value(Parameters,annotate,yes_annotate,Annotate),
+    NewParameters=[contents,Contents,read,Read,ref,Ref,recalibration,Recalibration,annotate,Annotate].
