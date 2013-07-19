@@ -53,8 +53,8 @@ Network
 #          number.  Any value can match a GENERIC.
 # ITEM     e.g. "mean"
 # LIST     e.g. ["mean", "median"]
-# 
-# 
+#
+#
 # Use of GENERIC and LIST.
 # 1.  In the antecedent, LIST means that the module can accept
 #     multiple values.
@@ -75,8 +75,6 @@ NOVALUE = "___BETSY_NOVALUE___"
 GENERIC = "___BETSY_GENERIC___"
 
 TYPE_GENERIC, TYPE_NOVALUE, TYPE_ITEM, TYPE_LIST = range(4)
-
-
 
 
 class Data:
@@ -332,11 +330,11 @@ def prune_network_by_start(network, start_data):
 
 
 def test_bie():
-    in_data = make_data("gse_id", platform='unknown')
+    in_data = make_data("gse_id")
     #in_data = make_data("gse_id")
     #in_data = make_data("signal_file", logged="yes")
     out_data = make_data(
-        "signal_file", preprocess='rma', logged='yes')
+        "signal_file", preprocess='rma', logged='yes',format='tdf')
     #out_data = make_data(
     #    "signal_file", preprocess='rma', logged='yes', filter='no',
     #    format='tdf')
@@ -847,7 +845,7 @@ def _intersection(x, y):
 
 
 all_modules = [
-    # cel_files
+    #cel_files
     Module(
         "download_geo_GSEID",
         antecedent("gse_id"),
@@ -868,31 +866,27 @@ all_modules = [
     Module(
         "preprocess_rma",
         antecedent("cel_files", cel_version="v3_4"),
-        consequent(
-            "signal_file", logged="yes", preprocess="rma", format="jeffs",
-            missing="no")),
+        consequent("signal_file", logged="yes", preprocess="rma",
+                   format="jeffs", missing="no")),
     Module(
         "preprocess_mas5",
         antecedent("cel_files", cel_version="v3_4"),
         consequent(
             "signal_file", logged="no", preprocess="mas5",
             format="jeffs", missing="no")),
-    
     #-----------------------------------------------------------------------
-    # agilent_files
-    # XXX fix platform
-    # XXX fix unknown
+    #agilent_files
     Module(
         "download_geo_GSEID",
-        antecedent("gse_id", platform="unknown"),
-        consequent("agilent_files", version="unknown")),
+        antecedent("gse_id"),
+        consequent("agilent_files")),
     Module(
         "download_geo_GSEID_GPLID",
-        antecedent("gse_id_and_platform", platform="GPL"),
-        consequent("agilent_files", version="unknown")),
+        antecedent("gse_id_and_platform"),
+        consequent("agilent_files")),
     Module(
         "extract_agilent_files",
-        antecedent("agilent_files", version="unknown"),
+        antecedent("agilent_files"),
         consequent("agilent_files", version="agilent")),
     Module(
         "preprocess_agilent",
@@ -900,20 +894,19 @@ all_modules = [
         consequent(
             "signal_file", format="tdf", logged="no", preprocess="agilent",
             missing="unknown")),
-    
     #-----------------------------------------------------------------------
-    # idat_files
+    #idat_files
     Module(
         "download_geo_GSEID",
-        antecedent("gse_id", platform="unknown"),
-        consequent("idat_files", version="unknown")),
+        antecedent("gse_id"),
+        consequent("idat_files")),
     Module(
         "download_geo_GSEID_GPLID",
-        antecedent("gse_id_and_platform", platform="GPL"),
-        consequent("idat_files", version="unknown")),
+        antecedent("gse_id_and_platform"),
+        consequent("idat_files")),
     Module(
         "extract_illumina_idat_files",
-        antecedent("idat_files", version="unknown"),
+        antecedent("idat_files"),
         consequent("idat_files", version="illumina")),
     Module(
         "preprocess_illumina",
@@ -922,69 +915,68 @@ all_modules = [
             "illu_folder", format="gct", logged="no",
             preprocess='illumina', missing='unknown',
             ill_manifest=['HumanHT-12_V3_0_R2_11283641_A.txt',
-                    'HumanHT-12_V4_0_R2_15002873_B.txt',
-                    'HumanHT-12_V3_0_R3_11283641_A.txt',
-                    'HumanHT-12_V4_0_R1_15002873_B.txt',
-                    'HumanMI_V1_R2_XS0000122-MAP.txt',
-                    'HumanMI_V2_R0_XS0000124-MAP.txt',
-                    'HumanRef-8_V2_0_R4_11223162_A.txt',
-                    'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
-                    'HumanRef-8_V3_0_R2_11282963_A.txt',
-                    'HumanRef-8_V3_0_R3_11282963_A.txt',
-                    'HumanWG-6_V2_0_R4_11223189_A.txt',
-                    'HumanWG-6_V3_0_R2_11282955_A.txt',
-                    'HumanWG-6_V3_0_R3_11282955_A.txt',
-                    'MouseMI_V1_R2_XS0000127-MAP.txt',
-                    'MouseMI_V2_R0_XS0000129-MAP.txt',
-                    'MouseRef-8_V1_1_R4_11234312_A.txt',
-                    'MouseRef-8_V2_0_R2_11278551_A.txt',
-                    'MouseRef-8_V2_0_R3_11278551_A.txt',
-                    'MouseWG-6_V1_1_R4_11234304_A.txt',
-                    'MouseWG-6_V2_0_R2_11278593_A.txt',
-                    'MouseWG-6_V2_0_R3_11278593_A.txt',
-                    'RatRef-12_V1_0_R5_11222119_A.txt'],
+                          'HumanHT-12_V4_0_R2_15002873_B.txt',
+                          'HumanHT-12_V3_0_R3_11283641_A.txt',
+                          'HumanHT-12_V4_0_R1_15002873_B.txt',
+                          'HumanMI_V1_R2_XS0000122-MAP.txt',
+                          'HumanMI_V2_R0_XS0000124-MAP.txt',
+                          'HumanRef-8_V2_0_R4_11223162_A.txt',
+                          'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
+                          'HumanRef-8_V3_0_R2_11282963_A.txt',
+                          'HumanRef-8_V3_0_R3_11282963_A.txt',
+                          'HumanWG-6_V2_0_R4_11223189_A.txt',
+                          'HumanWG-6_V3_0_R2_11282955_A.txt',
+                          'HumanWG-6_V3_0_R3_11282955_A.txt',
+                          'MouseMI_V1_R2_XS0000127-MAP.txt',
+                          'MouseMI_V2_R0_XS0000129-MAP.txt',
+                          'MouseRef-8_V1_1_R4_11234312_A.txt',
+                          'MouseRef-8_V2_0_R2_11278551_A.txt',
+                          'MouseRef-8_V2_0_R3_11278551_A.txt',
+                          'MouseWG-6_V1_1_R4_11234304_A.txt',
+                          'MouseWG-6_V2_0_R2_11278593_A.txt',
+                          'MouseWG-6_V2_0_R3_11278593_A.txt',
+                          'RatRef-12_V1_0_R5_11222119_A.txt'],
             ill_chip=['ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
-                'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-                'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
-                'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
-                'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
-                'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
-                'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
-                'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
-                'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
-                'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
-                'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
-                'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'],
-            ill_bg_mode=['false','true'],
-            ill_coll_mode=['none','max','median'],
-            ill_clm='string',
-            ill_custom_chip='string',
-            ill_custom_manifest='string')),
+                      'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+                      'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
+                      'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
+                      'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
+                      'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
+                      'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
+                      'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
+                      'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
+                      'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
+                      'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
+                      'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'],
+            ill_bg_mode=['false', 'true'],
+            ill_coll_mode=['none', 'max', 'median'],
+            ill_clm=GENERIC,
+            ill_custom_chip=GENERIC,
+            ill_custom_manifest=GENERIC)),
     Module(
         "get_illumina_signal",
         antecedent("illu_folder", preprocess='illumina'),
         consequent(
             "signal_file", preprocess='illumina', logged="no",
-            missing='unknown',format='gct')),
-   Module(
+            missing='unknown', format='gct')),
+    Module(
         "get_illumina_control",
         antecedent("illu_folder", preprocess='illumina'),
-        consequent(
-            "control_file", preprocess='illumina', logged="no",
-            missing='unknown',format='gct')),
+        consequent("control_file", preprocess='illumina',
+                   logged="no", missing='unknown', format='gct')),
     #-----------------------------------------------------------------------
     # gpr_files
     Module(
         "download_geo_GSEID",
-        antecedent("gse_id", platform="unknown"),
-        consequent("gpr_files", version="unknown")),
+        antecedent("gse_id"),
+        consequent("gpr_files")),
     Module(
         "download_geo_GSEID_GPLID",
-        antecedent("gse_id_and_platform", platform="GPL"),
-        consequent("gpr_files", version="unknown")),
+        antecedent("gse_id_and_platform"),
+        consequent("gpr_files")),
     Module(
         "extract_gpr_files",
-        antecedent("gpr_files", version="unknown"),
+        antecedent("gpr_files"),
         consequent("gpr_files", version="gpr")),
     Module(
         "normalize_with_loess",
@@ -992,52 +984,20 @@ all_modules = [
         consequent(
             "signal_file", format="tdf", logged="no",
             preprocess="loess", missing="unknown")),
-    
     #-----------------------------------------------------------------------
     Module(
         "convert_signal_to_tdf",
         antecedent(
             "signal_file",
-            format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls'],
-            quantile_norm=[NOVALUE, 'no'], bfrm_norm=[NOVALUE, 'no'],
-            combat_norm=[NOVALUE, 'no'], shiftscale_norm=[NOVALUE, 'no'],
-            dwd_norm=[NOVALUE, 'no'], gene_center=[NOVALUE, 'no'],
-            gene_normalize=[NOVALUE, 'no'],filter=[NOVALUE, 'no'],
-            predataset='no', rename_sample='no', group_fc=[NOVALUE, 'no'],
-            gene_order=[NOVALUE, 'no'], num_features='all',
-            annotate=[NOVALUE, 'no'], unique_genes=[NOVALUE, 'no'],
-            platform='unknown_platform', duplicate_probe='yes'),
+            format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
         consequent(
-            "signal_file", format='tdf', quantile_norm=[NOVALUE, 'no'],
-            bfrm_norm=[NOVALUE, 'no'], combat_norm=[NOVALUE, 'no'],
-            shiftscale_norm=[NOVALUE, 'no'], dwd_norm=[NOVALUE, 'no'],
-            gene_center=[NOVALUE, 'no'], gene_normalize=[NOVALUE, 'no'],
-            filter=[NOVALUE, 'no'], predataset='no', rename_sample='no',
-            group_fc=[NOVALUE, 'no'], gene_order=[NOVALUE, 'no'], num_features='all',
-            annotate=[NOVALUE, 'no'], unique_genes=[NOVALUE, 'no'],
-            platform='unknown_platform', duplicate_probe='yes')),
+            "signal_file", format='tdf')),
     Module(
         "log_signal",
         antecedent(
-            "signal_file", logged=[NOVALUE, 'no', 'unknown'], format='tdf',
-            quantile_norm=[NOVALUE, 'no'], bfrm_norm=[NOVALUE, 'no'],
-            combat_norm=[NOVALUE, 'no'], shiftscale_norm=[NOVALUE, 'no'],
-            dwd_norm=[NOVALUE, 'no'], gene_center=[NOVALUE, 'no'],
-            gene_normalize=[NOVALUE, 'no'], predataset='no',
-            rename_sample='no', filter=[NOVALUE, 'no'], group_fc=[NOVALUE, 'no'],
-            gene_order=[NOVALUE, 'no'], num_features='all', annotate=[NOVALUE, 'no'],
-            unique_genes=[NOVALUE, 'no'], platform='unknown_platform',
-            duplicate_probe='yes'),
+            "signal_file", logged=[NOVALUE, 'no', 'unknown'], format='tdf'),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            quantile_norm=[NOVALUE, 'no'], bfrm_norm=[NOVALUE, 'no'],
-            combat_norm=[NOVALUE, 'no'], shiftscale_norm=[NOVALUE, 'no'],
-            dwd_norm=[NOVALUE, 'no'], gene_center=[NOVALUE, 'no'],
-            gene_normalize=[NOVALUE, 'no'], predataset='no', rename_sample='no',
-            filter=[NOVALUE, 'no'], group_fc=[NOVALUE, 'no'],
-            gene_order=[NOVALUE, 'no'], num_features='all', annotate=[NOVALUE, 'no'],
-            unique_genes=[NOVALUE, 'no'], platform='unknown_platform',
-            duplicate_probe='yes')),
+            "signal_file", logged="yes", format='tdf')),
     Module(
         "filter_genes_by_missing_values",
         antecedent(
@@ -1050,37 +1010,15 @@ all_modules = [
         "fill_missing_with_median",
         antecedent(
             "signal_file", format='tdf', logged="yes",
-            missing=["yes", "unknown"], quantile_norm=[NOVALUE, 'no'],
-            bfrm_norm=[NOVALUE, 'no'], combat_norm=[NOVALUE, 'no'],
-            shiftscale_norm=[NOVALUE, 'no'], dwd_norm=[NOVALUE, 'no'],
-            gene_center=[NOVALUE, 'no'], gene_normalize=[NOVALUE, 'no'],
-            predataset='no', rename_sample='no', group_fc=[NOVALUE, 'no'],
-            gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes'),
+            missing=["yes", "unknown", NOVALUE]),
         consequent(
-            "signal_file", format='tdf', logged="yes", missing="median",
-            quantile_norm=[NOVALUE,'no'],bfrm_norm=[NOVALUE,'no'],combat_norm=[NOVALUE,'no'],shiftscale_norm=[NOVALUE,'no'],
-            dwd_norm=[NOVALUE,'no'],gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            predataset='no',rename_sample='no',group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes')),
+            "signal_file", format='tdf', logged="yes", missing="median")),
     Module(
         "fill_missing_with_zeros",
         antecedent(
             "signal_file", format='tdf', logged="yes",
-            missing=["yes", NOVALUE]),
+            missing=["yes", "unknown", NOVALUE]),
         consequent("signal_file", format='tdf', logged="yes", missing="zero")),
-    Module(
-        "convert_signal_to_tdf",
-        antecedent(
-            "signal_file",
-            format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        consequent("signal_file", format='tdf')),
-    Module(
-        "log_signal",
-        antecedent("signal_file", logged=[NOVALUE, "no"], format='tdf'),
-        consequent("signal_file", logged="yes", format='tdf')),
     Module(
         "filter_and_threshold_genes",
         antecedent(
@@ -1089,7 +1027,7 @@ all_modules = [
         consequent(
             "signal_file", logged=[NOVALUE, "no"], format='tdf',
             predataset="yes")),
-    Module( #require a rename_list_file
+    Module(   # require a rename_list_file
         "relabel_samples",
         antecedent(
             "signal_file", logged="yes", format='tdf',
@@ -1098,7 +1036,6 @@ all_modules = [
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"], rename_sample="yes")),
-            
     #------------------------------------------------------------------
     Module(
         "normalize_samples_with_quantile",
@@ -1109,71 +1046,39 @@ all_modules = [
             "signal_file", quantile_norm="yes", format='tdf',
             logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
     Module(
-        "normalize_samples_with_combat",#requir class label file
+        "normalize_samples_with_combat",  # requir class label file
         antecedent(
             "signal_file", combat_norm=[NOVALUE, "no"], format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes'),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", combat_norm="yes", format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes')),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
     Module(
-        "normalize_samples_with_dwd",#requir class label file
+        "normalize_samples_with_dwd",  # requir class label file
         antecedent(
             "signal_file", dwd_norm=[NOVALUE, "no"], format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes'),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", dwd_norm="yes", format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes')),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
     Module(
         "normalize_samples_with_bfrm",
         antecedent(
             "signal_file", bfrm_norm=[NOVALUE, "no"], format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes'),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", bfrm_norm="yes", format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes')),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
     Module(
-        "normalize_samples_with_shiftscale",#require class label file
+        "normalize_samples_with_shiftscale",  # require class label file
         antecedent(
             "signal_file", shiftscale_norm=[NOVALUE, "no"], format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes'),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", shiftscale_norm="yes", format='tdf',
-            logged="yes", missing=[NOVALUE, "no", "median", "zero"],
-            gene_center=[NOVALUE,'no'],gene_normalize=[NOVALUE,'no'],
-            group_fc=[NOVALUE,'no'],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes')),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
     #------------------------------------------------------------------
-##    Module(   #may cause loop in the network 
+##    Module(   # may cause loop in the network
 ##        "convert_signal_to_pcl",
 ##        antecedent(
 ##            "signal_file", logged="yes",
@@ -1185,12 +1090,10 @@ all_modules = [
         "gene_center",
         antecedent(
             "signal_file", gene_center=[NOVALUE, "no"], logged="yes",
-            gene_normalize=[NOVALUE, "no"], format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"]),
+            format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", gene_center=["mean", "median"], logged="yes",
-            gene_normalize=[NOVALUE, "no"], format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"])),
+            format='tdf', missing=[NOVALUE, "no", "median", "zero"])),
     Module(
         "gene_normalize",
         antecedent(
@@ -1200,149 +1103,129 @@ all_modules = [
             "signal_file", gene_normalize=["variance", "sum_of_squares"],
             logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"])),
-            
     #------------------------------------------------------------------
-    Module(
-        "filter_genes_by_fold_change_across_classes", #require class_label_file
+    Module(  # require class_label_file
+        "filter_genes_by_fold_change_across_classes",
         antecedent(
             "signal_file", group_fc=[NOVALUE, "no"], logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes'),
+            format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
-            "signal_file", group_fc="int",logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes')),
-    Module(
-        "rank_genes_by_sample_ttest", #require class_label_file,generate gene_list_file and need reorder_genes
+            "signal_file", group_fc=GENERIC, logged="yes", format='tdf',
+            missing=[NOVALUE, "no", "median", "zero"])),
+    Module(  # require class_label_file,generate gene_list_file
+             # and need reorder_genes
+        "rank_genes_by_sample_ttest",
         antecedent(
             "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            gene_order=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes'),
+            gene_order=[NOVALUE, 'no']),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            gene_order=["t_test_p","t_test_fdr"],
-            num_features='all',annotate=[NOVALUE,'no'],unique_genes=[NOVALUE,'no'],
-            platform='unknown_platform',duplicate_probe='yes')),
-    Module(
-        "rank_genes_by_class_neighbors", #require class_label_file,generate gene_list_file and need reorder_genes
+            gene_order=["t_test_p", "t_test_fdr"])),
+    Module(  # require class_label_file,generate gene_list_file
+             # and need reorder_genes
+        "rank_genes_by_class_neighbors",
         antecedent(
             "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',gene_order=[NOVALUE,'no'],
-            unique_genes=[NOVALUE,'no'],num_features='all',annotate=[NOVALUE,'no'],duplicate_probe='yes'),
+            gene_order=[NOVALUE, 'no']),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',gene_order='class_neighbors',
-            unique_genes=[NOVALUE,'no'],num_features='all',annotate=[NOVALUE,'no'],duplicate_probe='yes')),
+            gene_order='class_neighbors')),
     Module(
-        "reorder_genes", #require gene_list_file
+        "reorder_genes",   # require gene_list_file
         antecedent(
-            "signal_file",logged="yes",
+            "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',gene_order=[NOVALUE,'no'],
-            unique_genes=[NOVALUE,'no'],num_features='all',annotate=[NOVALUE,'no'],duplicate_probe='yes'),
+            gene_order=[NOVALUE, 'no']),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',gene_order=['gene_list'],
-            unique_genes=[NOVALUE,'no'],num_features='all',annotate=[NOVALUE,'no'],duplicate_probe='yes')),
+            gene_order=['gene_list'])),
     Module(
         'annotate_probes',
         antecedent(
-            "signal_file",logged="yes",
+            "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',unique_genes=[NOVALUE,'no'],
-            num_features='all',annotate=[NOVALUE,"no"],duplicate_probe='yes'),
+            annotate=[NOVALUE, "no"]),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',unique_genes=[NOVALUE,'no'],
-            num_features="all",annotate="yes",duplicate_probe='yes')),
+            annotate="yes")),
     Module(
         'remove_duplicate_genes',
         antecedent(
-            "signal_file",logged="yes",
+            "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',
-            unique_genes=[NOVALUE,'no'],num_features='all',annotate='yes',duplicate_probe='yes'),
+            unique_genes=[NOVALUE, 'no'], annotate='yes'),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',
-            unique_genes=['average_genes','high_var','first_gene'],
-            num_features='all',annotate='yes',duplicate_probe='yes')),
+            unique_genes=['average_genes', 'high_var', 'first_gene'],
+            annotate='yes')),
     Module(
         'select_first_n_genes',
         antecedent(
-            "signal_file",logged="yes",
+            "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',num_features='all',duplicate_probe='yes'),
+            num_features='all'),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',
-            num_features='int',duplicate_probe='yes')),
-    
-    
+            num_features=GENERIC)),
     Module(
         'add_crossplatform_probeid',
         antecedent(
-            "signal_file",logged="yes",
+            "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform',duplicate_probe='yes'),
+            platform='unknown_platform', duplicate_probe='yes'),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            platform='str',duplicate_probe='yes')),
+            platform=GENERIC, duplicate_probe='yes')),
     Module(
         'remove_duplicate_probes',
         antecedent(
-            "signal_file",logged="yes",
+            "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            duplicate_probe='yes',platform='str'),
+            duplicate_probe='yes', platform=GENERIC),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            duplicate_probe='high_var_probe',platform='str')),
+            duplicate_probe='high_var_probe', platform=GENERIC)),
     Module(
         'select_probe_by_best_match',
         antecedent(
-            "signal_file",logged="yes",
+            "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            duplicate_probe='yes',platform='str'),
+            duplicate_probe='yes', platform=GENERIC),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
-            duplicate_probe='closest_probe',platform='str')),
-##    Module(#this may cause loop
+            duplicate_probe='closest_probe', platform=GENERIC)),
+    ##    Module(#this may cause loop
 ##        'convert_signal_to_gct',
 ##        antecedent(
 ##            "signal_file",
-##            format='tdf', missing=[None, "no", "median", "zero"]),
+##            format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
 ##        consequent(
 ##            "signal_file",
-##            format='gct',missing=[None, "no", "median", "zero"]
+##            format='gct',missing=[NOVALUE, "no", "median", "zero"]
 ##            )),
 ##    Module(#this may cause loop
 ##        'unlog_signal',
 ##        antecedent(
 ##            "signal_file",
 ##            format='tdf', logged='yes',
-##            missing=[None, "no", "median", "zero"]),
+##            missing=[NOVALUE, "no", "median", "zero"]),
 ##        consequent(
 ##            "signal_file",
-##            format='tdf',missing=[None, "no", "median", "zero"],
+##            format='tdf',missing=[NOVALUE, "no", "median", "zero"],
 ##            logged='no')),
     ]
 
+
 if __name__ == '__main__':
     test_bie()
-
-
