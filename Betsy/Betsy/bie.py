@@ -22,6 +22,7 @@ test_bie
 
 
 Classes:
+Attribute
 Data
 Module
 Network
@@ -30,7 +31,7 @@ Network
 
 # _backchain_to_modules       Given a consequent, list compatible modules.
 # _backchain_to_antecedents   Given a consequent and module, list antecedents.
-# _calc_compat_cons_data      Calc the compatability of a consequent and data.
+# _calc_consequent_data_compatibility
 #
 # _print_nothing
 # _print_string
@@ -40,9 +41,42 @@ Network
 # _pretty_attributes
 #
 # _find_node
-# _is_item
-# _item2seq
+# _get_attribute_type
 # _intersection
+
+
+
+# The value of an attribute can be:
+# NOVALUE  Value is not specified.
+# GENERIC  Value can be any string.  Used for parameters like the
+#          number of genes to filter out of a list, which can be any
+#          number.  Any value can match a GENERIC.
+# ITEM     e.g. "mean"
+# LIST     e.g. ["mean", "median"]
+# 
+# 
+# Use of GENERIC and LIST.
+# 1.  In the antecedent, LIST means that the module can accept
+#     multiple values.
+#     EX: filter_missing_with_zeros    missing=["yes", "unknown"]
+#     EX: convert_to_tdf               format=["pcl", "res", "gct", "jeffs"]
+# 2.  In the consequent, LIST means that the module can generate
+#     multiple values to fit the needs of the next Data object.
+#     This can be used for user-settable parameters.
+#     EX: gene_center     gene_normalize=[None, "no"] -> ["mean", "median"]
+# 3.  In the consequent, LIST can also mean that the module doesn't
+#     change the value.
+#     EX: quantile_norm   missing=["median", "zero"] -> ["median", "zero"]
+# 4.  In the consequent, GENERIC means that the module can generate
+#     many different values to fit the needs of the next DATA object.
+#     EX: filter_genes   filter=[None, "no"] -> GENERIC
+
+NOVALUE = "___BETSY_NOVALUE___"
+GENERIC = "___BETSY_GENERIC___"
+
+TYPE_GENERIC, TYPE_NOVALUE, TYPE_ITEM, TYPE_LIST = range(4)
+
+
 
 
 class Data:
@@ -160,63 +194,97 @@ def backchain(moduledb, out_data):
 
 
 def _is_compatible_with_start(data, start_data):
+    # data is a node in the network.  start_data is the Data that the
+    # user wants to start on.  In start_data, a LIST
     if data.datatype != start_data.datatype:
         return False
 
     data_attr = data.attributes
-    start_attr = start_data.attributes
+    strt_attr = start_data.attributes
     
-    x = data_attr.keys() + start_attr.keys()
+    x = data_attr.keys() + strt_attr.keys()
     all_attributes = sorted({}.fromkeys(x))
 
-    # Case 1.  Attribute in data but not start_data.
-    #          User does not care.  Is still compatible.
-    # Case 2.  Attribute in start_data but not data.
-    #          Incompatible.
-    # Case 3.  Attribute values are items in both.
-    #          Compatible if the items are equal.
-    # Case 4.  Attribute values is item in data and sequence in start.
-    #          User has a specific item.  Start can accept multiple items.
-    #          Compatible if item is in start sequence.
-    # Case 5.  Attribute values is sequence in data and item in start.
-    #          Incompatible.  Value in user is ambiguous, but start
-    #          requires a specific value.
-    # Case 6.  Attribute values is sequence in data and start.
-    #          Compatible only if sequences are the same.
+    # A LIST in START_TYPE indicates multiple possible starting
+    # places.  Does not have to match exactly.  (Because in
+    # antecedent, module can accept multiple values.)
+
+    # CASE  DATA_TYPE  START_TYPE  RESULT
+    #   1    NOVALUE    NOVALUE    OK.  START does not care.
+    #   2    NOVALUE    GENERIC    Incompatible.
+    #   3    NOVALUE     ITEM      Incompatible.
+    #   4    NOVALUE     LIST      Check if NOVALUE in LIST.
+    #   5    GENERIC    NOVALUE    OK.  START does not care.
+    #   6    GENERIC    GENERIC    NotImplementedError.
+    #   7    GENERIC     ITEM      OK.
+    #   8    GENERIC     LIST      NotImplementedError.
+    #   9     ITEM      NOVALUE    OK.  START does not care.
+    #  10     ITEM      GENERIC    OK.
+    #  11     ITEM       ITEM      Check if items are equal.
+    #  12     ITEM       LIST      Compatible if item is in start sequence.
+    #  13     LIST      NOVALUE    OK.  START does not care.
+    #  14     LIST      GENERIC    Incompatible.  Value in network is
+    #                              ambiguous, but start requires a
+    #                              specific (but GENERIC) value.
+    #  15     LIST       ITEM      OK if ITEM in LIST.
+    #  16     LIST       LIST      Compatible if intersection in lists.
 
     compatible = True
     for key in all_attributes:
-        key_in_data = key in data_attr
-        key_in_start = key in start_attr
-        
-        data_is_item = key_in_data and _is_item(data_attr[key])
-        start_is_item = key_in_start and _is_item(start_attr[key])
-        data_is_list = key_in_data and not _is_item(data_attr[key])
-        start_is_list = key_in_start and not _is_item(start_attr[key])
-        
+        DATA_VALUE = data_attr.get(key)
+        STRT_VALUE = strt_attr.get(key)
+        DATA_TYPE = _get_attribute_type(data_attr, key)
+        STRT_TYPE = _get_attribute_type(strt_attr, key)
+
         # Case 1.
-        if key_in_data and not key_in_start:
+        if DATA_TYPE == TYPE_NOVALUE and STRT_TYPE == TYPE_NOVALUE:
             pass
-        # Case 2.
-        elif not key_in_data and key_in_start:
+        # Cases 2-3.
+        elif DATA_TYPE == TYPE_NOVALUE:
             compatible = False
-        # Case 3.
-        elif data_is_item and start_is_item:
-            if start_attr[key] != data_attr[key]:
-                compatible = False
         # Case 4.
-        elif data_is_item and start_is_list:
-            if data_attr[key] not in start_attr[key]:
+        elif DATA_TYPE == TYPE_NOVALUE and STRT_TYPE == TYPE_LIST:
+            if DATA_VALUE not in STRT_VALUE:
                 compatible = False
         # Case 5.
-        elif data_is_list and start_is_item:
-            compatible = False
-        # Case 6.
-        elif data_is_list and start_is_list:
-            if sorted(data_attr[key]) != sorted(start_attr[key]):
-                compatible = False
-        else:
+        elif DATA_TYPE == TYPE_GENERIC and STRT_TYPE == TYPE_NOVALUE:
             raise NotImplementedError
+        # Case 6.
+        elif DATA_TYPE == TYPE_GENERIC and STRT_TYPE == TYPE_GENERIC:
+            raise NotImplementedError
+        # Cases 7.
+        elif DATA_TYPE == TYPE_GENERIC and STRT_TYPE == TYPE_ITEM:
+            pass
+        # Case 8.
+        elif DATA_TYPE == TYPE_GENERIC and STRT_TYPE == TYPE_LIST:
+            raise NotImplementedError
+        # Cases 9-10.
+        elif DATA_TYPE == TYPE_ITEM and STRT_TYPE in [
+            TYPE_NOVALUE, TYPE_GENERIC]:
+            pass
+        # Case 11.
+        elif DATA_TYPE == TYPE_ITEM and STRT_TYPE == TYPE_ITEM:
+            if DATA_VALUE != STRT_VALUE:
+                compatible = False
+        # Case 12.
+        elif DATA_TYPE == TYPE_ITEM and STRT_TYPE == TYPE_LIST:
+            if DATA_VALUE not in STRT_VALUE:
+                compatible = False
+        # Case 13.
+        elif DATA_TYPE == TYPE_LIST and STRT_TYPE == TYPE_NOVALUE:
+            pass
+        # Case 14.
+        elif DATA_TYPE == TYPE_LIST and STRT_TYPE == TYPE_GENERIC:
+            compatible = False
+        # Case 15.
+        elif DATA_TYPE == TYPE_LIST and STRT_TYPE == TYPE_ITEM:
+            if STRT_VALUE not in DATA_VALUE:
+                compatible = False
+        # Case 16.
+        elif DATA_TYPE == TYPE_LIST and STRT_TYPE == TYPE_LIST:
+            #if sorted() != sorted(STRT_VALUE):
+            if not _intersection(DATA_VALUE, STRT_VALUE):
+                compatible = False
     return compatible
             
         
@@ -263,18 +331,14 @@ def test_bie():
     #in_data = make_data("gse_id")
     in_data = make_data("signal_file", logged="yes")
     #out_data = make_data(
-    #    "signal_file", format='tdf',preprocess='rma', logged='yes',
-    #    filter='no', missing=None, predataset='no', rename_sample='no', 
-    #    gene_center='mean', quantile_norm='yes')
+    #    "signal_file", preprocess='rma', logged='yes')
+    #out_data = make_data(
+    #    "signal_file", preprocess='rma', logged='yes', filter='no',
+    #    format='tdf')
     out_data = make_data(
         "signal_file", format='tdf', preprocess='rma', logged='yes',
         filter='no', missing='zero', predataset='no', rename_sample='no',
         gene_center='no', gene_normalize='no', quantile_norm='yes')
-    #out_data = make_data(
-    #    "signal_file", filter='no', format='tdf', logged='yes',
-    #    preprocess='rma')
-    #out_data = make_data(
-    #    "signal_file", preprocess='rma', logged='yes')
     
     network = backchain(all_modules, out_data)
     network = prune_network_by_start(network, in_data)
@@ -282,16 +346,6 @@ def test_bie():
     print "DONE FINDING PIPELINES"
     _print_network(network)
     _plot_network_gv("out.png", network)
-    #_print_many_pipelines(pipelines, verbose=True)
-    #_print_many_pipelines(pipelines, verbose=False)
-    #for i, (modules, data) in enumerate(pipelines):
-    #    print "PIPELINE %d" % (i+1)
-    #    for i in range(len(modules)):
-    #        print "STEP %d" % (i+1)
-    #        print "Antecedent: %s" % data[i]
-    #        print "Module: %s" % modules[i]
-    #        print "Consequent: %s" % data[i+1]
-    #        print 
 
 
 def _backchain_to_modules(moduledb, data):
@@ -302,7 +356,7 @@ def _backchain_to_modules(moduledb, data):
 
     matches = []  # list of (module, num compatible attributes)
     for module in moduledb:
-        num_attributes = _calc_compat_cons_data(module, data)
+        num_attributes = _calc_consequent_data_compatibility(module, data)
         if not num_attributes:
             continue
         x = module, num_attributes
@@ -315,46 +369,37 @@ def _backchain_to_modules(moduledb, data):
 
 
 def _backchain_to_antecedents(module, data):
-    # Return list of data that can be antecedents of module.  A module
-    # can have multiple antecedents if its parameters can be different
-    # values.
-    import itertools
+    # Return list of Data objects that can be the antecedents of module.
 
     # The datatype is from the antecedent of the module.
     datatype = module.ante_data.datatype
 
     # Back chain the attributes.  Possibilities:
-    # Case 1.  Attribute not in antecedent or consequent.
-    #          Keep attribute in data unchanged.
-    # Case 2.  Attribute in antecedent but not consequent.
-    #          E.g. cel_version="v3_4"
-    #          Set the value of the attribute from the antecedent.
-    # Case 3.  Attribute in consequent but not antecedent.
-    #          E.g. preprocess="rma"
-    #          Ignore the attribute.
-    # Case 4.  Value of attribute in antecedent and consequent are
-    #          different.  E.g. logged="no" -> logged="yes"
-    #          Set the value of the attribute from the antecedent.
-    # Case 5.  Value of attribute in antecedent and consequent are the
-    #          same.  E.g. format="tdf" -> format="tdf"
-    #          Set the value of the attribute from the antecedent.
-    # Case 6.  Value of attribute in antecedent is list, while that
-    #          from consequent is a single object and the values in
-    #          the consequent is a subset of those in the antecedent.
-    #          E.g. format=["cdt", "tdf"] -> format="tdf".
-    #          Set the value of the attribute from the antecedent.
-    # Case 7.  Value of attribute in antecedent is list, while that
-    #          from consequent is a single object and the values in
-    #          the consequent are different from those in the
-    #          antecedent.
-    #          E.g. quantile_norm=[None, "no"] -> quantile_norm="yes".
-    #          Set the value of the attribute from the antecedent.
-    # Case 8.  Value of attribute in antecedent and consequent are
-    #          both lists.  E.g. gene_normalize=[None, "no"] ->
-    #          gene_normalize=["variance", "sum_of_squares"]
-    #          Set the value of the attribute from the antecedent.
-    # Anything else is not yet defined or implemented.
-
+    #
+    # DATA_VALUE  Value of attribute in data.
+    # ANTE_VALUE  Value of attribute in antecedent.
+    # CONS_VALUE  Value of attribute in consequent.
+    # ANTE_TYPE   Type of attribute in antecedent.
+    # CONS_TYPE   Type of attribute in consequent.
+    #
+    # CASE  ANTE_TYPE  CONS_TYPE  RESULT
+    #   1    NOVALUE    NOVALUE   DATA_VALUE.  Attribute not for this module.
+    #   2    NOVALUE    GENERIC   Ignore.  Attribute created by module.
+    #   3    NOVALUE     ITEM     Ignore.  preprocess="rma"
+    #   4    NOVALUE     LIST     Ignore.
+    #   5    GENERIC    NOVALUE   NotImplementedError. When does this happen?
+    #   6    GENERIC    GENERIC   NotImplementedError. When does this happen?
+    #   7    GENERIC     ITEM     NotImplementedError. When does this happen?
+    #   8    GENERIC     LIST     NotImplementedError. When does this happen?
+    #   9     ITEM      NOVALUE   ANTE_VALUE.  cel_version="v3_4"
+    #  10     ITEM      GENERIC   ANTE_VALUE.
+    #  11     ITEM       ITEM     ANTE_VALUE.  logged="no"->"yes"
+    #  12     ITEM       LIST     ANTE_VALUE.
+    #  13     LIST      NOVALUE   ANTE_VALUE.
+    #  14     LIST      GENERIC   ANTE_VALUE.
+    #  15     LIST       ITEM     ANTE_VALUE.  format=["cdt","tdf"] -> "tdf"
+    #  16     LIST       LIST     DATA_VALUE or ANTE_VALUE.
+    
     data_attr = data.attributes
     ante_attr = module.ante_data.attributes
     cons_attr = module.cons_data.attributes
@@ -364,55 +409,58 @@ def _backchain_to_antecedents(module, data):
 
     attributes = {}
     for key in all_attributes:
-        key_in_ante = key in ante_attr
-        key_in_cons = key in cons_attr
-        ante_is_item = key_in_ante and _is_item(ante_attr[key])
-        cons_is_item = key_in_cons and _is_item(cons_attr[key])
-        ante_is_list = key_in_ante and not _is_item(ante_attr[key])
-        cons_is_list = key_in_cons and not _is_item(cons_attr[key])
-        
+        DATA_VALUE = data_attr.get(key)
+        ANTE_VALUE = ante_attr.get(key)
+        CONS_VALUE = cons_attr.get(key)
+        DATA_TYPE = _get_attribute_type(data_attr, key)
+        ANTE_TYPE = _get_attribute_type(ante_attr, key)
+        CONS_TYPE = _get_attribute_type(cons_attr, key)
+
         # Case 1.
-        if not key_in_ante and not key_in_cons:
-            attributes[key] = data_attr[key]
-        # Case 2.
-        elif key_in_ante and not key_in_cons:
-            attributes[key] = ante_attr[key]
-        # Case 3.
-        elif not key_in_ante and key_in_cons:
+        if ANTE_TYPE == TYPE_NOVALUE and CONS_TYPE == TYPE_NOVALUE:
+            attributes[key] = DATA_VALUE
+        # Cases 2-4.
+        elif ANTE_TYPE == TYPE_NOVALUE:
             pass
-        # Case 4.
-        elif ante_is_item and cons_is_item and ante_attr[key] !=cons_attr[key]:
-            attributes[key] = ante_attr[key]
-        # Case 5.
-        elif ante_is_item and cons_is_item and ante_attr[key] ==cons_attr[key]:
-            attributes[key] = ante_attr[key]
-        # Case 6.
-        elif ante_is_list and cons_is_item and \
-                 cons_attr[key] in ante_attr[key]:
-            attributes[key] = ante_attr[key]
-        # Case 7.
-        elif ante_is_list and cons_is_item and \
-                 cons_attr[key] not in ante_attr[key]:
-            attributes[key] = ante_attr[key]
-        # Case 8.
-        elif ante_is_list and cons_is_list:
-            attributes[key] = ante_attr[key]
-        else:
-            print key
-            print ante_attr.get(key, "MISSING")
-            print cons_attr.get(key, "MISSING")
-            print data_attr.get(key, "MISSING")
+        # Cases 5-8.
+        elif ANTE_TYPE == TYPE_GENERIC:
             raise NotImplementedError
+        # Case 14.
+        elif ANTE_TYPE == TYPE_LIST and CONS_TYPE == TYPE_GENERIC:
+            # ANTE  filter=[None, 'no']
+            # CONS  filter='___GENERIC___'
+            # DATA  filter='0.50'
+            attributes[key] = ANTE_VALUE
+        # Case 16.
+        elif ANTE_TYPE == TYPE_LIST and CONS_TYPE == TYPE_LIST:
+            # This can happen if:
+            # 1.  The module doesn't change the value.
+            # 2.  The module can generate multiple values to fit the
+            #     next Data object.
+            # If it's the first case, use DATA_VALUE, otherwise use
+            # ANTE_VALUE.
+
+            assert DATA_TYPE == TYPE_ITEM
+            assert DATA_VALUE in CONS_VALUE
+            # Case 1.
+            if sorted(ANTE_VALUE) == sorted(CONS_VALUE):
+                attributes[key] = DATA_VALUE
+            # Case 2.
+            else:
+                attributes[key] = ANTE_VALUE
+        # Cases 9-13,15.
+        else:
+            attributes[key] = ANTE_VALUE
 
     x = Data(datatype, attributes)
     return [x]
 
 
-def _calc_compat_cons_data(module, data):
-    # Return the number of attributes in the consequent of the module
-    # that is compatible with the attributes of data.  0 means that
-    # module can not produce data.
-
+def _calc_consequent_data_compatibility(module, data):
+    # Return the number of attributes in data that this module can
+    # generate.  Look for attributes in consequent that match
+    # attributes in data.  0 means that module can not produce data.
+    
     p = _print_nothing
     #p = _print_string
     
@@ -425,49 +473,144 @@ def _calc_compat_cons_data(module, data):
             module.cons_data.datatype, data.datatype))
         return 0
 
-    ante_attributes = module.ante_data.attributes
-    cons_attributes = module.cons_data.attributes
+    data_attr = data.attributes
+    ante_attr = module.ante_data.attributes
+    cons_attr = module.cons_data.attributes
 
     # Count the number of attributes in the consequent that is
     # compatible with the attributes for data.
+    #
+    # A module is disqualified if it generates something that is
+    # incompatible with the data (so there's no way it can generate
+    # this data).
+    #
+    # CASE  CONS_TYPE  DATA_TYPE  RESULT
+    #   1    NOVALUE    NOVALUE   +0.  Module does not care.
+    #   2    NOVALUE    GENERIC   +0.  Module does not generate this.
+    #   3    NOVALUE     ITEM     +0.
+    #   4    NOVALUE     LIST     +0.
+    #   5    GENERIC    NOVALUE   +0.
+    #   6    GENERIC    GENERIC   +1.
+    #   7    GENERIC     ITEM     +1 if ANTE_VALUE != DATA_VALUE, otherwise DQ.
+    #   8    GENERIC     LIST     Disqualify.  GENERIC can't match LIST.
+    #   9     ITEM      NOVALUE   +0.
+    #  10     ITEM      GENERIC   NotImplementedError.
+    #  11     ITEM       ITEM     +1 if same, otherwise DQ.
+    #  12     ITEM       LIST     +1 if ITEM in LIST, otherwise DQ.
+    #  13     LIST      NOVALUE   +0.
+    #  14     LIST      GENERIC   NotImplementedError.
+    #  15     LIST       ITEM     +1 is ITEM in LIST, otherwise DQ.
+    #  16     LIST       LIST     +1 if intersect, otherwise DQ.
+    #
+    # *** The +1 only counts if module changes this attribute.
+    # Otherwise, +0.
+
     num_attributes = 0
     for key in data.attributes:
         p("Evaluating attribute %s." % key)
-        data_values = _item2seq(data.attributes[key])
-        ante_values = _item2seq(ante_attributes.get(key, []))
-        cons_values = _item2seq(cons_attributes.get(key, []))
 
-        # Checks:
-        # 1.  If module does not produce attribute, then ignore it.
-        #     This goes first.  If module is indifferent to this
-        #     attribute, then don't do anything.
-        # 2.  If module produces an attribute that conflicts the one
-        #     with the data, then ignore the whole module.
-        # 3.  If this module does not change this attribute, then
-        #     ignore it.  This check has to go after #2 to make sure
-        #     conflicts are not ignored.
+        DATA_VALUE = data_attr.get(key)
+        ANTE_VALUE = ante_attr.get(key)
+        CONS_VALUE = cons_attr.get(key)
+        ANTE_TYPE = _get_attribute_type(ante_attr, key)
+        CONS_TYPE = _get_attribute_type(cons_attr, key)
+        DATA_TYPE = _get_attribute_type(data_attr, key)
 
-        # If this module does not produce this attribute, then
-        # ignore it.
-        if not cons_values:
-            p("Module does not produce this attribute.")
-            continue
+        module_changes_value = ANTE_VALUE != CONS_VALUE
+        if ANTE_TYPE == TYPE_LIST and CONS_TYPE == TYPE_LIST:
+            module_changes_value = sorted(ANTE_VALUE) == sorted(CONS_VALUE)
 
-        # If this module generates an attribute whose value conflicts
-        # with one in the data, then ignore the module.
-        if not _intersection(cons_values, data_values):
-            p("Module produces incompatible values for this attribute.")
+        disqualify = False
+        # Cases 1-4.
+        if CONS_TYPE == TYPE_NOVALUE:
+            pass
+        # Case 5.
+        elif CONS_TYPE == TYPE_GENERIC and DATA_TYPE == TYPE_NOVALUE:
+            pass
+        # Case 6.
+        elif CONS_TYPE == TYPE_GENERIC and DATA_TYPE == TYPE_GENERIC:
+            if module_changes_value:
+                p("Attribute is compatible.")
+                num_attributes += 1
+        # Case 7.
+        elif CONS_TYPE == TYPE_GENERIC and DATA_TYPE == TYPE_ITEM:
+            if ANTE_TYPE == TYPE_NOVALUE:
+                disqualify = True
+            elif ANTE_TYPE == TYPE_GENERIC:
+                raise NotImplementedError
+            elif ANTE_TYPE == TYPE_ITEM:
+                if DATA_VALUE == ANTE_VALUE:
+                    disqualify = True
+                else:
+                    p("Attribute is compatible.")
+                    num_attributes += 1
+            elif ANTE_TYPE == TYPE_LIST:
+                if DATA_VALUE in ANTE_VALUE:
+                    disqualify = True
+                else:
+                    p("Attribute is compatible.")
+                    num_attributes += 1
+        # Case 8.
+        elif CONS_TYPE == TYPE_GENERIC and DATA_TYPE == TYPE_LIST:
+            disqualify = True
+        # Case 9.
+        elif CONS_TYPE == TYPE_ITEM and DATA_TYPE == TYPE_NOVALUE:
+            pass
+        # Case 10.
+        elif CONS_TYPE == TYPE_ITEM and DATA_TYPE == TYPE_GENERIC:
+            raise NotImplementedError
+        # Case 11.
+        elif CONS_TYPE == TYPE_ITEM and DATA_TYPE == TYPE_ITEM:
+            if CONS_VALUE == DATA_VALUE:
+                if module_changes_value:
+                    p("Attribute is compatible.")
+                    num_attributes += 1
+            else:
+                disqualify = True
+        # Case 12.
+        elif CONS_TYPE == TYPE_ITEM and DATA_TYPE == TYPE_LIST:
+            # E.g. preprocess_rma generates format="jeffs", data has
+            # format ["pcl", "res", "gct", "jeffs"].  Keep if the
+            # CONS_VALUE in DATA_VALUE.  Otherwise, DQ.
+            #print "HERE 2"
+            #print key
+            #print CONS_VALUE
+            #print DATA_VALUE
+            if CONS_VALUE in DATA_VALUE:
+                if module_changes_value:
+                    p("Attribute is compatible.")
+                    num_attributes += 1
+            else:
+                disqualify = True
+        # Case 13.
+        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_NOVALUE:
+            pass
+        # Case 14.
+        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_GENERIC:
+            raise NotImplementedError
+        # Case 15.
+        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_ITEM:
+            # missing=["yes","unknown"]  missing="no"
+            if DATA_VALUE in CONS_VALUE:
+                p("Attribute is compatible.")
+                num_attributes += 1
+            else:
+                disqualify = True
+        # Case 16.
+        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_LIST:
+            if _intersection(CONS_VALUE, DATA_VALUE):
+                if module_changes_value:
+                    p("Attribute is compatible.")
+                    num_attributes += 1
+            else:
+                disqualify = True
+                
+        if disqualify:
+            p("Attribute is disqualified.")
             num_attributes = 0
             break
-
-        # If this module does not change this attribute, then
-        # ignore it.
-        if sorted(ante_values) == sorted(cons_values):
-            p("Module does not change this attribute.")
-            continue
-
-        p("Attribute is compatible.")
-        num_attributes += 1
+        
+        
     if not num_attributes:
         p("No attributes compatible.")
     else:
@@ -631,20 +774,35 @@ def _find_node(nodes, node):
     return -1
 
 
-def _is_item(x):
-    import operator
-    if type(x) is type(""):
-        return True
-    if not operator.isSequenceType(x):
-        return True
-    return False
+## def _is_item(x):
+##     import operator
+##     if type(x) is type(""):
+##         return True
+##     if not operator.isSequenceType(x):
+##         return True
+##     return False
 
 
-def _item2seq(x):
+## def _item2list(x):
+##     if _is_item(x):
+##         return [x]
+##     return x
+
+
+def _get_attribute_type(attributes, name):
     import operator
-    if _is_item(x):
-        return [x]
-    return x
+
+    x = attributes.get(name)
+
+    if name not in attributes:
+        return TYPE_NOVALUE
+    elif x == GENERIC:
+        return TYPE_GENERIC
+    elif type(x) is type(""):
+        return TYPE_ITEM
+    elif operator.isSequenceType(x):
+        return TYPE_LIST
+    raise AssertionError, "Unknown attribute type: %s" % str(x)
 
 
 def _intersection(x, y):
@@ -655,25 +813,26 @@ all_modules = [
     # cel_files
     Module(
         "download_geo_GSEID",
-        antecedent("gse_id", platform="unknown"),
-        consequent("cel_files", cel_version="unknown")),
+        antecedent("gse_id"),
+        consequent("cel_files")),
     Module(
         "download_geo_GSEID_GPLID",
-        antecedent("gse_id_and_platform", platform="GPL"),
-        consequent("cel_files", cel_version="unknown")),
+        antecedent("gse_id_and_platform"),
+        consequent("cel_files")),
     Module(
         "extract_CEL_files",
         antecedent("cel_files", cel_version="unknown"),
         consequent("cel_files", cel_version="cc_or_v3_4")),
     Module(
         "convert_CEL_to_v3_4",
+        # XXX FIX cel_version
         antecedent("cel_files", cel_version="cc_or_v3_4"),
         consequent("cel_files", cel_version="v3_4")),
     Module(
         "preprocess_rma",
         antecedent("cel_files", cel_version="v3_4"),
         consequent(
-            "signal_file", logged="yes", preprocess="rma", format='jeffs',
+            "signal_file", logged="yes", preprocess="rma", format="jeffs",
             missing="no")),
     Module(
         "preprocess_mas5",
@@ -756,10 +915,10 @@ all_modules = [
         "filter_genes_by_missing_values",
         antecedent(
             "signal_file", format='tdf', logged="yes",
-            missing=["yes", "unknown"], filter=[None, "no"]),
+            missing=["yes", "unknown"], filter=[NOVALUE, "no"]),
         consequent(
             "signal_file", format='tdf', logged="yes",
-            missing=["yes", "unknown"], filter=20)), ###integer value
+            missing=["yes", "unknown"], filter=GENERIC)),
     Module(
         "fill_missing_with_median",
         antecedent(
@@ -781,58 +940,60 @@ all_modules = [
         consequent("signal_file", format='tdf')),
     Module(
         "log_signal",
-        antecedent("signal_file", logged=[None, "no"], format='tdf'),
+        antecedent("signal_file", logged=[NOVALUE, "no"], format='tdf'),
         consequent("signal_file", logged="yes", format='tdf')),
     Module(
         "filter_and_threshold_genes",
         antecedent(
-            "signal_file", logged=[None, "no"], format='tdf',
-            predataset=[None, 'no']),
+            "signal_file", logged=[NOVALUE, "no"], format='tdf',
+            predataset=[NOVALUE, 'no']),
         consequent(
-            "signal_file", logged=[None, "no"], format='tdf',
+            "signal_file", logged=[NOVALUE, "no"], format='tdf',
             predataset="yes")),
     Module( #require a rename_list_file
         "relabel_samples",
         antecedent(
             "signal_file", logged="yes", format='tdf',
-            missing=[None, "no", "median", "zero"],
-            rename_sample=[None, "no"]),
+            missing=[NOVALUE, "no", "median", "zero"],
+            rename_sample=[NOVALUE, "no"]),
         consequent(
             "signal_file", logged="yes", format='tdf',
-            missing=[None, "no", "median", "zero"], rename_sample="yes")),
+            missing=[NOVALUE, "no", "median", "zero"], rename_sample="yes")),
     
     #------------------------------------------------------------------
     Module(
         "quantile_norm",
         antecedent(
-            "signal_file", quantile_norm=[None, "no"], format='tdf',
-            logged="yes", missing=[None, "no", "median", "zero"]),
+            "signal_file", quantile_norm=[NOVALUE, "no"], format='tdf',
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", quantile_norm="yes", format='tdf',
-            logged="yes", missing=[None, "no", "median", "zero"])),
+            logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
     
     #------------------------------------------------------------------
     Module(
         "gene_center",
         antecedent(
-            "signal_file", gene_center=[None, "no"], logged="yes",
-            gene_normalize=[None, "no"], format='tdf',
-            missing=[None, "no", "median", "zero"]),
+            "signal_file", gene_center=[NOVALUE, "no"], logged="yes",
+            gene_normalize=[NOVALUE, "no"], format='tdf',
+            missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", gene_center=["mean", "median"], logged="yes",
-            gene_normalize=[None, "no"], format='tdf',
-            missing=[None, "no", "median", "zero"])),
+            gene_normalize=[NOVALUE, "no"], format='tdf',
+            missing=[NOVALUE, "no", "median", "zero"])),
     Module(
         "gene_normalize",
         antecedent(
-            "signal_file", gene_normalize=[None, "no"], logged="yes",
-            format='tdf', missing=[None, "no", "median", "zero"]),
+            "signal_file", gene_normalize=[NOVALUE, "no"], logged="yes",
+            format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
         consequent(
             "signal_file", gene_normalize=["variance", "sum_of_squares"],
             logged="yes", format='tdf',
-            missing=[None, "no", "median", "zero"])),
+            missing=[NOVALUE, "no", "median", "zero"])),
     ]
    
 
 if __name__ == '__main__':
     test_bie()
+
+
