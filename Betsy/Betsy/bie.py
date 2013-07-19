@@ -333,15 +333,15 @@ def test_bie():
     in_data = make_data("gse_id")
     #in_data = make_data("gse_id")
     #in_data = make_data("signal_file", logged="yes")
-    out_data = make_data(
-        "signal_file", preprocess='rma', logged='yes',format='tdf')
+    #out_data = make_data(
+    #    "signal_file", preprocess='rma', logged='yes',format='tdf')
     #out_data = make_data(
     #    "signal_file", preprocess='rma', logged='yes', filter='no',
     #    format='tdf')
-    #out_data = make_data(
-    #    "signal_file", format='tdf',preprocess='rma',logged='yes',
-    #    filter='no', missing='zero', predataset='no', rename_sample='no',
-    #    gene_center='no', gene_normalize='no', quantile_norm='yes')
+    out_data = make_data(
+        "signal_file", format='tdf',preprocess='rma',logged='yes',
+        filter='no', missing='zero', predataset='no', rename_sample='no',
+        gene_center='no', gene_normalize='no', quantile_norm='yes')
     #out_data = make_data(
     #    "signal_file", format='tdf',preprocess='rma',logged='yes',
     #    filter='no', missing='zero', predataset='no', rename_sample='no',
@@ -357,7 +357,7 @@ def test_bie():
     #    "signal_file", preprocess='rma', logged='yes')
     
     network = backchain(all_modules, out_data)
-    network = prune_network_by_start(network, in_data)
+    #network = prune_network_by_start(network, in_data)
     
     print "DONE FINDING PIPELINES"
     _print_network(network)
@@ -501,9 +501,27 @@ def _calc_consequent_data_compatibility(module, data):
             module.cons_data.datatype, data.datatype))
         return 0
 
+    # A module is compatible if:
+    # - The consequent has an attribute value that matches the value
+    #   of the attribute in the data.
+    # - The consequents and antecedents have no values, and their data
+    #   types are different.
+    #   e.g. download_geo_GSEID  gseid -> expression_files  (no attributes)
+    #
+    # A module is incompatible if:
+    # - None of the attribute values are the same.
+    # - One or more of the attribute values conflict.
+
     data_attr = data.attributes
     ante_attr = module.ante_data.attributes
     cons_attr = module.cons_data.attributes
+
+    # No attributes and consequents and antecedents have different
+    # data types.
+    if not ante_attr and not cons_attr and \
+           module.cons_data.datatype != module.ante_data.datatype:
+        return 1
+
 
     # Count the number of attributes in the consequent that is
     # compatible with the attributes for data.
@@ -849,14 +867,14 @@ all_modules = [
     Module(
         "download_geo_GSEID",
         antecedent("gse_id"),
-        consequent("cel_files")),
+        consequent("expression_files")),
     Module(
         "download_geo_GSEID_GPLID",
         antecedent("gse_id_and_platform"),
-        consequent("cel_files")),
+        consequent("expression_files")),
     Module(
         "extract_CEL_files",
-        antecedent("cel_files"),
+        antecedent("expression_files"),
         consequent("cel_files", cel_version="cc_or_v3_4")),
     Module(
         "convert_CEL_to_v3_4",
@@ -874,43 +892,28 @@ all_modules = [
         consequent(
             "signal_file", logged="no", preprocess="mas5",
             format="jeffs", missing="no")),
+    
     #-----------------------------------------------------------------------
     #agilent_files
     Module(
-        "download_geo_GSEID",
-        antecedent("gse_id"),
-        consequent("agilent_files")),
-    Module(
-        "download_geo_GSEID_GPLID",
-        antecedent("gse_id_and_platform"),
-        consequent("agilent_files")),
-    Module(
         "extract_agilent_files",
-        antecedent("agilent_files"),
-        consequent("agilent_files", version="agilent")),
+        antecedent("expression_files"),
+        consequent("agilent_files")),
     Module(
         "preprocess_agilent",
-        antecedent("agilent_files", version="agilent"),
+        antecedent("agilent_files"),
         consequent(
             "signal_file", format="tdf", logged="no", preprocess="agilent",
             missing="unknown")),
     #-----------------------------------------------------------------------
     #idat_files
     Module(
-        "download_geo_GSEID",
-        antecedent("gse_id"),
-        consequent("idat_files")),
-    Module(
-        "download_geo_GSEID_GPLID",
-        antecedent("gse_id_and_platform"),
-        consequent("idat_files")),
-    Module(
         "extract_illumina_idat_files",
-        antecedent("idat_files"),
-        consequent("idat_files", version="illumina")),
+        antecedent("expression_files"),
+        consequent("idat_files")),
     Module(
         "preprocess_illumina",
-        antecedent("idat_files", version="illumina"),
+        antecedent("idat_files"),
         consequent(
             "illu_folder", format="gct", logged="no",
             preprocess='illumina', missing='unknown',
@@ -967,20 +970,12 @@ all_modules = [
     #-----------------------------------------------------------------------
     # gpr_files
     Module(
-        "download_geo_GSEID",
-        antecedent("gse_id"),
-        consequent("gpr_files")),
-    Module(
-        "download_geo_GSEID_GPLID",
-        antecedent("gse_id_and_platform"),
-        consequent("gpr_files")),
-    Module(
         "extract_gpr_files",
-        antecedent("gpr_files"),
-        consequent("gpr_files", version="gpr")),
+        antecedent("expression_files"),
+        consequent("gpr_files")),
     Module(
         "normalize_with_loess",
-        antecedent("gpr_files", version="gpr"),
+        antecedent("gpr_files"),
         consequent(
             "signal_file", format="tdf", logged="no",
             preprocess="loess", missing="unknown")),
@@ -1180,7 +1175,7 @@ all_modules = [
         antecedent(
             "signal_file", logged="yes",
             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown_platform', duplicate_probe='yes'),
+            platform='unknown', duplicate_probe='yes'),
         consequent(
             "signal_file", logged="yes", format='tdf',
             missing=[NOVALUE, "no", "median", "zero"],
