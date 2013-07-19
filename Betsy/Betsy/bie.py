@@ -15,6 +15,7 @@ make_data        Make a Data object.
 antecedent       Synonym for make_data.
 consequent       Synonym for make_data.
 
+print_modules
 backchain
 prune_network_by_start
 
@@ -135,6 +136,44 @@ def make_data(datatype, **params):
 
 antecedent = make_data
 consequent = make_data
+
+
+def print_modules(moduledb):
+    mod2data = {}     # module -> (antecent datatype, consequent datatype)
+    data2attrs = {}   # datatype -> list of attributes
+    attr2values = {}  # attribute -> list of values
+
+    for module in moduledb:
+        assert module.name not in mod2data
+        ante_datatype = module.ante_data.datatype
+        cons_datatype = module.cons_data.datatype
+        mod2data[module.name] = ante_datatype, cons_datatype
+
+        for data in [module.ante_data, module.cons_data]:
+            if data.datatype not in data2attrs:
+                data2attrs[data.datatype] = []
+            for attr, values in data.attributes.iteritems():
+                if attr not in data2attrs[data.datatype]:
+                    data2attrs[data.datatype].append(attr)
+                if attr not in attr2values:
+                    attr2values[attr] = []
+                if type(values) is type(""):
+                    values = [values]
+                for value in values:
+                    if value not in attr2values[attr]:
+                        attr2values[attr].append(value)
+
+    for module in sorted(mod2data):
+        ante_datatype, cons_datatype = mod2data[module]
+        x = module, ante_datatype, cons_datatype
+        print "\t".join(x)
+
+    for datatype in sorted(data2attrs):
+        print datatype
+        for attr in sorted(data2attrs[datatype]):
+            values = sorted(attr2values[attr])
+            print "  %s : %s" % (attr, ", ".join(map(str, values)))
+        print
 
 
 def backchain(moduledb, out_data):
@@ -330,6 +369,7 @@ def prune_network_by_start(network, start_data):
 
 
 def test_bie():
+    print_modules(all_modules); return
     in_data = make_data("gse_id")
     #in_data = make_data("gse_id")
     #in_data = make_data("signal_file", logged="yes")
