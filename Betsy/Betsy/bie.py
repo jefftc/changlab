@@ -181,7 +181,7 @@ def backchain(moduledb, out_data):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 128
+    MAX_NETWORK_SIZE = 1000
     nodes.append(out_data)
     stack = [0]
     while stack:
@@ -955,8 +955,7 @@ all_modules = [
         "preprocess_illumina",
         antecedent("idat_files"),
         consequent(
-            "illu_folder", format="gct", logged="no",
-            preprocess='illumina', missing='unknown',
+            "illu_folder", preprocess='illumina', 
             ill_manifest=['HumanHT-12_V3_0_R2_11283641_A.txt',
                           'HumanHT-12_V4_0_R2_15002873_B.txt',
                           'HumanHT-12_V3_0_R3_11283641_A.txt',
@@ -1065,12 +1064,11 @@ all_modules = [
     Module(   # require a rename_list_file
         "relabel_samples",
         antecedent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf',
             rename_sample=[NOVALUE, "no"]),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"], rename_sample="yes")),
+            "signal_file",  format='tdf',
+             rename_sample="yes")),
     #------------------------------------------------------------------
     Module(
         "normalize_samples_with_quantile",
@@ -1162,8 +1160,8 @@ all_modules = [
              # and need reorder_genes
         "rank_genes_by_class_neighbors",
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", logged="yes", format='tdf',
+            missing=[NOVALUE, "no", "median", "zero"],
             gene_order=[NOVALUE, 'no']),
         consequent(
             "signal_file", logged="yes", format='tdf',
@@ -1172,73 +1170,59 @@ all_modules = [
     Module(
         "reorder_genes",   # require gene_list_file
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf', 
             gene_order=[NOVALUE, 'no']),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file",  format='tdf',
             gene_order=['gene_list'])),
     Module(
         'annotate_probes',
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf', 
             annotate=[NOVALUE, "no"]),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf',
             annotate="yes")),
     Module(
         'remove_duplicate_genes',
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf', 
             unique_genes=[NOVALUE, 'no'], annotate='yes'),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf',
             unique_genes=['average_genes', 'high_var', 'first_gene'],
             annotate='yes')),
     Module(
         'select_first_n_genes',
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf',
             num_features='all'),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file",  format='tdf',
             num_features=GENERIC)),
     Module(
         'add_crossplatform_probeid',
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-            platform='unknown', duplicate_probe='yes'),
+            "signal_file", format='tdf', 
+            platform='unknown', duplicate_probe=[NOVALUE, "no"]),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf',
             platform=GENERIC, duplicate_probe='yes')),
     Module(
         'remove_duplicate_probes',
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf',
             duplicate_probe='yes', platform=GENERIC),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file",  format='tdf',
             duplicate_probe='high_var_probe', platform=GENERIC)),
     Module(
         'select_probe_by_best_match',
         antecedent(
-            "signal_file", logged="yes",
-            format='tdf', missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf', 
             duplicate_probe='yes', platform=GENERIC),
         consequent(
-            "signal_file", logged="yes", format='tdf',
-            missing=[NOVALUE, "no", "median", "zero"],
+            "signal_file", format='tdf',
             duplicate_probe='closest_probe', platform=GENERIC)),
     ##    Module(#this may cause loop
 ##        'convert_signal_to_gct',
