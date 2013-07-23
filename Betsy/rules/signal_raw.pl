@@ -39,6 +39,11 @@ idat_files([contents,Contents,version,Version],Modules):-
 % reorder the parameters from the agilent_files with parameters in unwanted order
 agilent_files([contents,Contents,version,Version],Modules):-
    agilent_files([version,Version,contents,Contents],Modules).
+
+% reorder the parameters from the rna_seq_files with parameters in unwanted order
+rna_seq_files([contents,Contents,format,Format],Modules):-
+   rna_seq_files([format,Format,contents,Contents],Modules).
+
 /*-------------------------------------------------------------------------*/
 %Output interface
 % The parameters in output can be any length and it will trace to the full length one

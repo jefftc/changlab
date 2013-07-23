@@ -19,6 +19,7 @@ INPUTS = [
     'idat_files',
     'agilent_files',
     'input_signal_file',
+    'rna_seq_files'
     ]
 
 #output predicates
@@ -33,13 +34,14 @@ predicate2arguments = {
     'cel_files': (['version', 'unknown_version'], '[]'),
     'agilent_files': (['version', 'unknown_version'], '[]'),
     'input_signal_file': (['status', 'given'], '[]'),
+    'rna_seq_files':(['format','unknown_format'],'[]'),
     }
 
 #parameter objects
 PARAMETERS=[Parameter('preprocess',pretty_name='Preprocess',
                          choices=['rma', 'mas5',
                         'loess', 'illumina_controls',
-                        'illumina', 'agilent',
+                        'illumina', 'agilent','rsem',
                         'unknown_preprocess'],category=COMMON,
                          description='preprocess method'),
             Parameter('gene_center',pretty_name='Gene Center',
