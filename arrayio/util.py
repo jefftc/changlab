@@ -5,7 +5,9 @@ num_headers  Guess the number of headers in a matrix.
 
 """
 
+# Data Types.
 CHAR, INT, FLOAT, EMPTY = 1, 2, 4, 8
+# Semantic Types.
 HEAD, SAMPLE, ANNOT, VALUE, BLANK = 1, 2, 4, 8, 16
 
 
@@ -352,18 +354,21 @@ def _rule_no_head_around_no_blank(
 def _rule_first_values_are_int(
     matrix, num_rows, num_cols, datatype, semtype):
     # RULE: If the first columns of VALUEs are INT or EMPTY, and the
-    #       remaining are FLOAT or EMPTY, then the first column should
+    #       remaining are FLOAT or EMPTY, then the first columns should
     #       be relabeled as ANNOT. (e.g. Gene IDs).
     #
-    # <HEAD1>      <HEAD2>      <SAMPLE1>
-    # <ANNOT/STR>  <ANNOT/INT>  <VALUE/FLOAT>    Last ANNOT is INT.
-    # <ANNOT/INT>  <ANNOT/INT>  <VALUE/FLOAT>    All ANNOTs are INTs.
+    # <HEAD1>     <HEAD2>     <HEAD3>     <SAMPLE1>
+    # <ANNOT/STR> <ANNOT/STR> <ANNOT/INT> <VALUE/FLOAT>  Last ANNOT is INT.
+    # <ANNOT/STR> <ANNOT/INT> <ANNOT/INT> <VALUE/FLOAT>  All ANNOTs are INTs.
+    # <ANNOT/INT> <ANNOT/STR> <ANNOT/INT> <VALUE/FLOAT>
+
+    #_print_matrix_debug(semtype, 20, 10, 8)
 
     # Find first column that contain VALUEs.
     col = None
     for j in range(num_cols):
         for i in range(num_rows):
-            if semtype[i][j] & VALUE:
+            if semtype[i][j] & VALUE and not (datatype[i][j] & EMPTY):
                 col = j
                 break
         if col is not None:
@@ -475,6 +480,13 @@ def num_headers(matrix):
     return x2
 
 
+def _print_matrix_debug(matrix, start_row, nrows, ncols):
+    end_row = min(start_row+nrows, len(matrix))
+    for i in range(start_row, end_row):
+        print i, matrix[i][:ncols]
+    
+
+
 def _num_headers_h(matrix):
     # Try to find the number of rows and columns that contain header
     # information.
@@ -532,7 +544,7 @@ def _num_headers_h(matrix):
     # RULE: If a cell is not blank, then it cannot have a HEAD on the
     #       top and left.
     # RULE: If the first columns of VALUEs are INT or EMPTY, and the
-    #       remaining are FLOAT or EMPTY, then the first column should
+    #       remaining are FLOAT or EMPTY, then the first columns should
     #       be relabeled as ANNOT. (e.g. Gene IDs).
     # RULE: If the column header is SCALE_FACTOR, the row contains
     #       ANNOT and not VALUE.
@@ -609,8 +621,11 @@ def _num_headers_h(matrix):
 
     # Apply the rules to guess the right types of each cell of the
     # matrix.
+    iteration = 0
     changed = True
     while changed:
+        #_print_matrix_debug(semtype, 0, 5, 8)
+        iteration += 1
         changed = False
         for rule_fn in RULES:
             c = rule_fn(matrix, num_rows, num_cols, datatype, semtype)
@@ -654,10 +669,8 @@ def _num_headers_h(matrix):
     hrows, hcols = first_row, first_col
 
     #print "DEBUG", hrows, hcols
-    #for i in range(min(20, len(datatype))):
-    #    print i, datatype[i][:5]
-    #for i in range(min(20, len(datatype))):
-    #    print i, semtype[i][:5]
+    #_print_matrix_debug(datatype, 0, 10, 8)
+    #_print_matrix_debug(semtype, 0, 10, 8)
     #import sys; sys.exit(0)
 
     # Don't allow this.  It makes it too complicated to have to keep
