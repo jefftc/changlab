@@ -76,6 +76,8 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     handle = filelib.openfh(handle)
     x = handle.read()
     data = iolib.split_tdf(x, strip=True)
+    #handle = filelib.read_cols(handle)
+    #data = [handle.next() for i in range(100)]
 
     # Sometimes people insert blank rows or columns inside the matrix.
     # Remove all of those.
