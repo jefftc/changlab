@@ -16,11 +16,11 @@
 # _parse_file_num_annot
 # _read_annot_file
 #
-# find_col_indexes
-# find_col_ids
-# find_col_genesets
-# find_col_annotation
-# find_col_re
+# select_col_indexes
+# select_col_ids
+# select_col_genesets
+# select_col_annotation
+# select_col_re
 # replace_col_ids
 # relabel_col_ids
 # append_col_ids
@@ -28,24 +28,22 @@
 # reorder_col_alphabetical
 # remove_duplicate_cols
 # rename_duplicate_cols
-# remove_col_ids
-# remove_col_indexes
 # toupper_col_ids
 # hash_col_ids
 # apply_re_col_ids
 # add_suffix_col_ids
 #
-# find_row_indexes
-# find_row_ids
-# find_row_string
-# find_row_numeric
-# find_row_random
-# find_row_genesets
-# find_row_annotation
-# find_row_numeric_annotation
-# find_row_mean_var
-# find_row_missing_values
-# find_row_var
+# select_row_indexes
+# select_row_ids
+# select_row_string
+# select_row_numeric
+# select_row_random
+# select_row_genesets
+# select_row_annotation
+# select_row_numeric_annotation
+# select_row_mean_var
+# select_row_missing_values
+# select_row_var
 # dedup_row_by_var
 # reverse_rows
 # reorder_row_indexes
@@ -385,13 +383,13 @@ def _parse_file_num_annot(annotation):
     return filename, header, values
 
 
-def find_col_indexes(MATRIX, indexes, count_headers):
+def select_col_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
     return parse_indexes(MATRIX, False, indexes, count_headers)
 
 
-def find_col_ids(MATRIX, ids):
+def select_col_ids(MATRIX, ids):
     # IDs is a list of gene IDs or names.  Combine them into a single string.
     ids = [x.strip() for x in ids]
     ids = ",".join(ids)
@@ -400,77 +398,49 @@ def find_col_ids(MATRIX, ids):
     return parse_names(MATRIX, False, ids)
 
 
-def find_col_genesets(MATRIX, genesets):
+def select_col_genesets(MATRIX, genesets):
     if not genesets:
         return None
     return parse_geneset(MATRIX, False, genesets)
 
 
-def find_col_annotation(MATRIX, col_annotation):
-    # Format: <txt_file>,<header>,<value>[,<value,...]
+def select_col_annotation(MATRIX, col_annotation):
+    # Format: list of [<txt_file>,<header>,<value>[,<value,...]]
     from genomicode import matrixlib
 
     if not col_annotation:
         return None
 
-    x = _parse_file_annot(col_annotation)
-    filename, header, values = x
+    I_all = []
+    for i, col_annot in enumerate(col_annotation):
+        x = _parse_file_annot(col_annot)
+        filename, header, values = x
 
-    # Read the annotations.
-    x = _read_annot_file(filename)
-    header2annots, all_headers, all_annots = x
+        # Read the annotations.
+        x = _read_annot_file(filename)
+        header2annots, all_headers, all_annots = x
 
-    # Align the annotations to the matrix file.
-    x = matrixlib.align_cols_to_many_annots(
-        MATRIX, all_annots, hash=True, get_indexes=True)
-    I_matrix, I_annots, index = x
-    assert len(I_matrix) == len(I_annots)
+        # Align the annotations to the matrix file.
+        x = matrixlib.align_cols_to_many_annots(
+            MATRIX, all_annots, hash=True, get_indexes=True)
+        I_matrix, I_annots, index = x
+        assert len(I_matrix) == len(I_annots)
 
-    assert header in header2annots, "Missing header: %s" % header
-    annots = header2annots[header]
-    I = []
-    for (im, ia) in zip(I_matrix, I_annots):
-        if annots[ia] in values:
-            I.append(im)
-    #I = [im for (im, ia) in zip(I_matrix, I_annots) if annots[ia] in values]
+        # Select only the columns where the annotation contains one of
+        # these values.
+        assert header in header2annots, "Missing header: %s" % header
+        annots = header2annots[header]
+        I = [im for (im, ia) in zip(I_matrix, I_annots)
+             if annots[ia] in values]
+        if i == 0:
+            I_all = I
+        else:
+            I_all = sorted(set(I_all).intersection(I))
 
-##     # Search for a col_annot in the MATRIX that matches a column in
-##     # the annotation file.
-##     for annot_header in header_order:
-##         matrix_header = _find_col_header(
-##             MATRIX, header2annots[annot_header])
-##         if matrix_header is not None:
-##             break
-##     else:
-##         raise AssertionError("I could not align the annotation file to " + \
-##               "the matrix.")
-##     annot = header2annots[annot_header]
-##     matrix_annot = MATRIX.col_names(matrix_header)
-##     h_annot = [hashlib.hash_R(x) for x in annot]
-##     h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
-##     I = jmath.match(h_matrix_annot, h_annot)
-##     assert None not in I
-##     for h in header2annots:
-##         x = header2annots[h]
-##         header2annots[h] = [x[i] for i in I]
-##     # Make sure they're aligned correctly.
-##     annot = header2annots[annot_header]
-##     matrix_annot = MATRIX.col_names(matrix_header)
-##     h_annot = [hashlib.hash_R(x) for x in annot]
-##     h_matrix_annot = [hashlib.hash_R(x) for x in matrix_annot]
-##     assert h_annot == h_matrix_annot
-
-##     # Identify the lines that match the annotations.
-##     assert header in header2annots, \
-##         "I could not find the header: %s" % header
-##     I = []
-##     for i, annot in enumerate(header2annots[header]):
-##         if annot in values:
-##             I.append(i)
-    return I
+    return I_all
 
 
-def find_col_regex(MATRIX, col_regex):
+def select_col_regex(MATRIX, col_regex):
     import re
     from arrayio import tab_delimited_format as tdf
 
@@ -733,40 +703,40 @@ def rename_duplicate_cols(MATRIX, rename_duplicate_cols):
     return MATRIX
 
 
-def remove_col_ids(MATRIX, remove_col_ids):
-    import arrayio
+## def remove_col_indexes(MATRIX, remove_col_indexes, count_headers):
+##     if not remove_col_indexes:
+##         return None
+##     I = []
+##     for indexes in remove_col_indexes:
+##         x = parse_indexes(MATRIX, False, indexes, count_headers)
+##         I.extend(x)
 
-    if not remove_col_ids:
-        return MATRIX
-    x = ",".join(remove_col_ids)
-    x = x.split(",")
-    col_ids = [x.strip() for x in x]
-    names = MATRIX.col_names(arrayio.COL_ID)
-
-    I = []
-    not_found = {}.fromkeys(col_ids)
-    for i, name in enumerate(names):
-        if name in col_ids:
-            if name in not_found:
-                del not_found[name]
-        else:
-            I.append(i)
-    assert not not_found, "I could not find: %s." % \
-        ", ".join(sorted(not_found))
-    x = MATRIX.matrix(None, I)
-    return x
+##     I_all = [x for x in range(MATRIX.ncol()) if x not in I]
+##     return I_all
 
 
-def remove_col_indexes(MATRIX, remove_col_indexes, count_headers):
-    if not remove_col_indexes:
-        return None
-    I = []
-    for indexes in remove_col_indexes:
-        x = parse_indexes(MATRIX, False, indexes, count_headers)
-        I.extend(x)
+## def remove_col_ids(MATRIX, remove_col_ids):
+##     import arrayio
 
-    I_all = [x for x in range(MATRIX.ncol()) if x not in I]
-    return I_all
+##     if not remove_col_ids:
+##         return MATRIX
+##     x = ",".join(remove_col_ids)
+##     x = x.split(",")
+##     col_ids = [x.strip() for x in x]
+##     names = MATRIX.col_names(arrayio.COL_ID)
+
+##     I = []
+##     not_found = {}.fromkeys(col_ids)
+##     for i, name in enumerate(names):
+##         if name in col_ids:
+##             if name in not_found:
+##                 del not_found[name]
+##         else:
+##             I.append(i)
+##     assert not not_found, "I could not find: %s." % \
+##         ", ".join(sorted(not_found))
+##     x = MATRIX.matrix(None, I)
+##     return x
 
 
 def toupper_col_ids(MATRIX, toupper_col_ids):
@@ -830,13 +800,13 @@ def add_suffix_col_ids(MATRIX, suffix):
     return MATRIX
 
 
-def find_row_indexes(MATRIX, indexes, count_headers):
+def select_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
     return parse_indexes(MATRIX, True, indexes, count_headers)
 
 
-def find_row_ids(MATRIX, ids):
+def select_row_ids(MATRIX, ids):
     # IDs is a list of gene IDs or names.  Combine them into a single string.
     ids = [x.strip() for x in ids]
     ids = ",".join(ids)
@@ -845,7 +815,7 @@ def find_row_ids(MATRIX, ids):
     return parse_names(MATRIX, True, ids)
 
 
-def find_row_string(MATRIX, row_annotation):
+def select_row_string(MATRIX, row_annotation):
     # Format: <header>,<value>[,<value,...]
     from genomicode import matrixlib
 
@@ -865,7 +835,7 @@ def find_row_string(MATRIX, row_annotation):
     return I
 
 
-def find_row_numeric(MATRIX, row_annotation):
+def select_row_numeric(MATRIX, row_annotation):
     # Format: <header>,<value>[,<value,...]
     from genomicode import matrixlib
 
@@ -901,7 +871,7 @@ def find_row_numeric(MATRIX, row_annotation):
     return I
 
 
-def find_row_random(MATRIX, num_rows):
+def select_row_random(MATRIX, num_rows):
     import random
     if not num_rows:
         return None
@@ -912,13 +882,13 @@ def find_row_random(MATRIX, num_rows):
     return I
 
 
-def find_row_genesets(MATRIX, genesets):
+def select_row_genesets(MATRIX, genesets):
     if not genesets:
         return None
     return parse_geneset(MATRIX, True, genesets)
 
 
-def find_row_annotation(MATRIX, row_annotation):
+def select_row_annotation(MATRIX, row_annotation):
     # Format: <txt_file>,<header>,<value>[,<value,...]
     from genomicode import matrixlib
 
@@ -950,7 +920,7 @@ def find_row_annotation(MATRIX, row_annotation):
     return I
 
 
-def find_row_numeric_annotation(MATRIX, row_annotation):
+def select_row_numeric_annotation(MATRIX, row_annotation):
     # Format: <txt_file>,<header>,<value>[,<value,...]
     from genomicode import matrixlib
 
@@ -995,7 +965,7 @@ def find_row_numeric_annotation(MATRIX, row_annotation):
     return I
 
 
-def find_row_mean_var(MATRIX, filter_mean, filter_var):
+def select_row_mean_var(MATRIX, filter_mean, filter_var):
     from genomicode import pcalib
     if filter_mean is None and filter_var is None:
         return None
@@ -1020,7 +990,7 @@ def find_row_mean_var(MATRIX, filter_mean, filter_var):
     return I
 
 
-def find_row_missing_values(MATRIX, perc_missing):
+def select_row_missing_values(MATRIX, perc_missing):
     # perc_missing of 0.25 means remove all rows with 25% or more
     # missing values.
     if perc_missing is None:
@@ -1039,7 +1009,7 @@ def find_row_missing_values(MATRIX, perc_missing):
     return I
             
 
-def find_row_var(MATRIX, select_var):
+def select_row_var(MATRIX, select_var):
     from genomicode import pcalib
     if select_var is None:
         return None
@@ -1761,9 +1731,13 @@ def main():
         "--select_col_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.")
     group.add_argument(
-        "--select_col_annotation", default=None,
+        "--select_col_annotation", default=[], action="append",
         help="Include only the cols where the annotation contains a "
-        "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
+        "specific value.  If multiple values are given, then will select "
+        "the annotations that match any value (OR).  If this option is "
+        "given multiple times, selects only the cols that match all the "
+        "annotations (AND).  "
+        "Format: <txt_file>,<header>,<value>[,<value,...]")
     group.add_argument(
         "--select_col_genesets", default=None,
         help="Include only the samples from this geneset.  "
@@ -1772,11 +1746,14 @@ def main():
         "--select_col_regex", default=None,
         help="Include columns that match this regular expression.")
     group.add_argument(
-        "--remove_col_ids", default=[], action="append",
-        help="Comma-separated list of IDs to remove.")
-    group.add_argument(
-        "--remove_col_indexes", default=[], action="append",
-        help="Comma-separated list of indexes to remove.")
+        "--reverse_col_selection", default=False, action="store_true",
+        help="Remove the selected columns instead of keeping them.")
+    ## group.add_argument(
+    ##     "--remove_col_indexes", default=[], action="append",
+    ##     help="Comma-separated list of indexes to remove.")
+    ## group.add_argument(
+    ##     "--remove_col_ids", default=[], action="append",
+    ##     help="Comma-separated list of IDs to remove.")
     group.add_argument(
         "--remove_duplicate_cols", default=False, action="store_true",
         help="If a column is found multiple times, keep only the first one.")
@@ -1969,34 +1946,37 @@ def main():
     MATRIX = transpose_matrix(MATRIX, args.transpose)
 
     # Slice to a submatrix.
-    I01 = find_row_indexes(
+    I01 = select_row_indexes(
         MATRIX, args.select_row_indexes, args.row_indexes_include_headers)
-    I02 = find_row_ids(MATRIX, args.select_row_ids)
-    x = [find_row_string(MATRIX, annot) for annot in args.select_row_string]
+    I02 = select_row_ids(MATRIX, args.select_row_ids)
+    x = [select_row_string(MATRIX, annot) for annot in args.select_row_string]
     I03 = _intersect_indexes(*x)
-    x = [find_row_numeric(MATRIX, annot) for annot in args.select_row_numeric]
+    x = [select_row_numeric(MATRIX, annot)
+         for annot in args.select_row_numeric]
     I04 = _intersect_indexes(*x)
-    I05 = find_row_random(MATRIX, args.select_row_random)
-    I06 = find_row_genesets(MATRIX, args.select_row_genesets)
-    I07 = find_row_annotation(MATRIX, args.select_row_annotation)
-    x = [find_row_numeric_annotation(MATRIX, annot)
+    I05 = select_row_random(MATRIX, args.select_row_random)
+    I06 = select_row_genesets(MATRIX, args.select_row_genesets)
+    I07 = select_row_annotation(MATRIX, args.select_row_annotation)
+    x = [select_row_numeric_annotation(MATRIX, annot)
          for annot in args.select_row_numeric_annotation]
     I08 = _intersect_indexes(*x)
-    I09 = find_row_mean_var(
+    I09 = select_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I10 = find_row_var(MATRIX, args.select_row_var)
-    I11 = find_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I10 = select_row_var(MATRIX, args.select_row_var)
+    I11 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
         I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11)
-    I1 = find_col_indexes(
+    I1 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
-    I2 = remove_col_indexes(
-        MATRIX, args.remove_col_indexes, args.col_indexes_include_headers)
-    I3 = find_col_ids(MATRIX, args.select_col_ids)
-    I4 = find_col_genesets(MATRIX, args.select_col_genesets)
-    I5 = find_col_annotation(MATRIX, args.select_col_annotation)
-    I6 = find_col_regex(MATRIX, args.select_col_regex)
-    I_col = _intersect_indexes(I1, I2, I3, I4, I5, I6)
+    #I2 = remove_col_indexes(
+    #    MATRIX, args.remove_col_indexes, args.col_indexes_include_headers)
+    I3 = select_col_ids(MATRIX, args.select_col_ids)
+    I4 = select_col_genesets(MATRIX, args.select_col_genesets)
+    I5 = select_col_annotation(MATRIX, args.select_col_annotation)
+    I6 = select_col_regex(MATRIX, args.select_col_regex)
+    I_col = _intersect_indexes(I1, I3, I4, I5, I6)
+    if args.reverse_col_selection:
+        I_col = [i for i in range(MATRIX.ncol()) if i not in I_col]
     MATRIX = MATRIX.matrix(I_row, I_col)
 
     # Reorder the rows and columns by indexes.  Do this before
@@ -2036,7 +2016,7 @@ def main():
         MATRIX, args.append_col_ids, args.ignore_missing_labels)
 
     # Remove col IDs.  Do this after relabeling.
-    MATRIX = remove_col_ids(MATRIX, args.remove_col_ids)
+    #MATRIX = remove_col_ids(MATRIX, args.remove_col_ids)
 
     # Convert col IDs to upper case.  Do after relabeling and
     # removing, but before filtering duplicates.

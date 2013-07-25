@@ -160,7 +160,7 @@ def read_geneset_scores(filename):
 def read_expression_or_geneset_scores(genes, gene_sets, filename):
     assert not (genes and gene_sets)
     assert genes or gene_sets
-    
+
     if genes:
         # If genes were specified, then the input should be a gene
         # expression data file.
@@ -933,7 +933,10 @@ def main():
     # Select the genes or gene sets of interest.
     x = genes or gene_sets
     M = M.matrix(row=x)
-    assert M.nrow(), "I could not find any of the genes or gene sets."
+    if genes:
+        assert M.nrow(), "I could not find any of the genes."
+    elif gene_sets:
+        assert M.nrow(), "I could not find any of the gene sets."
 
     # Calculate the association of each gene and each outcome.
     expression_or_score = "Expression"
