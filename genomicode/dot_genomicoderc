@@ -62,6 +62,9 @@ hg18_dbsnp=/data/biocore/GATK/hg18/dbsnp_137.hg18.vcf
 hg18_indels=/data/biocore/GATK/hg18/Mills_and_1000G_gold_standard.indels.hg18.vcf
 rna_hum =/home/xchen/try_RSEM/ref/human
 rna_mouse=/home/xchen/try_RSEM/ref/mouse
+annotate_vcf=/home/xchen/chencode/scripts/annovar/annotate_vcf.py
+chrom2genome=/data/genomidata/chrom2genome
+genomes=/data/genomidata/genomes
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation
