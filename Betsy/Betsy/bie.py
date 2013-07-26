@@ -32,8 +32,6 @@ Network
 
 # _make_goal
 # 
-# _is_compatible_with_start
-#
 # _backchain_to_modules       Given a consequent, find compatible Modules.
 # _backchain_to_antecedent    Given a consequent and module, find antecedents.
 # _can_module_produce_data
@@ -45,6 +43,8 @@ Network
 # 
 # _find_data_node
 # _find_module_node
+# _is_compatible_with_start
+# _is_compatible_with_internal
 # _get_attribute_type
 # _intersection
 # 
@@ -417,6 +417,7 @@ def backchain(moduledb, goal_datatype, goal_attributes):
 def prune_network_by_start(network, start_data):
     if isinstance(start_data, DataType):
         start_data = start_data()  # convert to Data
+    assert isinstance(start_data, Data)
     
     # Look for the nodes that are compatible with start_data.
     node_ids = []  # list of node_ids.
@@ -433,7 +434,61 @@ def prune_network_by_start(network, start_data):
         if node_id in good_ids:
             continue
         good_ids[node_id] = 1
-        stack.extend(network.transitions.get(node_id, []))
+        x = network.transitions.get(node_id, [])
+        stack.extend(x)
+
+    # Delete all the IDs that aren't in good_ids.
+    for nid in range(len(network.nodes)-1, -1, -1):
+        if nid not in good_ids:
+            network = network.delete_node(nid)
+
+    return network
+
+
+def prune_network_by_internal(network, internal_data):
+    if isinstance(internal_data, DataType):
+        internal_data = internal_data()  # convert to Data
+    assert isinstance(internal_data, Data)
+    
+    # Look for the nodes that are compatible with internal_data.
+    node_ids = []  # list of node_ids.
+    for node_id, next_ids in network.iterate(node_class=Data):
+        if _is_compatible_with_internal(network.nodes[node_id], internal_data):
+            node_ids.append(node_id)
+
+    # For each of these node_ids, do forward chaining to find all
+    # nodes that these ones can connect to.
+    fc_ids = {}
+    stack = node_ids[:]
+    while stack:
+        node_id = stack.pop(0)
+        if node_id in fc_ids:
+            continue
+        fc_ids[node_id] = 1
+        x = network.transitions.get(node_id, [])
+        stack.extend(x)
+
+    # For each of the ids found by forward chaining, do backward
+    # chaining to find all the ones that it can start from.
+    bc_ids = {}
+    stack = node_ids[:]
+    while stack:
+        node_id = stack.pop(0)
+        if node_id in bc_ids:
+            continue
+        bc_ids[node_id] = 1
+        x = _backchain_to_ids(network, node_id)
+        stack.extend(x)
+
+    # The good IDs are all the ones found by either forward or
+    # backward chaining.
+    good_ids = fc_ids.copy()
+    good_ids.update(bc_ids)
+
+    #print sorted(node_ids)
+    #print sorted(fc_ids)
+    #print sorted(bc_ids)
+    #print sorted(good_ids)
 
     # Delete all the IDs that aren't in good_ids.
     for nid in range(len(network.nodes)-1, -1, -1):
@@ -505,83 +560,6 @@ def _make_goal(datatype, attributes):
     return Data(datatype, attrs)
 
 
-def _is_compatible_with_start(data, start_data):
-    # data is a Data node in the network.  start_data is the Data that
-    # the user wants to start on.
-    if data.datatype != start_data.datatype:
-        return False
-
-    # Start Data
-    # ATOM      Must match a specific value.
-    # LIST      UNDEFINED.
-    # ANYATOM   UNDEFINED.
-    # NOVALUE   Use default value.
-    # 
-    # CASE  DATA_TYPE  START_TYPE  RESULT
-    #   1    NOVALUE    NOVALUE    ERROR.  START should have default values.
-    #   2    ANYATOM    NOVALUE    ERROR.  START should have default values.
-    #   3     ATOM      NOVALUE    ERROR.  START should have default values.
-    #   4     LIST      NOVALUE    ERROR.  START should have default values.
-    #   5    NOVALUE    ANYATOM    No.
-    #   6    ANYATOM    ANYATOM    OK.
-    #   7     ATOM      ANYATOM    OK.
-    #   8     LIST      ANYATOM    No.
-    #   9    NOVALUE     ATOM      No.
-    #  10    ANYATOM     ATOM      OK.
-    #  11     ATOM       ATOM      Check if items are equal.
-    #  12     LIST       ATOM      Check if ATOM in LIST.
-    #  13    NOVALUE     LIST      NotImplementedError.
-    #  14    ANYATOM     LIST      NotImplementedError.
-    #  15     ATOM       LIST      NotImplementedError.
-    #  16     LIST       LIST      NotImplementedError.
-
-    data_attr = data.attributes
-    strt_attr = start_data.attributes
-
-    # Fill in default values for the start.
-    strt_attr = strt_attr.copy()
-    for key, value in start_data.datatype.get_defaults().iteritems():
-        if key not in strt_attr:
-            strt_attr[key] = value
-    
-    compatible = True
-    for key in strt_attr:
-        DATA_VALUE = data_attr.get(key)
-        STRT_VALUE = strt_attr.get(key)
-        DATA_TYPE = _get_attribute_type(data_attr, key)
-        STRT_TYPE = _get_attribute_type(strt_attr, key)
-
-        # Cases 1-4.
-        if STRT_TYPE == TYPE_NOVALUE:
-            raise AssertionError
-        # Cases 5, 8.
-        elif STRT_TYPE == TYPE_ANYATOM and \
-                 DATA_TYPE in [TYPE_NOVALUE, TYPE_LIST]:
-            compatible = False
-        # Cases 6, 7.
-        elif STRT_TYPE == TYPE_ANYATOM and \
-                 DATA_TYPE in [TYPE_ANYATOM, TYPE_ATOM]:
-            pass
-        # Cases 13-16.
-        elif STRT_TYPE == TYPE_LIST:
-            raise NotImplementedError
-        # Case 9.
-        elif DATA_TYPE == TYPE_NOVALUE:
-            compatible = False
-        # Case 10.
-        elif DATA_TYPE == TYPE_ANYATOM:
-            pass
-        # Case 11.
-        elif DATA_TYPE == TYPE_ATOM:
-            if DATA_VALUE != STRT_VALUE:
-                compatible = False
-        # Case 12.
-        elif DATA_TYPE == TYPE_LIST:
-            if STRT_VALUE not in DATA_VALUE:
-                compatible = False
-    return compatible
-            
-        
 def _backchain_to_modules(moduledb, data):
     # Return list of modules that that can generate a consequent that
     # is compatible with data.  The modules will be sorted in
@@ -699,6 +677,16 @@ def _backchain_to_antecedent(module, data, goal_attributes):
         data = _make_goal(datatype, attrs)
 
     return data
+
+
+def _backchain_to_ids(network, node_id):
+    # Return a list of IDs that point to this node_id.
+    assert node_id < len(network.nodes)
+    ids = {}
+    for nid, next_ids in network.transitions.iteritems():
+        if node_id in next_ids:
+            ids[nid] = 1
+    return sorted(ids)
 
 
 def _can_module_produce_data(module, data):
@@ -1089,6 +1077,148 @@ def _find_module_node(nodes, transitions, node):
     return -1
 
 
+def _is_compatible_with_start(data, start_data):
+    # data is a Data node in the network.  start_data is the Data that
+    # the user wants to start on.
+    if data.datatype != start_data.datatype:
+        return False
+
+    # Start Data
+    # ATOM      Must match a specific value.
+    # LIST      UNDEFINED.
+    # ANYATOM   UNDEFINED.
+    # NOVALUE   Use default value.
+    # 
+    # CASE  DATA_TYPE  START_TYPE  RESULT
+    #   1    NOVALUE    NOVALUE    ERROR.  START should have default values.
+    #   2    ANYATOM    NOVALUE    ERROR.  START should have default values.
+    #   3     ATOM      NOVALUE    ERROR.  START should have default values.
+    #   4     LIST      NOVALUE    ERROR.  START should have default values.
+    #   5    NOVALUE    ANYATOM    No.
+    #   6    ANYATOM    ANYATOM    OK.
+    #   7     ATOM      ANYATOM    OK.
+    #   8     LIST      ANYATOM    No.
+    #   9    NOVALUE     ATOM      No.
+    #  10    ANYATOM     ATOM      OK.
+    #  11     ATOM       ATOM      Check if items are equal.
+    #  12     LIST       ATOM      Check if ATOM in LIST.
+    #  13    NOVALUE     LIST      NotImplementedError.
+    #  14    ANYATOM     LIST      NotImplementedError.
+    #  15     ATOM       LIST      NotImplementedError.
+    #  16     LIST       LIST      NotImplementedError.
+
+    data_attr = data.attributes
+    strt_attr = start_data.attributes
+
+    # Fill in default values for the start.
+    strt_attr = strt_attr.copy()
+    for key, value in start_data.datatype.get_defaults().iteritems():
+        if key not in strt_attr:
+            strt_attr[key] = value
+    
+    compatible = True
+    for key in strt_attr:
+        DATA_VALUE = data_attr.get(key)
+        STRT_VALUE = strt_attr.get(key)
+        DATA_TYPE = _get_attribute_type(data_attr, key)
+        STRT_TYPE = _get_attribute_type(strt_attr, key)
+
+        # Cases 1-4.
+        if STRT_TYPE == TYPE_NOVALUE:
+            raise AssertionError
+        # Cases 5, 8.
+        elif STRT_TYPE == TYPE_ANYATOM and \
+                 DATA_TYPE in [TYPE_NOVALUE, TYPE_LIST]:
+            compatible = False
+        # Cases 6, 7.
+        elif STRT_TYPE == TYPE_ANYATOM and \
+                 DATA_TYPE in [TYPE_ANYATOM, TYPE_ATOM]:
+            pass
+        # Cases 13-16.
+        elif STRT_TYPE == TYPE_LIST:
+            raise NotImplementedError
+        # Case 9.
+        elif DATA_TYPE == TYPE_NOVALUE:
+            compatible = False
+        # Case 10.
+        elif DATA_TYPE == TYPE_ANYATOM:
+            pass
+        # Case 11.
+        elif DATA_TYPE == TYPE_ATOM:
+            if DATA_VALUE != STRT_VALUE:
+                compatible = False
+        # Case 12.
+        elif DATA_TYPE == TYPE_LIST:
+            if STRT_VALUE not in DATA_VALUE:
+                compatible = False
+    return compatible
+            
+        
+def _is_compatible_with_internal(data, internal_data):
+    # data is a Data node in the network.  internal_data is the Data
+    # node that the user wants to include in the network.
+    if data.datatype != internal_data.datatype:
+        return False
+
+    # Internal data.
+    # ATOM      Must match a specific value.
+    # LIST      UNDEFINED.
+    # ANYATOM   UNDEFINED.
+    # NOVALUE   User doesn't care.
+    # 
+    # CASE  DATA_TYPE  INTL_TYPE  RESULT
+    #   1    NOVALUE    NOVALUE   OK.
+    #   2    ANYATOM    NOVALUE   OK.
+    #   3     ATOM      NOVALUE   OK.
+    #   4     LIST      NOVALUE   OK.
+    #   5    NOVALUE    ANYATOM   NotImplementedError.
+    #   6    ANYATOM    ANYATOM   NotImplementedError.
+    #   7     ATOM      ANYATOM   NotImplementedError.
+    #   8     LIST      ANYATOM   NotImplementedError.
+    #   9    NOVALUE     ATOM     No.
+    #  10    ANYATOM     ATOM     OK.
+    #  11     ATOM       ATOM     Check if items are equal.
+    #  12     LIST       ATOM     No.  Actual value is unknown.
+    #  13    NOVALUE     LIST     NotImplementedError.
+    #  14    ANYATOM     LIST     NotImplementedError.
+    #  15     ATOM       LIST     NotImplementedError.
+    #  16     LIST       LIST     NotImplementedError.
+
+    data_attr = data.attributes
+    intl_attr = internal_data.attributes
+
+    compatible = True
+    for key in intl_attr:
+        DATA_VALUE = data_attr.get(key)
+        INTL_VALUE = intl_attr.get(key)
+        DATA_TYPE = _get_attribute_type(data_attr, key)
+        INTL_TYPE = _get_attribute_type(intl_attr, key)
+
+        # Cases 1-4.
+        if INTL_TYPE == TYPE_NOVALUE:
+            pass
+        # Cases 5-8.
+        elif INTL_TYPE == TYPE_ANYATOM:
+            raise NotImplementedError
+        # Case 9.
+        elif DATA_TYPE == TYPE_NOVALUE and INTL_TYPE == TYPE_ATOM:
+            compatible = False
+        # Case 10.
+        elif DATA_TYPE == TYPE_ANYATOM and INTL_TYPE == TYPE_ATOM:
+            pass
+        # Case 11.
+        elif DATA_TYPE == TYPE_ATOM and INTL_TYPE == TYPE_ATOM:
+            if DATA_VALUE != INTL_VALUE:
+                compatible = False
+        # Case 12.
+        elif DATA_TYPE == TYPE_LIST and INTL_TYPE == TYPE_ATOM:
+            compatible = False
+        # Cases 13-16.
+        elif INTL_TYPE == TYPE_LIST:
+            raise NotImplementedError
+    return compatible
+            
+        
 def _get_attribute_type(attributes, name):
     import operator
 
@@ -1260,6 +1390,10 @@ def test_bie():
     
     network = backchain(all_modules, goal_datatype, goal_attributes)
     network = prune_network_by_start(network, in_data)
+    network = prune_network_by_internal(
+        network, SignalFile(quantile_norm="yes", combat_norm="no"))
+    network = prune_network_by_internal(
+        network, SignalFile(combat_norm="yes", dwd_norm="no"))
     
     _print_network(network)
     _plot_network_gv("out.png", network)
