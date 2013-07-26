@@ -1216,8 +1216,8 @@ def _pretty_attributes(attributes):
 
 def test_bie():
     #print_modules(all_modules); return
-    #in_data = GSEID
-    in_data = SignalFile(logged="yes", preprocess="rma")
+    in_data = GSEID
+    #in_data = SignalFile(logged="yes", preprocess="rma")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
 
     #print _make_goal(SignalFile, x)
@@ -1229,11 +1229,11 @@ def test_bie():
     #goal_attributes = dict(version=["v3", "v4"])
     
     goal_datatype = SignalFile
-    #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
-    goal_attributes = dict(
-        format='tdf', preprocess='rma', logged='yes',
-        quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-        missing_values="no")
+    goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='rma', logged='yes',
+    #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="no")
 
     #out_data = make_data(
     #    "signal_file", format='tdf', preprocess='rma', logged='yes',
