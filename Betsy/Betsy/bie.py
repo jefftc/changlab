@@ -1233,7 +1233,7 @@ def test_bie():
     goal_attributes = dict(
         format='tdf', preprocess='rma', logged='yes',
         quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-        missing_values="no")
+        missing_values="no",gene_order='gene_list')
 
     #out_data = make_data(
     #    "signal_file", format='tdf', preprocess='rma', logged='yes',
@@ -1275,7 +1275,7 @@ IDATFiles = DataType("IDATFiles")
 ILLUFolder = DataType("ILLUFolder")
 SignalFile = DataType(
     "SignalFile",
-    format=["unknown", "tdf", "gct", "jeffs", "pcl", "res"],
+    format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
     preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
     
     # Properties of the data.
@@ -1296,19 +1296,20 @@ SignalFile = DataType(
     combat_norm=["no", "yes"],
 
     # Annotations.
-    #annotate=["no", "yes"],
-    #unique_genes=["no", "average_genes", "high_var", "first_gene"],
-    #duplicate_probe=["no", "yes", "closest_probe", "high_var_probe"],
-    #rename_sample=["no", "yes"],
+    annotate=["no", "yes"],
+    unique_genes=["no", "average_genes", "high_var", "first_gene"],
+    duplicate_probe=["no", "yes", "closest_probe", "high_var_probe"],
+    rename_sample=["no", "yes"],
 
     # Unclassified.
-    #num_features=["all", ANYATOM],
-    #gene_order=[
-    #    "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
-    #predataset=["no", "yes"],
-    #platform=[ANYATOM],
-    #filter=["no", ANYATOM],
-    #group_fc=["no", ANYATOM],
+    num_features= ["all", ANYATOM],
+    gene_order=[
+        "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+    predataset=["no", "yes"],
+    platform=['no',ANYATOM],
+    filter=["no", ANYATOM],
+    group_fc=["no", ANYATOM],
+    
     )
 
 all_modules = [
@@ -1326,18 +1327,54 @@ all_modules = [
     Module(
         "preprocess_rma",
         CELFiles(version=["v3", "v4"]),
-        SignalFile(logged="yes", preprocess="rma", format="jeffs")
+        SignalFile(logged="yes", preprocess="rma", format="jeffs",
+                   missing_values="no")
         ),
     Module(
         "preprocess_mas5",
         CELFiles(version=["v3", "v4"]),
-        SignalFile(logged="no", preprocess="mas5", format="jeffs")),
+        SignalFile(logged="no", preprocess="mas5", format="jeffs",
+                   missing_values="no")),
+    # IDATFiles
+    Module(
+        "extract_illumina_idat_files", ExpressionFiles, IDATFiles),
+    Module(
+        "preprocess_illumina", IDATFiles, ILLUFolder),
+    Module(
+        "get_illumina_signal",
+        ILLUFolder,
+        SignalFile(logged="no", preprocess="illumina", format="gct")
+        ),
+    Module(
+        "get_illumina_control",
+        ILLUFolder,
+        ControlFile(preprocess="illumina", format="gct",logged="no")
+        ),
+    # AgilentFiles
+    Module(
+        "extract_agilent_files", ExpressionFiles, AgilentFiles),
+    Module(
+        "preprocess_agilent",
+        AgilentFiles,
+        SignalFile(logged="no", preprocess="agilent", format="tdf")),
 
+    # GPRFiles
+    Module(
+        "extract_gpr_files", ExpressionFiles, GPRFiles),
+    Module(
+        "normalize_with_loess",
+        GPRFiles,
+        SignalFile(format="tdf", logged="no", preprocess="loess")
+        ),
     # SignalFile
     Module(
         "convert_signal_to_tdf",
-        SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown']),
+        SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
         SignalFile(format='tdf')),
+    Module(
+        "check_for_log",
+        SignalFile(format="tdf", logged='unknown'),
+        SignalFile(format="tdf", logged=['yes', "no"])),
     Module(
         "log_signal",
         SignalFile(logged='no', format='tdf'),
@@ -1354,8 +1391,21 @@ all_modules = [
         "check_for_missing_values",
         SignalFile(format="tdf", missing_values="unknown"),
         SignalFile(format="tdf", missing_values=["no", "yes"])),
+    Module(
+        "filter_genes_by_missing_values",
+        SignalFile(format='tdf', logged="yes",
+                   missing_values="yes", filter="no"),
+        SignalFile(format='tdf', logged="yes",
+                   missing_values="yes", filter=ANYATOM)),
+    Module(
+        "filter_and_threshold_genes",
+        SignalFile(format="tdf",logged=["unknown","no"], predataset="no"),
+        SignalFile(format="tdf",logged=["unknown","no"], predataset="yes")),
+    Module(   # require a rename_list_file
+        "relabel_samples",
+        SignalFile(format='tdf', rename_sample="no"),
+        SignalFile(format='tdf', rename_sample="yes")),
 
-    # XXX fix missing values
     # Sample normalization.
     Module(
         "normalize_samples_with_quantile",
@@ -1387,62 +1437,118 @@ all_modules = [
             format="tdf", logged="yes",
             missing_values=["no", "zero_fill", "median_fill"],
             dwd_norm="yes")),
+    Module(
+        "normalize_samples_with_bfrm",
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            bfrm_norm="no"),
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            bfrm_norm="yes")),
+    Module(
+        "normalize_samples_with_shiftscale",
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            shiftscale_norm="no"),
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            shiftscale_norm="yes")),
+##    Module(   # may cause loop in the network
+##        "convert_signal_to_pcl",
+##        SignalFile(format="tdf", logged="yes",
+##                   missing=[None, "no", "median", "zero"]),
+##        SignalFile(format="pcl", logged="yes",
+##                   missing=[None, "no", "median", "zero"])),
+    Module(
+        "gene_center",
+        SignalFile(format="tdf", logged="yes", gene_center="no",
+                   missing_values=["no", "zero_fill", "median_fill"]),
+        SignalFile(format="tdf", logged="yes", gene_center=["mean", "median"],
+                   missing_values=["no", "zero_fill", "median_fill"])),           
+    Module(
+        "gene_normalize",
+        SignalFile(format="tdf", logged="yes", gene_normalize="no",
+                   missing_values=["no", "zero_fill", "median_fill"]),
+        SignalFile(format="tdf", logged="yes",
+                   gene_normalize=["variance", "sum_of_squares"],
+                   missing_values=["no", "zero_fill", "median_fill"])),
+    Module(  # require class_label_file
+        "filter_genes_by_fold_change_across_classes",
+        SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "zero_fill", "median_fill"],
+                   group_fc="no"),
+        SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "zero_fill", "median_fill"],
+                   group_fc=ANYATOM)),
+    Module(  # require class_label_file,generate gene_list_file
+             # and need reorder_genes
+        "rank_genes_by_class_neighbors",
+        SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "zero_fill", "median_fill"],
+                   gene_order="no"),
+        SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "zero_fill", "median_fill"],
+                   gene_order="class_neighbors")),
+    Module(
+         "reorder_genes",   # require gene_list_file
+         SignalFile(format="tdf", gene_order="no"),
+         SignalFile(format="tdf", gene_order="gene_list")),
+    Module(
+         "ranek_genes_by_sample_ttest",   # require class_label_file
+         SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "zero_fill", "median_fill"],
+                   gene_order="no"),
+         SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "zero_fill", "median_fill"],
+                   gene_order=["t_test_p","t_test_fdr"])),
+    Module(
+         'annotate_probes',
+         SignalFile(format="tdf", annotate="no"),
+         SignalFile(format="tdf", annotate="yes")),
+    Module(
+        'remove_duplicate_genes',
+        SignalFile(format="tdf",  annotate="yes",unique_genes="no"),
+        SignalFile(format="tdf",  annotate="yes",
+                   unique_genes=['average_genes', 'high_var', 'first_gene'])),
+    Module(
+         'select_first_n_genes',
+         SignalFile(format="tdf", num_feature="all"),
+         SignalFile(format="tdf", num_feature=ANYATOM)), 
+     Module(
+         'add_crossplatform_probeid',
+         SignalFile(format="tdf", platform='unknown'),
+         SignalFile(format="tdf", platform=ANYATOM,duplicate_probe='yes')),
+     Module(
+        'remove_duplicate_probes',
+        SignalFile(format="tdf", duplicate_probe='yes', platform=ANYATOM),
+        SignalFile(format="tdf", duplicate_probe='high_var_probe',
+                   platform=ANYATOM)),
+    Module(
+         'select_probe_by_best_match',
+         SignalFile(format="tdf", duplicate_probe='yes', platform=ANYATOM),
+         SignalFile(format="tdf", duplicate_probe='closest_probe',
+                    platform=ANYATOM)),
+##    Module( # this may cause loop
+##        'convert_signal_to_gct',
+##        SignalFile(format="tdf", 
+##                   missing_values=["no", "zero_fill", "median_fill"]),
+##        SignalFile(format="gct", 
+##                   missing_values=["no", "zero_fill", "median_fill"])),
+##    Module( # this may cause loop
+##        'unlog_signal',
+##        SignalFile(format="tdf", logged="yes",
+##                   missing_values=["no", "zero_fill", "median_fill"]),
+##        SignalFile(format="tdf", logged="no",
+##                   missing_values=["no", "zero_fill", "median_fill"])),
     ]
 
 
-## all_modules = [
-##     #cel_files
-##     Module(
-##         "download_geo_GSEID",
-##         antecedent("gse_id"),
-##         consequent("expression_files")),
-##     Module(
-##         "download_geo_GSEID_GPLID",
-##         # XXX can platform be parameter for gse_id?
-##         antecedent("gse_id_and_platform"),
-##         consequent("expression_files")),
-##     Module(
-##         "extract_CEL_files",
-##         antecedent("expression_files"),
-##         consequent("cel_files", cel_version="cc_or_v3_4")),
-##     Module(
-##         "convert_CEL_to_v3_4",
-##         # XXX FIX cel_version
-##         antecedent("cel_files", cel_version="cc_or_v3_4"),
-##         consequent("cel_files", cel_version="v3_4")),
-##     Module(
-##         "preprocess_rma",
-##         antecedent("cel_files", cel_version="v3_4"),
-##         consequent(
-##             "signal_file", logged="yes", preprocess="rma",
-##             format="jeffs", missing="no")),
-##     Module(
-##         "preprocess_mas5",
-##         antecedent("cel_files", cel_version="v3_4"),
-##         consequent(
-##             "signal_file", logged="no", preprocess="mas5",
-##             format="jeffs", missing="no")),
-    
-##     #-----------------------------------------------------------------------
-##     #agilent_files
-##     Module(
-##         "extract_agilent_files",
-##         antecedent("expression_files"),
-##         consequent("agilent_files")),
-##     Module(
-##         "preprocess_agilent",
-##         antecedent("agilent_files"),
-##         consequent(
-##             "signal_file", format="tdf", logged="no", preprocess="agilent",
-##             missing="unknown")),
-##     #-----------------------------------------------------------------------
-##     #idat_files
-##     Module(
-##         "extract_illumina_idat_files",
-##         antecedent("expression_files"),
-##         consequent("idat_files")),
-##     Module(
-##         "preprocess_illumina",
+##    Module(
+##        "preprocess_illumina",      
 ##         antecedent("idat_files"),
 ##         consequent(
 ##             "illu_folder", preprocess='illumina', 
@@ -1486,249 +1592,9 @@ all_modules = [
 ##             ill_coll_mode=['none', 'max', 'median'],
 ##             ill_clm=ANYATOM,
 ##             ill_custom_chip=ANYATOM,
-##             ill_custom_manifest=ANYATOM)),
-##     Module(
-##         "get_illumina_signal",
-##         antecedent("illu_folder", preprocess='illumina'),
-##         consequent(
-##             "signal_file", preprocess='illumina', logged="no",
-##             missing='unknown', format='gct')),
-##     Module(
-##         "get_illumina_control",
-##         antecedent("illu_folder", preprocess='illumina'),
-##         consequent(
-##             "control_file", preprocess='illumina',
-##             logged="no", missing='unknown', format='gct')),
-    
-##     #-----------------------------------------------------------------------
-##     # gpr_files
-##     Module(
-##         "extract_gpr_files",
-##         antecedent("expression_files"),
-##         consequent("gpr_files")),
-##     Module(
-##         "normalize_with_loess",
-##         antecedent("gpr_files"),
-##         consequent(
-##             "signal_file", format="tdf", logged="no",
-##             preprocess="loess", missing="unknown")),
-    
-##     #-----------------------------------------------------------------------
-##     Module(
-##         "convert_signal_to_tdf",
-##         antecedent(
-##             "signal_file",
-##             format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-##         consequent(
-##             "signal_file", format='tdf')),
-##     Module(
-##         "log_signal",
-##         antecedent(
-##             "signal_file", logged=[NOVALUE, 'no', 'unknown'], format='tdf'),
-##         consequent(
-##             "signal_file", logged="yes", format='tdf')),
-##     Module(
-##         "filter_genes_by_missing_values",
-##         antecedent(
-##             "signal_file", format='tdf', logged="yes",
-##             missing=["yes", "unknown"], filter=[NOVALUE, "no"]),
-##         consequent(
-##             "signal_file", format='tdf', logged="yes",
-##             missing=["yes", "unknown"], filter=ANYATOM)),
-##     Module(
-##         "fill_missing_with_median",
-##         antecedent(
-##             "signal_file", format='tdf', logged="yes",
-##             missing=["yes", "unknown", NOVALUE]),
-##         consequent(
-##             "signal_file", format='tdf', logged="yes", missing="median")),
-##     Module(
-##         "fill_missing_with_zeros",
-##         antecedent(
-##             "signal_file", format='tdf', logged="yes",
-##             missing=["yes", "unknown", NOVALUE]),
-##         consequent("signal_file", format='tdf', logged="yes", missing="zero")),
-##     Module(
-##         "filter_and_threshold_genes",
-##         antecedent(
-##             "signal_file", logged=[NOVALUE, "no"], format='tdf',
-##             predataset=[NOVALUE, 'no']),
-##         consequent(
-##             "signal_file", logged=[NOVALUE, "no"], format='tdf',
-##             predataset="yes")),
-##     Module(   # require a rename_list_file
-##         "relabel_samples",
-##         antecedent(
-##             "signal_file", format='tdf', rename_sample=[NOVALUE, "no"]),
-##         consequent(
-##             "signal_file",  format='tdf', rename_sample="yes")),
-##     #------------------------------------------------------------------
-##     Module(
-##         "normalize_samples_with_quantile",
-##         antecedent(
-##             "signal_file", quantile_norm=[NOVALUE, "no"], format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", quantile_norm="yes", format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
-##     Module(
-##         "normalize_samples_with_combat",  # require class label file
-##         antecedent(
-##             "signal_file", combat_norm=[NOVALUE, "no"], format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", combat_norm="yes", format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
-##     Module(
-##         "normalize_samples_with_dwd",  # require class label file
-##         antecedent(
-##             "signal_file", dwd_norm=[NOVALUE, "no"], format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", dwd_norm="yes", format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
-##     Module(
-##         "normalize_samples_with_bfrm",
-##         antecedent(
-##             "signal_file", bfrm_norm=[NOVALUE, "no"], format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", bfrm_norm="yes", format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
-##     Module(
-##         "normalize_samples_with_shiftscale",  # require class label file
-##         antecedent(
-##             "signal_file", shiftscale_norm=[NOVALUE, "no"], format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", shiftscale_norm="yes", format='tdf',
-##             logged="yes", missing=[NOVALUE, "no", "median", "zero"])),
-    
-##     #------------------------------------------------------------------
-## ##    Module(   # may cause loop in the network
-## ##        "convert_signal_to_pcl",
-## ##        antecedent(
-## ##            "signal_file", logged="yes",
-## ##            format='tdf', missing=[None, "no", "median", "zero"]),
-## ##        consequent(
-## ##            "signal_file",logged="yes", format='pcl',
-## ##            missing=[None, "no", "median", "zero"])),
-##     Module(
-##         "gene_center",
-##         antecedent(
-##             "signal_file", gene_center=[NOVALUE, "no"], logged="yes",
-##             format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", gene_center=["mean", "median"], logged="yes",
-##             format='tdf', missing=[NOVALUE, "no", "median", "zero"])),
-##     Module(
-##         "gene_normalize",
-##         antecedent(
-##             "signal_file", gene_normalize=[NOVALUE, "no"], logged="yes",
-##             format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", gene_normalize=["variance", "sum_of_squares"],
-##             logged="yes", format='tdf',
-##             missing=[NOVALUE, "no", "median", "zero"])),
-    
-##     #------------------------------------------------------------------
-##     Module(  # require class_label_file
-##         "filter_genes_by_fold_change_across_classes",
-##         antecedent(
-##             "signal_file", group_fc=[NOVALUE, "no"], logged="yes",
-##             format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
-##         consequent(
-##             "signal_file", group_fc=ANYATOM, logged="yes", format='tdf',
-##             missing=[NOVALUE, "no", "median", "zero"])),
-##     Module(  # require class_label_file,generate gene_list_file
-##              # and need reorder_genes
-##         "rank_genes_by_sample_ttest",
-##         antecedent(
-##             "signal_file", logged="yes",
-##             format='tdf', missing=[NOVALUE, "no", "median", "zero"],
-##             gene_order=[NOVALUE, 'no']),
-##         consequent(
-##             "signal_file", logged="yes", format='tdf',
-##             missing=[NOVALUE, "no", "median", "zero"],
-##             gene_order=["t_test_p", "t_test_fdr"])),
-##     Module(  # require class_label_file,generate gene_list_file
-##              # and need reorder_genes
-##         "rank_genes_by_class_neighbors",
-##         antecedent(
-##             "signal_file", logged="yes", format='tdf',
-##             missing=[NOVALUE, "no", "median", "zero"],
-##             gene_order=[NOVALUE, 'no']),
-##         consequent(
-##             "signal_file", logged="yes", format='tdf',
-##             missing=[NOVALUE, "no", "median", "zero"],
-##             gene_order='class_neighbors')),
-##     Module(
-##         "reorder_genes",   # require gene_list_file
-##         antecedent(
-##             "signal_file", format='tdf', gene_order=[NOVALUE, 'no']),
-##         consequent(
-##             "signal_file",  format='tdf', gene_order=['gene_list'])),
-##     Module(
-##         'annotate_probes',
-##         antecedent(
-##             "signal_file", format='tdf', annotate=[NOVALUE, "no"]),
-##         consequent(
-##             "signal_file", format='tdf', annotate="yes")),
-##     Module(
-##         'remove_duplicate_genes',
-##         antecedent(
-##             "signal_file", format='tdf', 
-##             unique_genes=[NOVALUE, 'no'], annotate='yes'),
-##         consequent(
-##             "signal_file", format='tdf',
-##             unique_genes=['average_genes', 'high_var', 'first_gene'],
-##             annotate='yes')),
-##     Module(
-##         'select_first_n_genes',
-##         antecedent(
-##             "signal_file", format='tdf', num_features='all'),
-##         consequent(
-##             "signal_file",  format='tdf', num_features=ANYATOM)),
-##     Module(
-##         'add_crossplatform_probeid',
-##         antecedent(
-##             "signal_file", format='tdf', platform='unknown',
-##             duplicate_probe=[NOVALUE, "no"]),
-##         consequent(
-##             "signal_file", format='tdf', platform=ANYATOM,
-##             duplicate_probe='yes')),
-##     Module(
-##         'remove_duplicate_probes',
-##         antecedent(
-##             "signal_file", format='tdf', duplicate_probe='yes'),
-##         consequent(
-##             "signal_file",  format='tdf', duplicate_probe='high_var_probe')),
-##     Module(
-##         'select_probe_by_best_match',
-##         antecedent(
-##             "signal_file", format='tdf', duplicate_probe='yes'),
-##         consequent(
-##             "signal_file", format='tdf', duplicate_probe='closest_probe')),
-##     ##    Module(#this may cause loop
-## ##        'convert_signal_to_gct',
-## ##        antecedent(
-## ##            "signal_file",
-## ##            format='tdf', missing=[NOVALUE, "no", "median", "zero"]),
-## ##        consequent(
-## ##            "signal_file",
-## ##            format='gct',missing=[NOVALUE, "no", "median", "zero"]
-## ##            )),
-## ##    Module(#this may cause loop
-## ##        'unlog_signal',
-## ##        antecedent(
-## ##            "signal_file",
-## ##            format='tdf', logged='yes',
-## ##            missing=[NOVALUE, "no", "median", "zero"]),
-## ##        consequent(
-## ##            "signal_file",
-## ##            format='tdf',missing=[NOVALUE, "no", "median", "zero"],
-## ##            logged='no')),
-##     ]
+##             ill_custom_manifest=ANYATOM)),    
+
+
 
 
 if __name__ == '__main__':
