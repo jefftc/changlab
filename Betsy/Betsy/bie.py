@@ -81,48 +81,65 @@ Network
 #           e.g. quantile_norm missing=["median", "zero"] -> ["median", "zero"]
 # ANYATOM   The module can generate any value to fit the requirements of
 #           the next Data node.
-# NOVALUE   If the antecedent is the same DataType, then it must also
-#           have NOVALUE.  If this is the case, then this attribute is
-#           irrelevant to the module.
-#           If the antecedent is a different DataType, then this
-#           module produces the default value.
+# NOVALUE   Attribute is irrelevant for the module.  Antecedent must also
+#           be NOVALUE.
 #
 # Data Node
 # ATOM      A specific value.
 # LIST      The actual value is unknown, but can be one of these options.
 # ANYATOM   UNDEFINED.  Is this needed?
-# NOVALUE   Default value.
+# NOVALUE   UNDEFINED.
 
 
 NOVALUE = "___BETSY_NOVALUE___"
 ANYATOM = "___BETSY_ANYATOM___"
 
-TYPE_ANYATOM, TYPE_NOVALUE, TYPE_ATOM, TYPE_LIST = range(4)
+TYPE_ATOM, TYPE_LIST, TYPE_ANYATOM, TYPE_NOVALUE = range(4)
 
+
+class Attribute:
+    def __init__(self, **keywds):
+        # keywds is a dictionary of:
+        # <attribute name>  :  value
+        # DEFAULT           :  default_value
+        assert "DEFAULT" in keywds
+        self.REQUIRED = bool(keywds.get("REQUIRED"))
+        self.DEFAULT = keywds["DEFAULT"]
+        
+        name = None
+        for x in keywds:
+            if x in ["REQUIRED", "DEFAULT"]:
+                continue
+            assert name is None
+            name = x
+        assert name is not None
+        attr_type = _get_attribute_type(keywds, name)
+        assert attr_type in [TYPE_ANYATOM, TYPE_LIST], "%s %s" % (name, key)
+        self.name = name
+        self.values = keywds[name]
+        
 
 class DataType:
-    # XXX for at LIST, first value is default.
-    def __init__(self, name, **attributes):
+    def __init__(self, name, *attribute_objects):
         # Make sure the attributes are value.
-        for key, values in attributes.iteritems():
-            attr_type = _get_attribute_type(attributes, key)
-            # Values can be either LIST or ANYATOM.
-            assert attr_type in [TYPE_LIST, TYPE_ANYATOM], "%s %s" % (
-                name, key)
+        for attr in attribute_objects:
+            assert isinstance(attr, Attribute)
+        attributes = {}  # name -> values
+        for attr in attribute_objects:
+            attributes[attr.name] = attr.values
         self.name = name
-        self.attributes = attributes.copy()
+        self.attribute_objects = attribute_objects
+        self.attributes = attributes
+    def get_required(self):
+        # Return a list of the name of the required attributes.
+        x = [x for x in self.attribute_objects if x.REQUIRED]
+        x = [x.name for x in x]
+        return x
     def get_defaults(self):
-        # Return a dictionary of the attributes to their values.
+        # Return a dictionary of the attributes to their default values.
         defaults = {}
-        for key, values in self.attributes.iteritems():
-            attr_type = _get_attribute_type(self.attributes, key)
-            if attr_type == TYPE_ANYATOM:
-                defaults[key] = ANYATOM
-            elif attr_type == TYPE_LIST:
-                defaults[key] = values[0]
-            else:
-                raise AssertionError, "Invalid attribute type: %s %s" % (
-                    key, values)
+        for attr in self.attribute_objects:
+            defaults[attr.name] = attr.DEFAULT
         return defaults
     def __call__(self, **attributes):
         # Create a Data object.
@@ -135,19 +152,21 @@ class DataType:
 class Data:
     # Members:
     # datatype     Datatype object.
-    # attributes   Dict of key -> value or list of values.
+    # attributes   Dict of attribute name -> value.
 
     def __init__(self, datatype, attributes):
-        # Check the attributes.
+        # Make sure the attributes of this Data object match the
+        # attributes of the DataType.
+        # 
         # CASE  DATA_TYPE  DATATYPE_TYPE  RESULT
         #   1    NOVALUE     NOVALUE      ERROR.  DATA can't be NOVALUE.
         #   2    NOVALUE     ANYATOM      ERROR.  
         #   3    NOVALUE       ATOM       ERROR.
         #   4    NOVALUE       LIST       ERROR.
-        #   5    ANYATOM     NOVALUE      ERROR.  DATATYPE can't be NOVALUE.
+        #   5    ANYATOM     NOVALUE      ERROR.
         #   6    ANYATOM     ANYATOM      OK.
         #   7    ANYATOM       ATOM       Bad.
-        #   8    ANYATOM       LIST       OK if ANYATOM in LIST.
+        #   8    ANYATOM       LIST       Bad.
         #   9      ATOM      NOVALUE      ERROR.
         #  10      ATOM      ANYATOM      OK.
         #  11      ATOM        ATOM       OK if ATOMs equal.
@@ -167,21 +186,21 @@ class Data:
             DTYP_TYPE = _get_attribute_type(dtyp_attr, key)
 
             # Cases 1-4.
-            if DTYP_TYPE == TYPE_NOVALUE:
+            if DATA_TYPE == TYPE_NOVALUE:
                 raise AssertionError
-            # Cases 5,9,13.
-            elif DATA_TYPE == TYPE_NOVALUE:
+            # Cases 5, 9, 13.
+            elif DTYP_TYPE == TYPE_NOVALUE:
                 raise AssertionError
             # Case 6.
             elif DATA_TYPE == TYPE_ANYATOM and DTYP_TYPE == TYPE_ANYATOM:
-                # OK
                 pass
             # Case 7.
             elif DATA_TYPE == TYPE_ANYATOM and DTYP_TYPE == TYPE_ATOM:
                 raise AssertionError, "type mismatch"
             # Case 8.
             elif DATA_TYPE == TYPE_ANYATOM and DTYP_TYPE == TYPE_LIST:
-                assert ANYATOM in DTYP_VALUE, "type mismatch"
+                raise AssertionError, "type mismatch"
+                #assert ANYATOM in DTYP_VALUE, "type mismatch"
             # Case 10.
             elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_ANYATOM:
                 pass
@@ -189,7 +208,7 @@ class Data:
             elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_ATOM:
                 assert DATA_VALUE == DTYP_VALUE
             # Case 12.
-            elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_ANYATOM:
+            elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_LIST:
                 assert DATA_VALUE in DTYP_VALUE
             # Case 14.
             elif DATA_TYPE == TYPE_LIST and DTYP_TYPE == TYPE_ANYATOM:
@@ -201,6 +220,8 @@ class Data:
             elif DATA_TYPE == TYPE_LIST and DTYP_TYPE == TYPE_LIST:
                 for x in DATA_VALUE:
                     assert x in DTYP_VALUE
+            else:
+                raise AssertionError, "%s %s" % (DATA_TYPE, DTYP_TYPE)
         self.datatype = datatype
         self.attributes = attributes.copy()
     def copy(self):
@@ -221,27 +242,33 @@ class Data:
 
 
 class Module:
-    def __init__(self, name, ante_data, cons_data, **parameters):
-        self.name = name
+    # A Module can take one or more antecedents.
+    def __init__(self, name, ante_datas, cons_data, **parameters):
+        import operator
+        if not operator.isSequenceType(ante_datas):
+            ante_datas = [ante_datas]
         # If a DataType is provided, convert it into a Data object
         # with no attributes.
-        if isinstance(ante_data, DataType):
-            ante_data = ante_data()
+        for i in range(len(ante_datas)):
+            if isinstance(ante_datas[i], DataType):
+                ante_datas[i] = ante_datas[i]()
         if isinstance(cons_data, DataType):
             cons_data = cons_data()
-        self.ante_data = ante_data.copy()
+            
+        self.name = name
+        self.ante_datas = ante_datas[:]
         self.cons_data = cons_data.copy()
         self.parameters = parameters.copy()
     def __cmp__(self, other):
-        x1 = [self.name, self.ante_data, self.cons_data]
-        x2 = [other.name, other.ante_data, other.cons_data]
+        x1 = [self.name, self.ante_datas, self.cons_data]
+        x2 = [other.name, other.ante_datas, other.cons_data]
         return cmp(x1, x2)
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
         x = [
             repr(self.name),
-            repr(self.ante_data),
+            repr(self.ante_datas),
             repr(self.cons_data),
             ]
         x = "Module(%s)" % ", ".join(x)
@@ -393,14 +420,16 @@ def backchain(moduledb, goal_datatype, goal_attributes):
         elif isinstance(node, Module):
             cons_id = transitions[node_id][0]
             cons = nodes[cons_id]
-            d = _backchain_to_antecedent(node, cons, goal_attributes)
-            d_id = _find_data_node(nodes, d)
-            if d_id == -1:
-                nodes.append(d)
-                d_id = len(nodes)-1
-            stack.append(d_id)
-            transitions[d_id] = transitions.get(d_id, [])
-            transitions[d_id].append(node_id)
+            for ante_num in range(len(node.ante_datas)):
+                d = _backchain_to_antecedent(
+                    node, ante_num, cons, goal_attributes)
+                d_id = _find_data_node(nodes, d)
+                if d_id == -1:
+                    nodes.append(d)
+                    d_id = len(nodes)-1
+                stack.append(d_id)
+                transitions[d_id] = transitions.get(d_id, [])
+                transitions[d_id].append(node_id)
         else:
             raise AssertionError, "Unknown node type: %s" % node
 
@@ -485,11 +514,6 @@ def prune_network_by_internal(network, internal_data):
     good_ids = fc_ids.copy()
     good_ids.update(bc_ids)
 
-    #print sorted(node_ids)
-    #print sorted(fc_ids)
-    #print sorted(bc_ids)
-    #print sorted(good_ids)
-
     # Delete all the IDs that aren't in good_ids.
     for nid in range(len(network.nodes)-1, -1, -1):
         if nid not in good_ids:
@@ -506,17 +530,17 @@ def summarize_moduledb(moduledb):
         name2module[module.name] = module
     module_names = sorted(name2module)
 
-    # module_name -> (ante Datatype, cons Datatype)
+    # module_name -> (list of ante Datatypes, cons Datatype)
     name2datatypes = {}
     for name, module in name2module.iteritems():
-        ante_datatype = module.ante_data.datatype
+        ante_datatypes = [x.datatype for x in module.ante_datas]
         cons_datatype = module.cons_data.datatype
-        name2datatypes[name] = ante_datatype, cons_datatype
+        name2datatypes[name] = ante_datatypes, cons_datatype
 
     # list of all Data objects in moduledb.
     all_data = []
     for name, module in name2module.iteritems():
-        for data in [module.ante_data, module.cons_data]:
+        for data in module.ante_datas + [module.cons_data]:
             if data not in all_data:
                 all_data.append(data)
 
@@ -535,8 +559,10 @@ def print_modules(moduledb):
     summary = summarize_moduledb(moduledb)
 
     for name in summary.module_names:
-        ante_datatype, cons_datatype = summary.name2datatypes[name]
-        x = name, ante_datatype.name, cons_datatype.name
+        ante_datatypes, cons_datatype = summary.name2datatypes[name]
+        ante_names = [x.name for x in ante_datatypes]
+        x = ", ".join(ante_names)
+        x = name, x, cons_datatype.name
         print "\t".join(x)
 
     for datatype in summary.datatypes:
@@ -555,7 +581,7 @@ def _make_goal(datatype, attributes):
     # datatype.  If anything is not given, use the defaults.
     defaults = datatype.get_defaults()
     attrs = {}
-    for key in defaults:
+    for key in datatype.attributes:
         attrs[key] = attributes.get(key, defaults[key])
     return Data(datatype, attrs)
 
@@ -580,13 +606,14 @@ def _backchain_to_modules(moduledb, data):
     return modules
 
 
-def _backchain_to_antecedent(module, data, goal_attributes):
+def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     # Return the Data object that is the antecedent of the module and
     # the consequent (data).  goal_attributes are attributes provided
     # by the user for the goal.  This is necessary because some of
     # these attributes may be relevant to new data types.  E.g. The
     # goal datatype is a signal_file, but some of the attributes are
     # relevant for illu_folder.
+    assert ante_num < len(module.ante_datas)
 
     # Back chain the attributes.  Possibilities:
     #
@@ -596,26 +623,25 @@ def _backchain_to_antecedent(module, data, goal_attributes):
     # ANTE_TYPE   Type of attribute in antecedent.
     # CONS_TYPE   Type of attribute in consequent.
     #
-    # CASE  ANTE_TYPE  CONS_TYPE  RESULT
-    #   1    NOVALUE    NOVALUE   DATA_VALUE.  Irrelevant for module.
-    #   2    NOVALUE    ANYATOM   Ignore (NOVALUE).
-    #   3    NOVALUE      ATOM    Ignore (NOVALUE).
-    #   4    NOVALUE      LIST    Ignore (NOVALUE).
-    #   5    ANYATOM    NOVALUE   NotImplementedError. When does this happen?
-    #   6    ANYATOM    ANYATOM   NotImplementedError. When does this happen?
-    #   7    ANYATOM      ATOM    NotImplementedError. When does this happen?
-    #   8    ANYATOM      LIST    NotImplementedError. When does this happen?
-    #   9     ATOM      NOVALUE   ANTE_VALUE.  cel_version="v3_4"
-    #  10     ATOM      ANYATOM   ANTE_VALUE.
-    #  11     ATOM        ATOM    ANTE_VALUE.  logged="no"->"yes"
-    #  12     ATOM        LIST    ANTE_VALUE.
-    #  13     LIST      NOVALUE   ANTE_VALUE.
-    #  14     LIST      ANYATOM   ANTE_VALUE.
-    #  15     LIST        ATOM    ANTE_VALUE.
-    #  16     LIST        LIST    DATA_VALUE or ANTE_VALUE (see below).
-    
+    # CASE  ANTE_TYPE  CONS_TYPE   RESULT
+    #   1    NOVALUE    NOVALUE    DATA_VALUE.  Irrelevant for module.
+    #   2    NOVALUE    ANYATOM    Ignore (NOVALUE).
+    #   3    NOVALUE      ATOM     Ignore (NOVALUE).
+    #   4    NOVALUE      LIST     Ignore (NOVALUE).
+    #   5    ANYATOM    NOVALUE    NotImplementedError. When does this happen?
+    #   6    ANYATOM    ANYATOM    NotImplementedError. When does this happen?
+    #   7    ANYATOM      ATOM     NotImplementedError. When does this happen?
+    #   8    ANYATOM      LIST     NotImplementedError. When does this happen?
+    #   9      ATOM     NOVALUE    ANTE_VALUE.  cel_version="v3_4"
+    #  10      ATOM     ANYATOM    ANTE_VALUE.
+    #  11      ATOM       ATOM     ANTE_VALUE.  logged="no"->"yes"
+    #  12      ATOM       LIST     ANTE_VALUE.
+    #  13      LIST     NOVALUE    ANTE_VALUE.
+    #  14      LIST     ANYATOM    ANTE_VALUE.
+    #  15      LIST       ATOM     ANTE_VALUE.
+    #  16      LIST       LIST     DATA_VALUE or ANTE_VALUE (see below).
     data_attr = data.attributes
-    ante_attr = module.ante_data.attributes
+    ante_attr = module.ante_datas[ante_num].attributes
     cons_attr = module.cons_data.attributes
 
     x = data_attr.keys() + ante_attr.keys() + cons_attr.keys()
@@ -662,14 +688,15 @@ def _backchain_to_antecedent(module, data, goal_attributes):
             else:
                 attributes[key] = ANTE_VALUE
         # Cases 9-15.
-        else:
-            assert ANTE_TYPE is not TYPE_NOVALUE
+        elif ANTE_TYPE in [TYPE_ATOM, TYPE_LIST]:
             attributes[key] = ANTE_VALUE
+        else:
+            raise AssertionError
 
     # If we are converting to a different data type, then add the
     # relevant attributes from the goal_attributes.
-    datatype = module.ante_data.datatype
-    if module.ante_data.datatype == module.cons_data.datatype:
+    datatype = module.ante_datas[ante_num].datatype
+    if module.ante_datas[ante_num].datatype == module.cons_data.datatype:
         data = Data(datatype, attributes)
     else:
         attrs = goal_attributes
@@ -711,36 +738,41 @@ def _can_module_produce_data(module, data):
     if module.cons_data.datatype != data.datatype:
         return 0
 
-    if module.ante_data.datatype == module.cons_data.datatype:
+    # Is a converting module if none of the antecedents are the same
+    # datatype as the consequent.  Otherwise, is a non-converting
+    # module.
+    #if len(module.ante_datas) == 1 and \
+    #       module.ante_datas[0].datatype == module.cons_data.datatype:
+    x = [x for x in module.ante_datas
+         if x.datatype == module.cons_data.datatype]
+    if x:
         return _can_nonconverting_module_produce_data(module, data)
     return _can_converting_module_produce_data(module, data)
     
 
 def _can_converting_module_produce_data(module, data):
-    assert module.ante_data.datatype != module.cons_data.datatype
-
-    p = _print_nothing
-    #p = _print_string
+    #p = _print_nothing
+    p = _print_string
     
     p("Checking if module %s can produce data." % module.name)
 
     data_attr = data.attributes
-    ante_attr = module.ante_data.attributes
     cons_attr = module.cons_data.attributes
 
     # If there are no attributes to match, then this matches by
     # default.
     # E.g. extract_CEL_files converts ExpressionFiles to GSEID.
-    if not ante_attr and not cons_attr:
-        if not data_attr:
-            p("Match by no attributes.")
-            return 1
+
+    if not cons_attr and not data_attr:
+        p("Match by no attributes.")
+        return 1
 
     # Fill in default values for the consequent.
+    defaults = module.cons_data.datatype.get_defaults()
     cons_attr = cons_attr.copy()
-    for key, value in module.cons_data.datatype.get_defaults().iteritems():
+    for key in module.cons_data.datatype.attributes:
         if key not in cons_attr:
-            cons_attr[key] = value
+            cons_attr[key] = defaults[key]
 
 
     # CASE  CONS_TYPE  DATA_TYPE   RESULT
@@ -751,7 +783,7 @@ def _can_converting_module_produce_data(module, data):
     #   5    ANYATOM    NOVALUE    DQ.  Must match now.
     #   6    ANYATOM    ANYATOM    DQ.  Must be provided.
     #   7    ANYATOM      ATOM     +1.
-    #   8    ANYATOM      LIST     DQ.  ANYATOM doesn't match LIST.
+    #   8    ANYATOM      LIST     DQ.  ANYATOM can't match LIST.
     #   9      ATOM     NOVALUE    DQ.  Must match now.
     #  10      ATOM     ANYATOM    NotImplementedError.
     #  11      ATOM       ATOM     +1 if same, otherwise DQ.
@@ -766,10 +798,8 @@ def _can_converting_module_produce_data(module, data):
         p("  Evaluating attribute %s." % key)
 
         DATA_VALUE = data_attr.get(key)
-        ANTE_VALUE = ante_attr.get(key)
         CONS_VALUE = cons_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
-        ANTE_TYPE = _get_attribute_type(ante_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
 
         disqualify = False
@@ -800,7 +830,7 @@ def _can_converting_module_produce_data(module, data):
                 num_attributes += 1
             else:
                 disqualify = True
-        # Case 13.
+        # Cases 13.
         elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_NOVALUE:
             disqualify = True
         # Case 14.
@@ -818,6 +848,8 @@ def _can_converting_module_produce_data(module, data):
                 num_attributes += 1
             else:
                 disqualify = True
+        else:
+            raise AssertionError
                 
         if disqualify:
             p("    Attribute is disqualified.")
@@ -832,20 +864,22 @@ def _can_converting_module_produce_data(module, data):
 
 
 def _can_nonconverting_module_produce_data(module, data):
-    assert module.ante_data.datatype == module.cons_data.datatype
-    
-    p = _print_nothing
-    #p = _print_string
+    #p = _print_nothing
+    p = _print_string
     
     p("Checking if module %s can produce data." % module.name)
 
+    x = [x for x in module.ante_datas if x.datatype == data.datatype]
+    assert len(x) == 1
+    ante_data = x[0]
+
     data_attr = data.attributes
-    ante_attr = module.ante_data.attributes
+    ante_attr = ante_data.attributes
     cons_attr = module.cons_data.attributes
 
 
     # CASE  CONS_TYPE  DATA_TYPE   RESULT
-    #   1    NOVALUE    NOVALUE    +0.  Irrelevant for this module.
+    #   1    NOVALUE    NOVALUE    +0.
     #   2    NOVALUE    ANYATOM    +0.
     #   3    NOVALUE      ATOM     +0.
     #   4    NOVALUE      LIST     +0.
@@ -883,9 +917,7 @@ def _can_nonconverting_module_produce_data(module, data):
         disqualify = False
         # Cases 1-4.
         if CONS_TYPE == TYPE_NOVALUE:
-            # Since all NOVALUE, ignore this attribute.
             assert ANTE_TYPE == TYPE_NOVALUE
-            pass
         # Case 5.
         elif CONS_TYPE == TYPE_ANYATOM and DATA_TYPE == TYPE_NOVALUE:
             pass
@@ -897,6 +929,7 @@ def _can_nonconverting_module_produce_data(module, data):
         # Case 7.
         elif CONS_TYPE == TYPE_ANYATOM and DATA_TYPE == TYPE_ATOM:
             if ANTE_TYPE == TYPE_NOVALUE:
+                # Why disqualify this?
                 disqualify = True
             elif ANTE_TYPE == TYPE_ANYATOM:
                 raise NotImplementedError
@@ -960,6 +993,8 @@ def _can_nonconverting_module_produce_data(module, data):
                     num_attributes += 1
             else:
                 disqualify = True
+        else:
+            raise AssertionError
                 
         if disqualify:
             p("    Attribute is disqualified.")
@@ -1007,23 +1042,23 @@ def _merge_duplicate_modules(network):
 def _find_data_node(nodes, node):
     assert isinstance(node, Data)
 
-    # CASE   N1_TYPE  N2_TYPE  RESULT
-    #   1    NOVALUE  NOVALUE  OK.
-    #   2    NOVALUE  ANYATOM  No.
-    #   3    NOVALUE    ATOM   No.
-    #   4    NOVALUE    LIST   No.
-    #   5    ANYATOM  NOVALUE  No.
-    #   6    ANYATOM  ANYATOM  OK.
-    #   7    ANYATOM    ATOM   No.
-    #   8    ANYATOM    LIST   No.
-    #   9     ATOM    NOVALUE  No.
-    #  10     ATOM    ANYATOM  No.
-    #  11     ATOM      ATOM   OK if ATOM equal.
-    #  12     ATOM      LIST   No.
-    #  13     LIST    NOVALUE  No.
-    #  14     LIST    ANYATOM  No.
-    #  15     LIST      ATOM   No.
-    #  16     LIST      LIST   OK if LIST equal.
+    # CASE   N1_TYPE    N2_TYPE    RESULT
+    #   1    NOVALUE    NOVALUE    OK.
+    #   2    NOVALUE    ANYATOM    No.
+    #   3    NOVALUE      ATOM     No.
+    #   4    NOVALUE      LIST     No.
+    #   5    ANYATOM    NOVALUE    No.
+    #   6    ANYATOM    ANYATOM    OK.
+    #   7    ANYATOM      ATOM     No.
+    #   8    ANYATOM      LIST     No.
+    #   9      ATOM     NOVALUE    No.
+    #  10      ATOM     ANYATOM    No.
+    #  11      ATOM       ATOM     OK if ATOM equal.
+    #  12      ATOM       LIST     No.
+    #  13      LIST     NOVALUE    No.
+    #  14      LIST     ANYATOM    No.
+    #  15      LIST       ATOM     No.
+    #  16      LIST       LIST     OK if LIST equal.
     
     for i, n in enumerate(nodes):
         if not isinstance(n, Data):
@@ -1046,7 +1081,7 @@ def _find_data_node(nodes, node):
 
             attr_equal = False
             # Case 1.
-            if N1_TYPE == NOVALUE and N2_TYPE == NOVALUE:
+            if N1_TYPE == TYPE_NOVALUE and N2_TYPE == TYPE_NOVALUE:
                 attr_equal = True
             # Case 6.
             elif N1_TYPE == TYPE_ANYATOM and N2_TYPE == TYPE_ANYATOM:
@@ -1089,32 +1124,33 @@ def _is_compatible_with_start(data, start_data):
     # ANYATOM   UNDEFINED.
     # NOVALUE   Use default value.
     # 
-    # CASE  DATA_TYPE  START_TYPE  RESULT
+    # CASE START_TYPE  DATA_TYPE   RESULT
     #   1    NOVALUE    NOVALUE    ERROR.  START should have default values.
-    #   2    ANYATOM    NOVALUE    ERROR.  START should have default values.
-    #   3     ATOM      NOVALUE    ERROR.  START should have default values.
-    #   4     LIST      NOVALUE    ERROR.  START should have default values.
-    #   5    NOVALUE    ANYATOM    No.
+    #   2    NOVALUE    ANYATOM    ERROR.  START should have default values.
+    #   3    NOVALUE      ATOM     ERROR.  START should have default values.
+    #   4    NOVALUE      LIST     ERROR.  START should have default values.
+    #   5    ANYATOM    NOVALUE    No.
     #   6    ANYATOM    ANYATOM    OK.
-    #   7     ATOM      ANYATOM    OK.
-    #   8     LIST      ANYATOM    No.
-    #   9    NOVALUE     ATOM      No.
-    #  10    ANYATOM     ATOM      OK.
-    #  11     ATOM       ATOM      Check if items are equal.
-    #  12     LIST       ATOM      Check if ATOM in LIST.
-    #  13    NOVALUE     LIST      NotImplementedError.
-    #  14    ANYATOM     LIST      NotImplementedError.
-    #  15     ATOM       LIST      NotImplementedError.
-    #  16     LIST       LIST      NotImplementedError.
+    #   7    ANYATOM      ATOM     OK.
+    #   8    ANYATOM      LIST     No.
+    #   9      ATOM     NOVALUE    No.
+    #  10      ATOM     ANYATOM    OK.
+    #  11      ATOM       ATOM     Check if items are equal.
+    #  12      ATOM       LIST     Check if ATOM in LIST.
+    #  13      LIST     NOVALUE    NotImplementedError.
+    #  14      LIST     ANYATOM    NotImplementedError.
+    #  15      LIST       ATOM     NotImplementedError.
+    #  16      LIST       LIST     NotImplementedError.
 
     data_attr = data.attributes
     strt_attr = start_data.attributes
 
     # Fill in default values for the start.
+    defaults = start_data.datatype.get_defaults()
     strt_attr = strt_attr.copy()
-    for key, value in start_data.datatype.get_defaults().iteritems():
+    for key in start_data.datatype.attributes:
         if key not in strt_attr:
-            strt_attr[key] = value
+            strt_attr[key] = defaults[key]
     
     compatible = True
     for key in strt_attr:
@@ -1134,23 +1170,25 @@ def _is_compatible_with_start(data, start_data):
         elif STRT_TYPE == TYPE_ANYATOM and \
                  DATA_TYPE in [TYPE_ANYATOM, TYPE_ATOM]:
             pass
-        # Cases 13-16.
-        elif STRT_TYPE == TYPE_LIST:
-            raise NotImplementedError
         # Case 9.
-        elif DATA_TYPE == TYPE_NOVALUE:
+        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE in TYPE_NOVALUE:
             compatible = False
         # Case 10.
-        elif DATA_TYPE == TYPE_ANYATOM:
+        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ANYATOM:
             pass
         # Case 11.
-        elif DATA_TYPE == TYPE_ATOM:
+        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ATOM:
             if DATA_VALUE != STRT_VALUE:
                 compatible = False
         # Case 12.
-        elif DATA_TYPE == TYPE_LIST:
+        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_LIST:
             if STRT_VALUE not in DATA_VALUE:
                 compatible = False
+        # Cases 13-16.
+        elif STRT_TYPE == TYPE_LIST:
+            raise NotImplementedError
+        else:
+            raise AssertionError
     return compatible
             
         
@@ -1166,23 +1204,23 @@ def _is_compatible_with_internal(data, internal_data):
     # ANYATOM   UNDEFINED.
     # NOVALUE   User doesn't care.
     # 
-    # CASE  DATA_TYPE  INTL_TYPE  RESULT
-    #   1    NOVALUE    NOVALUE   OK.
-    #   2    ANYATOM    NOVALUE   OK.
-    #   3     ATOM      NOVALUE   OK.
-    #   4     LIST      NOVALUE   OK.
-    #   5    NOVALUE    ANYATOM   NotImplementedError.
-    #   6    ANYATOM    ANYATOM   NotImplementedError.
-    #   7     ATOM      ANYATOM   NotImplementedError.
-    #   8     LIST      ANYATOM   NotImplementedError.
-    #   9    NOVALUE     ATOM     No.
-    #  10    ANYATOM     ATOM     OK.
-    #  11     ATOM       ATOM     Check if items are equal.
-    #  12     LIST       ATOM     No.  Actual value is unknown.
-    #  13    NOVALUE     LIST     NotImplementedError.
-    #  14    ANYATOM     LIST     NotImplementedError.
-    #  15     ATOM       LIST     NotImplementedError.
-    #  16     LIST       LIST     NotImplementedError.
+    # CASE  INTL_TYPE   DATA_TYPE  RESULT
+    #   1    NOVALUE    NOVALUE    OK.
+    #   2    NOVALUE    ANYATOM    OK.
+    #   3    NOVALUE      ATOM     OK.
+    #   4    NOVALUE      LIST     OK.
+    #   5    ANYATOM    NOVALUE    NotImplementedError.
+    #   6    ANYATOM    ANYATOM    NotImplementedError.
+    #   7    ANYATOM      ATOM     NotImplementedError.
+    #   8    ANYATOM      LIST     NotImplementedError.
+    #   9      ATOM     NOVALUE    No.
+    #  10      ATOM     ANYATOM    OK.
+    #  11      ATOM       ATOM     Check if items are equal.
+    #  12      ATOM       LIST     No.  Actual value is unknown.
+    #  13      LIST     NOVALUE    NotImplementedError.
+    #  14      LIST     ANYATOM    NotImplementedError.
+    #  15      LIST       ATOM     NotImplementedError.
+    #  16      LIST       LIST     NotImplementedError.
 
     data_attr = data.attributes
     intl_attr = internal_data.attributes
@@ -1200,22 +1238,22 @@ def _is_compatible_with_internal(data, internal_data):
         # Cases 5-8.
         elif INTL_TYPE == TYPE_ANYATOM:
             raise NotImplementedError
-        # Case 9.
-        elif DATA_TYPE == TYPE_NOVALUE and INTL_TYPE == TYPE_ATOM:
+        # Cases 9, 12.
+        elif INTL_TYPE == TYPE_ATOM and \
+             DATA_TYPE in [TYPE_NOVALUE, TYPE_LIST]:
             compatible = False
         # Case 10.
-        elif DATA_TYPE == TYPE_ANYATOM and INTL_TYPE == TYPE_ATOM:
+        elif INTL_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ANYATOM:
             pass
         # Case 11.
-        elif DATA_TYPE == TYPE_ATOM and INTL_TYPE == TYPE_ATOM:
-            if DATA_VALUE != INTL_VALUE:
+        elif INTL_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ATOM:
+            if INTL_VALUE != DATA_VALUE:
                 compatible = False
-        # Case 12.
-        elif DATA_TYPE == TYPE_LIST and INTL_TYPE == TYPE_ATOM:
-            compatible = False
         # Cases 13-16.
         elif INTL_TYPE == TYPE_LIST:
             raise NotImplementedError
+        else:
+            raise AssertionError
     return compatible
             
         
@@ -1318,10 +1356,12 @@ def _pretty_attributes(attributes):
     if not attributes:
         return ""
 
+    all_attributes = sorted(attributes)
+
     # Separate the proper python variables from other attributes.
     proper = []
     improper = []
-    for key in sorted(attributes):
+    for key in all_attributes:
         if re.match(r"^[a-z_][a-z0-9_]*$", key, re.I):
             proper.append(key)
         else:
@@ -1349,7 +1389,7 @@ def _pretty_attributes(attributes):
 
 def test_bie():
     #print_modules(all_modules); return
-    in_data = GSEID
+    in_data = GEOSeries
     #in_data = SignalFile(logged="yes", preprocess="rma")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
 
@@ -1362,16 +1402,19 @@ def test_bie():
     #goal_attributes = dict(version=["v3", "v4"])
     
     goal_datatype = SignalFile
+    #goal_attributes = dict(
+    #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
+    #    missing_values="no")
+    goal_attributes = dict(
+        format='tdf', preprocess='rma', logged='yes',
+        missing_values="no", group_fc="5")
+    #goal_attributes = dict(
+    #    format='tdf', logged='yes', missing_values="no", group_fc="5")
     #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
     #goal_attributes = dict(
     #    format='tdf', preprocess='rma', logged='yes',
     #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-    #    missing_values="no")
-    #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
-    goal_attributes = dict(
-        format='tdf', preprocess='rma', logged='yes',
-        quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-        missing_values="no",gene_order='gene_list')
+    #    missing_values="no",gene_order='gene_list')
 
     #out_data = make_data(
     #    "signal_file", format='tdf', preprocess='rma', logged='yes',
@@ -1389,11 +1432,11 @@ def test_bie():
     #    platform='str', duplicate_probe='high_var_probe')
     
     network = backchain(all_modules, goal_datatype, goal_attributes)
-    network = prune_network_by_start(network, in_data)
-    network = prune_network_by_internal(
-        network, SignalFile(quantile_norm="yes", combat_norm="no"))
-    network = prune_network_by_internal(
-        network, SignalFile(combat_norm="yes", dwd_norm="no"))
+    #network = prune_network_by_start(network, in_data)
+    #network = prune_network_by_internal(
+    #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
+    #network = prune_network_by_internal(
+    #    network, SignalFile(combat_norm="yes", dwd_norm="no"))
     
     _print_network(network)
     _plot_network_gv("out.png", network)
@@ -1402,60 +1445,92 @@ def test_bie():
 AgilentFiles = DataType("AgilentFiles")
 CELFiles = DataType(
     "CELFiles",
-    version=["unknown", "cc", "v3", "v4"])
+    Attribute(version=["unknown", "cc", "v3", "v4"], DEFAULT="unknown"),
+    )
 ControlFile = DataType(
     "ControlFile",
-    preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-    missing_values=["unknown", "no", "yes", "median_fill", "zero_fill"],
-    logged=["unknown", "no", "yes"],
-    format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
+    Attribute(
+        preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+        DEFAULT="unknown"),
+    Attribute(
+        missing_values=["unknown", "no", "yes", "median_fill", "zero_fill"],
+        DEFAULT="unknown"),
+    Attribute(
+        logged=["unknown", "no", "yes"],
+        DEFAULT="unknown"),
+    Attribute(
+        format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
+        DEFAULT="unknown"),
     )
 ExpressionFiles = DataType("ExpressionFiles")
 GPRFiles = DataType("GPRFiles")
-GSEID = DataType("GSEID", platform=ANYATOM)
+GEOSeries = DataType(
+    "GEOSeries",
+    Attribute(GSEID=ANYATOM, DEFAULT="", REQUIRED=True),
+    Attribute(GPLID=ANYATOM, DEFAULT=""),
+    )
 IDATFiles = DataType("IDATFiles")
 ILLUFolder = DataType("ILLUFolder")
+ClassLabelFile = DataType("ClassLabelFile")
 SignalFile = DataType(
     "SignalFile",
-    format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
-    preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+    Attribute(
+        format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
+        DEFAULT="unknown"),
+    Attribute(
+        preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+        DEFAULT="unknown"),
     
     # Properties of the data.
-    missing_values=["unknown", "no", "yes", "median_fill", "zero_fill"],
-    logged=["unknown", "no", "yes"],
+    Attribute(
+        missing_values=["unknown", "no", "yes", "median_fill", "zero_fill"],
+        DEFAULT="unknown"),
+    Attribute(
+        logged=["unknown", "no", "yes"],
+        DEFAULT="unknown"),
 
     # Normalizing the genes.
-    gene_center=["unknown", "no", "mean", "median"],
-    gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
+    Attribute(
+        gene_center=["unknown", "no", "mean", "median"],
+        DEFAULT="unknown"),
+    Attribute(
+        gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
+        DEFAULT="unknown"),
 
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    dwd_norm=["no", "yes"],
-    bfrm_norm=["no", "yes"],
-    quantile_norm=["no", "yes"],
-    shiftscale_norm=["no", "yes"],
-    combat_norm=["no", "yes"],
+    Attribute(dwd_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(bfrm_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(quantile_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(shiftscale_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(combat_norm=["no", "yes"], DEFAULT="no"),
 
     # Annotations.
-    annotate=["no", "yes"],
-    unique_genes=["no", "average_genes", "high_var", "first_gene"],
-    duplicate_probe=["no", "yes", "closest_probe", "high_var_probe"],
-    rename_sample=["no", "yes"],
+    Attribute(annotate=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        unique_genes=["no", "average_genes", "high_var", "first_gene"],
+        DEFAULT="no"),
+    Attribute(
+        duplicate_probe=["no", "yes", "closest_probe", "high_var_probe"],
+        DEFAULT="no"),
+    Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
 
     # Unclassified.
-    num_features= ["all", ANYATOM],
-    gene_order=[
-        "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
-    predataset=["no", "yes"],
-    platform=['no',ANYATOM],
-    filter=["no", ANYATOM],
-    group_fc=["no", ANYATOM],
+    Attribute(num_features=ANYATOM, DEFAULT="all"),
+    Attribute(
+        gene_order=[
+            "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+        DEFAULT="no"),
+    Attribute(predataset=["no", "yes"], DEFAULT="no"),
+    Attribute(platform=ANYATOM, DEFAULT="no"),
+    Attribute(filter=ANYATOM, DEFAULT="no"),
+    Attribute(group_fc=ANYATOM, DEFAULT="no"),
     )
 
 all_modules = [
     # GSEID
-    Module("download_geo", GSEID, ExpressionFiles),
+    Module("download_geo", GEOSeries, ExpressionFiles),
     Module("extract_CEL_files", ExpressionFiles, CELFiles(version="unknown")),
 
     # CELFiles
@@ -1619,12 +1694,15 @@ all_modules = [
                    missing_values=["no", "zero_fill", "median_fill"])),
     Module(  # require class_label_file
         "filter_genes_by_fold_change_across_classes",
-        SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "zero_fill", "median_fill"],
-                   group_fc="no"),
-        SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "zero_fill", "median_fill"],
-                   group_fc=ANYATOM)),
+        [ClassLabelFile,
+         SignalFile(
+             format="tdf", logged="yes",
+             missing_values=["no", "zero_fill", "median_fill"],
+             group_fc="no")],
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            group_fc=ANYATOM)),
     Module(  # require class_label_file,generate gene_list_file
              # and need reorder_genes
         "rank_genes_by_class_neighbors",
@@ -1662,17 +1740,15 @@ all_modules = [
      Module(
          'add_crossplatform_probeid',
          SignalFile(format="tdf", platform='unknown'),
-         SignalFile(format="tdf", platform=ANYATOM,duplicate_probe='yes')),
+         SignalFile(format="tdf", platform=ANYATOM, duplicate_probe='yes')),
      Module(
         'remove_duplicate_probes',
-        SignalFile(format="tdf", duplicate_probe='yes', platform=ANYATOM),
-        SignalFile(format="tdf", duplicate_probe='high_var_probe',
-                   platform=ANYATOM)),
+        SignalFile(format="tdf", duplicate_probe='yes'),
+        SignalFile(format="tdf", duplicate_probe='high_var_probe')),
     Module(
          'select_probe_by_best_match',
-         SignalFile(format="tdf", duplicate_probe='yes', platform=ANYATOM),
-         SignalFile(format="tdf", duplicate_probe='closest_probe',
-                    platform=ANYATOM)),
+         SignalFile(format="tdf", duplicate_probe='yes'),
+         SignalFile(format="tdf", duplicate_probe='closest_probe')),
 ##    Module( # this may cause loop
 ##        'convert_signal_to_gct',
 ##        SignalFile(format="tdf", 
