@@ -391,7 +391,7 @@ def backchain(moduledb, goal_datatype, goal_attributes):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 1024
+    MAX_NETWORK_SIZE = 4096
     nodes.append(goal_data)
     stack = [0]
     seen = {}
@@ -902,14 +902,12 @@ def _can_nonconverting_module_produce_data(module, data):
     num_attributes = 0
     for key in module.cons_data.datatype.attributes:
         p("  Evaluating attribute %s." % key)
-
         DATA_VALUE = data_attr.get(key)
         ANTE_VALUE = ante_attr.get(key)
         CONS_VALUE = cons_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
         ANTE_TYPE = _get_attribute_type(ante_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
-
         module_changes_value = ANTE_VALUE != CONS_VALUE
         if ANTE_TYPE == TYPE_LIST and CONS_TYPE == TYPE_LIST:
             module_changes_value = sorted(ANTE_VALUE) != sorted(CONS_VALUE)
@@ -1405,9 +1403,9 @@ def test_bie():
     #goal_attributes = dict(
     #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
     #    missing_values="no")
-    goal_attributes = dict(
-        format='tdf', preprocess='rma', logged='yes',
-        missing_values="no", group_fc="5")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='rma', logged='yes',
+    #    missing_values="no", group_fc="5")
     #goal_attributes = dict(
     #    format='tdf', logged='yes', missing_values="no", group_fc="5")
     #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
@@ -1415,6 +1413,11 @@ def test_bie():
     #    format='tdf', preprocess='rma', logged='yes',
     #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
     #    missing_values="no",gene_order='gene_list')
+    goal_attributes = dict(
+        format='tdf', preprocess='illumina', logged='yes',
+        quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+        missing_values="zero_fill", platform='hg19',
+        duplicate_probe='closest_probe')
 
     #out_data = make_data(
     #    "signal_file", format='tdf', preprocess='rma', logged='yes',
@@ -1470,8 +1473,53 @@ GEOSeries = DataType(
     Attribute(GPLID=ANYATOM, DEFAULT=""),
     )
 IDATFiles = DataType("IDATFiles")
-ILLUFolder = DataType("ILLUFolder")
 ClassLabelFile = DataType("ClassLabelFile")
+ILLUFolder = DataType(
+    "ILLUFolder", 
+    Attribute(illu_manifest=[
+        'HumanHT-12_V3_0_R2_11283641_A.txt',
+        'HumanHT-12_V4_0_R2_15002873_B.txt',
+        'HumanHT-12_V3_0_R3_11283641_A.txt',
+        'HumanHT-12_V4_0_R1_15002873_B.txt',
+        'HumanMI_V1_R2_XS0000122-MAP.txt',
+        'HumanMI_V2_R0_XS0000124-MAP.txt',
+        'HumanRef-8_V2_0_R4_11223162_A.txt',
+        'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
+        'HumanRef-8_V3_0_R2_11282963_A.txt',
+        'HumanRef-8_V3_0_R3_11282963_A.txt',
+        'HumanWG-6_V2_0_R4_11223189_A.txt',
+        'HumanWG-6_V3_0_R2_11282955_A.txt',
+        'HumanWG-6_V3_0_R3_11282955_A.txt',
+        'MouseMI_V1_R2_XS0000127-MAP.txt',
+        'MouseMI_V2_R0_XS0000129-MAP.txt',
+        'MouseRef-8_V1_1_R4_11234312_A.txt',
+        'MouseRef-8_V2_0_R2_11278551_A.txt',
+        'MouseRef-8_V2_0_R3_11278551_A.txt',
+        'MouseWG-6_V1_1_R4_11234304_A.txt',
+        'MouseWG-6_V2_0_R2_11278593_A.txt',
+        'MouseWG-6_V2_0_R3_11278593_A.txt',
+        'RatRef-12_V1_0_R5_11222119_A.txt'],
+              DEFAULT=""),
+    Attribute(ill_chip=[
+        'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
+        'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+        'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
+        'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
+        'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
+        'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
+        'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
+        'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
+        'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
+        'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
+        'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
+        'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'],
+              DEFAULT=""),
+    Attribute(ill_bg_mode=['false', 'true'], DEFAULT="false"),
+    Attribute(ill_coll_mode=['none', 'max', 'median'], DEFAULT="none"),
+    Attribute(ill_clm=ANYATOM, default=""),
+    Attribute(ill_custom_chip=ANYATOM, default=""),
+    Attribute(ill_custom_manifest=ANYATOM, default=""))
+
 SignalFile = DataType(
     "SignalFile",
     Attribute(
@@ -1566,6 +1614,7 @@ all_modules = [
         ILLUFolder,
         ControlFile(preprocess="illumina", format="gct",logged="no")
         ),
+    
     # AgilentFiles
     Module(
         "extract_agilent_files", ExpressionFiles, AgilentFiles),
@@ -1582,6 +1631,7 @@ all_modules = [
         GPRFiles,
         SignalFile(format="tdf", logged="no", preprocess="loess")
         ),
+    
     # SignalFile
     Module(
         "convert_signal_to_tdf",
@@ -1676,9 +1726,27 @@ all_modules = [
 ##    Module(   # may cause loop in the network
 ##        "convert_signal_to_pcl",
 ##        SignalFile(format="tdf", logged="yes",
-##                   missing=[None, "no", "median", "zero"]),
+##                   missing_values=[None, "no", "median", "zero"]),
 ##        SignalFile(format="pcl", logged="yes",
-##                   missing=[None, "no", "median", "zero"])),
+##                   missing_values=[None, "no", "median", "zero"])),
+    Module(
+        "check_gene_center",
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            gene_center="unknown"),
+        SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "median_fill", "zero_fill"],
+                   gene_center=["yes","no"])),
+    Module(
+        "check_gene_normalize",
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            gene_normalize="unknown"),
+        SignalFile(format="tdf", logged="yes",
+                   missing_values=["no", "median_fill", "zero_fill"],
+                   gene_normalize=["yes","no"])),
     Module(
         "gene_center",
         SignalFile(format="tdf", logged="yes", gene_center="no",
@@ -1739,8 +1807,8 @@ all_modules = [
          SignalFile(format="tdf", num_features=ANYATOM)), 
      Module(
          'add_crossplatform_probeid',
-         SignalFile(format="tdf", platform='unknown'),
-         SignalFile(format="tdf", platform=ANYATOM, duplicate_probe='yes')),
+         SignalFile(format="tdf", platform="no"),
+         SignalFile(format="tdf", platform=ANYATOM)),
      Module(
         'remove_duplicate_probes',
         SignalFile(format="tdf", duplicate_probe='yes'),
@@ -1762,55 +1830,6 @@ all_modules = [
 ##        SignalFile(format="tdf", logged="no",
 ##                   missing_values=["no", "zero_fill", "median_fill"])),
     ]
-
-
-##    Module(
-##        "preprocess_illumina",      
-##         antecedent("idat_files"),
-##         consequent(
-##             "illu_folder", preprocess='illumina', 
-##             ill_manifest=[
-##                 'HumanHT-12_V3_0_R2_11283641_A.txt',
-##                 'HumanHT-12_V4_0_R2_15002873_B.txt',
-##                 'HumanHT-12_V3_0_R3_11283641_A.txt',
-##                 'HumanHT-12_V4_0_R1_15002873_B.txt',
-##                 'HumanMI_V1_R2_XS0000122-MAP.txt',
-##                 'HumanMI_V2_R0_XS0000124-MAP.txt',
-##                 'HumanRef-8_V2_0_R4_11223162_A.txt',
-##                 'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
-##                 'HumanRef-8_V3_0_R2_11282963_A.txt',
-##                 'HumanRef-8_V3_0_R3_11282963_A.txt',
-##                 'HumanWG-6_V2_0_R4_11223189_A.txt',
-##                 'HumanWG-6_V3_0_R2_11282955_A.txt',
-##                 'HumanWG-6_V3_0_R3_11282955_A.txt',
-##                 'MouseMI_V1_R2_XS0000127-MAP.txt',
-##                 'MouseMI_V2_R0_XS0000129-MAP.txt',
-##                 'MouseRef-8_V1_1_R4_11234312_A.txt',
-##                 'MouseRef-8_V2_0_R2_11278551_A.txt',
-##                 'MouseRef-8_V2_0_R3_11278551_A.txt',
-##                 'MouseWG-6_V1_1_R4_11234304_A.txt',
-##                 'MouseWG-6_V2_0_R2_11278593_A.txt',
-##                 'MouseWG-6_V2_0_R3_11278593_A.txt',
-##                 'RatRef-12_V1_0_R5_11222119_A.txt'],
-##             ill_chip=[
-##                 'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
-##                 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-##                 'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
-##                 'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
-##                 'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
-##                 'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
-##                 'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
-##                 'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
-##                 'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
-##                 'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
-##                 'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
-##                 'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'],
-##             ill_bg_mode=['false', 'true'],
-##             ill_coll_mode=['none', 'max', 'median'],
-##             ill_clm=ANYATOM,
-##             ill_custom_chip=ANYATOM,
-##             ill_custom_manifest=ANYATOM)),    
-
 
 
 
