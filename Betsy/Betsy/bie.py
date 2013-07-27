@@ -102,10 +102,6 @@ class Attribute:
         # keywds is a dictionary of:
         # <attribute name>  :  value
         # DEFAULT           :  default_value
-        assert "DEFAULT" in keywds
-        self.REQUIRED = bool(keywds.get("REQUIRED"))
-        self.DEFAULT = keywds["DEFAULT"]
-        
         name = None
         for x in keywds:
             if x in ["REQUIRED", "DEFAULT"]:
@@ -113,10 +109,20 @@ class Attribute:
             assert name is None
             name = x
         assert name is not None
+        
         attr_type = _get_attribute_type(keywds, name)
         assert attr_type in [TYPE_ANYATOM, TYPE_LIST], "%s %s" % (name, key)
+        assert "DEFAULT" in keywds, "DEFAULT not given for %s." % name
+
+        if attr_type == TYPE_LIST:
+            assert keywds["DEFAULT"] in keywds[name], \
+                   "DEFAULT [%s] not found in values: %s." % (
+                keywds["DEFAULT"], keywds[name])
+
         self.name = name
         self.values = keywds[name]
+        self.REQUIRED = bool(keywds.get("REQUIRED"))
+        self.DEFAULT = keywds["DEFAULT"]
         
 
 class DataType:
@@ -209,7 +215,8 @@ class Data:
                 assert DATA_VALUE == DTYP_VALUE
             # Case 12.
             elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_LIST:
-                assert DATA_VALUE in DTYP_VALUE
+                assert DATA_VALUE in DTYP_VALUE, \
+                       "Value [%s] not found in: %s" % (DATA_VALUE, DTYP_VALUE)
             # Case 14.
             elif DATA_TYPE == TYPE_LIST and DTYP_TYPE == TYPE_ANYATOM:
                 raise AssertionError
@@ -219,7 +226,8 @@ class Data:
             # Case 16.
             elif DATA_TYPE == TYPE_LIST and DTYP_TYPE == TYPE_LIST:
                 for x in DATA_VALUE:
-                    assert x in DTYP_VALUE
+                    assert x in DTYP_VALUE, "Invalid value for %s: %s" % (
+                        key, x)
             else:
                 raise AssertionError, "%s %s" % (DATA_TYPE, DTYP_TYPE)
         self.datatype = datatype
@@ -864,8 +872,8 @@ def _can_converting_module_produce_data(module, data):
 
 
 def _can_nonconverting_module_produce_data(module, data):
-    #p = _print_nothing
-    p = _print_string
+    p = _print_nothing
+    #p = _print_string
     
     p("Checking if module %s can produce data." % module.name)
 
@@ -1398,6 +1406,16 @@ def test_bie():
     #goal_attributes = {}
     #goal_attributes = dict(platform="GPL1691")
     #goal_attributes = dict(version=["v3", "v4"])
+
+    #goal_datatype = ILLUFolder
+    #goal_attributes = dict(
+    #    ill_bg_mode='true',
+    #    ill_chip='ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+    #    ill_clm='',
+    #    ill_coll_mode='none',
+    #    ill_custom_chip='',
+    #    ill_custom_manifest='',
+    #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
     
     goal_datatype = SignalFile
     #goal_attributes = dict(
@@ -1413,11 +1431,27 @@ def test_bie():
     #    format='tdf', preprocess='rma', logged='yes',
     #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
     #    missing_values="no",gene_order='gene_list')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes')
     goal_attributes = dict(
         format='tdf', preprocess='illumina', logged='yes',
-        quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-        missing_values="zero_fill", platform='hg19',
-        duplicate_probe='closest_probe')
+        #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+        missing_values="zero_fill", ill_bg_mode='true')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="zero_fill", platform='hg19',
+    #    duplicate_probe='closest_probe')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    quantile_norm="no", combat_norm="no", dwd_norm="no",
+    #    missing_values="zero_fill", platform='hg19',
+    #    duplicate_probe='closest_probe')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="zero_fill", platform='hg19',
+    #    duplicate_probe='closest_probe')
 
     #out_data = make_data(
     #    "signal_file", format='tdf', preprocess='rma', logged='yes',
@@ -1443,6 +1477,47 @@ def test_bie():
     
     _print_network(network)
     _plot_network_gv("out.png", network)
+
+
+ILLU_MANIFEST = [
+    'HumanHT-12_V3_0_R2_11283641_A.txt',
+    'HumanHT-12_V4_0_R2_15002873_B.txt',
+    'HumanHT-12_V3_0_R3_11283641_A.txt',
+    'HumanHT-12_V4_0_R1_15002873_B.txt',
+    'HumanMI_V1_R2_XS0000122-MAP.txt',
+    'HumanMI_V2_R0_XS0000124-MAP.txt',
+    'HumanRef-8_V2_0_R4_11223162_A.txt',
+    'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
+    'HumanRef-8_V3_0_R2_11282963_A.txt',
+    'HumanRef-8_V3_0_R3_11282963_A.txt',
+    'HumanWG-6_V2_0_R4_11223189_A.txt',
+    'HumanWG-6_V3_0_R2_11282955_A.txt',
+    'HumanWG-6_V3_0_R3_11282955_A.txt',
+    'MouseMI_V1_R2_XS0000127-MAP.txt',
+    'MouseMI_V2_R0_XS0000129-MAP.txt',
+    'MouseRef-8_V1_1_R4_11234312_A.txt',
+    'MouseRef-8_V2_0_R2_11278551_A.txt',
+    'MouseRef-8_V2_0_R3_11278551_A.txt',
+    'MouseWG-6_V1_1_R4_11234304_A.txt',
+    'MouseWG-6_V2_0_R2_11278593_A.txt',
+    'MouseWG-6_V2_0_R3_11278593_A.txt',
+    'RatRef-12_V1_0_R5_11222119_A.txt'
+    ]
+
+ILLU_CHIP = [
+    'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
+    'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+    'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
+    'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
+    'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
+    'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
+    'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
+    'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
+    'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
+    'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
+    'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
+    'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'
+    ]
 
 
 AgilentFiles = DataType("AgilentFiles")
@@ -1476,49 +1551,15 @@ IDATFiles = DataType("IDATFiles")
 ClassLabelFile = DataType("ClassLabelFile")
 ILLUFolder = DataType(
     "ILLUFolder", 
-    Attribute(illu_manifest=[
-        'HumanHT-12_V3_0_R2_11283641_A.txt',
-        'HumanHT-12_V4_0_R2_15002873_B.txt',
-        'HumanHT-12_V3_0_R3_11283641_A.txt',
-        'HumanHT-12_V4_0_R1_15002873_B.txt',
-        'HumanMI_V1_R2_XS0000122-MAP.txt',
-        'HumanMI_V2_R0_XS0000124-MAP.txt',
-        'HumanRef-8_V2_0_R4_11223162_A.txt',
-        'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
-        'HumanRef-8_V3_0_R2_11282963_A.txt',
-        'HumanRef-8_V3_0_R3_11282963_A.txt',
-        'HumanWG-6_V2_0_R4_11223189_A.txt',
-        'HumanWG-6_V3_0_R2_11282955_A.txt',
-        'HumanWG-6_V3_0_R3_11282955_A.txt',
-        'MouseMI_V1_R2_XS0000127-MAP.txt',
-        'MouseMI_V2_R0_XS0000129-MAP.txt',
-        'MouseRef-8_V1_1_R4_11234312_A.txt',
-        'MouseRef-8_V2_0_R2_11278551_A.txt',
-        'MouseRef-8_V2_0_R3_11278551_A.txt',
-        'MouseWG-6_V1_1_R4_11234304_A.txt',
-        'MouseWG-6_V2_0_R2_11278593_A.txt',
-        'MouseWG-6_V2_0_R3_11278593_A.txt',
-        'RatRef-12_V1_0_R5_11222119_A.txt'],
-              DEFAULT=""),
-    Attribute(ill_chip=[
-        'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
-        'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-        'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
-        'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
-        'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
-        'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
-        'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
-        'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
-        'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
-        'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
-        'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
-        'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'],
-              DEFAULT=""),
-    Attribute(ill_bg_mode=['false', 'true'], DEFAULT="false"),
-    Attribute(ill_coll_mode=['none', 'max', 'median'], DEFAULT="none"),
-    Attribute(ill_clm=ANYATOM, default=""),
-    Attribute(ill_custom_chip=ANYATOM, default=""),
-    Attribute(ill_custom_manifest=ANYATOM, default=""))
+    Attribute(illu_manifest=ILLU_MANIFEST,
+              DEFAULT='HumanHT-12_V4_0_R2_15002873_B.txt'),
+    Attribute(illu_chip=ILLU_CHIP,
+              DEFAULT='ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
+    Attribute(illu_bg_mode=['false', 'true'], DEFAULT="false"),
+    Attribute(illu_coll_mode=['none', 'max', 'median'], DEFAULT="none"),
+    Attribute(illu_clm=ANYATOM, DEFAULT=""),
+    Attribute(illu_custom_chip=ANYATOM, DEFAULT=""),
+    Attribute(illu_custom_manifest=ANYATOM, DEFAULT=""))
 
 SignalFile = DataType(
     "SignalFile",
@@ -1603,7 +1644,13 @@ all_modules = [
     Module(
         "extract_illumina_idat_files", ExpressionFiles, IDATFiles),
     Module(
-        "preprocess_illumina", IDATFiles, ILLUFolder),
+        "preprocess_illumina", IDATFiles,
+        ILLUFolder(
+            illu_manifest=ILLU_MANIFEST, illu_chip=ILLU_CHIP,
+            illu_bg_mode=["false", "true"],
+            illu_coll_mode=["none", "max", "median"],
+            illu_clm=ANYATOM, illu_custom_chip=ANYATOM,
+            illu_custom_manifest=ANYATOM)),
     Module(
         "get_illumina_signal",
         ILLUFolder,
@@ -1737,22 +1784,25 @@ all_modules = [
             gene_center="unknown"),
         SignalFile(format="tdf", logged="yes",
                    missing_values=["no", "median_fill", "zero_fill"],
-                   gene_center=["yes","no"])),
+                   gene_center=["no", "mean", "median"])),
     Module(
         "check_gene_normalize",
         SignalFile(
             format="tdf", logged="yes",
             missing_values=["no", "zero_fill", "median_fill"],
             gene_normalize="unknown"),
-        SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "median_fill", "zero_fill"],
-                   gene_normalize=["yes","no"])),
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "median_fill", "zero_fill"],
+            gene_normalize=["no", "variance", "sum_of_squares"])),
     Module(
         "gene_center",
-        SignalFile(format="tdf", logged="yes", gene_center="no",
-                   missing_values=["no", "zero_fill", "median_fill"]),
-        SignalFile(format="tdf", logged="yes", gene_center=["mean", "median"],
-                   missing_values=["no", "zero_fill", "median_fill"])),           
+        SignalFile(
+            format="tdf", logged="yes", gene_center="no",
+            missing_values=["no", "zero_fill", "median_fill"]),
+        SignalFile(
+            format="tdf", logged="yes", gene_center=["mean", "median"],
+            missing_values=["no", "zero_fill", "median_fill"])),
     Module(
         "gene_normalize",
         SignalFile(format="tdf", logged="yes", gene_normalize="no",
