@@ -34,9 +34,14 @@ Network
 # 
 # _backchain_to_modules       Given a consequent, find compatible Modules.
 # _backchain_to_antecedent    Given a consequent and module, find antecedents.
+# _backchain_to_ids
+#
 # _can_module_produce_data
 # _can_converting_module_produce_data
 # _can_nonconverting_module_produce_data
+#
+# _can_reach_by_bc
+# _can_reach_by_fc
 # 
 # _find_duplicate_modules
 # _merge_duplicate_modules
@@ -241,9 +246,16 @@ class Data:
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
+        # Don't print out attributes with default values.
+        attributes = {}
+        defaults = self.datatype.get_defaults()
+        for key, value in self.attributes.iteritems():
+            if value == defaults[key]:
+                continue
+            attributes[key] = value
         x = [
             self.datatype.name,
-            _pretty_attributes(self.attributes),
+            _pretty_attributes(attributes),
             ]
         x = [x for x in x if x]
         return "Data(%s)" % ", ".join(x)
@@ -274,9 +286,13 @@ class Module:
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
+        import operator
+        ante_datas = self.ante_datas
+        if len(ante_datas) == 1:
+            ante_datas = ante_datas[0]
         x = [
             repr(self.name),
-            repr(self.ante_datas),
+            repr(ante_datas),
             repr(self.cons_data),
             ]
         x = "Module(%s)" % ", ".join(x)
@@ -452,28 +468,70 @@ def backchain(moduledb, goal_datatype, goal_attributes):
 
 
 def prune_network_by_start(network, start_data):
-    if isinstance(start_data, DataType):
-        start_data = start_data()  # convert to Data
-    assert isinstance(start_data, Data)
+    # start_data may be a single Data object or a list of Data
+    # objects.  DataTypes are also allowed in lieu of Data objects.
+    import operator
+
+    start_datas = start_data
+    if not operator.isSequenceType(start_data):
+        start_datas = [start_data]
+    for i, x in enumerate(start_datas):
+        if isinstance(x, DataType):
+            x = x()  # convert to Data
+        assert isinstance(x, Data)
+        start_datas[i] = x
     
     # Look for the nodes that are compatible with start_data.
     node_ids = []  # list of node_ids.
     for node_id, next_ids in network.iterate(node_class=Data):
-        if _is_compatible_with_start(network.nodes[node_id], start_data):
+        # See if this node is compatible with any of the start nodes.
+        x = [x for x in start_datas
+             if _is_compatible_with_start(network.nodes[node_id], x)]
+        if x:
             node_ids.append(node_id)
 
-    # For each of these node_ids, do forward chaining to find all
-    # nodes that these ones can connect to.
-    good_ids = {}
-    stack = node_ids[:]
-    while stack:
-        node_id = stack.pop(0)
-        if node_id in good_ids:
-            continue
-        good_ids[node_id] = 1
-        x = network.transitions.get(node_id, [])
-        stack.extend(x)
+    # Strategy:
+    # 1.  Include all nodes that can reach both a start and end node.
+    # 2.  Remove modules that are missing any antecedents.
+    # 3.  Repeat steps 1-2 until convergence.
 
+    good_ids = {}.fromkeys(range(len(network.nodes)))
+
+    while good_ids:
+        # If any of the nodes can't reach both the start and the end,
+        # then delete it.
+        delete_ids = {}
+        for node_id in good_ids:
+            good_by_bc = _can_reach_by_bc(network, node_id, good_ids)
+            good_by_fc = _can_reach_by_fc(network, node_id, good_ids)
+            # If it can't reach the goal, then delete it.
+            if 0 not in good_by_fc:
+                delete_ids[node_id] = 1
+            # If it can't reach any starts, then delete it.
+            x = [x for x in node_ids if x in good_by_bc]
+            if not x:
+                delete_ids[node_id] = 1
+            
+        # If a module requires multiple inputs, make sure each of the
+        # inputs are in the network.  If not, remove the module.
+        for node_id in good_ids:
+            node = network.nodes[node_id]
+            if not isinstance(node, Module):
+                continue
+            assert len(node.ante_datas) > 0
+            if len(node.ante_datas) <= 1:
+                continue
+            ante_ids = _backchain_to_ids(network, node_id)
+            nid = [x for x in ante_ids if x in good_ids]
+            if len(nid) != len(ante_ids):
+                delete_ids[node_id] = 1
+
+        for node_id in delete_ids:
+            del good_ids[node_id]
+        if not delete_ids:
+            break
+        
+        
     # Delete all the IDs that aren't in good_ids.
     for nid in range(len(network.nodes)-1, -1, -1):
         if nid not in good_ids:
@@ -759,8 +817,8 @@ def _can_module_produce_data(module, data):
     
 
 def _can_converting_module_produce_data(module, data):
-    #p = _print_nothing
-    p = _print_string
+    p = _print_nothing
+    #p = _print_string
     
     p("Checking if module %s can produce data." % module.name)
 
@@ -1014,6 +1072,40 @@ def _can_nonconverting_module_produce_data(module, data):
     return num_attributes
 
 
+def _can_reach_by_fc(network, node_id, good_ids):
+    # Return a dictionary of all the node IDs that can be reached by
+    # forward chaining.
+    reachable_ids = {}
+    stack = [node_id]
+    while stack:
+        nid = stack.pop(0)
+        if nid in reachable_ids:
+            continue
+        if nid not in good_ids:
+            continue
+        reachable_ids[nid] = 1
+        ids = network.transitions.get(nid, [])
+        stack.extend(ids)
+    return reachable_ids
+
+
+def _can_reach_by_bc(network, node_id, good_ids):
+    # Return a dictionary of all the node IDs that can be reached by
+    # backwards chaining.
+    reachable_ids = {}
+    stack = [node_id]
+    while stack:
+        nid = stack.pop(0)
+        if nid in reachable_ids:
+            continue
+        if nid not in good_ids:
+            continue
+        reachable_ids[nid] = 1
+        ids = _backchain_to_ids(network, nid)
+        stack.extend(ids)
+    return reachable_ids
+
+
 def _find_duplicate_modules(network):
     # Return list of module_ids for modules that are duplicated.  If
     # no duplicates found, return an empty list.
@@ -1127,7 +1219,7 @@ def _is_compatible_with_start(data, start_data):
     # Start Data
     # ATOM      Must match a specific value.
     # LIST      UNDEFINED.
-    # ANYATOM   UNDEFINED.
+    # ANYATOM   Can match any value.
     # NOVALUE   Use default value.
     # 
     # CASE START_TYPE  DATA_TYPE   RESULT
@@ -1177,7 +1269,7 @@ def _is_compatible_with_start(data, start_data):
                  DATA_TYPE in [TYPE_ANYATOM, TYPE_ATOM]:
             pass
         # Case 9.
-        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE in TYPE_NOVALUE:
+        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_NOVALUE:
             compatible = False
         # Case 10.
         elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ANYATOM:
@@ -1395,7 +1487,13 @@ def _pretty_attributes(attributes):
 
 def test_bie():
     #print_modules(all_modules); return
-    in_data = GEOSeries
+
+    #x = SignalFile(
+    #    format="unknown", group_fc=ANYATOM, logged="unknown",
+    #    missing_values="unknown", preprocess="unknown")
+    x = SignalFile(preprocess="illumina")
+    #in_data = [GEOSeries, ClassLabelFile]
+    in_data = [x, ClassLabelFile]
     #in_data = SignalFile(logged="yes", preprocess="rma")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
 
@@ -1436,7 +1534,8 @@ def test_bie():
     goal_attributes = dict(
         format='tdf', preprocess='illumina', logged='yes',
         #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-        missing_values="zero_fill", ill_bg_mode='true')
+        missing_values="zero_fill", group_fc="5", ill_bg_mode='true',
+        illu_coll_mode="max")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
@@ -1469,7 +1568,7 @@ def test_bie():
     #    platform='str', duplicate_probe='high_var_probe')
     
     network = backchain(all_modules, goal_datatype, goal_attributes)
-    #network = prune_network_by_start(network, in_data)
+    network = prune_network_by_start(network, in_data)
     #network = prune_network_by_internal(
     #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
     #network = prune_network_by_internal(
