@@ -13,7 +13,9 @@ Modules "produce" a Data node.
 
 Functions:
 backchain
+prune_network_cycles
 prune_network_by_start
+prune_network_by_internal
 
 summarize_moduledb
 print_modules
@@ -316,6 +318,7 @@ class Network:
     def __init__(self, nodes, transitions):
         # nodes should be a list of Data or Module objects.  Data
         # transition to Modules, and Modules transition to Data.
+        import copy
         
         # Make sure nodes are Data or Module objects.
         for n in nodes:
@@ -334,7 +337,7 @@ class Network:
                     assert isinstance(n2, Data)
         
         self.nodes = nodes[:]
-        self.transitions = transitions.copy()
+        self.transitions = copy.deepcopy(transitions)
 
     def iterate(self, node_class=None):
         # Yield tuple of (node_id, next_node_ids).  node_class is the
@@ -366,6 +369,13 @@ class Network:
             transitions[nid] = next_ids
         return Network(nodes, transitions)
 
+    def delete_nodes(self, node_ids):
+        network = Network(self.nodes, self.transitions)
+        node_ids = reversed(sorted(node_ids))
+        for nid in node_ids:
+            network = network.delete_node(nid)
+        return network
+
     def merge_nodes(self, node_ids):
         """node_ids is a list of the indexes of nodes.  Replace all
         these nodes with just a single one.  Returns a new Network
@@ -380,28 +390,29 @@ class Network:
 
         # Keep the first node, and delete the rest.
 
-        # Make pointers to node_ids all point to the first one.
-        transitions = {}
-        for nid, next_ids in self.transitions.iteritems():
-            next_ids = next_ids[:]
-            for i in range(len(next_ids)):
-                if next_ids[i] in node_ids[1:]:
-                    next_ids[i] = node_ids[0]
-            next_ids = sorted({}.fromkeys(next_ids))  # no duplicates
-            transitions[nid] = next_ids
+        # Make transitions to any node_ids point to the first one.
+        node_id = node_ids[0]
+        prev_ids = []
+        for nid in node_ids[1:]:
+            x = _backchain_to_ids(self, nid)
+            prev_ids.extend(x)
+        transitions = self.transitions.copy()
+        for prev_id in prev_ids:
+            x = transitions[prev_id]
+            if node_id not in x:
+                x = x + [node_id]
+            transitions[prev_id] = x
 
         # Make the first node point to all the next_nodes of the other
         # node_ids.
-        for i in range(1, len(node_ids)):
-            nid0 = node_ids[0]
-            nidi = node_ids[i]
+        nid0 = node_ids[0]
+        for nidi in node_ids[1:]:
             x = transitions.get(nid0, []) + transitions.get(nidi, [])
             x = sorted({}.fromkeys(x))
             transitions[nid0] = x
 
         merged = Network(self.nodes, transitions)
-        for i in range(len(node_ids)-1, 0, -1):
-            merged = merged.delete_node(node_ids[i])
+        merged = merged.delete_nodes(node_ids[1:])
         return merged
 
 
@@ -464,6 +475,41 @@ def backchain(moduledb, goal_datatype, goal_attributes):
         
     network = Network(nodes, transitions)
     network = _merge_duplicate_modules(network)
+    return network
+
+
+def prune_network_cycles(network):
+    # Do backwards chaining.  If I encounter a cycle, then break it.
+    
+    # First, figure out the depth of each node using a breadth first
+    # search.
+    stack = [(0, [])]  # list of (node_id, path (not including node_id))
+    bad_transitions = {}  # (node_id, next_id) -> 1
+    while stack:
+        node_id, path = stack.pop(0)
+        if node_id in path:
+            # If his node_id is already in the path, then this is a
+            # cycle.
+            bad_transitions[(node_id, path[-1])] = 1
+            continue
+        path = path + [node_id]
+        for nid in _backchain_to_ids(network, node_id):
+            stack.append((nid, path))
+
+    # Remove all the bad transitions.
+    #bad_modules = {}
+    for node_id, next_id in bad_transitions:
+        x = network.transitions.get(node_id, [])
+        assert next_id in x
+        i = x.index(next_id)
+        assert i >= 0
+        x.pop(i)
+        network.transitions[node_id] = x
+
+        # If nothing else points to the module, then delete that module.
+        #if not _backchain_to_ids(network, next_id):
+        #    bad_modules[next_id] = 1
+    #network = network.delete_nodes(bad_modules)
     return network
 
 
@@ -531,12 +577,9 @@ def prune_network_by_start(network, start_data):
         if not delete_ids:
             break
         
-        
     # Delete all the IDs that aren't in good_ids.
-    for nid in range(len(network.nodes)-1, -1, -1):
-        if nid not in good_ids:
-            network = network.delete_node(nid)
-
+    bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
+    network = network.delete_nodes(bad_ids)
     return network
 
 
@@ -581,10 +624,8 @@ def prune_network_by_internal(network, internal_data):
     good_ids.update(bc_ids)
 
     # Delete all the IDs that aren't in good_ids.
-    for nid in range(len(network.nodes)-1, -1, -1):
-        if nid not in good_ids:
-            network = network.delete_node(nid)
-
+    bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
+    network = network.delete_nodes(bad_ids)
     return network
 
 
@@ -1402,7 +1443,7 @@ def _print_line(line, prefix0, prefixn, width):
 def _print_network(network):
     line_width = 72
     for i in range(len(network.nodes)):
-        p_step = "%d.  " % i
+        p_step = "%2d.  " % i
         p_space = " " * (len(p_step)+2)
         _print_line(str(network.nodes[i]), p_step, p_space, line_width)
     print
@@ -1529,13 +1570,13 @@ def test_bie():
     #    format='tdf', preprocess='rma', logged='yes',
     #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
     #    missing_values="no",gene_order='gene_list')
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes')
     goal_attributes = dict(
-        format='tdf', preprocess='illumina', logged='yes',
-        #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-        missing_values="zero_fill", group_fc="5", ill_bg_mode='true',
-        illu_coll_mode="max")
+        format='tdf', preprocess='illumina', logged='yes')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="zero_fill", group_fc="5", ill_bg_mode='true',
+    #    illu_coll_mode="max")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
@@ -1568,7 +1609,8 @@ def test_bie():
     #    platform='str', duplicate_probe='high_var_probe')
     
     network = backchain(all_modules, goal_datatype, goal_attributes)
-    network = prune_network_by_start(network, in_data)
+    network = prune_network_cycles(network)
+    #network = prune_network_by_start(network, in_data)
     #network = prune_network_by_internal(
     #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
     #network = prune_network_by_internal(
@@ -1783,14 +1825,30 @@ all_modules = [
         "convert_signal_to_tdf",
         SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
         SignalFile(format='tdf')),
+    Module(   # Causes cycles.
+        "convert_signal_to_pcl",
+        SignalFile(format=['tdf', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
+        SignalFile(format='pcl')),
+    Module(   # Causes cycles.
+        'convert_signal_to_gct',
+        SignalFile(format=['tdf', 'res', 'pcl', 'jeffs', 'unknown', 'xls']),
+        SignalFile(format='gct')),
     Module(
         "check_for_log",
-        SignalFile(format="tdf", logged='unknown'),
+        SignalFile(format=["tdf", "pcl", "gct"], logged='unknown'),
         SignalFile(format="tdf", logged=['yes', "no"])),
     Module(
         "log_signal",
-        SignalFile(logged='no', format='tdf'),
+        SignalFile(logged='no', format=["tdf", "pcl", "gct"]),
         SignalFile(logged='yes', format='tdf')),
+    Module(   # Causes cycles.
+        'unlog_signal',
+        SignalFile(
+            format=["tdf", "pcl", "gct"], logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"]),
+        SignalFile(
+            format="tdf", logged="no",
+            missing_values=["no", "zero_fill", "median_fill"])),
     Module(
         "fill_missing_with_median",
         SignalFile(format="tdf", logged="yes", missing_values="yes"),
@@ -1869,12 +1927,6 @@ all_modules = [
             format="tdf", logged="yes",
             missing_values=["no", "zero_fill", "median_fill"],
             shiftscale_norm="yes")),
-##    Module(   # may cause loop in the network
-##        "convert_signal_to_pcl",
-##        SignalFile(format="tdf", logged="yes",
-##                   missing_values=[None, "no", "median", "zero"]),
-##        SignalFile(format="pcl", logged="yes",
-##                   missing_values=[None, "no", "median", "zero"])),
     Module(
         "check_gene_center",
         SignalFile(
@@ -1966,18 +2018,6 @@ all_modules = [
          'select_probe_by_best_match',
          SignalFile(format="tdf", duplicate_probe='yes'),
          SignalFile(format="tdf", duplicate_probe='closest_probe')),
-##    Module( # this may cause loop
-##        'convert_signal_to_gct',
-##        SignalFile(format="tdf", 
-##                   missing_values=["no", "zero_fill", "median_fill"]),
-##        SignalFile(format="gct", 
-##                   missing_values=["no", "zero_fill", "median_fill"])),
-##    Module( # this may cause loop
-##        'unlog_signal',
-##        SignalFile(format="tdf", logged="yes",
-##                   missing_values=["no", "zero_fill", "median_fill"]),
-##        SignalFile(format="tdf", logged="no",
-##                   missing_values=["no", "zero_fill", "median_fill"])),
     ]
 
 
