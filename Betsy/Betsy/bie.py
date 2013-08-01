@@ -458,23 +458,77 @@ class _OptimizeNoCycles:
     def optimize(self, network):
         # Do backwards chaining.  If I encounter a cycle, then break it.
 
-        # First, figure out the depth of each node using a breadth first
-        # search.
-        stack = [(0, [])]  # list of (node_id, path (not including node_id))
-        bad_transitions = {}  # (node_id, next_id) -> 1
-        while stack:
-            node_id, path = stack.pop(0)
-            if node_id in path:
-                # If his node_id is already in the path, then this is a
-                # cycle.
-                bad_transitions[(node_id, path[-1])] = 1
-                continue
-            path = path + [node_id]
-            for nid in _backchain_to_ids(network, node_id):
-                stack.append((nid, path))
+        # Length of cycles:
+        # 5     168,081   67%
+        # 7      84,056   33%
+        # 9-17      318    0%
 
-        # Remove all the bad transitions.
-        #bad_modules = {}
+        # Optimization.  Since may cycles are short, break the
+        # 5-cycles first to speed up the search.
+        cycles = self.find_cycles(network, 5)
+        bad_transitions = self.choose_breakpoints(cycles)
+        network = self.break_cycles(network, bad_transitions)
+        
+        cycles = self.find_cycles(network, 0)
+        bad_transitions = self.choose_breakpoints(cycles)
+        network = self.break_cycles(network, bad_transitions)
+
+        return network
+
+    def find_cycles(self, network, max_path_length):
+        assert max_path_length >= 0
+        if max_path_length:
+            cycles = self._find_cycles_from_all_nodes(network, max_path_length)
+        else:
+            cycles = self._find_cycles_from_one_node(
+                network, 0, max_path_length)
+        return cycles
+
+    def choose_breakpoints(self, cycles):
+        # Count the number of cycles each transition is in.  Break the
+        # transitions that are in the most cycles.
+        counts = {}   # (node_id, next_id) -> count
+        for cycle in cycles:
+            for i in range(len(cycle)-1):
+                next_id, node_id = cycle[i], cycle[i+1]
+                key = node_id, next_id
+                if key not in counts:
+                    counts[key] = 0
+                counts[key] += 1
+
+        bad_transitions = {}  # (node_id, next_id) -> 1
+        for cycle in cycles:
+            ## Break the cycle at the lowest node_id.
+            #i = cycle.index(min(cycle))
+            #assert i < len(cycle)-1
+
+            # If this cycle is already broken, then ignore it.
+            broken = False
+            for i in range(len(cycle)-1):
+                next_id, node_id = cycle[i], cycle[i+1]
+                key = node_id, next_id
+                if key in bad_transitions:
+                    broken = True
+            if broken:
+                continue
+
+            # Find the transition with the highest counts.  If there
+            # are ties, use the key with lowest node_id.
+            keys = []
+            for i in range(len(cycle)-1):
+                next_id, node_id = cycle[i], cycle[i+1]
+                x = node_id, next_id
+                keys.append(x)
+            schwartz = [(-counts[x], x) for x in keys]
+            schwartz.sort()
+            keys = [x[-1] for x in schwartz]
+            bad_transitions[keys[0]] = 1
+        return bad_transitions
+
+    def break_cycles(self, network, bad_transitions):
+        import copy
+        
+        network = copy.deepcopy(network)
         for node_id, next_id in bad_transitions:
             x = network.transitions.get(node_id, [])
             assert next_id in x
@@ -482,12 +536,41 @@ class _OptimizeNoCycles:
             assert i >= 0
             x.pop(i)
             network.transitions[node_id] = x
-
-            # If nothing else points to the module, then delete that module.
-            #if not _backchain_to_ids(network, next_id):
-            #    bad_modules[next_id] = 1
-        #network = network.delete_nodes(bad_modules)
         return network
+
+    def _find_cycles_from_all_nodes(self, network, max_path_length):
+        cycles = []
+        for start_id in range(len(network.nodes)):
+            x = self._find_cycles_from_one_node(
+                network, start_id, max_path_length)
+            cycles.extend(x)
+        x = [tuple(x) for x in cycles]
+        cycles = sorted({}.fromkeys(x))
+        return cycles
+    
+    def _find_cycles_from_one_node(self, network, start_id, max_path_length):
+        # Do a breadth first search and look for cycles.  Return a
+        # list of cycles found, where each cycle is a list of
+        # node_ids.
+
+        cycles = []
+        # list of (node_id, path (not including node_id))
+        stack = [(start_id, [])]
+        while stack:
+            node_id, path = stack.pop(0)
+            if max_path_length and len(path) > max_path_length:
+                continue
+            if node_id in path:
+                # If his node_id is already in the path, then this is a
+                # cycle.
+                i = path.index(node_id)
+                x = path[i:] + [node_id]
+                cycles.append(x)
+                continue
+            path = path + [node_id]
+            for nid in _backchain_to_ids(network, node_id):
+                stack.append((nid, path))
+        return cycles
 
 
 class _OptimizeNoDuplicateData:
@@ -610,8 +693,11 @@ class _OptimizeNoAmbiguousPaths:
             good.append((node_id1, node_id2))
         data_pairs = good
 
-        # For each of the topologies, remove the overlapping options
-        # from data2.
+        # For each of the pairs whose lists have overlapping options,
+        # remove the overlapping options from data2.
+        # For each of the pairs where data1 has a LIST and data2 has a
+        # ATOM in the LIST, merge data1 and data2.
+        merge_pairs = []
         network = copy.deepcopy(network)
         for (node_id1, node_id2) in data_pairs:
             data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
@@ -622,17 +708,33 @@ class _OptimizeNoAmbiguousPaths:
             for key in data1.attributes:
                 DATA1_VALUE = data1_attr.get(key)
                 DATA2_VALUE = data2_attr.get(key)
-                DATA_TYPE = _get_attribute_type(data1_attr, key)
+                DATA1_TYPE = _get_attribute_type(data1_attr, key)
+                DATA2_TYPE = _get_attribute_type(data2_attr, key)
 
-                if DATA_TYPE != TYPE_LIST:
-                    continue
-                if sorted(DATA1_VALUE) == sorted(DATA2_VALUE):
-                    continue
-                DATA2_VALUE = [x for x in DATA2_VALUE if x not in DATA1_VALUE]
-                attributes[key] = DATA2_VALUE
+                if DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_ATOM:
+                    if DATA2_VALUE in DATA1_VALUE:
+                        merge_pairs.append((node_id1, node_id2))
+                elif DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_LIST:
+                    if sorted(DATA1_VALUE) != sorted(DATA2_VALUE):
+                        DATA2_VALUE = [
+                            x for x in DATA2_VALUE if x not in DATA1_VALUE]
+                        # BUG: What if DATA2_VALUE is subset of DATA1_VALUE?
+                        assert DATA2_VALUE
+                        attributes[key] = DATA2_VALUE
             data2 = Data(data2.datatype, attributes)
             network.nodes[node_id2] = data2
 
+        while merge_pairs:
+            node_id1, node_id2 = merge_pairs.pop(0)
+            network = network.merge_nodes([node_id1, node_id2])
+            for i in range(len(merge_pairs)):
+                nid1, nid2 = merge_pairs[i]
+                assert nid1 != node_id2 and nid2 != node_id2
+                if nid1 > node_id2:
+                    nid1 -= 1
+                if nid2 > node_id2:
+                    nid2 -= 1
+                merge_pairs[i] = nid1, nid2
         return network
 
     def is_data_compatible(self, data1, data2):
@@ -653,7 +755,7 @@ class _OptimizeNoAmbiguousPaths:
         #   8    ANYATOM      LIST     No.
         #   9      ATOM     NOVALUE    No.  Not sure.
         #  10      ATOM     ANYATOM    No.
-        #  11      ATOM       ATOM     OK if ATOMs equal.
+        #  11      ATOM       ATOM     OK if ATOMs are equal.
         #  12      ATOM       LIST     No.
         #  13      LIST     NOVALUE    No.  Not sure.
         #  14      LIST     ANYATOM    No.
@@ -898,10 +1000,6 @@ def optimize_network(network):
         _OptimizeNoDuplicateModules(),
         _OptimizeNoDuplicateData(),
         _OptimizeNoAmbiguousPaths(),
-        #_OptimizeReconvert(),
-        #_OptimizeShiftSide(),
-        #_OptimizeShiftDown(),
-        #_OptimizeRedundantData(),
         ]
 
     old_network = None
@@ -1936,8 +2034,8 @@ def test_bie():
     #    missing_values="unknown", preprocess="unknown")
     x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
-    in_data = [x, ClassLabelFile]
-    #in_data = SignalFile(logged="yes", preprocess="rma")
+    #in_data = [x, ClassLabelFile]
+    in_data = SignalFile(logged="yes", preprocess="rma")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
 
     #print _make_goal(SignalFile, x)
@@ -1962,9 +2060,9 @@ def test_bie():
     #goal_attributes = dict(
     #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
     #    missing_values="no")
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='rma', logged='yes',
-    #    missing_values="no", group_fc="5")
+    goal_attributes = dict(
+        format='tdf', preprocess='illumina', logged='yes', missing_values="no")
+    #missing_values="no", group_fc="5")
     #goal_attributes = dict(
     #    format='tdf', logged='yes', missing_values="no", group_fc="5")
     #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
@@ -1972,8 +2070,8 @@ def test_bie():
     #    format='tdf', preprocess='rma', logged='yes',
     #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
     #    missing_values="no",gene_order='gene_list')
-    goal_attributes = dict(
-        format='tdf', preprocess='illumina', logged='yes')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes')
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
