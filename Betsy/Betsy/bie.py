@@ -37,7 +37,7 @@ Network
 # _OptimizeNoCycles
 # _OptimizeNoDuplicateData
 # _OptimizeNoDuplicateModules
-# _OptimizeNoDanglingModules
+# _OptimizeNoDanglingNodes
 # _OptimizeNoAmbiguousPaths
 #
 #
@@ -47,6 +47,7 @@ Network
 # _backchain_to_modules       Given a consequent, find compatible Modules.
 # _backchain_to_antecedent    Given a consequent and module, find antecedents.
 # _backchain_to_ids
+# _make_backchain_dict
 #
 # _can_module_produce_data
 # _can_converting_module_produce_data
@@ -218,41 +219,20 @@ class Data:
             DTYP_VALUE = dtyp_attr.get(key)
             DATA_TYPE = _get_attribute_type(data_attr, key)
             DTYP_TYPE = _get_attribute_type(dtyp_attr, key)
+            CASE = _assign_case_by_type(DATA_TYPE, DTYP_TYPE)
 
-            # Cases 1-4.
-            if DATA_TYPE == TYPE_NOVALUE:
+            if CASE in [1, 2, 3, 4, 5, 9, 13]:
                 raise AssertionError
-            # Cases 5, 9, 13.
-            elif DTYP_TYPE == TYPE_NOVALUE:
-                raise AssertionError
-            # Case 6.
-            elif DATA_TYPE == TYPE_ANYATOM and DTYP_TYPE == TYPE_ANYATOM:
+            elif CASE in [6, 10]:
                 pass
-            # Case 7.
-            elif DATA_TYPE == TYPE_ANYATOM and DTYP_TYPE == TYPE_ATOM:
+            elif CASE in [7, 8, 14, 15]:
                 raise AssertionError, "type mismatch"
-            # Case 8.
-            elif DATA_TYPE == TYPE_ANYATOM and DTYP_TYPE == TYPE_LIST:
-                raise AssertionError, "type mismatch"
-                #assert ANYATOM in DTYP_VALUE, "type mismatch"
-            # Case 10.
-            elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_ANYATOM:
-                pass
-            # Case 11.
-            elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_ATOM:
+            elif CASE == 11:
                 assert DATA_VALUE == DTYP_VALUE
-            # Case 12.
-            elif DATA_TYPE == TYPE_ATOM and DTYP_TYPE == TYPE_LIST:
+            elif CASE == 12:
                 assert DATA_VALUE in DTYP_VALUE, \
                        "Value [%s] not found in: %s" % (DATA_VALUE, DTYP_VALUE)
-            # Case 14.
-            elif DATA_TYPE == TYPE_LIST and DTYP_TYPE == TYPE_ANYATOM:
-                raise AssertionError
-            # Case 15.
-            elif DATA_TYPE == TYPE_LIST and DTYP_TYPE == TYPE_ATOM:
-                raise AssertionError
-            # Case 16.
-            elif DATA_TYPE == TYPE_LIST and DTYP_TYPE == TYPE_LIST:
+            elif CASE == 16:
                 for x in DATA_VALUE:
                     assert x in DTYP_VALUE, "Invalid value for %s: %s" % (
                         key, x)
@@ -343,7 +323,6 @@ class Network:
     def __init__(self, nodes, transitions):
         # nodes should be a list of Data or Module objects.  Data
         # transition to Modules, and Modules transition to Data.
-        import copy
         
         # Make sure nodes are Data or Module objects.
         for n in nodes:
@@ -362,7 +341,7 @@ class Network:
                     assert isinstance(n2, Data)
         
         self.nodes = nodes[:]
-        self.transitions = copy.deepcopy(transitions)
+        self.transitions = transitions.copy()
 
     def __cmp__(self, other):
         if not isinstance(other, Network):
@@ -468,7 +447,12 @@ class _OptimizeNoCycles:
         cycles = self.find_cycles(network, 5)
         bad_transitions = self.choose_breakpoints(cycles)
         network = self.break_cycles(network, bad_transitions)
-        
+
+        # Test this.  Speeds up search?
+        #cycles = self.find_cycles(network, 7)
+        #bad_transitions = self.choose_breakpoints(cycles)
+        #network = self.break_cycles(network, bad_transitions)
+
         cycles = self.find_cycles(network, 0)
         bad_transitions = self.choose_breakpoints(cycles)
         network = self.break_cycles(network, bad_transitions)
@@ -528,15 +512,15 @@ class _OptimizeNoCycles:
     def break_cycles(self, network, bad_transitions):
         import copy
         
-        network = copy.deepcopy(network)
+        transitions = network.transitions.copy()
         for node_id, next_id in bad_transitions:
-            x = network.transitions.get(node_id, [])
+            x = transitions.get(node_id, [])
             assert next_id in x
             i = x.index(next_id)
             assert i >= 0
-            x.pop(i)
-            network.transitions[node_id] = x
-        return network
+            x = x[:i] + x[i+1:]
+            transitions[node_id] = x
+        return Network(network.nodes, transitions)
 
     def _find_cycles_from_all_nodes(self, network, max_path_length):
         cycles = []
@@ -553,6 +537,8 @@ class _OptimizeNoCycles:
         # list of cycles found, where each cycle is a list of
         # node_ids.
 
+        nodeid2previds = _make_backchain_dict(network)
+
         cycles = []
         # list of (node_id, path (not including node_id))
         stack = [(start_id, [])]
@@ -561,15 +547,15 @@ class _OptimizeNoCycles:
             if max_path_length and len(path) > max_path_length:
                 continue
             if node_id in path:
-                # If his node_id is already in the path, then this is a
-                # cycle.
+                # If this node_id is already in the path, then this is
+                # a cycle.
                 i = path.index(node_id)
                 x = path[i:] + [node_id]
                 cycles.append(x)
                 continue
             path = path + [node_id]
-            for nid in _backchain_to_ids(network, node_id):
-                stack.append((nid, path))
+            for prev_id in nodeid2previds.get(node_id, []):
+                stack.append((prev_id, path))
         return cycles
 
 
@@ -598,6 +584,7 @@ class _OptimizeNoDuplicateData:
             if isinstance(node, Data)]
         data_pairs = itertools.product(data_nodes, data_nodes)
 
+        # Can optimize this by sorting.
         for (node_id1, node_id2) in data_pairs:
             if node_id1 == node_id2:
                 continue
@@ -642,21 +629,41 @@ class _OptimizeNoDuplicateModules:
         return duplicates
 
 
-class _OptimizeNoDanglingModules:
+class _OptimizeNoDanglingNodes:
     def __init__(self):
         pass
     def optimize(self, network):
-        # Remove modules that don't have any Data nodes pointing to them.
+        # Remove nodes that are extraneous to the network.  These
+        # situations can arise when optimizing.
+        while True:
+            dangling = self.find_dangling_nodes(network)
+            if not dangling:
+                break
+            network = network.delete_nodes(dangling)
+        return network
+    def find_dangling_nodes(self, network):
         dangling = []
         for (node_id, node) in enumerate(network.nodes):
-            if not isinstance(node, Module):
-                continue
+            if self.is_dangling_node(network, node_id, node):
+                dangling.append(node_id)
+        return dangling
+    def is_dangling_node(self, network, node_id, node):
+        # 1.  Module nodes with no antecedents.
+        # 2.  Module nodes with no consequents.
+        # 3.  Data nodes (except for node 0) that don't point to any
+        #     Modules.
+        if isinstance(node, Module):
+            if not network.transitions.get(node_id, []):
+                return True
             prev_ids = _backchain_to_ids(network, node_id)
             if not prev_ids:
-                dangling.append(node_id)
-
-        network = network.delete_nodes(dangling)
-        return network
+                return True
+        elif isinstance(node, Data):
+            if node_id != 0 and not network.transitions.get(node_id, []):
+                return True
+        else:
+            raise AssertionError
+        return False
 
 
 class _OptimizeNoAmbiguousPaths:
@@ -676,15 +683,15 @@ class _OptimizeNoAmbiguousPaths:
         import copy
 
         # Make a list of all pairs of Data objects.
-        data_nodes = [
-            node_id for (node_id, node) in enumerate(network.nodes)
-            if isinstance(node, Data)]
-        data_pairs = itertools.product(data_nodes, data_nodes)
+        data_pairs = self.list_data_siblings(network)
         
         good = []
         for (node_id1, node_id2) in data_pairs:
             data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
-            if node_id1 == node_id2:
+            assert node_id1 != node_id2
+            # Optimization: check this datatype here to reduce
+            # function calls to is_data_compatible.
+            if data1.datatype != data2.datatype:
                 continue
             if not self.is_data_compatible(data1, data2):
                 continue
@@ -741,6 +748,39 @@ class _OptimizeNoAmbiguousPaths:
                 merge_pairs[i] = nid1, nid2
         return network
 
+    def list_data_siblings(self, network):
+        # Return list of (node_id1, node_id2) where node_id1 and
+        # node_id2 have the same parents.  Will give node_id1 and
+        # node_id2 in both orders.
+        import itertools
+
+        siblings = {}
+        has_parents = {}
+        for node_id, next_ids in network.transitions.iteritems():
+            for nid in next_ids:
+                has_parents[nid] = 1
+            # Make sure the parent is a Module.  Children should be
+            # Data objects.
+            if not isinstance(network.nodes[node_id], Module):
+                continue
+            for id1, id2 in itertools.product(next_ids, next_ids):
+                siblings[(id1, id2)] = 1
+        # Also list nodes with no parents.
+        no_parents = []
+        for node_id in range(len(network.nodes)):
+            if node_id in has_parents:
+                continue
+            if not isinstance(network.nodes[node_id], Data):
+                continue
+            no_parents.append(node_id)
+        for id1, id2 in itertools.product(no_parents, no_parents):
+            siblings[(id1, id2)] = 1
+
+        # Filter out nodes that are not different.
+        siblings = [x for x in sorted(siblings) if x[0] != x[1]]
+        return siblings
+    
+
     def is_data_compatible(self, data1, data2):
         # data1 should be more general then data2.
         assert isinstance(data1, Data)
@@ -776,7 +816,6 @@ class _OptimizeNoAmbiguousPaths:
             DATA2_VALUE = data2_attr.get(key)
             DATA1_TYPE = _get_attribute_type(data1_attr, key)
             DATA2_TYPE = _get_attribute_type(data2_attr, key)
-
             case = _assign_case_by_type(DATA1_TYPE, DATA2_TYPE)
 
             if case in [2, 3, 4, 5, 8, 9, 10, 12, 13, 14]:  # No
@@ -1000,7 +1039,7 @@ def backchain(moduledb, goal_datatype, goal_attributes):
 def optimize_network(network):
     optimizers = [
         _OptimizeNoCycles(),
-        _OptimizeNoDanglingModules(),
+        _OptimizeNoDanglingNodes(),
         _OptimizeNoDuplicateModules(),
         _OptimizeNoDuplicateData(),
         _OptimizeNoAmbiguousPaths(),
@@ -1295,19 +1334,18 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
         DATA_TYPE = _get_attribute_type(data_attr, key)
         ANTE_TYPE = _get_attribute_type(ante_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
+        CASE = _assign_case_by_type(ANTE_TYPE, CONS_TYPE)
 
-        # Case 1.
-        if ANTE_TYPE == TYPE_NOVALUE and CONS_TYPE == TYPE_NOVALUE:
+        if CASE == 1:
             assert DATA_TYPE is not TYPE_NOVALUE
             attributes[key] = DATA_VALUE
-        # Cases 2-4.
-        elif ANTE_TYPE == TYPE_NOVALUE:
+        elif CASE in [2, 3, 4]:
             pass
-        # Cases 5-8.
-        elif ANTE_TYPE == TYPE_ANYATOM:
+        elif CASE in [5, 6, 7, 8]:
             raise NotImplementedError
-        # Case 16.
-        elif ANTE_TYPE == TYPE_LIST and CONS_TYPE == TYPE_LIST:
+        elif CASE in [9, 10, 11, 12, 13, 14, 15]:
+            attributes[key] = ANTE_VALUE
+        elif CASE == 16:
             # This can happen if:
             # 1.  The module doesn't change the value.
             # 2.  The module can generate multiple values to fit the
@@ -1327,9 +1365,6 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
             # Case 2.
             else:
                 attributes[key] = ANTE_VALUE
-        # Cases 9-15.
-        elif ANTE_TYPE in [TYPE_ATOM, TYPE_LIST]:
-            attributes[key] = ANTE_VALUE
         else:
             raise AssertionError
 
@@ -1354,6 +1389,17 @@ def _backchain_to_ids(network, node_id):
         if node_id in next_ids:
             ids[nid] = 1
     return sorted(ids)
+
+
+def _make_backchain_dict(network):
+    # Return a dictionary of node_id -> prev_node_ids
+    nodeid2previds = {}
+    for prev_id, node_ids in network.transitions.iteritems():
+        for node_id in node_ids:
+            if node_id not in nodeid2previds:
+                nodeid2previds[node_id] = []
+            nodeid2previds[node_id].append(prev_id)
+    return nodeid2previds
 
 
 def _can_module_produce_data(module, data):
@@ -1441,49 +1487,33 @@ def _can_converting_module_produce_data(module, data):
         CONS_VALUE = cons_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
+        CASE = _assign_case_by_type(CONS_TYPE, DATA_TYPE)
 
         disqualify = False
-        # Cases 1-4.
-        if CONS_TYPE == TYPE_NOVALUE:
+        if CASE in [1, 2, 3, 4]:
             raise AssertionError, "Should not have NOVALUES."
-        # Case 7.
-        elif CONS_TYPE == TYPE_ANYATOM and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 7:
             num_attributes += 1
-        # Cases 5, 6, 8.
-        elif CONS_TYPE == TYPE_ANYATOM:
+        elif CASE in [5, 6, 8, 9, 13]:
             disqualify = True
-        # Case 9.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_NOVALUE:
-            disqualify = True
-        # Case 10.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ANYATOM:
+        elif CASE in [10, 14]:
             raise NotImplementedError
-        # Case 11.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 11:
             if CONS_VALUE == DATA_VALUE:
                 num_attributes += 1
             else:
                 disqualify = True
-        # Case 12.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_LIST:
+        elif CASE == 12:
             if CONS_VALUE in DATA_VALUE:
                 num_attributes += 1
             else:
                 disqualify = True
-        # Cases 13.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_NOVALUE:
-            disqualify = True
-        # Case 14.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_ANYATOM:
-            raise NotImplementedError
-        # Case 15.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 15:
             if DATA_VALUE in CONS_VALUE:
                 num_attributes += 1
             else:
                 disqualify = True
-        # Case 16.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_LIST:
+        elif CASE == 16:
             if _intersection(CONS_VALUE, DATA_VALUE):
                 num_attributes += 1
             else:
@@ -1548,24 +1578,25 @@ def _can_nonconverting_module_produce_data(module, data):
         DATA_TYPE = _get_attribute_type(data_attr, key)
         ANTE_TYPE = _get_attribute_type(ante_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
+        CASE = _assign_case_by_type(CONS_TYPE, DATA_TYPE)
+        
         module_changes_value = ANTE_VALUE != CONS_VALUE
         if ANTE_TYPE == TYPE_LIST and CONS_TYPE == TYPE_LIST:
             module_changes_value = sorted(ANTE_VALUE) != sorted(CONS_VALUE)
 
+
         disqualify = False
-        # Cases 1-4.
-        if CONS_TYPE == TYPE_NOVALUE:
+        if CASE in [1, 2, 3, 4]:
             assert ANTE_TYPE == TYPE_NOVALUE
-        # Case 5.
-        elif CONS_TYPE == TYPE_ANYATOM and DATA_TYPE == TYPE_NOVALUE:
+        elif CASE in [5, 9, 13]:
             pass
-        # Case 6.
-        elif CONS_TYPE == TYPE_ANYATOM and DATA_TYPE == TYPE_ANYATOM:
+        elif CASE in [10, 14]:
+            raise NotImplementedError
+        elif CASE == 6:
             if module_changes_value:
                 p("    Attribute is compatible.")
                 num_attributes += 1
-        # Case 7.
-        elif CONS_TYPE == TYPE_ANYATOM and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 7:
             if ANTE_TYPE == TYPE_NOVALUE:
                 # Why disqualify this?
                 disqualify = True
@@ -1583,17 +1614,9 @@ def _can_nonconverting_module_produce_data(module, data):
                 else:
                     p("    Attribute is compatible.")
                     num_attributes += 1
-        # Case 8.
-        elif CONS_TYPE == TYPE_ANYATOM and DATA_TYPE == TYPE_LIST:
+        elif CASE == 8:
             disqualify = True
-        # Case 9.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_NOVALUE:
-            pass
-        # Case 10.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ANYATOM:
-            raise NotImplementedError
-        # Case 11.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 11:
             if CONS_VALUE == DATA_VALUE:
                 if module_changes_value:
                     p("    Attribute is compatible [ATOM %s ATOM %s]." % (
@@ -1601,21 +1624,13 @@ def _can_nonconverting_module_produce_data(module, data):
                     num_attributes += 1
             else:
                 disqualify = True
-        # Case 12.
-        elif CONS_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_LIST:
+        elif CASE == 12:
             if CONS_VALUE in DATA_VALUE:
                 if module_changes_value:
                     num_attributes += 1
             else:
                 disqualify = True
-        # Case 13.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_NOVALUE:
-            pass
-        # Case 14.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_ANYATOM:
-            raise NotImplementedError
-        # Case 15.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 15:
             if DATA_VALUE in CONS_VALUE:
                 if module_changes_value:
                     p("    Attribute is compatible [LIST %s ATOM %s]." % (
@@ -1623,8 +1638,7 @@ def _can_nonconverting_module_produce_data(module, data):
                     num_attributes += 1
             else:
                 disqualify = True
-        # Case 16.
-        elif CONS_TYPE == TYPE_LIST and DATA_TYPE == TYPE_LIST:
+        elif CASE == 16:
             if _intersection(CONS_VALUE, DATA_VALUE):
                 if module_changes_value:
                     p("    Attribute is compatible.")
@@ -1799,35 +1813,22 @@ def _is_compatible_with_start(data, start_data):
         STRT_VALUE = strt_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
         STRT_TYPE = _get_attribute_type(strt_attr, key)
+        CASE = _assign_case_by_type(STRT_TYPE, DATA_TYPE)
 
-        # Cases 1-4.
-        if STRT_TYPE == TYPE_NOVALUE:
+        if CASE in [1, 2, 3, 4]:
             raise AssertionError
-        # Cases 5, 8.
-        elif STRT_TYPE == TYPE_ANYATOM and \
-                 DATA_TYPE in [TYPE_NOVALUE, TYPE_LIST]:
+        elif CASE in [13, 14, 15, 16]:
+            raise NotImplementedError
+        elif CASE in [5, 8, 9]:
             compatible = False
-        # Cases 6, 7.
-        elif STRT_TYPE == TYPE_ANYATOM and \
-                 DATA_TYPE in [TYPE_ANYATOM, TYPE_ATOM]:
+        elif CASE in [6, 7, 10]:
             pass
-        # Case 9.
-        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_NOVALUE:
-            compatible = False
-        # Case 10.
-        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ANYATOM:
-            pass
-        # Case 11.
-        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 11:
             if DATA_VALUE != STRT_VALUE:
                 compatible = False
-        # Case 12.
-        elif STRT_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_LIST:
+        elif CASE == 12:
             if STRT_VALUE not in DATA_VALUE:
                 compatible = False
-        # Cases 13-16.
-        elif STRT_TYPE == TYPE_LIST:
-            raise NotImplementedError
         else:
             raise AssertionError
     return compatible
@@ -1868,31 +1869,21 @@ def _is_compatible_with_internal(data, internal_data):
 
     compatible = True
     for key in intl_attr:
-        DATA_VALUE = data_attr.get(key)
         INTL_VALUE = intl_attr.get(key)
-        DATA_TYPE = _get_attribute_type(data_attr, key)
+        DATA_VALUE = data_attr.get(key)
         INTL_TYPE = _get_attribute_type(intl_attr, key)
+        DATA_TYPE = _get_attribute_type(data_attr, key)
+        CASE = _assign_case_by_type(INTL_TYPE, DATA_TYPE)
 
-        # Cases 1-4.
-        if INTL_TYPE == TYPE_NOVALUE:
+        if CASE in [1, 2, 3, 4, 10]:
             pass
-        # Cases 5-8.
-        elif INTL_TYPE == TYPE_ANYATOM:
+        elif CASE in [5, 6, 7, 8, 13, 14, 15, 16]:
             raise NotImplementedError
-        # Cases 9, 12.
-        elif INTL_TYPE == TYPE_ATOM and \
-             DATA_TYPE in [TYPE_NOVALUE, TYPE_LIST]:
+        elif CASE in [9, 12]:
             compatible = False
-        # Case 10.
-        elif INTL_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ANYATOM:
-            pass
-        # Case 11.
-        elif INTL_TYPE == TYPE_ATOM and DATA_TYPE == TYPE_ATOM:
+        elif CASE == 11:
             if INTL_VALUE != DATA_VALUE:
                 compatible = False
-        # Cases 13-16.
-        elif INTL_TYPE == TYPE_LIST:
-            raise NotImplementedError
         else:
             raise AssertionError
     return compatible
@@ -2095,12 +2086,12 @@ def test_bie():
     #goal_attributes = dict(
     #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
     #    missing_values="no")
-    goal_attributes = dict(
-        format='tdf', preprocess='illumina', logged='yes', missing_values="no",
-        group_fc="5")
-    #missing_values="no", group_fc="5")
     #goal_attributes = dict(
-    #    format='tdf', logged='yes', missing_values="no", group_fc="5")
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    missing_values="no", group_fc="5")
+    goal_attributes = dict(
+        format='tdf', preprocess="rma", logged='yes', 
+        missing_values="no")
     #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
     #goal_attributes = dict(
     #    format='tdf', preprocess='rma', logged='yes',
@@ -2301,27 +2292,31 @@ all_modules = [
 
     # CELFiles
     Module(
-        "detect_CEL_version", CELFiles(version="unknown"),
+        "detect_CEL_version",
+        CELFiles(version="unknown"),
         CELFiles(version=["cc", "v3", "v4"])),
     Module(
-        "convert_CEL_cc_to_CEL_v3", CELFiles(version="cc"),
+        "convert_CEL_cc_to_CEL_v3",
+        CELFiles(version="cc"),
         CELFiles(version="v3")),
     Module(
         "preprocess_rma",
         CELFiles(version=["v3", "v4"]),
-        SignalFile(logged="yes", preprocess="rma", format="jeffs",
-                   missing_values="no")
+        SignalFile(
+            logged="yes", preprocess="rma", format="jeffs",
+            missing_values="no")
         ),
     Module(
         "preprocess_mas5",
         CELFiles(version=["v3", "v4"]),
-        SignalFile(logged="no", preprocess="mas5", format="jeffs",
-                   missing_values="no")),
+        SignalFile(
+            logged="no", preprocess="mas5", format="jeffs",
+            missing_values="no")),
     # IDATFiles
+    Module("extract_illumina_idat_files", ExpressionFiles, IDATFiles),
     Module(
-        "extract_illumina_idat_files", ExpressionFiles, IDATFiles),
-    Module(
-        "preprocess_illumina", IDATFiles,
+        "preprocess_illumina",
+        IDATFiles,
         ILLUFolder(
             illu_manifest=ILLU_MANIFEST, illu_chip=ILLU_CHIP,
             illu_bg_mode=["false", "true"],
@@ -2336,7 +2331,7 @@ all_modules = [
     Module(
         "get_illumina_control",
         ILLUFolder,
-        ControlFile(preprocess="illumina", format="gct",logged="no")
+        ControlFile(preprocess="illumina", format="gct", logged="no")
         ),
     
     # AgilentFiles
@@ -2469,9 +2464,10 @@ all_modules = [
             format="tdf", logged="yes",
             missing_values=["no", "zero_fill", "median_fill"],
             gene_center="unknown"),
-        SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "median_fill", "zero_fill"],
-                   gene_center=["no", "mean", "median"])),
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "median_fill", "zero_fill"],
+            gene_center=["no", "mean", "median"])),
     Module(
         "check_gene_normalize",
         SignalFile(
@@ -2492,18 +2488,21 @@ all_modules = [
             missing_values=["no", "zero_fill", "median_fill"])),
     Module(
         "gene_normalize",
-        SignalFile(format="tdf", logged="yes", gene_normalize="no",
-                   missing_values=["no", "zero_fill", "median_fill"]),
-        SignalFile(format="tdf", logged="yes",
-                   gene_normalize=["variance", "sum_of_squares"],
-                   missing_values=["no", "zero_fill", "median_fill"])),
+        SignalFile(
+            format="tdf", logged="yes", gene_normalize="no",
+            missing_values=["no", "zero_fill", "median_fill"]),
+        SignalFile(
+            format="tdf", logged="yes",
+            gene_normalize=["variance", "sum_of_squares"],
+            missing_values=["no", "zero_fill", "median_fill"])),
     Module(  # require class_label_file
         "filter_genes_by_fold_change_across_classes",
         [ClassLabelFile,
          SignalFile(
              format="tdf", logged="yes",
              missing_values=["no", "zero_fill", "median_fill"],
-             group_fc="no")],
+             group_fc="no")
+         ],
         SignalFile(
             format="tdf", logged="yes",
             missing_values=["no", "zero_fill", "median_fill"],
@@ -2511,24 +2510,28 @@ all_modules = [
     Module(  # require class_label_file,generate gene_list_file
              # and need reorder_genes
         "rank_genes_by_class_neighbors",
-        SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "zero_fill", "median_fill"],
-                   gene_order="no"),
-        SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "zero_fill", "median_fill"],
-                   gene_order="class_neighbors")),
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            gene_order="no"),
+        SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            gene_order="class_neighbors")),
     Module(
          "reorder_genes",   # require gene_list_file
          SignalFile(format="tdf", gene_order="no"),
          SignalFile(format="tdf", gene_order="gene_list")),
     Module(
-         "ranek_genes_by_sample_ttest",   # require class_label_file
-         SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "zero_fill", "median_fill"],
-                   gene_order="no"),
-         SignalFile(format="tdf", logged="yes",
-                   missing_values=["no", "zero_fill", "median_fill"],
-                   gene_order=["t_test_p","t_test_fdr"])),
+         "rank_genes_by_sample_ttest",   # require class_label_file
+         SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            gene_order="no"),
+         SignalFile(
+            format="tdf", logged="yes",
+            missing_values=["no", "zero_fill", "median_fill"],
+            gene_order=["t_test_p","t_test_fdr"])),
     Module(
          'annotate_probes',
          SignalFile(format="tdf", annotate="no"),
@@ -2536,8 +2539,9 @@ all_modules = [
     Module(
         'remove_duplicate_genes',
         SignalFile(format="tdf",  annotate="yes",unique_genes="no"),
-        SignalFile(format="tdf",  annotate="yes",
-                   unique_genes=['average_genes', 'high_var', 'first_gene'])),
+        SignalFile(
+            format="tdf",  annotate="yes",
+            unique_genes=['average_genes', 'high_var', 'first_gene'])),
     Module(
          'select_first_n_genes',
          SignalFile(format="tdf", num_features="all"),
@@ -2560,3 +2564,4 @@ all_modules = [
 
 if __name__ == '__main__':
     test_bie()
+    #import cProfile; cProfile.run("test_bie()")
