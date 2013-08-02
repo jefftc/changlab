@@ -718,9 +718,13 @@ class _OptimizeNoAmbiguousPaths:
                     if sorted(DATA1_VALUE) != sorted(DATA2_VALUE):
                         DATA2_VALUE = [
                             x for x in DATA2_VALUE if x not in DATA1_VALUE]
-                        # BUG: What if DATA2_VALUE is subset of DATA1_VALUE?
-                        assert DATA2_VALUE
-                        attributes[key] = DATA2_VALUE
+                        
+                        # If DATA2_VALUE is subset of DATA1_VALUE,
+                        # then merge these nodes.
+                        if not DATA2_VALUE:
+                            merge_pairs.append((node_id1, node_id2))
+                        else:
+                            attributes[key] = DATA2_VALUE
             data2 = Data(data2.datatype, attributes)
             network.nodes[node_id2] = data2
 
@@ -1000,6 +1004,7 @@ def optimize_network(network):
         _OptimizeNoDuplicateModules(),
         _OptimizeNoDuplicateData(),
         _OptimizeNoAmbiguousPaths(),
+        _OptimizeValidConsequents(),
         ]
 
     old_network = None
@@ -1008,8 +1013,38 @@ def optimize_network(network):
         for opt in optimizers:
             network = opt.optimize(network)
 
+
     return network
 
+class _OptimizeValidConsequents:
+    # Resolving ambiguous paths can lead to modules pointing to Data
+    # that it can't generate.  D.g. if a Module generates a particular
+    # file format.  Data that it points to may not be in that format
+    # anymore.
+    def __init__(self):
+        pass
+    def optimize(self, network):
+        import copy
+
+        bad_transitions = {}  # (node_id, next_id) -> 1
+        for (node_id, next_ids) in network.iterate(node_class=Module):
+            module = network.nodes[node_id]
+            for next_id in next_ids:
+                node = network.nodes[next_id]
+                assert isinstance(node, Data)
+                if not _can_module_produce_data(module, node):
+                    bad_transitions[(node_id, next_id)] = 1
+
+        network = copy.deepcopy(network)
+        for node_id, next_id in bad_transitions:
+            x = network.transitions.get(node_id, [])
+            assert next_id in x
+            i = x.index(next_id)
+            assert i >= 0
+            x.pop(i)
+            network.transitions[node_id] = x
+        return network
+    
 
 def prune_network_by_start(network, start_data):
     # start_data may be a single Data object or a list of Data
@@ -2061,7 +2096,8 @@ def test_bie():
     #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
     #    missing_values="no")
     goal_attributes = dict(
-        format='tdf', preprocess='illumina', logged='yes', missing_values="no")
+        format='tdf', preprocess='illumina', logged='yes', missing_values="no",
+        group_fc="5")
     #missing_values="no", group_fc="5")
     #goal_attributes = dict(
     #    format='tdf', logged='yes', missing_values="no", group_fc="5")
