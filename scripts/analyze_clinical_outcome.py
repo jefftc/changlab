@@ -4,8 +4,8 @@
 # Functions:
 # parse_genes
 # parse_gene_sets
-# parse_cutoffs
-# parse_zscore
+# parse_rank_cutoffs
+# parse_zscore_cutoffs
 # parse_outcomes
 # parse_filestem
 #
@@ -49,16 +49,14 @@ def parse_gene_sets(geneset):
     return geneset
 
 
-def parse_cutoffs(cutoffs):
-    # Comma-separated list of breakpoints, e.g. 0.25,0.50.  If None,
-    # then default to just 0.50.
-    # Return list, e.g. [0.25, 0.50], that:
+def parse_rank_cutoffs(cutoffs):
+    # Comma-separated list of breakpoints, e.g. 0.25,0.50.  Return
+    # list, e.g. [0.25, 0.50], that:
     # - is sorted
     # - has no duplicates
     # - all numbers > 0 and < 1 (no 0 or 1)
-    if not cutoffs:
-        return None
-    
+
+    assert type(cutoffs) is type("")
     cutoffs = cutoffs.split(',')
     cutoffs = [float(x) for x in cutoffs]
     cutoffs.sort()
@@ -86,14 +84,27 @@ def parse_cutoffs(cutoffs):
     return cutoffs
 
 
-def parse_zscore(zscore):
-    # Floating point number, e.g. 1.0, or None.
-    if not zscore:
-        return None
+def parse_zscore_cutoffs(cutoffs):
+    # Comma-separated list of breakpoints, e.g. -1,1.  Return list,
+    # e.g. [-1, 1], that:
+    # - is sorted
+    # - has no duplicates
+    
+    assert type(cutoffs) is type("")
+    cutoffs = cutoffs.split(',')
+    cutoffs = [float(x) for x in cutoffs]
+    cutoffs.sort()
 
-    zscore = float(zscore)
-    #assert zscore > 0.10 and zscore < 100
-    return zscore
+    # Remove duplicates.
+    DELTA = 0.0001
+    i = 1
+    while i < len(cutoffs):
+        if cutoffs[i]-cutoffs[i-1] < DELTA:
+            del cutoffs[i]
+        else:
+            i += 1
+    assert cutoffs, "invalid cutoffs"
+    return cutoffs
 
 
 def parse_outcomes(outcomes):
@@ -227,21 +238,21 @@ def align_matrix_with_clinical_data(M, clinical_dict):
 
 
 def discretize_scores(
-    scores, cutoffs, hi_zscore, lo_zscore, expression_or_score):
-    # Discretize into groups based on cutoffs or zscore.  Return tuple
-    # of (group_names, groups).  group_names is a list of the names of
-    # each group.  groups is a list of integers from 0 to
+    scores, rank_cutoffs, zscore_cutoffs, expression_or_score):
+    # Discretize into groups based on rank or zscore cutoffs.  Return
+    # tuple of (group_names, groups).  group_names is a list of the
+    # names of each group.  groups is a list of integers from 0 to
     # len(group_names)-1, parallel to scores.
-    if cutoffs:
-        groups = discretize_by_value(scores, cutoffs)
-        # groups should range from [0, len(cutoffs)+1].  So if there's
+    if rank_cutoffs:
+        groups = discretize_by_value(scores, rank_cutoffs)
+        # groups should range from [0, len(rank_cutoffs)+1].  So if there's
         # one cutoff (e.g. 0.50), groups will be 0 and 1.
         for x in groups:
-            assert x >= 0 and x <= len(cutoffs)+1
-        group_names = make_group_names(cutoffs, expression_or_score)
-    elif hi_zscore or lo_zscore:
-        groups = discretize_by_zscore(scores, hi_zscore, lo_zscore)
-        group_names = make_zscore_names(expression_or_score)
+            assert x >= 0 and x <= len(rank_cutoffs)+1
+        group_names = make_group_names(rank_cutoffs, expression_or_score)
+    elif zscore_cutoffs:
+        groups = discretize_by_zscore(scores, zscore_cutoffs)
+        group_names = make_zscore_names(zscore_cutoffs, expression_or_score)
     else:
         raise AssertionError
             
@@ -278,8 +289,8 @@ def get_gene_name(MATRIX, gene_i):
     return "Gene %04d" % gene_i
 
 
-def calc_association(survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
-                     expression_or_score):
+def calc_association(
+    survival, dead, scores, rank_cutoffs, zscore_cutoffs, expression_or_score):
     # Return a dictionary with keys:
     # survival             list of <float>
     # dead                 list of <int>
@@ -297,7 +308,7 @@ def calc_association(survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
     # Can return None if the results can't be calculated, e.g. if
     # there are not enough samples, or not enough groups.
     from genomicode import jmath
-    
+
     # Select only the samples with both survival, dead, and score
     # information.
     I1 = [i for (i, x) in enumerate(survival) if x]
@@ -318,7 +329,7 @@ def calc_association(survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
 
     # Figure out the groupings.
     x = discretize_scores(
-        scores, cutoffs, hi_zscore, lo_zscore, expression_or_score)
+        scores, rank_cutoffs, zscore_cutoffs, expression_or_score)
     group_names, groups = x
 
     # May not have two groups, e.g. if there are no outliers.  If this
@@ -359,6 +370,8 @@ def calc_association(survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
         mean_score[group] = m
     surv["mean_score"] = mean_score
 
+    # XXX rank_cutoffs, zscore
+    
     # Figure out relationship.
     MAX_SURV = 1E10
     # Compare the time to 50% survival for the low and high scoring
@@ -470,10 +483,10 @@ def discretize_by_value(values, breakpoints):
     return groups
 
 
-def discretize_by_zscore(values, hi_zscore, lo_zscore):
+def discretize_by_zscore(values, cutoffs):
     # Return a list that specifies the group for each member of
-    # values.  Group 0 are values <= -zscore, 1 are -zscore < value <
-    # zscore, and 2 are values >= zscore.
+    # values.  Groups are specified by numbers starting from 0.  Group
+    # 0 are the values lower than the first cutoff.
     from genomicode.jmath import R_equals, R_fn, R_var
 
     z_model = 1.0
@@ -481,30 +494,13 @@ def discretize_by_zscore(values, hi_zscore, lo_zscore):
     R = start_and_init_R()
 
     R_equals(values, 'x')
+    R_equals(cutoffs, "z.cutoffs")
     params = {
         "z.model" : z_model,
         }
-    if hi_zscore is not None:
-        params["z.outlier.hi"] = hi_zscore
-    if lo_zscore is not None:
-        params["z.outlier.lo"] = lo_zscore
-    R_fn('find.outliers', R_var("x"), RETVAL="M", **params)
-    M = R['M']
-    ## z = list(M.rx2('z'))
-    outlier = list(M.rx2('outlier'))
-
-    ## groups = [1] * len(z)
-    ## for i in range(len(z)):
-    ##     if lo_zscore is not None and z[i] <= lo_zscore:
-    ##         groups[i] = 0
-    ##     elif hi_zscore is not None and z[i] >= hi_zscore:
-    ##         groups[i] = 2
-    groups = [1] * len(outlier)
-    for i in range(len(outlier)):
-        if outlier[i] == -1:
-            groups[i] = 0
-        elif outlier[i] == 1:
-            groups[i] = 2
+    R_fn('score.outliers.regr', R_var("x"), RETVAL="M", **params)
+    R_fn('assign.groups', R_var("M$z"), R_var("z.cutoffs"), RETVAL="groups")
+    groups = list(R['groups'])
     return groups
 
 
@@ -530,12 +526,25 @@ def make_group_names(cutoffs, expression_or_score):
     return names
 
 
-def make_zscore_names(expression_or_score):
-    names = [
-        "Low Outlier",
-        "Normal %s" % expression_or_score,
-        "High Outlier",
-        ]
+def make_zscore_names(cutoffs, expression_or_score):
+    assert len(cutoffs) >= 1
+    if len(cutoffs) == 1:
+        # Just low vs high.
+        # [0, <cutoff>, 1]
+        x = ["Low %s" % expression_or_score, "High %s" % expression_or_score]
+        return x
+
+    cutoffs = [0] + cutoffs + [1]  # for convenience
+    names = []
+    for i in range(len(cutoffs)-1):
+        x1 = "Middle"
+        if i == 0:
+            x1 = "Lowest"
+        elif i == len(cutoffs)-2:
+            x1 = "Highest"
+        x2 = "%g - %g" % (cutoffs[i], cutoffs[i+1])
+        x = "%s %s %s" % (x1, x2, expression_or_score)
+        names.append(x)
     return names
 
 
@@ -822,11 +831,8 @@ def main():
         'e.g. 0.25,0.50,0.75.  Default is to use cutoff of 0.50.  '
         'I will use this strategy unless a --zscore is given.')
     group.add_argument(
-        '--hi_zscore', default=None, type=float,
-        help='High Z-score cutoff, e.g. 1.0.')
-    group.add_argument(
-        '--lo_zscore', default=None, type=float,
-        help='Low Z-score cutoff, e.g. -1.0.')
+        '--zscore_cutoff', default=None, 
+        help='Comma-separated list of breakpoints, e.g. -1,0.1.')
 
     group = parser.add_argument_group(title='Output')
     group.add_argument(
@@ -891,11 +897,9 @@ def main():
         'Please specify either a gene or a gene set, not both.')
 
     if args.rank_cutoff:
-        assert not args.hi_zscore and not args.lo_zscore
-    if not args.rank_cutoff and not args.hi_zscore and not args.lo_zscore:
+        assert not args.zscore_cutoff
+    if not args.rank_cutoff and not args.zscore_cutoff:
         args.rank_cutoff = "0.50"
-    if args.hi_zscore and args.lo_zscore:
-        assert args.hi_zscore > args.lo_zscore
 
     assert args.km_mar_bottom > 0 and args.km_mar_bottom < 10
     assert args.km_mar_left > 0 and args.km_mar_left < 10
@@ -909,9 +913,11 @@ def main():
     # Clean up the input.
     genes = parse_genes(args.gene)
     gene_sets = parse_gene_sets(args.geneset)
-    cutoffs = parse_cutoffs(args.rank_cutoff)
-    hi_zscore = parse_zscore(args.hi_zscore)
-    lo_zscore = parse_zscore(args.lo_zscore)
+    rank_cutoffs = zscore_cutoffs = None
+    if args.rank_cutoff:
+        rank_cutoffs = parse_rank_cutoffs(args.rank_cutoff)
+    if args.zscore_cutoff:
+        zscore_cutoffs = parse_zscore_cutoffs(args.zscore_cutoff)
     outcomes = parse_outcomes(args.outcome)
     filestem = parse_filestem(args.filestem)
 
@@ -952,7 +958,7 @@ def main():
         scores = M.value(i, None)
 
         x = calc_association(
-            survival, dead, scores, cutoffs, hi_zscore, lo_zscore,
+            survival, dead, scores, rank_cutoffs, zscore_cutoffs,
             expression_or_score)
         if x is None:
             continue

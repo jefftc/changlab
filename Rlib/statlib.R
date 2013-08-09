@@ -11,7 +11,9 @@
 #
 # normalize.quant
 #
-# find.outliers
+# score.outliers.flat
+# score.outliers.regr
+# assign.groups
 
 
 fdr.correct.bh <- function(p.values) {
@@ -85,19 +87,16 @@ normalize.quant <- function(M) {
   N
 }
 
-find.outliers <- function(x, z.outlier.hi=NULL, z.outlier.lo=NULL, 
-  perc.init=NULL, z.model=NULL, max.iter=NULL, contiguous.outliers=TRUE) {
+score.outliers.flat <- function(x, perc.init=NULL, z.model=NULL, max.iter=NULL)
+  {
   # Find outlier points.  Model the points with a linear regression
   # line, and calculate the z-score of each point.
   # Algorithm is modified from RANSAC.
   # 
   # Parameters:
-  # z.outlier.hi  Z-score cutoff to determine if a point is an outlier.
-  # z.outlier.lo  Z-score cutoff to determine if a point is an outlier.
   # perc.init     Percent of points to include initially.  (0.0-1.0).
   # z.model       Points less than this z-score will be included in model.
   # max.iter      Maximum number of iterations before convergence.
-  # contiguous.outliers  Whether outliers must be contiguous.
   # 
   # Returns a list with members:
   # x        Original data.
@@ -105,7 +104,6 @@ find.outliers <- function(x, z.outlier.hi=NULL, z.outlier.lo=NULL,
   # coef     Coefficients of linear model.
   # rmsd     RMSD of each point (parallel to y).
   # z        Z-score of each point (parallel to y).
-  # outlier  -1, 0, 1 if a point is an outlier.
 
   if(is.null(perc.init)) perc.init <- 0.5
   if(is.null(z.model)) z.model <- 1
@@ -114,8 +112,62 @@ find.outliers <- function(x, z.outlier.hi=NULL, z.outlier.lo=NULL,
   if(perc.init < 0 | perc.init > 1) stop("perc.init out of range")
   if(z.model < 0.1) stop("z.model too small")
   if(max.iter < 5) stop("too few iterations")
-  if(!is.null(z.outlier.hi) & !is.null(z.outlier.lo))
-    if(z.outlier.hi <= z.outlier.lo) stop("bad z.outlier")
+
+  # Sort x from increasing to decreasing
+  O <- order(x)
+  I.rev <- rep(NA, length(O))
+  I.rev[O] <- 1:length(O)
+  x <- x[O]
+
+  # Initialize the model with the middle 50% of points.
+  p1 <- (1.0-perc.init)/2.0
+  p2 <- p1 + perc.init
+  c1 <- x[p1*length(x)]
+  c2 <- x[p2*length(x)]
+  I.model <- (x >= c1) & (x < c2)  # which points are in the model
+
+
+  max.iter <- 100
+  for(i in 1:max.iter) {
+    z <- (x-mean(x[I.model])) / sqrt(var(x[I.model]))
+
+    old.model <- I.model
+    I.model <- abs(z) < z.model
+    if(all(I.model == old.model)) break
+  }
+
+  list(
+    x=x[I.rev], 
+    z=z[I.rev], 
+    I.model=I.model[I.rev],
+    niter=i)
+}
+
+score.outliers.regr <- function(x, perc.init=NULL, z.model=NULL, max.iter=NULL)
+  {
+  # Find outlier points.  Model the points with a linear regression
+  # line, and calculate the z-score of each point.
+  # Algorithm is modified from RANSAC.
+  # 
+  # Parameters:
+  # perc.init     Percent of points to include initially.  (0.0-1.0).
+  # z.model       Points less than this z-score will be included in model.
+  # max.iter      Maximum number of iterations before convergence.
+  # 
+  # Returns a list with members:
+  # x        Original data.
+  # x.hat    Prediction of x, given linear model.
+  # coef     Coefficients of linear model.
+  # rmsd     RMSD of each point (parallel to y).
+  # z        Z-score of each point (parallel to y).
+
+  if(is.null(perc.init)) perc.init <- 0.5
+  if(is.null(z.model)) z.model <- 1
+  if(is.null(max.iter)) max.iter <- 100
+
+  if(perc.init < 0 | perc.init > 1) stop("perc.init out of range")
+  if(z.model < 0.1) stop("z.model too small")
+  if(max.iter < 5) stop("too few iterations")
 
   # Sort x from increasing to decreasing
   O <- order(x)
@@ -136,42 +188,25 @@ find.outliers <- function(x, z.outlier.hi=NULL, z.outlier.lo=NULL,
     I <- 1:length(x)
     m <- glm(x[I.model] ~ I[I.model])
     x.hat <- as.numeric(cbind(1, I) %*% m$coef)
-    rmsd <- sqrt((x.hat-x)**2)
-    z <- rmsd / sqrt(var(rmsd))
-    z[x.hat > x] <- -z[x.hat > x]
+    #rmsd <- sqrt((x.hat-x)**2)
+    #z <- rmsd / sqrt(var(rmsd))
+    #z[x.hat > x] <- -z[x.hat > x]
+    z <- (x-x.hat) / sqrt(var(x-x.hat))
 
     old.model <- I.model
     I.model <- abs(z) < z.model
     if(all(I.model == old.model)) break
   }
 
-  outlier <- rep(0, length(z))
-  if(!is.null(z.outlier.hi))
-    outlier[z >= z.outlier.hi] <- 1
-  if(!is.null(z.outlier.lo))
-    outlier[z <= z.outlier.lo] <- -1
-  if(contiguous.outliers) {
-    # outlier must be contiguous.
-    for(i in 2:length(outlier)) {
-      if((outlier[i] == -1) & (outlier[i-1] != -1))
-        outlier[i] <- 0
-    }
-    for(i in seq(length(outlier)-1, 1, -1)) {
-      if((outlier[i] == 1) & (outlier[i+1] != 1))
-        outlier[i] <- 0
-    }
-  }
 
   list(
     x=x[I.rev], 
     x.hat=x.hat[I.rev], 
     coef=m$coef, 
-    rmsd=rmsd[I.rev], 
+    #rmsd=rmsd[I.rev], 
     z=z[I.rev], 
-    outlier=outlier[I.rev],
     niter=i)
 }
-
 
 ##find.outliers <- function(x, y, perc.init=NULL, z.cutoff=NULL, max.iter=NULL) {
 ##  # Find outlier points.  Model the points with a linear regression
@@ -224,3 +259,25 @@ find.outliers <- function(x, z.outlier.hi=NULL, z.outlier.lo=NULL,
 ##  list(x=x, y=y, y.hat=y.hat, coef=m$coef, rmsd=rmsd, z=z, niter=i)
 ##}
 
+
+# Groups are specified as numbers from [0, length(cutoffs)].  Group 0
+# are the scores lower than cutoffs[1].  If there are no values lower
+# than cutoffs[1], then the first group will be group 1.
+assign.groups <- function(scores, cutoffs, smooth=TRUE) {
+  cutoffs <- sort(cutoffs)
+
+  groups <- sapply(scores, function(x) sum(x >= cutoffs))
+
+  if(smooth) {
+    O <- order(groups)
+    I.rev <- rep(NA, length(O))
+    I.rev[O] <- 1:length(O)
+    groups <- groups[O]
+    for(i in 1:length(groups)) {
+      groups[i] <- min(groups[i:length(groups)])
+    }
+    groups <- groups[I.rev]
+  }
+
+  groups
+}

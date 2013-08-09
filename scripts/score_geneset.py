@@ -62,12 +62,18 @@ def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
 
 
 def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
-                   lock=None):
+                   ignore_gene_not_found, lock=None):
     # Return dict of (matrix_name, gs_name, sample) -> score.
     import arrayio
-    
-    scores = _score_gene_set_h(
-        MATRIX, matrix_name, gs_name, pos_genes, neg_genes, lock)
+
+    try:
+        scores = _score_gene_set_h(
+            MATRIX, matrix_name, gs_name, pos_genes, neg_genes, lock)
+    except AssertionError, x:
+        if ignore_gene_not_found and \
+               str(x) == "I could not find any genes in the gene set.":
+            return {}
+        raise
     sample_names = MATRIX.col_names(arrayio.COL_ID)
     assert len(sample_names) == len(scores)
     
@@ -108,7 +114,8 @@ def score_many(jobs, lock=None):
     
     results = {}
     for x in jobs:
-        gs_name, pos_genes, neg_genes, matrix_name, matrix_file = x
+        (gs_name, pos_genes, neg_genes, matrix_name, matrix_file,
+         any_matching_gene_sets) = x
         if matrix_file not in file2matrix:
             x = arrayio.read(matrix_file)
             file2matrix[matrix_file] = x
@@ -117,7 +124,8 @@ def score_many(jobs, lock=None):
                "Matrix %s has missing values." % matrix_name
         if pos_genes or neg_genes:
             x = score_gene_set(
-                gs_name, pos_genes, neg_genes, matrix_name, MATRIX, lock=lock)
+                gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
+                any_matching_gene_sets, lock=lock)
         else:
             assert pos_genes is None
             assert neg_genes is None
@@ -161,6 +169,10 @@ def main():
         "--all", dest="all_gene_sets", action="store_true", default=False,
         help="Score all gene sets in the files.")
     group.add_argument(
+        "--any_matching", dest="any_matching_gene_sets",
+        action="store_true", default=False,
+        help="Score gene sets in the files that matches these genes.")
+    group.add_argument(
         "--automatch", action="store_true", default=False,
         help="Will match _UP with _DN (or _DOWN).")
     
@@ -186,8 +198,13 @@ def main():
     assert args.geneset_files, "Please specify one or more geneset files."
     for x in args.geneset_files:
         assert os.path.exists(x), "I could not find the gene set file: %s" % x
-    assert args.all_gene_sets or args.gene_set, \
+    assert args.all_gene_sets or args.gene_set or args.any_matching_gene_sets,\
            "Please specify one or more gene sets to score."
+    if args.all_gene_sets:
+        assert not args.gene_set and not args.any_matching_gene_sets
+    if args.any_matching_gene_sets:
+        assert not args.gene_set and not args.all_gene_sets
+    
     if args.num_procs < 1 or args.num_procs > 100:
         parser.error("Please specify between 1 and 100 processes.")
 
@@ -220,7 +237,7 @@ def main():
             geneset2genes[name] = genes
 
     genesets = args.gene_set
-    if args.all_gene_sets:
+    if args.all_gene_sets or args.any_matching_gene_sets:
         genesets = sorted(geneset2genes)
     if args.automatch:
         genesets = sorted(genesets)
@@ -246,6 +263,7 @@ def main():
     matrix_names = [os.path.split(x)[1] for x in expression_files]
 
     print "Setting up jobs."; sys.stdout.flush()
+    ignore_gene_not_found = args.any_matching_gene_sets
     # list of gs_name, pos_genes, neg_genes, matrix_name, matrix_file
     # list of gene_name, None, None, matrix_name, matrix_file
     jobs = []
@@ -264,7 +282,8 @@ def main():
         neg_genes = geneset2genes.get(neg_gs, [])
 
         for matrix_name, matrix_file in zip(matrix_names, expression_files):
-            x = gs_name, pos_genes, neg_genes, matrix_name, matrix_file
+            x = gs_name, pos_genes, neg_genes, matrix_name, matrix_file, \
+                ignore_gene_not_found
             jobs.append(x)
     for name in gene_names:
         for matrix_name, matrix_file in zip(matrix_names, expression_files):
