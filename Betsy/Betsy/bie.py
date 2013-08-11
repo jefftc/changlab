@@ -28,6 +28,7 @@ Attribute
 DataType
 Data
 Module
+QueryModule
 ModuleDbSummary
 Network
 
@@ -38,7 +39,8 @@ Network
 # _OptimizeNoDuplicateData
 # _OptimizeNoDuplicateModules
 # _OptimizeNoDanglingNodes
-# _OptimizeNoAmbiguousPaths
+# _OptimizeNoOverlappingData
+# _OptimizeNoInvalidConsequents
 #
 #
 # Functions:
@@ -52,6 +54,7 @@ Network
 # _can_module_produce_data
 # _can_converting_module_produce_data
 # _can_nonconverting_module_produce_data
+# _can_module_take_data
 #
 # _can_reach_by_bc
 # _can_reach_by_fc
@@ -74,44 +77,53 @@ Network
 
 
 # The value of an attribute can be:
+# NOVALUE   Value is not specified.  Meaning is ambiguous (see below).
+#           Can be default or don't care.
 # ATOM      e.g. "mean"
-# LIST      e.g. ["mean", "median"]
 # ANYATOM   Value can be any string.  Used for parameters like the
 #           number of genes to filter out of a list, which can be any
 #           number.  Any string can match ATOM.
-# NOVALUE   Value is not specified.  Meaning is ambiguous (see below).
-#           Can be default or don't care.
+# LIST      e.g. ["mean", "median"], ["logged", "not_logged"]
 #
 # Module Node: Antecedent
+# NOVALUE   This attribute is not relevant for the module.
 # ATOM      The module requires a specific value.
+# ANYATOM   UNDEFINED.  When is this used?
 # LIST      The module can take any of these values.
 #           E.g. filter_missing_with_zeros    missing=["yes", "unknown"]
-# ANYATOM   UNDEFINED.  When is this used?
-# NOVALUE   This attribute is irrelevant for the module.
 # 
 # Module Node: Consequent
-# ATOM      The module generates a specific value.
-# LIST      The module can generate any one of these values to fit the
-#           requirements of the next Data node.
-#           e.g. gene_center  gene_normalize=[None, "no"] -> ["mean", "median"]
-#           Also is seen if the module does not change this value.
-#           e.g. quantile_norm missing=["median", "zero"] -> ["median", "zero"]
-# ANYATOM   The module can generate any value to fit the requirements of
-#           the next Data node.
 # NOVALUE   Attribute is irrelevant for the module.  Antecedent must also
 #           be NOVALUE.
+# ATOM      The module generates a specific value.
+# ANYATOM   The module can generate any value to fit the requirements of
+#           the next Data node.
+# LIST      There are three possibilities here:
+#           1.  The module doesn't change this value.  i.e. the LIST
+#               is exactly the same in the antecedent.
+#               e.g. missing_values=["no", "zero_fill", "median_fill"])
+#               in both the antecedent and consequent.
+#           2.  The module can generate any one of these values to fit
+#               the requirements of the next Data node.
+#               e.g. gene_normalize=["mean", "median"]
+#           3.  The module produces a specific value, but we won't
+#               know what it is until runtime.
+#               e.g. logged=["no", "yes"]
+#               This is called a QUERY module.  It queries some aspect
+#               of the data.
 #
 # Data Node
-# ATOM      A specific value.
-# LIST      The actual value is unknown, but can be one of these options.
-# ANYATOM   UNDEFINED.  Is this needed?
 # NOVALUE   UNDEFINED.
+# ATOM      A specific value.
+# ANYATOM   UNDEFINED.  Is this needed?
+# LIST      The actual value is unknown, but can be one of these options.
 
 
 NOVALUE = "___BETSY_NOVALUE___"
 ANYATOM = "___BETSY_ANYATOM___"
 
 TYPE_ATOM, TYPE_LIST, TYPE_ANYATOM, TYPE_NOVALUE = range(4)
+#LIST_SPECIFIES_ALTERNATES, LIST_SPECIFIES_RESPONSES = range(2)
 
 
 class Attribute:
@@ -270,6 +282,7 @@ class Module:
     # A Module can take one or more antecedents.
     def __init__(self, name, ante_datas, cons_data, **parameters):
         import operator
+
         if not operator.isSequenceType(ante_datas):
             ante_datas = [ante_datas]
         # If a DataType is provided, convert it into a Data object
@@ -281,9 +294,9 @@ class Module:
             cons_data = cons_data()
             
         self.name = name
-        self.ante_datas = ante_datas[:]
-        self.cons_data = cons_data.copy()
-        self.parameters = parameters.copy()
+        self.ante_datas = ante_datas
+        self.cons_data = cons_data
+        self.parameters = parameters
     def __cmp__(self, other):
         if not isinstance(other, Module):
             return cmp(id(self), id(other))
@@ -302,8 +315,12 @@ class Module:
             repr(ante_datas),
             repr(self.cons_data),
             ]
-        x = "Module(%s)" % ", ".join(x)
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+
+
+class QueryModule(Module):
+    pass
 
 
 class ModuleDbSummary:
@@ -354,7 +371,7 @@ class Network:
         # Yield tuple of (node_id, next_node_ids).  node_class is the
         # class of the node of the network (either Data or Module).  If
         # provided, will only iterate over that kind of nodes.
-        assert node_class in [Data, Module]
+        assert node_class in [Data, Module, QueryModule]
         for node_id, node in enumerate(self.nodes):
             if node_class and not isinstance(node, node_class):
                 continue
@@ -432,6 +449,14 @@ class Network:
 
 
 class _OptimizeNoCycles:
+    # Methods:
+    # optimize
+    #
+    # _find_cycles         Find all the cycles in a network.
+    # _find_cycles_from_one_node
+    # _find_cycles_from_all_nodes
+    # _choose_breakpoints  Given a list of cycles, choose the best breakpoints.
+    # _break_cycles        Break a list of cycles.
     def __init__(self):
         pass
     def optimize(self, network):
@@ -444,22 +469,17 @@ class _OptimizeNoCycles:
 
         # Optimization.  Since may cycles are short, break the
         # 5-cycles first to speed up the search.
-        cycles = self.find_cycles(network, 5)
-        bad_transitions = self.choose_breakpoints(cycles)
-        network = self.break_cycles(network, bad_transitions)
+        cycles = self._find_cycles(network, 5)
+        bad_transitions = self._choose_breakpoints(network, cycles)
+        network = self._break_cycles(network, bad_transitions)
 
-        # Test this.  Speeds up search?
-        #cycles = self.find_cycles(network, 7)
-        #bad_transitions = self.choose_breakpoints(cycles)
-        #network = self.break_cycles(network, bad_transitions)
-
-        cycles = self.find_cycles(network, 0)
-        bad_transitions = self.choose_breakpoints(cycles)
-        network = self.break_cycles(network, bad_transitions)
+        cycles = self._find_cycles(network, 0)
+        bad_transitions = self._choose_breakpoints(network, cycles)
+        network = self._break_cycles(network, bad_transitions)
 
         return network
 
-    def find_cycles(self, network, max_path_length):
+    def _find_cycles(self, network, max_path_length):
         assert max_path_length >= 0
         if max_path_length:
             cycles = self._find_cycles_from_all_nodes(network, max_path_length)
@@ -468,9 +488,50 @@ class _OptimizeNoCycles:
                 network, 0, max_path_length)
         return cycles
 
-    def choose_breakpoints(self, cycles):
-        # Count the number of cycles each transition is in.  Break the
-        # transitions that are in the most cycles.
+    def _find_cycles_from_one_node(self, network, start_id, max_path_length):
+        # Do a breadth first search and look for cycles.  Return a
+        # list of cycles found, where each cycle is a list of
+        # node_ids.
+
+        nodeid2previds = _make_backchain_dict(network)
+
+        cycles = []
+        # list of (node_id, path (not including node_id))
+        stack = [(start_id, [])]
+        while stack:
+            node_id, path = stack.pop(0)
+            if max_path_length and len(path) > max_path_length:
+                continue
+            if node_id in path:
+                # If this node_id is already in the path, then this is
+                # a cycle.
+                i = path.index(node_id)
+                x = path[i:] + [node_id]
+                cycles.append(x)
+                continue
+            path = path + [node_id]
+            for prev_id in nodeid2previds.get(node_id, []):
+                stack.append((prev_id, path))
+        return cycles
+
+    def _find_cycles_from_all_nodes(self, network, max_path_length):
+        cycles = []
+        for start_id in range(len(network.nodes)):
+            x = self._find_cycles_from_one_node(
+                network, start_id, max_path_length)
+            cycles.extend(x)
+        x = [tuple(x) for x in cycles]
+        cycles = sorted({}.fromkeys(x))
+        return cycles
+    
+    def _choose_breakpoints(self, network, cycles):
+        # Return list of (node_id, next_id).  Count the number of
+        # cycles each transition is in.  Break the transitions that
+        # are in the most cycles.
+
+        # Break at Module -> Data transitions.  Otherwise, will leave
+        # both the Data and Module dangling.
+
         counts = {}   # (node_id, next_id) -> count
         for cycle in cycles:
             for i in range(len(cycle)-1):
@@ -501,15 +562,17 @@ class _OptimizeNoCycles:
             keys = []
             for i in range(len(cycle)-1):
                 next_id, node_id = cycle[i], cycle[i+1]
+                if not isinstance(network.nodes[node_id], Module):
+                    continue
                 x = node_id, next_id
                 keys.append(x)
             schwartz = [(-counts[x], x) for x in keys]
             schwartz.sort()
             keys = [x[-1] for x in schwartz]
             bad_transitions[keys[0]] = 1
-        return bad_transitions
+        return bad_transitions.keys()
 
-    def break_cycles(self, network, bad_transitions):
+    def _break_cycles(self, network, bad_transitions):
         import copy
         
         transitions = network.transitions.copy()
@@ -521,42 +584,6 @@ class _OptimizeNoCycles:
             x = x[:i] + x[i+1:]
             transitions[node_id] = x
         return Network(network.nodes, transitions)
-
-    def _find_cycles_from_all_nodes(self, network, max_path_length):
-        cycles = []
-        for start_id in range(len(network.nodes)):
-            x = self._find_cycles_from_one_node(
-                network, start_id, max_path_length)
-            cycles.extend(x)
-        x = [tuple(x) for x in cycles]
-        cycles = sorted({}.fromkeys(x))
-        return cycles
-    
-    def _find_cycles_from_one_node(self, network, start_id, max_path_length):
-        # Do a breadth first search and look for cycles.  Return a
-        # list of cycles found, where each cycle is a list of
-        # node_ids.
-
-        nodeid2previds = _make_backchain_dict(network)
-
-        cycles = []
-        # list of (node_id, path (not including node_id))
-        stack = [(start_id, [])]
-        while stack:
-            node_id, path = stack.pop(0)
-            if max_path_length and len(path) > max_path_length:
-                continue
-            if node_id in path:
-                # If this node_id is already in the path, then this is
-                # a cycle.
-                i = path.index(node_id)
-                x = path[i:] + [node_id]
-                cycles.append(x)
-                continue
-            path = path + [node_id]
-            for prev_id in nodeid2previds.get(node_id, []):
-                stack.append((prev_id, path))
-        return cycles
 
 
 class _OptimizeNoDuplicateData:
@@ -633,8 +660,9 @@ class _OptimizeNoDanglingNodes:
     def __init__(self):
         pass
     def optimize(self, network):
-        # Remove nodes that are extraneous to the network.  These
-        # situations can arise when optimizing.
+        # Remove nodes that are extraneous to the network (e.g. don't
+        # point to anything).  These situations can arise when
+        # optimizing.
         while True:
             dangling = self.find_dangling_nodes(network)
             if not dangling:
@@ -666,123 +694,72 @@ class _OptimizeNoDanglingNodes:
         return False
 
 
-class _OptimizeNoAmbiguousPaths:
+class _OptimizeNoOverlappingData:
+    # Some data objects may have overlapping attributes.
+    # 1.  Data(SignalFile, format=['tdf', 'pcl', 'gct'], preprocess='rma')
+    # 2.  Data(SignalFile, format=['tdf', 'res', 'pcl', 'jeffs', 'unknown',
+    #       'xls'], preprocess='rma')
+    #
+    # Modules that point to 1 can generate 3 different formats.  Those
+    # that point to 2 can generate 6.  To resolve this, split the Data
+    # objects and rewire the Modules.
+    # 3.  Data(SignalFile, format=['tdf', 'pcl'], preprocess='rma')
+    # 4.  Data(SignalFile, format='gct', preprocess='rma')
+    # 5.  Data(SignalFile, format=['res', 'jeffs', 'unknown', 'xls'],
+    #       preprocess='rma')
+
+    # Methods:
+    # optimize
+    # 
+    # _find_overlapping_data
+    # _find_overlapping_attribute
+    # 
+    # _fix_overlapping_data
+    # _remove_atom_from_list
+    # _remove_list_from_list
+    # _split_list
+    
     def __init__(self):
         pass
+
     def optimize(self, network):
-        # Look for pairs of Data objects (Data_1, Data_2) where:
-        # o Data_1 is more general than Data_2.
-        # o Data_2 has a subset of the parents as Data_1.
-        # o If Data_1 and Data_2 have the same parents, then Data_1
-        #   should have a lower node_id.
-        #
-        # Move overlapping attributes from Data_2 to Data_1.  (e.g. If
-        # Data_1 and Data_2 both take PCL format, remove PCL format
-        # from Data_2).
-        import itertools
+        # Look for pairs of Data objects (Data_1, Data_2) where an
+        # attribute is overlapping.
         import copy
 
-        # Make a list of all pairs of Data objects.
-        data_pairs = self.list_data_siblings(network)
-        
-        good = []
-        for (node_id1, node_id2) in data_pairs:
-            data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
-            assert node_id1 != node_id2
-            # Optimization: check this datatype here to reduce
-            # function calls to is_data_compatible.
-            if data1.datatype != data2.datatype:
-                continue
-            if not self.is_data_compatible(data1, data2):
-                continue
-            if not self.is_topology_compatible(network, node_id1, node_id2):
-                continue
-            good.append((node_id1, node_id2))
-        data_pairs = good
-
-        # For each of the pairs whose lists have overlapping options,
-        # remove the overlapping options from data2.
-        # For each of the pairs where data1 has a LIST and data2 has a
-        # ATOM in the LIST, merge data1 and data2.
-        merge_pairs = []
+        # Make a copy of the network now.  All changes to the network
+        # will be done in place.
         network = copy.deepcopy(network)
-        for (node_id1, node_id2) in data_pairs:
-            data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
-            data1_attr = data1.attributes
-            data2_attr = data2.attributes
-
-            attributes = data2.attributes.copy()
-            for key in data1.attributes:
-                DATA1_VALUE = data1_attr.get(key)
-                DATA2_VALUE = data2_attr.get(key)
-                DATA1_TYPE = _get_attribute_type(data1_attr, key)
-                DATA2_TYPE = _get_attribute_type(data2_attr, key)
-
-                if DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_ATOM:
-                    if DATA2_VALUE in DATA1_VALUE:
-                        merge_pairs.append((node_id1, node_id2))
-                elif DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_LIST:
-                    if sorted(DATA1_VALUE) != sorted(DATA2_VALUE):
-                        DATA2_VALUE = [
-                            x for x in DATA2_VALUE if x not in DATA1_VALUE]
-                        
-                        # If DATA2_VALUE is subset of DATA1_VALUE,
-                        # then merge these nodes.
-                        if not DATA2_VALUE:
-                            merge_pairs.append((node_id1, node_id2))
-                        else:
-                            attributes[key] = DATA2_VALUE
-            data2 = Data(data2.datatype, attributes)
-            network.nodes[node_id2] = data2
-
-        while merge_pairs:
-            node_id1, node_id2 = merge_pairs.pop(0)
-            network = network.merge_nodes([node_id1, node_id2])
-            for i in range(len(merge_pairs)):
-                nid1, nid2 = merge_pairs[i]
-                assert nid1 != node_id2 and nid2 != node_id2
-                if nid1 > node_id2:
-                    nid1 -= 1
-                if nid2 > node_id2:
-                    nid2 -= 1
-                merge_pairs[i] = nid1, nid2
+        while True:
+            x = self._find_overlapping_data(network)
+            if not x:
+                break
+            node_id1, node_id2, attr_name = x
+            self._fix_overlapping_data(network, node_id1, node_id2, attr_name)
+            
         return network
 
-    def list_data_siblings(self, network):
-        # Return list of (node_id1, node_id2) where node_id1 and
-        # node_id2 have the same parents.  Will give node_id1 and
-        # node_id2 in both orders.
-        import itertools
-
-        siblings = {}
-        has_parents = {}
-        for node_id, next_ids in network.transitions.iteritems():
-            for nid in next_ids:
-                has_parents[nid] = 1
-            # Make sure the parent is a Module.  Children should be
-            # Data objects.
-            if not isinstance(network.nodes[node_id], Module):
+    def _find_overlapping_data(self, network):
+        # Return (node_id1, node_id2, name of overlapping attribute)
+        # or None.
+        for node_id1 in range(len(network.nodes)-1):
+            node_1 = network.nodes[node_id1]
+            if not isinstance(node_1, Data):
                 continue
-            for id1, id2 in itertools.product(next_ids, next_ids):
-                siblings[(id1, id2)] = 1
-        # Also list nodes with no parents.
-        no_parents = []
-        for node_id in range(len(network.nodes)):
-            if node_id in has_parents:
-                continue
-            if not isinstance(network.nodes[node_id], Data):
-                continue
-            no_parents.append(node_id)
-        for id1, id2 in itertools.product(no_parents, no_parents):
-            siblings[(id1, id2)] = 1
+            for node_id2 in range(node_id1+1, len(network.nodes)):
+                node_2 = network.nodes[node_id2]
+                if not isinstance(node_2, Data):
+                    continue
+                attr = self._find_overlapping_attribute(node_1, node_2)
+                if attr:
+                    return node_id1, node_id2, attr
+        return None
 
-        # Filter out nodes that are not different.
-        siblings = [x for x in sorted(siblings) if x[0] != x[1]]
-        return siblings
-    
-
-    def is_data_compatible(self, data1, data2):
-        # data1 should be more general then data2.
+    def _find_overlapping_attribute(self, data1, data2):
+        # Return the name of the single overlapping attribute or None.
+        # 
+        # data1 and data2 should be exactly the same, except for one
+        # attribute with overlapping values.
         assert isinstance(data1, Data)
         assert isinstance(data2, Data)
         if data1.datatype != data2.datatype:
@@ -790,27 +767,29 @@ class _OptimizeNoAmbiguousPaths:
         
         # CASE    DATA1      DATA2     RESULT
         #   1    NOVALUE    NOVALUE    OK.
-        #   2    NOVALUE    ANYATOM    No.
-        #   3    NOVALUE      ATOM     No.
-        #   4    NOVALUE      LIST     No.
-        #   5    ANYATOM    NOVALUE    No.  Not sure about this one.
+        #   2    NOVALUE    ANYATOM    Mismatch.
+        #   3    NOVALUE      ATOM     Mismatch.
+        #   4    NOVALUE      LIST     Mismatch.
+        #   5    ANYATOM    NOVALUE    Mismatch.
         #   6    ANYATOM    ANYATOM    OK.
-        #   7    ANYATOM      ATOM     OK.
-        #   8    ANYATOM      LIST     No.
-        #   9      ATOM     NOVALUE    No.  Not sure.
-        #  10      ATOM     ANYATOM    No.
+        #   7    ANYATOM      ATOM     Mismatch.
+        #   8    ANYATOM      LIST     Mismatch.
+        #   9      ATOM     NOVALUE    Mismatch.
+        #  10      ATOM     ANYATOM    Mismatch.
         #  11      ATOM       ATOM     OK if ATOMs are equal.
-        #  12      ATOM       LIST     No.
-        #  13      LIST     NOVALUE    No.  Not sure.
-        #  14      LIST     ANYATOM    No.
-        #  15      LIST       ATOM     OK if ATOM in LIST.
-        #  16      LIST       LIST     OK if DATA2 LIST overlaps with DATA1.
+        #  12      ATOM       LIST     OVERLAP if ATOM in LIST.
+        #  13      LIST     NOVALUE    Mismatch.
+        #  14      LIST     ANYATOM    Mismatch.
+        #  15      LIST       ATOM     OVERLAP if ATOM in LIST.
+        #  16      LIST       LIST     OVERLAP if LISTs have shared ATOMs.
         data1_attr = data1.attributes
         data2_attr = data2.attributes
 
+        mismatch = False
+        overlapping = []   # list of attribute names
+
         x = data1_attr.keys() + data2_attr.keys()
         all_attributes = sorted({}.fromkeys(x))
-        compatible = True
         for key in all_attributes:
             DATA1_VALUE = data1_attr.get(key)
             DATA2_VALUE = data2_attr.get(key)
@@ -818,34 +797,528 @@ class _OptimizeNoAmbiguousPaths:
             DATA2_TYPE = _get_attribute_type(data2_attr, key)
             case = _assign_case_by_type(DATA1_TYPE, DATA2_TYPE)
 
-            if case in [2, 3, 4, 5, 8, 9, 10, 12, 13, 14]:  # No
-                compatible = False
-            elif case in [1, 6, 7]:  # OK
+            if case in [2, 3, 4, 5, 7, 8, 9, 10, 13, 14]:  # Mismatch
+                mismatch = True
+            elif case in [1, 6]:  # OK
                 pass
             elif case == 11:
                 if DATA1_VALUE != DATA2_VALUE:
-                    compatible = False
+                    mismatch = True
+            elif case == 12:
+                if len(DATA2_VALUE) == 1 and DATA1_VALUE == DATA2_VALUE[0]:
+                    pass
+                elif DATA1_VALUE in DATA2_VALUE:
+                    overlapping.append(key)
+                else:
+                    mismatch = True
             elif case == 15:
-                if DATA2_VALUE not in DATA1_VALUE:
-                    compatible = False
+                if len(DATA1_VALUE) == 1 and DATA2_VALUE == DATA1_VALUE[0]:
+                    pass
+                elif DATA2_VALUE in DATA1_VALUE:
+                    overlapping.append(key)
+                else:
+                    mismatch = True
             elif case == 16:
-                if not _intersection(DATA1_VALUE, DATA2_VALUE):
-                    compatible = False
+                if sorted(DATA1_VALUE) == sorted(DATA2_VALUE):  # OK
+                    pass
+                elif _intersection(DATA1_VALUE, DATA2_VALUE):
+                    overlapping.append(key)
+                else:
+                    mismatch = True
             else:
                 raise AssertionError
 
-        return compatible
+        if mismatch:
+            return None
+        if len(overlapping) != 1:
+            return None
+        return overlapping[0]
+
+    def _fix_overlapping_data(self, network, data_id1, data_id2, attr_name):
+        # Changes network in place.
+
+        data1 = network.nodes[data_id1]
+        data2 = network.nodes[data_id2]
+        DATA1_TYPE = _get_attribute_type(data1.attributes, attr_name)
+        DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
+        DATA1_VALUE = data1.attributes[attr_name]
+        DATA2_VALUE = data2.attributes[attr_name]
+        if DATA1_TYPE is TYPE_LIST and DATA2_TYPE is TYPE_LIST:
+            COMMON_VALUES = _intersection(DATA1_VALUE, DATA2_VALUE)
+
+        if DATA1_TYPE is TYPE_ATOM:
+            assert DATA2_TYPE is TYPE_LIST
+            self._remove_atom_from_list(network, data_id2, data_id1, attr_name)
+        elif DATA2_TYPE is TYPE_ATOM:
+            assert DATA1_TYPE is TYPE_LIST
+            self._remove_atom_from_list(network, data_id1, data_id2, attr_name)
+        elif sorted(DATA1_VALUE) == sorted(COMMON_VALUES):
+            self._remove_list_from_list(network, data_id2, data_id1, attr_name)
+        elif sorted(DATA2_VALUE) == sorted(COMMON_VALUES):
+            self._remove_list_from_list(network, data_id1, data_id2, attr_name)
+        else:
+            self._split_list(network, data_id1, data_id2, attr_name)
+
+    def _remove_atom_from_list(self, network, data_id1, data_id2, attr_name):
+        # Changes network in place.  data1 is a LIST and data2 is an
+        # ATOM.  The values of data2 is in data1.
+
+        data1 = network.nodes[data_id1]
+        data2 = network.nodes[data_id2]
+        DATA1_TYPE = _get_attribute_type(data1.attributes, attr_name)
+        DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
+        DATA1_VALUE = data1.attributes[attr_name]
+        DATA2_VALUE = data2.attributes[attr_name]
+        assert DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_ATOM
+        assert DATA2_VALUE in DATA1_VALUE
+        
+        # Remove the ATOM from the LIST.
+        DATA1_VALUE = DATA1_VALUE[:]
+        i = DATA1_VALUE.index(DATA2_VALUE)
+        DATA1_VALUE.pop(i)
+        if len(DATA1_VALUE) == 1:
+            DATA1_VALUE = DATA1_VALUE[0]
+        data1.attributes[attr_name] = DATA1_VALUE
+
+        # Every module that pointed to data_id1 should now also point
+        # to data_id2.
+        module_ids = _backchain_to_ids(network, data_id1)
+        for node_id in module_ids:
+            if data_id2 not in network.transitions[node_id]:
+                network.transitions[node_id].append(data_id2)
+                
+        # Since some of the workflow from data1 is being rerouted to
+        # data2, data2 should point to the children of data1.
+        for node_id in network.transitions[data_id1]:
+            if node_id not in network.transitions.get(data_id2, []):
+                if data_id2 not in network.transitions:
+                    network.transitions[data_id2] = []
+                network.transitions[data_id2].append(node_id)
 
 
-    def is_topology_compatible(self, network, node_id1, node_id2):
-        # The parents of node_id2 should be a subset of the parents of
-        # node_id1.  If the parents are the same, then node_id1 should
-        # have a lower node_id than node_id2.
-        prev_ids1 = _backchain_to_ids(network, node_id1)
-        prev_ids2 = _backchain_to_ids(network, node_id2)
-        if sorted(prev_ids1) == sorted(prev_ids2):
-            return node_id1 < node_id2
-        return _is_subset(prev_ids2, prev_ids1)
+    def _remove_list_from_list(self, network, data_id1, data_id2, attr_name):
+        # Changes network in place.  data1 and data2 are both a LISTs.
+        # The values of data2 is a subset of data1.
+
+        data1 = network.nodes[data_id1]
+        data2 = network.nodes[data_id2]
+        DATA1_TYPE = _get_attribute_type(data1.attributes, attr_name)
+        DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
+        DATA1_VALUE = data1.attributes[attr_name]
+        DATA2_VALUE = data2.attributes[attr_name]
+        assert DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_LIST
+        assert sorted(DATA1_VALUE) != sorted(DATA2_VALUE)
+        assert _is_subset(DATA2_VALUE, DATA1_VALUE)
+        
+        # Remove the ATOM from the LIST.
+        DATA1_VALUE = DATA1_VALUE[:]
+        for value in DATA2_VALUE:
+            i = DATA1_VALUE.index(value)
+            DATA1_VALUE.pop(i)
+        if len(DATA1_VALUE) == 1:
+            DATA1_VALUE = DATA1_VALUE[0]
+        data1.attributes[attr_name] = DATA1_VALUE
+
+        # Every module that pointed to data_id1 should now also point
+        # to data_id2.
+        module_ids = _backchain_to_ids(network, data_id1)
+        for node_id in module_ids:
+            if data_id2 not in network.transitions[node_id]:
+                network.transitions[node_id].append(data_id2)
+
+        # Since some of the workflow from data1 is being rerouted to
+        # data2, data2 should point to the children of data1.
+        for node_id in network.transitions[data_id1]:
+            if node_id not in network.transitions.get(data_id2, []):
+                if data_id2 not in network.transitions:
+                    network.transitions[data_id2] = []
+                network.transitions[data_id2].append(node_id)
+
+
+    def _split_list(self, network, data_id1, data_id2, attr_name):
+        # Changes network in place.  data1 and data2 are both a LISTs.
+
+        data1 = network.nodes[data_id1]
+        data2 = network.nodes[data_id2]
+        DATA1_TYPE = _get_attribute_type(data1.attributes, attr_name)
+        DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
+        DATA1_VALUE = data1.attributes[attr_name]
+        DATA2_VALUE = data2.attributes[attr_name]
+        assert DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_LIST
+        COMMON_VALUE = _intersection(DATA1_VALUE, DATA2_VALUE)
+        assert len(COMMON_VALUE) < len(DATA1_VALUE)
+        assert len(COMMON_VALUE) < len(DATA2_VALUE)
+
+        # Remove the common values from the two LISTs.
+        DATA1_VALUE = DATA1_VALUE[:]
+        DATA2_VALUE = DATA2_VALUE[:]
+        for value in COMMON_VALUE:
+            i1 = DATA1_VALUE.index(value)
+            i2 = DATA2_VALUE.index(value)
+            DATA1_VALUE.pop(i1)
+            DATA2_VALUE.pop(i2)
+        if len(DATA1_VALUE) == 1:
+            DATA1_VALUE = DATA1_VALUE[0]
+        if len(DATA2_VALUE) == 1:
+            DATA2_VALUE = DATA2_VALUE[0]
+        data1.attributes[attr_name] = DATA1_VALUE
+        data2.attributes[attr_name] = DATA2_VALUE
+
+        # Make a new Data object that contains the common values.
+        data3 = data1.copy()
+        data3.attributes[attr_name] = COMMON_VALUE
+        network.nodes.append(data3)
+        data_id3 = len(network.nodes)-1
+            
+        # Every module that pointed to data_id1 or data_id2 should now
+        # also point to data_id3.
+        x1 = _backchain_to_ids(network, data_id1)
+        x2 = _backchain_to_ids(network, data_id2)
+        module_ids = x1 + x2
+        for node_id in module_ids:
+            if data_id3 not in network.transitions[node_id]:
+                network.transitions[node_id].append(data_id3)
+
+        # data_id3 should now point to everywhere that data_id1 and
+        # data_id2 point to, if data_id3 is compatible with the
+        # module.
+        
+        # XXX NOT IMPLEMENTED: MAKE SURE THIS IS A PROPER ANTECEDENT.
+        x1 = network.transitions.get(data_id1, [])
+        x2 = network.transitions.get(data_id2, [])
+        all_modules = sorted({}.fromkeys(x1+x2))
+        for module_id in all_modules:
+            module = network.nodes[module_id]
+            if _can_module_take_data(module, [data3]):
+                if data_id3 not in network.transitions:
+                    network.transitions[data_id3] = []
+                network.transitions[data_id3].append(module_id)
+        
+
+class _OptimizeNoInvalidConsequents:
+    # Fixing overlapping data can lead to a situation where a Module
+    # points to Data that it can't generate.  E.g.
+    # convert_signal_to_tdf -> format=["tdf", "pcl"]
+    #   changed to:
+    # convert_signal_to_tdf -> format=["tdf"]
+    # convert_signal_to_tdf -> format=["pcl"]
+    #
+    # Since one of these is now incorrect, remove it.
+    def __init__(self):
+        pass
+    def optimize(self, network):
+        import copy
+
+        bad_transitions = {}  # (node_id, next_id) -> 1
+        for (node_id, next_ids) in network.iterate(node_class=Module):
+            module = network.nodes[node_id]
+            for next_id in next_ids:
+                node = network.nodes[next_id]
+                assert isinstance(node, Data)
+                if not _can_module_produce_data(module, node):
+                    bad_transitions[(node_id, next_id)] = 1
+
+        network = copy.deepcopy(network)
+        for node_id, next_id in bad_transitions:
+            x = network.transitions.get(node_id, [])
+            assert next_id in x
+            i = x.index(next_id)
+            assert i >= 0
+            x.pop(i)
+            network.transitions[node_id] = x
+        return network
+    
+
+## class _OptimizeMergeSimilarData:
+##     def __init__(self):
+##         pass
+##     def optimize(self, network):
+##         # Look for pairs of Data objects (Data_1, Data_2) where:
+##         # o Data_1 is more general than Data_2.
+##         # o Data_2 has a subset of the parents as Data_1.
+##         # o If Data_1 and Data_2 have the same parents, then Data_1
+##         #   should have a lower node_id.
+##         #
+##         # Move overlapping attributes from Data_2 to Data_1.  (e.g. If
+##         # Data_1 and Data_2 both take PCL format, remove PCL format
+##         # from Data_2).
+##         import itertools
+##         import copy
+
+##         # Make a list of all pairs of Data objects.
+##         data_pairs = self.list_data_siblings(network)
+        
+##         similar = []
+##         for (node_id1, node_id2) in data_pairs:
+##             assert node_id1 != node_id2
+##             data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
+##             # Optimization: check this datatype here to reduce
+##             # function calls to is_data_compatible.
+##             if data1.datatype != data2.datatype:
+##                 continue
+##             if not self.is_data_compatible(data1, data2):
+##                 continue
+##             if not self.is_topology_compatible(network, node_id1, node_id2):
+##                 continue
+##             similar.append((node_id1, node_id2))
+##         data_pairs = similar
+
+##         # For each of the pairs whose lists have overlapping options,
+##         # remove the overlapping options from data2.
+##         # For each of the pairs where data1 has a LIST and data2 has a
+##         # ATOM in the LIST, merge data1 and data2.
+##         merge_pairs = []
+##         network = copy.deepcopy(network)
+##         for (node_id1, node_id2) in data_pairs:
+##             data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
+##             data1_attr = data1.attributes
+##             data2_attr = data2.attributes
+
+##             attributes = data2.attributes.copy()
+##             for key in data1.attributes:
+##                 DATA1_VALUE = data1_attr.get(key)
+##                 DATA2_VALUE = data2_attr.get(key)
+##                 DATA1_TYPE = _get_attribute_type(data1_attr, key)
+##                 DATA2_TYPE = _get_attribute_type(data2_attr, key)
+
+##                 if DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_ATOM:
+##                     if DATA2_VALUE in DATA1_VALUE:
+##                         merge_pairs.append((node_id1, node_id2))
+##                 elif DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_LIST:
+##                     if sorted(DATA1_VALUE) != sorted(DATA2_VALUE):
+##                         DATA2_VALUE = [
+##                             x for x in DATA2_VALUE if x not in DATA1_VALUE]
+                        
+##                         # If DATA2_VALUE is subset of DATA1_VALUE,
+##                         # then merge these nodes.
+##                         if not DATA2_VALUE:
+##                             merge_pairs.append((node_id1, node_id2))
+##                         else:
+##                             attributes[key] = DATA2_VALUE
+##             data2 = Data(data2.datatype, attributes)
+##             network.nodes[node_id2] = data2
+            
+##         while merge_pairs:
+##             node_id1, node_id2 = merge_pairs.pop(0)
+##             network = network.merge_nodes([node_id1, node_id2])
+##             for i in range(len(merge_pairs)):
+##                 nid1, nid2 = merge_pairs[i]
+##                 assert nid1 != node_id2 and nid2 != node_id2
+##                 if nid1 > node_id2:
+##                     nid1 -= 1
+##                 if nid2 > node_id2:
+##                     nid2 -= 1
+##                 merge_pairs[i] = nid1, nid2
+##         return network
+
+##     def list_data_siblings(self, network):
+##         # Return list of (node_id1, node_id2) where node_id1 and
+##         # node_id2 have the same parents.  Will give node_id1 and
+##         # node_id2 in both orders.
+##         import itertools
+
+##         siblings = {}
+##         has_parents = {}
+##         for node_id, next_ids in network.transitions.iteritems():
+##             for nid in next_ids:
+##                 has_parents[nid] = 1
+##             # Make sure the parent is a Module.  Children should be
+##             # Data objects.
+##             if not isinstance(network.nodes[node_id], Module):
+##                 continue
+##             for id1, id2 in itertools.product(next_ids, next_ids):
+##                 siblings[(id1, id2)] = 1
+##         # Also list nodes with no parents.
+##         no_parents = []
+##         for node_id in range(len(network.nodes)):
+##             if node_id in has_parents:
+##                 continue
+##             if not isinstance(network.nodes[node_id], Data):
+##                 continue
+##             no_parents.append(node_id)
+##         for id1, id2 in itertools.product(no_parents, no_parents):
+##             siblings[(id1, id2)] = 1
+
+##         # Filter out nodes that are not different.
+##         siblings = [x for x in sorted(siblings) if x[0] != x[1]]
+##         return siblings
+    
+
+##     def is_data_compatible(self, data1, data2):
+##         # data1 should be more general then data2.
+##         assert isinstance(data1, Data)
+##         assert isinstance(data2, Data)
+##         if data1.datatype != data2.datatype:
+##             return False
+        
+##         # CASE    DATA1      DATA2     RESULT
+##         #   1    NOVALUE    NOVALUE    OK.
+##         #   2    NOVALUE    ANYATOM    No.
+##         #   3    NOVALUE      ATOM     No.
+##         #   4    NOVALUE      LIST     No.
+##         #   5    ANYATOM    NOVALUE    No.  Not sure about this one.
+##         #   6    ANYATOM    ANYATOM    OK.
+##         #   7    ANYATOM      ATOM     OK.
+##         #   8    ANYATOM      LIST     No.
+##         #   9      ATOM     NOVALUE    No.  Not sure.
+##         #  10      ATOM     ANYATOM    No.
+##         #  11      ATOM       ATOM     OK if ATOMs are equal.
+##         #  12      ATOM       LIST     No.
+##         #  13      LIST     NOVALUE    No.  Not sure.
+##         #  14      LIST     ANYATOM    No.
+##         #  15      LIST       ATOM     OK if ATOM in LIST.
+##         #  16      LIST       LIST     OK if DATA2 LIST overlaps with DATA1.
+##         #
+##         # For case 16, DATA2 LIST doesn't have to be a subset of DATA1
+##         # LIST, because we will remove the overlapping elements.
+##         data1_attr = data1.attributes
+##         data2_attr = data2.attributes
+
+##         x = data1_attr.keys() + data2_attr.keys()
+##         all_attributes = sorted({}.fromkeys(x))
+##         compatible = True
+##         for key in all_attributes:
+##             DATA1_VALUE = data1_attr.get(key)
+##             DATA2_VALUE = data2_attr.get(key)
+##             DATA1_TYPE = _get_attribute_type(data1_attr, key)
+##             DATA2_TYPE = _get_attribute_type(data2_attr, key)
+##             case = _assign_case_by_type(DATA1_TYPE, DATA2_TYPE)
+
+##             if case in [2, 3, 4, 5, 8, 9, 10, 12, 13, 14]:  # No
+##                 compatible = False
+##             elif case in [1, 6, 7]:  # OK
+##                 pass
+##             elif case == 11:
+##                 if DATA1_VALUE != DATA2_VALUE:
+##                     compatible = False
+##             elif case == 15:
+##                 if DATA2_VALUE not in DATA1_VALUE:
+##                     compatible = False
+##             elif case == 16:
+##                 if not _intersection(DATA1_VALUE, DATA2_VALUE):
+##                     compatible = False
+##             else:
+##                 raise AssertionError
+
+##         return compatible
+
+
+##     def is_topology_compatible(self, network, node_id1, node_id2):
+##         # The parents of node_id2 should be a subset of the parents of
+##         # node_id1.  If the parents are the same, then node_id1 should
+##         # have a lower node_id than node_id2.
+##         prev_ids1 = _backchain_to_ids(network, node_id1)
+##         prev_ids2 = _backchain_to_ids(network, node_id2)
+##         if sorted(prev_ids1) == sorted(prev_ids2):
+##             return node_id1 < node_id2
+##         return _is_subset(prev_ids2, prev_ids1)
+
+
+## class _OptimizeNoAmbiguousPaths:
+##     def __init__(self):
+##         pass
+##     def optimize(self, network):
+##         # If a Module points to more than one of the same Data
+##         # objects, remove the link to one of them.
+##         # - If they're identical, keep the one with the lower node_id.
+##         # - Otherwise, keep the one with the more general attributes.
+##         #
+##         # E.g. check_for_log -> Data(SignalFile, format="tdf")
+##         #                    -> Data(SignalFile, format=["tdf", "pcl"])
+##         import copy
+##         import itertools
+
+##         jobs = []  # node_id, data_id1, data_id2.  data_id1 < data_id2
+##         for node_id, next_ids in network.iterate(node_class=Module):
+##             for i in range(len(next_ids)-1):
+##                 for j in range(i+1, len(next_ids)):
+##                     data_id1 = next_ids[i]
+##                     data_id2 = next_ids[j]
+##                     x = node_id, data_id1, data_id2
+##                     jobs.append(x)
+
+##         remove_links = {}  # node_id -> data_id
+##         for x in jobs:
+##             node_id, data_id1, data_id2 = x
+##             data1, data2 = network.nodes[data_id1], network.nodes[data_id2]
+
+##             # If I've already removed one of these links for this
+##             # module, then these are no longer ambiguous.
+##             if remove_links.get(node_id) in [data_id1, data_id2]:
+##                 pass
+##             elif data1.datatype != data2.datatype:
+##                 pass
+##             elif data1 == data2:
+##                 remove_links[node_id] = max(data_id1, data_id2)
+##             elif self.is_more_general(data1, data2):
+##                 remove_links[node_id] = data_id2
+##             elif self.is_more_general(data2, data1):
+##                 remove_links[node_id] = data_id1
+
+##         if remove_links:
+##             network = copy.deepcopy(network)
+##         for node_id, data_id in remove_links.iteritems():
+##             x = network.transitions[node_id]
+##             i = x.index(data_id)
+##             x.pop(i)
+
+##         return network
+
+
+##     def is_more_general(self, data1, data2):
+##         # Is data1 more general then data2.
+##         assert isinstance(data1, Data)
+##         assert isinstance(data2, Data)
+##         if data1.datatype != data2.datatype:
+##             return False
+        
+##         # CASE    DATA1      DATA2     RESULT
+##         #   1    NOVALUE    NOVALUE    OK.
+##         #   2    NOVALUE    ANYATOM    No.
+##         #   3    NOVALUE      ATOM     No.
+##         #   4    NOVALUE      LIST     No.
+##         #   5    ANYATOM    NOVALUE    No.  Not sure about this one.
+##         #   6    ANYATOM    ANYATOM    OK.
+##         #   7    ANYATOM      ATOM     OK.
+##         #   8    ANYATOM      LIST     No.
+##         #   9      ATOM     NOVALUE    No.  Not sure.
+##         #  10      ATOM     ANYATOM    No.
+##         #  11      ATOM       ATOM     OK if ATOMs are equal.
+##         #  12      ATOM       LIST     No.
+##         #  13      LIST     NOVALUE    No.  Not sure.
+##         #  14      LIST     ANYATOM    No.
+##         #  15      LIST       ATOM     OK if ATOM in LIST.
+##         #  16      LIST       LIST     OK if DATA2 LIST is subset of DATA1.
+##         data1_attr = data1.attributes
+##         data2_attr = data2.attributes
+
+##         x = data1_attr.keys() + data2_attr.keys()
+##         all_attributes = sorted({}.fromkeys(x))
+##         more_general = True
+##         for key in all_attributes:
+##             DATA1_VALUE = data1_attr.get(key)
+##             DATA2_VALUE = data2_attr.get(key)
+##             DATA1_TYPE = _get_attribute_type(data1_attr, key)
+##             DATA2_TYPE = _get_attribute_type(data2_attr, key)
+##             case = _assign_case_by_type(DATA1_TYPE, DATA2_TYPE)
+
+##             if case in [2, 3, 4, 5, 8, 9, 10, 12, 13, 14]:  # No
+##                 more_general = False
+##             elif case in [1, 6, 7]:  # OK
+##                 pass
+##             elif case == 11:
+##                 if DATA1_VALUE != DATA2_VALUE:
+##                     more_general = False
+##             elif case == 15:
+##                 if DATA2_VALUE not in DATA1_VALUE:
+##                     more_general = False
+##             elif case == 16:
+##                 if not _is_subset(DATA2_VALUE, DATA1_VALUE):
+##                     more_general = False
+##             else:
+##                 raise AssertionError
+
+##         return more_general
 
 
 ## class _OptimizeReconvert:
@@ -1042,8 +1515,12 @@ def optimize_network(network):
         _OptimizeNoDanglingNodes(),
         _OptimizeNoDuplicateModules(),
         _OptimizeNoDuplicateData(),
-        _OptimizeNoAmbiguousPaths(),
-        _OptimizeValidConsequents(),
+        _OptimizeNoOverlappingData(),
+        _OptimizeNoInvalidConsequents(),
+
+        # OBSOLETE?
+        #_OptimizeMergeSimilarData(),
+        #_OptimizeNoAmbiguousPaths(),
         ]
 
     old_network = None
@@ -1052,38 +1529,7 @@ def optimize_network(network):
         for opt in optimizers:
             network = opt.optimize(network)
 
-
     return network
-
-class _OptimizeValidConsequents:
-    # Resolving ambiguous paths can lead to modules pointing to Data
-    # that it can't generate.  D.g. if a Module generates a particular
-    # file format.  Data that it points to may not be in that format
-    # anymore.
-    def __init__(self):
-        pass
-    def optimize(self, network):
-        import copy
-
-        bad_transitions = {}  # (node_id, next_id) -> 1
-        for (node_id, next_ids) in network.iterate(node_class=Module):
-            module = network.nodes[node_id]
-            for next_id in next_ids:
-                node = network.nodes[next_id]
-                assert isinstance(node, Data)
-                if not _can_module_produce_data(module, node):
-                    bad_transitions[(node_id, next_id)] = 1
-
-        network = copy.deepcopy(network)
-        for node_id, next_id in bad_transitions:
-            x = network.transitions.get(node_id, [])
-            assert next_id in x
-            i = x.index(next_id)
-            assert i >= 0
-            x.pop(i)
-            network.transitions[node_id] = x
-        return network
-    
 
 def prune_network_by_start(network, start_data):
     # start_data may be a single Data object or a list of Data
@@ -1660,6 +2106,73 @@ def _can_nonconverting_module_produce_data(module, data):
     return num_attributes
 
 
+def _can_module_take_data(module, datas):
+    # Return True/False if a module can take this Data as an
+    # antecedent.
+
+    if len(datas) > 1:
+        raise NotImplementedError
+    if len(module.ante_datas) != len(datas):
+        return False
+    data = datas[0]
+    if data.datatype != module.ante_datas[0].datatype:
+        return False
+
+    data_attr = data.attributes
+    ante_attr = module.ante_datas[0].attributes
+
+    # If no attributes to match, then this matches by default.
+    if not data_attr and not ante_attr:
+        return True
+
+    # CASE  DATA_TYPE  ANTE_TYPE   RESULT
+    #   1    NOVALUE    NOVALUE    OK.
+    #   2    NOVALUE    ANYATOM    No.
+    #   3    NOVALUE      ATOM     No.
+    #   4    NOVALUE      LIST     No.
+    #   5    ANYATOM    NOVALUE    OK.
+    #   6    ANYATOM    ANYATOM    OK.
+    #   7    ANYATOM      ATOM     NotImplementedError.
+    #   8    ANYATOM      LIST     No.
+    #   9      ATOM     NOVALUE    OK.
+    #  10      ATOM     ANYATOM    NotImplementedError.
+    #  11      ATOM       ATOM     OK if ATOMs are the same.
+    #  12      ATOM       LIST     OK if ATOM in LIST.
+    #  13      LIST     NOVALUE    OK.
+    #  14      LIST     ANYATOM    NotImplementedError.
+    #  15      LIST       ATOM     No.
+    #  16      LIST       LIST     OK if DATA LIST is subset of ANTE LIST.
+
+    compatible = True
+    all_attr = {}.fromkeys(data_attr.keys() + ante_attr.keys())
+    for key in all_attr:
+        DATA_VALUE = data_attr.get(key)
+        ANTE_VALUE = ante_attr.get(key)
+        DATA_TYPE = _get_attribute_type(data_attr, key)
+        ANTE_TYPE = _get_attribute_type(ante_attr, key)
+        CASE = _assign_case_by_type(DATA_TYPE, ANTE_TYPE)
+
+        if CASE in [1, 5, 6, 9, 13]:  # OK
+            pass
+        elif CASE in [7, 10, 14]:
+            raise NotImplementedError
+        elif CASE in [2, 3, 4, 8, 15]:
+            compatible = False
+        elif CASE == 11:
+            if DATA_VALUE != ANTE_VALUE:
+                compatible = False
+        elif CASE == 12:
+            if DATA_VALUE not in ANTE_VALUE:
+                compatible = False
+        elif CASE == 16:
+            if not _is_subset(DATA_VALUE, ANTE_VALUE):
+                compatible = False
+        else:
+            raise AssertionError
+                
+    return compatible
+
+
 def _can_reach_by_bc(network, node_id, good_ids):
     # Return a dictionary of all the node IDs that can be reached by
     # backwards chaining.
@@ -2083,15 +2596,18 @@ def test_bie():
     #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
     
     goal_datatype = SignalFile
+    #goal_attributes = dict(format='tdf', logged='yes')
+    goal_attributes = dict(
+        format='tdf', logged='yes', preprocess="rma", missing_values="no")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
     #    missing_values="no")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    missing_values="no", group_fc="5")
-    goal_attributes = dict(
-        format='tdf', preprocess="rma", logged='yes', 
-        missing_values="no")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess="rma", logged='yes', 
+    #    missing_values="no")
     #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
     #goal_attributes = dict(
     #    format='tdf', preprocess='rma', logged='yes',
@@ -2145,6 +2661,19 @@ def test_bie():
     
     _print_network(network)
     _plot_network_gv("out.png", network)
+
+    # Want function _find_data_node with options:
+    # ignore_defaults
+    # allow_more_general
+    #node = _make_goal(
+    #    SignalFile, dict(format="pcl", preprocess="rma"))
+    #node_id = _find_data_node(network.nodes, node)
+    #print "NODE:", node_id
+
+    #node = _make_goal(
+    #    SignalFile, dict(format=["tdf", "pcl", "gct"], preprocess="rma"))
+    #node_id = _find_data_node(network.nodes, node)
+    #print "NODE:", node_id
 
 
 ILLU_MANIFEST = [
@@ -2231,14 +2760,16 @@ ILLUFolder = DataType(
 
 SignalFile = DataType(
     "SignalFile",
+
+    # Properties of the format.
     Attribute(
         format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
         DEFAULT="unknown"),
+    
+    # Properties of the data.
     Attribute(
         preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         DEFAULT="unknown"),
-    
-    # Properties of the data.
     Attribute(
         missing_values=["unknown", "no", "yes", "median_fill", "zero_fill"],
         DEFAULT="unknown"),
@@ -2291,7 +2822,7 @@ all_modules = [
     Module("extract_CEL_files", ExpressionFiles, CELFiles(version="unknown")),
 
     # CELFiles
-    Module(
+    QueryModule(
         "detect_CEL_version",
         CELFiles(version="unknown"),
         CELFiles(version=["cc", "v3", "v4"])),
@@ -2364,7 +2895,7 @@ all_modules = [
         'convert_signal_to_gct',
         SignalFile(format=['tdf', 'res', 'pcl', 'jeffs', 'unknown', 'xls']),
         SignalFile(format='gct')),
-    Module(
+    QueryModule(
         "check_for_log",
         SignalFile(format=["tdf", "pcl", "gct"], logged='unknown'),
         SignalFile(format="tdf", logged=['yes', "no"])),
@@ -2388,7 +2919,7 @@ all_modules = [
         "fill_missing_with_zeros",
         SignalFile(format="tdf", logged="yes", missing_values="yes"),
         SignalFile(format="tdf", logged="yes", missing_values="zero_fill")),
-    Module(
+    QueryModule(
         "check_for_missing_values",
         SignalFile(format="tdf", missing_values="unknown"),
         SignalFile(format="tdf", missing_values=["no", "yes"])),
@@ -2458,7 +2989,7 @@ all_modules = [
             format="tdf", logged="yes",
             missing_values=["no", "zero_fill", "median_fill"],
             shiftscale_norm="yes")),
-    Module(
+    QueryModule(
         "check_gene_center",
         SignalFile(
             format="tdf", logged="yes",
@@ -2468,7 +2999,7 @@ all_modules = [
             format="tdf", logged="yes",
             missing_values=["no", "median_fill", "zero_fill"],
             gene_center=["no", "mean", "median"])),
-    Module(
+    QueryModule(
         "check_gene_normalize",
         SignalFile(
             format="tdf", logged="yes",
