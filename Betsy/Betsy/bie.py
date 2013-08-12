@@ -54,6 +54,7 @@ Network
 # _can_module_produce_data
 # _can_converting_module_produce_data
 # _can_nonconverting_module_produce_data
+# _does_nonconverting_module_change_attribute
 # _can_module_take_data
 #
 # _can_reach_by_bc
@@ -116,7 +117,7 @@ Network
 # NOVALUE   UNDEFINED.
 # ATOM      A specific value.
 # ANYATOM   UNDEFINED.  Is this needed?
-# LIST      The actual value is unknown, but can be one of these options.
+# LIST      The actual value can be any one of these options.
 
 
 NOVALUE = "___BETSY_NOVALUE___"
@@ -130,7 +131,7 @@ class Attribute:
     def __init__(self, **keywds):
         # keywds is a dictionary of:
         # <attribute name>  :  value
-        # DEFAULT           :  default_value
+        # DEFAULT           :  default value
         name = None
         for x in keywds:
             if x in ["REQUIRED", "DEFAULT"]:
@@ -138,16 +139,26 @@ class Attribute:
             assert name is None
             name = x
         assert name is not None
-        
+
+        assert "DEFAULT" in keywds, "No default value given."
         attr_type = _get_attribute_type(keywds, name)
+        attr_value = keywds[name]
         assert attr_type in [TYPE_ANYATOM, TYPE_LIST], "%s %s" % (name, key)
-        assert "DEFAULT" in keywds, "DEFAULT not given for %s." % name
-
+        
+        def_type = _get_attribute_type(keywds, "DEFAULT")
+        def_value = keywds["DEFAULT"]
+        assert def_type in [TYPE_LIST, TYPE_ATOM, TYPE_ANYATOM]
+        
         if attr_type == TYPE_LIST:
-            assert keywds["DEFAULT"] in keywds[name], \
-                   "DEFAULT [%s] not found in values: %s." % (
-                keywds["DEFAULT"], keywds[name])
-
+            if def_type == TYPE_ATOM:
+                assert def_value in attr_value, \
+                       "DEFAULT [%s] not found in values: %s." % (
+                    def_value, attr_value)
+            elif def_type == TYPE_ANYATOM:
+                raise AssertionError
+            else:
+                assert _is_subset(def_value, attr_value)
+            
         self.name = name
         self.values = keywds[name]
         self.REQUIRED = bool(keywds.get("REQUIRED"))
@@ -183,7 +194,8 @@ class DataType:
         x = [x.name for x in x]
         return x
     def get_defaults(self):
-        # Return a dictionary of the attributes to their default values.
+        # Return a dictionary where the keys are the names of the
+        # attributes and the values are the default values.
         defaults = {}
         for attr in self.attribute_objects:
             defaults[attr.name] = attr.DEFAULT
@@ -212,15 +224,15 @@ class Data:
         #   4    NOVALUE       LIST       ERROR.
         #   5    ANYATOM     NOVALUE      ERROR.
         #   6    ANYATOM     ANYATOM      OK.
-        #   7    ANYATOM       ATOM       Bad.
-        #   8    ANYATOM       LIST       Bad.
+        #   7    ANYATOM       ATOM       OK.
+        #   8    ANYATOM       LIST       TypeMismatch.
         #   9      ATOM      NOVALUE      ERROR.
         #  10      ATOM      ANYATOM      OK.
         #  11      ATOM        ATOM       OK if ATOMs equal.
         #  12      ATOM        LIST       OK if ATOM in LIST.
         #  13      LIST      NOVALUE      ERROR.
-        #  14      LIST      ANYATOM      Bad.
-        #  15      LIST        ATOM       Bad.
+        #  14      LIST      ANYATOM      TypeMismatch.
+        #  15      LIST        ATOM       TypeMismatch.
         #  16      LIST        LIST       OK if DATA LIST is subset.
         data_attr = attributes
         dtyp_attr = datatype.attributes
@@ -233,11 +245,11 @@ class Data:
             DTYP_TYPE = _get_attribute_type(dtyp_attr, key)
             CASE = _assign_case_by_type(DATA_TYPE, DTYP_TYPE)
 
-            if CASE in [1, 2, 3, 4, 5, 9, 13]:
+            if CASE in [1, 2, 3, 4, 5, 9, 13]:   # ERROR
                 raise AssertionError
-            elif CASE in [6, 10]:
+            elif CASE in [6, 7, 10]:   # OK
                 pass
-            elif CASE in [7, 8, 14, 15]:
+            elif CASE in [8, 14, 15]:
                 raise AssertionError, "type mismatch"
             elif CASE == 11:
                 assert DATA_VALUE == DTYP_VALUE
@@ -1458,12 +1470,13 @@ def backchain(moduledb, goal_datatype, goal_attributes):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 4096
+    MAX_NETWORK_SIZE = 1024
     nodes.append(goal_data)
     stack = [0]
     seen = {}
     while stack:
         assert len(nodes) < MAX_NETWORK_SIZE, "network too large"
+        #_print_network(Network(nodes, transitions))
 
         # Pop the next node off the stack.
         node_id = stack.pop()
@@ -1530,6 +1543,7 @@ def optimize_network(network):
             network = opt.optimize(network)
 
     return network
+
 
 def prune_network_by_start(network, start_data):
     # start_data may be a single Data object or a list of Data
@@ -1745,6 +1759,7 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     # DATA_VALUE  Value of attribute in data.
     # ANTE_VALUE  Value of attribute in antecedent.
     # CONS_VALUE  Value of attribute in consequent.
+    # DATA_TYPE   Type of attribute in data.
     # ANTE_TYPE   Type of attribute in antecedent.
     # CONS_TYPE   Type of attribute in consequent.
     #
@@ -1802,7 +1817,9 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
             if DATA_TYPE == TYPE_ATOM:
                 assert DATA_VALUE in CONS_VALUE
             else:
-                assert sorted(DATA_VALUE) == sorted(CONS_VALUE)
+                #assert sorted(DATA_VALUE) == sorted(CONS_VALUE)
+                # Module can produce some value that DATA needs.
+                assert _intersection(CONS_VALUE, DATA_VALUE)
             
             # Case 1.
             if sorted(ANTE_VALUE) == sorted(CONS_VALUE):
@@ -1917,11 +1934,11 @@ def _can_converting_module_produce_data(module, data):
     #   7    ANYATOM      ATOM     +1.
     #   8    ANYATOM      LIST     DQ.  ANYATOM can't match LIST.
     #   9      ATOM     NOVALUE    DQ.  Must match now.
-    #  10      ATOM     ANYATOM    NotImplementedError.
+    #  10      ATOM     ANYATOM    +0.  DATA VALUE doesn't matter.
     #  11      ATOM       ATOM     +1 if same, otherwise DQ.
     #  12      ATOM       LIST     +1 if ATOM in LIST, otherwise DQ.
     #  13      LIST     NOVALUE    DQ.  Must match now.
-    #  14      LIST     ANYATOM    NotImplementedError.
+    #  14      LIST     ANYATOM    DQ.  ANYATOM can't match LIST.
     #  15      LIST       ATOM     +1 is ATOM in LIST, otherwise DQ.
     #  16      LIST       LIST     +1 if intersect, otherwise DQ.
 
@@ -1940,10 +1957,10 @@ def _can_converting_module_produce_data(module, data):
             raise AssertionError, "Should not have NOVALUES."
         elif CASE == 7:
             num_attributes += 1
-        elif CASE in [5, 6, 8, 9, 13]:
+        elif CASE == 10:
+            pass
+        elif CASE in [5, 6, 8, 9, 13, 14]:
             disqualify = True
-        elif CASE in [10, 14]:
-            raise NotImplementedError
         elif CASE == 11:
             if CONS_VALUE == DATA_VALUE:
                 num_attributes += 1
@@ -1960,6 +1977,8 @@ def _can_converting_module_produce_data(module, data):
             else:
                 disqualify = True
         elif CASE == 16:
+            # Module can produce some value that is compatible with
+            # DATA.
             if _intersection(CONS_VALUE, DATA_VALUE):
                 num_attributes += 1
             else:
@@ -2000,15 +2019,15 @@ def _can_nonconverting_module_produce_data(module, data):
     #   3    NOVALUE      ATOM     +0.
     #   4    NOVALUE      LIST     +0.
     #   5    ANYATOM    NOVALUE    +0.
-    #   6    ANYATOM    ANYATOM    +1.
+    #   6    ANYATOM    ANYATOM    +0.
     #   7    ANYATOM      ATOM     +1 if ANTE_VALUE != DATA_VALUE, otherwise DQ
     #   8    ANYATOM      LIST     DQ.  ANYATOM doesn't match LIST.
     #   9      ATOM     NOVALUE    +0.
-    #  10      ATOM     ANYATOM    NotImplementedError.
+    #  10      ATOM     ANYATOM    +0.  DATA value doesn't matter.
     #  11      ATOM       ATOM     +1 if same, otherwise DQ.
     #  12      ATOM       LIST     +1 if ATOM in LIST, otherwise DQ.
     #  13      LIST     NOVALUE    +0.
-    #  14      LIST     ANYATOM    NotImplementedError.
+    #  14      LIST     ANYATOM    DQ.  ANYATOM doesn't match LIST.
     #  15      LIST       ATOM     +1 is ATOM in LIST, otherwise DQ.
     #  16      LIST       LIST     +1 if intersect, otherwise DQ.
     #
@@ -2024,24 +2043,16 @@ def _can_nonconverting_module_produce_data(module, data):
         DATA_TYPE = _get_attribute_type(data_attr, key)
         ANTE_TYPE = _get_attribute_type(ante_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
+
+        module_changes_value = _does_nonconverting_module_change_attribute(
+            module, data, key)
+
         CASE = _assign_case_by_type(CONS_TYPE, DATA_TYPE)
-        
-        module_changes_value = ANTE_VALUE != CONS_VALUE
-        if ANTE_TYPE == TYPE_LIST and CONS_TYPE == TYPE_LIST:
-            module_changes_value = sorted(ANTE_VALUE) != sorted(CONS_VALUE)
-
-
         disqualify = False
         if CASE in [1, 2, 3, 4]:
             assert ANTE_TYPE == TYPE_NOVALUE
-        elif CASE in [5, 9, 13]:
+        elif CASE in [5, 6, 9, 10, 13]:
             pass
-        elif CASE in [10, 14]:
-            raise NotImplementedError
-        elif CASE == 6:
-            if module_changes_value:
-                p("    Attribute is compatible.")
-                num_attributes += 1
         elif CASE == 7:
             if ANTE_TYPE == TYPE_NOVALUE:
                 # Why disqualify this?
@@ -2060,7 +2071,7 @@ def _can_nonconverting_module_produce_data(module, data):
                 else:
                     p("    Attribute is compatible.")
                     num_attributes += 1
-        elif CASE == 8:
+        elif CASE in [8, 14]:
             disqualify = True
         elif CASE == 11:
             if CONS_VALUE == DATA_VALUE:
@@ -2085,6 +2096,8 @@ def _can_nonconverting_module_produce_data(module, data):
             else:
                 disqualify = True
         elif CASE == 16:
+            # Module can produce some value that is compatible with
+            # DATA.
             if _intersection(CONS_VALUE, DATA_VALUE):
                 if module_changes_value:
                     p("    Attribute is compatible.")
@@ -2092,7 +2105,7 @@ def _can_nonconverting_module_produce_data(module, data):
             else:
                 disqualify = True
         else:
-            raise AssertionError
+            raise AssertionError, CASE
                 
         if disqualify:
             p("    Attribute is disqualified.")
@@ -2104,6 +2117,62 @@ def _can_nonconverting_module_produce_data(module, data):
     else:
         p("  %d attributes compatible." % num_attributes)
     return num_attributes
+
+
+def _does_nonconverting_module_change_attribute(module, data, attr_name):
+    x = [x for x in module.ante_datas if x.datatype == data.datatype]
+    assert len(x) == 1
+    ante_data = x[0]
+
+    ante_attr = ante_data.attributes
+    cons_attr = module.cons_data.attributes
+    
+    ANTE_VALUE = ante_attr.get(attr_name)
+    CONS_VALUE = cons_attr.get(attr_name)
+    ANTE_TYPE = _get_attribute_type(ante_attr, attr_name)
+    CONS_TYPE = _get_attribute_type(cons_attr, attr_name)
+    CASE = _assign_case_by_type(ANTE_TYPE, CONS_TYPE)
+
+    # CASE  ANTE_TYPE  CONS_TYPE   RESULT
+    #   1    NOVALUE    NOVALUE    No
+    #   2    NOVALUE    ANYATOM    NotImplemented
+    #   3    NOVALUE      ATOM     Yes
+    #   4    NOVALUE      LIST     Yes
+    #   5    ANYATOM    NOVALUE    NotImplemented
+    #   6    ANYATOM    ANYATOM    NotImplemented
+    #   7    ANYATOM      ATOM     NotImplemented
+    #   8    ANYATOM      LIST     NotImplemented
+    #   9      ATOM     NOVALUE    NotImplemented
+    #  10      ATOM     ANYATOM    Yes
+    #  11      ATOM       ATOM     Yes, if values are different.
+    #  12      ATOM       LIST     Yes
+    #  13      LIST     NOVALUE    NotImplemented
+    #  14      LIST     ANYATOM    NotImplemented
+    #  15      LIST       ATOM     Yes, if ATOM not in LIST.
+    #  16      LIST       LIST     Yes, if lists are different.
+
+    change = False
+    if CASE == 1:  # No
+        pass
+    elif CASE in [3, 4, 10, 12]:   # Yes
+        change = True
+    elif CASE == 11:
+        if ANTE_VALUE != CONS_VALUE:
+            change = True
+    elif CASE == 15:
+        # ANTE  format=["tdf", "pcl", "gct"]
+        # CONS  format="tdf"
+        if CONS_VALUE not in ANTE_VALUE:
+            change = True
+    elif CASE == 16:
+        if sorted(ANTE_VALUE) != sorted(CONS_VALUE):
+            change = True
+    elif CASE in [2, 5, 6, 7, 8, 9, 13, 14]:
+        #print module.name, ANTE_VALUE, CONS_VALUE
+        raise NotImplementedError, CASE
+    else:
+        raise AssertionError
+    return change
 
 
 def _can_module_take_data(module, datas):
@@ -2121,7 +2190,7 @@ def _can_module_take_data(module, datas):
     data_attr = data.attributes
     ante_attr = module.ante_datas[0].attributes
 
-    # If no attributes to match, then this matches by default.
+    # If no attributes to match, then this matches by definition.
     if not data_attr and not ante_attr:
         return True
 
@@ -2287,10 +2356,10 @@ def _is_compatible_with_start(data, start_data):
         return False
 
     # Start Data
-    # ATOM      Must match a specific value.
-    # LIST      UNDEFINED.
-    # ANYATOM   Can match any value.
     # NOVALUE   Use default value.
+    # ATOM      Must match a specific value.
+    # ANYATOM   Can match any value.
+    # LIST      UNDEFINED.
     # 
     # CASE START_TYPE  DATA_TYPE   RESULT
     #   1    NOVALUE    NOVALUE    ERROR.  START should have default values.
@@ -2596,12 +2665,12 @@ def test_bie():
     #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
     
     goal_datatype = SignalFile
-    #goal_attributes = dict(format='tdf', logged='yes')
-    goal_attributes = dict(
-        format='tdf', logged='yes', preprocess="rma", missing_values="no")
+    #goal_attributes = dict(format='tdf')
     #goal_attributes = dict(
-    #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
-    #    missing_values="no")
+    #    format='tdf', logged='yes', missing_values="no")
+    goal_attributes = dict(
+        format=['jeffs', 'gct'], preprocess='rma', logged='yes',
+        missing_values="no")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    missing_values="no", group_fc="5")
@@ -2720,7 +2789,9 @@ ILLU_CHIP = [
 AgilentFiles = DataType("AgilentFiles")
 CELFiles = DataType(
     "CELFiles",
-    Attribute(version=["unknown", "cc", "v3", "v4"], DEFAULT="unknown"),
+    Attribute(
+        version=["unknown", "cc", "v3", "v4"],
+        DEFAULT="unknown"),
     )
 ControlFile = DataType(
     "ControlFile",
@@ -2728,7 +2799,10 @@ ControlFile = DataType(
         preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         DEFAULT="unknown"),
     Attribute(
-        missing_values=["unknown", "no", "yes", "median_fill", "zero_fill"],
+        missing_values=["unknown", "no", "yes"],
+        DEFAULT="unknown"),
+    Attribute(
+        missing_algorithm=["unknown", "median_fill", "zero_fill"],
         DEFAULT="unknown"),
     Attribute(
         logged=["unknown", "no", "yes"],
@@ -2748,11 +2822,14 @@ IDATFiles = DataType("IDATFiles")
 ClassLabelFile = DataType("ClassLabelFile")
 ILLUFolder = DataType(
     "ILLUFolder", 
-    Attribute(illu_manifest=ILLU_MANIFEST,
-              DEFAULT='HumanHT-12_V4_0_R2_15002873_B.txt'),
-    Attribute(illu_chip=ILLU_CHIP,
-              DEFAULT='ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
+    Attribute(
+        illu_manifest=ILLU_MANIFEST,
+        DEFAULT='HumanHT-12_V4_0_R2_15002873_B.txt'),
+    Attribute(
+        illu_chip=ILLU_CHIP,
+        DEFAULT='ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
     Attribute(illu_bg_mode=['false', 'true'], DEFAULT="false"),
+
     Attribute(illu_coll_mode=['none', 'max', 'median'], DEFAULT="none"),
     Attribute(illu_clm=ANYATOM, DEFAULT=""),
     Attribute(illu_custom_chip=ANYATOM, DEFAULT=""),
@@ -2771,7 +2848,10 @@ SignalFile = DataType(
         preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         DEFAULT="unknown"),
     Attribute(
-        missing_values=["unknown", "no", "yes", "median_fill", "zero_fill"],
+        missing_values=["unknown", "no", "yes"],
+        DEFAULT="unknown"),
+    Attribute(
+        missing_algorithm=["unknown", "median_fill", "zero_fill"],
         DEFAULT="unknown"),
     Attribute(
         logged=["unknown", "no", "yes"],
@@ -2788,11 +2868,16 @@ SignalFile = DataType(
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    Attribute(dwd_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(bfrm_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(quantile_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(shiftscale_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(combat_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        dwd_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        bfrm_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        quantile_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        shiftscale_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        combat_norm=["no", "yes"], DEFAULT="no"),
 
     # Annotations.
     Attribute(annotate=["no", "yes"], DEFAULT="no"),
@@ -2803,6 +2888,7 @@ SignalFile = DataType(
         duplicate_probe=["no", "yes", "closest_probe", "high_var_probe"],
         DEFAULT="no"),
     Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
+
 
     # Unclassified.
     Attribute(num_features=ANYATOM, DEFAULT="all"),
@@ -2883,6 +2969,11 @@ all_modules = [
         ),
     
     # SignalFile
+    #Module(
+    #    'convert_signal_format',
+    #    SignalFile(
+    #        format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls']),
+    #    SignalFile(format=['tdf', 'pcl', 'gct'])),
     Module(
         "convert_signal_to_tdf",
         SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
@@ -2895,34 +2986,41 @@ all_modules = [
         'convert_signal_to_gct',
         SignalFile(format=['tdf', 'res', 'pcl', 'jeffs', 'unknown', 'xls']),
         SignalFile(format='gct')),
+
+    # XXX THE PURPOSE OF THIS MODULE IS NOT TO CONVERT FORMAT, BUT TO
+    # SET THE LOGGED VALUE.  HARD TO TELL FROM THE ATTRIBUTES.
     QueryModule(
         "check_for_log",
         SignalFile(format=["tdf", "pcl", "gct"], logged='unknown'),
         SignalFile(format="tdf", logged=['yes', "no"])),
     Module(
         "log_signal",
-        SignalFile(logged='no', format=["tdf", "pcl", "gct"]),
-        SignalFile(logged='yes', format='tdf')),
+        SignalFile(format=["tdf", "pcl", "gct"], logged='no'),
+        SignalFile(format='tdf', logged='yes')),
     Module(   # Causes cycles.
         'unlog_signal',
-        SignalFile(
-            format=["tdf", "pcl", "gct"], logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"]),
-        SignalFile(
-            format="tdf", logged="no",
-            missing_values=["no", "zero_fill", "median_fill"])),
+        SignalFile(format=["tdf", "pcl", "gct"], logged="yes"),
+        SignalFile(format="tdf", logged="no")),
     Module(
         "fill_missing_with_median",
         SignalFile(format="tdf", logged="yes", missing_values="yes"),
-        SignalFile(format="tdf", logged="yes", missing_values="median_fill")),
+        SignalFile(
+            format="tdf", logged="yes", missing_algorithm="median_fill",
+            missing_values="no")),
     Module(
         "fill_missing_with_zeros",
         SignalFile(format="tdf", logged="yes", missing_values="yes"),
-        SignalFile(format="tdf", logged="yes", missing_values="zero_fill")),
+        SignalFile(
+            format="tdf", logged="yes", missing_algorithm="zero_fill",
+            missing_values="no")),
     QueryModule(
         "check_for_missing_values",
-        SignalFile(format="tdf", missing_values="unknown"),
-        SignalFile(format="tdf", missing_values=["no", "yes"])),
+        SignalFile(
+            format="tdf", missing_algorithm="unknown",
+            missing_values="unknown"),
+        SignalFile(
+            format="tdf", missing_algorithm=["zero_fill", "median_fill"],
+            missing_values=["no", "yes"])),
     Module(
         "filter_genes_by_missing_values",
         SignalFile(
@@ -2931,8 +3029,8 @@ all_modules = [
             format='tdf', logged="yes", missing_values="yes", filter=ANYATOM)),
     Module(
         "filter_and_threshold_genes",
-        SignalFile(format="tdf",logged=["unknown","no"], predataset="no"),
-        SignalFile(format="tdf",logged=["unknown","no"], predataset="yes")),
+        SignalFile(format="tdf", logged=["unknown","no"], predataset="no"),
+        SignalFile(format="tdf", logged=["unknown","no"], predataset="yes")),
     Module(   # require a rename_list_file
         "relabel_samples",
         SignalFile(format='tdf', rename_sample="no"),
@@ -2942,112 +3040,97 @@ all_modules = [
     Module(
         "normalize_samples_with_quantile",
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             quantile_norm="no"),
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             quantile_norm="yes")),
     Module(
         "normalize_samples_with_combat",
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             combat_norm="no"),
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             combat_norm="yes")),
     Module(
         "normalize_samples_with_dwd",
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             dwd_norm="no"),
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             dwd_norm="yes")),
     Module(
         "normalize_samples_with_bfrm",
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             bfrm_norm="no"),
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             bfrm_norm="yes")),
     Module(
         "normalize_samples_with_shiftscale",
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             shiftscale_norm="no"),
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             shiftscale_norm="yes")),
     QueryModule(
         "check_gene_center",
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             gene_center="unknown"),
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "median_fill", "zero_fill"],
+            format="tdf", logged="yes", missing_values="no",
             gene_center=["no", "mean", "median"])),
     QueryModule(
         "check_gene_normalize",
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            format="tdf", logged="yes", missing_values="no",
             gene_normalize="unknown"),
         SignalFile(
-            format="tdf", logged="yes",
-            missing_values=["no", "median_fill", "zero_fill"],
+            format="tdf", logged="yes", missing_values="no",
             gene_normalize=["no", "variance", "sum_of_squares"])),
     Module(
         "gene_center",
         SignalFile(
-            format="tdf", logged="yes", gene_center="no",
-            missing_values=["no", "zero_fill", "median_fill"]),
+            format="tdf", logged="yes", missing_values="no",
+            gene_center="no"),
         SignalFile(
-            format="tdf", logged="yes", gene_center=["mean", "median"],
-            missing_values=["no", "zero_fill", "median_fill"])),
+            format="tdf", logged="yes", missing_values="no",
+            gene_center=["mean", "median"])),
     Module(
         "gene_normalize",
         SignalFile(
-            format="tdf", logged="yes", gene_normalize="no",
-            missing_values=["no", "zero_fill", "median_fill"]),
+            format="tdf", logged="yes", missing_values="no",
+            gene_normalize="no"),
         SignalFile(
-            format="tdf", logged="yes",
-            gene_normalize=["variance", "sum_of_squares"],
-            missing_values=["no", "zero_fill", "median_fill"])),
+            format="tdf", logged="yes", missing_values="no",
+            gene_normalize=["variance", "sum_of_squares"])),
     Module(  # require class_label_file
         "filter_genes_by_fold_change_across_classes",
         [ClassLabelFile,
          SignalFile(
              format="tdf", logged="yes",
-             missing_values=["no", "zero_fill", "median_fill"],
+             missing_values="no",
              group_fc="no")
          ],
         SignalFile(
             format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            missing_values="no",
             group_fc=ANYATOM)),
     Module(  # require class_label_file,generate gene_list_file
              # and need reorder_genes
         "rank_genes_by_class_neighbors",
         SignalFile(
             format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            missing_values="no",
             gene_order="no"),
         SignalFile(
             format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            missing_values="no",
             gene_order="class_neighbors")),
     Module(
          "reorder_genes",   # require gene_list_file
@@ -3057,11 +3140,11 @@ all_modules = [
          "rank_genes_by_sample_ttest",   # require class_label_file
          SignalFile(
             format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            missing_values="no",
             gene_order="no"),
          SignalFile(
             format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
+            missing_values="no",
             gene_order=["t_test_p","t_test_fdr"])),
     Module(
          'annotate_probes',
