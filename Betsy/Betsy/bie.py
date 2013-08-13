@@ -816,20 +816,22 @@ class _OptimizeNoDuplicateModules:
 
         # If the same data node points to two of the same module nodes,
         # then those modules are duplicated.
-        duplicates = []
         for data_id, next_ids in network.iterate(node_class=Data):
             if len(next_ids) < 2:
                 continue
 
-            all_same = True
-            for i in range(1, len(next_ids)):
-                if network.nodes[next_ids[0]] != network.nodes[ next_ids[i]]:
-                    all_same = False
-                    break
-            if all_same:
-                duplicates = next_ids
-                break
-        return duplicates
+            for i in range(len(next_ids)-1):
+                node_id1 = next_ids[i]
+                node_1 = network.nodes[node_id1]
+                dups = [node_id1]
+                for j in range(i+1, len(next_ids)):
+                    node_id2 = next_ids[j]
+                    node_2 = network.nodes[node_id2]
+                    if node_1 == node_2:
+                        dups.append(node_id2)
+                if len(dups) > 1:
+                    return dups
+        return None
 
 
 class _OptimizeNoDanglingNodes:
@@ -2942,14 +2944,14 @@ def test_bie():
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='no',
     #    missing_values="no", missing_algorithm="median_fill")
-    goal_attributes = dict(
-        #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
-        format='gct',
-        preprocess='illumina', logged='no',
-        missing_values="no")
     #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes',
+    #    #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
+    #    format='gct',
+    #    preprocess='illumina', logged='no',
     #    missing_values="no")
+    goal_attributes = dict(
+        format='tdf', preprocess='illumina', logged='yes',
+        missing_values="no", quantile_norm="yes", combat_norm="yes")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    missing_values="no", group_fc="5")
