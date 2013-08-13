@@ -55,6 +55,7 @@ Network
 # _can_converting_module_produce_data
 # _can_nonconverting_module_produce_data
 # _does_nonconverting_module_change_attribute
+# _find_target_of_nonconverting_module
 # _can_module_take_data
 #
 # _can_reach_by_bc
@@ -143,7 +144,7 @@ class Attribute:
         assert "DEFAULT" in keywds, "No default value given."
         attr_type = _get_attribute_type(keywds, name)
         attr_value = keywds[name]
-        assert attr_type in [TYPE_ANYATOM, TYPE_LIST], "%s %s" % (name, key)
+        assert attr_type in [TYPE_ANYATOM, TYPE_LIST], name
         
         def_type = _get_attribute_type(keywds, "DEFAULT")
         def_value = keywds["DEFAULT"]
@@ -318,7 +319,6 @@ class Module:
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        import operator
         ante_datas = self.ante_datas
         if len(ante_datas) == 1:
             ante_datas = ante_datas[0]
@@ -464,14 +464,15 @@ class _OptimizeNoCycles:
     # Methods:
     # optimize
     #
-    # _find_cycles         Find all the cycles in a network.
-    # _find_cycles_from_one_node
-    # _find_cycles_from_all_nodes
-    # _choose_breakpoints  Given a list of cycles, choose the best breakpoints.
-    # _break_cycles        Break a list of cycles.
+    # _find_cycle          Find a cycle in a network.
+    # _find_cycle_from_one_node
+    # _find_cycle_from_all_nodes
+    # _choose_breakpoint   Given a cycle, choose the best breakpoint.
+    # _break_cycle         Break a cycle
     def __init__(self):
         pass
     def optimize(self, network):
+        global NUM_TIMES
         # Do backwards chaining.  If I encounter a cycle, then break it.
 
         # Length of cycles:
@@ -481,33 +482,39 @@ class _OptimizeNoCycles:
 
         # Optimization.  Since may cycles are short, break the
         # 5-cycles first to speed up the search.
-        cycles = self._find_cycles(network, 5)
-        bad_transitions = self._choose_breakpoints(network, cycles)
-        network = self._break_cycles(network, bad_transitions)
 
-        cycles = self._find_cycles(network, 0)
-        bad_transitions = self._choose_breakpoints(network, cycles)
-        network = self._break_cycles(network, bad_transitions)
+        while True:
+            cycle = self._find_cycle(network, 5)
+            if not cycle:
+                break
+            transition = self._choose_breakpoint(network, cycle)
+            if transition:
+                network = self._break_cycle(network, transition)
+        while True:
+            cycle = self._find_cycle(network, 0)
+            if not cycle:
+                break
+            transition = self._choose_breakpoint(network, cycle)
+            if transition:
+                network = self._break_cycle(network, transition)
 
         return network
 
-    def _find_cycles(self, network, max_path_length):
+    def _find_cycle(self, network, max_path_length):
         assert max_path_length >= 0
         if max_path_length:
-            cycles = self._find_cycles_from_all_nodes(network, max_path_length)
+            cycle = self._find_cycle_from_all_nodes(network, max_path_length)
         else:
-            cycles = self._find_cycles_from_one_node(
-                network, 0, max_path_length)
-        return cycles
+            cycle = self._find_cycle_from_one_node(network, 0, max_path_length)
+        return cycle
 
-    def _find_cycles_from_one_node(self, network, start_id, max_path_length):
+    def _find_cycle_from_one_node(self, network, start_id, max_path_length):
         # Do a breadth first search and look for cycles.  Return a
-        # list of cycles found, where each cycle is a list of
-        # node_ids.
+        # cycle (list of node_ids) or None.
 
         nodeid2previds = _make_backchain_dict(network)
 
-        cycles = []
+        cycle = None
         # list of (node_id, path (not including node_id))
         stack = [(start_id, [])]
         while stack:
@@ -518,84 +525,239 @@ class _OptimizeNoCycles:
                 # If this node_id is already in the path, then this is
                 # a cycle.
                 i = path.index(node_id)
-                x = path[i:] + [node_id]
-                cycles.append(x)
-                continue
+                cycle = path[i:] + [node_id]
+                break
             path = path + [node_id]
             for prev_id in nodeid2previds.get(node_id, []):
                 stack.append((prev_id, path))
-        return cycles
+        return cycle
 
-    def _find_cycles_from_all_nodes(self, network, max_path_length):
-        cycles = []
+    def _find_cycle_from_all_nodes(self, network, max_path_length):
+        cycle = None
+        # Optimize: each cycle must include at least 1 Data node.
+        # Search from Module nodes.
         for start_id in range(len(network.nodes)):
-            x = self._find_cycles_from_one_node(
+            cycle = self._find_cycle_from_one_node(
                 network, start_id, max_path_length)
-            cycles.extend(x)
-        x = [tuple(x) for x in cycles]
-        cycles = sorted({}.fromkeys(x))
-        return cycles
-    
-    def _choose_breakpoints(self, network, cycles):
-        # Return list of (node_id, next_id).  Count the number of
-        # cycles each transition is in.  Break the transitions that
-        # are in the most cycles.
+            if cycle:
+                break
+        return cycle
 
-        # Break at Module -> Data transitions.  Otherwise, will leave
-        # both the Data and Module dangling.
+    def _find_depth_of_nodes(self, network):
+        # Do a breadth-first search to assign the depth of each node.
+        assert network.nodes
 
-        counts = {}   # (node_id, next_id) -> count
-        for cycle in cycles:
-            for i in range(len(cycle)-1):
-                next_id, node_id = cycle[i], cycle[i+1]
-                key = node_id, next_id
-                if key not in counts:
-                    counts[key] = 0
-                counts[key] += 1
+        nodeid2previds = _make_backchain_dict(network)
 
-        bad_transitions = {}  # (node_id, next_id) -> 1
-        for cycle in cycles:
-            ## Break the cycle at the lowest node_id.
-            #i = cycle.index(min(cycle))
-            #assert i < len(cycle)-1
-
-            # If this cycle is already broken, then ignore it.
-            broken = False
-            for i in range(len(cycle)-1):
-                next_id, node_id = cycle[i], cycle[i+1]
-                key = node_id, next_id
-                if key in bad_transitions:
-                    broken = True
-            if broken:
+        # OPTIMIZE: cache this function.
+        stack = [(0, -1)]  # node_id, next_depth
+        nodeid2depth = {}
+        while stack:
+            node_id, next_depth = stack.pop(0)
+            if node_id in nodeid2depth:
                 continue
+            depth = next_depth + 1
+            nodeid2depth[node_id] = depth
+            for prev_id in nodeid2previds.get(node_id, []):
+                stack.append((prev_id, depth))
+        return nodeid2depth
 
-            # Find the transition with the highest counts.  If there
-            # are ties, use the key with lowest node_id.
-            keys = []
-            for i in range(len(cycle)-1):
-                next_id, node_id = cycle[i], cycle[i+1]
-                if not isinstance(network.nodes[node_id], Module):
-                    continue
-                x = node_id, next_id
-                keys.append(x)
-            schwartz = [(-counts[x], x) for x in keys]
-            schwartz.sort()
-            keys = [x[-1] for x in schwartz]
-            bad_transitions[keys[0]] = 1
-        return bad_transitions.keys()
+    def _choose_breakpoint(self, network, cycle):
+        # Break the cycle at the point furthest from the root of the
+        # network (node 0).  If I choose the wrong breakpoint, can
+        # leave a whole section dangling.  Return tuple of (node_id,
+        # next_id) of the transition to break.
+        nodeid2depth = self._find_depth_of_nodes(network)
 
-    def _break_cycles(self, network, bad_transitions):
-        import copy
+        # See if this cycle is already broken from the main network.
+        x = [x for x in cycle if x not in nodeid2depth]
+        if x:
+            return None
+
+        # Furthest point is the one with the highest depth.
+        depths = [nodeid2depth[x] for x in cycle]
+        schwartz = zip(depths, cycle)
+        schwartz.sort()
+        highest_depth, highest_node_id = schwartz[-1]
+
+        # Find the transition.  cycle is a list of [id_3, id_2, id_1,
+        # id_0], where id_0 points to id_1 (etc).
+        transition = None
+        for i in range(len(cycle)-1):
+            next_id, node_id = cycle[i], cycle[i+1]
+            if next_id == highest_node_id:
+                transition = node_id, next_id
+                break
+        assert transition is not None
+        return transition
+
+    def _break_cycle(self, network, bad_transition):
+        node_id, next_id = bad_transition
         
         transitions = network.transitions.copy()
-        for node_id, next_id in bad_transitions:
-            x = transitions.get(node_id, [])
-            assert next_id in x
-            i = x.index(next_id)
-            assert i >= 0
-            x = x[:i] + x[i+1:]
-            transitions[node_id] = x
+        x = transitions.get(node_id, [])
+        assert next_id in x
+        i = x.index(next_id)
+        assert i >= 0
+        x = x[:i] + x[i+1:]
+        transitions[node_id] = x
+        
         return Network(network.nodes, transitions)
+
+
+## class _OptimizeNoCycles_OLD:
+##     # Methods:
+##     # optimize
+##     #
+##     # _find_cycles         Find all the cycles in a network.
+##     # _find_cycles_from_one_node
+##     # _find_cycles_from_all_nodes
+##     # _choose_breakpoints  Given a list of cycles, choose the best breakpoints.
+##     # _break_cycles        Break a list of cycles.
+##     def __init__(self):
+##         pass
+##     def optimize(self, network):
+##         # Do backwards chaining.  If I encounter a cycle, then break it.
+
+##         # Length of cycles:
+##         # 5     168,081   67%
+##         # 7      84,056   33%
+##         # 9-17      318    0%
+
+##         # Optimization.  Since may cycles are short, break the
+##         # 5-cycles first to speed up the search.
+##         cycles = self._find_cycles(network, 5)
+##         bad_transitions = self._choose_breakpoints(network, cycles)
+##         network = self._break_cycles(network, bad_transitions)
+
+##         cycles = self._find_cycles(network, 0)
+##         bad_transitions = self._choose_breakpoints(network, cycles)
+##         network = self._break_cycles(network, bad_transitions)
+
+##         return network
+
+##     def _find_cycles(self, network, max_path_length):
+##         assert max_path_length >= 0
+##         if max_path_length:
+##             cycles = self._find_cycles_from_all_nodes(network, max_path_length)
+##         else:
+##             cycles = self._find_cycles_from_one_node(
+##                 network, 0, max_path_length)
+##         return cycles
+
+##     def _find_cycles_from_one_node(self, network, start_id, max_path_length):
+##         # Do a breadth first search and look for cycles.  Return a
+##         # list of cycles found, where each cycle is a list of
+##         # node_ids.
+
+##         nodeid2previds = _make_backchain_dict(network)
+
+##         cycles = []
+##         # list of (node_id, path (not including node_id))
+##         stack = [(start_id, [])]
+##         while stack:
+##             node_id, path = stack.pop(0)
+##             if max_path_length and len(path) > max_path_length:
+##                 continue
+##             if node_id in path:
+##                 # If this node_id is already in the path, then this is
+##                 # a cycle.
+##                 i = path.index(node_id)
+##                 x = path[i:] + [node_id]
+##                 cycles.append(x)
+##                 continue
+##             path = path + [node_id]
+##             for prev_id in nodeid2previds.get(node_id, []):
+##                 stack.append((prev_id, path))
+##         return cycles
+
+##     def _find_cycles_from_all_nodes(self, network, max_path_length):
+##         cycles = []
+##         for start_id in range(len(network.nodes)):
+##             x = self._find_cycles_from_one_node(
+##                 network, start_id, max_path_length)
+##             cycles.extend(x)
+##         x = [tuple(x) for x in cycles]
+##         cycles = sorted({}.fromkeys(x))
+##         return cycles
+
+##     def _find_depth_of_nodes(self, network):
+##         # Do a breadth-first search to assign the depth of each node.
+##         assert network.nodes
+
+##         # OPTIMIZE: cache this function.
+##         stack = [(0, -1)]  # node_id, prev_depth
+##         nodeid2depth = {}
+##         while stack:
+##             node_id, prev_depth = stack.pop(0)
+##             if node_id in nodeid2depth:
+##                 continue
+##             depth = prev_depth + 1
+##             nodeid2depth[node_id] = depth
+##             for next_id in network.transitions.get(node_id, []):
+##                 stack.append((next_id, depth))
+##         return nodeid2depth
+    
+##     def _choose_breakpoints(self, network, cycles):
+##         # Return list of (node_id, next_id).  Count the number of
+##         # cycles each transition is in.  Break the transitions that
+##         # are in the most cycles.
+
+##         # Break at Module -> Data transitions.  Otherwise, will leave
+##         # both the Data and Module dangling.
+
+##         counts = {}   # (node_id, next_id) -> count
+##         for cycle in cycles:
+##             for i in range(len(cycle)-1):
+##                 next_id, node_id = cycle[i], cycle[i+1]
+##                 key = node_id, next_id
+##                 if key not in counts:
+##                     counts[key] = 0
+##                 counts[key] += 1
+
+##         bad_transitions = {}  # (node_id, next_id) -> 1
+##         for cycle in cycles:
+##             ## Break the cycle at the lowest node_id.
+##             #i = cycle.index(min(cycle))
+##             #assert i < len(cycle)-1
+
+##             # If this cycle is already broken, then ignore it.
+##             broken = False
+##             for i in range(len(cycle)-1):
+##                 next_id, node_id = cycle[i], cycle[i+1]
+##                 key = node_id, next_id
+##                 if key in bad_transitions:
+##                     broken = True
+##             if broken:
+##                 continue
+
+##             # Find the transition with the highest counts.  If there
+##             # are ties, use the key with lowest node_id.
+##             keys = []
+##             for i in range(len(cycle)-1):
+##                 next_id, node_id = cycle[i], cycle[i+1]
+##                 if not isinstance(network.nodes[node_id], Module):
+##                     continue
+##                 x = node_id, next_id
+##                 keys.append(x)
+##             schwartz = [(-counts[x], x) for x in keys]
+##             schwartz.sort()
+##             keys = [x[-1] for x in schwartz]
+##             bad_transitions[keys[0]] = 1
+##         return bad_transitions.keys()
+
+##     def _break_cycles(self, network, bad_transitions):
+##         import copy
+        
+##         transitions = network.transitions.copy()
+##         for node_id, next_id in bad_transitions:
+##             x = transitions.get(node_id, [])
+##             assert next_id in x
+##             i = x.index(next_id)
+##             assert i >= 0
+##             x = x[:i] + x[i+1:]
+##             transitions[node_id] = x
+##         return Network(network.nodes, transitions)
 
 
 class _OptimizeNoDuplicateData:
@@ -609,6 +771,8 @@ class _OptimizeNoDuplicateData:
             duplicates = self.find_duplicate_data(network)
             if not duplicates:
                 break
+            # Will merge high node_id into low node_id, so root node
+            # will never be affected.
             network = network.merge_nodes(duplicates)
         return network
     
@@ -679,6 +843,8 @@ class _OptimizeNoDanglingNodes:
             dangling = self.find_dangling_nodes(network)
             if not dangling:
                 break
+            # Make sure root not is never deleted.
+            assert 0 not in dangling
             network = network.delete_nodes(dangling)
         return network
     def find_dangling_nodes(self, network):
@@ -762,16 +928,19 @@ class _OptimizeNoOverlappingData:
                 node_2 = network.nodes[node_id2]
                 if not isinstance(node_2, Data):
                     continue
-                attr = self._find_overlapping_attribute(node_1, node_2)
+                attr = self._find_overlapping_attribute(
+                    network, node_id1, node_id2)
                 if attr:
                     return node_id1, node_id2, attr
         return None
 
-    def _find_overlapping_attribute(self, data1, data2):
+    def _find_overlapping_attribute(self, network, data_id1, data_id2):
         # Return the name of the single overlapping attribute or None.
         # 
         # data1 and data2 should be exactly the same, except for one
         # attribute with overlapping values.
+        data1 = network.nodes[data_id1]
+        data2 = network.nodes[data_id2]
         assert isinstance(data1, Data)
         assert isinstance(data2, Data)
         if data1.datatype != data2.datatype:
@@ -789,11 +958,11 @@ class _OptimizeNoOverlappingData:
         #   9      ATOM     NOVALUE    Mismatch.
         #  10      ATOM     ANYATOM    Mismatch.
         #  11      ATOM       ATOM     OK if ATOMs are equal.
-        #  12      ATOM       LIST     OVERLAP if ATOM in LIST.
+        #  12      ATOM       LIST     OVERLAP if ATOM in LIST; DATA2 not root.
         #  13      LIST     NOVALUE    Mismatch.
         #  14      LIST     ANYATOM    Mismatch.
-        #  15      LIST       ATOM     OVERLAP if ATOM in LIST.
-        #  16      LIST       LIST     OVERLAP if LISTs have shared ATOMs.
+        #  15      LIST       ATOM     OVERLAP if ATOM in LIST; DATA1 not root.
+        #  16      LIST       LIST     OVERLAP if LISTs share ATOMs; not root.
         data1_attr = data1.attributes
         data2_attr = data2.attributes
 
@@ -817,21 +986,27 @@ class _OptimizeNoOverlappingData:
                 if DATA1_VALUE != DATA2_VALUE:
                     mismatch = True
             elif case == 12:
-                if len(DATA2_VALUE) == 1 and DATA1_VALUE == DATA2_VALUE[0]:
+                if data_id2 == 0:
+                    mismatch = True
+                elif len(DATA2_VALUE) == 1 and DATA1_VALUE == DATA2_VALUE[0]:
                     pass
                 elif DATA1_VALUE in DATA2_VALUE:
                     overlapping.append(key)
                 else:
                     mismatch = True
             elif case == 15:
-                if len(DATA1_VALUE) == 1 and DATA2_VALUE == DATA1_VALUE[0]:
+                if data_id1 == 0:
+                    mismatch = True
+                elif len(DATA1_VALUE) == 1 and DATA2_VALUE == DATA1_VALUE[0]:
                     pass
                 elif DATA2_VALUE in DATA1_VALUE:
                     overlapping.append(key)
                 else:
                     mismatch = True
             elif case == 16:
-                if sorted(DATA1_VALUE) == sorted(DATA2_VALUE):  # OK
+                if data_id1 == 0 or data_id2 == 0:
+                    mismatch = True
+                elif sorted(DATA1_VALUE) == sorted(DATA2_VALUE):  # OK
                     pass
                 elif _intersection(DATA1_VALUE, DATA2_VALUE):
                     overlapping.append(key)
@@ -873,7 +1048,7 @@ class _OptimizeNoOverlappingData:
 
     def _remove_atom_from_list(self, network, data_id1, data_id2, attr_name):
         # Changes network in place.  data1 is a LIST and data2 is an
-        # ATOM.  The values of data2 is in data1.
+        # ATOM.  Remove the ATOM from data1.
 
         data1 = network.nodes[data_id1]
         data2 = network.nodes[data_id2]
@@ -910,8 +1085,9 @@ class _OptimizeNoOverlappingData:
 
     def _remove_list_from_list(self, network, data_id1, data_id2, attr_name):
         # Changes network in place.  data1 and data2 are both a LISTs.
-        # The values of data2 is a subset of data1.
-
+        # The values of data2 is a subset of data1.  Remove all values
+        # of data2 from data1.
+        
         data1 = network.nodes[data_id1]
         data2 = network.nodes[data_id2]
         DATA1_TYPE = _get_attribute_type(data1.attributes, attr_name)
@@ -995,11 +1171,10 @@ class _OptimizeNoOverlappingData:
         # data_id2 point to, if data_id3 is compatible with the
         # module.
         
-        # XXX NOT IMPLEMENTED: MAKE SURE THIS IS A PROPER ANTECEDENT.
         x1 = network.transitions.get(data_id1, [])
         x2 = network.transitions.get(data_id2, [])
-        all_modules = sorted({}.fromkeys(x1+x2))
-        for module_id in all_modules:
+        module_ids = sorted({}.fromkeys(x1+x2))
+        for module_id in module_ids:
             module = network.nodes[module_id]
             if _can_module_take_data(module, [data3]):
                 if data_id3 not in network.transitions:
@@ -1902,6 +2077,13 @@ def _can_module_produce_data(module, data):
 def _can_converting_module_produce_data(module, data):
     p = _print_nothing
     #p = _print_string
+
+    #attrs = dict(
+    #    format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
+    #    logged='no', preprocess='illumina')
+    #data2 = _make_goal(SignalFile, attrs)
+    #if data == data2:
+    #    p = _print_string
     
     p("Checking if module %s can produce data." % module.name)
 
@@ -2005,13 +2187,14 @@ def _can_nonconverting_module_produce_data(module, data):
     p("Checking if module %s can produce data." % module.name)
 
     x = [x for x in module.ante_datas if x.datatype == data.datatype]
-    assert len(x) == 1
+    assert len(x) == 1, module.name
     ante_data = x[0]
 
     data_attr = data.attributes
     ante_attr = ante_data.attributes
     cons_attr = module.cons_data.attributes
 
+    target_name = _find_target_of_nonconverting_module(module, data)
 
     # CASE  CONS_TYPE  DATA_TYPE   RESULT
     #   1    NOVALUE    NOVALUE    +0.
@@ -2031,24 +2214,23 @@ def _can_nonconverting_module_produce_data(module, data):
     #  15      LIST       ATOM     +1 is ATOM in LIST, otherwise DQ.
     #  16      LIST       LIST     +1 if intersect, otherwise DQ.
     #
-    # *** The +1 only counts if module changes this attribute.
-    # Otherwise, +0.
+    # *** +1 only if this attribute is a target.  Otherwise, +0.
+    
 
     num_attributes = 0
     for key in module.cons_data.datatype.attributes:
-        p("  Evaluating attribute %s." % key)
+        #p("  Evaluating attribute %s." % key)
         DATA_VALUE = data_attr.get(key)
         ANTE_VALUE = ante_attr.get(key)
         CONS_VALUE = cons_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
         ANTE_TYPE = _get_attribute_type(ante_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
-
-        module_changes_value = _does_nonconverting_module_change_attribute(
-            module, data, key)
-
         CASE = _assign_case_by_type(CONS_TYPE, DATA_TYPE)
+
+        is_target = key == target_name
         disqualify = False
+        
         if CASE in [1, 2, 3, 4]:
             assert ANTE_TYPE == TYPE_NOVALUE
         elif CASE in [5, 6, 9, 10, 13]:
@@ -2063,33 +2245,34 @@ def _can_nonconverting_module_produce_data(module, data):
                 if DATA_VALUE == ANTE_VALUE:
                     disqualify = True
                 else:
-                    p("    Attribute is compatible.")
+                    p("    Attribute %s is compatible." % key)
                     num_attributes += 1
             elif ANTE_TYPE == TYPE_LIST:
                 if DATA_VALUE in ANTE_VALUE:
                     disqualify = True
                 else:
-                    p("    Attribute is compatible.")
+                    p("    Attribute %s is compatible." % key)
                     num_attributes += 1
         elif CASE in [8, 14]:
             disqualify = True
         elif CASE == 11:
             if CONS_VALUE == DATA_VALUE:
-                if module_changes_value:
-                    p("    Attribute is compatible [ATOM %s ATOM %s]." % (
-                        CONS_VALUE, DATA_VALUE))
+                if is_target:
+                    p("    Attribute %s is compatible [ATOM %s ATOM %s]." % (
+                        key, CONS_VALUE, DATA_VALUE))
                     num_attributes += 1
             else:
                 disqualify = True
         elif CASE == 12:
             if CONS_VALUE in DATA_VALUE:
-                if module_changes_value:
+                if is_target:
+                    p("    Attribute %s is compatible." % key)
                     num_attributes += 1
             else:
                 disqualify = True
         elif CASE == 15:
             if DATA_VALUE in CONS_VALUE:
-                if module_changes_value:
+                if is_target:
                     p("    Attribute is compatible [LIST %s ATOM %s]." % (
                         str(CONS_VALUE), DATA_VALUE))
                     num_attributes += 1
@@ -2099,8 +2282,8 @@ def _can_nonconverting_module_produce_data(module, data):
             # Module can produce some value that is compatible with
             # DATA.
             if _intersection(CONS_VALUE, DATA_VALUE):
-                if module_changes_value:
-                    p("    Attribute is compatible.")
+                if is_target:
+                    p("    Attribute %s is compatible." % key)
                     num_attributes += 1
             else:
                 disqualify = True
@@ -2108,7 +2291,7 @@ def _can_nonconverting_module_produce_data(module, data):
             raise AssertionError, CASE
                 
         if disqualify:
-            p("    Attribute is disqualified.")
+            p("    Attribute %s is disqualified %d." % (key, CASE))
             num_attributes = 0
             break
 
@@ -2119,9 +2302,91 @@ def _can_nonconverting_module_produce_data(module, data):
     return num_attributes
 
 
+def _find_target_of_nonconverting_module(module, data):
+    # In a nonconverting module, at least one of the attributes must
+    # be changed.  This is called the "target" attribute.
+    # Make a list of all the attributes that are changed.
+
+    x = [x for x in module.ante_datas if x.datatype == data.datatype]
+    assert len(x) == 1, module.name
+    ante_data = x[0]
+
+    ante_attr = ante_data.attributes
+    cons_attr = module.cons_data.attributes
+
+    targets = []
+    for key in module.cons_data.datatype.attributes:
+        changed = _does_nonconverting_module_change_attribute(
+            module, data, key)
+        if not changed:
+            continue
+        targets.append(key)
+    assert len(targets) >= 1, "No target for nonconverting module."
+    if len(targets) == 1:
+        return targets[0]
+    
+    # If there are multiple targets, prioritize them.
+    # CASE  ANTE_TYPE  CONS_TYPE   RESULT
+    #   1    NOVALUE    NOVALUE    ERROR.
+    #   2    NOVALUE    ANYATOM    NotImplemented
+    #   3    NOVALUE      ATOM     50
+    #   4    NOVALUE      LIST     50
+    #   5    ANYATOM    NOVALUE    ERROR.
+    #   6    ANYATOM    ANYATOM    NotImplemented
+    #   7    ANYATOM      ATOM     NotImplemented
+    #   8    ANYATOM      LIST     NotImplemented
+    #   9      ATOM     NOVALUE    ERROR.
+    #  10      ATOM     ANYATOM    NotImplemented
+    #  11      ATOM       ATOM     100   TOP PRIORITY.
+    #  12      ATOM       LIST     NotImplemented
+    #  13      LIST     NOVALUE    ERROR.
+    #  14      LIST     ANYATOM    NotImplemented
+    #  15      LIST       ATOM     NotImplemented
+    #  16      LIST       LIST     NotImplemented
+
+    target2priority = {}
+    for key in targets:
+        ANTE_VALUE = ante_attr.get(key)
+        CONS_VALUE = cons_attr.get(key)
+        ANTE_TYPE = _get_attribute_type(ante_attr, key)
+        CONS_TYPE = _get_attribute_type(cons_attr, key)
+        CASE = _assign_case_by_type(ANTE_TYPE, CONS_TYPE)
+
+        case2priority = {
+            11 : 100,  # logged                 "no" -> "yes"
+            12 : 90,   # missing_values         "unknown" -> ["no", "yes"]
+            3 : 50,    # missing_algorithm      NOVALUE -> "median_fill"
+            4 : 50,    # check_for_missing_val  NOVALUE -> ["median", "zero"]
+            }
+
+        priority = None
+        if CASE in case2priority:
+            priority = case2priority[CASE]
+        elif CASE in [1, 5, 9, 13]:
+            raise AssertionError
+        elif CASE in [2, 6, 7, 8, 10, 14, 15, 16]:
+            x = key, ANTE_VALUE, CONS_VALUE, CASE
+            raise NotImplementedError, " ".join(map(str, x))
+        else:
+            raise AssertionError
+
+        assert priority is not None
+        target2priority[key] = priority
+
+    # Sort from highest to lowest priority.
+    schwartz = [(-target2priority[x], x) for x in targets]
+    schwartz.sort()
+    priorities = [-x[0] for x in schwartz]
+    targets = [x[-1] for x in schwartz]
+    assert len(priorities) >= 2
+    assert priorities[0] > priorities[1], \
+           "Could not prioritize attributes for %s." % module.name
+    return targets[0]
+
+    
 def _does_nonconverting_module_change_attribute(module, data, attr_name):
     x = [x for x in module.ante_datas if x.datatype == data.datatype]
-    assert len(x) == 1
+    assert len(x) == 1, module.name
     ante_data = x[0]
 
     ante_attr = ante_data.attributes
@@ -2668,9 +2933,23 @@ def test_bie():
     #goal_attributes = dict(format='tdf')
     #goal_attributes = dict(
     #    format='tdf', logged='yes', missing_values="no")
+    #goal_attributes = dict(
+    #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
+    #    missing_values="no")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='no', missing_values="no",
+    #    missing_algorithm="median_fill")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='no',
+    #    missing_values="no", missing_algorithm="median_fill")
     goal_attributes = dict(
-        format=['jeffs', 'gct'], preprocess='rma', logged='yes',
+        #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
+        format='gct',
+        preprocess='illumina', logged='no',
         missing_values="no")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    missing_values="no")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    missing_values="no", group_fc="5")
@@ -2802,8 +3081,8 @@ ControlFile = DataType(
         missing_values=["unknown", "no", "yes"],
         DEFAULT="unknown"),
     Attribute(
-        missing_algorithm=["unknown", "median_fill", "zero_fill"],
-        DEFAULT="unknown"),
+        missing_algorithm=["none", "median_fill", "zero_fill"],
+        DEFAULT="none"),
     Attribute(
         logged=["unknown", "no", "yes"],
         DEFAULT="unknown"),
@@ -2851,8 +3130,8 @@ SignalFile = DataType(
         missing_values=["unknown", "no", "yes"],
         DEFAULT="unknown"),
     Attribute(
-        missing_algorithm=["unknown", "median_fill", "zero_fill"],
-        DEFAULT="unknown"),
+        missing_algorithm=["none", "median_fill", "zero_fill"],
+        DEFAULT="none"),
     Attribute(
         logged=["unknown", "no", "yes"],
         DEFAULT="unknown"),
@@ -2969,26 +3248,24 @@ all_modules = [
         ),
     
     # SignalFile
-    #Module(
-    #    'convert_signal_format',
-    #    SignalFile(
-    #        format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls']),
-    #    SignalFile(format=['tdf', 'pcl', 'gct'])),
     Module(
-        "convert_signal_to_tdf",
-        SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        SignalFile(format='tdf')),
-    Module(   # Causes cycles.
-        "convert_signal_to_pcl",
-        SignalFile(format=['tdf', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        SignalFile(format='pcl')),
-    Module(   # Causes cycles.
-        'convert_signal_to_gct',
-        SignalFile(format=['tdf', 'res', 'pcl', 'jeffs', 'unknown', 'xls']),
-        SignalFile(format='gct')),
+        'convert_signal_format',
+        SignalFile(
+            format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls']),
+        SignalFile(format=['tdf', 'pcl', 'gct'])),
+    #Module(
+    #    "convert_signal_to_tdf",
+    #    SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
+    #    SignalFile(format='tdf')),
+    #Module(   # Causes cycles.
+    #    "convert_signal_to_pcl",
+    #    SignalFile(format=['tdf', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
+    #    SignalFile(format='pcl')),
+    #Module(   # Causes cycles.
+    #    'convert_signal_to_gct',
+    #    SignalFile(format=['tdf', 'res', 'pcl', 'jeffs', 'unknown', 'xls']),
+    #    SignalFile(format='gct')),
 
-    # XXX THE PURPOSE OF THIS MODULE IS NOT TO CONVERT FORMAT, BUT TO
-    # SET THE LOGGED VALUE.  HARD TO TELL FROM THE ATTRIBUTES.
     QueryModule(
         "check_for_log",
         SignalFile(format=["tdf", "pcl", "gct"], logged='unknown'),
@@ -3003,7 +3280,8 @@ all_modules = [
         SignalFile(format="tdf", logged="no")),
     Module(
         "fill_missing_with_median",
-        SignalFile(format="tdf", logged="yes", missing_values="yes"),
+        SignalFile(
+            format="tdf", logged="yes", missing_values="yes"),
         SignalFile(
             format="tdf", logged="yes", missing_algorithm="median_fill",
             missing_values="no")),
@@ -3015,12 +3293,8 @@ all_modules = [
             missing_values="no")),
     QueryModule(
         "check_for_missing_values",
-        SignalFile(
-            format="tdf", missing_algorithm="unknown",
-            missing_values="unknown"),
-        SignalFile(
-            format="tdf", missing_algorithm=["zero_fill", "median_fill"],
-            missing_values=["no", "yes"])),
+        SignalFile(format="tdf", missing_values="unknown"),
+        SignalFile(format="tdf", missing_values=["no", "yes"])),
     Module(
         "filter_genes_by_missing_values",
         SignalFile(
@@ -3029,8 +3303,8 @@ all_modules = [
             format='tdf', logged="yes", missing_values="yes", filter=ANYATOM)),
     Module(
         "filter_and_threshold_genes",
-        SignalFile(format="tdf", logged=["unknown","no"], predataset="no"),
-        SignalFile(format="tdf", logged=["unknown","no"], predataset="yes")),
+        SignalFile(format="tdf", logged=["unknown", "no"], predataset="no"),
+        SignalFile(format="tdf", logged=["unknown", "no"], predataset="yes")),
     Module(   # require a rename_list_file
         "relabel_samples",
         SignalFile(format='tdf', rename_sample="no"),
