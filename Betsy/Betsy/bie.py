@@ -85,13 +85,13 @@ Network
 # ANYATOM   Value can be any string.  Used for parameters like the
 #           number of genes to filter out of a list, which can be any
 #           number.  Any string can match ATOM.
-# LIST      e.g. ["mean", "median"], ["logged", "not_logged"]
+# ENUM      e.g. ["mean", "median"], ["logged", "not_logged"]
 #
 # Module Node: Antecedent
 # NOVALUE   This attribute is not relevant for the module.
 # ATOM      The module requires a specific value.
 # ANYATOM   UNDEFINED.  When is this used?
-# LIST      The module can take any of these values.
+# ENUM      The module can take any of these values.
 #           E.g. filter_missing_with_zeros    missing=["yes", "unknown"]
 # 
 # Module Node: Consequent
@@ -100,8 +100,8 @@ Network
 # ATOM      The module generates a specific value.
 # ANYATOM   The module can generate any value to fit the requirements of
 #           the next Data node.
-# LIST      There are three possibilities here:
-#           1.  The module doesn't change this value.  i.e. the LIST
+# ENUM      There are three possibilities here:
+#           1.  The module doesn't change this value.  i.e. the ENUM
 #               is exactly the same in the antecedent.
 #               e.g. missing_values=["no", "zero_fill", "median_fill"])
 #               in both the antecedent and consequent.
@@ -115,17 +115,29 @@ Network
 #               of the data.
 #
 # Data Node
-# NOVALUE   UNDEFINED.
+# NOVALUE   ERROR.  There must be a value.
 # ATOM      A specific value.
-# ANYATOM   UNDEFINED.  Is this needed?
-# LIST      The actual value can be any one of these options.
+# ANYATOM   NOT IMPLEMENTED.  What does this mean?
+# ENUM      The actual value can be any one of these options.
+#
+#
+# An attribute can be OPTIONAL.
+# Consequent, non-converting module.   Ignore attribute.
+# Consequent, converting module.       If given in Data, must match.
+# 
+# Example:
+# missing_algorithm="zero_fill"
+# 
+# The important attribute is whether there are missing values or not.
+# The missing_algorithm attribute only provides informational details
+# about how the algorithm works.
+# Maybe better name is to call it INFORMATIONAL?
+
 
 
 NOVALUE = "___BETSY_NOVALUE___"
 ANYATOM = "___BETSY_ANYATOM___"
-
-TYPE_ATOM, TYPE_LIST, TYPE_ANYATOM, TYPE_NOVALUE = range(4)
-#LIST_SPECIFIES_ALTERNATES, LIST_SPECIFIES_RESPONSES = range(2)
+TYPE_NOVALUE, TYPE_ATOM, TYPE_ANYATOM, TYPE_ENUM = range(4)
 
 
 class Attribute:
@@ -133,9 +145,10 @@ class Attribute:
         # keywds is a dictionary of:
         # <attribute name>  :  value
         # DEFAULT           :  default value
+        # OPTIONAL          :  optional value
         name = None
         for x in keywds:
-            if x in ["REQUIRED", "DEFAULT"]:
+            if x in ["REQUIRED", "DEFAULT", "OPTIONAL"]:
                 continue
             assert name is None
             name = x
@@ -144,13 +157,13 @@ class Attribute:
         assert "DEFAULT" in keywds, "No default value given."
         attr_type = _get_attribute_type(keywds, name)
         attr_value = keywds[name]
-        assert attr_type in [TYPE_ANYATOM, TYPE_LIST], name
+        assert attr_type in [TYPE_ANYATOM, TYPE_ENUM], name
         
         def_type = _get_attribute_type(keywds, "DEFAULT")
         def_value = keywds["DEFAULT"]
-        assert def_type in [TYPE_LIST, TYPE_ATOM, TYPE_ANYATOM]
+        assert def_type in [TYPE_ENUM, TYPE_ATOM, TYPE_ANYATOM]
         
-        if attr_type == TYPE_LIST:
+        if attr_type == TYPE_ENUM:
             if def_type == TYPE_ATOM:
                 assert def_value in attr_value, \
                        "DEFAULT [%s] not found in values: %s." % (
@@ -164,11 +177,17 @@ class Attribute:
         self.values = keywds[name]
         self.REQUIRED = bool(keywds.get("REQUIRED"))
         self.DEFAULT = keywds["DEFAULT"]
+        self.OPTIONAL = bool(keywds.get("OPTIONAL"))
+        if self.REQUIRED:
+            raise NotImplementedError
     def __cmp__(self, other):
         if not isinstance(other, Attribute):
             return cmp(id(self), id(other))
-        x1 = [self.name, self.values, self.REQUIRED, self.DEFAULT]
-        x2 = [other.name, other.values, other.REQUIRED, other.DEFAULT]
+        x1 = [
+            self.name, self.values, self.REQUIRED, self.DEFAULT, self.OPTIONAL]
+        x2 = [
+            other.name, other.values, other.REQUIRED, other.DEFAULT,
+            self.OPTIONAL]
         return cmp(x1, x2)
         
 
@@ -201,12 +220,17 @@ class DataType:
         for attr in self.attribute_objects:
             defaults[attr.name] = attr.DEFAULT
         return defaults
+    def get_attribute_object(self, name):
+        for attr in self.attribute_objects:
+            if attr.name == name:
+                return attr
+        raise KeyError, "No attribute object: %s." % key
     def __call__(self, **attributes):
         # Create a Data object.
         for key in attributes:
             assert key in self.attributes, "Unknown attribute for %s: %s" % (
                 self.name, key)
-        return Data(self, attributes)
+        return Data(self, **attributes)
 
 
 class Data:
@@ -214,7 +238,7 @@ class Data:
     # datatype     Datatype object.
     # attributes   Dict of attribute name -> value.
 
-    def __init__(self, datatype, attributes):
+    def __init__(self, datatype, **attributes):
         # Make sure the attributes of this Data object match the
         # attributes of the DataType.
         # 
@@ -222,19 +246,19 @@ class Data:
         #   1    NOVALUE     NOVALUE      ERROR.  DATA can't be NOVALUE.
         #   2    NOVALUE     ANYATOM      ERROR.  
         #   3    NOVALUE       ATOM       ERROR.
-        #   4    NOVALUE       LIST       ERROR.
+        #   4    NOVALUE       ENUM       ERROR.
         #   5    ANYATOM     NOVALUE      ERROR.
         #   6    ANYATOM     ANYATOM      OK.
         #   7    ANYATOM       ATOM       OK.
-        #   8    ANYATOM       LIST       TypeMismatch.
+        #   8    ANYATOM       ENUM       TypeMismatch.
         #   9      ATOM      NOVALUE      ERROR.
         #  10      ATOM      ANYATOM      OK.
         #  11      ATOM        ATOM       OK if ATOMs equal.
-        #  12      ATOM        LIST       OK if ATOM in LIST.
-        #  13      LIST      NOVALUE      ERROR.
-        #  14      LIST      ANYATOM      TypeMismatch.
-        #  15      LIST        ATOM       TypeMismatch.
-        #  16      LIST        LIST       OK if DATA LIST is subset.
+        #  12      ATOM        ENUM       OK if ATOM in ENUM.
+        #  13      ENUM      NOVALUE      ERROR.
+        #  14      ENUM      ANYATOM      TypeMismatch.
+        #  15      ENUM        ATOM       TypeMismatch.
+        #  16      ENUM        ENUM       OK if DATA ENUM is subset.
         data_attr = attributes
         dtyp_attr = datatype.attributes
         for key, values in attributes.iteritems():
@@ -264,7 +288,7 @@ class Data:
             else:
                 raise AssertionError, "%s %s" % (DATA_TYPE, DTYP_TYPE)
         self.datatype = datatype
-        self.attributes = attributes.copy()
+        self.attributes = attributes
     def __cmp__(self, other):
         if not isinstance(other, Data):
             return cmp(id(self), id(other))
@@ -287,13 +311,11 @@ class Data:
             ]
         x = [x for x in x if x]
         return "Data(%s)" % ", ".join(x)
-    def copy(self):
-        return Data(self.datatype, self.attributes)
 
 
 class Module:
     # A Module can take one or more antecedents.
-    def __init__(self, name, ante_datas, cons_data, **parameters):
+    def __init__(self, name, ante_datas, cons_data, **keywds):
         import operator
 
         if not operator.isSequenceType(ante_datas):
@@ -305,16 +327,38 @@ class Module:
                 ante_datas[i] = ante_datas[i]()
         if isinstance(cons_data, DataType):
             cons_data = cons_data()
-            
+
+        # Check the keywds dictionary.
+        for x in keywds:
+            #if x == "OPTIONAL":
+            #    continue
+            raise AssertionError, "Unknown keyword: %s" % x
+        ## Get the optional attributes.
+        #x = keywds.get("OPTIONAL", [])
+        #if type(x) is type(""):
+        #    x = [x]
+        #optional = x
+        ## Make sure each of these are attributes in the consequent.
+        #for x in optional:
+        #    assert x in cons_data.attributes, \
+        #           "Attribute %s not given in the consequent for %s." % (
+        #        x, name)
+
+        # Check the format of the antecedents.
+        for ante_data in ante_datas:
+            for key in ante_data.attributes:
+                attr_type = _get_attribute_type(ante_data.attributes, key)
+                assert attr_type != TYPE_ANYATOM, "UNDEFINED."
+
         self.name = name
         self.ante_datas = ante_datas
         self.cons_data = cons_data
-        self.parameters = parameters
+        #self.optional = optional
     def __cmp__(self, other):
         if not isinstance(other, Module):
             return cmp(id(self), id(other))
-        x1 = [self.name, self.ante_datas, self.cons_data, self.parameters]
-        x2 = [other.name, other.ante_datas, other.cons_data, other.parameters]
+        x1 = [self.name, self.ante_datas, self.cons_data]
+        x2 = [other.name, other.ante_datas, other.cons_data]
         return cmp(x1, x2)
     def __str__(self):
         return self.__repr__()
@@ -938,9 +982,10 @@ class _OptimizeNoOverlappingData:
 
     def _find_overlapping_attribute(self, network, data_id1, data_id2):
         # Return the name of the single overlapping attribute or None.
-        # 
         # data1 and data2 should be exactly the same, except for one
-        # attribute with overlapping values.
+        # attribute with overlapping values.  Ignore OPTIONAL
+        # attributes.
+        
         data1 = network.nodes[data_id1]
         data2 = network.nodes[data_id2]
         assert isinstance(data1, Data)
@@ -952,19 +997,19 @@ class _OptimizeNoOverlappingData:
         #   1    NOVALUE    NOVALUE    OK.
         #   2    NOVALUE    ANYATOM    Mismatch.
         #   3    NOVALUE      ATOM     Mismatch.
-        #   4    NOVALUE      LIST     Mismatch.
+        #   4    NOVALUE      ENUM     Mismatch.
         #   5    ANYATOM    NOVALUE    Mismatch.
         #   6    ANYATOM    ANYATOM    OK.
         #   7    ANYATOM      ATOM     Mismatch.
-        #   8    ANYATOM      LIST     Mismatch.
+        #   8    ANYATOM      ENUM     Mismatch.
         #   9      ATOM     NOVALUE    Mismatch.
         #  10      ATOM     ANYATOM    Mismatch.
         #  11      ATOM       ATOM     OK if ATOMs are equal.
-        #  12      ATOM       LIST     OVERLAP if ATOM in LIST; DATA2 not root.
-        #  13      LIST     NOVALUE    Mismatch.
-        #  14      LIST     ANYATOM    Mismatch.
-        #  15      LIST       ATOM     OVERLAP if ATOM in LIST; DATA1 not root.
-        #  16      LIST       LIST     OVERLAP if LISTs share ATOMs; not root.
+        #  12      ATOM       ENUM     OVERLAP if ATOM in ENUM; DATA2 not root.
+        #  13      ENUM     NOVALUE    Mismatch.
+        #  14      ENUM     ANYATOM    Mismatch.
+        #  15      ENUM       ATOM     OVERLAP if ATOM in ENUM; DATA1 not root.
+        #  16      ENUM       ENUM     OVERLAP if ENUMs share ATOMs; not root.
         data1_attr = data1.attributes
         data2_attr = data2.attributes
 
@@ -980,7 +1025,18 @@ class _OptimizeNoOverlappingData:
             DATA2_TYPE = _get_attribute_type(data2_attr, key)
             case = _assign_case_by_type(DATA1_TYPE, DATA2_TYPE)
 
-            if case in [2, 3, 4, 5, 7, 8, 9, 10, 13, 14]:  # Mismatch
+            OPTIONAL = False
+            if key in data1_attr:
+                DATA1_ATTR = data1.datatype.get_attribute_object(key)
+                OPTIONAL = DATA1_ATTR.OPTIONAL
+            elif key in data2_attr:
+                DATA2_ATTR = data2.datatype.get_attribute_object(key)
+                OPTIONAL = DATA1_ATTR.OPTIONAL
+
+            # Ignore optional attributes.
+            if OPTIONAL:
+                pass
+            elif case in [2, 3, 4, 5, 7, 8, 9, 10, 13, 14]:  # Mismatch
                 mismatch = True
             elif case in [1, 6]:  # OK
                 pass
@@ -1032,14 +1088,14 @@ class _OptimizeNoOverlappingData:
         DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
         DATA1_VALUE = data1.attributes[attr_name]
         DATA2_VALUE = data2.attributes[attr_name]
-        if DATA1_TYPE is TYPE_LIST and DATA2_TYPE is TYPE_LIST:
+        if DATA1_TYPE is TYPE_ENUM and DATA2_TYPE is TYPE_ENUM:
             COMMON_VALUES = _intersection(DATA1_VALUE, DATA2_VALUE)
 
         if DATA1_TYPE is TYPE_ATOM:
-            assert DATA2_TYPE is TYPE_LIST
+            assert DATA2_TYPE is TYPE_ENUM
             self._remove_atom_from_list(network, data_id2, data_id1, attr_name)
         elif DATA2_TYPE is TYPE_ATOM:
-            assert DATA1_TYPE is TYPE_LIST
+            assert DATA1_TYPE is TYPE_ENUM
             self._remove_atom_from_list(network, data_id1, data_id2, attr_name)
         elif sorted(DATA1_VALUE) == sorted(COMMON_VALUES):
             self._remove_list_from_list(network, data_id2, data_id1, attr_name)
@@ -1049,7 +1105,7 @@ class _OptimizeNoOverlappingData:
             self._split_list(network, data_id1, data_id2, attr_name)
 
     def _remove_atom_from_list(self, network, data_id1, data_id2, attr_name):
-        # Changes network in place.  data1 is a LIST and data2 is an
+        # Changes network in place.  data1 is a ENUM and data2 is an
         # ATOM.  Remove the ATOM from data1.
 
         data1 = network.nodes[data_id1]
@@ -1058,10 +1114,10 @@ class _OptimizeNoOverlappingData:
         DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
         DATA1_VALUE = data1.attributes[attr_name]
         DATA2_VALUE = data2.attributes[attr_name]
-        assert DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_ATOM
+        assert DATA1_TYPE == TYPE_ENUM and DATA2_TYPE == TYPE_ATOM
         assert DATA2_VALUE in DATA1_VALUE
         
-        # Remove the ATOM from the LIST.
+        # Remove the ATOM from the ENUM.
         DATA1_VALUE = DATA1_VALUE[:]
         i = DATA1_VALUE.index(DATA2_VALUE)
         DATA1_VALUE.pop(i)
@@ -1086,7 +1142,7 @@ class _OptimizeNoOverlappingData:
 
 
     def _remove_list_from_list(self, network, data_id1, data_id2, attr_name):
-        # Changes network in place.  data1 and data2 are both a LISTs.
+        # Changes network in place.  data1 and data2 are both a ENUMs.
         # The values of data2 is a subset of data1.  Remove all values
         # of data2 from data1.
         
@@ -1096,11 +1152,11 @@ class _OptimizeNoOverlappingData:
         DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
         DATA1_VALUE = data1.attributes[attr_name]
         DATA2_VALUE = data2.attributes[attr_name]
-        assert DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_LIST
+        assert DATA1_TYPE == TYPE_ENUM and DATA2_TYPE == TYPE_ENUM
         assert sorted(DATA1_VALUE) != sorted(DATA2_VALUE)
         assert _is_subset(DATA2_VALUE, DATA1_VALUE)
         
-        # Remove the ATOM from the LIST.
+        # Remove the ATOM from the ENUM.
         DATA1_VALUE = DATA1_VALUE[:]
         for value in DATA2_VALUE:
             i = DATA1_VALUE.index(value)
@@ -1126,7 +1182,7 @@ class _OptimizeNoOverlappingData:
 
 
     def _split_list(self, network, data_id1, data_id2, attr_name):
-        # Changes network in place.  data1 and data2 are both a LISTs.
+        # Changes network in place.  data1 and data2 are both a ENUMs.
 
         data1 = network.nodes[data_id1]
         data2 = network.nodes[data_id2]
@@ -1134,12 +1190,12 @@ class _OptimizeNoOverlappingData:
         DATA2_TYPE = _get_attribute_type(data2.attributes, attr_name)
         DATA1_VALUE = data1.attributes[attr_name]
         DATA2_VALUE = data2.attributes[attr_name]
-        assert DATA1_TYPE == TYPE_LIST and DATA2_TYPE == TYPE_LIST
+        assert DATA1_TYPE == TYPE_ENUM and DATA2_TYPE == TYPE_ENUM
         COMMON_VALUE = _intersection(DATA1_VALUE, DATA2_VALUE)
         assert len(COMMON_VALUE) < len(DATA1_VALUE)
         assert len(COMMON_VALUE) < len(DATA2_VALUE)
 
-        # Remove the common values from the two LISTs.
+        # Remove the common values from the two ENUMs.
         DATA1_VALUE = DATA1_VALUE[:]
         DATA2_VALUE = DATA2_VALUE[:]
         for value in COMMON_VALUE:
@@ -1155,8 +1211,9 @@ class _OptimizeNoOverlappingData:
         data2.attributes[attr_name] = DATA2_VALUE
 
         # Make a new Data object that contains the common values.
-        data3 = data1.copy()
-        data3.attributes[attr_name] = COMMON_VALUE
+        attributes = data1.attributes.copy()
+        attributes[attr_name] = COMMON_VALUE
+        data3 = Data(data1.datatype, **attributes)
         network.nodes.append(data3)
         data_id3 = len(network.nodes)-1
             
@@ -1707,10 +1764,6 @@ def optimize_network(network):
         _OptimizeNoDuplicateData(),
         _OptimizeNoOverlappingData(),
         _OptimizeNoInvalidConsequents(),
-
-        # OBSOLETE?
-        #_OptimizeMergeSimilarData(),
-        #_OptimizeNoAmbiguousPaths(),
         ]
 
     old_network = None
@@ -1747,7 +1800,7 @@ def prune_network_by_start(network, start_data):
 
     # Strategy:
     # 1.  Include all nodes that can reach both a start and end node.
-    # 2.  Remove modules that are missing any antecedents.
+    # 2.  Remove modules that have no antecedents.
     # 3.  Repeat steps 1-2 until convergence.
 
     good_ids = {}.fromkeys(range(len(network.nodes)))
@@ -1899,7 +1952,7 @@ def _make_goal(datatype, attributes):
     attrs = {}
     for key in datatype.attributes:
         attrs[key] = attributes.get(key, defaults[key])
-    return Data(datatype, attrs)
+    return Data(datatype, **attrs)
 
 
 def _backchain_to_modules(moduledb, data):
@@ -1944,19 +1997,19 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     #   1    NOVALUE    NOVALUE    DATA_VALUE.  Irrelevant for module.
     #   2    NOVALUE    ANYATOM    Ignore (NOVALUE).
     #   3    NOVALUE      ATOM     Ignore (NOVALUE).
-    #   4    NOVALUE      LIST     Ignore (NOVALUE).
+    #   4    NOVALUE      ENUM     Ignore (NOVALUE).
     #   5    ANYATOM    NOVALUE    NotImplementedError. When does this happen?
     #   6    ANYATOM    ANYATOM    NotImplementedError. When does this happen?
     #   7    ANYATOM      ATOM     NotImplementedError. When does this happen?
-    #   8    ANYATOM      LIST     NotImplementedError. When does this happen?
+    #   8    ANYATOM      ENUM     NotImplementedError. When does this happen?
     #   9      ATOM     NOVALUE    ANTE_VALUE.  cel_version="v3_4"
     #  10      ATOM     ANYATOM    ANTE_VALUE.
     #  11      ATOM       ATOM     ANTE_VALUE.  logged="no"->"yes"
-    #  12      ATOM       LIST     ANTE_VALUE.
-    #  13      LIST     NOVALUE    ANTE_VALUE.
-    #  14      LIST     ANYATOM    ANTE_VALUE.
-    #  15      LIST       ATOM     ANTE_VALUE.
-    #  16      LIST       LIST     DATA_VALUE or ANTE_VALUE (see below).
+    #  12      ATOM       ENUM     ANTE_VALUE.
+    #  13      ENUM     NOVALUE    ANTE_VALUE.
+    #  14      ENUM     ANYATOM    ANTE_VALUE.
+    #  15      ENUM       ATOM     ANTE_VALUE.
+    #  16      ENUM       ENUM     DATA_VALUE or ANTE_VALUE (see below).
     data_attr = data.attributes
     ante_attr = module.ante_datas[ante_num].attributes
     cons_attr = module.cons_data.attributes
@@ -1990,7 +2043,7 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
             #     next Data object.
             # If it's the first case, use DATA_VALUE, otherwise use
             # ANTE_VALUE.
-            assert DATA_TYPE in [TYPE_ATOM, TYPE_LIST]
+            assert DATA_TYPE in [TYPE_ATOM, TYPE_ENUM]
             if DATA_TYPE == TYPE_ATOM:
                 assert DATA_VALUE in CONS_VALUE
             else:
@@ -2012,7 +2065,7 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     # relevant attributes from the goal_attributes.
     datatype = module.ante_datas[ante_num].datatype
     if module.ante_datas[ante_num].datatype == module.cons_data.datatype:
-        data = Data(datatype, attributes)
+        data = Data(datatype, **attributes)
     else:
         attrs = goal_attributes
         attrs.update(attributes)
@@ -2112,24 +2165,25 @@ def _can_converting_module_produce_data(module, data):
     #   1    NOVALUE    NOVALUE    ERROR.
     #   2    NOVALUE    ANYATOM    ERROR.
     #   3    NOVALUE      ATOM     ERROR.
-    #   4    NOVALUE      LIST     ERROR.
+    #   4    NOVALUE      ENUM     ERROR.
     #   5    ANYATOM    NOVALUE    DQ.  Must match now.
     #   6    ANYATOM    ANYATOM    DQ.  Must be provided.
     #   7    ANYATOM      ATOM     +1.
-    #   8    ANYATOM      LIST     DQ.  ANYATOM can't match LIST.
+    #   8    ANYATOM      ENUM     DQ.  ANYATOM can't match ENUM.
     #   9      ATOM     NOVALUE    DQ.  Must match now.
     #  10      ATOM     ANYATOM    +0.  DATA VALUE doesn't matter.
     #  11      ATOM       ATOM     +1 if same, otherwise DQ.
-    #  12      ATOM       LIST     +1 if ATOM in LIST, otherwise DQ.
-    #  13      LIST     NOVALUE    DQ.  Must match now.
-    #  14      LIST     ANYATOM    DQ.  ANYATOM can't match LIST.
-    #  15      LIST       ATOM     +1 is ATOM in LIST, otherwise DQ.
-    #  16      LIST       LIST     +1 if intersect, otherwise DQ.
+    #  12      ATOM       ENUM     +1 if ATOM in ENUM, otherwise DQ.
+    #  13      ENUM     NOVALUE    DQ.  Must match now.
+    #  14      ENUM     ANYATOM    DQ.  ANYATOM can't match ENUM.
+    #  15      ENUM       ATOM     +1 is ATOM in ENUM, otherwise DQ.
+    #  16      ENUM       ENUM     +1 if intersect, otherwise DQ.
 
     num_attributes = 0
     for key in cons_attr:
         p("  Evaluating attribute %s." % key)
-
+        attr_obj = module.cons_data.datatype.get_attribute_object(key)
+    
         DATA_VALUE = data_attr.get(key)
         CONS_VALUE = cons_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
@@ -2137,7 +2191,11 @@ def _can_converting_module_produce_data(module, data):
         CASE = _assign_case_by_type(CONS_TYPE, DATA_TYPE)
 
         disqualify = False
-        if CASE in [1, 2, 3, 4]:
+
+        if attr_obj.OPTIONAL:
+            # Ignore optional attributes.
+            pass
+        elif CASE in [1, 2, 3, 4]:
             raise AssertionError, "Should not have NOVALUES."
         elif CASE == 7:
             num_attributes += 1
@@ -2202,19 +2260,19 @@ def _can_nonconverting_module_produce_data(module, data):
     #   1    NOVALUE    NOVALUE    +0.
     #   2    NOVALUE    ANYATOM    +0.
     #   3    NOVALUE      ATOM     +0.
-    #   4    NOVALUE      LIST     +0.
+    #   4    NOVALUE      ENUM     +0.
     #   5    ANYATOM    NOVALUE    +0.
     #   6    ANYATOM    ANYATOM    +0.
     #   7    ANYATOM      ATOM     +1 if ANTE_VALUE != DATA_VALUE, otherwise DQ
-    #   8    ANYATOM      LIST     DQ.  ANYATOM doesn't match LIST.
+    #   8    ANYATOM      ENUM     DQ.  ANYATOM doesn't match ENUM.
     #   9      ATOM     NOVALUE    +0.
     #  10      ATOM     ANYATOM    +0.  DATA value doesn't matter.
     #  11      ATOM       ATOM     +1 if same, otherwise DQ.
-    #  12      ATOM       LIST     +1 if ATOM in LIST, otherwise DQ.
-    #  13      LIST     NOVALUE    +0.
-    #  14      LIST     ANYATOM    DQ.  ANYATOM doesn't match LIST.
-    #  15      LIST       ATOM     +1 is ATOM in LIST, otherwise DQ.
-    #  16      LIST       LIST     +1 if intersect, otherwise DQ.
+    #  12      ATOM       ENUM     +1 if ATOM in ENUM, otherwise DQ.
+    #  13      ENUM     NOVALUE    +0.
+    #  14      ENUM     ANYATOM    DQ.  ANYATOM doesn't match ENUM.
+    #  15      ENUM       ATOM     +1 is ATOM in ENUM, otherwise DQ.
+    #  16      ENUM       ENUM     +1 if intersect, otherwise DQ.
     #
     # *** +1 only if this attribute is a target.  Otherwise, +0.
     
@@ -2249,7 +2307,7 @@ def _can_nonconverting_module_produce_data(module, data):
                 else:
                     p("    Attribute %s is compatible." % key)
                     num_attributes += 1
-            elif ANTE_TYPE == TYPE_LIST:
+            elif ANTE_TYPE == TYPE_ENUM:
                 if DATA_VALUE in ANTE_VALUE:
                     disqualify = True
                 else:
@@ -2275,7 +2333,7 @@ def _can_nonconverting_module_produce_data(module, data):
         elif CASE == 15:
             if DATA_VALUE in CONS_VALUE:
                 if is_target:
-                    p("    Attribute is compatible [LIST %s ATOM %s]." % (
+                    p("    Attribute is compatible [ENUM %s ATOM %s]." % (
                         str(CONS_VALUE), DATA_VALUE))
                     num_attributes += 1
             else:
@@ -2318,11 +2376,17 @@ def _find_target_of_nonconverting_module(module, data):
 
     targets = []
     for key in module.cons_data.datatype.attributes:
+        # Optional attributes cannot be targets.
+        attr_obj = module.cons_data.datatype.get_attribute_object(key)
+        if attr_obj.OPTIONAL:
+            continue
+        
         changed = _does_nonconverting_module_change_attribute(
             module, data, key)
         if not changed:
             continue
         targets.append(key)
+
     assert len(targets) >= 1, "No target for nonconverting module."
     if len(targets) == 1:
         return targets[0]
@@ -2332,19 +2396,19 @@ def _find_target_of_nonconverting_module(module, data):
     #   1    NOVALUE    NOVALUE    ERROR.
     #   2    NOVALUE    ANYATOM    NotImplemented
     #   3    NOVALUE      ATOM     50
-    #   4    NOVALUE      LIST     50
+    #   4    NOVALUE      ENUM     50
     #   5    ANYATOM    NOVALUE    ERROR.
     #   6    ANYATOM    ANYATOM    NotImplemented
     #   7    ANYATOM      ATOM     NotImplemented
-    #   8    ANYATOM      LIST     NotImplemented
+    #   8    ANYATOM      ENUM     NotImplemented
     #   9      ATOM     NOVALUE    ERROR.
     #  10      ATOM     ANYATOM    NotImplemented
     #  11      ATOM       ATOM     100   TOP PRIORITY.
-    #  12      ATOM       LIST     NotImplemented
-    #  13      LIST     NOVALUE    ERROR.
-    #  14      LIST     ANYATOM    NotImplemented
-    #  15      LIST       ATOM     NotImplemented
-    #  16      LIST       LIST     NotImplemented
+    #  12      ATOM       ENUM     NotImplemented
+    #  13      ENUM     NOVALUE    ERROR.
+    #  14      ENUM     ANYATOM    NotImplemented
+    #  15      ENUM       ATOM     NotImplemented
+    #  16      ENUM       ENUM     NotImplemented
 
     target2priority = {}
     for key in targets:
@@ -2404,19 +2468,19 @@ def _does_nonconverting_module_change_attribute(module, data, attr_name):
     #   1    NOVALUE    NOVALUE    No
     #   2    NOVALUE    ANYATOM    NotImplemented
     #   3    NOVALUE      ATOM     Yes
-    #   4    NOVALUE      LIST     Yes
+    #   4    NOVALUE      ENUM     Yes
     #   5    ANYATOM    NOVALUE    NotImplemented
     #   6    ANYATOM    ANYATOM    NotImplemented
     #   7    ANYATOM      ATOM     NotImplemented
-    #   8    ANYATOM      LIST     NotImplemented
+    #   8    ANYATOM      ENUM     NotImplemented
     #   9      ATOM     NOVALUE    NotImplemented
     #  10      ATOM     ANYATOM    Yes
     #  11      ATOM       ATOM     Yes, if values are different.
-    #  12      ATOM       LIST     Yes
-    #  13      LIST     NOVALUE    NotImplemented
-    #  14      LIST     ANYATOM    NotImplemented
-    #  15      LIST       ATOM     Yes, if ATOM not in LIST.
-    #  16      LIST       LIST     Yes, if lists are different.
+    #  12      ATOM       ENUM     Yes
+    #  13      ENUM     NOVALUE    NotImplemented
+    #  14      ENUM     ANYATOM    NotImplemented
+    #  15      ENUM       ATOM     Yes, if ATOM not in ENUM.
+    #  16      ENUM       ENUM     Yes, if lists are different.
 
     change = False
     if CASE == 1:  # No
@@ -2465,19 +2529,19 @@ def _can_module_take_data(module, datas):
     #   1    NOVALUE    NOVALUE    OK.
     #   2    NOVALUE    ANYATOM    No.
     #   3    NOVALUE      ATOM     No.
-    #   4    NOVALUE      LIST     No.
+    #   4    NOVALUE      ENUM     No.
     #   5    ANYATOM    NOVALUE    OK.
     #   6    ANYATOM    ANYATOM    OK.
     #   7    ANYATOM      ATOM     NotImplementedError.
-    #   8    ANYATOM      LIST     No.
+    #   8    ANYATOM      ENUM     No.
     #   9      ATOM     NOVALUE    OK.
     #  10      ATOM     ANYATOM    NotImplementedError.
     #  11      ATOM       ATOM     OK if ATOMs are the same.
-    #  12      ATOM       LIST     OK if ATOM in LIST.
-    #  13      LIST     NOVALUE    OK.
-    #  14      LIST     ANYATOM    NotImplementedError.
-    #  15      LIST       ATOM     No.
-    #  16      LIST       LIST     OK if DATA LIST is subset of ANTE LIST.
+    #  12      ATOM       ENUM     OK if ATOM in ENUM.
+    #  13      ENUM     NOVALUE    OK.
+    #  14      ENUM     ANYATOM    NotImplementedError.
+    #  15      ENUM       ATOM     No.
+    #  16      ENUM       ENUM     OK if DATA ENUM is subset of ANTE ENUM.
 
     compatible = True
     all_attr = {}.fromkeys(data_attr.keys() + ante_attr.keys())
@@ -2550,19 +2614,19 @@ def _find_data_node(nodes, node):
     #   1    NOVALUE    NOVALUE    OK.
     #   2    NOVALUE    ANYATOM    No.
     #   3    NOVALUE      ATOM     No.
-    #   4    NOVALUE      LIST     No.
+    #   4    NOVALUE      ENUM     No.
     #   5    ANYATOM    NOVALUE    No.
     #   6    ANYATOM    ANYATOM    OK.
     #   7    ANYATOM      ATOM     No.
-    #   8    ANYATOM      LIST     No.
+    #   8    ANYATOM      ENUM     No.
     #   9      ATOM     NOVALUE    No.
     #  10      ATOM     ANYATOM    No.
     #  11      ATOM       ATOM     OK if ATOM equal.
-    #  12      ATOM       LIST     No.
-    #  13      LIST     NOVALUE    No.
-    #  14      LIST     ANYATOM    No.
-    #  15      LIST       ATOM     No.
-    #  16      LIST       LIST     OK if LIST equal.
+    #  12      ATOM       ENUM     No.
+    #  13      ENUM     NOVALUE    No.
+    #  14      ENUM     ANYATOM    No.
+    #  15      ENUM       ATOM     No.
+    #  16      ENUM       ENUM     OK if ENUM equal.
     
     for i, n in enumerate(nodes):
         if not isinstance(n, Data):
@@ -2595,7 +2659,7 @@ def _find_data_node(nodes, node):
                 if N1_VALUE == N2_VALUE:
                     attr_equal = True
             # Case 16.
-            elif N1_TYPE == TYPE_LIST and N2_TYPE == TYPE_LIST:
+            elif N1_TYPE == TYPE_ENUM and N2_TYPE == TYPE_ENUM:
                 if sorted(N1_VALUE) == sorted(N2_VALUE):
                     attr_equal = True
             if not attr_equal:
@@ -2626,25 +2690,25 @@ def _is_compatible_with_start(data, start_data):
     # NOVALUE   Use default value.
     # ATOM      Must match a specific value.
     # ANYATOM   Can match any value.
-    # LIST      UNDEFINED.
+    # ENUM      UNDEFINED.
     # 
     # CASE START_TYPE  DATA_TYPE   RESULT
     #   1    NOVALUE    NOVALUE    ERROR.  START should have default values.
     #   2    NOVALUE    ANYATOM    ERROR.  START should have default values.
     #   3    NOVALUE      ATOM     ERROR.  START should have default values.
-    #   4    NOVALUE      LIST     ERROR.  START should have default values.
+    #   4    NOVALUE      ENUM     ERROR.  START should have default values.
     #   5    ANYATOM    NOVALUE    No.
     #   6    ANYATOM    ANYATOM    OK.
     #   7    ANYATOM      ATOM     OK.
-    #   8    ANYATOM      LIST     No.
+    #   8    ANYATOM      ENUM     No.
     #   9      ATOM     NOVALUE    No.
     #  10      ATOM     ANYATOM    OK.
     #  11      ATOM       ATOM     Check if items are equal.
-    #  12      ATOM       LIST     Check if ATOM in LIST.
-    #  13      LIST     NOVALUE    NotImplementedError.
-    #  14      LIST     ANYATOM    NotImplementedError.
-    #  15      LIST       ATOM     NotImplementedError.
-    #  16      LIST       LIST     NotImplementedError.
+    #  12      ATOM       ENUM     Check if ATOM in ENUM.
+    #  13      ENUM     NOVALUE    NotImplementedError.
+    #  14      ENUM     ANYATOM    NotImplementedError.
+    #  15      ENUM       ATOM     NotImplementedError.
+    #  16      ENUM       ENUM     NotImplementedError.
 
     data_attr = data.attributes
     strt_attr = start_data.attributes
@@ -2691,7 +2755,7 @@ def _is_compatible_with_internal(data, internal_data):
 
     # Internal data.
     # ATOM      Must match a specific value.
-    # LIST      UNDEFINED.
+    # ENUM      UNDEFINED.
     # ANYATOM   UNDEFINED.
     # NOVALUE   User doesn't care.
     # 
@@ -2699,19 +2763,19 @@ def _is_compatible_with_internal(data, internal_data):
     #   1    NOVALUE    NOVALUE    OK.
     #   2    NOVALUE    ANYATOM    OK.
     #   3    NOVALUE      ATOM     OK.
-    #   4    NOVALUE      LIST     OK.
+    #   4    NOVALUE      ENUM     OK.
     #   5    ANYATOM    NOVALUE    NotImplementedError.
     #   6    ANYATOM    ANYATOM    NotImplementedError.
     #   7    ANYATOM      ATOM     NotImplementedError.
-    #   8    ANYATOM      LIST     NotImplementedError.
+    #   8    ANYATOM      ENUM     NotImplementedError.
     #   9      ATOM     NOVALUE    No.
     #  10      ATOM     ANYATOM    OK.
     #  11      ATOM       ATOM     Check if items are equal.
-    #  12      ATOM       LIST     No.  Actual value is unknown.
-    #  13      LIST     NOVALUE    NotImplementedError.
-    #  14      LIST     ANYATOM    NotImplementedError.
-    #  15      LIST       ATOM     NotImplementedError.
-    #  16      LIST       LIST     NotImplementedError.
+    #  12      ATOM       ENUM     No.  Actual value is unknown.
+    #  13      ENUM     NOVALUE    NotImplementedError.
+    #  14      ENUM     ANYATOM    NotImplementedError.
+    #  15      ENUM       ATOM     NotImplementedError.
+    #  16      ENUM       ENUM     NotImplementedError.
 
     data_attr = data.attributes
     intl_attr = internal_data.attributes
@@ -2743,19 +2807,19 @@ def _assign_case_by_type(type1, type2):
         (TYPE_NOVALUE, TYPE_NOVALUE),
         (TYPE_NOVALUE, TYPE_ANYATOM),
         (TYPE_NOVALUE, TYPE_ATOM),
-        (TYPE_NOVALUE, TYPE_LIST),
+        (TYPE_NOVALUE, TYPE_ENUM),
         (TYPE_ANYATOM, TYPE_NOVALUE),
         (TYPE_ANYATOM, TYPE_ANYATOM),
         (TYPE_ANYATOM, TYPE_ATOM),
-        (TYPE_ANYATOM, TYPE_LIST),
+        (TYPE_ANYATOM, TYPE_ENUM),
         (TYPE_ATOM, TYPE_NOVALUE),
         (TYPE_ATOM, TYPE_ANYATOM),
         (TYPE_ATOM, TYPE_ATOM),
-        (TYPE_ATOM, TYPE_LIST),
-        (TYPE_LIST, TYPE_NOVALUE),
-        (TYPE_LIST, TYPE_ANYATOM),
-        (TYPE_LIST, TYPE_ATOM),
-        (TYPE_LIST, TYPE_LIST),
+        (TYPE_ATOM, TYPE_ENUM),
+        (TYPE_ENUM, TYPE_NOVALUE),
+        (TYPE_ENUM, TYPE_ANYATOM),
+        (TYPE_ENUM, TYPE_ATOM),
+        (TYPE_ENUM, TYPE_ENUM),
         ]
     x = (type1, type2)
     assert x in types, "Unknown types: %s %s" % (type1, type2)
@@ -2775,7 +2839,7 @@ def _get_attribute_type(attributes, name):
     elif type(x) is type(""):
         return TYPE_ATOM
     elif operator.isSequenceType(x):
-        return TYPE_LIST
+        return TYPE_ENUM
     raise AssertionError, "Unknown attribute type: %s" % str(x)
 
 
@@ -2907,7 +2971,7 @@ def test_bie():
     #x = SignalFile(
     #    format="unknown", group_fc=ANYATOM, logged="unknown",
     #    missing_values="unknown", preprocess="unknown")
-    x = SignalFile(preprocess="illumina")
+    #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
     in_data = SignalFile(logged="yes", preprocess="rma")
@@ -2937,10 +3001,10 @@ def test_bie():
     #    format='tdf', logged='yes', missing_values="no")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
-    #    missing_values="no")
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='no', missing_values="no",
-    #    missing_algorithm="median_fill")
+    #    missing_values="no", missing_algorithm="median_fill")
+    goal_attributes = dict(
+        format='tdf', preprocess='illumina', logged='no', missing_values="no",
+        missing_algorithm="median_fill")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='no',
     #    missing_values="no", missing_algorithm="median_fill")
@@ -2949,9 +3013,9 @@ def test_bie():
     #    format='gct',
     #    preprocess='illumina', logged='no',
     #    missing_values="no")
-    goal_attributes = dict(
-        format='tdf', preprocess='illumina', logged='yes',
-        missing_values="no", quantile_norm="yes", combat_norm="yes")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    missing_values="no", quantile_norm="yes", combat_norm="yes")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='yes',
     #    missing_values="no", group_fc="5")
@@ -3084,7 +3148,7 @@ ControlFile = DataType(
         DEFAULT="unknown"),
     Attribute(
         missing_algorithm=["none", "median_fill", "zero_fill"],
-        DEFAULT="none"),
+        DEFAULT="none", OPTIONAL=True),
     Attribute(
         logged=["unknown", "no", "yes"],
         DEFAULT="unknown"),
@@ -3096,8 +3160,8 @@ ExpressionFiles = DataType("ExpressionFiles")
 GPRFiles = DataType("GPRFiles")
 GEOSeries = DataType(
     "GEOSeries",
-    Attribute(GSEID=ANYATOM, DEFAULT="", REQUIRED=True),
-    Attribute(GPLID=ANYATOM, DEFAULT=""),
+    Attribute(GSEID=ANYATOM, DEFAULT="none"),
+    Attribute(GPLID=ANYATOM, DEFAULT="none"),
     )
 IDATFiles = DataType("IDATFiles")
 ClassLabelFile = DataType("ClassLabelFile")
@@ -3133,7 +3197,7 @@ SignalFile = DataType(
         DEFAULT="unknown"),
     Attribute(
         missing_algorithm=["none", "median_fill", "zero_fill"],
-        DEFAULT="none"),
+        DEFAULT="none", OPTIONAL=True),
     Attribute(
         logged=["unknown", "no", "yes"],
         DEFAULT="unknown"),
@@ -3283,13 +3347,16 @@ all_modules = [
     Module(
         "fill_missing_with_median",
         SignalFile(
-            format="tdf", logged="yes", missing_values="yes"),
+            format="tdf", logged="yes", missing_algorithm="median_fill",
+            missing_values="yes"),
         SignalFile(
             format="tdf", logged="yes", missing_algorithm="median_fill",
             missing_values="no")),
     Module(
         "fill_missing_with_zeros",
-        SignalFile(format="tdf", logged="yes", missing_values="yes"),
+        SignalFile(
+            format="tdf", logged="yes", missing_algorithm="zero_fill",
+            missing_values="yes"),
         SignalFile(
             format="tdf", logged="yes", missing_algorithm="zero_fill",
             missing_values="no")),
