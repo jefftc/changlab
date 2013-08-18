@@ -16,6 +16,7 @@ backchain
 optimize_network
 prune_network_by_start
 prune_network_by_internal
+prune_network_by_shortest_path
 
 summarize_moduledb
 print_modules
@@ -63,6 +64,7 @@ Network
 #
 # _find_data_node
 # _find_module_node
+# _find_start_nodes
 # _is_compatible_with_start
 # _is_compatible_with_internal
 # _assign_case_by_type
@@ -1792,31 +1794,13 @@ def optimize_network(network):
 def prune_network_by_start(network, start_data):
     # start_data may be a single Data object or a list of Data
     # objects.  DataTypes are also allowed in lieu of Data objects.
-    import operator
 
-    start_datas = start_data
-    if not operator.isSequenceType(start_data):
-        start_datas = [start_data]
-    for i, x in enumerate(start_datas):
-        if isinstance(x, DataType):
-            x = x()  # convert to Data
-        assert isinstance(x, Data)
-        start_datas[i] = x
-    
-    # Look for the nodes that are compatible with start_data.
-    node_ids = []  # list of node_ids.
-    for node_id, next_ids in network.iterate(node_class=Data):
-        # See if this node is compatible with any of the start nodes.
-        x = [x for x in start_datas
-             if _is_compatible_with_start(network.nodes[node_id], x)]
-        if x:
-            node_ids.append(node_id)
 
     # Strategy:
     # 1.  Include all nodes that can reach both a start and end node.
     # 2.  Remove modules that have no antecedents.
     # 3.  Repeat steps 1-2 until convergence.
-
+    start_ids = _find_start_nodes(network, start_data)
     good_ids = {}.fromkeys(range(len(network.nodes)))
 
     while good_ids:
@@ -1830,7 +1814,7 @@ def prune_network_by_start(network, start_data):
             if 0 not in good_by_fc:
                 delete_ids[node_id] = 1
             # If it can't reach any starts, then delete it.
-            x = [x for x in node_ids if x in good_by_bc]
+            x = [x for x in start_ids if x in good_by_bc]
             if not x:
                 delete_ids[node_id] = 1
             
@@ -1903,6 +1887,57 @@ def prune_network_by_internal(network, internal_data):
     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
     network = network.delete_nodes(bad_ids)
     return network
+
+
+## def _find_shortest_path(network, start_node_id, end_node_id):
+##     # Return list of node IDs or None.
+
+##     # Do a breadth-first search.
+##     found_paths = []
+##     stack = []   # list of paths.  Each path is a list of node_ids.
+##     stack.append([start_node_id])
+##     while stack:
+##         path = stack.pop(0)
+##         assert len(path)
+##         if path[-1] == end_node_id:
+##             found_paths.append(path)
+##             continue
+##         for next_node_id in network.transitions.get(path[-1], []):
+##             stack.append((path + [next_node_id]))
+##     print found_paths
+##     import sys; sys.exit(0)
+
+
+## def prune_network_by_shortest_path(network, start_data):
+##     # start_data may be a single Data object or a list of Data
+##     # objects.  DataTypes are also allowed in lieu of Data objects.
+
+##     # Strategy:
+##     # For each of the start nodes, find the shortest path to the end
+##     # node (node 0).  Delete all nodes that are not on the shortest
+##     # path.
+
+##     start_ids = _find_start_nodes(network, start_data)
+
+##     # For each of the 
+##     # 1.  Include all nodes that can reach both a start and end node.
+##     # 2.  Remove modules that have no antecedents.
+##     # 3.  Repeat steps 1-2 until convergence.
+
+
+##     all_paths = []
+##     for start_id in start_ids:
+##         path = _find_shortest_path(network, start_id, 0)
+##         if path:
+##             all_paths.append(path)
+
+##     print all_paths
+##     import sys; sys.exit(0)
+        
+##     # Delete all the IDs that aren't in good_ids.
+##     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
+##     network = network.delete_nodes(bad_ids)
+##     return network
 
 
 def summarize_moduledb(moduledb):
@@ -2694,6 +2729,30 @@ def _find_module_node(nodes, node):
     return -1
 
 
+def _find_start_nodes(network, start_data):
+    import operator
+
+    start_datas = start_data
+    if not operator.isSequenceType(start_data):
+        start_datas = [start_data]
+    for i, x in enumerate(start_datas):
+        if isinstance(x, DataType):
+            x = x()  # convert to Data
+        assert isinstance(x, Data)
+        start_datas[i] = x
+    
+    # Look for the nodes that are compatible with start_data.
+    node_ids = []  # list of node_ids.
+    for node_id, next_ids in network.iterate(node_class=Data):
+        # See if this node is compatible with any of the start nodes.
+        x = [x for x in start_datas
+             if _is_compatible_with_start(network.nodes[node_id], x)]
+        if x:
+            node_ids.append(node_id)
+
+    return node_ids
+
+
 def _is_compatible_with_start(data, start_data):
     # data is a Data node in the network.  start_data is the Data that
     # the user wants to start on.
@@ -2980,7 +3039,7 @@ def _pretty_attributes(attributes):
 
 
 def test_bie():
-    print_modules(all_modules); return
+    #print_modules(all_modules); return
 
     #x = SignalFile(
     #    format="unknown", group_fc=ANYATOM, logged="unknown",
