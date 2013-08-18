@@ -189,6 +189,10 @@ class Attribute:
             other.name, other.values, other.REQUIRED, other.DEFAULT,
             self.OPTIONAL]
         return cmp(x1, x2)
+    def __hash__(self):
+        x = self.name, tuple(self.values), \
+            self.REQUIRED, self.DEFAULT, self.OPTIONAL
+        return hash(x)
         
 
 class DataType:
@@ -208,6 +212,16 @@ class DataType:
         x1 = [self.name, self.attribute_objects, self.attributes]
         x2 = [other.name, other.attribute_objects, other.attributes]
         return cmp(x1, x2)
+    def __hash__(self):
+        attributes_h = []  # make hashable version of self.attributes
+        for key in sorted(self.attributes):
+            value = self.attributes[key]
+            if type(value) is type([]):
+                value = tuple(value)
+            attributes_h.append((key, value))
+        attributes_h = tuple(attributes_h)
+        x = self.name, tuple(self.attribute_objects), attributes_h
+        return hash(x)
     def get_required(self):
         # Return a list of the name of the required attributes.
         x = [x for x in self.attribute_objects if x.REQUIRED]
@@ -2966,7 +2980,7 @@ def _pretty_attributes(attributes):
 
 
 def test_bie():
-    #print_modules(all_modules); return
+    print_modules(all_modules); return
 
     #x = SignalFile(
     #    format="unknown", group_fc=ANYATOM, logged="unknown",
@@ -2974,8 +2988,9 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    in_data = SignalFile(logged="yes", preprocess="rma")
+    #in_data = SignalFile(logged="yes", preprocess="rma")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
+    in_data = [SignalFile(logged="yes", preprocess="rma"), ClassLabelFile]
 
     #print _make_goal(SignalFile, x)
     #return
@@ -3002,12 +3017,12 @@ def test_bie():
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
-    goal_attributes = dict(
-        format='tdf', preprocess='illumina', logged='no', missing_values="no",
-        missing_algorithm="median_fill")
     #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='no',
-    #    missing_values="no", missing_algorithm="median_fill")
+    #    format='tdf', preprocess='illumina', logged='no', missing_values="no",
+    #    missing_algorithm="median_fill")
+    goal_attributes = dict(
+        format='tdf', preprocess='rma', logged='yes',
+        missing_values="no", quantile_norm="yes", group_fc="2")
     #goal_attributes = dict(
     #    #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
     #    format='gct',
@@ -3067,7 +3082,7 @@ def test_bie():
     
     network = backchain(all_modules, goal_datatype, goal_attributes)
     network = optimize_network(network)
-    #network = prune_network_by_start(network, in_data)
+    network = prune_network_by_start(network, in_data)
     #network = prune_network_by_internal(
     #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
     #network = prune_network_by_internal(
