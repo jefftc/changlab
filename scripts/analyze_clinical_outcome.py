@@ -161,7 +161,7 @@ def read_geneset_scores(filename):
     row_names['geneset'] = []
     data = []
     for line in matrix[2:]:
-        single_data = [float(i) for i in line[1:]]
+        single_data = [jmath.safe_float(i) for i in line[1:]]
         data.append(single_data)
         row_names['geneset'].append(line[0])
     M = Matrix.InMemoryMatrix(data, row_names=row_names, col_names=col_names)
@@ -285,6 +285,12 @@ def get_gene_name(MATRIX, gene_i):
         return probe_id
     if gene_symbol:
         return gene_symbol
+
+    # Use the gene set name.
+    if len(MATRIX.row_names()) == 1:
+        x = MATRIX.row_names()[0]
+        return MATRIX.row_names(x)[gene_i]
+    
     # Just return the index of the gene
     return "Gene %04d" % gene_i
 
@@ -931,7 +937,13 @@ def main():
     # annotations.
     outcomes = [(x1, x2) for (x1, x2) in outcomes
                 if x1 in clinical_annots and x2 in clinical_annots]
-    assert outcomes, "No clinical annotations found."
+    msg = "No clinical annotations found."
+    if filestem:
+        fs = filestem
+        if fs.endswith("."):
+            fs = fs[:-1]
+        msg = msg + " (%s)" % fs
+    assert outcomes, msg
     #for x1, x2 in outcomes:
     #    assert x1 in clinical_annots, "Missing clinical annotation: %s" % x1
     #    assert x2 in clinical_annots, "Missing clinical annotation: %s" % x2
@@ -990,6 +1002,8 @@ def main():
     header = M.row_names() + [
         "Outcome", "Groups", "Num Samples", "Average Expression",
         "90% Survival", "50% Survival", "Relationship", "p-value"]
+    if filestem:
+        header = ["Data Set"] + header
     print >>outhandle, "\t".join(header)
 
     # Write out each row of the table.
@@ -1016,6 +1030,11 @@ def main():
         x = gene_names + [
             outcome, _fmt(group_names), _fmt(num_samples), _fmt(mean_score),
             _fmt(surv90), _fmt(surv50), relationship, p_value]
+        if filestem:
+            fs = filestem
+            if fs.endswith("."):
+                fs = fs[:-1]
+            x = [fs] + x
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))
 
