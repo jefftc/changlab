@@ -2571,11 +2571,14 @@ def test_bie():
     #x = SignalFile(
     #    format="unknown", group_fc=ANYATOM, logged="unknown",
     #    missing_values="unknown", preprocess="unknown")
-    x = SignalFile(preprocess="illumina")
+    #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    in_data = [SignalFile(logged="yes", preprocess="rma"),ClassLabelFile]
-    #x = dict(preprocess="rma", missing_values="no", format="jeffs")
+    
+    in_data = [SignalFile(contents='train0',logged="yes", preprocess="rma"),
+               SignalFile(contents='train1',logged="yes", preprocess="rma"),
+               SignalFile(contents='test',logged="yes", preprocess="rma")]
+    #in_data = SignalFile(preprocess="rma", format="jeffs")
 
     #print _make_goal(SignalFile, x)
     #return
@@ -2595,16 +2598,75 @@ def test_bie():
     #    ill_custom_manifest='',
     #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
     
-    goal_datatype = SignalFile2
-    #goal_attributes = dict(format='tdf', logged='yes')
+    goal_datatype = SignalFile
+ #   goal_attributes = dict(format='gct', logged='no',preprocess='rma',combat_norm='yes',
+ #                          quantile_norm='yes',gene_center='mean',gene_normalize='variance',
+ #                          group_fc='20',num_feature='20',gene_order='t_test_p')
     goal_attributes = dict(
-        format='gct', logged='no', preprocess="rma",
-        quantile_norm='yes',gene_center='mean',annotate='yes',missing_values='zero_fill',
-        gene_normalize='variance',group_fc='20',num_feature='20',platform='ab',
-        duplicate_probe='closest_probe',combat_norm='yes',gene_order='t_test_p')
+        contents="train0,train1,test",
+        format='tdf', logged='yes', preprocess="rma",
+        missing_values='zero_fill')
+        #gene_center='mean',annotate='yes',
+        #gene_normalize='variance',
+        #)
+    #goal_attributes = dict(
+    #    format=['jeffs', 'gct', 'tdf'], preprocess='rma', logged='yes',
+    #    missing_values="no")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    missing_values="no", group_fc="5")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess="rma", logged='yes', 
+    #    missing_values="no")
+    #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='rma', logged='yes',
+    #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="no",gene_order='gene_list')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="zero_fill", group_fc="5", ill_bg_mode='true',
+    #    illu_coll_mode="max")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="zero_fill", platform='hg19',
+    #    duplicate_probe='closest_probe')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    quantile_norm="no", combat_norm="no", dwd_norm="no",
+    #    missing_values="zero_fill", platform='hg19',
+    #    duplicate_probe='closest_probe')
+    #goal_attributes = dict(
+    #    format='tdf', preprocess='illumina', logged='yes',
+    #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
+    #    missing_values="zero_fill", platform='hg19',
+    #    duplicate_probe='closest_probe')
+
+    #out_data = make_data(
+    #    "signal_file", format='tdf', preprocess='rma', logged='yes',
+    #    filter='no', missing='zero', predataset='no', rename_sample='no',
+    #    gene_center='no', gene_normalize='no', quantile_norm='yes',
+    #    dwd_norm="no", gene_order="class_neighbors", shiftscale_norm="no",
+    #    unique_genes="average_genes")
+    #out_data = make_data(
+    #    "signal_file", format='tdf',preprocess='rma',logged='yes',
+    #    filter='no', missing='zero', predataset='no', rename_sample='no',
+    #    quantile_norm='yes', dwd_norm='no', gene_order='class_neighbors',
+    #    shiftscale_norm='no', combat_norm='no', bfrm_norm='yes',
+    #    gene_center='mean', gene_normalize='variance', group_fc='int',
+    #    num_features='int', annotate="yes", unique_genes='average_genes',
+    #    platform='str', duplicate_probe='high_var_probe')
+    
     network = backchain(all_modules, goal_datatype, goal_attributes)
     network = optimize_network(network)
     network = prune_network_by_start(network, in_data)
+    print network.nodes
+    print len(network.nodes)
+    print network.transitions
     #network = prune_network_by_internal(
     #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
     #network = prune_network_by_internal(
@@ -2625,7 +2687,6 @@ def test_bie():
     #    SignalFile, dict(format=["tdf", "pcl", "gct"], preprocess="rma"))
     #node_id = _find_data_node(network.nodes, node)
     #print "NODE:", node_id
-    
 
 
 ILLU_MANIFEST = [
@@ -2725,10 +2786,12 @@ GeneListFile=DataType(
                           "t_test_p", "t_test_fdr"], DEFAULT='gene_list'))
 SignalFile = DataType(
     "SignalFile",
+
     # Properties of the format.
     Attribute(
         format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
         DEFAULT="unknown"),
+    
     # Properties of the data.
     Attribute(
         preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
@@ -2739,15 +2802,20 @@ SignalFile = DataType(
     Attribute(
         logged=["unknown", "no", "yes"],
         DEFAULT="unknown"),
-    Attribute(predataset=["no", "yes"], DEFAULT="no"),
-    Attribute(filter=ANYATOM, DEFAULT="no"),
-    Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
+
+    # Normalizing the data.  Very difficult to check normalization.
+    # If you're not sure if the data is normalized, then the answer is
+    # "no".
     Attribute(dwd_norm=["no", "yes"], DEFAULT="no"),
     Attribute(bfrm_norm=["no", "yes"], DEFAULT="no"),
     Attribute(quantile_norm=["no", "yes"], DEFAULT="no"),
     Attribute(shiftscale_norm=["no", "yes"], DEFAULT="no"),
     Attribute(combat_norm=["no", "yes"], DEFAULT="no"),
-    )
+    Attribute(predataset=["no", "yes"], DEFAULT="no"),
+    Attribute(filter=ANYATOM, DEFAULT="no"),
+    Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
+    Attribute(contents=["train0", "train1", "test", "train0,train1,test",
+                        "class0", "class1", "class0,class1", "no"], DEFAULT="no"))
 SignalFile1 = DataType(
     "SignalFile1",
     # Properties of the format.
@@ -2777,7 +2845,9 @@ SignalFile1 = DataType(
         DEFAULT="unknown"),
     Attribute(
         gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
-        DEFAULT="unknown")
+        DEFAULT="unknown"),
+    Attribute(contents=["train0", "train1", "test", "train0,train1,test",
+                        "class0", "class1", "class0,class1", "no"], DEFAULT="no")
     )
 SignalFile2 = DataType(
     "SignalFile2",
@@ -2806,11 +2876,16 @@ SignalFile2 = DataType(
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    Attribute(dwd_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(bfrm_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(quantile_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(shiftscale_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(combat_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        dwd_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        bfrm_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        quantile_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        shiftscale_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(
+        combat_norm=["no", "yes"], DEFAULT="no"),
 
     # Annotations.
     Attribute(annotate=["no", "yes"], DEFAULT="no"),
@@ -2822,6 +2897,7 @@ SignalFile2 = DataType(
         DEFAULT="no"),
     Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
 
+
     # Unclassified.
     Attribute(num_features=ANYATOM, DEFAULT="all"),
     Attribute(
@@ -2832,8 +2908,10 @@ SignalFile2 = DataType(
     Attribute(platform=ANYATOM, DEFAULT="no"),
     Attribute(filter=ANYATOM, DEFAULT="no"),
     Attribute(group_fc=ANYATOM, DEFAULT="no"),
+    Attribute(contents=["train0", "train1", "test", "train0,train1,test",
+                        "class0", "class1", "class0,class1", "no"], DEFAULT="no")
     )
-
+    
 all_modules = [
     # GSEID
     Module("download_geo", GEOSeries, ExpressionFiles),
@@ -2905,14 +2983,16 @@ all_modules = [
         "convert_signal_to_tdf",
         SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
         SignalFile(format='tdf')),
-    QueryModule(
+    
+    Module(
         "check_for_log",
-        SignalFile(format=["tdf"], logged='unknown'),
+        SignalFile(format="tdf", logged='unknown'),
         SignalFile(format="tdf", logged=['yes', "no"])),
     Module(
         "log_signal",
-        SignalFile(logged='no', format="tdf"),
+        SignalFile(logged='no', format=["tdf"]),
         SignalFile(logged='yes', format='tdf')),
+    
     Module(
         "fill_missing_with_median",
         SignalFile(format="tdf", logged="yes", missing_values="yes"),
@@ -2921,10 +3001,10 @@ all_modules = [
         "fill_missing_with_zeros",
         SignalFile(format="tdf", logged="yes", missing_values="yes"),
         SignalFile(format="tdf", logged="yes", missing_values="zero_fill")),
-    QueryModule(
+    Module(
         "check_for_missing_values",
-        SignalFile(format="tdf", missing_values="unknown"),
-        SignalFile(format="tdf", missing_values=["no", "yes"])),
+        SignalFile(format="tdf", missing_values="unknown",logged='yes'),
+        SignalFile(format="tdf", missing_values=["no", "yes"],logged='yes')),
     Module(
         "filter_genes_by_missing_values",
         SignalFile(
@@ -2946,7 +3026,38 @@ all_modules = [
                    missing_values=['no', 'median_fill', 'zero_fill'],
                    combat_norm='no',quantile_norm="no",
                    dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")),
-
+    Module(
+           "merge_signal_for_classification",
+           [SignalFile(contents="train0",format='tdf',logged="yes",
+                       missing_values=['no', 'median_fill', 'zero_fill'],
+                       combat_norm='no',quantile_norm="no",
+                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no"),
+            SignalFile(contents="train1",format='tdf',logged="yes",
+                       missing_values=['no', 'median_fill', 'zero_fill'],
+                       combat_norm='no',quantile_norm="no",
+                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no"),
+            SignalFile(contents="test",format='tdf',logged="yes",
+                       missing_values=['no', 'median_fill', 'zero_fill'],
+                       combat_norm='no',quantile_norm="no",
+                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")],
+            SignalFile(contents="train0,train1,test",format='tdf',logged="yes",
+                       missing_values=['no', 'median_fill', 'zero_fill'],
+                       combat_norm='no',quantile_norm="no",
+                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")),
+    Module(
+           "merge_two_classes",
+           [SignalFile(contents="class0",format='tdf',logged="yes",
+                       missing_values=['no', 'median_fill', 'zero_fill'],
+                       combat_norm='no',quantile_norm="no",
+                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no"),
+            SignalFile(contents="class1",format='tdf',logged="yes",
+                       missing_values=['no', 'median_fill', 'zero_fill'],
+                       combat_norm='no',quantile_norm="no",
+                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")],
+            SignalFile(contents="class0,class1",format='tdf',logged="yes",
+                       missing_values=['no', 'median_fill', 'zero_fill'],
+                       combat_norm='no',quantile_norm="no",
+                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")),        
     # Sample normalization.
     Module(
         "normalize_samples_with_quantile",
@@ -3013,9 +3124,10 @@ all_modules = [
                     dwd_norm=["no", "yes"], bfrm_norm=["no", "yes"],
                     quantile_norm=["no", "yes"],
                     shiftscale_norm=["no", "yes"], combat_norm=["no", "yes"],
-            gene_center='unknown',gene_normalize='unknown'
+            gene_center='unknown',gene_normalize='unknown',
+            contents=["train0", "train1", "test", "train0,train1,test",
+                        "class0", "class1", "class0,class1", "no"]
             )),
-
     QueryModule(
         "check_gene_center",
         SignalFile1(
@@ -3036,10 +3148,14 @@ all_modules = [
             format="tdf", logged="yes",
             missing_values=["no", "median_fill", "zero_fill"],
             gene_normalize=["no", "variance", "sum_of_squares"])),
+    Module(   
+        "convert_signal_to_pcl",
+        SignalFile1(format=['tdf']),
+        SignalFile1(format='pcl')),
     Module(
         "gene_center",
         SignalFile1(
-            format="tdf", logged="yes", gene_center="no",
+            format="pcl", logged="yes", gene_center="no",
             missing_values=["no", "zero_fill", "median_fill"],
             gene_normalize='unknown'),
         SignalFile1(
@@ -3049,7 +3165,7 @@ all_modules = [
     Module(
         "gene_normalize",
         SignalFile1(
-            format="tdf", logged="yes", gene_normalize="no",
+            format="pcl", logged="yes", gene_normalize="no",
             missing_values=["no", "zero_fill", "median_fill"]),
         SignalFile1(
             format="tdf", logged="yes",
@@ -3074,9 +3190,11 @@ all_modules = [
                     num_features="all", platform="no",
                     duplicate_probe='no', unique_genes='no',
             gene_center=["unknown", "no", "mean", "median"],
-            gene_normalize=["unknown", "no", "variance", "sum_of_squares"]
+            gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
+            contents=["train0", "train1", "test", "train0,train1,test",
+                        "class0", "class1", "class0,class1", "no"]
             )),
-    Module(  
+    Module( 
         "filter_genes_by_fold_change_across_classes",
         [ClassLabelFile,
          SignalFile2(
@@ -3095,11 +3213,37 @@ all_modules = [
         "rank_genes_by_class_neighbors",
         [SignalFile2(
             format="tdf", logged="yes",
-            missing_values=["no", "zero_fill", "median_fill"],
             gene_order="no",annotate="no",
             num_features="all", platform="no",
             duplicate_probe='no', unique_genes='no'),ClassLabelFile],
-        GeneListFile(gene_order="class_neighbors")),
+        GeneListFile(gene_order="class_neighbors",
+                    cn_num_neighbors=ANYATOM,
+                    cn_num_perm=ANYATOM,
+                    cn_user_pval=ANYATOM,  
+                    cn_mean_or_median=['mean', 'median'],
+                    cn_ttest_or_snr=['t_test','snr'],
+                    cn_filter_data=['yes','no'],
+                    cn_min_threshold=ANYATOM, 
+                    cn_max_threshold=ANYATOM, 
+                    cn_min_folddiff=ANYATOM, 
+                    cn_abs_diff=ANYATOM)),
+    Module(
+         "rank_genes_by_sample_ttest",   
+         [SignalFile2(format="tdf", logged="yes",
+                   gene_order="no", annotate="no",
+                    num_features="all", platform="no",
+                    duplicate_probe='no', unique_genes='no'), ClassLabelFile],
+         GeneListFile(gene_order=["t_test_p", "t_test_fdr"],
+                      cn_num_neighbors=ANYATOM,
+                    cn_num_perm=ANYATOM,
+                    cn_user_pval=ANYATOM,  
+                    cn_mean_or_median=['mean', 'median'],
+                    cn_ttest_or_snr=['t_test','snr'],
+                    cn_filter_data=['yes','no'],
+                    cn_min_threshold=ANYATOM, 
+                    cn_max_threshold=ANYATOM, 
+                    cn_min_folddiff=ANYATOM, 
+                    cn_abs_diff=ANYATOM)),
     Module(
          "reorder_genes",  
          [SignalFile2(format="tdf", logged="yes",
@@ -3114,13 +3258,6 @@ all_modules = [
             duplicate_probe='no', unique_genes='no',
              gene_order=['t_test_p', "t_test_fdr",
                          'class_neighbors', "gene_list"])),
-    Module(
-         "rank_genes_by_sample_ttest",   
-         [SignalFile2(format="tdf", logged="yes",
-                   gene_order="no", annotate="no",
-                    num_features="all", platform="no",
-                    duplicate_probe='no', unique_genes='no'), ClassLabelFile],
-         GeneListFile(gene_order=["t_test_p", "t_test_fdr"])),
     Module(
          'annotate_probes',
          SignalFile2(format="tdf", logged="yes", annotate="no",
@@ -3174,4 +3311,4 @@ all_modules = [
 
 if __name__ == '__main__':
     test_bie()
-    #import cProfile; cProfile.run("test_bie()")
+##    #import cProfile; cProfile.run("test_bie()")
