@@ -340,7 +340,8 @@ def main():
     print >>outhandle, "\t".join(header)
     for x in all_matrix_samples:
         matrix, index, sample = x
-        x = [scores[(matrix, x, index, sample)] for x in all_genesets]
+        #x = [scores[(matrix, x, index, sample)] for x in all_genesets]
+        x = [scores.get((matrix, x, index, sample), "") for x in all_genesets]
         x = [matrix, sample] + x
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))

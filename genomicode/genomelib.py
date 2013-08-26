@@ -373,9 +373,10 @@ def write_fasta(title, sequence, width=60, handle=None):
     handle = handle or sys.stdout
     w = handle.write
     w(">%s\n" % title)
-    while sequence:
-        s = sequence[:width]
-        sequence = sequence[width:]
+    i = 0
+    while i < len(sequence):
+        s = sequence[i:i+width]
+        i += width
         w("%s\n" % s)
 
 def read_ra(filename, start, length, typecode):
@@ -465,8 +466,8 @@ def _load_genes_h(gene_file):
         if d.chrom.find("_") >= 0:
             continue
         chrom = d.chrom
-        assert chrom.startswith("chr")
-        chrom = chrom[3:]
+        if chrom.startswith("chr"):
+            chrom = chrom[3:]
         _assert_chrom(chrom)
 
         assert d.txn_end >= d.txn_start
@@ -481,24 +482,38 @@ def _load_genes_h(gene_file):
             length = end - start
             exon_lengths.append(length)
         assert len(exon_lengths) == len(d.exon_starts)
-        obj = filelib.GenericObject(
-            kg_id=d.kg_id, genbank_id=d.genbank_id, refseq_id=d.refseq_id,
+        
+        params = dict(
+            refseq_id=d.refseq_id,
             gene_id=d.gene_id, gene_symbol=d.gene_symbol,
             chrom=chrom, strand=d.strand,
             txn_start=d.txn_start, txn_length=txn_length, tss=tss,
             cds_start=d.cds_start, cds_length=cds_length,
             exon_starts=d.exon_starts, exon_lengths=exon_lengths)
+        if hasattr(d, "kg_id"):
+            params["kg_id"] = d.kg_id
+        if hasattr(d, "genbank_id"):
+            params["genbank_id"] = d.genbank_id
+        if hasattr(d, "ensembl_id"):
+            params["ensembl_id"] = d.ensembl_id
+        if hasattr(d, "hgnc_symbol"):
+            params["hgnc_symbol"] = d.hgnc_symbol
+        obj = filelib.GenericObject(**params)
         genes.append(obj)
 
     # Sort by (chrom, txn_start, kg_id) just to make sure this
     # function always returns by a unique sorting order.
     schwartz = []
-    for x in genes:
+    for g in genes:
         try:
-            chrom = int(x.chrom)
+            chrom = int(g.chrom)
         except ValueError:
-            chrom = x.chrom
-        x = chrom, x.txn_start, x.kg_id, x
+            chrom = g.chrom
+        if hasattr(g, "kg_id"):
+            x = g.kg_id
+        else:
+            x = g.refseq_id
+        x = chrom, g.txn_start, x, g
         schwartz.append(x)
     schwartz.sort()
     genes = [x[-1] for x in schwartz]
@@ -554,7 +569,8 @@ def _assert_chrom(chrom):
     try:
         x = int(chrom)
     except ValueError, x:
-        assert chrom in "XYM", "Invalid (1) chrom: %s" % chrom
+        assert chrom in "XYM" or chrom == "MT", "Invalid (1) chrom: %s" % chrom
     else:
-        assert x >= 1 and x <= 22, "Invalid (2) chrom: %s" % chrom
+        assert x >= 1 and x <= 25, "Invalid (2) chrom: %s" % chrom
+        # danRer has up to 25.
     GOOD_CHROM[chrom] = 1
