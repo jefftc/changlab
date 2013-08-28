@@ -56,6 +56,7 @@ Network
 # _can_converting_module_produce_data
 # _can_nonconverting_module_produce_data
 # _can_module_take_data
+# _get_matching_ante_data
 #
 # _can_reach_by_bc
 # _can_reach_by_fc
@@ -2026,6 +2027,23 @@ def _can_converting_module_produce_data(module, data):
     else:
         p("  %d attributes compatible." % num_attributes)
     return num_attributes
+
+
+def _get_matching_ante_data(module, cons_data):
+    # Return the ante_data object of the same type as cons_data.
+    
+    x = [x for x in module.ante_datas if x.datatype == data.datatype]
+    assert len(x) > 0, "No matching antecedent."
+    
+    # If there is only one antecedent of the same type, then return
+    # it.
+    if len(x) == 1:
+        return x[0]
+    
+    # If there are multiple antecedents of this type, then all the
+    # attributes of the antecedents should be the same, except for:
+    # XXX
+    
 
 
 def _can_nonconverting_module_produce_data(module, data):
