@@ -2293,19 +2293,36 @@ def _can_converting_module_produce_data(module, data):
 def _get_matching_ante_data(module, cons_data):
     # Return the ante_data object of the same type as cons_data.
     
-    x = [x for x in module.ante_datas if x.datatype == data.datatype]
-    assert len(x) > 0, "No matching antecedent."
+    ante_datas = [
+        x for x in module.ante_datas if x.datatype == cons_data.datatype]
+    assert len(ante_datas) > 0, "No matching antecedent."
     
     # If there is only one antecedent of the same type, then return
     # it.
-    if len(x) == 1:
-        return x[0]
+    if len(ante_datas) == 1:
+        return ante_datas[0]
     
     # If there are multiple antecedents of this type, then all the
-    # attributes of the antecedents should be the same, except for:
-    # XXX
-    
+    # attributes of the antecedents should be the same, except for the
+    # target.
+    # UNKNOWN: Do OPTIONAL attributes need to be the same?
+    all_attributes = {}
+    for ante_data in ante_datas:
+        for x in ante_data.attributes:
+            all_attributes[x] = 1
+    target = _find_target_of_nonconverting_module(module, cons_data)
 
+    for attr in all_attributes:
+        if attr == target:
+            continue
+        values = [x.attributes.get(attr) for x in ante_datas]
+        values = sorted({}.fromkeys(values))
+        assert len(values) == 1, "different ante_datas: %s %s" % (
+            module.name, attr)
+
+    # Return an arbitrary ante_data.
+    return ante_datas[0]
+    
 
 def _can_nonconverting_module_produce_data(module, data):
     p = _print_nothing
@@ -2313,9 +2330,10 @@ def _can_nonconverting_module_produce_data(module, data):
     
     p("Checking if module %s can produce data." % module.name)
 
-    x = [x for x in module.ante_datas if x.datatype == data.datatype]
-    assert len(x) == 1, module.name
-    ante_data = x[0]
+    ante_data = _get_matching_ante_data(module, data)
+    #x = [x for x in module.ante_datas if x.datatype == data.datatype]
+    #assert len(x) == 1, module.name
+    #ante_data = x[0]
 
     data_attr = data.attributes
     ante_attr = ante_data.attributes
@@ -2429,15 +2447,8 @@ def _can_nonconverting_module_produce_data(module, data):
     return num_attributes
 
 
-def _find_target_of_nonconverting_module(module, data):
-    # In a nonconverting module, at least one of the attributes must
-    # be changed.  This is called the "target" attribute.
-    # Make a list of all the attributes that are changed.
-
-    x = [x for x in module.ante_datas if x.datatype == data.datatype]
-    assert len(x) == 1, module.name
-    ante_data = x[0]
-
+def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
+    assert ante_data in module.ante_datas
     ante_attr = ante_data.attributes
     cons_attr = module.cons_data.attributes
 
@@ -2449,7 +2460,7 @@ def _find_target_of_nonconverting_module(module, data):
             continue
         
         changed = _does_nonconverting_module_change_attribute(
-            module, data, key)
+            module, ante_data, data, key)
         if not changed:
             continue
         targets.append(key)
@@ -2459,6 +2470,8 @@ def _find_target_of_nonconverting_module(module, data):
         return targets[0]
     
     # If there are multiple targets, prioritize them.
+    # Is this necessary?
+    #
     # CASE  ANTE_TYPE  CONS_TYPE   RESULT
     #   1    NOVALUE    NOVALUE    ERROR.
     #   2    NOVALUE    ANYATOM    NotImplemented
@@ -2516,11 +2529,31 @@ def _find_target_of_nonconverting_module(module, data):
            "Could not prioritize attributes for %s." % module.name
     return targets[0]
 
+
+def _find_target_of_nonconverting_module(module, data):
+    # In a nonconverting module, exactly one of the attributes should
+    # be changed.  This is called the "target" attribute.  Return the
+    # name of the target attribute.
+
+    # If there are multiple antecedents of the same type, check
+    # them all and make sure their targets are the same.
+    targets = []
+    for ante_data in module.ante_datas:
+        if ante_data.datatype != data.datatype:
+            continue
+        x = _find_target_of_nonverting_module_one_ante(module, ante_data, data)
+        targets.append(x)
+    targets = sorted({}.fromkeys(targets))
+    assert len(targets) > 0, "no targets"
+    assert len(targets) == 1, "ambiguous target"
+    return targets[0]
+
     
-def _does_nonconverting_module_change_attribute(module, data, attr_name):
-    x = [x for x in module.ante_datas if x.datatype == data.datatype]
-    assert len(x) == 1, module.name
-    ante_data = x[0]
+def _does_nonconverting_module_change_attribute(
+    module, ante_data, data, attr_name):
+    #x = [x for x in module.ante_datas if x.datatype == data.datatype]
+    #assert len(x) == 1, module.name
+    #ante_data = x[0]
 
     ante_attr = ante_data.attributes
     cons_attr = module.cons_data.attributes
