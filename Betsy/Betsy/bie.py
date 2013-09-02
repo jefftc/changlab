@@ -3100,8 +3100,11 @@ def test_bie():
     #in_data = [x, ClassLabelFile]
     #in_data = SignalFile(logged="yes", preprocess="rma")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
-    in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
-               SignalFile(contents='class1',logged="yes", preprocess="rma")]
+    #in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
+    #           SignalFile(contents='class1',logged="yes", preprocess="rma")]
+    in_data = [
+        SignalFile(contents='class0', preprocess="rma", format="jeffs"),
+        SignalFile(contents='class1', preprocess="rma", format="jeffs")]
 
     #print _make_goal(SignalFile, x)
     #return
@@ -3121,7 +3124,7 @@ def test_bie():
     #    ill_custom_manifest='',
     #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
     
-    goal_datatype = SignalFile2
+    goal_datatype = SignalFile
     #goal_attributes = dict(format='tdf')
     #goal_attributes = dict(
     #    format='tdf', logged='yes', missing_values="no")
@@ -3133,7 +3136,7 @@ def test_bie():
     #    missing_algorithm="median_fill")
     goal_attributes = dict(contents='class0,class1',
         format='tdf', preprocess='rma', logged='yes',
-        missing_values="no", quantile_norm="yes",missing_algorithm='zero_fill')
+        missing_values="no")
     #goal_attributes = dict(
     #    #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
     #    format='gct',
