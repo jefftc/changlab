@@ -93,7 +93,8 @@ Network
 # Module Node: Antecedent
 # NOVALUE   This attribute is not relevant for the module.
 # ATOM      The module requires a specific value.
-# ANYATOM   UNDEFINED.  When is this used?
+# ANYATOM   Means the module can take any value for this.
+#           Used for filenames of the objects.
 # ENUM      The module can take any of these values.
 #           E.g. filter_missing_with_zeros    missing=["yes", "unknown"]
 # 
@@ -365,7 +366,6 @@ class Module:
         for ante_data in ante_datas:
             for key in ante_data.attributes:
                 attr_type = _get_attribute_type(ante_data.attributes, key)
-                assert attr_type != TYPE_ANYATOM, "UNDEFINED."
 
         self.name = name
         self.ante_datas = ante_datas
@@ -2049,7 +2049,7 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     #   3    NOVALUE      ATOM     Ignore (NOVALUE).
     #   4    NOVALUE      ENUM     Ignore (NOVALUE).
     #   5    ANYATOM    NOVALUE    NotImplementedError. When does this happen?
-    #   6    ANYATOM    ANYATOM    NotImplementedError. When does this happen?
+    #   6    ANYATOM    ANYATOM    ANTE_VALUE (ANYATOM)
     #   7    ANYATOM      ATOM     NotImplementedError. When does this happen?
     #   8    ANYATOM      ENUM     NotImplementedError. When does this happen?
     #   9      ATOM     NOVALUE    ANTE_VALUE.  cel_version="v3_4"
@@ -2082,9 +2082,9 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
             attributes[key] = DATA_VALUE
         elif CASE in [2, 3, 4]:
             pass
-        elif CASE in [5, 6, 7, 8]:
+        elif CASE in [5, 7, 8]:
             raise NotImplementedError
-        elif CASE in [9, 10, 11, 12, 13, 14, 15]:
+        elif CASE in [6, 9, 10, 11, 12, 13, 14, 15]:
             attributes[key] = ANTE_VALUE
         elif CASE == 16:
             # This can happen if:
@@ -2385,7 +2385,14 @@ def _can_nonconverting_module_produce_data(module, data):
                 # Why disqualify this?
                 disqualify = True
             elif ANTE_TYPE == TYPE_ANYATOM:
-                raise NotImplementedError
+                # In principle, OK.  Module can take any value of this
+                # and produce the output.  Currently, only used for
+                # filenames, which shouldn't be the target.  In any
+                # case, should not disqualify this module.
+                if not is_target:
+                    pass  # don't disqualify
+                else:
+                    raise NotImplementedError
             elif ANTE_TYPE == TYPE_ATOM:
                 if DATA_VALUE == ANTE_VALUE:
                     disqualify = True
@@ -3098,13 +3105,14 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    #in_data = SignalFile(logged="yes", preprocess="rma")
+    in_data = SignalFile(
+        logged="yes", preprocess="rma", format="jeffs", filename="dfd")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
     #in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
     #           SignalFile(contents='class1',logged="yes", preprocess="rma")]
-    in_data = [
-        SignalFile(contents='class0', preprocess="rma", format="jeffs"),
-        SignalFile(contents='class1', preprocess="rma", format="jeffs")]
+    #in_data = [
+    #    SignalFile(contents='class0', preprocess="rma", format="jeffs"),
+    #    SignalFile(contents='class1', preprocess="rma", format="jeffs")]
 
     #print _make_goal(SignalFile, x)
     #return
@@ -3126,17 +3134,17 @@ def test_bie():
     
     goal_datatype = SignalFile
     #goal_attributes = dict(format='tdf')
-    #goal_attributes = dict(
-    #    format='tdf', logged='yes', missing_values="no")
+    goal_attributes = dict(
+        format='tdf', preprocess="rma", logged='yes', filename="dfds")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='no', missing_values="no",
     #    missing_algorithm="median_fill")
-    goal_attributes = dict(contents='class0,class1',
-        format='tdf', preprocess='rma', logged='yes',
-        missing_values="no")
+    #goal_attributes = dict(contents='class0,class1',
+    #    format='tdf', preprocess='rma', logged='yes',
+    #    missing_values="no")
     #goal_attributes = dict(
     #    #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
     #    format='gct',
@@ -3325,6 +3333,8 @@ GeneListFile=DataType(
 SignalFile = DataType(
     "SignalFile",
 
+    Attribute(filename=ANYATOM, DEFAULT="", OPTIONAL=True),
+
     # Properties of the format.
     Attribute(
         format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
@@ -3347,21 +3357,19 @@ SignalFile = DataType(
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    Attribute(
-        dwd_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        bfrm_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        quantile_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        shiftscale_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        combat_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(dwd_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(bfrm_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(quantile_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(shiftscale_norm=["no", "yes"], DEFAULT="no"),
+    Attribute(combat_norm=["no", "yes"], DEFAULT="no"),
     Attribute(predataset=["no", "yes"], DEFAULT="no"),
     Attribute(filter=ANYATOM, DEFAULT="no"),
     Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
-    Attribute(contents=["train0", "train1", "test", "train0,train1,test",
-                        "class0", "class1", "class0,class1", "no"], DEFAULT="no"))
+    Attribute(
+        contents=["train0", "train1", "test", "train0,train1,test",
+                  "class0", "class1", "class0,class1",
+                  "no"],
+        DEFAULT="no"))
 
 SignalFile1 = DataType(
     "SignalFile1",
@@ -3535,8 +3543,10 @@ all_modules = [
     # SignalFile
     Module(
         "convert_signal_to_tdf",
-        SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        SignalFile(format='tdf')),
+        SignalFile(
+            filename=ANYATOM, 
+            format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
+        SignalFile(filename=ANYATOM, format='tdf')),
     QueryModule(
         "check_for_log",
         SignalFile(format="tdf", logged='unknown'),
