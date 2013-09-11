@@ -2790,6 +2790,7 @@ def _find_module_node(nodes, node):
 def _find_start_nodes(network, start_data):
     import operator
 
+    # Make a list of all the desired start nodes, as Data objects.
     start_datas = start_data
     if not operator.isSequenceType(start_data):
         start_datas = [start_data]
@@ -2859,7 +2860,13 @@ def _is_compatible_with_start(data, start_data):
         STRT_TYPE = _get_attribute_type(strt_attr, key)
         CASE = _assign_case_by_type(STRT_TYPE, DATA_TYPE)
 
-        if CASE in [1, 2, 3, 4]:
+        x = start_data.datatype.get_attribute_object(key)
+        OPTIONAL = x.OPTIONAL
+
+        if OPTIONAL:
+            # Ignore optional attributes.
+            pass
+        elif CASE in [1, 2, 3, 4]:
             raise AssertionError
         elif CASE in [13, 14, 15, 16]:
             raise NotImplementedError
@@ -3105,8 +3112,11 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    in_data = SignalFile(
-        logged="yes", preprocess="rma", format="jeffs", filename="dfd")
+    #in_data = SignalFile(
+    #    logged="yes", preprocess="rma", format="jeffs", filename="dfd")
+    in_data = [
+        SignalFile(preprocess="rma", format="jeffs", filename='a'),
+        ClassLabelFile(filename='b')]
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
     #in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
     #           SignalFile(contents='class1',logged="yes", preprocess="rma")]
@@ -3135,7 +3145,8 @@ def test_bie():
     goal_datatype = SignalFile
     #goal_attributes = dict(format='tdf')
     goal_attributes = dict(
-        format='tdf', preprocess="rma", logged='yes', filename="dfds")
+        format='tdf', preprocess="rma", logged='yes', missing_values="no",
+        dwd_norm="yes")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
@@ -3301,7 +3312,11 @@ GEOSeries = DataType(
     Attribute(GPLID=ANYATOM, DEFAULT="none"),
     )
 IDATFiles = DataType("IDATFiles")
-ClassLabelFile = DataType("ClassLabelFile")
+ClassLabelFile = DataType(
+    "ClassLabelFile",
+    Attribute(filename=ANYATOM, DEFAULT="", OPTIONAL=True),
+    )
+
 ILLUFolder = DataType(
     "ILLUFolder", 
     Attribute(
