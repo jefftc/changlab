@@ -2195,13 +2195,13 @@ def _can_converting_module_produce_data(module, data):
     data_attr = data.attributes
     cons_attr = module.cons_data.attributes
 
+    # Handled below now.
     # If there are no attributes to match, then this matches by
     # default.
-    # E.g. extract_CEL_files converts ExpressionFiles to GSEID.
-
-    if not cons_attr and not data_attr:
-        p("Match by no attributes.")
-        return 1
+    # E.g. extract_CEL_files converts ExpressionFiles to CELFiles.
+    #if not cons_attr and not data_attr:
+    #    p("Match by no attributes.")
+    #    return 1
 
     # Fill in default values for the consequent.
     defaults = module.cons_data.datatype.get_defaults()
@@ -2230,10 +2230,17 @@ def _can_converting_module_produce_data(module, data):
     #  16      ENUM       ENUM     +1 if intersect, otherwise DQ.
 
     num_attributes = 0
+    matched_attributes = 0
     for key in cons_attr:
         p("  Evaluating attribute %s." % key)
         attr_obj = module.cons_data.datatype.get_attribute_object(key)
     
+        if attr_obj.OPTIONAL:
+            # Ignore optional attributes.
+            p("    Ignoring optional attribute.")
+            continue
+        num_attributes += 1
+        
         DATA_VALUE = data_attr.get(key)
         CONS_VALUE = cons_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
@@ -2241,38 +2248,34 @@ def _can_converting_module_produce_data(module, data):
         CASE = _assign_case_by_type(CONS_TYPE, DATA_TYPE)
 
         disqualify = False
-
-        if attr_obj.OPTIONAL:
-            # Ignore optional attributes.
-            pass
-        elif CASE in [1, 2, 3, 4]:
+        if CASE in [1, 2, 3, 4]:
             raise AssertionError, "Should not have NOVALUES."
         elif CASE == 7:
-            num_attributes += 1
+            matched_attributes += 1
         elif CASE == 10:
             pass
         elif CASE in [5, 6, 8, 9, 13, 14]:
             disqualify = True
         elif CASE == 11:
             if CONS_VALUE == DATA_VALUE:
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         elif CASE == 12:
             if CONS_VALUE in DATA_VALUE:
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         elif CASE == 15:
             if DATA_VALUE in CONS_VALUE:
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         elif CASE == 16:
             # Module can produce some value that is compatible with
             # DATA.
             if _intersection(CONS_VALUE, DATA_VALUE):
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         else:
@@ -2280,14 +2283,20 @@ def _can_converting_module_produce_data(module, data):
                 
         if disqualify:
             p("    Attribute is disqualified.")
-            num_attributes = 0
+            matched_attributes = 0
             break
 
+    # If there are no attributes to match, then this matches by
+    # default.
     if not num_attributes:
         p("  No attributes compatible.")
+        return 1
+        
+    if not matched_attributes:
+        p("  No attributes compatible.")
     else:
-        p("  %d attributes compatible." % num_attributes)
-    return num_attributes
+        p("  %d attributes compatible." % matched_attributes)
+    return matched_attributes
 
 
 def _get_matching_ante_data(module, cons_data):
@@ -3112,11 +3121,12 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    #in_data = SignalFile(
-    #    logged="yes", preprocess="rma", format="jeffs", filename="dfd")
-    in_data = [
-        SignalFile(preprocess="rma", format="jeffs", filename='a'),
-        ClassLabelFile(filename='b')]
+    in_data = SignalFile(
+        logged="yes", preprocess="rma", format="jeffs", filename="dfd")
+    #in_data = [
+    #    SignalFile(preprocess="rma", format="jeffs", filename='a'),
+    #    ClassLabelFile(filename='b')]
+    #in_data = GEOSeries
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
     #in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
     #           SignalFile(contents='class1',logged="yes", preprocess="rma")]
@@ -3141,12 +3151,15 @@ def test_bie():
     #    ill_custom_chip='',
     #    ill_custom_manifest='',
     #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
+
+    #goal_datatype = ExpressionFiles
+    #goal_attributes = {}
     
     goal_datatype = SignalFile
     #goal_attributes = dict(format='tdf')
     goal_attributes = dict(
         format='tdf', preprocess="rma", logged='yes', missing_values="no",
-        dwd_norm="yes")
+        missing_algorithm="median_fill")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
@@ -3304,12 +3317,16 @@ ControlFile = DataType(
         format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
         DEFAULT="unknown"),
     )
-ExpressionFiles = DataType("ExpressionFiles")
+ExpressionFiles = DataType(
+    "ExpressionFiles",
+    Attribute(filename=ANYATOM, DEFAULT="", OPTIONAL=True),
+    )
 GPRFiles = DataType("GPRFiles")
 GEOSeries = DataType(
     "GEOSeries",
     Attribute(GSEID=ANYATOM, DEFAULT="none"),
     Attribute(GPLID=ANYATOM, DEFAULT="none"),
+    Attribute(filename=ANYATOM, DEFAULT="", OPTIONAL=True),
     )
 IDATFiles = DataType("IDATFiles")
 ClassLabelFile = DataType(
