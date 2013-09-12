@@ -263,13 +263,13 @@ score.outliers.regr <- function(x, perc.init=NULL, z.model=NULL, max.iter=NULL)
 # Groups are specified as numbers from [0, length(cutoffs)].  Group 0
 # are the scores lower than cutoffs[1].  If there are no values lower
 # than cutoffs[1], then the first group will be group 1.
-assign.groups <- function(scores, cutoffs, smooth=TRUE) {
+assign.groups <- function(values, scores, cutoffs, smooth=TRUE) {
   cutoffs <- sort(cutoffs)
 
   groups <- sapply(scores, function(x) sum(x >= cutoffs))
 
   if(smooth) {
-    O <- order(groups)
+    O <- order(values)
     I.rev <- rep(NA, length(O))
     I.rev[O] <- 1:length(O)
     groups <- groups[O]
