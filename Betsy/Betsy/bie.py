@@ -2034,6 +2034,9 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     # relevant for illu_folder.
     assert ante_num < len(module.ante_datas)
 
+    p = _print_nothing
+    #p = _print_string
+
     # Back chain the attributes.  Possibilities:
     #
     # DATA_VALUE  Value of attribute in data.
@@ -2067,6 +2070,10 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     x = data_attr.keys() + ante_attr.keys() + cons_attr.keys()
     all_attributes = sorted({}.fromkeys(x))
 
+    #if module.name == "download_geo":
+    #    p = _print_string
+
+    p("Module %s" % module.name)
     attributes = {}
     for key in all_attributes:
         DATA_VALUE = data_attr.get(key)
@@ -2077,6 +2084,7 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
         CONS_TYPE = _get_attribute_type(cons_attr, key)
         CASE = _assign_case_by_type(ANTE_TYPE, CONS_TYPE)
 
+        p("  Evaluating attribute %s [%d]." % (key, CASE))
         if CASE == 1:
             assert DATA_TYPE is not TYPE_NOVALUE
             attributes[key] = DATA_VALUE
@@ -3121,12 +3129,13 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    in_data = SignalFile(
-        logged="yes", preprocess="rma", format="jeffs", filename="dfd")
+    #in_data = SignalFile(
+    #    logged="yes", preprocess="rma", format="jeffs", filename="dfd")
     #in_data = [
     #    SignalFile(preprocess="rma", format="jeffs", filename='a'),
     #    ClassLabelFile(filename='b')]
-    #in_data = GEOSeries
+    in_data = GEOSeries
+    #in_data = GEOSeries(GSEID="GSE8286", GPLID="GPL157")
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
     #in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
     #           SignalFile(contents='class1',logged="yes", preprocess="rma")]
@@ -3159,7 +3168,7 @@ def test_bie():
     #goal_attributes = dict(format='tdf')
     goal_attributes = dict(
         format='tdf', preprocess="rma", logged='yes', missing_values="no",
-        missing_algorithm="median_fill")
+        )
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
@@ -3324,9 +3333,8 @@ ExpressionFiles = DataType(
 GPRFiles = DataType("GPRFiles")
 GEOSeries = DataType(
     "GEOSeries",
-    Attribute(GSEID=ANYATOM, DEFAULT="none"),
-    Attribute(GPLID=ANYATOM, DEFAULT="none"),
-    Attribute(filename=ANYATOM, DEFAULT="", OPTIONAL=True),
+    Attribute(GSEID=ANYATOM, DEFAULT=ANYATOM),
+    Attribute(GPLID=ANYATOM, DEFAULT=ANYATOM, OPTIONAL=True),
     )
 IDATFiles = DataType("IDATFiles")
 ClassLabelFile = DataType(
