@@ -161,7 +161,9 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
 
     # <name> <desc> [<gene>, <gene>, ...]
     x = filelib.openfh(filename).read()
-    for cols in iolib.split_tdf(x):
+    matrix = [x for x in iolib.split_tdf(x)]
+    maxlen = max([len(x) for x in matrix]) - 2 # subtract name, description
+    for cols in matrix:
         assert len(cols) >= 2
         name, description = cols[:2]
         x = cols[2:]
@@ -169,7 +171,7 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
         if not preserve_spaces:
             x = [x for x in x if x]
         genes = x
-
+        
         if not allow_duplicates:
             # Remove the duplicates while preserving the order.
             nodup = []
@@ -181,6 +183,9 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
                 nodup.append(x)
             genes = nodup
         
+        if preserve_spaces and len(genes) < maxlen:
+            genes = genes + [""]*(maxlen-len(genes))
+
         #print preserve_spaces, len(genes), len(cols)
         yield name, description, genes
 
@@ -227,7 +232,8 @@ def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
     #    yield name, description, genes
 
 
-def read_genesets(filename, allow_tdf=False, allow_duplicates=False):
+def read_genesets(
+    filename, allow_tdf=False, allow_duplicates=False, preserve_spaces=False):
     # yield name, description, list of genes
     # If allow_tdf is True, will also parse filename if it is a
     # tab-delimited file where each column is a geneset.
@@ -250,7 +256,9 @@ def read_genesets(filename, allow_tdf=False, allow_duplicates=False):
            filename
 
     # Read the geneset file.
-    for x in read_fn(filename, allow_duplicates=allow_duplicates):
+    for x in read_fn(
+        filename, allow_duplicates=allow_duplicates,
+        preserve_spaces=preserve_spaces):
         yield x
 
 

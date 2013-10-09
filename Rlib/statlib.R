@@ -16,7 +16,8 @@
 # assign.groups
 
 
-fdr.correct.bh <- function(p.values) {
+fdr.correct.bh <- function(p.values, mc.cores=NA) {
+  library(multicore)
   if(!length(p.values))
     return(NULL)
   m <- length(p.values)
@@ -29,7 +30,10 @@ fdr.correct.bh <- function(p.values) {
   k <- 1:m
   x <- m/k * p.values
   x <- sapply(x, function(x) min(x, 1) )
-  x <- sapply(1:m, function(i) min(x[i:m]) )
+  if(is.na(mc.cores)) 
+    x <- sapply(1:m, function(i) min(x[i:m]) )
+  else
+    x <- unlist(mclapply(1:m, mc.cores=mc.cores, FUN=function(i) min(x[i:m])))
   x[O.rev]   # Return FDR is original order of p.values
 }
 

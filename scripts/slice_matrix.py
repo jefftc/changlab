@@ -27,6 +27,7 @@
 # reorder_col_indexes
 # reorder_col_alphabetical
 # remove_duplicate_cols
+# remove_unnamed_cols
 # rename_duplicate_cols
 # toupper_col_ids
 # hash_col_ids
@@ -495,8 +496,6 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
     assert len(genesets) == 1
-    #print filename
-    #print genesets
     
     # Read all genesets out of the geneset file.
     geneset2genes = {}
@@ -504,7 +503,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     all_genes = []
     ext = os.path.splitext(filename)[1].lower()
     for x in genesetlib.read_genesets(
-            filename, allow_tdf=True, allow_duplicates=True):
+        filename, allow_tdf=True, allow_duplicates=True, preserve_spaces=True):
         geneset, description, genes = x
 
         # Bug: sometimes will mis-identify TDF files as GMX.  The
@@ -519,6 +518,12 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
         all_genes.append(genes)
+
+    # Make sure all the genes have the same length.  Otherwise,
+    # something might be broken.
+    assert all_genes
+    for x in all_genes:
+        assert len(x) == len(all_genes[0]), "genesets not aligned"
 
     # Find an alignment between the sample names and the genesets.
     x = matrixlib.align_cols_to_many_annots(
@@ -557,6 +562,8 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     gs = genesets[0]
     genes = geneset2genes[gs]
     assert len(I_matrix) == len(I_geneset)
+    assert max(I_geneset) < len(genes)
+    assert max(I_matrix) < len(names)
     for i in range(len(I_matrix)):
         names[I_matrix[i]] = genes[I_geneset[i]]
     MATRIX_new._col_names[name] = names
@@ -678,6 +685,20 @@ def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
             continue
         seen[headers[i]] = 1
         I.append(i)
+    x = MATRIX.matrix(None, I)
+    return x
+
+
+def remove_unnamed_cols(MATRIX, remove_cols):
+    import arrayio
+
+    if not remove_cols:
+        return MATRIX
+    headers = MATRIX.col_names(arrayio.COL_ID)
+    I = []
+    for i in range(len(headers)):
+        if headers[i]:
+            I.append(i)
     x = MATRIX.matrix(None, I)
     return x
 
@@ -1763,6 +1784,9 @@ def main():
         "--remove_duplicate_cols", default=False, action="store_true",
         help="If a column is found multiple times, keep only the first one.")
     group.add_argument(
+        "--remove_unnamed_cols", default=False, action="store_true",
+        help="If a column has no name, remove it.")
+    group.add_argument(
         "--reorder_col_indexes", default=None,
         help="Change the order of the data columns.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
@@ -2032,6 +2056,7 @@ def main():
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
+    MATRIX = remove_unnamed_cols(MATRIX, args.remove_unnamed_cols)
 
     # Rename duplicate rows and columns.
     MATRIX = rename_duplicate_rows(MATRIX, args.rename_duplicate_rows)
