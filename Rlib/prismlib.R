@@ -5,6 +5,7 @@ write.scatterplot <- function(filename, DATA, rownames=NA) {
   #maxlen <- max(unlist(lapply(DATA, nrow)))
   data.tab <- c()
   rn <- c()
+  R <- NA
   for(i in 1:length(DATA)) {
     D <- DATA[[i]]
     if(!all(is.na(rownames))) {
