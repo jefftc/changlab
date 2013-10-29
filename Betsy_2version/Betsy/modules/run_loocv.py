@@ -1,16 +1,12 @@
 #run_loocv.py
 import arrayio
-#from Betsy
-import read_label_file
-#from Betsy
-import module_utils
+from Betsy import read_label_file
+from Betsy import module_utils, bie, rulebase
 import os
 import svmutil
-from time import strftime,localtime
-import bie
-import rulebase
+ 
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes)
     M = arrayio.read(data_node.attributes['filename'])
@@ -85,7 +81,7 @@ def run(in_nodes,parameters):
     
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2',
                                             contents='class0,class1')

@@ -1,16 +1,15 @@
 #fill_missing_with_median.py
 import os
 import shutil
-#from Betsy
-import module_utils
+from Betsy import module_utils,bie,rulebase
 import arrayio
 import numpy
-import bie
-import rulebase
+ 
 
-def run(data_node,parameters):
+def run(data_node,parameters, network):
     outfile = name_outfile(data_node)
-    assert module_utils.is_missing(data_node.attributes['filename']),'no missing values'
+    assert module_utils.is_missing(
+        data_node.attributes['filename']),'no missing values'
     M = arrayio.read(data_node.attributes['filename'])
     f_out = file(outfile, 'w')
     X = M.slice()
@@ -29,7 +28,7 @@ def run(data_node,parameters):
     out_node = bie.Data(rulebase.SignalFile,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

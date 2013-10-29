@@ -1,5 +1,5 @@
 #GatherFile
-import bie
+from Betsy import bie
 import SignalFile_rule
 GatherFile = bie.DataType(
     'GatherFile',

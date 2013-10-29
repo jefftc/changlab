@@ -1,11 +1,9 @@
 #filter_and_threshold_genes.py
 import os
-#from Betsy
-import module_utils
-import bie
-import rulebase
+from Betsy import module_utils
+from Betsy import bie, rulebase
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     """run preprocessdataset """
     import arrayio
     outfile = name_outfile(data_node)
@@ -38,7 +36,7 @@ def run(data_node, parameters):
     out_node = bie.Data(rulebase.SignalFile,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

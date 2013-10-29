@@ -1,14 +1,12 @@
 #detect_CEL_version.py
 import os
-#from Betsy
-import module_utils
+from Betsy import module_utils
 import shutil
 import gzip
 from genomicode import affyio
-import bie
-import rulebase
+from Betsy import bie, rulebase
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     """convert the cel file with ccl or v3_4 to v3_4"""
     outfile = name_outfile(data_node)
     new_parameters = get_out_attributes(parameters,data_node)
@@ -54,7 +52,7 @@ def get_out_attributes(parameters,data_node):
         raise ValueError('the cel file can only be cc,v3,v4')
     return new_parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

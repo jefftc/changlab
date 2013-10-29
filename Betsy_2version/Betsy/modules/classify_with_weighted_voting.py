@@ -2,15 +2,13 @@
 import shutil
 import os
 import subprocess
-from genomicode import config
-#from Betsy
-import module_utils, read_label_file
-from time import strftime,localtime
-import bie 
-import rulebase
 import arrayio
+from genomicode import config
+from Betsy import bie 
+from Betsy import rulebase
+from Betsy import module_utils, read_label_file
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     data_node_train,data_node_test,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes)
     module_name = 'WeightedVoting'
@@ -112,7 +110,7 @@ def make_unique_hash(in_nodes,pipeline,parameters):
     identifier = data_node_train.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node_train = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1',
                                             datatype='SignalFile2')

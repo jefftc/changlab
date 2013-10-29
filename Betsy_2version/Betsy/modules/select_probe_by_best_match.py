@@ -1,13 +1,12 @@
 #select_probe_by_best_match.py
 import os
-#from Betsy
-import module_utils
 import arrayio
 from genomicode import filelib,arrayplatformlib, config
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     outfile = name_outfile(data_node)
     mapfile = config.HumanHT_12_to_HG_u133_Plus_2
     assert os.path.exists(mapfile),'mapping file %s does not exist'%mapfile
@@ -45,7 +44,7 @@ def run(data_node, parameters):
     else:
         return None
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

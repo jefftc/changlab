@@ -1,15 +1,14 @@
 #reorder_genes.py
-#from Betsy
-import gene_ranking
-#from Betsy
-import module_utils
+
 import os
 import arrayio
 from genomicode import arrayplatformlib, config
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import gene_ranking
+from Betsy import module_utils
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters, network):
     data_node,gene_node = in_nodes
     outfile = name_outfile(in_nodes)
     #read the gene order list
@@ -64,7 +63,7 @@ def run(in_nodes, parameters):
     out_node = bie.Data(rulebase.SignalFile2,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

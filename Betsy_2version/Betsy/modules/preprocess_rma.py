@@ -1,13 +1,12 @@
 #preprocess_rma.py
 import os
-#from Betsy
-import module_utils
 import subprocess
 from genomicode import config
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     """preprocess the inputfile with RMA 
        using preprocess.py will generate a output file"""
     #preprocess the cel file to text signal file
@@ -52,7 +51,7 @@ def name_outfile(data_node):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

@@ -1,16 +1,14 @@
 #filter_genes_by_fold_change_across_classes.py
 import os
-#from Betsy
-import module_utils, read_label_file
+from Betsy import module_utils, read_label_file
 from genomicode import jmath
 import math
-import bie
-import rulebase
+from Betsy import bie, rulebase
 
-def run(x, parameters):
+def run(in_nodes, parameters, network):
     import arrayio
-    data_node,cls_node = x
-    outfile = name_outfile(x)
+    data_node,cls_node = in_nodes
+    outfile = name_outfile(in_nodes)
     # obtain the class label
     label, label_line, second_line = read_label_file.read(
         cls_node.attributes['filename'])
@@ -40,7 +38,7 @@ def run(x, parameters):
     return out_node
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

@@ -1,13 +1,11 @@
 #extract_CEL_files.py
 import os
-#from Betsy
-import module_utils
 import shutil
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     """extract the cel files with cc or v3_4"""
     from genomicode import affyio
     outfile = name_outfile(data_node)
@@ -57,7 +55,7 @@ def make_unique_hash(data_node,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

@@ -1,12 +1,10 @@
 #convert_signal_to_pcl.py
 import os
-#from Betsy
-import module_utils
+from Betsy import module_utils
 import shutil
-import bie
-import rulebase
+from Betsy import bie,rulebase
 
-def run(data_node,parameters):
+def run(data_node,parameters, network):
     """convert signal file to pcl format"""
     import arrayio
     outfile = name_outfile(data_node)
@@ -44,7 +42,7 @@ def make_unique_hash(data_node,pipeline,parameters):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
 

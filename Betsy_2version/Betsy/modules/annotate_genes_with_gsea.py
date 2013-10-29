@@ -4,13 +4,11 @@ import shutil
 import os
 import arrayio
 from genomicode import arrayplatformlib, config
-#from Betsy
-import module_utils, read_label_file
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import module_utils, read_label_file
+from Betsy import bie
+from Betsy import rulebase
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters,network):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes)
     gsea_path = config.gsea
@@ -42,7 +40,7 @@ def run(in_nodes, parameters):
     return out_node
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

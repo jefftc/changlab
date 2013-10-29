@@ -1,5 +1,5 @@
 #SignatureScore
-import bie
+from Betsy import bie
 import SignalFile2_rule
 SignatureScore = bie.DataType(
     'SignatureScore',

@@ -1,14 +1,11 @@
 #annotate_genes_with_gather.py
 import os
-#from Betsy
-import module_utils
+from Betsy import module_utils
 import urllib
 import urllib2
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import bie,rulebase
 
-def run(data_node,parameters):
+def run(data_node,parameters,network):
     """run GATHER"""
     outfile = name_outfile(data_node)
     kwargs = {'cmd': "report",
@@ -42,7 +39,7 @@ def run(data_node,parameters):
     out_node = bie.Data(rulebase.GatherFile,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                     data_nodes)
     return data_node

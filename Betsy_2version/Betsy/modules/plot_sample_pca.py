@@ -1,16 +1,14 @@
 #plot_sample_pca.py
 import os
-#from Betsy
-import module_utils
+from Betsy import module_utils
 import shutil
-#from Betsy
-import read_label_file
+from Betsy import read_label_file
 import arrayio
 import matplotlib.cm as cm
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes)
     a,b,c = read_label_file.read(cls_node.attributes['filename'])
@@ -58,9 +56,11 @@ def name_outfile(in_nodes):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PcaAnalysis')
+                                            data_nodes,datatype='PcaAnalysis',
+                                            optional_key='process',
+                                            optional_value=parameters['process'])
     cls_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='ClassLabelFile')
     return data_node,cls_node

@@ -1,13 +1,13 @@
 #extract_agilent_files.py
-#from Betsy
-import module_utils
+
 import shutil
 import os
 from Betsy import hash_method
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     outfile = name_outfile(data_node)
     directory = module_utils.unzip_if_zip(data_node.attributes['filename'])
     agilent_files = []
@@ -66,7 +66,7 @@ def name_outfile(data_node):
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

@@ -1,12 +1,11 @@
 #normalize_genes.py
 import os
-#from Betsy
-import module_utils
 import subprocess
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(data_node,parameters):
+def run(data_node,parameters, network):
     """variance or sum_of_square"""
     norm_para = ["variance","sum_of_squares"]
     if parameters['gene_normalize'] not in norm_para:
@@ -60,7 +59,7 @@ def make_unique_hash(data_node,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

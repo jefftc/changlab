@@ -1,5 +1,5 @@
 #ClusterFile
-import bie
+from Betsy import bie
 import SignalFile2_rule
 ClusterFile = bie.DataType(
     "ClusterFile",
@@ -17,8 +17,8 @@ Heatmap = bie.DataType(
               DEFAULT='no_cluster_alg'),
     bie.Attribute(distance=['correlation','euclidean'],DEFAULT='euclidean'),
     bie.Attribute(k=bie.ANYATOM,DEFAULT='5'),
-    bie.Attribute(hm_width=bie.ANYATOM,DEFAULT=''),
-    bie.Attribute(hm_height=bie.ANYATOM,DEFAULT=''),
+    bie.Attribute(hm_width=bie.ANYATOM,DEFAULT="20"),
+    bie.Attribute(hm_height=bie.ANYATOM,DEFAULT='1'),
     bie.Attribute(color=['red_green', 'blue_yellow'],DEFAULT='red_green'))
 
 list_files = [ClusterFile,Heatmap]

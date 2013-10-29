@@ -1,8 +1,15 @@
 #GenesetAnalysis
-import bie
+from Betsy import bie
 import SignalFile2_rule
 GenesetAnalysis=bie.DataType(
     'GenesetAnalysis',
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
+    bie.Attribute(geneset=bie.ANYATOM, DEFAULT="no"),
+    bie.Attribute(allgenes=['yes','no'], DEFAULT="no"),
+    bie.Attribute(automatch=['yes','no'], DEFAULT="no"),
+    )
+GenesetPlot=bie.DataType(
+    'GenesetPlot',
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
     bie.Attribute(geneset=bie.ANYATOM, DEFAULT="no"),
     bie.Attribute(allgenes=['yes','no'], DEFAULT="no"),
@@ -12,7 +19,8 @@ GenesetAnalysis=bie.DataType(
 GenesetFile = bie.DataType(
     'GenesetFile',
     bie.Attribute(filename=bie.ANYATOM,DEFAULT="", OPTIONAL=True))
-list_files = [GenesetAnalysis,GenesetFile]
+list_files = [GenesetAnalysis,GenesetPlot,GenesetFile]
+
 all_modules = [
     bie.Module(
         'score_pathway_with_geneset',
@@ -21,4 +29,10 @@ all_modules = [
                      gene_normalize='variance',unique_genes='high_var')],
         GenesetAnalysis(
                     geneset=bie.ANYATOM, allgenes=['yes','no'],
-                    automatch=['yes','no']))]
+                    automatch=['yes','no'])),
+    bie.Module(
+        'plot_geneset_score_bar',
+        GenesetAnalysis,
+        GenesetPlot(geneset=bie.ANYATOM, allgenes=['yes','no'],
+                    automatch=['yes','no'])),
+    ]

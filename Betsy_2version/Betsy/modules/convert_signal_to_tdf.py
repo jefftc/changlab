@@ -1,19 +1,17 @@
 #convert_signal_to_tdf.py
 import os
-#from Betsy import module_utils
-import module_utils
+from Betsy import module_utils
 import shutil
 import xlrd 
 import openpyxl
 import arrayio
 import subprocess
 from genomicode import config, arrayplatformlib
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
         
-def run(data_node,parameters):
+def run(data_node,parameters, network):
     """check an input file is xls or xlsx format"""
-    starttime = strftime(module_utils.FMT, localtime())
     outfile = name_outfile(data_node)
     if data_node.attributes['filename'].endswith('.gz'):
         unzip_file = module_utils.gunzip(data_node.attributes['filename'])
@@ -96,7 +94,7 @@ def guess_and_change_gct_header(filename):
     M = module_utils.replace_matrix_header(M, old_header, new_header)
     return M
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
 

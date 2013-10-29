@@ -1,0 +1,11 @@
+
+python run_rule.py --in_data 'rulebase.SignalFile(preprocess="rma", format="jeffs",filename="/home/xchen/chencode/betsy_test/all_aml_train.res")' --goal_datatype 'rulebase.SignalFile' --goal_attributes "dict(format='tdf', logged='yes', preprocess='rma',missing_values='no')" --dry_run
+
+
+python run_rule.py --in_data 'rulebase.SignalFile(format="jeffs",filename="/home/xchen/chencode/betsy_test/all_aml_train.res")' --in_data "rulebase.ClassLabelFile(cls_format='cls',filename='/home/xchen/chencode/betsy_test/all_aml_train.cls')" --goal_datatype 'rulebase.ReportFile' --goal_attributes "dict(report_type='normalize',format='tdf',logged='yes',missing_values='no')" --network 'out.png'
+
+
+python run_rule.py --in_data "bie.Data(rulebase.SignalFile, filename='/home/xchen/chencode/betsy_test/all_aml_train.res')" --goal_datatype 'rulebase.ReportFile' --goal_attributes "
+dict(report_type= 'normalize', format='tdf', logged='yes',  missing_values= 'no')" --dry_run
+
+python run_protocol.py --protocol normalize_file --input 'SignalFile:/home/xchen/chencode/betsy_test/all_aml_train.res' --parameters 'missing_values:no'   --dry_run

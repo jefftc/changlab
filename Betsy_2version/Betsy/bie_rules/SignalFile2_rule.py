@@ -1,5 +1,5 @@
 #SignalFile2
-import bie
+from Betsy import bie
 import SignalFile_rule
 import SignalFile1_rule
 
@@ -15,7 +15,7 @@ SignalFile2 = bie.DataType(
         preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         DEFAULT="unknown"),
     bie.Attribute(
-        missing_values=[ "no"],
+        missing_values=["no"],
         DEFAULT="no"),
     bie.Attribute(
         missing_algorithm=["none", "median_fill", "zero_fill"],
@@ -69,7 +69,29 @@ SignalFile2 = bie.DataType(
     bie.Attribute(contents=["train0", "train1", "test", "class0,class1,test",
                         "class0", "class1", "class0,class1", "no"], DEFAULT="no")
     )
-list_files=[SignalFile2]
+IntensityPlot = bie.DataType(
+    'IntensityPlot',
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
+    )
+ActbPlot = bie.DataType(
+    'ActbPlot',
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True))
+Hyb_barPlot = bie.DataType(
+    'Hyb_barPlot',
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),)
+ControlPlot = bie.DataType(
+    'ControlPlot',
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
+    bie.Attribute(preprocess=["unknown", "agilent", "mas5", "rma", "loess"],DEFAULT='unknown'))
+BiotinPlot = bie.DataType(
+    'BiotinPlot',
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),)
+HousekeepingPlot = bie.DataType(
+    'HousekeepingPlot',
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),)
+
+list_files=[SignalFile2,IntensityPlot,ActbPlot,Hyb_barPlot,BiotinPlot,
+            HousekeepingPlot,ControlPlot]
 all_modules = [
     bie.QueryModule(
         "transfer2",
@@ -107,7 +129,7 @@ all_modules = [
                        missing_values='no')),
     bie.Module(  
         "filter_genes_by_fold_change_across_classes",
-        [SignalFile_rule.ClassLabelFile,
+        [SignalFile_rule.ClassLabelFile(cls_format='cls'),
          SignalFile2(
              format="tdf", logged="yes",
              group_fc="no", gene_order='no', annotate="no",
@@ -127,7 +149,7 @@ all_modules = [
             gene_order="no",annotate="no",
             num_features="all", platform="no",
             duplicate_probe='no', unique_genes='no'),
-         SignalFile_rule.ClassLabelFile],
+         SignalFile_rule.ClassLabelFile(cls_format='cls')],
         SignalFile_rule.GeneListFile(gene_order="class_neighbors",
                     cn_num_neighbors=bie.ANYATOM,
                     cn_num_perm=bie.ANYATOM,
@@ -145,7 +167,7 @@ all_modules = [
                    gene_order="no", annotate="no",
                     num_features="all", platform="no",
                     duplicate_probe='no', unique_genes='no'),
-          SignalFile_rule.ClassLabelFile],
+          SignalFile_rule.ClassLabelFile(cls_format='cls')],
          SignalFile_rule.GeneListFile(gene_order=["t_test_p", "t_test_fdr"],
                       cn_num_neighbors=bie.ANYATOM,
                     cn_num_perm=bie.ANYATOM,
@@ -214,6 +236,33 @@ all_modules = [
         'unlog_signal',
         SignalFile2(format="tdf", logged="yes"),
         SignalFile2(format="tdf", logged="no")),
+    bie.Module(
+        'plot_intensity_boxplot',
+        SignalFile2,
+        IntensityPlot),
+    bie.Module(
+        'plot_actb_line',
+        SignalFile_rule.SignalFile(format='tdf',logged='yes',missing_values='no',
+                                   quantile_norm='no',combat_norm='no',shiftscale_norm='no',
+                                   dwd_norm='no',bfrm_norm='no'),
+        ActbPlot),
+    bie.Module(
+        'plot_affy_affx_line',
+        SignalFile2(annotate='no',preprocess=["unknown", "agilent",
+                                "mas5", "rma", "loess"]),
+        ControlPlot(preprocess=["unknown", "agilent",
+                                "mas5", "rma", "loess"])),
+    bie.Module(
+       'plot_illu_hyb_bar',
+       SignalFile_rule.ControlFile(preprocess="illumina",format="gct", logged="no"),
+       Hyb_barPlot),
+    bie.Module(
+        'plot_illu_biotin_line',
+        SignalFile_rule.ControlFile(preprocess='illumina',format='gct',logged='no'),
+        BiotinPlot),
+    bie.Module(
+        'plot_illu_housekeeping_line',
+        SignalFile_rule.ControlFile(preprocess='illumina',format='gct',logged='no'),
+        HousekeepingPlot),
     
-   
     ]

@@ -3,14 +3,12 @@ import os
 import shutil
 from genomicode import affyio
 from ftplib import FTP
-#from Betsy
-import module_utils
+from Betsy import module_utils,bie,rulebase
 import string
 import gzip
-import bie
-import rulebase
 
-def run(data_node, parameters):
+
+def run(data_node, parameters, network):
     """given a database ID and GPLID, get the cel files"""
     outfile = name_outfile(data_node)
     GSEID = data_node.attributes['GSEID']
@@ -47,7 +45,7 @@ def make_unique_hash(data_node,pipeline,parameters):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

@@ -1,5 +1,5 @@
 # SignalFile
-import bie
+from Betsy import bie
 ILLU_MANIFEST = [
     'HumanHT-12_V3_0_R2_11283641_A.txt',
     'HumanHT-12_V4_0_R2_15002873_B.txt',
@@ -60,16 +60,16 @@ ControlFile = bie.DataType(
         DEFAULT="unknown"),
     bie.Attribute(
         missing_values=["unknown", "no", "yes"],
-        DEFAULT="unknown"),
+        DEFAULT="no"),
     bie.Attribute(
         missing_algorithm=["none", "median_fill", "zero_fill"],
         DEFAULT="none", OPTIONAL=True),
     bie.Attribute(
         logged=["unknown", "no", "yes"],
-        DEFAULT="unknown"),
+        DEFAULT="no"),
     bie.Attribute(
         format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
-        DEFAULT="unknown"),
+        DEFAULT="gct"),
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
     )
 ExpressionFiles = bie.DataType(
@@ -94,6 +94,7 @@ ClassLabelFile = bie.DataType(
                   "class0", "class1", "class0,class1",
                   "no"],DEFAULT='no'),
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
+    bie.Attribute(cls_format=['cls','label','unknown'],DEFAULT='unknown')
     )
 
 ILLUFolder = bie.DataType(
@@ -111,6 +112,7 @@ ILLUFolder = bie.DataType(
     bie.Attribute(illu_custom_chip=bie.ANYATOM, DEFAULT=""),
     bie.Attribute(illu_custom_manifest=bie.ANYATOM, DEFAULT=""),
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),)
+
 GeneListFile=bie.DataType(
     "GeneListFile",
     bie.Attribute(cn_num_neighbors=bie.ANYATOM, DEFAULT=""),
@@ -164,13 +166,11 @@ SignalFile = bie.DataType(
                   "class0", "class1", "class0,class1",
                   "no"],
         DEFAULT="no"))
-SampleSheet = bie.DataType(
-    "SampleSheet",
-    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),)
+
 
 list_files=[RenameFile,AgilentFiles,CELFiles,ControlFile,ExpressionFiles,
             GPRFiles,GEOSeries,IDATFiles,ClassLabelFile,ILLUFolder,GeneListFile,
-            SignalFile,SampleSheet]
+            SignalFile]
             
 all_modules = [
     # GSEID
@@ -213,7 +213,7 @@ all_modules = [
     bie.Module(
         "get_illumina_signal",
         ILLUFolder,
-        SignalFile(logged="no", preprocess="illumina", format="gct")
+        SignalFile(preprocess="illumina", format="gct",logged="no")
         ),
     bie.Module(
         "get_illumina_control",
@@ -321,7 +321,8 @@ all_modules = [
             quantile_norm="yes")),
     bie.Module(
         "normalize_samples_with_combat",
-        [ClassLabelFile,SignalFile(
+        [ClassLabelFile(cls_format='cls'),
+            SignalFile(
             format="tdf", logged="yes", missing_values="no",
             combat_norm="no")],
         SignalFile(
@@ -329,7 +330,8 @@ all_modules = [
             combat_norm="yes")),
     bie.Module(
         "normalize_samples_with_dwd",
-        [ClassLabelFile,SignalFile(
+        [ClassLabelFile(cls_format='cls'),
+         SignalFile(
             format="tdf", logged="yes", missing_values="no",
             dwd_norm="no")],
         SignalFile(
@@ -345,14 +347,16 @@ all_modules = [
             bfrm_norm="yes")),
     bie.Module(
         "normalize_samples_with_shiftscale",
-        [ClassLabelFile,SignalFile(
+        [ClassLabelFile(cls_format='cls'),
+            SignalFile(
             format="tdf", logged="yes", missing_values="no",
             shiftscale_norm="no")],
         SignalFile(
             format="tdf", logged="yes", missing_values="no",
             shiftscale_norm="yes")),
     bie.Module(
-        "convert_sample_sheet_to_cls",
-        [SignalFile(format='tdf',logged='yes'),SampleSheet],
-        ClassLabelFile)
+        "convert_label_to_cls",
+        [ClassLabelFile(cls_format='label'),
+         SignalFile(format='tdf',logged='yes')],
+         ClassLabelFile(cls_format='cls'))
     ]

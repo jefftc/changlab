@@ -3,24 +3,23 @@ import svmutil
 import sys
 import arrayio
 import os
-#from Betsy
-import read_label_file, module_utils
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import read_label_file, module_utils
+from Betsy import bie
+from Betsy import rulebase
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     svm_model,data_node_test,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes)
     a, train_label, second_line = read_label_file.read(
             cls_node_train.attributes['filename'])
-    test = arrayio.read(data_node_test.attributes['filename'])
+    M = arrayio.read(data_node_test.attributes['filename'])
     # convert to the format libsvm accept
-    x_test = module_utils.format_convert(test.matrix(None,range(len(train_label),test.dim()[1])))
+    test = M.matrix(None,range(len(train_label),M.dim()[1]))
+    x_test = module_utils.format_convert(test)
     model = svmutil.svm_load_model(svm_model.attributes['filename'])
     a, train_label, second_line = read_label_file.read(
             cls_node_train.attributes['filename'])
-    y_test = [0]*len(test.slice()[0])
+    y_test = [0]*len(x_test)
     p_label, p_acc, p_val = svmutil.svm_predict(y_test, x_test, model)
     prediction_index = [int(i) for i in p_label]
     prediction = [second_line[i] for i in prediction_index]
@@ -61,7 +60,7 @@ def make_unique_hash(in_nodes,pipeline,parameters):
     identifier = svm_model.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     svm_model_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,
                                             datatype='SvmModel')

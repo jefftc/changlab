@@ -1,13 +1,10 @@
 #center_genes.py
 import os
 import subprocess
-#from Betsy
-import module_utils
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import module_utils,bie,rulebase
 
-def run(data_node,parameters):
+
+def run(data_node,parameters, network):
     """mean or median"""
     CLUSTER_BIN = 'cluster'
     center_alg = {'mean': 'a', 'median': 'm'}
@@ -51,7 +48,7 @@ def make_unique_hash(data_node,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

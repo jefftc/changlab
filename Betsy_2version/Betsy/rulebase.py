@@ -1,6 +1,6 @@
 #rulebase.py
 import os
-module_lib = 'bie_rules'
+module_lib = os.path.join(os.path.dirname( __file__ ),'bie_rules')
 file_names = os.listdir(module_lib)
 all_modules = []
 for file_name in file_names:

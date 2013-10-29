@@ -1,14 +1,12 @@
 #score_pathway_with_geneset.py
 import os
 import subprocess
-#from Betsy
-import module_utils
 from genomicode import config
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters, network):
     """analyze geneset"""
     data_node,geneset_node = in_nodes
     outfile = get_outfile(in_nodes)
@@ -41,7 +39,7 @@ def run(in_nodes, parameters):
     out_node = bie.Data(rulebase.GenesetAnalysis,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
     geneset_node = module_utils.get_identifier(network, module_id, data_nodes,

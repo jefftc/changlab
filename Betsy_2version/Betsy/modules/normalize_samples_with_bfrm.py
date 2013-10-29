@@ -1,15 +1,15 @@
 #normalize_samples_with_bfrm.py
 import os
 import subprocess
-import module_utils
 import shutil
 import arrayio
 import tempfile
 from genomicode import config
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     outfile = name_outfile(data_node)
     bfrm_path = config.bfrmnorm
     bfrm_BIN = module_utils.which(bfrm_path)
@@ -55,7 +55,7 @@ def name_outfile(data_node):
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

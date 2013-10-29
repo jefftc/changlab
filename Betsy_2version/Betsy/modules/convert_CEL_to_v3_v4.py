@@ -1,13 +1,11 @@
 #convert_CEL_to_v3_v4.py
 import os
-#from Betsy
-import module_utils
+from Betsy import module_utils
 import shutil
 import gzip
-import bie
-import rulebase
+from Betsy import bie, rulebase
 
-def run(data_node,parameters):
+def run(data_node,parameters, network):
     """convert the cel file with ccl or v3_4 to v3_4"""
     from genomicode import affyio
     outfile = name_outfile(data_node)
@@ -56,7 +54,7 @@ def make_unique_hash(data_node,pipeline,parameters):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

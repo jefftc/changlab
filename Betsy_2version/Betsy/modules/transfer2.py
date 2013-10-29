@@ -1,14 +1,13 @@
 #transfer1.py
 import os
 import shutil
-#from Betsy import module_utils
-import module_utils
 from genomicode import binreg
 import arrayio
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(data_node,parameters):
+def run(data_node,parameters, network):
     outfile = name_outfile(data_node)
     parameters = get_out_attributes(parameters,data_node)
     shutil.copyfile(data_node.attributes['filename'],outfile)
@@ -35,7 +34,7 @@ def make_unique_hash(data_node,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

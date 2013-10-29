@@ -1,13 +1,12 @@
 #log_signal.py
 import os
 import shutil
-#from Betsy import module_utils
-import module_utils
+from Betsy import module_utils
 from genomicode import binreg
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     """log the input file"""
     import arrayio
     import math
@@ -40,7 +39,7 @@ def name_outfile(data_node):
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

@@ -1,13 +1,12 @@
 #get_illumina_signal.py
 
-#from Betsy
-import module_utils
 import shutil
 import os
-import bie
-import rulebase
+from betsy import bie, rulebase
+from Betsy import module_utils
 
-def run(data_node, parameters):
+
+def run(data_node, parameters, network):
     outfile = name_outfile(data_node)
     result_files = os.listdir(data_node.attributes['filename'])
     for result_file in result_files:
@@ -38,7 +37,7 @@ def make_unique_hash(data_node,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

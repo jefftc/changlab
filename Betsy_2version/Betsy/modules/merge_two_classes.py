@@ -1,12 +1,12 @@
 #merge_two_class.py
 
-import module_utils
 import os
 import arrayio
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters, network):
     """merge three signal file to generate a joined signal file"""
     merge_node1, merge_node2 = in_nodes
     assert os.path.exists(merge_node1.attributes['filename']),(
@@ -45,7 +45,7 @@ def make_unique_hash(in_nodes,pipeline,parameters):
     identifier = data_node1.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node1 = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0')
     data_node2 = module_utils.get_identifier(network, module_id, data_nodes,

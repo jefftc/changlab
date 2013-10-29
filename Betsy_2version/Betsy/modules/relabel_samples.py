@@ -1,15 +1,14 @@
 #relabel_samples.py
 import os
 import shutil
-#from Betsy
-import module_utils
 import arrayio
 import subprocess
 from genomicode import config
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     data_node,rename_node = in_nodes
     outfile = name_outfile(in_nodes)
     rename_path = config.slice_matrix
@@ -36,7 +35,7 @@ def run(in_nodes,parameters):
 
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile')
     rename_node = module_utils.get_identifier(network, module_id, data_nodes,

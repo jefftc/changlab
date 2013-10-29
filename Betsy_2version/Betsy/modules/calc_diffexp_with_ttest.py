@@ -4,13 +4,10 @@ import os
 import arrayio
 import numpy
 from genomicode import jmath
-#from Betsy
-import gene_ranking, module_utils, read_label_file
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import gene_ranking, module_utils, read_label_file,bie,rulebase
+ 
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters, network):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes)
     label, label_line, second_line = read_label_file.read(
@@ -59,7 +56,7 @@ def run(in_nodes, parameters):
     out_node = bie.Data(rulebase.DiffExprFile,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

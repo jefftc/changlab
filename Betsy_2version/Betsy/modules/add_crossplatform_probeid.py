@@ -4,14 +4,12 @@ import os
 import shutil
 import subprocess
 import arrayio
-#from Betsy
-import module_utils
+from Betsy import module_utils
 from genomicode import jmath, Matrix, arrayplatformlib, config
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import bie,rulebase
+ 
 
-def run(data_node,parameters):
+def run(data_node,parameters,network):
     outfile = name_outfile(data_node)
     DATA = arrayio.read(data_node.attributes['filename'])
     chipname = arrayplatformlib.identify_platform_of_matrix(DATA)
@@ -39,7 +37,7 @@ def run(data_node,parameters):
     out_node = bie.Data(rulebase.SignalFile2,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

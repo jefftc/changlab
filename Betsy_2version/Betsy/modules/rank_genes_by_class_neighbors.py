@@ -1,15 +1,14 @@
 #rank_genes_by_class_neighbors.py
-#from Betsy
-import module_utils
+
 import shutil
 import os
 from genomicode import config
 import subprocess
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters, network):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes)
     import arrayio
@@ -99,7 +98,7 @@ def run(in_nodes, parameters):
     out_node = bie.Data(rulebase.GeneListFile,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

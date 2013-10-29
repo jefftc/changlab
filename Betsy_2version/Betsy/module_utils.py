@@ -15,15 +15,56 @@ from stat import *
 
 FMT = "%a %b %d %H:%M:%S %Y"
 
-def get_identifier(network, module_id, stack_list,
-                   datatype=None, contents=None):
-    for x in stack_list:
-        node, node_id = x
+##def get_identifier(network, module_id, stack_list,
+##                   datatype=None, contents=None,optional_key=None,
+##                   optional_value=None):
+##    for x in stack_list:
+##        node, node_id,a,b = x
+##        if datatype:
+##            if not node.datatype.name == datatype:
+##                continue
+##        if contents:
+##            if 'contents' not in node.attributes:
+##                continue
+##            if not node.attributes['contents'] == contents:
+##                continue
+##        if optional_key and optional_value:
+##            if optional_key not in node.attributes:
+##                continue
+##            elif not node.attributes[optional_key] == optional_value:
+##                continue
+##        if module_id in network.transitions[node_id]:
+##            if 'filename' in node.attributes:
+##                assert os.path.exists(node.attributes['filename']), (
+##            'the input file %s for %s does not exist'
+##        % (node.attributes['filename'],network.nodes[module_id].name))
+##                return node
+##            else:
+##                return node
+##    return False
+
+def get_identifier(network, module_id, pool,
+                   datatype=None, contents=None,optional_key=None,
+                   optional_value=None,second_key=None,second_value=None):
+    for x in pool:
+        node, node_id = pool[x],x
         if datatype:
             if not node.datatype.name == datatype:
                 continue
         if contents:
+            if 'contents' not in node.attributes:
+                continue
             if not node.attributes['contents'] == contents:
+                continue
+        if optional_key and optional_value:
+            if optional_key not in node.attributes:
+                continue
+            elif not node.attributes[optional_key] == optional_value:
+                continue
+        if second_key and second_value:
+            if second_key not in node.attributes:
+                continue
+            elif not node.attributes[second_key] == second_value:
                 continue
         if module_id in network.transitions[node_id]:
             if 'filename' in node.attributes:
@@ -34,7 +75,6 @@ def get_identifier(network, module_id, stack_list,
             else:
                 return node
     return False
-
 def get_inputid(identifier):
     old_filename = os.path.split(identifier)[-1]
     old_filename_no_ext = os.path.splitext(old_filename)[-2]

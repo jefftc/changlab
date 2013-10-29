@@ -1,12 +1,10 @@
 # select_first_n_genes.py
 import os
-#from Betsy
-import module_utils
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import module_utils
+from Betsy import bie
+from Betsy import rulebase
 
-def run(data_node,parameters):
+def run(data_node,parameters, network):
     """select a num of genes according to num_features"""
     import arrayio
     outfile = name_outfile(data_node)
@@ -25,7 +23,7 @@ def run(data_node,parameters):
     return out_node
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

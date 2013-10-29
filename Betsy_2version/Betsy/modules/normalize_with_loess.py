@@ -1,16 +1,12 @@
 #normalize_with_loess.py
 import os
-#from Betsy
-import module_utils
+from Betsy import module_utils
 import shutil
 import gzip
 from genomicode import smarray
-#from Betsy
-import gpr_module
-import bie 
-import rulebase
+from Betsy import gpr_module, bie,rulebase
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     parameters = get_out_attributes(parameters,data_node)
     filenames=os.listdir(data_node.attributes['filename'])
     outfile = name_outfile(data_node)
@@ -85,7 +81,7 @@ def make_unique_hash(data_node,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

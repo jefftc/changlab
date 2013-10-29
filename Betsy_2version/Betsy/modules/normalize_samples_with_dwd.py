@@ -1,14 +1,14 @@
 #normalize_samples_with_dwd.py
 
 import os
-import module_utils, read_label_file
 import shutil
 from genomicode import dwdnorm
 import arrayio
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils, read_label_file
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters, network):
     data_node,cls_node = in_nodes
     if data_node and cls_node:
         outfile = name_outfile(in_nodes)
@@ -32,7 +32,7 @@ def run(in_nodes, parameters):
     return False
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

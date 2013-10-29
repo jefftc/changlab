@@ -2,15 +2,12 @@
 import svmutil
 import sys
 import arrayio
-#from Betsy
-import read_label_file
-#from Betsy
-import module_utils
+from Betsy import read_label_file
+from Betsy import module_utils,bie,rulebase
 import os
-import bie
-import rulebase
 
-def run(in_nodes, parameters):
+
+def run(in_nodes, parameters, network):
     data_node_train,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes)
     a,training_label,second_line = read_label_file.read(
@@ -51,7 +48,7 @@ def make_unique_hash(in_nodes,pipeline,parameters):
     identifier = data_node_train.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node_train = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1,test',
                                             datatype='SignalFile2')

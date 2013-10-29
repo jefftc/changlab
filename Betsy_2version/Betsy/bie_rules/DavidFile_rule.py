@@ -1,5 +1,5 @@
 #DavidFile
-import bie
+from Betsy import bie
 import SignalFile_rule
 DavidFile = bie.DataType(
     'DavidFile',

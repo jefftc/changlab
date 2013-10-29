@@ -1,14 +1,14 @@
 #preprocess_illumina.py
-#from Betsy
-import module_utils
+
 import shutil
 import os
-from genomicode import config
 import zipfile
 import subprocess
 import arrayio
-import bie
-import rulebase
+from genomicode import config
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils
 
 def zip_directory(dir, zip_file):
     zip = zipfile.ZipFile(zip_file, 'w',
@@ -22,7 +22,7 @@ def zip_directory(dir, zip_file):
             zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
     zip.close()
 
-def run(data_node, parameters):
+def run(data_node, parameters, network):
     outfile = name_outfile(data_node)
     module_name = 'IlluminaExpressionFileCreator'
     gp_parameters = dict()
@@ -154,7 +154,7 @@ def name_outfile(data_node):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

@@ -3,14 +3,11 @@
 import sys
 import arrayio
 import os
-#from Betsy
-import read_label_file, module_utils
+from Betsy import read_label_file, module_utils
 from genomicode import jmath
-from time import strftime,localtime
-import bie
-import rulebase
+from Betsy import bie, rulebase
 
-def run(in_nodes, parameters):
+def run(in_nodes, parameters, network):
     data_node,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes)
     result, label_line, second_line = read_label_file.read(
@@ -71,7 +68,7 @@ def make_unique_hash(in_nodes,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1,test',
                                             datatype='SignalFile2')

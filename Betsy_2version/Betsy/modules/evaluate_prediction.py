@@ -4,13 +4,11 @@ import shutil
 import os
 import subprocess
 from genomicode import config
-#from Betsy
-import module_utils, read_label_file
-from time import strftime,localtime
-import bie 
-import rulebase
+from Betsy import module_utils, read_label_file
+from Betsy import bie 
+from Betsy import rulebase
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     data_node,cls_node_test = in_nodes
     outfile = name_outfile(in_nodes)
     f = file(data_node.attributes['filename'],'r')
@@ -55,11 +53,12 @@ def make_unique_hash(in_nodes,pipeline,parameters):
     identifier = data_node.attributes['filename']
     return module_utils.make_unique_hash(identifier,pipeline,parameters)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,
                                             datatype='ClassifyFile')
     cls_node_test = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='test',
                                             datatype='ClassLabelFile')
+    print 'input',data_node
     return data_node,cls_node_test

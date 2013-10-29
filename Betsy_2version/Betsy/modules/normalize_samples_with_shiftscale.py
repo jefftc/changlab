@@ -1,17 +1,14 @@
 #normalize_sampels_with_shiftscale.py
 
 import os
-#from Betsy
-import module_utils
 import shutil
-#from Betsy
-import read_label_file
 from genomicode import shiftscalenorm
 import arrayio
-import bie
-import rulebase
+from Betsy import bie, rulebase
+from Betsy import module_utils
+from Betsy import read_label_file
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     data_node, cls_node = in_nodes
     if data_node and cls_node:
         outfile = name_outfile(in_nodes)
@@ -43,7 +40,7 @@ def run(in_nodes,parameters):
         return out_node
     return False
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

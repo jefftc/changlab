@@ -9,7 +9,9 @@ import tempfile
 import shutil
 import module_utils
 import bie
-
+import os
+import time
+from time import strftime,localtime
 # Functions:
 # make_module_wd_name
 # make_module_wd
@@ -27,15 +29,15 @@ import bie
 
 
 
-def get_outnode(network, module_id, module_file,parameters, stack_list):
-    data_node = module_file.find_antecedents(network, module_id, stack_list)
+def get_outnode(network, module_id, module_file,parameters, pool):
+    data_node = module_file.find_antecedents(network, module_id, pool,parameters)
     outfile = module_file.name_outfile(data_node)
     next_possible_ids = network.transitions[module_id]
     parameters = module_file.get_out_attributes(parameters,data_node)
     parameters['filename'] = outfile
     out_nodes = []
     for next_id in next_possible_ids:
-        next_node = create_object_with_full_attribute(
+        next_node = create_object_with_full_attribute(network,
                 network.nodes[next_id], parameters,next_id)
         current_attributes = parameters.copy()
         new_attributes = next_node.attributes.copy()
@@ -70,10 +72,10 @@ def get_outnode(network, module_id, module_file,parameters, stack_list):
     return out_nodes
 
 def make_module_wd_name(network, module_file, module_id, current_attributes,
-                        pipeline_sequence, stack_list):
+                        pipeline_sequence, pool):
     module_name = network.nodes[module_id].name
     data_node = module_file.find_antecedents(
-        network, module_id, stack_list)
+        network, module_id, pool,current_attributes)
     hash_string = module_file.make_unique_hash(
             data_node, pipeline_sequence,
             current_attributes)
@@ -115,7 +117,6 @@ def copy_result_folder(working_dir, temp_dir, temp_outfile):
         if not os.path.isfile(os.path.join(working_dir,'stdout.txt')):
             shutil.rmtree(working_dir)
             raise ValueError('copy fails')
-
         
 def is_antecedence_compatible_with_module(data, module):
     # data is a Data node in the network. module is the data
@@ -128,15 +129,17 @@ def is_antecedence_compatible_with_module(data, module):
     temp_ante_datas = [x for x in module.ante_datas if x.datatype == data.datatype]
     #consider merge multiple SignalFile and SignatureScore
     if len(ante_datatype)>1 and ante_datatype == [ante_datatype[0]]*len(ante_datatype):
+        data_keys = data.attributes.keys()
         for i, x in enumerate(temp_ante_datas):
-            if 'contents' in x.attributes and 'contents' in data.attributes:
-                if x.attributes['contents']==data.attributes['contents']:
-                    index = i
+            common_keys = set(x.attributes.keys()).intersection(set(data_keys))
+            flag = True
+            for common_key in common_keys:
+                if x.attributes[common_key] != data.attributes[common_key]:
+                    flag = False
                     break
-            elif 'preprocess' in x.attributes and 'preprocess' in data.attributes:
-                if x.attributes['preprocess']==data.attributes['preprocess']:
-                    index = i
-                    break
+            if  flag:
+                index = i
+                break
     else:
         index = ante_datatype.index(data.datatype)
     data_attr = data.attributes
@@ -194,6 +197,7 @@ def is_antecedence_compatible_with_module(data, module):
         else:
             raise AssertionError
     return compatible
+    
 
 
 # choose the next module and return the id
@@ -205,7 +209,7 @@ def choose_next_module(network, node_id, node_data):
     for next_node_id in next_node_ids:
         next_node = network.nodes[next_node_id]
         assert isinstance(next_node,bie.Module),'next node supposed to be a module'
-        module_cons_node = create_object_with_full_attribute(
+        module_cons_node = create_object_with_full_attribute(network,
             next_node.cons_data, node_data.attributes)
         new_module = bie.Module(next_node.name, next_node.ante_datas[:], module_cons_node)
         if is_antecedence_compatible_with_module(network.nodes[node_id], next_node):
@@ -214,31 +218,38 @@ def choose_next_module(network, node_id, node_data):
     return result
 
 
-def test_require_data(network, module_id, stack_list):
+
+def test_require_data(network, module_id, pool):
     # test if the required data for the module is met.
     require_id = []
     data_type = []
+    has_id = []
     for key in network.transitions:
         if module_id in network.transitions[key]:
             require_id.append(key)
-    for x in stack_list:
-        node, node_id = x
-        if node_id not in require_id:
+    for node_id in require_id:
+        if node_id not in pool:
             continue
-        flag = bie._is_compatible_with_start(network.nodes[node_id],node)
-        if flag:
-            data_type.append(node.datatype.name)
+        flag = bie._is_compatible_with_start(network.nodes[node_id],pool[node_id])
+        if flag and node_id not in has_id:
+            has_id.append(node_id)
+    require_id.sort()
+    has_id.sort()
+    if require_id == has_id:
+         return True
+    common_id = list(set(require_id).intersection(set(has_id)))
     required_datatype = [data.datatype.name for data
                          in network.nodes[module_id].ante_datas]
+    common_datatype = [network.nodes[comid].datatype.name for comid in common_id]
     required_datatype.sort()
-    data_type.sort()
-    if data_type == required_datatype :
-         return True
+    common_datatype.sort()
+    if common_datatype == required_datatype:
+        return True
     return False
 
 
 
-def create_object_with_full_attribute(in_data,ante_attributes,node_id=None):
+def create_object_with_full_attribute(network,in_data,ante_attributes,node_id=None):
     new_data = bie.Data(in_data.datatype, **in_data.attributes)
     attributes = new_data.attributes
     if node_id:
@@ -258,10 +269,10 @@ def create_object_with_full_attribute(in_data,ante_attributes,node_id=None):
 
 
 
-def create_module_attribtues_from_objects(network, module, module_id, stack_list):
+def create_module_attribtues_from_objects(network, module, module_id, pool):
     new_attributes = module.cons_data.attributes.copy()
-    for x in stack_list:
-        node, node_id = x
+    for x in pool.keys():
+        node, node_id = pool[x],x
         if module_id in network.transitions[node_id]:
             attributes = node.attributes
             defaults = module.cons_data.datatype.get_defaults()
@@ -297,7 +308,7 @@ def create_module_attribtues_from_objects(network, module, module_id, stack_list
     return new_attributes
 
 
-def run_module(network, module_id, module_node, stack_list, pipeline_sequence,
+def run_module(network, module_id, module_node, pool, pipeline_sequence,
                user=getpass.getuser(), job_name='', clean_up=True):
     output_path = config.OUTPUTPATH
     assert os.path.exists(output_path), (
@@ -308,13 +319,13 @@ def run_module(network, module_id, module_node, stack_list, pipeline_sequence,
     module = __import__('modules.' + module_name, globals(),
                         locals(), [module_name], -1)
     current_attributes = create_module_attribtues_from_objects(
-        network, module_node, module_id, stack_list)
+        network, module_node, module_id, pool)
     # make directory name
     working_dir = os.path.join(output_path, make_module_wd_name(
         network, module, module_id, current_attributes,
-        pipeline_sequence, stack_list))
+        pipeline_sequence, pool))
     # make name of outfile
-    data_node = module.find_antecedents(network, module_id, stack_list)
+    data_node = module.find_antecedents(network, module_id, pool,current_attributes)
     outfile = module.name_outfile(data_node)
     temp_dir = ''
     temp_outfile = ''
@@ -324,7 +335,7 @@ def run_module(network, module_id, module_node, stack_list, pipeline_sequence,
         os.chdir(temp_dir)
         try:
             starttime = strftime(module_utils.FMT, localtime())
-            out_node = module.run(data_node, current_attributes)
+            out_node = module.run(data_node, current_attributes, network)
             module_utils.write_Betsy_parameters_file(out_node.attributes,
                                                      data_node,pipeline_sequence,
                                                      starttime,user,job_name)
@@ -362,7 +373,7 @@ def run_module(network, module_id, module_node, stack_list, pipeline_sequence,
             shutil.rmtree(temp_dir)
     os.chdir(working_dir)
     out_nodes = get_outnode(
-        network, module_id, module, current_attributes, stack_list)
+        network, module_id, module, current_attributes, pool)
     return out_nodes
 
 def run_pipeline(network, in_data):
@@ -374,51 +385,52 @@ def run_pipeline(network, in_data):
     try:
         pipeline_sequence = []
         stack_list = []
+        pool = {}
         for data_node in in_data:
             start_node_ids = bie._find_start_nodes(network, data_node)
             for start_node_id in start_node_ids:
                 new_data = create_object_with_full_attribute(
-                    data_node, data_node.datatype.get_defaults(),start_node_id)
-                stack_list.append((new_data, start_node_id))
-            num_failures = 0
+                    network,data_node, data_node.datatype.get_defaults(),start_node_id)
+                stack_list.append((new_data,start_node_id))
+        num_failures = 0
         while stack_list:
             assert num_failures < len(stack_list)
             stack_before_pop = stack_list[:]
             data_node, node_id = stack_list.pop()
-            if node_id == 0:
-                if module_utils.exists_nz(data_node.attributes['filename']):
-                        print ('['+ time.strftime('%l:%M%p') +
-                               '] Completed successfully and generated a file:')
-                        print  data_node.attributes['filename'] + '\r'
-                        print '\r'
-                        sys.stdout.flush()
+            if isinstance(data_node, bie.Data):
+                pool[node_id]=data_node
+                result = choose_next_module(network, node_id, data_node)
+                if result:
+                   result.sort(key=lambda x:x[1])
+                   for x in result:
+                       module, module_id = x
+                       stack_list.append((module, module_id))
+            elif isinstance(data_node, bie.Module):
+                module = data_node
+                module_id = node_id
+                test_required = test_require_data(network, module_id, pool)
+                if test_required:       
+                    pipeline_sequence.append(module.name)
+                    out_nodes = run_module(network, module_id, module, pool, pipeline_sequence)
+                    for x in out_nodes:
+                        next_node, next_id = x
+                        if next_id == 0:
+                            if module_utils.exists_nz(next_node.attributes['filename']):
+                                print ('['+ time.strftime('%l:%M%p') +
+                                       '] Completed successfully and generated a file:')
+                                print  next_node.attributes['filename'] + '\r'
+                                print '\r'
+                                sys.stdout.flush()
+                            else:
+                                    print 'This pipeline has completed unsuccessfully'
+                                    raise ValueError(
+                                        'there is no output for this pipeline')
+                            return
+                        stack_list.append((next_node,next_id))
                 else:
-                        print 'This pipeline has completed unsuccessfully'
-                        raise ValueError(
-                            'there is no output for this pipeline')
-                break
-            result = choose_next_module(network, node_id, data_node)
-            assert result, 'cannot find the next module'
-            if len(result)>1:
-                module, module_id = result[1]
-            else:
-                module, module_id = result[0]    #run the module which has lower id
-            test_required = test_require_data(network, module_id, stack_before_pop)
-            if test_required:
-                pipeline_sequence.append(module.name)
-                out_nodes = run_module(network, module_id, module, stack_before_pop, pipeline_sequence)
-                for x in out_nodes:
-                    next_node,next_id = x
-                    if next_node:
-                        stack_list.append((next_node, next_id))
-                        num_failures = 0
-                    elif stack_list:
+                    if stack_list:
                         stack_list.insert(0,(data_node, node_id))
                         num_failures += 1
-            else:
-                if stack_list:
-                    stack_list.insert(0,(data_node, node_id))
-                    num_failures += 1
         if not stack_list and node_id > 0: # if stack_list empty but have not find node 0
             assert ValueError('cannot find the final node')
     except Exception, x:
@@ -427,193 +439,4 @@ def run_pipeline(network, in_data):
 
 
 
-import rulebase
-
-
-#case1
-##in_data=[rulebase.SignalFile(preprocess="rma", format="jeffs",
-##         filename='/home/xchen/chencode/betsy_test/all_aml_train.res')]
-##goal_datatype = rulebase.SignalFile
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="rma",missing_values='no')
-
-
-
-#case2
-##in_data=[rulebase.SignalFile(preprocess="rma", format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/all_aml_train.res')]
-##goal_datatype = rulebase.SignalFile
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="rma",
-##    missing_values='no',bfrm_norm='yes',quantile_norm='yes'
-##    )
-        
-#case3
-
-##in_data=[rulebase.SignalFile(preprocess="rma", format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
-##         rulebase.ClassLabelFile(filename='/home/xchen/chencode/betsy_test/all_aml_train.cls')]
-##goal_datatype = rulebase.SignalFile2
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="rma",missing_algorithm='zero_fill',
-##    missing_values='no',)#group_fc='2',gene_center='mean',gene_normalize='variance')
-    #platform='HG_U133A',annotate='yes',duplicate_probe='closest_probe')
-#,unique_genes='high_var')
-#,),
-   # ,,)
-
-#case4
-##in_data = [SignalFile_rule.SignalFile(contents='class0',preprocess="rma", format="jeffs",
-##                      filename='/home/xchen/chencode/betsy_test/er.l2.mas5.train0'),
-##           SignalFile_rule.SignalFile(contents='class1',preprocess="rma", format="jeffs",
-##                      filename='/home/xchen/chencode/betsy_test/er.l2.mas5.train1')]
-##goal_datatype = SignalFile_rule.SignalFile
-##goal_attributes = dict(contents='class0,class1',
-##    format='tdf', logged='yes', preprocess="rma",
-##    missing_values='no')
-
-#case5
-##in_data=[rulebase.GEOSeries,
-##         rulebase.ClassLabelFile(filename='/home/xchen/chencode/betsy_test/all_aml_train.cls')]
-##goal_datatype = rulebase.SignalFile
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="rma",missing_values='no',GSEID='GSE8286',
-##        combat_norm='yes')
-
-#case6
-##in_data=[rulebase.ExpressionFiles(filename='/home/xchen/chencode/betsy_test/6991010018')]
-###in_data=[rulebase.SignalFile(format='tdf',logged='yes',missing_values='no')]
-##goal_datatype = rulebase.SignalFile2
-####goal_datatype=rulebase.ControlFile
-####goal_datatype=Heatmap
-####goal_attributes = dict(format='tdf',logged='yes',
-####                       cluster_alg='som',missing_values='no',preprocess='illumina')
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="illumina",missing_values='no',platform='HG_U133A',
-##    duplicate_probe='closest_probe',num_features='500'
-##)
-
-#case7
-##in_data=[rulebase.ExpressionFiles(filename='/home/xchen/chencode/betsy_test/agilent_expression')]
-##goal_datatype = rulebase.SignalFile
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="agilent",missing_values='no',
-##)
-
-#case 8
-
-##in_data=[rulebase.ExpressionFiles(filename='/home/xchen/chencode/betsy_test/GSE4189')]
-##goal_datatype = rulebase.SignalFile
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="loess",missing_values='no',missing_algorithm='zero_fill',
-##)
-#case 9
-
-##in_data=[rulebase.SignalFile(preprocess="rma", format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/all_aml_train.res')]
-##goal_datatype = rulebase.ClusterFile
-##goal_datatype = rulebase.Heatmap
-##goal_attributes = dict(cluster_alg='hierarchical',
-##    format='tdf', logged='yes', preprocess="rma",
-##    missing_values='no',predataset='yes')
-
-#case 10
-##in_data=[rulebase.SignalFile(preprocess="rma", format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/Chang_AR00410.pcl'),
-##         rulebase.RenameFile(filename='/home/xchen/chencode/betsy_test/rename_list_file.txt')]
-##goal_datatype = rulebase.SignalFile2
-##goal_attributes = dict(
-##    format='tdf', logged='yes', preprocess="rma",
-##    missing_values='no',rename_sample='yes',gene_center='mean')
-
-##case11
-
-##in_data=[rulebase.ClassLabelFile(contents='class0,class1',filename='/home/xchen/chencode/betsy_test/all_aml_train.cls'),
-##         rulebase.ClassLabelFile(contents='test',filename='/home/xchen/chencode/betsy_test/all_aml_test.cls'),
-##         rulebase.SignalFile2(contents='class0,class1',format='tdf',filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
-##         rulebase.SignalFile2(contents='test',format='tdf',filename='/home/xchen/chencode/betsy_test/all_aml_test.res')
-##         ]
-##goal_datatype=rulebase.ClassifyFile
-###goal_datatype=rulebase.SignalFile2
-###goal_attributes=dict(contents='class0,class1',align='yes_for_train')
-##goal_attributes=dict(classify_alg='weighted_voting',actual_label='yes')
-
-#case12
-
-##in_data=[rulebase.SignalFile(preprocess="rma", format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
-##         rulebase.ClassLabelFile(filename='/home/xchen/chencode/betsy_test/all_aml_train.cls')]
-##goal_datatype = rulebase.DiffExprFile
-##goal_attributes = dict(
-##     logged='yes', preprocess="rma",
-##    missing_values='no',diff_expr='t_test')
-#case13
-##in_data=[rulebase.GenesetFile(filename='/home/xchen/chencode/betsy_test/genesets.gmt'),
-##         rulebase.SignalFile(format='res',filename='/home/xchen/chencode/betsy_test/se2fplate6_48.illu.gz')]
-##goal_datatype=rulebase.GenesetAnalysis
-##goal_attributes=dict(logged='yes',quantile_norm='yes',gene_center='mean',
-##                     gene_normalize='variance',unique_genes='high_var',format='tdf',
-##                     missing_values='no',annotate='yes',geneset='E2F1n_affy_150_UP')
-
-#case14
-
-##in_data=[rulebase.SignalFile(preprocess="rma", format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
-##         SignalFile_rule.ClassLabelFile(filename='/home/xchen/chencode/betsy_test/all_aml_train.cls')]
-##goal_datatype = rulebase.GseaFile
-##goal_attributes = dict(
-##     logged='yes', preprocess="rma",
-##    missing_values='no')
-#case15
-
-
-##in_data=[rulebase.CELFiles(filename='/home/xchen/chencode/betsy_test/GSE8286_folder')]
-###in_data=[SignalFile2(format='tdf',preprocess='rma',logged='yes',
-###                     platform='HG_U133A',duplicate_probe='high_var_probe'),
-###         SignalFile2(format='tdf',preprocess='mas5',logged='yes',
-###                     platform='HG_U133A',duplicate_probe='high_var_probe')]
-##goal_datatype = rulebase.SignatureScore 
-##goal_attributes = dict()
-
-#case16
-
-##in_data=[rulebase.SignalFile(format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
-##         rulebase.ClassLabelFile(filename='/home/xchen/chencode/betsy_test/all_aml_train.cls')]
-##in_data=[rulebase.GeneListFile(filename='/home/xchen/chencode/betsy_test/gene_list.txt')]
-##goal_datatype=DavidFile_rule.DavidFile
-##goal_attributes=dict()
-
-#case17
-
-##in_data=[rulebase.SignalFile(format="jeffs",
-##                    filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
-##         rulebase.ClassLabelFile(filename='/home/xchen/chencode/betsy_test/all_aml_train.cls')]
-##goal_datatype=rulebase.PcaPlot
-##goal_attributes=dict(process='before')
-#case18
-
-##in_data=[rulebase.SignalFile(preprocess='illumina',format='tdf',filename='abc'),
-##         rulebase.SampleSheet(filename='df')]
-##
-##goal_datatype=rulebase.ReportFile
-##goal_attributes=dict(report_type='cluster',format='tdf',logged='yes',missing_values='no',
-##dwd_norm='no',preprocess='illumina',cluster_alg='kmeans')
-
-##case19
-in_data=[rulebase.ClassLabelFile(contents='class0,class1',filename='/home/xchen/chencode/betsy_test/all_aml_train.cls'),
-         rulebase.ClassLabelFile(contents='test',filename='/home/xchen/chencode/betsy_test/all_aml_test.cls'),
-         rulebase.SignalFile(contents='class0,class1',format='tdf',filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
-         rulebase.SignalFile(contents='test',format='tdf',filename='/home/xchen/chencode/betsy_test/all_aml_test.res')
-         ]
-goal_datatype=rulebase.ReportFile
-goal_attributes=dict(report_type='classify')
-
-
-network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
-network = bie.optimize_network(network)
-network = bie.prune_network_by_start(network, in_data)
-bie._print_network(network)
-bie._plot_network_gv("out.png", network)
-#run_pipeline(network,in_data)
 

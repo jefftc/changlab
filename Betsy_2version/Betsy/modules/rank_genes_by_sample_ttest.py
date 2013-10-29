@@ -1,19 +1,16 @@
 #rank_genes_by_sample_ttest.py
 #from Betsy
 import gene_ranking
-#from Betsy
-import module_utils
+from Betsy import module_utils
 import shutil
 import os
 from genomicode import jmath
 import arrayio
 import numpy
-#from Betsy
-import read_label_file
-import bie
-import rulebase
+from Betsy import read_label_file,bie,rulebase
 
-def run(in_nodes, parameters):
+
+def run(in_nodes, parameters, network):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes)
     label,label_line,second_line = read_label_file.read(
@@ -65,7 +62,7 @@ def run(in_nodes, parameters):
     out_node = bie.Data(rulebase.GeneListFile,**new_parameters)
     return out_node
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

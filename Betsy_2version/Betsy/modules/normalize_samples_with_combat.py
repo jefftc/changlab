@@ -1,13 +1,12 @@
 #normalize_samples_with_combat.py
 import os
 import subprocess
-#from Betsy
-import module_utils, read_label_file
 from genomicode import config
-import bie
-import rulebase
+from Betsy import bie
+from Betsy import rulebase
+from Betsy import module_utils, read_label_file
 
-def run(in_nodes,parameters):
+def run(in_nodes,parameters, network):
     data_node, cls_node = in_nodes
     if data_node and cls_node:
         outfile = name_outfile(in_nodes)
@@ -36,7 +35,7 @@ def run(in_nodes,parameters):
    
 
     
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
