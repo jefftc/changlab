@@ -18,6 +18,7 @@ def run_case1():
             contents='test', format='tdf',
             filename='/home/xchen/chencode/betsy_test/all_aml_test.res')
         ]
+    
     goal_datatype = rulebase.ReportFile
     goal_attributes = dict(report_type='classify')
 
@@ -46,8 +47,6 @@ def run_case2():
         gene_normalize='variance',unique_genes='high_var',format='tdf',
         missing_values='no',annotate='yes',geneset='E2F1n_affy_150_UP')
 
-    goal_datatype=rulebase.ReportFile
-    goal_attributes=dict(report_type='classify')
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
@@ -129,9 +128,7 @@ def run_case5():
     goal_attributes=dict(
         report_type='normalize', format='tdf', logged='yes',
         missing_values='no', quantile_norm='yes')
-    goal_datatype=rulebase.ReportFile
-    goal_attributes=dict(report_type='classify')
-
+    
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
     network = bie.optimize_network(network)

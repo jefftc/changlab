@@ -24,7 +24,6 @@ ILLU_MANIFEST = [
     'MouseWG-6_V2_0_R3_11278593_A.txt',
     'RatRef-12_V1_0_R5_11222119_A.txt'
     ]
-
 ILLU_CHIP = [
     'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
     'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',

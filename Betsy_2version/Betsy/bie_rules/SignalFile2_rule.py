@@ -55,7 +55,6 @@ SignalFile2 = bie.DataType(
         DEFAULT="no"),
     bie.Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
 
-
     # Unclassified.
     bie.Attribute(num_features=bie.ANYATOM, DEFAULT="all"),
     bie.Attribute(

@@ -111,12 +111,12 @@ all_modules = [
          ClassifyFile(loocv='no',actual_label='no')],
          ClassifyFile(loocv='no',actual_label='yes')),
 
-##    bie.Module(
-##        'plot_prediction',
-##         ClassifyFile(classify_alg=['weighted_voting','svm','random_forest'],
-##                        actual_label=['yes','no'],loocv=['yes','no']),
-##         PredictionPlot(classify_alg=['weighted_voting','svm','random_forest'],
-##                        actual_label=['yes','no'],loocv=['yes','no'])),
+    bie.Module(
+        'plot_prediction',
+         ClassifyFile(classify_alg=['weighted_voting','svm','random_forest'],
+                        actual_label=['yes','no'],loocv=['yes','no']),
+         PredictionPlot(classify_alg=['weighted_voting','svm','random_forest'],
+                        actual_label=['yes','no'],loocv=['yes','no'])),
     bie.Module(
         'plot_sample_pca_with_predictions_svm',
          [ClassifyFile(classify_alg='svm',
