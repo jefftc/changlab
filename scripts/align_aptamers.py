@@ -197,18 +197,18 @@ def _align_aptamers_h(
     from genomicode import aptamerlib
 
     table_handle = sys.stdout   # can't pass handle to multiproc function
+    table_cache = alignment_cache = markov_cache = None
 
+    files = []
     table_cache = StringIO()
-    alignment_cache = StringIO()
-    markov_cache = StringIO()
+    files.append((table_handle, table_cache))
+    if alignment_file:
+        alignment_cache = StringIO()
+        files.append((alignment_file, alignment_cache))
+    if markov_file:
+        markov_cache = StringIO()
+        files.append((markov_file, markov_cache))
 
-    files = [
-        (table_handle, table_cache),
-        (alignment_file, alignment_cache),
-        (markov_file, markov_cache),
-        ]
-    files = [x for x in files if x[0]]  # no missing handles
-    
     for i, x in enumerate(aptamerlib.parse_fastq(sequence_file)):
         title, sequence, quality = x
         if i % skip != start:
@@ -226,12 +226,13 @@ def _align_aptamers_h(
 
         # ~266 bytes per alignment.  Markov output is ~17x size of
         # table output.
-        if len(table_cache.getvalue()) >= 256*1024:
+        if len(table_cache.getvalue()) >= 512*1024:
             lock.acquire()
             for h, c in files:
                 _append_to_file_or_handle(h, c.getvalue())
                 c.truncate(0)
             lock.release()
+
     lock.acquire()
     for h, c in files:
         _append_to_file_or_handle(h, c.getvalue())
