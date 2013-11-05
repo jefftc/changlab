@@ -13,9 +13,9 @@ def run(in_nodes,parameters, network):
     M = arrayio.read(data_node.attributes['filename'])
     a,training_label,second_line = read_label_file.read(cls_node.attributes['filename'])
     full_index = range(M.ncol())
-    predict_model = __import__('modules.' + 'classify_with_random_forest',globals(),
+    predict_model = __import__('Betsy.modules.' + 'classify_with_random_forest',globals(),
                                  locals(),['classify_with_random_forest'],-2)
-    evaluate_model =  __import__('modules.' + 'evaluate_prediction',globals(),
+    evaluate_model =  __import__('Betsy.modules.' + 'evaluate_prediction',globals(),
                                  locals(),['evaluate_prediction'],-2)  
     f = file(outfile,'w')
     f.write('\t'.join(['sample_name','Predicted_class','Confidence','Actual_class','Correct?']))
@@ -43,8 +43,8 @@ def run(in_nodes,parameters, network):
         for key in rulebase.SvmModel.get_defaults():
             new_parameters[key]=parameters[key]
         x = merge_node,train_label_node
-        out_node = predict_model.run(x,parameters)
-        out_node_label=evaluate_model.run((out_node,test_label_node),new_parameters)
+        out_node = predict_model.run(x,parameters,network)
+        out_node_label=evaluate_model.run((out_node,test_label_node),new_parameters,network)
         f1 = open(out_node_label.attributes['filename'],'r')
         lines = f1.readlines()
         f1.close()

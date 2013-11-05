@@ -155,14 +155,35 @@ def run_case6():
     bie._print_network(network)
     bie._plot_network_gv("out.png", network)
 
+def run_case7():
+    in_data = [
+        rulebase.SignalFile(
+            contents='class0', format='tdf',
+            filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
+        ]
+    
+    goal_datatype = rulebase.SignalFile2
+    goal_attributes = dict(contents='class0',quantile_norm='yes',
+                           bfrm_norm='yes',gene_center='mean',
+                           gene_normalize='variance')
+
+    network = bie.backchain(
+        rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.optimize_network(network)
+    network = bie.prune_network_by_start(network, in_data)
+    bie._print_network(network)
+    bie._plot_network_gv("out.png", network)
 
 def main():
-    run_case1()
+    import cProfile 
+    #run_case1()
     #run_case2()
     #run_case3()
     #run_case4()
     #run_case5()
     #run_case6()
+    #run_case7()
+    cProfile.run("run_case7()")
 
 
 if __name__ == '__main__':

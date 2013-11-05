@@ -106,28 +106,30 @@ def main():
         in_data.append(eval('rulebase.'+datatype +'('+attributes+')'))
     goal_datatype = eval('rulebase.'+module.OUTPUTS)
     goal_attributes = parameters
-    #print goal_datatype.name
-    #print in_data
-    #print goal_attributes
     if args.describe_protocol:
         print 'INPUTS', module.INPUTS   
         print 'OUTPUTS', module.OUTPUTS  
         print 'PARAMETERS', module.PARAMETERS
     print 'Generating network...'
-    network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
-    network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
+##    network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
+##    network = bie.optimize_network(network)
+##    network = bie.prune_network_by_start(network, in_data)
+    import pickle
+    f=file('network_classify_report','rb')
+    network = pickle.load(f)
+    f.close()
     assert network, ('No network has been generated, '
                        'please check your command.')
     if args.network:
         print args.network
+        bie._print_network(network)
         bie._plot_network_gv(args.network, network)
     if args.dry_run:
         bie._print_network(network)
     else:
-        rule_engine_bie.run_pipeline(network,in_datas)
-        print 'All pipelines have completed successfully.'
-    
+        rule_engine_bie.run_pipeline(network,in_data)
+        print 'The network has completed successfully.'
+       
         
 if __name__ == '__main__':
     main()

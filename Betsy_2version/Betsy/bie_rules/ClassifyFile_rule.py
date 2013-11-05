@@ -117,18 +117,14 @@ all_modules = [
                         actual_label=['yes','no'],loocv=['yes','no']),
          PredictionPlot(classify_alg=['weighted_voting','svm','random_forest'],
                         actual_label=['yes','no'],loocv=['yes','no'])),
+
     bie.Module(
-        'plot_sample_pca_with_predictions_svm',
-         [ClassifyFile(classify_alg='svm',
-                        actual_label=['yes','no'],loocv=['yes','no']),
+        'plot_sample_pca_with_predictions',
+         [ClassifyFile(classify_alg=['svm','weighted_voting',
+                                     'random_forest'],actual_label=['yes','no'],
+                       loocv=['yes','no']),
           PcaAnalysis_rule.PcaAnalysis(process='after',contents='test')],
-          PredictionPCAPlot(classify_alg='svm',
-                        actual_label=['yes','no'],loocv=['yes','no'])),
-    bie.Module(
-        'plot_sample_pca_with_predictions_wv',
-         [ClassifyFile(classify_alg='weighted_voting',
-                        actual_label=['yes','no'],loocv=['yes','no']),
-          PcaAnalysis_rule.PcaAnalysis(process='after',contents='test')],
-          PredictionPCAPlot(classify_alg='weighted_voting',
+          PredictionPCAPlot(classify_alg=['svm','weighted_voting',
+                                     'random_forest'],
                         actual_label=['yes','no'],loocv=['yes','no'])),
     ]

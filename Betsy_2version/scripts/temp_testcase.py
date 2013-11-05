@@ -290,5 +290,34 @@
 ##    f=file('network_genesetnetwork','wb')
 ##    pickle.dump(network,f)
 ##    f.close()
-#import cProfile; cProfile.run("test_bie()")
+from Betsy import rulebase
+from Betsy import bie
+def test_bie():
+     in_data=[
+        rulebase.SignalFile(
+            preprocess="rma", format="jeffs",
+            filename='/home/xchen/chencode/betsy_test/all_aml_train.res'),
+        rulebase.ClassLabelFile(
+            filename='/home/xchen/chencode/betsy_test/all_aml_train.cls',
+            cls_format='cls')
+        ]
+     goal_datatype = rulebase.SignalFile
+     goal_attributes = dict(
+        format='tdf', logged='yes', preprocess="rma",
+        missing_values='no',combat_norm='yes',quantile_norm='yes'
+        )
+
+     network = bie.backchain(
+        rulebase.all_modules, goal_datatype, goal_attributes)
+     network = bie.optimize_network(network)
+     network = bie.prune_network_by_start(network, in_data)
+ 
+     #order by quantile and then combat
+     network = bie.prune_network_by_internal(
+        network, rulebase.SignalFile(quantile_norm="yes", combat_norm="no"))
+
+     bie._print_network(network)
+     bie._plot_network_gv("out.png", network)
+
+import cProfile; cProfile.run("test_bie()")
 #test_bie()

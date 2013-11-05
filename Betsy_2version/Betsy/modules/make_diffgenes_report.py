@@ -1,6 +1,4 @@
 #make_diffgenes_report.py
-#from Betsy
-import config
 import os
 import shutil
 import imghdr
