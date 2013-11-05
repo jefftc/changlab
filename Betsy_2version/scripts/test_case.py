@@ -195,6 +195,25 @@ def run_case7():
     bie._print_network(network)
     bie._plot_network_gv("out.png", network)
 
+def run_case8():
+    #preprocess value cannot pass to the Heatmap
+    in_data = [
+        rulebase.ExpressionFiles(
+            filename='/home/xchen/chencode/betsy_test/6991010018'),
+        ]
+    #goal_datatype = rulebase.Heatmap
+    goal_datatype = rulebase.ReportFile
+    goal_attributes = dict(
+        report_type='heatmap',format='tdf',logged='yes',
+        missing_values='no',preprocess='illumina')
+
+    network = bie.backchain(
+        rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.optimize_network(network)
+    network = bie.prune_network_by_start(network, in_data)
+    bie._print_network(network)
+    bie._plot_network_gv("out.png", network)
+
 
 def main():
     import cProfile 
@@ -205,7 +224,8 @@ def main():
     #run_case5()
     #run_case6()
     #run_case7()
-    cProfile.run("run_case7()")
+    run_case8()
+    #cProfile.run("run_case7()")
 
 if __name__ == '__main__':
     main()

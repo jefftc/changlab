@@ -9,7 +9,7 @@ from Betsy import module_utils
 def run(in_nodes, parameters, network):
     """analyze geneset"""
     data_node,geneset_node = in_nodes
-    outfile = get_outfile(in_nodes)
+    outfile = name_outfile(in_nodes)
     score_geneset_path = config.score_geneset
     score_geneset_BIN = module_utils.which(score_geneset_path)
     assert score_geneset_BIN,'cannot find the %s' %score_geneset_path

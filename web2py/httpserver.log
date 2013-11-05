@@ -33823,3 +33823,14 @@
 127.0.0.1, 2013-11-01 16:04:51, GET, /Betsy/static/js/share.js, HTTP/1.1, 304, 0.000354
 127.0.0.1, 2013-11-01 16:05:18, GET, /Betsy/default/protocol/normalize_file, HTTP/1.1, 200, 0.077731
 127.0.0.1, 2013-11-01 16:05:18, GET, /Betsy/static/js/share.js, HTTP/1.1, 304, 0.000328
+127.0.0.1, 2013-11-05 10:44:36, GET, /Betsy/default/index, HTTP/1.1, 303, 0.407828
+127.0.0.1, 2013-11-05 10:44:36, GET, /Betsy/default/user/login, HTTP/1.1, 200, 0.042584
+127.0.0.1, 2013-11-05 10:44:36, GET, /Betsy/static/js/share.js, HTTP/1.1, 304, 0.000331
+127.0.0.1, 2013-11-05 10:44:45, POST, /Betsy/default/user/login, HTTP/1.1, 303, 0.167882
+127.0.0.1, 2013-11-05 10:44:45, GET, /Betsy/default/index, HTTP/1.1, 200, 0.038669
+127.0.0.1, 2013-11-05 10:44:45, GET, /Betsy/static/js/share.js, HTTP/1.1, 304, 0.000313
+127.0.0.1, 2013-11-05 10:44:50, GET, /Betsy/default/protocol/normalize_file, HTTP/1.1, 200, 0.076383
+127.0.0.1, 2013-11-05 10:44:50, GET, /Betsy/static/js/share.js, HTTP/1.1, 304, 0.000307
+127.0.0.1, 2013-11-05 10:45:06, GET, /Betsy/default/index, HTTP/1.1, 200, 0.040712
+127.0.0.1, 2013-11-05 10:45:20, GET, /Betsy/default/protocol/normalize_file, HTTP/1.1, 200, 0.082598
+127.0.0.1, 2013-11-05 10:45:20, GET, /Betsy/static/js/share.js, HTTP/1.1, 304, 0.000338

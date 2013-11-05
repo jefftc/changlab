@@ -24,7 +24,7 @@ def run(data_node,parameters, network):
         'the output file %s for remove_duplicate_genes fails'%outfile)
     new_parameters = parameters.copy()
     new_parameters['filename'] = os.path.split(outfile)[-1]
-    out_node = bie.Data(SignalFile2_rule.SignalFile2,**new_parameters)
+    out_node = bie.Data(rulebase.SignalFile2,**new_parameters)
     return out_node
 
 

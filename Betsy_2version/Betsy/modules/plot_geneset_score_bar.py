@@ -7,7 +7,7 @@ from genomicode import mplgraph, filelib, jmath
 
 
 def run(data_node, parameters, network):
-    outfile = get_outfile(data_node)
+    outfile = name_outfile(data_node)
     matrix = [x for x in filelib.read_cols(data_node.attributes['filename'])]
     matrix = [x[1:] for x in matrix]
     matrix = jmath.transpose(matrix)

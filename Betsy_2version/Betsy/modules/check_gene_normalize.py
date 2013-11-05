@@ -30,8 +30,10 @@ def name_outfile(data_node):
 def get_out_attributes(parameters,data_node):
     new_parameters = parameters.copy()
     M = arrayio.read(data_node.attributes['filename'])
-    if is_gene_normalize_varaince(M) or is_gene_normalize_ss(M):
-        new_parameters['gene_normalize'] = 'yes'
+    if is_gene_normalize_varaince(M):
+        new_parameters['gene_normalize'] = 'variance'
+    elif is_gene_normalize_ss(M):
+        new_parameters['gene_normalize'] = 'sum_of_squares'
     else:
         new_parameters['gene_normalize'] = 'no'
     return new_parameters

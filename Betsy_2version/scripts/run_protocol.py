@@ -111,13 +111,9 @@ def main():
         print 'OUTPUTS', module.OUTPUTS  
         print 'PARAMETERS', module.PARAMETERS
     print 'Generating network...'
-##    network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
-##    network = bie.optimize_network(network)
-##    network = bie.prune_network_by_start(network, in_data)
-    import pickle
-    f=file('network_classify_report','rb')
-    network = pickle.load(f)
-    f.close()
+    network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.optimize_network(network)
+    network = bie.prune_network_by_start(network, in_data)
     assert network, ('No network has been generated, '
                        'please check your command.')
     if args.network:
