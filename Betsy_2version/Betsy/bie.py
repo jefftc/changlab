@@ -537,13 +537,14 @@ class _OptimizeNoCycles:
         global NUM_TIMES
         # Do backwards chaining.  If I encounter a cycle, then break it.
 
+        # Optimization.  Since many cycles are short, break the
+        # 5-cycles first to speed up the search.
+        # [131104] Is this still necessary, since the algorithm is now
+        # smarter about not searching non-cycle nodes?
         # Length of cycles:
         # 5     168,081   67%
         # 7      84,056   33%
         # 9-17      318    0%
-
-        # Optimization.  Since may cycles are short, break the
-        # 5-cycles first to speed up the search.
 
         while True:
             cycle = self._find_cycle(network, 5)
@@ -562,25 +563,78 @@ class _OptimizeNoCycles:
 
         return network
 
+    def _list_noncycle_node_ids(self, network, nodeid2previds):
+        # Return a list of the node_ids that are not in cycles.
+        
+        # The nodes at the top of the tree (no prev nodes) are not in
+        # cycles.  The nodes at the bottom of the tree (no next nodes)
+        # are not in cycles.
+        #
+        # If all of a nodes next nodes are noncycle, then it is
+        # noncycle.
+        # If all of a nodes prev nodes are noncycle, then it is
+        # noncycle.
+        noncycle = {}
+
+        while True:
+            changed = False
+            node_ids = [
+                i for i in range(len(network.nodes)) if i not in noncycle]
+            for node_id in node_ids:
+                prev_ids = nodeid2previds.get(node_id, [])
+                next_ids = network.transitions.get(node_id, [])
+                x1 = [i for i in prev_ids if i not in noncycle]
+                x2 = [i for i in next_ids if i not in noncycle]
+                if x1 and x2:
+                    continue
+                # Either all prev_ids are noncycle (or missing), or
+                # all next_are noncycle (or missing).
+                noncycle[node_id] = 1
+                changed = True
+            if not changed:
+                break
+        return noncycle
+        
     def _find_cycle(self, network, max_path_length):
         assert max_path_length >= 0
-        if max_path_length:
-            cycle = self._find_cycle_from_all_nodes(network, max_path_length)
-        else:
-            cycle = self._find_cycle_from_one_node(network, 0, max_path_length)
+        nodeid2previds = _make_backchain_dict(network)
+        noncycle = self._list_noncycle_node_ids(network, nodeid2previds)
+
+        cycle = None
+        node_ids = [i for i in range(len(network.nodes)) if i not in noncycle]
+        for start_id in node_ids:
+            cycle = self._find_cycle_from_one_node(
+                network, start_id, max_path_length,
+                noncycle, nodeid2previds)
+            if cycle:
+                break
         return cycle
 
-    def _find_cycle_from_one_node(self, network, start_id, max_path_length):
-        # Do a breadth first search and look for cycles.  Return a
-        # cycle (list of node_ids) or None.
-
-        nodeid2previds = _make_backchain_dict(network)
+    def _find_cycle_from_one_node(
+        self, network, start_id, max_path_length, noncycle, nodeid2previds):
+        # Do a depth-first search and look for cycles.  Return a cycle
+        # (list of node_ids) or None.  The cycle will start and end
+        # with the same node_id.
+        # Previously did a breadth-first search, but stack.pop(0) was
+        # running too slowly (see below).  Depth-first search will be
+        # faster to find a cycle, if it exists, anyway.
+        if not nodeid2previds:
+            nodeid2previds = _make_backchain_dict(network)
 
         cycle = None
         # list of (node_id, path (not including node_id))
         stack = [(start_id, [])]
         while stack:
-            node_id, path = stack.pop(0)
+            # Slow.
+            #node_id, path = stack.pop(0)
+            # Really slow.
+            #node_id, path = stack[0]
+            #stack = stack[1:]
+            # 10x faster than pop(0).
+            node_id, path = stack.pop()
+            if node_id in noncycle:
+                continue
+            
             if max_path_length and len(path) > max_path_length:
                 continue
             if node_id in path:
@@ -589,20 +643,10 @@ class _OptimizeNoCycles:
                 i = path.index(node_id)
                 cycle = path[i:] + [node_id]
                 break
+            # Add node to the path.
             path = path + [node_id]
             for prev_id in nodeid2previds.get(node_id, []):
                 stack.append((prev_id, path))
-        return cycle
-
-    def _find_cycle_from_all_nodes(self, network, max_path_length):
-        cycle = None
-        # Optimize: each cycle must include at least 1 Data node.
-        # Search from Module nodes.
-        for start_id in range(len(network.nodes)):
-            cycle = self._find_cycle_from_one_node(
-                network, start_id, max_path_length)
-            if cycle:
-                break
         return cycle
 
     def _find_depth_of_nodes(self, network):
