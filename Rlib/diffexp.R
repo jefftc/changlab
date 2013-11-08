@@ -81,6 +81,13 @@ find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA,
     DATA <- matrix2dataframe(cbind(as.matrix(SCORE), Direction, x))
     names(DATA) <- c(names(SCORE), "Direction", Y.orig)
 
+    # Calculate NL10 FDR.
+    I <- which(names(DATA) == "q-value(%)")
+    if(length(I) != 1) stop("missing q-value(%)")
+    nlfdr <- -log(DATA[,I]/100+1E-25, 10)
+    DATA <- cbind(DATA[,1:3], nlfdr, DATA[,4:ncol(DATA)])
+    names(DATA)[4] <- "NL10 FDR"
+
     # Convert "Fold Change" to log_2.
     I <- which(names(DATA) == "Fold Change")
     if(length(I) != 1) stop("missing Fold Change")
@@ -97,7 +104,7 @@ find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA,
 
 # requires statlib.R
 find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0, NPROCS=1) {
+  FOLD.CHANGE=0, NPROCS=1, all.genes=FALSE) {
   library(multicore)
   # X must be logged.
   # Y should be the labels for two classes.  NA will be filtered out.
@@ -162,21 +169,24 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
       t.test(X.1[i,], X.2[i,]))
     p.values <- unlist(lapply(x, function(x) x$p.value))
   }
+  p.values[is.na(p.values)] <- 1
   fdr <- fdr.correct.bh(p.values)
   bonf <- bonferroni.correct(p.values)
 
-  I <- which(p.values < 0.05)
-  X <- matrix(X[I,], ncol=ncol(X), dimnames=list(NULL, colnames(X)))
-  X.1 <- matrix(X.1[I,], ncol=ncol(X.1), dimnames=list(NULL, colnames(X.1)))
-  X.2 <- matrix(X.2[I,], ncol=ncol(X.2), dimnames=list(NULL, colnames(X.2)))
-  geneid <- geneid[I]
-  genenames <- genenames[I]
-  med.1 <- med.1[I]
-  med.2 <- med.2[I]
-  diff <- diff[I]
-  p.values <- p.values[I]
-  fdr <- fdr[I]
-  bonf <- bonf[I]
+  if(!all.genes) {
+    I <- which(p.values < 0.05)
+    X <- matrix(X[I,], ncol=ncol(X), dimnames=list(NULL, colnames(X)))
+    X.1 <- matrix(X.1[I,], ncol=ncol(X.1), dimnames=list(NULL, colnames(X.1)))
+    X.2 <- matrix(X.2[I,], ncol=ncol(X.2), dimnames=list(NULL, colnames(X.2)))
+    geneid <- geneid[I]
+    genenames <- genenames[I]
+    med.1 <- med.1[I]
+    med.2 <- med.2[I]
+    diff <- diff[I]
+    p.values <- p.values[I]
+    fdr <- fdr[I]
+    bonf <- bonf[I]
+  }
 
   mean.1 <- apply(X.1, 1, mean)
   mean.2 <- apply(X.2, 1, mean)
@@ -206,7 +216,7 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
 }
 
 find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0) {
+  FOLD.CHANGE=0, all.genes=FALSE) {
   library(limma)
   # X must be logged.
   # Y should be the labels for two classes.  NA will be filtered out.
@@ -245,7 +255,10 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   #  number=nrow(fit2))
   TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), 
     lfc=log(FOLD.CHANGE, 2))
-  TOP <- TOP[TOP[["P.Value"]] < 0.05,]
+  write.table(TOP, "out.dat", col.names=TRUE, sep="\t", quote=FALSE)
+  if(!all.genes) {
+    TOP <- TOP[TOP[["P.Value"]] < 0.05,]
+  }
   if(!nrow(TOP)) {
     DATA <- matrix(NA, 0, 7+length(Y.all)*2+ncol(X))
     colnames(DATA) <- c("Gene ID", "Gene Name", 
