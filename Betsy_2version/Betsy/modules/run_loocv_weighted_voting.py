@@ -14,9 +14,9 @@ def run(in_nodes,parameters, network):
     a,training_label,second_line = read_label_file.read(
         cls_node.attributes['filename'])
     full_index = range(M.ncol())
-    predict_model = __import__('modules.' + 'classify_with_weighted_voting',globals(),
+    predict_model = __import__('Betsy.modules.' + 'classify_with_weighted_voting',globals(),
                                  locals(),['classify_with_weighted_voting'],-2)
-    evaluate_model =  __import__('modules.' + 'evaluate_prediction',globals(),
+    evaluate_model =  __import__('Betsy.modules.' + 'evaluate_prediction',globals(),
                                  locals(),['evaluate_prediction'],-2)
     f = file(outfile,'w')
     f.write('\t'.join(['sample_name','Predicted_class','Confidence','Actual_class','Correct?']))
@@ -50,8 +50,8 @@ def run(in_nodes,parameters, network):
         test_label_node = rulebase.ClassLabelFile(contents='test',
                                                   filename='test_label'+'_'+str(i))
         x= train_node,test_node,train_label_node
-        out_node = predict_model.run(x,parameters)
-        out_node_label=evaluate_model.run((out_node,test_label_node),parameters)
+        out_node = predict_model.run(x,parameters,network)
+        out_node_label=evaluate_model.run((out_node,test_label_node),parameters,network)
         f1 = open(out_node_label.attributes['filename'],'r')
         lines = f1.readlines()
         f1.close()

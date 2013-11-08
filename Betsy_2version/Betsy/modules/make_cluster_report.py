@@ -1,6 +1,5 @@
 #make_cluster_report.py
 
-
 import os
 import shutil
 import imghdr
@@ -74,7 +73,6 @@ def run(in_nodes,parameters, network):
             htmllib.TH("Value", align="LEFT") 
             )
         rows.append(x)
-        data_node1.attributes
         for key in data_node1.attributes.keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +

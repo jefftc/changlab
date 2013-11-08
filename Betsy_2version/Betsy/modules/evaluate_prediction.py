@@ -60,5 +60,4 @@ def find_antecedents(network, module_id,data_nodes,parameters):
     cls_node_test = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='test',
                                             datatype='ClassLabelFile')
-    print 'input',data_node
     return data_node,cls_node_test

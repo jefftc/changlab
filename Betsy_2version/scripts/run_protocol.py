@@ -106,9 +106,6 @@ def main():
         in_data.append(eval('rulebase.'+datatype +'('+attributes+')'))
     goal_datatype = eval('rulebase.'+module.OUTPUTS)
     goal_attributes = parameters
-    #print goal_datatype.name
-    #print in_data
-    #print goal_attributes
     if args.describe_protocol:
         print 'INPUTS', module.INPUTS   
         print 'OUTPUTS', module.OUTPUTS  
@@ -121,13 +118,14 @@ def main():
                        'please check your command.')
     if args.network:
         print args.network
+        bie._print_network(network)
         bie._plot_network_gv(args.network, network)
     if args.dry_run:
         bie._print_network(network)
     else:
-        rule_engine_bie.run_pipeline(network,in_datas)
-        print 'All pipelines have completed successfully.'
-    
+        rule_engine_bie.run_pipeline(network,in_data)
+        print 'The network has completed successfully.'
+       
         
 if __name__ == '__main__':
     main()

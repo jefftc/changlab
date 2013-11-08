@@ -6,7 +6,7 @@ ClusterFile = bie.DataType(
     # Properties of the format.
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
     bie.Attribute(cluster_alg=['som','pca','kmeans','hierarchical'],DEFAULT='kmeans'),
-    bie.Attribute(distance=['correlation','euclidean'],DEFAULT='euclidean'),
+    bie.Attribute(distance=['correlation','euclidean'],DEFAULT='correlation'),
     bie.Attribute(k=bie.ANYATOM,DEFAULT='5'))
 
 

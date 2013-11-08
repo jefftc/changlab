@@ -31,8 +31,10 @@ def name_outfile(data_node):
 def get_out_attributes(parameters,data_node):
     new_parameters = parameters.copy()
     M = arrayio.read(data_node.attributes['filename'])
-    if is_gene_center_mean(M) or is_gene_center_median(M):
-        new_parameters['gene_center'] = 'yes'
+    if is_gene_center_mean(M):
+        new_parameters['gene_center'] = 'mean'
+    elif is_gene_center_median(M):
+        new_parameters['gene_center'] = 'median'
     else:
         new_parameters['gene_center'] = 'no'
     return new_parameters
@@ -50,10 +52,10 @@ def is_gene_center_mean(M):
     for line in M.slice():
         if numpy.mean(line)<0.0000001:
             return False
-    return True
+    return 'mean'
 
 def is_gene_center_median(M):
     for line in M.slice():
         if numpy.median(line)<0.0000001:
             return False
-    return True
+    return 'median'

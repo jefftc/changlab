@@ -374,6 +374,7 @@ def run_module(network, module_id, module_node, pool, pipeline_sequence,
     os.chdir(working_dir)
     out_nodes = get_outnode(
         network, module_id, module, current_attributes, pool)
+    assert out_nodes,'module %s fails' %module_node.name
     return out_nodes
 
 def run_pipeline(network, in_data):
@@ -431,11 +432,11 @@ def run_pipeline(network, in_data):
                     if stack_list:
                         stack_list.insert(0,(data_node, node_id))
                         num_failures += 1
-        if not stack_list and node_id > 0: # if stack_list empty but have not find node 0
+        if not stack_list and node_id > 0 : # if stack_list empty but have not find node 0
             assert ValueError('cannot find the final node')
     except Exception, x:
             raise
-    
+    return True
 
 
 

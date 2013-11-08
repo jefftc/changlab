@@ -1,6 +1,5 @@
 #rank_genes_by_sample_ttest.py
-#from Betsy
-import gene_ranking
+from Betsy import gene_ranking
 from Betsy import module_utils
 import shutil
 import os
