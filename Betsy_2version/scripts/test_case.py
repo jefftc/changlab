@@ -26,8 +26,8 @@ def run_case1():
         rulebase.all_modules, goal_datatype, goal_attributes)
     network = bie.optimize_network(network)
     network = bie.prune_network_by_start(network, in_data)
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 
 def run_case2():
@@ -52,8 +52,8 @@ def run_case2():
         rulebase.all_modules, goal_datatype, goal_attributes)
     network = bie.optimize_network(network)
     network = bie.prune_network_by_start(network, in_data)
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 
 def run_case3():
@@ -74,15 +74,14 @@ def run_case3():
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
-    network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
-
+    network = bie.select_start_node(network, in_data)
     #order by quantile and then combat
-    network = bie.prune_network_by_internal(
-        network, rulebase.SignalFile(quantile_norm="yes", combat_norm="no"))
+    network = bie.remove_data_node(
+        network, rulebase.SignalFile(quantile_norm="no", combat_norm="yes"))
+    network = bie.optimize_network(network)
 
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 
 def run_case4():
@@ -100,25 +99,28 @@ def run_case4():
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
-    network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
+    network = bie.select_start_node(network, in_data)
 
-    network = bie.prune_network_by_internal(
-        network, rulebase.SignalFile(quantile_norm="yes", bfrm_norm="no"))
-    network = bie.prune_network_by_internal(
-        network, rulebase.SignalFile(quantile_norm="yes", dwd_norm="no"))
-    network = bie.prune_network_by_internal(
+    network = bie.remove_data_node(
+        network, rulebase.SignalFile(quantile_norm="no", bfrm_norm="yes"))
+    network = bie.remove_data_node(
+        network, rulebase.SignalFile(quantile_norm="no", dwd_norm="yes"))
+    network = bie.remove_data_node(
         network,
-        rulebase.SignalFile(quantile_norm="yes", shiftscale_norm="no"))
-    network = bie.prune_network_by_internal(
-        network, rulebase.SignalFile(quantile_norm="yes", combat_norm="no"))
+        rulebase.SignalFile(quantile_norm="no", shiftscale_norm="yes"))
+    network = bie.remove_data_node(
+        network, rulebase.SignalFile(quantile_norm="no", combat_norm="yes"))
+    
+    network = bie.optimize_network(network)
 
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 
 def run_case5():
     #case5 (to generate normalize report with quantile)
+
+    # Why are there two analyze_samples_pca modules?
     in_data=[
         rulebase.SignalFile(
             format="jeffs",
@@ -131,10 +133,10 @@ def run_case5():
     
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 def run_case6():
     #case6 (to generate normalize report with illumina)
@@ -149,13 +151,14 @@ def run_case6():
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
 
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 def run_case7():
+    # For optimization.
     in_data = [
         rulebase.SignalFile(
             contents='class0', format='tdf',
@@ -169,10 +172,10 @@ def run_case7():
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 def run_case7():
     # To optimize the optimize_network function.
@@ -190,10 +193,10 @@ def run_case7():
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 def run_case8():
     #preprocess value cannot pass to the Heatmap
@@ -203,16 +206,26 @@ def run_case8():
         ]
     #goal_datatype = rulebase.Heatmap
     goal_datatype = rulebase.ReportFile
+    #goal_attributes = dict(
+    #    report_type='heatmap',format='tdf',logged='yes',
+    #    missing_values='no',preprocess='illumina')
+    
+    # No ReportFile with report_type='heatmap' and
+    # preprocess='illumina'.  To avoid ambiguity, should make sure no
+    # DataTypes have the same names for attributes.  e.g. don't reuse
+    # "preprocess" for multiple DataTypes.
+
     goal_attributes = dict(
-        report_type='heatmap',format='tdf',logged='yes',
-        missing_values='no',preprocess='illumina')
+        report_type='normalize', format='tdf', logged='yes',
+        missing_values='no', preprocess='illumina')
+        #missing_values='no')
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
+    #network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
-    bie._print_network(network)
-    bie._plot_network_gv("out.png", network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
 
 
 def main():
@@ -222,9 +235,9 @@ def main():
     #run_case3()
     #run_case4()
     #run_case5()
-    #run_case6()
+    run_case6()
     #run_case7()
-    run_case8()
+    #run_case8()
     #cProfile.run("run_case7()")
 
 if __name__ == '__main__':

@@ -13,15 +13,15 @@ Modules "produce" a Data node.
 
 Functions:
 backchain
+select_start_node
+remove_data_node
 optimize_network
-prune_network_by_start
-prune_network_by_internal
-prune_network_by_shortest_path
 
 summarize_moduledb
-print_modules
 
-test_bie
+print_modules
+print_network
+plot_network_gv
 
 
 Classes:
@@ -77,8 +77,6 @@ Network
 # _print_nothing
 # _print_string
 # _print_line
-# _print_network
-# _plot_network_gv
 # _pretty_attributes
 
 
@@ -1818,26 +1816,8 @@ def backchain(moduledb, goal_datatype, goal_attributes):
     return network
 
 
-def optimize_network(network):
-    optimizers = [
-        _OptimizeNoCycles(),
-        _OptimizeNoDanglingNodes(),
-        _OptimizeNoDuplicateModules(),
-        _OptimizeNoDuplicateData(),
-        _OptimizeNoOverlappingData(),
-        _OptimizeNoInvalidConsequents(),
-        ]
-
-    old_network = None
-    while old_network != network:
-        old_network = network
-        for opt in optimizers:
-            network = opt.optimize(network)
-
-    return network
-
-
-def prune_network_by_start(network, start_data):
+##def prune_network_by_start(network, start_data):
+def select_start_node(network, start_data):
     # start_data may be a single Data object or a list of Data
     # objects.  DataTypes are also allowed in lieu of Data objects.
 
@@ -1889,50 +1869,86 @@ def prune_network_by_start(network, start_data):
     return network
 
 
-def prune_network_by_internal(network, internal_data):
-    if isinstance(internal_data, DataType):
-        internal_data = internal_data()  # convert to Data
-    assert isinstance(internal_data, Data)
+def remove_data_node(network, data_node):
+    # Remove all nodes that match data_node from the network.
+    if isinstance(data_node, DataType):
+        data_node = data_node()  # convert to Data
+    assert isinstance(data_node, Data)
     
-    # Look for the nodes that are compatible with internal_data.
+    # Look for the nodes that are compatible with data_node.
     node_ids = []  # list of node_ids.
     for node_id, next_ids in network.iterate(node_class=Data):
-        if _is_compatible_with_internal(network.nodes[node_id], internal_data):
+        if _is_compatible_with_internal(network.nodes[node_id], data_node):
             node_ids.append(node_id)
 
-    # For each of these node_ids, do forward chaining to find all
-    # nodes that these ones can connect to.
-    fc_ids = {}
-    stack = node_ids[:]
-    while stack:
-        node_id = stack.pop(0)
-        if node_id in fc_ids:
-            continue
-        fc_ids[node_id] = 1
-        x = network.transitions.get(node_id, [])
-        stack.extend(x)
-
-    # For each of the ids found by forward chaining, do backward
-    # chaining to find all the ones that it can start from.
-    bc_ids = {}
-    stack = node_ids[:]
-    while stack:
-        node_id = stack.pop(0)
-        if node_id in bc_ids:
-            continue
-        bc_ids[node_id] = 1
-        x = _backchain_to_ids(network, node_id)
-        stack.extend(x)
-
-    # The good IDs are all the ones found by either forward or
-    # backward chaining.
-    good_ids = fc_ids.copy()
-    good_ids.update(bc_ids)
-
-    # Delete all the IDs that aren't in good_ids.
-    bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
-    network = network.delete_nodes(bad_ids)
+    # Remove all these nodes.
+    network = network.delete_nodes(node_ids)
     return network
+
+
+def optimize_network(network):
+    optimizers = [
+        _OptimizeNoCycles(),
+        _OptimizeNoDanglingNodes(),
+        _OptimizeNoDuplicateModules(),
+        _OptimizeNoDuplicateData(),
+        _OptimizeNoOverlappingData(),
+        _OptimizeNoInvalidConsequents(),
+        ]
+
+    old_network = None
+    while old_network != network:
+        old_network = network
+        for opt in optimizers:
+            network = opt.optimize(network)
+
+    return network
+
+
+## def prune_network_by_internal(network, internal_data):
+##     if isinstance(internal_data, DataType):
+##         internal_data = internal_data()  # convert to Data
+##     assert isinstance(internal_data, Data)
+    
+##     # Look for the nodes that are compatible with internal_data.
+##     node_ids = []  # list of node_ids.
+##     for node_id, next_ids in network.iterate(node_class=Data):
+##         if _is_compatible_with_internal(network.nodes[node_id], internal_data):
+##             node_ids.append(node_id)
+
+##     # For each of these node_ids, do forward chaining to find all
+##     # nodes that these ones can connect to.
+##     fc_ids = {}
+##     stack = node_ids[:]
+##     while stack:
+##         node_id = stack.pop(0)
+##         if node_id in fc_ids:
+##             continue
+##         fc_ids[node_id] = 1
+##         x = network.transitions.get(node_id, [])
+##         stack.extend(x)
+
+##     # For each of the ids found by forward chaining, do backward
+##     # chaining to find all the ones that it can start from.
+##     bc_ids = {}
+##     stack = node_ids[:]
+##     while stack:
+##         node_id = stack.pop(0)
+##         if node_id in bc_ids:
+##             continue
+##         bc_ids[node_id] = 1
+##         x = _backchain_to_ids(network, node_id)
+##         stack.extend(x)
+
+##     # The good IDs are all the ones found by either forward or
+##     # backward chaining.
+##     good_ids = fc_ids.copy()
+##     good_ids.update(bc_ids)
+
+##     # Delete all the IDs that aren't in good_ids.
+##     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
+##     network = network.delete_nodes(bad_ids)
+##     return network
 
 
 ## def _find_shortest_path(network, start_node_id, end_node_id):
@@ -3063,7 +3079,7 @@ def _print_line(line, prefix0, prefixn, width):
         print "%s%s" % (p, lines[i])
 
 
-def _print_network(network):
+def print_network(network):
     line_width = 72
     for i in range(len(network.nodes)):
         p_step = "%2d.  " % i
@@ -3076,7 +3092,7 @@ def _print_network(network):
         print "\t".join(map(str, x))
     
 
-def _plot_network_gv(filename, network):
+def plot_network_gv(filename, network):
     from genomicode import graphviz
     
     gv_nodes = []
@@ -3271,8 +3287,8 @@ def test_bie():
     #network = prune_network_by_internal(
     #    network, SignalFile(combat_norm="yes", dwd_norm="no"))
     
-    _print_network(network)
-    _plot_network_gv("out.png", network)
+    print_network(network)
+    plot_network_gv("out.png", network)
 
     # Want function _find_data_node with options:
     # ignore_defaults
