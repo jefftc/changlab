@@ -216,8 +216,8 @@ def run_case8():
     # "preprocess" for multiple DataTypes.
 
     goal_attributes = dict(
-        report_type='normalize', format='tdf', logged='yes',
-        missing_values='no', preprocess='illumina')
+        report_type='heatmap', format='tdf', logged='yes',
+        missing_values='no', preprocess='unknown', quantile_norm="yes")
         #missing_values='no')
 
     network = bie.backchain(
@@ -235,9 +235,9 @@ def main():
     #run_case3()
     #run_case4()
     #run_case5()
-    run_case6()
+    #run_case6()
     #run_case7()
-    #run_case8()
+    run_case8()
     #cProfile.run("run_case7()")
 
 if __name__ == '__main__':
