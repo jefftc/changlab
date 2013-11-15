@@ -21,7 +21,6 @@ INPUTS = [
     'CELFiles',
     'SignalFile',
     'ClassLabelFile',
-    'RenameFile',
     'GeneListFile'
     ]
 

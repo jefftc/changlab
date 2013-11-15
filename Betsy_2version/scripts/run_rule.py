@@ -7,16 +7,6 @@ from Betsy import rule_engine_bie
 from Betsy import bie
 from Betsy import rulebase
 
-def get_indices(value, qlist):
-    indices = []
-    idx = -1
-    while True:
-        try:
-            idx = qlist.index(value, idx+1)
-            indices.append(idx)
-        except ValueError:
-            break
-    return indices
 
 def main():
     parser = argparse.ArgumentParser(description='Run the engine')
@@ -32,36 +22,39 @@ def main():
     parser.add_argument('--network', dest='network',type=str, default=None,
                         help='generate the new network file')
     args = parser.parse_args()
-    in_datatype = args.in_datatype
-    out_datatype = args.out_datatype
-    assert in_datatype,'please specify the in_datatype'
-    assert out_datatype,'please specify the out_datatype'
-    param = args.param
-    param = [ i.replace('=','="')+'"' for i in param]
-    indices = []
-    in_indices = get_indices('--in_datatype',sys.argv)
-    out_index = get_indices('--out_datatype',sys.argv)
-    indices= in_indices + out_index
-    indices.sort()
-    data_dict = {}
-    for i in range(len(indices)):
-        p_list = []
-        if i == len(indices)-1:
-            p_list = sys.argv[indices[i]:]
-        else:
-            p_list = sys.argv[indices[i]:indices[i+1]]
-        param_indices = get_indices('--param',p_list)
-        parameters = [p_list[j+1] for j in param_indices]
-        parameters = [ k.replace('=','="')+'"' for k in parameters]
-        data_dict[indices[i]]=(sys.argv[indices[i]+1],','.join(parameters))
+    assert args.in_datatype,'please specify the in_datatype'
+    assert args.out_datatype,'please specify the out_datatype'
+    goal_datatype = getattr(rulebase, args.out_datatype)
+    in_datatypes = []
+    in_parameters = {}
+    goal_attributes = {}
+    flag = None
+    for i, arg in enumerate(sys.argv):
+        if arg == "--in_datatype":
+            assert len(sys.argv) > i+1
+            in_datatypes.append(sys.argv[i+1])
+            flag = 'in'
+        if arg == "--out_datatype":
+            assert len(sys.argv) > i+1
+            flag = 'out'
+        elif arg == "--param":
+            assert len(sys.argv) > i+1
+            x = sys.argv[i+1].split('=')
+            key = x[0]
+            value = x[1] 
+            if flag == 'in':
+                assert in_datatypes
+                index = len(in_datatypes)-1
+                if index not in in_parameters:
+                    in_parameters[index] = {}
+                in_parameters[index][key]=value
+            elif flag == 'out':
+                assert goal_datatype
+                goal_attributes[key]=value
     in_data = []
-    for key in data_dict:
-        datatype, attributes = data_dict[key]
-        if key in in_indices:
-            in_data.append(eval('rulebase.'+datatype +'('+attributes+')'))
-        elif key in out_index:
-            goal_datatype = eval('rulebase.' + datatype)
-            goal_attributes = eval('dict(' + attributes + ')')
+    for i,in_datatype in enumerate(in_datatypes):
+        fn = getattr(rulebase,in_datatype)
+        in_data.append(fn(**in_parameters[i]))
     print 'Generating network...'
     network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
     network = bie.optimize_network(network)

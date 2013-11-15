@@ -29,7 +29,7 @@ working:
 
 5.python run_protocol.py --protocol differential_expressed_gene_analysis --in_datatype SignalFile --param format=jeffs --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res' --in_datatype ClassLabelFile --param 'cls_format=cls' --param filename=/home/xchen/chencode/betsy_test/all_aml_train.cls  --dry_run --network 'out.png'
 
-6.python run_protocol.py --protocol batch_effect_remove --in_datatype 'SignalFile'  --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res' --in_datatype 'ClassLabelFile' --param 'cls_format=cls' --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.cls'  --dry_run --network 'out.png'
+6.python run_protocol.py --protocol batch_effect_remove --in_datatype 'SignalFile'  --in_param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res' --in_datatype 'ClassLabelFile' --in_param 'cls_format=cls' --in_param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.cls'  --dry_run --network 'out.png'
 
 7.python run_protocol.py --protocol geneset_analysis --in_datatype GenesetFile --param 'filename=/home/xchen/chencode/betsy_test/genesets.gmt' --in_datatype SignalFile --param 'format=res' --param 'filename=/home/xchen/chencode/betsy_test/se2fplate6_48.illu.gz' --out_param 'geneset=E2F1n_affy_150_UP' --dry_run --network 'out.png'
 

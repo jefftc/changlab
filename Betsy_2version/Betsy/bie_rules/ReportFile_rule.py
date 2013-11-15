@@ -8,7 +8,7 @@ ReportFile = bie.DataType(
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
     bie.Attribute(report_type=['normalize','batch_effect_remove',
                             'classify','cluster','diffgenes',
-                            'heatmap','geneset'],DEFAULT='normalize'),
+                            'heatmap','geneset','all'],DEFAULT='normalize'),
     bie.Attribute(preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"],
                   DEFAULT='unknown')
     )
@@ -93,8 +93,18 @@ all_modules = [
                                     quantile_norm='yes',bfrm_norm='yes',dwd_norm='no',combat_norm='no',shiftscale_norm='no'),
          SignalFile_rule.SignalFile(format='tdf',logged='yes',missing_values='no',
                                     quantile_norm='yes',combat_norm='yes',dwd_norm='no',bfrm_norm='no',shiftscale_norm='no')],
-        ReportFile(report_type='batch_effect_remove'))
+        ReportFile(report_type='batch_effect_remove')),
+    bie.Module(
+        'combine all',
+        [ReportFile(report_type='classify'),
+         ReportFile(report_type='normalize'),
+         ReportFile(report_type='geneset'),
+         ReportFile(report_type='diffgenes'),
+         ReportFile(report_type='batch_effect_remove'),
+         ReportFile(report_type='heatmap'),
+         ReportFile(report_type='cluster')],
+        ReportFile(report_type='all')),
          
         ]
   
-         
+        

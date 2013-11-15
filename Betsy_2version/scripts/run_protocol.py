@@ -8,17 +8,6 @@ from Betsy import protocol_utils
 from Betsy import module_utils,rulebase,bie
 import getpass
 
-def get_indices(value, qlist):
-    indices = []
-    idx = -1
-    while True:
-        try:
-            idx = qlist.index(value, idx+1)
-            indices.append(idx)
-        except ValueError:
-            break
-    return indices
-
 def main():
     parser = argparse.ArgumentParser(description='run the protocol engine')
     parser.add_argument('--protocol',
@@ -26,7 +15,7 @@ def main():
                         help='The name of the protocol,eg. cluster_genes')
     parser.add_argument('--in_datatype', dest='in_datatype', default=None, action='append',
                         type=str, help='input data type for network')
-    parser.add_argument('--param', dest='param', default=[], type=str,action='append',
+    parser.add_argument('--in_param', dest='param', default=[], type=str,action='append',
                         help='parameter in "key=value" format')
     parser.add_argument('--out_param', dest='out_param', default=[], type=str,action='append',
                         help='parameter in "key=value" format')
@@ -69,43 +58,46 @@ def main():
         assert in_datatype in module.INPUTS, (
             "%s is not a recognized input for the %s protocol"
             % (str(in_datatype), args.protocol))
-        
-    parameters = {}    
-    PARAMETERS_dict = dict()
+    goal_attributes = {}    
+    parameters_dict = {}
     for parameter in module.PARAMETERS:
-        PARAMETERS_dict[parameter.name]=parameter
+        parameters_dict[parameter.name]=parameter
         if parameter.default:
-            parameters[parameter.name]=parameter.default
-    keys = PARAMETERS_dict.keys()   
+            goal_attributes[parameter.name]=parameter.default
+    keys = parameters_dict.keys()   
     if args.out_param:
         for out in out_param:
              key,value = out.split('=')
              assert key in keys, (
                 '%s is not a valid parameter key in %s' % (key, args.protocol)) 
-             if PARAMETERS_dict[key].choices:
-                 assert value in PARAMETERS_dict[key].choices, (
+             if parameters_dict[key].choices:
+                 assert value in parameters_dict[key].choices, (
                     '%s is not a valid parameter value in %s'
                     % (value, args.protocol))  
-                 parameters[key] =  str(value)
-    indices = get_indices('--in_datatype',sys.argv)
-    indices.sort()
-    data_dict = {}
-    for i in range(len(indices)):
-        p_list = []
-        if i == len(indices)-1:
-            p_list = sys.argv[indices[i]:]
-        else:
-            p_list = sys.argv[indices[i]:indices[i+1]]
-        param_indices = get_indices('--param',p_list)
-        in_parameters = [p_list[j+1] for j in param_indices]
-        in_parameters = [ k.replace('=','="')+'"' for k in in_parameters]
-        data_dict[indices[i]]=(sys.argv[indices[i]+1],','.join(in_parameters))
+                 goal_attributes[key] =  str(value)
+
+    in_datatypes = []
+    in_parameters = {}
+    
+    for i, arg in enumerate(sys.argv):
+        if arg == "--in_datatype":
+            assert len(sys.argv) > i+1
+            in_datatypes.append(sys.argv[i+1])
+        elif arg == "--in_param":
+            assert len(sys.argv) > i+1
+            assert in_datatypes
+            index = len(in_datatypes)-1
+            if index not in in_parameters:
+                in_parameters[index] = {}
+            x = sys.argv[i+1].split('=')
+            key = x[0]
+            value = x[1] 
+            in_parameters[index][key]=value
     in_data = []
-    for key in data_dict:
-        datatype, attributes = data_dict[key]
-        in_data.append(eval('rulebase.'+datatype +'('+attributes+')'))
-    goal_datatype = eval('rulebase.'+module.OUTPUTS)
-    goal_attributes = parameters
+    for i,in_datatype in enumerate(in_datatypes):
+        fn = getattr(rulebase,in_datatype)
+        in_data.append(fn(**in_parameters[i]))
+    goal_datatype = getattr(rulebase,module.OUTPUTS)
     if args.describe_protocol:
         print 'INPUTS', module.INPUTS   
         print 'OUTPUTS', module.OUTPUTS  
