@@ -20,6 +20,7 @@ fdr.correct.bh <- function(p.values, mc.cores=NA) {
   library(multicore)
   if(!length(p.values))
     return(NULL)
+  if(any(is.na(p.values))) stop("NA in p.values")
   m <- length(p.values)
 
   # Sort p.values in increasing order.

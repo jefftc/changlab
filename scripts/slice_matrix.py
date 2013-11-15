@@ -34,6 +34,9 @@
 # apply_re_col_ids
 # add_suffix_col_ids
 #
+# tcga_solid_tumor_only
+# tcga_relabel_patient_barcodes
+#
 # select_row_indexes
 # select_row_ids
 # select_row_string
@@ -826,6 +829,80 @@ def add_suffix_col_ids(MATRIX, suffix):
     return MATRIX
 
 
+def _parse_tcga_barcode(barcode):
+    # Return tuple of (patient, sample, aliquot, analyte).  sample,
+    # aliquot, analyte may be None if these parts are not given in the
+    # barcode.
+
+    # Patient barcode  TCGA-02-0021
+    # Sample barcode               -01B              + sample
+    # Aliquot barcode                  -02D          + portion
+    # Analyte barcode                      -181-06   + plate and center
+    assert len(barcode) >= 12, "Invalid barcode: %s" % barcode
+    x = barcode.upper().split("-")
+    assert len(x) >= 3, "Invalid barcode: %s" % barcode
+    assert len(x) <= 7, "Invalid barcode: %s" % barcode
+
+    sample = aliquot = analyte = None
+    
+    assert x[0] == "TCGA", "Invalid barcode: %s" % barcode
+    assert len(x[1]) == 2, "Invalid barcode: %s" % barcode
+    assert len(x[2]) == 4, "Invalid barcode: %s" % barcode
+    patient = "-".join(x[:3])
+
+    if len(x) >= 4:
+        assert len(x[3]) >= 2 and len(x[3]) <= 3
+        sample = x[3]
+    if len(x) >= 5:
+        assert len(x[4]) >= 2 and len(x[4]) <= 3
+        aliquot = x[4]
+    if len(x) >= 6:
+        assert len(x) >= 7
+        analyte = "-".join(x[6:8])
+
+    return patient, sample, aliquot, analyte
+
+
+def tcga_solid_tumor_only(MATRIX, cancer_only):
+    from arrayio import tab_delimited_format as tdf
+
+    if not cancer_only:
+        return MATRIX
+    assert tdf.SAMPLE_NAME in MATRIX.col_names()
+    barcodes = MATRIX.col_names(tdf.SAMPLE_NAME)
+    I = []
+    for i, barcode in enumerate(barcodes):
+        x = _parse_tcga_barcode(barcode)
+        patient, sample, aliquot, analyte = x
+        assert sample is not None, "sample missing from barcode"
+        assert len(sample) >= 2
+        sample = int(sample[:2])
+        assert sample >= 1
+        if sample == 1:
+            I.append(i)
+    x = MATRIX.matrix(None, I)
+    return x
+    
+    
+def tcga_relabel_patient_barcodes(MATRIX, relabel):
+    import arrayio
+    if not relabel:
+        return MATRIX
+
+    name = arrayio.COL_ID
+    if name not in MATRIX._col_names:
+        name = MATRIX._synonyms[name]
+    assert name in MATRIX._col_names, "I can not find the sample names."
+
+    MATRIX_new = MATRIX.matrix()
+    barcodes = MATRIX.col_names(name)
+    x = [_parse_tcga_barcode(x) for x in barcodes]
+    x = [x[0] for x in x]
+    MATRIX_new._col_names[name] = x
+    
+    return MATRIX_new
+    
+
 def select_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return None
@@ -1209,18 +1286,6 @@ def align_cols(MATRIX, align_col_file, ignore_missing_cols):
         if num_matches == len(ids):
             break
     I = best_I
-    #if ignore_duplicate_cols:
-    #    seen = {}
-    #    i = 0
-    #    while i < len(I):
-    #        if headers[I[i]] in seen:
-    #            del I[i]
-    #        else:
-    #            seen[headers[I[i]]] = 1
-    #            i += 1
-    #for i in best_I:
-    #    print i, MATRIX.col_names(arrayio.COL_ID)[i]
-    #sys.exit(0)
     if not ignore_missing_cols and len(ids) != len(I):
         # Diagnose problem here.
         x = ALIGN.col_names(arrayio.COL_ID)
@@ -1836,6 +1901,14 @@ def main():
         "--add_suffix_col_ids", default=None,
         help="Add a suffix to each column ID.")
 
+    group = parser.add_argument_group(title="TCGA barcode operations")
+    group.add_argument(
+        "--tcga_solid_tumor_only", default=False, action="store_true",
+        help="Keep only the columns that contain cancer samples.")
+    group.add_argument(
+        "--tcga_relabel_patient_barcodes", default=False, action="store_true",
+        help="Sample names should be patient barcodes.")
+    
     group = parser.add_argument_group(title="Row filtering")
     group.add_argument(
         "--select_row_indexes", default=None,
@@ -2053,6 +2126,11 @@ def main():
     MATRIX = apply_re_col_ids(MATRIX, args.apply_re_col_ids)
     MATRIX = add_suffix_col_ids(MATRIX, args.add_suffix_col_ids)
     MATRIX = hash_col_ids(MATRIX, args.hash_col_ids)
+
+    # Filter TCGA columns.
+    MATRIX = tcga_solid_tumor_only(MATRIX, args.tcga_solid_tumor_only)
+    MATRIX = tcga_relabel_patient_barcodes(
+        MATRIX, args.tcga_relabel_patient_barcodes)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
