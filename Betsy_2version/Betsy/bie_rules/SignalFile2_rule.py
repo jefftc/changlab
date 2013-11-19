@@ -71,10 +71,16 @@ SignalFile2 = bie.DataType(
 IntensityPlot = bie.DataType(
     'IntensityPlot',
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
+    bie.Attribute(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'],DEFAULT='unknown'),
+    #bie.Attribute(quantile_norm=['yes','no'],DEFAULT='no'),
+    # bie.Attribute(
+    #    gene_center=["unknown", "no", "mean", "median"],
+    #    DEFAULT="unknown"),
     )
 ActbPlot = bie.DataType(
     'ActbPlot',
-    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True))
+    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
+    bie.Attribute(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'],DEFAULT='unknown'))
 Hyb_barPlot = bie.DataType(
     'Hyb_barPlot',
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),)
@@ -237,14 +243,20 @@ all_modules = [
         SignalFile2(format="tdf", logged="no")),
     bie.Module(
         'plot_intensity_boxplot',
-        SignalFile2,
-        IntensityPlot),
+        SignalFile2(format="tdf", logged="yes"),
+        IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'])),
+    #bie.Module(
+    #    'plot_intensity_boxplot',
+    #    SignalFile2(format="tdf", logged="yes",quantile_norm=['yes','no']),
+    #    IntensityPlot(quantile_norm=['yes','no'],gene_center=['mean','median','no','unknown'])),
     bie.Module(
         'plot_actb_line',
-        SignalFile_rule.SignalFile(format='tdf',logged='yes',missing_values='no',
+        SignalFile_rule.SignalFile(preprocess=["unknown", "agilent","illumina",
+                                "mas5", "rma", "loess"],format='tdf',logged='yes',missing_values='no',
                                    quantile_norm='no',combat_norm='no',shiftscale_norm='no',
                                    dwd_norm='no',bfrm_norm='no'),
-        ActbPlot),
+        ActbPlot(preprocess=["unknown", "agilent","illumina",
+                                "mas5", "rma", "loess"])),
     bie.Module(
         'plot_affy_affx_line',
         SignalFile2(annotate='no',preprocess=["unknown", "agilent",

@@ -241,9 +241,8 @@ all_modules = [
     bie.Module(
         "convert_signal_to_tdf",
         SignalFile(
-            filename=bie.ANYATOM, 
             format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        SignalFile(filename=bie.ANYATOM, format='tdf')),
+        SignalFile(format='tdf')),
     bie.QueryModule(
         "check_for_log",
         SignalFile(format="tdf", logged='unknown'),

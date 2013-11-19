@@ -129,7 +129,7 @@ def run_case5():
     goal_datatype=rulebase.ReportFile
     goal_attributes=dict(
         report_type='normalize', format='tdf', logged='yes',
-        missing_values='no', quantile_norm='yes')
+        missing_values='no', quantile_norm='yes',gene_center='mean')
     
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
@@ -206,23 +206,23 @@ def run_case8():
         ]
     #goal_datatype = rulebase.Heatmap
     goal_datatype = rulebase.ReportFile
-    #goal_attributes = dict(
-    #    report_type='heatmap',format='tdf',logged='yes',
-    #    missing_values='no',preprocess='illumina')
+    goal_attributes = dict(
+        report_type='cluster',format='tdf',logged='yes',
+        missing_values='no',preprocess='illumina',quantile_norm='yes',bfrm_norm='yes')
     
     # No ReportFile with report_type='heatmap' and
     # preprocess='illumina'.  To avoid ambiguity, should make sure no
     # DataTypes have the same names for attributes.  e.g. don't reuse
     # "preprocess" for multiple DataTypes.
 
-    goal_attributes = dict(
-        report_type='normalize', format='tdf', logged='yes',
-        missing_values='no', preprocess='illumina')
-        #missing_values='no')
+    #goal_attributes = dict(
+    #    report_type='normalize', format='tdf', logged='yes',
+    #    missing_values='no', preprocess='illumina')
+    #    #missing_values='no')
 
     network = bie.backchain(
         rulebase.all_modules, goal_datatype, goal_attributes)
-    #network = bie.select_start_node(network, in_data)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
     bie.print_network(network)
     bie.plot_network_gv("out.png", network)
@@ -234,8 +234,8 @@ def main():
     #run_case2()
     #run_case3()
     #run_case4()
-    #run_case5()
-    run_case6()
+    run_case5()
+    #run_case6()
     #run_case7()
     #run_case8()
     #cProfile.run("run_case7()")

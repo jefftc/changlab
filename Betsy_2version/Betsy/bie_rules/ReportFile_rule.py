@@ -19,19 +19,22 @@ all_modules = [
     bie.Module(
         'make_normalize_report',
         [SignalFile2_rule.SignalFile2(annotate='yes',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-         PcaAnalysis_rule.PcaPlot(process='before'),
-         PcaAnalysis_rule.PcaPlot(process='after'),
-         SignalFile2_rule.IntensityPlot,
-         SignalFile2_rule.ActbPlot,
-         SignalFile2_rule.ControlPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         PcaAnalysis_rule.PcaAnalysis(annotate='no',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         PcaAnalysis_rule.PcaAnalysis(annotate='no',preprocess=["unknown", "agilent", "mas5", "rma", "loess"],
+                quantile_norm='no',combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',gene_center='no'),
+         
+         #SignalFile2_rule.IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         #SignalFile2_rule.ActbPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         #SignalFile2_rule.ControlPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
          ],
          ReportFile(report_type='normalize',preprocess=["unknown", "agilent", "mas5", "rma", "loess"])),
     bie.Module(
         'make_normalize_report_illumina',
        [
         SignalFile2_rule.SignalFile2(preprocess='illumina',annotate='yes'),
-         PcaAnalysis_rule.PcaPlot(process='before'),
-         PcaAnalysis_rule.PcaPlot(process='after'),
+         PcaAnalysis_rule.PcaPlot(preprocess='illumina',quantile_norm='no',
+              combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no'),
+         PcaAnalysis_rule.PcaPlot,
          SignalFile2_rule.IntensityPlot,
          SignalFile2_rule.ActbPlot,
          SignalFile2_rule.BiotinPlot,
@@ -45,7 +48,7 @@ all_modules = [
         'make_cluster_report',
         [ClusterFile_rule.ClusterFile,
          ClusterFile_rule.Heatmap],
-        ReportFile(report_type='cluster')),
+        ReportFile(report_type='cluster',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
     bie.Module(
         'make_classify_report',
         [SignalFile2_rule.SignalFile2(
@@ -65,12 +68,12 @@ all_modules = [
     bie.Module(
         'make_heatmap_report',
         ClusterFile_rule.Heatmap(cluster_alg='no_cluster_alg'),
-        ReportFile(report_type='heatmap')),
+        ReportFile(report_type='heatmap',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
     bie.Module(
         'make_geneset_report',
         [GenesetAnalysis_rule.GenesetAnalysis,
          GenesetAnalysis_rule.GenesetPlot],
-        ReportFile(report_type='geneset')),
+        ReportFile(report_type='geneset',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
     bie.Module(
         'make_diffgenes_report',
         [DiffExprFile_rule.DiffExprFile(diff_expr='t_test'),
@@ -80,7 +83,7 @@ all_modules = [
          GatherFile_rule.GatherFile,
          GseaFile_rule.GseaFile
          ],
-         ReportFile(report_type='diffgenes')),
+         ReportFile(report_type='diffgenes',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
     bie.Module(
         'make_batch_effect_report',
         [SignalFile_rule.SignalFile(format='tdf',logged='yes',missing_values='no',
@@ -93,7 +96,7 @@ all_modules = [
                                     quantile_norm='yes',bfrm_norm='yes',dwd_norm='no',combat_norm='no',shiftscale_norm='no'),
          SignalFile_rule.SignalFile(format='tdf',logged='yes',missing_values='no',
                                     quantile_norm='yes',combat_norm='yes',dwd_norm='no',bfrm_norm='no',shiftscale_norm='no')],
-        ReportFile(report_type='batch_effect_remove')),
+        ReportFile(report_type='batch_effect_remove',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
     bie.Module(
         'combine all',
         [ReportFile(report_type='classify'),
@@ -103,7 +106,7 @@ all_modules = [
          ReportFile(report_type='batch_effect_remove'),
          ReportFile(report_type='heatmap'),
          ReportFile(report_type='cluster')],
-        ReportFile(report_type='all')),
+        ReportFile(report_type='all',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
          
         ]
   

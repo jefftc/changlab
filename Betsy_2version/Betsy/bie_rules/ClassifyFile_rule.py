@@ -123,7 +123,7 @@ all_modules = [
          [ClassifyFile(classify_alg=['svm','weighted_voting',
                                      'random_forest'],actual_label=['yes','no'],
                        loocv=['yes','no']),
-          PcaAnalysis_rule.PcaAnalysis(process='after',contents='test')],
+          PcaAnalysis_rule.PcaAnalysis(contents='test')],
           PredictionPCAPlot(classify_alg=['svm','weighted_voting',
                                      'random_forest'],
                         actual_label=['yes','no'],loocv=['yes','no'])),
