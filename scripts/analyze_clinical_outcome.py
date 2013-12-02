@@ -4,6 +4,7 @@
 # Functions:
 # parse_genes
 # parse_gene_sets
+# list_all_gene_sets
 # parse_rank_cutoffs
 # parse_zscore_cutoffs
 # parse_outcomes
@@ -47,6 +48,12 @@ def parse_genes(genes):
 def parse_gene_sets(geneset):
     # geneset is a list of gene sets.  Return it unchanged.
     return geneset
+
+
+def list_all_gene_sets(filename):
+    M = read_geneset_scores(filename)
+    gene_sets = M.row_names("geneset")
+    return gene_sets
 
 
 def parse_rank_cutoffs(cutoffs):
@@ -299,7 +306,8 @@ def get_gene_name(MATRIX, gene_i):
 
 
 def calc_association(
-    survival, dead, scores, rank_cutoffs, zscore_cutoffs, expression_or_score):
+    survival, dead, scores, rank_cutoffs, zscore_cutoffs, expression_or_score,
+    ignore_unscored_genesets):
     # Return a dictionary with keys:
     # survival             list of <float>
     # dead                 list of <int>
@@ -324,6 +332,8 @@ def calc_association(
     I2 = [i for (i, x) in enumerate(dead) if x]
     I3 = [i for (i, x) in enumerate(scores) if x]
     I = sorted(set.intersection(set(I1), set(I2), set(I3)))
+    if ignore_unscored_genesets and not I:
+        return None
     assert I, "No valid samples."
 
     survival = [float(survival[i]) for i in I]
@@ -822,6 +832,12 @@ def main():
         '--geneset', default=[], action='append',
         help='Name of the geneset to analyze. To specify multiple gene sets, '
         'use this parameter multiple times.')
+    group.add_argument(
+        '--all_genesets', default=False, action='store_true',
+        help='Use all gene sets in the geneset file.')
+    group.add_argument(
+        '--ignore_unscored_genesets', default=False, action='store_true',
+        help="If a gene set is not scored on this data set, then ignore it.")
     
     group = parser.add_argument_group(
         title='Discretization', description='We can discretize the '
@@ -903,8 +919,11 @@ def main():
            args.outcome_file
     
     assert args.outcome, 'Please specify the clinical outcomes to analyze.'
-    assert args.gene or args.geneset, 'Please specify a gene or gene set.'
+    assert args.gene or args.geneset or args.all_genesets, \
+           'Please specify a gene or gene set.'
     assert not (args.gene and args.geneset), (
+        'Please specify either a gene or a gene set, not both.')
+    assert not (args.gene and args.all_genesets), (
         'Please specify either a gene or a gene set, not both.')
 
     if args.rank_cutoff:
@@ -924,6 +943,8 @@ def main():
     # Clean up the input.
     genes = parse_genes(args.gene)
     gene_sets = parse_gene_sets(args.geneset)
+    if args.all_genesets:
+        gene_sets = list_all_gene_sets(args.expression_file)
     rank_cutoffs = zscore_cutoffs = None
     if args.rank_cutoff:
         rank_cutoffs = parse_rank_cutoffs(args.rank_cutoff)
@@ -976,7 +997,7 @@ def main():
 
         x = calc_association(
             survival, dead, scores, rank_cutoffs, zscore_cutoffs,
-            expression_or_score)
+            expression_or_score, args.ignore_unscored_genesets)
         if x is None:
             continue
         gene_outcome_scores[(time_header, dead_header, i)] = x

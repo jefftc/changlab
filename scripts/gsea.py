@@ -131,11 +131,13 @@ def fix_class_order(MATRIX, name1, name2, classes):
 def check_matrix(X):
     import re
     import arrayio
+    from genomicode import hashlib
 
     assert arrayio.gct_format.is_matrix(X)
 
     # Make sure gene IDs (NAME) is unique and non-empty.
-    assert X.row_names()[0].upper() == "NAME"
+    assert X.row_names()[0].upper() == "NAME", \
+           "Header of first column should be: NAME"
     seen = {}
     for i, name in enumerate(X.row_names("NAME")):
         assert name.strip(), "Empty gene ID in row %d." % (i+1)
@@ -144,9 +146,17 @@ def check_matrix(X):
 
     # Make sure sample names don't contain spaces or other
     # punctuation.  GSEA seems to be sensitive to these things.
-    for i, name in enumerate(X.col_names(arrayio.tdf.SAMPLE_NAME)):
-        assert not re.search("[^a-zA-Z0-9_-]", name), \
-               "Bad sample name: %s" % name
+    sample_names = X.col_names(arrayio.tdf.SAMPLE_NAME)
+    bad_names = []
+    for i, name in enumerate(sample_names):
+        if re.search("[^a-zA-Z0-9_-]", name):
+            bad_names.append(name)
+    # If there are bad names, try to fix them.
+    #if bad_names:
+    #    sample_names_h = [hashlib.hash_var(x) for x in sample_names]
+    #    # If there are no duplicates, use these sample names.
+    #    raise NotImplementedError
+    assert not bad_names, "Bad sample name: %s" % ", ".join(bad_names)
         
 
 def main():
