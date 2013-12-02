@@ -237,21 +237,52 @@ def run_case8():
     bie.print_network(network)
     bie.plot_network_gv("out.png", network)
 
-
+def run_case9():
+    #case9 (to test the different order of PcaAnalysis in report input list)
+    in_data=[
+        rulebase.SignalFile(
+            format="jeffs",
+            filename='/home/xchen/chencode/betsy_test/all_aml_train.res')
+        ]
+    goal_datatype=rulebase.ReportFile
+    goal_attributes=dict(
+        report_type='normalize', format='tdf', logged='yes',
+        missing_values='no', quantile_norm='yes',gene_center='mean',
+        gene_normalize='variance',
+        )
+    new_module = bie.Module(
+        'make_normalize_report',
+        [
+        rulebase.SignalFile2(annotate='yes',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+        rulebase.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+        rulebase.IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+        rulebase.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"],
+               quantile_norm='no',combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',gene_center='no',
+                gene_normalize='no',unique_genes="no",
+                platform='no', group_fc='no'),
+        ],
+        rulebase.ReportFile(report_type='normalize',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]))
+    all_modules = rulebase.all_modules
+    all_modules.append(new_module)    
+    network = bie.backchain(
+        all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
+    network = bie.optimize_network(network)
+    bie.print_network(network)
+    bie.plot_network_gv("out.png", network)
+    
+    
 def main():
     import cProfile 
     #run_case1()
     #run_case2()
     #run_case3()
     #run_case4()
-
-    run_case5()
-
     #run_case5()
-
     #run_case6()
     #run_case7()
     #run_case8()
+    run_case9()
     #cProfile.run("run_case7()")
 
 if __name__ == '__main__':
