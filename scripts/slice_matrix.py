@@ -458,26 +458,32 @@ def select_col_regex(MATRIX, col_regex):
     return I
 
 
-def replace_col_ids(MATRIX, replace_str, ignore_missing):
-    # replace_str in format of: <from>,<to>.
+def replace_col_ids(MATRIX, replace_list, ignore_missing):
+    # replace_list is a list of: <from>,<to>.
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
 
-    if not replace_str:
+    if not replace_list:
         return MATRIX
-    x = replace_str.split(",")
-    assert len(x) == 2, "format should be: <from>,<to>"
-    from_str, to_str = x
+    replace_parsed = []
+    for x in replace_list:
+        x = x.split(",")
+        assert len(x) == 2, "format should be: <from>,<to>"
+        from_str, to_str = x
+        replace_parsed.append((from_str, to_str))
 
     MATRIX_new = MATRIX.matrix()
-    name = arrayio.COL_ID
-    if name not in MATRIX_new._col_names:
-        name = MATRIX_new._synonyms[name]
-    assert name in MATRIX_new._col_names, "I can not find the sample names."
-    x = MATRIX_new.col_names(name)
-    x = [x.replace(from_str, to_str) for x in x]
-    MATRIX_new._col_names[name] = x
+    header = arrayio.COL_ID
+    if header not in MATRIX_new._col_names:
+        header = MATRIX_new._synonyms[header]
+    assert header in MATRIX_new._col_names, "I can not find the sample names."
+    names = MATRIX_new.col_names(header)
+    for i, name in enumerate(names):
+        for (from_str, to_str) in replace_parsed:
+            name = name.replace(from_str, to_str)
+        names[i] = name
+    MATRIX_new._col_names[header] = names
 
     return MATRIX_new
 
@@ -1785,7 +1791,7 @@ def main():
         help="If multiple columns have the same header, make their names "
         "unique.")
     group.add_argument(
-        "--replace_col_ids", default=None,
+        "--replace_col_ids", default=[], action="append",
         help="Replace strings within the column IDs.  Format: <from>,<to>.  "
         "Instances of <from> will be replaced with <to>.")
     group.add_argument(
