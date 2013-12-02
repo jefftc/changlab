@@ -1,0 +1,3 @@
+[Section1]
+outputpath= /home/xchen/chencode/examples/sample_analysis
+module_timeout=60

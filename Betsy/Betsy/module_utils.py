@@ -118,7 +118,8 @@ def format_convert(X):
 
 
 def write_Betsy_parameters_file(parameters, single_object,
-                                pipeline, outfile,starttime,user,job_name):
+                                pipeline,outfile,starttime,user,job_name):
+    #outfile = parameters['filename']
     st = os.stat(outfile)
     modified_time = time.asctime(time.localtime(st[ST_MTIME]))
     f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')

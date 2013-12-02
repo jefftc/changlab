@@ -1,10 +1,12 @@
 write.scatterplot <- function(filename, DATA, rownames=NA) {
   # DATA is a list of NAME -> matrix of xy coordinates.
-  # rownames is a list of NAME -> list of names.
+  # rownames is a list of NAME -> list of names (same length as nrow(matrix)).
+  # One x, lots of Y.
 
   #maxlen <- max(unlist(lapply(DATA, nrow)))
   data.tab <- c()
   rn <- c()
+  R <- NA
   for(i in 1:length(DATA)) {
     D <- DATA[[i]]
     if(!all(is.na(rownames))) {

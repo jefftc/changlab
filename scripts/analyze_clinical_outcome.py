@@ -85,15 +85,18 @@ def parse_rank_cutoffs(cutoffs):
 
 
 def parse_zscore_cutoffs(cutoffs):
-    # Comma-separated list of breakpoints, e.g. -1,1.  Return list,
-    # e.g. [-1, 1], that:
+    # Comma-separated list of breakpoints, e.g. -1,1, n1,1.  Since
+    # it's hard to pass negatives on the command line, replace "n"
+    # with "-" here.  Return list, # e.g. [-1, 1], that:
     # - is sorted
     # - has no duplicates
     
     assert type(cutoffs) is type("")
-    cutoffs = cutoffs.split(',')
-    cutoffs = [float(x) for x in cutoffs]
-    cutoffs.sort()
+    x = cutoffs
+    x = x.replace("n", "-")
+    x = x.split(',')
+    x = [float(x) for x in x]
+    cutoffs = sorted(x)
 
     # Remove duplicates.
     DELTA = 0.0001
@@ -505,7 +508,9 @@ def discretize_by_zscore(values, cutoffs):
         "z.model" : z_model,
         }
     R_fn('score.outliers.regr', R_var("x"), RETVAL="M", **params)
-    R_fn('assign.groups', R_var("M$z"), R_var("z.cutoffs"), RETVAL="groups")
+    R_fn(
+        'assign.groups', R_var("x"), R_var("M$z"), R_var("z.cutoffs"),
+        RETVAL="groups")
     groups = list(R['groups'])
     return groups
 

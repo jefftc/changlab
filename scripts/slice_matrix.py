@@ -27,11 +27,15 @@
 # reorder_col_indexes
 # reorder_col_alphabetical
 # remove_duplicate_cols
+# remove_unnamed_cols
 # rename_duplicate_cols
 # toupper_col_ids
 # hash_col_ids
 # apply_re_col_ids
 # add_suffix_col_ids
+#
+# tcga_solid_tumor_only
+# tcga_relabel_patient_barcodes
 #
 # select_row_indexes
 # select_row_ids
@@ -459,31 +463,30 @@ def select_col_regex(MATRIX, col_regex):
 
 
 def replace_col_ids(MATRIX, replace_list, ignore_missing):
-    # replace_list is a list of: <from>,<to>.
+    # replace_list is list of strings in format of: <from>,<to>.
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
 
     if not replace_list:
         return MATRIX
-    replace_parsed = []
-    for x in replace_list:
-        x = x.split(",")
+    
+    replace_all = []  # list of (from_str, to_str)
+    for replace_str in replace_list:
+        x = replace_str.split(",")
         assert len(x) == 2, "format should be: <from>,<to>"
         from_str, to_str = x
-        replace_parsed.append((from_str, to_str))
+        replace_all.append((from_str, to_str))
 
     MATRIX_new = MATRIX.matrix()
-    header = arrayio.COL_ID
-    if header not in MATRIX_new._col_names:
-        header = MATRIX_new._synonyms[header]
-    assert header in MATRIX_new._col_names, "I can not find the sample names."
-    names = MATRIX_new.col_names(header)
-    for i, name in enumerate(names):
-        for (from_str, to_str) in replace_parsed:
-            name = name.replace(from_str, to_str)
-        names[i] = name
-    MATRIX_new._col_names[header] = names
+    name = arrayio.COL_ID
+    if name not in MATRIX_new._col_names:
+        name = MATRIX_new._synonyms[name]
+    assert name in MATRIX_new._col_names, "I can not find the sample names."
+    x = MATRIX_new.col_names(name)
+    for (from_str, to_str) in replace_all:
+        x = [x.replace(from_str, to_str) for x in x]
+    MATRIX_new._col_names[name] = x
 
     return MATRIX_new
 
@@ -496,8 +499,6 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
     assert len(genesets) == 1
-    #print filename
-    #print genesets
     
     # Read all genesets out of the geneset file.
     geneset2genes = {}
@@ -505,7 +506,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     all_genes = []
     ext = os.path.splitext(filename)[1].lower()
     for x in genesetlib.read_genesets(
-            filename, allow_tdf=True, allow_duplicates=True):
+        filename, allow_tdf=True, allow_duplicates=True, preserve_spaces=True):
         geneset, description, genes = x
 
         # Bug: sometimes will mis-identify TDF files as GMX.  The
@@ -520,6 +521,12 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
         all_genes.append(genes)
+
+    # Make sure all the genes have the same length.  Otherwise,
+    # something might be broken.
+    assert all_genes
+    for x in all_genes:
+        assert len(x) == len(all_genes[0]), "genesets not aligned"
 
     # Find an alignment between the sample names and the genesets.
     x = matrixlib.align_cols_to_many_annots(
@@ -558,6 +565,8 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     gs = genesets[0]
     genes = geneset2genes[gs]
     assert len(I_matrix) == len(I_geneset)
+    assert max(I_geneset) < len(genes)
+    assert max(I_matrix) < len(names)
     for i in range(len(I_matrix)):
         names[I_matrix[i]] = genes[I_geneset[i]]
     MATRIX_new._col_names[name] = names
@@ -679,6 +688,20 @@ def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
             continue
         seen[headers[i]] = 1
         I.append(i)
+    x = MATRIX.matrix(None, I)
+    return x
+
+
+def remove_unnamed_cols(MATRIX, remove_cols):
+    import arrayio
+
+    if not remove_cols:
+        return MATRIX
+    headers = MATRIX.col_names(arrayio.COL_ID)
+    I = []
+    for i in range(len(headers)):
+        if headers[i]:
+            I.append(i)
     x = MATRIX.matrix(None, I)
     return x
 
@@ -805,6 +828,80 @@ def add_suffix_col_ids(MATRIX, suffix):
     MATRIX._col_names[tdf.SAMPLE_NAME] = names
     return MATRIX
 
+
+def _parse_tcga_barcode(barcode):
+    # Return tuple of (patient, sample, aliquot, analyte).  sample,
+    # aliquot, analyte may be None if these parts are not given in the
+    # barcode.
+
+    # Patient barcode  TCGA-02-0021
+    # Sample barcode               -01B              + sample
+    # Aliquot barcode                  -02D          + portion
+    # Analyte barcode                      -181-06   + plate and center
+    assert len(barcode) >= 12, "Invalid barcode: %s" % barcode
+    x = barcode.upper().split("-")
+    assert len(x) >= 3, "Invalid barcode: %s" % barcode
+    assert len(x) <= 7, "Invalid barcode: %s" % barcode
+
+    sample = aliquot = analyte = None
+    
+    assert x[0] == "TCGA", "Invalid barcode: %s" % barcode
+    assert len(x[1]) == 2, "Invalid barcode: %s" % barcode
+    assert len(x[2]) == 4, "Invalid barcode: %s" % barcode
+    patient = "-".join(x[:3])
+
+    if len(x) >= 4:
+        assert len(x[3]) >= 2 and len(x[3]) <= 3
+        sample = x[3]
+    if len(x) >= 5:
+        assert len(x[4]) >= 2 and len(x[4]) <= 3
+        aliquot = x[4]
+    if len(x) >= 6:
+        assert len(x) >= 7
+        analyte = "-".join(x[6:8])
+
+    return patient, sample, aliquot, analyte
+
+
+def tcga_solid_tumor_only(MATRIX, cancer_only):
+    from arrayio import tab_delimited_format as tdf
+
+    if not cancer_only:
+        return MATRIX
+    assert tdf.SAMPLE_NAME in MATRIX.col_names()
+    barcodes = MATRIX.col_names(tdf.SAMPLE_NAME)
+    I = []
+    for i, barcode in enumerate(barcodes):
+        x = _parse_tcga_barcode(barcode)
+        patient, sample, aliquot, analyte = x
+        assert sample is not None, "sample missing from barcode"
+        assert len(sample) >= 2
+        sample = int(sample[:2])
+        assert sample >= 1
+        if sample == 1:
+            I.append(i)
+    x = MATRIX.matrix(None, I)
+    return x
+    
+    
+def tcga_relabel_patient_barcodes(MATRIX, relabel):
+    import arrayio
+    if not relabel:
+        return MATRIX
+
+    name = arrayio.COL_ID
+    if name not in MATRIX._col_names:
+        name = MATRIX._synonyms[name]
+    assert name in MATRIX._col_names, "I can not find the sample names."
+
+    MATRIX_new = MATRIX.matrix()
+    barcodes = MATRIX.col_names(name)
+    x = [_parse_tcga_barcode(x) for x in barcodes]
+    x = [x[0] for x in x]
+    MATRIX_new._col_names[name] = x
+    
+    return MATRIX_new
+    
 
 def select_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
@@ -1189,18 +1286,6 @@ def align_cols(MATRIX, align_col_file, ignore_missing_cols):
         if num_matches == len(ids):
             break
     I = best_I
-    #if ignore_duplicate_cols:
-    #    seen = {}
-    #    i = 0
-    #    while i < len(I):
-    #        if headers[I[i]] in seen:
-    #            del I[i]
-    #        else:
-    #            seen[headers[I[i]]] = 1
-    #            i += 1
-    #for i in best_I:
-    #    print i, MATRIX.col_names(arrayio.COL_ID)[i]
-    #sys.exit(0)
     if not ignore_missing_cols and len(ids) != len(I):
         # Diagnose problem here.
         x = ALIGN.col_names(arrayio.COL_ID)
@@ -1764,6 +1849,9 @@ def main():
         "--remove_duplicate_cols", default=False, action="store_true",
         help="If a column is found multiple times, keep only the first one.")
     group.add_argument(
+        "--remove_unnamed_cols", default=False, action="store_true",
+        help="If a column has no name, remove it.")
+    group.add_argument(
         "--reorder_col_indexes", default=None,
         help="Change the order of the data columns.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
@@ -1813,6 +1901,14 @@ def main():
         "--add_suffix_col_ids", default=None,
         help="Add a suffix to each column ID.")
 
+    group = parser.add_argument_group(title="TCGA barcode operations")
+    group.add_argument(
+        "--tcga_solid_tumor_only", default=False, action="store_true",
+        help="Keep only the columns that contain cancer samples.")
+    group.add_argument(
+        "--tcga_relabel_patient_barcodes", default=False, action="store_true",
+        help="Sample names should be patient barcodes.")
+    
     group = parser.add_argument_group(title="Row filtering")
     group.add_argument(
         "--select_row_indexes", default=None,
@@ -2031,8 +2127,14 @@ def main():
     MATRIX = add_suffix_col_ids(MATRIX, args.add_suffix_col_ids)
     MATRIX = hash_col_ids(MATRIX, args.hash_col_ids)
 
+    # Filter TCGA columns.
+    MATRIX = tcga_solid_tumor_only(MATRIX, args.tcga_solid_tumor_only)
+    MATRIX = tcga_relabel_patient_barcodes(
+        MATRIX, args.tcga_relabel_patient_barcodes)
+
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
+    MATRIX = remove_unnamed_cols(MATRIX, args.remove_unnamed_cols)
 
     # Rename duplicate rows and columns.
     MATRIX = rename_duplicate_rows(MATRIX, args.rename_duplicate_rows)

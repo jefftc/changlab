@@ -29,11 +29,13 @@ def choose_gene_names(MATRIX):
     
 def find_diffexp_genes(
     outfile, gmt_file, gmt_p_cutoff, gmt_fdr_cutoff,
-    algorithm, MATRIX, name1, name2, classes, fold_change,
-    DELTA, num_procs):
+    algorithm, MATRIX, name1, name2, classes, fold_change, 
+    sam_DELTA, sam_qq_file, show_all_genes, num_procs):
     # classes must be 0, 1, None.
     import os
+    import sys
     import math
+    import StringIO
     
     from genomicode import config
     from genomicode import jmath
@@ -92,11 +94,10 @@ def find_diffexp_genes(
         genenames = MATRIX.row_names(genename_header)
         jmath.R_equals(genenames, "genenames")
 
-
     # Set up the arguments.
     args = ["X", "Y"]
     if algorithm == "sam":
-        args.append("%g" % DELTA)
+        args.append("%g" % sam_DELTA)
     if geneid:
         args.append("geneid=geneid")
     if genenames:
@@ -105,12 +106,31 @@ def find_diffexp_genes(
         args.append("FOLD.CHANGE=%g" % fold_change)
     if algorithm == "ttest":
         args.append("NPROCS=%d" % num_procs)  # t-test only
+    if show_all_genes and algorithm != "sam":
+        args.append("all.genes=TRUE")
 
+
+    # Prevent SAM from writing junk to the screen.
+    handle = StringIO.StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = handle
+    
     fn = algorithm2function[algorithm]
     x = ", ".join(args)
     R("x <- %s(%s)" % (fn, x))
     R("DATA <- x$DATA")
     DATA_R = R["DATA"]
+
+    sys.stdout = old_stdout
+
+    # Write out a QQ file for SAM.
+    if algorithm == "sam" and sam_qq_file:
+        R('S <- x$S')
+        jmath.R_fn(
+            "bitmap", sam_qq_file, type="png256",
+            height=1600, width=1600, units="px", res=300)
+        jmath.R_fn("samr.plot", jmath.R_var("S"), sam_DELTA)
+        jmath.R_fn("dev.off")
 
     # Convert this DataFrame into a Python object.
     tDATA_py = []
@@ -212,10 +232,13 @@ def main():
     parser.add_argument("expression_file", help="Gene expression file.")
 
     parser.add_argument(
-        "-l", "--log_the_data", dest="log_the_data", 
+        "-l", "--log_the_data", 
         choices=["yes", "no", "auto"], default="auto",
         help="Log the data before analyzing.  "
         "Must be 'yes', 'no', or 'auto' (default).")
+    parser.add_argument(
+        "--show_all_genes", default=False, action="store_true",
+        help="List all the genes (default shows only p<0.05).")
     parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,
         help="Number of processors to use.")
@@ -236,9 +259,14 @@ def main():
     group.add_argument(
         "--fold_change", type=float, default=None,
         help="Minimum change in gene expression.")
+
+    group = parser.add_argument_group(title="Algorithm-specific Parameters")
     group.add_argument(
-        "--DELTA", type=float, default=1.0,
+        "--sam_delta", type=float, default=1.0,
         help="DELTA parameter for SAM analysis.  (Default 1.0).")
+    group.add_argument(
+        "--sam_qq_file", default=None, help="File (PNG) for QQ plot for SAM.")
+    
 
     group = parser.add_argument_group(title="Class Labels")
     group.add_argument(
@@ -264,7 +292,7 @@ def main():
     assert args.num_procs >= 1 and args.num_procs < 100
     if args.fold_change is not None:
         assert args.fold_change >= 0 and args.fold_change < 1000
-    assert args.DELTA > 0 and args.DELTA < 100
+    assert args.sam_delta > 0 and args.sam_delta < 100
     if args.gmt_fdr_cutoff is not None:
         assert args.gmt_file, "Found --gmt_fdr_cutoff but no --gmt_cutoff."
         assert args.gmt_fdr_cutoff > 0.0 and args.gmt_fdr_cutoff < 1.0
@@ -345,7 +373,8 @@ def main():
             find_diffexp_genes(
                 outfile, args.gmt_file, args.gmt_p_cutoff, args.gmt_fdr_cutoff,
                 args.algorithm, MATRIX, name1, name2, classes,
-                args.fold_change, args.DELTA, args.num_procs)
+                args.fold_change, args.sam_delta, args.sam_qq_file,
+                args.show_all_genes, args.num_procs)
             sys.exit(0)
     finally:
         if pid:

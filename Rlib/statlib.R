@@ -16,9 +16,11 @@
 # assign.groups
 
 
-fdr.correct.bh <- function(p.values) {
+fdr.correct.bh <- function(p.values, mc.cores=NA) {
+  library(multicore)
   if(!length(p.values))
     return(NULL)
+  if(any(is.na(p.values))) stop("NA in p.values")
   m <- length(p.values)
 
   # Sort p.values in increasing order.
@@ -29,7 +31,10 @@ fdr.correct.bh <- function(p.values) {
   k <- 1:m
   x <- m/k * p.values
   x <- sapply(x, function(x) min(x, 1) )
-  x <- sapply(1:m, function(i) min(x[i:m]) )
+  if(is.na(mc.cores)) 
+    x <- sapply(1:m, function(i) min(x[i:m]) )
+  else
+    x <- unlist(mclapply(1:m, mc.cores=mc.cores, FUN=function(i) min(x[i:m])))
   x[O.rev]   # Return FDR is original order of p.values
 }
 
@@ -263,13 +268,13 @@ score.outliers.regr <- function(x, perc.init=NULL, z.model=NULL, max.iter=NULL)
 # Groups are specified as numbers from [0, length(cutoffs)].  Group 0
 # are the scores lower than cutoffs[1].  If there are no values lower
 # than cutoffs[1], then the first group will be group 1.
-assign.groups <- function(scores, cutoffs, smooth=TRUE) {
+assign.groups <- function(values, scores, cutoffs, smooth=TRUE) {
   cutoffs <- sort(cutoffs)
 
   groups <- sapply(scores, function(x) sum(x >= cutoffs))
 
   if(smooth) {
-    O <- order(groups)
+    O <- order(values)
     I.rev <- rep(NA, length(O))
     I.rev[O] <- 1:length(O)
     groups <- groups[O]

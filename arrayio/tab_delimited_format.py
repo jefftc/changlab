@@ -32,20 +32,21 @@ def is_format(locator_str, hrows=None, hcols=None):
     lines = [handle.readline() for i in range(5)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]
+    matrix = [line.rstrip("\r\n").split("\t") for line in lines]
+    matrix = _clean_tdf(matrix)
 
     # Make sure there's at least 1 line.
-    if not lines:
+    if not matrix:
         return False
 
-    # All rows should contain a tab.
-    for line in lines:
-        if "\t" not in line:
+    # All rows should contain at least one column.
+    for x in matrix:
+        if not x:
             return False
 
     # All rows should contain the same number of columns.
-    matrix = [line.rstrip("\r\n").split("\t") for line in lines]
-    for cols in matrix:
-        if len(cols) != len(matrix[0]):
+    for x in matrix:
+        if len(x) != len(matrix[0]):
             return False
 
     return True
@@ -54,6 +55,88 @@ def is_format(locator_str, hrows=None, hcols=None):
 def is_matrix(X):
     # Any matrix can be a tab-delimited format.
     return True
+
+
+def _clean_tdf(matrix):
+    # Return a cleaned up matrix.
+    from genomicode import jmath
+    
+    # Sometimes people insert blank rows or columns inside the matrix.
+    # Remove all of those.
+    # Delete blank rows.
+    matrix = [x for x in matrix if x]
+
+    # The first line can contain one fewer column than the rest of the
+    # matrix for two reasons.
+    # 1.  R writes col names that contain one fewer column than the
+    #     rest of the matrix, if row names are also requested.
+    # 2.  For GEO data sets, each non-header row ends with a '\t', so
+    #     they have an extra blank column.
+    # Detect if either of these are the case.  If Case #1, then add a
+    # dummy header.  If Case #2, then delete the extra blank columns.
+    
+    all_one_fewer = True
+    for i in range(1, len(matrix)):
+        if len(matrix[i]) != len(matrix[0])+1:
+            all_one_fewer = False
+            break
+    last_column_blank = True
+    for i in range(1, len(matrix)):
+        if matrix[i][-1] != "":
+            last_column_blank = False
+            break
+    # This can happen either if the length of the first row is one
+    # less than every other row of the matrix, or if matrix has
+    # only 1 row.
+    if all_one_fewer and len(matrix) > 1:
+        if last_column_blank:
+            for i in range(1, len(matrix)):
+                matrix[i] = matrix[i][:-1]
+        else:
+            matrix[0].insert("ROW_NAMES", 0)
+
+    ## # Make sure each line has the same number of columns.
+    ## for i, x in enumerate(matrix):
+    ##     f = ""
+    ##     #if filename:
+    ##     #    f = " [%s]" % filename
+    ##     error_msg = "Header%s has %d columns but line %d has %d." % (
+    ##         f, num_cols, i + 1, nc)
+    ##     assert nc == num_cols, error_msg
+
+    # Matlab appends blank columns to the end.  Delete columns that
+    # are completely blank.
+    # DEBUG.
+    #handle = open("/home/jchang/debug.txt", 'w')
+    #for x in data:
+    #    print >>handle, "\t".join(map(str, x))
+    #handle.close()
+    i = 0
+    while matrix and matrix[0] and i < len(matrix[0]):
+        for row in matrix:
+            # This row is too short, or there's data in this column.
+            # Ignore it.
+            if i >= len(row) or row[i]:
+                i += 1
+                break
+        else:
+            [x.pop(i) for x in matrix]
+
+    # Sometimes, a user might cluster a matrix with an empty column
+    # using Cluster 3.0.  In this case, Cluster 3.0 will preserve the
+    # empty column, except for a "1.000000" for the EWEIGHT row
+    # header.  Try to detect this case and remove the "1.000000".
+    last_col = [x[-1] for x in matrix]
+    #non_empty = [x for x in last_col if x.strip()]
+    non_empty = [x for x in last_col if x]
+    value = None
+    if len(non_empty) == 1:
+        value = jmath.safe_float(non_empty[0])
+    if value is not None and abs(value - 1.00) < 1E-10:
+        for i in range(len(matrix)):
+            matrix[i][-1] = ""
+
+    return matrix
 
 
 def read(handle, hrows=None, hcols=None, datatype=float):
@@ -78,86 +161,17 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     data = iolib.split_tdf(x, strip=True)
     #handle = filelib.read_cols(handle)
     #data = [handle.next() for i in range(100)]
+    data = _clean_tdf(data)
 
-    # Sometimes people insert blank rows or columns inside the matrix.
-    # Remove all of those.
-    # Delete blank rows.
-    i = 0
-    while i < len(data):
-        for x in data[i]:
-            if x:
-                # There's data in this row.  Ignore it.
-                i += 1
-                break
-        else:
-            del data[i]
-
-    # Make sure each line has the same number of columns.
-    num_rows = len(data)
-    num_cols_all = [len(x) for x in data]
-    #print num_rows, num_cols_all
-
-    # R creates headers that contain one fewer columns than the rest
-    # of the matrix, if someone requests to write out the row names.
-    # Detect this case and insert a dummy header.
-    all_one_fewer = True
-    for i in range(1, len(data)):
-        if num_cols_all[i] != num_cols_all[0] + 1:
-            all_one_fewer = False
-            break
-    # This can happen either if the length of the first row is one
-    # less than every other row of the matrix, or if matrix has
-    # only 1 row.  Only add a fake header if the matrix has more
-    # than one row.
-    if all_one_fewer and len(data) > 1:
-        header_row = data[0]
-        header_row.insert("ROW_NAMES", 0)
-        num_cols_all[0] += 1
-
-    # Make sure each line has the same number of columns.
-    if num_cols_all:
-        num_cols = num_cols_all[0]
-        for i, nc in enumerate(num_cols_all):
-            f = ""
-            if filename:
-                f = " [%s]" % filename
-            error_msg = "Header%s has %d columns but line %d has %d." % (
-                f, num_cols, i + 1, nc)
-            assert nc == num_cols, error_msg
-    #print num_rows, num_cols; sys.exit(0)
-
-    # Sometimes, a user might cluster a matrix with an empty column
-    # using Cluster 3.0.  In this case, Cluster 3.0 will preserve the
-    # empty column, except for a "1.000000" for the EWEIGHT row
-    # header.  Try to detect this case and remove the "1.000000".
-    last_col = [x[-1] for x in data]
-    #non_empty = [x for x in last_col if x.strip()]
-    non_empty = [x for x in last_col if x]
-    value = None
-    if len(non_empty) == 1:
-        value = jmath.safe_float(non_empty[0])
-    if value is not None and abs(value - 1.00) < 1E-10:
-        for i in range(num_rows):
-            data[i][-1] = ""
-
-    # Matlab appends blank columns to the end.  Delete columns that
-    # are completely blank.
-    # DEBUG.
-    #handle = open("/home/jchang/debug.txt", 'w')
-    #for x in data:
-    #    print >>handle, "\t".join(map(str, x))
-    #handle.close()
-    i = 0
-    while data and data[0] and i < len(data[0]):
-        # Assumes that every row is the same length.
-        for row in data:
-            # There's data in this column.  Ignore it.
-            if row[i]:
-                i += 1
-                break
-        else:
-            [x.pop(i) for x in data]
-
+    num_cols = len(data[0])
+    for i, x in enumerate(data):
+        nc = len(data[i])
+        f = ""
+        if filename:
+            f = " [%s]" % filename
+        error_msg = "Header%s has %d columns but line %d has %d." % (
+            f, num_cols, i + 1, nc)
+        assert nc == num_cols, error_msg
     if not data:
         return Matrix.InMemoryMatrix([])
 

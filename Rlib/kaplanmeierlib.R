@@ -209,8 +209,8 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA,
 
   plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, 
     main=main, sub=sub, xlab=xlab, ylab=ylab)
-  lines(km.1$surv.x, km.1$surv.y, col=col1)
-  lines(km.2$surv.x, km.2$surv.y, col=col2)
+  lines(km.1$surv.x, km.1$surv.y, col=col1, lwd=2)
+  lines(km.2$surv.x, km.2$surv.y, col=col2, lwd=2)
   # Draw the censor lines.
   points(km.1$cens.x, km.1$cens.y, pch=15, cex=0.4)
   points(km.2$cens.x, km.2$cens.y, pch=15, cex=0.4)

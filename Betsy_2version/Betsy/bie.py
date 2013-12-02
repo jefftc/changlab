@@ -13,15 +13,15 @@ Modules "produce" a Data node.
 
 Functions:
 backchain
+select_start_node
+remove_data_node
 optimize_network
-prune_network_by_start
-prune_network_by_internal
-prune_network_by_shortest_path
 
 summarize_moduledb
-print_modules
 
-test_bie
+print_modules
+print_network
+plot_network_gv
 
 
 Classes:
@@ -34,6 +34,7 @@ ModuleDbSummary
 Network
 
 """
+
 
 # Classes:
 # _OptimizeNoCycles
@@ -76,8 +77,6 @@ Network
 # _print_nothing
 # _print_string
 # _print_line
-# _print_network
-# _plot_network_gv
 # _pretty_attributes
 
 
@@ -93,7 +92,8 @@ Network
 # Module Node: Antecedent
 # NOVALUE   This attribute is not relevant for the module.
 # ATOM      The module requires a specific value.
-# ANYATOM   UNDEFINED.  When is this used?
+# ANYATOM   Means the module can take any value for this.
+#           Used for filenames of the objects.
 # ENUM      The module can take any of these values.
 #           E.g. filter_missing_with_zeros    missing=["yes", "unknown"]
 # 
@@ -365,7 +365,6 @@ class Module:
         for ante_data in ante_datas:
             for key in ante_data.attributes:
                 attr_type = _get_attribute_type(ante_data.attributes, key)
-                assert attr_type != TYPE_ANYATOM, "UNDEFINED."
 
         self.name = name
         self.ante_datas = ante_datas
@@ -536,13 +535,14 @@ class _OptimizeNoCycles:
         global NUM_TIMES
         # Do backwards chaining.  If I encounter a cycle, then break it.
 
+        # Optimization.  Since many cycles are short, break the
+        # 5-cycles first to speed up the search.
+        # [131104] Is this still necessary, since the algorithm is now
+        # smarter about not searching non-cycle nodes?
         # Length of cycles:
         # 5     168,081   67%
         # 7      84,056   33%
         # 9-17      318    0%
-
-        # Optimization.  Since may cycles are short, break the
-        # 5-cycles first to speed up the search.
 
         while True:
             cycle = self._find_cycle(network, 5)
@@ -561,25 +561,78 @@ class _OptimizeNoCycles:
 
         return network
 
+    def _list_noncycle_node_ids(self, network, nodeid2previds):
+        # Return a list of the node_ids that are not in cycles.
+        
+        # The nodes at the top of the tree (no prev nodes) are not in
+        # cycles.  The nodes at the bottom of the tree (no next nodes)
+        # are not in cycles.
+        #
+        # If all of a nodes next nodes are noncycle, then it is
+        # noncycle.
+        # If all of a nodes prev nodes are noncycle, then it is
+        # noncycle.
+        noncycle = {}
+
+        while True:
+            changed = False
+            node_ids = [
+                i for i in range(len(network.nodes)) if i not in noncycle]
+            for node_id in node_ids:
+                prev_ids = nodeid2previds.get(node_id, [])
+                next_ids = network.transitions.get(node_id, [])
+                x1 = [i for i in prev_ids if i not in noncycle]
+                x2 = [i for i in next_ids if i not in noncycle]
+                if x1 and x2:
+                    continue
+                # Either all prev_ids are noncycle (or missing), or
+                # all next_are noncycle (or missing).
+                noncycle[node_id] = 1
+                changed = True
+            if not changed:
+                break
+        return noncycle
+        
     def _find_cycle(self, network, max_path_length):
         assert max_path_length >= 0
-        if max_path_length:
-            cycle = self._find_cycle_from_all_nodes(network, max_path_length)
-        else:
-            cycle = self._find_cycle_from_one_node(network, 0, max_path_length)
+        nodeid2previds = _make_backchain_dict(network)
+        noncycle = self._list_noncycle_node_ids(network, nodeid2previds)
+
+        cycle = None
+        node_ids = [i for i in range(len(network.nodes)) if i not in noncycle]
+        for start_id in node_ids:
+            cycle = self._find_cycle_from_one_node(
+                network, start_id, max_path_length,
+                noncycle, nodeid2previds)
+            if cycle:
+                break
         return cycle
 
-    def _find_cycle_from_one_node(self, network, start_id, max_path_length):
-        # Do a breadth first search and look for cycles.  Return a
-        # cycle (list of node_ids) or None.
-
-        nodeid2previds = _make_backchain_dict(network)
+    def _find_cycle_from_one_node(
+        self, network, start_id, max_path_length, noncycle, nodeid2previds):
+        # Do a depth-first search and look for cycles.  Return a cycle
+        # (list of node_ids) or None.  The cycle will start and end
+        # with the same node_id.
+        # Previously did a breadth-first search, but stack.pop(0) was
+        # running too slowly (see below).  Depth-first search will be
+        # faster to find a cycle, if it exists, anyway.
+        if not nodeid2previds:
+            nodeid2previds = _make_backchain_dict(network)
 
         cycle = None
         # list of (node_id, path (not including node_id))
         stack = [(start_id, [])]
         while stack:
-            node_id, path = stack.pop(0)
+            # Slow.
+            #node_id, path = stack.pop(0)
+            # Really slow.
+            #node_id, path = stack[0]
+            #stack = stack[1:]
+            # 10x faster than pop(0).
+            node_id, path = stack.pop()
+            if node_id in noncycle:
+                continue
+            
             if max_path_length and len(path) > max_path_length:
                 continue
             if node_id in path:
@@ -588,20 +641,10 @@ class _OptimizeNoCycles:
                 i = path.index(node_id)
                 cycle = path[i:] + [node_id]
                 break
+            # Add node to the path.
             path = path + [node_id]
             for prev_id in nodeid2previds.get(node_id, []):
                 stack.append((prev_id, path))
-        return cycle
-
-    def _find_cycle_from_all_nodes(self, network, max_path_length):
-        cycle = None
-        # Optimize: each cycle must include at least 1 Data node.
-        # Search from Module nodes.
-        for start_id in range(len(network.nodes)):
-            cycle = self._find_cycle_from_one_node(
-                network, start_id, max_path_length)
-            if cycle:
-                break
         return cycle
 
     def _find_depth_of_nodes(self, network):
@@ -1721,7 +1764,7 @@ def backchain(moduledb, goal_datatype, goal_attributes):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 1024
+    MAX_NETWORK_SIZE = 10024
     nodes.append(goal_data)
     stack = [0]
     seen = {}
@@ -1773,26 +1816,8 @@ def backchain(moduledb, goal_datatype, goal_attributes):
     return network
 
 
-def optimize_network(network):
-    optimizers = [
-        _OptimizeNoCycles(),
-        _OptimizeNoDanglingNodes(),
-        _OptimizeNoDuplicateModules(),
-        _OptimizeNoDuplicateData(),
-        _OptimizeNoOverlappingData(),
-        _OptimizeNoInvalidConsequents(),
-        ]
-
-    old_network = None
-    while old_network != network:
-        old_network = network
-        for opt in optimizers:
-            network = opt.optimize(network)
-
-    return network
-
-
-def prune_network_by_start(network, start_data):
+##def prune_network_by_start(network, start_data):
+def select_start_node(network, start_data):
     # start_data may be a single Data object or a list of Data
     # objects.  DataTypes are also allowed in lieu of Data objects.
 
@@ -1844,50 +1869,86 @@ def prune_network_by_start(network, start_data):
     return network
 
 
-def prune_network_by_internal(network, internal_data):
-    if isinstance(internal_data, DataType):
-        internal_data = internal_data()  # convert to Data
-    assert isinstance(internal_data, Data)
+def remove_data_node(network, data_node):
+    # Remove all nodes that match data_node from the network.
+    if isinstance(data_node, DataType):
+        data_node = data_node()  # convert to Data
+    assert isinstance(data_node, Data)
     
-    # Look for the nodes that are compatible with internal_data.
+    # Look for the nodes that are compatible with data_node.
     node_ids = []  # list of node_ids.
     for node_id, next_ids in network.iterate(node_class=Data):
-        if _is_compatible_with_internal(network.nodes[node_id], internal_data):
+        if _is_compatible_with_internal(network.nodes[node_id], data_node):
             node_ids.append(node_id)
 
-    # For each of these node_ids, do forward chaining to find all
-    # nodes that these ones can connect to.
-    fc_ids = {}
-    stack = node_ids[:]
-    while stack:
-        node_id = stack.pop(0)
-        if node_id in fc_ids:
-            continue
-        fc_ids[node_id] = 1
-        x = network.transitions.get(node_id, [])
-        stack.extend(x)
-
-    # For each of the ids found by forward chaining, do backward
-    # chaining to find all the ones that it can start from.
-    bc_ids = {}
-    stack = node_ids[:]
-    while stack:
-        node_id = stack.pop(0)
-        if node_id in bc_ids:
-            continue
-        bc_ids[node_id] = 1
-        x = _backchain_to_ids(network, node_id)
-        stack.extend(x)
-
-    # The good IDs are all the ones found by either forward or
-    # backward chaining.
-    good_ids = fc_ids.copy()
-    good_ids.update(bc_ids)
-
-    # Delete all the IDs that aren't in good_ids.
-    bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
-    network = network.delete_nodes(bad_ids)
+    # Remove all these nodes.
+    network = network.delete_nodes(node_ids)
     return network
+
+
+def optimize_network(network):
+    optimizers = [
+        _OptimizeNoCycles(),
+        _OptimizeNoDanglingNodes(),
+        _OptimizeNoDuplicateModules(),
+        _OptimizeNoDuplicateData(),
+        _OptimizeNoOverlappingData(),
+        _OptimizeNoInvalidConsequents(),
+        ]
+
+    old_network = None
+    while old_network != network:
+        old_network = network
+        for opt in optimizers:
+            network = opt.optimize(network)
+
+    return network
+
+
+## def prune_network_by_internal(network, internal_data):
+##     if isinstance(internal_data, DataType):
+##         internal_data = internal_data()  # convert to Data
+##     assert isinstance(internal_data, Data)
+    
+##     # Look for the nodes that are compatible with internal_data.
+##     node_ids = []  # list of node_ids.
+##     for node_id, next_ids in network.iterate(node_class=Data):
+##         if _is_compatible_with_internal(network.nodes[node_id], internal_data):
+##             node_ids.append(node_id)
+
+##     # For each of these node_ids, do forward chaining to find all
+##     # nodes that these ones can connect to.
+##     fc_ids = {}
+##     stack = node_ids[:]
+##     while stack:
+##         node_id = stack.pop(0)
+##         if node_id in fc_ids:
+##             continue
+##         fc_ids[node_id] = 1
+##         x = network.transitions.get(node_id, [])
+##         stack.extend(x)
+
+##     # For each of the ids found by forward chaining, do backward
+##     # chaining to find all the ones that it can start from.
+##     bc_ids = {}
+##     stack = node_ids[:]
+##     while stack:
+##         node_id = stack.pop(0)
+##         if node_id in bc_ids:
+##             continue
+##         bc_ids[node_id] = 1
+##         x = _backchain_to_ids(network, node_id)
+##         stack.extend(x)
+
+##     # The good IDs are all the ones found by either forward or
+##     # backward chaining.
+##     good_ids = fc_ids.copy()
+##     good_ids.update(bc_ids)
+
+##     # Delete all the IDs that aren't in good_ids.
+##     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
+##     network = network.delete_nodes(bad_ids)
+##     return network
 
 
 ## def _find_shortest_path(network, start_node_id, end_node_id):
@@ -2049,7 +2110,7 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     #   3    NOVALUE      ATOM     Ignore (NOVALUE).
     #   4    NOVALUE      ENUM     Ignore (NOVALUE).
     #   5    ANYATOM    NOVALUE    NotImplementedError. When does this happen?
-    #   6    ANYATOM    ANYATOM    NotImplementedError. When does this happen?
+    #   6    ANYATOM    ANYATOM    ANTE_VALUE (ANYATOM)
     #   7    ANYATOM      ATOM     NotImplementedError. When does this happen?
     #   8    ANYATOM      ENUM     NotImplementedError. When does this happen?
     #   9      ATOM     NOVALUE    ANTE_VALUE.  cel_version="v3_4"
@@ -2082,9 +2143,9 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
             attributes[key] = DATA_VALUE
         elif CASE in [2, 3, 4]:
             pass
-        elif CASE in [5, 6, 7, 8]:
+        elif CASE in [5, 7, 8]:
             raise NotImplementedError
-        elif CASE in [9, 10, 11, 12, 13, 14, 15]:
+        elif CASE in [6, 9, 10, 11, 12, 13, 14, 15]:
             attributes[key] = ANTE_VALUE
         elif CASE == 16:
             # This can happen if:
@@ -2195,13 +2256,13 @@ def _can_converting_module_produce_data(module, data):
     data_attr = data.attributes
     cons_attr = module.cons_data.attributes
 
+    # Handled below now.
     # If there are no attributes to match, then this matches by
     # default.
-    # E.g. extract_CEL_files converts ExpressionFiles to GSEID.
-
-    if not cons_attr and not data_attr:
-        p("Match by no attributes.")
-        return 1
+    # E.g. extract_CEL_files converts ExpressionFiles to CELFiles.
+    #if not cons_attr and not data_attr:
+    #    p("Match by no attributes.")
+    #    return 1
 
     # Fill in default values for the consequent.
     defaults = module.cons_data.datatype.get_defaults()
@@ -2230,10 +2291,17 @@ def _can_converting_module_produce_data(module, data):
     #  16      ENUM       ENUM     +1 if intersect, otherwise DQ.
 
     num_attributes = 0
+    matched_attributes = 0
     for key in cons_attr:
         p("  Evaluating attribute %s." % key)
         attr_obj = module.cons_data.datatype.get_attribute_object(key)
     
+        if attr_obj.OPTIONAL:
+            # Ignore optional attributes.
+            p("    Ignoring optional attribute.")
+            continue
+        num_attributes += 1
+        
         DATA_VALUE = data_attr.get(key)
         CONS_VALUE = cons_attr.get(key)
         DATA_TYPE = _get_attribute_type(data_attr, key)
@@ -2241,38 +2309,34 @@ def _can_converting_module_produce_data(module, data):
         CASE = _assign_case_by_type(CONS_TYPE, DATA_TYPE)
 
         disqualify = False
-
-        if attr_obj.OPTIONAL:
-            # Ignore optional attributes.
-            pass
-        elif CASE in [1, 2, 3, 4]:
+        if CASE in [1, 2, 3, 4]:
             raise AssertionError, "Should not have NOVALUES."
         elif CASE == 7:
-            num_attributes += 1
+            matched_attributes += 1
         elif CASE == 10:
             pass
         elif CASE in [5, 6, 8, 9, 13, 14]:
             disqualify = True
         elif CASE == 11:
             if CONS_VALUE == DATA_VALUE:
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         elif CASE == 12:
             if CONS_VALUE in DATA_VALUE:
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         elif CASE == 15:
             if DATA_VALUE in CONS_VALUE:
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         elif CASE == 16:
             # Module can produce some value that is compatible with
             # DATA.
             if _intersection(CONS_VALUE, DATA_VALUE):
-                num_attributes += 1
+                matched_attributes += 1
             else:
                 disqualify = True
         else:
@@ -2280,28 +2344,31 @@ def _can_converting_module_produce_data(module, data):
                 
         if disqualify:
             p("    Attribute is disqualified.")
-            num_attributes = 0
+            matched_attributes = 0
             break
 
+    # If there are no attributes to match, then this matches by
+    # default.
     if not num_attributes:
         p("  No attributes compatible.")
+        return 1
+        
+    if not matched_attributes:
+        p("  No attributes compatible.")
     else:
-        p("  %d attributes compatible." % num_attributes)
-    return num_attributes
+        p("  %d attributes compatible." % matched_attributes)
+    return matched_attributes
 
 
 def _get_matching_ante_data(module, cons_data):
     # Return the ante_data object of the same type as cons_data.
-    
     ante_datas = [
         x for x in module.ante_datas if x.datatype == cons_data.datatype]
     assert len(ante_datas) > 0, "No matching antecedent."
-    
     # If there is only one antecedent of the same type, then return
     # it.
     if len(ante_datas) == 1:
         return ante_datas[0]
-    
     # If there are multiple antecedents of this type, then all the
     # attributes of the antecedents should be the same, except for the
     # target.
@@ -2311,7 +2378,6 @@ def _get_matching_ante_data(module, cons_data):
         for x in ante_data.attributes:
             all_attributes[x] = 1
     target = _find_target_of_nonconverting_module(module, cons_data)
-
     for attr in all_attributes:
         if attr == target:
             continue
@@ -2385,7 +2451,14 @@ def _can_nonconverting_module_produce_data(module, data):
                 # Why disqualify this?
                 disqualify = True
             elif ANTE_TYPE == TYPE_ANYATOM:
-                raise NotImplementedError
+                # In principle, OK.  Module can take any value of this
+                # and produce the output.  Currently, only used for
+                # filenames, which shouldn't be the target.  In any
+                # case, should not disqualify this module.
+                if not is_target:
+                    pass  # don't disqualify
+                else:
+                    raise NotImplementedError
             elif ANTE_TYPE == TYPE_ATOM:
                 if DATA_VALUE == ANTE_VALUE:
                     disqualify = True
@@ -2451,7 +2524,6 @@ def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
     assert ante_data in module.ante_datas
     ante_attr = ante_data.attributes
     cons_attr = module.cons_data.attributes
-
     targets = []
     for key in module.cons_data.datatype.attributes:
         # Optional attributes cannot be targets.
@@ -2464,7 +2536,6 @@ def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
         if not changed:
             continue
         targets.append(key)
-
     assert len(targets) >= 1, "No target for nonconverting module."
     if len(targets) == 1:
         return targets[0]
@@ -2497,14 +2568,12 @@ def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
         ANTE_TYPE = _get_attribute_type(ante_attr, key)
         CONS_TYPE = _get_attribute_type(cons_attr, key)
         CASE = _assign_case_by_type(ANTE_TYPE, CONS_TYPE)
-
         case2priority = {
             11 : 100,  # logged                 "no" -> "yes"
             12 : 90,   # missing_values         "unknown" -> ["no", "yes"]
             3 : 50,    # missing_algorithm      NOVALUE -> "median_fill"
             4 : 50,    # check_for_missing_val  NOVALUE -> ["median", "zero"]
             }
-
         priority = None
         if CASE in case2priority:
             priority = case2priority[CASE]
@@ -2783,6 +2852,7 @@ def _find_module_node(nodes, node):
 def _find_start_nodes(network, start_data):
     import operator
 
+    # Make a list of all the desired start nodes, as Data objects.
     start_datas = start_data
     if not operator.isSequenceType(start_data):
         start_datas = [start_data]
@@ -2852,7 +2922,13 @@ def _is_compatible_with_start(data, start_data):
         STRT_TYPE = _get_attribute_type(strt_attr, key)
         CASE = _assign_case_by_type(STRT_TYPE, DATA_TYPE)
 
-        if CASE in [1, 2, 3, 4]:
+        x = start_data.datatype.get_attribute_object(key)
+        OPTIONAL = x.OPTIONAL
+
+        if OPTIONAL:
+            # Ignore optional attributes.
+            pass
+        elif CASE in [1, 2, 3, 4]:
             raise AssertionError
         elif CASE in [13, 14, 15, 16]:
             raise NotImplementedError
@@ -3003,7 +3079,7 @@ def _print_line(line, prefix0, prefixn, width):
         print "%s%s" % (p, lines[i])
 
 
-def _print_network(network):
+def print_network(network):
     line_width = 72
     for i in range(len(network.nodes)):
         p_step = "%2d.  " % i
@@ -3016,7 +3092,7 @@ def _print_network(network):
         print "\t".join(map(str, x))
     
 
-def _plot_network_gv(filename, network):
+def plot_network_gv(filename, network):
     from genomicode import graphviz
     
     gv_nodes = []
@@ -3088,8 +3164,8 @@ def _pretty_attributes(attributes):
         return fmt_proper
     return "%s, %s" % (fmt_proper, fmt_improper)
 
-
 def test_bie():
+    
     #print_modules(all_modules); return
 
     #x = SignalFile(
@@ -3098,10 +3174,18 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    #in_data = SignalFile(logged="yes", preprocess="rma")
+    in_data = SignalFile(
+        logged="yes", preprocess="rma", format="jeffs", filename="dfd")
+    #in_data = [
+    #    SignalFile(preprocess="rma", format="jeffs", filename='a'),
+    #    ClassLabelFile(filename='b')]
+    #in_data = GEOSeries
     #x = dict(preprocess="rma", missing_values="no", format="jeffs")
-    in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
-               SignalFile(contents='class1',logged="yes", preprocess="rma")]
+    #in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
+    #           SignalFile(contents='class1',logged="yes", preprocess="rma")]
+    #in_data = [
+    #    SignalFile(contents='class0', preprocess="rma", format="jeffs"),
+    #    SignalFile(contents='class1', preprocess="rma", format="jeffs")]
 
     #print _make_goal(SignalFile, x)
     #return
@@ -3120,20 +3204,24 @@ def test_bie():
     #    ill_custom_chip='',
     #    ill_custom_manifest='',
     #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
+
+    #goal_datatype = ExpressionFiles
+    #goal_attributes = {}
     
-    goal_datatype = SignalFile2
+    goal_datatype = SignalFile
     #goal_attributes = dict(format='tdf')
-    #goal_attributes = dict(
-    #    format='tdf', logged='yes', missing_values="no")
+    goal_attributes = dict(
+        format='tdf', preprocess="rma", logged='yes', missing_values="no",
+        missing_algorithm="median_fill")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
     #goal_attributes = dict(
     #    format='tdf', preprocess='illumina', logged='no', missing_values="no",
     #    missing_algorithm="median_fill")
-    goal_attributes = dict(contents='class0,class1',
-        format='tdf', preprocess='rma', logged='yes',
-        missing_values="no", quantile_norm="yes",missing_algorithm='zero_fill')
+    #goal_attributes = dict(contents='class0,class1',
+    #    format='tdf', preprocess='rma', logged='yes',
+    #    missing_values="no")
     #goal_attributes = dict(
     #    #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
     #    format='gct',
@@ -3199,8 +3287,8 @@ def test_bie():
     #network = prune_network_by_internal(
     #    network, SignalFile(combat_norm="yes", dwd_norm="no"))
     
-    _print_network(network)
-    _plot_network_gv("out.png", network)
+    print_network(network)
+    plot_network_gv("out.png", network)
 
     # Want function _find_data_node with options:
     # ignore_defaults
@@ -3215,644 +3303,21 @@ def test_bie():
     #node_id = _find_data_node(network.nodes, node)
     #print "NODE:", node_id
 
-
-ILLU_MANIFEST = [
-    'HumanHT-12_V3_0_R2_11283641_A.txt',
-    'HumanHT-12_V4_0_R2_15002873_B.txt',
-    'HumanHT-12_V3_0_R3_11283641_A.txt',
-    'HumanHT-12_V4_0_R1_15002873_B.txt',
-    'HumanMI_V1_R2_XS0000122-MAP.txt',
-    'HumanMI_V2_R0_XS0000124-MAP.txt',
-    'HumanRef-8_V2_0_R4_11223162_A.txt',
-    'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
-    'HumanRef-8_V3_0_R2_11282963_A.txt',
-    'HumanRef-8_V3_0_R3_11282963_A.txt',
-    'HumanWG-6_V2_0_R4_11223189_A.txt',
-    'HumanWG-6_V3_0_R2_11282955_A.txt',
-    'HumanWG-6_V3_0_R3_11282955_A.txt',
-    'MouseMI_V1_R2_XS0000127-MAP.txt',
-    'MouseMI_V2_R0_XS0000129-MAP.txt',
-    'MouseRef-8_V1_1_R4_11234312_A.txt',
-    'MouseRef-8_V2_0_R2_11278551_A.txt',
-    'MouseRef-8_V2_0_R3_11278551_A.txt',
-    'MouseWG-6_V1_1_R4_11234304_A.txt',
-    'MouseWG-6_V2_0_R2_11278593_A.txt',
-    'MouseWG-6_V2_0_R3_11278593_A.txt',
-    'RatRef-12_V1_0_R5_11222119_A.txt'
-    ]
-
-ILLU_CHIP = [
-    'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
-    'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-    'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
-    'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
-    'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
-    'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
-    'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
-    'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
-    'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
-    'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
-    'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
-    'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'
-    ]
-
-RenameFile = DataType('RenameFile')
-AgilentFiles = DataType("AgilentFiles")
-CELFiles = DataType(
-    "CELFiles",
-    Attribute(
-        version=["unknown", "cc", "v3", "v4"],
-        DEFAULT="unknown"),
-    )
-ControlFile = DataType(
-    "ControlFile",
-    Attribute(
-        preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-        DEFAULT="unknown"),
-    Attribute(
-        missing_values=["unknown", "no", "yes"],
-        DEFAULT="unknown"),
-    Attribute(
-        missing_algorithm=["none", "median_fill", "zero_fill"],
-        DEFAULT="none", OPTIONAL=True),
-    Attribute(
-        logged=["unknown", "no", "yes"],
-        DEFAULT="unknown"),
-    Attribute(
-        format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
-        DEFAULT="unknown"),
-    )
-ExpressionFiles = DataType("ExpressionFiles")
-GPRFiles = DataType("GPRFiles")
-GEOSeries = DataType(
-    "GEOSeries",
-    Attribute(GSEID=ANYATOM, DEFAULT="none"),
-    Attribute(GPLID=ANYATOM, DEFAULT="none"),
-    )
-IDATFiles = DataType("IDATFiles")
-ClassLabelFile = DataType("ClassLabelFile")
-ILLUFolder = DataType(
-    "ILLUFolder", 
-    Attribute(
-        illu_manifest=ILLU_MANIFEST,
-        DEFAULT='HumanHT-12_V4_0_R2_15002873_B.txt'),
-    Attribute(
-        illu_chip=ILLU_CHIP,
-        DEFAULT='ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
-    Attribute(illu_bg_mode=['false', 'true'], DEFAULT="false"),
-
-    Attribute(illu_coll_mode=['none', 'max', 'median'], DEFAULT="none"),
-    Attribute(illu_clm=ANYATOM, DEFAULT=""),
-    Attribute(illu_custom_chip=ANYATOM, DEFAULT=""),
-    Attribute(illu_custom_manifest=ANYATOM, DEFAULT=""))
-GeneListFile=DataType(
-    "GeneListFile",
-    Attribute(cn_num_neighbors=ANYATOM, DEFAULT=""),
-    Attribute(cn_num_perm=ANYATOM, DEFAULT=""),
-    Attribute(cn_user_pval=ANYATOM, DEFAULT=""),  
-    Attribute(cn_mean_or_median=['mean', 'median'], DEFAULT='mean'),
-    Attribute(cn_ttest_or_snr=['t_test','snr'], DEFAULT='t_test'),
-    Attribute(cn_filter_data=['yes','no'], DEFAULT='no'),
-    Attribute(cn_min_threshold=ANYATOM, DEFAULT=""),
-    Attribute(cn_max_threshold=ANYATOM, DEFAULT=""),
-    Attribute(cn_min_folddiff=ANYATOM, DEFAULT=""),
-    Attribute(cn_abs_diff=ANYATOM, DEFAULT=""),
-    Attribute(gene_order=['no', "gene_list", "class_neighbors",
-                          "t_test_p", "t_test_fdr"], DEFAULT='gene_list'))
-SignalFile = DataType(
-    "SignalFile",
-
-    # Properties of the format.
-    Attribute(
-        format=["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
-        DEFAULT="unknown"),
-    
-    # Properties of the data.
-    Attribute(
-        preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-        DEFAULT="unknown"),
-    Attribute(
-        missing_values=["unknown", "no", "yes"],
-        DEFAULT="unknown"),
-    Attribute(
-        missing_algorithm=["none", "median_fill", "zero_fill"],
-        DEFAULT="none", OPTIONAL=True),
-    Attribute(
-        logged=["unknown", "no", "yes"],
-        DEFAULT="unknown"),
-
-    # Normalizing the data.  Very difficult to check normalization.
-    # If you're not sure if the data is normalized, then the answer is
-    # "no".
-    Attribute(
-        dwd_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        bfrm_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        quantile_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        shiftscale_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        combat_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(predataset=["no", "yes"], DEFAULT="no"),
-    Attribute(filter=ANYATOM, DEFAULT="no"),
-    Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
-    Attribute(contents=["train0", "train1", "test", "train0,train1,test",
-                        "class0", "class1", "class0,class1", "no"], DEFAULT="no"))
-
-SignalFile1 = DataType(
-    "SignalFile1",
-    # Properties of the format.
-    Attribute(
-        format=[ "tdf", "pcl"],
-        DEFAULT="tdf"),
-    # Properties of the data.
-    Attribute(
-        preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-        DEFAULT="unknown"),
-    Attribute(
-        missing_values=[ "no"],
-        DEFAULT="no"),
-    Attribute(
-        missing_algorithm=["none", "median_fill", "zero_fill"],
-        DEFAULT="none", OPTIONAL=True),
-    Attribute(
-        logged=["yes"],
-        DEFAULT="yes"),
-    Attribute(predataset=["no", "yes"], DEFAULT="no"),
-    Attribute(filter=ANYATOM, DEFAULT="no"),
-    Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
-    Attribute(dwd_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(bfrm_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(quantile_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(shiftscale_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(combat_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        gene_center=["unknown", "no", "mean", "median"],
-        DEFAULT="unknown"),
-    Attribute(
-        gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
-        DEFAULT="unknown"),
-    Attribute(contents=["train0", "train1", "test", "train0,train1,test",
-                        "class0", "class1", "class0,class1", "no"], DEFAULT="no")
-    )
-
-SignalFile2 = DataType(
-    "SignalFile2",
-    # Properties of the format.
-    Attribute(
-        format=[ "tdf", "gct"],
-        DEFAULT="tdf"),
-    # Properties of the data.
-    Attribute(
-        preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-        DEFAULT="unknown"),
-    Attribute(
-        missing_values=[ "no"],
-        DEFAULT="no"),
-    Attribute(
-        missing_algorithm=["none", "median_fill", "zero_fill"],
-        DEFAULT="none", OPTIONAL=True),
-    Attribute(
-        logged=[ "no", "yes"],
-        DEFAULT="yes"),
-    # Normalizing the genes.
-    Attribute(
-        gene_center=["unknown", "no", "mean", "median"],
-        DEFAULT="unknown"),
-    Attribute(
-        gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
-        DEFAULT="unknown"),
-
-    # Normalizing the data.  Very difficult to check normalization.
-    # If you're not sure if the data is normalized, then the answer is
-    # "no".
-    Attribute(
-        dwd_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        bfrm_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        quantile_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        shiftscale_norm=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        combat_norm=["no", "yes"], DEFAULT="no"),
-
-    # Annotations.
-    Attribute(annotate=["no", "yes"], DEFAULT="no"),
-    Attribute(
-        unique_genes=["no", "average_genes", "high_var", "first_gene"],
-        DEFAULT="no"),
-    Attribute(
-        duplicate_probe=["no", "yes", "closest_probe", "high_var_probe"],
-        DEFAULT="no"),
-    Attribute(rename_sample=["no", "yes"], DEFAULT="no"),
+##
+##cwd = os.getcwd()
+##module_lib = os.path.join(
+##        os.path.dirname(os.path.abspath(__file__)), 'bie_rules')
+##file_names = os.listdir(module_lib)
+##all_modules = []
+##for file_name in file_names:
+##    module_name = os.path.splitext(file_name)[0]
+##    if module_name.endswith('rule'):
+##        module = __import__('bie_rules.'+module_name, globals(),
+##                        locals(), [module_name], -1)
+##        all_modules.extend(module.all_modules)
+        
 
 
-    # Unclassified.
-    Attribute(num_features=ANYATOM, DEFAULT="all"),
-    Attribute(
-        gene_order=[
-            "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
-        DEFAULT="no"),
-    Attribute(predataset=["no", "yes"], DEFAULT="no"),
-    Attribute(platform=ANYATOM, DEFAULT="no"),
-    Attribute(filter=ANYATOM, DEFAULT="no"),
-    Attribute(group_fc=ANYATOM, DEFAULT="no"),
-    Attribute(contents=["train0", "train1", "test", "train0,train1,test",
-                        "class0", "class1", "class0,class1", "no"], DEFAULT="no")
-    )
-
-all_modules = [
-    # GSEID
-    Module("download_geo", GEOSeries, ExpressionFiles),
-    Module("extract_CEL_files", ExpressionFiles, CELFiles(version="unknown")),
-
-    # CELFiles
-    QueryModule(
-        "detect_CEL_version",
-        CELFiles(version="unknown"),
-        CELFiles(version=["cc", "v3", "v4"])),
-    Module(
-        "convert_CEL_cc_to_CEL_v3",
-        CELFiles(version="cc"),
-        CELFiles(version="v3")),
-    Module(
-        "preprocess_rma",
-        CELFiles(version=["v3", "v4"]),
-        SignalFile(
-            logged="yes", preprocess="rma", format="jeffs",
-            missing_values="no")
-        ),
-    Module(
-        "preprocess_mas5",
-        CELFiles(version=["v3", "v4"]),
-        SignalFile(
-            logged="no", preprocess="mas5", format="jeffs",
-            missing_values="no")),
-    # IDATFiles
-    Module("extract_illumina_idat_files", ExpressionFiles, IDATFiles),
-    Module(
-        "preprocess_illumina",
-        IDATFiles,
-        ILLUFolder(
-            illu_manifest=ILLU_MANIFEST, illu_chip=ILLU_CHIP,
-            illu_bg_mode=["false", "true"],
-            illu_coll_mode=["none", "max", "median"],
-            illu_clm=ANYATOM, illu_custom_chip=ANYATOM,
-            illu_custom_manifest=ANYATOM)),
-    Module(
-        "get_illumina_signal",
-        ILLUFolder,
-        SignalFile(logged="no", preprocess="illumina", format="gct")
-        ),
-    Module(
-        "get_illumina_control",
-        ILLUFolder,
-        ControlFile(preprocess="illumina", format="gct", logged="no")
-        ),
-    
-    # AgilentFiles
-    Module(
-        "extract_agilent_files", ExpressionFiles, AgilentFiles),
-    Module(
-        "preprocess_agilent",
-        AgilentFiles,
-        SignalFile(logged="no", preprocess="agilent", format="tdf")),
-
-    # GPRFiles
-    Module(
-        "extract_gpr_files", ExpressionFiles, GPRFiles),
-    Module(
-        "normalize_with_loess",
-        GPRFiles,
-        SignalFile(format="tdf", logged="no", preprocess="loess")
-        ),
-    
-    # SignalFile
-    Module(
-        "convert_signal_to_tdf",
-        SignalFile(format=['pcl', 'res', 'gct', 'jeffs', 'unknown', 'xls']),
-        SignalFile(format='tdf')),
-    QueryModule(
-        "check_for_log",
-        SignalFile(format="tdf", logged='unknown'),
-        SignalFile(format="tdf", logged=['yes', "no"])),
-    Module(
-        "log_signal",
-        SignalFile(logged='no', format="tdf"),
-        SignalFile(logged='yes', format='tdf')),
-    Module(
-        "fill_missing_with_median",
-        SignalFile(
-            format="tdf", logged="yes", missing_algorithm="none",
-            missing_values="yes"),
-        SignalFile(
-            format="tdf", logged="yes", missing_algorithm="median_fill",
-            missing_values="no")),
-    Module(
-        "fill_missing_with_zeros",
-        SignalFile(
-            format="tdf", logged="yes", missing_algorithm="none",
-            missing_values="yes"),
-        SignalFile(
-            format="tdf", logged="yes", missing_algorithm="zero_fill",
-            missing_values="no")),
-    QueryModule(
-        "check_for_missing_values",
-        SignalFile(format="tdf", missing_values="unknown",logged="yes"),
-        SignalFile(format="tdf", missing_values=["no", "yes"],logged="yes")),
-    Module(
-        "filter_genes_by_missing_values",
-        SignalFile(
-            format='tdf', logged="yes", missing_values="yes", filter="no"),
-        SignalFile(
-            format='tdf', logged="yes", missing_values="yes", filter=ANYATOM)),
-    Module(
-        "filter_and_threshold_genes",
-        SignalFile(format="tdf", logged=["unknown", "no"], predataset="no"),
-        SignalFile(format="tdf", logged=["unknown", "no"], predataset="yes")),
-    Module(
-        "relabel_samples",
-        [RenameFile,
-         SignalFile(format='tdf', rename_sample="no",logged="yes",
-                    missing_values='no',
-                   combat_norm='no',quantile_norm="no",
-                   dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")],
-        SignalFile(format='tdf', rename_sample="yes",logged="yes",
-                   missing_values='no',
-                   combat_norm='no',quantile_norm="no",
-                   dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")),
-    Module(
-           "merge_signal_for_classification",
-           [SignalFile(contents="train0",format='tdf',logged="yes",
-                       missing_values='no',
-                       combat_norm='no',quantile_norm="no",
-                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no"),
-            SignalFile(contents="train1",format='tdf',logged="yes",
-                       missing_values='no',
-                       combat_norm='no',quantile_norm="no",
-                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no"),
-            SignalFile(contents="test",format='tdf',logged="yes",
-                       missing_values='no',
-                       combat_norm='no',quantile_norm="no",
-                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")],
-            SignalFile(contents="train0,train1,test",format='tdf',logged="yes",
-                       missing_values='no',
-                       combat_norm='no',quantile_norm="no",
-                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")),
-    Module(
-           "merge_two_classes",
-           [SignalFile(contents="class0",format='tdf',logged="yes",
-                       missing_values='no',
-                       combat_norm='no',quantile_norm="no",
-                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no"),
-            SignalFile(contents="class1",format='tdf',logged="yes",
-                       missing_values='no',
-                       combat_norm='no',quantile_norm="no",
-                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")],
-            SignalFile(contents="class0,class1",format='tdf',logged="yes",
-                       missing_values='no',
-                       combat_norm='no',quantile_norm="no",
-                       dwd_norm="no",bfrm_norm="no",shiftscale_norm="no")),
-    # Sample normalization.
-    Module(
-        "normalize_samples_with_quantile",
-        SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            quantile_norm="no"),
-        SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            quantile_norm="yes")),
-    Module(
-        "normalize_samples_with_combat",
-        [ClassLabelFile,SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            combat_norm="no")],
-        SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            combat_norm="yes")),
-    Module(
-        "normalize_samples_with_dwd",
-        [ClassLabelFile,SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            dwd_norm="no")],
-        SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            dwd_norm="yes")),
-    Module(
-        "normalize_samples_with_bfrm",
-        SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            bfrm_norm="no"),
-        SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            bfrm_norm="yes")),
-    Module(
-        "normalize_samples_with_shiftscale",
-        [ClassLabelFile,SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            shiftscale_norm="no")],
-        SignalFile(
-            format="tdf", logged="yes", missing_values="no",
-            shiftscale_norm="yes")),
-    QueryModule(
-        "transfer1",
-        SignalFile(
-            format="tdf", logged="yes",
-            missing_values="no"),
-        SignalFile1(
-            format="tdf", logged="yes",
-            missing_values="no", missing_algorithm=["none", "median_fill", "zero_fill"],           
-                    preprocess=["unknown", "illumina", "agilent",
-                                "mas5", "rma", "loess"],
-                    predataset=["no", "yes"], rename_sample=["no", "yes"],
-                    filter=ANYATOM,
-                    dwd_norm=["no", "yes"], bfrm_norm=["no", "yes"],
-                    quantile_norm=["no", "yes"],
-                    shiftscale_norm=["no", "yes"], combat_norm=["no", "yes"],
-            gene_center='unknown',gene_normalize='unknown',
-            contents=["train0", "train1", "test", "train0,train1,test",
-                        "class0", "class1", "class0,class1", "no"]
-            )),
-    QueryModule(
-        "check_gene_center",
-        SignalFile1(
-            format="tdf", logged="yes", missing_values="no",
-            gene_center="unknown", gene_normalize='unknown'),
-        SignalFile1(
-            format="tdf", logged="yes", missing_values="no",
-            gene_center=["no", "mean", "median"],gene_normalize='unknown')),
-    QueryModule(
-        "check_gene_normalize",
-        SignalFile1(
-            format="tdf", logged="yes", missing_values="no",
-            gene_normalize="unknown"),
-        SignalFile1(
-            format="tdf", logged="yes", missing_values="no",
-            gene_normalize=["no", "variance", "sum_of_squares"])),
-    Module(   
-        "convert_signal_to_pcl",
-        SignalFile1(format='tdf'),
-        SignalFile1(format='pcl')),
-    Module(
-        "gene_center",
-        SignalFile1(
-            format="pcl", logged="yes", missing_values="no",
-            gene_center="no",gene_normalize='unknown'),
-        SignalFile1(
-            format="tdf", logged="yes", missing_values="no",
-            gene_center=["mean", "median"],gene_normalize='unknown')),
-    Module(
-        "gene_normalize",
-        SignalFile1(
-            format="pcl", logged="yes", missing_values="no",
-            gene_normalize="no"),
-        SignalFile1(
-            format="tdf", logged="yes", missing_values="no",
-            gene_normalize=["variance", "sum_of_squares"])),
-    QueryModule(
-        "transfer2",
-        SignalFile1(
-            format="tdf", logged="yes",
-            missing_values="no"),
-        SignalFile2(
-            format="tdf", logged="yes",
-            missing_values="no", missing_algorithm=["none", "median_fill", "zero_fill"],          
-                    preprocess=["unknown", "illumina", "agilent",
-                                "mas5", "rma", "loess"],
-                    predataset=["no", "yes"], rename_sample=["no", "yes"],
-                    filter=ANYATOM,
-                    dwd_norm=["no", "yes"], bfrm_norm=["no", "yes"],
-                    quantile_norm=["no", "yes"],
-                    shiftscale_norm=["no", "yes"], combat_norm=["no", "yes"],
-                   group_fc='no', gene_order='no', annotate="no",
-                    num_features="all", platform="no",
-                    duplicate_probe='no', unique_genes='no',
-            gene_center=["unknown", "no", "mean", "median"],
-            gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
-            contents=["train0", "train1", "test", "train0,train1,test",
-                        "class0", "class1", "class0,class1", "no"]
-            )),
-
-    Module(  # require class_label_file
-        "filter_genes_by_fold_change_across_classes",
-        [ClassLabelFile,
-         SignalFile2(
-             format="tdf", logged="yes",
-             missing_values="no",
-             group_fc="no", gene_order='no', annotate="no",
-             num_features="all", platform="no",
-            duplicate_probe='no', unique_genes='no')
-         ],
-        SignalFile2(
-            format="tdf", logged="yes",
-            missing_values="no",
-            group_fc=ANYATOM, gene_order='no', annotate="no",
-            num_features="all", platform="no",
-            duplicate_probe='no', unique_genes='no')),
-
-    Module(  
-        "rank_genes_by_class_neighbors",
-        [SignalFile2(
-            format="tdf", logged="yes",
-            gene_order="no",annotate="no",
-            num_features="all", platform="no",
-            duplicate_probe='no', unique_genes='no'),ClassLabelFile],
-        GeneListFile(gene_order="class_neighbors",
-                    cn_num_neighbors=ANYATOM,
-                    cn_num_perm=ANYATOM,
-                    cn_user_pval=ANYATOM,  
-                    cn_mean_or_median=['mean', 'median'],
-                    cn_ttest_or_snr=['t_test','snr'],
-                    cn_filter_data=['yes','no'],
-                    cn_min_threshold=ANYATOM, 
-                    cn_max_threshold=ANYATOM, 
-                    cn_min_folddiff=ANYATOM, 
-                    cn_abs_diff=ANYATOM)),
-    Module(
-         "rank_genes_by_sample_ttest",   
-         [SignalFile2(format="tdf", logged="yes",
-                   gene_order="no", annotate="no",
-                    num_features="all", platform="no",
-                    duplicate_probe='no', unique_genes='no'), ClassLabelFile],
-         GeneListFile(gene_order=["t_test_p", "t_test_fdr"],
-                      cn_num_neighbors=ANYATOM,
-                    cn_num_perm=ANYATOM,
-                    cn_user_pval=ANYATOM,  
-                    cn_mean_or_median=['mean', 'median'],
-                    cn_ttest_or_snr=['t_test','snr'],
-                    cn_filter_data=['yes','no'],
-                    cn_min_threshold=ANYATOM, 
-                    cn_max_threshold=ANYATOM, 
-                    cn_min_folddiff=ANYATOM, 
-                    cn_abs_diff=ANYATOM)),
-    Module(
-         "reorder_genes",  
-         [SignalFile2(format="tdf", logged="yes",
-                     gene_order="no", annotate="no",
-                     num_features="all", platform="no",
-                     duplicate_probe='no', unique_genes='no'),
-          GeneListFile(gene_order=['t_test_p', "t_test_fdr",
-                                   'class_neighbors', "gene_list"])],
-         SignalFile2(
-             format="tdf", logged="yes", annotate="no",
-             num_features="all", platform="no",
-            duplicate_probe='no', unique_genes='no',
-             gene_order=['t_test_p', "t_test_fdr",
-                         'class_neighbors', "gene_list"])),
-    Module(
-         'annotate_probes',
-         SignalFile2(format="tdf", logged="yes", annotate="no",
-                    num_features="all", platform="no",
-                    duplicate_probe='no', unique_genes='no'),
-         SignalFile2(format="tdf", logged="yes", annotate="yes",
-                    num_features="all", platform="no",
-                    duplicate_probe='no', unique_genes='no')),
-    Module(
-        'remove_duplicate_genes',
-        SignalFile2(format="tdf",  logged="yes", annotate="yes", unique_genes="no",
-                   platform="no", duplicate_probe='no', num_features="all"),
-        SignalFile2(format="tdf",  logged="yes", annotate="yes",
-                   unique_genes=['average_genes', 'high_var', 'first_gene'],
-                   platform="no", duplicate_probe='no', num_features="all")),
-    Module(
-         'select_first_n_genes',
-         SignalFile2(format="tdf", logged="yes", num_features="all", platform="no",
-                    duplicate_probe='no'),
-         SignalFile2(format="tdf", logged="yes", num_features=ANYATOM, platform="no",
-                    duplicate_probe='no')), 
-     Module(
-         'add_crossplatform_probeid',
-         SignalFile2(format="tdf", logged="yes", platform="no",
-                    duplicate_probe='no'),
-         SignalFile2(format="tdf", logged="yes", platform=ANYATOM,
-                    duplicate_probe='no')),
-     Module(
-        'remove_duplicate_probes',
-        SignalFile2(format="tdf", logged="yes", duplicate_probe='no'),
-        SignalFile2(format="tdf", logged="yes", duplicate_probe='high_var_probe')),
-    Module(
-         'select_probe_by_best_match',
-         SignalFile2(format="tdf", logged="yes", duplicate_probe='no'),
-         SignalFile2(format="tdf", logged="yes", duplicate_probe='closest_probe')),
-    Module( 
-        'convert_signal_to_gct',
-        SignalFile2(format="tdf", 
-                   missing_values="no"),
-        SignalFile2(format="gct", 
-                   missing_values="no")),
-    Module( 
-        'unlog_signal',
-        SignalFile2(format="tdf", logged="yes",
-                   missing_values="no"),
-        SignalFile2(format="tdf", logged="no",
-                   missing_values="no"))
-    ]
-    
-
-
-
-if __name__ == '__main__':
-    test_bie()
+#if __name__ == '__main__':
+#    test_bie()
     #import cProfile; cProfile.run("test_bie()")
