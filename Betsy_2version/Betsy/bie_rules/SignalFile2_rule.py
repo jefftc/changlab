@@ -68,19 +68,87 @@ SignalFile2 = bie.DataType(
     bie.Attribute(contents=["train0", "train1", "test", "class0,class1,test",
                         "class0", "class1", "class0,class1", "no"], DEFAULT="no")
     )
+#IntensityPlot = bie.DataType(
+ #   'IntensityPlot',
+#    bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
+#    bie.Attribute(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'],DEFAULT='unknown'),
+#    bie.Attribute(quantile_norm=['yes','no'],DEFAULT='no'),
+#    bie.Attribute(
+#        gene_center=["unknown", "no", "mean", "median"],
+#        DEFAULT="unknown"),
+#    )
 IntensityPlot = bie.DataType(
     'IntensityPlot',
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
-    bie.Attribute(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'],DEFAULT='unknown'),
-    #bie.Attribute(quantile_norm=['yes','no'],DEFAULT='no'),
-    # bie.Attribute(
-    #    gene_center=["unknown", "no", "mean", "median"],
-    #    DEFAULT="unknown"),
+    bie.Attribute(pca_gene_num=bie.ANYATOM,DEFAULT='500'),
+    bie.Attribute(
+        format=[ "tdf", "gct"],
+        DEFAULT="tdf"),
+    # Properties of the data.
+    bie.Attribute(
+        preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+        DEFAULT="unknown"),
+    bie.Attribute(
+        missing_values=["no"],
+        DEFAULT="no"),
+    bie.Attribute(
+        missing_algorithm=["none", "median_fill", "zero_fill"],
+        DEFAULT="none", OPTIONAL=True),
+    bie.Attribute(
+        logged=[ "no", "yes"],
+        DEFAULT="yes"),
+    # Normalizing the genes.
+    bie.Attribute(
+        gene_center=["unknown", "no", "mean", "median"],
+        DEFAULT="unknown"),
+    bie.Attribute(
+        gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
+        DEFAULT="unknown"),
+
+    # Normalizing the data.  Very difficult to check normalization.
+    # If you're not sure if the data is normalized, then the answer is
+    # "no".
+    bie.Attribute(
+        dwd_norm=["no", "yes"], DEFAULT="no"),
+    bie.Attribute(
+        bfrm_norm=["no", "yes"], DEFAULT="no"),
+    bie.Attribute(
+        quantile_norm=["no", "yes"], DEFAULT="no"),
+    bie.Attribute(
+        shiftscale_norm=["no", "yes"], DEFAULT="no"),
+    bie.Attribute(
+        combat_norm=["no", "yes"], DEFAULT="no"),
+
+    # Annotations.
+    bie.Attribute(
+        unique_genes=["no", "average_genes", "high_var", "first_gene"],
+        DEFAULT="no"),
+    bie.Attribute(
+        duplicate_probe=["no", "yes", "closest_probe", "high_var_probe"],
+        DEFAULT="no"),
+    # Unclassified.
+    bie.Attribute(num_features=bie.ANYATOM, DEFAULT="all"),
+    bie.Attribute(
+        gene_order=[
+            "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+        DEFAULT="no"),
+    bie.Attribute(predataset=["no", "yes"], DEFAULT="no"),
+    bie.Attribute(platform=bie.ANYATOM, DEFAULT="no"),
+    bie.Attribute(filter=bie.ANYATOM, DEFAULT="no"),
+    bie.Attribute(group_fc=bie.ANYATOM, DEFAULT="no"),
+    bie.Attribute(contents=["train0", "train1", "test", "class0,class1,test",
+                        "class0", "class1", "class0,class1", "no"], DEFAULT="no")
     )
+    
 ActbPlot = bie.DataType(
     'ActbPlot',
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
-    bie.Attribute(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'],DEFAULT='unknown'))
+    bie.Attribute(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'],DEFAULT='unknown'),
+    #bie.Attribute(quantile_norm=['yes','no'],DEFAULT='no'),
+    #bie.Attribute(
+    #    gene_center=["unknown", "no", "mean", "median"],
+    #    DEFAULT="unknown"),
+    )
 Hyb_barPlot = bie.DataType(
     'Hyb_barPlot',
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),)
@@ -105,7 +173,8 @@ all_modules = [
             missing_values="no",preprocess=["unknown", "illumina", "agilent",
                                 "mas5", "rma", "loess"],
             contents=["train0", "train1", "test",
-                        "class0", "class1", "class0,class1","class0,class1,test", "no"]),
+                        "class0", "class1", "class0,class1","class0,class1,test", "no"],
+            ),
         SignalFile2(
             format="tdf", logged="yes",
             missing_values="no", missing_algorithm=["none", "median_fill", "zero_fill"],          
@@ -241,14 +310,48 @@ all_modules = [
         'unlog_signal',
         SignalFile2(format="tdf", logged="yes"),
         SignalFile2(format="tdf", logged="no")),
-    bie.Module(
-        'plot_intensity_boxplot',
-        SignalFile2(format="tdf", logged="yes"),
-        IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'])),
     #bie.Module(
     #    'plot_intensity_boxplot',
-    #    SignalFile2(format="tdf", logged="yes",quantile_norm=['yes','no']),
+    #    SignalFile2(format="tdf", logged="yes"),
+    #    IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess",'illumina'])),
+    #bie.Module(
+    #    'plot_intensity_boxplot',
+    #    SignalFile2(format="tdf", logged="yes",quantile_norm=['yes','no'],gene_center=['mean','median','no','unknown']),
     #    IntensityPlot(quantile_norm=['yes','no'],gene_center=['mean','median','no','unknown'])),
+        
+    bie.Module(    
+    'plot_intensity_boxplot',
+        SignalFile2(contents=["train0", "train1", "test", "class0,class1,test",
+                  "class0", "class1", "class0,class1",
+                  "no"],format='tdf',logged='yes',
+              preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+              quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
+                   shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],gene_center=['mean','median','no','unknown'],
+                   gene_normalize=["unknown", "no", "variance", "sum_of_squares"], 
+                   missing_algorithm=["none", "median_fill", "zero_fill"],
+                   unique_genes=["no", "average_genes", "high_var", "first_gene"],
+                   num_features=bie.ANYATOM,
+                   predataset=["no", "yes"],
+                   platform=bie.ANYATOM,
+                   group_fc=bie.ANYATOM,
+                   annotate='no'
+                   ),
+        IntensityPlot(contents=["train0", "train1", "test", "class0,class1,test",
+                  "class0", "class1", "class0,class1",
+                  "no"],preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+                   logged='yes',
+                   quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
+                   shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],gene_center=['mean','median','no','unknown'],
+                   gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
+                    missing_algorithm=["none", "median_fill", "zero_fill"],
+                    unique_genes=["no", "average_genes", "high_var", "first_gene"],
+                    num_features=bie.ANYATOM,
+                    filter=bie.ANYATOM,
+                    predataset=["no", "yes"],
+                    platform=bie.ANYATOM,
+                    group_fc=bie.ANYATOM,
+                    )),
+                    
     bie.Module(
         'plot_actb_line',
         SignalFile_rule.SignalFile(preprocess=["unknown", "agilent","illumina",

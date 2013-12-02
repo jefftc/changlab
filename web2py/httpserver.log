@@ -35383,3 +35383,16 @@
 127.0.0.1, 2013-11-19 10:53:42, POST, /admin/default/edit/simple_test/views/default/index.html, HTTP/1.1, 200, 0.037981
 127.0.0.1, 2013-11-19 10:53:58, POST, /admin/default/edit/simple_test/controllers/default.py, HTTP/1.1, 200, 0.038697
 127.0.0.1, 2013-11-19 10:54:03, GET, /simple_test/default/index, HTTP/1.1, 200, 0.014437
+127.0.0.1, 2013-11-19 16:46:22, GET, /admin/default/design/simple_test, HTTP/1.1, 303, 0.078501
+127.0.0.1, 2013-11-19 16:46:22, GET, /admin/default/index, HTTP/1.1, 200, 0.041337
+127.0.0.1, 2013-11-19 16:46:23, POST, /admin/default/index, HTTP/1.1, 303, 0.081937
+127.0.0.1, 2013-11-19 16:46:23, GET, /admin/default/design/simple_test, HTTP/1.1, 200, 0.166491
+127.0.0.1, 2013-11-19 16:46:29, GET, /admin/default/edit/simple_test/views/generic.xml, HTTP/1.1, 200, 0.054768
+127.0.0.1, 2013-11-19 16:48:38, POST, /admin/default/edit/simple_test/views/generic.xml, HTTP/1.1, 200, 0.037234
+127.0.0.1, 2013-11-19 16:48:41, GET, /simple_test/default/index, HTTP/1.1, 200, 0.046100
+127.0.0.1, 2013-11-19 16:48:50, POST, /admin/default/edit/simple_test/views/generic.xml, HTTP/1.1, 200, 0.038532
+127.0.0.1, 2013-11-19 16:52:42, POST, /admin/default/edit/simple_test/controllers/default.py, HTTP/1.1, 200, 0.040839
+127.0.0.1, 2013-11-19 16:52:46, GET, /simple_test/default/index, HTTP/1.1, 200, 0.017060
+127.0.0.1, 2013-11-19 16:53:04, POST, /admin/default/edit/simple_test/controllers/default.py, HTTP/1.1, 200, 0.041833
+127.0.0.1, 2013-11-19 16:54:18, GET, /Betsy/default/index, HTTP/1.1, 500, 0.488937
+127.0.0.1, 2013-11-19 16:54:23, GET, /simple_test/default/index, HTTP/1.1, 200, 0.015015
