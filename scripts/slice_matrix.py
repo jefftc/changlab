@@ -2195,8 +2195,10 @@ def main():
     # Cannot always write in the same format.  For example, if you add
     # annotations that aren't handled by that format.  To be safe,
     # convert to a TDF and write that out.
-    MATRIX = arrayio.convert(MATRIX, to_format=arrayio.tdf)
-    arrayio.tdf.write(MATRIX, handle)
+    to_format = arrayio.tdf
+    #to_format = arrayio.gct_format
+    MATRIX = arrayio.convert(MATRIX, to_format=to_format)
+    to_format.write(MATRIX, handle)
 
 
 if __name__ == '__main__':
