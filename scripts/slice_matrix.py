@@ -405,7 +405,19 @@ def select_col_ids(MATRIX, ids):
 def select_col_genesets(MATRIX, genesets):
     if not genesets:
         return None
-    return parse_geneset(MATRIX, False, genesets)
+    I = []
+    for geneset in genesets:
+        x = parse_geneset(MATRIX, False, geneset)
+        I.extend(x)
+    # No duplicates.  Keep current order.
+    i = 0
+    while i < len(I):
+        if I[i] in I[:i]:
+            del I[i]
+        else:
+            i += 1
+    return I
+        
 
 
 def select_col_annotation(MATRIX, col_annotation):
@@ -988,7 +1000,18 @@ def select_row_random(MATRIX, num_rows):
 def select_row_genesets(MATRIX, genesets):
     if not genesets:
         return None
-    return parse_geneset(MATRIX, True, genesets)
+    I = []
+    for geneset in genesets:
+        x = parse_geneset(MATRIX, True, geneset)
+        I.extend(x)
+    # No duplicates.  Keep current order.
+    i = 0
+    while i < len(I):
+        if I[i] in I[:i]:
+            del I[i]
+        else:
+            i += 1
+    return I
 
 
 def select_row_annotation(MATRIX, row_annotation):
@@ -1830,7 +1853,7 @@ def main():
         "annotations (AND).  "
         "Format: <txt_file>,<header>,<value>[,<value,...]")
     group.add_argument(
-        "--select_col_genesets", default=None,
+        "--select_col_genesets", default=[], action="append",
         help="Include only the samples from this geneset.  "
         "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
     group.add_argument(
@@ -1954,7 +1977,7 @@ def main():
         'The analogous constraint will be applied for ">".  '
         "Accepts the match if any of the <value>s are true.")
     group.add_argument(
-        "--select_row_genesets", default=None,
+        "--select_row_genesets", default=[], action="append",
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
     group.add_argument(

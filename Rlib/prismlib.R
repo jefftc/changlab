@@ -1,3 +1,6 @@
+# write.scatterplot
+# write.boxplot
+
 write.scatterplot <- function(filename, DATA, rownames=NA) {
   # DATA is a list of NAME -> matrix of xy coordinates.
   # rownames is a list of NAME -> list of names (same length as nrow(matrix)).
