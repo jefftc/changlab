@@ -2178,7 +2178,7 @@ def _backchain_to_antecedent(module, ante_num, data, goal_attributes):
     if module.ante_datas[ante_num].datatype == module.cons_data.datatype:
         data = Data(datatype, **attributes)
     else:
-        attrs = goal_attributes
+        attrs = goal_attributes.copy()
         attrs.update(attributes)
         data = _make_goal(datatype, attrs)
 
