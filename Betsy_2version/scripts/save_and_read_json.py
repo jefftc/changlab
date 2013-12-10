@@ -47,11 +47,11 @@ def dict_to_object(d):
                 new_transition[int(key)]=value
             inst = class_(args['nodes'],new_transition)
         elif class_name in ['Module','QueryModule']:
-            inst = class_(args['ante_datas'],args['cons_data'],args['name'])
+            inst = class_(args['name'],args['ante_datas'],args['cons_data'])
         else:
             assert 'else module %s' %class_name
     else:
-        args = dict( (key.encode('ascii'), value) for key, value in d.items())
+        args = dict((key.encode('ascii'), value) for key, value in d.items())
         for key in args:
             if isinstance(args[key],dict):
                 args[key]=dict_to_object(args[key])
@@ -78,9 +78,10 @@ def get_network_list():
 	comb=itertools.product(*all_list)
 	goal_datatype=rulebase.SignalFile2
 	for j in range(10):
-            print j
             final_list=[]
+            c=0
             for i in itertools.islice(comb,100*j,100*(j+1)):
+                c=c+1
                 goal_attributes=dict()
                 for index,key in enumerate(key_name):
                     goal_attributes[key]=i[index]
@@ -91,6 +92,7 @@ def get_network_list():
                 network = bie.optimize_network(network)
                 if len(network.nodes)>1:
                     final_list.append(network)
+                    bie.plot_network_gv("out"+str(c)+".png", network)
             filename = 'pipeline'+str(j)+'.txt'
             f = file(filename,'w')
             json.dump(final_list,f,default=convert_to_builtin_type,indent=2)
@@ -101,7 +103,11 @@ def get_network_list():
             f.close()
             myobj_instance = json.loads(text, object_hook=dict_to_object)
             print 'len',len(myobj_instance)
-
+##            k=10
+##            for i in myobj_instance[0:1]:
+##                k=k+1
+##                bie.print_network(i)
+##                bie.plot_network_gv("out"+str(k)+".png", i)
 
 get_network_list()
 
