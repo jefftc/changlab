@@ -20,7 +20,8 @@
 # select_col_ids
 # select_col_genesets
 # select_col_annotation
-# select_col_re
+# select_col_regex
+# select_col_random
 # replace_col_ids
 # relabel_col_ids
 # append_col_ids
@@ -471,6 +472,18 @@ def select_col_regex(MATRIX, col_regex):
         m = re.search(col_regex, names[i])
         if m:
             I.append(i)
+    return I
+
+
+def select_col_random(MATRIX, col_random):
+    import random
+    if col_random is None:
+        return None
+    assert col_random >= 1 and col_random < MATRIX.ncol()
+
+    I = range(MATRIX.ncol())
+    random.shuffle(I)
+    I = sorted(I[:col_random])
     return I
 
 
@@ -1240,6 +1253,36 @@ def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
     return MATRIX
 
 
+## def merge_rows_with_dup_values(MATRIX, merge_rows_with_dup_values):
+##     if not merge_rows_with_dup_values:
+##         return MATRIX
+
+##     # While there are duplicate rows, merge them.
+##     X = MATRIX._X
+##     i = 0
+##     while i < len(X):
+##         dup = None
+##         for j in range(i+1, len(X)):
+##             delta = 0.0
+##             for k in range(len(X[i])):
+##                 delta += abs(X[i][k] - X[j][k])
+##             if delta < 1E-5:
+##                 dup = j
+##                 break
+##         if dup is None:
+##             i += 1
+##             continue
+##         # Merge row i with row dup.
+##         print "Dup", i, dup
+##         print MATRIX.row_names("Ensembl Gene ID")[i]
+##         print MATRIX.row_names("Ensembl Gene ID")[dup]
+##         #_merge_rows(
+##         raise NotImplementedError
+##         pass
+##     raise NotImplementedError
+    
+
+
 def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     import arrayio
 
@@ -1860,6 +1903,9 @@ def main():
         "--select_col_regex", default=None,
         help="Include columns that match this regular expression.")
     group.add_argument(
+        "--select_col_random", default=None, type=int,
+        help="Select this number of columns at random.")
+    group.add_argument(
         "--reverse_col_selection", default=False, action="store_true",
         help="Remove the selected columns instead of keeping them.")
     ## group.add_argument(
@@ -1993,6 +2039,9 @@ def main():
         help="Remove the rows that has at least this percent of missing "
         "bvalues.  e.g. 0.25 means remove all rows with 25%% or more missing "
         "values.")
+    ## group.add_argument(
+    ##     "--merge_rows_with_dup_values", default=False, action="store_true",
+    ##     help="Merge the annotations of the rows whose values are duplicated.")
     group.add_argument(
         "--dedup_row_by_var", default=None,
         help="If multiple rows have the same annotation, select the one "
@@ -2099,7 +2148,8 @@ def main():
     I4 = select_col_genesets(MATRIX, args.select_col_genesets)
     I5 = select_col_annotation(MATRIX, args.select_col_annotation)
     I6 = select_col_regex(MATRIX, args.select_col_regex)
-    I_col = _intersect_indexes(I1, I3, I4, I5, I6)
+    I7 = select_col_random(MATRIX, args.select_col_random)
+    I_col = _intersect_indexes(I1, I3, I4, I5, I6, I7)
     if args.reverse_col_selection:
         I_col = [i for i in range(MATRIX.ncol()) if i not in I_col]
     MATRIX = MATRIX.matrix(I_row, I_col)
@@ -2112,6 +2162,10 @@ def main():
     MATRIX = reorder_col_indexes(
         MATRIX, args.reorder_col_indexes, args.col_indexes_include_headers)
     MATRIX = reorder_col_alphabetical(MATRIX, args.reorder_col_alphabetical)
+
+    ## # Merge the rows with duplicated values.
+    ## MATRIX = merge_rows_with_dup_values(
+    ##     MATRIX, args.merge_rows_with_dup_values)
 
     # Remove row annotations.
     for name in args.remove_row_annot:

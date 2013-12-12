@@ -524,6 +524,10 @@ class InMemoryMatrix(AbstractMatrix):
         if header is None:
             return self._row_order
         header = self._resolve_synonym(header, self.row_names, self._synonyms)
+        if header not in self._row_names:
+            x = sorted(self._row_names)
+            x = ", ".join(x)
+            raise KeyError, "%s: headers %s" % (header, x)
         return self._row_names[header]
     def col_names(self, header=None):
         if header is None:

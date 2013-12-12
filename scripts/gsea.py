@@ -149,14 +149,23 @@ def check_matrix(X):
     sample_names = X.col_names(arrayio.tdf.SAMPLE_NAME)
     bad_names = []
     for i, name in enumerate(sample_names):
-        if re.search("[^a-zA-Z0-9_-]", name):
+        if not name:
+            bad_names.append("<blank>")
+        elif re.search("[^a-zA-Z0-9_-]", name):
             bad_names.append(name)
+            
     # If there are bad names, try to fix them.
     #if bad_names:
     #    sample_names_h = [hashlib.hash_var(x) for x in sample_names]
     #    # If there are no duplicates, use these sample names.
     #    raise NotImplementedError
     assert not bad_names, "Bad sample name: %s" % ", ".join(bad_names)
+
+    # Make sure sample names are unique.
+    seen = {}
+    for i, name in enumerate(sample_names):
+        assert name not in seen, "Duplicate sample name: %s" % name
+        seen[name] = 1
         
 
 def main():
@@ -359,7 +368,7 @@ def main():
         p.wait()
     finally:
         os.chdir(cwd)
-    assert not data.strip(), data
+    assert not data.strip(), "%s\n%s" % (cmd, data)
 
 
     error_file = os.path.join(args.outpath, "stderr.txt")

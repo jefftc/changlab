@@ -342,8 +342,12 @@ class Module:
         for i in range(len(ante_datas)):
             if isinstance(ante_datas[i], DataType):
                 ante_datas[i] = ante_datas[i]()
+            assert isinstance(ante_datas[i], Data), \
+                   "ante_data must be a Data object: %s" % repr(ante_datas[i])
         if isinstance(cons_data, DataType):
             cons_data = cons_data()
+        assert isinstance(cons_data, Data), \
+               "cons_data must be a Data object: %s" % repr(cons_data)
 
         # Check the keywds dictionary.
         for x in keywds:

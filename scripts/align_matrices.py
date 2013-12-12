@@ -63,10 +63,11 @@ def get_sample_names(matrix):
 
 def find_best_annots(name2annots, match_annots):
     # Return list of (name, matched_annotations)
-    match_annots_s = set(match_annots)
+    #match_annots_s = set(match_annots)
     all_matches = []  # list of (num_matches, name, matches)
     for name, annots in name2annots.iteritems():
-        matches = list(match_annots_s.intersection(annots))
+        matches = [x for x in annots if x in match_annots]
+        #matches = list(match_annots_s.intersection(annots))
         x = len(matches), name, matches
         all_matches.append(x)
     all_matches = sorted(all_matches)
@@ -104,7 +105,17 @@ def find_common_samples(matrix_data):
         assert annots, "%s has no matching annotations." % infile
         common = annots
 
-    return sorted(common)
+    # Finally, order the annotations according to the first file given.
+    assert matrix_data
+    x = matrix_data[0]
+    infile, outfile, is_express_file, name2annots = x
+    if is_express_file:
+        samples = get_sample_names(matrix)
+    else:
+        x, samples = find_best_annots(name2annots, common)
+    samples = [x for x in samples if x in common]
+    
+    return samples
 
 
 def align_express(matrix, samples):
@@ -149,7 +160,9 @@ def align_matrices(matrix_data, samples):
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Align a set of matrices.")
+    parser = argparse.ArgumentParser(
+        description="Align a set of matrices.  Preserve the order of the "
+        "first file given.")
     parser.add_argument("outfile", nargs="+")
     
     parser.add_argument(
