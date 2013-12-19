@@ -69,6 +69,7 @@
 # center_genes_median
 # normalize_genes_var
 # median_fill_genes
+# zero_fill_genes
 #
 # _match_rownames_to_geneset       DEPRECATED
 # _match_colnames_to_geneset       DEPRECATED
@@ -1597,6 +1598,17 @@ def median_fill_genes(MATRIX):
                 X[i][j] = m
 
 
+def zero_fill_genes(MATRIX):
+    from genomicode import jmath
+
+    # Zero-fill the genes in place.
+    X = MATRIX._X
+    for i in range(len(X)):
+        for j in range(len(X[i])):
+            if X[i][j] is None:
+                X[i][j] = 0.0
+
+
 ## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
 ##     # Return tuple of (I_matrix, I_geneset) or None if no match can be
 ##     # found.  Will find the largest match possible.
@@ -1867,6 +1879,9 @@ def main():
         help="Will normalize the genes based on the variance (or sum "
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
+    group.add_argument(
+        "--zerofill", default=False, action="store_true",
+        help="Fill missing values with 0.")
     group.add_argument(
         "--fill_missing_values_median", default=False, action="store_true",
         help="Fill missing values with the median of the row.  Performed "
@@ -2234,6 +2249,8 @@ def main():
 
     # Median fill.  Do after logging, but before quantile, centering,
     # and normalizing.
+    if args.zerofill:
+        zero_fill_genes(MATRIX)
     if args.fill_missing_values_median:
         median_fill_genes(MATRIX)
 

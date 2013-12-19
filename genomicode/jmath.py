@@ -116,7 +116,7 @@ def safe_int(x):
 def safe_float(x):
     if x is None:
         return None
-    if type(x) is type("") and x.lower() in ["", "na", "null"]:
+    if type(x) is type("") and x.lower() in ["", "na", "null", "-"]:
         return None
     if type(x) is type("") and x.lower() == "nan":
         return float('nan')

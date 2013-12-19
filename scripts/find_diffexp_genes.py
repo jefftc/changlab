@@ -45,6 +45,7 @@ def find_diffexp_genes(
         "ttest" : "find.de.genes.ttest",
         "sam" : "find.de.genes.sam",
         "ebayes" : "find.de.genes.ebayes",
+        "fold_change" : "find.de.genes.fc",
         }
     assert algorithm in algorithm2function, "Unknown algorithm: %s" % algorithm
 
@@ -254,7 +255,7 @@ def main():
     group = parser.add_argument_group(title="Algorithm Parameters")
     group.add_argument(
         "--algorithm", dest="algorithm", 
-        choices=["ttest", "sam", "ebayes"], default="ebayes",
+        choices=["ttest", "sam", "ebayes", "fold_change"], default="ebayes",
         help="Which algorithm to use.")
     group.add_argument(
         "--fold_change", type=float, default=None,

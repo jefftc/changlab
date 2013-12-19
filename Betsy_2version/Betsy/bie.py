@@ -879,8 +879,8 @@ class _OptimizeNoDuplicateData:
             duplicates = self.find_duplicate_data(network)
             if not duplicates:
                 break
-            # Will merge high node_id into low node_id, so root node
-            # will never be affected.
+            # Will merge high node_id into low node_id, so id of root
+            # node will never be changed.
             network = network.merge_nodes(duplicates)
         return network
     
@@ -2524,7 +2524,7 @@ def _can_nonconverting_module_produce_data(module, data):
     return num_attributes
 
 
-def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
+def _find_target_of_nonconverting_module_one_ante(module, ante_data, data):
     assert ante_data in module.ante_datas
     ante_attr = ante_data.attributes
     cons_attr = module.cons_data.attributes
@@ -2540,7 +2540,8 @@ def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
         if not changed:
             continue
         targets.append(key)
-    assert len(targets) >= 1, "No target for nonconverting module."
+    assert len(targets) >= 1, "No target for nonconverting module: %s." % \
+           module.name
     if len(targets) == 1:
         return targets[0]
     
@@ -2614,7 +2615,8 @@ def _find_target_of_nonconverting_module(module, data):
     for ante_data in module.ante_datas:
         if ante_data.datatype != data.datatype:
             continue
-        x = _find_target_of_nonverting_module_one_ante(module, ante_data, data)
+        x = _find_target_of_nonconverting_module_one_ante(
+            module, ante_data, data)
         targets.append(x)
     targets = sorted({}.fromkeys(targets))
     assert len(targets) > 0, "no targets"
@@ -3067,7 +3069,11 @@ def _print_string(s):
     print s
 
 
-def _print_line(line, prefix0, prefixn, width):
+def _print_line(line, prefix0, prefixn, width, outhandle=None):
+    import sys
+    
+    outhandle = outhandle or sys.stdout
+
     lines = []
     p = prefix0
     while line:
@@ -3080,20 +3086,25 @@ def _print_line(line, prefix0, prefixn, width):
         p = prefixn
         if i == 0:
             p = prefix0
-        print "%s%s" % (p, lines[i])
+        print >>outhandle, "%s%s" % (p, lines[i])
 
 
-def print_network(network):
+def print_network(network, outhandle=None):
+    import sys
+
+    outhandle = outhandle or sys.stdout
     line_width = 72
     for i in range(len(network.nodes)):
         p_step = "%2d.  " % i
         p_space = " " * (len(p_step)+2)
-        _print_line(str(network.nodes[i]), p_step, p_space, line_width)
-    print
+        _print_line(
+            str(network.nodes[i]), p_step, p_space, line_width,
+            outhandle=outhandle)
+    print >>outhandle
 
     for i in sorted(network.transitions):
         x = [i, "->"] + network.transitions[i]
-        print "\t".join(map(str, x))
+        print >>outhandle, "\t".join(map(str, x))
     
 
 def plot_network_gv(filename, network):
@@ -3111,10 +3122,16 @@ def plot_network_gv(filename, network):
             x = n.datatype.name
             node2attr["shape"] = "note"
             node2attr["fillcolor"] = "#EEEEEE"
-        else:
+        elif n.__class__.__name__ == "Module":
             x = n.name
             node2attr["shape"] = "box"
             node2attr["fillcolor"] = "#80E0AA"
+        elif n.__class__.__name__ == "QueryModule":
+            x = n.name
+            node2attr["shape"] = "box"
+            node2attr["fillcolor"] = "#60A08A"
+        else:
+            raise AssertionError
             
         node_name = "%s [%d]" % (x, node_id)
         id2name[node_id] = node_name
