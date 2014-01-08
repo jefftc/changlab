@@ -3186,7 +3186,6 @@ def _pretty_attributes(attributes):
     return "%s, %s" % (fmt_proper, fmt_improper)
 
 def test_bie():
-    
     #print_modules(all_modules); return
 
     #x = SignalFile(
@@ -3195,8 +3194,9 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    in_data = SignalFile(
-        logged="yes", preprocess="rma", format="jeffs", filename="dfd")
+    in_data = CELFiles
+    #in_data = SignalFile(
+    #    logged="yes", preprocess="rma", format="jeffs", filename="dfd")
     #in_data = [
     #    SignalFile(preprocess="rma", format="jeffs", filename='a'),
     #    ClassLabelFile(filename='b')]
@@ -3231,9 +3231,10 @@ def test_bie():
     
     goal_datatype = SignalFile
     #goal_attributes = dict(format='tdf')
-    goal_attributes = dict(
-        format='tdf', preprocess="rma", logged='yes', missing_values="no",
-        missing_algorithm="median_fill")
+    goal_attributes = dict(logged="yes", preprocess="rma", format="jeffs")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess="rma", logged='yes', missing_values="no",
+    #    missing_algorithm="median_fill")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
@@ -3301,8 +3302,8 @@ def test_bie():
     #    platform='str', duplicate_probe='high_var_probe')
     
     network = backchain(all_modules, goal_datatype, goal_attributes)
-    network = optimize_network(network)
-    network = prune_network_by_start(network, in_data)
+    #network = optimize_network(network)
+    #network = prune_network_by_start(network, in_data)
     #network = prune_network_by_internal(
     #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
     #network = prune_network_by_internal(
@@ -3339,6 +3340,6 @@ def test_bie():
         
 
 
-#if __name__ == '__main__':
-#    test_bie()
+if __name__ == '__main__':
+    test_bie()
     #import cProfile; cProfile.run("test_bie()")

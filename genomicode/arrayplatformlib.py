@@ -244,6 +244,8 @@ def score_platform_of_annotations(annotations):
 
 def score_all_platforms_of_matrix(DATA):
     """return a list of (header, platform, match) we can guess"""
+    # Order of list is arbitrary.
+    # XXX what is match?
     chips = dict()
     for name in DATA.row_names():
         x = DATA.row_names(name)
@@ -258,9 +260,16 @@ def score_all_platforms_of_matrix(DATA):
 
 
 def score_platform_of_matrix(DATA):
+    # Return the best scoring platform for this matrix.
     platform_list = score_all_platforms_of_matrix(DATA)
     if not platform_list:
         return None, 0
+
+    # Sort by decreasing score.
+    schwartz = [(-x[2], x) for x in platform_list]
+    schwartz.sort()
+    platform_list = [x[-1] for x in schwartz]
+    
     out_platform = platform_list[0][1]
     out_platform_match = platform_list[0][2]
     return out_platform, out_platform_match
