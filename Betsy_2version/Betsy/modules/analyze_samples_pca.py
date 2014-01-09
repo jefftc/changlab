@@ -10,7 +10,9 @@ def run(data_node,parameters,network):
     outfile = name_outfile(data_node)
     M = arrayio.read(data_node.attributes['filename'])
     X = M._X
-    N = int(parameters['pca_gene_num'])
+    N = 500
+    if 'pca_gene_num' in parameters:
+        N = int(parameters['pca_gene_num'])
     N = min(N,M.nrow())
     index = pcalib.select_genes_var(X,N)
     M_new = M.matrix(index,None)

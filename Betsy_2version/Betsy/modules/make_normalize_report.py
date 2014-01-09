@@ -13,13 +13,16 @@ from Betsy import hash_method
 def run(in_nodes,parameters,network):
     outfile=name_outfile(in_nodes)
     result_files = []
-    for data_node in in_nodes:
+    for index, data_node in enumerate(in_nodes):
         filename = data_node.attributes['filename']
         new_name = os.path.split(filename)[-1]
+        #rename one of the pcaplot filename 
+        if index == 2:
+            new_name = 'after_'+ new_name
         if os.path.isdir(filename):
-                shutil.copytree(filename,new_name)
+            shutil.copytree(filename,new_name)
         else:
-                shutil.copyfile(filename,new_name)
+            shutil.copyfile(filename,new_name)
         result_files.append(new_name)    
     data_node1, data_node2, data_node3, data_node4,data_node5, data_node6 = in_nodes
     #write the report.html
@@ -93,7 +96,7 @@ def run(in_nodes,parameters,network):
         w(htmllib.H3("1.Normalization File"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
-        bie._plot_network_gv("network.png", network)
+        bie.plot_network_gv("network.png", network)
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
         
@@ -157,14 +160,7 @@ def make_unique_hash(in_nodes,pipeline,parameters):
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node1 = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile2')
-    data_node2 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PcaPlot',
-                                             optional_key='process',
-                                             optional_value='before')
-    data_node3 = module_utils.get_identifier(network, module_id, data_nodes,
-                                           datatype='PcaPlot',
-                                             optional_key='process',
-                                             optional_value='after')
+    data_node2, data_node3 = module_utils.find_pcaplots(network,data_nodes,module_id)
     data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='IntensityPlot')
     data_node5 = module_utils.get_identifier(network, module_id, data_nodes,
@@ -172,3 +168,5 @@ def find_antecedents(network, module_id,data_nodes,parameters):
     data_node6 = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ControlPlot')
     return data_node1, data_node2, data_node3, data_node4,data_node5, data_node6
+
+

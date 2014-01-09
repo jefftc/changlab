@@ -15,13 +15,13 @@ python run_protocol.py --protocol cluster_genes --in_datatype 'SignalFile'  --pa
 
 python run_protocol.py --protocol cluster_genes --in_datatype 'SignalFile'  --param format=jeffs --param 'preprocess=rma' --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res'  --out_param 'format=tdf'  --out_param 'logged=yes'  --out_param 'cluster_alg=kmeans' --out_param 'preprocess=rma' --dry_run --network 'out.png'
 
-
+python run_rule.py --in_datatype 'SignalFile'   --param 'contents=class0,class1'  --in_datatype 'SignalFile'   --param 'contents=test' --out_datatype 'SignalFile2' --param 'format=gct'  --param 'logged=yes'  --param 'contents=class0,class1,test' --param 'missing_values=no' --dry_run --network 'out.png'
 ---------------------------------------------------------------
 working:
 
-1.python run_protocol.py --protocol normalize_file --in_datatype 'SignalFile' --param preprocess=rma --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res' --in_datatype 'ClassLabelFile' --param 'cls_format=cls' --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.cls'  --out_param 'format=tdf' --out_param 'preprocess=rma' --out_param 'logged=yes'  --dry_run --network 'out.png'
+1.python run_protocol.py --protocol normalize_file --in_datatype 'SignalFile' --in_param preprocess=rma --in_param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res' --in_datatype 'ClassLabelFile' --in_param 'cls_format=cls' --in_param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.cls'  --out_param 'format=tdf' --out_param 'preprocess=rma' --out_param 'logged=yes'  --dry_run --network 'out.png'
 
-2.python run_protocol.py --protocol make_heatmap --in_datatype 'SignalFile'  --param format=jeffs --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res'  --out_param 'format=tdf'  --out_param 'logged=yes'  --dry_run --network 'out.png'
+2.python run_protocol.py --protocol make_heatmap --in_datatype 'SignalFile'  --in_param format=jeffs --in_param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res'  --out_param 'format=tdf'  --out_param 'logged=yes'  --dry_run --network 'out.png'
 
 3.python run_protocol.py --protocol cluster_genes --in_datatype 'SignalFile'  --param format=jeffs --param 'filename=/home/xchen/chencode/betsy_test/all_aml_train.res'  --out_param 'format=tdf'  --out_param 'logged=yes'  --out_param 'cluster_alg=kmeans' --dry_run --network 'out.png'
 

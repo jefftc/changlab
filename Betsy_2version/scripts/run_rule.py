@@ -57,14 +57,14 @@ def main():
         in_data.append(fn(**in_parameters[i]))
     print 'Generating network...'
     network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
     assert network, ('No pipeline has been generated, '
                        'please check your command.')
     if args.network:
-        bie._plot_network_gv(args.network, network)
+        bie.plot_network_gv(args.network, network)
     if args.dry_run:
-        bie._print_network(network)
+        bie.print_network(network)
     else:
         rule_engine_bie.run_pipeline(network,in_data)
         print 'All pipelines have completed successfully.'

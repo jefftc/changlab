@@ -77,37 +77,37 @@ def get_network_list():
        
 	comb=itertools.product(*all_list)
 	goal_datatype=rulebase.SignalFile2
-	for j in range(10):
-            final_list=[]
-            c=0
-            for i in itertools.islice(comb,100*j,100*(j+1)):
-                c=c+1
-                goal_attributes=dict()
-                for index,key in enumerate(key_name):
-                    goal_attributes[key]=i[index]
-                parameter = goal_attributes.copy()
-                network = bie.backchain(
-                    rulebase.all_modules, goal_datatype, goal_attributes)
-    ##    	    network = bie.select_start_node(network, in_data)
-                network = bie.optimize_network(network)
-                if len(network.nodes)>1:
-                    final_list.append(network)
-                    bie.plot_network_gv("out"+str(c)+".png", network)
+	for j in range(1):
+##            final_list=[]
+##            c=0
+##            for i in itertools.islice(comb,5*j,5*(j+1)):
+##                c=c+1
+##                goal_attributes=dict()
+##                for index,key in enumerate(key_name):
+##                    goal_attributes[key]=i[index]
+##                parameter = goal_attributes.copy()
+##                network = bie.backchain(
+##                    rulebase.all_modules, goal_datatype, goal_attributes)
+##    ##    	    network = bie.select_start_node(network, in_data)
+##                network = bie.optimize_network(network)
+##                if len(network.nodes)>1:
+##                    final_list.append(network)
+##                    bie.plot_network_gv("out"+str(c)+".png", network)
             filename = 'pipeline'+str(j)+'.txt'
-            f = file(filename,'w')
-            json.dump(final_list,f,default=convert_to_builtin_type,indent=2)
-            f.flush()
-            print 'done save'
+##            f = file(filename,'w')
+##            json.dump(final_list,f,default=convert_to_builtin_type,indent=2)
+##            f.flush()
+##            print 'done save'
             f = file(filename,'r')
             text =f.read()
             f.close()
             myobj_instance = json.loads(text, object_hook=dict_to_object)
             print 'len',len(myobj_instance)
-##            k=10
-##            for i in myobj_instance[0:1]:
+            k=10
+            for i in myobj_instance[0:1]:
 ##                k=k+1
-##                bie.print_network(i)
-##                bie.plot_network_gv("out"+str(k)+".png", i)
+                bie.print_network(i)
+                bie.plot_network_gv("out"+str(k)+".png", i)
 
 get_network_list()
 

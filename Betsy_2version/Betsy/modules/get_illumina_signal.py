@@ -2,7 +2,7 @@
 
 import shutil
 import os
-from betsy import bie, rulebase
+from Betsy import bie, rulebase
 from Betsy import module_utils
 
 
@@ -11,7 +11,8 @@ def run(data_node, parameters, network):
     result_files = os.listdir(data_node.attributes['filename'])
     for result_file in result_files:
         if '-controls' not in result_file:
-            goal_file = os.path.join(data_node.attributes['filename'],result_file)
+            goal_file = os.path.join(data_node.attributes['filename'],
+                                     result_file)
             shutil.copyfile(goal_file,outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for illu_signal fails'%outfile)

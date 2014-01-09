@@ -139,20 +139,6 @@ PcaPlot = bie.DataType(
 
 list_files = [PcaAnalysis,PcaPlot]
 all_modules = [
-  #  bie.Module(
-  #      'analyze_samples_pca',
-  #      SignalFile2_rule.SignalFile2(format='tdf',logged='yes',
-  #            preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-   #           quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
-  #                 shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],gene_center=['mean','median','no','unknown'],
-   #                gene_normalize=["unknown", "no", "variance", "sum_of_squares"]),
-   #     PcaAnalysis(contents=["train0", "train1", "test", "class0,class1,test",
-   #               "class0", "class1", "class0,class1",
-   #               "no"],preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-   #               format='tdf', logged='yes',
-    #               quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
-    #               shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],gene_center=['mean','median','no','unknown'],
-    #               gene_normalize=["unknown", "no", "variance", "sum_of_squares"])),
     bie.Module(
         'analyze_samples_pca',
         SignalFile2_rule.SignalFile2(contents=["train0", "train1", "test", "class0,class1,test",
@@ -164,10 +150,10 @@ all_modules = [
                    gene_normalize=["unknown", "no", "variance", "sum_of_squares"], 
                    missing_algorithm=["none", "median_fill", "zero_fill"],
                    unique_genes=["no", "average_genes", "high_var", "first_gene"],
-                   num_features=bie.ANYATOM,
+                   #num_features=bie.ANYATOM,
                    predataset=["no", "yes"],
-                   platform=bie.ANYATOM,
-                   group_fc=bie.ANYATOM,
+                   #platform=bie.ANYATOM,
+                   #group_fc=bie.ANYATOM,
                    annotate='no'
                    ),
         PcaAnalysis(contents=["train0", "train1", "test", "class0,class1,test",
@@ -175,7 +161,8 @@ all_modules = [
                   "no"],preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
                    logged='yes',
                    quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
-                   shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],gene_center=['mean','median','no','unknown'],
+                   shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],
+                   gene_center=['mean','median','no','unknown'],
                    gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
                     missing_algorithm=["none", "median_fill", "zero_fill"],
                     unique_genes=["no", "average_genes", "high_var", "first_gene"],
@@ -185,39 +172,34 @@ all_modules = [
                     platform=bie.ANYATOM,
                     group_fc=bie.ANYATOM,
                     )),
-                   
-                   
-          
-   
-    
-                   
-                   
-                   
-##    bie.Module(
-##        'analyze_samples_pca',
-##        SignalFile_rule.SignalFile(format='tdf',logged='yes',missing_values='no'),
-##        PcaAnalysis(process='before',contents=["train0", "train1", "test", "class0,class1,test",
-##                  "class0", "class1", "class0,class1",
-##                  "no"])),
-##    bie.Module(
-##        'plot_sample_pca',
-##        [PcaAnalysis(process=['before','after']),
-##         SignalFile_rule.ClassLabelFile(cls_format='cls')],
-##        PcaPlot(process=['before','after'])),
- #   bie.Module(
- #       'plot_sample_pca_wo_label',
- #       PcaAnalysis(contents=["train0", "train1", "test", "class0,class1,test",
-  #                "class0", "class1", "class0,class1",
- #                 "no"],preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
- #                 format='tdf', logged='yes',
- #                  quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
-  #                 shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],gene_center=['mean','median','no','unknown'],
- #                  gene_normalize=["unknown", "no", "variance", "sum_of_squares"]),
- #       PcaPlot(contents=["train0", "train1", "test", "class0,class1,test",
- #                 "class0", "class1", "class0,class1",
-  #                "no"],preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
- #                 format='tdf', logged='yes',
- #                  quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
- #                  shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],gene_center=['mean','median','no','unknown'],
- #                  gene_normalize=["unknown", "no", "variance", "sum_of_squares"])), 
+
+    bie.Module(
+        'plot_sample_pca_wo_label',
+        PcaAnalysis(contents=["train0", "train1", "test", "class0,class1,test",
+                  "class0", "class1", "class0,class1",
+                  "no"],preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+                   logged='yes',
+                   quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
+                   shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],
+                   gene_center=['mean','median','no','unknown'],
+                   gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
+                   missing_algorithm=["none", "median_fill", "zero_fill"],
+                    unique_genes=["no", "average_genes", "high_var", "first_gene"],
+                    predataset=["no", "yes"],
+                    ),
+        PcaPlot(contents=["train0", "train1", "test", "class0,class1,test",
+                  "class0", "class1", "class0,class1",
+                "no"],preprocess=["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+                   logged='yes',
+                   quantile_norm=['yes','no'],bfrm_norm=['yes','no'],combat_norm=['yes','no'],
+                   shiftscale_norm=['yes','no'],dwd_norm=['yes','no'],
+                   gene_center=['mean','median','no','unknown'],
+                   gene_normalize=["unknown", "no", "variance", "sum_of_squares"],
+                   missing_algorithm=["none", "median_fill", "zero_fill"],
+                    unique_genes=["no", "average_genes", "high_var", "first_gene"],
+                    num_features=bie.ANYATOM,
+                    filter=bie.ANYATOM,
+                    predataset=["no", "yes"],
+                    platform=bie.ANYATOM,
+                    group_fc=bie.ANYATOM)), 
  ]

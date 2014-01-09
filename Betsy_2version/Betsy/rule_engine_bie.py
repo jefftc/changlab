@@ -377,7 +377,7 @@ def run_module(network, module_id, module_node, pool, pipeline_sequence,
     assert out_nodes,'module %s fails' %module_node.name
     return out_nodes
 
-def run_pipeline(network, in_data):
+def run_pipeline(network, in_data, user=getpass.getuser(), job_name=''):
     output_path = config.OUTPUTPATH
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -412,7 +412,8 @@ def run_pipeline(network, in_data):
                 test_required = test_require_data(network, module_id, pool)
                 if test_required:       
                     pipeline_sequence.append(module.name)
-                    out_nodes = run_module(network, module_id, module, pool, pipeline_sequence)
+                    out_nodes = run_module(network, module_id, module, pool, pipeline_sequence,
+                                           user,job_name)
                     for x in out_nodes:
                         next_node, next_id = x
                         if next_id == 0:

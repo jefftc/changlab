@@ -256,6 +256,8 @@ def run_case9():
         rulebase.SignalFile2(annotate='yes',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
         rulebase.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
         rulebase.IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+        rulebase.ControlPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+        rulebase.ActbPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
         rulebase.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"],
                quantile_norm='no',combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',gene_center='no',
                 gene_normalize='no',unique_genes="no",

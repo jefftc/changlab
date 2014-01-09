@@ -6,9 +6,9 @@ from Betsy.bie_rules import GenesetAnalysis_rule, DiffExprFile_rule,GatherFile_r
 ReportFile = bie.DataType(
     'ReportFile',
     bie.Attribute(filename=bie.ANYATOM, DEFAULT="", OPTIONAL=True),
-    bie.Attribute(report_type=['normalize','batch_effect_remove',
+    bie.Attribute(report_type=['normalize_file','batch_effect_remove',
                             'classify','cluster','diffgenes',
-                            'heatmap','geneset','all'],DEFAULT='normalize'),
+                            'heatmap','geneset','all'],DEFAULT='normalize_file'),
     bie.Attribute(preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"],
                   DEFAULT='unknown')
     )
@@ -17,54 +17,28 @@ list_files = [ReportFile]
 
                                   
 all_modules = [
-    #bie.Module(
-    #    'make_normalize_report',
-    #    [
-    #     SignalFile2_rule.IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     SignalFile2_rule.ControlPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     SignalFile2_rule.SignalFile2(annotate='yes',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     PcaAnalysis_rule.PcaAnalysis(annotate='no',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     SignalFile2_rule.ActbPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     PcaAnalysis_rule.PcaAnalysis(annotate='no',preprocess=["unknown", "agilent", "mas5", "rma", "loess"],
-    #            quantile_norm='no',combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',gene_center='no',
-    #            gene_normalize='no',),
-    #    ],
-    #     ReportFile(report_type='normalize',preprocess=["unknown", "agilent", "mas5", "rma", "loess"])),
-    #bie.Module(
-    #    'make_normalize_report',
-    #    [
-    #     #SignalFile2_rule.ControlPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     SignalFile2_rule.SignalFile2(annotate='yes',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     PcaAnalysis_rule.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-         #SignalFile2_rule.ActbPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #     PcaAnalysis_rule.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"],
-    #           quantile_norm='no',combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',gene_center='no',
-    #            gene_normalize='no',unique_genes="no",
-    #            platform='no', group_fc='no'),
-    #     SignalFile2_rule.IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-    #    
-    #    ],
-     #    ReportFile(report_type='normalize',preprocess=["unknown", "agilent", "mas5", "rma", "loess"])),
-  # bie.Module(
-   #     'make_normalize_report',
-  #      [
-  #      SignalFile2_rule.SignalFile2(annotate='yes',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-  #      PcaAnalysis_rule.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"],
-   #            quantile_norm='no',combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',gene_center='no',
-   #             gene_normalize='no',unique_genes="no",
-   #             platform='no', group_fc='no'),
-   #     PcaAnalysis_rule.PcaAnalysis(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-   #     SignalFile2_rule.IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
-   #     ],
-   #      ReportFile(report_type='normalize',preprocess=["unknown", "agilent", "mas5", "rma", "loess"])),
+    bie.Module(
+        'make_normalize_report',
+        [
+         SignalFile2_rule.IntensityPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         SignalFile2_rule.ControlPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         SignalFile2_rule.SignalFile2(annotate='yes',preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         PcaAnalysis_rule.PcaPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         SignalFile2_rule.ActbPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"]),
+         PcaAnalysis_rule.PcaPlot(preprocess=["unknown", "agilent", "mas5", "rma", "loess"],
+                quantile_norm='no',combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',gene_center='no',
+                gene_normalize='no',unique_genes="no",platform='no', group_fc='no'),
+        ],
+         ReportFile(report_type='normalize_file',preprocess=["unknown", "agilent", "mas5", "rma", "loess"])),
                                       
     bie.Module(
         'make_normalize_report_illumina',
        [
         SignalFile2_rule.SignalFile2(preprocess='illumina',annotate='yes'),
          PcaAnalysis_rule.PcaPlot(preprocess='illumina',quantile_norm='no',
-              combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no'),
-         PcaAnalysis_rule.PcaPlot,
+              combat_norm='no',shiftscale_norm='no',bfrm_norm='no',dwd_norm='no',
+              gene_center='no',gene_normalize='no',unique_genes="no",platform='no', group_fc='no'),
+         PcaAnalysis_rule.PcaPlot(preprocess='illumina'),
          SignalFile2_rule.IntensityPlot,
          SignalFile2_rule.ActbPlot,
          SignalFile2_rule.BiotinPlot,
@@ -72,7 +46,7 @@ all_modules = [
          SignalFile2_rule.Hyb_barPlot,
          SignalFile_rule.ControlFile(preprocess='illumina',format="gct", logged="no")
          ],
-         ReportFile(report_type='normalize',preprocess='illumina')),
+         ReportFile(report_type='normalize_file',preprocess='illumina')),
     
     bie.Module(
         'make_cluster_report',
@@ -82,7 +56,7 @@ all_modules = [
     bie.Module(
         'make_classify_report',
         [SignalFile2_rule.SignalFile2(
-            contents='class0,class1,test',logged='yes',format='gct'),
+            contents='class0,class1,test',logged='yes',format='gct',missing_values='no'),
          ClassifyFile_rule.ClassifyFile(classify_alg='svm',actual_label='yes'),
          ClassifyFile_rule.ClassifyFile(classify_alg='svm',loocv='yes',actual_label='no'),
          ClassifyFile_rule.PredictionPlot(classify_alg='svm',actual_label='yes',loocv='no'),      
@@ -127,16 +101,6 @@ all_modules = [
          SignalFile_rule.SignalFile(format='tdf',logged='yes',missing_values='no',
                                     quantile_norm='yes',combat_norm='yes',dwd_norm='no',bfrm_norm='no',shiftscale_norm='no')],
         ReportFile(report_type='batch_effect_remove',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
-#  bie.Module(
-  #      'combine all',
- #      [ReportFile(report_type='classify'),
- #       ReportFile(report_type='normalize'),
-  #       ReportFile(report_type='geneset'),
- #       ReportFile(report_type='diffgenes'),
- #       ReportFile(report_type='batch_effect_remove'),
-  #       ReportFile(report_type='heatmap'),
-   #      ReportFile(report_type='cluster')],
- #     ReportFile(report_type='all',preprocess=["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
          
         ]
   

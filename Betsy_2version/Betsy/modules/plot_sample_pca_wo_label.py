@@ -26,9 +26,7 @@ def make_unique_hash(data_node,pipeline,parameters):
 def name_outfile(data_node):
     original_file = module_utils.get_inputid(
         data_node.attributes['filename'])
-    data_node.attributes['process']
-    filename = ('Pca_' + original_file + '_'+
-                data_node.attributes['process']+ '.png')
+    filename = ('Pca_' + original_file + '.png')
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 

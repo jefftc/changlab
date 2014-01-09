@@ -10,7 +10,6 @@
 <td> Submitted   </td>
 <td>  Started  </td>
 <td>  Ended   </td>
-
 <td> Running time</td>
 <td> Disk space</td>
 <td> Job description</td>
@@ -25,14 +24,11 @@
     	<td>{{=row.Submitted}}</td>
     	<td>{{=row.Started}}</td>
     	<td>{{=row.Ended}}</td>
-    	{{disk_space,complete_time=summarize_jobs(auth.user.first_name+auth.user.last_name,row.Jobname)}}
-        <td>{{=complete_time}} seconds</td>
-        <td>{{=parselib.pretty_int(disk_space)}} bytes</td>
+    	
         <td>{{=label_showname[row.Command.split()[3]]}}</td>
         <!--<td>{{=row.Command}}</td>-->
         <td>{{=A('delete', _href=URL('delete_job',args=row.Jobname))}}</td><br/>
     	</tr>
-    
     {{total_size=total_size+disk_space}}
     {{pass}}
 {{pass}}</ul>

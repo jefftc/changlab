@@ -55,7 +55,7 @@ def run(in_nodes,parameters, network):
         w(htmllib.A("<methods_clustering>",name="methods_clustering"))
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w('To generate this file, I ran the following analysis:')
-        bie._plot_network_gv("network.png", network)
+        bie.plot_network_gv("network.png", network)
 ##        w(htmllib.P())
 ##        for i in range(len(pipelines[0])):
 ##            w('&nbsp&nbsp &nbsp&nbsp &nbsp&nbsp &nbsp&nbsp' +str(i+1)+'. '+pipelines[0][i])

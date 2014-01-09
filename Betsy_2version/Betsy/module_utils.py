@@ -71,10 +71,9 @@ def get_identifier(network, module_id, pool,
                 assert os.path.exists(node.attributes['filename']), (
             'the input file %s for %s does not exist'
         % (node.attributes['filename'],network.nodes[module_id].name))
-                return node
-            else:
-                return node
+            return node
     return False
+
 def get_inputid(identifier):
     old_filename = os.path.split(identifier)[-1]
     old_filename_no_ext = os.path.splitext(old_filename)[-2]
@@ -91,6 +90,35 @@ def make_unique_hash(identifier, pipeline, parameters):
     hash_result = hash_method.hash_parameters(
         input_file, pipeline, **new_parameters)
     return hash_result
+
+def find_pcaplots(network,pool,module_id):
+    before_pcaplot = None
+    after_pcaplot = None
+    for x in pool:
+        node, node_id = pool[x],x
+        if not node.datatype.name == 'PcaPlot':
+            continue
+        if module_id in network.transitions[node_id]:
+            if 'filename' in node.attributes:
+                    assert os.path.exists(node.attributes['filename']), (
+            'the input file %s for %s does not exist'
+            % (node.attributes['filename'],network.nodes[module_id].name))
+            
+            if (node.attributes['quantile_norm']=='no' and
+                node.attributes['combat_norm']=='no'and
+                node.attributes['shiftscale_norm']=='no'and
+                node.attributes['bfrm_norm']=='no'and
+                node.attributes['dwd_norm']=='no'and
+                node.attributes['gene_center']=='no'and
+                node.attributes['gene_normalize']=='no'and
+                node.attributes['unique_genes']=='no'and
+                node.attributes['platform']=='no'and
+                node.attributes['group_fc']=='no'):
+                before_pcaplot = node
+                after_pcaplot = node
+            else:
+                after_pcaplot = node
+    return before_pcaplot,after_pcaplot
 
 def is_missing(identifier):
     import arrayio
