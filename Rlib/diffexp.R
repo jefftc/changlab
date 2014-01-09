@@ -2,6 +2,7 @@
 # find.de.genes.ttest
 # find.de.genes.ebayes
 # find.de.genes.2cnoref.ebayes
+# find.de.genes.fc
 
 # TODO: 
 # - ttest  Add mean expression, num samples for each class.
@@ -353,3 +354,79 @@ find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA,
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA, fit=fit, TOP=TOP)
 }
+
+
+find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0, 
+  all.genes=FALSE) {
+  # X must be logged.
+  # Y should be the labels for two classes.  NA will be filtered out.
+  # FOLD.CHANGE should not be logged.
+
+  if(ncol(X) != length(Y)) stop("X and Y not aligned")
+
+  I <- which(!is.na(Y))
+  X <- X[,I]
+  Y <- Y[I]
+
+  Y.orig <- Y
+  Y.all <- sort(unique(Y.orig))
+  if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
+  Y <- rep(NA, length(Y.orig))
+  Y[Y.orig == Y.all[1]] <- 1
+  Y[Y.orig == Y.all[2]] <- 2
+  if(any(is.na(Y))) stop("bad")
+  if(sum(Y == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+  if(sum(Y == 2, na.rm=TRUE) <= 1) stop("not enough samples")
+
+  if((length(geneid) == 1) && is.na(geneid)) {
+    ndigits <- floor(log(nrow(X), 10)) + 1
+    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
+  }
+  if((length(genenames) == 1) && is.na(genenames)) {
+    genenames <- geneid
+  }
+  
+  if(ncol(X) != length(Y)) stop("unaligned")
+  if(nrow(X) != length(geneid)) stop("unaligned")
+  if(nrow(X) != length(genenames)) stop("unaligned")
+
+  X.1 <- X[,Y == 1]
+  X.2 <- X[,Y == 2]
+  if(is.null(colnames(X.1)))
+    colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
+  if(is.null(colnames(X.2)))
+    colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
+
+
+  # Find the genes that match the fold change criteria.
+  m1 <- apply(X.1, 1, mean)
+  m2 <- apply(X.2, 1, mean)
+  log.fold.change <- abs(m2 - m1)
+
+  if(!all.genes) {
+    I <- log.fold.change >= log(FOLD.CHANGE, 2)
+    X <- matrix(X[I,], ncol=ncol(X), dimnames=list(NULL, colnames(X)))
+    X.1 <- matrix(X.1[I,], ncol=ncol(X.1), dimnames=list(NULL, colnames(X.1)))
+    X.2 <- matrix(X.2[I,], ncol=ncol(X.2), dimnames=list(NULL, colnames(X.2)))
+    geneid <- geneid[I]
+    genenames <- genenames[I]
+    log.fold.change <- log.fold.change[I]
+  }
+
+  mean.1 <- apply(X.1, 1, mean)
+  mean.2 <- apply(X.2, 1, mean)
+  nsamp.1 <- ncol(X.1)
+  nsamp.2 <- ncol(X.2)
+
+  direction <- rep(sprintf("Higher in %s", Y.all[1]), length(mean.1))
+  direction[mean.2 > mean.1] <- sprintf("Higher in %s", Y.all[2])
+  DATA <- cbind(geneid, genenames, 
+    nsamp.1, nsamp.2, mean.1, mean.2, log.fold.change, direction, X.1, X.2)
+  colnames(DATA) <- c("Gene ID", "Gene Name", 
+    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+    "Log_2 Fold Change", "Direction", 
+    colnames(X.1), colnames(X.2))
+  DATA <- matrix2dataframe(DATA)
+  list(DATA=DATA)
+}
+

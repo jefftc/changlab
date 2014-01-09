@@ -342,8 +342,12 @@ class Module:
         for i in range(len(ante_datas)):
             if isinstance(ante_datas[i], DataType):
                 ante_datas[i] = ante_datas[i]()
+            assert isinstance(ante_datas[i], Data), \
+                   "ante_data must be a Data object: %s" % repr(ante_datas[i])
         if isinstance(cons_data, DataType):
             cons_data = cons_data()
+        assert isinstance(cons_data, Data), \
+               "cons_data must be a Data object: %s" % repr(cons_data)
 
         # Check the keywds dictionary.
         for x in keywds:
@@ -875,8 +879,8 @@ class _OptimizeNoDuplicateData:
             duplicates = self.find_duplicate_data(network)
             if not duplicates:
                 break
-            # Will merge high node_id into low node_id, so root node
-            # will never be affected.
+            # Will merge high node_id into low node_id, so id of root
+            # node will never be changed.
             network = network.merge_nodes(duplicates)
         return network
     
@@ -2520,7 +2524,7 @@ def _can_nonconverting_module_produce_data(module, data):
     return num_attributes
 
 
-def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
+def _find_target_of_nonconverting_module_one_ante(module, ante_data, data):
     assert ante_data in module.ante_datas
     ante_attr = ante_data.attributes
     cons_attr = module.cons_data.attributes
@@ -2536,7 +2540,8 @@ def _find_target_of_nonverting_module_one_ante(module, ante_data, data):
         if not changed:
             continue
         targets.append(key)
-    assert len(targets) >= 1, "No target for nonconverting module."
+    assert len(targets) >= 1, "No target for nonconverting module: %s." % \
+           module.name
     if len(targets) == 1:
         return targets[0]
     
@@ -2610,7 +2615,8 @@ def _find_target_of_nonconverting_module(module, data):
     for ante_data in module.ante_datas:
         if ante_data.datatype != data.datatype:
             continue
-        x = _find_target_of_nonverting_module_one_ante(module, ante_data, data)
+        x = _find_target_of_nonconverting_module_one_ante(
+            module, ante_data, data)
         targets.append(x)
     targets = sorted({}.fromkeys(targets))
     assert len(targets) > 0, "no targets"
@@ -3063,7 +3069,11 @@ def _print_string(s):
     print s
 
 
-def _print_line(line, prefix0, prefixn, width):
+def _print_line(line, prefix0, prefixn, width, outhandle=None):
+    import sys
+    
+    outhandle = outhandle or sys.stdout
+
     lines = []
     p = prefix0
     while line:
@@ -3076,20 +3086,25 @@ def _print_line(line, prefix0, prefixn, width):
         p = prefixn
         if i == 0:
             p = prefix0
-        print "%s%s" % (p, lines[i])
+        print >>outhandle, "%s%s" % (p, lines[i])
 
 
-def print_network(network):
+def print_network(network, outhandle=None):
+    import sys
+
+    outhandle = outhandle or sys.stdout
     line_width = 72
     for i in range(len(network.nodes)):
         p_step = "%2d.  " % i
         p_space = " " * (len(p_step)+2)
-        _print_line(str(network.nodes[i]), p_step, p_space, line_width)
-    print
+        _print_line(
+            str(network.nodes[i]), p_step, p_space, line_width,
+            outhandle=outhandle)
+    print >>outhandle
 
     for i in sorted(network.transitions):
         x = [i, "->"] + network.transitions[i]
-        print "\t".join(map(str, x))
+        print >>outhandle, "\t".join(map(str, x))
     
 
 def plot_network_gv(filename, network):
@@ -3107,10 +3122,16 @@ def plot_network_gv(filename, network):
             x = n.datatype.name
             node2attr["shape"] = "note"
             node2attr["fillcolor"] = "#EEEEEE"
-        else:
+        elif n.__class__.__name__ == "Module":
             x = n.name
             node2attr["shape"] = "box"
             node2attr["fillcolor"] = "#80E0AA"
+        elif n.__class__.__name__ == "QueryModule":
+            x = n.name
+            node2attr["shape"] = "box"
+            node2attr["fillcolor"] = "#60A08A"
+        else:
+            raise AssertionError
             
         node_name = "%s [%d]" % (x, node_id)
         id2name[node_id] = node_name
@@ -3165,7 +3186,6 @@ def _pretty_attributes(attributes):
     return "%s, %s" % (fmt_proper, fmt_improper)
 
 def test_bie():
-    
     #print_modules(all_modules); return
 
     #x = SignalFile(
@@ -3174,8 +3194,9 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    in_data = SignalFile(
-        logged="yes", preprocess="rma", format="jeffs", filename="dfd")
+    in_data = CELFiles
+    #in_data = SignalFile(
+    #    logged="yes", preprocess="rma", format="jeffs", filename="dfd")
     #in_data = [
     #    SignalFile(preprocess="rma", format="jeffs", filename='a'),
     #    ClassLabelFile(filename='b')]
@@ -3210,9 +3231,10 @@ def test_bie():
     
     goal_datatype = SignalFile
     #goal_attributes = dict(format='tdf')
-    goal_attributes = dict(
-        format='tdf', preprocess="rma", logged='yes', missing_values="no",
-        missing_algorithm="median_fill")
+    goal_attributes = dict(logged="yes", preprocess="rma", format="jeffs")
+    #goal_attributes = dict(
+    #    format='tdf', preprocess="rma", logged='yes', missing_values="no",
+    #    missing_algorithm="median_fill")
     #goal_attributes = dict(
     #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
     #    missing_values="no", missing_algorithm="median_fill")
@@ -3280,8 +3302,8 @@ def test_bie():
     #    platform='str', duplicate_probe='high_var_probe')
     
     network = backchain(all_modules, goal_datatype, goal_attributes)
-    network = optimize_network(network)
-    network = prune_network_by_start(network, in_data)
+    #network = optimize_network(network)
+    #network = prune_network_by_start(network, in_data)
     #network = prune_network_by_internal(
     #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
     #network = prune_network_by_internal(
@@ -3318,6 +3340,6 @@ def test_bie():
         
 
 
-#if __name__ == '__main__':
-#    test_bie()
+if __name__ == '__main__':
+    test_bie()
     #import cProfile; cProfile.run("test_bie()")

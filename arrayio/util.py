@@ -605,7 +605,7 @@ def _num_headers_h(matrix):
             x = datatype[i][j]
             if x == CHAR:
                 st = HEAD | SAMPLE | ANNOT
-                if matrix[i][j].upper() == "NA":
+                if matrix[i][j].upper() in ["NA", "-"]:
                     st = st | VALUE
             elif x == INT:
                 st = HEAD | SAMPLE | ANNOT | VALUE
