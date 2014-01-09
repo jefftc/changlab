@@ -270,7 +270,8 @@ def parse_geneset(MATRIX, is_row, geneset):
     if not geneset:
         return []
     filename, genesets = _parse_file_gs(geneset)
-    assert len(genesets) >= 1
+    assert len(genesets) >= 1, "I could not parse a gene set from: %s" % \
+           geneset
 
     keywds = {"allow_tdf": True}
     genes = genesetlib.read_genes(filename, *genesets, **keywds)
