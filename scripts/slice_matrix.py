@@ -26,6 +26,7 @@
 # relabel_col_ids
 # append_col_ids
 # reorder_col_indexes
+# reorder_col_cluster
 # reorder_col_alphabetical
 # remove_duplicate_cols
 # remove_unnamed_cols
@@ -686,6 +687,22 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
     I_other = [i for i in range(MATRIX.ncol()) if i not in I_given]
     I_all = I_given + I_other
     MATRIX_new = MATRIX.matrix(None, I_all)
+    return MATRIX_new
+
+
+def reorder_col_cluster(MATRIX, cluster):
+    from genomicode import jmath
+    
+    if not cluster:
+        return MATRIX
+    if not MATRIX.nrow() or not MATRIX.ncol():
+        return MATRIX
+
+    R = jmath.start_R()
+    jmath.R_equals(MATRIX._X, "X")
+    I = list(R("hclust(dist(t(X)))$order"))   # 1-based indexes
+    I = [x-1 for x in I]
+    MATRIX_new = MATRIX.matrix(None, I)
     return MATRIX_new
 
 
@@ -1942,6 +1959,9 @@ def main():
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --col_indexes_include_headers.")
     group.add_argument(
+        "--reorder_col_cluster", default=False, action="store_true",
+        help="Cluster the cols.")
+    group.add_argument(
         "--reorder_col_alphabetical", default=False, action="store_true",
         help="Sort the columns alphabetically.")
     group.add_argument(
@@ -2275,8 +2295,9 @@ def main():
     elif args.gene_normalize == "var":
         normalize_genes_var(MATRIX, args.gn_subset_indexes)
 
-    # Cluster the rows.  Do this after normalizing, zero-fill, log.
+    # Cluster the rows and columns.  Do this after normalizing, zero-fill, log.
     MATRIX = reorder_row_cluster(MATRIX, args.reorder_row_cluster)
+    MATRIX = reorder_col_cluster(MATRIX, args.reorder_col_cluster)
 
     # Reverse the rows.  Do after all the selection.  Do after
     # aligning to a file.

@@ -143,7 +143,8 @@ class Constraint:
             for x in arg1:
                 assert type(x) is type("")
         else:
-            raise AssertionError, "Invalid constraint: %s" % behavior
+            raise AssertionError, "Invalid behavior (%s) for constraint %s." %(
+                behavior, name)
         self.name = name
         self.behavior = behavior
         self.arg1 = arg1
@@ -181,7 +182,9 @@ class Consequence:
                 assert type(x) is type("")
             assert arg2 is None
         elif behavior == SAME_AS_CONSTRAINT:
-            assert type(arg1) is type(0)
+            if arg1 is None:  # default to datatype 0.
+                arg1 = 0
+            assert type(arg1) is type(0)  # index of input variable
             assert arg2 is None
         else:
             raise AssertionError, "Invalid consequence: %s" % behavior
@@ -352,7 +355,7 @@ class Module:
             self._assert_constraint(in_datatypes, x)
         for x in consequences:
             self._assert_consequence(
-                in_datatypes, out_datatype, constraints, x)
+                name, in_datatypes, out_datatype, constraints, x)
             
     def _assert_constraint(self, in_datatypes, constraint):
         # Get the input datatype that this constraint refers to.
@@ -365,7 +368,7 @@ class Module:
             constraint.name, constraint.arg1)
 
     def _assert_consequence(
-        self, in_datatypes, out_datatype, constraints, consequence):
+        self, name, in_datatypes, out_datatype, constraints, consequence):
         import itertools
         assert consequence.name in out_datatype.get_attribute_names(), \
                "Module %s refers to an unknown attribute %s." % (
@@ -373,20 +376,37 @@ class Module:
         
         if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
             assert out_datatype.is_valid_attribute_value(
-                consequence.name, consequence.arg1)
+                consequence.name, consequence.arg1), \
+                "'%s' is not a valid value for '%s' in module '%s'" % (
+                consequence.arg1, consequence.name, name)
         elif consequence.behavior == SAME_AS_CONSTRAINT:
-            # Make sure index on constraint is reasonable.
-            index = consequence.arg1
-            assert index < len(constraints)
-            cons = constraints[index]
-            assert cons.behavior in [MUST_BE, CAN_BE_ANY_OF]
+            # Make sure index on input variable is reasonable.
+            index = consequence.arg1   # index of input variable
+            assert index < len(in_datatypes), \
+                   "Invalid input index (%s) for module %s:%s." % (
+                index, name, consequence.name)
+            in_datatype = in_datatypes[index]
+            
+            # Make sure there is a valid constraint.
+            x = [x for x in constraints
+                 if x.behavior in [MUST_BE, CAN_BE_ANY_OF]]
+            x = [x for x in x if x.input_index == index]
+            x = [x for x in x if x.name == consequence.name]
+            assert len(x) > 0, "I could not find a constraint on %s." % \
+                   consequence.name
+            assert len(x) == 1
+            cons = x[0]
 
             # Make sure the values of this constraint are allowed in
-            # the output datatype.
-            attr = out_datatype.get_attribute(consequence.name)
-            assert attr.is_valid_value(cons.arg1), \
+            # the input and output datatypes.
+            in_attr = in_datatype.get_attribute(consequence.name)
+            out_attr = out_datatype.get_attribute(consequence.name)
+            assert in_attr.is_valid_value(cons.arg1), \
                    "Invalid value for %s (%s) in module %s" % (
-                attr.name, cons.arg1, self.name)
+                in_attr.name, cons.arg1, self.name)
+            assert out_attr.is_valid_value(cons.arg1), \
+                   "Invalid value for %s (%s) in module %s" % (
+                out_attr.name, cons.arg1, self.name)
         else:
             raise AssertionError, consequence.behavior
 
@@ -1974,8 +1994,8 @@ SignalFile = DataType(
     Attribute("predataset", ["no", "yes"], "no", "no"),
     Attribute("rename_sample", ["no", "yes"], "no", "no"),
     Attribute("contents", [
-        "unspecified", "train0", "train1", "test", 'class0+class1+test',
-        "class0", "class1", "class0+class1"],
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"],
               "unspecified", "unspecified"),
     )
     
@@ -2027,8 +2047,8 @@ all_modules = [
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("quantile_norm", MUST_BE, "no"),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
-        Consequence("logged", SAME_AS_CONSTRAINT, 1),
+        Consequence("format", SAME_AS_CONSTRAINT),
+        Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("quantile_norm", SET_TO, "yes"),
         ),
     Module(
@@ -2042,7 +2062,7 @@ all_modules = [
         SignalFile, SignalFile,
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "unknown"),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
+        Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", BASED_ON_DATA, ["yes", "no"]),
         ),
     Module(
@@ -2050,7 +2070,7 @@ all_modules = [
         SignalFile, SignalFile,
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "no"),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
+        Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", SET_TO, "yes"),
         ),
     Module(
@@ -2059,8 +2079,8 @@ all_modules = [
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "unknown"),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
-        Consequence("logged", SAME_AS_CONSTRAINT, 1),
+        Consequence("format", SAME_AS_CONSTRAINT),
+        Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("missing_values", BASED_ON_DATA, ["no", "yes"]),
         ),
     Module(
@@ -2070,9 +2090,9 @@ all_modules = [
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "yes"),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
-        Consequence("logged", SAME_AS_CONSTRAINT, 1),
-        Consequence("missing_values", SAME_AS_CONSTRAINT, 2),
+        Consequence("format", SAME_AS_CONSTRAINT),
+        Consequence("logged", SAME_AS_CONSTRAINT),
+        Consequence("missing_values", SAME_AS_CONSTRAINT),
         ),
     Module(
         "fill_missing_with_zeros",
@@ -2080,12 +2100,25 @@ all_modules = [
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "yes"),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
-        Consequence("logged", SAME_AS_CONSTRAINT, 1),
+        Consequence("format", SAME_AS_CONSTRAINT),
+        Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("missing_values", SET_TO, "no"),
         Consequence(
             "missing_algorithm", SET_TO, "zero_fill", side_effect=True),
         ),
+
+    Module(
+        "merge_two_classes", [SignalFile, SignalFile], SignalFile,
+        Constraint("contents", MUST_BE, "class0", 0),
+        Constraint("format", MUST_BE, "tdf", 0),
+        Constraint("logged", MUST_BE, "yes", 0),
+        Constraint("contents", MUST_BE, "class1", 1),
+        Constraint("format", MUST_BE, "tdf", 1),
+        Constraint("logged", MUST_BE, "yes", 1),
+        Consequence("contents", SET_TO, "class0,class1"),
+        Consequence("format", SAME_AS_CONSTRAINT, 0),
+        Consequence("logged", SAME_AS_CONSTRAINT, 0),
+        )
     ]
 
 def test_bie():
