@@ -90,6 +90,9 @@ CONST2STR = {
     }
 
 
+DEBUG = False
+
+
 class Attribute:
     def __init__(self, name, values, default_in, default_out):
         # Make sure name and values are valid.
@@ -132,6 +135,32 @@ class Attribute:
     def __hash__(self):
         x = self.name, tuple(self.values), self.default_in, self.default_out
         return hash(x)
+
+
+class UserInput:
+    def __init__(self, name, default=None):
+        assert type(name) is type("")
+        self.name = name
+        self.default = default
+    def __cmp__(self, other):
+        if not isinstance(other, UserInput):
+            return cmp(id(self), id(other))
+        x1 = [self.name, self.default]
+        x2 = [other.name, other.default]
+        return cmp(x1, x2)
+    def __hash__(self):
+        x = self.name, self.default
+        return hash(x)
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [
+            repr(self.name),
+            ]
+        if self.default is not None:
+            x.append(repr(self.default))
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
 
 
 class Constraint:
@@ -220,18 +249,29 @@ class Consequence:
 
 class DataType:
     def __init__(self, name, *attributes):
-        # attributes is a list of Attribute objects.
-        for attr in attributes:
-            assert isinstance(attr, Attribute)
+        for x in attributes:
+            assert isinstance(x, Attribute)
+
+        ## # Make sure no overlap between the attributes and user inputs.
+        ## attr_names = [x.name for x in attributes]
+        ## user_names = [x.name for x in user_inputs]
+        ## for x in attr_names:
+        ##     assert x not in user_names, "%s overlaps in DataType %s." % (
+        ##         x, name)
+            
         self.name = name
-        self.attributes = attributes[:]
+        self.attributes = attributes
+        ## self.user_inputs = user_inputs
     def get_attribute(self, name):
         x = [x for x in self.attributes if x.name == name]
-        assert len(x) > 0, "Attribute not found: %s" % name
+        assert len(x) > 0, "DataType %s has no attribute %s." % (
+            repr(self.name), repr(name))
         assert len(x) == 1, "Multiple attributes with same name?"
         return x[0]
     def get_attribute_names(self):
         return [x.name for x in self.attributes]
+    #def get_user_input_names(self):
+    #    return [x.name for x in self.user_inputs]
     def is_valid_attribute_name(self, name):
         return name in self.get_attribute_names()
     def is_valid_attribute_value(self, name, value):
@@ -240,13 +280,18 @@ class DataType:
     def __cmp__(self, other):
         if not isinstance(other, DataType):
             return cmp(id(self), id(other))
+        # Bug: should compare attributes and user_inputs without regard
+        # to order.
+        #x1 = [self.name, self.attributes, self.user_inputs]
+        #x2 = [other.name, other.attributes, self.user_inputs]
         x1 = [self.name, self.attributes]
         x2 = [other.name, other.attributes]
         return cmp(x1, x2)
     def __hash__(self):
+        #x = self.name, tuple(self.attributes), tuple(self.user_inputs)
         x = self.name, tuple(self.attributes)
         return hash(x)
-    def input(self, **attrdict):
+    def input(self, **keywds):
         # Create a Data object.  Let Data check the attributes against
         # the DataType because Data can be created without going
         # through this function.
@@ -266,47 +311,62 @@ class DataType:
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        x = [self.name] + [repr(x) for x in self.attributes]
+        x = [self.name]
+        x += [repr(x) for x in self.attributes]
+        #x += [repr(x) for x in self.user_inputs]
         return "DataType(%s)" % ", ".join(x)
 
 
 class Data:
     # Members:
-    # datatype     Datatype object.
-    # attributes   Dict of attribute name -> value.
+    # datatype      Datatype object.
+    # attributes    Dict of attribute name -> value.
 
     # Should not be called by the user.  Should always be created from
     # a DataType object.
-    def __init__(self, datatype, **attributes):
-        # attributes is a dictionary of name -> value (or list of
-        # values).
-
-        # Make sure the attributes of this Data object match the
-        # attributes of the DataType.
-        names = datatype.get_attribute_names()
-        for name in names:
-            assert name in attributes, "No value given for %s." % name
-        for name in attributes:
-            assert name in names, "%s is not an attribute." % name
-        assert len(attributes) == len(names)
+    def __init__(self, datatype, **keywds):
+        # keywds is a dictionary of (attribute or user_input) name ->
+        # value (or list of values).
+        
+        # Make sure values are provided for every attribute.
+        attr_names = datatype.get_attribute_names()
+        for name in attr_names:
+            assert name in keywds, "No value given for %s." % name
 
         # Make sure the values of the attributes are legal.
-        for name, value in attributes.iteritems():
+        for name, value in keywds.iteritems():
+            assert datatype.is_valid_attribute_name(name)
             assert datatype.is_valid_attribute_value(name, value)
 
+        ## attributes = {}
+        ## user_inputs = {}
+        ## for name, value in keywds.iteritems():
+        ##     if name in attr_names:
+        ##         attributes[name] = value
+        ##     elif name in user_names:
+        ##         user_inputs[name] = value
+        ##     else:
+        ##         raise AssertionError, "Unknown: %s" % name
+
         self.datatype = datatype
-        self.attributes = attributes.copy()
+        self.attributes = keywds.copy()
+        #self.user_inputs = user_inputs
     def __cmp__(self, other):
         if not isinstance(other, Data):
             return cmp(id(self), id(other))
+        #x1 = [self.datatype, self.attributes, self.user_inputs]
+        #x2 = [other.datatype, other.attributes, self.user_inputs]
         x1 = [self.datatype, self.attributes]
         x2 = [other.datatype, other.attributes]
         return cmp(x1, x2)
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
+        #keywds = self.attributes.copy()
+        #keywds.update(self.user_inputs)
         x = [
             self.datatype.name,
+            #_pretty_attributes(keywds),
             _pretty_attributes(self.attributes),
             ]
         x = [x for x in x if x]
@@ -315,8 +375,8 @@ class Data:
 
 class Module:
     def __init__(self, name, in_datatypes, out_datatype, *params):
-        # params is a list of Constraint, Consequence, and
-        # ParameterDef objects.
+        # params is a list of Constraint, Consequence, and UserInput
+        # objects.
         assert type(name) is type("")
 
         # The caller can provide either a single DataType object or a
@@ -330,17 +390,17 @@ class Module:
             assert isinstance(x, DataType)
         assert isinstance(out_datatype, DataType)
 
-        # Separate the constraints and consequences.
+        # Separate the param objects.
         constraints = []
         consequences = []
-        parameters = []
+        user_inputs = []
         for x in params:
             if isinstance(x, Constraint):
                 constraints.append(x)
             elif isinstance(x, Consequence):
                 consequences.append(x)
-            elif isinstance(x, ParameterDef):
-                parameters.append(x)
+            elif isinstance(x, UserInput):
+                user_inputs.append(x)
             else:
                 raise AssertionError, "invalid parameter: %s" % repr(x)
             
@@ -349,7 +409,7 @@ class Module:
         self.out_datatype = out_datatype
         self.constraints = constraints
         self.consequences = consequences
-        self.parameters = parameters
+        self.user_inputs = user_inputs
 
         for x in constraints:
             self._assert_constraint(in_datatypes, x)
@@ -431,9 +491,9 @@ class Module:
         if not isinstance(other, Module):
             return cmp(id(self), id(other))
         x1 = [self.name, self.in_datatypes, self.out_datatype,
-              self.constraints, self.consequences, self.parameters]
+              self.constraints, self.consequences, self.user_inputs]
         x2 = [other.name, other.in_datatypes, other.out_datatype,
-              other.constraints, other.consequences, self.parameters]
+              other.constraints, other.consequences, self.user_inputs]
         return cmp(x1, x2)
     def __str__(self):
         return self.__repr__()
@@ -446,7 +506,7 @@ class Module:
         x3 = self.out_datatype.name
         x4 = [repr(x) for x in self.constraints]
         x5 = [repr(x) for x in self.consequences]
-        x6 = [repr(x) for x in self.parameters]
+        x6 = [repr(x) for x in self.user_inputs]
         x = [x1, x2, x3] + x4 + x5 + x6
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
@@ -1580,6 +1640,11 @@ def _can_module_take_data(module, datas):
     return True
 
 
+def debug_print(s):
+    if DEBUG:
+        print s
+
+
 def _can_module_produce_data(module, data):
     # Return whether this module can produce this data object.
 
@@ -1595,9 +1660,14 @@ def _can_module_produce_data(module, data):
     #   in_datatypes and out_datatype are different.
     #   e.g. download_geo_GSEID  gseid -> expression_files  (no attributes)
 
+    debug_print("Testing if module %s can produce data %s." % (
+        repr(module.name), str(data)))
+
     # If this module doesn't produce the same data type, then it can't
     # produce this data object.
     if module.out_datatype != data.datatype:
+        debug_print(
+            "Module can't generate data type: %s." % data.datatype.name)
         return False
 
     # If any of the consequences conflict, then the module can't produce
@@ -1617,7 +1687,13 @@ def _can_module_produce_data(module, data):
             outc_type = TYPE_ENUM
         elif consequence.behavior == SAME_AS_CONSTRAINT:
             # Get the value from the constraint.
-            constraint = module.constraints[consequence.arg1]
+            datatype_index = consequence.arg1
+            assert type(datatype_index) is type(0)
+            assert datatype_index < len(module.in_datatypes)
+            x = [x for x in module.constraints if x.name == consequence.name]
+            x = [x for x in x if x.input_index == datatype_index]
+            assert len(x) == 1
+            constraint = x[0]
             outc_value = constraint.arg1
             if constraint.behavior == MUST_BE:
                 outc_type = TYPE_ATOM
@@ -1634,19 +1710,24 @@ def _can_module_produce_data(module, data):
 
         if case == 1:
             if data_value != outc_value:
+                debug_print("Consequence %s conflicts [%s %s]." % (
+                    consequence.name, outc_value, data_value))
                 return False
         elif case == 2:
             # Module can produce any of a list of values.  Check if
             # the data's value can be produced by the module.
             if data_value not in outc_value:
+                debug_print("Consequence %s conflicts." % consequence.name)
                 return False
         elif case == 3:
             # Module produces a specific value.  Data could be one of
             # many values.
             if outc_value not in data_value:
+                debug_print("Consequence %s conflicts." % consequence.name)
                 return False
         elif case == 4:
             if not _intersection(data_value, outc_value):
+                debug_print("Consequence %s conflicts." % consequence.name)
                 return False
         else:
             raise AssertionError
@@ -1661,13 +1742,16 @@ def _can_module_produce_data(module, data):
             continue
         if consequence.side_effect:
             continue
+        debug_print("Consequence %s matches." % consequence.name)
         return True
 
     # No conflicts and no consequences that match.
     if not module.consequences:
+        debug_print("Match because of no consequences.")
         return True
 
     # No consequences match.
+    debug_print("No consequences match.")
     return False
 
 
@@ -1946,21 +2030,24 @@ def _pretty_attributes(attributes):
     return "%s, %s" % (fmt_proper, fmt_improper)
 
 
-class ParameterDef:
-    def __init__(self, name, default=None):
-        assert type(name) is type("")
-        self.name = name
-        self.default = default
-
-
-class Parameter:
-    def __init__(self, module_name, **parameters):
-        # parameters is a dictionary of name -> value.
-        assert type(module_name) is type("")
-        for name, value in parameters.iteritems():
-            assert type(name) is type("")
-        self.module_name = module_name
-        self.parameters = parameters.copy()
+## class Parameter:
+##     def __init__(self, module_name, **parameters):
+##         # parameters is a dictionary of name -> value.
+##         assert type(module_name) is type("")
+##         for name, value in parameters.iteritems():
+##             assert type(name) is type("")
+##         self.module_name = module_name
+##         self.parameters = parameters.copy()
+##     def __str__(self):
+##         return self.__repr__()
+##     def __repr__(self):
+##         x = [
+##             repr(self.module_name),
+##             ]
+##         for key, value in parameters:
+##             x.append("%s=%s" % (key, repr(value)))
+##         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+##         return x
 
 
 GEOSeries = DataType("GEOSeries")
@@ -1982,6 +2069,9 @@ SignalFile = DataType(
     Attribute("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "none", "median_fill"),
     Attribute("logged", ["unknown", "no", "yes"], "unknown", "yes"),
+    
+    # This is not necessary.  Remove.
+    Attribute("filtered", ["no", "yes"], "no", "no"),
 
     # Normalization of the data.
     Attribute("dwd_norm", ["no", "yes"], "no", "no"),
@@ -2003,8 +2093,7 @@ SignalFile = DataType(
 all_modules = [
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
-        ParameterDef("GSEID"),
-        ParameterDef("GPLID")),
+        UserInput("GSEID"), UserInput("GPLID")),
     Module(
         "extract_CEL_files", ExpressionFiles, CELFiles,
         Consequence("version", SET_TO, "unknown"),
@@ -2086,13 +2175,15 @@ all_modules = [
     Module(
         "filter_genes_by_missing_values",
         SignalFile, SignalFile,
-        ParameterDef("filter", 0.50),
+        UserInput("filter_genes_with_missing_values", 0.50),
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "yes"),
+        Constraint("filtered", MUST_BE, "no"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("missing_values", SAME_AS_CONSTRAINT),
+        Consequence("filtered", SET_TO, "yes")
         ),
     Module(
         "fill_missing_with_zeros",
@@ -2155,13 +2246,16 @@ def test_bie():
     #out_data = SignalFile.output(
     #    format="tdf", logged=["no", "yes"], preprocess=["rma", "mas5"],
     #    quantile_norm=["no", "yes"])
+    #out_data = SignalFile.output(
+    #    format="tdf", preprocess="mas5", logged=["no", "yes"],
+    #    missing_values="no", quantile_norm=["no", "yes"])
     out_data = SignalFile.output(
-        format="tdf", preprocess="mas5", logged=["no", "yes"],
-        missing_values="no", quantile_norm=["no", "yes"])
-    parameters = [
-        Parameter("download_geo", GSEID="GSE2034", GPLID="GPL9196"),
-        Parameter("filter_genes_by_missing_values", filter=0.50),
-        ]
+        format="tdf", preprocess="mas5", logged="yes",
+        missing_values="no", quantile_norm="yes")
+    #parameters = [
+    #    Parameter("download_geo", GSEID="GSE2034", GPLID="GPL9196"),
+    #    Parameter("filter_genes_by_missing_values", filter=0.50),
+    #    ]
     #out_data = SignalFile(format='tdf', logged='no', missing_values="no",
     #    missing_algorithm="median_fill")
     
