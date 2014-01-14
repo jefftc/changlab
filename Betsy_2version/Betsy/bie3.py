@@ -2155,9 +2155,13 @@ def test_bie():
     #out_data = SignalFile.output(
     #    format="tdf", logged=["no", "yes"], preprocess=["rma", "mas5"],
     #    quantile_norm=["no", "yes"])
+    #out_data = SignalFile.output(
+    #    format="tdf", preprocess="mas5", logged=["no", "yes"],
+    #    missing_values="no", quantile_norm=["no", "yes"])
+    # XXX quantile_norm doesn't work.
     out_data = SignalFile.output(
-        format="tdf", preprocess="mas5", logged=["no", "yes"],
-        missing_values="no", quantile_norm=["no", "yes"])
+        format="tdf", preprocess="mas5", logged="yes",
+        missing_values="no", quantile_norm="yes")
     parameters = [
         Parameter("download_geo", GSEID="GSE2034", GPLID="GPL9196"),
         Parameter("filter_genes_by_missing_values", filter=0.50),
