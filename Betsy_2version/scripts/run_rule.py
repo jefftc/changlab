@@ -20,7 +20,9 @@ def main():
                         const=True, default=False,
                         help='show the test case procedure')
     parser.add_argument('--network', dest='network',type=str, default=None,
-                        help='generate the new network file')
+                        help='generate the output network png file')
+    parser.add_argument('--network_text', dest='network_text',type=str, default=None,
+                        help='generate the output network text file')
     args = parser.parse_args()
     assert args.in_datatype,'please specify the in_datatype'
     assert args.out_datatype,'please specify the out_datatype'
@@ -63,6 +65,12 @@ def main():
                        'please check your command.')
     if args.network:
         bie.plot_network_gv(args.network, network)
+    if args.network_text:
+        handle = file(args.network_text,'w')
+        try:
+            bie.print_network(network, handle)
+        finally:
+            handle.close()
     if args.dry_run:
         bie.print_network(network)
     else:

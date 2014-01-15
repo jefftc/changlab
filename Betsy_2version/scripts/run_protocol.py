@@ -24,7 +24,9 @@ def main():
                         default=False, action='store_const',
                         help='only shows the pipelines')
     parser.add_argument('--network', dest='network',type=str, default=None,
-                        help='generate the new network file')
+                        help='generate the new network png file')
+    parser.add_argument('--network_text', dest='network_text',type=str, default=None,
+                        help='generate the output network text file')
     parser.add_argument('--describe_protocol',
                         dest='describe_protocol',
                         action='store_const', default=False,
@@ -111,6 +113,12 @@ def main():
         print args.network
         bie.print_network(network)
         bie.plot_network_gv(args.network, network)
+    if args.network_text:
+        handle = file(args.network_text,'w')
+        try:
+            bie.print_network(network, handle)
+        finally:
+            handle.close()
     if args.dry_run:
         bie.print_network(network)
     else:
