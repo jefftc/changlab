@@ -335,7 +335,8 @@ class Data:
 
         # Make sure the values of the attributes are legal.
         for name, value in keywds.iteritems():
-            assert datatype.is_valid_attribute_name(name)
+            assert datatype.is_valid_attribute_name(name), \
+                   "%s is not a known attribute." % name
             assert datatype.is_valid_attribute_value(name, value)
 
         ## attributes = {}
@@ -503,6 +504,7 @@ class Module:
             x2 = self.in_datatypes[0].name
         else:
             x2 = [x.name for x in self.in_datatypes]
+            x2 = "[%s]" % ", ".join(x2)
         x3 = self.out_datatype.name
         x4 = [repr(x) for x in self.constraints]
         x5 = [repr(x) for x in self.consequences]
@@ -2251,7 +2253,8 @@ def test_bie():
     #    missing_values="no", quantile_norm=["no", "yes"])
     out_data = SignalFile.output(
         format="tdf", preprocess="mas5", logged="yes",
-        missing_values="no", quantile_norm="yes")
+        missing_values="no", quantile_norm="no",
+        contents="class0,class1")
     #parameters = [
     #    Parameter("download_geo", GSEID="GSE2034", GPLID="GPL9196"),
     #    Parameter("filter_genes_by_missing_values", filter=0.50),
