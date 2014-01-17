@@ -23,7 +23,7 @@ def protocol():
     protocol_parameters,protocol_parameters_dict,protocol_inputs,column_name,pretty_name = x
     fields = create_form(protocol_inputs,protocol_parameters)
     form=SQLFORM.factory(*fields)
-    form_queue = FORM(INPUT(_type='submit',_value='show jobs status',_style ='height: 80px;width:120px;font-size: 18px;font-weight:bold'))
+    form_queue = FORM(INPUT(_type='submit',_value='show jobs status',_style ='height: 50px;width:200px;font-size: 18px;font-weight:bold'))
     if form.process().accepted:
         form_value = form.vars
         input_file,command_parameters = create_command(form_value)

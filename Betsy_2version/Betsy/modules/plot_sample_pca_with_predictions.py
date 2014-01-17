@@ -62,5 +62,4 @@ def find_antecedents(network, module_id,data_nodes,parameters):
                                             data_nodes,datatype='ClassifyFile',
                                             optional_key='classify_alg',
                                             optional_value=parameters['classify_alg'])
-    print classify_node
     return data_node,classify_node

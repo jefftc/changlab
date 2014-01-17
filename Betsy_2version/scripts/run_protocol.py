@@ -24,7 +24,9 @@ def main():
                         default=False, action='store_const',
                         help='only shows the pipelines')
     parser.add_argument('--network', dest='network',type=str, default=None,
-                        help='generate the new network file')
+                        help='generate the new network png file')
+    parser.add_argument('--network_text', dest='network_text',type=str, default=None,
+                        help='generate the output network text file')
     parser.add_argument('--describe_protocol',
                         dest='describe_protocol',
                         action='store_const', default=False,
@@ -49,7 +51,6 @@ def main():
     if not args.in_datatype:
         raise parser.error('please specify the in_datatype')
     out_param = args.out_param
-    
     module = protocol_utils.import_protocol(args.protocol)
     protocol_utils.check_parameters(module.PARAMETERS)
     protocol_utils.check_default(module.PARAMETERS)
@@ -104,18 +105,24 @@ def main():
         print 'PARAMETERS', module.PARAMETERS
     print 'Generating network...'
     network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
     assert network, ('No network has been generated, '
                        'please check your command.')
     if args.network:
         print args.network
-        bie._print_network(network)
-        bie._plot_network_gv(args.network, network)
+        bie.print_network(network)
+        bie.plot_network_gv(args.network, network)
+    if args.network_text:
+        handle = file(args.network_text,'w')
+        try:
+            bie.print_network(network, handle)
+        finally:
+            handle.close()
     if args.dry_run:
-        bie._print_network(network)
+        bie.print_network(network)
     else:
-        rule_engine_bie.run_pipeline(network,in_data)
+        rule_engine_bie.run_pipeline(network,in_data,args.user,args.job_name)
         print 'The network has completed successfully.'
        
         

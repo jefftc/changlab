@@ -51,7 +51,7 @@ def run(data_node,parameters, network):
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w(htmllib.H3("1.Heatmap File"))
         w('To generate this file, I ran the following analysis:')
-        bie._plot_network_gv("network.png", network)
+        bie.plot_network_gv("network.png", network)
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
         w(htmllib.P())

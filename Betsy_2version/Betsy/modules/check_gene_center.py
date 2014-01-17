@@ -50,12 +50,12 @@ def find_antecedents(network, module_id,data_nodes,parameters):
 
 def is_gene_center_mean(M):
     for line in M.slice():
-        if numpy.mean(line)<0.0000001:
+        if numpy.mean(line)>0.0000001:
             return False
     return 'mean'
 
 def is_gene_center_median(M):
     for line in M.slice():
-        if numpy.median(line)<0.0000001:
+        if numpy.median(line)>0.0000001:
             return False
     return 'median'

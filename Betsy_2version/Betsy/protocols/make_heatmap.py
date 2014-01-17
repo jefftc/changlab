@@ -172,7 +172,27 @@ PARAMETERS=[Parameter('preprocess',pretty_name='Preprocess',
                       description='cluster algorithm'),
             Parameter('report_type',pretty_name='heatmap report',category=COMMON,
                       choices=['heatmap'],
-                      default_value='heatmap',description='make heatmap report'),]
+                      default_value='heatmap',description='make heatmap report'),
+            Parameter('cn_num_neighbors',pretty_name='cn num neighbors',category=CLASS_NEIGHBORS,
+                      description='number of neighbors to find'),
+            Parameter('cn_num_perm',pretty_name='cn num permutations',category=CLASS_NEIGHBORS,
+                      description='number of permutations in permutation test'),
+            Parameter('cn_user_pval',pretty_name='cn user pval',category=CLASS_NEIGHBORS,
+                      description='user-set significance value for permutation test'),  
+            Parameter('cn_mean_or_median',pretty_name='cn mean or median',category=CLASS_NEIGHBORS,
+                      choices=['mean', 'median'],description='use mean or median for feature selection'),
+            Parameter('cn_ttest_or_snr',pretty_name='cn ttest or snr',category=CLASS_NEIGHBORS,
+                      choices=['t_test','snr'],description='use signal-to-noise or t-test to select neighbors'),
+            Parameter('cn_filter_data',choices=['yes','no'],category=CLASS_NEIGHBORS,
+                      pretty_name='cn filter data',description='if no, values below will be ignored'),
+            Parameter('cn_min_threshold',category=CLASS_NEIGHBORS, pretty_name='cn min threshold',
+                      description='minimum threshold for data'),
+            Parameter('cn_max_threshold',category=CLASS_NEIGHBORS, pretty_name='cn max threshold',
+                     description='maximum threshold for data'), 
+            Parameter('cn_min_folddiff',category=CLASS_NEIGHBORS, pretty_name='cn min fold diff',
+                     description='minimum fold difference for filtering genes'), 
+            Parameter('cn_abs_diff',category=CLASS_NEIGHBORS,pretty_name='cn abs diff',
+                     description='minimum absolute difference for filtering genes')]
 
 
 

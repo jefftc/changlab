@@ -1,6 +1,4 @@
 #make_classify_report.py
-#from Betsy
-import config
 import os
 import shutil
 import imghdr
@@ -9,7 +7,7 @@ import arrayio
 import math
 from genomicode import parselib
 from genomicode import htmllib
-from Betsyimport bie
+from Betsy import bie
 from Betsy import rulebase
 from Betsy import module_utils
 from Betsy import hash_method
@@ -153,7 +151,7 @@ def run(in_nodes, parameters, network):
         w(htmllib.HR())
         w(htmllib.A("<methods_svm>",name="methods_svm"))
         w('To generate these files, I ran the following analysis:')
-        bie._plot_network_gv("network.png", network)
+        bie.plot_network_gv("network.png", network)
         w(htmllib.P())
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))

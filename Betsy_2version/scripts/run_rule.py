@@ -20,7 +20,9 @@ def main():
                         const=True, default=False,
                         help='show the test case procedure')
     parser.add_argument('--network', dest='network',type=str, default=None,
-                        help='generate the new network file')
+                        help='generate the output network png file')
+    parser.add_argument('--network_text', dest='network_text',type=str, default=None,
+                        help='generate the output network text file')
     args = parser.parse_args()
     assert args.in_datatype,'please specify the in_datatype'
     assert args.out_datatype,'please specify the out_datatype'
@@ -57,14 +59,20 @@ def main():
         in_data.append(fn(**in_parameters[i]))
     print 'Generating network...'
     network = bie.backchain(rulebase.all_modules, goal_datatype, goal_attributes)
+    network = bie.select_start_node(network, in_data)
     network = bie.optimize_network(network)
-    network = bie.prune_network_by_start(network, in_data)
     assert network, ('No pipeline has been generated, '
                        'please check your command.')
     if args.network:
-        bie._plot_network_gv(args.network, network)
+        bie.plot_network_gv(args.network, network)
+    if args.network_text:
+        handle = file(args.network_text,'w')
+        try:
+            bie.print_network(network, handle)
+        finally:
+            handle.close()
     if args.dry_run:
-        bie._print_network(network)
+        bie.print_network(network)
     else:
         rule_engine_bie.run_pipeline(network,in_data)
         print 'All pipelines have completed successfully.'
