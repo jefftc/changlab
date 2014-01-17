@@ -91,6 +91,7 @@ CONST2STR = {
 
 
 DEBUG = False
+#DEBUG = True
 
 
 class Attribute:
@@ -174,6 +175,8 @@ class Constraint:
         else:
             raise AssertionError, "Invalid behavior (%s) for constraint %s." %(
                 behavior, name)
+        assert input_index is None or type(input_index) is type(0)
+        
         self.name = name
         self.behavior = behavior
         self.arg1 = arg1
@@ -335,7 +338,9 @@ class Data:
 
         # Make sure the values of the attributes are legal.
         for name, value in keywds.iteritems():
-            assert datatype.is_valid_attribute_name(name)
+            assert datatype.is_valid_attribute_name(name), \
+                   "%s is not a known attribute for datatype %s." % (
+                name, datatype.name)
             assert datatype.is_valid_attribute_value(name, value)
 
         ## attributes = {}
@@ -503,6 +508,7 @@ class Module:
             x2 = self.in_datatypes[0].name
         else:
             x2 = [x.name for x in self.in_datatypes]
+            x2 = "[%s]" % ", ".join(x2)
         x3 = self.out_datatype.name
         x4 = [repr(x) for x in self.constraints]
         x5 = [repr(x) for x in self.consequences]
@@ -1540,6 +1546,8 @@ def _backchain_to_input(module, in_num, out_data):
 
     in_datatype = module.in_datatypes[in_num]
     out_datatype = out_data.datatype
+    debug_print("Backchaining %s from %s to %s [%d]." % (
+        module.name, out_datatype.name, in_datatype.name, in_num))
 
     if in_datatype == out_datatype:
         # Start with the attributes in the out_data.  Convert them
@@ -1562,6 +1570,8 @@ def _backchain_to_input(module, in_num, out_data):
 
     # Now make sure the attributes meet the constraints.
     for constraint in module.constraints:
+        if constraint.input_index != in_num:
+            continue
         if constraint.behavior == MUST_BE:
             attributes[constraint.name] = constraint.arg1
         elif constraint.behavior == CAN_BE_ANY_OF:
@@ -1571,6 +1581,8 @@ def _backchain_to_input(module, in_num, out_data):
 
     # make_out.  This module should take in a "finished" Data object,
     # and use it to generate a new Data object.
+    debug_print("Generating a new %s with attributes %s." % (
+        in_datatype.name, attributes))
     return in_datatype.output(**attributes)
 
 
@@ -2251,7 +2263,8 @@ def test_bie():
     #    missing_values="no", quantile_norm=["no", "yes"])
     out_data = SignalFile.output(
         format="tdf", preprocess="mas5", logged="yes",
-        missing_values="no", quantile_norm="yes")
+        missing_values="no", quantile_norm="no",
+        contents="class0,class1")
     #parameters = [
     #    Parameter("download_geo", GSEID="GSE2034", GPLID="GPL9196"),
     #    Parameter("filter_genes_by_missing_values", filter=0.50),
@@ -2383,6 +2396,6 @@ def test_bie():
 
 
 
-#if __name__ == '__main__':
-    #test_bie()
+if __name__ == '__main__':
+    test_bie()
     #import cProfile; cProfile.run("test_bie()")
