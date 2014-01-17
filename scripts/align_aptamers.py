@@ -4,6 +4,8 @@
 # _parse_titles
 # _parse_base2emission
 #
+# _make_alignment_code
+#
 # _write_table
 # _write_alignment
 # _write_markov_format
@@ -62,6 +64,8 @@ def _write_table(library, alignment, title, score, is_revcomp, outhandle):
     #    print "ALIGN", repr(x)
     #print "SCORE", score
 
+    alignment_code = _make_alignment_code(library, alignment)
+
     # Get the indexes of the regions that are random.
     I_random = [i for i in range(len(library)) if library[i].is_random]
     I_barcode = [i for i in range(len(library)) if library[i].is_barcode]
@@ -112,7 +116,7 @@ def _write_table(library, alignment, title, score, is_revcomp, outhandle):
     x = title, int(is_revcomp), score, barcode, random_region, \
         len(random_region), total_errors, \
         num_matches, num_mismatches, num_insertions, num_deletions, \
-        ideal_seq, real_seq
+        ideal_seq, real_seq, alignment_code
     print >>outhandle, "\t".join(map(str, x))
     
 
@@ -124,6 +128,117 @@ def _write_alignment(alignment, title, outhandle):
     print >>outhandle, ideal_seq
     print >>outhandle, real_seq
     print >>outhandle
+
+
+## def _interpolate_DELETE_scores(alignment):
+##     # Figure out the score for each base in the alignment.  The
+##     # alignment contains the log_scores for each position.  However,
+##     # the scores for the DELETEd nodes are 0.  For these nodes,
+##     # estimate the scores.
+##     # 
+##     # This is actually quite difficult because:
+##     # 1.  The deletion in the random region has a different
+##     #     probability.
+##     # 2.  The deletion of a chunk can be different than deletion of
+##     #     individual bases.
+    
+
+##     # Pull out the scores and match_type.
+##     scores = []
+##     match_types = []
+##     for x in alignment:
+##         x, log_score, match_type, x, x = x
+##         scores.append(log_score)
+##         match_types.append(match_type)
+
+##     is_delete = [int(x == "DELETE") for x in match_types]
+##     I_start = []
+##     I_end = []    # exclusive indexes indexes
+##     if is_delete[0]:
+##         I_start.append(0)
+##     for i in range(len(is_delete)):
+##         if i > 0 and (is_delete[i] and not is_delete[i-1]):
+##             I_start.append(i)
+##         if i < len(is_delete)-1 and (is_delete[i] and not is_delete[i+1]):
+##             I_end.append(i+1)
+##     if is_delete[len(is_delete)-1]:
+##         I_end.append(len(is_delete))
+
+        
+## def _calc_random_score(library, alignment):
+##     # Calculate the score of the alignment in just the random region.
+##     from genomicode import aptamerlib
+
+##     log_scores = _interpolate_DELETE_scores(alignment)
+
+##     in_random_region = False
+##     prev_score = 0.0
+##     score_start = score_end = None
+##     for i, x in enumerate(alignment):
+##         node, log_score, x, x, x = x
+
+##         if node.i_seqset is None:
+##             assert node.node_type == aptamerlib.INSERTEND
+##             continue
+##         seqset_name = library[node.i_seqset].name
+
+##         if seqset_name == "Random Region" and not in_random_region:
+##             # The start score is the score right before the random
+##             # region starts.  The first score in the random region
+##             # includes the contribution of the first base.
+##             assert score_start is None, "Multiple random regions."
+##             score_start = prev_score
+##             in_random_region = True
+##         elif seqset_name != "Random Region" and in_random_region:
+##             # Take the score right after the random region to account
+##             # for deletions.
+##             score_end = log_score
+##             in_random_region = False
+        
+##         if log_score < prev_score:
+##             prev_score = log_score
+            
+##     assert score_start is not None, \
+##            "I could not find the start of the random region."
+##     assert score_end is not None, \
+##            "I could not find the end of the random region."
+##     score = score_end - score_start
+##     return score
+    
+
+def _make_alignment_code(library, alignment):
+    from genomicode import aptamerlib
+
+    code = []
+    in_random_region = False
+    for i, x in enumerate(alignment):
+        node, x, match_type, x, x = x
+
+        if node.i_seqset is None:
+            assert node.node_type == aptamerlib.INSERTEND
+            continue
+        seqset_name = library[node.i_seqset].name
+
+        if seqset_name == "Random Region" and not in_random_region:
+            in_random_region = True
+        elif seqset_name != "Random Region" and in_random_region:
+            in_random_region = False
+
+        if not in_random_region:
+            continue
+
+        if match_type == "MATCH":
+            code.append(".")
+        elif match_type == "MISMATCH":
+            code.append("M")
+        elif match_type == "INSERT":
+            code.append("I")
+        elif match_type == "DELETE":
+            code.append("D")
+        else:
+            raise AssertionError, "unknown match_type: %s" % match_type
+    code = "".join(code)
+    return code
 
 
 def _write_markov_format(
@@ -426,10 +541,11 @@ def main():
     pool = multiprocessing.Pool(args.num_procs)
 
     header = [
-        "Title", "Is Revcomp", "Score", "Barcode", "Random Region",
+        "Title", "Is Revcomp", "Score", 
+        "Observed Barcode", "Observed Random Region",
         "Length", "Total Errors", 
         "Num Matches", "Num Mismatches", "Num Insertions", "Num Deletions",
-        "Ideal Sequence", "Observed Sequence"]
+        "Ideal Sequence", "Observed Sequence", "Alignment"]
     print "\t".join(header)
     sys.stdout.flush()   # needed for multiprocessing
         

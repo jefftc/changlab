@@ -755,8 +755,8 @@ def _add_deletions_to_alignment(library, alignment):
 
 
 def _score_sequence_h(mm, library, base2emission, sequence):
-    # Return log(score), list of
-    #   (node, log(score), match_type, base in lib, base in sequence).
+    # Return ln(score), list of
+    #   (node, ln(score), match_type, base in lib, base in sequence).
     import math
     from genomicode import MarkovModel
     
