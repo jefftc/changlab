@@ -856,10 +856,11 @@ def main():
         '--rank_cutoff', default=None,
         help='Comma-separated list of breakpoints (between 0 and 1), '
         'e.g. 0.25,0.50,0.75.  Default is to use cutoff of 0.50.  '
-        'I will use this strategy unless a --zscore is given.')
+        'I will use this strategy unless a --zscore_cutoff is given.')
     group.add_argument(
         '--zscore_cutoff', default=None, 
-        help='Comma-separated list of breakpoints, e.g. -1,0.1.')
+        help='Comma-separated list of breakpoints, e.g. n1,1 '
+        '(can use n for negative sign).')
 
     group = parser.add_argument_group(title='Output')
     group.add_argument(
