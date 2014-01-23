@@ -298,12 +298,13 @@ class DataType:
         # Create a Data object.  Let Data check the attributes against
         # the DataType because Data can be created without going
         # through this function.
-        attrdict = attrdict.copy()
+        keywds = keywds.copy()
+        # Set any attributes that were not provided by the caller.
         for attr in self.attributes:
-            if attr.name in attrdict:
+            if attr.name in keywds:
                 continue
-            attrdict[attr.name] = attr.default_in
-        return Data(self, **attrdict)
+            keywds[attr.name] = attr.default_in
+        return Data(self, **keywds)
     def output(self, **attrdict):
         attrdict = attrdict.copy()
         for attr in self.attributes:
@@ -2233,7 +2234,8 @@ def test_bie():
     #x = SignalFile(preprocess="illumina")
     #in_data = [GEOSeries, ClassLabelFile]
     #in_data = [x, ClassLabelFile]
-    in_data = GEOSeries
+    #in_data = GEOSeries
+    in_data = SignalFile.input(preprocess="rma", format="jeffs")
     #in_data = SignalFile.make_in(
     #    filename="test.txt", logged="yes", preprocess="rma", format="jeffs")
     #in_data = SignalFile.input(
