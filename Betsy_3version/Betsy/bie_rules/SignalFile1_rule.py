@@ -1,5 +1,4 @@
 #SignalFile1
-from Betsy import bie3
 from Betsy.bie3 import *
 import SignalFile_rule
 SignalFile1 = DataType(
@@ -26,10 +25,10 @@ SignalFile1 = DataType(
     Attribute("combat_norm",["no", "yes"], "no","no"),
     Attribute(
         "gene_center",["unknown", "no", "mean", "median"],
-        "unknown","no"),
+        "no","no"),
     Attribute(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
-        "unknown","no"),
+        "no","no"),
     Attribute("contents",["train0", "train1", "test", 'class0,class1,test',
                         "class0", "class1", "class0,class1", "unspecified"],
                   "unspecified","unspecified")
@@ -55,22 +54,23 @@ all_modules = [
         Constraint("combat_norm",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", 'class0,class1,test',
                         "class0", "class1", "class0,class1", "unspecified"]),
-        Consequence("format",SAME_AS_CONSTRAINT,0),
-        Consequence("logged",SAME_AS_CONSTRAINT,0),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,0),
-        Consequence("missing_algorithm",SAME_AS_CONSTRAINT,0),           
-        Consequence("preprocess",SAME_AS_CONSTRAINT,0),
-        Consequence("predataset",SAME_AS_CONSTRAINT,0),
-        Consequence("rename_sample",SAME_AS_CONSTRAINT,0),
-        Consequence("filter",SAME_AS_CONSTRAINT,0),
-        Consequence("dwd_norm",SAME_AS_CONSTRAINT,0),
-        Consequence("bfrm_norm",SAME_AS_CONSTRAINT,0),
-        Consequence("quantile_norm",SAME_AS_CONSTRAINT,0),
-        Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,0),
-        Consequence("combat_norm",SAME_AS_CONSTRAINT,0),
+        Consequence("format",SAME_AS_CONSTRAINT),
+        Consequence("logged",SAME_AS_CONSTRAINT),
+        Consequence("missing_values",SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SAME_AS_CONSTRAINT),           
+        Consequence("preprocess",SAME_AS_CONSTRAINT),
+        Consequence("predataset",SAME_AS_CONSTRAINT),
+        Consequence("rename_sample",SAME_AS_CONSTRAINT),
+        Consequence("filter",SAME_AS_CONSTRAINT),
+        Consequence("dwd_norm",SAME_AS_CONSTRAINT),
+        Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
+        Consequence("quantile_norm",SAME_AS_CONSTRAINT),
+        Consequence("shiftscale_norm",SAME_AS_CONSTRAINT),
+        Consequence("combat_norm",SAME_AS_CONSTRAINT),
         Consequence("gene_center",SET_TO,'unknown'),
         Consequence("gene_normalize",SET_TO,'unknown'),
-        Consequence("contents",SAME_AS_CONSTRAINT,0)),
+        Consequence("contents",SAME_AS_CONSTRAINT)
+        ),
     Module(
         "check_gene_center",
         SignalFile1,SignalFile1,
@@ -79,9 +79,9 @@ all_modules = [
         Constraint("missing_values",MUST_BE,"no"),
         Constraint("gene_center",MUST_BE,"unknown"),
         Constraint("gene_normalize",MUST_BE,"unknown"),
-        Consequence("format",SAME_AS_CONSTRAINT,0),
-        Consequence("logged",SAME_AS_CONSTRAINT,0),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,0),
+        Consequence("format",SAME_AS_CONSTRAINT),
+        Consequence("logged",SAME_AS_CONSTRAINT),
+        Consequence("missing_values",SAME_AS_CONSTRAINT),
         Consequence("gene_center",BASED_ON_DATA,["no", "mean", "median"])),
     Module(
         "check_gene_normalize",
@@ -90,9 +90,9 @@ all_modules = [
         Constraint("logged",MUST_BE,"yes"),
         Constraint("missing_values",MUST_BE,"no"),
         Constraint("gene_normalize",MUST_BE,"unknown"),
-        Consequence("format",SAME_AS_CONSTRAINT,0),
-        Consequence("logged",SAME_AS_CONSTRAINT,0),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,0),
+        Consequence("format",SAME_AS_CONSTRAINT),
+        Consequence("logged",SAME_AS_CONSTRAINT),
+        Consequence("missing_values",SAME_AS_CONSTRAINT),
         Consequence("gene_normalize",BASED_ON_DATA,["no", "variance", "sum_of_squares"])),
     Module(   
         "convert_signal_to_pcl",
