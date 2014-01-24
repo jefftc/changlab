@@ -418,12 +418,14 @@ class Module:
         self.user_inputs = user_inputs
 
         for x in constraints:
-            self._assert_constraint(in_datatypes, x)
+            self._assert_constraint(
+                name, in_datatypes, out_datatype, x, consequences)
         for x in consequences:
             self._assert_consequence(
                 name, in_datatypes, out_datatype, constraints, x)
             
-    def _assert_constraint(self, in_datatypes, constraint):
+    def _assert_constraint(
+        self, name, in_datatypes, out_datatype, constraint, consequences):
         # Get the input datatype that this constraint refers to.
         i = constraint.input_index
         assert i < len(in_datatypes)
@@ -432,6 +434,13 @@ class Module:
         assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]
         assert in_datatype.is_valid_attribute_value(
             constraint.name, constraint.arg1)
+
+        # For every constraint, there must be a consequent given.
+        # Need to specify what the module does with the variable.
+        if in_datatype == out_datatype:
+            x = [x for x in consequences if x.name == constraint.name]
+            assert x, "Module %r: constraint but no consequence for %r." % (
+                name, constraint.name)
 
     def _assert_consequence(
         self, name, in_datatypes, out_datatype, constraints, consequence):
@@ -658,6 +667,9 @@ def backchain(moduledb, out_data):
     stack = [0]
     seen = {}
     while stack:
+        # XXX DEBUG
+        if len(nodes) > 128:
+            break
         assert len(nodes) < MAX_NETWORK_SIZE, "network too large"
         #_print_network(Network(nodes, transitions))
 
@@ -1551,23 +1563,38 @@ def _backchain_to_input(module, in_num, out_data):
         module.name, out_datatype.name, in_datatype.name, in_num))
 
     if in_datatype == out_datatype:
-        # Start with the attributes in the out_data.  Convert them
-        # based on the Constraints and Consequences of the module.
+        # Start with the attributes in the out_data.
         attributes = out_data.attributes.copy()
-        for consequence in module.consequences:
-            if consequence.behavior == SAME_AS_CONSTRAINT:
-                # Keep the same attribute.
-                pass
-            elif consequence.behavior in [
-                SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
-                assert consequence.name in attributes, \
-                       "How does this produce it?"
-                del attributes[consequence.name]
-            else:
-                raise AssertionError
     else:
         # If the datatypes are different, then clear all the values.
         attributes = {}
+        
+    # Modify the attributes based on the Constraints and Consequences
+    # of the module.
+
+    # If there is a Consequence that is SAME_AS_CONSTRAINT, then
+    # the attribute should be determined by the out_data.  e.g.
+    # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+    # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
+    #
+    # The module takes anything, produces the same value.  So
+    # the backchainer needs to preserve the value from the
+    # out_data.
+    for consequence in module.consequences:
+        n = consequence.name
+        if consequence.behavior == SAME_AS_CONSTRAINT:
+            # Keep the same attribute.
+            if consequence.arg1 == in_num:
+                attributes[n] = out_data.attributes[n]
+        elif consequence.behavior in [
+            SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
+            # Don't know what it should be.
+            if n in attributes:
+                del attributes[n]
+        else:
+            raise AssertionError
+        
+    debug_print("Taking attributes from out_data %s." % attributes)
 
     # Now make sure the attributes meet the constraints.
     for constraint in module.constraints:
@@ -1576,7 +1603,8 @@ def _backchain_to_input(module, in_num, out_data):
         if constraint.behavior == MUST_BE:
             attributes[constraint.name] = constraint.arg1
         elif constraint.behavior == CAN_BE_ANY_OF:
-            attributes[constraint.name] = constraint.arg1
+            if constraint.name not in attributes:
+                attributes[constraint.name] = constraint.arg1
         else:
             raise AssertionError
 

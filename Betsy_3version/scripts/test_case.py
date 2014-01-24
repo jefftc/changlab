@@ -52,7 +52,6 @@ def run_case3():
     
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
-    
 
     print "INPUT:"
     print in_data
