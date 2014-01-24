@@ -150,7 +150,7 @@ SignalFile = DataType(
 all_modules = [
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
-         UserInput("GSEID"), UserInput("GPLID")),
+         UserInput("GSEID"), UserInput("GPLID","")),
     Module(
         "extract_CEL_files", ExpressionFiles, CELFiles,
         Consequence("version", SET_TO, "unknown"),
