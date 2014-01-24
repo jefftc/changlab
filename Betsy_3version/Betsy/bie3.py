@@ -667,9 +667,6 @@ def backchain(moduledb, out_data):
     stack = [0]
     seen = {}
     while stack:
-        # XXX DEBUG
-        if len(nodes) > 128:
-            break
         assert len(nodes) < MAX_NETWORK_SIZE, "network too large"
         #_print_network(Network(nodes, transitions))
 
