@@ -12,7 +12,8 @@ SignalFile1 = DataType(
     Attribute(
         "missing_values",["no"],"no","no"),
     Attribute(
-        "missing_algorithm",["none", "median_fill", "zero_fill"],"none","none"),
+        "missing_algorithm",["none", "median_fill", "zero_fill"],
+        "zero_fill","zero_fill"),
     Attribute(
         "logged",["yes"],"yes","yes"),
     Attribute("predataset",["no", "yes"], "no","no"),
@@ -25,10 +26,10 @@ SignalFile1 = DataType(
     Attribute("combat_norm",["no", "yes"], "no","no"),
     Attribute(
         "gene_center",["unknown", "no", "mean", "median"],
-        "no","no"),
+        "unknown","no"),
     Attribute(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
-        "no","no"),
+        "unknown","no"),
     Attribute("contents",["train0", "train1", "test", 'class0,class1,test',
                         "class0", "class1", "class0,class1", "unspecified"],
                   "unspecified","unspecified")
@@ -111,11 +112,11 @@ all_modules = [
         Constraint("missing_values",MUST_BE,"no"),
         Constraint("gene_center",MUST_BE,"no"),
         Constraint("gene_normalize",MUST_BE,'unknown'),
-        Consequence("format",SAME_AS_CONSTRAINT,0),
-        Consequence("logged",SAME_AS_CONSTRAINT,0),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,0),
+        Consequence("format",SET_TO,"tdf"),
+        Consequence("logged",SAME_AS_CONSTRAINT),
+        Consequence("missing_values",SAME_AS_CONSTRAINT),
         Consequence("gene_center",SET_TO_ONE_OF,["mean", "median"]),
-        Consequence("gene_normalize",SAME_AS_CONSTRAINT,0)),
+        Consequence("gene_normalize",SAME_AS_CONSTRAINT)),
     Module(
         "normalize_genes",
         SignalFile1,SignalFile1,
@@ -123,8 +124,8 @@ all_modules = [
         Constraint("logged",MUST_BE,"yes"),
         Constraint("missing_values",MUST_BE,"no"),
         Constraint("gene_normalize",MUST_BE,"no"),
-        Consequence("format",SAME_AS_CONSTRAINT,0),
-        Consequence("logged",SAME_AS_CONSTRAINT,0),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,0),
+        Consequence("format",SET_TO,"tdf"),
+        Consequence("logged",SAME_AS_CONSTRAINT),
+        Consequence("missing_values",SAME_AS_CONSTRAINT),
         Consequence("gene_normalize",SET_TO_ONE_OF,["variance", "sum_of_squares"]))
     ]

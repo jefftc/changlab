@@ -16,7 +16,7 @@ SignalFile2 = DataType(
         "missing_values",["no"],"no","no"),
     Attribute(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
-        "none", "none"),
+        "zero_fill", "zero_fill"),
     Attribute("filter",["yes","no"], "no","no"),
     Attribute(
         "logged",[ "no", "yes"],"yes","yes"),
@@ -230,13 +230,13 @@ all_modules = [
     Module(  
         "rank_genes_by_class_neighbors",
         [SignalFile_rule.ClassLabelFile,SignalFile2],SignalFile_rule.GeneListFile,
-        UserInput("cn_num_neighbors"),
-        UserInput("cn_num_perm"),
-        UserInput("cn_user_pval"),
-        UserInput("cn_min_threshold"),
-        UserInput("cn_max_threshold"),
-        UserInput("cn_min_folddiff"),
-        UserInput("cn_abs_diff"),
+        UserInput("cn_num_neighbors",50),
+        UserInput("cn_num_perm",100),
+        UserInput("cn_user_pval",0.5),
+        UserInput("cn_min_threshold",10),
+        UserInput("cn_max_threshold",16000),
+        UserInput("cn_min_folddiff",5),
+        UserInput("cn_abs_diff",50),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("format",MUST_BE,"tdf",1),
         Constraint("logged",MUST_BE,"yes",1),
@@ -253,8 +253,11 @@ all_modules = [
     Module(
          "rank_genes_by_sample_ttest",
          [SignalFile_rule.ClassLabelFile,SignalFile2],SignalFile_rule.GeneListFile,
+        UserInput("gene_select_threshold",0.05),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("format",MUST_BE,"tdf",1),
+        #Constraint("preprocess",CAN_BE_ANY_OF,["unknown", "illumina", "agilent",
+        #                             "mas5", "rma", "loess"],1),
         Constraint("logged",MUST_BE,"yes",1),
         Constraint("gene_order",MUST_BE,"no",1),
         Constraint("annotate",MUST_BE,"no",1),
@@ -262,6 +265,7 @@ all_modules = [
         Constraint("platform",MUST_BE,"no",1),
         Constraint("duplicate_probe",MUST_BE,"no",1),
         Constraint("unique_genes",MUST_BE,"no",1),
+        #Consequence("preprocess",SAME_AS_CONSTRAINT,1),
         Consequence("gene_order",SET_TO_ONE_OF,["t_test_p", "t_test_fdr"])),
          
     Module(

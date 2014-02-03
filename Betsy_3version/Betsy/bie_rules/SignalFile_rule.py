@@ -62,7 +62,7 @@ ControlFile = DataType(
         "no","no"),
     Attribute(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
-        "none", "none"),
+        "zero_fill", "zero_fill"),
     Attribute(
         "logged",["unknown", "no", "yes"],"no","no"),
     Attribute(
@@ -80,7 +80,7 @@ ClassLabelFile = DataType(
     Attribute(
     "contents",["train0", "train1", "test", "class0,class1,test",
                   "class0", "class1", "class0,class1",
-                  "no"],'no','no'),
+                  "unspecified"],'unspecified','unspecified'),
     Attribute("cls_format",['cls','label','unknown'],"unknown","cls")
     )
 
@@ -127,7 +127,8 @@ SignalFile = DataType(
               "unknown", "unknown"),
     Attribute("missing_values", ["unknown", "no", "yes"], "unknown", "no"),
     Attribute("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "none", "none"),
+    ##          "none", "none"),
+              "zero_fill","zero_fill"),
     Attribute("logged", ["unknown", "no", "yes"], "unknown", "yes"),
     Attribute("filter", ["no", "yes"], "no", "no"),
     # Normalization of the data.
@@ -177,16 +178,17 @@ all_modules = [
         Consequence('illu_chip',SET_TO_ONE_OF,ILLU_CHIP),
         Consequence('illu_bg_mode',SET_TO_ONE_OF,["false", "true"]),
         Consequence('illu_coll_mode',SET_TO_ONE_OF,["none", "max", "median"]),
-        UserInput("illu_clm"),
-        UserInput("illu_custom_chip"),
-        UserInput("illu_custom_manifest")
+        UserInput("illu_clm",''),
+        UserInput("illu_custom_chip",''),
+        UserInput("illu_custom_manifest",'')
         ),
        Module(
         "get_illumina_signal",
          ILLUFolder, SignalFile,
          Consequence('preprocess',SET_TO,"illumina"),
          Consequence('format',SET_TO,"gct"),
-         Consequence('logged',SET_TO,"no")),
+         Consequence('logged',SET_TO,"no"),
+         Consequence('missing_values',SET_TO,"unknown")),
     Module(
         "get_illumina_control",
          ILLUFolder,ControlFile,
@@ -380,6 +382,7 @@ all_modules = [
     Module(
         "normalize_samples_with_bfrm",
         SignalFile,SignalFile,
+        UserInput("num_factors",1),
         Constraint('format',MUST_BE,"tdf"),
         Constraint('logged',MUST_BE,"yes"),
         Constraint('missing_values',MUST_BE,"no"),
