@@ -84,10 +84,31 @@ def run_case4():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+def run_case5():
+    """ for each module,the attributes not mentioned will
+    be set to its default input value."""
+    in_data = rulebase.GEOSeries
+    out_data = rulebase.SignalFile2.output(preprocess="agilent",
+        format="tdf",  quantile_norm='yes')
+    
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+
+    print "INPUT:"
+    print in_data
+    print
+    
+    print "OUTPUT:"
+    print out_data
+    print
+    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
 def main(): 
     #run_case1()
     #run_case2()
     #run_case3()
-    run_case4()
+    #run_case4()
+    run_case5()
 if __name__ == '__main__':
     main()
