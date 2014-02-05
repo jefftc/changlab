@@ -3,6 +3,7 @@
 Glossary:
 data              A unit of information.  Typically a file made by a program.
 attribute         Describes something about the data.  e.g. logged="yes".
+user input        XXX
 data type         Describes a set of data that share the same attributes.
 module            Takes one or more data objects as input and produces a single
                   data object as output.
@@ -13,7 +14,10 @@ output attribute  An attribute of an output data.
 
 
 Classes:
+AttributeDef
 Attribute
+UserInputDef
+UserInput
 DataType
 Data
 Constraint
@@ -90,11 +94,11 @@ CONST2STR = {
     }
 
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 
-class Attribute:
+class AttributeDef:
     def __init__(self, name, values, default_in, default_out):
         # Make sure name and values are valid.
         assert type(name) is type("")
@@ -126,7 +130,7 @@ class Attribute:
             return _is_subset(value, self.values)
         raise AssertionError
     def __cmp__(self, other):
-        if not isinstance(other, Attribute):
+        if not isinstance(other, AttributeDef):
             return cmp(id(self), id(other))
         x1 = [
             self.name, self.values, self.default_in, self.default_out]
@@ -138,13 +142,23 @@ class Attribute:
         return hash(x)
 
 
-class UserInput:
+class Attribute:
+    def __init__(self, datatype, name, value):
+        assert type(datatype) is type(DataType)
+        assert type(name) is type("")
+        assert type(value) is type("")
+        self.datatype = datatype
+        self.name = name
+        self.value = value
+
+
+class UserInputDef:
     def __init__(self, name, default=None):
         assert type(name) is type("")
         self.name = name
         self.default = default
     def __cmp__(self, other):
-        if not isinstance(other, UserInput):
+        if not isinstance(other, UserInputDef):
             return cmp(id(self), id(other))
         x1 = [self.name, self.default]
         x2 = [other.name, other.default]
@@ -162,6 +176,16 @@ class UserInput:
             x.append(repr(self.default))
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+
+
+class UserInput:
+    def __init__(self, module, name, value):
+        assert type(module) is type(Module)
+        assert type(name) is type("")
+        assert type(value) is type("")
+        self.module = module
+        self.name = name
+        self.value = value
 
 
 class Constraint:
@@ -253,7 +277,7 @@ class Consequence:
 class DataType:
     def __init__(self, name, *attributes):
         for x in attributes:
-            assert isinstance(x, Attribute)
+            assert isinstance(x, AttributeDef)
 
         ## # Make sure no overlap between the attributes and user inputs.
         ## attr_names = [x.name for x in attributes]
@@ -294,23 +318,40 @@ class DataType:
         #x = self.name, tuple(self.attributes), tuple(self.user_inputs)
         x = self.name, tuple(self.attributes)
         return hash(x)
-    def input(self, **keywds):
-        # Create a Data object.  Let Data check the attributes against
-        # the DataType because Data can be created without going
-        # through this function.
-        keywds = keywds.copy()
-        # Set any attributes that were not provided by the caller.
-        for attr in self.attributes:
-            if attr.name in keywds:
+    def _resolve_attributes(self, attribute_objs, attribute_dict, is_input):
+        # Make a dictionary of all the attributes.  The values given
+        # by the caller take precedence.  Anything else should be set
+        # to the default attributes.
+        attrdict = {}
+        # Priority 1: Set to the attribute objects.
+        for attr in attribute_objs:
+            # Ignore attributes for other data types.
+            if attr.datatype.name != self.name:
                 continue
-            keywds[attr.name] = attr.default_in
-        return Data(self, **keywds)
-    def output(self, **attrdict):
-        attrdict = attrdict.copy()
+            attrdict[attr.name] = attr.value
+        # Priority 2: Set to the attribute objects.
+        for (name, value) in attribute_dict.iteritems():
+            assert name not in attrdict, "Conflict: %s" % name
+            attrdict[name] = value
+        # Priority 3: Set to default attributes.
         for attr in self.attributes:
             if attr.name in attrdict:
                 continue
-            attrdict[attr.name] = attr.default_out
+            value = attr.default_in
+            if not is_input:
+                value = attr.default_out
+            attrdict[attr.name] = value
+        return attrdict
+    def input(self, *attribute_objs, **attribute_dict):
+        # Create a Data object.
+        attrdict = self._resolve_attributes(
+            attribute_objs, attribute_dict, True)
+        # Don't bother checking the attributes here.  The Data object
+        # will do that.
+        return Data(self, **attrdict)
+    def output(self, *attribute_objs, **attribute_dict):
+        attrdict = self._resolve_attributes(
+            attribute_objs, attribute_dict, False)
         return Data(self, **attrdict)
     def __str__(self):
         return self.__repr__()
@@ -381,7 +422,7 @@ class Data:
 
 class Module:
     def __init__(self, name, in_datatypes, out_datatype, *params):
-        # params is a list of Constraint, Consequence, and UserInput
+        # params is a list of Constraint, Consequence, and UserInputDef.
         # objects.
         assert type(name) is type("")
 
@@ -405,7 +446,7 @@ class Module:
                 constraints.append(x)
             elif isinstance(x, Consequence):
                 consequences.append(x)
-            elif isinstance(x, UserInput):
+            elif isinstance(x, UserInputDef):
                 user_inputs.append(x)
             else:
                 raise AssertionError, "invalid parameter: %s" % repr(x)
@@ -652,12 +693,13 @@ class Network:
         return cmp(x1, x2)
 
 
-def backchain(moduledb, out_data):
+def backchain(moduledb, out_data, *attributes):
     # Return a Network object.
-    
+
     if isinstance(out_data, DataType):
-        out_data = out_data.output()
+        out_data = out_datatype.output(*attributes)
     assert isinstance(out_data, Data)
+    
 
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
@@ -1689,13 +1731,16 @@ def _can_module_produce_data(module, data):
     # A module cannot produce this data if:
     # - The module's output data type is not the same as the data.
     # - One or more of the consequences conflict.
+    # - The module converts the datatype, and the default values of
+    #   the attributes (without consequences) conflict.
+    #   THIS RULE IS IN TESTING.
     # 
     # A module can produce this data if:
     # - An consequence (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA) that is not
     #   a side effect has value that matches the value of the data.
-    # - The module only converts the type of data.  There are no
-    #   consequences (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA), the
-    #   in_datatypes and out_datatype are different.
+    # - The module only converts the datatype.  There are no
+    #   consequences (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA), and the
+    #   output data type has no attributes.
     #   e.g. download_geo_GSEID  gseid -> expression_files  (no attributes)
 
     debug_print("Testing if module %s can produce data %s." % (
@@ -1769,6 +1814,37 @@ def _can_module_produce_data(module, data):
                 return False
         else:
             raise AssertionError
+
+    # If the module converts the datatype, then the data should match
+    # the (in) defaults from the output data type.
+    if module.in_datatypes != [module.out_datatype]:
+        debug_print("Module converts datatype.  Checking default attributes.")
+        consequence_names = [x.name for x in module.consequences]
+        for attr in module.out_datatype.attributes:
+            # Ignore the attributes that have consequences.
+            if attr.name in consequence_names:
+                debug_print(
+                    "Attr %r: Skipping--has consequence." % attr.name)
+                continue
+            assert attr.name in data.attributes
+            data_value = data.attributes[attr.name]
+            data_type = _get_attribute_type(data_value)
+            assert data_type in [TYPE_ATOM, TYPE_ENUM]
+
+            if data_type == TYPE_ATOM:
+                if attr.default_in != data_value:
+                    debug_print("Attr %r: Conflicts 1 (%r %r)." % (
+                        attr.name, attr.default_in, data_value))
+                    return False
+            elif data_type == TYPE_ENUM:
+                if attr.default_in not in data_value:
+                    debug_print("Attr %r: Conflicts 2 (%r %r)." % (
+                        attr.name, attr.default_in, data_value))
+                    return False
+            else:
+                raise AssertionError
+            debug_print("Attr %r: matches defaults." % attr.name)
+        
 
     # At this point, the module produces this datatype and there are
     # no conflicts.  Look for an consequence that is not a side effect
@@ -2092,36 +2168,41 @@ GEOSeries = DataType("GEOSeries")
 ExpressionFiles = DataType("ExpressionFiles")
 CELFiles = DataType(
     "CELFiles",
-    Attribute("version", ["unknown", "cc", "v3", "v4"], "unknown", "v3"),
+    AttributeDef(
+        "version", ["unknown", "cc", "v3", "v4"], "unknown", "v3"),
     )
 SignalFile = DataType(
     "SignalFile",
-    Attribute("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
-              "unknown", "tdf"),
+    AttributeDef(
+        "format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
+        "unknown", "tdf"),
 
     # Properties of the data.
-    Attribute("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "rma"),
-    Attribute("missing_values", ["unknown", "no", "yes"], "unknown", "no"),
-    Attribute("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "none", "median_fill"),
-    Attribute("logged", ["unknown", "no", "yes"], "unknown", "yes"),
+    AttributeDef(
+        "preprocess",
+        ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+        "unknown", "rma"),
+    AttributeDef(
+        "missing_values", ["unknown", "no", "yes"], "unknown", "no"),
+    AttributeDef(
+        "missing_algorithm", ["none", "median_fill", "zero_fill"],
+        "none", "median_fill"),
+    AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
     
     # This is not necessary.  Remove.
-    Attribute("filtered", ["no", "yes"], "no", "no"),
+    AttributeDef("filtered", ["no", "yes"], "no", "no"),
 
     # Normalization of the data.
-    Attribute("dwd_norm", ["no", "yes"], "no", "no"),
-    Attribute("bfrm_norm", ["no", "yes"], "no", "no"),
-    Attribute("quantile_norm", ["no", "yes"], "no", "no"),
-    Attribute("shiftscale_norm", ["no", "yes"], "no", "no"),
-    Attribute("combat_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
 
     # Other attributes.
-    Attribute("predataset", ["no", "yes"], "no", "no"),
-    Attribute("rename_sample", ["no", "yes"], "no", "no"),
-    Attribute("contents", [
+    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
+    AttributeDef("contents", [
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],
               "unspecified", "unspecified"),
@@ -2131,7 +2212,7 @@ SignalFile = DataType(
 all_modules = [
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
-        UserInput("GSEID"), UserInput("GPLID")),
+        UserInputDef("GSEID"), UserInputDef("GPLID")),
     Module(
         "extract_CEL_files", ExpressionFiles, CELFiles,
         Consequence("version", SET_TO, "unknown"),
@@ -2213,7 +2294,7 @@ all_modules = [
     Module(
         "filter_genes_by_missing_values",
         SignalFile, SignalFile,
-        UserInput("filter_genes_with_missing_values", 0.50),
+        UserInputDef("filter_genes_with_missing_values", 0.50),
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "yes"),

@@ -10,7 +10,8 @@ SignalFile2 = DataType(
         "format",[ "tdf", "gct"],"tdf","tdf"),
     # Properties of the data.
     Attribute(
-        "preprocess",["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+        "preprocess",
+        ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         "unknown","unknown"),
     Attribute(
         "missing_values",["no"],"no","no"),
@@ -270,7 +271,7 @@ all_modules = [
          
     Module(
          "reorder_genes",  
-         [SignalFile_rule.GeneListFile,SignalFile2],SignalFile2,
+         [SignalFile_rule.GeneListFile,SignalFile2], SignalFile2,
          Constraint("gene_order",CAN_BE_ANY_OF,['t_test_p', "t_test_fdr",
                                    'class_neighbors', "gene_list"],0),
          Constraint("format",MUST_BE,"tdf",1),
@@ -281,6 +282,9 @@ all_modules = [
          Constraint("platform",MUST_BE,"no",1),
          Constraint("duplicate_probe",MUST_BE,'no',1),
          Constraint("unique_genes",MUST_BE,'no',1),
+         Constraint(
+            "preprocess", CAN_BE_ANY_OF,
+            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"], 1),
          Consequence("gene_order",SET_TO_ONE_OF,['t_test_p', "t_test_fdr",
                          'class_neighbors', "gene_list"]),
          Consequence("format",SAME_AS_CONSTRAINT,1),
@@ -289,7 +293,9 @@ all_modules = [
          Consequence("num_features",SAME_AS_CONSTRAINT,1),
          Consequence("platform",SAME_AS_CONSTRAINT,1),
          Consequence("duplicate_probe",SAME_AS_CONSTRAINT,1),   
-         Consequence("unique_genes",SAME_AS_CONSTRAINT,1)),
+         Consequence("unique_genes",SAME_AS_CONSTRAINT,1),
+         Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+        ),
     Module(
          'annotate_probes',
          SignalFile2,SignalFile2,
