@@ -45,7 +45,7 @@ GEOSeries = DataType("GEOSeries")
 ExpressionFiles = DataType("ExpressionFiles")
 CELFiles = DataType(
     "CELFiles",
-    Attribute("version", ["unknown", "cc", "v3", "v4"], "unknown", "v3"),
+    AttributeDef("version", ["unknown", "cc", "v3", "v4"], "unknown", "v3"),
     )
 RenameFile = DataType(
     'RenameFile')
@@ -54,18 +54,18 @@ AgilentFiles = DataType(
 
 ControlFile = DataType(
     "ControlFile",
-    Attribute(
+    AttributeDef(
         'preprocess',["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         'missing_values',["unknown", "no", "yes"],
         "no","no"),
-    Attribute(
+    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill"),
-    Attribute(
+    AttributeDef(
         "logged",["unknown", "no", "yes"],"no","no"),
-    Attribute(
+    AttributeDef(
         'format',["unknown", "tdf", "gct", "jeffs", "pcl", "res", "xls"],
         "gct","gct"),
     )
@@ -77,23 +77,23 @@ IDATFiles = DataType(
 
 ClassLabelFile = DataType(
     "ClassLabelFile",
-    Attribute(
+    AttributeDef(
     "contents",["train0", "train1", "test", "class0,class1,test",
                   "class0", "class1", "class0,class1",
                   "unspecified"],'unspecified','unspecified'),
-    Attribute("cls_format",['cls','label','unknown'],"unknown","cls")
+    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls")
     )
 
 ILLUFolder = DataType(
     "ILLUFolder", 
-    Attribute(
+    AttributeDef(
         "illu_manifest",ILLU_MANIFEST,
         'HumanHT-12_V4_0_R2_15002873_B.txt','HumanHT-12_V4_0_R2_15002873_B.txt'),
-    Attribute(
+    AttributeDef(
         'illu_chip',ILLU_CHIP,
         'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip','ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
-    Attribute('illu_bg_mode',['false', 'true'], "false", "false"),
-    Attribute('illu_coll_mode',['none', 'max', 'median'], "none","none"),
+    AttributeDef('illu_bg_mode',['false', 'true'], "false", "false"),
+    AttributeDef('illu_coll_mode',['none', 'max', 'median'], "none","none"),
     #bie3.Attribute('illu_clm',bie3.ANYATOM, "",""),
     #bie3.Attribute('illu_custom_chip',bie3.ANYATOM, "",""),
     #bie3.Attribute('illu_custom_manifest',bie3.ANYATOM, "",""),
@@ -105,43 +105,43 @@ GeneListFile=DataType(
     #bie3.Attribute('cn_num_neighbors',bie3.ANYATOM, "",""),
     #bie3.Attribute('cn_num_perm',bie3.ANYATOM, "",""),
     #bie3.Attribute('cn_user_pval',bie3.ANYATOM, "",""),  
-    Attribute('cn_mean_or_median',['mean', 'median'], 'mean','mean'),
-    Attribute('cn_ttest_or_snr',['t_test','snr'], 't_test','t_test'),
-    Attribute('cn_filter_data',['yes','no'], 'no','no'),
+    AttributeDef('cn_mean_or_median',['mean', 'median'], 'mean','mean'),
+    AttributeDef('cn_ttest_or_snr',['t_test','snr'], 't_test','t_test'),
+    AttributeDef('cn_filter_data',['yes','no'], 'no','no'),
     #bie3.Attribute('cn_min_threshold',bie3.ANYATOM, "",""),
     #bie3.Attribute('cn_max_threshold',bie3.ANYATOM, "",""),
     #bie3.Attribute('cn_min_folddiff',bie3.ANYATOM, "",""),
     #bie3.Attribute('cn_abs_diff',bie3.ANYATOM, "",""),
     #bie3.Attribute('gene_select_threshold',bie3.ANYATOM,"",""),
-    Attribute('gene_order',['no', "gene_list", "class_neighbors",
+    AttributeDef('gene_order',['no', "gene_list", "class_neighbors",
                           "t_test_p", "t_test_fdr"], 'gene_list',"gene_list"))
    
 SignalFile = DataType(
     "SignalFile",
-    Attribute("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
+    AttributeDef("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
               "unknown", "tdf"),
 
     # Properties of the data.
-    Attribute("preprocess",
+    AttributeDef("preprocess",
               ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
               "unknown", "unknown"),
-    Attribute("missing_values", ["unknown", "no", "yes"], "unknown", "no"),
-    Attribute("missing_algorithm", ["none", "median_fill", "zero_fill"],
+    AttributeDef("missing_values", ["unknown", "no", "yes"], "unknown", "no"),
+    AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
     ##          "none", "none"),
               "zero_fill","zero_fill"),
-    Attribute("logged", ["unknown", "no", "yes"], "unknown", "yes"),
-    Attribute("filter", ["no", "yes"], "no", "no"),
+    AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
+    AttributeDef("filter", ["no", "yes"], "no", "no"),
     # Normalization of the data.
-    Attribute("dwd_norm", ["no", "yes"], "no", "no"),
-    Attribute("bfrm_norm", ["no", "yes"], "no", "no"),
-    Attribute("quantile_norm", ["no", "yes"], "no", "no"),
-    Attribute("shiftscale_norm", ["no", "yes"], "no", "no"),
-    Attribute("combat_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
     
     # Other attributes.
-    Attribute("predataset", ["no", "yes"], "no", "no"),
-    Attribute("rename_sample", ["no", "yes"], "no", "no"),
-    Attribute("contents", [
+    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
+    AttributeDef("contents", [
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],
               "unspecified", "unspecified"),
@@ -151,7 +151,7 @@ SignalFile = DataType(
 all_modules = [
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
-         UserInput("GSEID"), UserInput("GPLID","")),
+         UserInputDef("GSEID"), UserInputDef("GPLID","")),
     Module(
         "extract_CEL_files", ExpressionFiles, CELFiles,
         Consequence("version", SET_TO, "unknown"),
@@ -178,17 +178,17 @@ all_modules = [
         Consequence('illu_chip',SET_TO_ONE_OF,ILLU_CHIP),
         Consequence('illu_bg_mode',SET_TO_ONE_OF,["false", "true"]),
         Consequence('illu_coll_mode',SET_TO_ONE_OF,["none", "max", "median"]),
-        UserInput("illu_clm",''),
-        UserInput("illu_custom_chip",''),
-        UserInput("illu_custom_manifest",'')
+        UserInputDef("illu_clm",''),
+        UserInputDef("illu_custom_chip",''),
+        UserInputDef("illu_custom_manifest",'')
         ),
        Module(
         "get_illumina_signal",
          ILLUFolder, SignalFile,
          Consequence('preprocess',SET_TO,"illumina"),
-         Consequence('format',SET_TO,"gct"),
-         Consequence('logged',SET_TO,"no"),
-         Consequence('missing_values',SET_TO,"unknown")),
+         Consequence('format', SET_TO, "gct"),
+         Consequence('logged', SET_TO, "no"),
+         Consequence('missing_values', SET_TO, "unknown")),
     Module(
         "get_illumina_control",
          ILLUFolder,ControlFile,
@@ -273,7 +273,7 @@ all_modules = [
     Module(
         "filter_genes_by_missing_values",
         SignalFile, SignalFile,
-        UserInput("filter_genes_with_missing_values", 0.50),
+        UserInputDef("filter_genes_with_missing_values", 0.50),
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "yes"),
@@ -382,7 +382,7 @@ all_modules = [
     Module(
         "normalize_samples_with_bfrm",
         SignalFile,SignalFile,
-        UserInput("num_factors",1),
+        UserInputDef("num_factors",1),
         Constraint('format',MUST_BE,"tdf"),
         Constraint('logged',MUST_BE,"yes"),
         Constraint('missing_values',MUST_BE,"no"),

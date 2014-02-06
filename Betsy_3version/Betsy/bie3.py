@@ -94,8 +94,8 @@ CONST2STR = {
     }
 
 
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
 
 
 class AttributeDef:
@@ -144,9 +144,18 @@ class AttributeDef:
 
 class Attribute:
     def __init__(self, datatype, name, value):
-        assert type(datatype) is type(DataType)
+        assert isinstance(datatype, DataType)
         assert type(name) is type("")
         assert type(value) is type("")
+        
+        # Check if this is a valid attribute name for the datatype.
+        x = [x for x in datatype.attributes if x.name == name]
+        assert len(x) == 1, "datatype %r does not have attribute %r." % (
+            datatype.name, name)
+        attr = x[0]
+        assert attr.is_valid_value(value), \
+               "Invalid value %r for attribute %r." % (value, name)
+        
         self.datatype = datatype
         self.name = name
         self.value = value
@@ -331,7 +340,10 @@ class DataType:
             attrdict[attr.name] = attr.value
         # Priority 2: Set to the attribute objects.
         for (name, value) in attribute_dict.iteritems():
-            assert name not in attrdict, "Conflict: %s" % name
+            if name in attrdict:
+                continue
+            # Handle the prioritization for the user.
+            #assert name not in attrdict, "Conflict: %s" % name
             attrdict[name] = value
         # Priority 3: Set to default attributes.
         for attr in self.attributes:
@@ -693,13 +705,12 @@ class Network:
         return cmp(x1, x2)
 
 
-def backchain(moduledb, out_data, *attributes):
+def backchain(moduledb, out_data, *user_attributes):
     # Return a Network object.
 
     if isinstance(out_data, DataType):
-        out_data = out_datatype.output(*attributes)
+        out_data = out_data.output(*user_attributes)
     assert isinstance(out_data, Data)
-    
 
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
@@ -735,7 +746,7 @@ def backchain(moduledb, out_data, *attributes):
             cons_id = transitions[node_id][0]
             cons = nodes[cons_id]
             for in_num in range(len(node.in_datatypes)):
-                d = _backchain_to_input(node, in_num, cons)
+                d = _backchain_to_input(node, in_num, cons, user_attributes)
                 d_id = _find_data_node(nodes, d)
                 if d_id == -1:
                     nodes.append(d)
@@ -1591,7 +1602,7 @@ def _backchain_to_modules(moduledb, data):
     return modules
 
 
-def _backchain_to_input(module, in_num, out_data):
+def _backchain_to_input(module, in_num, out_data, user_attributes):
     # Given a module and output_data, return the input_data object
     # that can generate the output.
     assert in_num < len(module.in_datatypes)
@@ -1651,7 +1662,7 @@ def _backchain_to_input(module, in_num, out_data):
     # and use it to generate a new Data object.
     debug_print("Generating a new %s with attributes %s." % (
         in_datatype.name, attributes))
-    return in_datatype.output(**attributes)
+    return in_datatype.output(*user_attributes, **attributes)
 
 
 def _backchain_to_ids(network, node_id):
@@ -1846,6 +1857,15 @@ def _can_module_produce_data(module, data):
             debug_print("Attr %r: matches defaults." % attr.name)
         
 
+    # TESTING.
+    # If the module converts the datatype, the consequences don't
+    # conflict, and the default attributes don't conflict, then this
+    # should match.
+    if module.in_datatypes != [module.out_datatype]:
+        debug_print("Match because of converting datatype.")
+        return True
+
+
     # At this point, the module produces this datatype and there are
     # no conflicts.  Look for an consequence that is not a side effect
     # that matches this data.
@@ -1859,9 +1879,9 @@ def _can_module_produce_data(module, data):
         debug_print("Consequence %s matches." % consequence.name)
         return True
 
-    # No conflicts and no consequences that match.
+    # No conflicts, and the module has no consequences.
     if not module.consequences:
-        debug_print("Match because of no consequences.")
+        debug_print("Match because there are no consequences.")
         return True
 
     # No consequences match.

@@ -5,10 +5,10 @@ from Betsy.bie_rules import GenesetAnalysis_rule, DiffExprFile_rule,GatherFile_r
 
 ReportFile = DataType(
     'ReportFile',
-    Attribute("report_type",['normalize_file','batch_effect_remove',
+    AttributeDef("report_type",['normalize_file','batch_effect_remove',
                             'classify','cluster','diffgenes',
                             'heatmap','geneset','all'],'normalize_file','normalize_file'),
-    Attribute('preprocess',["unknown", 'illumina', "agilent", "mas5", "rma", "loess"],
+    AttributeDef('preprocess',["unknown", 'illumina', "agilent", "mas5", "rma", "loess"],
                   'unknown','unknown')
     )
 
@@ -148,8 +148,8 @@ all_modules = [
         [DiffExprFile_rule.DiffExprFile,DiffExprFile_rule.DiffExprFile,
          ClusterFile_rule.Heatmap,GatherFile_rule.GatherFile,
          GseaFile_rule.GseaFile],ReportFile,
-         UserInput("hm_width_value",50),
-         UserInput("hm_height_value",1),
+         UserInputDef("hm_width_value",50),
+         UserInputDef("hm_height_value",1),
          Constraint("diff_expr",MUST_BE,'t_test',0),
          Constraint("diff_expr",MUST_BE,'sam',1),
          Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),

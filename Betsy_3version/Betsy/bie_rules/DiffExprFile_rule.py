@@ -5,9 +5,9 @@ import SignalFile2_rule
 
 DiffExprFile=DataType(
     'DiffExprFile',
-    Attribute("diff_expr",['t_test','sam'],"t_test",'t_test'),
-    Attribute("sam_delta",["yes","no"],"no","no"),
-    Attribute("sam_delta",["yes","no"],"no","no"))
+    AttributeDef("diff_expr",['t_test','sam'],"t_test",'t_test'),
+    AttributeDef("sam_delta",["yes","no"],"no","no"),
+    AttributeDef("sam_delta",["yes","no"],"no","no"))
 
 list_files = [DiffExprFile]
 
@@ -24,8 +24,8 @@ all_modules = [
     Module(
         'calc_diffexp_with_sam',
         [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2],DiffExprFile,
-        UserInput("sam_delta_value",0),
-        UserInput("sam_foldchange_value",0),
+        UserInputDef("sam_delta_value",0),
+        UserInputDef("sam_foldchange_value",0),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("logged",MUST_BE,'yes',1),
         Constraint("format",MUST_BE,'tdf',1),

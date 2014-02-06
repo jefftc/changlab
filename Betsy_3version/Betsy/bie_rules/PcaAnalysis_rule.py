@@ -3,113 +3,113 @@ from Betsy.bie3 import *
 import SignalFile_rule,SignalFile2_rule,SignalFile1_rule
 PcaAnalysis = DataType(
     'PcaAnalysis',
-    Attribute('contents',["train0", "train1", "test", "class0,class1,test",
+    AttributeDef('contents',["train0", "train1", "test", "class0,class1,test",
                   "class0", "class1", "class0,class1",
                   "unspecified"],"unspecified","unspecified"),
-    Attribute(
+    AttributeDef(
         "preprocess",["unknown", "illumina",
                                     "agilent", "mas5", "rma", "loess"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         "missing_values",["no"],'no','no'),
-    Attribute(
+    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "none", "none"),
-    Attribute(
+    AttributeDef(
         "logged",[ "no", "yes"],"yes","yes"),
     # Normalizing the genes.
-    Attribute(
+    AttributeDef(
         "gene_center",["unknown", "no", "mean", "median"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
         "unknown","unknown"),
 
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    Attribute(
+    AttributeDef(
         "dwd_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "bfrm_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "quantile_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "shiftscale_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "combat_norm",["no", "yes"], "no","no"),
     # Annotations.
-    Attribute(
+    AttributeDef(
         "unique_genes",["no", "average_genes", "high_var", "first_gene"],
         "no","no"),
-    Attribute(
+    AttributeDef(
         "duplicate_probe",["no", "yes", "closest_probe", "high_var_probe"],
         "no","no"),
     # Unclassified.
-    Attribute("num_features",["yes","no"],"no","no"), 
-    Attribute("predataset",["no", "yes"], "no","no"),
-    Attribute("platform",["yes","no"],"no","no"),
-    Attribute("filter",["yes","no"],"no","no"),
-    Attribute("group_fc",["yes","no"],"no","no"))
+    AttributeDef("num_features",["yes","no"],"no","no"), 
+    AttributeDef("predataset",["no", "yes"], "no","no"),
+    AttributeDef("platform",["yes","no"],"no","no"),
+    AttributeDef("filter",["yes","no"],"no","no"),
+    AttributeDef("group_fc",["yes","no"],"no","no"))
 
 PcaPlot = DataType(
     'PcaPlot',
-    Attribute("pca_gene_num",["yes","no"],"no","no"),
-    Attribute("contents",["train0", "train1", "test", "class0,class1,test",
+    AttributeDef("pca_gene_num",["yes","no"],"no","no"),
+    AttributeDef("contents",["train0", "train1", "test", "class0,class1,test",
                   "class0", "class1", "class0,class1",
                   "unspecified"],"unspecified","unspecified"),
     # Properties of the data.
-    Attribute("preprocess",["unknown", "illumina", "agilent",
+    AttributeDef("preprocess",["unknown", "illumina", "agilent",
                             "mas5", "rma", "loess"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         "missing_values",["no"],"no","no"),
-    Attribute(
+    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "none","none"),
-    Attribute(
+    AttributeDef(
         "logged",[ "no", "yes"], "yes","yes"),
     # Normalizing the genes.
-    Attribute(
+    AttributeDef(
         "gene_center",["unknown", "no", "mean", "median"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
         "unknown","unknown"),
 
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    Attribute(
+    AttributeDef(
         "dwd_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "bfrm_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "quantile_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "shiftscale_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "combat_norm",["no", "yes"], "no","no"),
 
     # Annotations.
-    Attribute("annotate",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef("annotate",["no", "yes"], "no","no"),
+    AttributeDef(
         "unique_genes",["no", "average_genes", "high_var", "first_gene"],
         "no","no"),
-    Attribute(
+    AttributeDef(
         "duplicate_probe",["no", "yes", "closest_probe", "high_var_probe"],
         "no","no"),
-    Attribute("rename_sample",["no", "yes"], "no","no"),
+    AttributeDef("rename_sample",["no", "yes"], "no","no"),
 
     # Unclassified.
-    Attribute("num_features",["yes","no"], "no","no"),
-    Attribute("gene_order",[
+    AttributeDef("num_features",["yes","no"], "no","no"),
+    AttributeDef("gene_order",[
             "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
         "no","no"),
-    Attribute("predataset",["no", "yes"], "no","no"),
-    Attribute("platform",["yes","no"],"no","no"),
-    Attribute("filter",["yes","no"],"no","no"),
-    Attribute("group_fc",["yes","no"],"no","no"),
+    AttributeDef("predataset",["no", "yes"], "no","no"),
+    AttributeDef("platform",["yes","no"],"no","no"),
+    AttributeDef("filter",["yes","no"],"no","no"),
+    AttributeDef("group_fc",["yes","no"],"no","no"),
     )
     
 

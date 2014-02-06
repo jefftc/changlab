@@ -5,33 +5,33 @@ import SignalFile2_rule
 import PcaAnalysis_rule
 ClassifyFile=DataType(
     'ClassifyFile',
-    Attribute("classify_alg",['weighted_voting','svm','random_forest','no'], 'no','no'),
-    Attribute('wv_feature_stat',['wv_snr', 'wv_ttest', 'wv_snr_median',
+    AttributeDef("classify_alg",['weighted_voting','svm','random_forest','no'], 'no','no'),
+    AttributeDef('wv_feature_stat',['wv_snr', 'wv_ttest', 'wv_snr_median',
                         'wv_ttest_median',
                         'wv_snr_minstd', 'wv_ttest_minstd',
                         'wv_snr_median_minstd',
                         'wv_ttest_median_minstd'],'wv_snr','wv_snr'),
-    Attribute('svm_kernel', ['linear','polynomial','RBF','sigmoid','precomputed_kernel'],
+    AttributeDef('svm_kernel', ['linear','polynomial','RBF','sigmoid','precomputed_kernel'],
               'linear','linear'),
-    Attribute('loocv',['yes','no'],'no','no'),
-    Attribute('actual_label',['yes','no'],'no','no'))
+    AttributeDef('loocv',['yes','no'],'no','no'),
+    AttributeDef('actual_label',['yes','no'],'no','no'))
 
 PredictionPCAPlot = DataType(
     'PredictionPCAPlot',
-    Attribute('classify_alg',['weighted_voting','svm','random_forest','no'],'no','no'),
-    Attribute('loocv',['yes','no'],'no','no'),
-    Attribute('actual_label',['yes','no'],'no','no'))
+    AttributeDef('classify_alg',['weighted_voting','svm','random_forest','no'],'no','no'),
+    AttributeDef('loocv',['yes','no'],'no','no'),
+    AttributeDef('actual_label',['yes','no'],'no','no'))
 
 PredictionPlot = DataType(
     'PredictionPlot',
-    Attribute('classify_alg',['weighted_voting','svm','random_forest','no'],'no','no'),
-    Attribute('loocv',['yes','no'],'no','no'),
-    Attribute('actual_label',['yes','no'],'no','no'))
+    AttributeDef('classify_alg',['weighted_voting','svm','random_forest','no'],'no','no'),
+    AttributeDef('loocv',['yes','no'],'no','no'),
+    AttributeDef('actual_label',['yes','no'],'no','no'))
 
 SvmModel = DataType(
     'SvmModel',
-    Attribute('classify_alg',['svm','no'], 'no','no'),
-    Attribute('svm_kernel',['linear','polynomial','RBF','sigmoid','precomputed_kernel'],
+    AttributeDef('classify_alg',['svm','no'], 'no','no'),
+    AttributeDef('svm_kernel',['linear','polynomial','RBF','sigmoid','precomputed_kernel'],
               'linear','linear'))
 
 list_files = [ClassifyFile,SvmModel,PredictionPCAPlot,PredictionPlot]
@@ -41,8 +41,8 @@ all_modules = [
        'classify_with_weighted_voting',
        [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2,
         SignalFile2_rule.SignalFile2],ClassifyFile,
-       UserInput('num_features',10),
-       UserInput('wv_minstd',1),
+       UserInputDef('num_features',10),
+       UserInputDef('wv_minstd',1),
        Constraint('contents',MUST_BE,'class0,class1',0),
        Constraint('cls_format',MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'test',1),
@@ -90,8 +90,8 @@ all_modules = [
     Module(
        'run_loocv_weighted_voting',
        [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2],ClassifyFile,
-       UserInput('num_features',10),
-       UserInput('wv_minstd',1),
+       UserInputDef('num_features',10),
+       UserInputDef('wv_minstd',1),
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1',1),

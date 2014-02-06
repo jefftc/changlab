@@ -4,33 +4,33 @@ import SignalFile_rule
 SignalFile1 = DataType(
     "SignalFile1",
     # Properties of the format.
-    Attribute("format",[ "tdf", "pcl"],"tdf","tdf"),
+    AttributeDef("format",[ "tdf", "pcl"],"tdf","tdf"),
     # Properties of the data.
-    Attribute(
+    AttributeDef(
         "preprocess",["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         "missing_values",["no"],"no","no"),
-    Attribute(
+    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "zero_fill","zero_fill"),
-    Attribute(
+    AttributeDef(
         "logged",["yes"],"yes","yes"),
-    Attribute("predataset",["no", "yes"], "no","no"),
-    Attribute("filter",["yes","no"], "no","no"),
-    Attribute("rename_sample",["no", "yes"], "no","no"),
-    Attribute("dwd_norm",["no", "yes"], "no","no"),
-    Attribute("bfrm_norm",["no", "yes"], "no","no"),
-    Attribute("quantile_norm",["no", "yes"],"no", "no"),
-    Attribute("shiftscale_norm",["no", "yes"], "no","no"),
-    Attribute("combat_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef("predataset",["no", "yes"], "no","no"),
+    AttributeDef("filter",["yes","no"], "no","no"),
+    AttributeDef("rename_sample",["no", "yes"], "no","no"),
+    AttributeDef("dwd_norm",["no", "yes"], "no","no"),
+    AttributeDef("bfrm_norm",["no", "yes"], "no","no"),
+    AttributeDef("quantile_norm",["no", "yes"],"no", "no"),
+    AttributeDef("shiftscale_norm",["no", "yes"], "no","no"),
+    AttributeDef("combat_norm",["no", "yes"], "no","no"),
+    AttributeDef(
         "gene_center",["unknown", "no", "mean", "median"],
         "unknown","no"),
-    Attribute(
+    AttributeDef(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
         "unknown","no"),
-    Attribute("contents",["train0", "train1", "test", 'class0,class1,test',
+    AttributeDef("contents",["train0", "train1", "test", 'class0,class1,test',
                         "class0", "class1", "class0,class1", "unspecified"],
                   "unspecified","unspecified")
     )
@@ -60,7 +60,7 @@ all_modules = [
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("missing_values", SAME_AS_CONSTRAINT),
-        Consequence("missing_algorithm", SAME_AS_CONSTRAINT),           
+        Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
         Consequence("predataset", SAME_AS_CONSTRAINT),
         Consequence("rename_sample", SAME_AS_CONSTRAINT),
@@ -70,9 +70,9 @@ all_modules = [
         Consequence("quantile_norm", SAME_AS_CONSTRAINT),
         Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
         Consequence("combat_norm", SAME_AS_CONSTRAINT),
-        Consequence("gene_center", SET_TO, 'unknown'),
-        Consequence("gene_normalize", SET_TO, 'unknown'),
         Consequence("contents", SAME_AS_CONSTRAINT),
+        #Consequence("gene_center", SET_TO, 'unknown'),
+        #Consequence("gene_normalize", SET_TO, 'unknown'),
         ),
     Module(
         "check_gene_center",
@@ -81,6 +81,7 @@ all_modules = [
         Constraint("logged",MUST_BE,"yes"),
         Constraint("missing_values",MUST_BE,"no"),
         Constraint("gene_center",MUST_BE,"unknown"),
+        # Why does gene_normalize matter here?
         Constraint("gene_normalize", MUST_BE, "unknown"),
         Consequence("format",SAME_AS_CONSTRAINT),
         Consequence("logged",SAME_AS_CONSTRAINT),
@@ -98,7 +99,10 @@ all_modules = [
         Consequence("format",SAME_AS_CONSTRAINT),
         Consequence("logged",SAME_AS_CONSTRAINT),
         Consequence("missing_values",SAME_AS_CONSTRAINT),
-        Consequence("gene_normalize",BASED_ON_DATA,["no", "variance", "sum_of_squares"])),
+        Consequence(
+            "gene_normalize", BASED_ON_DATA,
+            ["no", "variance", "sum_of_squares"]),
+        ),
     Module(   
         "convert_signal_to_pcl",
         SignalFile1,SignalFile1,

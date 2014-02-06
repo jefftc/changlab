@@ -3,124 +3,124 @@ from Betsy.bie3 import *
 import SignalFile2_rule
 ClusterFile = DataType(
     "ClusterFile",
-    Attribute("cluster_alg",['som','pca','kmeans','hierarchical'],'kmeans','kmeans'),
-    Attribute("distance",['correlation','euclidean'],'correlation','correlation'),
+    AttributeDef("cluster_alg",['som','pca','kmeans','hierarchical'],'kmeans','kmeans'),
+    AttributeDef("distance",['correlation','euclidean'],'correlation','correlation'),
     # Properties of the data.
-    Attribute(
+    AttributeDef(
         "preprocess",["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         "missing_values",["no"],"no","no"),
-    Attribute(
+    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill"),
-    Attribute("filter",["yes","no"], "no","no"),
-    Attribute(
+    AttributeDef("filter",["yes","no"], "no","no"),
+    AttributeDef(
         "logged",[ "no", "yes"],"yes","yes"),
     # Normalizing the genes.
-    Attribute(
+    AttributeDef(
         "gene_center",["unknown", "no", "mean", "median"],
         "no","no"),
-    Attribute(
+    AttributeDef(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
         "no","no"),
 
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    Attribute(
+    AttributeDef(
         "dwd_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "bfrm_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "quantile_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "shiftscale_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "combat_norm",["no", "yes"], "no","no"),
 
     # Annotations.
-    Attribute("annotate",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef("annotate",["no", "yes"], "no","no"),
+    AttributeDef(
         "unique_genes",["no", "average_genes", "high_var", "first_gene"],
         "no","no"),
-    Attribute(
+    AttributeDef(
         "duplicate_probe",["no", "yes", "closest_probe", "high_var_probe"],
         "no","no"),
-    Attribute("rename_sample",["no", "yes"], "no","no"),
+    AttributeDef("rename_sample",["no", "yes"], "no","no"),
 
     # Unclassified.
-    Attribute("num_features",["yes","no"], "no","no"),
-    Attribute("gene_order",["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+    AttributeDef("num_features",["yes","no"], "no","no"),
+    AttributeDef("gene_order",["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
        "no","no"),
-    Attribute("predataset",["no", "yes"], "no","no"),
-    Attribute("platform",["yes","no"], "no","no"),
-    Attribute("group_fc",["yes","no"], "no","no"),
-    Attribute("contents",["train0", "train1", "test", "class0,class1,test",
+    AttributeDef("predataset",["no", "yes"], "no","no"),
+    AttributeDef("platform",["yes","no"], "no","no"),
+    AttributeDef("group_fc",["yes","no"], "no","no"),
+    AttributeDef("contents",["train0", "train1", "test", "class0,class1,test",
                         "class0", "class1", "class0,class1", "unspecified"],
                    "unspecified","unspecified")
     )
 
 Heatmap = DataType(
     "Heatmap",
-    Attribute("cluster_alg",['som','pca','kmeans','hierarchical','no_cluster_alg'],
+    AttributeDef("cluster_alg",['som','pca','kmeans','hierarchical','no_cluster_alg'],
               'no_cluster_alg','no_cluster_alg'),
-    Attribute("distance",['correlation','euclidean'],'euclidean','euclidean'),
-    Attribute('hm_width',['yes','no'],'yes','yes'),
-    Attribute('hm_height',['yes','no'],'yes','yes'),
-    Attribute('color',['red_green', 'blue_yellow'],'red_green','red_green'),
+    AttributeDef("distance",['correlation','euclidean'],'euclidean','euclidean'),
+    AttributeDef('hm_width',['yes','no'],'yes','yes'),
+    AttributeDef('hm_height',['yes','no'],'yes','yes'),
+    AttributeDef('color',['red_green', 'blue_yellow'],'red_green','red_green'),
     # Properties of the data.
-    Attribute(
+    AttributeDef(
         "preprocess",["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
         "unknown","unknown"),
-    Attribute(
+    AttributeDef(
         "missing_values",["no"],"no","no"),
-    Attribute(
+    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill"),
-    Attribute("filter",["yes","no"], "no","no"),
-    Attribute(
+    AttributeDef("filter",["yes","no"], "no","no"),
+    AttributeDef(
         "logged",[ "no", "yes"],"yes","yes"),
     # Normalizing the genes.
-    Attribute(
+    AttributeDef(
         "gene_center",["unknown", "no", "mean", "median"],
         "no","no"),
-    Attribute(
+    AttributeDef(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
         "no","no"),
 
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
-    Attribute(
+    AttributeDef(
         "dwd_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "bfrm_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "quantile_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "shiftscale_norm",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef(
         "combat_norm",["no", "yes"], "no","no"),
 
     # Annotations.
-    Attribute("annotate",["no", "yes"], "no","no"),
-    Attribute(
+    AttributeDef("annotate",["no", "yes"], "no","no"),
+    AttributeDef(
         "unique_genes",["no", "average_genes", "high_var", "first_gene"],
         "no","no"),
-    Attribute(
+    AttributeDef(
         "duplicate_probe",["no", "yes", "closest_probe", "high_var_probe"],
         "no","no"),
-    Attribute("rename_sample",["no", "yes"], "no","no"),
+    AttributeDef("rename_sample",["no", "yes"], "no","no"),
 
     # Unclassified.
-    Attribute("num_features",["yes","no"], "no","no"),
-    Attribute("gene_order",["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+    AttributeDef("num_features",["yes","no"], "no","no"),
+    AttributeDef("gene_order",["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
        "no","no"),
-    Attribute("predataset",["no", "yes"], "no","no"),
-    Attribute("platform",["yes","no"], "no","no"),
-    Attribute("group_fc",["yes","no"], "no","no"),
-    Attribute("contents",["train0", "train1", "test", "class0,class1,test",
+    AttributeDef("predataset",["no", "yes"], "no","no"),
+    AttributeDef("platform",["yes","no"], "no","no"),
+    AttributeDef("group_fc",["yes","no"], "no","no"),
+    AttributeDef("contents",["train0", "train1", "test", "class0,class1,test",
                         "class0", "class1", "class0,class1", "unspecified"],
                    "unspecified","unspecified")
     )
@@ -236,7 +236,7 @@ all_modules = [
     Module(
         'cluster_genes_by_kmeans',
         SignalFile2_rule.SignalFile2,ClusterFile,
-        UserInput("k_value",5),
+        UserInputDef("k_value",5),
         Constraint("format",MUST_BE,"tdf"),
         Constraint("logged",MUST_BE,"yes"),
         Consequence("cluster_alg",SET_TO,'kmeans'),
@@ -341,8 +341,8 @@ all_modules = [
     Module(
         'plot_signal_heatmap',
         SignalFile2_rule.SignalFile2,Heatmap,
-        UserInput('hm_width_value',20),
-        UserInput('hm_height_value',1),
+        UserInputDef('hm_width_value',20),
+        UserInputDef('hm_height_value',1),
         Constraint("format",MUST_BE,"tdf"),
         Constraint("logged",MUST_BE,"yes"),
         Consequence("cluster_alg",SET_TO,'no_cluster_alg'),
@@ -398,7 +398,7 @@ all_modules = [
     Module(
         'plot_signal_heatmap',
         ClusterFile,Heatmap,
-        UserInput("k_value",5),
+        UserInputDef("k_value",5),
         Constraint("cluster_alg",CAN_BE_ANY_OF,['hierarchical','pca','som','kmeans']),
         Constraint("distance",CAN_BE_ANY_OF,['correlation','euclidean']),
         Constraint("logged",MUST_BE,"yes"),

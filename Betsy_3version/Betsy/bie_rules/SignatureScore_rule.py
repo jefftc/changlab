@@ -8,7 +8,7 @@ all_modules = [
     Module(
         'score_pathway_with_scoresig',
         [SignalFile2_rule.SignalFile2,SignalFile2_rule.SignalFile2],SignatureScore,
-        UserInput('platform_value','HG_U133A'),
+        UserInputDef('platform_value','HG_U133A'),
         Constraint("format",MUST_BE,'tdf',0),
         Constraint("preprocess",MUST_BE,'rma',0),
         Constraint("logged",MUST_BE,'yes',0),
