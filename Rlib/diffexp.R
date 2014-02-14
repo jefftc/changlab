@@ -165,10 +165,12 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   p.values <- c()
   nl10p <- c()
   if(nrow(X.1) >= 1) {
+    p.values <- rep(NA, nrow(X.1))
     #x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
-    x <- mclapply(1:nrow(X.1), mc.cores=NPROCS, FUN=function(i) 
+    I <- which(diff > 0)
+    x <- mclapply(I, mc.cores=NPROCS, FUN=function(i) 
       t.test(X.1[i,], X.2[i,]))
-    p.values <- unlist(lapply(x, function(x) x$p.value))
+    p.values[I] <- unlist(lapply(x, function(x) x$p.value))
   }
   p.values[is.na(p.values)] <- 1
   fdr <- fdr.correct.bh(p.values)

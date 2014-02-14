@@ -712,6 +712,9 @@ def backchain(moduledb, out_data, *user_attributes):
         out_data = out_data.output(*user_attributes)
     assert isinstance(out_data, Data)
 
+    for x in user_attributes:
+        assert isinstance(x, Attribute)
+
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
