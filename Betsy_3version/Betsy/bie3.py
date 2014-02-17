@@ -73,6 +73,7 @@ TYPE_ENUM = 101
 # Constraints
 MUST_BE = 200
 CAN_BE_ANY_OF = 201
+SAME_AS = 202
 
 # Consequences
 SET_TO = 300
@@ -86,6 +87,7 @@ CONST2STR = {
     
     MUST_BE : "MUST_BE",
     CAN_BE_ANY_OF : "CAN_BE_ANY_OF",
+    SAME_AS : "SAME_AS",
     
     SET_TO : "SET_TO",
     SET_TO_ONE_OF : "SET_TO_ONE_OF",
@@ -200,11 +202,26 @@ class UserInput:
 class Constraint:
     def __init__(self, name, behavior, arg1=None, input_index=None):
         if behavior == MUST_BE:
+            # name   Name of attribute.
+            # arg1   Value of the attribute.
             assert type(arg1) is type("")
         elif behavior == CAN_BE_ANY_OF:
+            # name   Name of attribute.
+            # arg1   List of values of the attribute.
             assert type(arg1) in [type([]), type(())]
             for x in arg1:
                 assert type(x) is type("")
+        elif behavior == SAME_AS:
+            # name   Name of attribute.
+            # arg1   Index of the datatype that this must match.
+            assert type(arg1) is type(0), (
+                "arg1 should be the index of the datatype with the "
+                "same attribute")
+            assert input_index is not None, (
+                "input_index must be given for SAME_AS constraint")
+            assert type(input_index) is type(0)
+            if input_index is not None:
+                assert arg1 != input_index
         else:
             raise AssertionError, "Invalid behavior (%s) for constraint %s." %(
                 behavior, name)
@@ -472,34 +489,59 @@ class Module:
 
         for x in constraints:
             self._assert_constraint(
-                name, in_datatypes, out_datatype, x, consequences)
+                name, in_datatypes, out_datatype, constraints, consequences, x)
         for x in consequences:
             self._assert_consequence(
-                name, in_datatypes, out_datatype, constraints, x)
+                name, in_datatypes, out_datatype, constraints, consequences, x)
             
     def _assert_constraint(
-        self, name, in_datatypes, out_datatype, constraint, consequences):
+        self, name, in_datatypes, out_datatype, constraints, consequences,
+        constraint):
         # Get the input datatype that this constraint refers to.
         i = constraint.input_index
         assert i < len(in_datatypes)
         in_datatype = in_datatypes[i]
 
-        assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]
-        assert in_datatype.is_valid_attribute_value(
-            constraint.name, constraint.arg1)
+        assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF, SAME_AS]
+        if constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]:
+            assert in_datatype.is_valid_attribute_value(
+                constraint.name, constraint.arg1), (
+                "%r: Invalid value %r for attribute %r." % (
+                    name, constraint.arg1, constraint.name))
+        elif constraint.behavior == SAME_AS:
+            assert constraint.arg1 < len(in_datatypes)
+            assert constraint.arg1 != constraint.input_index
+            # Make sure there is a MUST_BE or CAN_BE_ANY_OF constraint
+            # on constraint.arg1.
+            x = constraints
+            x = [x for x in x if x.name == constraint.name]
+            x = [x for x in x if x.input_index == constraint.arg1]
+            assert len(x) > 0, (
+                "%r: %r SAME_AS %d, but datatype %d has no constraint on %r." %
+                (name, constraint.name, constraint.arg1, constraint.arg1,
+                 constraint.name))
+            assert len(x) == 1
+            x = x[0]
+            assert x.behavior in [MUST_BE, CAN_BE_ANY_OF]
+            # Make sure the datatype has this attribute.
+            dt = in_datatypes[constraint.arg1]
+            assert dt.is_valid_attribute_name(constraint.name)
+        else:
+            raise NotImplementedError
 
         # For every constraint, there must be a consequent given.
         # Need to specify what the module does with the variable.
         if in_datatype == out_datatype:
             x = [x for x in consequences if x.name == constraint.name]
-            assert x, "Module %r: constraint but no consequence for %r." % (
+            assert x, "%r: constraint but no consequence for %r." % (
                 name, constraint.name)
 
     def _assert_consequence(
-        self, name, in_datatypes, out_datatype, constraints, consequence):
+        self, name, in_datatypes, out_datatype, constraints, consequences,
+        consequence):
         import itertools
         assert consequence.name in out_datatype.get_attribute_names(), \
-               "Module %s refers to an unknown attribute %s." % (
+               "Module %r refers to an unknown attribute %r." % (
             self.name, consequence.name)
         
         if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
@@ -516,25 +558,28 @@ class Module:
             in_datatype = in_datatypes[index]
             
             # Make sure there is a valid constraint.
-            x = [x for x in constraints
-                 if x.behavior in [MUST_BE, CAN_BE_ANY_OF]]
+            x = constraints
+            #x = [x for x in constraints
+            #     if x.behavior in [MUST_BE, CAN_BE_ANY_OF, SAME_AS]]
             x = [x for x in x if x.input_index == index]
             x = [x for x in x if x.name == consequence.name]
-            assert len(x) > 0, "I could not find a constraint on %s." % \
-                   consequence.name
+            assert len(x) > 0, (
+                "%r: I could not find a constraint on %r for input "
+                "datatype %d." % (name, consequence.name, index))
             assert len(x) == 1
             cons = x[0]
 
             # Make sure the values of this constraint are allowed in
             # the input and output datatypes.
-            in_attr = in_datatype.get_attribute(consequence.name)
-            out_attr = out_datatype.get_attribute(consequence.name)
-            assert in_attr.is_valid_value(cons.arg1), \
-                   "Invalid value for %s (%s) in module %s" % (
-                in_attr.name, cons.arg1, self.name)
-            assert out_attr.is_valid_value(cons.arg1), \
-                   "Invalid value for %s (%s) in module %s" % (
-                out_attr.name, cons.arg1, self.name)
+            if cons.behavior in [MUST_BE, CAN_BE_ANY_OF]:
+                in_attr = in_datatype.get_attribute(consequence.name)
+                out_attr = out_datatype.get_attribute(consequence.name)
+                assert in_attr.is_valid_value(cons.arg1), \
+                       "Invalid value for %s (%s) in module %s" % (
+                    in_attr.name, cons.arg1, self.name)
+                assert out_attr.is_valid_value(cons.arg1), \
+                       "Invalid value for %s (%s) in module %s" % (
+                    out_attr.name, cons.arg1, self.name)
         else:
             raise AssertionError, consequence.behavior
 
@@ -711,6 +756,9 @@ def backchain(moduledb, out_data, *user_attributes):
     if isinstance(out_data, DataType):
         out_data = out_data.output(*user_attributes)
     assert isinstance(out_data, Data)
+
+    for x in user_attributes:
+        assert isinstance(x, Attribute)
 
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
@@ -1650,6 +1698,17 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
     for constraint in module.constraints:
         if constraint.input_index != in_num:
             continue
+
+        # If this constraint is the SAME_AS another one, then use the
+        # value of the copied constraint.
+        if constraint.behavior == SAME_AS:
+            assert constraint.arg1 < len(module.in_datatypes)
+            x = [x for x in module.constraints if x.name == constraint.name]
+            x = [x for x in x if x.input_index == constraint.arg1]
+            assert len(x) == 1
+            constraint = x[0]
+            assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]
+
         if constraint.behavior == MUST_BE:
             attributes[constraint.name] = constraint.arg1
         elif constraint.behavior == CAN_BE_ANY_OF:
@@ -1788,13 +1847,25 @@ def _can_module_produce_data(module, data):
             x = [x for x in x if x.input_index == datatype_index]
             assert len(x) == 1
             constraint = x[0]
-            outc_value = constraint.arg1
+
+            # If this should be the same as another constraint, then
+            # check the other constraint.
+            if constraint.behavior == SAME_AS:
+                assert constraint.arg1 < len(module.in_datatypes)
+                x = [x for x in module.constraints
+                     if x.name == consequence.name]
+                x = [x for x in x if x.input_index == constraint.arg1]
+                assert len(x) == 1
+                constraint = x[0]
+            
             if constraint.behavior == MUST_BE:
+                outc_value = constraint.arg1
                 outc_type = TYPE_ATOM
             elif constraint.behavior == CAN_BE_ANY_OF:
+                outc_value = constraint.arg1
                 outc_type = TYPE_ENUM
             else:
-                raise NotImplementedError
+                raise NotImplementedError, constraint.behavior
         else:
             raise AssertionError
 
@@ -2342,12 +2413,15 @@ all_modules = [
         Constraint("contents", MUST_BE, "class0", 0),
         Constraint("format", MUST_BE, "tdf", 0),
         Constraint("logged", MUST_BE, "yes", 0),
+        Constraint("preprocess", MUST_BE, "rma", 0),
         Constraint("contents", MUST_BE, "class1", 1),
         Constraint("format", MUST_BE, "tdf", 1),
         Constraint("logged", MUST_BE, "yes", 1),
+        Constraint("preprocess", SAME_AS, 0, 1),
         Consequence("contents", SET_TO, "class0,class1"),
         Consequence("format", SAME_AS_CONSTRAINT, 0),
         Consequence("logged", SAME_AS_CONSTRAINT, 0),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
         )
     ]
 

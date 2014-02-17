@@ -160,21 +160,26 @@ def read_geneset_scores(filename):
     from genomicode import jmath
     from genomicode import filelib
     from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
     
     assert os.path.exists(filename)
     matrix = [x for x in filelib.read_cols(filename)]
     matrix = jmath.transpose(matrix)
     # BUG: Need more checks on size and format of matrix.
     col_names = {}
-    col_names['_SAMPLE_NAME'] = matrix[1][1:]
+    col_names[tdf.SAMPLE_NAME] = matrix[1][1:]
     row_names = {}
     row_names['geneset'] = []
+    synonyms = {}
+    synonyms[const.COL_ID] = tdf.SAMPLE_NAME
     data = []
     for line in matrix[2:]:
         single_data = [jmath.safe_float(i) for i in line[1:]]
         data.append(single_data)
         row_names['geneset'].append(line[0])
-    M = Matrix.InMemoryMatrix(data, row_names=row_names, col_names=col_names)
+    M = Matrix.InMemoryMatrix(
+        data, row_names=row_names, col_names=col_names, synonyms=synonyms)
     return M
 
 
@@ -438,6 +443,12 @@ def calc_km(survival, dead, group):
 
     assert len(survival) == len(dead)
     assert len(survival) == len(group)
+
+    # At least two samples must be dead.
+    x0 = [x for x in dead if x == 0]
+    x1 = [x for x in dead if x == 1]
+    assert len(x0) >= 2, "At least two samples must have dead=0."
+    assert len(x1) >= 2, "At least two samples must have dead=1."
     
     R = start_and_init_R()
 
