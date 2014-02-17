@@ -151,7 +151,7 @@ def run_case8():
     in_data = rulebase.GEOSeries
     network = bie3.backchain(
         rulebase.all_modules, rulebase.Heatmap,
-         bie3.Attribute(rulebase.SignalFile,"logged","yes"),###
+        bie3.Attribute(rulebase.SignalFile,"logged","yes"),###specify this attribtue or not make the network different
         )
     network = bie3.optimize_network(network)
 
