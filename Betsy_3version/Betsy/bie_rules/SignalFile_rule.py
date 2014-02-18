@@ -528,26 +528,29 @@ all_modules = [
          Constraint("bfrm_norm",MUST_BE,"no",1),
          Constraint("shiftscale_norm",MUST_BE,"no",1),
          Constraint("predataset",CAN_BE_ANY_OF,["yes","no"],0),###
-         Constraint("predataset",CAN_BE_ANY_OF,["yes","no"],1),###
+         Constraint("predataset",SAME_AS,0,1),
+         #Constraint("predataset",CAN_BE_ANY_OF,["yes","no"],1),###
          Constraint("preprocess",CAN_BE_ANY_OF,
               ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],0),###
-         Constraint("preprocess",CAN_BE_ANY_OF,
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],1),###
+         Constraint("preprocess",SAME_AS,0,1),
+         #Constraint("preprocess",CAN_BE_ANY_OF,
+         #     ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],1),###
          Consequence("contents", SET_TO, "class0,class1"),
          Consequence("format", SAME_AS_CONSTRAINT, 0),
          Consequence("logged", SAME_AS_CONSTRAINT, 0),
-         Consequence("missing_values",SAME_AS_CONSTRAINT,1),
-         Consequence("combat_norm",SAME_AS_CONSTRAINT,1),
-         Consequence("quantile_norm",SAME_AS_CONSTRAINT,1),
-         Consequence("dwd_norm",SAME_AS_CONSTRAINT,1),
-         Consequence("bfrm_norm",SAME_AS_CONSTRAINT,1),
-         Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,1),
-         Consequence("predataset",SAME_AS_CONSTRAINT,1),###
-         Consequence("preprocess",SAME_AS_CONSTRAINT,1),###
+         Consequence("missing_values",SAME_AS_CONSTRAINT,0),
+         Consequence("combat_norm",SAME_AS_CONSTRAINT,0),
+         Consequence("quantile_norm",SAME_AS_CONSTRAINT,0),
+         Consequence("dwd_norm",SAME_AS_CONSTRAINT,0),
+         Consequence("bfrm_norm",SAME_AS_CONSTRAINT,0),
+         Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,0),
+         Consequence("predataset",SAME_AS_CONSTRAINT,0),###
+         Consequence("preprocess",SAME_AS_CONSTRAINT,0),###
          Constraint("processing_step",MUST_BE,"merge",1),
          Consequence("processing_step",SET_TO_ONE_OF,["merge",
                                     "normalize",
-                                    "processed"])
+                                    "processed"]),
+         DefaultAttributesFrom(0),
         ),
         Module(
         "normalize_samples_with_quantile",
@@ -632,7 +635,8 @@ all_modules = [
         Constraint("processing_step",MUST_BE,"merge",0),
         Consequence("processing_step",SET_TO_ONE_OF,["merge",
                                     "normalize",
-                                    "processed"])),
+                                    "processed"]),
+        DefaultAttributesFrom(0),),
 
     Module(###
         "normalize_samples_with_shiftscale",  
@@ -654,7 +658,8 @@ all_modules = [
         Constraint("processing_step",MUST_BE,"merge",1),
         Consequence("processing_step",SET_TO_ONE_OF,["merge",
                                     "normalize",
-                                    "processed"])),
+                                    "processed"]),
+        DefaultAttributesFrom(1)),
     ###normalize
     Module(
         "check_gene_center",

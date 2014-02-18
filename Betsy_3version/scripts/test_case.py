@@ -29,10 +29,11 @@ def run_case2():
     # Will generate network back to illumina preprocessing if
     # SignalFile2 is given.  Problem is that SignalFile cannot be
     # shiftscale normalized.
-    out_data = rulebase.SignalFile2.output(
+    out_data = rulebase.SignalFile.output(
         preprocess="illumina",
         format="tdf", logged="yes",
-        missing_values="no", shiftscale_norm='yes')
+        missing_values="no", shiftscale_norm='yes'
+        )
     
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
@@ -50,7 +51,7 @@ def run_case2():
 
 def run_case3():
     in_data = rulebase.GEOSeries
-    out_data = rulebase.SignalFile1.output(preprocess="illumina",
+    out_data = rulebase.SignalFile.output(preprocess="illumina",
         format="tdf",  logged="yes",
         missing_values="no")
     
@@ -151,8 +152,7 @@ def run_case8():
     in_data = rulebase.GEOSeries
     network = bie3.backchain(
         rulebase.all_modules, rulebase.Heatmap,
-        ###specify this attribtue or not make the network different
-        bie3.Attribute(rulebase.SignalFile, "logged", "yes"),
+        #bie3.Attribute(rulebase.SignalFile,"logged","yes"),###specify this attribtue or not make the network different
         )
     network = bie3.optimize_network(network)
 
@@ -165,15 +165,13 @@ def run_case8():
     bie3.plot_network_gv("out.png", network)
     
 def main(): 
-    run_case1()
-    #run_case2()
+    #run_case1()
+    run_case2()
     #run_case3()
     #run_case4()
     #run_case5()
     #run_case6()
-    #run_case7()
+    ##run_case7()
     #run_case8()
-    
-
 if __name__ == '__main__':
     main()
