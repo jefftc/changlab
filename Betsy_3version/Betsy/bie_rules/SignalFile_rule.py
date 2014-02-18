@@ -963,25 +963,25 @@ all_modules = [
                                     "filter",
                                     "processed"]),
         DefaultAttributesFrom(1),),
-    Module(   
-        "convert_signal_to_gct",
-        SignalFile,SignalFile,
-        Constraint("format",MUST_BE,'tdf'),
-        Consequence("format",SET_TO,'gct'),
-        Constraint("processing_step",MUST_BE,"filter"),
-        Consequence("processing_step",SET_TO_ONE_OF,[
-                                    "processed"])),
-    Module( 
-        'unlog_signal',
-        SignalFile,SignalFile,
-        Constraint("format", MUST_BE,"tdf"),
-        Constraint("logged", MUST_BE,"yes"),
-        Consequence("format",SAME_AS_CONSTRAINT),
-        Consequence("logged",SET_TO,"no"),
-        Constraint("processing_step",MUST_BE,"filter"),
-        Consequence("processing_step",SET_TO_ONE_OF,['filter',
-                                    "processed"])),
-    
+##    Module(   
+##        "convert_signal_to_gct",
+##        SignalFile,SignalFile,
+##        Constraint("format",MUST_BE,'tdf'),
+##        Consequence("format",SET_TO,'gct'),
+##        Constraint("processing_step",MUST_BE,"filter"),
+##        Consequence("processing_step",SET_TO_ONE_OF,[
+##                                    "processed"])),
+##    Module( 
+##        'unlog_signal',
+##        SignalFile,SignalFile,
+##        Constraint("format", MUST_BE,"tdf"),
+##        Constraint("logged", MUST_BE,"yes"),
+##        Consequence("format",SAME_AS_CONSTRAINT),
+##        Consequence("logged",SET_TO,"no"),
+##        Constraint("processing_step",MUST_BE,"filter"),
+##        Consequence("processing_step",SET_TO_ONE_OF,['filter',
+##                                    "processed"])),
+##    
     Module(###
         "convert_label_to_cls",   
         [ClassLabelFile,SignalFile],ClassLabelFile,
