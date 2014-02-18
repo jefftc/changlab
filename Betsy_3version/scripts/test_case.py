@@ -4,8 +4,9 @@ from Betsy import bie3
 def run_case1():
     in_data = rulebase.GEOSeries
     out_data = rulebase.SignalFile.output(preprocess="rma",
-        format="tdf", logged="yes",#gene_center='mean',annotate='yes',
-        missing_values="no",quantile_norm='yes',contents="class0,class1")
+        format="tdf", logged="yes",gene_center='mean',#annotate='yes',
+        missing_values="no",quantile_norm='yes',#contents="class0,class1"
+                                          )
     
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
@@ -165,8 +166,8 @@ def run_case8():
     bie3.plot_network_gv("out.png", network)
     
 def main(): 
-    #run_case1()
-    run_case2()
+    run_case1()
+    #run_case2()
     #run_case3()
     #run_case4()
     #run_case5()
