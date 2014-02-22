@@ -3,6 +3,7 @@
 
 # Functions:
 # parse_genes
+# parse_genes_from_geneset
 # parse_gene_sets
 # list_all_gene_sets
 # parse_rank_cutoffs
@@ -43,6 +44,33 @@ def parse_genes(genes):
     for x in genes:
         clean.extend(x.split(','))
     return clean
+
+
+def parse_genes_from_geneset(genes_from_geneset):
+    # genes_from_geneset is a list of genesets.
+    from genomicode import genesetlib
+
+    if not genes_from_geneset:
+        return []
+    all_genes = []
+    for file_geneset in genes_from_geneset:
+        filename, genesets = _parse_file_gs(file_geneset)
+
+        keywds = {"allow_tdf": True}
+        genes = genesetlib.read_genes(filename, *genesets, **keywds)
+        all_genes.extend(genes)
+    return all_genes
+
+
+def _parse_file_gs(geneset):
+    # Parse a geneset specified by the user.  geneset is in the format
+    # of <filename>[,<geneset>,<geneset>,...].  Return a tuple of
+    # <filename>, list of <geneset> (or empty list).
+    # XXX what happens if this is an empty list?
+    x = geneset.split(",")
+    assert len(x) >= 1
+    filename, genesets = x[0], x[1:]
+    return filename, genesets
 
 
 def parse_gene_sets(geneset):
@@ -447,7 +475,8 @@ def calc_km(survival, dead, group):
     # At least two samples must be dead.
     x0 = [x for x in dead if x == 0]
     x1 = [x for x in dead if x == 1]
-    assert len(x0) >= 2, "At least two samples must have dead=0."
+    # It is OK if no samples are alive.
+    #assert len(x0) >= 2, "At least two samples must have dead=0."
     assert len(x1) >= 2, "At least two samples must have dead=1."
     
     R = start_and_init_R()
@@ -840,9 +869,14 @@ def main():
         'expression_file.  '
         'You can use this parameter multiple times to search more genes.')
     group.add_argument(
+        '--genes_from_geneset', default=[], action='append',
+        help="Include the genes from this geneset.  "
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
+    group.add_argument(
         '--geneset', default=[], action='append',
-        help='Name of the geneset to analyze. To specify multiple gene sets, '
-        'use this parameter multiple times.')
+        help='Name of the geneset (from the gene set score file) to analyze. '
+        'To specify multiple gene sets, use this parameter multiple times.')
+    
     group.add_argument(
         '--all_genesets', default=False, action='store_true',
         help='Use all gene sets in the geneset file.')
@@ -931,12 +965,17 @@ def main():
            args.outcome_file
     
     assert args.outcome, 'Please specify the clinical outcomes to analyze.'
-    assert args.gene or args.geneset or args.all_genesets, \
+    assert args.gene or args.geneset or args.all_genesets or \
+           args.genes_from_geneset, \
            'Please specify a gene or gene set.'
     assert not (args.gene and args.geneset), (
-        'Please specify either a gene or a gene set, not both.')
+        'Please specify either a gene or a gene set score, not both.')
+    assert not (args.genes_from_geneset and args.geneset), (
+        'Please specify either a gene or a gene set score, not both.')
     assert not (args.gene and args.all_genesets), (
-        'Please specify either a gene or a gene set, not both.')
+        'Please specify either a gene or a gene set score, not both.')
+    assert not (args.genes_from_geneset and args.all_genesets), (
+        'Please specify either a gene or a gene set score, not both.')
 
     if args.rank_cutoff:
         assert not args.zscore_cutoff
@@ -953,7 +992,9 @@ def main():
     assert args.km_legend_size > 0 and args.km_legend_size < 10
     
     # Clean up the input.
-    genes = parse_genes(args.gene)
+    genes1 = parse_genes(args.gene)
+    genes2 = parse_genes_from_geneset(args.genes_from_geneset)
+    genes = genes1 + genes2
     gene_sets = parse_gene_sets(args.geneset)
     if args.all_genesets:
         gene_sets = list_all_gene_sets(args.expression_file)
@@ -1007,12 +1048,24 @@ def main():
         dead = clinical_annots[dead_header]
         scores = M.value(i, None)
 
-        x = calc_association(
-            survival, dead, scores, rank_cutoffs, zscore_cutoffs,
-            expression_or_score, args.ignore_unscored_genesets)
+        try:
+            x = calc_association(
+                survival, dead, scores, rank_cutoffs, zscore_cutoffs,
+                expression_or_score, args.ignore_unscored_genesets)
+        except AssertionError, x:
+            # Provide a better error message.
+            type, value, tb = sys.exc_info()
+            x = str(x)
+            if filestem:
+                fs = filestem
+                if fs.endswith("."):
+                    fs = fs[:-1]
+                x = x + " (%s)" % fs
+            raise AssertionError, x, tb
         if x is None:
             continue
         gene_outcome_scores[(time_header, dead_header, i)] = x
+
 
     # Files generated:
     # <filestem>.stats.txt      Or to STDOUT if no <filestem> given.
