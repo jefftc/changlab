@@ -1,6 +1,6 @@
 #PcaAnalysis
 from Betsy.bie3 import *
-import SignalFile_rule,SignalFile2_rule,SignalFile1_rule
+import SignalFile_rule
 PcaAnalysis = DataType(
     'PcaAnalysis',
     AttributeDef('contents',["train0", "train1", "test", "class0,class1,test",
@@ -117,7 +117,7 @@ list_files = [PcaAnalysis,PcaPlot]
 all_modules = [
     Module(
         'analyze_samples_pca',
-        SignalFile2_rule.SignalFile2,PcaAnalysis,
+        SignalFile_rule.PrettySignalFile,PcaAnalysis,
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", "class0,class1,test",
                   "class0", "class1", "class0,class1",
                   "unspecified"]),
@@ -131,8 +131,8 @@ all_modules = [
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("shiftscale_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("dwd_norm",CAN_BE_ANY_OF,['yes','no']),
-        Constraint("gene_center",CAN_BE_ANY_OF,['mean','median','no','unknown']),
-        Constraint("gene_normalize",CAN_BE_ANY_OF,["unknown", "no", "variance",
+        Constraint("gene_center",CAN_BE_ANY_OF,['mean','median','no']),
+        Constraint("gene_normalize",CAN_BE_ANY_OF,[ "no", "variance",
                                                    "sum_of_squares"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,["none", "median_fill", "zero_fill"]),
         Constraint("unique_genes",CAN_BE_ANY_OF,["no", "average_genes", "high_var",

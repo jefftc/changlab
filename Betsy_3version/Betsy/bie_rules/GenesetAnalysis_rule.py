@@ -1,6 +1,6 @@
 #GenesetAnalysis
 from Betsy.bie3 import *
-import SignalFile2_rule
+import SignalFile_rule
 GenesetAnalysis=DataType(
     'GenesetAnalysis',
     AttributeDef("geneset",["yes","no"],"no","no"),
@@ -21,9 +21,8 @@ all_modules = [
     Module(
         'score_pathway_with_geneset',
         [GenesetFile,
-         SignalFile2_rule.SignalFile2],GenesetAnalysis,
+         SignalFile_rule.PrettySignalFile],GenesetAnalysis,
          UserInputDef("geneset_value"),
-         Constraint("logged",MUST_BE,'yes',1),
          Constraint("quantile_norm",MUST_BE,'yes',1),
          Constraint("gene_center",MUST_BE,'mean',1),
          Constraint("gene_normalize",MUST_BE,'variance',1),

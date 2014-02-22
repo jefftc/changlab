@@ -1,8 +1,8 @@
 #ClassifyFile
 from Betsy.bie3 import *
 import SignalFile_rule
-import SignalFile2_rule
 import PcaAnalysis_rule
+
 ClassifyFile=DataType(
     'ClassifyFile',
     AttributeDef("classify_alg",['weighted_voting','svm','random_forest','no'], 'no','no'),
@@ -39,8 +39,8 @@ list_files = [ClassifyFile,SvmModel,PredictionPCAPlot,PredictionPlot]
 all_modules = [
     Module(
        'classify_with_weighted_voting',
-       [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2,
-        SignalFile2_rule.SignalFile2],ClassifyFile,
+       [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile,
+        SignalFile_rule.PrettySignalFile],ClassifyFile,
        UserInputDef('num_features',10),
        UserInputDef('wv_minstd',1),
        Constraint('contents',MUST_BE,'class0,class1',0),
@@ -57,7 +57,7 @@ all_modules = [
                         'wv_ttest_median_minstd'])),
     Module(
        'classify_with_random_forest',
-       [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2],ClassifyFile,
+       [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],ClassifyFile,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -67,7 +67,7 @@ all_modules = [
     
      Module(
        'train_svm_model',
-       [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2],SvmModel,
+       [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],SvmModel,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -78,7 +78,7 @@ all_modules = [
                                                 'RBF','sigmoid','precomputed_kernel'])), 
      Module(
        'classify_with_svm',
-       [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2,SvmModel],ClassifyFile,
+       [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile,SvmModel],ClassifyFile,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -89,7 +89,7 @@ all_modules = [
                    ['linear','polynomial','RBF','sigmoid','precomputed_kernel'])),
     Module(
        'run_loocv_weighted_voting',
-       [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2],ClassifyFile,
+       [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],ClassifyFile,
        UserInputDef('num_features',10),
        UserInputDef('wv_minstd',1),
        Constraint("contents",MUST_BE,'class0,class1',0),
@@ -106,7 +106,7 @@ all_modules = [
        Consequence('actual_label',SET_TO,'no')),
     Module(
        'run_loocv_svm',
-       [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2],ClassifyFile,
+       [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],ClassifyFile,
        Constraint('contents',MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1',1),
@@ -118,7 +118,7 @@ all_modules = [
        Consequence("actual_label",SET_TO,'no')),
     Module(
        'run_loocv_random_forest',
-       [SignalFile_rule.ClassLabelFile,SignalFile2_rule.SignalFile2],ClassifyFile,
+       [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],ClassifyFile,
        Constraint('contents',MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1',1),

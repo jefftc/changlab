@@ -1,13 +1,13 @@
 #SignatureScore
 from Betsy.bie3 import *
-import SignalFile2_rule
+import SignalFile_rule
 SignatureScore = DataType(
     'SignatureScore')
 list_files = [SignatureScore]
 all_modules = [
     Module(
         'score_pathway_with_scoresig',
-        [SignalFile2_rule.SignalFile2,SignalFile2_rule.SignalFile2],SignatureScore,
+        [SignalFile_rule.PrettySignalFile,SignalFile_rule.PrettySignalFile],SignatureScore,
         UserInputDef('platform_value','HG_U133A'),
         Constraint("format",MUST_BE,'tdf',0),
         Constraint("preprocess",MUST_BE,'rma',0),

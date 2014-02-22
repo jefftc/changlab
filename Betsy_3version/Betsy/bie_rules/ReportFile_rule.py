@@ -1,15 +1,13 @@
 # ReportFile
 from Betsy.bie3 import *
-from Betsy.bie_rules import SignalFile_rule,SignalFile2_rule,ClusterFile_rule,ClassifyFile_rule,PcaAnalysis_rule
+from Betsy.bie_rules import SignalFile_rule,ClusterFile_rule,ClassifyFile_rule,PcaAnalysis_rule,plot_rule
 from Betsy.bie_rules import GenesetAnalysis_rule, DiffExprFile_rule,GatherFile_rule,GseaFile_rule
 
 ReportFile = DataType(
     'ReportFile',
     AttributeDef("report_type",['normalize_file','batch_effect_remove',
                             'classify','cluster','diffgenes',
-                            'heatmap','geneset','all'],'normalize_file','normalize_file'),
-    AttributeDef('preprocess',["unknown", 'illumina', "agilent", "mas5", "rma", "loess"],
-                  'unknown','unknown')
+                            'heatmap','geneset','all'],'normalize_file','normalize_file')
     )
 
 list_files = [ReportFile]
@@ -18,19 +16,13 @@ list_files = [ReportFile]
 all_modules = [
     Module(
         'make_normalize_report',
-        [SignalFile2_rule.IntensityPlot,
-         SignalFile2_rule.ControlPlot,
-         SignalFile2_rule.SignalFile2,
+        [plot_rule.IntensityPlot,
+         plot_rule.ControlPlot,
+         SignalFile_rule.PrettySignalFile,
          PcaAnalysis_rule.PcaPlot,
-         SignalFile2_rule.ActbPlot,
+         plot_rule.ActbPlot,
          PcaAnalysis_rule.PcaPlot],ReportFile,
-         Constraint('preprocess',CAN_BE_ANY_OF,["unknown", "agilent", "mas5", "rma", "loess"],0),
-         Constraint('preprocess',CAN_BE_ANY_OF,["unknown", "agilent", "mas5", "rma", "loess"],1),
          Constraint("annotate",MUST_BE,"yes",2),
-         Constraint('preprocess',CAN_BE_ANY_OF,["unknown", "agilent", "mas5", "rma", "loess"],2),
-         Constraint('preprocess',CAN_BE_ANY_OF,["unknown", "agilent", "mas5", "rma", "loess"],3),
-         Constraint('preprocess',CAN_BE_ANY_OF,["unknown", "agilent", "mas5", "rma", "loess"],4),
-         Constraint('preprocess',CAN_BE_ANY_OF,["unknown", "agilent", "mas5", "rma", "loess"],5),
          Constraint('quantile_norm',MUST_BE,'no',5),
          Constraint('combat_norm',MUST_BE,'no',5),
          Constraint('shiftscale_norm',MUST_BE,'no',5),
@@ -42,19 +34,19 @@ all_modules = [
          Constraint('platform',MUST_BE,'no',5),
          Constraint('group_fc',MUST_BE,'no',5),
          Consequence('report_type',SET_TO,'normalize_file'),
-         Consequence('preprocess',SAME_AS_CONSTRAINT)),
+        ),
     
                                       
     Module(
         'make_normalize_report_illumina',
-       [ SignalFile2_rule.SignalFile2,
+       [ SignalFile_rule.PrettySignalFile,
          PcaAnalysis_rule.PcaPlot,
          PcaAnalysis_rule.PcaPlot,
-         SignalFile2_rule.IntensityPlot,
-         SignalFile2_rule.ActbPlot,
-         SignalFile2_rule.BiotinPlot,
-         SignalFile2_rule.HousekeepingPlot,
-         SignalFile2_rule.Hyb_barPlot,
+         plot_rule.IntensityPlot,
+         plot_rule.ActbPlot,
+         plot_rule.BiotinPlot,
+         plot_rule.HousekeepingPlot,
+         plot_rule.Hyb_barPlot,
          SignalFile_rule.ControlFile],ReportFile,
          Constraint('preprocess',MUST_BE,'illumina',0),
          Constraint('annotate',MUST_BE,'yes'),
@@ -73,18 +65,16 @@ all_modules = [
          Constraint('preprocess',MUST_BE,'illumina',8),
          Constraint('format',MUST_BE,'gct',8),
          Constraint("logged",MUST_BE,'no'),
-         Consequence('preprocess',SAME_AS_CONSTRAINT,0),
          Consequence('report_type',SET_TO,'normalize_file')),
     
     Module(
         'make_cluster_report',
         [ClusterFile_rule.ClusterFile,
          ClusterFile_rule.Heatmap],ReportFile,
-         Consequence('report_type',SET_TO,'cluster'),
-         Consequence('preprocess',SET_TO_ONE_OF,["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
+         Consequence('report_type',SET_TO,'cluster')),
     Module(
         'make_classify_report',
-        [SignalFile2_rule.SignalFile2,
+        [SignalFile_rule.PrettySignalFile,
          ClassifyFile_rule.ClassifyFile,
          ClassifyFile_rule.ClassifyFile,
          ClassifyFile_rule.PredictionPlot,
@@ -134,14 +124,12 @@ all_modules = [
         'make_heatmap_report',
         ClusterFile_rule.Heatmap,ReportFile,
         Constraint("cluster_alg",MUST_BE,'no_cluster_alg'),
-        Consequence("report_type",SET_TO,'heatmap'),
-        Consequence("preprocess",SET_TO_ONE_OF,["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
+        Consequence("report_type",SET_TO,'heatmap')),
     Module(
         'make_geneset_report',
         [GenesetAnalysis_rule.GenesetAnalysis,
          GenesetAnalysis_rule.GenesetPlot],ReportFile,
-         Consequence("report_type",SET_TO,'geneset'),
-         Consequence("preprocess",SET_TO_ONE_OF,["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
+         Consequence("report_type",SET_TO,'geneset')),
         
     Module(
         'make_diffgenes_report',
@@ -155,8 +143,7 @@ all_modules = [
          Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),
          Constraint("hm_width",MUST_BE,"yes",2),
          Constraint("hm_height",MUST_BE,"yes",2),
-         Consequence("report_type",SET_TO,'diffgenes'),
-         Consequence("preprocess",SET_TO_ONE_OF,["unknown", 'illumina', "agilent", "mas5", "rma", "loess"])),
+         Consequence("report_type",SET_TO,'diffgenes')),
     Module(
         'make_batch_effect_report',
         [SignalFile_rule.SignalFile,SignalFile_rule.SignalFile,
@@ -202,8 +189,7 @@ all_modules = [
          Constraint("bfrm_norm",MUST_BE,'no',4),
          Constraint("combat_norm",MUST_BE,'yes',4),
          Constraint("shiftscale_norm",MUST_BE,'no',4),
-         Consequence("report_type",SET_TO,'batch_effect_remove'),
-         Consequence("preprocess",SET_TO_ONE_OF,["unknown", 'illumina', "agilent", "mas5", "rma", "loess"]))
+         Consequence("report_type",SET_TO,'batch_effect_remove'))
 
         ]
   
