@@ -15,7 +15,6 @@
 # get_annot_samples
 # 
 # cmp_sample
-# index_sample
 # find_sample
 # intersect_samples
 #
@@ -254,20 +253,24 @@ def cmp_sample(x, y, case_insensitive):
     return x == y
 
 
-def index_sample(sample_list, sample, case_insensitive):
-    i = find_sample(sample_list, sample, case_insensitive)
-    assert i >= 0, "Missing: %s" % sample
+## def index_sample(sample_list, sample, case_insensitive):
+##     i = find_sample(sample_list, sample, case_insensitive)
+##     assert i >= 0, "Missing: %s" % sample
 
 
 def find_sample(sample_list, sample, case_insensitive):
+    # Return the index of this sample or -1.
     sample_list_cmp = sample_list
     sample_cmp = sample
     if case_insensitive:
         sample_list_cmp = [x.upper() for x in sample_list]
         sample_cmp = sample.upper()
+    #I = []
     for i, x in enumerate(sample_list_cmp):
         if x == sample_cmp:
             return i
+            #I.append(i)
+    #return I
     return -1
     
 

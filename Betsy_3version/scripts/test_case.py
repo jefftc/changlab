@@ -161,9 +161,10 @@ def run_case8():
     print in_data
     print
     
-    
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+    
 def run_case9():
     #command1 (command 1 and command 2 suppose to have the same result, but they are not)
 ##    out_data = rulebase.SignalFile.output(preprocess="rma",quantile_norm='yes',
@@ -182,6 +183,7 @@ def run_case9():
     
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
 
 def run_case10():
     # the SignalFile has several preprocess not only 'mas5'
@@ -206,5 +208,6 @@ def main():
     #run_case8()
     #run_case9()
     run_case10()
+    
 if __name__ == '__main__':
     main()

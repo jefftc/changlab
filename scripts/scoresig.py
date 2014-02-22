@@ -966,13 +966,16 @@ def main():
         
     datafile_rma = datafile_mas5 = datafile_illu = None
     if options.rma_dataset is not None:
-        assert os.path.exists(options.rma_dataset), "RMA file not found."
+        assert os.path.exists(options.rma_dataset), \
+               "RMA file not found: %s" % options.rma_dataset
         datafile_rma = os.path.realpath(options.rma_dataset)
     if options.mas5_dataset is not None:
-        assert os.path.exists(options.mas5_dataset), "MAS5 file not found."
+        assert os.path.exists(options.mas5_dataset), \
+               "MAS5 file not found: %s" % options.mas5_dataset
         datafile_mas5 = os.path.realpath(options.mas5_dataset)
     if options.illu_dataset is not None:
-        assert os.path.exists(options.illu_dataset), "ILLU file not found."
+        assert os.path.exists(options.illu_dataset), \
+               "ILLU file not found: %s" % options.illu_dataset
         datafile_illu = os.path.realpath(options.illu_dataset)
     assert datafile_rma or datafile_mas5 or datafile_illu, \
            "Please specify at least one data set."
@@ -1055,15 +1058,15 @@ def main():
     sys.stdout.flush()
     DATA_rma = DATA_mas5 = DATA_illu = None
     if datafile_rma is not None:
-        print "Reading RMA file."
+        print "Reading RMA file: %s" % datafile_rma
         DATA_rma = arrayio.read(datafile_rma)
         DATA_rma = arrayio.convert(DATA_rma, to_format=arrayio.gct_format)
     if datafile_mas5 is not None:
-        print "Reading MAS5 file."
+        print "Reading MAS5 file: %s" % datafile_mas5
         DATA_mas5 = arrayio.read(datafile_mas5)
         DATA_mas5 = arrayio.convert(DATA_mas5, to_format=arrayio.gct_format)
     if datafile_illu is not None:
-        print "Reading ILLU file."
+        print "Reading ILLU file: %s" % datafile_illu
         DATA_illu = arrayio.read(datafile_illu)
         DATA_illu = arrayio.convert(DATA_illu, to_format=arrayio.gct_format)
     # Don't handle the log.  Let pybinreg do it.
@@ -1087,6 +1090,9 @@ def main():
         data1_new, data2_new = x
         assert matrixlib.are_cols_aligned(data1_new, data2_new)
         # The samples in data1 (the reference) should not be changed.
+        assert data1.ncol() == data1_new.ncol(), \
+               "%s and %s data sets have different samples" % (
+            key1, key2)
         assert matrixlib.are_cols_aligned(data1, data1_new)
         DATA_all[i] = key2, data2_new
     for key, data in DATA_all:
