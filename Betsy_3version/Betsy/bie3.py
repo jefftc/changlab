@@ -97,8 +97,8 @@ CONST2STR = {
     }
 
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 
 class AttributeDef:
@@ -817,6 +817,8 @@ def backchain(moduledb, out_data, *user_attributes):
     stack = [0]
     seen = {}
     while stack:
+        #if len(nodes) >= 100:
+        #    break
         assert len(nodes) < MAX_NETWORK_SIZE, "network too large"
         #_print_network(Network(nodes, transitions))
 
@@ -1832,9 +1834,13 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
         if constraint.behavior == MUST_BE:
             attributes[constraint.name] = constraint.arg1
         elif constraint.behavior == CAN_BE_ANY_OF:
-            #if constraint.name not in attributes:
-            #    attributes[constraint.name] = constraint.arg1
-            attributes[constraint.name] = constraint.arg1
+            # If this attribute is not already set by a consequence
+            # above (e.g. the output data is already a specific
+            # value), then set it here.
+            #   Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+            #   Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0)
+            if constraint.name not in attributes:
+                attributes[constraint.name] = constraint.arg1
         else:
             raise AssertionError
 
@@ -1863,7 +1869,7 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
 
     # make_out.  This module should take in a "finished" Data object,
     # and use it to generate a new Data object.
-    debug_print("Generating a new %s with attributes %s." % (
+    debug_print("Generating a %s with attributes %s." % (
         in_datatype.name, attributes))
     return in_datatype.output(*user_attributes, **attributes)
 
