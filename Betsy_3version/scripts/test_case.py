@@ -161,9 +161,29 @@ def run_case8():
     print in_data
     print
     
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+    
+def run_case9():
+    #command1 (command 1 and command 2 suppose to have the same result, but they are not)
+##    out_data = rulebase.SignalFile.output(preprocess="rma",quantile_norm='yes',
+##                                          gene_center='mean',gene_normalize='variance')
+##    network = bie3.backchain(rulebase.all_modules, out_data)
+   
+    #command2 
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.SignalFile,
+         bie3.Attribute(rulebase.SignalFile,"preprocess","rma"),
+         bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes"),
+         bie3.Attribute(rulebase.SignalFile,'gene_center',"mean"),
+         bie3.Attribute(rulebase.SignalFile,'gene_normalize',"variance"))
+    
+    network = bie3.optimize_network(network)
     
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
 def run_case9():
     #command1 (command 1 and command 2 suppose to have the same result, but they are not)
 ##    out_data = rulebase.SignalFile.output(preprocess="rma",quantile_norm='yes',
@@ -188,12 +208,40 @@ def run_case10():
     out_data = rulebase.SignalFile.output(preprocess='mas5',
                                           contents="class0,class1",
                                           )
+
+
+
+def run_case10():
+    # the SignalFile has several preprocess not only 'mas5'
+    out_data = rulebase.SignalFile.output(
+        preprocess='mas5', contents="class0,class1")
+
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
     
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+
+def run_case11():
+    # New version of bie3 (2/20/14) runs too closly and generates
+    # "network too large" error.  Older version finishes quickly.
+
+    if 0:
+        # No problems.
+        out_data = rulebase.SignalFile.output()
+        network = bie3.backchain(rulebase.all_modules, out_data)
+        network = bie3.optimize_network(network)
+    else:
+        # network too large.
+        out_data = rulebase.PrettySignalFile.output()
+        network = bie3.backchain(rulebase.all_modules, out_data)
+        network = bie3.optimize_network(network)
     
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+
     
 def main(): 
     #run_case1()
@@ -202,9 +250,14 @@ def main():
     #run_case4()
     #run_case5()
     #run_case6()
-    ##run_case7()
+    #run_case7()
     #run_case8()
     #run_case9()
+
     run_case10()
+
+    #run_case10()
+    run_case11()
+    
 if __name__ == '__main__':
     main()

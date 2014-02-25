@@ -97,8 +97,8 @@ CONST2STR = {
     }
 
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 
 class AttributeDef:
@@ -812,11 +812,13 @@ def backchain(moduledb, out_data, *user_attributes):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 1024*8
+    MAX_NETWORK_SIZE = 1024
     nodes.append(out_data)
     stack = [0]
     seen = {}
     while stack:
+        #if len(nodes) >= 100:
+        #    break
         assert len(nodes) < MAX_NETWORK_SIZE, "network too large"
         #_print_network(Network(nodes, transitions))
 
@@ -1699,7 +1701,74 @@ def _backchain_to_modules(moduledb, data):
     return modules
 
 
-def _backchain_to_input(module, in_num, out_data, user_attributes):
+def _backchain_to_input_old(module, in_num, out_data, user_attributes):
+    # Given a module and output_data, return the input_data object
+    # that can generate the output.
+    assert in_num < len(module.in_datatypes)
+
+    in_datatype = module.in_datatypes[in_num]
+    out_datatype = out_data.datatype
+    debug_print("Backchaining %s from %s to %s [%d]." % (
+        module.name, out_datatype.name, in_datatype.name, in_num))
+
+    # BUG: What if module has two in_datatypes with the same datatype?
+    # Which one to copy?
+    if in_datatype == out_datatype:
+        # Start with the attributes in the out_data.
+        attributes = out_data.attributes.copy()
+    else:
+        # If the datatypes are different, then clear all the values.
+        attributes = {}
+        
+    # Modify the attributes based on the Constraints and Consequences
+    # of the module.
+
+    # If there is a Consequence that is SAME_AS_CONSTRAINT, then
+    # the attribute should be determined by the out_data.  e.g.
+    # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+    # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
+    #
+    # The module takes anything, produces the same value.  So
+    # the backchainer needs to preserve the value from the
+    # out_data.
+    for consequence in module.consequences:
+        n = consequence.name
+        if consequence.behavior == SAME_AS_CONSTRAINT:
+            # Keep the same attribute.
+            if consequence.arg1 == in_num:
+                attributes[n] = out_data.attributes[n]
+        elif consequence.behavior in [
+            SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
+            # Don't know what it should be.
+            if n in attributes:
+                del attributes[n]
+        else:
+            raise AssertionError
+        
+    debug_print("Taking attributes from out_data %s." % attributes)
+
+    # Now make sure the attributes meet the constraints.
+    for constraint in module.constraints:
+        if constraint.input_index != in_num:
+            continue
+        if constraint.behavior == MUST_BE:
+            attributes[constraint.name] = constraint.arg1
+        elif constraint.behavior == CAN_BE_ANY_OF:
+            if constraint.name not in attributes:
+                attributes[constraint.name] = constraint.arg1
+        elif constraint.behavior == SAME_AS:
+            continue
+        else:
+            raise AssertionError
+
+    # make_out.  This module should take in a "finished" Data object,
+    # and use it to generate a new Data object.
+    debug_print("Generating a new %s with attributes %s." % (
+        in_datatype.name, attributes))
+    return in_datatype.output(*user_attributes, **attributes)
+
+
+def _backchain_to_input_new(module, in_num, out_data, user_attributes):
     # Given a module and output_data, return the input_data object
     # that can generate the output.
     assert in_num < len(module.in_datatypes)
@@ -1765,9 +1834,13 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
         if constraint.behavior == MUST_BE:
             attributes[constraint.name] = constraint.arg1
         elif constraint.behavior == CAN_BE_ANY_OF:
-            #if constraint.name not in attributes:
-            #    attributes[constraint.name] = constraint.arg1
-            attributes[constraint.name] = constraint.arg1
+            # If this attribute is not already set by a consequence
+            # above (e.g. the output data is already a specific
+            # value), then set it here.
+            #   Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+            #   Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0)
+            if constraint.name not in attributes:
+                attributes[constraint.name] = constraint.arg1
         else:
             raise AssertionError
 
@@ -1779,10 +1852,12 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
     #     in with the same values as the out_data.
     # 3.  Otherwise, fill it in with the default output values of the
     #     input datatype.
-    if in_datatype == out_datatype:
+    if len(module.in_datatypes) == 1 and in_datatype == out_datatype:
         def_attributes = out_data.attributes
-    elif module.default_attributes_from == in_num:
-        # XXX check to make sure datatypes are the same.
+    elif len(module.in_datatypes) > 1 and \
+         module.default_attributes_from and \
+         module.default_attributes_from.input_index == in_num:
+        assert in_datatype == out_datatype
         def_attributes = out_data.attributes
     else:
         def_attributes = {}
@@ -1794,9 +1869,13 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
 
     # make_out.  This module should take in a "finished" Data object,
     # and use it to generate a new Data object.
-    debug_print("Generating a new %s with attributes %s." % (
+    debug_print("Generating a %s with attributes %s." % (
         in_datatype.name, attributes))
     return in_datatype.output(*user_attributes, **attributes)
+
+
+#_backchain_to_input = _backchain_to_input_old
+_backchain_to_input = _backchain_to_input_new
 
 
 def _backchain_to_ids(network, node_id):
@@ -2492,9 +2571,12 @@ all_modules = [
         Constraint("logged", MUST_BE, "yes", 0),
         Constraint("preprocess", MUST_BE, "mas5", 0),
         Constraint("contents", MUST_BE, "class1", 1),
-        Constraint("format", SAME_AS, 0, 1),
-        Constraint("logged", SAME_AS, 0, 1),
-        Constraint("preprocess", SAME_AS, 0, 1),
+        Constraint("format", MUST_BE, "tdf", 1),
+        Constraint("logged", MUST_BE, "yes", 1),
+        Constraint("preprocess", MUST_BE, "mas5", 1),
+        #Constraint("format", SAME_AS, 0, 1),
+        #Constraint("logged", SAME_AS, 0, 1),
+        #Constraint("preprocess", SAME_AS, 0, 1),
         Consequence("contents", SET_TO, "class0,class1"),
         Consequence("format", SAME_AS_CONSTRAINT, 0),
         Consequence("logged", SAME_AS_CONSTRAINT, 0),
@@ -2543,8 +2625,8 @@ def test_bie():
     #    missing_values="no", quantile_norm=["no", "yes"])
     out_data = SignalFile.output(
         format="tdf", preprocess="mas5", logged="yes",
-        missing_values="unknown", 
-        #missing_values="no", quantile_norm="no",
+        #missing_values="unknown", 
+        missing_values="no", quantile_norm="no",
         contents="class0,class1")
     #parameters = [
     #    Parameter("download_geo", GSEID="GSE2034", GPLID="GPL9196"),
