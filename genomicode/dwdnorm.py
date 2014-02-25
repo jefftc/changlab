@@ -90,6 +90,7 @@ def normalize(X, Y, version=None, matlab=None, dwd_path=None):
     finally:
         _safe_unlink(X_file)
 
+    #open("dwd_norm.m", 'w').write(script)
     X_norm = _parse_normalized_matrix(lines)
     assert len(X_norm) == X.nrow()
     if X_norm:
@@ -154,7 +155,8 @@ def _format_exec_file(X_file, Y, version, dwd_path):
     #w("save('%s', 'Xout', '-ASCII', '-TABS');\n" % outfile)
     w("quit;\n")
     handle.seek(0)
-    return handle.read()
+    x = handle.read()
+    return x
 
 def _safe_unlink(filename):
     if filename and os.path.exists(filename):
@@ -180,7 +182,7 @@ def _parse_normalized_matrix(lines):
     else:
         raise AssertionError, "I could not find the normalized output."
     lines = lines[i+1:]
-    
+
     # Parse out the matrix.
     X_norm = []
     for line in lines:
