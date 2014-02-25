@@ -7,46 +7,54 @@ from Betsy import bie3
 from Betsy import rulebase
 import itertools
 
-def get_input_nodes(network, out_id,start_nodes):
-    possible_modules = []
+def parents_of(network,node_id):
+    parent_nodes = []
     for key in network.transitions:
-        if out_id in network.transitions[key]:
-            possible_modules.append(key)
-    for module_id in possible_modules:
-        in_data_num = len(network.nodes[module_id].in_datatypes)
+       if node_id in network.transitions[key]:
+            parent_nodes.append(key)
+    return parent_nodes
+
+
+def get_input_nodes(network,out_id,start_nodes):
+    node = network.nodes[out_id]
+    parent_nodes = parents_of(network,out_id)
+    if isinstance(node,bie3.Data):
+        if out_id not in start_nodes:
+            start_nodes.append(out_id)
+        for module_id in parent_nodes:
+            get_input_nodes(network,module_id,start_nodes)
+    elif isinstance(node,bie3.Module):
+        in_data_num = len(network.nodes[out_id].in_datatypes)
         if in_data_num == 1:
-            for key in network.transitions:
-                if module_id in network.transitions[key]:
-                    if key not in start_nodes:
-                        start_nodes.append(key)
-                        get_input_nodes(network,key,start_nodes)
+            for parent_id in parent_nodes:
+                get_input_nodes(network,parent_id,start_nodes)
         elif in_data_num >= 2:
-            possible_data = []
-            for key in network.transitions:
-                if module_id in network.transitions[key]:
-                    possible_data.append(key)
-            recur_possible_start_nodes = []
-            for data_id in possible_data:
-                possible_start_nodes =[]
-                get_input_nodes(network,data_id,possible_start_nodes)
-                if len(recur_possible_start_nodes)>=len(possible_start_nodes):
-                    recur_possible_start_nodes.extend([zip(x,possible_start_nodes)
+            #need to consider the case when there are more than the required input point to the module
+            assert len(parent_nodes)==in_data_num,'input data number is different from the module require'
+            temp_parent_start_nodes = []
+            for data_id in parent_data:
+                parent_start_nodes =[]
+                get_input_nodes(network,data_id,parent_start_nodes)
+                if len(temp_parent_start_nodes)>=len(parent_start_nodes):
+                    temp_parent_start_nodes.extend([zip(x,parent_start_nodes)
                                                        for x in itertools.permutations(
-                    recur_possible_start_nodes,len(possible_start_nodes))])
+                    temp_parent_start_nodes,len(parent_start_nodes))])
                 else:
-                    recur_possible_start_nodes.extend([zip(x,recur_possible_start_nodes)
+                    recur_parent_start_nodes.extend([zip(x,temp_parent_start_nodes)
                                                        for x in itertools.permutations(
-                    possible_start_nodes,len(recur_possible_start_nodes))])
-            start_nodes.extend(recur_possible_start_nodes)
+                    parent_start_nodes,len(temp_parent_start_nodes))])
+            start_nodes.extend(temp_parent_start_nodes)
+
+            
 
 def print_start_nodes(network):
     start_nodes = [0]
     get_input_nodes(network,0,start_nodes)
     start_nodes.sort()
     for i in start_nodes:
-        if len(i)==1:
+        if isinstance(i,int):
             print i,network.nodes[i]
-        elif len(i)>1:
+        elif isinstance(i,tuple):
             for node_id in i:
                 print node_id,network.nodes[node_id]
     return start_nodes
