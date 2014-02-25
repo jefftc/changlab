@@ -165,24 +165,6 @@ def run_case8():
     bie3.plot_network_gv("out.png", network)
 
     
-def run_case9():
-    #command1 (command 1 and command 2 suppose to have the same result, but they are not)
-##    out_data = rulebase.SignalFile.output(preprocess="rma",quantile_norm='yes',
-##                                          gene_center='mean',gene_normalize='variance')
-##    network = bie3.backchain(rulebase.all_modules, out_data)
-   
-    #command2 
-    network = bie3.backchain(  
-        rulebase.all_modules, rulebase.SignalFile,
-         bie3.Attribute(rulebase.SignalFile,"preprocess","rma"),
-         bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes"),
-         bie3.Attribute(rulebase.SignalFile,'gene_center',"mean"),
-         bie3.Attribute(rulebase.SignalFile,'gene_normalize',"variance"))
-    
-    network = bie3.optimize_network(network)
-    
-    bie3.print_network(network)
-    bie3.plot_network_gv("out.png", network)
 
 def run_case9():
     #command1 (command 1 and command 2 suppose to have the same result, but they are not)
@@ -203,11 +185,6 @@ def run_case9():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
-def run_case10():
-    # the SignalFile has several preprocess not only 'mas5'
-    out_data = rulebase.SignalFile.output(preprocess='mas5',
-                                          contents="class0,class1",
-                                          )
 
 
 
@@ -242,6 +219,14 @@ def run_case11():
     bie3.plot_network_gv("out.png", network)
 
 
+def run_case12():
+    #the branches to to merge module has only one GeoSeries,
+    #it supposed to have two, one is contents=class0, one is contents=class1
+    out_data = rulebase.SignalFile.output(contents='class0,class1',preprocess='mas5')
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
     
 def main(): 
     #run_case1()
@@ -254,10 +239,9 @@ def main():
     #run_case8()
     #run_case9()
 
-    run_case10()
-
     #run_case10()
-    run_case11()
+    #run_case11()
+    run_case12()
     
 if __name__ == '__main__':
     main()
