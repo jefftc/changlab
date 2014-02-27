@@ -150,10 +150,15 @@ def run_case7():
     
 def run_case8():
     #test ClusterFile
+
+    # Heatmap requires SignalFile to be logged.  Explicitly
+    # specificying logged=yes changes the network, even though they
+    # should in principle be the same.
     in_data = rulebase.GEOSeries
     network = bie3.backchain(
         rulebase.all_modules, rulebase.Heatmap,
-        #bie3.Attribute(rulebase.SignalFile,"logged","yes"),###specify this attribtue or not make the network different
+        ###specify this attribute or not make the network different
+        bie3.Attribute(rulebase.SignalFile, "logged", "yes"),
         )
     network = bie3.optimize_network(network)
 
@@ -163,29 +168,31 @@ def run_case8():
     
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
-
     
 
 def run_case9():
-    #command1 (command 1 and command 2 suppose to have the same result, but they are not)
-##    out_data = rulebase.SignalFile.output(preprocess="rma",quantile_norm='yes',
-##                                          gene_center='mean',gene_normalize='variance')
-##    network = bie3.backchain(rulebase.all_modules, out_data)
-   
-    #command2 
+    # command1 (command 1 and command 2 suppose to have the same
+    # result, but they are not)
+
+    # command 1
+    out_data = rulebase.SignalFile.output(
+        preprocess="rma",quantile_norm='yes',
+        gene_center='mean',gene_normalize='variance')
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network, open("out1.log", 'w'))
+    bie3.plot_network_gv("out1.png", network)
+
+    # command 2 
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.SignalFile,
-         bie3.Attribute(rulebase.SignalFile,"preprocess","rma"),
-         bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes"),
-         bie3.Attribute(rulebase.SignalFile,'gene_center',"mean"),
-         bie3.Attribute(rulebase.SignalFile,'gene_normalize',"variance"))
-    
+        bie3.Attribute(rulebase.SignalFile,"preprocess","rma"),
+        bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes"),
+        bie3.Attribute(rulebase.SignalFile,'gene_center',"mean"),
+        bie3.Attribute(rulebase.SignalFile,'gene_normalize',"variance"))
     network = bie3.optimize_network(network)
-    
-    bie3.print_network(network)
-    bie3.plot_network_gv("out.png", network)
-
-
+    bie3.print_network(network, open("out2.log", 'w'))
+    bie3.plot_network_gv("out2.png", network)
 
 
 def run_case10():
@@ -220,9 +227,18 @@ def run_case11():
 
 
 def run_case12():
-    #the branches to to merge module has only one GeoSeries,
-    #it supposed to have two, one is contents=class0, one is contents=class1
-    out_data = rulebase.SignalFile.output(contents='class0,class1',preprocess='mas5')
+    # the branches to merge module has only one GeoSeries, it supposed
+    # to have two, one is contents=class0, one is contents=class1
+    
+    #out_data = rulebase.SignalFile.output(
+    #    contents='class0,class1',preprocess='mas5')
+    out_data = rulebase.SignalFile.output(
+        bfrm_norm='no', combat_norm='no', contents='class1',
+        dwd_norm='no', filter='no', format='tdf', gene_center='no',
+        gene_normalize='no', logged='yes', missing_algorithm='zero_fill',
+        missing_values='no', predataset='no', preprocess='mas5',
+        processing_step='merge', quantile_norm='no', shiftscale_norm='no')
+    
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
@@ -238,7 +254,6 @@ def main():
     #run_case7()
     #run_case8()
     #run_case9()
-
     #run_case10()
     #run_case11()
     run_case12()

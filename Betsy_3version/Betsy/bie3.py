@@ -3,7 +3,7 @@
 Glossary:
 data              A unit of information.  Typically a file made by a program.
 attribute         Describes something about the data.  e.g. logged="yes".
-user input        XXX
+user input        Used in the modules, but does not affect the inferencing.
 data type         Describes a set of data that share the same attributes.
 module            Takes one or more data objects as input and produces a single
                   data object as output.
@@ -41,8 +41,9 @@ diagnose_start_node
 
 """
 # Functions:
-# _backchain_to_modules   Given an output, find compatible Modules.
-# _backchain_to_input     Given an output and module, make the input.
+# _backchain_to_modules     Given an output, find compatible Modules.
+# _backchain_to_input       Given an output and module, make the input.
+# _backchain_to_all_inputs  Given an output and module, make all inputs.
 # _backchain_to_ids
 # _make_backchain_dict
 # 
@@ -143,6 +144,17 @@ class AttributeDef:
     def __hash__(self):
         x = self.name, tuple(self.values), self.default_in, self.default_out
         return hash(x)
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [
+            repr(self.name),
+            repr(self.values),
+            repr(self.default_in),
+            repr(self.default_out),
+            ]
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
 
 
 class Attribute:
@@ -365,25 +377,42 @@ class DataType:
         #x = self.name, tuple(self.attributes), tuple(self.user_inputs)
         x = self.name, tuple(self.attributes)
         return hash(x)
-    def _resolve_attributes(self, attribute_objs, attribute_dict, is_input):
+    ## def _resolve_attributes(self, attribute_objs, attribute_dict, is_input):
+    ##     # Make a dictionary of all the attributes.  The values given
+    ##     # by the caller take precedence.  Anything else should be set
+    ##     # to the default attributes.
+    ##     attrdict = {}
+    ##     # Priority 1: Set to the attribute objects.
+    ##     for attr in attribute_objs:
+    ##         # Ignore attributes for other data types.
+    ##         if attr.datatype.name != self.name:
+    ##             continue
+    ##         attrdict[attr.name] = attr.value
+    ##     # Priority 2: Set to the attribute dict.
+    ##     for (name, value) in attribute_dict.iteritems():
+    ##         if name in attrdict:
+    ##             continue
+    ##         # Handle the prioritization for the user.
+    ##         #assert name not in attrdict, "Conflict: %s" % name
+    ##         attrdict[name] = value
+    ##     # Priority 3: Set to default attributes.
+    ##     for attr in self.attributes:
+    ##         if attr.name in attrdict:
+    ##             continue
+    ##         value = attr.default_in
+    ##         if not is_input:
+    ##             value = attr.default_out
+    ##         attrdict[attr.name] = value
+    ##     return attrdict
+    def _resolve_attributes(self, attribute_dict, is_input):
         # Make a dictionary of all the attributes.  The values given
         # by the caller take precedence.  Anything else should be set
         # to the default attributes.
         attrdict = {}
-        # Priority 1: Set to the attribute objects.
-        for attr in attribute_objs:
-            # Ignore attributes for other data types.
-            if attr.datatype.name != self.name:
-                continue
-            attrdict[attr.name] = attr.value
-        # Priority 2: Set to the attribute dict.
+        # Priority 1: Set to the attribute dict.
         for (name, value) in attribute_dict.iteritems():
-            if name in attrdict:
-                continue
-            # Handle the prioritization for the user.
-            #assert name not in attrdict, "Conflict: %s" % name
             attrdict[name] = value
-        # Priority 3: Set to default attributes.
+        # Priority 2: Set to default attributes.
         for attr in self.attributes:
             if attr.name in attrdict:
                 continue
@@ -392,16 +421,14 @@ class DataType:
                 value = attr.default_out
             attrdict[attr.name] = value
         return attrdict
-    def input(self, *attribute_objs, **attribute_dict):
+    def input(self, **attribute_dict):
         # Create a Data object.
-        attrdict = self._resolve_attributes(
-            attribute_objs, attribute_dict, True)
+        attrdict = self._resolve_attributes(attribute_dict, True)
         # Don't bother checking the attributes here.  The Data object
         # will do that.
         return Data(self, **attrdict)
-    def output(self, *attribute_objs, **attribute_dict):
-        attrdict = self._resolve_attributes(
-            attribute_objs, attribute_dict, False)
+    def output(self, **attribute_dict):
+        attrdict = self._resolve_attributes(attribute_dict, False)
         return Data(self, **attrdict)
     def __str__(self):
         return self.__repr__()
@@ -803,7 +830,12 @@ def backchain(moduledb, out_data, *user_attributes):
     # Return a Network object.
 
     if isinstance(out_data, DataType):
-        out_data = out_data.output(*user_attributes)
+        attrdict = {}
+        for attr in user_attributes:
+            if attr.datatype != out_data:
+                continue
+            attrdict[attr.name] = attr.value
+        out_data = out_data.output(**attrdict)
     assert isinstance(out_data, Data)
 
     for x in user_attributes:
@@ -844,8 +876,8 @@ def backchain(moduledb, out_data, *user_attributes):
         elif isinstance(node, Module):
             cons_id = transitions[node_id][0]
             cons = nodes[cons_id]
-            for in_num in range(len(node.in_datatypes)):
-                d = _backchain_to_input(node, in_num, cons, user_attributes)
+            all_inputs = _backchain_to_all_inputs(node, cons, user_attributes)
+            for d in all_inputs:
                 d_id = _find_data_node(nodes, d)
                 if d_id == -1:
                     nodes.append(d)
@@ -1768,23 +1800,47 @@ def _backchain_to_input_old(module, in_num, out_data, user_attributes):
     return in_datatype.output(*user_attributes, **attributes)
 
 
+def _backchain_to_all_inputs(module, out_data, user_attributes):
+    all_inputs = []
+    for in_num in range(len(module.in_datatypes)):
+        x = _backchain_to_input(module, in_num, out_data, user_attributes)
+        all_inputs.append(x)
+
+    # Handle the SAME_AS constraints here.  Difficult to do it in
+    # _backchain_to_input because not all inputs have been created
+    # yet.
+    for constraint in module.constraints:
+        if constraint.behavior != SAME_AS:
+            continue
+        
+        # If this constraint is the SAME_AS another one, then use the
+        # value of the copied constraint.
+        i_src = constraint.arg1
+        i_dst = constraint.input_index
+        assert i_src < len(all_inputs)
+        assert i_dst < len(all_inputs)
+        input_src = all_inputs[i_src]
+        input_dst = all_inputs[i_dst]
+
+        name = constraint.name
+        assert name in input_src.attributes
+        assert name in input_dst.attributes
+        input_dst.attributes[name] = input_src.attributes[name]
+
+    return all_inputs
+        
+
 def _backchain_to_input_new(module, in_num, out_data, user_attributes):
     # Given a module and output_data, return the input_data object
-    # that can generate the output.
+    # that can generate the output.  This should only be called by
+    # _backchain_to_all_inputs.
     assert in_num < len(module.in_datatypes)
 
     in_datatype = module.in_datatypes[in_num]
     out_datatype = out_data.datatype
-    debug_print("Backchaining %s from %s to %s [%d]." % (
-        module.name, out_datatype.name, in_datatype.name, in_num))
+    debug_print("Backchaining %s <- %s <- %s [%d]." % (
+        out_datatype.name, module.name, in_datatype.name, in_num))
 
-    #if in_datatype == out_datatype:
-    #    # Start with the attributes in the out_data.
-    #    attributes = out_data.attributes.copy()
-    #else:
-    #    # If the datatypes are different, then clear all the values.
-    #    attributes = {}
-    
     # Start with empty attributes.
     attributes = {}
 
@@ -1807,29 +1863,15 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
             SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
             # Don't know what it should be.
             pass
-            #if n in attributes:
-            #    del attributes[n]
         else:
             raise AssertionError
         
     debug_print("Taking attributes from out_data %s." % attributes)
 
-    #### Now make sure the attributes meet the constraints.
-    
     # Now set the attributes based on the constraints.
     for constraint in module.constraints:
         if constraint.input_index != in_num:
             continue
-
-        # If this constraint is the SAME_AS another one, then use the
-        # value of the copied constraint.
-        if constraint.behavior == SAME_AS:
-            assert constraint.arg1 < len(module.in_datatypes)
-            x = [x for x in module.constraints if x.name == constraint.name]
-            x = [x for x in x if x.input_index == constraint.arg1]
-            assert len(x) == 1
-            constraint = x[0]
-            assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]
 
         if constraint.behavior == MUST_BE:
             attributes[constraint.name] = constraint.arg1
@@ -1841,6 +1883,9 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
             #   Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0)
             if constraint.name not in attributes:
                 attributes[constraint.name] = constraint.arg1
+        elif constraint.behavior == SAME_AS:
+            # Handled in _backchain_to_all_inputs.
+            pass
         else:
             raise AssertionError
 
@@ -1850,7 +1895,10 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
     # 2.  If it does convert the datatype, and a
     #     default_attributes_from is the same as in_num, then fill it
     #     in with the same values as the out_data.
-    # 3.  Otherwise, fill it in with the default output values of the
+    # 3.  If it does convert the datatype, and there is a
+    #     user_attribute provided, then use the value from the
+    #     user_attribute.
+    # 4.  Otherwise, fill it in with the default output values of the
     #     input datatype.
     if len(module.in_datatypes) == 1 and in_datatype == out_datatype:
         def_attributes = out_data.attributes
@@ -1861,8 +1909,16 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
         def_attributes = out_data.attributes
     else:
         def_attributes = {}
+        # Set values from user attributes.
+        for attr in user_attributes:
+            # Ignore attributes for other data types.
+            if attr.datatype != in_datatype:
+                continue
+            def_attributes[attr.name] = attr.value
+        # Set values from defaults.
         for attr in in_datatype.attributes:
-            def_attributes[attr.name] = attr.default_out
+            if attr.name not in def_attributes:
+                def_attributes[attr.name] = attr.default_out
     for name, value in def_attributes.iteritems():
         if name not in attributes:
             attributes[name] = value
@@ -1871,7 +1927,7 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
     # and use it to generate a new Data object.
     debug_print("Generating a %s with attributes %s." % (
         in_datatype.name, attributes))
-    return in_datatype.output(*user_attributes, **attributes)
+    return in_datatype.output(**attributes)
 
 
 #_backchain_to_input = _backchain_to_input_old
