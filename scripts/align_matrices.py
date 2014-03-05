@@ -383,6 +383,9 @@ def main():
     parser.add_argument(
         "--annot_file", default=[], action="append", help="")
 
+    #parser.add_argument(
+    #    "--headers", help="Explicitly specify the headers for each of the "
+    #    "file.  The headers should be given as a semicolon-separated list.")
     parser.add_argument(
         "--first_annot_header", help="If only aligning annotation files, "
         "find the samples to be matched under this header in the first "

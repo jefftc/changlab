@@ -532,18 +532,26 @@ class Module:
                 raise AssertionError, "invalid parameter: %s" % repr(x)
 
 
-        # Check default_attributes_from.  Should be None or a valid
-        # object.
-        assert len(default_attributes_from) <= 1
-        x = None
-        if default_attributes_from:
-            x = default_attributes_from[0]
-        default_attributes_from = x
-        if default_attributes_from:
-            assert len(in_datatypes) > 1
-            assert default_attributes_from.input_index < len(in_datatypes)
-            assert out_datatype == \
-                   in_datatypes[default_attributes_from.input_index]
+        # Check default_attributes_from.  Should be a list of
+        # DefaultAttributesFrom objects.
+        assert len(default_attributes_from) <= len(in_datatypes)
+        seen = {}
+        for daf in default_attributes_from:
+            assert daf.input_index < len(in_datatypes)
+            assert out_datatype == in_datatypes[daf.input_index]
+            assert daf.input_index not in seen
+            seen[daf.input_index] = 1
+            
+        #assert len(default_attributes_from) <= 1
+        #x = None
+        #if default_attributes_from:
+        #    x = default_attributes_from[0]
+        #default_attributes_from = x
+        #if default_attributes_from:
+        #    assert len(in_datatypes) > 1
+        #    assert default_attributes_from.input_index < len(in_datatypes)
+        #    assert out_datatype == \
+        #           in_datatypes[default_attributes_from.input_index]
 
         # Any checking necessary on UserInput?
             
@@ -693,9 +701,7 @@ class Module:
         x3 = self.out_datatype.name
         x4 = [repr(x) for x in self.constraints]
         x5 = [repr(x) for x in self.consequences]
-        x6 = []
-        if self.default_attributes_from:
-            x6 = [repr(self.default_attributes_from)]
+        x6 = [repr(x) for x in self.default_attributes_from]
         x7 = [repr(x) for x in self.user_inputs]
         x = [x1, x2, x3] + x4 + x5 + x6 + x7
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
@@ -1900,11 +1906,17 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
     #     user_attribute.
     # 4.  Otherwise, fill it in with the default output values of the
     #     input datatype.
+    x = [x for x in module.default_attributes_from if x.input_index == in_num]
+    assert len(x) <= 1
+    default_attributes_from = None
+    if x:
+        default_attributes_from = x[0]
+    
     if len(module.in_datatypes) == 1 and in_datatype == out_datatype:
         def_attributes = out_data.attributes
     elif len(module.in_datatypes) > 1 and \
-         module.default_attributes_from and \
-         module.default_attributes_from.input_index == in_num:
+             default_attributes_from and \
+             default_attributes_from.input_index == in_num:
         assert in_datatype == out_datatype
         def_attributes = out_data.attributes
     else:
@@ -2638,6 +2650,7 @@ all_modules = [
         Consequence("logged", SAME_AS_CONSTRAINT, 0),
         Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
         DefaultAttributesFrom(0),
+        DefaultAttributesFrom(1),
         )
     ]
 

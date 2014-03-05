@@ -690,7 +690,7 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
-def reorder_col_cluster(MATRIX, cluster):
+def reorder_col_cluster(MATRIX, cluster, cluster_method, distance_method):
     from genomicode import jmath
     
     if not cluster:
@@ -700,7 +700,10 @@ def reorder_col_cluster(MATRIX, cluster):
 
     R = jmath.start_R()
     jmath.R_equals(MATRIX._X, "X")
-    I = list(R("hclust(dist(t(X)))$order"))   # 1-based indexes
+    x = 'dist(t(X), method="%s")' % distance_method
+    x = 'hclust(%s, method="%s")' % (x, cluster_method)
+    I = list(R("%s$order" % x))   # 1-based indexes
+    #I = list(R("hclust(dist(t(X)))$order"))   # 1-based indexes
     I = [x-1 for x in I]
     MATRIX_new = MATRIX.matrix(None, I)
     return MATRIX_new
@@ -1230,7 +1233,7 @@ def reorder_row_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
-def reorder_row_cluster(MATRIX, cluster):
+def reorder_row_cluster(MATRIX, cluster, cluster_method, distance_method):
     from genomicode import jmath
     
     if not cluster:
@@ -1240,7 +1243,9 @@ def reorder_row_cluster(MATRIX, cluster):
 
     R = jmath.start_R()
     jmath.R_equals(MATRIX._X, "X")
-    I = list(R("hclust(dist(X))$order"))   # 1-based indexes
+    x = 'dist(X, method="%s")' % distance_method
+    x = 'hclust(%s, method="%s")' % (x, cluster_method)
+    I = list(R("%s$order" % x))   # 1-based indexes
     I = [x-1 for x in I]
     MATRIX_new = MATRIX.matrix(I, None)
     return MATRIX_new
@@ -1962,6 +1967,18 @@ def main():
         "--reorder_col_cluster", default=False, action="store_true",
         help="Cluster the cols.")
     group.add_argument(
+        "--cluster_method", choices=[
+            "complete", "ward", "single", "average", "mcquitty",
+            "median", "centroid"],
+        default="complete", help="Agglomeration method.  "
+        "Applies to reorder_col_cluster and reorder_row_cluster.")
+    group.add_argument(
+        "--distance_method", choices=[
+            "euclidean", "maximum", "manhattan", "canberra", "binary",
+            "minkowski"],
+        default="euclidean", help="Distance measure for clustering.  "
+        "Applies to reorder_col_cluster and reorder_row_cluster.")
+    group.add_argument(
         "--reorder_col_alphabetical", default=False, action="store_true",
         help="Sort the columns alphabetically.")
     group.add_argument(
@@ -2296,8 +2313,12 @@ def main():
         normalize_genes_var(MATRIX, args.gn_subset_indexes)
 
     # Cluster the rows and columns.  Do this after normalizing, zero-fill, log.
-    MATRIX = reorder_row_cluster(MATRIX, args.reorder_row_cluster)
-    MATRIX = reorder_col_cluster(MATRIX, args.reorder_col_cluster)
+    MATRIX = reorder_row_cluster(
+        MATRIX, args.reorder_row_cluster, args.cluster_method,
+        args.distance_method)
+    MATRIX = reorder_col_cluster(
+        MATRIX, args.reorder_col_cluster, args.cluster_method,
+        args.distance_method)
 
     # Reverse the rows.  Do after all the selection.  Do after
     # aligning to a file.
