@@ -7,12 +7,28 @@ from Betsy import bie3
 from Betsy import rulebase
 import itertools
 
+# parents_of
+# combinations
+# get_input_nodes
+# print_start_nodes
+
 def parents_of(network,node_id):
     parent_nodes = []
     for key in network.transitions:
        if node_id in network.transitions[key]:
             parent_nodes.append(key)
     return parent_nodes
+
+def combinations(*start_ids):
+    start_nodes = []
+    for ids in start_ids:
+        if len(start_nodes)>=len(ids):
+            start_nodes.extend([zip(x,ids)for x in itertools.permutations(
+                start_nodes,len(ids))])
+        else:
+            start_nodes.extend([zip(x,start_nodes) for x in itertools.permutations(
+                        ids,len(start_nodes))])
+    return start_nodes
 
 
 def get_input_nodes(network,out_id,start_nodes):
@@ -31,18 +47,13 @@ def get_input_nodes(network,out_id,start_nodes):
         elif in_data_num >= 2:
             #need to consider the case when there are more than the required input point to the module
             assert len(parent_nodes)==in_data_num,'input data number is different from the module require'
-            temp_parent_start_nodes = []
+            start_ids = []
             for data_id in parent_data:
-                parent_start_nodes =[]
-                get_input_nodes(network,data_id,parent_start_nodes)
-                if len(temp_parent_start_nodes)>=len(parent_start_nodes):
-                    temp_parent_start_nodes.extend([zip(x,parent_start_nodes)
-                                                       for x in itertools.permutations(
-                    temp_parent_start_nodes,len(parent_start_nodes))])
-                else:
-                    recur_parent_start_nodes.extend([zip(x,temp_parent_start_nodes)
-                                                       for x in itertools.permutations(
-                    parent_start_nodes,len(temp_parent_start_nodes))])
+                ids = []
+                get_input_nodes(network,data_id,ids)
+                start_ids.append(ids)
+            assert len(start_ids)>=2
+            temp_parent_start_nodes = combinations(*start_ids)
             start_nodes.extend(temp_parent_start_nodes)
 
             

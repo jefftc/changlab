@@ -3,13 +3,13 @@ from Betsy.bie3 import *
 import SignalFile_rule
 GenesetAnalysis=DataType(
     'GenesetAnalysis',
-    AttributeDef("geneset",["yes","no"],"no","no"),
+    AttributeDef("geneset",["yes","no"],"no","yes"),
     AttributeDef("allgenes",['yes','no'], "no","no"),
     AttributeDef("automatch",['yes','no'], "no","no"),
     )
 GenesetPlot=DataType(
     'GenesetPlot',
-    AttributeDef("geneset",["yes","no"],"no","no"),
+    AttributeDef("geneset",["yes","no"],"no","yes"),
     AttributeDef("allgenes",['yes','no'], "no","no"),
     AttributeDef("automatch",['yes','no'], "no","no"),
     )
@@ -26,6 +26,7 @@ all_modules = [
          Constraint("quantile_norm",MUST_BE,'yes',1),
          Constraint("gene_center",MUST_BE,'mean',1),
          Constraint("gene_normalize",MUST_BE,'variance',1),
+         Constraint("annotate",MUST_BE,'yes',1),
          Constraint("unique_genes",MUST_BE,'high_var',1),
          Consequence("geneset",SET_TO,"yes"),
          Consequence("allgenes",SET_TO_ONE_OF,['yes','no']),

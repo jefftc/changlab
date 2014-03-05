@@ -14,16 +14,16 @@ PcaAnalysis = DataType(
         "missing_values",["no"],'no','no'),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
-        "none", "none"),
+        "zero_fill", "zero_fill"),
     AttributeDef(
         "logged",[ "no", "yes"],"yes","yes"),
     # Normalizing the genes.
     AttributeDef(
-        "gene_center",["unknown", "no", "mean", "median"],
-        "unknown","unknown"),
+        "gene_center",[ "no", "mean", "median"],
+        "no","no"),
     AttributeDef(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
-        "unknown","unknown"),
+        "no","no"),
 
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
@@ -66,20 +66,17 @@ PcaPlot = DataType(
         "missing_values",["no"],"no","no"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
-        "none","none"),
+        "zero_fill","zero_fill"),
     AttributeDef(
         "logged",[ "no", "yes"], "yes","yes"),
     # Normalizing the genes.
     AttributeDef(
-        "gene_center",["unknown", "no", "mean", "median"],
-        "unknown","unknown"),
+        "gene_center",["no", "mean", "median"],
+        "no","no"),
     AttributeDef(
-        "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
-        "unknown","unknown"),
+        "gene_normalize",[ "no", "variance", "sum_of_squares"],
+        "no","no"),
 
-    # Normalizing the data.  Very difficult to check normalization.
-    # If you're not sure if the data is normalized, then the answer is
-    # "no".
     AttributeDef(
         "dwd_norm",["no", "yes"], "no","no"),
     AttributeDef(
@@ -119,7 +116,7 @@ all_modules = [
         'analyze_samples_pca',
         SignalFile_rule.PrettySignalFile,PcaAnalysis,
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", "class0,class1,test",
-                  "class0", "class1", "class0,class1",
+                 "class0", "class1", "class0,class1",
                   "unspecified"]),
         Constraint("format",MUST_BE,'tdf'),
         Constraint("logged",MUST_BE,'yes'),
@@ -133,7 +130,7 @@ all_modules = [
         Constraint("dwd_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("gene_center",CAN_BE_ANY_OF,['mean','median','no']),
         Constraint("gene_normalize",CAN_BE_ANY_OF,[ "no", "variance",
-                                                   "sum_of_squares"]),
+                                                  "sum_of_squares"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,["none", "median_fill", "zero_fill"]),
         Constraint("unique_genes",CAN_BE_ANY_OF,["no", "average_genes", "high_var",
                                                  "first_gene"]),
@@ -158,7 +155,8 @@ all_modules = [
         Consequence("filter",SAME_AS_CONSTRAINT),
         Consequence("predataset",SAME_AS_CONSTRAINT),
         Consequence("platform",SAME_AS_CONSTRAINT),
-        Consequence("group_fc",SAME_AS_CONSTRAINT)),
+        Consequence("group_fc",SAME_AS_CONSTRAINT)
+        ),
 
     Module(
         'plot_sample_pca_wo_label',
@@ -175,8 +173,8 @@ all_modules = [
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("shiftscale_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("dwd_norm",CAN_BE_ANY_OF,['yes','no']),
-        Constraint("gene_center",CAN_BE_ANY_OF,['mean','median','no','unknown']),
-        Constraint("gene_normalize",CAN_BE_ANY_OF,["unknown", "no", "variance",
+        Constraint("gene_center",CAN_BE_ANY_OF,['mean','median','no']),
+        Constraint("gene_normalize",CAN_BE_ANY_OF,[ "no", "variance",
                                                    "sum_of_squares"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,["none", "median_fill", "zero_fill"]),
         Constraint("unique_genes",CAN_BE_ANY_OF,["no", "average_genes", "high_var",

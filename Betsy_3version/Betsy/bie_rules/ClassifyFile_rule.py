@@ -38,6 +38,25 @@ list_files = [ClassifyFile,SvmModel,PredictionPCAPlot,PredictionPlot]
 
 all_modules = [
     Module(
+        "merge_files_for_classification",
+        [SignalFile_rule.PrettySignalFile,SignalFile_rule.PrettySignalFile],SignalFile_rule.PrettySignalFile,
+        Constraint('contents',MUST_BE,"class0,class1",0),
+        Constraint('format',MUST_BE,'gct',0),
+        Constraint('logged',MUST_BE,"yes",0),
+        Constraint('missing_values',MUST_BE,'no',0),
+        Constraint('contents',MUST_BE,"test",1),
+        Constraint('format',MUST_BE,'gct',1),
+        Constraint('logged',MUST_BE,"yes",1),
+        Constraint('missing_values',MUST_BE,'no',1),
+        Consequence('contents',SET_TO,"class0,class1,test"),
+        Consequence('format',SAME_AS_CONSTRAINT,0),
+        Consequence('logged',SAME_AS_CONSTRAINT,0),
+        Consequence('missing_values',SAME_AS_CONSTRAINT,0),
+        Constraint('psf_processing_step',MUST_BE,'processed',0),
+        Constraint('psf_processing_step',MUST_BE,'processed',1),
+        Consequence('psf_processing_step',SAME_AS_CONSTRAINT,0)
+        ),
+    Module(
        'classify_with_weighted_voting',
        [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile,
         SignalFile_rule.PrettySignalFile],ClassifyFile,
@@ -135,11 +154,12 @@ all_modules = [
         Constraint("loocv",MUST_BE,'no',1),
         Constraint("actual_label",MUST_BE,'no',1),
         Consequence("loocv",SAME_AS_CONSTRAINT,1),
-        Consequence("actual_label",SET_TO,'yes')),
+        Consequence("actual_label",SET_TO,'yes'),
+        DefaultAttributesFrom(1)),
 
     Module(
         'plot_prediction',
-         ClassifyFile,PredictionPlot,
+        ClassifyFile,PredictionPlot,
         Constraint("classify_alg",CAN_BE_ANY_OF,['weighted_voting','svm','random_forest']),
         Constraint("actual_label",CAN_BE_ANY_OF,['yes','no']),
         Constraint("loocv",CAN_BE_ANY_OF,['yes','no']),
