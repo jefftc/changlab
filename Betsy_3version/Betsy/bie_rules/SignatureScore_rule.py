@@ -11,6 +11,7 @@ all_modules = [
         UserInputDef('platform_value','HG_U133A'),
         Constraint("format",MUST_BE,'tdf',0),
         Constraint("preprocess",MUST_BE,'rma',0),
+        Constraint("quantile_norm",MUST_BE,'yes',0),
         Constraint("logged",MUST_BE,'yes',0),
         Constraint("missing_values",MUST_BE,'no',0),
         Constraint("platform",MUST_BE,"yes",0),

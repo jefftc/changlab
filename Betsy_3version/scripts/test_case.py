@@ -82,7 +82,7 @@ def run_case4():
     # Work around is to make gene_center="unknown" and
     # gene_normalize="unknown".  Better solution is to rethink how the
     # SignalFiles work.
-    out_data = rulebase.SignalFile2.output(
+    out_data = rulebase.PrettySignalFile.output(
         preprocess="illumina",
         format="tdf", logged="yes",
         missing_values="no", gene_order='t_test_p',
@@ -107,7 +107,7 @@ def run_case5():
     """ for each module,the attributes not mentioned will
     be set to its default input value."""
     in_data = rulebase.GEOSeries
-    out_data = rulebase.SignalFile2.output(
+    out_data = rulebase.SignalFile.output(
         preprocess="agilent", format="tdf",  quantile_norm='yes')
 
     network = bie3.backchain(rulebase.all_modules, out_data)
@@ -138,10 +138,8 @@ def run_case6():
 def run_case7():
     network = bie3.backchain(
         rulebase.all_modules, rulebase.SignalFile,
-        bie3.Attribute(rulebase.SignalFile1,"contents","class0,class1"),
-         bie3.Attribute(rulebase.SignalFile1,"preprocess","rma"),
-         bie3.Attribute(rulebase.SignalFile, "preprocess", "rma"),
-         bie3.Attribute(rulebase.SignalFile, "preprocess", "rma")
+        bie3.Attribute(rulebase.SignalFile,"contents","class0,class1"),
+         bie3.Attribute(rulebase.SignalFile,"preprocess","rma"),
         )
     network = bie3.optimize_network(network)
 
@@ -244,6 +242,21 @@ def run_case12():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
     
+def run_case13():
+    '''test cluster report'''
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+         bie3.Attribute(rulebase.PrettySignalFile,"preprocess","mas5"),
+         bie3.Attribute(rulebase.ReportFile,"report_type","cluster"),
+         bie3.Attribute(rulebase.PrettySignalFile,"quantile_norm","yes"),
+         bie3.Attribute(rulebase.ClusterFile,"cluster_alg","pca"),
+         bie3.Attribute(rulebase.Heatmap,"cluster_alg","pca"),
+        )
+    network = bie3.optimize_network(network)
+    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+    
 def main(): 
     #run_case1()
     #run_case2()
@@ -256,7 +269,7 @@ def main():
     #run_case9()
     #run_case10()
     #run_case11()
-    run_case12()
-    
+    #run_case12()
+    run_case13()
 if __name__ == '__main__':
     main()

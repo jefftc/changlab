@@ -13,7 +13,7 @@ import getpass
 from time import strftime,localtime
 
 class DataObject:
-    def __init__(self, data, identifier):
+    def __init__(self, data, identifier=""):
         self.data = data
         self.identifier = identifier
     def __repr__(self):
