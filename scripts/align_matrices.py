@@ -17,6 +17,7 @@
 # cmp_sample
 # find_sample
 # intersect_samples
+# uniq_samples
 #
 # write_matrix
 # read_express
@@ -44,7 +45,7 @@ def list_all_samples(matrix_data, first_annot_header, case_insensitive):
     # order of the samples.
     all_samples = []
     for x in matrix_data:
-        infile, outfile, matrix = x
+        infile, outfile, matrix, header = x
         samples = get_samples(matrix, samples_hint, case_insensitive)
         all_samples.extend(samples)
 
@@ -64,30 +65,37 @@ def list_all_samples(matrix_data, first_annot_header, case_insensitive):
     return all_samples
 
 
-def list_common_samples(matrix_data, first_annot_header, case_insensitive):
+def list_common_samples(matrix_data, case_insensitive):
     assert matrix_data
 
     # Initialize the common samples.
-    common = peek_samples_hint(
-        matrix_data, first_annot_header, case_insensitive)
-    assert common
+    samples_hint = peek_samples_hint(matrix_data, case_insensitive)
+    assert samples_hint
+    common = samples_hint
 
-    # Get the samples that are in all of the data sets.
-    for x in matrix_data:
-        infile, outfile, matrix = x
-        samples = get_samples(matrix, common, case_insensitive)
+    # Get the samples that are in all of the data sets.  Keep track of
+    # the order of the samples in the first file so we can resort them
+    # later.
+    first_samples = None
+    for i, x in enumerate(matrix_data):
+        infile, outfile, matrix, header = x
+        samples = get_samples(matrix, header, samples_hint, case_insensitive)
         common = intersect_samples(common, samples, case_insensitive)
+        if i == 0:
+            first_samples = samples
 
-    # Finally, order the annotations according to the first file given.
-    assert matrix_data
-    infile, outfile, matrix = matrix_data[0]
-    samples = get_samples(matrix, common, case_insensitive)
-    samples = intersect_samples(samples, common, case_insensitive)
+    # Finally, order the annotations according to the first file given.  
+    assert first_samples
+    samples = intersect_samples(first_samples, common, case_insensitive)
+    #assert matrix_data
+    #infile, outfile, matrix = matrix_data[0]
+    #samples = get_samples(matrix, common, case_insensitive)
+    #samples = intersect_samples(samples, common, case_insensitive)
     
     return samples
 
 
-def peek_samples_hint(matrix_data, first_annot_header, case_insensitive):
+def peek_samples_hint(matrix_data, case_insensitive):
     # Figure out what the samples look like.  Look for an expression
     # file first.  If an expression file is not found, use the
     # annotation files.
@@ -95,14 +103,22 @@ def peek_samples_hint(matrix_data, first_annot_header, case_insensitive):
     x = [x for x in matrix_data if not isinstance(x[2], AnnotationMatrix)]
     if x:
         # Found an expression file.
-        infile, outfile, matrix = x[0]
+        infile, outfile, matrix, header = x[0]
+        assert header is None
         samples_hint = get_express_samples(matrix)
     else:
-        # No expression files.
-        assert first_annot_header, "--first_annot_header not provided."
-        infile, outfile, matrix = matrix_data[0]
-        assert first_annot_header in matrix.name2annots
-        samples_hint = matrix.name2annots[first_annot_header]
+        # No expression files.  Look for an annotation file with given
+        # --header.
+        samples_hint = None
+        for x in matrix_data:
+            infile, outfile, matrix, header = matrix_data[0]
+            if header is None:
+                continue
+            assert header in matrix.name2annots
+            samples_hint = matrix.name2annots[header]
+            break
+        assert samples_hint is not None, \
+               "Please specify at least one --header."
     assert samples_hint
     return samples_hint
 
@@ -110,19 +126,20 @@ def peek_samples_hint(matrix_data, first_annot_header, case_insensitive):
 def align_matrices(matrix_data, samples, case_insensitive, null_string):
     new_matrix_data = []
     for x in matrix_data:
-        infile, outfile, matrix = x
+        infile, outfile, matrix, header = x
         aligned_matrix = align_matrix(
-            matrix, samples, case_insensitive, null_string)
-        x = infile, outfile, aligned_matrix
+            matrix, header, samples, case_insensitive, null_string)
+        x = infile, outfile, aligned_matrix, header
         new_matrix_data.append(x)
     return new_matrix_data
 
 
-def align_matrix(matrix, samples, case_insensitive, null_string):
+def align_matrix(matrix, header, samples, case_insensitive, null_string):
     if isinstance(matrix, AnnotationMatrix):
         aligned_matrix = align_annot(
-            matrix, samples, case_insensitive, null_string)
+            matrix, header, samples, case_insensitive, null_string)
     else:
+        assert header is None
         aligned_matrix = align_express(
             matrix, samples, case_insensitive, null_string)
     return aligned_matrix
@@ -182,8 +199,8 @@ def align_express(matrix, samples, case_insensitive, null_string):
     return matrix_aligned
 
 
-def align_annot(matrix, samples, case_insensitive, null_string):
-    names = get_annot_samples(matrix, samples, case_insensitive)
+def align_annot(matrix, header, samples, case_insensitive, null_string):
+    names = get_annot_samples(matrix, header, samples, case_insensitive)
 
     # Figure out which is the header for these samples.
     header = None
@@ -191,14 +208,24 @@ def align_annot(matrix, samples, case_insensitive, null_string):
         if n == names:
             header = h
     assert header is not None
-    
-    I = []
-    for n in samples:
-        i = find_sample(names, n, case_insensitive)
-        if i == -1:
-            i = None
-        I.append(i)
-    assert len(I) == len(samples)
+
+    ## Too slow.
+    ##I = []
+    ##for n in samples_cmp:
+    ##    i = find_sample(names, n, case_insensitive)
+    ##    if i == -1:
+    ##        i = None
+    ##    I.append(i)
+    ##assert len(I) == len(samples)
+    names_cmp = names
+    samples_cmp = samples
+    if case_insensitive:
+        names_cmp = [x.upper() for x in names]
+        samples_cmp = [x.upper() for x in samples]
+    name2index = {}
+    for (i, n) in enumerate(names_cmp):
+        name2index[n] = i
+    I = [name2index.get(n) for n in samples_cmp]
         
     name2annots_new = {}
     for name, annots in matrix.name2annots.iteritems():
@@ -214,12 +241,13 @@ def align_annot(matrix, samples, case_insensitive, null_string):
     return AnnotationMatrix(name2annots_new, matrix.name_order)
 
 
-def get_samples(matrix, samples_hint, case_insensitive):
+def get_samples(matrix, header_hint, samples_hint, case_insensitive):
     # Get the samples from the matrix.  Since in principle anything in
     # the annotation file can be a sample, need to give it a hint of
     # what the samples look like.
     if isinstance(matrix, AnnotationMatrix):
-        return get_annot_samples(matrix, samples_hint, case_insensitive)
+        return get_annot_samples(
+            matrix, header_hint, samples_hint, case_insensitive)
     return get_express_samples(matrix)
 
 
@@ -234,10 +262,15 @@ def get_express_samples(matrix):
     return x
 
 
-def get_annot_samples(matrix, samples_hint, case_insensitive):
+def get_annot_samples(matrix, header_hint, samples_hint, case_insensitive):
+    if header_hint:
+        assert header_hint in matrix.name2annots
+        return matrix.name2annots[header_hint]
+    
     all_matches = []  # list of (num_matches, name, matches)
     for name, annots in matrix.name2annots.iteritems():
-        matches = intersect_samples(annots, samples_hint, case_insensitive)
+        x = intersect_samples(annots, samples_hint, case_insensitive)
+        matches = uniq_samples(x, case_insensitive)
         x = len(matches), name, matches
         all_matches.append(x)
     assert all_matches
@@ -265,12 +298,17 @@ def find_sample(sample_list, sample, case_insensitive):
     if case_insensitive:
         sample_list_cmp = [x.upper() for x in sample_list]
         sample_cmp = sample.upper()
-    #I = []
-    for i, x in enumerate(sample_list_cmp):
-        if x == sample_cmp:
-            return i
-            #I.append(i)
-    #return I
+
+    ## Too slow.
+    ##for i, x in enumerate(sample_list_cmp):
+    ##    if x == sample_cmp:
+    ##        return i
+    ##        #I.append(i)
+    ##return -1
+    try:
+        return sample_list_cmp.index(sample_cmp)
+    except ValueError, x:
+        pass
     return -1
     
 
@@ -300,6 +338,21 @@ def intersect_samples(samples1, samples2, case_insensitive):
         samples1[i] for i in range(len(samples1)) if
         samples1_cmp[i] in samples2_cmp]
     return in_both
+
+
+def uniq_samples(samples, case_insensitive):
+    samples_cmp = samples
+    if case_insensitive:
+        samples_cmp = [x.upper() for x in samples]
+        
+    seen = {}  # dict of sample_cmp -> sample
+    for sample, sample_cmp in zip(samples, samples_cmp):
+        if sample_cmp in seen:
+            continue
+        seen[sample_cmp] = sample
+        
+    # Return a list of the unique samples.
+    return seen.values()
 
 
 def write_matrix(outfile, matrix):
@@ -383,13 +436,13 @@ def main():
     parser.add_argument(
         "--annot_file", default=[], action="append", help="")
 
-    #parser.add_argument(
-    #    "--headers", help="Explicitly specify the headers for each of the "
-    #    "file.  The headers should be given as a semicolon-separated list.")
     parser.add_argument(
-        "--first_annot_header", help="If only aligning annotation files, "
-        "find the samples to be matched under this header in the first "
-        "annotation file.")
+        "--header", default=[], action="append",
+        help="Specify the header for an annotation file.")
+    #parser.add_argument(
+    #    "--first_annot_header", help="If only aligning annotation files, "
+    #    "find the samples to be matched under this header in the first "
+    #    "annotation file.")
     
     args = parser.parse_args()
     assert len(args.outfile) == len(args.express_file) + len(args.annot_file)
@@ -421,25 +474,45 @@ def main():
     assert not annot_file
     assert not outfile
 
+    # Align the headers to the annotation files.
+    headers = [None] * len(matrix_data)
+    header_i = -1
+    for i, arg in enumerate(sys.argv):
+        if arg == "--header":
+            assert header_i >= 0, \
+                   "--header given before an --express_file or --annot_file."
+            assert headers[header_i] is None, "Two --header for one file."
+            headers[header_i] = sys.argv[i+1]
+        elif arg in ["--express_file", "--annot_file"]:
+            header_i += 1
+
+    # Add the headers to the matrix_data.
+    new_matrix_data = []  # list of (infile, outfile, is_express_file, header)
+    for i in range(len(matrix_data)):
+        infile, outfile, is_express_file = matrix_data[i]
+        if is_express_file and headers[i]:
+            raise NotImplementedError, "No headers for --express_file."
+        x = infile, outfile, is_express_file, headers[i]
+        new_matrix_data.append(x)
+    matrix_data = new_matrix_data
+
     # Read each of the files.
-    new_matrix_data = []  # list of (infile, outfile, matrix)
+    new_matrix_data = []  # list of (infile, outfile, matrix, header)
     for x in matrix_data:
-        infile, outfile, is_express_file = x
+        infile, outfile, is_express_file, header = x
         if is_express_file:
             data = read_express(infile)
         else:
             data = read_annot(infile)
-        x = infile, outfile, data
+        x = infile, outfile, data, header
         new_matrix_data.append(x)
     matrix_data = new_matrix_data
 
     if args.outer_join:
-        samples = list_all_samples(
-            matrix_data, args.first_annot_header, args.case_insensitive)
+        samples = list_all_samples(matrix_data, args.case_insensitive)
         assert samples, "No samples."
     else:
-        samples = list_common_samples(
-            matrix_data, args.first_annot_header, args.case_insensitive)
+        samples = list_common_samples(matrix_data, args.case_insensitive)
         assert samples, "No common samples found."
 
     # Align each of the matrices.
@@ -448,7 +521,7 @@ def main():
 
     # Write out each of the matrices.
     for x in matrix_data:
-        infile, outfile, matrix = x
+        infile, outfile, matrix, header = x
         write_matrix(outfile, matrix)
     
 
