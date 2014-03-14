@@ -69,6 +69,9 @@ def main():
         help="Comma-separated list of IDs (e.g. probes, gene names) "
         "to include.")
     parser.add_argument(
+        "--all_genes", default=False, action="store_true",
+        help="Plot all genes in the file.")
+    parser.add_argument(
         "--height", default=None, type=int,
         help="Height (in pixels) of the plot.")
     parser.add_argument(
@@ -94,7 +97,8 @@ def main():
     if args.height is not None:
         assert args.height > 10, "too small"
         assert args.height < 4096*16, "height too big"
-    assert args.gene_names, "Please specify some genes to plot."
+    assert args.gene_names or args.all_genes, \
+           "Please specify some genes to plot."
     assert args.mar_bottom > 0 and args.mar_bottom < 10
     assert args.mar_left > 0 and args.mar_left < 10
 
@@ -104,8 +108,13 @@ def main():
     MATRIX = arrayio.read(args.expression_file)
     assert MATRIX.nrow() and MATRIX.ncol(), "Empty matrix."
 
-    I = find_gene_names(MATRIX, args.gene_names)
+    I = None
+    if args.gene_names:
+        I = find_gene_names(MATRIX, args.gene_names)
+    elif args.all_genes:
+        I = range(MATRIX.nrow())
     assert I, "No genes found."
+    assert len(I) < 50, "Too many genes."
     MATRIX = MATRIX.matrix(I, None)
 
     gene_names = [get_pretty_gene_name(MATRIX, i)
