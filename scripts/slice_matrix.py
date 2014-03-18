@@ -1565,7 +1565,7 @@ def rename_row_annot(MATRIX, row_annot):
     assert "," in row_annot
     x = row_annot.split(",", 1)
     old_name, new_name = x
-    print MATRIX.row_names()
+    #print MATRIX.row_names()
     assert old_name in MATRIX.row_names(), \
         "I could not find name: %s" % old_name
     assert new_name not in MATRIX.row_names(), \
