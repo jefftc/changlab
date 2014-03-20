@@ -35,18 +35,17 @@ class AnnotationMatrix:
         self.name_order = name_order[:]
 
 
-def list_all_samples(matrix_data, first_annot_header, case_insensitive):
+def list_all_samples(matrix_data, case_insensitive):
     assert matrix_data
 
-    samples_hint = peek_samples_hint(
-        matrix_data, first_annot_header, case_insensitive)
+    samples_hint = peek_samples_hint(matrix_data, case_insensitive)
 
     # Get the samples that occur in any of the files.  Preserve the
     # order of the samples.
     all_samples = []
     for x in matrix_data:
         infile, outfile, matrix, header = x
-        samples = get_samples(matrix, samples_hint, case_insensitive)
+        samples = get_samples(matrix, header, samples_hint, case_insensitive)
         all_samples.extend(samples)
 
     # Get rid of duplicate samples.
