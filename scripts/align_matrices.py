@@ -113,7 +113,8 @@ def peek_samples_hint(matrix_data, case_insensitive):
             infile, outfile, matrix, header = matrix_data[0]
             if header is None:
                 continue
-            assert header in matrix.name2annots
+            assert header in matrix.name2annots, "Missing header: %s\n%s" % (
+                repr(header), sorted(matrix.name2annots))
             samples_hint = matrix.name2annots[header]
             break
         assert samples_hint is not None, \

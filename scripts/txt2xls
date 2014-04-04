@@ -37,6 +37,8 @@ def main():
     assert os.path.exists(args.filename), "File not found: %s" % args.filename
 
     sheetname = os.path.split(args.filename)[1]
+    # Worksheet name can be at most 31 characters.
+    sheetname = sheetname[:31]
 
     bold_font = xlwt.Font()
     bold_font.bold = True
