@@ -114,7 +114,9 @@ def write_prism_file(filename, scores, phenotypes, group_names):
         print >>handle, "\t".join(map(str, x))
 
 
-def plot_boxplot(filename, scores, phenotypes, group_names, p_value, gene_id):
+def plot_boxplot(
+    filename, scores, phenotypes, group_names, p_value, gene_id,
+    mar_bottom, mar_left, mar_top):
     import os
     from genomicode import jmath
     from genomicode.jmath import R_fn, R_var, R_equals
@@ -123,8 +125,6 @@ def plot_boxplot(filename, scores, phenotypes, group_names, p_value, gene_id):
     xlabel_size = 1.0
     height = 1600
     width = 1600
-    mar_bottom = 1.0
-    mar_left = 1.0
 
     pheno2scores = {}
     for pheno, score in zip(phenotypes, scores):
@@ -172,18 +172,18 @@ def plot_boxplot(filename, scores, phenotypes, group_names, p_value, gene_id):
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    x = 5*mar_bottom, 5*mar_left, 4, 2
+    x = 5*mar_bottom, 5*mar_left, 4*mar_top, 2
     mar = [x+0.1 for x in x]
     R_fn("par", mar=mar, RETVAL="op")
         
     R_fn(
-        "boxplot", R_var("X"), col=col, main=main, xlab="", ylab="",
+        "boxplot", R_var("X"), col=col, main="", xlab="", ylab="",
         axes=R_var("FALSE"), pch=19, cex=1, ylim=R_var("NULL"))
     # Make plot area solid white.
     jmath.R('usr <- par("usr")')
     jmath.R('rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF")')
     R_fn(
-        "boxplot", R_var("X"), col=col, main=main, xlab="", ylab="",
+        "boxplot", R_var("X"), col=col, main="", xlab="", ylab="",
         axes=R_var("FALSE"), pch=19, cex=1, ylim=R_var("NULL"),
         add=R_var("TRUE"))
     
@@ -349,16 +349,16 @@ def main():
         '-o', dest='filestem', default=None,
         help='Prefix used to name files.  e.g. "myanalysis".')
 
-    ## group = parser.add_argument_group(title='Formatting the Kaplan-Meier Plot')
-    ## group.add_argument(
-    ##     "--km_mar_left", default=1.0, type=float,
-    ##     help="Scale margin at left of plot.  Default 1.0 (no scaling).")
-    ## group.add_argument(
-    ##     "--km_mar_bottom", default=1.0, type=float,
-    ##     help="Scale margin at bottom of plot.  Default 1.0 (no scaling).")
-    ## group.add_argument(
-    ##     "--km_mar_top", default=1.0, type=float,
-    ##     help="Scale margin at top of plot.  Default 1.0 (no scaling).")
+    group = parser.add_argument_group(title='Formatting the boxplot')
+    group.add_argument(
+        "--box_mar_left", default=1.0, type=float,
+        help="Scale margin at left of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--box_mar_bottom", default=1.0, type=float,
+        help="Scale margin at bottom of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--box_mar_top", default=1.0, type=float,
+        help="Scale margin at top of plot.  Default 1.0 (no scaling).")
     ## group.add_argument(
     ##     '--km_title', default=None, help='Title for the Kaplan-Meier plot.')
     ## group.add_argument(
@@ -400,9 +400,9 @@ def main():
     assert not (args.gene and args.geneset), (
         'Please specify either a gene or a gene set, not both.')
 
-    ## assert args.km_mar_bottom > 0 and args.km_mar_bottom < 10
-    ## assert args.km_mar_left > 0 and args.km_mar_left < 10
-    ## assert args.km_mar_top > 0 and args.km_mar_top < 10
+    assert args.box_mar_bottom > 0 and args.box_mar_bottom < 10
+    assert args.box_mar_left > 0 and args.box_mar_left < 10
+    assert args.box_mar_top > 0 and args.box_mar_top < 10
     ## assert args.km_title_size > 0 and args.km_title_size < 10
     ## assert args.km_mar_title > 0 and args.km_mar_title < 10
     ## assert args.km_subtitle_size > 0 and args.km_subtitle_size < 10
@@ -512,7 +512,9 @@ def main():
                 filestem, pheno_header, gene_id_h)
             plot_boxplot(
                 filename, SCORE["scores"], SCORE["phenotypes"],
-                SCORE["group_names"], SCORE["p_value"], gene_id)
+                SCORE["group_names"], SCORE["p_value"], gene_id,
+                args.box_mar_bottom, args.box_mar_left, args.box_mar_top,
+                )
             
         if filestem:
             filename = "%s%s.%s.waterfall.png" % (

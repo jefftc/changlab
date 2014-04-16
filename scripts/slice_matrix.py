@@ -4,6 +4,8 @@
 # _clean
 # read_matrices
 # has_missing_values
+# num_missing_values
+# assert_no_missing_values
 # transpose_matrix
 #
 # parse_indexes
@@ -22,6 +24,7 @@
 # select_col_annotation
 # select_col_regex
 # select_col_random
+# rename_col_id
 # replace_col_ids
 # relabel_col_ids
 # append_col_ids
@@ -47,6 +50,8 @@
 # select_row_genesets
 # select_row_annotation
 # select_row_numeric_annotation
+# select_row_nonempty
+# select_row_maxvalue
 # select_row_mean_var
 # select_row_missing_values
 # select_row_var
@@ -170,11 +175,25 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
     return fmt_module, matrices
 
 
+def num_missing_values(MATRIX):
+    num_missing = 0
+    for x in MATRIX._X:
+        for y in x:
+            if y is None:
+                num_missing += 1
+    return num_missing
+
+
 def has_missing_values(MATRIX):
     for x in MATRIX._X:
         if None in x:
             return True
     return False
+
+
+def assert_no_missing_values(MATRIX):
+    num = num_missing_values(MATRIX)
+    assert num == 0, "Matrix has %d missing values." % num
 
 
 def transpose_matrix(MATRIX, transpose):
@@ -488,6 +507,37 @@ def select_col_random(MATRIX, col_random):
     random.shuffle(I)
     I = sorted(I[:col_random])
     return I
+
+
+def rename_col_id(MATRIX, rename_list, ignore_missing):
+    # rename_list is list of strings in format of: <from>,<to>.
+    import arrayio
+    from genomicode import genesetlib
+    from genomicode import matrixlib
+
+    if not rename_list:
+        return MATRIX
+    
+    rename_all = []  # list of (from_str, to_str)
+    for rename_str in rename_list:
+        x = rename_str.split(",")
+        assert len(x) == 2, "format should be: <from>,<to>"
+        from_str, to_str = x
+        rename_all.append((from_str, to_str))
+
+    MATRIX_new = MATRIX.matrix()
+    name = arrayio.COL_ID
+    if name not in MATRIX_new._col_names:
+        name = MATRIX_new._synonyms[name]
+    assert name in MATRIX_new._col_names, "I can not find the sample names."
+    names = MATRIX_new.col_names(name)
+    for i in range(len(names)):
+        for (from_str, to_str) in rename_all:
+            if names[i] == from_str:
+                names[i] = to_str
+    MATRIX_new._col_names[name] = names
+
+    return MATRIX_new
 
 
 def replace_col_ids(MATRIX, replace_list, ignore_missing):
@@ -1126,6 +1176,37 @@ def select_row_numeric_annotation(MATRIX, row_annotation):
     return I
 
 
+def select_row_nonempty(MATRIX, row_nonempty):
+    # Format: <header>
+    from genomicode import matrixlib
+
+    if not row_nonempty:
+        return None
+
+    header = row_nonempty
+    assert header in MATRIX.row_names(), "Missing header: %s" % header
+    annots = MATRIX.row_names(header)
+    I = []
+    for i, annot in enumerate(annots):
+        if annot != "":
+            I.append(i)
+    return I
+
+
+def select_row_maxvalue(MATRIX, maxvalue):
+    if maxvalue is None:
+        return None
+    maxvalue = float(maxvalue)
+    assert maxvalue >= 0 and maxvalue < 10000
+
+    I = []  # indexes to keep.
+    for i in range(len(MATRIX._X)):
+        x = [x for x in MATRIX._X[i] if x is not None]
+        if max(x) >= maxvalue:
+            I.append(i)
+    return I
+
+
 def select_row_mean_var(MATRIX, filter_mean, filter_var):
     from genomicode import pcalib
     if filter_mean is None and filter_var is None:
@@ -1169,7 +1250,6 @@ def select_row_missing_values(MATRIX, perc_missing):
             I.append(i)
     return I
             
-
 def select_row_var(MATRIX, select_var):
     from genomicode import pcalib
     if select_var is None:
@@ -1195,7 +1275,7 @@ def dedup_row_by_var(MATRIX, header):
             annot2i[annot] = []
         annot2i[annot].append(i)
 
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     variances = jmath.var(MATRIX._X)
 
     I = []
@@ -1485,6 +1565,7 @@ def rename_row_annot(MATRIX, row_annot):
     assert "," in row_annot
     x = row_annot.split(",", 1)
     old_name, new_name = x
+    #print MATRIX.row_names()
     assert old_name in MATRIX.row_names(), \
         "I could not find name: %s" % old_name
     assert new_name not in MATRIX.row_names(), \
@@ -1548,7 +1629,7 @@ def center_genes_mean(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the mean.
@@ -1568,7 +1649,7 @@ def center_genes_median(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the median.
@@ -1588,7 +1669,7 @@ def normalize_genes_var(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Normalize the genes in place.
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     X = MATRIX._X
     for i in range(len(X)):
         X_i = X[i]
@@ -2001,6 +2082,10 @@ def main():
         help="If multiple columns have the same header, make their names "
         "unique.")
     group.add_argument(
+        "--rename_col_id", default=[], action="append",
+        help="Rename a column ID.  Format: <from>,<to>.  "
+        "<from> will be replaced with <to>.")
+    group.add_argument(
         "--replace_col_ids", default=[], action="append",
         help="Replace strings within the column IDs.  Format: <from>,<to>.  "
         "Instances of <from> will be replaced with <to>.")
@@ -2076,6 +2161,15 @@ def main():
         'The analogous constraint will be applied for ">".  '
         "Accepts the match if any of the <value>s are true.")
     group.add_argument(
+        "--select_row_nonempty", default=None,
+        help="Include only the rows that have a non-blank annotation.  "
+        "Format: <header>")
+    group.add_argument(
+        "--select_row_maxvalue", default=None, type=float,
+        help="Include the rows whose maximum value exceeds this.  "
+        "E.g. if '5.0' is given, then keep the rows with at least one value "
+        "greater than 5.")
+    group.add_argument(
         "--select_row_genesets", default=[], action="append",
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
@@ -2147,7 +2241,7 @@ def main():
     group.add_argument(
         "--move_row_annot", action="append", default=[],
         help="Move this header.  "
-        "The format should be: <header>,<old_index>,<new_index>.  "
+        "The format should be: <old_index>,<new_index>.  "
         "The indexes are 1-based.")
     group.add_argument(
         "--rename_duplicate_rows", default=False, action="store_true",
@@ -2187,12 +2281,14 @@ def main():
     x = [select_row_numeric_annotation(MATRIX, annot)
          for annot in args.select_row_numeric_annotation]
     I08 = _intersect_indexes(*x)
-    I09 = select_row_mean_var(
+    I09 = select_row_nonempty(MATRIX, args.select_row_nonempty)
+    I10 = select_row_maxvalue(MATRIX, args.select_row_maxvalue)
+    I11 = select_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I10 = select_row_var(MATRIX, args.select_row_var)
-    I11 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I12 = select_row_var(MATRIX, args.select_row_var)
+    I13 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
-        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11)
+        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13)
     I1 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     #I2 = remove_col_indexes(
@@ -2240,6 +2336,8 @@ def main():
         MATRIX = move_row_annot(MATRIX, x)
 
     # Relabel the column IDs.
+    MATRIX = rename_col_id(
+        MATRIX, args.rename_col_id, args.ignore_missing_labels)
     MATRIX = replace_col_ids(
         MATRIX, args.replace_col_ids, args.ignore_missing_labels)
     MATRIX = relabel_col_ids(

@@ -238,7 +238,7 @@ def score_platform_of_annotations(annotations):
     match = None
     possible_platforms = score_platforms(annotations)
     if possible_platforms[0][1] > 0:
-        platform, number_shared_annots,match = possible_platforms[0]
+        platform, number_shared_annots, match = possible_platforms[0]
     return platform, match
 
 
@@ -339,8 +339,8 @@ PLATFORMS = [
     Platform(
         'RAE230A','affy_rae230a', "rnorvegicus_gene_ensembl", PROBE_ID, 20),
     Platform(
-        'HumanHT_12', "illumina_humanht_12", "hsapiens_gene_ensembl", PROBE_ID,
-        21),
+        'HumanHT_12', "illumina_humanht_12_v4", "hsapiens_gene_ensembl",
+        PROBE_ID, 21),
     Platform(
         'HumanWG_6', "illumina_humanwg_6_v3", "hsapiens_gene_ensembl",
         PROBE_ID, 22),
