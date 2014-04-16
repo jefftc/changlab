@@ -89,20 +89,15 @@ PcaPlot = DataType(
         "combat_norm",["no", "yes"], "no","no"),
 
     # Annotations.
-    AttributeDef("annotate",["no", "yes"], "no","no"),
     AttributeDef(
         "unique_genes",["no", "average_genes", "high_var", "first_gene"],
         "no","no"),
     AttributeDef(
         "duplicate_probe",["no", "yes", "closest_probe", "high_var_probe"],
         "no","no"),
-    AttributeDef("rename_sample",["no", "yes"], "no","no"),
-
+    
     # Unclassified.
     AttributeDef("num_features",["yes","no"], "no","no"),
-    AttributeDef("gene_order",[
-            "no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
-        "no","no"),
     AttributeDef("predataset",["no", "yes"], "no","no"),
     AttributeDef("platform",["yes","no"],"no","no"),
     AttributeDef("filter",["yes","no"],"no","no"),

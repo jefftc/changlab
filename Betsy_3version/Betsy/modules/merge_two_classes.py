@@ -9,11 +9,11 @@ from Betsy import module_utils
 def run(in_nodes, parameters, user_input, network):
     """merge three signal file to generate a joined signal file"""
     merge_node1, merge_node2 = in_nodes
-    assert os.path.exists(merge_node1.attributes['filename']),(
+    assert os.path.exists(merge_node1.identifier),(
     'the merge_file1 %s in merge_data does not exist'%merge_node1.identifier)
-    assert os.path.exists(merge_node2.attributes['filename']),(
+    assert os.path.exists(merge_node2.identifier),(
     'the merge_file2 %s in merge_data does not exist'%merge_node2.identifier)
-    outfile = name_outfile(in_nodes)
+    outfile = name_outfile(in_nodes,user_input)
     file1,file2 = module_utils.convert_to_same_platform(merge_node1.identifier,
                                                         merge_node2.identifier)
     f = file(outfile,'w')
@@ -27,7 +27,7 @@ def run(in_nodes, parameters, user_input, network):
 
 
 
-def name_outfile(in_nodes):
+def name_outfile(in_nodes,user_input):
     data_node1,data_node2 = in_nodes
     original_file = module_utils.get_inputid(data_node1.identifier)
     filename = 'signal_merge' + original_file + '.tdf'

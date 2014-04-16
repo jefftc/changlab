@@ -21,13 +21,23 @@ class DataObject:
         return x
     
 def compare_two_dict(dict_A,dict_B):
-    if len(dict_A)!=len(dict_B):
+    dict_A_copy = dict_A.copy()
+    dict_B_copy = dict_B.copy()
+    if 'sf_processing_step' in dict_A_copy:
+        del dict_A_copy['sf_processing_step']
+    if 'sf_processing_step' in dict_B_copy:
+        del dict_B_copy['sf_processing_step']
+    if 'psf_processing_step' in dict_A_copy:
+        del dict_A_copy['psf_processing_step']
+    if 'psf_processing_step' in dict_B_copy:
+        del dict_B_copy['psf_processing_step']
+    if len(dict_A_copy)!=len(dict_B_copy):
         return False
-    if set(dict_A)-set(dict_B):
+    if set(dict_A_copy)-set(dict_B_copy):
         return False
-    for key in dict_A:
-        setA = dict_A[key]
-        setB = dict_B[key]
+    for key in dict_A_copy:
+        setA = dict_A_copy[key]
+        setB = dict_B_copy[key]
         if isinstance(setA,str):
             setA = [setA]
         if isinstance(setB,str):
@@ -128,18 +138,62 @@ def create_out_attribtues_from_objects(network, module, module_id, pool):
 ##                    break
 ##    return new_attributes
 
-def _can_module_take_one_data(module, data):
-    # Return True/False if a module can take this Data node
-    # as part of the input.
-
-    if data.datatype not in module.in_datatypes:
+def _can_module_take_data(module, datas):
+    # Return True/False if a module can take this list of Data nodes
+    # as an input.
+    if len(module.in_datatypes) != len(datas):
         return False
-    constraint_index = 0
-    if len(module.in_datatypes)>1:
-        constraint_index = module.in_datatypes.index(data.datatype)
+    if len(datas) > 1:
+        raise NotImplementedError
+    data = datas[0]
+    if data.datatype != module.in_datatypes[0]:
+        return False
+
+    # Make sure the data satisfies each of the module's constraints.
+    for constraint in module.constraints:
+        assert constraint.name in data.attributes
+        data_value = data.attributes.get(constraint.name)
+        data_type = bie3._get_attribute_type(data_value)
+        assert data_type in [TYPE_ATOM, TYPE_ENUM]
+        
+        if constraint.behavior == MUST_BE:
+            if data_type == TYPE_ATOM:
+                if data_value != constraint.arg1:
+                    return False
+            elif data_type == TYPE_ENUM:
+                return False
+            else:
+                raise AssertionError
+        elif constraint.behavior == CAN_BE_ANY_OF:
+            if data_type == TYPE_ATOM:
+                if data_value not in constraint.arg1:
+                    return False
+            elif data_type == TYPE_ENUM:
+                # data_value contains the possible values of this Data
+                # object.  The values that are acceptable by module is
+                # in constraint.arg1.  Make sure the module can handle
+                # all of the possible values.
+                if not bie3._is_subset(data_value, constraint.arg1):
+                    return False
+            else:
+                raise AssertionError
+        else:
+            raise AssertionError
+
+    return True
+
+
+            
+def _can_module_take_one_data_index(module, data, constraint_index):
+    # Return True/False if a module can take this Data node
+    # as part of the input with constraint_index.
         
     # Make sure the data satisfies each of the module's constraints.
     for constraint in module.constraints:
+        #print constraint
+        #ignore the sf_processing_step and psf_processing_step information
+        if constraint.name in ['sf_processing_step','psf_processing_step']:
+            continue
         if constraint.input_index != constraint_index:
             continue
         assert constraint.name in data.attributes
@@ -172,6 +226,18 @@ def _can_module_take_one_data(module, data):
             raise AssertionError
 
     return True
+def _can_module_take_one_data(module, data):
+    # Return True/False if a module can take this Data node
+    # as part of the input.
+    if data.datatype not in module.in_datatypes:
+        return False
+    constraint_index = 0
+    while constraint_index < len(module.in_datatypes):
+        flag = _can_module_take_one_data_index(module, data, constraint_index)
+        if flag:
+            return flag
+        constraint_index = constraint_index+1
+    return False
 
 # choose the next module and return the id
 def choose_next_module(network, node_id, node_data):
@@ -195,9 +261,12 @@ def test_require_data(network, module_id, pool):
     for key in network.transitions:
         if module_id in network.transitions[key]:
             require_id.append(key)
+    require_data = []
     for node_id in require_id:
+        
         if node_id not in pool:
             continue
+        
         flag = _can_module_take_one_data(network.nodes[module_id],
                                          pool[node_id].data)
         if flag and node_id not in has_id:
@@ -354,11 +423,12 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
         for data_object in in_objects:
             data_node = data_object.data
             start_node_ids = bie3._find_start_nodes(network,data_node)
+            print 'start_node_ids',start_node_ids
             for start_node_id in start_node_ids:
                 stack_list.append((data_object,start_node_id))
                 pool[start_node_id]=data_object
         num_failures = 0
-        print pool
+        print 'pool',pool
         while stack_list:
             assert num_failures < len(stack_list)
             stack_before_pop = stack_list[:]
@@ -377,6 +447,8 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
             elif isinstance(data_node, bie3.Module):
                 module_id = node_id
                 test_required = test_require_data(network, module_id, pool)
+                print 'module_id',module_id
+                print 'test_required',test_required
                 if test_required:       
                     pipeline_sequence.append(module.name)
                     out_nodes = run_module(network, module_id, pool, user_inputs, pipeline_sequence,

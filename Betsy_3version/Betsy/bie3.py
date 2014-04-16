@@ -850,7 +850,7 @@ def backchain(moduledb, out_data, *user_attributes):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 1024
+    MAX_NETWORK_SIZE = 10024
     nodes.append(out_data)
     stack = [0]
     seen = {}

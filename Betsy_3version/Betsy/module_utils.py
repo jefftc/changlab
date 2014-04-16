@@ -218,10 +218,12 @@ def write_Betsy_parameters_file(parameters, data_nodes,user_input,
                 'User:',user,
                 'Jobname:',job_name]
     else:
-        st = os.stat(data_nodes.identifier)
-        modified_time = time.asctime(time.localtime(st[ST_MTIME]))
+        st = 'None'
+        modified_time = 'None'
         identifier = data_nodes.identifier
-        st = os.stat(identifier)
+        if identifier:
+            st = os.stat(identifier)
+            modified_time = time.asctime(time.localtime(st[ST_MTIME]))
         text = ['Module input:', (data_nodes.data.datatype.name,
                                   identifier),
                 'Module output parameters:', parameters,

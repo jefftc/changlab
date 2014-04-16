@@ -243,7 +243,9 @@ def run_case12():
     bie3.plot_network_gv("out.png", network)
     
 def run_case13():
-    '''test cluster report'''
+    '''test cluster report,
+       ClusterFile cluster_alg should be pca, but it shows
+       four different cluster algorithms'''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
          bie3.Attribute(rulebase.PrettySignalFile,"preprocess","mas5"),
@@ -254,6 +256,66 @@ def run_case13():
         )
     network = bie3.optimize_network(network)
     
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case14():
+    '''test normalize report,
+       requires PSF preprocess=unknown and contents=test,
+       but preprocess can be any of ['rma', 'mas5', 'agilent',
+       'loess', 'unknown'] and contents can any of
+       ['train0', 'train1', 'test', 'class0,class1,test',
+       'class0', 'class1', 'class0,class1','unspecified']'''
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
+        bie3.Attribute(rulebase.PrettySignalFile,"preprocess","unknown"),
+        bie3.Attribute(rulebase.PrettySignalFile,"contents","test"),
+        
+        )
+    network = bie3.optimize_network(network)
+    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case15():
+    """want PSF preprocess=illumina, but PSF that goes
+       into rank_genes_by_class_neighbors has preprocess
+       unknown"""
+    out_data = rulebase.PrettySignalFile.output(
+        gene_order='class_neighbors',preprocess='illumina')                                 
+    network = bie3.backchain(  
+        rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+    
+
+def run_case16():
+    """the difference between node 59 and node 191 is the sf_processing_step,
+       if we have an input SignalFile as node 66, the pipeline will go to node 59
+       but no way to go module 6."""
+    out_data = rulebase.SignalFile.output(
+        dwd_norm='yes')                                 
+    network = bie3.backchain(  
+        rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case17():
+    '''test the 'network too large error',
+       I have changed the MAX_NETWORK_SIZE to 10024, the
+       out network is about 768 nodes and does not pop
+       'network too large' error'''
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ClassifyFile,
+        bie3.Attribute(rulebase.ClassifyFile,"classify_alg","weighted_voting"),
+        bie3.Attribute(rulebase.PrettySignalFile,"quantile_norm","yes")
+        )
+    network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
     
@@ -270,6 +332,10 @@ def main():
     #run_case10()
     #run_case11()
     #run_case12()
-    run_case13()
+    #run_case13()
+    #run_case14()
+    #run_case15()
+    #run_case16()
+    run_case17()
 if __name__ == '__main__':
     main()

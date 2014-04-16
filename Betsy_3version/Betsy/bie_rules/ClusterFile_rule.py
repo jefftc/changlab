@@ -5,7 +5,10 @@ ClusterFile = DataType(
     "ClusterFile",
     AttributeDef("cluster_alg",['som','pca','kmeans','hierarchical'],'kmeans','kmeans'),
     AttributeDef("distance",['correlation','euclidean'],'correlation','correlation'),
-    )
+    AttributeDef("contents",["train0","train1", "test",
+                             "class0,class1,test","class0",
+                              "class1", "class0,class1","unspecified"],
+                               'unspecified','unspecified'))
 
 Heatmap = DataType(
     "Heatmap",
@@ -15,7 +18,10 @@ Heatmap = DataType(
     AttributeDef('hm_width',['yes','no'],'yes','yes'),
     AttributeDef('hm_height',['yes','no'],'yes','yes'),
     AttributeDef('color',['red_green', 'blue_yellow'],'red_green','red_green'),
-    )
+    AttributeDef("contents",["train0","train1", "test",
+                             "class0,class1,test","class0",
+                              "class1", "class0,class1","unspecified"],
+                               'unspecified','unspecified'))
 
 list_files = [ClusterFile,Heatmap]
 

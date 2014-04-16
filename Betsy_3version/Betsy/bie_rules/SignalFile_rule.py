@@ -225,7 +225,7 @@ PrettySignalFile = DataType(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
         "no", "no"),
     AttributeDef(
-        "duplicate_probe", ["no", "yes", "closest_probe", "high_var_probe"],
+        "duplicate_probe", ["no", "closest_probe", "high_var_probe"],
         "no", "no"),
     # Unclassified.
     AttributeDef("num_features", ["yes","no"], "no", "no"),
@@ -396,7 +396,7 @@ all_modules = [
     Module(
         "convert_signal_to_tdf",
         SignalFile, SignalFile,
-        Constraint("format", CAN_BE_ANY_OF, ['pcl', 'gct', 'res', 'jeffs']),
+        Constraint("format", CAN_BE_ANY_OF, ["unknown", "pcl", "gct", "res", "jeffs"]),
         Consequence("format", SET_TO, "tdf"),
         Constraint("sf_processing_step",MUST_BE,"postprocess"),
         Consequence("sf_processing_step",SET_TO_ONE_OF,["postprocess","impute","merge",
@@ -496,14 +496,14 @@ all_modules = [
                                     "normalize","processed"])),
    
     #merge
-    Module(  ###
+    Module(  
         "merge_two_classes", [SignalFile, SignalFile], SignalFile,  
          Constraint("contents", MUST_BE, "class0", 0),
          Constraint("format", MUST_BE, "tdf", 0),
          Constraint("logged", MUST_BE, "yes", 0),
          Constraint("missing_values",MUST_BE,'no',0),
          Constraint("combat_norm",MUST_BE,'no',0),
-         Constraint("quantile_norm",MUST_BE,"no",0),
+         Constraint("quantile_norm",CAN_BE_ANY_OF,["no","yes"],0), #if rma preprocess, quantile_norm='yes'
          Constraint("dwd_norm",MUST_BE,"no",0),
          Constraint("bfrm_norm",MUST_BE,"no",0),
          Constraint("shiftscale_norm",MUST_BE,"no",0),
@@ -525,10 +525,12 @@ all_modules = [
          Consequence("dwd_norm",SAME_AS_CONSTRAINT,0),
          Consequence("bfrm_norm",SAME_AS_CONSTRAINT,0),
          Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,0),
+         Constraint("sf_processing_step",MUST_BE,"merge",0),
          Constraint("sf_processing_step",MUST_BE,"merge",1),
          Consequence("sf_processing_step",SET_TO_ONE_OF,["merge",
                                     "normalize","processed"]),
          DefaultAttributesFrom(0),
+         DefaultAttributesFrom(1),
         ),
         Module(
         "normalize_samples_with_quantile",
@@ -762,11 +764,21 @@ all_modules = [
         UserInputDef("cn_min_folddiff",5),
         UserInputDef("cn_abs_diff",50),
         Constraint("cls_format", MUST_BE,'cls',0),
+        Constraint(
+            "contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"],0),
+##        Constraint(
+##            "preprocess",
+##            CAN_BE_ANY_OF,
+##            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],1),
+        Constraint("contents",SAME_AS,0,1),
         Constraint("gene_order", MUST_BE,"no",1),
         Consequence("gene_order",SET_TO,"class_neighbors"),
         Consequence("cn_mean_or_median",SET_TO_ONE_OF, ['mean', 'median']),
         Consequence("cn_ttest_or_snr",SET_TO_ONE_OF, ['t_test','snr']),
         Consequence("cn_filter_data",SET_TO_ONE_OF, ['yes','no']),
+        Consequence("contents",SAME_AS_CONSTRAINT,0),
         Constraint("psf_processing_step",MUST_BE,"order",1)),
     
     Module(###
@@ -775,7 +787,13 @@ all_modules = [
         UserInputDef("gene_select_threshold",0.05),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint("gene_order", MUST_BE,"no",1),
+        Constraint(
+            "contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"],0),
+        Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO_ONE_OF, ["t_test_p", "t_test_fdr"]),
+        Consequence("contents",SAME_AS_CONSTRAINT,0),
         Constraint("psf_processing_step",MUST_BE,"order",1)),
          
     Module(  ###
@@ -787,13 +805,18 @@ all_modules = [
          Constraint(
             "preprocess", CAN_BE_ANY_OF,
             ["unknown", "illumina", "agilent", "mas5", "rma", "loess"], 1),
+         Constraint(
+            "contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"],0),
+         Constraint("contents",SAME_AS,0,1),
          Constraint("gene_center",CAN_BE_ANY_OF,['median','mean','no'],1),
          Constraint("gene_normalize",CAN_BE_ANY_OF,['sum_of_squares','variance','no'],1),
          Consequence("gene_center",SAME_AS_CONSTRAINT,1),
          Consequence("gene_normalize",SAME_AS_CONSTRAINT,1),
-         Consequence("gene_order",SET_TO_ONE_OF, ['t_test_p', "t_test_fdr",
-                         'class_neighbors', "gene_list"]),
+         Consequence("gene_order",SAME_AS_CONSTRAINT,0),
          Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+         Consequence("contents",SAME_AS_CONSTRAINT,0),
          Constraint("psf_processing_step",MUST_BE,"order",1),
          Consequence("psf_processing_step",SET_TO_ONE_OF,[
                                     "order","annotate","filter",
@@ -898,6 +921,11 @@ all_modules = [
         Constraint("num_features", MUST_BE,"no",1),
         Constraint("duplicate_probe", MUST_BE,"no",1),
         Constraint("unique_genes", MUST_BE,"no",1),
+        Constraint("contents",CAN_BE_ANY_OF,[
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"],0),
+        Constraint("contents",SAME_AS,0,1),
+        Consequence("contents",SAME_AS_CONSTRAINT,0),
         Consequence("num_features",SAME_AS_CONSTRAINT,1),
         Consequence("duplicate_probe",SAME_AS_CONSTRAINT,1),
         Consequence("unique_genes",SAME_AS_CONSTRAINT,1),

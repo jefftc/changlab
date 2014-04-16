@@ -12,7 +12,7 @@ def run(data_node,parameters, user_input,network):
     shutil.copyfile(data_node.identifier,outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for log_signal fails'%outfile)
-    out_node = bie3.Data(rulebase.SignalFile1,**parameters)
+    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
