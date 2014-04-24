@@ -98,8 +98,10 @@ CONST2STR = {
     }
 
 
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
+
+MAX_NETWORK_SIZE = 1024*8
 
 
 class AttributeDef:
@@ -834,6 +836,7 @@ class Network:
 
 def backchain(moduledb, out_data, *user_attributes):
     # Return a Network object.
+    global MAX_NETWORK_SIZE
 
     if isinstance(out_data, DataType):
         attrdict = {}
@@ -850,7 +853,6 @@ def backchain(moduledb, out_data, *user_attributes):
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
 
-    MAX_NETWORK_SIZE = 10024
     nodes.append(out_data)
     stack = [0]
     seen = {}
@@ -1739,14 +1741,14 @@ def _backchain_to_modules(moduledb, data):
     return modules
 
 
-def _backchain_to_input_old(module, in_num, out_data, user_attributes):
+def _backchain_to_input_v2(module, in_num, out_data, user_attributes):
     # Given a module and output_data, return the input_data object
     # that can generate the output.
     assert in_num < len(module.in_datatypes)
 
     in_datatype = module.in_datatypes[in_num]
     out_datatype = out_data.datatype
-    debug_print("Backchaining %s from %s to %s [%d]." % (
+    debug_print("Backchaining %s from %s to %s (%d)." % (
         module.name, out_datatype.name, in_datatype.name, in_num))
 
     # BUG: What if module has two in_datatypes with the same datatype?
@@ -1801,7 +1803,7 @@ def _backchain_to_input_old(module, in_num, out_data, user_attributes):
 
     # make_out.  This module should take in a "finished" Data object,
     # and use it to generate a new Data object.
-    debug_print("Generating a new %s with attributes %s." % (
+    debug_print("Generating a %s with attributes %s." % (
         in_datatype.name, attributes))
     return in_datatype.output(*user_attributes, **attributes)
 
@@ -1836,7 +1838,7 @@ def _backchain_to_all_inputs(module, out_data, user_attributes):
     return all_inputs
         
 
-def _backchain_to_input_new(module, in_num, out_data, user_attributes):
+def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
     # Given a module and output_data, return the input_data object
     # that can generate the output.  This should only be called by
     # _backchain_to_all_inputs.
@@ -1844,7 +1846,7 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
 
     in_datatype = module.in_datatypes[in_num]
     out_datatype = out_data.datatype
-    debug_print("Backchaining %s <- %s <- %s [%d]." % (
+    debug_print("Backchaining %s <- %s <- %s (input=%d)." % (
         out_datatype.name, module.name, in_datatype.name, in_num))
 
     # Start with empty attributes.
@@ -1872,7 +1874,7 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
         else:
             raise AssertionError
         
-    debug_print("Taking attributes from out_data %s." % attributes)
+    debug_print("Attributes from out_data %s." % attributes)
 
     # Now set the attributes based on the constraints.
     for constraint in module.constraints:
@@ -1895,39 +1897,63 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
         else:
             raise AssertionError
 
+    debug_print("Attributes from contraints %s." % attributes)
+
+    # Highest priority is to set the attributes provided by the user.
+    # If the module changes the data type, then set the attribute
+    # provided by the user.
+    if in_datatype != out_datatype:
+        # Set values from user attributes.
+        
+        for attr in user_attributes:
+            # Ignore attributes for other data types.
+            if attr.datatype != in_datatype:
+                continue
+            old_value = attributes.get(attr.name, attr.value)
+            old_type = _get_attribute_type(old_value)
+
+            # Make sure the value is compatible with the data being
+            # created.
+            if old_type == TYPE_ATOM:
+                assert attr.value == old_value, "incompatible"
+            elif old_type == TYPE_ENUM:
+                assert attr.value in old_value, "incompatible"
+            else:
+                raise AssertionError
+            attributes[attr.name] = attr.value
+    
+
     # Fill in the rest of the attributes.
     # 1.  If the module doesn't convert the datatype, then fill it in
     #     with the same values as the out_data.
-    # 2.  If it does convert the datatype, and a
-    #     default_attributes_from is the same as in_num, then fill it
-    #     in with the same values as the out_data.
-    # 3.  If it does convert the datatype, and there is a
-    #     user_attribute provided, then use the value from the
-    #     user_attribute.
-    # 4.  Otherwise, fill it in with the default output values of the
+    # 2.  If it does convert the datatype, and default_attributes_from
+    #     is the same as in_num, then fill it in with the same values
+    #     as the out_data.  (i.e. doesn't really convert the datatype)
+    # 3.  Otherwise, fill it in with the default output values of the
     #     input datatype.
+    #
+    # Using default attributes makes things a lot simpler.  However,
+    # it can close up some possibilities.  What if the value should
+    # be something other than the default?
+    
     x = [x for x in module.default_attributes_from if x.input_index == in_num]
     assert len(x) <= 1
     default_attributes_from = None
     if x:
         default_attributes_from = x[0]
-    
+
+    # Case 1.
     if len(module.in_datatypes) == 1 and in_datatype == out_datatype:
         def_attributes = out_data.attributes
+    # Case 2.
     elif len(module.in_datatypes) > 1 and \
              default_attributes_from and \
              default_attributes_from.input_index == in_num:
         assert in_datatype == out_datatype
         def_attributes = out_data.attributes
     else:
-        def_attributes = {}
-        # Set values from user attributes.
-        for attr in user_attributes:
-            # Ignore attributes for other data types.
-            if attr.datatype != in_datatype:
-                continue
-            def_attributes[attr.name] = attr.value
         # Set values from defaults.
+        def_attributes = {}
         for attr in in_datatype.attributes:
             if attr.name not in def_attributes:
                 def_attributes[attr.name] = attr.default_out
@@ -1942,8 +1968,8 @@ def _backchain_to_input_new(module, in_num, out_data, user_attributes):
     return in_datatype.output(**attributes)
 
 
-#_backchain_to_input = _backchain_to_input_old
-_backchain_to_input = _backchain_to_input_new
+#_backchain_to_input = _backchain_to_input_v2
+_backchain_to_input = _backchain_to_input_v3
 
 
 def _backchain_to_ids(network, node_id):
