@@ -284,12 +284,22 @@ def run_case15():
     #
     # Problem: Why does no PSF with preprocess=illumina point to
     # rank_genes_by_class_neighbors?
-    # Answer: Generates default PrettySignalFile where output
-    # preprocess=unknown.
+    # Answer: rank_genes_by_class_neighbors takes PrettySignalFile.
+    # In default PrettySignalFile, output preprocess=unknown.
+
+    #out_data = rulebase.PrettySignalFile.output(
+    #    gene_order='class_neighbors', preprocess='illumina')
+    #network = bie3.backchain(rulebase.all_modules, out_data)
+    #network = bie3.optimize_network(network)
+    #bie3.write_network("test.network", network)
+    #network = bie3.read_network("test.network")
+    #bie3.complete_network(network)
+    #network = bie3.optimize_network(network)
+
     out_data = rulebase.PrettySignalFile.output(
-        gene_order='class_neighbors', preprocess='illumina')                                 
-    network = bie3.backchain(  
-        rulebase.all_modules, out_data)
+        gene_order='class_neighbors', preprocess='illumina')
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     
     bie3.print_network(network)
@@ -308,15 +318,27 @@ def run_case16():
     # 191.  SignalFile  gene_normalize="no"
     #                   sf_processing_step="merge"
 
+    # Problem: Input file with gene_normalize="unknown" cannot be used
+    # to normalize_samples_with_dwd.
+    # SignalFile [59] should be acceptable as input for
+    # normalize_samples_with_dwd.
     #  66 -> check_gene_normalize -> 59 -> convert_label_to_cls ->
-    #    normalize_samples_with_dwd
-    # 191 -> normalize_samples_with_dwd
-    
+    #    21 -> normalize_samples_with_dwd [6]
+    # 191 -> normalize_samples_with_dwd [6]
+    #
+    # normalize_samples_with_dwd requires sf_processing_step to be
+    # "merge".
+    #
+    # Is this a problem?  Node 66 should not be an input.  Inputs
+    # should have an earlier processing step (e.g. "postprocess").  In
+    # the network, nodes higher up do go into
+    # normalize_samples_with_dwd [6].
 
-    out_data = rulebase.SignalFile.output(
-        dwd_norm='yes')                                 
-    network = bie3.backchain(  
-        rulebase.all_modules, out_data)
+    # Processing steps:
+    # postprocess -> impute -> merge -> normalize -> processed
+    
+    out_data = rulebase.SignalFile.output(dwd_norm='yes')
+    network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
     
     bie3.print_network(network)
@@ -351,9 +373,10 @@ def main():
     #run_case12()
     #run_case13()
     #run_case14()
-    run_case15()
-    #run_case16()
+    #run_case15()
+    run_case16()
     #run_case17()
     
 if __name__ == '__main__':
     main()
+    #import cProfile; cProfile.run("main()")
