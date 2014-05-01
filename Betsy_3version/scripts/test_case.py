@@ -1,7 +1,7 @@
 from Betsy import rulebase
 from Betsy import bie3
 
-def run_case1():
+def run_case01():
     in_data = rulebase.GEOSeries
     out_data = rulebase.SignalFile.output(preprocess="rma",
         format="tdf", logged="yes",gene_center='mean',#annotate='yes',
@@ -24,7 +24,7 @@ def run_case1():
     bie3.plot_network_gv("out.png", network)
 
 
-def run_case2():
+def run_case02():
     in_data = rulebase.GEOSeries
 
     # Will generate network back to illumina preprocessing if
@@ -50,7 +50,7 @@ def run_case2():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
-def run_case3():
+def run_case03():
     in_data = rulebase.GEOSeries
     out_data = rulebase.SignalFile.output(preprocess="illumina",
         format="tdf",  logged="yes",
@@ -70,7 +70,7 @@ def run_case3():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
-def run_case4():
+def run_case04():
     in_data = rulebase.GEOSeries
 
     # The SignalFile2 should be created by the reorder_genes module.
@@ -103,7 +103,7 @@ def run_case4():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
-def run_case5():
+def run_case05():
     """ for each module,the attributes not mentioned will
     be set to its default input value."""
     in_data = rulebase.GEOSeries
@@ -125,7 +125,7 @@ def run_case5():
     bie3.plot_network_gv("out.png", network)
                                                                     
 
-def run_case6():
+def run_case06():
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ActbPlot,
         bie3.Attribute(rulebase.SignalFile, "preprocess", "rma"),
@@ -135,7 +135,7 @@ def run_case6():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
-def run_case7():
+def run_case07():
     network = bie3.backchain(
         rulebase.all_modules, rulebase.SignalFile,
         bie3.Attribute(rulebase.SignalFile,"contents","class0,class1"),
@@ -146,7 +146,7 @@ def run_case7():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
     
-def run_case8():
+def run_case08():
     #test ClusterFile
 
     # Heatmap requires SignalFile to be logged.  Explicitly
@@ -168,7 +168,7 @@ def run_case8():
     bie3.plot_network_gv("out.png", network)
     
 
-def run_case9():
+def run_case09():
     # command1 (command 1 and command 2 suppose to have the same
     # result, but they are not)
 
@@ -248,11 +248,11 @@ def run_case13():
        four different cluster algorithms'''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
-         bie3.Attribute(rulebase.PrettySignalFile,"preprocess","mas5"),
-         bie3.Attribute(rulebase.ReportFile,"report_type","cluster"),
-         bie3.Attribute(rulebase.PrettySignalFile,"quantile_norm","yes"),
-         bie3.Attribute(rulebase.ClusterFile,"cluster_alg","pca"),
-         bie3.Attribute(rulebase.Heatmap,"cluster_alg","pca"),
+        bie3.Attribute(rulebase.PrettySignalFile, "preprocess", "mas5"),
+        bie3.Attribute(rulebase.ReportFile, "report_type", "cluster"),
+        bie3.Attribute(rulebase.PrettySignalFile, "quantile_norm", "yes"),
+        bie3.Attribute(rulebase.ClusterFile, "cluster_alg", "pca"),
+        bie3.Attribute(rulebase.Heatmap, "cluster_alg", "pca"),
         )
     network = bie3.optimize_network(network)
     
@@ -279,13 +279,27 @@ def run_case14():
     bie3.plot_network_gv("out.png", network)
 
 def run_case15():
-    """want PSF preprocess=illumina, but PSF that goes
-       into rank_genes_by_class_neighbors has preprocess
-       unknown"""
+    # want PSF preprocess=illumina, but PSF that goes into
+    # rank_genes_by_class_neighbors has preprocess unknown.
+    #
+    # Problem: Why does no PSF with preprocess=illumina point to
+    # rank_genes_by_class_neighbors?
+    # Answer: rank_genes_by_class_neighbors takes PrettySignalFile.
+    # In default PrettySignalFile, output preprocess=unknown.
+
+    #out_data = rulebase.PrettySignalFile.output(
+    #    gene_order='class_neighbors', preprocess='illumina')
+    #network = bie3.backchain(rulebase.all_modules, out_data)
+    #network = bie3.optimize_network(network)
+    #bie3.write_network("test.network", network)
+    #network = bie3.read_network("test.network")
+    #bie3.complete_network(network)
+    #network = bie3.optimize_network(network)
+
     out_data = rulebase.PrettySignalFile.output(
-        gene_order='class_neighbors',preprocess='illumina')                                 
-    network = bie3.backchain(  
-        rulebase.all_modules, out_data)
+        gene_order='class_neighbors', preprocess='illumina')
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     
     bie3.print_network(network)
@@ -293,13 +307,38 @@ def run_case15():
     
 
 def run_case16():
-    """the difference between node 59 and node 191 is the sf_processing_step,
-       if we have an input SignalFile as node 66, the pipeline will go to node 59
-       but no way to go module 6."""
-    out_data = rulebase.SignalFile.output(
-        dwd_norm='yes')                                 
-    network = bie3.backchain(  
-        rulebase.all_modules, out_data)
+    """the difference between node 59 and node 191 is the
+       sf_processing_step, if we have an input SignalFile as node 66,
+       the pipeline will go to node 59 but no way to go module 6."""
+
+    #  59.  SignalFile  gene_normalize="no"
+    #                   sf_processing_step="processed"
+    #  66.  SignalFile  gene_normalize="unknown"
+    #                   sf_processing_step="normalize"
+    # 191.  SignalFile  gene_normalize="no"
+    #                   sf_processing_step="merge"
+
+    # Problem: Input file with gene_normalize="unknown" cannot be used
+    # to normalize_samples_with_dwd.
+    # SignalFile [59] should be acceptable as input for
+    # normalize_samples_with_dwd.
+    #  66 -> check_gene_normalize -> 59 -> convert_label_to_cls ->
+    #    21 -> normalize_samples_with_dwd [6]
+    # 191 -> normalize_samples_with_dwd [6]
+    #
+    # normalize_samples_with_dwd requires sf_processing_step to be
+    # "merge".
+    #
+    # Is this a problem?  Node 66 should not be an input.  Inputs
+    # should have an earlier processing step (e.g. "postprocess").  In
+    # the network, nodes higher up do go into
+    # normalize_samples_with_dwd [6].
+
+    # Processing steps:
+    # postprocess -> impute -> merge -> normalize -> processed
+    
+    out_data = rulebase.SignalFile.output(dwd_norm='yes')
+    network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
     
     bie3.print_network(network)
@@ -320,22 +359,24 @@ def run_case17():
     bie3.plot_network_gv("out.png", network)
     
 def main(): 
-    #run_case1()
-    #run_case2()
-    #run_case3()
-    #run_case4()
-    #run_case5()
-    #run_case6()
-    #run_case7()
-    #run_case8()
-    #run_case9()
+    #run_case01()
+    #run_case02()
+    #run_case03()
+    #run_case04()
+    #run_case05()
+    #run_case06()
+    #run_case07()
+    #run_case08()
+    #run_case09()
     #run_case10()
     #run_case11()
     #run_case12()
     #run_case13()
     #run_case14()
     #run_case15()
-    #run_case16()
-    run_case17()
+    run_case16()
+    #run_case17()
+    
 if __name__ == '__main__':
     main()
+    #import cProfile; cProfile.run("main()")
