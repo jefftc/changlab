@@ -36,7 +36,7 @@ def run(in_nodes,parameters, user_input, network):
     f.close()
     assert module_utils.exists_nz(outfile), (
         'the output file %s for classify_with_svm fails' % outfile)
-	out_node = bie3.Data(rulebase.ClassifyFile,**parameters)
+    out_node = bie3.Data(rulebase.ClassifyFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
@@ -64,7 +64,7 @@ def find_antecedents(network, module_id,data_nodes,parameters):
                                             datatype='SvmModel')
     data_node_test = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1,test',
-                                            datatype='SignalFile2')
+                                            datatype='PrettySignalFile')
     cls_node_train = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1',
                                             datatype='ClassLabelFile')

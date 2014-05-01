@@ -27,13 +27,13 @@ def run(in_nodes, parameters, user_input, network):
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     rma_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2',
-                                           Optional_key='preprocess',Optional_value='rma')
+                                            data_nodes,datatype='PrettySignalFile',
+                                           optional_key='preprocess',optional_value='rma')
     mas5_node = module_utils.get_identifier(network, module_id, data_nodes,
-                                           datatype='SignalFile2',
-                                            Optional_key='preprocess',Optional_value='mas5')
+                                           datatype='PrettySignalFile',
+                                            optional_key='preprocess',optional_value='mas5')
     return rma_node, mas5_node
     
 

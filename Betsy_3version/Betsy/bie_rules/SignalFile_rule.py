@@ -453,7 +453,7 @@ all_modules = [
     Module(
         "filter_genes_by_missing_values",
         SignalFile, SignalFile,
-        UserInputDef("filter_genes_with_missing_values", 0.50),
+        UserInputDef("filter_value", 0.50),
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "yes"),
@@ -898,16 +898,19 @@ all_modules = [
         PrettySignalFile,PrettySignalFile,
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'high_var_probe'),
+        Constraint("platform", MUST_BE,"yes"),
+        Consequence("platform",SAME_AS_CONSTRAINT),
         Constraint("psf_processing_step",MUST_BE,"filter"),
         Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "filter",
-                                    "processed"])),
+                                    "filter","processed"])),
     Module(
          'select_probe_by_best_match',
         PrettySignalFile,PrettySignalFile,
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'closest_probe'),
-         Constraint("psf_processing_step",MUST_BE,"filter"),
+        Constraint("platform", MUST_BE,"yes"),
+        Consequence("platform",SAME_AS_CONSTRAINT),
+        Constraint("psf_processing_step",MUST_BE,"filter"),
         Consequence("psf_processing_step",SET_TO_ONE_OF,[
                                     "filter",
                                     "processed"])),

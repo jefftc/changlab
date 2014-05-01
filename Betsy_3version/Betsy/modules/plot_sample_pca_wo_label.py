@@ -9,7 +9,7 @@ from Betsy import read_label_file
 from Betsy import module_utils
 
 def run(data_node,parameters, user_input, network):
-    outfile = name_outfile(data_node)
+    outfile = name_outfile(data_node,user_input)
     module_utils.plot_pca(data_node.identifier,outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for pca_sample_plot fails'%outfile)
@@ -33,7 +33,7 @@ def name_outfile(data_node,user_input):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='PcaAnalysis')
 

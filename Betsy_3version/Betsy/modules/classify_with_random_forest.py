@@ -66,10 +66,10 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = data_node.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1,test',
-                                            datatype='SignalFile2')
+                                            datatype='PrettySignalFile')
     
     cls_node_train = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1',

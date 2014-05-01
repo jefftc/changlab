@@ -54,7 +54,7 @@ def run(data_node,parameters,user_input, network):
     f.close()
     assert module_utils.exists_nz(outfile), (
         'the output file %s for annot_probes fails' % outfile)
-    out_node = bie3.Data(rulebase.SignalFile2,**parameters)
+    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
@@ -74,7 +74,7 @@ def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

@@ -41,7 +41,7 @@ def run(data_node,parameters,user_input, network):
             f.savefig(outfile)
         assert module_utils.exists_nz(outfile),(
             'the output file %s for plot_affy_affx_line fails'%outfile)
-   		out_node = bie3.Data(rulebase.ControlPlot,**parameters)
+   	out_node = bie3.Data(rulebase.ControlPlot,**parameters)
         out_object = module_utils.DataObject(out_node,outfile)
         return out_object
 
@@ -63,7 +63,7 @@ def name_outfile(data_node,user_input):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     

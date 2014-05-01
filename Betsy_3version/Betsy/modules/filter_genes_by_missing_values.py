@@ -10,7 +10,7 @@ def run(data_node,parameters, user_input, network):
     M = arrayio.read(data_node.identifier)
     I_good = []
     #get the percentage of gene filter
-    percent=float(parameters[str('filter')])/100
+    percent=float(user_input['filter_value'])/100
     for i in range(M.dim()[0]):
        missing_count = 0
        for j in range(M.dim()[1]):
@@ -27,7 +27,7 @@ def run(data_node,parameters, user_input, network):
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

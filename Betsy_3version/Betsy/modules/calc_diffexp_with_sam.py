@@ -15,8 +15,12 @@ def run(in_nodes, parameters, user_input, network):
     class_num = len(label)
     assert class_num == 2, (
         'the number of class in %s is not 2' % cls_node.identifier)
-    delta = float(parameters['sam_delta'])
-    foldchange = float(parameters['sam_foldchange'])
+    delta = 0.0
+    foldchange = 0.0
+    if 'sam_delta_value' in user_input:
+        delta = float(user_input['sam_delta_value'])
+    if 'sam_foldchange_value' in user_input:
+        foldchange = float(user_input['sam_foldchange_value'])
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     sam_script = os.path.join(
@@ -33,9 +37,9 @@ def run(in_nodes, parameters, user_input, network):
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='PrettySignalFile')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node

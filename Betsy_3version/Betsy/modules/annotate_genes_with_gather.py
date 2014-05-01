@@ -55,7 +55,8 @@ def get_out_attributes(parameters,data_nodes):
 
 def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(identifier,pipeline,
+                                         parameters,user_input)
 
 
 

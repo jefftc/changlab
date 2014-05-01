@@ -14,8 +14,10 @@ def run(in_nodes, parameters,user_input,network):
         cls_node.identifier)
     class_num = len(label)
     assert class_num == 2, 'the number of class is not 2'
-    fc = int(parameters['group_fc'])
-    M = arrayio.read(data_node.identifeir)
+    fc = 1
+    if 'group_fc_num' in user_input:
+        fc = int(user_input['group_fc_num'])
+    M = arrayio.read(data_node.identifier)
     first = M.slice(None, label[0][0])
     second = M.slice(None, label[1][0])
     X = M.slice()
@@ -32,13 +34,13 @@ def run(in_nodes, parameters,user_input,network):
     assert module_utils.exists_nz(outfile),(
         'the output file %s for filter_genes_by_fold_change_across_classes fails'
          % outfile)
-    out_node = bie3.Data(rulebase.SignalFile2,**parameters)
+    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='PrettySignalFile')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node

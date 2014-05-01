@@ -22,7 +22,7 @@ def run(in_nodes, parameters, user_input, network):
             else:
                 label_dict[words[1]] = [words[0]]
         class_names = label_dict.keys()
-        M = arrayio.read(data_node.attributes['filename'])
+        M = arrayio.read(data_node.identifier)
         column_names = M.col_names('_SAMPLE_NAME')
         label_line = [0]*len(column_names)
         for i in range(len(class_names)):
@@ -39,7 +39,7 @@ def run(in_nodes, parameters, user_input, network):
     return False
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,

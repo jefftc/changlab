@@ -22,21 +22,25 @@ def run(data_node,parameters,user_input,network):
         Annot_path = config.annotate_matrix
         Annot_BIN = module_utils.which(Annot_path)
         assert Annot_BIN, 'cannot find the %s' % Annot_path
-        command = ['python', Annot_BIN, '-f', data_node.identifier,
-                   '-o', outfile, "--platform", platform]
-        process = subprocess.Popen(command, shell=False,
-                                   stdout=subprocess.PIPE,
+        command = ['python', Annot_BIN,  data_node.identifier,
+                    "--platform", platform]
+        f=file(outfile,'w')
+        try:
+            process = subprocess.Popen(command, shell=False,
+                                   stdout=f,
                                    stderr=subprocess.PIPE)
+        finally:
+            f.close()
         error_message = process.communicate()[1]
         if error_message:
             raise ValueError(error_message)
     assert module_utils.exists_nz(outfile), (
         'the output file %s for add_crossplatform_probeid fails' % outfile)
-    out_node = bie3.Data(rulebase.SignalFile2,**parameters)
+    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
-def find_antecedents(network, module_id, data_nodes):
+def find_antecedents(network, module_id, data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

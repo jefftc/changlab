@@ -51,7 +51,7 @@ def run(data_node,parameters, user_input, network):
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w(htmllib.H3("1.Heatmap File"))
         w('To generate this file, I ran the following analysis:')
-        bie.plot_network_gv("network.png", network)
+        bie3.plot_network_gv("network.png", network)
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
         w(htmllib.P())
@@ -64,10 +64,10 @@ def run(data_node,parameters, user_input, network):
             )
         rows.append(x)
         
-        for key in data_node.attributes.keys():
+        for key in data_node.data.attributes.keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +
-            htmllib.TD(data_node.attributes[key], align="LEFT") 
+            htmllib.TD(data_node.data.attributes[key], align="LEFT") 
             )
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
@@ -101,8 +101,9 @@ def get_out_attributes(parameters,in_nodes):
 
 def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(identifier,pipeline,
+                                         parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id, data_nodes)
     return data_node

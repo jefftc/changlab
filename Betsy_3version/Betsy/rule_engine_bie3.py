@@ -20,6 +20,13 @@ class DataObject:
         x = str(self.data) + ' identifier:' + self.identifier
         return x
     
+def parents_of(network,node_id):
+    parent_nodes = []
+    for key in network.transitions:
+       if node_id in network.transitions[key]:
+            parent_nodes.append(key)
+    return parent_nodes
+
 def compare_two_dict(dict_A,dict_B):
     dict_A_copy = dict_A.copy()
     dict_B_copy = dict_B.copy()
@@ -47,7 +54,7 @@ def compare_two_dict(dict_A,dict_B):
             return False
     return True
 def get_outnode(network, module_id, module_file,parameters, pool,user_input):
-    data_node = module_file.find_antecedents(network, module_id, pool)
+    data_node = module_file.find_antecedents(network, module_id, pool,parameters)
     outfile = module_file.name_outfile(data_node,user_input)
     next_possible_ids = network.transitions[module_id]
     out_object = None
@@ -56,87 +63,44 @@ def get_outnode(network, module_id, module_file,parameters, pool,user_input):
     out_node = bie3.Data(fn,**parameters)
     out_object = DataObject(out_node,outfile)
     out_id = None
+    result = []
     for next_id in next_possible_ids:
         if compare_two_dict(parameters,network.nodes[next_id].attributes):
             out_id = next_id
-##        next_node = create_object_with_full_attribute(network,
-##                network.nodes[next_id], parameters,next_id)
-##        current_attributes = parameters.copy()
-##        new_attributes = next_node.attributes.copy()
-##        keys = new_attributes.keys()
-##        for key in keys:
-##            DATA1_ATTR = network.nodes[next_id].datatype.get_attribute_object(key)
-##            OPTIONAL = DATA1_ATTR.OPTIONAL
-##            if OPTIONAL:
-##                del current_attributes[key]
-##                del new_attributes[key]
-##        if cmp(new_attributes, current_attributes) == 0:
-##            next_node.attributes = parameters
-##            out_nodes.append((next_node, next_id))
-        # e.g. 'v3' in ['v3',v4']
-##        elif new_attributes.keys().sort() == current_attributes.keys().sort():
-##            flag = True
-##            for key in new_attributes:
-##                if current_attributes[key] == new_attributes[key]:
-##                    continue
-##                elif (isinstance(new_attributes[key],list) and
-##                      current_attributes[key] in new_attributes[key]):
-##                    next_node.attributes[key] = current_attributes[key]
-##                elif (isinstance(current_attributes[key],list) and
-##                      new_attributes[key] in current_attributes[key]):
-##                    next_node.attributes[key] = new_attributes[key]
-##                elif current_attributes[key] == '___BETSY_ANYATOM___':
-##                    next_node.attributes[key] = new_attributes[key]
-##                else:
-##                    flag = False
-##            if flag:
-##                out_nodes.append((next_node, next_id))
-    print (out_object,out_id)
-    return [(out_object,out_id)]
+            result.append((out_object,out_id))
+    return result
 
-def create_out_attribtues_from_objects(network, module, module_id, pool):
+def create_out_attributes_from_objects(network,module,module_id, pool):
     next_ids = network.transitions[module_id]
-    #if len(next_ids)==1:
-    return network.nodes[next_ids[0]].attributes
-    #else:
-        
-    #return True
-##    new_attributes = module.cons_data.attributes.copy()
-##    for x in pool.keys():
-##        node, node_id = pool[x],x
-##        if module_id in network.transitions[node_id]:
-##            attributes = node.attributes
-##            defaults = module.cons_data.datatype.get_defaults()
-##            #fill up the defaults parameters
-##            for key in defaults.keys():
-##                if key not in new_attributes:
-##                    new_attributes[key]=defaults[key]
-##            # pass the parameter from the previous Data node        
-##            for key in attributes:
-##                if key in defaults.keys():
-##                    if new_attributes[key]==defaults[key]:
-##                        new_attributes[key]=attributes[key]
-##            # for module cons_data has attributes as a list but default is
-##            #  used ,e.g. .preprocess_illumina
-##            for key in defaults.keys():
-##                if (isinstance(new_attributes[key],list) or
-##                        new_attributes[key]=='___BETSY_ANYATOM___'):
-##                        if defaults[key] in new_attributes[key]:
-##                            new_attributes[key] = defaults[key]
-##            break
-##    # for values that can only be determine in the output node, like filter=25,
-##    #['mean','median'] is shown
-##    # in the outnode but not in the modules and previous nodes
-##    out_ids = network.transitions[module_id]
-##    for key in new_attributes:
-##        if (new_attributes[key] == '___BETSY_ANYATOM___' or
-##            isinstance(new_attributes[key],list)):
-##            for out_id in out_ids:
-##                out_node = network.nodes[out_id]
-##                if out_node.attributes[key] != '___BETSY_ANYATOM___':
-##                    new_attributes[key] = out_node.attributes[key]
-##                    break
-##    return new_attributes
+    pre_ids = parents_of(network,module_id)
+    if len(module.in_datatypes)==1:
+        for pre_id in pre_ids:
+            if pre_id in pool:
+                break
+        in_attributes = pool[pre_id].data.attributes.copy()
+        for next_id in next_ids:
+            out_attributes = network.nodes[next_id].attributes
+            for key in out_attributes:
+                #for the case quantile_norm = yes pass to quantile_norm=[yes,no]
+                if key in in_attributes:
+                    if (isinstance(out_attributes[key],list)
+                        and not isinstance(in_attributes[key],list)
+                        and in_attributes[key] in out_attributes[key]):
+                        out_attributes[key] = in_attributes[key]
+            return out_attributes
+    else:
+        if len(next_ids)==1:
+            return network.nodes[next_ids[0]].attributes
+        else:
+##            for pre_id in pre_ids:
+            for next_id in next_ids:
+                if next_id in pool:
+                    continue
+                out_attributes = network.nodes[next_id].attributes
+                return out_attributes
+
+    
+
 
 def _can_module_take_data(module, datas):
     # Return True/False if a module can take this list of Data nodes
@@ -190,17 +154,17 @@ def _can_module_take_one_data_index(module, data, constraint_index):
         
     # Make sure the data satisfies each of the module's constraints.
     for constraint in module.constraints:
-        #print constraint
+       
         #ignore the sf_processing_step and psf_processing_step information
         if constraint.name in ['sf_processing_step','psf_processing_step']:
             continue
         if constraint.input_index != constraint_index:
             continue
-        assert constraint.name in data.attributes
+        if constraint.name not in data.attributes:
+            continue
         data_value = data.attributes.get(constraint.name)
         data_type = bie3._get_attribute_type(data_value)
         assert data_type in [bie3.TYPE_ATOM, bie3.TYPE_ENUM]
-        
         if constraint.behavior == bie3.MUST_BE:
             if data_type == bie3.TYPE_ATOM:
                 if data_value != constraint.arg1:
@@ -222,10 +186,13 @@ def _can_module_take_one_data_index(module, data, constraint_index):
                     return False
             else:
                 raise AssertionError
+        elif constraint.behavior == bie3.SAME_AS:
+            pass #has not implemented yet
         else:
             raise AssertionError
 
     return True
+
 def _can_module_take_one_data(module, data):
     # Return True/False if a module can take this Data node
     # as part of the input.
@@ -271,6 +238,8 @@ def test_require_data(network, module_id, pool):
                                          pool[node_id].data)
         if flag and node_id not in has_id:
             has_id.append(node_id)
+    #print require_id
+    #print has_id
     require_id.sort()
     has_id.sort()
     if require_id == has_id:
@@ -290,7 +259,7 @@ def make_module_wd_name(network, module_file,module_id,
                         user_input,pipeline_sequence,
                         pool,current_attributes):
     module_name = network.nodes[module_id].name
-    data_object = module_file.find_antecedents(network, module_id, pool)
+    data_object = module_file.find_antecedents(network, module_id, pool,current_attributes)
     hash_string = module_file.make_unique_hash(
             data_object, pipeline_sequence,current_attributes,user_input)
     working_dir = module_name + '_BETSYHASH1_' + hash_string
@@ -350,14 +319,15 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
     print '[' + time.strftime('%l:%M%p') + '].' + module_name
     module = __import__('modules.' + module_name, globals(),
                         locals(), [module_name], -1)
-    current_attributes = create_out_attribtues_from_objects(
+    current_attributes = create_out_attributes_from_objects(
         network, module_node, module_id, pool)
+    #print 'current_attributes',current_attributes
     # make directory name
     working_dir = os.path.join(output_path, make_module_wd_name(
         network, module, module_id, sub_user_input,pipeline_sequence,
         pool,current_attributes))
     # make name of outfile
-    data_node = module.find_antecedents(network, module_id, pool)
+    data_node = module.find_antecedents(network, module_id, pool,current_attributes)
     outfile = module.name_outfile(data_node,sub_user_input)
     temp_dir = ''
     temp_outfile = ''
@@ -423,12 +393,12 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
         for data_object in in_objects:
             data_node = data_object.data
             start_node_ids = bie3._find_start_nodes(network,data_node)
-            print 'start_node_ids',start_node_ids
+            #print 'start_node_ids',start_node_ids
             for start_node_id in start_node_ids:
                 stack_list.append((data_object,start_node_id))
                 pool[start_node_id]=data_object
         num_failures = 0
-        print 'pool',pool
+        #print 'pool',pool
         while stack_list:
             assert num_failures < len(stack_list)
             stack_before_pop = stack_list[:]
@@ -447,8 +417,8 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
             elif isinstance(data_node, bie3.Module):
                 module_id = node_id
                 test_required = test_require_data(network, module_id, pool)
-                print 'module_id',module_id
-                print 'test_required',test_required
+                #print 'module_id',module_id
+                #print 'test_required',test_required
                 if test_required:       
                     pipeline_sequence.append(module.name)
                     out_nodes = run_module(network, module_id, pool, user_inputs, pipeline_sequence,
@@ -467,6 +437,8 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
                                     raise ValueError(
                                         'there is no output for this pipeline')
                             return
+                        elif next_id is None:
+                            raise ValueError('cannot match the output node')
                         stack_list.append((next_node,next_id))
                 else:
                     if stack_list:

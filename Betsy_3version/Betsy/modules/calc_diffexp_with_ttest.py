@@ -55,9 +55,9 @@ def run(in_nodes, parameters, user_input, network):
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='PrettySignalFile')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node
@@ -65,7 +65,7 @@ def find_antecedents(network, module_id,data_nodes):
 def name_outfile(in_nodes,user_input):
     data_node,cls_node = in_nodes
     original_file = module_utils.get_inputid(
-        data_node.attributes['filename'])
+        data_node.identifier)
     filename = 't_test_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile

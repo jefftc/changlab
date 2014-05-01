@@ -100,9 +100,10 @@ def run(in_nodes, parameters, user_input, network):
         name = 'Table 1: Table of genes used in classification'
         w(htmllib.B(name))
         w(htmllib.P())
-        nfeature = data_node7.attributes['num_features']
-        if nfeature == 'all':
-            nfeature = 10
+        nfeature = 10
+        if 'num_features_value' in user_input:
+            nfeature = user_input['num_features_value']
+        
         M = arrayio.read(result_files[0])
         ids = M._row_order
         genes = M.row_names(ids[0])[0:nfeature]
@@ -151,7 +152,7 @@ def run(in_nodes, parameters, user_input, network):
         w(htmllib.HR())
         w(htmllib.A("<methods_svm>",name="methods_svm"))
         w('To generate these files, I ran the following analysis:')
-        bie.plot_network_gv("network.png", network)
+        bie3.plot_network_gv("network.png", network)
         w(htmllib.P())
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
@@ -165,10 +166,10 @@ def run(in_nodes, parameters, user_input, network):
             htmllib.TH("Value", align="LEFT") 
             )
         rows.append(x)
-        for key in data_node2.attributes.keys():
+        for key in data_node2.data.attributes.keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +
-            htmllib.TD(data_node2.attributes[key], align="LEFT") 
+            htmllib.TD(data_node2.data.attributes[key], align="LEFT") 
             )
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
@@ -183,10 +184,10 @@ def run(in_nodes, parameters, user_input, network):
             htmllib.TH("Value", align="LEFT") 
             )
         rows.append(x)
-        for key in data_node7.attributes.keys():
+        for key in data_node7.data.attributes.keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +
-            htmllib.TD(data_node7.attributes[key], align="LEFT") 
+            htmllib.TD(data_node7.data.attributes[key], align="LEFT") 
             )
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
@@ -225,9 +226,9 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = data_node1.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node1 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='PrettySignalFile')
     data_node2 = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='ClassifyFile',
                                              optional_key='classify_alg',

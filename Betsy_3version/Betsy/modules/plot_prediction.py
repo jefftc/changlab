@@ -47,9 +47,10 @@ def run(data_node,parameters, user_input, network):
 def name_outfile(data_node,user_input):
     original_file = module_utils.get_inputid(data_node.identifier)
     loocv = ''
-    if data_node.attributes['loocv'] == 'yes':
+    if data_node.data.attributes['loocv'] == 'yes':
         loocv = 'loocv'
-    filename = 'prediction_' + original_file + '_' + data_node.attributes['classify_alg'] +loocv+'.png'
+    filename = ('prediction_' + original_file + '_' +
+                data_node.data.attributes['classify_alg'] +loocv+'.png')
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
@@ -61,7 +62,7 @@ def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
     return data_node

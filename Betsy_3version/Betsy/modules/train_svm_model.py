@@ -13,7 +13,8 @@ def run(in_nodes, parameters, user_input,network):
     a,training_label,second_line = read_label_file.read(
         cls_node_train.identifier)
     training = arrayio.read(data_node_train.identifier)
-    x_training = module_utils.format_convert(training.matrix(None,range(0,len(training_label))))#convert to the format libsvm accept
+    x_training = module_utils.format_convert(training.matrix(
+        None,range(0,len(training_label))))#convert to the format libsvm accept
     y_training = [int(x) for x in training_label]
     svm_kernel = ['linear','polynomial','RBF','sigmoid','precomputed_kernel']
     #if 'svm_kernel' in parameters.keys():
@@ -46,10 +47,10 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = data_node_train.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node_train = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1,test',
-                                            datatype='SignalFile2')
+                                            datatype='PrettySignalFile')
     cls_node_train = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1',
                                             datatype='ClassLabelFile')

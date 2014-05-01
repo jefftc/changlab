@@ -20,7 +20,7 @@ def run(data_node,parameters, user_input,network):
         f.close()
     assert module_utils.exists_nz(outfile), (
         'the output file %s for convert_signal_to_pcl fails' % outfile)
-    out_node = bie3.Data(rulebase.SignalFile1,**parameters)
+    out_node = bie3.Data(rulebase.SignalFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
@@ -42,7 +42,7 @@ def make_unique_hash(data_node,pipeline,parameters,user_input):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes)
 

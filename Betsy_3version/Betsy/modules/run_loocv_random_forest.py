@@ -2,7 +2,7 @@
 import arrayio
 import os
 import svmutil
-from Betsy import bie3
+from Betsy import bie3,rule_engine_bie3
 from Betsy import rulebase
 from Betsy import read_label_file
 from Betsy import module_utils
@@ -36,24 +36,26 @@ def run(in_nodes,parameters, user_input,network):
         test_label = 'test_label' + '_' + str(i)
         read_label_file.write(train_label,second_line,y_training)
         read_label_file.write(test_label,second_line,y_test[0])
-        merge_node =rulebase.SignalFile2(format='gct',contents='class0,class1,test',filename=merge_file)
-        train_label_node = rulebase.ClassLabelFile(contents='class0,class1',filename=train_label)
-        test_label_node = rulebase.ClassLabelFile(contents='test',filename=test_label)
-        new_parameters = {}
-        for key in rulebase.SvmModel.get_defaults():
-            new_parameters[key]=parameters[key]
-        x = merge_node,train_label_node
-        out_node = predict_model.run(x,parameters,network)
-        out_node_label=evaluate_model.run((out_node,test_label_node),new_parameters,network)
-        f1 = open(out_node_label.attributes['filename'],'r')
+        merge_node =rulebase.PrettySignalFile.output(format='gct',
+                                              contents='class0,class1,test')
+        merge_data = rule_engine_bie3.DataObject(merge_node,identifier=merge_file)
+        train_label_node = rulebase.ClassLabelFile.output(contents='class0,class1')
+        train_label_data = rule_engine_bie3.DataObject(train_label_node,identifier=train_label)
+        test_label_node = rulebase.ClassLabelFile.output(contents='test')
+        test_label_data = rule_engine_bie3.DataObject(test_label_node,identifier=test_label)
+        new_parameters = parameters.copy()
+        x = merge_data,train_label_data
+        out_node = predict_model.run(x,parameters,user_input,network)
+        out_node_label=evaluate_model.run((out_node,test_label_data),new_parameters,user_input,network)
+        f1 = open(out_node_label.identifier,'r')
         lines = f1.readlines()
         f1.close()
         f.write(lines[1])
         os.remove(merge_file)
         os.remove(train_label)
         os.remove(test_label)
-        os.remove(out_node.attributes['filename'])
-        os.remove(out_node_label.attributes['filename'])
+        os.remove(out_node.identifier)
+        os.remove(out_node_label.identifier)
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for loocv fails'%outfile)
@@ -62,9 +64,9 @@ def run(in_nodes,parameters, user_input,network):
     return out_object
 
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2',
+                                            data_nodes,datatype='PrettySignalFile',
                                             contents='class0,class1')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile',

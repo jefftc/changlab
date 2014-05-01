@@ -39,9 +39,10 @@ def name_outfile(in_nodes,user_input):
     data_node,classify_node = in_nodes
     original_file = module_utils.get_inputid(classify_node.identifier)
     loocv = ''
-    if classify_node.attributes['loocv'] == 'yes':
+    if classify_node.data.attributes['loocv'] == 'yes':
         loocv = 'loocv'
-    filename = 'prediction_pca_plot' + original_file + '_' + classify_node.attributes['classify_alg'] +loocv+'.png'
+    filename = ('prediction_pca_plot' + original_file + '_' +
+                classify_node.data.attributes['classify_alg'] +loocv+'.png')
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
@@ -54,7 +55,7 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = data_node.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='PcaAnalysis')
     classify_node = module_utils.get_identifier(network, module_id,

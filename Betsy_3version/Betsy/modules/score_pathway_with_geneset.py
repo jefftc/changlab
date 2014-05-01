@@ -13,7 +13,7 @@ def run(in_nodes, parameters, user_input, network):
     score_geneset_path = config.score_geneset
     score_geneset_BIN = module_utils.which(score_geneset_path)
     assert score_geneset_BIN,'cannot find the %s' %score_geneset_path
-    geneset = parameters['geneset']
+    geneset = user_input['geneset_value']
     allgenes = parameters['allgenes']
     automatch = parameters['automatch']
     command = ['python', score_geneset_BIN, '-o', outfile,
@@ -38,9 +38,9 @@ def run(in_nodes, parameters, user_input, network):
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
-def find_antecedents(network, module_id,data_nodes):
+def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='PrettySignalFile')
     geneset_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='GenesetFile')
     return data_node, geneset_node
@@ -48,7 +48,7 @@ def find_antecedents(network, module_id,data_nodes):
 def name_outfile(in_nodes,user_input):
     data_node,cls_node = in_nodes
     original_file = module_utils.get_inputid(
-        data_node.attributes['filename'])
+        data_node.identifier)
     filename = 'score_geneset_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile

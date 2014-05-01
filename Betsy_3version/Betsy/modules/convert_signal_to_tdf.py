@@ -78,7 +78,7 @@ def make_unique_hash(data_node,pipeline,parameters,user_input):
 def get_out_attributes(parameters,data_object):
     return parameters
 
-def find_antecedents(network, module_id,pool):
+def find_antecedents(network, module_id,pool,parameters):
     data_node = module_utils.get_identifier(network, module_id,
                                             pool)
 
