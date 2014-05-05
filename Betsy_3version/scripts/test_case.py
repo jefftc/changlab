@@ -297,8 +297,18 @@ def run_case15():
     #network = bie3.optimize_network(network)
 
     out_data = rulebase.PrettySignalFile.output(
-        gene_order='class_neighbors', preprocess='illumina')
+        #gene_order='class_neighbors', preprocess='illumina')
+        gene_order='class_neighbors')
+    #network = bie3.backchain(rulebase.all_modules, out_data)
+
+    #network = bie3.backchain(
+    #    rulebase.all_modules,
+    #    rulebase.PrettySignalFile,
+    #    bie3.Attribute(rulebase.PrettySignalFile, "gene_order", "t_test_p")
+    #    )
+    out_data = rulebase.PrettySignalFile.output(gene_order='t_test_p')
     network = bie3.backchain(rulebase.all_modules, out_data)
+    
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     

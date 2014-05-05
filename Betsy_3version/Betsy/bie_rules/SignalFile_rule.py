@@ -705,7 +705,7 @@ all_modules = [
     ###transfer
     Module(
         "transfer",
-        SignalFile,PrettySignalFile,
+        SignalFile, PrettySignalFile,
         Constraint("format", MUST_BE,"tdf"),
         Constraint("logged", MUST_BE,"yes"),
         Constraint("missing_values", MUST_BE,"no"),
@@ -747,6 +747,7 @@ all_modules = [
         Consequence("combat_norm", SAME_AS_CONSTRAINT, 0),
         Consequence("gene_center", SAME_AS_CONSTRAINT, 0),
         Consequence("gene_normalize", SAME_AS_CONSTRAINT, 0),
+        Consequence("gene_order", SET_TO, "no"),
         Constraint("sf_processing_step",MUST_BE,"normalize"),
         Consequence("psf_processing_step",SET_TO_ONE_OF,[
                                    "order","annotate","filter",
@@ -782,11 +783,11 @@ all_modules = [
         Constraint("psf_processing_step",MUST_BE,"order",1)),
     
     Module(###
-         "rank_genes_by_sample_ttest",
-         [ClassLabelFile,PrettySignalFile],GeneListFile,
-        UserInputDef("gene_select_threshold",0.05),
-        Constraint("cls_format", MUST_BE,'cls',0),
-        Constraint("gene_order", MUST_BE,"no",1),
+        "rank_genes_by_sample_ttest",
+        [ClassLabelFile, PrettySignalFile], GeneListFile,
+        UserInputDef("gene_select_threshold", 0.05),
+        Constraint("cls_format", MUST_BE, 'cls', 0),
+        Constraint("gene_order", MUST_BE, "no", 1),
         Constraint(
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",

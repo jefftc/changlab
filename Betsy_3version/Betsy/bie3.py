@@ -203,6 +203,16 @@ class Attribute:
         self.datatype = datatype
         self.name = name
         self.value = value
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [
+            self.datatype.name,
+            repr(self.name),
+            repr(self.value),
+            ]
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
 
 
 class UserInputDef:
@@ -901,7 +911,7 @@ def backchain(moduledb, out_data, *user_attributes):
 
         if isinstance(node, Data):
             # Backwards chain to the previous module.
-            modules = _backchain_to_modules(moduledb, node)
+            modules = _backchain_to_modules(moduledb, node, user_attributes)
             for m in modules:
                 nodes.append(m)
                 m_id = len(nodes) - 1
@@ -1635,7 +1645,7 @@ class _OptimizeNoInvalidOutputs:
             for next_id in next_ids:
                 node = network.nodes[next_id]
                 assert isinstance(node, Data)
-                if not _can_module_produce_data(module, node):
+                if not _can_module_produce_data(module, node, []):
                     bad_transitions[(node_id, next_id)] = 1
                     
         network = copy.deepcopy(network)
@@ -1839,13 +1849,13 @@ def diagnose_start_node(network, user_data):
             print "\t".join(map(str, x))
 
     
-def _backchain_to_modules(moduledb, data):
+def _backchain_to_modules(moduledb, data, user_attributes):
     # Return list of modules that can generate an output that is
     # compatible with data.
 
     modules = []  # list of (module, num compatible attributes)
     for module in moduledb:
-        if _can_module_produce_data(module, data):
+        if _can_module_produce_data(module, data, user_attributes):
             modules.append(module)
     return modules
 
@@ -1994,7 +2004,12 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
             # Make sure the value is compatible with the data being
             # created.
             if old_type == TYPE_ATOM:
-                assert attr.value == old_value, "incompatible"
+                msg = (
+                    "Module %s requires a %s with %s=%s, but user requests "
+                    "it to be %s." % (
+                        module.name, in_datatype.name, attr.name, old_value,
+                        attr.value))
+                assert attr.value == old_value, msg
             elif old_type == TYPE_ENUM:
                 assert attr.value in old_value, "incompatible"
             else:
@@ -2238,12 +2253,14 @@ def _can_module_take_data(module, datas):
     return True
 
 
-def _can_module_produce_data(module, data):
+def _can_module_produce_data(module, data, user_attributes):
     # Return whether this module can produce this data object.
 
     # A module cannot produce this data if:
     # - The module's output data type is not the same as the data.
     # - One or more of the consequences conflict.
+    # - The module converts the datatype, and the constraint isn't
+    #   aligned with the user_attributes.
     # - The module converts the datatype, and the default values of
     #   the attributes (without consequences) conflict.
     #   THIS RULE IS IN TESTING.
@@ -2255,7 +2272,6 @@ def _can_module_produce_data(module, data):
     #   consequences (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA), and the
     #   output data type has no attributes.
     #   e.g. download_geo_GSEID  gseid -> expression_files  (no attributes)
-
     debug_print("Testing if module %s can produce data %s." % (
         repr(module.name), str(data)))
 
@@ -2340,11 +2356,54 @@ def _can_module_produce_data(module, data):
         else:
             raise AssertionError
 
+    # Make sure the module's constraints are aligned with the
+    # user_attributes.
+    # Get a list of the in_datatypes that don't continue into the
+    # out_datatype.  XXX NEED A NAME FOR THIS.  final_data?
+    # datatype that flows through the module, vs datatype that the
+    # module uses.
+    for i in range(len(module.in_datatypes)):
+        if module.in_datatypes == [module.out_datatype]:
+            # Module does not convert datatype.
+            continue
+        if module.default_attributes_from is not None and \
+               module.default_attributes_from == i:
+            # The values from this datatype should be passed through.
+            # The user attributes does not apply.
+            continue
+
+        user_attrs = [
+            x for x in user_attributes if x.datatype == module.in_datatypes[i]]
+        for attr in user_attrs:
+            x = [x for x in module.constraints if x.input_index == i]
+            x = [x for x in x if x.name == attr.name]
+            constraints = x
+
+            for cons in constraints:
+                if cons.behavior == MUST_BE:
+                    if attr.value != cons.arg1:
+                        debug_print(
+                            "Consequence %s conflicts with user attribute." % (
+                                cons.name))
+                        return False
+                elif cons.behavior == CAN_BE_ANY_OF:
+                    if attr.value not in cons.arg1:
+                        debug_print(
+                            "Consequence %s conflicts with user attribute." % (
+                                cons.name))
+                        return False
+                elif cons.behavior == SAME_AS:
+                    # No conflict with user_attribute.
+                    pass
+                else:
+                    raise AssertionError
+    
+
     # If the module converts the datatype, and no
     # DefaultAttributesFrom is specified, then the data should match
     # the (in) defaults from the output data type.
     if module.in_datatypes != [module.out_datatype] and \
-           not module.default_attributes_from:
+           module.default_attributes_from is None:
         debug_print("Module converts datatype.  Checking default attributes.")
         consequence_names = [x.name for x in module.consequences]
         for attr in module.out_datatype.attributes:
@@ -2452,7 +2511,6 @@ def _get_valid_input_combinations(network, module_id, all_input_ids,
 
         # Make sure the outputs are compatible with the module.
         output_datas = _forwardchain_to_outputs(module, input_datas)
-        #print "HERE 1", len(output_datas)
         
         output_is_compatible = False
         node_ids = network.transitions.get(module_id, [])

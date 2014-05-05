@@ -209,6 +209,7 @@ def align_annot(matrix, header, samples, case_insensitive, null_string):
             header = h
     assert header is not None
 
+    # Index each name in the matrix.
     ## Too slow.
     ##I = []
     ##for n in samples_cmp:
@@ -222,10 +223,29 @@ def align_annot(matrix, header, samples, case_insensitive, null_string):
     if case_insensitive:
         names_cmp = [x.upper() for x in names]
         samples_cmp = [x.upper() for x in samples]
-    name2index = {}
+    name2indexes = {}  # name -> list of indexes
     for (i, n) in enumerate(names_cmp):
-        name2index[n] = i
-    I = [name2index.get(n) for n in samples_cmp]
+        if n not in name2indexes:
+            name2indexes[n] = []
+        name2indexes[n].append(i)
+
+    # Find the indexes of each sample.  If a sample is requested
+    # multiple times, and also occurs multiple times in the file,
+    # return distinct records from the file.
+    name2inum = {}
+    for n in name2indexes:
+        name2inum[n] = 0
+    I = []
+    for n in samples_cmp:
+        if n not in name2indexes:
+            I.append(None)
+            continue
+        indexes = name2indexes[n]
+        i = name2inum[n]
+        if i >= len(indexes):
+            i = 0
+        name2inum[n] = i+1
+        I.append(indexes[i])
         
     name2annots_new = {}
     for name, annots in matrix.name2annots.iteritems():

@@ -124,18 +124,23 @@ def find_header(MATRIX, category):
     return None
 
 def _hash_chipname(filename):
+    # RG_U34A_annot.csv.gz           RG_U34A
+    # Rat230_2.na26.annot.csv.gz     Rat230_2
+    # MoEx_1_0_st_v1.1.mm9.probeset  MoEx_1_0_st_v1
+    REMOVE = [
+        ".gz", ".csv", ".annot", "_annot",
+        ".mm9", ".probeset", ".1",
+        ]
     x = os.path.split(filename)[1]
-    x = x.replace(".gz", "")
-    x = x.replace(".csv", "")
-    x = x.replace(".annot", "")
-    x = x.replace("_annot", "")
+    for r in REMOVE:
+        x = x.replace(r, "")
     x = x.replace("-", "_")
     version = 0
     m = re.search(r".na(\d+)",x)
     if m:
-        version = m.group(1)
-        x = x.replace(m.group(0),'')
-    return x,version
+        version = int(m.group(1))
+        x = x.replace(m.group(0), '')
+    return x, version
 
 
 def chipname2filename(chipname):
@@ -157,20 +162,23 @@ def chipname2filename_illu(chipname):
 
 
 def chipname2filename_affy(chipname):
-    filename = None
     path = config.annot_data_affy
     assert os.path.exists(path), '%s does not exist' % path
-    chip2file = {}
+
+    # Read the files in config.annot_data_affy path.
+    chip2file = {}  # chip -> (version, filename)
     for f in os.listdir(path):
-        filename1 = os.path.join(path, f)
-        chipname1, version = _hash_chipname(filename1)
-        if chipname1 in chip2file.keys():
-            if version > chip2file[chipname1][0]:
-                chip2file[chipname1] = (version,filename1)
-        else:
-            chip2file[chipname1] = (version, filename1)
-    if chipname in chip2file.keys():
-        version, filename = chip2file[chipname]
+        chip, version = _hash_chipname(f)
+
+        x = chip2file.get(chip, (None, None))
+        old_version, old_filename = x
+        if old_version is None or version > old_version:
+            filename = os.path.join(path, f)
+            chip2file[chip] = (version, filename)
+            
+    if chipname not in chip2file:
+        return None
+    version, filename = chip2file[chipname]
     return filename
 
 
