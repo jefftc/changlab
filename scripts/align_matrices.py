@@ -134,7 +134,8 @@ def align_matrices(matrix_data, samples, case_insensitive, null_string):
     return new_matrix_data
 
 
-def align_matrix(matrix, header, samples, case_insensitive, null_string):
+def align_matrix(
+    matrix, header, samples, case_insensitive, null_string):
     if isinstance(matrix, AnnotationMatrix):
         aligned_matrix = align_annot(
             matrix, header, samples, case_insensitive, null_string)
@@ -401,6 +402,7 @@ def write_express(filename, matrix):
 
 
 def read_annot(filename):
+    import re
     from genomicode import genesetlib
 
     name_order = []
@@ -408,6 +410,13 @@ def read_annot(filename):
     for x in genesetlib.read_tdf(
         filename, preserve_spaces=True, allow_duplicates=True):
         name, description, annots = x
+
+        # Hack: Some files contain special characters, which mess up
+        # alignment. Fix this here.
+        # na\xc3\xafve-WIBR3.5 hESC
+        # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
+        annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
+        
         name_order.append(name)
         name2annots[name] = annots
     return AnnotationMatrix(name2annots, name_order)
@@ -439,6 +448,9 @@ def main():
     parser.add_argument(
         "--clobber", default=False, action="store_true",
         help="Overwrite output files, if they already exist.")
+    parser.add_argument(
+        "--strict", default=False, action="store_true",
+        help="Complain if a file is missing a sample.")
     parser.add_argument(
         "--case_insensitive", default=False, action="store_true",
         help="Do a case insensitive search of sample names.")
@@ -529,11 +541,23 @@ def main():
     matrix_data = new_matrix_data
 
     if args.outer_join:
+        assert not args.strict, "Can't do a strict outer join."
         samples = list_all_samples(matrix_data, args.case_insensitive)
         assert samples, "No samples."
     else:
         samples = list_common_samples(matrix_data, args.case_insensitive)
         assert samples, "No common samples found."
+
+    if args.strict:
+        all_samples = list_all_samples(matrix_data, args.case_insensitive)
+        common_samples = list_common_samples(
+            matrix_data, args.case_insensitive)
+        if sorted(all_samples) != sorted(common_samples):
+            for x in all_samples:
+                if find_sample(common_samples, x, args.case_insensitive) >= 0:
+                    continue
+                print "Not common: %s" % repr(x)
+            raise AssertionError, "Missing samples."
 
     # Align each of the matrices.
     matrix_data = align_matrices(

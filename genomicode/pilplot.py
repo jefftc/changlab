@@ -22,7 +22,7 @@ def image(width, height):
 
 def rectangle(image, x, y, width, height, color, outline=None):
     # color is (r, g, b) where r, g, b from 0-255.
-    # Is the fill color.  outline is the colorfor the outline.
+    # Is the fill color.  outline is the color for the outline.
     from PIL import ImageDraw
     draw = ImageDraw.Draw(image)
     # width and height are exclusive, but PIL is inclusive, so

@@ -11,6 +11,7 @@
 # parse_indexes
 # parse_names
 # parse_geneset
+# parse_correlations
 # _parse_file_gs
 # _parse_file_string
 # _parse_file_num
@@ -59,6 +60,7 @@
 # reverse_rows
 # reorder_row_indexes
 # reorder_row_cluster
+# reorder_row_cor
 # rename_duplicate_rows
 #
 # align_rows
@@ -303,6 +305,14 @@ def parse_geneset(MATRIX, is_row, geneset):
     if not is_row:
         I = I_col
     return I
+
+
+def parse_correlations(correlations):
+    # correlations is a comma-separated list of numbers.  Return a
+    # list of numbers.
+    x = correlations.split(",")
+    x = [float(x) for x in x]
+    return x
 
 
 def _parse_file_gs(geneset):
@@ -1331,6 +1341,39 @@ def reorder_row_cluster(MATRIX, cluster, cluster_method, distance_method):
     return MATRIX_new
 
 
+def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
+                    indexes, count_headers):
+    from genomicode import jmath
+    
+    if not correlations:
+        return MATRIX
+    if not MATRIX.nrow() or not MATRIX.ncol():
+        return MATRIX
+
+    # Parse the correlation.
+    vec = parse_correlations(correlations)
+
+    # Parse the indexes.
+    I = None
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, count_headers)
+    X = MATRIX.slice(None, I)
+
+    nrow, ncol = len(X), len(X[0])
+    assert len(vec) == ncol, "vector %d indexes %d" % (len(vec), ncol)
+
+    R = jmath.start_R()
+    jmath.R_equals(X, "X")
+    jmath.R_equals(vec, "vec")
+    jmath.R("cors <- cor(vec, t(X))")
+    if reverse_negative_cors:
+        jmath.R("cors[cors < 0] <- -1 - cors[cors < 0]")
+    O = list(jmath.R("order(cors, decreasing=TRUE)"))
+    O = [x-1 for x in O]  # convert 1-based to 0-based indexes
+    MATRIX_new = MATRIX.matrix(O, None)
+    return MATRIX_new
+
+
 def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
     import arrayio
 
@@ -1970,7 +2013,7 @@ def main():
         choices=["mean", "median"],
         help="Center each gene by: mean, median.")
     group.add_argument(
-        "--gc_subset_indexes", dest="gc_subset_indexes", default=None,
+        "--gc_subset_indexes", 
         help="Will center the genes based on the mean (or median) of"
         "this subset of the samples.  Given as indexes, e.g. 1-5,8 "
         "(1-based, inclusive).")
@@ -2002,7 +2045,9 @@ def main():
         "--col_indexes_include_headers", default=False, action="store_true",
         help="If not given (default), then column 1 is the first column "
         "with data.  If given, then column 1 is the very first column in "
-        "the file, including the headers.")
+        "the file, including the headers.  "
+        "Applies to: select_col_indexes, reorder_col_indexes, "
+        "rrc_subset_indexes")
     group.add_argument(
         "--select_col_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.")
@@ -2208,6 +2253,18 @@ def main():
     group.add_argument(
         "--reorder_row_cluster", default=False, action="store_true",
         help="Cluster the rows.")
+    group.add_argument(
+        "--reorder_row_cor", 
+        help="Reorder the rows based on a correlation to this vector.  "
+        "This should be a comma-separated list of numbers, e.g. "
+        "0,0,0,1,1,1")
+    group.add_argument(
+        "--reverse_negative_cors", default=False, action="store_true",
+        help="UNDOCUMENTED")
+    group.add_argument(
+        "--rrc_subset_indexes", 
+        help="Will reorder rows based on correlation to this subset of "
+        "samples.")
     group.add_argument(
         "--align_row_file", default=None,
         help="Align the rows to this other matrix file.")
@@ -2417,6 +2474,11 @@ def main():
     MATRIX = reorder_col_cluster(
         MATRIX, args.reorder_col_cluster, args.cluster_method,
         args.distance_method)
+
+    # Reorder the rows based on correlation.
+    MATRIX = reorder_row_cor(
+        MATRIX, args.reorder_row_cor, args.reverse_negative_cors,
+        args.rrc_subset_indexes, args.col_indexes_include_headers)
 
     # Reverse the rows.  Do after all the selection.  Do after
     # aligning to a file.
