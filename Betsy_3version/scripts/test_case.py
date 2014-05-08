@@ -367,6 +367,105 @@ def run_case17():
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+def run_case18():
+    """Result that generates:
+    A network with 232 nodes. Node 2 and Node 3 are following:
+    2.  Data(ClusterFile, cluster_alg='pca', contents='unspecified',
+    distance=['correlation', 'euclidean'])
+    3.  Data(Heatmap, cluster_alg='pca', color='red_green',
+    contents='unspecified', distance=['correlation', 'euclidean'],
+    hm_height='yes', hm_width='yes')
+
+    Result I expected:
+
+    distance in Node 2 and Node 3 should be set to default because we did not specify it.
+    That is: distance='correlation'."""
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.PrettySignalFile, "preprocess", "mas5"),
+        bie3.Attribute(rulebase.ReportFile, "report_type", "cluster"),
+        bie3.Attribute(rulebase.PrettySignalFile, "quantile_norm", "yes"),
+        bie3.Attribute(rulebase.ClusterFile, "cluster_alg", "pca"),
+        bie3.Attribute(rulebase.Heatmap, "cluster_alg", "pca"),
+        )
+    network = bie3.optimize_network(network)
+    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case19():
+    """Result that generates:
+        A network with 127 nodes. Node 2 and Node 3 are following:
+         2.  Data(ClusterFile, cluster_alg=['som', 'pca', 'kmeans', 'hierarchica
+           l'], contents='unspecified', distance=['correlation', 'euclidean'])
+         3.  Data(Heatmap, cluster_alg=['som', 'pca', 'kmeans', 'hierarchical'],
+            color='red_green', contents='unspecified', distance=['correlatio
+           n', 'euclidean'], hm_height='yes', hm_width='yes')
+
+        Result I expected:
+        distance and cluster_alg in Node 2 and Node 3 should be set
+        to default because we did not specify it.
+        That is: distance='correlation', cluster_alg = 'kmeans'."""
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.PrettySignalFile, "preprocess", "mas5"),
+        bie3.Attribute(rulebase.ReportFile, "report_type", "cluster"),
+        )
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case20():
+    """Result that generates:
+    A network with 368 nodes. 
+    Problem: The network is different from the result using old bie3.py.
+    The output of Module 49 goes to multiple different SignalFile.
+    It should only go to one SignalFile. In that SignalFile, the attributes
+    that are not specified in the get_illumina_signal module are set to default."""
+    out_data = rulebase.PrettySignalFile.output(preprocess='illumina',
+                                          missing_algorithm="zero_fill",
+                                          missing_values='no',logged='yes',
+                                          quantile_norm="yes",
+                                          predataset='yes')                                                  
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case21():
+    """AssertionError: Module analyze_samples_pca requires a
+    PrettySignalFile with gene_center=no, but user requests it to be median.
+
+    Problem: I have added the constraint of preprocess for PcaPlot to
+    be SAME_AS PrettySignalFile. But for other attribtues, it still get the error.
+    Do we need to constraint all the attributes in PrettySignalFile and PcaPlot?
+    """
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
+        bie3.Attribute(rulebase.PrettySignalFile,"preprocess","mas5"),
+        bie3.Attribute(rulebase.PrettySignalFile,"contents","test"),
+        bie3.Attribute(rulebase.PrettySignalFile,'gene_center',"median"),
+        )
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case22():
+    """Result to get: only the node 0 in the network.
+    Need to change the priority of the attributes value:
+    1. constraint for priority
+    2. get from output
+    3. user input
+    4. default"""
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.PrettySignalFile,
+        bie3.Attribute(rulebase.PrettySignalFile,"gene_order","t_test_p"),
+       )
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
     
 def main(): 
     #run_case01()
@@ -383,10 +482,14 @@ def main():
     #run_case12()
     #run_case13()
     #run_case14()
-    run_case15()
+    #run_case15()
     #run_case16()
     #run_case17()
-    
+    #run_case18()
+    #run_case19()
+    run_case20()
+    #run_case21()
+    #run_case22()
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")
