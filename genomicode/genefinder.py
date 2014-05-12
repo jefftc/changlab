@@ -6,6 +6,8 @@ find_gene_detailed      Return many possible matches, lots of info.
 find_many_genes
 find_many_genes_detailed
 
+find_discontinued       Look for a gene name in the discontinued list.
+
 """
 # _lookup_gene
 # _find_entrez_gene_table
@@ -198,6 +200,33 @@ def find_many_genes_detailed(genes, tax_id=None):
             
     return clean
 
+
+def find_discontinued(name, tax_id=None):
+    # Return current gene_id or None if not found.
+    from genomicode import config
+    from genomicode import dblib
+
+    # Need to clean up name for security reasons.
+    columns = "old_gene_id, old_symbol, gene_id, tax_id"
+    q = "SELECT %s FROM %s WHERE old_symbol='%s';" % (
+        columns, "DISCONTINUED", name)
+    x = dblib.query(
+        q, config.gm_user, config.gm_passwd, config.gm_db,
+        config.gm_host, config.gm_port)
+    gene_ids = []
+    for x in x:
+        old_gene_id, old_symbol, gene_id, tax_id_ = x
+        if tax_id is not None and int(tax_id) != int(tax_id_):
+            continue
+        if gene_id not in gene_ids:
+            gene_ids.append(gene_id)
+    if not gene_ids:
+        return None
+    assert len(gene_ids) == 1, "Multiple discontinued for: %s" % name
+    gene_id = gene_ids[0]
+    return int(gene_id)
+
+
 def _lookup_gene(id):
     """id should be the Entez ID of a gene, given as an integer.
     
@@ -244,4 +273,31 @@ def _list_mapping_tables():
         config.gm_host, config.gm_port)
     x = [x[0] for x in x]
     x = [x for x in x if x.startswith("MAP_")]
-    return x
+    x = sorted(x)   # will sort by table name, then date.
+    mapping_tables = x
+
+    # If multiple versions of the table exists, use the one with the
+    # latest date.
+    name2tablename = {}  # ENTREZ_ID -> MAP_ENTREZ_ID_111223
+    for tablename in mapping_tables:
+        # MAP_ENTREZ_ID_111223
+        # MAP_GENBANK_111223
+        # MAP_AFFY_HG_U133A_2___na32
+        assert tablename.startswith("MAP_")
+        x = tablename[4:]
+
+        # If last 6 digits is an integer, then remove it.
+        try:
+            int(x[-6:])
+        except ValueError, y:
+            pass
+        else:
+            assert x[-7] == "_"
+            x = x[:-7]
+        name = x
+        
+        # later ones will overwrite earlier ones
+        name2tablename[name] = tablename
+    mapping_tables = sorted(name2tablename.values())
+    
+    return mapping_tables
