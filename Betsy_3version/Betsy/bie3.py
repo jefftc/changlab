@@ -497,9 +497,11 @@ class Data(object):
         # Make sure the values of the attributes are legal.
         for name, value in keywds.iteritems():
             assert datatype.is_valid_attribute_name(name), \
-                   "%s is not a known attribute for datatype %s." % (
+                   "'%s' is not a known attribute for datatype %s." % (
                 name, datatype.name)
-            assert datatype.is_valid_attribute_value(name, value)
+            assert datatype.is_valid_attribute_value(name, value), \
+                   "In a %s, '%s' is not a valid value for '%s'." % (
+                datatype.name, value, name)
 
         ## attributes = {}
         ## user_inputs = {}
@@ -570,16 +572,28 @@ class Module:
             else:
                 raise AssertionError, "invalid parameter: %s" % repr(x)
 
+        # Convenience hack: If the module doesn't convert the data
+        # type, and no DefaultAttributesFrom is given, then set the
+        # default_attributes_from.
+        if len(in_datatypes) == 1 and in_datatypes[0] == out_datatype and \
+           not default_attributes_from:
+            default_attributes_from = [DefaultAttributesFrom(0)]
 
         # Check default_attributes_from.  Should be a list of
         # DefaultAttributesFrom objects.
         assert len(default_attributes_from) <= len(in_datatypes)
-        seen = {}
+        seen = {}  # make sure no duplicates
         for daf in default_attributes_from:
             assert daf.input_index < len(in_datatypes)
             assert out_datatype == in_datatypes[daf.input_index]
             assert daf.input_index not in seen
             seen[daf.input_index] = 1
+
+        # default_attributes_from can be an empty list if the
+        # attributes of the output object should come from none of the
+        # input data types.  Probably the most common case if if the
+        # module converts the data type.
+            
             
         #assert len(default_attributes_from) <= 1
         #x = None
@@ -1938,40 +1952,109 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
     debug_print("Backchaining %s <- %s <- %s (input=%d)." % (
         out_datatype.name, module.name, in_datatype.name, in_num))
 
+    # The attributes for the input object should come from (in
+    # decreasing priority):
+    # 1.  Constraint.
+    # 2.  Consequence (i.e. SAME_AS_CONSTRAINT).
+    # 3.  user attribute
+    # 4.  out_data
+    # 5.  default output value of input datatype
+
     # Start with empty attributes.
     attributes = {}
 
-    # Set the attributes based on the consequences.  If there is a
-    # Consequence that is SAME_AS_CONSTRAINT, then the attribute
+    # Keep track of the source of the attribute, for debugging.
+    attrsource = {}  # attribute name -> source
+    
+    # Set the attributes in increasing order of priority.  Higher
+    # priority overwrites lower priority.
+    
+    # Case 5.  Set values from defaults.
+    # 
+    # Using default attributes makes things a lot simpler and
+    # mitigates combinatorial explosion.  However, it can close up
+    # some possibilities.  What if the value should be something other
+    # than the default?
+    for attr in in_datatype.attributes:
+        attributes[attr.name] = attr.default_out
+        attrsource[attr.name] = "default"
+
+
+    # Case 4.  If default_attributes_from is the same as in_num, then
+    # fill with the same values as the out_data.
+    for daf in module.default_attributes_from:
+        if daf.input_index != in_num:
+            continue
+        for name, value in out_data.attributes.iteritems():
+            attributes[name] = value
+            attrsource[name] = "out_data"
+
+            
+    # Case 3.  If the input data object does not proceed to the output
+    # data object, then set the attribute provided by the user.
+    to_output = False
+    for daf in module.default_attributes_from:
+        if daf.input_index == in_num:
+            to_output = True
+    if not to_output:
+        # Set values from user attributes.
+        for attr in user_attributes:
+            # Ignore attributes for other data types.
+            if attr.datatype != in_datatype:
+                continue
+
+            ### Make sure this value doesn't conflict with a higher
+            ### priority value.
+            ##old_value = attributes.get(attr.name, attr.value)
+            ##old_type = _get_attribute_type(old_value)
+            ##
+            ### Make sure the value is compatible with the data being
+            ### created.
+            ##if old_type == TYPE_ATOM:
+            ##    msg = (
+            ##        "Module %s requires a %s with %s=%s, but user requests "
+            ##        "it to be %s." % (
+            ##            module.name, in_datatype.name, attr.name, old_value,
+            ##            attr.value))
+            ##    assert attr.value == old_value, msg
+            ##elif old_type == TYPE_ENUM:
+            ##    assert attr.value in old_value, "incompatible"
+            ##else:
+            ##    raise AssertionError
+            attributes[attr.name] = attr.value
+            attrsource[attr.name] = "user"
+
+    # Case 2.  Set the attributes based on the consequences.  If there
+    # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
     # should be determined by the out_data.  e.g.
     # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
     # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
     #
-    # The module takes anything, produces the same value.  So
-    # the backchainer needs to preserve the value from the
-    # out_data.
+    # The module takes anything, produces the same value.  So the
+    # backchainer needs to preserve the value from the out_data.
     for consequence in module.consequences:
         n = consequence.name
+        
         if consequence.behavior == SAME_AS_CONSTRAINT:
             # Keep the same attribute.
             if consequence.arg1 == in_num:
                 attributes[n] = out_data.attributes[n]
+                attrsource[n] = "consequence"
         elif consequence.behavior in [
             SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
             # Don't know what it should be.
             pass
         else:
             raise AssertionError
-        
-    debug_print("Attributes from out_data %s." % attributes)
 
-    # Now set the attributes based on the constraints.
+    # Case 1.  Set the attributes based on the constraints.
     for constraint in module.constraints:
         if constraint.input_index != in_num:
             continue
 
         if constraint.behavior == MUST_BE:
             attributes[constraint.name] = constraint.arg1
+            attrsource[constraint.name] = "constraint"
         elif constraint.behavior == CAN_BE_ANY_OF:
             # If this attribute is not already set by a consequence
             # above (e.g. the output data is already a specific
@@ -1980,86 +2063,20 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
             #   Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0)
             if constraint.name not in attributes:
                 attributes[constraint.name] = constraint.arg1
+                attrsource[constraint.name] = "constraint"
         elif constraint.behavior == SAME_AS:
             # Handled in _backchain_to_all_inputs.
             pass
         else:
             raise AssertionError
-
-    debug_print("Attributes from contraints %s." % attributes)
-
-    # Highest priority is to set the attributes provided by the user.
-    # If the module changes the data type, then set the attribute
-    # provided by the user.
-    if in_datatype != out_datatype:
-        # Set values from user attributes.
-        
-        for attr in user_attributes:
-            # Ignore attributes for other data types.
-            if attr.datatype != in_datatype:
-                continue
-            old_value = attributes.get(attr.name, attr.value)
-            old_type = _get_attribute_type(old_value)
-
-            # Make sure the value is compatible with the data being
-            # created.
-            if old_type == TYPE_ATOM:
-                msg = (
-                    "Module %s requires a %s with %s=%s, but user requests "
-                    "it to be %s." % (
-                        module.name, in_datatype.name, attr.name, old_value,
-                        attr.value))
-                assert attr.value == old_value, msg
-            elif old_type == TYPE_ENUM:
-                assert attr.value in old_value, "incompatible"
-            else:
-                raise AssertionError
-            attributes[attr.name] = attr.value
     
-
-    # Fill in the rest of the attributes.
-    # 1.  If the module doesn't convert the datatype, then fill it in
-    #     with the same values as the out_data.
-    # 2.  If it does convert the datatype, and default_attributes_from
-    #     is the same as in_num, then fill it in with the same values
-    #     as the out_data.  (i.e. doesn't really convert the datatype)
-    # 3.  Otherwise, fill it in with the default output values of the
-    #     input datatype.
-    #
-    # Using default attributes makes things a lot simpler and
-    # mitigates combinatorial explosion.  However, it can close up
-    # some possibilities.  What if the value should be something other
-    # than the default?
-    
-    x = [x for x in module.default_attributes_from if x.input_index == in_num]
-    assert len(x) <= 1
-    default_attributes_from = None
-    if x:
-        default_attributes_from = x[0]
-
-    # Case 1.
-    if len(module.in_datatypes) == 1 and in_datatype == out_datatype:
-        def_attributes = out_data.attributes
-    # Case 2.
-    elif len(module.in_datatypes) > 1 and \
-             default_attributes_from and \
-             default_attributes_from.input_index == in_num:
-        assert in_datatype == out_datatype
-        def_attributes = out_data.attributes
-    else:
-        # Set values from defaults.
-        def_attributes = {}
-        for attr in in_datatype.attributes:
-            if attr.name not in def_attributes:
-                def_attributes[attr.name] = attr.default_out
-    for name, value in def_attributes.iteritems():
-        if name not in attributes:
-            attributes[name] = value
 
     # make_out.  This module should take in a "finished" Data object,
     # and use it to generate a new Data object.
-    debug_print("Generating a %s with attributes %s." % (
-        in_datatype.name, attributes))
+    debug_print("Generating a %s with attributes:" % in_datatype.name)
+    for name in sorted(attributes):
+        debug_print("  %s=%s (%s)" % (
+            name, attributes[name], attrsource[name]))
     return in_datatype.output(**attributes)
 
 
@@ -2118,25 +2135,20 @@ def _forwardchain_to_outputs(module, in_datas):
     # Set the attributes based on the default values.
     # Case 1: default_attributes_from is given.
     #         Use the attributes from this default.
-    # Case 2: The module doesn't convert the datatype.
-    #         Use the attributes from the input data.
-    # Case 3: Fill with the default input values of the output
+    # Case 2: Fill with the default input values of the output
     #         datatype.
 
     # Case 1.
     if module.default_attributes_from:
         # If there are multiple default_attributes_from, just use the
         # first one.
+        # BUG: Is this always the right thing to do?
         input_index = module.default_attributes_from[0].input_index
         assert input_index < len(in_datas)
         data = in_datas[input_index]
         assert data.datatype == datatype
         attributes.update(data.attributes)
     # Case 2.
-    elif len(module.in_datatypes) == 1 and \
-             module.in_datatypes[0] == datatype:
-        attributes.update(in_datas[0].attributes)
-    # Case 3.
     else:
         for attr in datatype.attributes:
             attributes[attr.name] = attr.default_in
@@ -2253,21 +2265,21 @@ def _can_module_take_data(module, datas):
     return True
 
 
-def _can_module_produce_data(module, data, user_attributes):
+def _can_module_produce_data_1(module, data, user_attributes):
     # Return whether this module can produce this data object.
 
     # A module cannot produce this data if:
     # - The module's output data type is not the same as the data.
     # - One or more of the consequences conflict.
-    # - The module converts the datatype, and the constraint isn't
-    #   aligned with the user_attributes.
-    # - The module converts the datatype, and the default values of
-    #   the attributes (without consequences) conflict.
+    # - An input does not go into the output, and a user_attribute
+    #   doesn't match a constraint.
+    # - An input does not go into the output, and the data attribute
+    #   doesn't match the (in) defaults of the output data type.
     #   THIS RULE IS IN TESTING.
     # 
     # A module can produce this data if:
     # - An consequence (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA) that is not
-    #   a side effect has value that matches the value of the data.
+    #   a side effect has a value that matches the value of the data.
     # - The module only converts the datatype.  There are no
     #   consequences (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA), and the
     #   output data type has no attributes.
@@ -2363,9 +2375,6 @@ def _can_module_produce_data(module, data, user_attributes):
     # datatype that flows through the module, vs datatype that the
     # module uses.
     for i in range(len(module.in_datatypes)):
-        if module.in_datatypes == [module.out_datatype]:
-            # Module does not convert datatype.
-            continue
         if module.default_attributes_from is not None and \
                module.default_attributes_from == i:
             # The values from this datatype should be passed through.
@@ -2402,8 +2411,7 @@ def _can_module_produce_data(module, data, user_attributes):
     # If the module converts the datatype, and no
     # DefaultAttributesFrom is specified, then the data should match
     # the (in) defaults from the output data type.
-    if module.in_datatypes != [module.out_datatype] and \
-           module.default_attributes_from is None:
+    if module.default_attributes_from is None:
         debug_print("Module converts datatype.  Checking default attributes.")
         consequence_names = [x.name for x in module.consequences]
         for attr in module.out_datatype.attributes:
@@ -2436,7 +2444,8 @@ def _can_module_produce_data(module, data, user_attributes):
     # If the module converts the datatype, the consequences don't
     # conflict, and the default attributes don't conflict, then this
     # should match.
-    if module.in_datatypes != [module.out_datatype]:
+    #if module.in_datatypes != [module.out_datatype]:
+    if module.default_attributes_from is None:
         debug_print("Match because of converting datatype.")
         return True
 
@@ -2462,6 +2471,10 @@ def _can_module_produce_data(module, data, user_attributes):
     # No consequences match.
     debug_print("No consequences match.")
     return False
+
+
+def _can_module_produce_data(module, data, user_attributes):
+    return _can_module_produce_data_1(module, data, user_attributes)
 
 
 def _get_valid_input_combinations(network, module_id, all_input_ids,

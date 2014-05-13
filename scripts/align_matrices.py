@@ -553,11 +553,17 @@ def main():
         common_samples = list_common_samples(
             matrix_data, args.case_insensitive)
         if sorted(all_samples) != sorted(common_samples):
+            missing_samples = []
             for x in all_samples:
                 if find_sample(common_samples, x, args.case_insensitive) >= 0:
                     continue
-                print "Not common: %s" % repr(x)
-            raise AssertionError, "Missing samples."
+                missing_samples.append(x)
+            short = missing_samples
+            if len(short) > 10:
+                short = short[:10] + ["..."]
+            short = "\n".join(short)
+            raise AssertionError, "%d samples not in all data sets.\n%s" % \
+                  (len(missing_samples), short)
 
     # Align each of the matrices.
     matrix_data = align_matrices(

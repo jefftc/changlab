@@ -71,6 +71,7 @@
 # remove_row_annot
 # rename_row_annot
 # move_row_annot
+# concat_row_annot
 #
 # set_min_value
 # center_genes_mean
@@ -1656,6 +1657,37 @@ def move_row_annot(MATRIX, move_row_annot):
     return MATRIX_clean
 
 
+def concat_row_annot(MATRIX, concat_row_annot):
+    if concat_row_annot is None:
+        return MATRIX
+
+    # concat_row_annot is in format:
+    # <new_header>,<concat_char>,<header1>,<header2>,...
+    x = concat_row_annot.split(",")
+    assert len(x) >= 4
+    new_header, concat_char = x[:2]
+    headers = x[2:]
+
+    assert new_header not in MATRIX.row_names()
+    for header in headers:
+        assert header in MATRIX.row_names(), "I could not find header: %s" % \
+               header
+    
+    MATRIX_clean = MATRIX.matrix()
+    assert MATRIX_clean._row_order
+
+    old_annots = [MATRIX.row_names(x) for x in headers]
+    new_annots = []
+    for i in range(len(old_annots[0])):
+        x = [x[i] for x in old_annots]
+        x = concat_char.join(x)
+        new_annots.append(x)
+        
+    MATRIX_clean._row_order.append(new_header)
+    MATRIX_clean._row_names[new_header] = new_annots
+    return MATRIX_clean
+
+
 def set_min_value(MATRIX, value):
     MATRIX = [x[:] for x in MATRIX]  # Make a copy.
     for i in range(len(MATRIX)):
@@ -2301,6 +2333,10 @@ def main():
         "The format should be: <old_index>,<new_index>.  "
         "The indexes are 1-based.")
     group.add_argument(
+        "--concat_row_annot", 
+        help="Concatenate multiple row annotations.  "
+        "The format should be: <new_header>,<concat_char>,<header>,...")
+    group.add_argument(
         "--rename_duplicate_rows", default=False, action="store_true",
         help="If multiple rows have the same ID, make their names "
         "unique.")
@@ -2391,6 +2427,8 @@ def main():
     # Move the row annotations.  Do this at the end.
     for x in args.move_row_annot:
         MATRIX = move_row_annot(MATRIX, x)
+
+    MATRIX = concat_row_annot(MATRIX, args.concat_row_annot)
 
     # Relabel the column IDs.
     MATRIX = rename_col_id(
