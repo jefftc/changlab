@@ -61,7 +61,7 @@ list_files=[
 all_modules = [
     Module(    
         'plot_intensity_boxplot',
-        SignalFile_rule.PrettySignalFile, IntensityPlot,
+        SignalFile_rule.SignalFile, IntensityPlot,
         Constraint(
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0,class1,test",
@@ -71,11 +71,8 @@ all_modules = [
                     
     Module(
         'plot_actb_line',
-        SignalFile_rule.PrettySignalFile, ActbPlot,
-        Constraint("format", MUST_BE,"tdf"),
-        Constraint("logged", MUST_BE,"yes"),
+        SignalFile_rule.SignalFile_Merge, ActbPlot,
         Constraint("preprocess",CAN_BE_ANY_OF,['mas5','agilent','loess','unknown','illumina']),
-        Constraint("missing_values", MUST_BE,"no"),
         Constraint("quantile_norm",MUST_BE,"no"),
         Constraint("combat_norm", MUST_BE,"no"),
         Constraint("shiftscale_norm", MUST_BE,"no"),
@@ -89,11 +86,8 @@ all_modules = [
         ),
     Module(
         'plot_actb_line',
-        SignalFile_rule.PrettySignalFile, ActbPlot,
-        Constraint("format", MUST_BE,"tdf"),
-        Constraint("logged", MUST_BE,"yes"),
+        SignalFile_rule.SignalFile_Merge, ActbPlot,
         Constraint("preprocess",MUST_BE,"rma"),
-        Constraint("missing_values", MUST_BE,"no"),
         Constraint("quantile_norm", MUST_BE,"yes",),
         Constraint("combat_norm", MUST_BE,"no"),
         Constraint("shiftscale_norm", MUST_BE,"no"),
@@ -107,7 +101,7 @@ all_modules = [
         ),
     Module(
         'plot_affy_affx_line',
-        SignalFile_rule.PrettySignalFile,ControlPlot,
+        SignalFile_rule.SignalFile,ControlPlot,
         Constraint("annotate", MUST_BE,'no'),
         Constraint("contents",CAN_BE_ANY_OF,["train0","train1", "test",
                              "class0,class1,test","class0",

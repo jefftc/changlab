@@ -15,7 +15,7 @@ list_files = [DiffExprFile]
 all_modules = [
     Module(
         'calc_diffexp_with_ttest',
-        [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],DiffExprFile,
+        [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],DiffExprFile,
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
@@ -29,7 +29,7 @@ all_modules = [
     
     Module(
         'calc_diffexp_with_sam',
-        [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],DiffExprFile,
+        [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],DiffExprFile,
         UserInputDef("sam_delta_value",0),
         UserInputDef("sam_foldchange_value",0),
         Constraint("cls_format",MUST_BE,'cls',0),

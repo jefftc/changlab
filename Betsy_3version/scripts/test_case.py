@@ -526,6 +526,80 @@ def run_case22():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+def run_case23():
+    """cannot trace back to GeoSeries to generate the
+       ExpressionFile and preprocess with illumina"""
+    out_data = rulebase.SignalFile_Postprocess.output(preprocess="illumina",
+        format="tdf", logged="yes")
+
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case24():
+    """Generate a network start from SignalFile_order, but the old bie3.py works fine"""
+   
+    out_data = rulebase.SignalFile.output(
+        format="tdf", logged="yes",
+        gene_order='t_test_p',
+        )
+
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)
+
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+    
+def run_case25():
+    """the network only has one node"""
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.ActbPlot,
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "agilent"),
+        )
+    network = bie3.optimize_network(network)
+
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case26():
+    '''test normalize report,
+       The IntensityPlot,ControlPlot, PcaPlot should be generated from SignalFile and ActPlot
+       is generated from SignalFile_Merge'''
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
+        bie3.Attribute(rulebase.SignalFile,"preprocess","unknown"),
+        bie3.Attribute(rulebase.SignalFile,"contents","test"),
+        bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes")
+        
+        )
+    network = bie3.optimize_network(network)
+
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case27():
+    """two problems:
+      1. cannot trace back to GeoSeries to preprocess mas5.
+      2. Heapmap node is not generated from ClusterFile.
+    
+    """
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "mas5"),
+        bie3.Attribute(rulebase.ReportFile, "report_type", "cluster"),
+        bie3.Attribute(rulebase.SignalFile, "quantile_norm", "yes"),
+        bie3.Attribute(rulebase.ClusterFile, "cluster_alg", "pca"),
+        bie3.Attribute(rulebase.Heatmap, "cluster_alg", "pca"),
+        )
+    network = bie3.optimize_network(network)
+
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+
 def main():
 
     #run_case01()
@@ -542,16 +616,20 @@ def main():
     #run_case12()
     #run_case13()
     #run_case14()
-    run_case15()
+    #run_case15()
   #  run_case16()
     #run_case17()
 
     #run_case18()
     #run_case19()
-    run_case20()
+    #run_case20()
     #run_case21()
     #run_case22()
-
+    run_case23()
+##    run_case24()
+##    run_case25()
+##    run_case26()
+##    run_case27()
 
 if __name__ == '__main__':
     main()

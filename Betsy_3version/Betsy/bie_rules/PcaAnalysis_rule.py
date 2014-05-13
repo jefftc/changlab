@@ -11,8 +11,6 @@ PcaAnalysis = DataType(
                                     "agilent", "mas5", "rma", "loess"],
         "unknown","unknown"),
     AttributeDef(
-        "missing_values",["no"],'no','no'),
-    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill"),
     AttributeDef(
@@ -63,8 +61,6 @@ PcaPlot = DataType(
                             "mas5", "rma", "loess"],
         "unknown","unknown"),
     AttributeDef(
-        "missing_values",["no"],"no","no"),
-    AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
         "zero_fill","zero_fill"),
     AttributeDef(
@@ -109,7 +105,7 @@ list_files = [PcaAnalysis,PcaPlot]
 all_modules = [
     Module(
         'analyze_samples_pca',
-        SignalFile_rule.PrettySignalFile,PcaAnalysis,
+        SignalFile_rule.SignalFile,PcaAnalysis,
         UserInputDef('pca_gene_num'),
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", "class0,class1,test",
                  "class0", "class1", "class0,class1",

@@ -150,30 +150,74 @@ GeneListFile=DataType(
                               "class1", "class0,class1","unspecified"],
                               'unspecified','unspecified'))
    
-SignalFile = DataType(
-    "SignalFile",
+SignalFile_Postprocess = DataType(
+    "SignalFile_Postprocess",
     AttributeDef("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
               "unknown", "tdf"),
-
     # Properties of the data.
     AttributeDef("preprocess",
               ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
               "unknown", "unknown"),
+    AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("contents", [
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"],
+              "unspecified", "unspecified"))
+
+SignalFile_Impute = DataType(
+    "SignalFile_Impute",
+    # Properties of the data.
+    AttributeDef("preprocess",
+              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+              "unknown", "unknown"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no"),
     AttributeDef("missing_values", ["unknown", "no", "yes"], "unknown", "no"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
-    AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
-    # Normalization of the data.
+    AttributeDef("contents", [
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"],
+              "unspecified", "unspecified"))
+
+
+SignalFile_Merge = DataType(
+    "SignalFile_Merge",
+    # Properties of the data.
+    AttributeDef("preprocess",
+              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+              "unknown", "unknown"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
+              "zero_fill","zero_fill"),
+    AttributeDef("filter", ["no", "yes"], "no", "no"),
     AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
     AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
     AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
     AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
     AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    
-    # Other attributes.
+    AttributeDef("contents", [
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"],
+              "unspecified", "unspecified"))
+
+SignalFile_Normalize = DataType(
+    "SignalFile_Normalize",
+    # Properties of the data.
+    AttributeDef("preprocess",
+              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+              "unknown", "unknown"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
-    # Normalizing the genes.
+    AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
+              "zero_fill","zero_fill"),
+    AttributeDef("format", ["tdf", "pcl"], "tdf", "tdf"),
+    AttributeDef("filter", ["no", "yes"], "no", "no"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
     AttributeDef(
         "gene_center", ["unknown", "no", "mean", "median"],
         "unknown", "no"),
@@ -183,24 +227,19 @@ SignalFile = DataType(
     AttributeDef("contents", [
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"),
-    AttributeDef("sf_processing_step",["postprocess","impute","merge",
-                                    "normalize","processed"],"postprocess","processed")
-    )
+              "unspecified", "unspecified"))    
+    
+    
+    
 
-PrettySignalFile = DataType(
-    "PrettySignalFile",
-    AttributeDef("format", ["tdf","gct"],
-              "tdf", "tdf"),
-
+SignalFile_Order = DataType(
+    "SignalFile_Order",
     # Properties of the data.
     AttributeDef("preprocess",
               ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
               "unknown", "unknown"),
-    AttributeDef("missing_values", ["no"], "no", "no"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
-    AttributeDef("logged", [ "yes","no"], "yes", "yes"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
     # Normalization of the data.
     AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
@@ -208,41 +247,100 @@ PrettySignalFile = DataType(
     AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
     AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
     AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    
-    # Other attributes.
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
-    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
-    # Normalizing the genes.
     AttributeDef(
         "gene_center", [ "no", "mean", "median"],
         "no", "no"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"],
         "no", "no"),
-    # Annotations.
+    AttributeDef(
+        "gene_order",
+        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+       "no", "no"),
+    AttributeDef("contents", [
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"],
+              "unspecified", "unspecified"))
+
+SignalFile_Annotate= DataType( 
+    "SignalFile_Annotate",
+    # Properties of the data.
+    AttributeDef("preprocess",
+              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+              "unknown", "unknown"),
+    AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
+              "zero_fill","zero_fill"),
+    AttributeDef("filter", ["no", "yes"], "no", "no"),
+    # Normalization of the data.
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef(
+        "gene_center", [ "no", "mean", "median"],
+        "no", "no"),
+    AttributeDef(
+        "gene_normalize", [ "no", "variance", "sum_of_squares"],
+        "no", "no"),
+    AttributeDef(
+        "gene_order",
+        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+       "no", "no"),
     AttributeDef("annotate", ["no", "yes"], "no", "no"),
+    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
+    AttributeDef("platform", ["yes","no"], "no", "no"),
+    AttributeDef("contents", [
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"],
+              "unspecified", "unspecified"))
+
+SignalFile= DataType( 
+    "SignalFile",
+    # Properties of the data.
+    AttributeDef("preprocess",
+              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+              "unknown", "unknown"),
+    AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
+              "zero_fill","zero_fill"),
+    AttributeDef("filter", ["no", "yes"], "no", "no"),
+    # Normalization of the data.
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef(
+        "gene_center", [ "no", "mean", "median"],
+        "no", "no"),
+    AttributeDef(
+        "gene_normalize", [ "no", "variance", "sum_of_squares"],
+        "no", "no"),
+    AttributeDef(
+        "gene_order",
+        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+       "no", "no"),
+    AttributeDef("annotate", ["no", "yes"], "no", "no"),
+    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
+    AttributeDef("platform", ["yes","no"], "no", "no"),
+    AttributeDef("num_features", ["yes","no"], "no", "no"),
     AttributeDef(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
         "no", "no"),
     AttributeDef(
         "duplicate_probe", ["no", "closest_probe", "high_var_probe"],
         "no", "no"),
-    # Unclassified.
-    AttributeDef("num_features", ["yes","no"], "no", "no"),
-    AttributeDef(
-        "gene_order",
-        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
-       "no", "no"),
-    
-    AttributeDef("platform", ["yes","no"], "no", "no"),
     AttributeDef("group_fc", ["yes","no"], "no","no"),
     AttributeDef("contents", [
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],
               "unspecified", "unspecified"),
-    AttributeDef("psf_processing_step",["order","annotate","filter",
-                                    "processed"],"order","processed")
-    )
+    AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
+    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),)
+
     
 
 all_modules = [
@@ -271,7 +369,7 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"]),
-         Consequence("contents",SAME_AS_CONSTRAINT),
+        Consequence("contents",SAME_AS_CONSTRAINT),
         ),
     Module(
         "convert_CEL_cc_to_CEL_v3",
@@ -307,11 +405,11 @@ all_modules = [
         ),
        Module(
         "get_illumina_signal",
-         ILLUFolder, SignalFile,
+         ILLUFolder, SignalFile_Postprocess,
          Consequence('preprocess',SET_TO,"illumina"),
          Consequence('format', SET_TO, "gct"),
          Consequence('logged', SET_TO, "no"),
-         Consequence('missing_values', SET_TO, "unknown"),
+         Consequence('predataset', SET_TO, "no"),
          Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"]),
@@ -337,12 +435,13 @@ all_modules = [
          Consequence("contents",SAME_AS_CONSTRAINT)),
     Module(
         "preprocess_agilent",
-         AgilentFiles,SignalFile,
+         AgilentFiles,SignalFile_Postprocess,
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"]),
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence('logged',SET_TO,"unknown"),
+        Consequence('predataset', SET_TO, "no"),
         Consequence('preprocess',SET_TO,"agilent"),
         Consequence('format',SET_TO,"tdf")),
 
@@ -355,9 +454,10 @@ all_modules = [
          Consequence("contents",SAME_AS_CONSTRAINT)),
     Module(
         "normalize_with_loess",
-        GPRFiles,SignalFile,
+        GPRFiles,SignalFile_Postprocess,
         Consequence("format",SET_TO,"tdf"),
         Consequence("logged",SET_TO,"unknown"),
+        Consequence('predataset', SET_TO, "no"),
         Consequence("preprocess",SET_TO,"loess"),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
@@ -366,13 +466,12 @@ all_modules = [
     
     Module(
         "preprocess_rma",
-        CELFiles, SignalFile,
+        CELFiles, SignalFile_Postprocess,
         Constraint("version", CAN_BE_ANY_OF, ["v3", "v4"]),
         Consequence("logged", SET_TO, "yes"),
         Consequence("preprocess", SET_TO, "rma"),
         Consequence("format", SET_TO, "jeffs"),
-        Consequence("missing_values", SET_TO, "no"),
-        Consequence("quantile_norm", SET_TO, "yes"),
+        Consequence('predataset', SET_TO, "no"),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"]),
@@ -380,13 +479,12 @@ all_modules = [
         ),
     Module(
         "preprocess_mas5",
-        CELFiles, SignalFile,
+        CELFiles, SignalFile_Postprocess,
         Constraint("version", CAN_BE_ANY_OF, ["v3", "v4"]),
         Consequence("logged", SET_TO, "no"),
         Consequence("preprocess", SET_TO, "mas5"),
+        Consequence('predataset', SET_TO, "no"),
         Consequence("format", SET_TO, "jeffs"),
-        Consequence("missing_values", SET_TO, "no"),
-        Consequence("quantile_norm", SET_TO, "no"),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"]),
@@ -395,368 +493,322 @@ all_modules = [
     ####postprocess
     Module(
         "convert_signal_to_tdf",
-        SignalFile, SignalFile,
+        SignalFile_Postprocess, SignalFile_Postprocess,
         Constraint("format", CAN_BE_ANY_OF, ["unknown", "pcl", "gct", "res", "jeffs"]),
-        Consequence("format", SET_TO, "tdf"),
-        Constraint("sf_processing_step",MUST_BE,"postprocess"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["postprocess","impute","merge",
-                                    "normalize","processed"])
+        Consequence("format", SET_TO, "tdf")
         ),
     Module(
         "check_for_log",
-        SignalFile, SignalFile,
+        SignalFile_Postprocess, SignalFile_Postprocess,
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "unknown"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", BASED_ON_DATA, ["yes", "no"]),
-        Constraint("sf_processing_step",MUST_BE,"postprocess"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["postprocess","impute","merge",
-                                    "normalize","processed"])
         ),
     Module(
         "filter_and_threshold_genes",
-        SignalFile,SignalFile,
+        SignalFile_Postprocess,SignalFile_Postprocess,
         Constraint('format',MUST_BE,"tdf"),
         Constraint('logged',MUST_BE,"no"),
         Constraint('predataset',MUST_BE,"no"),
         Consequence('format',SAME_AS_CONSTRAINT),
         Consequence('logged',SAME_AS_CONSTRAINT),
-        Consequence('predataset',SET_TO,'yes'),
-        Constraint("sf_processing_step",MUST_BE,"postprocess"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["postprocess","impute","merge",
-                                    "normalize","processed"])),
+        Consequence('predataset',SET_TO,'yes')),
     Module(
         "log_signal",
-        SignalFile, SignalFile,
+        SignalFile_Postprocess, SignalFile_Postprocess,
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "no"),
         Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SET_TO, "yes"),
-        Constraint("sf_processing_step",MUST_BE,"postprocess"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["postprocess","impute","merge",
-                                    "normalize","processed"])
-        ),
+        Consequence("logged", SET_TO, "yes")),
+    
     #impute
     Module(
+        "convert_postprocess_impute",
+        SignalFile_Postprocess, SignalFile_Impute,
+        Constraint("format", MUST_BE,"tdf"),
+        Constraint("logged", MUST_BE,"yes"),
+        Constraint("preprocess",
+            CAN_BE_ANY_OF,
+            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Consequence("predataset", SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SET_TO, 'zero_fill'),
+        Consequence("missing_values", SET_TO, "unknown"),
+        Consequence("filter", SET_TO, 'no')),
+        
+    Module(
         "check_for_missing_values",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
+        SignalFile_Impute, SignalFile_Impute,
         Constraint("missing_values", MUST_BE, "unknown"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("missing_values", BASED_ON_DATA, ["no", "yes"]),
-        Constraint("sf_processing_step",MUST_BE,"impute"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["impute","merge",
-                                    "normalize","processed"])
         ),
+    
     Module(
         "filter_genes_by_missing_values",
-        SignalFile, SignalFile,
+        SignalFile_Impute, SignalFile_Impute,
         UserInputDef("filter_value", 0.50),
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
         Constraint("missing_values", MUST_BE, "yes"),
         Constraint("filter", MUST_BE, "no"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("missing_values", SAME_AS_CONSTRAINT),
         Consequence("filter", SET_TO, "yes"),
-        Constraint("sf_processing_step",MUST_BE,"impute"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["impute","merge",
-                                    "normalize","processed"])
         ),
     Module(
         "fill_missing_with_zeros",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
+        SignalFile_Impute, SignalFile_Impute,
         Constraint("missing_values", MUST_BE, "yes"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("missing_values", SET_TO, "no"),
         Consequence(
             "missing_algorithm", SET_TO, "zero_fill", side_effect=True),
-        Constraint("sf_processing_step",MUST_BE,"impute"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["impute","merge",
-                                    "normalize","processed"])
         ),
     Module(
         "fill_missing_with_median",
-        SignalFile,SignalFile,
-        Constraint('format',MUST_BE,'tdf'),
-        Constraint('logged',MUST_BE,'yes'),
+        SignalFile_Impute,SignalFile_Impute,
         Constraint('missing_values',MUST_BE,'yes'),
-        Constraint("sf_processing_step",MUST_BE,"impute"),
-        Consequence("format",SAME_AS_CONSTRAINT),
-        Consequence('logged',SAME_AS_CONSTRAINT),
         Consequence('missing_algorithm',SET_TO,"median_fill",side_effect=True),
-        Consequence('missing_values',SET_TO,'no'),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["impute","merge",
-                                    "normalize","processed"])),
-   
+        Consequence('missing_values',SET_TO,'no')),
     #merge
+    Module(
+        "convert_impute_merge",
+        SignalFile_Impute, SignalFile_Merge,
+        Constraint("preprocess",
+            CAN_BE_ANY_OF,
+            ["unknown", "illumina", "agilent", "mas5", "loess"]),
+        Constraint("contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
+        Constraint("missing_values",MUST_BE,"no"),
+        Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Consequence("predataset", SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SAME_AS_CONSTRAINT),
+        Consequence("filter", SAME_AS_CONSTRAINT),
+        Consequence("quantile_norm", SET_TO,'no'),
+        Consequence("dwd_norm", SET_TO,'no'),
+        Consequence("combat_norm", SET_TO,'no'),
+        Consequence("bfrm_norm",SET_TO,'no'),
+        Consequence("shiftscale_norm", SET_TO,'no')),
+    Module(
+        "convert_impute_merge",
+        SignalFile_Impute, SignalFile_Merge,
+        Constraint("preprocess",
+            MUST_BE,"rma"),
+        Constraint("contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
+        Constraint("missing_values",MUST_BE,"no"),
+        Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Consequence("predataset", SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SAME_AS_CONSTRAINT),
+        Consequence("filter", SAME_AS_CONSTRAINT),
+        Consequence("quantile_norm", SET_TO,'yes'),
+        Consequence("dwd_norm", SET_TO,'no'),
+        Consequence("combat_norm", SET_TO,'no'),
+        Consequence("bfrm_norm",SET_TO,'no'),
+        Consequence("shiftscale_norm", SET_TO,'no')),
+    
     Module(  
-        "merge_two_classes", [SignalFile, SignalFile], SignalFile,  
+        "merge_two_classes", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge,  
          Constraint("contents", MUST_BE, "class0", 0),
-         Constraint("format", MUST_BE, "tdf", 0),
-         Constraint("logged", MUST_BE, "yes", 0),
-         Constraint("missing_values",MUST_BE,'no',0),
          Constraint("combat_norm",MUST_BE,'no',0),
-         Constraint("quantile_norm",CAN_BE_ANY_OF,["no","yes"],0), #if rma preprocess, quantile_norm='yes'
+         Constraint("quantile_norm",MUST_BE,'no',0), 
          Constraint("dwd_norm",MUST_BE,"no",0),
          Constraint("bfrm_norm",MUST_BE,"no",0),
          Constraint("shiftscale_norm",MUST_BE,"no",0),
          Constraint("contents", MUST_BE, "class1", 1),
-         Constraint("format", MUST_BE, "tdf", 1),
-         Constraint("logged", MUST_BE, "yes", 1),
-         Constraint("missing_values",MUST_BE,'no',1),
          Constraint("combat_norm",MUST_BE,'no',1),
          Constraint("quantile_norm",MUST_BE,"no",1),
          Constraint("dwd_norm",MUST_BE,"no",1),
          Constraint("bfrm_norm",MUST_BE,"no",1),
          Constraint("shiftscale_norm",MUST_BE,"no",1),
          Consequence("contents", SET_TO, "class0,class1"),
-         Consequence("format", SAME_AS_CONSTRAINT, 0),
-         Consequence("logged", SAME_AS_CONSTRAINT, 0),
-         Consequence("missing_values",SAME_AS_CONSTRAINT,0),
+         
          Consequence("combat_norm",SAME_AS_CONSTRAINT,0),
          Consequence("quantile_norm",SAME_AS_CONSTRAINT,0),
          Consequence("dwd_norm",SAME_AS_CONSTRAINT,0),
          Consequence("bfrm_norm",SAME_AS_CONSTRAINT,0),
          Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,0),
-         Constraint("sf_processing_step",MUST_BE,"merge",0),
-         Constraint("sf_processing_step",MUST_BE,"merge",1),
-         Consequence("sf_processing_step",SET_TO_ONE_OF,["merge",
-                                    "normalize","processed"]),
          DefaultAttributesFrom(0),
          DefaultAttributesFrom(1),
         ),
         Module(
         "normalize_samples_with_quantile",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
-        Constraint('missing_values',MUST_BE,"no"),
+        SignalFile_Merge, SignalFile_Merge,
         Constraint("quantile_norm", MUST_BE, "no"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
-        Consequence('missing_values',SAME_AS_CONSTRAINT),
         Consequence("quantile_norm", SET_TO, "yes"),
-        Constraint("sf_processing_step",MUST_BE,"merge"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["merge",
-                                    "normalize","processed"])
         ),
     Module(
         "normalize_samples_with_bfrm",
-        SignalFile,SignalFile,
+        SignalFile_Merge,SignalFile_Merge,
         UserInputDef("num_factors",1),
-        Constraint('format',MUST_BE,"tdf"),
-        Constraint('logged',MUST_BE,"yes"),
-        Constraint('missing_values',MUST_BE,"no"),
         Constraint('bfrm_norm',MUST_BE,"no"),
-        Consequence('format',SAME_AS_CONSTRAINT),
-        Consequence('logged',SAME_AS_CONSTRAINT),
-        Consequence('missing_values',SAME_AS_CONSTRAINT),
-        Consequence('bfrm_norm',SET_TO,'yes'),
-        Constraint("sf_processing_step",MUST_BE,"merge"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["merge",
-                                    "normalize","processed"])),
+        Consequence('bfrm_norm',SET_TO,'yes')),
 
     Module(
         "normalize_samples_with_combat",  
-        [ClassLabelFile,SignalFile],SignalFile,
+        [ClassLabelFile,SignalFile_Merge],SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
-        Constraint("format",MUST_BE,"tdf",1),
-        Constraint("logged",MUST_BE,"yes",1),
-        Constraint("missing_values",MUST_BE,"no",1),
         Constraint("combat_norm",MUST_BE,"no",1),
-        Consequence("format",SAME_AS_CONSTRAINT,1),
-        Consequence("logged",SAME_AS_CONSTRAINT,1),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,1),
         Consequence("combat_norm",SET_TO,"yes"),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("sf_processing_step",MUST_BE,"merge",1),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["merge",
-                                    "normalize","processed"]),
         DefaultAttributesFrom(1)),
            
     Module(
         "normalize_samples_with_dwd",  
-        [ClassLabelFile,SignalFile],SignalFile,
+        [ClassLabelFile,SignalFile_Merge],SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],0),
-        Constraint("format",MUST_BE,"tdf",1),
-        Constraint("logged",MUST_BE,"yes",1),
-        Constraint("missing_values",MUST_BE,"no",1),
         Constraint("dwd_norm",MUST_BE,"no",1),
-        Consequence("format",SAME_AS_CONSTRAINT,1),
-        Consequence("logged",SAME_AS_CONSTRAINT,1),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,1),
         Consequence("dwd_norm",SET_TO,"yes"),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("sf_processing_step",MUST_BE,"merge",1),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["merge",
-                                    "normalize","processed"]),
         DefaultAttributesFrom(1),),
 
     Module(
         "normalize_samples_with_shiftscale",  
-        [ClassLabelFile,SignalFile],SignalFile,
+        [ClassLabelFile,SignalFile_Merge],SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],0),
-        Constraint("format",MUST_BE,"tdf",1),
-        Constraint("logged",MUST_BE,"yes",1),
-        Constraint("missing_values",MUST_BE,"no",1),
         Constraint("shiftscale_norm",MUST_BE,"no",1),
-        Consequence("format",SAME_AS_CONSTRAINT,1),
-        Consequence("logged",SAME_AS_CONSTRAINT,1),
-        Consequence("missing_values",SAME_AS_CONSTRAINT,1),
         Consequence("shiftscale_norm",SET_TO,"yes"),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("sf_processing_step",MUST_BE,"merge",1),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,["merge",
-                                    "normalize","processed"]),
         DefaultAttributesFrom(1)),
     ###normalize
     Module(
+        "convert_merge_normalize",
+        SignalFile_Merge, SignalFile_Normalize,
+        Constraint("preprocess",
+            CAN_BE_ANY_OF,
+            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
+        Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Consequence("predataset", SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SAME_AS_CONSTRAINT),
+        Consequence("filter", SAME_AS_CONSTRAINT),
+        Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("combat_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("shiftscale_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("bfrm_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("dwd_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Consequence("quantile_norm", SAME_AS_CONSTRAINT),
+        Consequence("dwd_norm", SAME_AS_CONSTRAINT),
+        Consequence("combat_norm", SAME_AS_CONSTRAINT),
+        Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
+        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
+        Consequence("gene_center", SET_TO,'unknown'),
+        Consequence("gene_normalize", SET_TO,'unknown'),
+        Consequence("format", SET_TO,'tdf'),
+        ),
+    Module(
         "check_gene_center",
-        SignalFile,SignalFile,
-        Constraint("format",MUST_BE,"tdf"),
-        Constraint("logged",MUST_BE,"yes"),
-        Constraint("missing_values",MUST_BE,"no"),
+        SignalFile_Normalize,SignalFile_Normalize,
+        Constraint("format",MUST_BE,'tdf'),
         Constraint("gene_center",MUST_BE,"unknown"),
-        # Why does gene_normalize matter here?
         Constraint("gene_normalize", MUST_BE, "unknown"),
-        Consequence("format",SAME_AS_CONSTRAINT),
-        Consequence("logged",SAME_AS_CONSTRAINT),
-        Consequence("missing_values",SAME_AS_CONSTRAINT),
+        Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("gene_center",BASED_ON_DATA,["no", "mean", "median"]),
-        Consequence("gene_normalize", SAME_AS_CONSTRAINT),
-        Constraint("sf_processing_step",MUST_BE,"normalize"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,[
-                                    "normalize","processed"])),
+        Consequence("gene_normalize", SAME_AS_CONSTRAINT)),
         
     Module(
         "check_gene_normalize",
-        SignalFile,SignalFile,
-        Constraint("format",MUST_BE,"tdf"),
-        Constraint("logged",MUST_BE,"yes"),
-        Constraint("missing_values",MUST_BE,"no"),
+        SignalFile_Normalize,SignalFile_Normalize,
+        Constraint("format",MUST_BE,'tdf'),
         Constraint("gene_normalize",MUST_BE,"unknown"),
-        Consequence("format",SAME_AS_CONSTRAINT),
-        Consequence("logged",SAME_AS_CONSTRAINT),
-        Consequence("missing_values",SAME_AS_CONSTRAINT),
+        Consequence("format", SAME_AS_CONSTRAINT),
         Consequence(
             "gene_normalize", BASED_ON_DATA,
-            ["no", "variance", "sum_of_squares"]),
-        Constraint("sf_processing_step",MUST_BE,"normalize"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,[
-                                    "normalize","processed"])),
+            ["no", "variance", "sum_of_squares"])),
         
     Module(   
         "convert_signal_to_pcl",
-        SignalFile,SignalFile,
+        SignalFile_Normalize,SignalFile_Normalize,
         Constraint("format",MUST_BE,'tdf'),
-        Consequence("format",SET_TO,'pcl'),
-        Constraint("sf_processing_step",MUST_BE,"normalize"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,[
-                                    "normalize","processed"])),
+        Consequence("format",SET_TO,'pcl')),
+    
     Module(
         "center_genes",
-        SignalFile,SignalFile,
+        SignalFile_Normalize,SignalFile_Normalize,
         Constraint("format",MUST_BE,"pcl"),
-        Constraint("logged",MUST_BE,"yes"),
-        Constraint("missing_values",MUST_BE,"no"),
         Constraint("gene_center",MUST_BE,"no"),
         Constraint("gene_normalize",MUST_BE,'unknown'),
         Consequence("format",SET_TO,"tdf"),
-        Consequence("logged",SAME_AS_CONSTRAINT),
-        Consequence("missing_values",SAME_AS_CONSTRAINT),
         Consequence("gene_center",SET_TO_ONE_OF,["mean", "median"]),
-        Consequence("gene_normalize",SAME_AS_CONSTRAINT),
-        Constraint("sf_processing_step",MUST_BE,"normalize"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,[
-                                    "normalize","processed"])),
+        Consequence("gene_normalize",SAME_AS_CONSTRAINT)),
+    
     Module(
         "normalize_genes",
-        SignalFile,SignalFile,
+        SignalFile_Normalize,SignalFile_Normalize,
         Constraint("format",MUST_BE,"pcl"),
-        Constraint("logged",MUST_BE,"yes"),
-        Constraint("missing_values",MUST_BE,"no"),
         Constraint("gene_normalize",MUST_BE,"no"),
         Consequence("format",SET_TO,"tdf"),
-        Consequence("logged",SAME_AS_CONSTRAINT),
-        Consequence("missing_values",SAME_AS_CONSTRAINT),
-        Consequence("gene_normalize",SET_TO_ONE_OF,["variance", "sum_of_squares"]),
-        Constraint("sf_processing_step",MUST_BE,"normalize"),
-        Consequence("sf_processing_step",SET_TO_ONE_OF,[
-                                    "normalize","processed"])),
-    ###transfer
+        Consequence("gene_normalize",SET_TO_ONE_OF,["variance", "sum_of_squares"])),
+    ##Order
     Module(
-        "transfer",
-        SignalFile, PrettySignalFile,
-        Constraint("format", MUST_BE,"tdf"),
-        Constraint("logged", MUST_BE,"yes"),
-        Constraint("missing_values", MUST_BE,"no"),
-        Constraint(
-            "preprocess",
+        "convert_normalize_order",
+        SignalFile_Normalize, SignalFile_Order,
+        Constraint("preprocess",
             CAN_BE_ANY_OF,
             ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
-        Constraint(
-            "contents", CAN_BE_ANY_OF,
+        Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
-        Constraint(
-            "gene_center", CAN_BE_ANY_OF, [ "no", "mean", "median"]),
-        Constraint(
-            "gene_normalize", CAN_BE_ANY_OF,
-            [ "no", "variance", "sum_of_squares"]),
-        Constraint(
-            "missing_algorithm", CAN_BE_ANY_OF,
-            ["none", "median_fill", "zero_fill"]),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
-        Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
+        Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
+        Constraint("format",MUST_BE,'tdf'),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Consequence("predataset", SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SAME_AS_CONSTRAINT),
+        Consequence("filter", SAME_AS_CONSTRAINT),
         Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"]),
-        Constraint("dwd_norm", CAN_BE_ANY_OF, ["no", "yes"]),
-        Constraint("bfrm_norm", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("combat_norm", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("shiftscale_norm", CAN_BE_ANY_OF, ["no", "yes"]),
-        Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
-        Consequence("logged", SAME_AS_CONSTRAINT, 0),
-        Consequence("missing_values", SAME_AS_CONSTRAINT, 0),
-        Consequence("missing_algorithm", SAME_AS_CONSTRAINT, 0),
-        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
-        Consequence("predataset", SAME_AS_CONSTRAINT, 0),
-        Consequence("filter", SAME_AS_CONSTRAINT, 0),
-        Consequence("dwd_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("bfrm_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("combat_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("gene_center", SAME_AS_CONSTRAINT, 0),
-        Consequence("gene_normalize", SAME_AS_CONSTRAINT, 0),
-        Consequence("gene_order", SET_TO, "no"),
-        Constraint("sf_processing_step",MUST_BE,"normalize"),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                   "order","annotate","filter",
-                                    "processed"])
+        Constraint("bfrm_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("dwd_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("gene_center", CAN_BE_ANY_OF, ["no", "median","mean"]),
+        Constraint("gene_normalize", CAN_BE_ANY_OF, ["no", "variance","sum_of_squares"]),
+        Consequence("quantile_norm", SAME_AS_CONSTRAINT),
+        Consequence("dwd_norm", SAME_AS_CONSTRAINT),
+        Consequence("combat_norm", SAME_AS_CONSTRAINT),
+        Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
+        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
+        Consequence("gene_center", SAME_AS_CONSTRAINT),
+        Consequence("gene_normalize", SAME_AS_CONSTRAINT),
+        Consequence("gene_order", SET_TO,'no'),
         ),
-    ## Order
-    Module(  ###
+
+
+    Module(  
         "rank_genes_by_class_neighbors",
-        [ClassLabelFile,PrettySignalFile],GeneListFile,
+        [ClassLabelFile,SignalFile_Order],GeneListFile,
         UserInputDef("cn_num_neighbors",50),
         UserInputDef("cn_num_perm",100),
         UserInputDef("cn_user_pval",0.5),
@@ -769,10 +821,6 @@ all_modules = [
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"],0),
-##        Constraint(
-##            "preprocess",
-##            CAN_BE_ANY_OF,
-##            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],1),
         Constraint("contents",SAME_AS,0,1),
         Constraint("gene_order", MUST_BE,"no",1),
         Consequence("gene_order",SET_TO,"class_neighbors"),
@@ -780,11 +828,11 @@ all_modules = [
         Consequence("cn_ttest_or_snr",SET_TO_ONE_OF, ['t_test','snr']),
         Consequence("cn_filter_data",SET_TO_ONE_OF, ['yes','no']),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
-        Constraint("psf_processing_step",MUST_BE,"order",1)),
+        ),
     
-    Module(###
+    Module(
         "rank_genes_by_sample_ttest",
-        [ClassLabelFile, PrettySignalFile], GeneListFile,
+        [ClassLabelFile, SignalFile_Order], GeneListFile,
         UserInputDef("gene_select_threshold", 0.05),
         Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("gene_order", MUST_BE, "no", 1),
@@ -795,11 +843,11 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO_ONE_OF, ["t_test_p", "t_test_fdr"]),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
-        Constraint("psf_processing_step",MUST_BE,"order",1)),
+       ),
          
-    Module(  ###
+    Module(  
          "reorder_genes",  
-         [GeneListFile,PrettySignalFile], PrettySignalFile,
+         [GeneListFile,SignalFile_Order], SignalFile_Order,
          Constraint("gene_order", CAN_BE_ANY_OF, ['t_test_p', "t_test_fdr",
                                    'class_neighbors', "gene_list"],0),
          Constraint("gene_order", MUST_BE,"no",1),
@@ -818,27 +866,58 @@ all_modules = [
          Consequence("gene_order",SAME_AS_CONSTRAINT,0),
          Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
          Consequence("contents",SAME_AS_CONSTRAINT,0),
-         Constraint("psf_processing_step",MUST_BE,"order",1),
-         Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "order","annotate","filter",
-                                    "processed"]),
+         
          DefaultAttributesFrom(1),
         ),
     ##Annotate
     Module(
+        "convert_order_annotate",
+        SignalFile_Order, SignalFile_Annotate,
+        Constraint("preprocess",
+            CAN_BE_ANY_OF,
+            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
+        Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Consequence("predataset", SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SAME_AS_CONSTRAINT),
+        Consequence("filter", SAME_AS_CONSTRAINT),
+        Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("combat_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("shiftscale_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("bfrm_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("dwd_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("gene_center", CAN_BE_ANY_OF, ["no", "median","mean"]),
+        Constraint("gene_normalize", CAN_BE_ANY_OF, ["no", "variance","sum_of_squares"]),
+        Constraint("gene_order", CAN_BE_ANY_OF,["no",'t_test_p', "t_test_fdr",
+                                   'class_neighbors', "gene_list"]),
+        Consequence("dwd_norm", SAME_AS_CONSTRAINT),
+        Consequence("combat_norm", SAME_AS_CONSTRAINT),
+        Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
+        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
+        Consequence("quantile_norm", SAME_AS_CONSTRAINT),
+        Consequence("gene_center", SAME_AS_CONSTRAINT),
+        Consequence("gene_normalize", SAME_AS_CONSTRAINT),
+        Consequence("gene_order",SAME_AS_CONSTRAINT),
+        Consequence("annotate",SET_TO,"no"),
+        Consequence("rename_sample",SET_TO,"no"),
+        Consequence("platform",SET_TO,"no"),
+        ),
+    Module(
          'annotate_probes',
-         PrettySignalFile,PrettySignalFile,
+         SignalFile_Annotate,SignalFile_Annotate,
          Constraint("annotate", MUST_BE,"no"),
          Constraint("platform", MUST_BE,"no"),
          Consequence("annotate",SET_TO,"yes"),
-         Consequence("platform",SAME_AS_CONSTRAINT),
-         Constraint("psf_processing_step",MUST_BE,"annotate"),
-         Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "annotate","filter",
-                                    "processed"])),
+         Consequence("platform",SAME_AS_CONSTRAINT)),
     Module( 
        "relabel_samples",  
-        [RenameFile,PrettySignalFile],PrettySignalFile,
+        [RenameFile,SignalFile_Annotate],SignalFile_Annotate,
          Constraint("rename_sample",MUST_BE,"no",1),
          Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
@@ -846,26 +925,69 @@ all_modules = [
          Constraint("contents",SAME_AS,0,1),
          Consequence("rename_sample",SET_TO,"yes"),
          Consequence("contents", SAME_AS_CONSTRAINT,0),
-         Constraint("psf_processing_step",MUST_BE,"annotate",1),
-         Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "annotate","filter",
-                                    "processed"]),
          DefaultAttributesFrom(1),
        ),
     Module(
          'add_crossplatform_probeid',
-         PrettySignalFile,PrettySignalFile,
+         SignalFile_Annotate,SignalFile_Annotate,
          UserInputDef("platform_name"),
          Constraint("platform", MUST_BE,"no"),
-         Consequence("platform",SET_TO,"yes"),
-         Constraint("psf_processing_step",MUST_BE,"annotate"),
-         Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "annotate","filter",
-                                    "processed"])),
+         Consequence("platform",SET_TO,"yes")),
+    
     #Filter
     Module(
+        "convert_annotate_filter",
+        SignalFile_Annotate, SignalFile,
+        Constraint("preprocess",
+            CAN_BE_ANY_OF,
+            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("contents", CAN_BE_ANY_OF,
+            ["train0", "train1", "test", "class0", "class1",
+             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
+        Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Consequence("predataset", SAME_AS_CONSTRAINT),
+        Consequence("missing_algorithm",SAME_AS_CONSTRAINT),
+        Consequence("filter", SAME_AS_CONSTRAINT),
+        Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("combat_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("shiftscale_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("bfrm_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("dwd_norm", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("gene_center", CAN_BE_ANY_OF, ["no", "median","mean"]),
+        Constraint("gene_normalize", CAN_BE_ANY_OF, ["no", "variance","sum_of_squares"]),
+        Constraint("gene_order", CAN_BE_ANY_OF,["no",'t_test_p', "t_test_fdr",
+                                   'class_neighbors', "gene_list"]),
+        Constraint("annotate",CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("rename_sample",CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("platform",CAN_BE_ANY_OF, ["no", "yes"]),
+        Consequence("dwd_norm", SAME_AS_CONSTRAINT),
+        Consequence("combat_norm", SAME_AS_CONSTRAINT),
+        Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
+        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
+        Consequence("quantile_norm", SAME_AS_CONSTRAINT),
+        Consequence("combat_norm", SAME_AS_CONSTRAINT),
+        Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
+        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
+        Consequence("gene_center", SAME_AS_CONSTRAINT),
+        Consequence("gene_normalize", SAME_AS_CONSTRAINT),
+        Consequence("gene_order",SAME_AS_CONSTRAINT),
+        Consequence("annotate",SAME_AS_CONSTRAINT),
+        Consequence("rename_sample",SAME_AS_CONSTRAINT),
+        Consequence("platform",SAME_AS_CONSTRAINT),
+        Consequence("logged",SET_TO,"yes"),
+        Consequence("format",SET_TO,"tdf"),
+        Consequence("num_features",SET_TO,"no"),
+        Consequence("unique_genes",SET_TO,"no"),
+        Consequence("duplicate_probe",SET_TO,"no"),
+        Consequence("group_fc",SET_TO,"no"),
+        ),
+    Module(
         'remove_duplicate_genes',
-        PrettySignalFile, PrettySignalFile,
+        SignalFile, SignalFile,
         Constraint("annotate", MUST_BE,"yes"),
         Constraint("num_features", MUST_BE,"no"),
         Constraint("duplicate_probe", MUST_BE,'no'),
@@ -875,50 +997,35 @@ all_modules = [
         Consequence("duplicate_probe", SAME_AS_CONSTRAINT),
         Consequence(
             "unique_genes", SET_TO_ONE_OF,
-            ['average_genes', 'high_var', 'first_gene']),
-        Constraint("psf_processing_step",MUST_BE,"filter"),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "filter",
-                                    "processed"])),
+            ['average_genes', 'high_var', 'first_gene'])),
       
     Module(
          'select_first_n_genes',
-        PrettySignalFile,PrettySignalFile,
+        SignalFile,SignalFile,
         UserInputDef("num_features_value",500),
         Constraint("num_features", MUST_BE,"no"),
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("num_features",SET_TO,"yes"),
-        Consequence("duplicate_probe",SAME_AS_CONSTRAINT),
-         Constraint("psf_processing_step",MUST_BE,"filter"),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "filter",
-                                    "processed"])), 
+        Consequence("duplicate_probe",SAME_AS_CONSTRAINT)), 
       
      Module(
         'remove_duplicate_probes',
-        PrettySignalFile,PrettySignalFile,
+        SignalFile,SignalFile,
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'high_var_probe'),
         Constraint("platform", MUST_BE,"yes"),
-        Consequence("platform",SAME_AS_CONSTRAINT),
-        Constraint("psf_processing_step",MUST_BE,"filter"),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "filter","processed"])),
+        Consequence("platform",SAME_AS_CONSTRAINT)),
     Module(
          'select_probe_by_best_match',
-        PrettySignalFile,PrettySignalFile,
+        SignalFile,SignalFile,
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'closest_probe'),
         Constraint("platform", MUST_BE,"yes"),
-        Consequence("platform",SAME_AS_CONSTRAINT),
-        Constraint("psf_processing_step",MUST_BE,"filter"),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "filter",
-                                    "processed"])),
+        Consequence("platform",SAME_AS_CONSTRAINT)),
     
     Module(
         "filter_genes_by_fold_change_across_classes",
-        [ClassLabelFile,PrettySignalFile],PrettySignalFile,
+        [ClassLabelFile,SignalFile],SignalFile,
         UserInputDef("group_fc_num"),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint("group_fc", MUST_BE,"no",1),
@@ -934,36 +1041,24 @@ all_modules = [
         Consequence("duplicate_probe",SAME_AS_CONSTRAINT,1),
         Consequence("unique_genes",SAME_AS_CONSTRAINT,1),
         Consequence("group_fc",SET_TO,"yes"),
-        Constraint("psf_processing_step",MUST_BE,"filter",1),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "filter",
-                                    "processed"]),
         DefaultAttributesFrom(1),),
     Module(   
         "convert_signal_to_gct",
-        PrettySignalFile,PrettySignalFile,
+        SignalFile,SignalFile,
         Constraint("format",MUST_BE,'tdf'),
-        Consequence("format",SET_TO,'gct'),
-        Constraint("psf_processing_step",MUST_BE,"filter"),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,[
-                                    "processed"])),
+        Consequence("format",SET_TO,'gct')),
     Module( 
         'unlog_signal',
-        PrettySignalFile,PrettySignalFile,
+        SignalFile,SignalFile,
         Constraint("format", MUST_BE,"tdf"),
         Constraint("logged", MUST_BE,"yes"),
         Consequence("format",SAME_AS_CONSTRAINT),
-        Consequence("logged",SET_TO,"no"),
-        Constraint("psf_processing_step",MUST_BE,"filter"),
-        Consequence("psf_processing_step",SET_TO_ONE_OF,['filter',
-                                    "processed"])),
+        Consequence("logged",SET_TO,"no")),
     
     Module(
         "convert_label_to_cls",   
-        [ClassLabelFile,SignalFile],ClassLabelFile,
+        [ClassLabelFile,SignalFile_Impute],ClassLabelFile,
         Constraint("cls_format",MUST_BE,'label',0),
-        Constraint("format",MUST_BE,'tdf',1),
-        Constraint("logged",MUST_BE,"yes",1),
         Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],0),
@@ -976,5 +1071,6 @@ all_modules = [
 
 list_files=[RenameFile,AgilentFiles,CELFiles,ControlFile,ExpressionFiles,
             GPRFiles,GEOSeries,IDATFiles,ClassLabelFile,ILLUFolder,GeneListFile,
-            SignalFile,PrettySignalFile]
+           SignalFile,SignalFile_Postprocess,SignalFile_Impute, SignalFile_Merge,
+            SignalFile_Normalize,SignalFile_Order,SignalFile_Annotate]
 

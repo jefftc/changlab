@@ -10,7 +10,7 @@ list_files = [GseaFile]
 all_modules=[
     Module(
         'annotate_genes_with_gsea',
-        [SignalFile_rule.ClassLabelFile,SignalFile_rule.PrettySignalFile],GseaFile,
+        [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],GseaFile,
          Constraint("cls_format",MUST_BE,'cls',0),
          Constraint("contents",CAN_BE_ANY_OF,["train0","train1", "test",
                              "class0,class1,test","class0",

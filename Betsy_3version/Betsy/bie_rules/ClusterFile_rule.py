@@ -28,29 +28,29 @@ list_files = [ClusterFile,Heatmap]
 all_modules = [
     Module(
         'cluster_genes_by_som',
-        SignalFile_rule.PrettySignalFile,ClusterFile,
+        SignalFile_rule.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'som'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean']),
         ),
     Module(
         'cluster_genes_by_pca',
-        SignalFile_rule.PrettySignalFile,ClusterFile,
+        SignalFile_rule.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'pca'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean'])),
     Module(
         'cluster_genes_by_kmeans',
-         SignalFile_rule.PrettySignalFile,ClusterFile,
+         SignalFile_rule.SignalFile,ClusterFile,
         UserInputDef("k_value",5),
         Consequence("cluster_alg",SET_TO,'kmeans'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean'])),
     Module(
         'cluster_genes_by_hierarchical',
-        SignalFile_rule.PrettySignalFile,ClusterFile,
+        SignalFile_rule.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'hierarchical'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean'])),
     Module(
         'plot_signal_heatmap',
-        SignalFile_rule.PrettySignalFile,Heatmap,
+        SignalFile_rule.SignalFile,Heatmap,
         UserInputDef('hm_width_value',20),
         UserInputDef('hm_height_value',1),
         Consequence("cluster_alg",SET_TO,'no_cluster_alg'),

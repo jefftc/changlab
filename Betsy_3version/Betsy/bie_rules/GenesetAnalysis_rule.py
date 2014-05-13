@@ -21,7 +21,7 @@ all_modules = [
     Module(
         'score_pathway_with_geneset',
         [GenesetFile,
-         SignalFile_rule.PrettySignalFile],GenesetAnalysis,
+         SignalFile_rule.SignalFile],GenesetAnalysis,
          UserInputDef("geneset_value"),
          Constraint("quantile_norm",MUST_BE,'yes',1),
          Constraint("gene_center",MUST_BE,'mean',1),
