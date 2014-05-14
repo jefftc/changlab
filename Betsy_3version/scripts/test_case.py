@@ -528,9 +528,29 @@ def run_case22():
 
 def run_case23():
     """cannot trace back to GeoSeries to generate the
-       ExpressionFile and preprocess with illumina"""
-    out_data = rulebase.SignalFile_Postprocess.output(preprocess="illumina",
-        format="tdf", logged="yes")
+    ExpressionFile and preprocess with illumina.
+
+    Expected a network with the nodes:
+    DATA                        MODULE
+    GEOSeries               ->  download_geo                 ->
+    ExpressionFiles         ->  extract_illumina_idat_files  ->
+    IDATFiles               ->  preprocess_illumina          ->
+    ILLUFolder              ->  get_illumina_signal          ->
+    SignalFile_Postprocess  ->  convert_signal_to_tdf        ->
+    SignalFile_Postprocess
+
+    However, we currently only get a network:
+    DATA                        MODULE
+    SignalFile_Postprocess  ->  check_for_log                ->
+    SignalFile_Postprocess
+
+    """
+    out_data = rulebase.SignalFile_Postprocess.output(
+        preprocess="illumina",
+        format="tdf",
+        logged="no",
+        #logged="yes",
+        )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
@@ -539,7 +559,8 @@ def run_case23():
     bie3.plot_network_gv("out.png", network)
 
 def run_case24():
-    """Generate a network start from SignalFile_order, but the old bie3.py works fine"""
+    """Generate a network start from SignalFile_order, but the old
+    bie3.py works fine"""
    
     out_data = rulebase.SignalFile.output(
         format="tdf", logged="yes",
@@ -626,7 +647,7 @@ def main():
     #run_case21()
     #run_case22()
     run_case23()
-##    run_case24()
+    #run_case24()
 ##    run_case25()
 ##    run_case26()
 ##    run_case27()

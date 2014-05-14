@@ -125,8 +125,8 @@ CONST2STR = {
     }
 
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 MAX_NETWORK_SIZE = 1024*8
 
@@ -1954,11 +1954,17 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
 
     # The attributes for the input object should come from (in
     # decreasing priority):
-    # 1.  Constraint.
-    # 2.  Consequence (i.e. SAME_AS_CONSTRAINT).
+    # 1.  Consequence (i.e. SAME_AS_CONSTRAINT).
+    # 2.  Constraint.
     # 3.  user attribute
     # 4.  out_data
     # 5.  default output value of input datatype
+    #
+    # Consequence (SAME_AS_CONSTRAINT) is higher priority than
+    # constraint because it indicates a more specific value than the
+    # constraint.  e.g.:
+    #   Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+    #   Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0)
 
     # Start with empty attributes.
     attributes = {}
@@ -2024,7 +2030,24 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
             attributes[attr.name] = attr.value
             attrsource[attr.name] = "user"
 
-    # Case 2.  Set the attributes based on the consequences.  If there
+    # Case 2.  Set the attributes based on the constraints.
+    for constraint in module.constraints:
+        if constraint.input_index != in_num:
+            continue
+
+        if constraint.behavior == MUST_BE:
+            attributes[constraint.name] = constraint.arg1
+            attrsource[constraint.name] = "constraint"
+        elif constraint.behavior == CAN_BE_ANY_OF:
+            attributes[constraint.name] = constraint.arg1
+            attrsource[constraint.name] = "constraint"
+        elif constraint.behavior == SAME_AS:
+            # Handled in _backchain_to_all_inputs.
+            pass
+        else:
+            raise AssertionError
+    
+    # Case 1.  Set the attributes based on the consequences.  If there
     # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
     # should be determined by the out_data.  e.g.
     # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
@@ -2047,29 +2070,6 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
         else:
             raise AssertionError
 
-    # Case 1.  Set the attributes based on the constraints.
-    for constraint in module.constraints:
-        if constraint.input_index != in_num:
-            continue
-
-        if constraint.behavior == MUST_BE:
-            attributes[constraint.name] = constraint.arg1
-            attrsource[constraint.name] = "constraint"
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            # If this attribute is not already set by a consequence
-            # above (e.g. the output data is already a specific
-            # value), then set it here.
-            #   Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
-            #   Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0)
-            if constraint.name not in attributes:
-                attributes[constraint.name] = constraint.arg1
-                attrsource[constraint.name] = "constraint"
-        elif constraint.behavior == SAME_AS:
-            # Handled in _backchain_to_all_inputs.
-            pass
-        else:
-            raise AssertionError
-    
 
     # make_out.  This module should take in a "finished" Data object,
     # and use it to generate a new Data object.
@@ -2265,7 +2265,7 @@ def _can_module_take_data(module, datas):
     return True
 
 
-def _can_module_produce_data_1(module, data, user_attributes):
+def _can_module_produce_data(module, data, user_attributes):
     # Return whether this module can produce this data object.
 
     # A module cannot produce this data if:
@@ -2346,8 +2346,10 @@ def _can_module_produce_data_1(module, data, user_attributes):
 
         if case == 1:
             if data_value != outc_value:
-                debug_print("Consequence %s conflicts [%s %s]." % (
-                    consequence.name, outc_value, data_value))
+                msg = ("Consequence '%s' requires '%s', "
+                       "but data contains '%s'." % (
+                           consequence.name, outc_value, data_value))
+                debug_print(msg)
                 return False
         elif case == 2:
             # Module can produce any of a list of values.  Check if
@@ -2460,7 +2462,7 @@ def _can_module_produce_data_1(module, data, user_attributes):
             continue
         if consequence.side_effect:
             continue
-        debug_print("Consequence %s matches." % consequence.name)
+        debug_print("Consequence '%s' matches." % consequence.name)
         return True
 
     # No conflicts, and the module has no consequences.
@@ -2471,10 +2473,6 @@ def _can_module_produce_data_1(module, data, user_attributes):
     # No consequences match.
     debug_print("No consequences match.")
     return False
-
-
-def _can_module_produce_data(module, data, user_attributes):
-    return _can_module_produce_data_1(module, data, user_attributes)
 
 
 def _get_valid_input_combinations(network, module_id, all_input_ids,
