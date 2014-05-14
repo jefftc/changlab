@@ -559,9 +559,32 @@ def run_case23():
     bie3.plot_network_gv("out.png", network)
 
 def run_case24():
-    """Generate a network start from SignalFile_order, but the old
-    bie3.py works fine"""
-   
+    """Generate a network start from SignalFile_order, cannot trace back
+       to SignalFile_Postprocess
+    Expected a network with the nodes:
+    DATA                               MODULE
+    SignalFile_Postprocess       ->   convert_signal_to_tdf          ->
+    SignalFile_Postprocess       ->   check_for_log                  ->
+    SignalFile_Postprocess       ->   log_signal                     ->
+    SignalFile_Postprocess       ->   convert_postprocess_impute     ->
+    SignalFile_Impute            ->   fill_missing_with_zeros        ->
+    SignalFile_Impute            ->   convert_impute_merge           ->
+    SignalFile_Merge             ->   convert_merge_normalize        ->
+    SignalFile_Normalize         ->   check_gene_center              ->
+    SignalFile_Normalize         ->   check_gene_normalize           ->
+    SignalFile_Normalize         ->   convert_normalize_order        ->
+    SignalFile_Order,ClassLableFile-> rank_genes_by_sample_ttest     ->
+    GeneListFile,SignalFile_Order->   reorder_genes                  ->
+    SignalFile_Order             ->   convert_order_annotate         ->
+    SignalFile_Annotate          ->   convert_annotate_filter        ->
+    SignalFile
+
+    However, we currently get a network:
+    DATA                               MODULE
+    SignalFile_Order             ->   convert_order_annotate         ->
+    SignalFile_Annotate          ->   convert_annotate_filter        ->
+    SignalFile
+    """
     out_data = rulebase.SignalFile.output(
         format="tdf", logged="yes",
         gene_order='t_test_p',
@@ -574,7 +597,20 @@ def run_case24():
     bie3.plot_network_gv("out.png", network)
     
 def run_case25():
-    """the network only has one node"""
+    """
+    cannot trace back to GEOSeries and SignalFile_Postprocess to
+    generate SignalFile_Merge with preprocess=aiglent.
+    
+    Expected a network generate from GeoSeries or SignalFile_Postprocess
+    The Data path in the network is like: 
+    GEOSeries -> SignalFile_Postprocess ->
+    SignalFile_Impute -> SignalFile_Merge ->
+    ActPlot
+    
+    However, we currently get a network with only one node
+    Data(ActbPlot, contents='unspecified')
+    
+    """
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ActbPlot,
         bie3.Attribute(rulebase.SignalFile, "preprocess", "agilent"),
@@ -585,9 +621,21 @@ def run_case25():
     bie3.plot_network_gv("out.png", network)
 
 def run_case26():
-    '''test normalize report,
-       The IntensityPlot,ControlPlot, PcaPlot should be generated from SignalFile and ActPlot
-       is generated from SignalFile_Merge'''
+    '''Test normalize report,
+       Expected a network generated form SignalFile_Postprocess with contents='test' and preprocess="unknown".
+       The make_normalize_report module has 5 input Data nodes, which are SignalFile,
+       IntensityPlot,ControlPlot,PcaPlot and ActbPlot.
+       The SignalFile is generated from
+       SignalFile_Postprocess->SignalFile_Impute->SignalFile_Merge->SignalFile_Normalize->
+       SignalFile_Order->SignalFile_Annotate->SignalFile
+       The IntensityPlot,ControlPlot, PcaPlot are generated from SignalFile
+       The ActbPlot is generated from SignalFile_Merge.
+
+       However, we got a network which has three SignalFile_Postprocess with different values for "contents".
+       Also the network has ExpressionFiles, AgilentFiles,GPRFiles,  which lead the SignalFile has different
+       "contents" values and "preprocess" values.
+       The IntensityPlot, ControlPlot, PcaPlot and ActvPlot are not generated from any other Data.
+       '''
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
@@ -602,10 +650,19 @@ def run_case26():
     bie3.plot_network_gv("out.png", network)
 
 def run_case27():
-    """two problems:
-      1. cannot trace back to GeoSeries to preprocess mas5.
-      2. Heapmap node is not generated from ClusterFile.
-    
+    """Three problems:
+      1. Cannot trace back to GeoSeries to preprocess mas5.
+      2. HeapMap node is not generated from ClusterFile.
+      3. We require the cluster_alg is pca but different cluster_alg is shown.
+
+      We expected a network generated from GEOSeries and go through to SignalFile,
+      GEOSeries -> download_geo -> ExpressionFile ->......-> SignalFile ->
+      Cluster_genes_by_pca -> ClusterFile->plot_heatmap -> HeatMap
+      ClusterFile, HeatMap -> make_cluster_report->ReportFile
+
+      However, we got a network which is from ExpressionFile, but not GEOSeries.
+      The SignalFile can go to different cluster_alg but not the only one we specify.
+      HeatMap is isolated from ClusterFile.
     """
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
@@ -646,11 +703,11 @@ def main():
     #run_case20()
     #run_case21()
     #run_case22()
-    run_case23()
-    #run_case24()
-##    run_case25()
-##    run_case26()
-##    run_case27()
+   # run_case23()
+   # run_case24()
+   # run_case25()
+   # run_case26()
+    run_case27()
 
 if __name__ == '__main__':
     main()
