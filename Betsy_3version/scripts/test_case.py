@@ -560,7 +560,8 @@ def run_case23():
 
 def run_case24():
     """Generate a network start from SignalFile_order, cannot trace back
-       to SignalFile_Postprocess
+    to SignalFile_Postprocess.
+    
     Expected a network with the nodes:
     DATA                               MODULE
     SignalFile_Postprocess       ->   convert_signal_to_tdf          ->
@@ -584,6 +585,7 @@ def run_case24():
     SignalFile_Order             ->   convert_order_annotate         ->
     SignalFile_Annotate          ->   convert_annotate_filter        ->
     SignalFile
+    
     """
     out_data = rulebase.SignalFile.output(
         format="tdf", logged="yes",
@@ -604,7 +606,7 @@ def run_case25():
     Expected a network generate from GeoSeries or SignalFile_Postprocess
     The Data path in the network is like: 
     GEOSeries -> SignalFile_Postprocess ->
-    SignalFile_Impute -> SignalFile_Merge ->
+    SignalFile_Impute -> SignalFile_Merge -> (plot_actb_line) -> 
     ActPlot
     
     However, we currently get a network with only one node
@@ -622,27 +624,34 @@ def run_case25():
 
 def run_case26():
     '''Test normalize report,
-       Expected a network generated form SignalFile_Postprocess with contents='test' and preprocess="unknown".
-       The make_normalize_report module has 5 input Data nodes, which are SignalFile,
-       IntensityPlot,ControlPlot,PcaPlot and ActbPlot.
-       The SignalFile is generated from
-       SignalFile_Postprocess->SignalFile_Impute->SignalFile_Merge->SignalFile_Normalize->
-       SignalFile_Order->SignalFile_Annotate->SignalFile
-       The IntensityPlot,ControlPlot, PcaPlot are generated from SignalFile
-       The ActbPlot is generated from SignalFile_Merge.
+    
+    Expected a network generated form SignalFile_Postprocess with
+    contents='test' and preprocess="unknown".
+    - The make_normalize_report module has 5 input Data nodes, which
+      are SignalFile, IntensityPlot,ControlPlot,PcaPlot and ActbPlot.
+    - The SignalFile is generated from:
+      SignalFile_Postprocess->SignalFile_Impute->SignalFile_Merge->
+      SignalFile_Normalize->SignalFile_Order->SignalFile_Annotate->SignalFile
+    - The IntensityPlot,ControlPlot, PcaPlot are generated from SignalFile.
+    - The ActbPlot is generated from SignalFile_Merge.
 
-       However, we got a network which has three SignalFile_Postprocess with different values for "contents".
-       Also the network has ExpressionFiles, AgilentFiles,GPRFiles,  which lead the SignalFile has different
-       "contents" values and "preprocess" values.
-       The IntensityPlot, ControlPlot, PcaPlot and ActvPlot are not generated from any other Data.
-       '''
+    However, we got a network which has three SignalFile_Postprocess
+    with different values for "contents".
+     
+    Also the network has ExpressionFiles, AgilentFiles,GPRFiles,
+    which lead the SignalFile has different "contents" values and
+    "preprocess" values.
+     
+    The IntensityPlot, ControlPlot, PcaPlot and ActvPlot are not
+    generated from any other Data.
+     
+    '''
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
         bie3.Attribute(rulebase.SignalFile,"preprocess","unknown"),
         bie3.Attribute(rulebase.SignalFile,"contents","test"),
         bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes")
-        
         )
     network = bie3.optimize_network(network)
 
@@ -679,7 +688,6 @@ def run_case27():
 
 
 def main():
-
     #run_case01()
     #run_case02()
     #run_case03()
@@ -695,7 +703,7 @@ def main():
     #run_case13()
     #run_case14()
     #run_case15()
-  #  run_case16()
+    #run_case16()
     #run_case17()
 
     #run_case18()
@@ -703,11 +711,11 @@ def main():
     #run_case20()
     #run_case21()
     #run_case22()
-   # run_case23()
-   # run_case24()
-   # run_case25()
-   # run_case26()
-    run_case27()
+    run_case23()
+    #run_case24()
+    #run_case25()
+    #run_case26()
+    #run_case27()
 
 if __name__ == '__main__':
     main()

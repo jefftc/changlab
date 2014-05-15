@@ -125,8 +125,8 @@ CONST2STR = {
     }
 
 
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
 
 MAX_NETWORK_SIZE = 1024*8
 
@@ -1949,8 +1949,8 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
 
     in_datatype = module.in_datatypes[in_num]
     out_datatype = out_data.datatype
-    debug_print("Backchaining %s <- %s <- %s (input=%d)." % (
-        out_datatype.name, module.name, in_datatype.name, in_num))
+    debug_print("Backchaining %s (input=%d) -> %s -> %s." % (
+        in_datatype.name, in_num, module.name, out_datatype.name))
 
     # The attributes for the input object should come from (in
     # decreasing priority):
@@ -1960,6 +1960,12 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
     # 4.  out_data
     # 5.  default output value of input datatype
     #
+    # If the user attribute conflicts with a Constraint, thte
+    # Constraint is higher priority to make sure no objects are
+    # generated that the module cannot handle.  However, if the user
+    # attribute is a part of the constraint, (e.g. one of many
+    # options), then we can refine it with the user attribute.
+    # 
     # Consequence (SAME_AS_CONSTRAINT) is higher priority than
     # constraint because it indicates a more specific value than the
     # constraint.  e.g.:
@@ -1988,9 +1994,8 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
 
     # Case 4.  If default_attributes_from is the same as in_num, then
     # fill with the same values as the out_data.
-    for daf in module.default_attributes_from:
-        if daf.input_index != in_num:
-            continue
+    indexes = [x.input_index for x in module.default_attributes_from]
+    if in_num in indexes:
         for name, value in out_data.attributes.iteritems():
             attributes[name] = value
             attrsource[name] = "out_data"
@@ -1998,11 +2003,8 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
             
     # Case 3.  If the input data object does not proceed to the output
     # data object, then set the attribute provided by the user.
-    to_output = False
-    for daf in module.default_attributes_from:
-        if daf.input_index == in_num:
-            to_output = True
-    if not to_output:
+    x = [x for x in module.default_attributes_from if x.input_index == in_num]
+    if not x:
         # Set values from user attributes.
         for attr in user_attributes:
             # Ignore attributes for other data types.
@@ -2039,8 +2041,23 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
             attributes[constraint.name] = constraint.arg1
             attrsource[constraint.name] = "constraint"
         elif constraint.behavior == CAN_BE_ANY_OF:
-            attributes[constraint.name] = constraint.arg1
-            attrsource[constraint.name] = "constraint"
+            value = constraint.arg1
+            source = "constraint"
+            if attrsource.get(constraint.name) == "user":
+                x = _get_attribute_type(attributes[constraint.name])
+                if x == TYPE_ATOM:
+                    if attributes[constraint.name] in value:
+                        value = attributes[constraint.name]
+                        source = "constraint,user"
+                elif x == TYPE_ENUM:
+                    x = _intersection(attributes[constraint.name], value)
+                    if x:
+                        value = x
+                        source = "constraint,user"
+                else:
+                    raise AssertionError
+            attributes[constraint.name] = value
+            attrsource[constraint.name] = source
         elif constraint.behavior == SAME_AS:
             # Handled in _backchain_to_all_inputs.
             pass
@@ -2096,6 +2113,8 @@ def _backchain_to_all_inputs(module, out_data, user_attributes):
     for constraint in module.constraints:
         if constraint.behavior != SAME_AS:
             continue
+
+        # BUG: Need to handle user attributes with SAME_AS.
         
         # If this constraint is the SAME_AS another one, then use the
         # value of the copied constraint.
@@ -2275,7 +2294,6 @@ def _can_module_produce_data(module, data, user_attributes):
     #   doesn't match a constraint.
     # - An input does not go into the output, and the data attribute
     #   doesn't match the (in) defaults of the output data type.
-    #   THIS RULE IS IN TESTING.
     # 
     # A module can produce this data if:
     # - An consequence (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA) that is not
@@ -2376,9 +2394,9 @@ def _can_module_produce_data(module, data, user_attributes):
     # out_datatype.  XXX NEED A NAME FOR THIS.  final_data?
     # datatype that flows through the module, vs datatype that the
     # module uses.
+    indexes = [x.input_index for x in module.default_attributes_from]
     for i in range(len(module.in_datatypes)):
-        if module.default_attributes_from is not None and \
-               module.default_attributes_from == i:
+        if i in indexes:
             # The values from this datatype should be passed through.
             # The user attributes does not apply.
             continue
@@ -2413,7 +2431,7 @@ def _can_module_produce_data(module, data, user_attributes):
     # If the module converts the datatype, and no
     # DefaultAttributesFrom is specified, then the data should match
     # the (in) defaults from the output data type.
-    if module.default_attributes_from is None:
+    if not module.default_attributes_from:
         debug_print("Module converts datatype.  Checking default attributes.")
         consequence_names = [x.name for x in module.consequences]
         for attr in module.out_datatype.attributes:
@@ -2446,24 +2464,98 @@ def _can_module_produce_data(module, data, user_attributes):
     # If the module converts the datatype, the consequences don't
     # conflict, and the default attributes don't conflict, then this
     # should match.
-    #if module.in_datatypes != [module.out_datatype]:
-    if module.default_attributes_from is None:
+    if not module.default_attributes_from:
         debug_print("Match because of converting datatype.")
         return True
-
+    
 
     # At this point, the module produces this datatype and there are
     # no conflicts.  Look for an consequence that is not a side effect
-    # that matches this data.
+    # that changes the value of an output attribute.
     for consequence in module.consequences:
-        if consequence.behavior not in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
-            continue
         if consequence.name not in data.attributes:
             continue
         if consequence.side_effect:
             continue
-        debug_print("Consequence '%s' matches." % consequence.name)
-        return True
+        
+        if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
+            debug_print("Consequence '%s' matches." % consequence.name)
+            return True
+        
+        assert consequence.behavior == SAME_AS_CONSTRAINT
+
+        # If the value of the output attribute is the same as the
+        # input attribute, then this does not change the data.
+        #
+        # If:
+        # - this consequence refers to a different object, and
+        # - there is a constraint that refers to the same object with
+        #   a different value,
+        # then this is a match.
+        #
+        # Example:
+        # [GeneListFile, SignalFile] -> SignalFile
+        # Constraint("gene_order", CAN_BE_ANY_OF, ["pvalue", "fdr"], 0)
+        # Constraint("gene_order", MUST_BE, "no", 1)
+        # Consequence("gene_order", SAME_AS_CONSTRAINT, 0)
+
+        # Make sure it refers to a different object.
+        indexes = [x.input_index for x in module.default_attributes_from]
+        if consequence.arg1 in indexes:
+            continue
+        
+        # Find the constraint that goes with this consequence.
+        x = [x for x in module.constraints if
+             x.name == consequence.name and 
+             x.input_index == consequence.arg1]
+        assert len(x) == 1
+        const1 = x[0]
+
+        # Find the constraint that refers to the same object.
+        x = [x for x in module.constraints if
+             x.name == consequence.name and x.input_index in indexes]
+        if not x:
+            continue
+        # If there are multiple constraints, make sure they have the
+        # same values.
+        if len(x) >= 2:
+            raise NotImplementedError
+        const2 = x[0]
+
+        # Follow SAME_AS
+        while const1.behavior == SAME_AS:
+            x = [x for x in module.constraints
+                 if x.name == conseq1.name and x.input_index == const1.arg1]
+            assert len(x) == 1
+            const1 = x
+        while const2.behavior == SAME_AS:
+            x = [x for x in module.constraints
+                 if x.name == conseq2.name and x.input_index == const2.arg1]
+            assert len(x) == 1
+            const2 = x
+
+        assert const1.behavior in [MUST_BE, CAN_BE_ANY_OF]
+        assert const2.behavior in [MUST_BE, CAN_BE_ANY_OF]
+        if (const1.behavior, const2.behavior) == (MUST_BE, MUST_BE):
+            if const1.arg1 != const2.arg1:
+                debug_print("Consequence '%s' matches." % consequence.name)
+                return True
+        elif (const1.behavior, const2.behavior) == (MUST_BE, CAN_BE_ANY_OF):
+            if const1.arg1 not in const2.arg1:
+                debug_print("Consequence '%s' matches." % consequence.name)
+                return True
+        elif (const1.behavior, const2.behavior) == (CAN_BE_ANY_OF, MUST_BE):
+            if const2.arg1 not in const1.arg1:
+                debug_print("Consequence '%s' matches." % consequence.name)
+                return True
+        elif (const1.behavior, const2.behavior) == \
+                 (CAN_BE_ANY_OF, CAN_BE_ANY_OF):
+            if not _intersection(const1.arg1, const2.arg1):
+                debug_print("Consequence '%s' matches." % consequence.name)
+                return True
+        else:
+            raise AssertionError
+
 
     # No conflicts, and the module has no consequences.
     if not module.consequences:
