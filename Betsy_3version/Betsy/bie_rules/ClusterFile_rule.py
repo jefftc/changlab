@@ -53,6 +53,7 @@ all_modules = [
         SignalFile_rule.SignalFile,Heatmap,
         UserInputDef('hm_width_value',20),
         UserInputDef('hm_height_value',1),
+        Constraint("format",MUST_BE,'tdf'),
         Consequence("cluster_alg",SET_TO,'no_cluster_alg'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean']),
         Consequence("hm_width",SET_TO,'yes'),

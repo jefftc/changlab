@@ -228,7 +228,7 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
 
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node1 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PrettySignalFile')
+                                            data_nodes,datatype='SignalFile')
     data_node2 = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='ClassifyFile',
                                              optional_key='classify_alg',

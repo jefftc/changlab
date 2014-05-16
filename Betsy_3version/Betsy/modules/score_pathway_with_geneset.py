@@ -40,7 +40,7 @@ def run(in_nodes, parameters, user_input, network):
     
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PrettySignalFile')
+                                            data_nodes,datatype='SignalFile')
     geneset_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='GenesetFile')
     return data_node, geneset_node

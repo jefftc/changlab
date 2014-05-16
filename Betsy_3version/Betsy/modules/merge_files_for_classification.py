@@ -21,7 +21,7 @@ def run(in_nodes, parameters, user_input, network):
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for merge_files_for_classification fails'%outfile)
-    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
+    out_node = bie3.Data(rulebase.SignalFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

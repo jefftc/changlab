@@ -36,7 +36,7 @@ def run(data_node,parameters,user_input,network):
             raise ValueError(error_message)
     assert module_utils.exists_nz(outfile), (
         'the output file %s for add_crossplatform_probeid fails' % outfile)
-    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
+    out_node = bie3.Data(rulebase.SignalFile_Annotate,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     

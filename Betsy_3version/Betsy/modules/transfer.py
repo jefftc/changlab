@@ -1,4 +1,4 @@
-#transfer1.py
+#transfer.py
 import os
 import shutil
 from Betsy import module_utils
@@ -11,8 +11,8 @@ def run(data_node,parameters, user_input,network):
     parameters = get_out_attributes(parameters,data_node)
     shutil.copyfile(data_node.identifier,outfile)
     assert module_utils.exists_nz(outfile),(
-        'the output file %s for log_signal fails'%outfile)
-    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
+        'the output file %s for transfer fails'%outfile)
+    out_node = bie3.Data(rulebase.SignalFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

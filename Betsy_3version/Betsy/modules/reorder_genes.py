@@ -26,7 +26,7 @@ def run(in_nodes, parameters, user_input,network):
             platform_name = 'unknown_platform'
             if 'platform_name' in user_input:
                 platform_name = user_input['platform_name']
-            if platform_name in chip, 'unknown_platform']:
+            if platform_name in chip:#, 'unknown_platform':
                 import subprocess
                 Annot_path = config.annotate_matrix
                 Annot_BIN = module_utils.which(Annot_path)
@@ -61,13 +61,13 @@ def run(in_nodes, parameters, user_input,network):
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for reorder_genes fails' % outfile)
-    out_node = bie3.Data(rulebase.SignalFile2,**parameters)
+    out_node = bie3.Data(rulebase.SignalFile_Order,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='SignalFile_Order')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='GeneListFile')
     return data_node, cls_node

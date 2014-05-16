@@ -29,10 +29,10 @@ def run(in_nodes, parameters, user_input, network):
 
 def find_antecedents(network, module_id,data_nodes,parameters):
     rma_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PrettySignalFile',
+                                            data_nodes,datatype='SignalFile',
                                            optional_key='preprocess',optional_value='rma')
     mas5_node = module_utils.get_identifier(network, module_id, data_nodes,
-                                           datatype='PrettySignalFile',
+                                           datatype='SignalFile',
                                             optional_key='preprocess',optional_value='mas5')
     return rma_node, mas5_node
     

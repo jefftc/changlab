@@ -545,11 +545,11 @@ def run_case23():
     SignalFile_Postprocess
 
     """
-    out_data = rulebase.SignalFile_Postprocess.output(
+    out_data = rulebase.SignalFile.output(
         preprocess="illumina",
         format="tdf",
-        logged="no",
-        #logged="yes",
+        #logged="no",
+        logged="yes",
         )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
@@ -615,7 +615,7 @@ def run_case25():
     """
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ActbPlot,
-        bie3.Attribute(rulebase.SignalFile, "preprocess", "agilent"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "preprocess", "agilent"),
         )
     network = bie3.optimize_network(network)
 
@@ -650,8 +650,9 @@ def run_case26():
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
         bie3.Attribute(rulebase.SignalFile,"preprocess","unknown"),
+        bie3.Attribute(rulebase.SignalFile_Merge,"preprocess","unknown"),
         bie3.Attribute(rulebase.SignalFile,"contents","test"),
-        bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes")
+        #bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes")
         )
     network = bie3.optimize_network(network)
 
@@ -686,7 +687,75 @@ def run_case27():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+def run_case28():
+    """get error when running this command
 
+    File "test_case.py", line 704, in run_case28
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    File "/home/xchen/chencode/Betsy_3version/Betsy/bie3.py", line 928, in backchain
+    modules = _backchain_to_modules(moduledb, node, user_attributes)
+    File "/home/xchen/chencode/Betsy_3version/Betsy/bie3.py", line 1872, in _backchain_to_modules
+    if _can_module_produce_data(module, data, user_attributes):
+    File "/home/xchen/chencode/Betsy_3version/Betsy/bie3.py", line 2533, in _can_module_produce_data
+    if x.name == conseq2.name and x.input_index == const2.arg1]
+    NameError: global name 'conseq2' is not defined
+
+    """
+    out_data = rulebase.SignalFile.output(group_fc='yes')
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.optimize_network(network)    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case29():
+    """Expected a network generated from GEOSeries
+       the path of Data is:
+       GEOSeries -> ... -> SignalFile_Merge -> ...
+       ->SignalFile_Order -> SignalFile
+       SignalFile_Merge, ClassLabelFile -> (convert_label_cls)->ClassLabelFile
+       SignalFile_Order,ClassLabelFile-> (rank_genes_sample_ttest)->GeneListFile
+       SignalFile_Order,GeneListFile -> (reorder_genes)->SignalFile_Order
+
+       However, we got a network which the input to convert_label_cls is not generated from
+       GEOSeries, it is generated from SignalFile_Postprocess with preprocess=unknown,
+       That is, we expect the node 17 and node 54 to be the same node"""
+    out_data = rulebase.SignalFile.output(
+        preprocess="illumina",
+        format="tdf", logged="yes",
+         gene_order='t_test_p',
+        )
+
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case30():
+
+    '''test normalize report,
+       Expect a network generated from GEOSeries, the make_normalize_report has 6 input data:
+       ControlPlot,IntensityPlot,SignalFile,ActbPlot,PcaPlot,PcaPlot
+       The first PcaPlot is generated from SignalFile and we require quantile_norm=no and gene_center=no
+       The Second PcaPlot is generated from SignalFile and we require quantile_norm=yes and gene_center=median
+
+       However, we only got 5 input data to the make_normalize_report. That is, only the
+       first PcaPlot is generated. The second one does not shown. I tried to change the rules but get the
+       same error as run_case28.
+       '''
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
+        bie3.Attribute(rulebase.SignalFile,"preprocess","mas5"),
+        bie3.Attribute(rulebase.SignalFile,"contents","test"),
+        bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes"),
+        bie3.Attribute(rulebase.SignalFile,'gene_center',"median"),
+        )
+    network = bie3.optimize_network(network)
+    
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
 def main():
     #run_case01()
     #run_case02()
@@ -711,12 +780,14 @@ def main():
     #run_case20()
     #run_case21()
     #run_case22()
-    run_case23()
+    #run_case23()
     #run_case24()
     #run_case25()
     #run_case26()
     #run_case27()
-
+    #run_case28()
+    #run_case29()
+    run_case30()
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")

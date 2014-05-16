@@ -18,7 +18,9 @@ ActbPlot = DataType(
         "contents",
         ["train0", "train1", "test", "class0,class1,test",
          "class0", "class1", "class0,class1", "unspecified"],
-        "unspecified", "unspecified")
+        "unspecified", "unspecified"),
+    AttributeDef("preprocess",['mas5','rma','agilent','loess','unknown','illumina'],
+                 'unknown','unknown')
     )
 Hyb_barPlot = DataType(
     'Hyb_barPlot',
@@ -69,36 +71,21 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         ),
                     
+
     Module(
         'plot_actb_line',
-        SignalFile_rule.SignalFile_Merge, ActbPlot,
-        Constraint("preprocess",CAN_BE_ANY_OF,['mas5','agilent','loess','unknown','illumina']),
-        Constraint("quantile_norm",MUST_BE,"no"),
-        Constraint("combat_norm", MUST_BE,"no"),
-        Constraint("shiftscale_norm", MUST_BE,"no"),
-        Constraint("dwd_norm", MUST_BE,"no"),
-        Constraint("bfrm_norm", MUST_BE,"no"),
+        SignalFile_rule.SignalFile_Impute, ActbPlot,
+        Constraint("preprocess",CAN_BE_ANY_OF,['mas5','rma','agilent',
+                                               'loess','unknown','illumina']),
         Constraint(
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0,class1,test",
              "class0", "class1", "class0,class1", "unspecified"]),
         Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
         ),
-    Module(
-        'plot_actb_line',
-        SignalFile_rule.SignalFile_Merge, ActbPlot,
-        Constraint("preprocess",MUST_BE,"rma"),
-        Constraint("quantile_norm", MUST_BE,"yes",),
-        Constraint("combat_norm", MUST_BE,"no"),
-        Constraint("shiftscale_norm", MUST_BE,"no"),
-        Constraint("dwd_norm", MUST_BE,"no"),
-        Constraint("bfrm_norm", MUST_BE,"no"),
-        Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0,class1,test",
-             "class0", "class1", "class0,class1", "unspecified"]),
-        Consequence("contents", SAME_AS_CONSTRAINT),
-        ),
+    
+
     Module(
         'plot_affy_affx_line',
         SignalFile_rule.SignalFile,ControlPlot,

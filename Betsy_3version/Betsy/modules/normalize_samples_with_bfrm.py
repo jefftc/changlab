@@ -24,8 +24,8 @@ def run(data_node, parameters, user_input,network):
         assert num_factor <= col_num,(
             'the num_factor should be less than %d'%col_num)
     tmp = 'tmp_dir'
-    command = ['python', bfrm_BIN,data_node.identifier,'-f',str(num_factor), '-o',tmp]
-    print command
+    command = ['python', bfrm_BIN,data_node.identifier,'-f',
+               str(num_factor), '-o',tmp]
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -42,7 +42,7 @@ def run(data_node, parameters, user_input,network):
     f = file(outfile,'w')
     arrayio.tab_delimited_format.write(M_new,f)
     f.close()
-    out_node = bie3.Data(rulebase.SignalFile,**parameters)
+    out_node = bie3.Data(rulebase.SignalFile_Merge,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

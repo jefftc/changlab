@@ -27,24 +27,16 @@ def parents_of(network,node_id):
             parent_nodes.append(key)
     return parent_nodes
 
+
 def compare_two_dict(dict_A,dict_B):
-    dict_A_copy = dict_A.copy()
-    dict_B_copy = dict_B.copy()
-    if 'sf_processing_step' in dict_A_copy:
-        del dict_A_copy['sf_processing_step']
-    if 'sf_processing_step' in dict_B_copy:
-        del dict_B_copy['sf_processing_step']
-    if 'psf_processing_step' in dict_A_copy:
-        del dict_A_copy['psf_processing_step']
-    if 'psf_processing_step' in dict_B_copy:
-        del dict_B_copy['psf_processing_step']
-    if len(dict_A_copy)!=len(dict_B_copy):
+    
+    if len(dict_A)!=len(dict_B):
         return False
-    if set(dict_A_copy)-set(dict_B_copy):
+    if set(dict_A)-set(dict_B):
         return False
-    for key in dict_A_copy:
-        setA = dict_A_copy[key]
-        setB = dict_B_copy[key]
+    for key in dict_A:
+        setA = dict_A[key]
+        setB = dict_B[key]
         if isinstance(setA,str):
             setA = [setA]
         if isinstance(setB,str):
@@ -148,23 +140,67 @@ def _can_module_take_data(module, datas):
 
 
             
+##def _can_module_take_one_data_index(module, data, constraint_index):
+##    # Return True/False if a module can take this Data node
+##    # as part of the input with constraint_index.
+##        
+##    # Make sure the data satisfies each of the module's constraints.
+##    for constraint in module.constraints:
+##        print 'constraint',constraint
+##        data_value = data.attributes.get(constraint.name)
+##        print 'data_value',data_value
+##        data_type = bie3._get_attribute_type(data_value)
+##        assert data_type in [bie3.TYPE_ATOM, bie3.TYPE_ENUM]
+##        if constraint.behavior == bie3.MUST_BE:
+##            if data_type == bie3.TYPE_ATOM:
+##                if data_value != constraint.arg1:
+##                    return False
+##            elif data_type == bie3.TYPE_ENUM:
+##                return False
+##            else:
+##                raise AssertionError
+##        elif constraint.behavior == bie3.CAN_BE_ANY_OF:
+##            if data_type == bie3.TYPE_ATOM:
+##                if data_value not in constraint.arg1:
+##                    return False
+##            elif data_type == bie3.TYPE_ENUM:
+##                # data_value contains the possible values of this Data
+##                # object.  The values that are acceptable by module is
+##                # in constraint.arg1.  Make sure the module can handle
+##                # all of the possible values.
+##                if not bie3._is_subset(data_value, constraint.arg1):
+##                    return False
+##            else:
+##                raise AssertionError
+##        elif constraint.behavior == bie3.SAME_AS:
+##            pass #has not implemented yet
+##        else:
+##            raise AssertionError
+##
+##    return True
 def _can_module_take_one_data_index(module, data, constraint_index):
     # Return True/False if a module can take this Data node
     # as part of the input with constraint_index.
-        
+    
+
+##    for input_num in range(len(module.in_datatypes)):
+##        data = datas[input_num]
+##        if data.datatype != module.in_datatypes[input_num]:
+##            return False
+
     # Make sure the data satisfies each of the module's constraints.
     for constraint in module.constraints:
-       
-        #ignore the sf_processing_step and psf_processing_step information
-        if constraint.name in ['sf_processing_step','psf_processing_step']:
-            continue
+        # If the constraint does not apply to this data object,
+        # then ignore.
         if constraint.input_index != constraint_index:
             continue
+
         if constraint.name not in data.attributes:
-            continue
+            return False
         data_value = data.attributes.get(constraint.name)
         data_type = bie3._get_attribute_type(data_value)
         assert data_type in [bie3.TYPE_ATOM, bie3.TYPE_ENUM]
+
         if constraint.behavior == bie3.MUST_BE:
             if data_type == bie3.TYPE_ATOM:
                 if data_value != constraint.arg1:
@@ -187,7 +223,12 @@ def _can_module_take_one_data_index(module, data, constraint_index):
             else:
                 raise AssertionError
         elif constraint.behavior == bie3.SAME_AS:
-            pass #has not implemented yet
+            # Should only be encountered if there are multiple input
+            # data types.
+            #target_data = datas[constraint.arg1]
+            target_data = data
+            if data_value != target_data.attributes[constraint.name]:
+                return False
         else:
             raise AssertionError
 
@@ -409,6 +450,7 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
             if isinstance(data_node, bie3.Data):
                 pool[node_id]=data_object
                 result = choose_next_module(network, node_id, data_node)
+                #print 'next_module',result
                 if result:
                    result.sort(key=lambda x:x[1])
                    for x in result:

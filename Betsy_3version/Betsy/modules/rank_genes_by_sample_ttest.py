@@ -13,7 +13,7 @@ def run(in_nodes, parameters, user_input, network):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     label,label_line,second_line = read_label_file.read(
-        cls_node.identifier])
+        cls_node.identifier)
     M = arrayio.read(data_node.identifier)
     assert len(label) == 2, (
         'the length of label in %s should be 2'%cls_node.identifier)
@@ -62,7 +62,7 @@ def run(in_nodes, parameters, user_input, network):
     
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='SignalFile_Order')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node

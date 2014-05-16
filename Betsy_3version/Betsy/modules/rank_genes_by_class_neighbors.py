@@ -29,7 +29,7 @@ def run(in_nodes, parameters, user_input, network):
         	gp_parameters['num.permutations'] = str(user_input['cn_num_perm'])
     if 'cn_user_pval' in user_input:
     	if  module_utils.is_number(user_input['cn_user_pval']):
-        gp_parameters['user.pval'] = str(user_input['cn_user_pval'])
+            gp_parameters['user.pval'] = str(user_input['cn_user_pval'])
         
     mean_median = {'mean':'','median':'-d'}
     if parameters['cn_mean_or_median'] in ['mean','median']:
@@ -95,17 +95,14 @@ def run(in_nodes, parameters, user_input, network):
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for rank_genes_by_class_neighbors fails' %outfile)
-    new_parameters = parameters.copy()
-    new_parameters['filename'] = os.path.split(outfile)[-1]
-    out_node = bie.Data(rulebase.GeneListFile,**new_parameters)
-    return out_node
-    out_node = bie3.Data(rulebase.ClusterFile,**parameters)
+    out_node = bie3.Data(rulebase.GeneListFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
+    
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='SignalFile_Order')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node

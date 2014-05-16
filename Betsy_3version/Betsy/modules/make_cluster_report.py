@@ -55,7 +55,7 @@ def run(in_nodes,parameters, user_input, network):
         w(htmllib.A("<methods_clustering>",name="methods_clustering"))
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w('To generate this file, I ran the following analysis:')
-        bie.plot_network_gv("network.png", network)
+        bie3.plot_network_gv("network.png", network)
 ##        w(htmllib.P())
 ##        for i in range(len(pipelines[0])):
 ##            w('&nbsp&nbsp &nbsp&nbsp &nbsp&nbsp &nbsp&nbsp' +str(i+1)+'. '+pipelines[0][i])
@@ -73,10 +73,11 @@ def run(in_nodes,parameters, user_input, network):
             htmllib.TH("Value", align="LEFT") 
             )
         rows.append(x)
-        for key in data_node1.attributes.keys():
+        
+        for key in data_node1.data.attributes.keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +
-            htmllib.TD(data_node1.attributes[key], align="LEFT") 
+            htmllib.TD(data_node1.data.attributes[key], align="LEFT") 
             )
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
@@ -88,11 +89,11 @@ def run(in_nodes,parameters, user_input, network):
             htmllib.TH("Value", align="LEFT") 
             )
         rows.append(x)
-        data_node1.attributes
-        for key in data_node2.attributes.keys():
+        
+        for key in data_node2.data.attributes.keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +
-            htmllib.TD(data_node2.attributes[key], align="LEFT") 
+            htmllib.TD(data_node2.data.attributes[key], align="LEFT") 
             )
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))

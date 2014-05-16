@@ -33,7 +33,6 @@ def name_outfile(data_node,user_input):
     original_file = module_utils.get_inputid(user_input['GSEID'])
     filename = 'expression_files_' + original_file 
     outfile = os.path.join(os.getcwd(), filename)
-    print outfile
     return outfile
 
 

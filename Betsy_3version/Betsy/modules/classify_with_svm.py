@@ -64,7 +64,7 @@ def find_antecedents(network, module_id,data_nodes,parameters):
                                             datatype='SvmModel')
     data_node_test = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1,test',
-                                            datatype='PrettySignalFile')
+                                            datatype='SignalFile')
     cls_node_train = module_utils.get_identifier(network, module_id,
                                             data_nodes,contents='class0,class1',
                                             datatype='ClassLabelFile')

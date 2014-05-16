@@ -41,9 +41,9 @@ def run(in_nodes,parameters, user_input,network):
         test_label = 'test_label' + '_' + str(i)
         read_label_file.write(train_label,second_line,y_training)
         read_label_file.write(test_label,second_line,y_test[0])
-        train_node = rulebase.PrettySignalFile.output(format='gct',contents='class0,class1')
+        train_node = rulebase.SignalFile.output(format='gct',contents='class0,class1')
         train_data = rule_engine_bie3.DataObject(train_node,identifier='train'+'_'+str(i))
-        test_node = rulebase.PrettySignalFile.output(format='gct',contents='test')
+        test_node = rulebase.SignalFile.output(format='gct',contents='test')
         test_data = rule_engine_bie3.DataObject(test_node,identifier='test'+'_'+str(i))
         train_label_node = rulebase.ClassLabelFile.output(contents='class0,class1')
         train_label_data = rule_engine_bie3.DataObject(train_label_node,identifier='train_label'+'_'+str(i))
@@ -72,7 +72,7 @@ def run(in_nodes,parameters, user_input,network):
 
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PrettySignalFile',
+                                            data_nodes,datatype='SignalFile',
                                             contents='class0,class1')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile',

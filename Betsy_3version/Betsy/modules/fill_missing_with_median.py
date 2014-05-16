@@ -23,7 +23,7 @@ def run(data_node,parameters, user_input,network):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for median_fill_if_missing does not exist'
         % outfile)
-    out_node = bie3.Data(rulebase.SignalFile,**parameters)
+    out_node = bie3.Data(rulebase.SignalFile_Impute,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
@@ -46,6 +46,7 @@ def get_out_attributes(parameters,data_node):
 
 def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(identifier,pipeline,
+                                         parameters,user_input)
 
 
