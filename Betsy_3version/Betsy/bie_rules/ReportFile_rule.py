@@ -16,65 +16,80 @@ list_files = [ReportFile]
 all_modules = [
     Module(
         'make_normalize_report',
-         [
-         SignalFile_rule.SignalFile,
-         plot_rule.IntensityPlot,
-         plot_rule.ControlPlot,
-         PcaAnalysis_rule.PcaPlot,
-         plot_rule.ActbPlot,
-         PcaAnalysis_rule.PcaPlot],
-          
-         ReportFile,
-         Constraint('preprocess',CAN_BE_ANY_OF,['mas5','agilent','loess','unknown'],0),
-         Constraint("annotate",MUST_BE,"yes",0),
-         Constraint("contents",CAN_BE_ANY_OF,["train0","train1", "test",
-                             "class0,class1,test","class0",
-                             "class1", "class0,class1","unspecified"],0),
-         Constraint('quantile_norm',MUST_BE,'no',5),
-         Constraint('combat_norm',MUST_BE,'no',5),
-         Constraint('shiftscale_norm',MUST_BE,'no',5),
-         Constraint('bfrm_norm',MUST_BE,'no',5),
-         Constraint('dwd_norm',MUST_BE,'no',5),
-         Constraint('gene_center',MUST_BE,'no',5),
-         Constraint('gene_normalize',MUST_BE,'no',5),
-         Constraint('unique_genes',MUST_BE,'no',5),
-         Constraint('platform',MUST_BE,'no',5),
-         Constraint('group_fc',MUST_BE,'no',5),
-         Constraint('num_features',MUST_BE,'no',5),
+        [
+            SignalFile_rule.SignalFile,
+            plot_rule.IntensityPlot,
+            plot_rule.ControlPlot,
+            PcaAnalysis_rule.PcaPlot,
+            plot_rule.ActbPlot,
+            PcaAnalysis_rule.PcaPlot,
+            ],
+        ReportFile,
         
-##         Constraint('quantile_norm',CAN_BE_ANY_OF,['yes','no'],0),#
-##         Constraint('combat_norm',CAN_BE_ANY_OF,['yes','no'],0),#
-##         Constraint('shiftscale_norm',CAN_BE_ANY_OF,['yes','no'],0),#
-##         Constraint('bfrm_norm',CAN_BE_ANY_OF,['yes','no'],0),#
-##         Constraint('dwd_norm',CAN_BE_ANY_OF,['yes','no'],0),#
-##         Constraint('gene_center',CAN_BE_ANY_OF,['median','mean','no'],0),#
-##         Constraint('gene_normalize',CAN_BE_ANY_OF,['variance','sum_of_squares','no'],0),#
-##         Constraint('unique_genes',CAN_BE_ANY_OF,['average_genes', 'high_var', 'first_gene'],0),#
-##         Constraint('platform',CAN_BE_ANY_OF,['yes','no'],0),#
-##         Constraint('group_fc',CAN_BE_ANY_OF,['yes','no'],0),#
-##         Constraint('num_features',CAN_BE_ANY_OF,['yes','no'],0),#
-##        
-##         Constraint('quantile_norm',SAME_AS,0,3),#
-##         Constraint('combat_norm',SAME_AS,0,3),#
-##         Constraint('shiftscale_norm',SAME_AS,0,3),#
-##         Constraint('bfrm_norm',SAME_AS,0,3),#
-##         Constraint('dwd_norm',SAME_AS,0,3),#
-##         Constraint('gene_center',SAME_AS,0,3),#
-##         Constraint('gene_normalize',SAME_AS,0,3),#
-##         Constraint('unique_genes',SAME_AS,0,3),#
-##         Constraint('platform',SAME_AS,0,3),#
-##         Constraint('group_fc',SAME_AS,0,3),#
-##         Constraint('num_features',SAME_AS,0,3),#
+        Constraint(
+            'preprocess', CAN_BE_ANY_OF, ['mas5','agilent','loess','unknown'],
+            0),
+        Constraint("annotate", MUST_BE, "yes", 0),
+        Constraint(
+            "contents", CAN_BE_ANY_OF, [
+                "train0","train1", "test", "class0,class1,test","class0",
+                "class1", "class0,class1", "unspecified"],
+            0),
+
+        # First PcaPlot.
+        Constraint('quantile_norm', MUST_BE, 'yes', 3),
+        Constraint('gene_center', MUST_BE, 'median', 3),
+
+        # Second PcaPlot.
+        Constraint('quantile_norm', MUST_BE, 'no', 5),
+        Constraint('combat_norm', MUST_BE, 'no', 5),
+        Constraint('shiftscale_norm', MUST_BE, 'no', 5),
+        Constraint('bfrm_norm', MUST_BE, 'no', 5),
+        Constraint('dwd_norm', MUST_BE, 'no', 5),
+        Constraint('gene_center', MUST_BE, 'no', 5),
+        Constraint('gene_normalize', MUST_BE, 'no', 5),
+        Constraint('unique_genes', MUST_BE, 'no', 5),
+        Constraint('platform', MUST_BE, 'no', 5),
+        Constraint('group_fc', MUST_BE, 'no',5 ),
+        Constraint('num_features', MUST_BE, 'no', 5),
+        
+        ## Constraint('quantile_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+        ## Constraint('combat_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+        ## Constraint('shiftscale_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+        ## Constraint('bfrm_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+        ## Constraint('dwd_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+        ## Constraint('gene_center', CAN_BE_ANY_OF, ['median', 'mean', 'no'], 0),
+        ## Constraint(
+        ##     'gene_normalize', CAN_BE_ANY_OF,
+        ##     ['variance', 'sum_of_squares', 'no'], 0),
+        ## Constraint(
+        ##     'unique_genes', CAN_BE_ANY_OF,
+        ##     ['average_genes', 'high_var', 'first_gene'], 0),
+        ## Constraint('platform', CAN_BE_ANY_OF, ['yes', 'no'], 0),
+        ## Constraint('group_fc', CAN_BE_ANY_OF, ['yes', 'no'], 0),
+        ## Constraint('num_features', CAN_BE_ANY_OF, ['yes', 'no'], 0),
+
+        ## Constraint('quantile_norm', SAME_AS, 0, 3),
+        ## Constraint('combat_norm', SAME_AS, 0, 3),
+        ## Constraint('shiftscale_norm', SAME_AS, 0, 3),
+        ## Constraint('bfrm_norm', SAME_AS, 0, 3),
+        ## Constraint('dwd_norm', SAME_AS, 0, 3),
+        ## Constraint('gene_center', SAME_AS, 0, 3),
+        ## Constraint('gene_normalize', SAME_AS, 0, 3),
+        ## Constraint('unique_genes', SAME_AS, 0, 3),
+        ## Constraint('platform', SAME_AS, 0, 3),
+        ## Constraint('group_fc', SAME_AS, 0, 3),
+        ## Constraint('num_features', SAME_AS, 0, 3),
          
-         Constraint('contents',SAME_AS,0,1),
-         Constraint('contents',SAME_AS,0,2),
-         Constraint('contents',SAME_AS,0,3),
-         Constraint('contents',SAME_AS,0,4),
-         Constraint('contents',SAME_AS,0,5),
-         Constraint("preprocess",SAME_AS,0,3),
-         Constraint("preprocess",SAME_AS,0,4),
-         Constraint("preprocess",SAME_AS,0,5),
-         Consequence('report_type',SET_TO,'normalize_file'),
+        Constraint('contents', SAME_AS, 0, 1),
+        Constraint('contents', SAME_AS, 0, 2),
+        Constraint('contents', SAME_AS, 0, 3),
+        Constraint('contents', SAME_AS, 0, 4),
+        Constraint('contents', SAME_AS, 0, 5),
+        Constraint("preprocess", SAME_AS, 0, 3),
+        Constraint("preprocess", SAME_AS, 0, 4),
+        Constraint("preprocess", SAME_AS, 0, 5),
+        Consequence('report_type', SET_TO, 'normalize_file'),
         ),
     
     Module(

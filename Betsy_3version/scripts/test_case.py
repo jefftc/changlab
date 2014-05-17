@@ -709,16 +709,33 @@ def run_case28():
 
 def run_case29():
     """Expected a network generated from GEOSeries
-       the path of Data is:
-       GEOSeries -> ... -> SignalFile_Merge -> ...
-       ->SignalFile_Order -> SignalFile
-       SignalFile_Merge, ClassLabelFile -> (convert_label_cls)->ClassLabelFile
-       SignalFile_Order,ClassLabelFile-> (rank_genes_sample_ttest)->GeneListFile
-       SignalFile_Order,GeneListFile -> (reorder_genes)->SignalFile_Order
+    
+    the path of Data is:
+    GEOSeries -> ... -> SignalFile_Merge -> ...
+    ->SignalFile_Order -> SignalFile
+    SignalFile_Merge, ClassLabelFile -> (convert_label_cls)->ClassLabelFile
+    SignalFile_Order,ClassLabelFile-> (rank_genes_sample_ttest)->GeneListFile
+    SignalFile_Order,GeneListFile -> (reorder_genes)->SignalFile_Order
 
-       However, we got a network which the input to convert_label_cls is not generated from
-       GEOSeries, it is generated from SignalFile_Postprocess with preprocess=unknown,
-       That is, we expect the node 17 and node 54 to be the same node"""
+    However, we got a network which the input to convert_label_cls is
+    not generated from GEOSeries, it is generated from
+    SignalFile_Postprocess with preprocess=unknown, That is, we expect
+    the node 17 and node 54 to be the same node
+
+    JC: Node 17 and 54 have different preprocess.  In principle, we
+    could generate a cls from SignalFiles with different
+    preprocessing.  I think the issue is that node 17 should point to
+    node 73.
+
+    17  SignalFile_Merge  preprocess="illumina"
+    54  SignalFile_Merge  preprocess="unknown"
+    45  ClassLabelFile
+    73  convert_label_to_cls
+
+    Before optimization, ClassLabelFile (118) + SignalFile_Merge (25)
+    should go into convert_label_to_cls (116, 117).
+
+    """
     out_data = rulebase.SignalFile.output(
         preprocess="illumina",
         format="tdf", logged="yes",
@@ -726,24 +743,36 @@ def run_case29():
         )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
+    #bie3.write_network("out.network", network)
+    #network = bie3.read_network("out.network")
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
 
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+
 def run_case30():
-
     '''test normalize report,
-       Expect a network generated from GEOSeries, the make_normalize_report has 6 input data:
-       ControlPlot,IntensityPlot,SignalFile,ActbPlot,PcaPlot,PcaPlot
-       The first PcaPlot is generated from SignalFile and we require quantile_norm=no and gene_center=no
-       The Second PcaPlot is generated from SignalFile and we require quantile_norm=yes and gene_center=median
+    
+    Expect a network generated from GEOSeries, the
+    make_normalize_report has 6 input data:
+    ControlPlot,IntensityPlot,SignalFile,ActbPlot,PcaPlot,PcaPlot
+     
+    The first PcaPlot is generated from SignalFile and we require
+    quantile_norm=no and gene_center=no
+     
+    The Second PcaPlot is generated from SignalFile and we require
+    quantile_norm=yes and gene_center=median
 
-       However, we only got 5 input data to the make_normalize_report. That is, only the
-       first PcaPlot is generated. The second one does not shown. I tried to change the rules but get the
-       same error as run_case28.
-       '''
+    However, we only got 5 input data to the
+    make_normalize_report. That is, only the first PcaPlot is
+    generated. The second one does not shown. I tried to change the
+    rules but get the same error as run_case28.
+
+    JC: Fixed case28.  Please try again.
+       
+    '''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
@@ -756,6 +785,8 @@ def run_case30():
     
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+    
 def main():
     #run_case01()
     #run_case02()
@@ -788,6 +819,8 @@ def main():
     #run_case28()
     #run_case29()
     run_case30()
+    
+    
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")
