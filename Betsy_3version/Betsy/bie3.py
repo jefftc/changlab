@@ -34,6 +34,7 @@ optimize_network
 select_start_node
 
 summarize_moduledb
+check_moduledb
 
 print_modules
 print_network
@@ -243,7 +244,7 @@ class UserInputDef:
 
 class UserInput:
     def __init__(self, module, name, value):
-        assert type(module) is type(Module)
+        assert isinstance(module, Module)
         assert type(name) is type("")
         assert type(value) is type("")
         self.module = module
@@ -889,6 +890,7 @@ def backchain(moduledb, out_data, *user_attributes):
     # Return a Network object.
     global MAX_NETWORK_SIZE
 
+    check_moduledb(moduledb)
     if isinstance(out_data, DataType):
         attrdict = {}
         for attr in user_attributes:
@@ -900,6 +902,7 @@ def backchain(moduledb, out_data, *user_attributes):
 
     for x in user_attributes:
         assert isinstance(x, Attribute)
+    
 
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
@@ -1751,6 +1754,17 @@ def summarize_moduledb(moduledb):
     x = ModuleDbSummary(module_names, name2module, name2datatypes, datatypes)
     return x
 
+
+def check_moduledb(moduledb):
+    seen = {}
+    for module in moduledb:
+        assert isinstance(module, Module)
+        seen[module.name] = seen.get(module.name, 0) + 1
+
+    # Make sure no duplicate modules.
+    dups = ["%s (%d times)" % (x, seen[x]) for x in seen if seen[x] > 1]
+    assert not dups, "Duplicate modules: %s" % "\n".join(dups)
+        
 
 def print_modules(moduledb):
     summary = summarize_moduledb(moduledb)

@@ -778,7 +778,8 @@ def run_case30():
     the rules, the network generated is: the attributes that are not specified
     in the output can be set to different options. I expected the attributes in
     SignalFile that are not specified is set to output default. And the first
-    PcaPlot has the same value as the SignalFile. 
+    PcaPlot has the same value as the SignalFile.
+    
     '''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
