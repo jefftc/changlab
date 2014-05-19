@@ -2189,6 +2189,13 @@ def _forwardchain_to_outputs(module, in_datas):
         else:
             raise AssertionError
 
+    # If no options, then make one output variable.
+    if not options:
+        x = Data.__new__(Data)
+        x.datatype = datatype
+        x.attributes = attributes.copy()
+        return [x]
+
     option_names = sorted(options)
     args = [options[x] for x in option_names]
     outputs = []
@@ -2527,12 +2534,12 @@ def _can_module_produce_data(module, data, user_attributes):
             x = [x for x in module.constraints
                  if x.name == conseq1.name and x.input_index == const1.arg1]
             assert len(x) == 1
-            const1 = x
+            const1 = x[0]
         while const2.behavior == SAME_AS:
             x = [x for x in module.constraints
-                 if x.name == conseq2.name and x.input_index == const2.arg1]
+                 if x.name == const2.name and x.input_index == const2.arg1]
             assert len(x) == 1
-            const2 = x
+            const2 = x[0]
 
         assert const1.behavior in [MUST_BE, CAN_BE_ANY_OF]
         assert const2.behavior in [MUST_BE, CAN_BE_ANY_OF]
@@ -2620,7 +2627,7 @@ def _get_valid_input_combinations(network, module_id, all_input_ids,
         for x in itertools.product(node_ids, output_datas):
             node_id, output_data = x
             node = network.nodes[node_id]
-            
+
             if _is_data_compatible_with(output_data, node):
                 output_is_compatible = True
         if not output_is_compatible:
