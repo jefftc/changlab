@@ -788,7 +788,19 @@ def run_case30():
     unique_genes=['average_genes', 'high_var', 'first_gene'])
     duplicate_probes=["no", "closest_probe", "high_var_probe"]
     
-    
+    The path from node 27 to node 2 is very complicated since the combination of different
+    attributes. I expected the node 2 has the following attributes
+      Data(SignalFile, annotate='yes', bfrm_norm='no', combat_norm='no', c
+       ontents='test', duplicate_probe='no', dwd_norm='no', filter='no',
+        format='tdf', gene_center='median', gene_normalize='no', gene_or
+       der='no', group_fc='no', logged='yes', missing_algorithm='zero_fi
+       ll', num_features='no', platform='no', predataset='no', preproces
+       s='mas5', quantile_norm='yes', rename_sample='no', shiftscale_nor
+       m='no', unique_genes='no')
+    I expect the network: node 64 and node 58 is the same node.
+    Also the path to node 2(SignalFile) is like:
+    SignalFile_Annotate(node 68)->annotate_probes->SignalFile_Annotate->
+    convert_annotate_filter->SignalFile_Filter->transfter->SignalFile(node 2)
     '''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
