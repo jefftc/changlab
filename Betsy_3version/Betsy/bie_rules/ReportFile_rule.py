@@ -37,6 +37,7 @@ all_modules = [
             0),
 
         #SignalFile
+<<<<<<< HEAD
         Constraint('quantile_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
         Constraint('combat_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
         Constraint('shiftscale_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
@@ -70,6 +71,37 @@ all_modules = [
         Constraint('num_features', SAME_AS, 0, 3),
         Constraint('duplicate_probes', SAME_AS, 0, 3),
         
+=======
+         Constraint('quantile_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+	 Constraint('combat_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+	 Constraint('shiftscale_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+	 Constraint('bfrm_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+	 Constraint('dwd_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+	 Constraint('gene_center', CAN_BE_ANY_OF, ['median', 'mean', 'no'], 0),
+	 Constraint(
+	     'gene_normalize', CAN_BE_ANY_OF,
+	     ['variance', 'sum_of_squares', 'no'], 0),
+	 Constraint(
+	     'unique_genes', CAN_BE_ANY_OF,
+	     ['average_genes', 'high_var', 'first_gene'], 0),
+	 Constraint('platform', CAN_BE_ANY_OF, ['yes', 'no'], 0),
+	 Constraint('group_fc', CAN_BE_ANY_OF, ['yes', 'no'], 0),
+	 Constraint('num_features', CAN_BE_ANY_OF, ['yes', 'no'], 0),
+         Constraint('duplicate_probe', CAN_BE_ANY_OF, ["no", "closest_probe", "high_var_probe"], 0),
+        # First PcaPlot.
+	 Constraint('quantile_norm', SAME_AS, 0, 3),
+	 Constraint('combat_norm', SAME_AS, 0, 3),
+	 Constraint('shiftscale_norm', SAME_AS, 0, 3),
+	 Constraint('bfrm_norm', SAME_AS, 0, 3),
+	 Constraint('dwd_norm', SAME_AS, 0, 3),
+	 Constraint('gene_center', SAME_AS, 0, 3),
+	 Constraint('gene_normalize', SAME_AS, 0, 3),
+	 Constraint('unique_genes', SAME_AS, 0, 3),
+	 Constraint('platform', SAME_AS, 0, 3),
+	 Constraint('group_fc', SAME_AS, 0, 3),
+	 Constraint('num_features', SAME_AS, 0, 3),
+         Constraint('duplicate_probe', SAME_AS, 0, 3),
+>>>>>>> bb2fda033720e587587f0e782b32f7b670df2025
         # Second PcaPlot.
         Constraint('quantile_norm', MUST_BE, 'no', 5),
         Constraint('combat_norm', MUST_BE, 'no', 5),
@@ -82,7 +114,7 @@ all_modules = [
         Constraint('platform', MUST_BE, 'no', 5),
         Constraint('group_fc', MUST_BE, 'no',5 ),
         Constraint('num_features', MUST_BE, 'no', 5),
-        Constraint('duplicate_probes', MUST_BE, 'no', 5),
+        Constraint('duplicate_probe', MUST_BE, 'no', 5),
         
         Constraint('contents', SAME_AS, 0, 1),
         Constraint('contents', SAME_AS, 0, 2),
