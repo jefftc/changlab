@@ -34,13 +34,13 @@ def run(in_nodes, parameters,user_input,network):
     assert module_utils.exists_nz(outfile),(
         'the output file %s for filter_genes_by_fold_change_across_classes fails'
          % outfile)
-    out_node = bie3.Data(rulebase.PrettySignalFile,**parameters)
+    out_node = bie3.Data(rulebase.SignalFile_Filter,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PrettySignalFile')
+                                            data_nodes,datatype='SignalFile_Filter')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node

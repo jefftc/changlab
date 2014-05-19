@@ -758,20 +758,27 @@ def run_case30():
     Expect a network generated from GEOSeries, the
     make_normalize_report has 6 input data:
     ControlPlot,IntensityPlot,SignalFile,ActbPlot,PcaPlot,PcaPlot
-     
+
     The first PcaPlot is generated from SignalFile and we require
+    quantile_norm=yes and gene_center=median
+    
+    The second PcaPlot is generated from SignalFile and we require
     quantile_norm=no and gene_center=no
      
-    The Second PcaPlot is generated from SignalFile and we require
-    quantile_norm=yes and gene_center=median
-
     However, we only got 5 input data to the
     make_normalize_report. That is, only the first PcaPlot is
     generated. The second one does not shown. I tried to change the
     rules but get the same error as run_case28.
 
     JC: Fixed case28.  Please try again.
-       
+    
+    XC: I have changed the rules. I try to have the rules that
+    the attributes in first PcaPlot is the same with SignalFile.
+    And the attributes in second PcaPlot is set to 'no'. But after I change
+    the rules, the network generated is: the attributes that are not specified
+    in the output can be set to different options. I expected the attributes in
+    SignalFile that are not specified is set to output default. And the first
+    PcaPlot has the same value as the SignalFile. 
     '''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
