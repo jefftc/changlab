@@ -757,28 +757,37 @@ def run_case30():
     
     Expect a network generated from GEOSeries, the
     make_normalize_report has 6 input data:
-    ControlPlot,IntensityPlot,SignalFile,ActbPlot,PcaPlot,PcaPlot
+    SignalFile,IntensityPlot,ControlPlot,PcaPlot,ActbPlot,PcaPlot.
 
     The first PcaPlot is generated from SignalFile and we require
-    quantile_norm=yes and gene_center=median
+    the attribute of quantile_norm, combat_norm,shiftscale_norm, bfrm_norm,
+    dwd_norm, gene_center,gene_normalize,unique_genes,platform,group_fc, num_features,
+    and duplicate_probes for both SignalFile and first PcaPlot are the same. If it is not
+    specified by the user in the output, the value of these attributes will be set
+    to output default.
     
     The second PcaPlot is generated from SignalFile and we require
-    quantile_norm=no and gene_center=no
-     
-    However, we only got 5 input data to the
-    make_normalize_report. That is, only the first PcaPlot is
-    generated. The second one does not shown. I tried to change the
-    rules but get the same error as run_case28.
+    the attributes of quantile_norm, combat_norm,shiftscale_norm, bfrm_norm,
+    dwd_norm, gene_center,gene_normalize,unique_genes,platform,group_fc, num_features,
+    and duplicate_probes all set to 'no'.
 
-    JC: Fixed case28.  Please try again.
+    The reason of two PcaPlot is that we want to compare the SignalFile
+    before any normalization and after normalization.
+     
+    However, the network we currently got is:
+    the attributes of SignalFile, which we are not specified in the output,
+    can set to different values,like:
+    bfrm_norm=['yes', 'no']
+    combat_norm=['yes', 'no']
+    dwd_norm=['yes', 'no'] 
+    gene_normalize=['variance', 'sum_of_squares', 'no'],
+    group_fc=['yes', 'no'],  
+    num_features=['yes', 'no'],
+    platform=['yes', 'no'],
+    shiftscale_norm=['yes', 'no'],
+    unique_genes=['average_genes', 'high_var', 'first_gene'])
+    duplicate_probes=["no", "closest_probe", "high_var_probe"]
     
-    XC: I have changed the rules. I try to have the rules that
-    the attributes in first PcaPlot is the same with SignalFile.
-    And the attributes in second PcaPlot is set to 'no'. But after I change
-    the rules, the network generated is: the attributes that are not specified
-    in the output can be set to different options. I expected the attributes in
-    SignalFile that are not specified is set to output default. And the first
-    PcaPlot has the same value as the SignalFile.
     
     '''
     network = bie3.backchain(  

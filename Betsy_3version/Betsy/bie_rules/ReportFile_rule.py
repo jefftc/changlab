@@ -36,24 +36,8 @@ all_modules = [
                 "class1", "class0,class1", "unspecified"],
             0),
 
-##        # First PcaPlot.
-##        Constraint('quantile_norm', MUST_BE, 'yes', 3),
-##        Constraint('gene_center', MUST_BE, 'median', 3),
-
-        # Second PcaPlot.
-        Constraint('quantile_norm', MUST_BE, 'no', 5),
-        Constraint('combat_norm', MUST_BE, 'no', 5),
-        Constraint('shiftscale_norm', MUST_BE, 'no', 5),
-        Constraint('bfrm_norm', MUST_BE, 'no', 5),
-        Constraint('dwd_norm', MUST_BE, 'no', 5),
-        Constraint('gene_center', MUST_BE, 'no', 5),
-        Constraint('gene_normalize', MUST_BE, 'no', 5),
-        Constraint('unique_genes', MUST_BE, 'no', 5),
-        Constraint('platform', MUST_BE, 'no', 5),
-        Constraint('group_fc', MUST_BE, 'no',5 ),
-        Constraint('num_features', MUST_BE, 'no', 5),
-        
-	 Constraint('quantile_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
+        #SignalFile
+         Constraint('quantile_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
 	 Constraint('combat_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
 	 Constraint('shiftscale_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
 	 Constraint('bfrm_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
@@ -68,7 +52,8 @@ all_modules = [
 	 Constraint('platform', CAN_BE_ANY_OF, ['yes', 'no'], 0),
 	 Constraint('group_fc', CAN_BE_ANY_OF, ['yes', 'no'], 0),
 	 Constraint('num_features', CAN_BE_ANY_OF, ['yes', 'no'], 0),
-
+         Constraint('duplicate_probes', CAN_BE_ANY_OF, ["no", "closest_probe", "high_var_probe"], 0),
+        # First PcaPlot.
 	 Constraint('quantile_norm', SAME_AS, 0, 3),
 	 Constraint('combat_norm', SAME_AS, 0, 3),
 	 Constraint('shiftscale_norm', SAME_AS, 0, 3),
@@ -80,7 +65,21 @@ all_modules = [
 	 Constraint('platform', SAME_AS, 0, 3),
 	 Constraint('group_fc', SAME_AS, 0, 3),
 	 Constraint('num_features', SAME_AS, 0, 3),
-         
+         Constraint('duplicate_probes', SAME_AS, 0, 3),
+        # Second PcaPlot.
+        Constraint('quantile_norm', MUST_BE, 'no', 5),
+        Constraint('combat_norm', MUST_BE, 'no', 5),
+        Constraint('shiftscale_norm', MUST_BE, 'no', 5),
+        Constraint('bfrm_norm', MUST_BE, 'no', 5),
+        Constraint('dwd_norm', MUST_BE, 'no', 5),
+        Constraint('gene_center', MUST_BE, 'no', 5),
+        Constraint('gene_normalize', MUST_BE, 'no', 5),
+        Constraint('unique_genes', MUST_BE, 'no', 5),
+        Constraint('platform', MUST_BE, 'no', 5),
+        Constraint('group_fc', MUST_BE, 'no',5 ),
+        Constraint('num_features', MUST_BE, 'no', 5),
+        Constraint('duplicate_probes', MUST_BE, 'no', 5),
+        
         Constraint('contents', SAME_AS, 0, 1),
         Constraint('contents', SAME_AS, 0, 2),
         Constraint('contents', SAME_AS, 0, 3),
@@ -93,7 +92,7 @@ all_modules = [
         ),
     
     Module(
-        'make_normalize_report',
+        'make_normalize_report_rma',
          [SignalFile_rule.SignalFile,
          plot_rule.IntensityPlot,
          plot_rule.ControlPlot,
