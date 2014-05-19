@@ -26,10 +26,10 @@ def run(data_node,parameters, user_input, network):
     ratio = float(nrow)/ncol
     max_box_height = None
     max_box_width = None
-    if 'hm_width_value' in user_input:
-        max_box_width = user_input['hm_width_value']
-    if 'hm_height_value' in user_input:
-         max_box_height = user_input['hm_height_value']
+    if 'hm_width' in user_input:
+        max_box_width = user_input['hm_width']
+    if 'hm_height' in user_input:
+         max_box_height = user_input['hm_height']
     if ratio >= 4:
         x,y=graphlib.find_tall_heatmap_size(nrow,ncol,
                                             max_box_height=max_box_height,

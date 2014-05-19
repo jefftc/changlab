@@ -23,7 +23,6 @@ def run(data_node, parameters, user_input, network):
         download_geo_with_GPLID(GSEID, GPLID, outfile)
     assert module_utils.exists_nz(outfile), (
         'the output file %s for download_geo_dataset_GPL fails' % outfile)
-    print 'finish download'
     out_node = bie3.Data(rulebase.ExpressionFiles,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object

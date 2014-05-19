@@ -416,7 +416,7 @@ all_modules = [
         Consequence("contents",SAME_AS_CONSTRAINT),
         ),
     Module(
-        "convert_CEL_cc_to_CEL_v3",
+        "convert_CEL_to_v3",
         CELFiles, CELFiles,
         Constraint("version", MUST_BE, "cc"),
         Consequence("version", SET_TO, "v3"),
