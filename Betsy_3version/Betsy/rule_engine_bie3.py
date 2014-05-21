@@ -84,109 +84,18 @@ def create_out_attributes_from_objects(network,module,module_id, pool):
         if len(next_ids)==1:
             return network.nodes[next_ids[0]].attributes
         else:
-##            for pre_id in pre_ids:
             for next_id in next_ids:
                 if next_id in pool:
                     continue
                 out_attributes = network.nodes[next_id].attributes
                 return out_attributes
 
-    
-
-
-def _can_module_take_data(module, datas):
-    # Return True/False if a module can take this list of Data nodes
-    # as an input.
-    if len(module.in_datatypes) != len(datas):
-        return False
-    if len(datas) > 1:
-        raise NotImplementedError
-    data = datas[0]
-    if data.datatype != module.in_datatypes[0]:
-        return False
-
-    # Make sure the data satisfies each of the module's constraints.
-    for constraint in module.constraints:
-        assert constraint.name in data.attributes
-        data_value = data.attributes.get(constraint.name)
-        data_type = bie3._get_attribute_type(data_value)
-        assert data_type in [TYPE_ATOM, TYPE_ENUM]
-        
-        if constraint.behavior == MUST_BE:
-            if data_type == TYPE_ATOM:
-                if data_value != constraint.arg1:
-                    return False
-            elif data_type == TYPE_ENUM:
-                return False
-            else:
-                raise AssertionError
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            if data_type == TYPE_ATOM:
-                if data_value not in constraint.arg1:
-                    return False
-            elif data_type == TYPE_ENUM:
-                # data_value contains the possible values of this Data
-                # object.  The values that are acceptable by module is
-                # in constraint.arg1.  Make sure the module can handle
-                # all of the possible values.
-                if not bie3._is_subset(data_value, constraint.arg1):
-                    return False
-            else:
-                raise AssertionError
-        else:
-            raise AssertionError
-
-    return True
-
-
             
-##def _can_module_take_one_data_index(module, data, constraint_index):
-##    # Return True/False if a module can take this Data node
-##    # as part of the input with constraint_index.
-##        
-##    # Make sure the data satisfies each of the module's constraints.
-##    for constraint in module.constraints:
-##        print 'constraint',constraint
-##        data_value = data.attributes.get(constraint.name)
-##        print 'data_value',data_value
-##        data_type = bie3._get_attribute_type(data_value)
-##        assert data_type in [bie3.TYPE_ATOM, bie3.TYPE_ENUM]
-##        if constraint.behavior == bie3.MUST_BE:
-##            if data_type == bie3.TYPE_ATOM:
-##                if data_value != constraint.arg1:
-##                    return False
-##            elif data_type == bie3.TYPE_ENUM:
-##                return False
-##            else:
-##                raise AssertionError
-##        elif constraint.behavior == bie3.CAN_BE_ANY_OF:
-##            if data_type == bie3.TYPE_ATOM:
-##                if data_value not in constraint.arg1:
-##                    return False
-##            elif data_type == bie3.TYPE_ENUM:
-##                # data_value contains the possible values of this Data
-##                # object.  The values that are acceptable by module is
-##                # in constraint.arg1.  Make sure the module can handle
-##                # all of the possible values.
-##                if not bie3._is_subset(data_value, constraint.arg1):
-##                    return False
-##            else:
-##                raise AssertionError
-##        elif constraint.behavior == bie3.SAME_AS:
-##            pass #has not implemented yet
-##        else:
-##            raise AssertionError
-##
-##    return True
+
 def _can_module_take_one_data_index(module, data, constraint_index):
     # Return True/False if a module can take this Data node
     # as part of the input with constraint_index.
-    
 
-##    for input_num in range(len(module.in_datatypes)):
-##        data = datas[input_num]
-##        if data.datatype != module.in_datatypes[input_num]:
-##            return False
 
     # Make sure the data satisfies each of the module's constraints.
     for constraint in module.constraints:
@@ -279,8 +188,6 @@ def test_require_data(network, module_id, pool):
                                          pool[node_id].data)
         if flag and node_id not in has_id:
             has_id.append(node_id)
-    #print require_id
-    #print has_id
     require_id.sort()
     has_id.sort()
     if require_id == has_id:
@@ -464,7 +371,7 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
                 if test_required:       
                     pipeline_sequence.append(module.name)
                     out_nodes = run_module(network, module_id, pool, user_inputs, pipeline_sequence,
-                                           user,job_name) ###
+                                           user,job_name) 
                     for x in out_nodes:
                         next_node, next_id = x
                         if next_id == 0:
@@ -475,8 +382,8 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
                                 print '\r'
                                 sys.stdout.flush()
                             else:
-                                    print 'This pipeline has completed unsuccessfully'
-                                    raise ValueError(
+                                print 'This pipeline has completed unsuccessfully'
+                                raise ValueError(
                                         'there is no output for this pipeline')
                             return
                         elif next_id is None:

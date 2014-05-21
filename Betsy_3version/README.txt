@@ -1,0 +1,199 @@
+Preprocess Usage
+
+1)Betsy can preprocess with rma or mas5 for Affymetrix cel data. 
+
+	Examples:
+	A. When given a GSE ID from the geo, and want to do rma preprocess, 
+	   the command is
+
+	python run_rule.py  
+      --in_datatype 'GEOSeries' 
+      --user_input 'GSEID=GSE8286' 
+      --out_datatype 'SignalFile' 
+      --attr 'SignalFile,preprocess=rma' 
+      --attr 'SignalFile,quantile_norm=yes'
+      --network 'out.png'
+      ----------------------------------------------------------------
+      B. When given a GSE ID and GPL platform number from the geo, 
+	   and want to do rma preprocess, 
+	   the command is 
+     
+      python run_rule.py  
+      --in_datatype 'GEOSeries' 
+      --user_input 'GSEID=GSE17907' 
+      --user_input 'GPLID=GPL570'
+      --out_datatype 'SignalFile' 
+      --attr 'SignalFile,preprocess=rma' 
+      --attr 'SignalFile,quantile_norm=yes'
+      --network 'out.png'
+      ----------------------------------------------------------------
+     C. When given a folder contains cel file, the command is
+
+	python run_rule.py  
+      --in_datatype 'CELFiles'
+      --identifier '<./GSE21947>'
+      --out_datatype 'SignalFile'     	
+      --attr 'SignalFile,preprocess=rma'
+      --attr 'SignalFile,quantile_norm=yes'
+      --network 'out.png'
+-----------------------------------------------------------------------
+2) Betsy can preprocess with illumina for illumina idat files.
+     Example:
+	When given a folder contains idat files, the command is
+     python run_rule.py 
+     --in_datatype 'ExpressionFiles'  
+     --identifier '</home/xchen/chencode/betsy_test/6991010018>' 
+     --out_datatype 'SignalFile'  
+     --attr 'SignalFile,preprocess=illumina'  
+     --network 'out.png'
+ ----------------------------------------------------------------
+3) Betsy can preprocess with agilent for  Agilent files.
+     Example:
+	When given a folder contains agilent files, the command is
+     python run_rule.py 
+     --in_datatype 'ExpressionFiles'  
+     --identifier '</home/xchen/chencode/betsy_test/agilent_expression>' 
+     --out_datatype 'SignalFile'  
+     --attr 'SignalFile,preprocess=agilent'  
+     --network 'out.png'
+ ----------------------------------------------------------------
+4) Betsy can preprocess with gpr for gpr files.
+     Example:
+	When given a folder contains gpr files, the command is
+     python run_rule.py 
+     --in_datatype 'ExpressionFiles'  
+     --identifier '</home/xchen/chencode/betsy_test/GSE4189>' 
+     --out_datatype 'SignalFile'  
+     --attr 'SignalFile,preprocess=loess'  
+     --network 'out.png'
+=============================================================================
+Process Usage
+Betsy can do predataset,log,unlog,gene_filter,quantile,combat, shiftscale,dwd,bfrm, predataset,gene_center,gene_normalize,gene_order, annotate, rename_sample, platform,
+num_features,unique_genes, duplicate_probe,group_fc,change format,for signal files
+
+The option of the attributes are:
+    preprocess:   unknown, illumina, agilent, mas5, rma, loess
+    missing_algorithm: none, median_fill, zero_fill             filter:no, yes     dwd_norm: no, yes    bfrm_norm: no, yes    quantile_norm: no, yes    shiftscale_norm: no, yes    combat_norm: no", yes    predataset: no, yes    gene_center: no, mean, median    gene_normalize:  no, variance, sum_of_squares    gene_order:no, class_neighbors, gene_list, t_test_p, t_test_fdr    annotate: no,yes    rename_sample: no, yes    platform: yes,no    num_features: yes,no    unique_genes: no, average_genes, high_var, first_gene,    duplicate_probe:no, closest_probe, high_var_probe        group_fc: yes,no    contents:unspecified, train0, train1, test, class0,class1,test,        class0, class1, class0,class1,          logged: no, yes    format: tdf, gct
+
+ ----------------------------------------------------------------
+    Example:
+    When given a SignalFile,do predataset, quantile, gene_center=mean,gene_normalize=variance.
+    The command is
+    python run_rule.py
+    --in_datatype 'SignalFile_Postprocess'
+    --identifier '</home/xchen/chencode/betsy_test/all_aml_train_missed.gct>'
+    --out_datatype 'SignalFile'
+    --attr 'SignalFile,predataset=yes'
+    --attr 'SignalFile,quantile_norm=yes'
+    --attr 'SignalFile,gene_center=mean'
+    --attr 'SignalFile,gene_normalize=variance'
+ ----------------------------------------------------------------
+    When given a SignalFile and ClassLabelFile, group_fc=yes and group_fc_num=1
+    The command is:
+	python run_rule.py 
+	--in_datatype 'SignalFile_Postprocess'  
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' 
+	--in_datatype 'ClassLabelFile' 
+	--attr 'cls_format=cls' 
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
+	--out_datatype 'SignalFile'  
+	--attr 'SignalFile,group_fc=yes'  
+	--user_input 'group_fc_num=1' 
+	--network 'out.png'
+=============================================================================
+Heatmap Usage
+Betsy can make heatmap for a SignalFile without clustering.
+    Example:
+    When given a signal_file, plot the heatmap and set the heatmap size as x=20,y=20.
+    The command is:
+	python run_rule.py 
+	--in_datatype 'SignalFile_Postprocess'  
+	--identifier '</home/xchen/chencode/betsy_test/breast_19.mas5>'  
+	--out_datatype 'ReportFile'   
+	--attr 'ReportFile,report_type=heatmap' 
+     --user_input 'hm_width=20'
+     --user_input 'hm_height=20'
+	--network 'out.png'
+
+   
+    The result folder will contain a png file showing the heatmap.
+=============================================================================
+Clustering Usage
+Betsy can do clustering for a SignalFile and plot the heatmap.
+
+    Example:
+    When given a signalFile, gene_center=mean, gene_normalize=variance, 
+    cluster the genes by hierarchical method and plot the heatmap, 
+    set the heatmap size as x=200,y=1.
+    The command is:
+	python run_rule.py 
+	--in_datatype 'SignalFile_Postprocess'  
+	--identifier '</home/xchen/chencode/betsy_test/breast_19.mas5>'  
+	--out_datatype 'ReportFile'   
+	--attr 'ReportFile,report_type=cluster' 
+     --attr 'SignalFile,gene_normalize=variance'
+     --attr 'SignalFile,gene_center=mean'
+	--attr 'ClusterFile,cluster_alg=pca' 
+	--attr 'ClusterFile,distance=correlation' 
+     --user_input 'hm_width=200'
+     --user_input 'hm_height=1'
+	--network 'out.png'
+
+The result folder will contain a clustering file and a png file showing the heatmap.
+===============================================================================
+Classification Usage
+Betsy can do classification with svm and weighted_voting method for dataset. 
+Also it can leave one out cross validation by these two methods.
+The command is:
+	python run_rule.py 
+	--in_datatype 'SignalFile_Postprocess' 
+	--attr 'contents=class0,class1' 
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.res' 
+	--in_datatype 'SignalFile_Postprocess' 
+	--attr 'contents=test' 
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_test.res' 
+	--in_datatype 'ClassLabelFile' 
+	--attr 'contents=class0,class1' 
+	--attr 'cls_format=cls' 
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
+	--in_datatype 'ClassLabelFile' 
+	--attr 'contents=test' 
+	--attr 'cls_format=cls' 
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_test.cls' 
+	--out_datatype 'ReportFile' 
+	--attr 'ReportFile,report_type=classify'  
+	--network 'out.png' 
+	--network_text 'out.txt' 
+
+===============================================================================
+Differential expressed genes analysis usage
+Betsy can do the differential expressed genes analysis for signal_files.
+The command is:
+	python run_rule.py 
+	--in_datatype 'SignalFile_Postprocess'  
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' 
+	--in_datatype 'ClassLabelFile' 
+	--attr 'cls_format=cls' 
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
+	--out_datatype 'ReportFile'  
+	--attr 'ReportFile,report_type=diffgenes' 
+	--network 'out.png'
+===============================================================================
+Geneset Analysis Usage
+Example:
+When given a signal_file and a gene set file, try do geneset score analysis and plot the result.
+
+	python run_rule.py 
+	--out_datatype 'ReportFile' 
+	--attr 'ReportFile,report_type=geneset' 
+	--attr 'SignalFile,quantile_norm=yes'   
+	--attr 'SignalFile,gene_center=mean' 
+	--attr 'SignalFile,gene_normalize=variance' 
+	--attr 'SignalFile,unique_genes=high_var' 
+	--attr 'SignalFile,annotate=yes'  
+	--in_datatype 'SignalFile_Postprocess'  
+	--identifier '</home/xchen/chencode/betsy_test/se2fplate6_48.illu.gz>' 
+	--in_datatype 'GenesetFile' 
+	--identifier '</home/xchen/chencode/betsy_test/genesets.gmt>' 
+	--user_input 'geneset_value=E2F1n_affy_150_UP' 
+	--network 'out.png'

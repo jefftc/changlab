@@ -103,7 +103,6 @@ def main():
         bie.print_network(network)
     else:
         rule_engine_bie3.run_pipeline(network,in_objects,user_inputs)
-        print 'All pipelines have completed successfully.'
      
 
 
