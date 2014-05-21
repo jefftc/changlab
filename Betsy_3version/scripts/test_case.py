@@ -814,7 +814,26 @@ def run_case30():
     
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+def run_case31():
+    """test case for batch effect remove,
+       need a function to select the order of
+       different normalization methods"""
+    out_data = rulebase.SignalFile.output(preprocess='illumina',
+                                          missing_algorithm="zero_fill",format='gct',
+                                          logged='no',
+                                         filter='yes',quantile_norm="yes",
+                                         dwd_norm='yes',
+                                         shiftscale_norm="yes",
+                                         bfrm_norm='yes',
+                                         combat_norm='yes',
+                                                predataset='yes',
+                                                )
 
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
     
 def main():
     #run_case01()
@@ -847,8 +866,8 @@ def main():
     #run_case27()
     #run_case28()
     #run_case29()
-    run_case30()
-    
+    #run_case30()
+    run_case31()
     
 if __name__ == '__main__':
     main()

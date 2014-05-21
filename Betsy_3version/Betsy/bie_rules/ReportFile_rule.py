@@ -55,7 +55,7 @@ all_modules = [
         Constraint('group_fc', CAN_BE_ANY_OF, ['yes', 'no'], 0),
         Constraint('num_features', CAN_BE_ANY_OF, ['yes', 'no'], 0),
         Constraint(
-            'duplicate_probes', CAN_BE_ANY_OF,
+            'duplicate_probe', CAN_BE_ANY_OF,
             ["no", "closest_probe", "high_var_probe"], 0),
         
         # First PcaPlot.
@@ -70,7 +70,7 @@ all_modules = [
         Constraint('platform', SAME_AS, 0, 3),
         Constraint('group_fc', SAME_AS, 0, 3),
         Constraint('num_features', SAME_AS, 0, 3),
-        Constraint('duplicate_probes', SAME_AS, 0, 3),
+        Constraint('duplicate_probe', SAME_AS, 0, 3),
         
         # Second PcaPlot.
         Constraint('quantile_norm', MUST_BE, 'no', 5),
