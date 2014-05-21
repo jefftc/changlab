@@ -37,14 +37,14 @@ def run(data_node,parameters, user_input,network):
         xls2txt_BIN = module_utils.which(xls2txt_path)
         assert xls2txt_BIN, 'cannot find the %s' % xls2txt_path
         f = file('tmp1.txt', 'w')
-        command = ['python', xls2txt_BIN, tmp_file]
+        command = ['python', xls2txt_BIN, xls_file]
         process = subprocess.Popen(command, shell=False,
                                    stdout=f,
                                    stderr=subprocess.PIPE)
         error_message = process.communicate()[1]
         if error_message:
             raise ValueError(error_message)
-        os.remove(tmp_file)
+        os.remove(xls_file)
         f.close()
         txt_file = 'tmp1.txt'
     M = arrayio.choose_format(txt_file)

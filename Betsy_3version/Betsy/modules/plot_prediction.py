@@ -14,7 +14,7 @@ def run(data_node,parameters, user_input, network):
     matrix=matrix[1:]
     confidence = [float(i[index]) for i in matrix]
     sample=[i[0] for i in matrix]
-    if confidence==['']*len(matrix):
+    if confidence==['']*len(matrix) or 'Correct?' in header:
         index = header.index('Predicted_class')
         class_value = [i[index] for i in matrix]
         label_dict = dict()

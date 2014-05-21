@@ -25,8 +25,8 @@ def run(in_nodes,parameters, user_input, network):
     gp_parameters['train.class.filename'] = cls_node_train.identifier
     gp_parameters['test.filename'] = file2
     gp_parameters['test.class.filename'] = 'temp_test.cls'
-    if 'num_features' in user_input:
-        gp_parameters['num.features'] = str(user_input['num_features'])
+    if 'wv_num_features' in user_input:
+        gp_parameters['num.features'] = str(user_input['wv_num_features'])
     if 'wv_minstd' in user_input:	
     	assert module_utils.is_number(
             user_input['wv_minstd']), 'the sv_minstd should be number'

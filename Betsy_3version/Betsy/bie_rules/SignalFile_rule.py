@@ -642,7 +642,7 @@ all_modules = [
         Consequence("bfrm_norm",SET_TO,'no'),
         Consequence("shiftscale_norm", SET_TO,'no')),
     Module(
-        "convert_impute_merge",
+        "convert_impute_merge_rma",
         SignalFile_Impute, SignalFile_Merge,
         Constraint("preprocess",
             MUST_BE,"rma"),
@@ -665,7 +665,7 @@ all_modules = [
         Consequence("shiftscale_norm", SET_TO,'no')),
     
     Module(  
-        "merge_two_classes", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge,  
+        "merge_two_classes_rma", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge,  
          Constraint("contents", MUST_BE, "class0", 0),
          Constraint("preprocess",MUST_BE,'rma',0),
          Constraint("combat_norm",MUST_BE,'no',0),

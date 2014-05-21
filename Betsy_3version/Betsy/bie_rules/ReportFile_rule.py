@@ -258,8 +258,6 @@ all_modules = [
          Constraint("diff_expr",MUST_BE,'t_test',0),
          Constraint("diff_expr",MUST_BE,'sam',1),
          Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),
-         #Constraint("hm_width",MUST_BE,"yes",2),
-         #Constraint("hm_height",MUST_BE,"yes",2),
          Consequence("report_type",SET_TO,'diffgenes')),
     Module(
         'make_batch_effect_report',
