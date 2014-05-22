@@ -756,27 +756,34 @@ def run_case30():
     '''test normalize report,
     
     Expect a network generated from GEOSeries, the
-    make_normalize_report has 6 input data:
-    SignalFile,IntensityPlot,ControlPlot,PcaPlot,ActbPlot,PcaPlot.
+    make_normalize_report [1] has 6 input data:
+    [2] SignalFile
+    [3] IntensityPlot
+    [4] ControlPlot
+    [5] PcaPlot
+    [6] ActbPlot
+    [7] PcaPlot.
 
-    The first PcaPlot is generated from SignalFile and we require
-    the attribute of quantile_norm, combat_norm,shiftscale_norm, bfrm_norm,
-    dwd_norm, gene_center,gene_normalize,unique_genes,platform,group_fc, num_features,
-    and duplicate_probes for both SignalFile and first PcaPlot are the same. If it is not
-    specified by the user in the output, the value of these attributes will be set
-    to output default.
+    The first PcaPlot [5] is generated from SignalFile [58] and we require the
+    attribute of quantile_norm, combat_norm, shiftscale_norm,
+    bfrm_norm, dwd_norm, gene_center, gene_normalize, unique_genes,
+    platform, group_fc, num_features, and duplicate_probes for both
+    SignalFile and first PcaPlot are the same. If it is not specified
+    by the user in the output, the value of these attributes will be
+    set to output default.
     
-    The second PcaPlot is generated from SignalFile and we require
-    the attributes of quantile_norm, combat_norm,shiftscale_norm, bfrm_norm,
-    dwd_norm, gene_center,gene_normalize,unique_genes,platform,group_fc, num_features,
-    and duplicate_probes all set to 'no'.
+    The second PcaPlot [7] is generated from SignalFile and we require the
+    attributes of quantile_norm, combat_norm, shiftscale_norm,
+    bfrm_norm, dwd_norm, gene_center, gene_normalize, unique_genes,
+    platform, group_fc, num_features, and duplicate_probes all set to
+    'no'.
 
     The reason of two PcaPlot is that we want to compare the SignalFile
     before any normalization and after normalization.
      
     However, the network we currently got is:
     the attributes of SignalFile, which we are not specified in the output,
-    can set to different values,like:
+    can set to different values, like:
     bfrm_norm=['yes', 'no']
     combat_norm=['yes', 'no']
     dwd_norm=['yes', 'no'] 
@@ -788,8 +795,9 @@ def run_case30():
     unique_genes=['average_genes', 'high_var', 'first_gene'])
     duplicate_probes=["no", "closest_probe", "high_var_probe"]
     
-    The path from node 27 to node 2 is very complicated since the combination of different
-    attributes. I expected the node 2 has the following attributes
+    The path from node 27 to node 2 is very complicated since the
+    combination of different attributes. I expected the node 2 has the
+    following attributes
       Data(SignalFile, annotate='yes', bfrm_norm='no', combat_norm='no', c
        ontents='test', duplicate_probe='no', dwd_norm='no', filter='no',
         format='tdf', gene_center='median', gene_normalize='no', gene_or
@@ -798,9 +806,40 @@ def run_case30():
        s='mas5', quantile_norm='yes', rename_sample='no', shiftscale_nor
        m='no', unique_genes='no')
     I expect the network: node 64 and node 58 is the same node.
+    
     Also the path to node 2(SignalFile) is like:
     SignalFile_Annotate(node 68)->annotate_probes->SignalFile_Annotate->
     convert_annotate_filter->SignalFile_Filter->transfter->SignalFile(node 2)
+
+    JC: 
+    SignalFile [64] -> plot_affy_affx_line [63]
+    SignalFile [58] -> analyze_samples_pca [57] -> PcaAnalysis [56] ->
+      plot_sample_pca_wo_label [55] -> PcaPlot [5] ->
+      make_normalize_report [1]
+
+    SignalFile [64]   bfrm_norm="no"
+    SignalFile [58]   bfrm_norm=["yes", "no"]
+    PcaAnalysis [56]  bfrm_norm=["yes", "no"]
+    PcaPlot [5]       bfrm_norm=["yes", "no"]
+
+    PcaPlot [5] bfrm_norm should be the same as bfrm_norm for
+    SignalFile [2].  According to constraint in make_normalize_report,
+    SignalFile [2] bfrm_norm can be ["yes", "no"].
+
+    plot_affy_affx_line
+      No constraints or consequences on bfrm_norm.
+    analyze_samples_pca
+      Constraint("bfrm_norm", CAN_BE_ANY_OF, ["yes", "no"])
+      Consequence("bfrm_norm", SAME_AS_CONSTRAINT)
+    plot_sample_pca_wo_label
+      Constraint("bfrm_norm", CAN_BE_ANY_OF, ["yes", "no"])
+      Consequence("bfrm_norm", SAME_AS_CONSTRAINT)
+
+
+    I'm not completely convinced that setting bfrm_norm (and all the
+    other values) to the output default the right thing to do here,
+    but let's try.
+    
     '''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
@@ -814,22 +853,67 @@ def run_case30():
     
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+    
 def run_case31():
-    """test case for batch effect remove,
-       need a function to select the order of
-       different normalization methods"""
-    out_data = rulebase.SignalFile.output(preprocess='illumina',
-                                          missing_algorithm="zero_fill",format='gct',
-                                          logged='no',
-                                         filter='yes',quantile_norm="yes",
-                                         dwd_norm='yes',
-                                         shiftscale_norm="yes",
-                                         bfrm_norm='yes',
-                                         combat_norm='yes',
-                                                predataset='yes',
-                                                )
+    """test case for batch effect remove, need a function to select
+    the order of different normalization methods
+
+    """
+    out_data = rulebase.SignalFile.output(
+        preprocess='illumina',
+        missing_algorithm="zero_fill",
+        format='gct',
+        logged='no',
+        filter='yes',
+        quantile_norm="yes",
+        dwd_norm='yes',
+        shiftscale_norm="yes",
+        bfrm_norm='yes',
+        combat_norm='yes',
+        predataset='yes',
+        )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
+
+    # Make sure quantile_norm occurs before dwd, shiftscale, bfrm, combat.
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
+        )
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "yes"),
+        )
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "yes"),
+        )
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "combat_norm", "yes"),
+        )
+    # Make sure bfrm occurs before dwd, shiftscale, combat.
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
+        )
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "yes"),
+        )
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "combat_norm", "yes"),
+        )
+    
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
@@ -840,7 +924,7 @@ def main():
     #run_case02()
     #run_case03()
     #run_case04()
-    #run_case05()
+    run_case05()
     #run_case06()
     #run_case07()
     #run_case08()
@@ -867,7 +951,7 @@ def main():
     #run_case28()
     #run_case29()
     #run_case30()
-    run_case31()
+    #run_case31()
     
 if __name__ == '__main__':
     main()

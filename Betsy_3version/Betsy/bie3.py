@@ -32,6 +32,7 @@ backchain
 complete_network
 optimize_network
 select_start_node
+prune_network_by_internal
 
 summarize_moduledb
 check_moduledb
@@ -130,6 +131,7 @@ DEBUG = False
 #DEBUG = True
 
 MAX_NETWORK_SIZE = 1024*8
+
 
 
 class AttributeDef:
@@ -829,6 +831,9 @@ class Network:
         return Network(nodes, transitions)
 
     def delete_nodes(self, node_ids):
+        # Make sure no duplicates.
+        for i in range(len(node_ids)):
+            assert node_ids[i] not in node_ids[i+1:]
         network = Network(self.nodes, self.transitions)
         node_ids = reversed(sorted(node_ids))
         for nid in node_ids:
@@ -1005,7 +1010,7 @@ def complete_network(network):
         # input_id with all previous input IDs and try all possible
         # combinations.
         #x = _backchain_to_ids(network, module_id)
-        combined_ids = node2previds[module_id] + [input_id]
+        combined_ids = node2previds.get(module_id, []) + [input_id]
 
         # Find combinations of inputs that are compatible with the
         # network.
@@ -1680,6 +1685,8 @@ def select_start_node(network, start_data):
     # start_data may be a single Data object or a list of Data
     # objects.  DataTypes are also allowed in lieu of Data objects.
 
+    raise NotImplementedError, "Not finished yet."
+
 
     # Strategy:
     # 1.  Include all nodes that can reach both a start and end node.
@@ -1725,6 +1732,75 @@ def select_start_node(network, start_data):
     # Delete all the IDs that aren't in good_ids.
     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
     network = network.delete_nodes(bad_ids)
+    return network
+
+
+def remove_data_node(network, *attributes):
+    # Look for the nodes that are compatible with the attributes.  If
+    # an attribute has multiple values, Data that matches any of those
+    # values will be removed.
+    node_ids = []  # list of node_ids to remove
+    for node_id, next_ids in network.iterate(node_class=Data):
+        node = network.nodes[node_id]
+        if not isinstance(node, Data):
+            continue
+
+        # If incompatible, remove or alter this node.
+        remove_attr = {}  # name -> list of values
+        for attr in attributes:
+            assert isinstance(attr, Attribute)
+            if node.datatype != attr.datatype:
+                break
+            assert attr.name in node.attributes
+            assert attr.name not in remove_attr
+
+            DATA_VALUE = node.attributes[attr.name]
+            ATTR_VALUE = attr.value
+            DATA_TYPE = _get_attribute_type(DATA_VALUE)
+            ATTR_TYPE = _get_attribute_type(ATTR_VALUE)
+            case = _assign_case_by_type(DATA_TYPE, ATTR_TYPE)
+
+            if case == 1:
+                if DATA_VALUE != ATTR_VALUE:
+                    break
+                remove_attr[attr.name] = [DATA_VALUE]
+            elif case == 2:
+                # DATA is ATOM, ATTR is ENUM.
+                if DATA_VALUE not in ATTR_VALUE:
+                    break
+                remove_attr[attr.name] = [DATA_VALUE]
+            elif case == 3:
+                # DATA is ENUM, ATTR is ATOM
+                if ATTR_VALUE not in DATA_VALUE:
+                    break
+                remove_attr[attr.name] = [ATTR_VALUE]
+            else:
+                # DATA is ENUM, ATTR is ATOM
+                x = _intersection(DATA_VALUE, ATTR_VALUE)
+                if not x:
+                    break
+                remove_attr[attr.name] = x
+        else:
+            # Remove or alter this node.
+            for name in remove_attr:
+                assert name in node.attributes
+                values = node.attributes[name][:]
+                if type(values) is type(""):
+                    values = [values]
+                for value in remove_attr[name]:
+                    i = values.index(value)
+                    values.pop(i)
+                if not values:
+                    # Removed everything, delete this node.
+                    node_ids.append(node_id)
+                    break
+                if len(values) == 1:
+                    values = values[0]
+                node.attributes[name] = values
+
+    # Remove each of these node_ids from the network.
+    network = network.delete_nodes(node_ids)
+    network = _OptimizeNoDanglingNodes().optimize(network)
     return network
 
 
@@ -1977,8 +2053,9 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
     # If the user attribute conflicts with a Constraint, thte
     # Constraint is higher priority to make sure no objects are
     # generated that the module cannot handle.  However, if the user
-    # attribute is a part of the constraint, (e.g. one of many
-    # options), then we can refine it with the user attribute.
+    # attribute or default value is a part of the constraint,
+    # (e.g. one of many options), then we can refine it with the user
+    # attribute (or default).
     # 
     # Consequence (SAME_AS_CONSTRAINT) is higher priority than
     # constraint because it indicates a more specific value than the
@@ -2004,6 +2081,7 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
     for attr in in_datatype.attributes:
         attributes[attr.name] = attr.default_out
         attrsource[attr.name] = "default"
+    
 
 
     # Case 4.  If default_attributes_from is the same as in_num, then
@@ -2057,17 +2135,19 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
         elif constraint.behavior == CAN_BE_ANY_OF:
             value = constraint.arg1
             source = "constraint"
-            if attrsource.get(constraint.name) == "user":
+
+            # Refine by the user attribute or default value.
+            if attrsource.get(constraint.name) in ["user", "default"]:
                 x = _get_attribute_type(attributes[constraint.name])
                 if x == TYPE_ATOM:
                     if attributes[constraint.name] in value:
                         value = attributes[constraint.name]
-                        source = "constraint,user"
+                        source = "constraint,%s" % attrsource[constraint.name]
                 elif x == TYPE_ENUM:
                     x = _intersection(attributes[constraint.name], value)
                     if x:
                         value = x
-                        source = "constraint,user"
+                        source = "constraint,%s" % attrsource[constraint.name]
                 else:
                     raise AssertionError
             attributes[constraint.name] = value
@@ -2608,7 +2688,7 @@ def _get_valid_input_combinations(network, module_id, all_input_ids,
     # and don't check them again.
     if len(module.in_datatypes) == 1:
         if node2previds:
-            ids = node2previds[module_id]
+            ids = node2previds.get(module_id, [])
         else:
             ids = _backchain_to_ids(network, module_id)
         x = [(x,) for x in ids]
