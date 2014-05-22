@@ -839,6 +839,17 @@ def run_case30():
     I'm not completely convinced that setting bfrm_norm (and all the
     other values) to the output default the right thing to do here,
     but let's try.
+
+    XC:
+    The SignalFile mentioned above(SignalFile[64],SignalFile[58],
+    SignalFile[56],SiganlFile[2],PcaPlot[5] all have bfrm_norm="no".
+    
+    SignalFile[86],SignalFile[84] and SignalFile[2] has attribute
+    unique_genes=['average_genes', 'high_var', 'first_gene'],
+    since we do not specify in the output, why it is not the default?
+    Expect SignalFile[86] -> transfter[83]->SignalFile[2]
+    Also SignalFile_Filter[60]  has unique_genes=['average_genes', 'high_var', 'first_gene'],
+    that it is why the PcaPlot[5] is not generated from SignalFile_Filter[64].
     
     '''
     network = bie3.backchain(  
@@ -924,7 +935,7 @@ def main():
     #run_case02()
     #run_case03()
     #run_case04()
-    run_case05()
+    #run_case05()
     #run_case06()
     #run_case07()
     #run_case08()
@@ -950,7 +961,7 @@ def main():
     #run_case27()
     #run_case28()
     #run_case29()
-    #run_case30()
+    run_case30()
     #run_case31()
     
 if __name__ == '__main__':
