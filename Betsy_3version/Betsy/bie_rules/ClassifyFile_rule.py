@@ -122,7 +122,7 @@ all_modules = [
     Module(
        'run_loocv_weighted_voting',
        [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],ClassifyFile,
-       UserInputDef('num_features',10),
+       UserInputDef('wv_num_features',10),
        UserInputDef('wv_minstd',1),
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),

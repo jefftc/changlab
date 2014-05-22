@@ -42,7 +42,7 @@ def main():
             assert len(sys.argv) > i+1
             in_datatypes.append(sys.argv[i+1])
             flag = 'in'
-        if arg == "--out_datatype":
+        elif arg == "--out_datatype":
             assert len(sys.argv) > i+1
             flag = 'out'
         elif arg == "--attr":
@@ -64,7 +64,7 @@ def main():
                 value = x[1]
                 fn = getattr(rulebase,sub_datatype)
                 Attributes.append(bie3.Attribute(fn,key,value))
-        if arg == '--identifier':
+        elif arg == '--identifier':
             if len(in_datatypes)==len(identifiers)+1:
                 identifiers.append(sys.argv[i+1])
             else:

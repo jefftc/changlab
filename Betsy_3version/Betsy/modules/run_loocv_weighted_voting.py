@@ -20,7 +20,6 @@ def run(in_nodes,parameters, user_input, network):
         cls_node_train.identifier)
     gp_parameters['data.filename'] = file1
     gp_parameters['class.filename'] = cls_node_train.identifier
-    
     if 'wv_num_features' in user_input:
         gp_parameters['num.features'] = str(user_input['wv_num_features'])
     if 'wv_minstd' in user_input:	
@@ -38,6 +37,8 @@ def run(in_nodes,parameters, user_input, network):
     gp_parameters['feature.selection.statistic'] = str(
             wv_feature_stat.index(parameters[
                 'wv_feature_stat']))
+    print gp_parameters
+    
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module, 'cannot find the %s' % gp_path
