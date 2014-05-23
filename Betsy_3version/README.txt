@@ -12,7 +12,7 @@ Preprocess Usage
       --out_datatype 'SignalFile' 
       --attr 'SignalFile,preprocess=rma' 
       --attr 'SignalFile,quantile_norm=yes'
-      --network 'out.png'
+      --png_file 'out.png'
       ----------------------------------------------------------------
       B. When given a GSE ID and GPL platform number from the geo, 
 	   and want to do rma preprocess, 
@@ -25,7 +25,7 @@ Preprocess Usage
       --out_datatype 'SignalFile' 
       --attr 'SignalFile,preprocess=rma' 
       --attr 'SignalFile,quantile_norm=yes'
-      --network 'out.png'
+      --png_file 'out.png'
       ----------------------------------------------------------------
      C. When given a folder contains cel file, the command is
 
@@ -35,7 +35,7 @@ Preprocess Usage
       --out_datatype 'SignalFile'     	
       --attr 'SignalFile,preprocess=rma'
       --attr 'SignalFile,quantile_norm=yes'
-      --network 'out.png'
+      --png_file 'out.png'
 -----------------------------------------------------------------------
 2) Betsy can preprocess with illumina for illumina idat files.
      Example:
@@ -45,7 +45,7 @@ Preprocess Usage
      --identifier '</home/xchen/chencode/betsy_test/6991010018>' 
      --out_datatype 'SignalFile'  
      --attr 'SignalFile,preprocess=illumina'  
-     --network 'out.png'
+     --png_file 'out.png'
  ----------------------------------------------------------------
 3) Betsy can preprocess with agilent for  Agilent files.
      Example:
@@ -55,7 +55,7 @@ Preprocess Usage
      --identifier '</home/xchen/chencode/betsy_test/agilent_expression>' 
      --out_datatype 'SignalFile'  
      --attr 'SignalFile,preprocess=agilent'  
-     --network 'out.png'
+     --png_file 'out.png'
  ----------------------------------------------------------------
 4) Betsy can preprocess with gpr for gpr files.
      Example:
@@ -65,7 +65,7 @@ Preprocess Usage
      --identifier '</home/xchen/chencode/betsy_test/GSE4189>' 
      --out_datatype 'SignalFile'  
      --attr 'SignalFile,preprocess=loess'  
-     --network 'out.png'
+     --png_file 'out.png'
 =============================================================================
 Process Usage
 Betsy can do predataset,log,unlog,gene_filter,quantile,combat, shiftscale,dwd,bfrm, predataset,gene_center,gene_normalize,gene_order, annotate, rename_sample, platform,
@@ -99,7 +99,7 @@ The option of the attributes are:
 	--out_datatype 'SignalFile'  
 	--attr 'SignalFile,group_fc=yes'  
 	--user_input 'group_fc_num=1' 
-	--network 'out.png'
+	--png_file 'out.png'
 =============================================================================
 Heatmap Usage
 Betsy can make heatmap for a SignalFile without clustering.
@@ -113,7 +113,7 @@ Betsy can make heatmap for a SignalFile without clustering.
 	--attr 'ReportFile,report_type=heatmap' 
      --user_input 'hm_width=20'
      --user_input 'hm_height=20'
-	--network 'out.png'
+     --png_file 'out.png'
 
    
     The result folder will contain a png file showing the heatmap.
@@ -137,7 +137,7 @@ Betsy can do clustering for a SignalFile and plot the heatmap.
 	--attr 'ClusterFile,distance=correlation' 
      --user_input 'hm_width=200'
      --user_input 'hm_height=1'
-	--network 'out.png'
+	--png_file 'out.png'
 
 The result folder will contain a clustering file and a png file showing the heatmap.
 ===============================================================================
@@ -162,8 +162,8 @@ The command is:
 	--identifier '/home/xchen/chencode/betsy_test/all_aml_test.cls' 
 	--out_datatype 'ReportFile' 
 	--attr 'ReportFile,report_type=classify'  
-	--network 'out.png' 
-	--network_text 'out.txt' 
+	--png_file 'out.png' 
+	--text_file 'out.txt' 
 
 ===============================================================================
 Differential expressed genes analysis usage
@@ -177,7 +177,7 @@ The command is:
 	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
 	--out_datatype 'ReportFile'  
 	--attr 'ReportFile,report_type=diffgenes' 
-	--network 'out.png'
+	--png_file 'out.png'
 ===============================================================================
 Geneset Analysis Usage
 Example:
@@ -196,4 +196,46 @@ When given a signal_file and a gene set file, try do geneset score analysis and 
 	--in_datatype 'GenesetFile' 
 	--identifier '</home/xchen/chencode/betsy_test/genesets.gmt>' 
 	--user_input 'geneset_value=E2F1n_affy_150_UP' 
-	--network 'out.png'
+	--png_file 'out.png'
+===============================================================================
+Normalization Usage
+Example:
+When given a signal_file, try do quantile_norm and gene_center=median,get a normalization report
+
+	python run_rule.py \
+	--in_datatype 'SignalFile_Postprocess'  \
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--in_datatype 'ClassLabelFile' \
+	--attr 'cls_format=cls' \
+	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--out_datatype 'ReportFile'  \
+	--attr 'ReportFile,report_type=normalize_file' \
+	--attr 'SignalFile,quantile_norm=yes'  \
+	--attr 'SignalFile,preprocess=unknown' \
+	--attr 'SignalFile,gene_center=median' \
+	--png_file 'out.png' \
+      --json_file 'outjson.txt'
+--------------------------------------------------
+When given a ExpressionFiles, try rma preprocess, do quantile_norm and gene_center=median,get a normalization report
+
+	python run_rule.py \
+	--in_datatype 'ExpressionFiles'  \
+	--identifier '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+	--out_datatype 'ReportFile'  \
+	--attr 'ReportFile,report_type=normalize_file' \
+	--attr 'SignalFile,quantile_norm=yes'  \
+	--attr 'SignalFile,preprocess=rma' \
+	--attr 'SignalFile,gene_center=median' \
+	--png_file 'out.png'
+--------------------------------------------------
+When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene_center=median,get a normalization report
+
+	python run_rule.py \
+	--in_datatype 'ExpressionFiles'  \
+	--identifier '/home/xchen/chencode/betsy_test/6991010018' \
+	--out_datatype 'ReportFile'  \
+	--attr 'ReportFile,report_type=normalize_file' \
+	--attr 'SignalFile,quantile_norm=yes'  \
+	--attr 'SignalFile,preprocess=illumina' \
+	--attr 'SignalFile,gene_center=median' \
+	--png_file 'out.png'

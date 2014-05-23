@@ -112,7 +112,7 @@ def run(in_nodes, parameters, user_input,network):
         w(htmllib.H3("1.Normalization File"))
         w('To generate this file, I ran the following analysis:')
         w(htmllib.P())
-        bie.plot_network_gv("network.png", network)
+        bie3.plot_network_gv("network.png", network)
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
         
@@ -123,10 +123,10 @@ def run(in_nodes, parameters, user_input,network):
             htmllib.TH("Value", align="LEFT") 
             )
         rows.append(x)
-        for key in data_node1.attributes.keys():
+        for key in data_node1.data.attributes.keys():
             x = htmllib.TR(
             htmllib.TD(key, align="LEFT") +
-            htmllib.TD(data_node1.attributes[key], align="LEFT") 
+            htmllib.TD(data_node1.data.attributes[key], align="LEFT") 
             )
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows), border=1, cellpadding=3, cellspacing=0))
@@ -181,7 +181,7 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
 
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node1 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile2')
+                                            data_nodes,datatype='SignalFile')
     data_node2, data_node3 = module_utils.find_pcaplots(network,data_nodes,module_id)
     data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='IntensityPlot')

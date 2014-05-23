@@ -1,4 +1,4 @@
-#make_normalize_report.py
+#make_normalize_report_rma.py
 
 import os
 import shutil
@@ -159,7 +159,7 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node1 = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='SignalFile')
-    data_node2, data_node3 = module_utils.find_pcaplots(network,data_nodes,module_id)
+    data_node2, data_node3 = module_utils.find_pcaplots(network,data_nodes,module_id,rma=True)
     data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='IntensityPlot')
     data_node5 = module_utils.get_identifier(network, module_id, data_nodes,
