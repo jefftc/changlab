@@ -104,10 +104,10 @@ def main():
             handle.close()
     if args.json_file:
         bie3.write_network(args.json_file,network)
+        
     if args.dry_run:
-        bie.print_network(network)
-    else:
-        rule_engine_bie3.run_pipeline(network,in_objects,user_inputs)
+        return
+    rule_engine_bie3.run_pipeline(network,in_objects,user_inputs)
      
 
 
