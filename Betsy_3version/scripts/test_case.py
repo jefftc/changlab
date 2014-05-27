@@ -842,36 +842,20 @@ def run_case30():
 
     XC:
     The SignalFile mentioned above(SignalFile[64],SignalFile[58],
-    SignalFile[56],SignalFile[2],PcaPlot[5] all have bfrm_norm="no".
+    SignalFile[56],SiganlFile[2],PcaPlot[5] all have bfrm_norm="no".
     
-    SignalFile[86], SignalFile[84] and SignalFile[2] has attribute
+    SignalFile[86],SignalFile[84] and SignalFile[2] has attribute
     unique_genes=['average_genes', 'high_var', 'first_gene'],
     since we do not specify in the output, why it is not the default?
-    
-    Expect SignalFile[86] -> transfer[83] -> SignalFile[2]
-
-    Also SignalFile_Filter[60] has unique_genes=['average_genes',
-    'high_var', 'first_gene'], that it is why the PcaPlot[5] is not
-    generated from SignalFile_Filter[64].
-
-    JC:
-    SignalFile [86] -> SF [84] -> SF [2] -> make_normalize_report [1]
-
-    make_normalize_report
-      Contraint SignalFile unique_genes [avg, var, first]
-      Contraint PcaPlot unique_genes SAME_AS SignalFile, [avg, var, first]
-
-    The make_normalize_report module requires unique_genes to be:
-      ['average_genes', 'high_var', 'first_gene']
-    Since the default value of "no" (in SignalFile_rule) cannot be
-    accepted by make_normalize_report, the value gets set to any value
-    accepted by the constraint.
+    Expect SignalFile[86] -> transfter[83]->SignalFile[2]
+    Also SignalFile_Filter[60]  has unique_genes=['average_genes', 'high_var', 'first_gene'],
+    that it is why the PcaPlot[5] is not generated from SignalFile_Filter[64].
     
     '''
     network = bie3.backchain(  
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
-        bie3.Attribute(rulebase.SignalFile,"preprocess","mas5"),
+        bie3.Attribute(rulebase.SignalFile,"preprocess","illumina"),
         bie3.Attribute(rulebase.SignalFile,"contents","test"),
         bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes"),
         bie3.Attribute(rulebase.SignalFile,'gene_center',"median"),

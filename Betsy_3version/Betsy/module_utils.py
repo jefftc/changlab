@@ -99,33 +99,50 @@ def make_unique_hash(identifier, pipeline, parameters,user_input):
         input_file, pipeline, **new_parameters)
     return hash_result
 
-def find_pcaplots(network,pool,module_id):
+def find_pcaplots(network,pool,module_id,rma=False):
     before_pcaplot = None
     after_pcaplot = None
     for x in pool:
         node, node_id = pool[x],x
-        if not node.datatype.name == 'PcaPlot':
+        if not node.data.datatype.name == 'PcaPlot':
             continue
         if module_id in network.transitions[node_id]:
-            if 'filename' in node.attributes:
-                    assert os.path.exists(node.attributes['filename']), (
-            'the input file %s for %s does not exist'
-            % (node.attributes['filename'],network.nodes[module_id].name))
             
-            if (node.attributes['quantile_norm']=='no' and
-                node.attributes['combat_norm']=='no'and
-                node.attributes['shiftscale_norm']=='no'and
-                node.attributes['bfrm_norm']=='no'and
-                node.attributes['dwd_norm']=='no'and
-                node.attributes['gene_center']=='no'and
-                node.attributes['gene_normalize']=='no'and
-                node.attributes['unique_genes']=='no'and
-                node.attributes['platform']=='no'and
-                node.attributes['group_fc']=='no'):
-                before_pcaplot = node
-                after_pcaplot = node
+            assert os.path.exists(node.identifier), (
+            'the input file %s for %s does not exist'
+            % (node.identifier,network.nodes[module_id].name))
+            if not rma:
+                if (node.data.attributes['quantile_norm']=='no' and
+                    node.data.attributes['combat_norm']=='no'and
+                    node.data.attributes['shiftscale_norm']=='no'and
+                    node.data.attributes['bfrm_norm']=='no'and
+                    node.data.attributes['dwd_norm']=='no'and
+                    node.data.attributes['gene_center']=='no'and
+                    node.data.attributes['gene_normalize']=='no'and
+                    node.data.attributes['unique_genes']=='no'and
+                    node.data.attributes['platform']=='no'and
+                    node.data.attributes['duplicate_probe']=='no'and
+                    node.data.attributes['group_fc']=='no'):
+                    before_pcaplot = node
+                else:
+                    after_pcaplot = node
             else:
-                after_pcaplot = node
+                if (node.data.attributes['quantile_norm']=='yes' and
+                    node.data.attributes['combat_norm']=='no'and
+                    node.data.attributes['shiftscale_norm']=='no'and
+                    node.data.attributes['bfrm_norm']=='no'and
+                    node.data.attributes['dwd_norm']=='no'and
+                    node.data.attributes['gene_center']=='no'and
+                    node.data.attributes['gene_normalize']=='no'and
+                    node.data.attributes['unique_genes']=='no'and
+                    node.data.attributes['platform']=='no'and
+                    node.data.attributes['duplicate_probe']=='no'and
+                    node.data.attributes['group_fc']=='no'):
+                    before_pcaplot = node
+                else:
+                    after_pcaplot = node
+        if not after_pcaplot:
+            after_pcaplot = before_pcaplot
     return before_pcaplot,after_pcaplot
 
 def is_missing(identifier):

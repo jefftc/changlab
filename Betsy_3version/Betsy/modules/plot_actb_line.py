@@ -31,11 +31,16 @@ def run(data_node,parameters,user_input,network):
         Annot_path = config.annotate_matrix
         Annot_BIN = module_utils.which(Annot_path)
         assert Annot_BIN,'cannot find the %s' %Annot_path
-        command = ['python', Annot_BIN,'-f',data_node.attributes['filename'],'-o','tmp','--platform',
+        
+        command = ['python', Annot_BIN,data_node.identifier,'--platform',
                out_platform]
-        process = subprocess.Popen(command,shell=False,
-                                stdout=subprocess.PIPE,
+        f=file('tmp','w')
+        try:
+            process = subprocess.Popen(command,shell=False,
+                                stdout=f,
                                 stderr=subprocess.PIPE)
+        finally:
+            f.close()
         error_message = process.communicate()[1]
         if error_message:
             raise ValueError(error_message)

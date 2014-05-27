@@ -23,10 +23,12 @@ def main():
     parser.add_argument('--dry_run', dest='dry_run', action='store_const',
                         const=True, default=False,
                         help='show the test case procedure')
-    parser.add_argument('--network', dest='network',type=str, default=None,
+    parser.add_argument('--png_file', dest='png_file',type=str, default=None,
                         help='generate the output network png file')
-    parser.add_argument('--network_text', dest='network_text',type=str, default=None,
+    parser.add_argument('--text_file', dest='text_file',type=str, default=None,
                         help='generate the output network text file')
+    parser.add_argument('--json_file', dest='json_file',type=str, default=None,
+                        help='generate the output network json file')
     args = parser.parse_args()
     assert args.in_datatype,'please specify the in_datatype'
     assert args.out_datatype,'please specify the out_datatype'
@@ -42,7 +44,7 @@ def main():
             assert len(sys.argv) > i+1
             in_datatypes.append(sys.argv[i+1])
             flag = 'in'
-        if arg == "--out_datatype":
+        elif arg == "--out_datatype":
             assert len(sys.argv) > i+1
             flag = 'out'
         elif arg == "--attr":
@@ -64,7 +66,7 @@ def main():
                 value = x[1]
                 fn = getattr(rulebase,sub_datatype)
                 Attributes.append(bie3.Attribute(fn,key,value))
-        if arg == '--identifier':
+        elif arg == '--identifier':
             if len(in_datatypes)==len(identifiers)+1:
                 identifiers.append(sys.argv[i+1])
             else:
@@ -88,17 +90,20 @@ def main():
         in_objects.append(in_object)
     print 'Generating network...'
     network = bie3.backchain(rulebase.all_modules, goal_datatype, *Attributes)
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     assert network, ('No pipeline has been generated, '
                        'please check your command.')
-    if args.network:
-        bie3.plot_network_gv(args.network, network)
-    if args.network_text:
-        handle = file(args.network_text,'w')
+    if args.png_file:
+        bie3.plot_network_gv(args.png_file, network)
+    if args.text_file:
+        handle = file(args.text_file,'w')
         try:
             bie3.print_network(network, handle)
         finally:
             handle.close()
+    if args.json_file:
+        bie3.write_network(args.json_file,network)
     if args.dry_run:
         bie.print_network(network)
     else:

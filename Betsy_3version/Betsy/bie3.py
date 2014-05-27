@@ -81,6 +81,8 @@ diagnose_start_node
 # 
 # debug_print
 
+# _convert_to_builtin_type  Use for writing and reading json file
+# _dict_to_object           Use for writing and reading json file
 
 TYPE_ATOM = 100
 TYPE_ENUM = 101
@@ -573,6 +575,7 @@ class Module:
             elif isinstance(x, DefaultAttributesFrom):
                 default_attributes_from.append(x)
             else:
+                print type(x)
                 raise AssertionError, "invalid parameter: %s" % repr(x)
 
         # Convenience hack: If the module doesn't convert the data
@@ -1922,22 +1925,114 @@ def plot_network_gv(filename, network):
         filename, gv_nodes, gv_edges, node2attributes=gv_node2attr, prog="dot",
         directed=True)
 
+def _convert_to_builtin_type(obj):
+    # Convert objects to a dictionary of their representation
+    d = { '__class__':obj.__class__.__name__, 
+          '__module__':obj.__module__,
+          }
+    d.update(obj.__dict__)
+    return d
+
+def _dict_to_object(d):
+    if '__class__' in d:
+        inst=None
+        class_name = d.pop('__class__')
+        module_name = d.pop('__module__')
+        if '.' in module_name:
+            module = __import__(module_name, globals(),
+                        locals(), [module_name.split('.')[-1]], -1)
+        else:
+            module = __import__(module_name)
+        class_ = getattr(module, class_name)
+        args = dict( (key.encode('ascii'), value) for key, value in d.items())
+        for key in args:
+            if isinstance(args[key],dict):
+                args[key]=dict_to_object(args[key])
+            if isinstance(args[key],list):
+                if args[key]:
+                    if isinstance(args[key][0],unicode):
+                        args[key]=[i.encode('ascii') for i in args[key]]
+            if isinstance(args[key],unicode):
+                args[key]=args[key].encode('ascii')
+        if class_name=='AttributeDef':
+            inst = class_(**args)
+        elif class_name == 'DataType':
+            inst = class_(args['name'],*args['attributes'])
+        elif class_name == 'Data':
+            inst = class_(args['datatype'],**args['attributes'])
+        elif class_name == 'Network':
+            new_transition = dict()
+            for key,value in args['transitions'].items():
+                new_transition[int(key)]=value
+            inst = class_(args['nodes'],new_transition)
+        elif class_name =='Module':
+            name = args['name']
+            in_datatypes = args['in_datatypes']
+            out_datatype = args['out_datatype']
+            params = args
+            del params['name']
+            del params['in_datatypes']
+            del params['out_datatype']
+            params = (params['consequences']+params['constraints']+
+                    params['user_inputs']+params['default_attributes_from'])
+            inst = class_(name,in_datatypes,out_datatype,*params)
+        elif class_name == "Constraint":
+            inst = class_(args['name'],args['behavior'],
+                          arg1=args['arg1'],input_index=args['input_index'])
+        elif class_name == "Consequence":
+            inst = class_(args['name'],args['behavior'],
+                          arg1=args['arg1'],arg2=args['arg2'],
+                          side_effect=args['side_effect'])
+        elif class_name == "DefaultAttributesFrom":
+            inst = class_(args['input_index'])
+        elif class_name == "UserInputDef":
+            inst = class_(args['name'],default=args['default'])
+        else:
+            assert 'else module %s' %class_name
+    else:
+        args = dict((key.encode('ascii'), value) for key, value in d.items())
+        for key in args:
+            if isinstance(args[key],dict):
+                args[key]=dict_to_object(args[key])
+            if isinstance(args[key],list) and isinstance(args[key][0],unicode):
+                args[key]=[i.encode('ascii') for i in args[key]]
+            if isinstance(args[key],unicode):
+                args[key]=args[key].encode('ascii')
+        inst = args
+    return inst
+
 def write_network(file_or_handle, network):
-    import pickle
-    
+    import json
     handle = file_or_handle
     if type(handle) is type(""):
         handle = open(file_or_handle, 'w')
-    pickle.dump(network, handle)
-
-
-def read_network(file_or_handle):
-    import pickle
+    json.dump(network,handle,default=_convert_to_builtin_type,indent=2)
     
+def read_network(file_or_handle):
+    import json
     handle = file_or_handle
     if type(handle) is type(""):
         handle = open(file_or_handle, 'r')
-    return pickle.load(handle)
+    text =handle.read()
+    network = json.loads(text, object_hook=_dict_to_object)
+    return network
+    
+##def write_network(file_or_handle, network):
+##    import pickle
+##    
+##    handle = file_or_handle
+##    if type(handle) is type(""):
+##        handle = open(file_or_handle, 'w')
+##    pickle.dump(network, handle)
+##
+
+##def read_network(file_or_handle):
+##    import pickle
+##    
+##    handle = file_or_handle
+##    if type(handle) is type(""):
+##        handle = open(file_or_handle, 'r')
+##    return pickle.load(handle)
 
 
 def diagnose_start_node(network, user_data):
