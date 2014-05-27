@@ -37,7 +37,6 @@ def run(in_nodes,parameters, user_input, network):
     gp_parameters['feature.selection.statistic'] = str(
             wv_feature_stat.index(parameters[
                 'wv_feature_stat']))
-    print gp_parameters
     
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)

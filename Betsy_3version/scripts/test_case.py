@@ -929,7 +929,38 @@ def run_case31():
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
-    
+
+def run_case32():
+    """test case for multiple batch effect remove methods
+    Expected a network generated from SignalFile_Proprocess
+    ...-> SignalFile_Impute-> (convert_impute_merge)->SignalFile_Merge[18]
+    SignalFile_Merge[18],ClassLableFile[17]-> (normalize_samples_with_dwd[40,16])
+    ->SignalFile_Merge[39]->(normalize_samples_with_quantile[15])->
+    SignalFile_Merge[14]
+
+    However, we got a network which
+    normalize_samples_with_dwd[40] has only one input (SignalFile_Merge[18])
+    normalize_samples_with_dwd[16] has only one input (ClassLabelFile[17])
+    node 40 and 16 should be the same node.
+    """
+    out_data = rulebase.SignalFile.output(
+        quantile_norm="yes",
+        dwd_norm='yes',
+        )
+
+    network = bie3.backchain(rulebase.all_modules, out_data)
+
+    # Make sure dwd occurs before quantile_norm.
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "yes"),
+        )
+        
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
 def main():
     #run_case01()
     #run_case02()
@@ -961,9 +992,9 @@ def main():
     #run_case27()
     #run_case28()
     #run_case29()
-    run_case30()
+    #run_case30()
     #run_case31()
-    
+    run_case32()
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")
