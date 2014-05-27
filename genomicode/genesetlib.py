@@ -380,10 +380,14 @@ def detect_format(filename):
         return None
     # Case 4.
     if nrow >= 2 and ncol == 1:
-        return GMX
+        if _is_known_desc(matrix[1][0]):
+            return GMX
+        return None
     # Case 5.
     if nrow == 1 and ncol >= 2:
-        return GMT
+        if _is_known_desc(matrix[0][1]):
+            return GMT
+        return None
     # Case 6.
     if nrow == 2 and ncol == 2:
         desc01 = _is_known_desc(matrix[0][1])

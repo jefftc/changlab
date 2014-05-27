@@ -101,6 +101,17 @@ def safe_encode(x):
     x = unicode(x).encode("utf-8")
     x = x.replace("\n", " ")
     x = x.replace("  ", " ")
+    float_x = int_x = None
+    # Make the number an integer if possible.
+    try:
+        float_x = float(x)
+        int_x = int(float_x)
+    except ValueError, y:
+        pass
+    if float_x is not None and int_x is not None:
+        if abs(float_x - int_x) < 1E-10:
+            x = int_x
+    x = str(x)
     return x
 
 def main():

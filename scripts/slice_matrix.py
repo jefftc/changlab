@@ -2010,6 +2010,9 @@ def main():
         "--read_as_csv", default=False, action="store_true",
         help="Read as a CSV file.")
     parser.add_argument(
+        "--output_format", default="tdf", choices=["tdf", "gct"],
+        help="Specify the format for the output file.")
+    parser.add_argument(
         "--skip_lines", default=None,
         help="Skip this number of lines in the file.")
     parser.add_argument(
@@ -2529,9 +2532,11 @@ def main():
 
     # Cannot always write in the same format.  For example, if you add
     # annotations that aren't handled by that format.  To be safe,
-    # convert to a TDF and write that out.
+    # convert to a TDF (by default) and write that out.
+    assert args.output_format in ["tdf", "gct"]
     to_format = arrayio.tdf
-    #to_format = arrayio.gct_format
+    if args.output_format == "gct":
+        to_format = arrayio.gct_format
     MATRIX = arrayio.convert(MATRIX, to_format=to_format)
     to_format.write(MATRIX, handle)
 

@@ -13,7 +13,7 @@
 # get_samples           Get the samples from an express or annot matrix.
 # get_express_samples
 # get_annot_samples
-# 
+#
 # cmp_sample
 # find_sample
 # intersect_samples
@@ -38,14 +38,11 @@ class AnnotationMatrix:
 def list_all_samples(matrix_data, case_insensitive):
     assert matrix_data
 
-    samples_hint = peek_samples_hint(matrix_data, case_insensitive)
-
     # Get the samples that occur in any of the files.  Preserve the
     # order of the samples.
     all_samples = []
     for x in matrix_data:
-        infile, outfile, matrix, header = x
-        samples = get_samples(matrix, header, samples_hint, case_insensitive)
+        infile, outfile, matrix, header, samples = x
         all_samples.extend(samples)
 
     # Get rid of duplicate samples.
@@ -77,8 +74,7 @@ def list_common_samples(matrix_data, case_insensitive):
     # later.
     first_samples = None
     for i, x in enumerate(matrix_data):
-        infile, outfile, matrix, header = x
-        samples = get_samples(matrix, header, samples_hint, case_insensitive)
+        infile, outfile, matrix, header, samples = x
         common = intersect_samples(common, samples, case_insensitive)
         if i == 0:
             first_samples = samples
@@ -86,10 +82,6 @@ def list_common_samples(matrix_data, case_insensitive):
     # Finally, order the annotations according to the first file given.  
     assert first_samples
     samples = intersect_samples(first_samples, common, case_insensitive)
-    #assert matrix_data
-    #infile, outfile, matrix = matrix_data[0]
-    #samples = get_samples(matrix, common, case_insensitive)
-    #samples = intersect_samples(samples, common, case_insensitive)
     
     return samples
 
@@ -102,7 +94,7 @@ def peek_samples_hint(matrix_data, case_insensitive):
     x = [x for x in matrix_data if not isinstance(x[2], AnnotationMatrix)]
     if x:
         # Found an expression file.
-        infile, outfile, matrix, header = x[0]
+        infile, outfile, matrix, header = x[0][:4]
         assert header is None
         samples_hint = get_express_samples(matrix)
     else:
@@ -110,7 +102,7 @@ def peek_samples_hint(matrix_data, case_insensitive):
         # --header.
         samples_hint = None
         for x in matrix_data:
-            infile, outfile, matrix, header = matrix_data[0]
+            infile, outfile, matrix, header = matrix_data[0][:4]
             if header is None:
                 continue
             assert header in matrix.name2annots, "Missing header: %s\n%s" % (
@@ -123,44 +115,108 @@ def peek_samples_hint(matrix_data, case_insensitive):
     return samples_hint
 
 
-def align_matrices(matrix_data, samples, case_insensitive, null_string):
-    new_matrix_data = []
-    for x in matrix_data:
-        infile, outfile, matrix, header = x
-        aligned_matrix = align_matrix(
-            matrix, header, samples, case_insensitive, null_string)
-        x = infile, outfile, aligned_matrix, header
-        new_matrix_data.append(x)
-    return new_matrix_data
+def align_matrices(
+    matrix_data, align_samples, case_insensitive, null_string, outer_join):
+    # align_samples is a list of unique samples.
+    import itertools
 
+    sample2matrix2indexes = {}  # sample_i -> matrix_i -> list of indexes
+    for i, sample in enumerate(align_samples):
+        sample2matrix2indexes[i] = {}
+        for j, x in enumerate(matrix_data):
+            infile, outfile, matrix, header, samples = x
 
-def align_matrix(
-    matrix, header, samples, case_insensitive, null_string):
+            samples_cmp = samples
+            sample_cmp = sample
+            if case_insensitive:
+                samples_cmp = [x.upper() for x in samples_cmp]
+                sample_cmp = sample.upper()
+
+            indexes = [
+                k for k in range(len(samples_cmp))
+                if samples_cmp[k] == sample_cmp]
+            sample2matrix2indexes[i][j] = indexes
+
+    # Now align the indexes for each matrix.  Here, len(indexes)
+    # should be the same for each matrix.
+    sample2matrix2aligned = {}  # sample_i -> matrix_i -> list of indexes
+    for i in range(len(align_samples)):
+        matrix2indexes = sample2matrix2indexes[i].copy()
+        matrix2aligned = {}
+
+        if not outer_join:
+            # If this sample is not found in all data sets, then
+            # ignore it.
+            found = True
+            for j in range(len(matrix_data)):
+                if not matrix2indexes[j]:
+                    found = False
+            if not found:
+                for j in range(len(matrix_data)):
+                    matrix2aligned[j] = []
+            else:
+                # Use only the first instance of each sample.
+                for j in range(len(matrix_data)):
+                    indexes = matrix2indexes[j]
+                    matrix2aligned[j] = [indexes[0]]
+        else:
+            for j in range(len(matrix_data)):
+                matrix2aligned[j] = []
+            
+            # list (of len(matrix_data)) of list of indexes
+            all_indexes = []  
+            for j in range(len(matrix_data)):
+                indexes = matrix2indexes[j]
+                if not indexes:
+                    indexes = [None]
+                all_indexes.append(indexes)
+            for x in itertools.product(*all_indexes):
+                assert len(x) == len(matrix_data)
+                for j in range(len(matrix_data)):
+                    matrix2aligned[j].append(x[j])
+            
+        sample2matrix2aligned[i] = matrix2aligned
+
+    # Make the list of indexes for each matrix.
+    matrix2indexes = {}
+    for j in range(len(matrix_data)):
+        matrix2indexes[j] = []
+    for i in range(len(align_samples)):
+        for j in range(len(matrix_data)):
+            indexes = sample2matrix2aligned[i][j]
+            matrix2indexes[j].extend(indexes)
+
+    #for i in range(len(matrix2indexes[0])):
+    #    x = [matrix2indexes[j][i] for j in range(len(matrix_data))]
+    #    print "\t".join(map(str, x))
+    #print [len(matrix2indexes[i]) for i in range(len(matrix_data))]
+    #import sys; sys.exit(0)
+
+    aligned_matrix_data = []
+    for j, x in enumerate(matrix_data):
+        infile, outfile, matrix, header, samples = x
+        aligned_matrix = align_matrix(matrix, matrix2indexes[j], null_string)
+        x = infile, outfile, aligned_matrix, header, samples
+        aligned_matrix_data.append(x)
+    return aligned_matrix_data
+            
+            
+def align_matrix(matrix, indexes, null_string):
     if isinstance(matrix, AnnotationMatrix):
-        aligned_matrix = align_annot(
-            matrix, header, samples, case_insensitive, null_string)
+        aligned_matrix = align_annot(matrix, indexes, null_string)
     else:
         assert header is None
-        aligned_matrix = align_express(
-            matrix, samples, case_insensitive, null_string)
+        aligned_matrix = align_express(matrix, indexes, null_string)
     return aligned_matrix
 
 
-def align_express(matrix, samples, case_insensitive, null_string):
+def align_express(matrix, indexes, null_string):
     import arrayio
     
-    names = get_express_samples(matrix)
-    I = []
-    for n in samples:
-        i = find_sample(names, n, case_insensitive)
-        if i == -1:
-            i = None
-        I.append(i)
-
     # The Matrix class requires actually indexes.  Give it index 0,
     # and then remove those lines myself later.
     I_index = []
-    for i in I:
+    for i in indexes:
         if i != None:
             I_index.append(i)
         else:
@@ -170,8 +226,8 @@ def align_express(matrix, samples, case_insensitive, null_string):
 
     # Fix the None indexes in the matrix.
     X = matrix_aligned._X
-    assert len(I) == len(X[0])
-    for i_new, i_old in enumerate(I):
+    assert len(indexes) == len(X[0])
+    for i_new, i_old in enumerate(indexes):
         if i_old != None:
             continue
         # Fill column i with blanks.
@@ -188,7 +244,7 @@ def align_express(matrix, samples, case_insensitive, null_string):
     for name in matrix_aligned._col_names:
         annots = matrix_aligned._col_names[name]
         annots_new = []
-        for i_new, i_old in enumerate(I):
+        for i_new, i_old in enumerate(indexes):
             if i_old != None:
                 annots_new.append(annots[i_new])
             elif name == header:
@@ -200,66 +256,202 @@ def align_express(matrix, samples, case_insensitive, null_string):
     return matrix_aligned
 
 
-def align_annot(matrix, header, samples, case_insensitive, null_string):
-    names = get_annot_samples(matrix, header, samples, case_insensitive)
-
-    # Figure out which is the header for these samples.
-    header = None
-    for h, n in matrix.name2annots.iteritems():
-        if n == names:
-            header = h
-    assert header is not None
-
-    # Index each name in the matrix.
-    ## Too slow.
-    ##I = []
-    ##for n in samples_cmp:
-    ##    i = find_sample(names, n, case_insensitive)
-    ##    if i == -1:
-    ##        i = None
-    ##    I.append(i)
-    ##assert len(I) == len(samples)
-    names_cmp = names
-    samples_cmp = samples
-    if case_insensitive:
-        names_cmp = [x.upper() for x in names]
-        samples_cmp = [x.upper() for x in samples]
-    name2indexes = {}  # name -> list of indexes
-    for (i, n) in enumerate(names_cmp):
-        if n not in name2indexes:
-            name2indexes[n] = []
-        name2indexes[n].append(i)
-
-    # Find the indexes of each sample.  If a sample is requested
-    # multiple times, and also occurs multiple times in the file,
-    # return distinct records from the file.
-    name2inum = {}
-    for n in name2indexes:
-        name2inum[n] = 0
-    I = []
-    for n in samples_cmp:
-        if n not in name2indexes:
-            I.append(None)
-            continue
-        indexes = name2indexes[n]
-        i = name2inum[n]
-        if i >= len(indexes):
-            i = 0
-        name2inum[n] = i+1
-        I.append(indexes[i])
-        
+def align_annot(matrix, indexes, null_string):
     name2annots_new = {}
     for name, annots in matrix.name2annots.iteritems():
         annots_new = []
-        for i, i_annot in enumerate(I):
+        for i, i_annot in enumerate(indexes):
             if i_annot != None:
                 annots_new.append(annots[i_annot])
-            elif name == header:
-                annots_new.append(samples[i])
+            #elif name == header:
+            #    annots_new.append(samples[i])
             else:
                 annots_new.append(null_string)
         name2annots_new[name] = annots_new
     return AnnotationMatrix(name2annots_new, matrix.name_order)
+
+
+## def find_matrix_samples(matrix, header, sample, case_insensitive):
+##     if isinstance(matrix, AnnotationMatrix):
+##         return find_annot_samples(matrix, header, sample, case_insensitive)
+##     return find_express_samples(matrix, header, sample, case_insensitive)
+
+
+## def find_annot_samples(matrix, header, sample, case_insensitive):
+##     assert header in matrix.name2annots, header
+
+##     sample_list = matrix.name2annots[header]
+
+##     sample_list_cmp = sample_list
+##     sample_cmp = sample
+##     if case_insensitive:
+##         sample_list_cmp = [x.upper() for x in sample_list]
+##         sample_cmp = sample.upper()
+
+##     indexes = [
+##         i for i in range(len(sample_list_cmp))
+##         if sample_list_cmp[i] == sample_cmp]
+##     return indexes
+
+    
+## def find_express_samples(matrix, header, sample, case_insensitive):
+##     import arrayio
+    
+##     name = arrayio.COL_ID
+##     if name not in matrix._col_names:
+##         name = matrix._synonyms[name]
+##     assert name in matrix._col_names, "I can not find the sample names."
+##     sample_list = matrix.col_names(name)
+
+##     sample_list_cmp = sample_list
+##     sample_cmp = sample
+##     if case_insensitive:
+##         sample_list_cmp = [x.upper() for x in sample_list]
+##         sample_cmp = sample.upper()
+
+##     indexes = [
+##         i for i in range(len(sample_list_cmp))
+##         if sample_list_cmp[i] == sample_cmp]
+##     return indexes
+
+    
+## def align_matrices(matrix_data, samples, case_insensitive, null_string):
+##     new_matrix_data = []
+##     for x in matrix_data:
+##         infile, outfile, matrix, header = x
+##         aligned_matrix = align_matrix(
+##             matrix, header, samples, case_insensitive, null_string)
+##         x = infile, outfile, aligned_matrix, header
+##         new_matrix_data.append(x)
+##     return new_matrix_data
+
+
+## def align_matrix(
+##     matrix, header, samples, case_insensitive, null_string):
+##     if isinstance(matrix, AnnotationMatrix):
+##         aligned_matrix = align_annot(
+##             matrix, header, samples, case_insensitive, null_string)
+##     else:
+##         assert header is None
+##         aligned_matrix = align_express(
+##             matrix, samples, case_insensitive, null_string)
+##     return aligned_matrix
+
+
+## def align_express(matrix, samples, case_insensitive, null_string):
+##     import arrayio
+    
+##     names = get_express_samples(matrix)
+##     I = []
+##     for n in samples:
+##         i = find_sample(names, n, case_insensitive)
+##         if i == -1:
+##             i = None
+##         I.append(i)
+
+##     # The Matrix class requires actually indexes.  Give it index 0,
+##     # and then remove those lines myself later.
+##     I_index = []
+##     for i in I:
+##         if i != None:
+##             I_index.append(i)
+##         else:
+##             I_index.append(0)
+##     assert len(I_index) == len(I)
+##     matrix_aligned = matrix.matrix(None, I_index)
+
+##     # Fix the None indexes in the matrix.
+##     X = matrix_aligned._X
+##     assert len(I) == len(X[0])
+##     for i_new, i_old in enumerate(I):
+##         if i_old != None:
+##             continue
+##         # Fill column i with blanks.
+##         for j in range(len(X)):
+##             X[j][i_new] = ""
+
+##     # Fix the annotations.
+##     header = arrayio.COL_ID
+##     if header not in matrix._col_names:
+##         header = matrix._synonyms[header]
+##     assert header in matrix._col_names, "I can not find the sample names."
+    
+##     # Fix the sample names.
+##     for name in matrix_aligned._col_names:
+##         annots = matrix_aligned._col_names[name]
+##         annots_new = []
+##         for i_new, i_old in enumerate(I):
+##             if i_old != None:
+##                 annots_new.append(annots[i_new])
+##             elif name == header:
+##                 annots_new.append(samples[i_new])
+##             else:
+##                 annots_new.append(null_string)
+##         matrix_aligned._col_names[name] = annots_new
+    
+##     return matrix_aligned
+
+
+## def align_annot(matrix, header, samples, case_insensitive, null_string):
+##     names = get_annot_samples(matrix, header, samples, case_insensitive)
+
+##     # Figure out which is the header for these samples.
+##     header = None
+##     for h, n in matrix.name2annots.iteritems():
+##         if n == names:
+##             header = h
+##     assert header is not None
+
+##     # Index each name in the matrix.
+##     ## Too slow.
+##     ##I = []
+##     ##for n in samples_cmp:
+##     ##    i = find_sample(names, n, case_insensitive)
+##     ##    if i == -1:
+##     ##        i = None
+##     ##    I.append(i)
+##     ##assert len(I) == len(samples)
+##     names_cmp = names
+##     samples_cmp = samples
+##     if case_insensitive:
+##         names_cmp = [x.upper() for x in names]
+##         samples_cmp = [x.upper() for x in samples]
+##     name2indexes = {}  # name -> list of indexes
+##     for (i, n) in enumerate(names_cmp):
+##         if n not in name2indexes:
+##             name2indexes[n] = []
+##         name2indexes[n].append(i)
+
+##     # Find the indexes of each sample.  If a sample is requested
+##     # multiple times, and also occurs multiple times in the file,
+##     # return distinct records from the file.
+##     name2inum = {}
+##     for n in name2indexes:
+##         name2inum[n] = 0
+##     I = []
+##     for n in samples_cmp:
+##         if n not in name2indexes:
+##             I.append(None)
+##             continue
+##         indexes = name2indexes[n]
+##         i = name2inum[n]
+##         if i >= len(indexes):
+##             i = 0
+##         name2inum[n] = i+1
+##         I.append(indexes[i])
+        
+##     name2annots_new = {}
+##     for name, annots in matrix.name2annots.iteritems():
+##         annots_new = []
+##         for i, i_annot in enumerate(I):
+##             if i_annot != None:
+##                 annots_new.append(annots[i_annot])
+##             elif name == header:
+##                 annots_new.append(samples[i])
+##             else:
+##                 annots_new.append(null_string)
+##         name2annots_new[name] = annots_new
+##     return AnnotationMatrix(name2annots_new, matrix.name_order)
 
 
 def get_samples(matrix, header_hint, samples_hint, case_insensitive):
@@ -540,6 +732,17 @@ def main():
         new_matrix_data.append(x)
     matrix_data = new_matrix_data
 
+    # Find the samples in each matrix.
+    new_matrix_data = []  # list of (infile, outfile, matrix, header, samples)
+    samples_hint = peek_samples_hint(matrix_data, args.case_insensitive)
+    for x in matrix_data:
+        infile, outfile, matrix, header = x
+        samples = get_samples(
+            matrix, header, samples_hint, args.case_insensitive)
+        x = infile, outfile, matrix, header, samples
+        new_matrix_data.append(x)
+    matrix_data = new_matrix_data
+
     if args.outer_join:
         assert not args.strict, "Can't do a strict outer join."
         samples = list_all_samples(matrix_data, args.case_insensitive)
@@ -567,11 +770,12 @@ def main():
 
     # Align each of the matrices.
     matrix_data = align_matrices(
-        matrix_data, samples, args.case_insensitive, args.null_string)
+        matrix_data, samples, args.case_insensitive, args.null_string,
+        args.outer_join)
 
     # Write out each of the matrices.
     for x in matrix_data:
-        infile, outfile, matrix, header = x
+        infile, outfile, matrix, header, samples = x
         write_matrix(outfile, matrix)
     
 
