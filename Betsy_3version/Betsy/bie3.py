@@ -1338,21 +1338,26 @@ class _OptimizeNoDanglingNodes:
                 dangling.append(node_id)
         return dangling
     def is_dangling_node(self, network, node_id, node):
-        # 1.  Module nodes with no inputs.
+        # 1.  Module nodes with no valid input_combinations.
         # 2.  Module nodes with no outputs.
         # 3.  Data nodes (except for node 0) that don't point to any
         #     Modules.
+
+        # Case 1.
+        if isinstance(node, Module):
+            prev_ids = _backchain_to_ids(network, node_id)
+            x = _get_valid_input_combinations(network, node_id, prev_ids)
+            if not x:
+                return True
+        # Case 2.
         if isinstance(node, Module):
             if not network.transitions.get(node_id, []):
                 return True
-            prev_ids = _backchain_to_ids(network, node_id)
-            if not prev_ids:
-                return True
-        elif isinstance(node, Data):
+        # Case 3.
+        if isinstance(node, Data):
             if node_id != 0 and not network.transitions.get(node_id, []):
                 return True
-        else:
-            raise AssertionError
+            
         return False
 
 
@@ -1748,7 +1753,7 @@ def remove_data_node(network, *attributes):
         if not isinstance(node, Data):
             continue
 
-        # If incompatible, remove or alter this node.
+        # If compatible, remove or alter this node.
         remove_attr = {}  # name -> list of values
         for attr in attributes:
             assert isinstance(attr, Attribute)
