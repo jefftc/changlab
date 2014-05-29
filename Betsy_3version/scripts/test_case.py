@@ -988,7 +988,7 @@ def run_case33():
 
     However, we got a network which
     normalize_samples_with_shiftscale is missing
-    SignalFile_Merge[19] and SignalFile_MErge[17] both
+    SignalFile_Merge[19] and SignalFile_Merge[17] both
     go to convert_label_to_cls but not go to the
     normalize_samples_with_shiftscale
     
@@ -1024,7 +1024,7 @@ def run_case33():
     bie3.print_network(network, open("out_after.log", 'w'))
         
     network = bie3.complete_network(network)
-    network = bie3.optimize_network(network)
+    #network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
     
