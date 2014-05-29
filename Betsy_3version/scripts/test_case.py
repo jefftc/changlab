@@ -970,6 +970,63 @@ def run_case32():
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+def run_case33():
+    """test case for 3 batch effect remove methods.
+    
+    Expected a network generated from:
+    SignalFile_Proprocess -> ... -> SignalFile_Impute ->
+      (convert_impute_merge)->SignalFile_Merge[19]
+      
+    SignalFile_Merge[19]->(normalize_samples_with_quantile)->
+    SignalFile_Merge[17]
+    SignalFile_Merge[17],ClassLableFile[16] -> (normalize_samples_with_shiftscale)
+    ->SignalFile_Merge
+    SignalFile_Merge,ClassLabelFile[16]->(normalize_samples_with_dwd)->
+    SignalFile_Merge
+      
+
+    However, we got a network which
+    normalize_samples_with_shiftscale is missing
+    SignalFile_Merge[19] and SignalFile_MErge[17] both
+    go to convert_label_to_cls but not go to the
+    normalize_samples_with_shiftscale
+    
+    """
+    out_data = rulebase.SignalFile.output(
+        quantile_norm="yes",
+        dwd_norm='yes',
+        shiftscale_norm="yes"
+        )
+
+    network = bie3.backchain(rulebase.all_modules, out_data)
+
+    # Make sure quantile occurs before dwd and shiftscale.
+    bie3.plot_network_gv("out_before.png", network)
+    bie3.print_network(network, open("out_before.log", 'w'))
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+        )
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "yes"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+        )
+    # Make sure shiftscale occurs before dwd.
+    network = bie3.remove_data_node(
+        network,
+        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "no"),
+        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
+        )
+    bie3.plot_network_gv("out_after.png", network)
+    bie3.print_network(network, open("out_after.log", 'w'))
+        
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
     
 def main():
     #run_case01()
@@ -1004,8 +1061,8 @@ def main():
     #run_case29()
     #run_case30()
     #run_case31()
-    run_case32()
-
+    #run_case32()
+    run_case33()
     
 if __name__ == '__main__':
     main()
