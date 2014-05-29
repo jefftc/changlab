@@ -1980,6 +1980,18 @@ def _intersect_indexes(*indexes):
     return I
 
 
+## def _union_indexes(*indexes):
+##     # Ignore None.  Does not preserve order.
+##     indexes = [x for x in indexes if x is not None]
+
+##     # Want indexes that occur in any of them.
+##     I = []
+##     for x in indexes:
+##         I.extend(x)
+##     I = sorted({}.fromkeys(I))
+##     return I
+
+
 def _dedup_indexes(I):
     # Get rid of duplicate indexes, preserving the original order of
     # the indexes.
@@ -2085,7 +2097,7 @@ def main():
         "rrc_subset_indexes")
     group.add_argument(
         "--select_col_ids", default=[], action="append",
-        help="Comma-separate list of IDs to include.")
+        help="Comma-separate list of IDs to include.  (MULTI)")
     group.add_argument(
         "--select_col_annotation", default=[], action="append",
         help="Include only the cols where the annotation contains a "
@@ -2093,14 +2105,14 @@ def main():
         "the annotations that match any value (OR).  If this option is "
         "given multiple times, selects only the cols that match all the "
         "annotations (AND).  "
-        "Format: <txt_file>,<header>,<value>[,<value,...]")
+        "Format: <txt_file>,<header>,<value>[,<value,...].  (MULTI)")
     group.add_argument(
         "--select_col_genesets", default=[], action="append",
         help="Include only the samples from this geneset.  "
-        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...].  (MULTI)")
     group.add_argument(
-        "--select_col_regex", default=None,
-        help="Include columns that match this regular expression.")
+        "--select_col_regex", default=[], action="append",
+        help="Include columns that match this regular expression.  (MULTI)")
     group.add_argument(
         "--select_col_random", default=None, type=int,
         help="Select this number of columns at random.")
@@ -2164,11 +2176,11 @@ def main():
     group.add_argument(
         "--rename_col_id", default=[], action="append",
         help="Rename a column ID.  Format: <from>,<to>.  "
-        "<from> will be replaced with <to>.")
+        "<from> will be replaced with <to>.  (MULTI)")
     group.add_argument(
         "--replace_col_ids", default=[], action="append",
         help="Replace strings within the column IDs.  Format: <from>,<to>.  "
-        "Instances of <from> will be replaced with <to>.")
+        "Instances of <from> will be replaced with <to>.  (MULTI)")
     group.add_argument(
         "--relabel_col_ids", default=None,
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
@@ -2208,13 +2220,13 @@ def main():
     group.add_argument(
         "--select_row_ids", default=[], action="append",
         help="Comma-separated list of IDs (e.g. probes, gene names) "
-        "to include.")
+        "to include.  (MULTI)")
     group.add_argument(
         "--select_row_string", default=[], action="append",
         help="Include only the rows where the columns contains a "
         "specific string value.  "
         "Format: <header>,<value>[,<value>,...].  "
-        "Accepts the row if any of the <value>s match.")
+        "Accepts the row if any of the <value>s match.  (MULTI)")
     group.add_argument(
         "--select_row_numeric", default=[], action="append",
         help="Include only the rows where the columns contains a "
@@ -2223,7 +2235,7 @@ def main():
         'If <value> starts with a "<", then will only find the rows where '
         "the annotation is less than <value>.  "
         'The analogous constraint will be applied for ">".  '
-        "Accepts the match if any of the <value>s are true.")
+        "Accepts the match if any of the <value>s are true.  (MULTI)")
     group.add_argument(
         "--select_row_random", default=None,
         help="Select this number of random rows.")
@@ -2239,7 +2251,7 @@ def main():
         'If <value> starts with a "<", then will only find the rows where '
         "the annotation is less than <value>.  "
         'The analogous constraint will be applied for ">".  '
-        "Accepts the match if any of the <value>s are true.")
+        "Accepts the match if any of the <value>s are true.  (MULTI)")
     group.add_argument(
         "--select_row_nonempty", default=None,
         help="Include only the rows that have a non-blank annotation.  "
@@ -2252,7 +2264,7 @@ def main():
     group.add_argument(
         "--select_row_genesets", default=[], action="append",
         help="Include only the IDs from this geneset.  "
-        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...].  (MULTI)")
     group.add_argument(
         "--filter_row_by_mean", default=None, type=float,
         help="Remove this percentage of rows that have the lowest mean.  "
@@ -2317,7 +2329,7 @@ def main():
         "The format should be: <txt/gmx/gmt_file>,<geneset>[,<geneset>].  "
         "Each geneset in the file should contain the same number of "
         "genes as the matrix.  One of the genesets should be align-able "
-        "to the IDs of this matrix.")
+        "to the IDs of this matrix.  (MULTI)")
     group.add_argument(
         "--allow_unaligned_row_annot", default=False, action="store_true",
         help="If the matrix contains rows not in the annotation file, "
@@ -2325,16 +2337,16 @@ def main():
         "row).")
     group.add_argument(
         "--remove_row_annot", action="append", default=[],
-        help="Remove this annotations from the matrix.")
+        help="Remove this annotations from the matrix.  (MULTI)")
     group.add_argument(
         "--rename_row_annot", action="append", default=[],
         help="Rename this header.  "
-        "The format should be: <old_name>,<new_name>.")
+        "The format should be: <old_name>,<new_name>.  (MULTI)")
     group.add_argument(
         "--move_row_annot", action="append", default=[],
         help="Move this header.  "
         "The format should be: <old_index>,<new_index>.  "
-        "The indexes are 1-based.")
+        "The indexes are 1-based.  (MULTI)")
     group.add_argument(
         "--concat_row_annot", 
         help="Concatenate multiple row annotations.  "
@@ -2385,16 +2397,22 @@ def main():
     I13 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
         I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13)
-    I1 = select_col_indexes(
+    
+    I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     #I2 = remove_col_indexes(
     #    MATRIX, args.remove_col_indexes, args.col_indexes_include_headers)
-    I3 = select_col_ids(MATRIX, args.select_col_ids)
-    I4 = select_col_genesets(MATRIX, args.select_col_genesets)
-    I5 = select_col_annotation(MATRIX, args.select_col_annotation)
-    I6 = select_col_regex(MATRIX, args.select_col_regex)
-    I7 = select_col_random(MATRIX, args.select_col_random)
-    I_col = _intersect_indexes(I1, I3, I4, I5, I6, I7)
+    I03 = select_col_ids(MATRIX, args.select_col_ids)
+    I04 = select_col_genesets(MATRIX, args.select_col_genesets)
+    I05 = select_col_annotation(MATRIX, args.select_col_annotation)
+    I06 = []
+    for regex in args.select_col_regex:
+        I06.extend(select_col_regex(MATRIX, regex))
+    I06 = sorted({}.fromkeys(I06))
+    if not args.select_col_regex:
+        I06 = None   # if not given, use all columns.
+    I07 = select_col_random(MATRIX, args.select_col_random)
+    I_col = _intersect_indexes(I01, I03, I04, I05, I06, I07)
     if args.reverse_col_selection:
         I_col = [i for i in range(MATRIX.ncol()) if i not in I_col]
     MATRIX = MATRIX.matrix(I_row, I_col)
