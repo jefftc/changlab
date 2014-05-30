@@ -82,7 +82,7 @@ diagnose_start_node
 # 
 # debug_print
 
-# _convert_to_builtin_type  Use for writing and reading json file
+# _object_to_dict           Use for writing and reading json file
 # _dict_to_object           Use for writing and reading json file
 
 TYPE_ATOM = 100
@@ -190,6 +190,10 @@ class AttributeDef:
             ]
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+    @staticmethod
+    def __init_from_dict(args):
+         inst = AttributeDef(**args)
+         return inst
 
 
 class Attribute:
@@ -245,6 +249,12 @@ class UserInputDef:
             x.append(repr(self.default))
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'name' in args
+        assert 'default' in args
+        inst = UserInputDef(args['name'],default=args['default'])
+        return inst
 
 
 class UserInput:
@@ -308,6 +318,15 @@ class Constraint:
             x = x + ["input_index=%s" % self.input_index]
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'name' in args
+        assert 'behavior' in args
+        assert 'arg1' in args
+        assert 'input_index' in args
+        inst = Constraint(args['name'],args['behavior'],
+                          arg1=args['arg1'],input_index=args['input_index'])
+        return inst
 
 
 class Consequence:
@@ -356,6 +375,18 @@ class Consequence:
             x = x + ["side_effect=True"]
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'name' in args
+        assert 'behavior' in args
+        assert 'arg1' in args
+        assert 'arg2' in args
+        assert 'side_effect' in args
+        inst = Consequence(args['name'],args['behavior'],
+                          arg1=args['arg1'],arg2=args['arg2'],
+                          side_effect=args['side_effect'])
+        return inst
+
 
 
 class DefaultAttributesFrom:
@@ -376,6 +407,11 @@ class DefaultAttributesFrom:
             ]
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'input_index' in args
+        inst = DefaultAttributesFrom(args['input_index'])
+        return inst
 
 
 class DataType:
@@ -482,6 +518,12 @@ class DataType:
         x += [repr(x) for x in self.attributes]
         #x += [repr(x) for x in self.user_inputs]
         return "DataType(%s)" % ", ".join(x)
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'name' in args
+        assert 'attributes' in args
+        inst = DataType(args['name'],*args['attributes'])
+        return inst
 
 
 class Data(object):
@@ -542,6 +584,12 @@ class Data(object):
             ]
         x = [x for x in x if x]
         return "Data(%s)" % ", ".join(x)
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'datatype' in args
+        assert 'attributes' in args
+        inst = Data(args['datatype'],**args['attributes'])
+        return inst
 
 
 class Module:
@@ -766,6 +814,26 @@ class Module:
         x = [x1, x2, x3] + x4 + x5 + x6 + x7
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'name' in args
+        assert 'in_datatypes' in args
+        assert 'out_datatype' in args
+        assert 'consequences' in args
+        assert 'constraints' in args
+        assert 'user_inputs' in args
+        assert 'default_attributes_from' in args
+        name = args['name']
+        in_datatypes = args['in_datatypes']
+        out_datatype = args['out_datatype']
+        params = args.copy()
+        del params['name']
+        del params['in_datatypes']
+        del params['out_datatype']
+        params = (params['consequences']+params['constraints']+
+                    params['user_inputs']+params['default_attributes_from'])
+        inst = Module(name,in_datatypes,out_datatype,*params)
+        return inst
 
 
 class ModuleDbSummary:
@@ -1983,7 +2051,7 @@ def plot_network_gv(filename, network):
         filename, gv_nodes, gv_edges, node2attributes=gv_node2attr, prog="dot",
         directed=True)
 
-def _convert_to_builtin_type(obj):
+def _object_to_dict(obj):
     # Convert objects to a dictionary of their representation
     d = { '__class__':obj.__class__.__name__, 
           '__module__':obj.__module__,
@@ -1992,71 +2060,33 @@ def _convert_to_builtin_type(obj):
     return d
 
 def _dict_to_object(d):
-    if '__class__' in d:
-        inst=None
-        class_name = d.pop('__class__')
-        module_name = d.pop('__module__')
+    if isinstance(d,dict):
+        args = dict((key.encode('ascii'), value) for key, value in d.items())
+        for key,value in args.iteritems():
+            if isinstance(value,dict):
+                args[key]=_dict_to_object(value)
+            elif isinstance(value,list):
+                if value:
+                    if isinstance(value[0],unicode):
+                        args[key]=[i.encode('ascii') for i in value]
+            elif isinstance(value,unicode):
+                args[key]=value.encode('ascii')
+            else:
+                assert 'not expected type %s' %value
+    else:
+        assert 'not a dict %s' %d
+    inst = args
+    if '__class__' in args:
+        class_name = args.pop('__class__')
+        module_name = args.pop('__module__')
         if '.' in module_name:
             module = __import__(module_name, globals(),
                         locals(), [module_name.split('.')[-1]], -1)
         else:
             module = __import__(module_name)
         class_ = getattr(module, class_name)
-        args = dict( (key.encode('ascii'), value) for key, value in d.items())
-        for key in args:
-            if isinstance(args[key],dict):
-                args[key]=dict_to_object(args[key])
-            if isinstance(args[key],list):
-                if args[key]:
-                    if isinstance(args[key][0],unicode):
-                        args[key]=[i.encode('ascii') for i in args[key]]
-            if isinstance(args[key],unicode):
-                args[key]=args[key].encode('ascii')
-        if class_name=='AttributeDef':
-            inst = class_(**args)
-        elif class_name == 'DataType':
-            inst = class_(args['name'],*args['attributes'])
-        elif class_name == 'Data':
-            inst = class_(args['datatype'],**args['attributes'])
-        elif class_name == 'Network':
-            new_transition = dict()
-            for key,value in args['transitions'].items():
-                new_transition[int(key)]=value
-            inst = class_(args['nodes'],new_transition)
-        elif class_name =='Module':
-            name = args['name']
-            in_datatypes = args['in_datatypes']
-            out_datatype = args['out_datatype']
-            params = args
-            del params['name']
-            del params['in_datatypes']
-            del params['out_datatype']
-            params = (params['consequences']+params['constraints']+
-                    params['user_inputs']+params['default_attributes_from'])
-            inst = class_(name,in_datatypes,out_datatype,*params)
-        elif class_name == "Constraint":
-            inst = class_(args['name'],args['behavior'],
-                          arg1=args['arg1'],input_index=args['input_index'])
-        elif class_name == "Consequence":
-            inst = class_(args['name'],args['behavior'],
-                          arg1=args['arg1'],arg2=args['arg2'],
-                          side_effect=args['side_effect'])
-        elif class_name == "DefaultAttributesFrom":
-            inst = class_(args['input_index'])
-        elif class_name == "UserInputDef":
-            inst = class_(args['name'],default=args['default'])
-        else:
-            assert 'else module %s' %class_name
-    else:
-        args = dict((key.encode('ascii'), value) for key, value in d.items())
-        for key in args:
-            if isinstance(args[key],dict):
-                args[key]=dict_to_object(args[key])
-            if isinstance(args[key],list) and isinstance(args[key][0],unicode):
-                args[key]=[i.encode('ascii') for i in args[key]]
-            if isinstance(args[key],unicode):
-                args[key]=args[key].encode('ascii')
-        inst = args
+        fn = getattr(class_,'_' + class_name + '__init_from_dict')
+        inst = fn(args)
     return inst
 
 def write_network(file_or_handle, network):
@@ -2064,7 +2094,7 @@ def write_network(file_or_handle, network):
     handle = file_or_handle
     if type(handle) is type(""):
         handle = open(file_or_handle, 'w')
-    json.dump(network,handle,default=_convert_to_builtin_type,indent=2)
+    json.dump(network, handle, default=_object_to_dict, indent=2)
     
 def read_network(file_or_handle):
     import json

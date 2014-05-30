@@ -11,7 +11,7 @@ import os
 import time
 import getpass
 from time import strftime,localtime
-
+import pprint
 class DataObject:
     def __init__(self, data, identifier=""):
         self.data = data
@@ -47,10 +47,12 @@ def compare_two_dict(dict_A,dict_B):
     return True
 def get_outnode(network, module_id, module_file,parameters, pool,user_input):
     data_node = module_file.find_antecedents(network, module_id, pool,parameters)
+    #print data_node
     outfile = module_file.name_outfile(data_node,user_input)
     next_possible_ids = network.transitions[module_id]
     out_object = None
     parameters = module_file.get_out_attributes(parameters,data_node)
+    #print parameters
     fn=getattr(rulebase,network.nodes[next_possible_ids[0]].datatype.name)
     out_node = bie3.Data(fn,**parameters)
     out_object = DataObject(out_node,outfile)
@@ -188,20 +190,17 @@ def test_require_data(network, module_id, pool):
                                          pool[node_id].data)
         if flag and node_id not in has_id:
             has_id.append(node_id)
-    require_id.sort()
-    has_id.sort()
-    if require_id == has_id:
-         return True
-    common_id = list(set(require_id).intersection(set(has_id)))
-    required_datatype = [data.name for data
-                         in network.nodes[module_id].in_datatypes]
-    common_datatype = [network.nodes[comid].datatype.name
-                       for comid in common_id]
-    required_datatype.sort()
-    common_datatype.sort()
-    if common_datatype == required_datatype:
-        return True
+    
+    combine_ids = bie3._get_valid_input_combinations(network, module_id, require_id)
+    for combine_id in combine_ids:
+        flag = True
+        for i in combine_id:
+            if i not in has_id:
+                flag = False
+        if flag:
+            return True
     return False
+
 
 def make_module_wd_name(network, module_file,module_id, 
                         user_input,pipeline_sequence,
@@ -372,7 +371,8 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
                 if test_required:       
                     pipeline_sequence.append(module.name)
                     out_nodes = run_module(network, module_id, pool, user_inputs, pipeline_sequence,
-                                           user,job_name) 
+                                           user,job_name)
+                    #print out_nodes
                     for x in out_nodes:
                         next_node, next_id = x
                         if next_id == 0:

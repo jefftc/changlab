@@ -14,17 +14,16 @@ from Betsy import userfile
 def print_attribute(data):
     data = getattr(rulebase, data)
     if isinstance(data, bie3.DataType):
-        print '-------------------------------'
         attributes = data.attributes
         for attribute in attributes:
             print (data.name + '\t' + attribute.name + '\t' +
                    str(attribute.values) + '\t' + ' default_in\t' +
-                   attribute.default_in + ' default_out\t' +
+                   attribute.default_in + ' \t default_out\t' +
                    attribute.default_out)
-
+        if attributes:
+            print '-------------------------------'
 
 def print_user_input(modules):
-    print '----------------------------------'
     print 'user_inputs:'
     user_inputs = {}
     for module in modules:
@@ -48,7 +47,7 @@ def main():
         '--user_input', dest='user_input', default=None, action='append',
         type=str, help='user input in key=value format')
     parser.add_argument(
-        '--outtype', dest='output datatype', default=None, type=str,
+        '--outtype', dest='out_datatype', default=None, type=str,
         help='out_datatype')
     parser.add_argument(
         '--attr', dest='param', default=[], type=str, action='append',
@@ -121,7 +120,7 @@ def main():
                 Attributes.append(bie3.Attribute(fn, key, value))
         elif arg == '--input':
             if not len(in_datatypes) == len(identifiers) + 1:
-                identifiers.extend([''] * (len(in_datatypes) - 1))
+                identifiers.extend([''] * (len(in_datatypes) - len(identifiers) - 1))
             store_file = userfile.store(getpass.getuser(), sys.argv[i + 1])
             identifiers.append(store_file)
         elif arg == '--user_input':

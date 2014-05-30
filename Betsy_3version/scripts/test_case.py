@@ -1024,7 +1024,7 @@ def run_case33():
     bie3.print_network(network, open("out_after.log", 'w'))
         
     network = bie3.complete_network(network)
-    #network = bie3.optimize_network(network)
+    network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
     

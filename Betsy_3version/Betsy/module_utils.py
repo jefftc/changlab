@@ -437,7 +437,7 @@ def download_dataset(GSEID):
 
 def gunzip(filename):
     import gzip
-    if filename.endswith('.gz'):
+    if filename.endswith('.gz') or filename.split('_')[-3].endswith('.gz'):
         newfilename = os.path.join(
             os.getcwd(), os.path.split(os.path.splitext(filename)[0])[-1])
         #unzip the gz data

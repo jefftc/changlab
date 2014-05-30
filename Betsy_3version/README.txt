@@ -18,53 +18,53 @@ Preprocess Usage
 	   and want to do rma preprocess, 
 	   the command is 
      
-      python run_rule.py  
-      --intype 'GEOSeries' 
-      --user_input 'GSEID=GSE17907' 
-      --user_input 'GPLID=GPL570'
-      --outtype 'SignalFile' 
-      --attr 'SignalFile,preprocess=rma' 
-      --attr 'SignalFile,quantile_norm=yes'
+      python run_rule.py  \
+      --intype 'GEOSeries' \
+      --user_input 'GSEID=GSE17907' \
+      --user_input 'GPLID=GPL570' \
+      --outtype 'SignalFile' \
+      --attr 'SignalFile,preprocess=rma' \
+      --attr 'SignalFile,quantile_norm=yes' \
       --png_file 'out.png'
       ----------------------------------------------------------------
      C. When given a folder contains cel file, the command is
 
-	python run_rule.py  
-      --intype 'CELFiles'
-      --input '<./GSE21947>'
-      --outtype 'SignalFile'     	
-      --attr 'SignalFile,preprocess=rma'
-      --attr 'SignalFile,quantile_norm=yes'
+	python run_rule.py  \
+      --intype 'CELFiles' \
+      --input '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+      --outtype 'SignalFile' \
+      --attr 'SignalFile,preprocess=rma' \
+      --attr 'SignalFile,quantile_norm=yes' \
       --png_file 'out.png'
 -----------------------------------------------------------------------
 2) Betsy can preprocess with illumina for illumina idat files.
      Example:
 	When given a folder contains idat files, the command is
-     python run_rule.py 
-     --intype 'ExpressionFiles'  
-     --input '</home/xchen/chencode/betsy_test/6991010018>' 
-     --outtype 'SignalFile'  
-     --attr 'SignalFile,preprocess=illumina'  
+     python run_rule.py  \
+     --intype 'ExpressionFiles'  \
+     --input '/home/xchen/chencode/betsy_test/6991010018' \
+     --outtype 'SignalFile'  \
+     --attr 'SignalFile,preprocess=illumina' \
      --png_file 'out.png'
  ----------------------------------------------------------------
 3) Betsy can preprocess with agilent for  Agilent files.
      Example:
 	When given a folder contains agilent files, the command is
-     python run_rule.py 
-     --intype 'ExpressionFiles'  
-     --input '</home/xchen/chencode/betsy_test/agilent_expression>' 
-     --outtype 'SignalFile'  
-     --attr 'SignalFile,preprocess=agilent'  
+     python run_rule.py \
+     --intype 'ExpressionFiles' \
+     --input '/home/xchen/chencode/betsy_test/agilent_expression' \
+     --outtype 'SignalFile' \
+     --attr 'SignalFile,preprocess=agilent' \
      --png_file 'out.png'
  ----------------------------------------------------------------
 4) Betsy can preprocess with gpr for gpr files.
      Example:
 	When given a folder contains gpr files, the command is
-     python run_rule.py 
-     --intype 'ExpressionFiles'  
-     --input '</home/xchen/chencode/betsy_test/GSE4189>' 
-     --outtype 'SignalFile'  
-     --attr 'SignalFile,preprocess=loess'  
+     python run_rule.py \
+     --intype 'ExpressionFiles'  \
+     --input '/home/xchen/chencode/betsy_test/GSE4189' \
+     --outtype 'SignalFile' \
+     --attr 'SignalFile,preprocess=loess' \
      --png_file 'out.png'
 =============================================================================
 Process Usage
@@ -79,26 +79,26 @@ The option of the attributes are:
     Example:
     When given a SignalFile,do predataset, quantile, gene_center=mean,gene_normalize=variance.
     The command is
-    python run_rule.py
-    --intype 'SignalFile_Postprocess'
-    --input '</home/xchen/chencode/betsy_test/all_aml_train_missed.gct>'
-    --outtype 'SignalFile'
-    --attr 'SignalFile,predataset=yes'
-    --attr 'SignalFile,quantile_norm=yes'
-    --attr 'SignalFile,gene_center=mean'
+    python run_rule.py \
+    --intype 'SignalFile_Postprocess' \
+    --input '/home/xchen/chencode/betsy_test/all_aml_train_missed.gct' \
+    --outtype 'SignalFile' \
+    --attr 'SignalFile,predataset=yes' \
+    --attr 'SignalFile,quantile_norm=yes' \
+    --attr 'SignalFile,gene_center=mean' \
     --attr 'SignalFile,gene_normalize=variance'
  ----------------------------------------------------------------
     When given a SignalFile and ClassLabelFile, group_fc=yes and group_fc_num=1
     The command is:
-	python run_rule.py 
-	--intype 'SignalFile_Postprocess'  
-	--input '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' 
-	--intype 'ClassLabelFile' 
-	--attr 'cls_format=cls' 
-	--input '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
-	--outtype 'SignalFile'  
-	--attr 'SignalFile,group_fc=yes'  
-	--user_input 'group_fc_num=1' 
+	python run_rule.py \
+	--intype 'SignalFile_Postprocess' \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--intype 'ClassLabelFile' \
+	--attr 'cls_format=cls' \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--outtype 'SignalFile' \
+	--attr 'SignalFile,group_fc=yes' \
+	--user_input 'group_fc_num=1' \
 	--png_file 'out.png'
 =============================================================================
 Heatmap Usage
@@ -179,7 +179,7 @@ The command is:
 	--attr 'ReportFile,report_type=diffgenes' \
 	--png_file 'out.png'
 ===============================================================================
-Geneset Analysis Usage
+Geneset Analysis Usage 
 Example:
 When given a signal_file and a gene set file, try do geneset score analysis and plot the result.
 
@@ -239,3 +239,4 @@ When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene
 	--attr 'SignalFile,preprocess=illumina' \
 	--attr 'SignalFile,gene_center=median' \
 	--png_file 'out.png'
+--------------------------------------------------
