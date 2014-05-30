@@ -12,16 +12,19 @@ from Betsy import bie3
 from Betsy import rulebase
 
 def run(in_nodes, parameters, user_input,network):
-    outfile=name_outfile(in_nodes,user_input)
+    outfile_folder=name_outfile(in_nodes,user_input)
+    outfile = os.path.join(outfile_folder,'report.html')
+    if not os.path.exists(outfile_folder):
+        os.mkdir(outfile_folder)
     result_files = []
     for data_node in in_nodes:
         filename = data_node.identifier
-        new_name = os.path.split(filename)[-1]
+        new_name = os.path.join(outfile_folder,os.path.split(filename)[-1])
         if os.path.isdir(filename):
                 shutil.copytree(filename,new_name)
         else:
                 shutil.copyfile(filename,new_name)
-        result_files.append(new_name)        
+        result_files.append(os.path.split(new_name)[-1])
     data_node1,data_node2 = in_nodes    #write the report.html
     
     def highlight(s):
@@ -45,7 +48,7 @@ def run(in_nodes, parameters, user_input,network):
         w(htmllib.P())
         w(htmllib.A("Methods",href="#methods"))
         w(htmllib.P())
-        filenames = os.listdir(result_files[1])
+        filenames = os.listdir(os.path.join(outfile_folder,result_files[1]))
         c=0
         for filename in filenames:
             c=c+1
@@ -54,13 +57,12 @@ def run(in_nodes, parameters, user_input,network):
             w(htmllib.P())
             name = 'Figure '+ str(c) + ': Geneset Plot.'
             w(htmllib.B(name))
-        
         w(htmllib.HR())
         w(htmllib.A("<methods>",name="methods"))
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w(htmllib.H3("1.Result File"))
         w('To generate this file, I ran the following analysis:')
-        bie3.plot_network_gv("network.png", network)
+        bie3.plot_network_gv(os.path.join(outfile_folder,"network.png"), network)
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
         w(htmllib.P())
@@ -92,7 +94,7 @@ def run(in_nodes, parameters, user_input,network):
         w("</BODY>")
         w("</HTML>")
         x = "\n".join(lines) + "\n"
-        open('report.html', 'w').write(x)
+        open(outfile, 'w').write(x)
     except:
         raise 
     out_node = bie3.Data(rulebase.ReportFile,**parameters)
@@ -100,7 +102,7 @@ def run(in_nodes, parameters, user_input,network):
     return out_object
     
 def name_outfile(in_nodes,user_input):
-    filename = 'report.html' 
+    filename = 'report' 
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 

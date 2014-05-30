@@ -6,12 +6,12 @@ Preprocess Usage
 	A. When given a GSE ID from the geo, and want to do rma preprocess, 
 	   the command is
 
-	python run_rule.py  
-      --in_datatype 'GEOSeries' 
-      --user_input 'GSEID=GSE8286' 
-      --out_datatype 'SignalFile' 
-      --attr 'SignalFile,preprocess=rma' 
-      --attr 'SignalFile,quantile_norm=yes'
+	python run_rule.py  \
+      --intype 'GEOSeries' \
+      --user_input 'GSEID=GSE8286' \
+      --outtype 'SignalFile' \
+      --attr 'SignalFile,preprocess=rma' \
+      --attr 'SignalFile,quantile_norm=yes' \
       --png_file 'out.png'
       ----------------------------------------------------------------
       B. When given a GSE ID and GPL platform number from the geo, 
@@ -19,10 +19,10 @@ Preprocess Usage
 	   the command is 
      
       python run_rule.py  
-      --in_datatype 'GEOSeries' 
+      --intype 'GEOSeries' 
       --user_input 'GSEID=GSE17907' 
       --user_input 'GPLID=GPL570'
-      --out_datatype 'SignalFile' 
+      --outtype 'SignalFile' 
       --attr 'SignalFile,preprocess=rma' 
       --attr 'SignalFile,quantile_norm=yes'
       --png_file 'out.png'
@@ -30,9 +30,9 @@ Preprocess Usage
      C. When given a folder contains cel file, the command is
 
 	python run_rule.py  
-      --in_datatype 'CELFiles'
-      --identifier '<./GSE21947>'
-      --out_datatype 'SignalFile'     	
+      --intype 'CELFiles'
+      --input '<./GSE21947>'
+      --outtype 'SignalFile'     	
       --attr 'SignalFile,preprocess=rma'
       --attr 'SignalFile,quantile_norm=yes'
       --png_file 'out.png'
@@ -41,9 +41,9 @@ Preprocess Usage
      Example:
 	When given a folder contains idat files, the command is
      python run_rule.py 
-     --in_datatype 'ExpressionFiles'  
-     --identifier '</home/xchen/chencode/betsy_test/6991010018>' 
-     --out_datatype 'SignalFile'  
+     --intype 'ExpressionFiles'  
+     --input '</home/xchen/chencode/betsy_test/6991010018>' 
+     --outtype 'SignalFile'  
      --attr 'SignalFile,preprocess=illumina'  
      --png_file 'out.png'
  ----------------------------------------------------------------
@@ -51,9 +51,9 @@ Preprocess Usage
      Example:
 	When given a folder contains agilent files, the command is
      python run_rule.py 
-     --in_datatype 'ExpressionFiles'  
-     --identifier '</home/xchen/chencode/betsy_test/agilent_expression>' 
-     --out_datatype 'SignalFile'  
+     --intype 'ExpressionFiles'  
+     --input '</home/xchen/chencode/betsy_test/agilent_expression>' 
+     --outtype 'SignalFile'  
      --attr 'SignalFile,preprocess=agilent'  
      --png_file 'out.png'
  ----------------------------------------------------------------
@@ -61,9 +61,9 @@ Preprocess Usage
      Example:
 	When given a folder contains gpr files, the command is
      python run_rule.py 
-     --in_datatype 'ExpressionFiles'  
-     --identifier '</home/xchen/chencode/betsy_test/GSE4189>' 
-     --out_datatype 'SignalFile'  
+     --intype 'ExpressionFiles'  
+     --input '</home/xchen/chencode/betsy_test/GSE4189>' 
+     --outtype 'SignalFile'  
      --attr 'SignalFile,preprocess=loess'  
      --png_file 'out.png'
 =============================================================================
@@ -80,9 +80,9 @@ The option of the attributes are:
     When given a SignalFile,do predataset, quantile, gene_center=mean,gene_normalize=variance.
     The command is
     python run_rule.py
-    --in_datatype 'SignalFile_Postprocess'
-    --identifier '</home/xchen/chencode/betsy_test/all_aml_train_missed.gct>'
-    --out_datatype 'SignalFile'
+    --intype 'SignalFile_Postprocess'
+    --input '</home/xchen/chencode/betsy_test/all_aml_train_missed.gct>'
+    --outtype 'SignalFile'
     --attr 'SignalFile,predataset=yes'
     --attr 'SignalFile,quantile_norm=yes'
     --attr 'SignalFile,gene_center=mean'
@@ -91,12 +91,12 @@ The option of the attributes are:
     When given a SignalFile and ClassLabelFile, group_fc=yes and group_fc_num=1
     The command is:
 	python run_rule.py 
-	--in_datatype 'SignalFile_Postprocess'  
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' 
-	--in_datatype 'ClassLabelFile' 
+	--intype 'SignalFile_Postprocess'  
+	--input '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' 
+	--intype 'ClassLabelFile' 
 	--attr 'cls_format=cls' 
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
-	--out_datatype 'SignalFile'  
+	--input '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
+	--outtype 'SignalFile'  
 	--attr 'SignalFile,group_fc=yes'  
 	--user_input 'group_fc_num=1' 
 	--png_file 'out.png'
@@ -106,13 +106,13 @@ Betsy can make heatmap for a SignalFile without clustering.
     Example:
     When given a signal_file, plot the heatmap and set the heatmap size as x=20,y=20.
     The command is:
-	python run_rule.py 
-	--in_datatype 'SignalFile_Postprocess'  
-	--identifier '</home/xchen/chencode/betsy_test/breast_19.mas5>'  
-	--out_datatype 'ReportFile'   
-	--attr 'ReportFile,report_type=heatmap' 
-     --user_input 'hm_width=20'
-     --user_input 'hm_height=20'
+	python run_rule.py \
+	--intype 'SignalFile_Postprocess' \
+	--input '/home/xchen/chencode/betsy_test/breast_19.mas5'  \
+	--outtype 'ReportFile'   \
+	--attr 'ReportFile,report_type=heatmap' \
+     --user_input 'hm_width=20' \
+     --user_input 'hm_height=20' \
      --png_file 'out.png'
 
    
@@ -126,17 +126,17 @@ Betsy can do clustering for a SignalFile and plot the heatmap.
     cluster the genes by hierarchical method and plot the heatmap, 
     set the heatmap size as x=200,y=1.
     The command is:
-	python run_rule.py 
-	--in_datatype 'SignalFile_Postprocess'  
-	--identifier '</home/xchen/chencode/betsy_test/breast_19.mas5>'  
-	--out_datatype 'ReportFile'   
-	--attr 'ReportFile,report_type=cluster' 
-     --attr 'SignalFile,gene_normalize=variance'
-     --attr 'SignalFile,gene_center=mean'
-	--attr 'ClusterFile,cluster_alg=pca' 
-	--attr 'ClusterFile,distance=correlation' 
-     --user_input 'hm_width=200'
-     --user_input 'hm_height=1'
+	python run_rule.py \
+	--intype 'SignalFile_Postprocess'  \
+	--input '/home/xchen/chencode/betsy_test/breast_19.mas5'  \
+	--outtype 'ReportFile'   \
+	--attr 'ReportFile,report_type=cluster' \
+     --attr 'SignalFile,gene_normalize=variance' \
+     --attr 'SignalFile,gene_center=mean' \
+	--attr 'ClusterFile,cluster_alg=pca' \
+	--attr 'ClusterFile,distance=correlation' \
+     --user_input 'hm_width=200' \
+     --user_input 'hm_height=1' \
 	--png_file 'out.png'
 
 The result folder will contain a clustering file and a png file showing the heatmap.
@@ -145,57 +145,57 @@ Classification Usage
 Betsy can do classification with svm and weighted_voting method for dataset. 
 Also it can leave one out cross validation by these two methods.
 The command is:
-	python run_rule.py 
-	--in_datatype 'SignalFile_Postprocess' 
-	--attr 'contents=class0,class1' 
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.res' 
-	--in_datatype 'SignalFile_Postprocess' 
-	--attr 'contents=test' 
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_test.res' 
-	--in_datatype 'ClassLabelFile' 
-	--attr 'contents=class0,class1' 
-	--attr 'cls_format=cls' 
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
-	--in_datatype 'ClassLabelFile' 
-	--attr 'contents=test' 
-	--attr 'cls_format=cls' 
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_test.cls' 
-	--out_datatype 'ReportFile' 
-	--attr 'ReportFile,report_type=classify'  
-	--png_file 'out.png' 
+	python run_rule.py \
+	--intype 'SignalFile_Postprocess' \
+	--attr 'contents=class0,class1' \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train.res' \
+	--intype 'SignalFile_Postprocess' \
+	--attr 'contents=test' \
+	--input '/home/xchen/chencode/betsy_test/all_aml_test.res' \
+	--intype 'ClassLabelFile' \
+	--attr 'contents=class0,class1' \
+	--attr 'cls_format=cls' \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--intype 'ClassLabelFile' \
+	--attr 'contents=test' \
+	--attr 'cls_format=cls' \
+	--input '/home/xchen/chencode/betsy_test/all_aml_test.cls' \
+	--outtype 'ReportFile' \
+	--attr 'ReportFile,report_type=classify'  \
+	--png_file 'out.png' \
 	--text_file 'out.txt' 
 
 ===============================================================================
 Differential expressed genes analysis usage
 Betsy can do the differential expressed genes analysis for signal_files.
 The command is:
-	python run_rule.py 
-	--in_datatype 'SignalFile_Postprocess'  
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' 
-	--in_datatype 'ClassLabelFile' 
-	--attr 'cls_format=cls' 
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' 
-	--out_datatype 'ReportFile'  
-	--attr 'ReportFile,report_type=diffgenes' 
+	python run_rule.py \
+	--intype 'SignalFile_Postprocess'  \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--intype 'ClassLabelFile' \
+	--attr 'cls_format=cls' \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--outtype 'ReportFile'  \
+	--attr 'ReportFile,report_type=diffgenes' \
 	--png_file 'out.png'
 ===============================================================================
 Geneset Analysis Usage
 Example:
 When given a signal_file and a gene set file, try do geneset score analysis and plot the result.
 
-	python run_rule.py 
-	--out_datatype 'ReportFile' 
-	--attr 'ReportFile,report_type=geneset' 
-	--attr 'SignalFile,quantile_norm=yes'   
-	--attr 'SignalFile,gene_center=mean' 
-	--attr 'SignalFile,gene_normalize=variance' 
-	--attr 'SignalFile,unique_genes=high_var' 
-	--attr 'SignalFile,annotate=yes'  
-	--in_datatype 'SignalFile_Postprocess'  
-	--identifier '</home/xchen/chencode/betsy_test/se2fplate6_48.illu.gz>' 
-	--in_datatype 'GenesetFile' 
-	--identifier '</home/xchen/chencode/betsy_test/genesets.gmt>' 
-	--user_input 'geneset_value=E2F1n_affy_150_UP' 
+	python run_rule.py \
+	--outtype 'ReportFile' \
+	--attr 'ReportFile,report_type=geneset' \
+	--attr 'SignalFile,quantile_norm=yes' \
+	--attr 'SignalFile,gene_center=mean' \
+      --attr 'SignalFile,gene_normalize=variance' \
+	--attr 'SignalFile,unique_genes=high_var' \
+	--attr 'SignalFile,annotate=yes'  \
+	--intype 'SignalFile_Postprocess'  \
+	--input '/home/xchen/chencode/betsy_test/se2fplate6_48.illu.gz' \
+	--intype 'GenesetFile' \
+	--input '/home/xchen/chencode/betsy_test/genesets.gmt' \
+	--user_input 'geneset_value=E2F1n_affy_150_UP' \
 	--png_file 'out.png'
 ===============================================================================
 Normalization Usage
@@ -203,12 +203,12 @@ Example:
 When given a signal_file, try do quantile_norm and gene_center=median,get a normalization report
 
 	python run_rule.py \
-	--in_datatype 'SignalFile_Postprocess'  \
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
-	--in_datatype 'ClassLabelFile' \
+	--intype 'SignalFile_Postprocess'  \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--intype 'ClassLabelFile' \
 	--attr 'cls_format=cls' \
-	--identifier '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
-	--out_datatype 'ReportFile'  \
+	--input '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--outtype 'ReportFile'  \
 	--attr 'ReportFile,report_type=normalize_file' \
 	--attr 'SignalFile,quantile_norm=yes'  \
 	--attr 'SignalFile,preprocess=unknown' \
@@ -219,9 +219,9 @@ When given a signal_file, try do quantile_norm and gene_center=median,get a norm
 When given a ExpressionFiles, try rma preprocess, do quantile_norm and gene_center=median,get a normalization report
 
 	python run_rule.py \
-	--in_datatype 'ExpressionFiles'  \
-	--identifier '/home/xchen/chencode/betsy_test/GSE8286_folder' \
-	--out_datatype 'ReportFile'  \
+	--intype 'ExpressionFiles'  \
+	--input '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+	--outtype 'ReportFile'  \
 	--attr 'ReportFile,report_type=normalize_file' \
 	--attr 'SignalFile,quantile_norm=yes'  \
 	--attr 'SignalFile,preprocess=rma' \
@@ -231,9 +231,9 @@ When given a ExpressionFiles, try rma preprocess, do quantile_norm and gene_cent
 When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene_center=median,get a normalization report
 
 	python run_rule.py \
-	--in_datatype 'ExpressionFiles'  \
-	--identifier '/home/xchen/chencode/betsy_test/6991010018' \
-	--out_datatype 'ReportFile'  \
+	--intype 'ExpressionFiles'  \
+	--input '/home/xchen/chencode/betsy_test/6991010018' \
+	--outtype 'ReportFile'  \
 	--attr 'ReportFile,report_type=normalize_file' \
 	--attr 'SignalFile,quantile_norm=yes'  \
 	--attr 'SignalFile,preprocess=illumina' \

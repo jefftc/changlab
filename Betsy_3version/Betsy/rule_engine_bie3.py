@@ -329,6 +329,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
     return out_nodes
 
 def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_name=''):
+    working_dir = os.getcwd()
     output_path = config.OUTPUTPATH
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -381,11 +382,12 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
                                 print  next_node.identifier + '\r'
                                 print '\r'
                                 sys.stdout.flush()
+                                return next_node.identifier
                             else:
                                 print 'This pipeline has completed unsuccessfully'
                                 raise ValueError(
                                         'there is no output for this pipeline')
-                            return
+                            return None
                         elif next_id is None:
                             raise ValueError('cannot match the output node')
                         stack_list.append((next_node,next_id))
@@ -395,6 +397,8 @@ def run_pipeline(network, in_objects, user_inputs, user=getpass.getuser(), job_n
                         num_failures += 1
     except Exception, x:
             raise
+    finally:
+        os.chdir(working_dir)
     return True
 
 

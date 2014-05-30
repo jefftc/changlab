@@ -10,16 +10,19 @@ from Betsy import module_utils
 from Betsy import hash_method
 
 def run(in_nodes,parameters,user_input, network):
-    outfile=name_outfile(in_nodes,user_input)
+    outfile_folder=name_outfile(in_nodes,user_input)
+    outfile = os.path.join(outfile_folder,'report.html')
+    if not os.path.exists(outfile_folder):
+        os.mkdir(outfile_folder)
     result_files = []
     for data_node in in_nodes:
         filename = data_node.identifier
-        new_name = os.path.split(filename)[-1]
+        new_name = os.path.join(outfile_folder,os.path.split(filename)[-1])
         if os.path.isdir(filename):
                 shutil.copytree(filename,new_name)
         else:
                 shutil.copyfile(filename,new_name)
-        result_files.append(new_name)    
+        result_files.append(os.path.split(new_name)[-1])   
     data_node1, data_node2, data_node3, data_node4,data_node5 = in_nodes
     #write the report.html
     
@@ -51,7 +54,7 @@ def run(in_nodes,parameters,user_input, network):
         #---------------------------------
         name = 'Table 1: Table of significant genes p<0.05 sorted in order of significance'
         w(htmllib.B(name))
-        f = file(result_files[0],'rU')
+        f = file(os.path.join(outfile_folder,result_files[0]),'rU')
         text = f.readlines()
         f.close()
         header = text[0].split('\t')
@@ -74,7 +77,7 @@ def run(in_nodes,parameters,user_input, network):
         name = 'Table 2: Table of significant annotations'
         w(htmllib.B(name))
         w(htmllib.P())
-        f = file(result_files[3],'rU')
+        f = file(os.path.join(outfile_folder,result_files[3]),'rU')
         text = f.readlines()
         f.close()
         index = [0,1,2,3,4,5,6,7,9,10]
@@ -117,7 +120,7 @@ def run(in_nodes,parameters,user_input, network):
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w(htmllib.H3("1.T-test"))
         w('To generate this file, I ran the following analysis:')
-        bie3.plot_network_gv("network.png", network)
+        bie3.plot_network_gv(os.path.join(outfile_folder,"network.png"), network)
         w(htmllib.P())
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
@@ -139,7 +142,7 @@ def run(in_nodes,parameters,user_input, network):
         w("</BODY>")
         w("</HTML>")
         x = "\n".join(lines) + "\n"
-        open('report.html', 'w').write(x)
+        open(outfile, 'w').write(x)
     except:
         raise 
     out_node = bie3.Data(rulebase.ReportFile,**parameters)
@@ -163,7 +166,7 @@ def write_table(header,data,N):
     return rows
 
 def name_outfile(in_nodes,user_input):
-    filename = 'report.html' 
+    filename = 'report' 
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 

@@ -321,7 +321,7 @@ Module(
         [DiffExprFile_rule.DiffExprFile,DiffExprFile_rule.DiffExprFile,
          ClusterFile_rule.Heatmap,GatherFile_rule.GatherFile,
          GseaFile_rule.GseaFile],ReportFile,
-         UserInputDef("hm_width",50),
+         UserInputDef("hm_width",20),
          UserInputDef("hm_height",1),
          Constraint("diff_expr",MUST_BE,'t_test',0),
          Constraint("diff_expr",MUST_BE,'sam',1),

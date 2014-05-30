@@ -11,15 +11,18 @@ from Betsy import module_utils
 from Betsy import hash_method
 
 def run(data_node,parameters, user_input, network):
-    outfile=name_outfile(data_node,user_input)
+    outfile_folder=name_outfile(data_node,user_input)
+    outfile = os.path.join(outfile_folder,'report.html')
+    if not os.path.exists(outfile_folder):
+        os.mkdir(outfile_folder)
     result_files = []
     filename = data_node.identifier
-    new_name = os.path.split(filename)[-1]
+    new_name = os.path.join(outfile_folder,os.path.split(filename)[-1])
     if os.path.isdir(filename):
         shutil.copytree(filename,new_name)
     else:
         shutil.copyfile(filename,new_name)
-    result_files.append(new_name)        
+    result_files.append(os.path.split(new_name)[-1])        
     #write the report.html
     from genomicode import parselib
     from genomicode import htmllib
@@ -51,7 +54,7 @@ def run(data_node,parameters, user_input, network):
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w(htmllib.H3("1.Heatmap File"))
         w('To generate this file, I ran the following analysis:')
-        bie3.plot_network_gv("network.png", network)
+        bie3.plot_network_gv(os.path.join(outfile_folder,"network.png"), network)
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
         w(htmllib.P())
@@ -91,7 +94,7 @@ def run(data_node,parameters, user_input, network):
     return out_object
     
 def name_outfile(data_node,user_input):
-    filename = 'report.html' 
+    filename = 'report' 
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 

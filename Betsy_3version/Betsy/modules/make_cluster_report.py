@@ -11,16 +11,19 @@ from Betsy import module_utils
 from Betsy import hash_method
 
 def run(in_nodes,parameters, user_input, network):
-    outfile=name_outfile(in_nodes,user_input)
+    outfile_folder=name_outfile(in_nodes,user_input)
+    outfile = os.path.join(outfile_folder,'report.html')
+    if not os.path.exists(outfile_folder):
+        os.mkdir(outfile_folder)
     result_files = []
     for data_node in in_nodes:
         filename = data_node.identifier
-        new_name = os.path.split(filename)[-1]
+        new_name = os.path.join(outfile_folder,os.path.split(filename)[-1])
         if os.path.isdir(filename):
                 shutil.copytree(filename,new_name)
         else:
                 shutil.copyfile(filename,new_name)
-        result_files.append(new_name)        
+        result_files.append(os.path.split(new_name)[-1])        
     data_node1,data_node2 = in_nodes
     #write the report.html
     from genomicode import parselib
@@ -55,7 +58,7 @@ def run(in_nodes,parameters, user_input, network):
         w(htmllib.A("<methods_clustering>",name="methods_clustering"))
         w(htmllib.CENTER(htmllib.H2("Methods")))
         w('To generate this file, I ran the following analysis:')
-        bie3.plot_network_gv("network.png", network)
+        bie3.plot_network_gv(os.path.join(outfile_folder,"network.png"), network)
 ##        w(htmllib.P())
 ##        for i in range(len(pipelines[0])):
 ##            w('&nbsp&nbsp &nbsp&nbsp &nbsp&nbsp &nbsp&nbsp' +str(i+1)+'. '+pipelines[0][i])
@@ -118,7 +121,7 @@ def run(in_nodes,parameters, user_input, network):
     return out_object
     
 def name_outfile(in_nodes,user_input):
-    filename = 'report.html' 
+    filename = 'report' 
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 

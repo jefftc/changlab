@@ -13,16 +13,19 @@ from Betsy import module_utils
 from Betsy import hash_method
 
 def run(in_nodes, parameters, user_input, network):
-    outfile=name_outfile(in_nodes,user_input)
+    outfile_folder=name_outfile(in_nodes,user_input)
+    outfile = os.path.join(outfile_folder,'report.html')
+    if not os.path.exists(outfile_folder):
+        os.mkdir(outfile_folder)
     result_files = []
     for data_node in in_nodes:
         filename = data_node.identifier
-        new_name = os.path.split(filename)[-1]
+        new_name = os.path.join(outfile_folder,os.path.split(filename)[-1])
         if os.path.isdir(filename):
                 shutil.copytree(filename,new_name)
         else:
                 shutil.copyfile(filename,new_name)
-        result_files.append(new_name)    
+        result_files.append(os.path.split(new_name)[-1])   
     (data_node1, data_node2, data_node3, data_node4,data_node5, data_node6,
      data_node7,data_node8, data_node9, data_node10, data_node11) = in_nodes
 
@@ -51,7 +54,7 @@ def run(in_nodes, parameters, user_input, network):
         name = 'Table 1: Table of genes used in classification'
         w(htmllib.B(name))
         w(htmllib.P())
-        M = arrayio.read(result_files[0])
+        M = arrayio.read(os.path.join(outfile_folder,result_files[0]))
         ids = M._row_order
         genes = M.row_names(ids[0])
         ncolumn = 3
@@ -104,7 +107,7 @@ def run(in_nodes, parameters, user_input, network):
         if 'num_features_value' in user_input:
             nfeature = user_input['num_features_value']
         
-        M = arrayio.read(result_files[0])
+        M = arrayio.read(os.path.join(outfile_folder,result_files[0]))
         ids = M._row_order
         genes = M.row_names(ids[0])[0:nfeature]
         nrow = min(8,int(math.ceil(float(len(genes))/ncolumn)))
@@ -152,7 +155,7 @@ def run(in_nodes, parameters, user_input, network):
         w(htmllib.HR())
         w(htmllib.A("<methods_svm>",name="methods_svm"))
         w('To generate these files, I ran the following analysis:')
-        bie3.plot_network_gv("network.png", network)
+        bie3.plot_network_gv(os.path.join(outfile_folder,"network.png"), network)
         w(htmllib.P())
         w(htmllib.A(htmllib.IMG(height=500,
             src="network.png"), href="network.png"))
@@ -204,7 +207,7 @@ def run(in_nodes, parameters, user_input, network):
         w("</BODY>")
         w("</HTML>")
         x = "\n".join(lines) + "\n"
-        open('report.html', 'w').write(x)
+        open(outfile, 'w').write(x)
     except:
         raise 
     out_node = bie3.Data(rulebase.ReportFile,**parameters)
@@ -212,7 +215,7 @@ def run(in_nodes, parameters, user_input, network):
     return out_object
     
 def name_outfile(in_nodes,user_input):
-    filename = 'report.html' 
+    filename = 'report' 
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
