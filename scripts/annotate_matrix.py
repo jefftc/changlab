@@ -16,29 +16,55 @@ def start_R():
     return GLOBAL_R
 
 
-def convert_platform(gene_ids, in_platform, out_platform):
-    # gene_ids is a list.  Return a dictionary where each key is a
-    # gene_id from the in_platform, and the value is a list of the
-    # gene_ids from the out_platform.
+def _remove_dups(ids):
+    ids_c = []
+    for x in ids:
+        if x not in ids_c:
+            ids_c.append(x)
+    return ids_c
+
+
+def convert_gene_ids(
+    gene_ids, in_platform, out_platform, in_delim, out_delim,
+    keep_dups, keep_emptys):
+    # gene_ids is a list of the gene IDs, one per row of the matrix,
+    # from the in_platform.  Each of the gene_ids may contain multiple
+    # IDs separated by in_delim.  in_delim is either None (no multiple
+    # IDs) or a character indicating the delimiter used to separate
+    # the IDs.
+    #
+    # Return a list parallel to gene_ids that is the IDs in the
+    # out_platform.
     from genomicode import jmath
     from genomicode import arrayplatformlib
 
     R_fn, R_var = jmath.R_fn, jmath.R_var
 
-    # Clean up the gene_ids.
-    gene_ids = sorted({}.fromkeys(gene_ids))
-    gene_ids = [x for x in gene_ids if x]
-
+    # Make a cleaned up version of the gene_ids to convert.
+    # Split by delimiter.
+    x = gene_ids
+    if in_delim:
+        x = []
+        for gene_id in gene_ids:
+            x.extend(gene_id.split(in_delim))
+    # Clean up whitespace.
+    x = [x.strip() for x in x]
+    # No empty IDs.
+    x = [x for x in x if x]
+    # No duplicates.
+    x = {}.fromkeys(x).keys()
+    gene_ids_c = x
+    
     # An attribute is the biomart name for the platform.
     in_attribute = arrayplatformlib.get_bm_attribute(in_platform)
     out_attribute = arrayplatformlib.get_bm_attribute(out_platform)
-    assert in_attribute
-    assert out_attribute
+    assert in_attribute, "Bad platform: %s" % in_platform
+    assert out_attribute, "Bad platform: %s" % out_platform
     in_mart = arrayplatformlib.get_bm_organism(in_platform)
     out_mart = arrayplatformlib.get_bm_organism(out_platform)
 
     R = start_R()
-    jmath.R_equals_vector(gene_ids, 'gene_ids')
+    jmath.R_equals_vector(gene_ids_c, 'gene_ids')
 
     # Select the BioMart dataset to use.
     R_fn("useMart", "ensembl", in_mart, RETVAL="in_dataset")
@@ -52,8 +78,8 @@ def convert_platform(gene_ids, in_platform, out_platform):
         RETVAL="homolog")
     
     homolog = R['homolog']
-    in_ids = [str(i) for i in homolog[0]]
-    out_ids = [str(i) for i in homolog[1]]
+    in_ids = [str(x) for x in homolog[0]]
+    out_ids = [str(x) for x in homolog[1]]
     in2out = {}
     for x, y in zip(in_ids, out_ids):
         if not y.strip():
@@ -61,123 +87,207 @@ def convert_platform(gene_ids, in_platform, out_platform):
         val = in2out.get(x, [])
         val.append(y)
         in2out[x] = sorted(val)
-    return in2out
+
+    # Make a parallel list of the output IDs.
+    output_ids = []
+    for gene_id in gene_ids:
+        in_ids = [gene_id]
+        if in_delim:
+            in_ids = gene_id.split(in_delim)
+        out_ids = []
+        for x in in_ids:
+            x = in2out.get(x, [""])
+            out_ids.extend(x)
+        if not keep_emptys:
+            out_ids = [x for x in out_ids if x]
+        if not keep_dups:
+            out_ids = _remove_dups(out_ids)
+        x = out_delim.join(out_ids)
+        output_ids.append(x)
+    return output_ids
+
+
+def convert_geneset(
+    filename, in_delim, out_delim, in_genesets, out_platforms, out_geneset,
+    out_format):
+    from genomicode import genesetlib
+    from genomicode import arrayplatformlib
+
+    # NOT IMPLEMENTED:
+    # min_match_score
+    # delim -> in_delim, out_delim
+    raise NotImplementedError, "Not tested after refactoring."
+
+    assert len(in_genesets) == 1
+    geneset = in_genesets[0]
+
+    gene_ids = genesetlib.read_genes(filename, geneset)
+    
+    x = arrayplatformlib.score_platform_of_annotations(gene_ids)
+    assert x, "I could not figure out the platform of the infile."
+    in_platform, score = x
+
+    # Convert each of the platforms.
+    platform2geneid2outids = {}
+    for out_platform in out_platforms:
+        x = convert_gene_ids(gene_ids, in_platform, out_platform, delim)
+        platform2geneid2outids[out_platform] = x
+
+    # Write out the gene set.
+    genesets = []
+    for out_platform in out_platforms:
+        geneid2outids = platform2geneid2outids[out_platform]
+
+        name = out_platform
+        if out_geneset:
+            # BUG: If multiple gene sets, will generate duplicate names.
+            name = out_geneset
+
+        description = "na"
+        genes = []
+        for gene_id in gene_ids:
+            genes.extend(geneid2outids.get(gene_id, []))
+        genes = sorted({}.fromkeys(genes))
+        x = genesetlib.GeneSet(name, description, genes)
+        genesets.append(x)
+
+    if out_format == "gmt":
+        genesetlib.write_gmt(sys.stdout, genesets)
+    elif out_format == "gmx":
+        genesetlib.write_gmx(sys.stdout, genesets)
+    else:
+        raise AssertionError
+    
+    
+def convert_matrix(
+    filename, header, in_delim, out_delim, keep_dups, keep_emptys,
+    out_platforms, min_match_score):
+    import arrayio
+    from genomicode import Matrix
+    from genomicode import arrayplatformlib
+
+    DATA = arrayio.read(filename)
+
+    if header:
+        gene_ids = DATA.row_names(header)
+        x = arrayplatformlib.score_platform_of_annotations(gene_ids)
+        assert x, "I could not identify the platform for %s." % header
+        in_platform, score = x
+    else:
+        # Take the platform with the highest match score.
+        platforms = arrayplatformlib.score_all_platforms_of_matrix(
+            DATA, annot_delim=in_delim)
+        schwartz = [(-x[-1], x) for x in platforms]
+        schwartz.sort()
+        platforms = [x[-1] for x in schwartz]
+        header, in_platform, score = platforms[0]
+    assert score >= min_match_score, "I could not find any platforms."
+    gene_ids = DATA.row_names(header)
+
+    # Convert each of the platforms.
+    output_ids_list = []
+    for out_platform in out_platforms:
+        x = convert_gene_ids(
+            gene_ids, in_platform, out_platform, in_delim, out_delim,
+            keep_dups, keep_emptys)
+        output_ids_list.append(x)
+
+    # Make a matrix with the new IDs.
+    X = DATA._X
+    row_names = DATA._row_names.copy()
+    row_order = DATA._row_order[:]
+    col_names = DATA._col_names.copy()
+    col_order = DATA._col_order[:]
+    synonyms = DATA._synonyms.copy()
+
+    for (out_platform, output_ids) in zip(out_platforms, output_ids_list):
+        header = out_platform
+        i = 1
+        while header in row_order:
+            header = "%s_%d" % (out_platform, i)
+            i += 1
+        row_order.append(header)
+        row_names[header] = output_ids
+
+    # Write the outfile.
+    x = Matrix.InMemoryMatrix(
+        X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    arrayio.tab_delimited_format.write(x, sys.stdout)
     
 
 def main():
     import argparse
     
-    import arrayio
-    from genomicode import Matrix
     from genomicode import arrayplatformlib
-    from genomicode import genesetlib
 
     parser = argparse.ArgumentParser(
         description='Annotate a matrix or a geneset.')
     parser.add_argument("infile")
+    
     all_platforms = [platform.name for platform in arrayplatformlib.PLATFORMS]
+    x = ", ".join(all_platforms)
     parser.add_argument(
         '--platform', default=[], action='append',
-        help='specify the platform to add:'+ str(all_platforms))
+        help="Which platform to add to the matrix.  Options: %s" % x)
 
-    
     parser.add_argument(
+        '--min_match_score', default=0.90,
+        help="When trying to identify the rows of a matrix or geneset, "
+        "require at least this portion of the IDs to be recognized.")
+    parser.add_argument(
+        '--in_delim', default=None, 
+        help="If a row contains multiple annotations (or gene names), they "
+        "are separated by this delimiter, e.g. E2F1,E2F3")
+    parser.add_argument(
+        '--out_delim', default=" /// ",
+        help="Delimiter to use for the converted gene IDs.")
+    parser.add_argument(
+        '--keep_dups', default=False, action="store_true",
+        help="Keep duplicate IDs (e.g. to preserve alignment).")
+    parser.add_argument(
+        '--keep_emptys', default=False, action="store_true",
+        help="Keep empty IDs (e.g. to preserve alignment).")
+                
+    group = parser.add_argument_group(title="Matrix")
+    group.add_argument(
+        '--header', 
+        help='Which header contains the gene IDs to convert from.  '
+        'If not provided, will try to guess')
+
+    group = parser.add_argument_group(title="Gene Set")
+    group.add_argument(
         '--geneset', default=[], action='append',
-        help='Annotate a gene set.  infile must be a gene set.')
-    parser.add_argument("--out_geneset_name")
-    parser.add_argument(
-        "--geneset_format", default="gmt", choices=["gmt", "gmx"])
+        help='Which gene set to annotate (if infile is a gene set file).  '
+        'Required for geneset files.')
+    group.add_argument("--out_geneset_name")
+    group.add_argument(
+        "--out_geneset_format", default="gmt", choices=["gmt", "gmx"],
+        help="For output geneset file.")
     
     args = parser.parse_args()
     assert os.path.exists(args.infile), "File not found: %s" % args.infile
-    assert args.platform, 'please give at least one platform for convert'
+    assert args.platform, 'Please give at least one platform to add.'
     for x in args.platform:
-        assert arrayplatformlib.get_bm_organism(x), \
-               'we cannot convert to the platform %s' % x
+        assert arrayplatformlib.get_bm_organism(x), "Unknown platform: %s" % x
     assert len(args.geneset) <= 1, "Not implemented."
 
-    is_matrix = not args.geneset
-
-    if is_matrix:
-        DATA = arrayio.read(args.infile)
-        platform_list = arrayplatformlib.identify_all_platforms_of_matrix(DATA)
-        assert platform_list, 'we cannot guess the platform for the input file'
-        # Why is the first one chosen?
-        header = platform_list[0][0]
-        gene_ids = DATA.row_names(header)
-        in_platform = platform_list[0][1]
-    else:
-        assert args.geneset
-        assert len(args.geneset) == 1
-        DATA = genesetlib.read_genes(args.infile, args.geneset[0])
-        gene_ids = DATA
-        x = arrayplatformlib.score_platform_of_annotations(gene_ids)
-        in_platform = x[0]
-    assert in_platform, "I could not figure out the platform of the infile."
-
-
-    # Convert each of the platforms.
-    platform2geneid2outids = {}
-    for out_platform in args.platform:
-        x = convert_platform(gene_ids, in_platform, out_platform)
-        platform2geneid2outids[out_platform] = x
-
-
-    if is_matrix:
-        # Make a matrix with the new IDs.
-        X = DATA._X
-        row_names = DATA._row_names.copy()
-        row_order = DATA._row_order[:]
-        col_names = DATA._col_names.copy()
-        col_order = DATA._col_order[:]
-        synonyms = DATA._synonyms.copy()
-
-        for out_platform in args.platform:
-            geneid2outids = platform2geneid2outids[out_platform]
-            x = [geneid2outids.get(x, []) for x in gene_ids]
-            x = [" /// ".join(x) for x in x]
-            converted_ids = x
-
-            header = out_platform
-            i = 1
-            while header in row_order:
-                header = "%s_%d" % (out_platform, i)
-                i += 1
-            row_order.append(header)
-            row_names[header] = converted_ids
-
-        # Write the outfile.
-        x = Matrix.InMemoryMatrix(
-            X, row_names=row_names, col_names=col_names,
-            row_order=row_order, col_order=col_order, synonyms=synonyms)
-        arrayio.tab_delimited_format.write(x, sys.stdout)
-    else:
-        # Write out the gene set.
-        genesets = []
-        for out_platform in args.platform:
-            geneid2outids = platform2geneid2outids[out_platform]
-
-            name = out_platform
-            if args.out_geneset_name:
-                # BUG: If multiple gene sets, will generate duplicate names.
-                name = args.out_geneset_name
-            
-            description = "na"
-            genes = []
-            for gene_id in gene_ids:
-                genes.extend(geneid2outids.get(gene_id, []))
-            genes = sorted({}.fromkeys(genes))
-            x = genesetlib.GeneSet(name, description, genes)
-            genesets.append(x)
-
-        if args.geneset_format == "gmt":
-            genesetlib.write_gmt(sys.stdout, genesets)
-        elif args.geneset_format == "gmx":
-            genesetlib.write_gmx(sys.stdout, genesets)
-        else:
-            raise AssertionError
-            
+    assert not (args.header and args.geneset)
     
+    assert type(args.min_match_score) is type(0.0)
+    assert args.min_match_score > 0.2, "min_match_score too low"
+    assert args.min_match_score <= 1.0, "min_match_score too high"
+
+    if args.geneset:
+        convert_geneset(
+            args.infile, args.in_delim, args.geneset, args.platform,
+            args.out_geneset_name, args.out_geneset_format)
+    else:
+        convert_matrix(
+            args.infile, args.header, args.in_delim, args.out_delim, \
+            args.keep_dups, args.keep_emptys, args.platform,
+            args.min_match_score)
+            
             
 if __name__=='__main__':
     main()

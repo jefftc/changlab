@@ -205,7 +205,6 @@ def align_matrix(matrix, indexes, null_string):
     if isinstance(matrix, AnnotationMatrix):
         aligned_matrix = align_annot(matrix, indexes, null_string)
     else:
-        assert header is None
         aligned_matrix = align_express(matrix, indexes, null_string)
     return aligned_matrix
 
@@ -221,7 +220,6 @@ def align_express(matrix, indexes, null_string):
             I_index.append(i)
         else:
             I_index.append(0)
-    assert len(I_index) == len(I)
     matrix_aligned = matrix.matrix(None, I_index)
 
     # Fix the None indexes in the matrix.

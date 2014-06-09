@@ -87,7 +87,16 @@ def main():
     cex_lab = 1.5
     cex_sub = 1.5
 
-    jmath.R_equals(MATRIX._X, "X")
+    try:
+        jmath.R_equals(MATRIX._X, "X")
+    except ValueError, x:
+        # Look for missing values.
+        for i in range(len(MATRIX._X)):
+            assert None not in MATRIX._X[i], \
+                   "Missing values in row %d (0-based)." % i
+        # Cannot diagnose error.  Raise the original exception.
+        raise
+    
     jmath.R_equals(labels, "labels")
     jmath.R_equals(at, "at")
 

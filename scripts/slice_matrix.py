@@ -520,6 +520,44 @@ def select_col_random(MATRIX, col_random):
     return I
 
 
+def select_col_numeric_value(MATRIX, col_numeric):
+    # Format: <row_id>,<value>[,<value,...]
+    from genomicode import matrixlib
+
+    if not col_numeric:
+        return None
+
+    x = _parse_file_num(col_numeric)
+    row_id, values = x
+
+    I = parse_names(MATRIX, True, row_id)
+    assert I, "I could not find row_id: %s" % row_id
+    assert len(I) == 1, "Multiple matches for %s" % row_id
+
+    signal = MATRIX._X[I[0]]
+    I = []
+    for i in range(len(signal)):
+        x = float(signal[i])
+        match = True
+        for (modifier, value) in values:
+            if modifier == "=":
+                match = abs(x-value) < 1E-10
+            elif modifier == "<":
+                match = (x < value)
+            elif modifier == ">":
+                match = (x > value)
+            elif modifier == "<=":
+                match = (x <= value)
+            elif modifier == ">=":
+                match = (x >= value)
+            else:
+                raise AssertionError("Unknown modifier: %s" % modifier)
+        # Accepts matches for any of the values.
+        if match:
+            I.append(i)
+    return I
+
+
 def rename_col_id(MATRIX, rename_list, ignore_missing):
     # rename_list is list of strings in format of: <from>,<to>.
     import arrayio
@@ -528,13 +566,21 @@ def rename_col_id(MATRIX, rename_list, ignore_missing):
 
     if not rename_list:
         return MATRIX
-    
+
     rename_all = []  # list of (from_str, to_str)
     for rename_str in rename_list:
         x = rename_str.split(",")
         assert len(x) == 2, "format should be: <from>,<to>"
         from_str, to_str = x
         rename_all.append((from_str, to_str))
+
+    if not ignore_missing:
+        missing = []
+        for (from_str, to_str) in rename_all:
+            if from_str not in MATRIX.col_names():
+                missing.append(from_str)
+        x = ", ".join(missing)
+        assert not missing, "Missing col ids: %s" % x
 
     MATRIX_new = MATRIX.matrix()
     name = arrayio.COL_ID
@@ -2117,6 +2163,14 @@ def main():
         "--select_col_random", default=None, type=int,
         help="Select this number of columns at random.")
     group.add_argument(
+        "--select_col_numeric_value", default=None,
+        help="Include only the cols with a specific numeric value.  "
+        "Format: <row_id>,<value>[,<value>,...].  "
+        'If <value> starts with a "<", then will only find the rows where '
+        "the annotation is less than <value>.  "
+        'The analogous constraint will be applied for ">".  '
+        "Accepts the match if any of the <value>s are true.")
+    group.add_argument(
         "--reverse_col_selection", default=False, action="store_true",
         help="Remove the selected columns instead of keeping them.")
     ## group.add_argument(
@@ -2412,7 +2466,8 @@ def main():
     if not args.select_col_regex:
         I06 = None   # if not given, use all columns.
     I07 = select_col_random(MATRIX, args.select_col_random)
-    I_col = _intersect_indexes(I01, I03, I04, I05, I06, I07)
+    I08 = select_col_numeric_value(MATRIX, args.select_col_numeric_value)
+    I_col = _intersect_indexes(I01, I03, I04, I05, I06, I07, I08)
     if args.reverse_col_selection:
         I_col = [i for i in range(MATRIX.ncol()) if i not in I_col]
     MATRIX = MATRIX.matrix(I_row, I_col)
