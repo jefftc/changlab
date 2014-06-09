@@ -161,7 +161,7 @@ def convert_geneset(
     
 def convert_matrix(
     filename, header, in_delim, out_delim, keep_dups, keep_emptys,
-    out_platforms, min_match_scrow_annot):
+    out_platforms, min_match_score):
     import arrayio
     from genomicode import Matrix
     from genomicode import arrayplatformlib
