@@ -11,75 +11,92 @@ import zipfile
 import time
 from time import strftime,localtime
 from stat import *
-"""contain some functions that are called by many modules"""
+import userfile
+import bie3
+"""
+DataObject
+contain some functions that are called by many modules
+
+Functions:
+get_identifier
+get_inputid
+make_unique_hash
+find_pcaplots
+is_missing
+merge_two_files
+which
+format_convert
+write_Betsy_parameters_file
+write_Betsy_report_parameters_file
+exists_nz
+plot_line_keywds
+plot_line_keywd
+renew_parameters
+is_number
+download_ftp
+download_dataset
+gunzip
+high_light_path
+convert_gene_list_platform
+convert_to_same_platform
+plot_pca
+extract_from_zip
+unzip_if_zip
+replace_matrix_header
+"""
 
 FMT = "%a %b %d %H:%M:%S %Y"
 
-##def get_identifier(network, module_id, stack_list,
-##                   datatype=None, contents=None,optional_key=None,
-##                   optional_value=None):
-##    for x in stack_list:
-##        node, node_id,a,b = x
-##        if datatype:
-##            if not node.datatype.name == datatype:
-##                continue
-##        if contents:
-##            if 'contents' not in node.attributes:
-##                continue
-##            if not node.attributes['contents'] == contents:
-##                continue
-##        if optional_key and optional_value:
-##            if optional_key not in node.attributes:
-##                continue
-##            elif not node.attributes[optional_key] == optional_value:
-##                continue
-##        if module_id in network.transitions[node_id]:
-##            if 'filename' in node.attributes:
-##                assert os.path.exists(node.attributes['filename']), (
-##            'the input file %s for %s does not exist'
-##        % (node.attributes['filename'],network.nodes[module_id].name))
-##                return node
-##            else:
-##                return node
-##    return False
 class DataObject:
-    def __init__(self, data, identifier):
+    def __init__(self, data, identifier=""):
         self.data = data
         self.identifier = identifier
     def __repr__(self):
         x = str(self.data) + ' identifier:' + self.identifier
         return x
+
+    
 def get_identifier(network, module_id, pool,
                    datatype=None, contents=None,optional_key=None,
                    optional_value=None,second_key=None,second_value=None):
-    for x in pool:
-        node, node_id = pool[x].data,x
-        
-        if datatype:
-            if not node.datatype.name == datatype:
-                continue
-        if contents:
-            if 'contents' not in node.attributes:
-                continue
-            if not node.attributes['contents'] == contents:
-                continue
-        if optional_key and optional_value:
-            if optional_key not in node.attributes:
-                continue
-            elif not node.attributes[optional_key] == optional_value:
-                continue
-        if second_key and second_value:
-            if second_key not in node.attributes:
-                continue
-            elif not node.attributes[second_key] == second_value:
-                continue
-        if module_id in network.transitions[node_id]:
-            if 'filename' in node.attributes:
-                assert os.path.exists(node.attributes['filename']), (
-            'the input file %s for %s does not exist'
-        % (node.attributes['filename'],network.nodes[module_id].name))
-            return pool[x]
-    return False
+    require_id = []
+    for key in network.transitions:
+        if module_id in network.transitions[key]:
+            require_id.append(key)
+    combine_ids = bie3._get_valid_input_combinations(
+        network, module_id, require_id)
+    for combine_id in combine_ids:
+        flag = True
+        for i in combine_id:
+            if i not in pool:
+                flag = False
+        if flag:
+            for i in combine_id:
+                node = network.nodes[i]
+                if datatype:
+                   if not node.datatype.name == datatype:
+                        continue
+                if contents:
+                    if 'contents' not in node.attributes:
+                        continue
+                    if not node.attributes['contents'] == contents:
+                        continue
+                if optional_key and optional_value:
+                    if optional_key not in node.attributes:
+                        continue
+                    elif not node.attributes[optional_key] == optional_value:
+                        continue
+                if second_key and second_value:
+                    if second_key not in node.attributes:
+                        continue
+                    elif not node.attributes[second_key] == second_value:
+                        continue
+                if pool[i].identifier:
+                    assert os.path.exists(pool[i].identifier), (
+                'the input file %s for %s does not exist'
+                % (pool[i].identifier,network.nodes[module_id].name))
+                return pool[i]
+
 
 def get_inputid(identifier):
     old_filename = os.path.split(identifier)[-1]
@@ -98,6 +115,7 @@ def make_unique_hash(identifier, pipeline, parameters,user_input):
     hash_result = hash_method.hash_parameters(
         input_file, pipeline, **new_parameters)
     return hash_result
+
 
 def find_pcaplots(network,pool,module_id,rma=False):
     before_pcaplot = None
@@ -437,7 +455,9 @@ def download_dataset(GSEID):
 
 def gunzip(filename):
     import gzip
-    if filename.endswith('.gz') or filename.split('_')[-3].endswith('.gz'):
+    x = userfile._unhash_storefile(filename)
+    real_name = x[1]
+    if filename.endswith('.gz') or real_name.endswith('.gz'):
         newfilename = os.path.join(
             os.getcwd(), os.path.split(os.path.splitext(filename)[0])[-1])
         #unzip the gz data

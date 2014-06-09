@@ -81,9 +81,20 @@ def main():
     parser.add_argument(
         '--json_file', dest='json_file', type=str, default=None,
         help='generate the output network json file')
+    parser.add_argument(
+        '--diagnose', dest='diagnose', action='store_const',
+        const=True, default=False,
+        help='diagnose the input data')
     args = parser.parse_args()
     assert args.in_datatype, 'please specify the in_datatype'
     assert args.out_datatype, 'please specify the out_datatype'
+    if args.output:
+        realpath = os.path.realpath(args.output)
+        if os.path.exists(args.output):
+            if not args.clobber:
+                raise ValueError('the output path %s is already exisit,\
+                                 please use --clobber option to overwrite'
+                                 % args.output)
     goal_datatype = getattr(rulebase, args.out_datatype)
     in_datatypes = []
     in_parameters = {}
@@ -121,7 +132,7 @@ def main():
         elif arg == '--input':
             if not len(in_datatypes) == len(identifiers) + 1:
                 identifiers.extend([''] * (len(in_datatypes) - len(identifiers) - 1))
-            store_file = userfile.store(getpass.getuser(), sys.argv[i + 1])
+            store_file = userfile.set(getpass.getuser(), sys.argv[i + 1])
             identifiers.append(store_file)
         elif arg == '--user_input':
             x = sys.argv[i + 1].split('=')
@@ -170,17 +181,15 @@ def main():
         for datatype_name in datatype_names:
             print_attribute(datatype_name)
         print_user_input(network_modules)
+    if args.diagnose:
+        in_datas = [i.data for i in in_objects]
+        bie3.diagnose_start_node(network, in_datas)
     if args.dry_run:
         return
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects, user_inputs)
     if args.output:
-        realpath = os.path.realpath(args.output)
-        if os.path.exists(args.output):
-            if not args.clobber:
-                raise ValueError('the output path %s is already exisit,\
-                                 please use --clobber option to overwrite'
-                                 % args.output)
+        if os.path.exists(args.output) and args.clobber:
             if os.path.isdir(args.output):
                 shutil.rmtree(args.output)
         if os.path.isdir(output_file):
