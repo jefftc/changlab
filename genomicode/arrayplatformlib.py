@@ -2,7 +2,7 @@
 """
 
 Functions:
-find_platform_by_name
+find_platform_by_name    Return a Platform object with a given name.
 get_bm_attribute
 get_bm_organism
 get_priority
@@ -10,8 +10,8 @@ prioritize_platforms
 
 find_header
 
-score_platforms
-score_platform_of_annotations
+score_platforms                 Given annotations, score for each platform.
+score_platform_of_annotations   Return the best match only.
 score_all_platforms_of_matrix
 score_platform_of_matrix
 
@@ -37,6 +37,16 @@ GENE_SYMBOL
 DESCRIPTION
 
 
+XXX document how the psid2platform path is organized
+XXX document what these variables are for:
+  annotate_header
+  affy_headers
+  illu_headers
+  biomart_headers
+
+
+
+
 TODO:
 - Need a function like:
   find_header(MATRIX, GENE_SYMBOL) -> "Gene Symbol"
@@ -57,6 +67,8 @@ PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION = range(4)
 
 class Platform:
     def __init__(self, name, bm_attribute, bm_organism, category, priority):
+        # XXX document what each of these variables are for
+        # what is priority?  low number is higher priority?
         self.name = name
         self.bm_attribute = bm_attribute
         self.bm_organism = bm_organism
@@ -93,11 +105,12 @@ def get_priority(platform_name):
 
 
 def prioritize_platforms(platform_names):
+    # XXX what is order?  highest priority to lowest?
     order_prioritize = [
         (get_priority(name), name) for name in platform_names]
     order_prioritize.sort()
-    out_list = [i[1] for i in order_prioritize]
-    return out_list
+    prioritized_names = [i[1] for i in order_prioritize]
+    return prioritized_names
 
 
 def find_header(MATRIX, category):
@@ -221,88 +234,121 @@ def score_platforms(annotations):
     all_platforms = _read_annotations()
     results = []
     for x in all_platforms:
-        chipname, case_sensitive, gene = x
-        y = _compare_annotations(annotations,gene,case_sensitive)
+        chipname, case_sensitive, ids = x
+        y = _compare_annotations(annotations, ids, case_sensitive)
         number_shared_annots, only1, only2, match = y
-        results.append((chipname,number_shared_annots,match))
-    results.sort(key=lambda x: (x[2],x[1]),reverse=True)
+        results.append((chipname, number_shared_annots, match))
+    results.sort(key=lambda x: (x[2], x[1]),reverse=True)
     return results
 
 
-def _compare_annotations(annot1, annot2, case_sensitive):
+def _compare_annotations(annots1, annots2, case_sensitive):
+    # Return tuple of: num_shared, num_annots1_only, num_annots2_only,
+    # perc_shared.
     if not case_sensitive:
-        annot1 = [psid.upper() for psid in annot1]
-        annot2 = [psid.upper() for psid in annot2]
-    num_shared_annots = len(set(annot1).intersection(set(annot2)))
-    num_annot1_only = len(set(annot1)) - num_shared_annots
-    num_annot2_only = len(set(annot2)) - num_shared_annots
-    share_percentage = float(num_shared_annots)/min(len(set(annot1)),len(set(annot2)))
-    return num_shared_annots, num_annot1_only, num_annot2_only, share_percentage
+        annots1 = [psid.upper() for psid in annots1]
+        annots2 = [psid.upper() for psid in annots2]
+    # Ignore differences in whitespace.
+    annots1 = [x.strip() for x in annots1]
+    annots2 = [x.strip() for x in annots2]
+    # No blank annotations.
+    annots1 = [x for x in annots1 if x]
+    annots2 = [x for x in annots2 if x]
+    # No duplicate annotations.
+    annots1 = {}.fromkeys(annots1)
+    annots2 = {}.fromkeys(annots2)
 
+    x = [x for x in annots1 if x in annots2]
+    num_shared_annots = len(x)
+    num_annots1_only = len(annots1) - num_shared_annots
+    num_annots2_only = len(annots2) - num_shared_annots
+    perc_shared = float(num_shared_annots)/min(len(annots1), len(annots2))
+    x = num_shared_annots, num_annots1_only, num_annots2_only, perc_shared
+    return x
 
 
 def score_platform_of_annotations(annotations):
-    platform = None
-    match = None
+    # Tuple of (platform, match score) or None.
     possible_platforms = score_platforms(annotations)
-    if possible_platforms[0][1] > 0:
-        platform, number_shared_annots, match = possible_platforms[0]
+    assert possible_platforms
+    if possible_platforms[0][1] <= 0:
+        return None
+    platform, number_shared_annots, match = possible_platforms[0]
     return platform, match
 
 
-def score_all_platforms_of_matrix(DATA):
-    """return a list of (header, platform, match) we can guess"""
-    # Order of list is arbitrary.
-    # XXX what is match?
-    chips = dict()
-    for name in DATA.row_names():
-        x = DATA.row_names(name)
-        possible_chip, match = score_platform_of_annotations(x)
-        if possible_chip:
-            chips[possible_chip] = (name, match)
-    order_platforms = prioritize_platforms(chips.keys())
-    #if chips is empty, will return an empty list
-    x = [(chips[platform][0], platform, chips[platform][1])
+def _parse_matrix_annotations(annots, delim):
+    if delim is None:
+        return annots
+    parsed = []
+    for annot in annots:
+        x = annot.split(delim)
+        parsed.extend(x)
+    return parsed
+
+
+def score_all_platforms_of_matrix(DATA, annot_delim=None):
+    """Return a list of (header, platform, score).  score is the
+    percentage of the IDs from header that matches the IDs in this
+    platform.  List is ordered by increasing platform priority.
+
+    """
+    platform2score = {}  # platform_name -> header, match
+    for header in DATA.row_names():
+        x = DATA.row_names(header)
+        annots = _parse_matrix_annotations(x, annot_delim)
+        x = score_platform_of_annotations(annots)
+        if x is None:
+            continue
+        platform, score = x
+        platform2score[platform] = (header, score)
+    order_platforms = prioritize_platforms(platform2score.keys())
+    # if chips is empty, will return an empty list
+    x = [(platform2score[platform][0], platform, platform2score[platform][1])
          for platform in order_platforms]
     return x
 
 
-def score_platform_of_matrix(DATA):
+def score_platform_of_matrix(DATA, annot_delim=None):
     # Return the best scoring platform for this matrix.
-    platform_list = score_all_platforms_of_matrix(DATA)
-    if not platform_list:
+    platforms = score_all_platforms_of_matrix(DATA, annot_delim=annot_delim)
+    if not platforms:
         return None, 0
 
     # Sort by decreasing score.
-    schwartz = [(-x[2], x) for x in platform_list]
+    schwartz = [(-x[2], x) for x in platforms]
     schwartz.sort()
-    platform_list = [x[-1] for x in schwartz]
+    platforms = [x[-1] for x in schwartz]
     
-    out_platform = platform_list[0][1]
-    out_platform_match = platform_list[0][2]
+    out_platform = platforms[0][1]
+    out_platform_match = platforms[0][2]
     return out_platform, out_platform_match
 
 
 def identify_platform_of_annotations(annotations):
-    platform, match = score_platform_of_annotations(annotations)
+    x = score_platform_of_annotations(annotations)
+    if not x:
+        return None
+    platform, match = x
     if match == 1:
         return platform
     return None
 
 
-def identify_all_platforms_of_matrix(DATA):
+def identify_all_platforms_of_matrix(DATA, annot_delim=None):
     """return a list of (header, platform) we can identify"""
-    platform_list = score_all_platforms_of_matrix(DATA)
+    platforms = score_all_platforms_of_matrix(DATA, annot_delim=annot_delim)
     result = []
-    for x in platform_list:
+    for x in platforms:
         header, platform, match = x
         if match == 1:
             result.append((header, platform))
     return result
 
     
-def identify_platform_of_matrix(DATA):
-    platform_name, match = score_platform_of_matrix(DATA)
+def identify_platform_of_matrix(DATA, annot_delim=None):
+    x = score_platform_of_matrix(DATA, annot_delim=annot_delim)
+    platform_name, match = x
     if match == 1:
         return platform_name
     return None
@@ -361,16 +407,25 @@ PLATFORMS = [
         'Entrez_ID_mouse', "entrezgene", "mmusculus_gene_ensembl", GENE_ID,
         25),
     Platform(
-        'Entrez_symbol_human', "hgnc_symbol", "hsapiens_gene_ensembl",
+        'Entrez_Symbol_human', "hgnc_symbol", "hsapiens_gene_ensembl",
         GENE_SYMBOL, 26),
     Platform(
-        'Entrez_symbol_mouse', "mgi_symbol", "mmusculus_gene_ensembl",
+        'Entrez_Symbol_mouse', "mgi_symbol", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 27),
     Platform(
-        'ensembl_human',"ensembl_gene_id","hsapiens_gene_ensembl",PROBE_ID, 28),
+        'Ensembl_human', "ensembl_gene_id", "hsapiens_gene_ensembl",
+        PROBE_ID, 28),
     Platform(
-        'ensembl_mouse',"ensembl_gene_id","mmusculus_gene_ensembl",PROBE_ID, 29),
+        'Ensembl_mouse', "ensembl_gene_id", "mmusculus_gene_ensembl",
+        PROBE_ID, 29),
+    Platform(
+        'RefSeq_protein_ID_human', "refseq_peptide", "hsapiens_gene_ensembl",
+        PROBE_ID, 30),
+    Platform(
+        'RefSeq_transcript_ID_human', "refseq_mrna", "hsapiens_gene_ensembl",
+        PROBE_ID, 31),
     ]
+
 
 
 annotate_header = [

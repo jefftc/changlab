@@ -566,13 +566,21 @@ def rename_col_id(MATRIX, rename_list, ignore_missing):
 
     if not rename_list:
         return MATRIX
-    
+
     rename_all = []  # list of (from_str, to_str)
     for rename_str in rename_list:
         x = rename_str.split(",")
         assert len(x) == 2, "format should be: <from>,<to>"
         from_str, to_str = x
         rename_all.append((from_str, to_str))
+
+    if not ignore_missing:
+        missing = []
+        for (from_str, to_str) in rename_all:
+            if from_str not in MATRIX.col_names():
+                missing.append(from_str)
+        x = ", ".join(missing)
+        assert not missing, "Missing col ids: %s" % x
 
     MATRIX_new = MATRIX.matrix()
     name = arrayio.COL_ID
