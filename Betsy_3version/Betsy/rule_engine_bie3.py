@@ -53,7 +53,7 @@ def copy_result_folder(working_dir, temp_dir, temp_outfile):
     try:
         shutil.copyfile(os.path.join(temp_dir, 'Betsy_parameters.txt'),
                         os.path.join(working_dir, 'Betsy_parameters.txt'))
-        if os.path.isdir(temp_outfile):
+        if os.path.isdir(os.path.join(temp_dir,temp_outfile)):
             shutil.copytree(os.path.join(temp_dir, temp_outfile),
                             os.path.join(working_dir, temp_outfile))
         else:
@@ -97,23 +97,28 @@ def compare_two_dict(dict_A, dict_B):
     return True
 
 
-def get_out_node(network, module_id, module_file, parameters,
+def get_out_node(working_dir, network, module_id, module_file, parameters,
                 pool, user_input):
-    data_node = module_file.find_antecedents(network,
-                                             module_id, pool, parameters)
-    outfile = module_file.name_outfile(data_node, user_input)
-    next_possible_ids = network.transitions[module_id]
-    out_object = None
-    fn = getattr(rulebase, network.nodes[next_possible_ids[0]].datatype.name)
-    out_node = bie3.Data(fn, **parameters)
-    out_object = DataObject(out_node, outfile)
-    out_id = None
-    result = []
-    for next_id in next_possible_ids:
-        if compare_two_dict(parameters, network.nodes[next_id].attributes):
-            out_id = next_id
-            result.append((out_object, out_id))
-    return result
+    current_dir = os.getcwd()
+    try:
+        os.chdir(working_dir)
+        data_node = module_file.find_antecedents(network,
+                                                 module_id, pool, parameters)
+        outfile = module_file.name_outfile(data_node, user_input)
+        next_possible_ids = network.transitions[module_id]
+        out_object = None
+        fn = getattr(rulebase, network.nodes[next_possible_ids[0]].datatype.name)
+        out_node = bie3.Data(fn, **parameters)
+        out_object = DataObject(out_node, outfile)
+        out_id = None
+        result = []
+        for next_id in next_possible_ids:
+            if compare_two_dict(parameters, network.nodes[next_id].attributes):
+                out_id = next_id
+                result.append((out_object, out_id))
+        return result
+    finally:
+        os.chdir(current_dir)
 
 
 def create_out_attributes(network, module_id, module_file, pool):
@@ -166,6 +171,7 @@ def test_require_data(network, module_id, pool):
 
 def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
                user=getpass.getuser(), job_name='', clean_up=True):
+    current_dir = os.getcwd()
     output_path = config.OUTPUTPATH
     assert os.path.exists(output_path), (
         'the output_path %s does not exist' % output_path)
@@ -184,7 +190,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
                         locals(), [module_name], -1)
     out_attributes = create_out_attributes(
         network, module_id, module, pool)
-    if not out_attributes:
+    if out_attributes is None:
         return []
     print '[' + time.strftime('%l:%M%p') + '].' + module_name
     working_dir = os.path.join(output_path, make_module_wd_name(
@@ -193,31 +199,31 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
     # make name of outfile
     data_node = module.find_antecedents(network, module_id,
                                         pool, out_attributes)
-    outfile = module.name_outfile(data_node, sub_user_input)
+    outfile = os.path.split(module.name_outfile(data_node, sub_user_input))[-1]
     temp_dir = ''
     temp_outfile = ''
     if not os.path.exists(os.path.join(working_dir, 'stdout.txt')):
         #if no result has been generated, create temp folder and run analysis
         temp_dir = tempfile.mkdtemp()
-        os.chdir(temp_dir)
         try:
+            os.chdir(temp_dir) 
             starttime = strftime(module_utils.FMT, localtime())
             out_node = module.run(data_node, out_attributes,
                                   sub_user_input, network)
+            if not out_node:
+                return False
             module_utils.write_Betsy_parameters_file(out_node.data.attributes,
                                                      data_node, sub_user_input,
                                                      pipeline_sequence,
                                                      starttime, user, job_name)
-            if out_node:
-                f = file(os.path.join(temp_dir, 'stdout.txt'), 'w')
-                f.write('This module runs successully.')
-                f.close()
-            else:
-                return False
+            f = file(os.path.join(temp_dir, 'stdout.txt'), 'w')
+            f.write('This module runs successully.')
+            f.close()
         except:
             logging.exception('Got exception on %s .run()' % module_name)
             raise
-        temp_outfile = os.path.split(outfile)[-1]
+        finally:
+            os.chdir(current_dir)
         try:
             # found if the same analysis has been run and wait for it finished
             try:
@@ -235,14 +241,13 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
                     time.sleep(1)
             # if previous analysis not working, copy the current
             # results to working_dir
-            if (module_utils.exists_nz(temp_outfile) and not
+            if (module_utils.exists_nz(os.path.join(temp_dir,outfile)) and not
                 os.path.exists(os.path.join(working_dir, 'stdout.txt'))):
-                copy_result_folder(working_dir, temp_dir, temp_outfile)
+                copy_result_folder(working_dir, temp_dir, outfile)
         finally:
             if clean_up and os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
-    os.chdir(working_dir)
-    out_nodes = get_out_node(
+    out_nodes = get_out_node(working_dir,
         network, module_id, module, out_attributes, pool, sub_user_input)
     assert out_nodes, 'module %s fails' % module_node.name
     return out_nodes
@@ -250,71 +255,58 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
 
 def run_pipeline(network, in_objects, user_inputs,
                  user=getpass.getuser(), job_name=''):
-    working_dir = os.getcwd()
     output_path = config.OUTPUTPATH
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     LOG_FILENAME = os.path.join(output_path, 'traceback.txt')
     logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
-    try:
-        pipeline_sequence = []
-        stack_list = []
-        pool = {}
-        for data_object in in_objects:
-            data_node = data_object.data
-            start_node_ids = bie3._find_start_nodes(network, data_node)
-            for start_node_id in start_node_ids:
-                stack_list.append((data_object, start_node_id))
-                pool[start_node_id] = data_object
-        num_failures = 0
-        while stack_list:
-            assert num_failures < len(stack_list)
-            data_object, node_id = stack_list.pop()
-            data_node = data_object
-            if isinstance(data_node, DataObject):
-                data_node = data_node.data
-            if isinstance(data_node, bie3.Data):
-                pool[node_id] = data_object
-                result = choose_next_module(network, node_id, pool)
-                if result:
-                    result.sort(key=lambda x: x[1])
-                    for x in result:
-                        module, module_id = x
-                        stack_list.append((module, module_id))
-            elif isinstance(data_node, bie3.Module):
-                module_id = node_id
-                test_required = test_require_data(network, module_id, pool)
-                if test_required:
-                    pipeline_sequence.append(module.name)
-                    out_nodes = run_module(network, module_id, pool,
-                                           user_inputs, pipeline_sequence,
-                                           user, job_name)
-                    for x in out_nodes:
-                        next_node, next_id = x
-                        if next_id == 0:
-                            if module_utils.exists_nz(next_node.identifier):
-                                print ('[' + time.strftime('%l:%M%p') +
-                                       '] Completed successfully and ' +
-                                       'generated a file:')
-                                print  next_node.identifier + '\r'
-                                print '\r'
-                                sys.stdout.flush()
-                                return next_node.identifier
-                            else:
-                                print 'This pipeline has\
-                                       completed unsuccessfully'
-                                raise ValueError(
-                                    'there is no output for this pipeline')
-                            return None
-                        elif next_id is None:
-                            raise ValueError('cannot match the output node')
-                        stack_list.append((next_node, next_id))
-                else:
-                    if stack_list:
-                        stack_list.insert(0, (data_node, node_id))
-                        num_failures += 1
-    except Exception, x:
-            raise
-    finally:
-        os.chdir(working_dir)
-    return True
+    pipeline_sequence = []
+    stack_list = []
+    pool = {}
+    for data_object in in_objects:
+        data_node = data_object.data
+        start_node_ids = bie3._find_start_nodes(network, data_node)
+        for start_node_id in start_node_ids:
+            stack_list.append((data_object, start_node_id))
+            pool[start_node_id] = data_object
+    num_failures = 0
+    while stack_list:
+        assert num_failures < len(stack_list)
+        data_object, node_id = stack_list.pop()
+        if isinstance(data_object, DataObject):
+            pool[node_id] = data_object
+            next_modules = choose_next_module(network, node_id, pool)
+            stack_list.extend(next_modules)
+        elif isinstance(data_object, bie3.Module):
+            module_id = node_id
+            test_required = test_require_data(network, module_id, pool)
+            if not test_required:
+                stack_list.insert(0, (data_object, node_id))
+                num_failures += 1
+                continue
+            pipeline_sequence.append(data_object.name)
+            out_nodes = run_module(network, module_id, pool,
+                                   user_inputs, pipeline_sequence,
+                                   user, job_name)
+            for x in out_nodes:
+                next_node, next_id = x
+                if next_id == 0:
+                    break
+                elif next_id is None:
+                    raise ValueError('cannot match the output node')
+                stack_list.append((next_node, next_id))
+    if module_utils.exists_nz(next_node.identifier):
+        print ('[' + time.strftime('%l:%M%p') +
+               '] Completed successfully and ' +
+               'generated a file:')
+        print  next_node.identifier + '\r'
+        print '\r'
+        sys.stdout.flush()
+        return next_node.identifier
+    else:
+        print 'This pipeline has\
+               completed unsuccessfully'
+        raise ValueError(
+            'there is no output for this pipeline')
+    return None
+

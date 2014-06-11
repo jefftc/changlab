@@ -1027,6 +1027,24 @@ def run_case33():
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+
+def run_case34():
+    """test case for batch effect remove report, take a long time
+      to generate the network, when the report include 8 files, it runs quick,
+      but when including 10 or 12 files, it takes few hours to finish.
+    """
+    out_data = rulebase.ReportFile.output(
+        report_type="batch_effect_remove",
+       
+        )
+
+    network = bie3.backchain(rulebase.all_modules, out_data)
+
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
     
 def main():
     #run_case01()
@@ -1062,7 +1080,8 @@ def main():
     #run_case30()
     #run_case31()
     #run_case32()
-    run_case33()
+    #run_case33()
+    run_case34()
     
 if __name__ == '__main__':
     main()

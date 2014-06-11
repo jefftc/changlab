@@ -45,9 +45,9 @@ def get_out_attributes(parameters,data_node):
     if 'cc1' in ver_list:
         new_parameters['version'] = 'cc'
     elif 'v3' in ver_list:
-        new_parameters['version'] = 'v3'
+        new_parameters['version'] = 'v3_v4'
     elif 'v4' in ver_list:
-        new_parameters['version'] = 'v4'
+        new_parameters['version'] = 'v3_v4'
     else:
         raise ValueError('the cel file can only be cc,v3,v4')
     return new_parameters

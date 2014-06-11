@@ -13,8 +13,12 @@ from Betsy import rulebase
 def run(data_node,parameters, user_input,network):
     """check an input file is xls or xlsx format"""
     outfile = name_outfile(data_node,user_input)
-    x = userfile._unhash_storefile(data_node.identifier)
-    real_name = x[1]
+    real_name = data_node.identifier
+    try:
+        x = userfile._unhash_storefile(data_node.identifier)
+        real_name = x[1]
+    except:
+        pass
     if (data_node.identifier.endswith('.gz') or
         real_name.endswith('.gz')):
         unzip_file = module_utils.gunzip(data_node.identifier)
