@@ -47,6 +47,11 @@ GEOSeries = DataType("GEOSeries",
                          "train0", "train1","test", "class0,class1,test",
                          "class0", "class1", "class0,class1","unspecified"],
                                   'unspecified','unspecified'))
+GEOfamily = DataType("GEOfamily",
+                     AttributeDef("contents",[
+                         "train0", "train1","test", "class0,class1,test",
+                         "class0", "class1", "class0,class1","unspecified"],
+                                  'unspecified','unspecified'))
 
 ExpressionFiles = DataType("ExpressionFiles",
                            AttributeDef("contents",
@@ -68,7 +73,9 @@ RenameFile = DataType(
     AttributeDef("contents",["train0","train1", "test",
                              "class0,class1,test","class0",
                              "class1", "class0,class1","unspecified"],
-                             'unspecified','unspecified'))
+                             'unspecified','unspecified'),
+    AttributeDef("labels_from",["title","description"],'title','title'))
+
 AgilentFiles = DataType(
     "AgilentFiles",
     AttributeDef("contents",["train0","train1", "test",
@@ -1022,10 +1029,31 @@ all_modules = [
          Constraint("platform", MUST_BE,"no"),
          Consequence("annotate",SET_TO,"yes"),
          Consequence("platform",SAME_AS_CONSTRAINT)),
+    
+    Module(
+         'download_GEO_family_soft',
+         GEOSeries,GEOfamily,
+         UserInputDef("GSEID"),
+         Constraint("contents",CAN_BE_ANY_OF,[
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"]),
+         Consequence("contents",SAME_AS_CONSTRAINT)),
+    
+    Module(
+         'convert_family_soft_to_rename',
+         GEOfamily,RenameFile,
+         UserInputDef("GSEID"),
+         Constraint("contents",CAN_BE_ANY_OF,[
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"]),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+         Consequence("labels_from",SET_TO_ONE_OF,["title","description"])),
+    
     Module( 
        "relabel_samples",  
         [RenameFile,SignalFile_Annotate],SignalFile_Annotate,
          Constraint("rename_sample",MUST_BE,"no",1),
+         Constraint("labels_from",CAN_BE_ANY_OF,["title","description"],0),
          Constraint("contents",CAN_BE_ANY_OF,[
         "unspecified", "train0", "train1", "test", 'class0,class1,test',
         "class0", "class1", "class0,class1"],0),
@@ -1034,6 +1062,8 @@ all_modules = [
          Consequence("contents", SAME_AS_CONSTRAINT,0),
          Constraint('annotate',MUST_BE,'no',1),
          Consequence("annotate",SAME_AS_CONSTRAINT,1),
+         Constraint('platform',MUST_BE,'no',1),
+         Consequence("platform",SAME_AS_CONSTRAINT,1),
          DefaultAttributesFrom(1),
        ),
     Module(
@@ -1257,5 +1287,5 @@ all_modules = [
 list_files=[RenameFile,AgilentFiles,CELFiles,ControlFile,ExpressionFiles,
             GPRFiles,GEOSeries,IDATFiles,ClassLabelFile,ILLUFolder,GeneListFile,
            SignalFile,SignalFile_Postprocess,SignalFile_Impute, SignalFile_Merge,
-            SignalFile_Normalize,SignalFile_Order,SignalFile_Annotate,SignalFile_Filter]
+            SignalFile_Normalize,SignalFile_Order,SignalFile_Annotate,SignalFile_Filter,GEOfamily]
 

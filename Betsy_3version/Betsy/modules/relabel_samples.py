@@ -50,7 +50,11 @@ def name_outfile(in_nodes,user_input):
 
     
 def get_out_attributes(parameters,in_nodes):
-    return parameters
+    data_node,rename_node = in_nodes
+    new_parameters = data_node.data.attributes.copy()
+    new_parameters['rename_sample']='yes'
+    return new_parameters
+
 
 def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     data_node,rename_node = in_nodes
