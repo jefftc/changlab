@@ -2060,21 +2060,19 @@ def _object_to_dict(obj):
     return d
 
 def _dict_to_object(d):
-    if isinstance(d,dict):
-        args = dict((key.encode('ascii'), value) for key, value in d.items())
-        for key,value in args.iteritems():
-            if isinstance(value,dict):
-                args[key]=_dict_to_object(value)
-            elif isinstance(value,list):
-                if value:
-                    if isinstance(value[0],unicode):
-                        args[key]=[i.encode('ascii') for i in value]
-            elif isinstance(value,unicode):
-                args[key]=value.encode('ascii')
-            else:
-                assert 'not expected type %s' %value
-    else:
-        assert 'not a dict %s' %d
+    assert isinstance(d,dict)
+    args = dict((key.encode('ascii'), value) for key, value in d.items())
+    for key,value in args.iteritems():
+        if isinstance(value,dict):
+            args[key]=_dict_to_object(value)
+        elif isinstance(value,list):
+            if value:
+                if isinstance(value[0],unicode):
+                    args[key]=[i.encode('ascii') for i in value]
+        elif isinstance(value,unicode):
+            args[key]=value.encode('ascii')
+        else:
+            assert 'not expected type %s' %value
     inst = args
     if '__class__' in args:
         class_name = args.pop('__class__')

@@ -329,34 +329,51 @@ Module(
          Consequence("report_type",SET_TO,'diffgenes')),
     Module(
         'make_batch_effect_report',
-        [SignalFile_rule.SignalFile,SignalFile_rule.SignalFile_Merge,
-         SignalFile_rule.SignalFile,SignalFile_rule.SignalFile_Merge,
-         SignalFile_rule.SignalFile_Merge],ReportFile,
-         Constraint("quantile_norm",MUST_BE,'yes',0),
-         Constraint("dwd_norm",MUST_BE,'no',0),
-         Constraint("bfrm_norm",MUST_BE,'no',0),
-         Constraint("combat_norm",MUST_BE,'no',0),
-         Constraint("shiftscale_norm",MUST_BE,'no',0),
-         Constraint("quantile_norm",MUST_BE,'yes',1),
-         Constraint("dwd_norm",MUST_BE,'yes',1),
-         Constraint("bfrm_norm",MUST_BE,'no',1),
-         Constraint("combat_norm",MUST_BE,'no',1),
-         Constraint("shiftscale_norm",MUST_BE,'no',1),
+        [SignalFile_rule.SignalFile,
+         PcaAnalysis_rule.PcaPlot,
+         
+         SignalFile_rule.SignalFile,
+         PcaAnalysis_rule.PcaPlot,
+         
+         SignalFile_rule.SignalFile,
+         PcaAnalysis_rule.PcaPlot,
+         
+         SignalFile_rule.SignalFile,
+         PcaAnalysis_rule.PcaPlot,
+         
+         SignalFile_rule.SignalFile,
+         PcaAnalysis_rule.PcaPlot,
+         
+         SignalFile_rule.SignalFile,
+         PcaAnalysis_rule.PcaPlot
+         
+         ],ReportFile,
+         Constraint("quantile_norm",MUST_BE,'no',0),
+         Constraint("quantile_norm",SAME_AS,0,1),
+        
          Constraint("quantile_norm",MUST_BE,'yes',2),
-         Constraint("dwd_norm",MUST_BE,'no',2),
-         Constraint("bfrm_norm",MUST_BE,'no',2),
-         Constraint("combat_norm",MUST_BE,'no',2),
-         Constraint("shiftscale_norm",MUST_BE,'yes',2),
-         Constraint("quantile_norm",MUST_BE,'yes',3),
-         Constraint("dwd_norm",MUST_BE,'no',3),
-         Constraint("bfrm_norm",MUST_BE,'yes',3),
-         Constraint("combat_norm",MUST_BE,'no',3),
-         Constraint("shiftscale_norm",MUST_BE,'no',3),
+         Constraint("quantile_norm",SAME_AS,2,3),
+        
          Constraint("quantile_norm",MUST_BE,'yes',4),
-         Constraint("dwd_norm",MUST_BE,'no',4),
-         Constraint("bfrm_norm",MUST_BE,'no',4),
-         Constraint("combat_norm",MUST_BE,'yes',4),
-         Constraint("shiftscale_norm",MUST_BE,'no',4),
+         Constraint("dwd_norm",MUST_BE,'yes',4),
+         Constraint("quantile_norm",SAME_AS,4,5),
+         Constraint("dwd_norm",SAME_AS,4,5),
+        
+         Constraint("quantile_norm",MUST_BE,'yes',6),
+         Constraint("bfrm_norm",MUST_BE,'yes',6),
+         Constraint("quantile_norm",SAME_AS,6,7),
+         Constraint("bfrm_norm",SAME_AS,6,7),
+        
+         Constraint("quantile_norm",MUST_BE,'yes',8),
+         Constraint("shiftscale_norm",MUST_BE,'yes',8),
+         Constraint("quantile_norm",SAME_AS,8,9),
+         Constraint("shiftscale_norm",SAME_AS,8,9),
+        
+         Constraint("quantile_norm",MUST_BE,'yes',10),
+         Constraint("combat_norm",MUST_BE,'yes',10),
+         Constraint("quantile_norm",SAME_AS,10,11),
+         Constraint("combat_norm",SAME_AS,10,11),
+        
          Consequence("report_type",SET_TO,'batch_effect_remove'))
 
         ]

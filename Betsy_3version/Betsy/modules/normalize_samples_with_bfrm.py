@@ -62,7 +62,9 @@ def find_antecedents(network, module_id,data_nodes,parameters):
     return data_node
     
 def get_out_attributes(parameters,data_node):
-    return parameters
+    new_parameters = data_node.data.attributes.copy()
+    new_parameters['bfrm_norm']='yes'
+    return new_parameters
 
 def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier

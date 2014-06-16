@@ -1,6 +1,6 @@
 #convert_signal_to_tdf.py
 import os
-from Betsy import module_utils
+from Betsy import module_utils, userfile
 import shutil
 import xlrd 
 import openpyxl
@@ -13,8 +13,14 @@ from Betsy import rulebase
 def run(data_node,parameters, user_input,network):
     """check an input file is xls or xlsx format"""
     outfile = name_outfile(data_node,user_input)
+    real_name = data_node.identifier
+    try:
+        x = userfile._unhash_storefile(data_node.identifier)
+        real_name = x[1]
+    except:
+        pass
     if (data_node.identifier.endswith('.gz') or
-        data_node.identifier.split('_')[-3].endswith('.gz')):
+        real_name.endswith('.gz')):
         unzip_file = module_utils.gunzip(data_node.identifier)
     else:
         unzip_file = data_node.identifier
@@ -48,7 +54,6 @@ def run(data_node,parameters, user_input,network):
         os.remove(xls_file)
         f.close()
         txt_file = 'tmp1.txt'
-    #M = arrayio.choose_format(txt_file)
     M = guess_and_change_gct_header(txt_file)
     M_c = arrayio.convert(M, to_format=arrayio.tab_delimited_format)
     f = file(outfile, 'w')
