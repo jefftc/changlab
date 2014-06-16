@@ -2510,59 +2510,107 @@ def _make_backchain_dict(network):
     return nodeid2previds
 
 
+def _can_module_take_one_data(module, input_num, data):
+    if data.datatype != module.in_datatypes[input_num]:
+        return False
+
+    # Make sure the data satisfies each of the module's constraints.
+    for constraint in module.constraints:
+        # If the constraint does not apply to this data object,
+        # then ignore.
+        if constraint.input_index != input_num:
+            continue
+
+        assert constraint.name in data.attributes
+        data_value = data.attributes.get(constraint.name)
+        data_type = _get_attribute_type(data_value)
+        assert data_type in [TYPE_ATOM, TYPE_ENUM]
+
+        # If this is a SAME_AS constraint, follow SAME_AS.  This value
+        # must be the same as the value for another input data.  If
+        # there is a constraint on that input data, we might be able
+        # to figure out what it is.
+        # e.g.
+        # input_0   quantile_norm MUST_BE "no"
+        # input_1   quantile_norm SAME_AS input_0
+        #
+        # OR:
+        # input_0   quantile_norm MUST_BE "no"
+        # input_1   quantile_norm SAME_AS input_0
+        # input_2   quantile_norm SAME_AS input_1
+        #
+        while constraint and constraint.behavior == SAME_AS:
+            x_cons = [
+                x for x in module.constraints
+                if x.input_index == constraint.arg1 and
+                x.name == constraint.name]
+            x_same = [x for x in x_cons if x.behavior == SAME_AS]
+            x_value = [x for x in x_cons
+                       if x.behavior in [MUST_BE, CAN_BE_ANY_OF]]
+            assert not (x_same and x_value)
+            if x_same:
+                contraint = x_same[0]
+            elif x_value:
+                assert len(x_value) == 1
+                constraint = x_value[0]
+            else:
+                # If the SAME_AS chain does not end with MUST_BE or
+                # CAN_BE_ANY_OF, then we cannot test this.
+                contraint = None
+        # SAME_AS did not lead to a testable constraint.
+        if not constraint:
+            continue
+
+        if constraint.behavior == MUST_BE:
+            if data_type == TYPE_ATOM:
+                if data_value != constraint.arg1:
+                    return False
+            elif data_type == TYPE_ENUM:
+                return False
+            else:
+                raise AssertionError
+        elif constraint.behavior == CAN_BE_ANY_OF:
+            if data_type == TYPE_ATOM:
+                if data_value not in constraint.arg1:
+                    return False
+            elif data_type == TYPE_ENUM:
+                # data_value contains the possible values of this Data
+                # object.  The values that are acceptable by module is
+                # in constraint.arg1.  Make sure the module can handle
+                # all of the possible values.
+                if not _is_subset(data_value, constraint.arg1):
+                    return False
+            else:
+                raise AssertionError
+        elif constraint.behavior == SAME_AS:
+            # Should not end up with SAME_AS constraints.
+            raise AssertionError
+        else:
+            raise AssertionError
+    return True
+
+
 def _can_module_take_data(module, datas):
     # Return True/False if a module can take this list of Data nodes
     # as an input.
     if len(module.in_datatypes) != len(datas):
         return False
-
     for input_num in range(len(module.in_datatypes)):
         data = datas[input_num]
-        if data.datatype != module.in_datatypes[input_num]:
+        if not _can_module_take_one_data(module, input_num, data):
             return False
 
-        # Make sure the data satisfies each of the module's constraints.
+        # Test SAME_AS constraints.
         for constraint in module.constraints:
-            # If the constraint does not apply to this data object,
-            # then ignore.
             if constraint.input_index != input_num:
                 continue
-            
-            assert constraint.name in data.attributes
             data_value = data.attributes.get(constraint.name)
-            data_type = _get_attribute_type(data_value)
-            assert data_type in [TYPE_ATOM, TYPE_ENUM]
-
-            if constraint.behavior == MUST_BE:
-                if data_type == TYPE_ATOM:
-                    if data_value != constraint.arg1:
-                        return False
-                elif data_type == TYPE_ENUM:
-                    return False
-                else:
-                    raise AssertionError
-            elif constraint.behavior == CAN_BE_ANY_OF:
-                if data_type == TYPE_ATOM:
-                    if data_value not in constraint.arg1:
-                        return False
-                elif data_type == TYPE_ENUM:
-                    # data_value contains the possible values of this Data
-                    # object.  The values that are acceptable by module is
-                    # in constraint.arg1.  Make sure the module can handle
-                    # all of the possible values.
-                    if not _is_subset(data_value, constraint.arg1):
-                        return False
-                else:
-                    raise AssertionError
-            elif constraint.behavior == SAME_AS:
+            if constraint.behavior == SAME_AS:
                 # Should only be encountered if there are multiple input
                 # data types.
                 target_data = datas[constraint.arg1]
                 if data_value != target_data.attributes[constraint.name]:
                     return False
-            else:
-                raise AssertionError
-
     return True
 
 
@@ -2859,11 +2907,22 @@ def _get_valid_input_combinations(network, module_id, all_input_ids,
 
     module = network.nodes[module_id]
 
+    # For each in_datatype, find all the data objects that match this
+    # type.
     args = []
     for datatype in module.in_datatypes:
         x = [x for x in all_input_ids if network.nodes[x].datatype == datatype]
         args.append(x)
 
+    # If there are many in_datatypes, then this could cause a
+    # combinatorial explosion of possibilities.  Optimize by throwing
+    # out data objects that fail a constraint.
+    for i in range(len(args)):
+        x = args[i]
+        x = [x for x in x
+             if _can_module_take_one_data(module, i, network.nodes[x])]
+        args[i] = x
+    
     valid = []
     # Optimization: Assume existing inputs in the network are valid
     # and don't check them again.

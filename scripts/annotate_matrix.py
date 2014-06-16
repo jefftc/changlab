@@ -108,8 +108,8 @@ def convert_gene_ids(
 
 
 def convert_geneset(
-    filename, in_delim, out_delim, in_genesets, out_platforms, out_geneset,
-    out_format):
+    filename, in_delim, out_delim, keep_dups, keep_emptys,
+    in_genesets, out_platforms, out_geneset, out_format):
     from genomicode import genesetlib
     from genomicode import arrayplatformlib
 
@@ -130,7 +130,9 @@ def convert_geneset(
     # Convert each of the platforms.
     platform2geneid2outids = {}
     for out_platform in out_platforms:
-        x = convert_gene_ids(gene_ids, in_platform, out_platform, delim)
+        x = convert_gene_ids(
+            gene_ids, in_platform, out_platform, in_delim, out_delim,
+            keep_dups, keep_emptys)
         platform2geneid2outids[out_platform] = x
 
     # Write out the gene set.
@@ -280,11 +282,13 @@ def main():
 
     if args.geneset:
         convert_geneset(
-            args.infile, args.in_delim, args.geneset, args.platform,
+            args.infile, args.in_delim, args.out_delim,
+            args.keep_dups, args.keep_emptys, 
+            args.geneset, args.platform,
             args.out_geneset_name, args.out_geneset_format)
     else:
         convert_matrix(
-            args.infile, args.header, args.in_delim, args.out_delim, \
+            args.infile, args.header, args.in_delim, args.out_delim,
             args.keep_dups, args.keep_emptys, args.platform,
             args.min_match_score)
             

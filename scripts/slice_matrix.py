@@ -32,6 +32,7 @@
 # reorder_col_indexes
 # reorder_col_cluster
 # reorder_col_alphabetical
+# reorder_col_byfile
 # remove_duplicate_cols
 # remove_unnamed_cols
 # rename_duplicate_cols
@@ -829,6 +830,22 @@ def reorder_col_alphabetical(MATRIX, alphabetize):
     return MATRIX_new
 
 
+def reorder_col_byfile(MATRIX, filename, ignore_missing_cols):
+    from genomicode import filelib
+    
+    if not filename:
+        return MATRIX
+
+    # File should be one line per sample name.
+    samples = [x.strip() for x in filelib.openfh(filename)]
+    I_row, I_col = MATRIX._index(col=samples)
+    assert I_col, "I could not find any samples from %s." % filename
+    if not ignore_missing_cols:
+        assert len(I_col) == len(samples), "I could not find some samples."
+    MATRIX_new = MATRIX.matrix(None, I_col)
+    return MATRIX_new
+
+
 def remove_duplicate_cols(MATRIX, filter_duplicate_cols):
     import arrayio
 
@@ -1017,7 +1034,7 @@ def _parse_tcga_barcode(barcode):
     return patient, sample, aliquot, analyte
 
 
-def tcga_solid_tumor_only(MATRIX, cancer_only):
+def tcga_solid_tumor_only(MATRIX, cancer_only, ignore_non_tcga):
     from arrayio import tab_delimited_format as tdf
 
     if not cancer_only:
@@ -1026,7 +1043,14 @@ def tcga_solid_tumor_only(MATRIX, cancer_only):
     barcodes = MATRIX.col_names(tdf.SAMPLE_NAME)
     I = []
     for i, barcode in enumerate(barcodes):
-        x = _parse_tcga_barcode(barcode)
+        try:
+            x = _parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+                I.append(i)
+                continue
+            raise
         patient, sample, aliquot, analyte = x
         assert sample is not None, "sample missing from barcode"
         assert len(sample) >= 2
@@ -1038,7 +1062,7 @@ def tcga_solid_tumor_only(MATRIX, cancer_only):
     return x
     
     
-def tcga_relabel_patient_barcodes(MATRIX, relabel):
+def tcga_relabel_patient_barcodes(MATRIX, relabel, ignore_non_tcga):
     import arrayio
     if not relabel:
         return MATRIX
@@ -1050,9 +1074,22 @@ def tcga_relabel_patient_barcodes(MATRIX, relabel):
 
     MATRIX_new = MATRIX.matrix()
     barcodes = MATRIX.col_names(name)
-    x = [_parse_tcga_barcode(x) for x in barcodes]
-    x = [x[0] for x in x]
-    MATRIX_new._col_names[name] = x
+    for i in range(len(barcodes)):
+        barcode = barcodes[i]
+        try:
+            x = _parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+                pass
+            else:
+                raise
+        else:
+            barcode = x[0]
+        barcodes[i] = barcode
+    #x = [_parse_tcga_barcode(x) for x in barcodes]
+    #x = [x[0] for x in x]
+    MATRIX_new._col_names[name] = barcodes
     
     return MATRIX_new
     
@@ -1477,15 +1514,15 @@ def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
     
 
 
-def align_rows(MATRIX, align_row_file, ignore_missing_rows):
+def align_rows(MATRIX, align_row_matrix, ignore_missing_rows):
     import arrayio
 
-    if not align_row_file:
+    if not align_row_matrix:
         return None
-    assert os.path.exists(align_row_file), \
-        "File not found: %s" % align_row_file
+    assert os.path.exists(align_row_matrix), \
+        "File not found: %s" % align_row_matrix
 
-    ALIGN = arrayio.read(align_row_file)
+    ALIGN = arrayio.read(align_row_matrix)
     # Try all the headers and see if we can find a hit.
     # BUG: what if there's no header?
     best_I = []
@@ -1520,16 +1557,16 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     return I
 
 
-def align_cols(MATRIX, align_col_file, ignore_missing_cols):
+def align_cols(MATRIX, align_col_matrix, ignore_missing_cols):
     import arrayio
 
-    if not align_col_file:
+    if not align_col_matrix:
         return None
-    assert os.path.exists(align_col_file), \
-        "File not found: %s" % align_col_file
+    assert os.path.exists(align_col_matrix), \
+        "File not found: %s" % align_col_matrix
 
     headers = MATRIX.col_names(arrayio.COL_ID)
-    ALIGN = arrayio.read(align_col_file)
+    ALIGN = arrayio.read(align_col_matrix)
     # Try all the headers and see if we can find a hit.
     # Bug: what if there are duplicates in MATRIX or ALIGN?
     best_matches, best_I, best_header = None, [], ""
@@ -2071,16 +2108,16 @@ def main():
         "--output_format", default="tdf", choices=["tdf", "gct"],
         help="Specify the format for the output file.")
     parser.add_argument(
-        "--skip_lines", default=None,
+        "--skip_lines", default=None, type=int,
         help="Skip this number of lines in the file.")
     parser.add_argument(
-        "--remove_comments", default=None,
+        "--remove_comments", 
         help="Remove rows that start with this character (e.g. '#')")
     parser.add_argument(
         "--clean_only", default=False, action="store_true",
         help="Only read_as_csv and remove_comments.")
     parser.add_argument(
-        "--transpose", default=None, 
+        "--transpose", 
         help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
         "<old row ID> is the header of the column in the original file that "
         "should be used for the headers in the transposed file.  "
@@ -2132,7 +2169,7 @@ def main():
         
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
-        "--select_col_indexes", default=None,
+        "--select_col_indexes", 
         help="Which columns to include e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
         "--col_indexes_include_headers", default=False, action="store_true",
@@ -2163,7 +2200,7 @@ def main():
         "--select_col_random", default=None, type=int,
         help="Select this number of columns at random.")
     group.add_argument(
-        "--select_col_numeric_value", default=None,
+        "--select_col_numeric_value", 
         help="Include only the cols with a specific numeric value.  "
         "Format: <row_id>,<value>[,<value>,...].  "
         'If <value> starts with a "<", then will only find the rows where '
@@ -2186,7 +2223,7 @@ def main():
         "--remove_unnamed_cols", default=False, action="store_true",
         help="If a column has no name, remove it.")
     group.add_argument(
-        "--reorder_col_indexes", default=None,
+        "--reorder_col_indexes", 
         help="Change the order of the data columns.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --col_indexes_include_headers.")
@@ -2209,11 +2246,15 @@ def main():
         "--reorder_col_alphabetical", default=False, action="store_true",
         help="Sort the columns alphabetically.")
     group.add_argument(
-        "--align_col_file", default=None,
+        "--reorder_col_byfile", 
+        help="Reorder based on a file.  One line per sample name.")
+    group.add_argument(
+        "--align_col_matrix", 
         help="Align the cols to this other matrix file.")
     group.add_argument(
         "--ignore_missing_cols", default=False, action="store_true",
-        help="Ignore any cols that can't be found in the align_col_file.")
+        help="Ignore any cols that can't be found in the align_col_matrix "
+        "or reorder_col_byfile.")
 
     group = parser.add_argument_group(title="Column annotations")
     group.add_argument(
@@ -2236,11 +2277,11 @@ def main():
         help="Replace strings within the column IDs.  Format: <from>,<to>.  "
         "Instances of <from> will be replaced with <to>.  (MULTI)")
     group.add_argument(
-        "--relabel_col_ids", default=None,
+        "--relabel_col_ids", 
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
-        "--append_col_ids", default=None,
+        "--append_col_ids", 
         help="Append this to the column IDs.  "
         "Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
@@ -2248,11 +2289,10 @@ def main():
         "--ignore_missing_labels", default=False, action="store_true",
         help="Any column labels that can't be found will not be relabeled.")
     group.add_argument(
-        "--apply_re_col_ids", default=None,
+        "--apply_re_col_ids", 
         help="Apply a regular expression to the column IDs and take group 1.")
     group.add_argument(
-        "--add_suffix_col_ids", default=None,
-        help="Add a suffix to each column ID.")
+        "--add_suffix_col_ids", help="Add a suffix to each column ID.")
 
     group = parser.add_argument_group(title="TCGA barcode operations")
     group.add_argument(
@@ -2261,10 +2301,13 @@ def main():
     group.add_argument(
         "--tcga_relabel_patient_barcodes", default=False, action="store_true",
         help="Sample names should be patient barcodes.")
+    group.add_argument(
+        "--ignore_non_tcga", default=False, action="store_true",
+        help="Keep all samples that don't look like a TCGA barcode.")
     
     group = parser.add_argument_group(title="Row filtering")
     group.add_argument(
-        "--select_row_indexes", default=None,
+        "--select_row_indexes", 
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive).")
     group.add_argument(
         "--row_indexes_include_headers", default=False, action="store_true",
@@ -2291,10 +2334,9 @@ def main():
         'The analogous constraint will be applied for ">".  '
         "Accepts the match if any of the <value>s are true.  (MULTI)")
     group.add_argument(
-        "--select_row_random", default=None,
-        help="Select this number of random rows.")
+        "--select_row_random", help="Select this number of random rows.")
     group.add_argument(
-        "--select_row_annotation", default=None,
+        "--select_row_annotation", 
         help="Include only the rows where the annotation contains a "
         "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
     group.add_argument(
@@ -2307,7 +2349,7 @@ def main():
         'The analogous constraint will be applied for ">".  '
         "Accepts the match if any of the <value>s are true.  (MULTI)")
     group.add_argument(
-        "--select_row_nonempty", default=None,
+        "--select_row_nonempty", 
         help="Include only the rows that have a non-blank annotation.  "
         "Format: <header>")
     group.add_argument(
@@ -2336,7 +2378,7 @@ def main():
     ##     "--merge_rows_with_dup_values", default=False, action="store_true",
     ##     help="Merge the annotations of the rows whose values are duplicated.")
     group.add_argument(
-        "--dedup_row_by_var", default=None,
+        "--dedup_row_by_var", 
         help="If multiple rows have the same annotation, select the one "
         "with the highest variance.  The value of this parameter should "
         "be the header of the column that contains duplicate annotations.")
@@ -2347,7 +2389,7 @@ def main():
         "--reverse_rows", default=False, action="store_true",
         help="Reverse the order of the rows.")
     group.add_argument(
-        "--reorder_row_indexes", default=None,
+        "--reorder_row_indexes", 
         help="Change the order of the data rows.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --row_indexes_include_headers.")
@@ -2367,15 +2409,15 @@ def main():
         help="Will reorder rows based on correlation to this subset of "
         "samples.")
     group.add_argument(
-        "--align_row_file", default=None,
+        "--align_row_matrix", 
         help="Align the rows to this other matrix file.")
     group.add_argument(
         "--ignore_missing_rows", default=False, action="store_true",
-        help="Ignore any rows that can't be found in the align_row_file.")
+        help="Ignore any rows that can't be found in the align_row_matrix.")
 
     group = parser.add_argument_group(title="Row annotations")
     group.add_argument(
-        "--add_row_id", default=None,
+        "--add_row_id", 
         help="Add a unique row ID.  This should be the name of the header.")
     group.add_argument(
         "--add_row_annot", action="append", default=[],
@@ -2527,9 +2569,10 @@ def main():
     MATRIX = hash_col_ids(MATRIX, args.hash_col_ids)
 
     # Filter TCGA columns.
-    MATRIX = tcga_solid_tumor_only(MATRIX, args.tcga_solid_tumor_only)
+    MATRIX = tcga_solid_tumor_only(
+        MATRIX, args.tcga_solid_tumor_only, args.ignore_non_tcga)
     MATRIX = tcga_relabel_patient_barcodes(
-        MATRIX, args.tcga_relabel_patient_barcodes)
+        MATRIX, args.tcga_relabel_patient_barcodes, args.ignore_non_tcga)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
@@ -2539,11 +2582,15 @@ def main():
     MATRIX = rename_duplicate_rows(MATRIX, args.rename_duplicate_rows)
     MATRIX = rename_duplicate_cols(MATRIX, args.rename_duplicate_cols)
 
+    # Reorder based on a file.
+    MATRIX = reorder_col_byfile(
+        MATRIX, args.reorder_col_byfile, args.ignore_missing_cols)
+
     # Align to the align_file.  Do this as close to the end as
     # possible, after everything else removed and added.
-    I_row = align_rows(MATRIX, args.align_row_file, args.ignore_missing_rows)
+    I_row = align_rows(MATRIX, args.align_row_matrix, args.ignore_missing_rows)
     MATRIX = MATRIX.matrix(I_row, None)
-    I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
+    I_col = align_cols(MATRIX, args.align_col_matrix, args.ignore_missing_cols)
     MATRIX = MATRIX.matrix(None, I_col)
 
     if args.min_value is not None:

@@ -1031,16 +1031,18 @@ def run_case33():
 
 def run_case34():
     """test case for batch effect remove report, take a long time
-      to generate the network, when the report include 8 files, it runs quick,
-      but when including 10 or 12 files, it takes few hours to finish.
+    to generate the network, when the report include 8 files, it runs
+    quick, but when including 10 or 12 files, it takes few hours to
+    finish.
+      
     """
     out_data = rulebase.ReportFile.output(
         report_type="batch_effect_remove",
-       
         )
+    # backchain only        1.6s
+    # backchain+complete    <long time>
 
     network = bie3.backchain(rulebase.all_modules, out_data)
-
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
