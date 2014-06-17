@@ -5,13 +5,13 @@ data              A unit of information.  Typically a file made by a program.
 attribute         Describes something about the data.  e.g. logged="yes".
 user input        Used in the modules, but does not affect the inferencing.
 data type         Describes a set of data that share the same attributes.
+
 module            Takes one or more data objects as input and produces a single
                   data object as output.
                   Modules "produce" data.
                   Modules can "convert" data from one type to another.
 input attribute   An attribute of an input data.
 output attribute  An attribute of an output data.
-
 
 Classes:
 AttributeDef
@@ -44,7 +44,6 @@ write_network
 read_network
 
 diagnose_start_node
-
 
 """
 # Functions:
@@ -84,6 +83,16 @@ diagnose_start_node
 
 # _object_to_dict           Use for writing and reading json file
 # _dict_to_object           Use for writing and reading json file
+
+
+
+# TODO:
+# - Rename UserInput.  Is an attribute that's not used for
+#   inferencing.  Distinction should be clear from the name.
+# - Some input data objects flow through the module and becomes the
+#   output.  Need a name for this.
+# - Implement _resolve_constraint.
+
 
 TYPE_ATOM = 100
 TYPE_ENUM = 101
@@ -134,7 +143,6 @@ DEBUG = False
 #DEBUG = True
 
 MAX_NETWORK_SIZE = 1024*8
-
 
 
 class AttributeDef:
@@ -2670,6 +2678,7 @@ def _can_module_produce_data(module, data, user_attributes):
             # If this should be the same as another constraint, then
             # check the other constraint.
             if constraint.behavior == SAME_AS:
+                # XXX _resolve_constraint
                 assert constraint.arg1 < len(module.in_datatypes)
                 x = [x for x in module.constraints
                      if x.name == consequence.name]
@@ -2721,9 +2730,7 @@ def _can_module_produce_data(module, data, user_attributes):
     # Make sure the module's constraints are aligned with the
     # user_attributes.
     # Get a list of the in_datatypes that don't continue into the
-    # out_datatype.  XXX NEED A NAME FOR THIS.  final_data?
-    # datatype that flows through the module, vs datatype that the
-    # module uses.
+    # out_datatype.
     indexes = [x.input_index for x in module.default_attributes_from]
     for i in range(len(module.in_datatypes)):
         if i in indexes:
@@ -2853,6 +2860,7 @@ def _can_module_produce_data(module, data, user_attributes):
         const2 = x[0]
 
         # Follow SAME_AS
+        # XXX _resolve_constraint
         while const1.behavior == SAME_AS:
             x = [x for x in module.constraints
                  if x.name == conseq1.name and x.input_index == const1.arg1]
@@ -3301,377 +3309,3 @@ def _pretty_attributes(attributes):
 def debug_print(s):
     if DEBUG:
         print s
-
-
-## class Parameter:
-##     def __init__(self, module_name, **parameters):
-##         # parameters is a dictionary of name -> value.
-##         assert type(module_name) is type("")
-##         for name, value in parameters.iteritems():
-##             assert type(name) is type("")
-##         self.module_name = module_name
-##         self.parameters = parameters.copy()
-##     def __str__(self):
-##         return self.__repr__()
-##     def __repr__(self):
-##         x = [
-##             repr(self.module_name),
-##             ]
-##         for key, value in parameters:
-##             x.append("%s=%s" % (key, repr(value)))
-##         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
-##         return x
-
-
-GEOSeries = DataType("GEOSeries")
-ExpressionFiles = DataType("ExpressionFiles")
-CELFiles = DataType(
-    "CELFiles",
-    AttributeDef(
-        "version", ["unknown", "cc", "v3", "v4"], "unknown", "v3"),
-    )
-SignalFile = DataType(
-    "SignalFile",
-    AttributeDef(
-        "format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
-        "unknown", "tdf"),
-
-    # Properties of the data.
-    AttributeDef(
-        "preprocess",
-        ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-        "unknown", "rma"),
-    AttributeDef(
-        "missing_values", ["unknown", "no", "yes"], "unknown", "no"),
-    AttributeDef(
-        "missing_algorithm", ["none", "median_fill", "zero_fill"],
-        "none", "none"),
-    AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
-    
-    # This is not necessary.  Remove.
-    AttributeDef("filtered", ["no", "yes"], "no", "no"),
-
-    # Normalization of the data.
-    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-
-    # Other attributes.
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
-    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"),
-    )
-    
-
-all_modules = [
-    Module(
-        "download_geo", GEOSeries, ExpressionFiles,
-        UserInputDef("GSEID"), UserInputDef("GPLID")),
-    Module(
-        "extract_CEL_files", ExpressionFiles, CELFiles,
-        Consequence("version", SET_TO, "unknown"),
-        ),
-    Module(
-        "detect_CEL_version",
-        CELFiles, CELFiles,
-        Constraint("version", MUST_BE, "unknown"),
-        Consequence("version", BASED_ON_DATA, ["cc", "v3", "v4"]),
-        ),
-    Module(
-        "convert_CEL_cc_to_CEL_v3",
-        CELFiles, CELFiles,
-        Constraint("version", MUST_BE, "cc"),
-        Consequence("version", SET_TO, "v3"),
-        ),
-    Module(
-        "preprocess_rma",
-        CELFiles, SignalFile,
-        Constraint("version", CAN_BE_ANY_OF, ["v3", "v4"]),
-        Consequence("logged", SET_TO, "yes"),
-        Consequence("preprocess", SET_TO, "rma"),
-        Consequence("format", SET_TO, "jeffs"),
-        Consequence("missing_values", SET_TO, "no"),
-        Consequence("quantile_norm", SET_TO, "yes"),
-        ),
-    Module(
-        "preprocess_mas5",
-        CELFiles, SignalFile,
-        Constraint("version", CAN_BE_ANY_OF, ["v3", "v4"]),
-        Consequence("logged", SET_TO, "no"),
-        Consequence("preprocess", SET_TO, "mas5"),
-        Consequence("format", SET_TO, "jeffs"),
-        Consequence("missing_values", SET_TO, "no"),
-        Consequence("quantile_norm", SET_TO, "no"),
-        ),
-    Module(
-        "quantile_normalize",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
-        Constraint("quantile_norm", MUST_BE, "no"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
-        Consequence("quantile_norm", SET_TO, "yes"),
-        ),
-    Module(
-        "convert_signal_to_tdf",
-        SignalFile, SignalFile,
-        Constraint("format", CAN_BE_ANY_OF, ['pcl', 'gct', 'res', 'jeffs']),
-        Consequence("format", SET_TO, "tdf"),
-        ),
-    Module(
-        "check_for_log",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "unknown"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", BASED_ON_DATA, ["yes", "no"]),
-        ),
-    Module(
-        "log_signal",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "no"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SET_TO, "yes"),
-        ),
-    Module(
-        "check_for_missing_values",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
-        Constraint("missing_values", MUST_BE, "unknown"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
-        Consequence("missing_values", BASED_ON_DATA, ["no", "yes"]),
-        ),
-    Module(
-        "filter_genes_by_missing_values",
-        SignalFile, SignalFile,
-        UserInputDef("filter_genes_with_missing_values", 0.50),
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
-        Constraint("missing_values", MUST_BE, "yes"),
-        Constraint("filtered", MUST_BE, "no"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
-        Consequence("missing_values", SAME_AS_CONSTRAINT),
-        Consequence("filtered", SET_TO, "yes")
-        ),
-    Module(
-        "fill_missing_with_zeros",
-        SignalFile, SignalFile,
-        Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
-        Constraint("missing_values", MUST_BE, "yes"),
-        Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SAME_AS_CONSTRAINT),
-        Consequence("missing_values", SET_TO, "no"),
-        Consequence(
-            "missing_algorithm", SET_TO, "zero_fill", side_effect=True),
-        ),
-
-    Module(
-        "merge_two_classes", [SignalFile, SignalFile], SignalFile,
-        Constraint("contents", MUST_BE, "class0", 0),
-        Constraint("format", MUST_BE, "tdf", 0),
-        Constraint("logged", MUST_BE, "yes", 0),
-        Constraint("preprocess", MUST_BE, "mas5", 0),
-        Constraint("contents", MUST_BE, "class1", 1),
-        Constraint("format", MUST_BE, "tdf", 1),
-        Constraint("logged", MUST_BE, "yes", 1),
-        Constraint("preprocess", MUST_BE, "mas5", 1),
-        #Constraint("format", SAME_AS, 0, 1),
-        #Constraint("logged", SAME_AS, 0, 1),
-        #Constraint("preprocess", SAME_AS, 0, 1),
-        Consequence("contents", SET_TO, "class0,class1"),
-        Consequence("format", SAME_AS_CONSTRAINT, 0),
-        Consequence("logged", SAME_AS_CONSTRAINT, 0),
-        Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
-        DefaultAttributesFrom(0),
-        DefaultAttributesFrom(1),
-        )
-    ]
-
-def test_bie():
-    #print_modules(all_modules)
-
-    #x = SignalFile(
-    #    format="unknown", group_fc=ANYATOM, logged="unknown",
-    #    missing_values="unknown", preprocess="unknown")
-    #x = SignalFile(preprocess="illumina")
-    #in_data = [GEOSeries, ClassLabelFile]
-    #in_data = [x, ClassLabelFile]
-    #in_data = GEOSeries
-    in_data = SignalFile.input(preprocess="rma", format="jeffs")
-    #in_data = SignalFile.make_in(
-    #    filename="test.txt", logged="yes", preprocess="rma", format="jeffs")
-    #in_data = SignalFile.input(
-    #    logged="yes", preprocess="rma", format="jeffs", missing_values="no",
-    #    missing_algorithm="median_fill", quantile_norm="yes")
-        
-    #in_data = [
-    #    SignalFile(preprocess="rma", format="jeffs", filename='a'),
-    #    ClassLabelFile(filename='b')]
-    #in_data = GEOSeries
-    #x = dict(preprocess="rma", missing_values="no", format="jeffs")
-    #in_data = [SignalFile(contents='class0',logged="yes", preprocess="rma"),
-    #           SignalFile(contents='class1',logged="yes", preprocess="rma")]
-    #in_data = [
-    #    SignalFile(contents='class0', preprocess="rma", format="jeffs"),
-    #    SignalFile(contents='class1', preprocess="rma", format="jeffs")]
-
-    #print _make_goal(SignalFile, x)
-    #return
-
-    #out_data = CELFiles
-    #out_data = SignalFile.output(
-    #    format="tdf", logged=["no", "yes"], preprocess=["rma", "mas5"],
-    #    quantile_norm=["no", "yes"])
-    #out_data = SignalFile.output(
-    #    format="tdf", preprocess="mas5", logged=["no", "yes"],
-    #    missing_values="no", quantile_norm=["no", "yes"])
-    out_data = SignalFile.output(
-        format="tdf", preprocess="mas5", logged="yes",
-        #missing_values="unknown", 
-        missing_values="no", quantile_norm="no",
-        contents="class0,class1")
-    #parameters = [
-    #    Parameter("download_geo", GSEID="GSE2034", GPLID="GPL9196"),
-    #    Parameter("filter_genes_by_missing_values", filter=0.50),
-    #    ]
-    #out_data = SignalFile(format='tdf', logged='no', missing_values="no",
-    #    missing_algorithm="median_fill")
-    
-    #goal_datatype = CELFiles
-    #goal_attributes = {}
-    #goal_attributes = dict(platform="GPL1691")
-    #goal_attributes = dict(version=["v3", "v4"])
-
-    #goal_datatype = ILLUFolder
-    #goal_attributes = dict(
-    #    ill_bg_mode='true',
-    #    ill_chip='ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-    #    ill_clm='',
-    #    ill_coll_mode='none',
-    #    ill_custom_chip='',
-    #    ill_custom_manifest='',
-    #    illu_manifest='HumanHT-12_V4_0_R2_15002873_B.txt')
-
-    #goal_datatype = ExpressionFiles
-    #goal_attributes = {}
-
-    #goal_datatype = SignalFile
-    #goal_attributes = dict(format='tdf')
-    #goal_attributes = dict(
-    #    format='tdf', preprocess="rma", logged='yes', missing_values="no",
-    #    missing_algorithm="median_fill")
-    #goal_attributes = dict(
-    #    format=['jeffs', 'gct'], preprocess='rma', logged='yes',
-    #    missing_values="no", missing_algorithm="median_fill")
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='no', missing_values="no",
-    #    missing_algorithm="median_fill")
-    #goal_attributes = dict(contents='class0,class1',
-    #    format='tdf', preprocess='rma', logged='yes',
-    #    missing_values="no")
-    #goal_attributes = dict(
-    #    #format=['tdf', 'pcl', 'gct', 'res', 'jeffs', 'unknown', 'xls'],
-    #    format='gct',
-    #    preprocess='illumina', logged='no',
-    #    missing_values="no")
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes',
-    #    missing_values="no", quantile_norm="yes", combat_norm="yes")
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes',
-    #    missing_values="no", group_fc="5")
-    #goal_attributes = dict(
-    #    format='tdf', preprocess="rma", logged='yes', 
-    #    missing_values="no")
-    #goal_attributes = dict(format='tdf', preprocess='rma', logged='yes')
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='rma', logged='yes',
-    #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-    #    missing_values="no",gene_order='gene_list')
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes')
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes',
-    #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-    #    missing_values="zero_fill", group_fc="5", ill_bg_mode='true',
-    #    illu_coll_mode="max")
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes',
-    #    #quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-    #    missing_values="zero_fill", platform='hg19',
-    #    duplicate_probe='closest_probe')
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes',
-    #    quantile_norm="no", combat_norm="no", dwd_norm="no",
-    #    missing_values="zero_fill", platform='hg19',
-    #    duplicate_probe='closest_probe')
-    #goal_attributes = dict(
-    #    format='tdf', preprocess='illumina', logged='yes',
-    #    quantile_norm="yes", combat_norm="yes", dwd_norm="yes",
-    #    missing_values="zero_fill", platform='hg19',
-    #    duplicate_probe='closest_probe')
-
-    #out_data = make_data(
-    #    "signal_file", format='tdf', preprocess='rma', logged='yes',
-    #    filter='no', missing='zero', predataset='no', rename_sample='no',
-    #    gene_center='no', gene_normalize='no', quantile_norm='yes',
-    #    dwd_norm="no", gene_order="class_neighbors", shiftscale_norm="no",
-    #    unique_genes="average_genes")
-    #out_data = make_data(
-    #    "signal_file", format='tdf',preprocess='rma',logged='yes',
-    #    filter='no', missing='zero', predataset='no', rename_sample='no',
-    #    quantile_norm='yes', dwd_norm='no', gene_order='class_neighbors',
-    #    shiftscale_norm='no', combat_norm='no', bfrm_norm='yes',
-    #    gene_center='mean', gene_normalize='variance', group_fc='int',
-    #    num_features='int', annotate="yes", unique_genes='average_genes',
-    #    platform='str', duplicate_probe='high_var_probe')
-    
-    network = backchain(all_modules, out_data)
-    network = optimize_network(network)
-    #network = select_start_node(network, in_data)
-    #diagnose_start_node(network, in_data)
-    #network = prune_network_by_internal(
-    #    network, SignalFile(quantile_norm="yes", combat_norm="no"))
-    #network = prune_network_by_internal(
-    #    network, SignalFile(combat_norm="yes", dwd_norm="no"))
-
-    print "INPUT:"
-    print in_data
-    print
-    
-    print "OUTPUT:"
-    print out_data
-    print
-    
-    print_network(network)
-    plot_network_gv("out.png", network)
-
-    # Want function _find_data_node with options:
-    # ignore_defaults
-    # allow_more_general
-    #node = _make_goal(
-    #    SignalFile, dict(format="pcl", preprocess="rma"))
-    #node_id = _find_data_node(network.nodes, node)
-    #print "NODE:", node_id
-
-    #node = _make_goal(
-    #    SignalFile, dict(format=["tdf", "pcl", "gct"], preprocess="rma"))
-    #node_id = _find_data_node(network.nodes, node)
-    #print "NODE:", node_id
-
-
-
-if __name__ == '__main__':
-    test_bie()
-    #import cProfile; cProfile.run("test_bie()")
