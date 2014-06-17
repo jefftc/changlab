@@ -263,6 +263,7 @@ def run_pipeline(network, in_objects, user_inputs,
     pipeline_sequence = []
     stack_list = []
     pool = {}
+    next_node = None
     for data_object in in_objects:
         data_node = data_object.data
         start_node_ids = bie3._find_start_nodes(network, data_node)
@@ -297,7 +298,7 @@ def run_pipeline(network, in_objects, user_inputs,
                 elif next_id is None:
                     raise ValueError('cannot match the output node')
                 stack_list.append((next_node, next_id))
-    if module_utils.exists_nz(next_node.identifier):
+    if next_node and module_utils.exists_nz(next_node.identifier):
         print ('[' + time.strftime('%l:%M%p') +
                '] Completed successfully and ' +
                'generated a file:')
@@ -306,8 +307,7 @@ def run_pipeline(network, in_objects, user_inputs,
         sys.stdout.flush()
         return next_node.identifier
     else:
-        print 'This pipeline has\
-               completed unsuccessfully'
+        print 'This pipeline has completed unsuccessfully'
         raise ValueError(
             'there is no output for this pipeline')
     return None
