@@ -275,6 +275,8 @@ def run_pipeline(network, in_objects, user_inputs,
         data_object, node_id = stack_list.pop()
         if isinstance(data_object, DataObject):
             pool[node_id] = data_object
+            if node_id == 0:
+                return None
             next_modules = choose_next_module(network, node_id, pool)
             stack_list.extend(next_modules)
         elif isinstance(data_object, bie3.Module):

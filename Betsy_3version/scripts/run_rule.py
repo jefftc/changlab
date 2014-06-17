@@ -86,8 +86,11 @@ def main():
         const=True, default=False,
         help='diagnose the input data')
     args = parser.parse_args()
-    assert args.in_datatype, 'please specify the in_datatype'
-    assert args.out_datatype, 'please specify the out_datatype'
+    if args.all_datatypes:
+        datas = dir(rulebase)
+        for data in datas:
+            print_attribute(data)
+        print_user_input(rulebase.all_modules)
     if args.output:
         realpath = os.path.realpath(args.output)
         if os.path.exists(args.output):
@@ -95,6 +98,9 @@ def main():
                 raise ValueError('the output path %s is already exisit,\
                                  please use --clobber option to overwrite'
                                  % args.output)
+    if not args.out_datatype:
+        return
+    assert args.out_datatype, 'please specify the out_datatype'
     goal_datatype = getattr(rulebase, args.out_datatype)
     in_datatypes = []
     in_parameters = {}
@@ -139,6 +145,7 @@ def main():
             key = x[0]
             value = x[1]
             user_inputs[key] = value
+            
     in_objects = []
     for i, in_datatype in enumerate(in_datatypes):
         fn = getattr(rulebase, in_datatype)
@@ -166,11 +173,6 @@ def main():
             handle.close()
     if args.json_file:
         bie3.write_network(args.json_file, network)
-    if args.all_datatypes:
-        datas = dir(rulebase)
-        for data in datas:
-            print_attribute(data)
-        print_user_input(rulebase.all_modules)
     if args.network_attributes:
         assert network, 'no network generated'
         network_datas = [i for i in network.nodes
@@ -186,6 +188,7 @@ def main():
         bie3.diagnose_start_node(network, in_datas)
     if args.dry_run:
         return
+    assert args.in_datatype, 'please specify the in_datatype'
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects, user_inputs)
     if args.output:

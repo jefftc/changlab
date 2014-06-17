@@ -58,7 +58,7 @@ class DataObject:
     
 def get_identifier(network, module_id, pool,
                    datatype=None, contents=None,optional_key=None,
-                   optional_value=None,second_key=None,second_value=None):
+                   optional_value=None,second_key=None,second_value=None,**param):
     require_id = []
     for key in network.transitions:
         if module_id in network.transitions[key]:
@@ -91,6 +91,15 @@ def get_identifier(network, module_id, pool,
                         continue
                     elif not node.attributes[second_key] == second_value:
                         continue
+                flag1 = True
+                if param:
+                    for key in param:
+                        if key not in node.attributes:
+                            flag1 = False
+                        elif not node.attributes[key] == param[key]:
+                            flag1 = False
+                if flag1 == False:
+                    continue
                 if pool[i].identifier:
                     assert os.path.exists(pool[i].identifier), (
                 'the input file %s for %s does not exist'
