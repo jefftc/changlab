@@ -2,7 +2,7 @@
 
 import argparse
 from genomicode import jmath, config
-
+import os
 
 def main():
     parser = argparse.ArgumentParser(description='run the gene pattern module')
@@ -43,7 +43,12 @@ def main():
     R("result <- run.analysis(%s)" % params_str)
     jmath.R_equals(args.outpath, 'outpath')
     R('job.result.download.files(result, outpath)')
-
+    assert os.path.exists(args.outpath),(
+        'there is no output directory for the %s' % module_name)
+    result_files = os.listdir(args.outpath)
+    assert 'stderr.txt' not in result_files,('gene_pattern get error '+
+            'The contents of stderr.txt is:'+
+            file(os.path.join(args.outpath,'stderr.txt')).read())
 
 if __name__=='__main__':
     main()

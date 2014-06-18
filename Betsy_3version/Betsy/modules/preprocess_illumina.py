@@ -112,7 +112,9 @@ def run(data_node, parameters, user_input, network):
     assert os.path.exists(download_directory),(
         'there is no output directory for illumina')
     result_files = os.listdir(download_directory)
-    assert 'stderr.txt' not in result_files,'gene_pattern get error'
+    assert 'stderr.txt' not in result_files,('gene_pattern get error '+
+            'The contents of stderr.txt is:'+
+            file(os.path.join(download_directory,'stderr.txt')).read())
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     for result_file in result_files:
