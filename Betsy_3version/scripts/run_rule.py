@@ -138,6 +138,7 @@ def main():
         elif arg == '--input':
             if not len(in_datatypes) == len(identifiers) + 1:
                 identifiers.extend([''] * (len(in_datatypes) - len(identifiers) - 1))
+            assert os.path.exists(sys.argv[i + 1]),'input %s does not exists' %sys.argv[i + 1]
             store_file = userfile.set(getpass.getuser(), sys.argv[i + 1])
             identifiers.append(store_file)
         elif arg == '--user_input':

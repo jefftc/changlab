@@ -47,6 +47,7 @@ def _unhash_storefile(storefilename):
 
 
 def set(username, filename):
+    assert os.path.exists(filename),'%s does not exists'%filename
     user_path = _make_user_path(username)
     size = os.path.getsize(filename)
     checksum = hash_method.get_input_checksum(filename)
