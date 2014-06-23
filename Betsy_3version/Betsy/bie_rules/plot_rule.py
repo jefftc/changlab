@@ -19,7 +19,7 @@ ActbPlot = DataType(
         ["train0", "train1", "test", "class0,class1,test",
          "class0", "class1", "class0,class1", "unspecified"],
         "unspecified", "unspecified"),
-    AttributeDef("preprocess",['mas5','rma','agilent','loess','unknown','illumina'],
+    AttributeDef("preprocess",SignalFile_rule.PREPROCESS,
                  'unknown','unknown')
     )
 Hyb_barPlot = DataType(
@@ -75,8 +75,7 @@ all_modules = [
     Module(
         'plot_actb_line',
         SignalFile_rule.SignalFile_Impute, ActbPlot,
-        Constraint("preprocess",CAN_BE_ANY_OF,['mas5','rma','agilent',
-                                               'loess','unknown','illumina']),
+        Constraint("preprocess",CAN_BE_ANY_OF,SignalFile_rule.PREPROCESS),
         Constraint(
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0,class1,test",

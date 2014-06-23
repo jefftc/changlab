@@ -7,8 +7,7 @@ PcaAnalysis = DataType(
                   "class0", "class1", "class0,class1",
                   "unspecified"],"unspecified","unspecified"),
     AttributeDef(
-        "preprocess",["unknown", "illumina",
-                                    "agilent", "mas5", "rma", "loess"],
+        "preprocess",SignalFile_rule.PREPROCESS,
         "unknown","unknown"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
@@ -57,8 +56,7 @@ PcaPlot = DataType(
                   "class0", "class1", "class0,class1",
                   "unspecified"],"unspecified","unspecified"),
     # Properties of the data.
-    AttributeDef("preprocess",["unknown", "illumina", "agilent",
-                            "mas5", "rma", "loess"],
+    AttributeDef("preprocess",SignalFile_rule.PREPROCESS,
         "unknown","unknown"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
@@ -113,8 +111,7 @@ all_modules = [
         Constraint("format",MUST_BE,'tdf'),
         Constraint("logged",MUST_BE,'yes'),
         Constraint("filter",CAN_BE_ANY_OF,["yes","no"]),
-        Constraint("preprocess",CAN_BE_ANY_OF,["unknown", "illumina",
-                                               "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess",CAN_BE_ANY_OF,SignalFile_rule.PREPROCESS),
         Constraint("quantile_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("bfrm_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),
@@ -158,8 +155,7 @@ all_modules = [
                   "unspecified"]),
         Constraint("logged",MUST_BE,'yes'),
         Constraint("filter",CAN_BE_ANY_OF,["yes","no"]),
-        Constraint("preprocess",CAN_BE_ANY_OF,["unknown", "illumina",
-                                               "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess",CAN_BE_ANY_OF,SignalFile_rule.PREPROCESS),
         Constraint("quantile_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("bfrm_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),

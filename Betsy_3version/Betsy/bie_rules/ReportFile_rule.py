@@ -29,7 +29,7 @@ all_modules = [
         ReportFile,
         
         Constraint(
-            'preprocess', CAN_BE_ANY_OF, ['mas5','agilent','loess','unknown'],
+            'preprocess', CAN_BE_ANY_OF, ['mas5','agilent','loess','unknown','tcga'],
             0),
         Constraint("annotate", MUST_BE, "yes", 0),
         Constraint(

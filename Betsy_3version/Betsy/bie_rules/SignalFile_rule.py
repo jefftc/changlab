@@ -41,6 +41,7 @@ ILLU_CHIP = [
     'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'
     ]
 
+PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess","tcga"]
 
 GEOSeries = DataType("GEOSeries",
                      AttributeDef("contents",[
@@ -52,7 +53,27 @@ GEOfamily = DataType("GEOfamily",
                          "train0", "train1","test", "class0,class1,test",
                          "class0", "class1", "class0,class1","unspecified"],
                                   'unspecified','unspecified'))
+TCGAID = DataType("TCGAID",
+                     AttributeDef("contents",[
+                         "train0", "train1","test", "class0,class1,test",
+                         "class0", "class1", "class0,class1","unspecified"],
+                                  'unspecified','unspecified'),
+                    )
+TCGAFile = DataType("TCGAFile",
+                     AttributeDef("contents",[
+                         "train0", "train1","test", "class0,class1,test",
+                         "class0", "class1", "class0,class1","unspecified"],
+                                  'unspecified','unspecified'),
+                     AttributeDef("data",['RSEM_genes','RSEM_exons',
+                                          'humanmethylation450','mirnaseq',
+                                          'rppa','clinical'],'RSEM_genes',
+                                          'RSEM_genes'))
 
+GEOSeries = DataType("GEOSeries",
+                     AttributeDef("contents",[
+                         "train0", "train1","test", "class0,class1,test",
+                         "class0", "class1", "class0,class1","unspecified"],
+                                  'unspecified','unspecified'))
 ExpressionFiles = DataType("ExpressionFiles",
                            AttributeDef("contents",
                                         ["train0","train1", "test",
@@ -162,9 +183,7 @@ SignalFile_Postprocess = DataType(
     AttributeDef("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
               "unknown", "tdf"),
     # Properties of the data.
-    AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "unknown"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
     AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
     AttributeDef("contents", [
@@ -175,9 +194,7 @@ SignalFile_Postprocess = DataType(
 SignalFile_Impute = DataType(
     "SignalFile_Impute",
     # Properties of the data.
-    AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "unknown"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
     AttributeDef("missing_values", ["unknown", "no", "yes"], "unknown", "no"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
@@ -193,7 +210,7 @@ SignalFile_Merge = DataType(
     "SignalFile_Merge",
     # Properties of the data.
     AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
+              PREPROCESS,
               "unknown", "unknown"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
@@ -212,9 +229,7 @@ SignalFile_Merge = DataType(
 SignalFile_Normalize = DataType(
     "SignalFile_Normalize",
     # Properties of the data.
-    AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "unknown"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
@@ -242,9 +257,7 @@ SignalFile_Normalize = DataType(
 SignalFile_Order = DataType(
     "SignalFile_Order",
     # Properties of the data.
-    AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "unknown"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
@@ -273,9 +286,7 @@ SignalFile_Order = DataType(
 SignalFile_Annotate= DataType( 
     "SignalFile_Annotate",
     # Properties of the data.
-    AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "unknown"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
@@ -307,9 +318,7 @@ SignalFile_Annotate= DataType(
 SignalFile_Filter= DataType( 
     "SignalFile_Filter",
     # Properties of the data.
-    AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "unknown"),
+    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
@@ -351,9 +360,7 @@ SignalFile_Filter= DataType(
 SignalFile= DataType( 
     "SignalFile",
     # Properties of the data.
-    AttributeDef("preprocess",
-              ["unknown", "illumina", "agilent", "mas5", "rma", "loess"],
-              "unknown", "unknown"),
+    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
@@ -395,6 +402,27 @@ SignalFile= DataType(
     
 
 all_modules = [
+    #TCGA Files
+    Module('download_tcga', TCGAID, TCGAFile,
+           UserInputDef("disease"),UserInputDef("date",""),
+           Constraint("contents",CAN_BE_ANY_OF,[
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"]),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+         Consequence("data",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
+                                          'humanmethylation450','mirnaseq',
+                                          'rppa','clinical'])),
+    
+    Module('preprocess_tcga',TCGAFile,SignalFile_Postprocess,
+        Constraint("contents",CAN_BE_ANY_OF,[
+        "unspecified", "train0", "train1", "test", 'class0,class1,test',
+        "class0", "class1", "class0,class1"]),
+        Consequence("contents",SAME_AS_CONSTRAINT),
+        Consequence('logged',SET_TO,"unknown"),
+        Consequence('predataset', SET_TO, "no"),
+        Consequence('preprocess',SET_TO,"tcga"),
+        Consequence('format',SET_TO,"tdf")),
+           
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
          UserInputDef("GSEID"), UserInputDef("GPLID",""),
@@ -579,9 +607,7 @@ all_modules = [
         SignalFile_Postprocess, SignalFile_Impute,
         Constraint("format", MUST_BE,"tdf"),
         Constraint("logged", MUST_BE,"yes"),
-        Constraint("preprocess",
-            CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
@@ -628,9 +654,7 @@ all_modules = [
     Module(
         "convert_impute_merge",
         SignalFile_Impute, SignalFile_Merge,
-        Constraint("preprocess",
-            CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "loess"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, ["unknown", "illumina", "agilent", "mas5", "loess","tcga"]),
         Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
@@ -700,7 +724,8 @@ all_modules = [
 
     Module(  
         "merge_two_classes", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge,
-         Constraint("preprocess",CAN_BE_ANY_OF,["unknown", "illumina", "agilent", "mas5", "loess"]),
+         Constraint("preprocess",CAN_BE_ANY_OF, ["unknown", "illumina",
+                                                 "agilent", "mas5", "loess","tcga"]),
          Constraint("contents", MUST_BE, "class0", 0),
          Constraint("combat_norm",MUST_BE,'no',0),
          Constraint("quantile_norm",MUST_BE,'no',0), 
@@ -812,9 +837,7 @@ all_modules = [
     Module(
         "convert_merge_normalize",
         SignalFile_Merge, SignalFile_Normalize,
-        Constraint("preprocess",
-            CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
@@ -887,9 +910,7 @@ all_modules = [
     Module(
         "convert_normalize_order",
         SignalFile_Normalize, SignalFile_Order,
-        Constraint("preprocess",
-            CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
@@ -966,8 +987,7 @@ all_modules = [
                                    'class_neighbors', "gene_list"],0),
          Constraint("gene_order", MUST_BE,"no",1),
          Constraint(
-            "preprocess", CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"], 1),
+            "preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
          Constraint(
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
@@ -987,9 +1007,7 @@ all_modules = [
     Module(
         "convert_order_annotate",
         SignalFile_Order, SignalFile_Annotate,
-        Constraint("preprocess",
-            CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
@@ -1077,9 +1095,7 @@ all_modules = [
     Module(
         "convert_annotate_filter",
         SignalFile_Annotate, SignalFile_Filter,
-        Constraint("preprocess",
-            CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
@@ -1228,9 +1244,7 @@ all_modules = [
     Module( 
         'transfer',
         SignalFile_Filter,SignalFile,
-        Constraint("preprocess",
-            CAN_BE_ANY_OF,
-            ["unknown", "illumina", "agilent", "mas5", "rma", "loess"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0", "class1",
              "class0,class1","class0,class1,test", "unspecified"]),
@@ -1287,5 +1301,6 @@ all_modules = [
 list_files=[RenameFile,AgilentFiles,CELFiles,ControlFile,ExpressionFiles,
             GPRFiles,GEOSeries,IDATFiles,ClassLabelFile,ILLUFolder,GeneListFile,
            SignalFile,SignalFile_Postprocess,SignalFile_Impute, SignalFile_Merge,
-            SignalFile_Normalize,SignalFile_Order,SignalFile_Annotate,SignalFile_Filter,GEOfamily]
+            SignalFile_Normalize,SignalFile_Order,SignalFile_Annotate,SignalFile_Filter,GEOfamily,
+            TCGAID,TCGAFile]
 

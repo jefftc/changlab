@@ -68,31 +68,31 @@ def run(data_node, parameters, user_input, network):
                 'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
                 'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
                 'ilmn_RatRef_12_V1_0_R5_11222119_A.chip']
-    if 'ill_bg_mode' in parameters.keys():
-        assert parameters['ill_bg_mode'] in ['true','false'],'ill_bg_mode should be ill_yes or ill_no'
-        gp_parameters['background.subtraction.mode'] = parameters['ill_bg_mode']
+    if 'illu_bg_mode' in parameters.keys():
+        assert parameters['illu_bg_mode'] in ['true','false'],'illu_bg_mode should be ill_yes or ill_no'
+        gp_parameters['background.subtraction.mode'] = parameters['illu_bg_mode']
         
-    if 'ill_chip' in parameters.keys():
-        assert  gp_parameters['ill_chip'] in chip,'ill_chip is not correct'
-        gp_parameters['chip'] = str(parameters['ill_chip'])
+    if 'illu_chip' in parameters.keys():
+        assert  parameters['illu_chip'] in chip,'illu_chip is not correct'
+        gp_parameters['chip'] = str(parameters['illu_chip'])
         
-    if 'ill_manifest' in parameters.keys():
-        assert  gp_parameters['ill_manifest'] in manifiest,'ill_manifest is not correct'
-        gp_parameters['manifest'] = str(parameters['ill_manifest'])
+    if 'illu_manifest' in parameters.keys():
+        assert  parameters['illu_manifest'] in manifiest,'illu_manifest is not correct'
+        gp_parameters['manifest'] = str(parameters['illu_manifest'])
         
-    if 'ill_coll_mode' in parameters.keys():
-        assert  gp_parameters['ill_coll_mode'] in ['none','max','median'],'ill_coll_mode is not correct'
-        gp_parameters['collapse.mode'] = str(parameters['ill_coll_mode'])
+    if 'illu_coll_mode' in parameters.keys():
+        assert  parameters['illu_coll_mode'] in ['none','max','median'],'ill_coll_mode is not correct'
+        gp_parameters['collapse.mode'] = str(parameters['illu_coll_mode'])
         
-    if 'ill_clm' in user_input.keys():
-        gp_parameters['clm'] = str(parameters['ill_clm'])
+    if 'illu_clm' in user_input.keys():
+        gp_parameters['clm'] = str(parameters['illu_clm'])
         
-    if 'ill_custom_chip' in user_input.keys():
-        gp_parameters['chip'] = str(parameters['ill_custom_chip'])
+    if 'illu_custom_chip' in user_input.keys():
+        gp_parameters['chip'] = str(parameters['illu_custom_chip'])
 
-    if 'ill_custom_manifest' in user_input.keys():
+    if 'illu_custom_manifest' in user_input.keys():
         gp_parameters['custom.manifest'] = str(
-            parameters['ill_custom_manifest'])
+            parameters['illu_custom_manifest'])
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module,'cannot find the %s' %gp_path
@@ -111,7 +111,7 @@ def run(data_node, parameters, user_input, network):
     goal_file = None
     assert os.path.exists(download_directory),(
         'there is no output directory for illumina')
-    #result_files = os.listdir(download_directory)
+    result_files = os.listdir(download_directory)
     #assert 'stderr.txt' not in result_files,('gene_pattern get error '+
     #        'The contents of stderr.txt is:'+
     #        file(os.path.join(download_directory,'stderr.txt')).read())

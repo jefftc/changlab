@@ -34,6 +34,64 @@ def print_user_input(modules):
                               if user_input.default else '')
                 print user_input.name + default
 
+def parse_args(argv_list):
+    in_datatypes = []
+    in_parameters = {}
+    Attributes = []
+    user_inputs = {}
+    identifiers = []
+    flag = None
+    for i, arg in enumerate(argv_list):
+        if arg == "--intype":
+            assert len(argv_list) > i + 1
+            in_datatypes.append(argv_list[i + 1])
+            flag = 'in'
+        elif arg == "--outtype":
+            assert len(argv_list) > i + 1
+            flag = 'out'
+        elif arg == "--attr":
+            assert len(argv_list) > i + 1
+            if flag == 'in':
+                assert in_datatypes
+                x = argv_list[i + 1].split('=')
+                key = x[0]
+                value = x[1]
+                index = len(in_datatypes) - 1
+                if index not in in_parameters:
+                    in_parameters[index] = {}
+                in_parameters[index][key] = value
+            elif flag == 'out':
+                sub_datatype = argv_list[i + 1].split(',')[0]
+                attr = ','.join(argv_list[i + 1].split(',')[1:])
+                x = attr.split('=')
+                key = x[0]
+                value = x[1]
+                fn = getattr(rulebase, sub_datatype)
+                Attributes.append(bie3.Attribute(fn, key, value))
+        elif arg == '--input':
+            if not len(in_datatypes) == len(identifiers) + 1:
+                identifiers.extend([''] * (len(in_datatypes) - len(identifiers) - 1))
+            assert os.path.exists(argv_list[i + 1]),'input %s does not exists' %argv_list[i + 1]
+            store_file = userfile.set(getpass.getuser(), argv_list[i + 1])
+            identifiers.append(store_file)
+        elif arg == '--user_input':
+            x = argv_list[i + 1].split('=')
+            key = x[0]
+            value = x[1]
+            user_inputs[key] = value
+    in_objects = []
+    for i, in_datatype in enumerate(in_datatypes):
+        fn = getattr(rulebase, in_datatype)
+        in_data = fn.input()
+        if in_parameters:
+            if i in in_parameters:
+                in_data = fn.input(**in_parameters[i])
+        in_object = rule_engine_bie3.DataObject(in_data)
+        if identifiers:
+            in_object = rule_engine_bie3.DataObject(in_data, identifiers[i])
+        in_objects.append(in_object)
+    return in_objects, user_inputs, Attributes
+
 
 def main():
     parser = argparse.ArgumentParser(description='Run the engine')
@@ -48,7 +106,7 @@ def main():
         type=str, help='user input in key=value format')
     parser.add_argument(
         '--outtype', dest='out_datatype', default=None, type=str,
-        help='out_datatype')
+        help='outtype')
     parser.add_argument(
         '--attr', dest='param', default=[], type=str, action='append',
         help='attribute for datatype in "datatype,key=value" or "key=value" '
@@ -99,65 +157,13 @@ def main():
                                  please use --clobber option to overwrite'
                                  % args.output)
     if not args.out_datatype:
-        return
-    assert args.out_datatype, 'please specify the out_datatype'
+        if args.all_datatypes:
+            return
+        else:
+            assert args.out_datatype, 'please specify the outtype'
     goal_datatype = getattr(rulebase, args.out_datatype)
-    in_datatypes = []
-    in_parameters = {}
-    Attributes = []
-    user_inputs = {}
-    identifiers = []
-    flag = None
-    for i, arg in enumerate(sys.argv):
-        if arg == "--intype":
-            assert len(sys.argv) > i + 1
-            in_datatypes.append(sys.argv[i + 1])
-            flag = 'in'
-        elif arg == "--outtype":
-            assert len(sys.argv) > i + 1
-            flag = 'out'
-        elif arg == "--attr":
-            assert len(sys.argv) > i + 1
-            if flag == 'in':
-                assert in_datatypes
-                x = sys.argv[i + 1].split('=')
-                key = x[0]
-                value = x[1]
-                index = len(in_datatypes) - 1
-                if index not in in_parameters:
-                    in_parameters[index] = {}
-                in_parameters[index][key] = value
-            elif flag == 'out':
-                sub_datatype = sys.argv[i + 1].split(',')[0]
-                attr = ','.join(sys.argv[i + 1].split(',')[1:])
-                x = attr.split('=')
-                key = x[0]
-                value = x[1]
-                fn = getattr(rulebase, sub_datatype)
-                Attributes.append(bie3.Attribute(fn, key, value))
-        elif arg == '--input':
-            if not len(in_datatypes) == len(identifiers) + 1:
-                identifiers.extend([''] * (len(in_datatypes) - len(identifiers) - 1))
-            assert os.path.exists(sys.argv[i + 1]),'input %s does not exists' %sys.argv[i + 1]
-            store_file = userfile.set(getpass.getuser(), sys.argv[i + 1])
-            identifiers.append(store_file)
-        elif arg == '--user_input':
-            x = sys.argv[i + 1].split('=')
-            key = x[0]
-            value = x[1]
-            user_inputs[key] = value
-            
-    in_objects = []
-    for i, in_datatype in enumerate(in_datatypes):
-        fn = getattr(rulebase, in_datatype)
-        in_data = fn.input()
-        if in_parameters:
-            if i in in_parameters:
-                in_data = fn.input(**in_parameters[i])
-        in_object = rule_engine_bie3.DataObject(in_data)
-        if identifiers:
-            in_object = rule_engine_bie3.DataObject(in_data, identifiers[i])
-        in_objects.append(in_object)
+    x = parse_args(sys.argv)
+    in_objects, user_inputs, Attributes = x 
     print 'Generating network...'
     network = bie3.backchain(rulebase.all_modules, goal_datatype, *Attributes)
     network = bie3.complete_network(network)
