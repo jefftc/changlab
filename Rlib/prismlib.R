@@ -33,6 +33,7 @@ write.scatterplot <- function(filename, DATA, rownames=NA) {
 }
 
 write.boxplot <- function(filename, DATA) {
+  # DATA is list of name -> vector of values.
   maxlen <- max(unlist(lapply(DATA, length)))
 
   data.tab <- c()
