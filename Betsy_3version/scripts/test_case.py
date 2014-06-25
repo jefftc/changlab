@@ -1047,6 +1047,29 @@ def run_case34():
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+
+def run_case35():
+    """Testing code for finding input nodes."""
+    out_data = rulebase.GenesetAnalysis
+    network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+    print
+
+    print "INPUTS"
+    inputs = bie3.get_inputs(network)
+    dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
+    for dt in sorted(dt2inputs):
+        x = [x.name for x in dt]
+        print ", ".join(x)
+        for x in dt2inputs[dt]:
+            print repr(x)
+        print
+    
+
     
 def main():
     #run_case01()
@@ -1083,7 +1106,8 @@ def main():
     #run_case31()
     #run_case32()
     #run_case33()
-    run_case34()
+    #run_case34()
+    run_case35()
     
 if __name__ == '__main__':
     main()
