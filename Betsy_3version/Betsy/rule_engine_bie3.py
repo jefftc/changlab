@@ -268,6 +268,7 @@ def run_pipeline(network, in_objects, user_inputs,
     for data_object in in_objects:
         data_node = data_object.data
         start_node_ids = bie3._find_start_nodes(network, data_node)
+        assert start_node_ids,'%s cannot matched to network' % data_node.datatype.name
         for start_node_id in start_node_ids:
             stack_list.append((data_object, start_node_id))
             pool[start_node_id] = data_object
@@ -283,7 +284,6 @@ def run_pipeline(network, in_objects, user_inputs,
             stack_list.extend(next_modules)
         elif isinstance(data_object, bie3.Module):
             module_id = node_id
-            print 'module',module_id
             test_required = test_require_data(network, module_id, pool)
             if not test_required:
                 stack_list.insert(0, (data_object, node_id))

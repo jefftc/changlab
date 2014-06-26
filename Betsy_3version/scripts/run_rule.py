@@ -127,118 +127,156 @@ def print_user_input(modules):
                               if user_input.default else '')
                 print user_input.name + default
 
-def parse_args(argv_list):
+
+def assign_args(args):
     in_datatypes = []
     in_parameters = {}
-    Attributes = []
-    user_inputs = {}
     identifiers = []
+    out_identifier = None
+    outtype = None
+    Attributes = []
     flag = None
-    for i, arg in enumerate(argv_list):
+    for i, arg in enumerate(args):
         if arg == "--intype":
-            assert len(argv_list) > i + 1
-            in_datatypes.append(argv_list[i + 1])
+            assert len(args) > i + 1
+            in_datatypes.append(args[i + 1])
             flag = 'in'
         elif arg == "--outtype":
-            assert len(argv_list) > i + 1
+            assert len(args) > i + 1
+            outtype = args[i+1]
             flag = 'out'
         elif arg == "--attr":
-            assert len(argv_list) > i + 1
+            assert len(args) > i + 1
             if flag == 'in':
                 assert in_datatypes
-                x = argv_list[i + 1].split('=')
-                key = x[0]
-                value = x[1]
+                x = args[i + 1].split('=')
+                key, value = x
                 index = len(in_datatypes) - 1
                 if index not in in_parameters:
-                    in_parameters[index] = {}
-                in_parameters[index][key] = value
+                    in_parameters[index] = []
+                in_parameters[index].append([key,value])
             elif flag == 'out':
-                sub_datatype = argv_list[i + 1].split(',')[0]
-                attr = ','.join(argv_list[i + 1].split(',')[1:])
+                sub_datatype = args[i + 1].split(',')[0]
+                attr = ','.join(args[i + 1].split(',')[1:])
                 x = attr.split('=')
                 key = x[0]
                 value = x[1]
-                fn = getattr(rulebase, sub_datatype)
-                Attributes.append(bie3.Attribute(fn, key, value))
+                Attributes.append([sub_datatype,key,value])
         elif arg == '--input':
-            if not len(in_datatypes) == len(identifiers) + 1:
-                identifiers.extend([''] * (len(in_datatypes) - len(identifiers) - 1))
-            assert os.path.exists(argv_list[i + 1]),'input %s does not exists' %argv_list[i + 1]
-            store_file = userfile.set(getpass.getuser(), argv_list[i + 1])
-            identifiers.append(store_file)
-        elif arg == '--user_input':
-            x = argv_list[i + 1].split('=')
-            key = x[0]
-            value = x[1]
-            user_inputs[key] = value
-    in_objects = []
+            if flag == 'in':
+                if not len(in_datatypes) == len(identifiers) + 1:
+                    identifiers.extend([None] * (len(in_datatypes) - len(identifiers) - 1))
+                identifiers.append(args[i + 1])  
+            elif flag == 'out':
+                out_identifier = args[i + 1]
+    result = []
     for i, in_datatype in enumerate(in_datatypes):
-        fn = getattr(rulebase, in_datatype)
-        in_data = fn.input()
+        param = []
         if in_parameters:
             if i in in_parameters:
-                in_data = fn.input(**in_parameters[i])
-        in_object = rule_engine_bie3.DataObject(in_data)
-        if identifiers:
-            in_object = rule_engine_bie3.DataObject(in_data, identifiers[i])
-        in_objects.append(in_object)
-    return in_objects, user_inputs, Attributes
+                param = in_parameters[i]
+        result.append([in_datatype,identifiers[i],param])
+    out = [outtype, out_identifier, Attributes]
+    return result, out
 
 
 def main():
     parser = argparse.ArgumentParser(description='Run the engine')
-    parser.add_argument(
-        '--intype', dest='in_datatype', default=None, action='append',
+    group = parser.add_argument_group(title="Input/Output Nodes")
+    group.add_argument(
+        '--intype',  default=None, action='append',
         type=str, help='input data type for network')
-    parser.add_argument(
-        '--input', dest='identifier', default=None, action='append',
+    group.add_argument(
+        '--input', default=None, action='append',
         type=str, help='input data path')
-    parser.add_argument(
-        '--user_input', dest='user_input', default=None, action='append',
+    group.add_argument(
+        '--user_input',  default=[], action='append',
         type=str, help='user input in key=value format')
-    parser.add_argument(
-        '--outtype', dest='out_datatype', default=None, type=str,
+    group.add_argument(
+        '--outtype',  default=None, type=str,
         help='outtype')
-    parser.add_argument(
-        '--attr', dest='param', default=[], type=str, action='append',
+    group.add_argument(
+        '--attr', default=[], type=str, action='append',
         help='attribute for datatype in "datatype,key=value" or "key=value" '
         'format')
-    parser.add_argument(
-        '--list_datatypes', dest='all_datatypes', action='store_const',
+    group.add_argument(
+        '--output', type=str, default=None,
+        help='file or folder of output result')
+    
+    group = parser.add_argument_group(title="Outfiles")
+    group.add_argument(
+        '--png_file',  type=str, default=None,
+        help='generate the output network png file')
+    group.add_argument(
+        '--text_file', type=str, default=None,
+        help='generate the output network text file')
+    group.add_argument(
+        '--json_file', type=str, default=None,
+        help='generate the output network json file')
+    
+    group = parser.add_argument_group(title="Introspection")
+    group.add_argument(
+        '--list_datatypes', action='store_const',
         const=True, default=False,
         help='show all the possbile datatypes and their attributes')
-    parser.add_argument(
-        '--list_attributes_for_network', dest='network_attributes',
+    group.add_argument(
+        '--list_attributes_for_network', 
         action='store_const', const=True, default=False,
         help='show all the possbile datatypes and attributes for the network')
+    group.add_argument(
+        '--diagnose', action='store_const',
+        const=True, default=False,
+        help='diagnose the input data')
+    
     parser.add_argument(
-        '--output', dest='output', type=str, default=None,
-        help='file or folder of output result')
-    parser.add_argument(
-        '--clobber', dest='clobber', action='store_const',
+        '--clobber', action='store_const',
         const=True, default=False,
         help='overwrite the output_data if it already exists')
     parser.add_argument(
-        '--dry_run', dest='dry_run', action='store_const',
+        '--dry_run',  action='store_const',
         const=True, default=False,
         help='generate the network, do not run the network')
-    parser.add_argument(
-        '--png_file', dest='png_file', type=str, default=None,
-        help='generate the output network png file')
-    parser.add_argument(
-        '--text_file', dest='text_file', type=str, default=None,
-        help='generate the output network text file')
-    parser.add_argument(
-        '--json_file', dest='json_file', type=str, default=None,
-        help='generate the output network json file')
-    parser.add_argument(
-        '--diagnose', dest='diagnose', action='store_const',
-        const=True, default=False,
-        help='diagnose the input data')
+    # parse
     args = parser.parse_args()
-    if args.all_datatypes:
-        list_datatypes(rulebase)
+    parser_list, out_list = assign_args(sys.argv)
+    outtype, out_identifier, attributes = out_list
+    # test
+    assert not out_identifier,' --input is not for outtype'
+    for x in parser_list:
+        intype, identifier, attributes = x
+        if identifier:
+            assert os.path.exists(identifier),'input %s does not exists' %identifier
+    # test outtype and build Attributes
+    if outtype:
+        goal_datatype = getattr(rulebase, outtype)
+        Attributes = []
+        for x in attributes:
+            subtype, key, value = x
+            fn = getattr(rulebase, subtype)
+            Attributes.append(bie3.Attribute(fn, key, value))
+    # test intype attributes and build objects
+    in_objects = []
+    for x in parser_list:
+         intype, identifier, attributes = x
+         fn = getattr(rulebase, intype)
+         in_data = fn.input()
+         if attributes:
+             for i in attributes:
+                 key, value = i
+                 parameters[i][key] = value
+                 in_data = fn.input(**parameters[i])
+         if identifier:
+             in_object = rule_engine_bie3.DataObject(in_data,identifier)
+         in_objects.append(in_object)
+    # test user_input
+    all_inputs = get_all_user_inputs()
+    user_inputs = {}
+    for i in args.user_input:
+        assert '=' in i
+        key, value = i.split('=')
+        assert key in all_inputs,'user input %s is not valid' % i
+        user_inputs[key] = value
+    # test introspection
     if args.output:
         realpath = os.path.realpath(args.output)
         if os.path.exists(args.output):
@@ -246,17 +284,22 @@ def main():
                 raise ValueError('the output path %s is already exisit,\
                                  please use --clobber option to overwrite'
                                  % args.output)
-    if not args.out_datatype:
-        if args.all_datatypes:
-            return
-        else:
-            assert args.out_datatype, 'please specify the outtype'
-    goal_datatype = getattr(rulebase, args.out_datatype)
-    x = parse_args(sys.argv)
-    in_objects, user_inputs, Attributes = x
-    all_inputs = get_all_user_inputs()
-    for user_input in user_inputs:
-        assert user_input in all_inputs,'user input %s is not valid' % user_input
+    if args.list_datatypes:
+        assert not (args.list_attributes_for_network or args.diagnose)
+        assert not parser_list, 'no intype should be given'
+        assert not outtype, 'no outtype should be given'
+    if args.list_attributes_for_network:
+        assert not (args.list_datatypes or args.diagnose)
+        assert outtype,'an outtype should be given'
+    if args.diagnose:
+        assert not (args.llist_datatypes or list_attributes_for_network)
+        assert out_list,'an outtype should be given'
+    if not args.list_datatypes:
+        assert args.outtype, 'please specify the outtype'
+    # Action
+    if args.list_datatypes:
+         list_datatypes(rulebase)
+         return
     print 'Generating network...'
     network = bie3.backchain(rulebase.all_modules, goal_datatype, *Attributes)
     network = bie3.complete_network(network)
@@ -265,6 +308,7 @@ def main():
                       please check your command.')
     if args.png_file:
         bie3.plot_network_gv(args.png_file, network)
+
     if args.text_file:
         handle = file(args.text_file, 'w')
         try:
@@ -273,7 +317,7 @@ def main():
             handle.close()
     if args.json_file:
         bie3.write_network(args.json_file, network)
-    if args.network_attributes:
+    if args.list_attributes_for_network:
         assert network, 'no network generated'
         network_datas = [i for i in network.nodes
                          if isinstance(i, bie3.Data)]
@@ -288,7 +332,12 @@ def main():
         bie3.diagnose_start_node(network, in_datas)
     if args.dry_run:
         return
-    assert args.in_datatype, 'please specify the in_datatype'
+    assert in_objects, 'please specify the intype'
+    for i in in_objects:
+        start_node = bie3._find_start_nodes(network,i.data)
+        assert start_node, 'intype %s is not matched any node in the network' % i.data.datatype.name
+        store_file = userfile.set(getpass.getuser(), i.identifier)
+        i.identifier = store_file
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects, user_inputs)
     if args.output:
