@@ -11,6 +11,17 @@ from Betsy import rulebase
 from Betsy import userfile
 
 
+
+def get_all_user_inputs():
+    modules = rulebase.all_modules
+    user_inputs = []
+    for module in modules:
+        for user_input in module.user_inputs:
+            if user_input.name not in user_inputs:
+                user_inputs.append(user_input.name)
+    return user_inputs
+                
+
 def print_attribute(data):
     data = getattr(rulebase, data)
     if isinstance(data, bie3.DataType):
@@ -163,7 +174,10 @@ def main():
             assert args.out_datatype, 'please specify the outtype'
     goal_datatype = getattr(rulebase, args.out_datatype)
     x = parse_args(sys.argv)
-    in_objects, user_inputs, Attributes = x 
+    in_objects, user_inputs, Attributes = x
+    all_inputs = get_all_user_inputs()
+    for user_input in user_inputs:
+        assert user_input in all_inputs,'user input %s is not valid' % user_input
     print 'Generating network...'
     network = bie3.backchain(rulebase.all_modules, goal_datatype, *Attributes)
     network = bie3.complete_network(network)

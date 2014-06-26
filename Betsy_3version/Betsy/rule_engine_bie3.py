@@ -282,6 +282,7 @@ def run_pipeline(network, in_objects, user_inputs,
             stack_list.extend(next_modules)
         elif isinstance(data_object, bie3.Module):
             module_id = node_id
+            print 'module',module_id
             test_required = test_require_data(network, module_id, pool)
             if not test_required:
                 stack_list.insert(0, (data_object, node_id))
@@ -291,13 +292,17 @@ def run_pipeline(network, in_objects, user_inputs,
             out_nodes = run_module(network, module_id, pool,
                                    user_inputs, pipeline_sequence,
                                    user, job_name)
+            flag = False
             for x in out_nodes:
                 next_node, next_id = x
                 if next_id == 0:
+                    flag = True
                     break
                 elif next_id is None:
                     raise ValueError('cannot match the output node')
                 stack_list.append((next_node, next_id))
+            if flag:    
+                break
     if next_node and module_utils.exists_nz(next_node.identifier):
         print ('[' + time.strftime('%l:%M%p') +
                '] Completed successfully and ' +
