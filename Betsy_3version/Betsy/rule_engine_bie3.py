@@ -192,7 +192,8 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
         network, module_id, module, pool)
     if out_attributes is None:
         return []
-    print '[' + time.strftime('%l:%M%p') + '].' + module_name
+    print "[%s].  %s" % (time.strftime('%l:%M%p'), module_name)
+    #print '[' + time.strftime('%l:%M%p') + '].' + module_name
     working_dir = os.path.join(output_path, make_module_wd_name(
         network, module, module_id, sub_user_input, pipeline_sequence,
         pool, out_attributes))
@@ -304,11 +305,9 @@ def run_pipeline(network, in_objects, user_inputs,
             if flag:    
                 break
     if next_node and module_utils.exists_nz(next_node.identifier):
-        print ('[' + time.strftime('%l:%M%p') +
-               '] Completed successfully and ' +
-               'generated a file:')
-        print  next_node.identifier + '\r'
-        print '\r'
+        msg = "Completed successfully and generated a file:"
+        print "[%s].  %s" % (time.strftime('%l:%M%p'), msg)
+        print next_node.identifier
         sys.stdout.flush()
         return next_node.identifier
     else:

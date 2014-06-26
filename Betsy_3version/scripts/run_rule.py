@@ -12,6 +12,7 @@ from Betsy import userfile
 
 
 
+
 def get_all_user_inputs():
     modules = rulebase.all_modules
     user_inputs = []
@@ -21,6 +22,87 @@ def get_all_user_inputs():
                 user_inputs.append(user_input.name)
     return user_inputs
                 
+
+def _break_into_lines(one_long_line, width=72, indent1=0, indento=20):
+    assert width > 0
+    assert indent1 >= 0
+    assert indento >= 0
+    assert width > indent1
+    assert width > indento
+
+    assert "\n" not in one_long_line
+    assert "\r" not in one_long_line
+    assert "\t" not in one_long_line
+    
+    lines = []
+    while 1:
+        ind = " "*indent1
+        if lines:
+            ind = " "*indento
+        if ind:
+            one_long_line = one_long_line.lstrip()  # no leading spaces
+        one_long_line = ind + one_long_line
+
+        if len(one_long_line) < width:
+            lines.append(one_long_line)
+            break
+
+        # Try to split on a space.
+        w = width
+        i = one_long_line.rfind(" ", len(ind), w)
+        if i > 0:
+            w = i
+        x = one_long_line[:w]
+        one_long_line = one_long_line[w:]
+        lines.append(x)
+    return lines
+    
+
+def list_datatypes(rulebase):
+    # Make a list of the DataType objects.
+    x = [getattr(rulebase, x) for x in dir(rulebase)]
+    x = [x for x in x if isinstance(x, bie3.DataType)]
+    datatypes = x
+
+    # Make a list of the modules
+    modules = rulebase.all_modules
+
+    # Print each DataType object.
+    for data in datatypes:
+        print "DATATYPE %s:" % data.name
+        for attr in data.attributes:
+            x1 = "%-20s" % attr.name
+            x2 = []
+            for val in attr.values:
+                if val == attr.default_in:
+                    val = val + " (in)"
+                if val == attr.default_out:
+                    val = val + " (out)"
+                x2.append(val)
+            x2 = ", ".join(x2)
+            x = x1 + x2
+            lines = _break_into_lines(x)
+            for line in lines:
+                print line
+        print
+
+    # Print the user input from each module.
+    for module in modules:
+        if not module.user_inputs:
+            continue
+        print "MODULE %s:" % module.name
+        for user_input in module.user_inputs:
+            x1 = "%-20s" % user_input.name
+            default = ""
+            if user_input.default:
+                default = user_input.default
+            x2 = str(default)
+            x = x1 + x2
+            lines = _break_into_lines(x)
+            for line in lines:
+                print line
+        print
+
 
 def print_attribute(data):
     data = getattr(rulebase, data)
@@ -156,10 +238,7 @@ def main():
         help='diagnose the input data')
     args = parser.parse_args()
     if args.all_datatypes:
-        datas = dir(rulebase)
-        for data in datas:
-            print_attribute(data)
-        print_user_input(rulebase.all_modules)
+        list_datatypes(rulebase)
     if args.output:
         realpath = os.path.realpath(args.output)
         if os.path.exists(args.output):

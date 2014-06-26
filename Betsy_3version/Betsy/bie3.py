@@ -32,7 +32,10 @@ backchain
 complete_network
 optimize_network
 select_start_node
-prune_network_by_internal
+remove_data_node
+
+get_inputs
+group_inputs_by_datatype
 
 summarize_moduledb
 check_moduledb
@@ -73,6 +76,7 @@ diagnose_start_node
 # _get_attribute_type
 # _intersection
 # _is_subset
+# _flatten
 # 
 # _print_nothing
 # _print_string
@@ -1941,6 +1945,90 @@ def remove_data_node(network, *attributes):
     return network
 
 
+def _get_inputs_h(network, node_id, nodeid2previds):
+    import itertools
+    node = network.nodes[node_id]
+
+    inputs = []
+    if isinstance(node, Data):
+        # I am a valid input, as well as all inputs generated from any
+        # of the previous nodes.
+        inputs = [(node_id,)]
+        for previd in nodeid2previds.get(node_id, []):
+            x = _get_inputs_h(network, previd, nodeid2previds)
+            inputs.extend(x)
+    elif isinstance(node, Module):
+        # Find all potential sets of Data notes that can feed into me.
+        assert node_id in nodeid2previds
+        previds = nodeid2previds[node_id]
+        combos = _get_valid_input_combinations(
+            network, node_id, previds, node2previds=nodeid2previds)
+
+        # Get the inputs from each of the combinations.
+        for combo in combos:
+            # Get the inputs for each branch of this combination.
+            branch2inputs = [
+                _get_inputs_h(network, x, nodeid2previds) for x in combo]
+
+            # Find all permutations for the inputs for each branch.
+            # [ [(49, 40)]              Each branch has a set of inputs.
+            #   [(38,), (35,)] ]
+            # ->                        itertools.product
+            # [ ((49, 40), (38,)),
+            #   ((49, 40), (35,)) ]
+            # ->                        flatten
+            # [ (49, 40, 38), (49, 40, 35) ]
+            x = itertools.product(*branch2inputs)
+            # Flatten the tuples.
+            x = [_flatten(x) for x in x]
+            inputs = x
+    else:
+        raise AssertionError
+
+    inputs = sorted({}.fromkeys(inputs))
+    return inputs
+    
+
+def get_inputs(network):
+    # Return a list of tuples of node ids.  Each tuple contains a set
+    # of node IDs that can serve as the inputs to this network.
+    # 
+    # Example return value:
+    #   [(1, 5), (8,)]
+    # This means that th set of nodes 1 and 5 would make a valid input
+    # to this network.  Or, node 8 by itself would also be a valid
+    # input.
+    nodeid2previds = _make_backchain_dict(network)
+    inputs = _get_inputs_h(network, 0, nodeid2previds)
+    return inputs
+
+
+def group_inputs_by_datatype(network, inputs):
+    # Take a network and inputs (e.g. from get_inputs) and return a
+    # dictionary where the keys are tuples of DataTypes and the values
+    # are the inputs with that pattern of inputs.
+    #
+    # Example return value:
+    # {
+    #    (SignalFile,) : [(2,), (4,), (8,)],
+    #    (SignalFile, ClassLabelFile) : [(5, 10)],
+    # }
+    # The order of the nodes may not be preserved.
+
+    dt2inputs = {}
+    for inp in inputs:
+        nodes = [network.nodes[x] for x in inp]
+        datatypes = [x.datatype for x in nodes]
+        y = sorted(zip(datatypes, inp))
+        datatypes = tuple([x[0] for x in y])
+        inp = tuple([x[1] for x in y])
+
+        if datatypes not in dt2inputs:
+            dt2inputs[datatypes] = []
+        dt2inputs[datatypes].append(inp)
+    return dt2inputs
+    
+    
 def summarize_moduledb(moduledb):
     """Take a list of Modules and return a ModuleDbSummary object."""
     name2module = {}   # module_name -> Module
@@ -3241,6 +3329,22 @@ def _is_subset(x, y):
     return True
 
 
+def _flatten(l, ltypes=(list, tuple)):
+    ltype = type(l)
+    l = list(l)
+    i = 0
+    while i < len(l):
+        while isinstance(l[i], ltypes):
+            if not l[i]:
+                l.pop(i)
+                i -= 1
+                break
+            else:
+                l[i:i + 1] = l[i]
+        i += 1
+    return ltype(l)
+
+
 def _print_nothing(s):
     pass
 
@@ -3309,3 +3413,6 @@ def _pretty_attributes(attributes):
 def debug_print(s):
     if DEBUG:
         print s
+
+
+
