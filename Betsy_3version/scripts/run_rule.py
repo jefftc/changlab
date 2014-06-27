@@ -274,10 +274,11 @@ def main():
          fn = getattr(rulebase, intype)
          in_data = fn.input()
          if attributes:
+             parameters = {}
              for i in attributes:
                  key, value = i
-                 parameters[i][key] = value
-                 in_data = fn.input(**parameters[i])
+                 parameters[key] = value
+                 in_data = fn.input(**parameters)
          if identifier:
              in_object = rule_engine_bie3.DataObject(in_data,identifier)
          in_objects.append(in_object)
