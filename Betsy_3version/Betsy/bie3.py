@@ -1995,7 +1995,7 @@ def get_inputs(network):
     # 
     # Example return value:
     #   [(1, 5), (8,)]
-    # This means that th set of nodes 1 and 5 would make a valid input
+    # This means that the set of nodes 1 and 5 would make a valid input
     # to this network.  Or, node 8 by itself would also be a valid
     # input.
     nodeid2previds = _make_backchain_dict(network)

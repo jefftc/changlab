@@ -56,6 +56,43 @@ def _break_into_lines(one_long_line, width=72, indent1=0, indento=20):
         one_long_line = one_long_line[w:]
         lines.append(x)
     return lines
+
+
+def pretty_print_datatype(datatype, handle=None):
+    handle = handle or sys.stdout
+    
+    print >>handle, "DATATYPE %s:" % datatype.name
+    for attr in datatype.attributes:
+        x1 = "%-20s" % attr.name
+        x2 = []
+        for val in attr.values:
+            if val == attr.default_in:
+                val = val + " (in)"
+            if val == attr.default_out:
+                val = val + " (out)"
+            x2.append(val)
+        x2 = ", ".join(x2)
+        x = x1 + x2
+        lines = _break_into_lines(x)
+        for line in lines:
+            print >>handle, line
+
+
+def pretty_print_module(module, handle=None):
+    handle = handle or sys.stdout
+
+    print >>handle, "MODULE %s:" % module.name
+    for user_input in module.user_inputs:
+        x1 = "%-20s" % user_input.name
+        default = ""
+        if user_input.default:
+            default = user_input.default
+        x2 = str(default)
+        x = x1 + x2
+        lines = _break_into_lines(x)
+        for line in lines:
+            print >>handle, line
+            
     
 
 def list_datatypes(rulebase):
@@ -68,39 +105,15 @@ def list_datatypes(rulebase):
     modules = rulebase.all_modules
 
     # Print each DataType object.
-    for data in datatypes:
-        print "DATATYPE %s:" % data.name
-        for attr in data.attributes:
-            x1 = "%-20s" % attr.name
-            x2 = []
-            for val in attr.values:
-                if val == attr.default_in:
-                    val = val + " (in)"
-                if val == attr.default_out:
-                    val = val + " (out)"
-                x2.append(val)
-            x2 = ", ".join(x2)
-            x = x1 + x2
-            lines = _break_into_lines(x)
-            for line in lines:
-                print line
+    for dt in datatypes:
+        pretty_print_datatype(dt)
         print
 
     # Print the user input from each module.
     for module in modules:
         if not module.user_inputs:
             continue
-        print "MODULE %s:" % module.name
-        for user_input in module.user_inputs:
-            x1 = "%-20s" % user_input.name
-            default = ""
-            if user_input.default:
-                default = user_input.default
-            x2 = str(default)
-            x = x1 + x2
-            lines = _break_into_lines(x)
-            for line in lines:
-                print line
+        pretty_print_module(module)
         print
 
 
@@ -292,7 +305,7 @@ def main():
         assert not (args.list_datatypes or args.diagnose)
         assert outtype,'an outtype should be given'
     if args.diagnose:
-        assert not (args.llist_datatypes or list_attributes_for_network)
+        assert not (args.list_datatypes or args.list_attributes_for_network)
         assert out_list,'an outtype should be given'
     if not args.list_datatypes:
         assert args.outtype, 'please specify the outtype'

@@ -1059,14 +1059,20 @@ def run_case35():
     bie3.plot_network_gv("out.png", network)
     print
 
-    print "INPUTS"
+    print "Possible Inputs"
     inputs = bie3.get_inputs(network)
     dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
-    for dt in sorted(dt2inputs):
+    for i, dt in enumerate(sorted(dt2inputs)):
         x = [x.name for x in dt]
-        print ", ".join(x)
-        for x in dt2inputs[dt]:
-            print repr(x)
+        print "%d.  %s" % (i+1, ", ".join(x))
+        for j, inputs in enumerate(dt2inputs[dt]):
+            for k, inp in enumerate(inputs):
+                node = network.nodes[inp]
+                assert isinstance(node, bie3.Data)
+                print node.datatype.name
+                for name in sorted(node.attributes):
+                    print "%s%s=%s" % (" "*5, name, node.attributes[name])
+            print
         print
     
 
