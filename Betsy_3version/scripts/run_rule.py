@@ -239,7 +239,7 @@ def main():
     # parse
     args = parser.parse_args()
     parser_list, out_list = assign_args(sys.argv)
-    outtype, out_identifier, attributes = out_list
+    outtype, out_identifier, out_attributes = out_list
     # test
     assert not out_identifier,' --input is not for outtype'
     for x in parser_list:
@@ -250,7 +250,7 @@ def main():
     if outtype:
         goal_datatype = getattr(rulebase, outtype)
         Attributes = []
-        for x in attributes:
+        for x in out_attributes:
             subtype, key, value = x
             fn = getattr(rulebase, subtype)
             Attributes.append(bie3.Attribute(fn, key, value))

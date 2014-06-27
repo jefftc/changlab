@@ -2,7 +2,7 @@ Configuration.
 
 ~/.bashrc
 ~/.genomicoderc
-gitpath/Betsy/Betsy.cfg
+gitpath/Betsy_3version/dot_betsyrc
 ~/.betsyrc
 
 gitpath is the path where you have your git folder.
@@ -59,7 +59,7 @@ slice_matrix=<gitpath>/scripts/slice_matrix.py
 annotate_matrix=<gitpath>/scripts/annotate_matrix.py
 score_geneset=<gitpath>/scripts/score_geneset.py
 gsea=<gitpath>/scripts/gsea.py
-combat = <gitpath>e/scripts/ComBat.R
+combat = <gitpath>/scripts/ComBat.R
 
 changlab_Rlib=<gitpath>/Rlib
 kaplanmeierlib=<gitpath>/Rlib/kaplanmeierlib.R
