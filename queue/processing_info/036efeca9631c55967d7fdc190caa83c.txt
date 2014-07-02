@@ -1,5 +1,0 @@
-usage: run_protocol.py [-h] [--protocol PROTOCOL] [--input INPUT]
-                       [--parameters PARAMETERS] [--dry_run]
-                       [--describe_protocol] [--user USER]
-                       [--job_name JOB_NAME] [--dont_cleanup]
-run_protocol.py: error: please specify the input
