@@ -1049,6 +1049,8 @@ def _fmt_R_var(var):
         if var.startswith("RVAR:"):
             var = var[5:]
         else:
+            # Escape the quotes.
+            var = var.replace('"', '\\"')
             var = '"%s"' % var
     elif type(var) in [type([]), type(())]:
         x = [_fmt_R_var(x) for x in var]
