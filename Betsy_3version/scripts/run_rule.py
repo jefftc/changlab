@@ -141,17 +141,17 @@ def print_user_input(modules):
 
 
 def assign_args(args):
-    in_datatypes = []
+    intypes = []
     in_parameters = {}
-    identifiers = []
-    out_identifier = None
+    in_identifiers = []
     outtype = None
-    Attributes = []
+    out_parameters = []
+    out_identifier = None
     flag = None
     for i, arg in enumerate(args):
         if arg == "--intype":
             assert len(args) > i + 1
-            in_datatypes.append(args[i + 1])
+            intypes.append(args[i + 1])
             flag = 'in'
         elif arg == "--outtype":
             assert len(args) > i + 1
@@ -160,10 +160,10 @@ def assign_args(args):
         elif arg == "--attr":
             assert len(args) > i + 1
             if flag == 'in':
-                assert in_datatypes
+                assert intypes
                 x = args[i + 1].split('=')
                 key, value = x
-                index = len(in_datatypes) - 1
+                index = len(intypes) - 1
                 if index not in in_parameters:
                     in_parameters[index] = []
                 in_parameters[index].append([key,value])
@@ -173,25 +173,25 @@ def assign_args(args):
                 x = attr.split('=')
                 key = x[0]
                 value = x[1]
-                Attributes.append([sub_datatype,key,value])
+                out_parameters.append([sub_datatype,key,value])
         elif arg == '--input':
             if flag == 'in':
-                if not len(in_datatypes) == len(identifiers) + 1:
-                    identifiers.extend([None] * (len(in_datatypes) - len(identifiers) - 1))
-                identifiers.append(args[i + 1])  
+                if not len(intypes) == len(in_identifiers) + 1:
+                    in_identifiers.extend([None] * (len(intypes) - len(in_identifiers) - 1))
+                in_identifiers.append(args[i + 1])  
             elif flag == 'out':
                 out_identifier = args[i + 1]
-    result = []
-    if not identifiers:
-        identifiers = ['']*len(in_datatypes)
-    for i, in_datatype in enumerate(in_datatypes):
+    in_result = []
+    if not in_identifiers:
+        in_identifiers = ['']*len(intypes)
+    for i, intype in enumerate(intypes):
         param = []
         if in_parameters:
             if i in in_parameters:
                 param = in_parameters[i]
-        result.append([in_datatype,identifiers[i],param])
-    out = [outtype, out_identifier, Attributes]
-    return result, out
+        in_result.append([intype,in_identifiers[i],param])
+    out_result = [outtype, out_identifier, out_parameters]
+    return in_result, out_result
 
 
 def main():

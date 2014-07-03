@@ -105,6 +105,8 @@ def get_identifier(network, module_id, pool,
                 'the input file %s for %s does not exist'
                 % (pool[i].identifier,network.nodes[module_id].name))
                 return pool[i]
+    raise ValueError('cannot find node that match for %s' %network.nodes[module_id].name)
+                
 
 
 def get_inputid(identifier):
