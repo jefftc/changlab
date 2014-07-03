@@ -12,7 +12,6 @@ from Betsy import userfile
 
 
 
-
 def get_all_user_inputs():
     modules = rulebase.all_modules
     user_inputs = []
@@ -183,6 +182,8 @@ def assign_args(args):
             elif flag == 'out':
                 out_identifier = args[i + 1]
     result = []
+    if not identifiers:
+        identifiers = ['']*len(in_datatypes)
     for i, in_datatype in enumerate(in_datatypes):
         param = []
         if in_parameters:
@@ -240,7 +241,9 @@ def main():
         '--diagnose', action='store_const',
         const=True, default=False,
         help='diagnose the input data')
-    
+    group.add_argument(
+        '--show_inputs',action='store_const', const=True,
+        default=False, help='show the possible inputs')
     parser.add_argument(
         '--clobber', action='store_const',
         const=True, default=False,
@@ -252,7 +255,7 @@ def main():
     # parse
     args = parser.parse_args()
     parser_list, out_list = assign_args(sys.argv)
-    outtype, out_identifier, attributes = out_list
+    outtype, out_identifier, out_attributes = out_list
     # test
     assert not out_identifier,' --input is not for outtype'
     for x in parser_list:
@@ -263,7 +266,7 @@ def main():
     if outtype:
         goal_datatype = getattr(rulebase, outtype)
         Attributes = []
-        for x in attributes:
+        for x in out_attributes:
             subtype, key, value = x
             fn = getattr(rulebase, subtype)
             Attributes.append(bie3.Attribute(fn, key, value))
@@ -274,12 +277,12 @@ def main():
          fn = getattr(rulebase, intype)
          in_data = fn.input()
          if attributes:
+             parameters = {}
              for i in attributes:
                  key, value = i
-                 parameters[i][key] = value
-                 in_data = fn.input(**parameters[i])
-         if identifier:
-             in_object = rule_engine_bie3.DataObject(in_data,identifier)
+                 parameters[key] = value
+                 in_data = fn.input(**parameters)
+         in_object = rule_engine_bie3.DataObject(in_data,identifier)
          in_objects.append(in_object)
     # test user_input
     all_inputs = get_all_user_inputs()
@@ -299,16 +302,24 @@ def main():
                                  % args.output)
     if args.list_datatypes:
         assert not (args.list_attributes_for_network or args.diagnose)
+        assert not args.show_inputs
         assert not parser_list, 'no intype should be given'
         assert not outtype, 'no outtype should be given'
     if args.list_attributes_for_network:
         assert not (args.list_datatypes or args.diagnose)
+        assert not args.show_inputs
         assert outtype,'an outtype should be given'
     if args.diagnose:
         assert not (args.list_datatypes or args.list_attributes_for_network)
-        assert out_list,'an outtype should be given'
+        assert not args.show_inputs
+        assert outtype,'an outtype should be given'
+    if args.show_inputs:
+        assert not (args.list_datatypes or args.diagnose)
+        assert not args.list_attributes_for_network
+        assert outtype,'an outtype should be given'
     if not args.list_datatypes:
         assert args.outtype, 'please specify the outtype'
+    
     # Action
     if args.list_datatypes:
          list_datatypes(rulebase)
@@ -343,14 +354,33 @@ def main():
     if args.diagnose:
         in_datas = [i.data for i in in_objects]
         bie3.diagnose_start_node(network, in_datas)
+    if args.show_inputs:
+        assert network, 'no network generated'
+        print "Possible Inputs"
+        inputs = bie3.get_inputs(network)
+        dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
+        for i, dt in enumerate(sorted(dt2inputs)):
+            x = [x.name for x in dt]
+            print "%d.  %s" % (i+1, ", ".join(x))
+            for j, inputs in enumerate(dt2inputs[dt]):
+                for k, inp in enumerate(inputs):
+                    node = network.nodes[inp]
+                    assert isinstance(node, bie3.Data)
+                    print node.datatype.name
+                    for name in sorted(node.attributes):
+                        print "%s%s=%s" % (" "*5, name, node.attributes[name])
+                print
+            print
+        return 
     if args.dry_run:
         return
     assert in_objects, 'please specify the intype'
     for i in in_objects:
         start_node = bie3._find_start_nodes(network,i.data)
         assert start_node, 'intype %s is not matched any node in the network' % i.data.datatype.name
-        store_file = userfile.set(getpass.getuser(), i.identifier)
-        i.identifier = store_file
+        if os.path.exists(i.identifier):
+            store_file = userfile.set(getpass.getuser(), i.identifier)
+            i.identifier = store_file
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects, user_inputs)
     if args.output:

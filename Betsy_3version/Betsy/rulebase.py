@@ -22,6 +22,7 @@ def import_rules():
     # GseaFile_rule
     x = [os.path.splitext(x)[0] for x in filenames]  # No extensions.
     x = {}.fromkeys(x)                               # No duplicates
+    x = [x for x in x if not x.startswith('._')]
     x = [x for x in x if x.endswith("_rule")]        # Must end with _rule.
     module_names = x
 

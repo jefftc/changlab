@@ -39,6 +39,8 @@ annotate_matrix=/home/xchen/chencode/scripts/annotate_matrix.py
 score_geneset=/home/xchen/chencode/scripts/score_geneset.py
 gsea=/home/xchen/chencode/scripts/gsea.py
 combat = /home/xchen/chencode/scripts/ComBat.R
+download_tcga = /home/xchen/chencode/scripts/download_tcga.py
+analyze_clinical = /home/xchen/chencode/scripts/analyze_clinical_outcome.py
 
 changlab_Rlib=/home/xchen/chencode/Rlib
 kaplanmeierlib=/home/xchen/chencode/Rlib/kaplanmeierlib.R
