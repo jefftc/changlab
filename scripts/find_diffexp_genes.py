@@ -274,10 +274,10 @@ def main():
         "--cls_file", default=None, help="Class label file.")
     group.add_argument(
         "--indexes1", default=None,
-        help="Which columns in class 1, E.g. 1-5,8 (1-based, inclusive).")
+        help="Which columns in class 1, e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
         "--indexes2", default=None,
-        help="Which columns in class 2, E.g. 1-5,8 (1-based, inclusive).  "
+        help="Which columns in class 2, e.g. 1-5,8 (1-based, inclusive).  "
         "If not given, then will use all samples not in indexes1.")
     group.add_argument(
         "--indexes_include_headers", default=False, action="store_true",
