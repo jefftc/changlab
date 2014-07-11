@@ -225,7 +225,10 @@ def read_expression_or_geneset_scores(genes, gene_sets, filename):
 
 
 def read_clinical_annotations(M, filename):
-    # Read the clinical annotations.
+    # Return a tuple of (Matrix, clinical annotations).  The
+    # annotations are a dictionary of name -> list of values.  They
+    # are aligned with the matrix.
+    
     from genomicode import genesetlib
     
     clinical_annots = {}
