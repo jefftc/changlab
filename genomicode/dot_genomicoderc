@@ -42,6 +42,7 @@ combat = /home/xchen/chencode/scripts/ComBat.R
 download_tcga = /home/xchen/chencode/scripts/download_tcga.py
 analyze_clinical = /home/xchen/chencode/scripts/analyze_clinical_outcome.py
 find_diffexp_genes = /home/xchen/chencode/scripts/find_diffexp_genes.py
+analyze_phenotype = /home/xchen/chencode/scripts/analyze_phenotype.py
 
 changlab_Rlib=/home/xchen/chencode/Rlib
 kaplanmeierlib=/home/xchen/chencode/Rlib/kaplanmeierlib.R

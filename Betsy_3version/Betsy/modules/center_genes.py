@@ -2,11 +2,13 @@
 import os
 import subprocess
 from Betsy import module_utils,bie3,rulebase
-
+from genomicode import config
 
 def run(data_node,parameters, user_input,network):
     """mean or median"""
-    CLUSTER_BIN = 'cluster'
+    CLUSTER_BIN = config.cluster
+    cluster = module_utils.which(CLUSTER_BIN)
+    assert cluster, 'cannot find the %s' % CLUSTER_BIN
     center_alg = {'mean': 'a', 'median': 'm'}
     try:
         center_parameter = center_alg[parameters['gene_center']]

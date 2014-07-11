@@ -4,6 +4,8 @@ import subprocess
 from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
+from genomicode import config
+
 
 def run(data_node,parameters, user_input,network):
     """variance or sum_of_square"""
@@ -23,7 +25,9 @@ def run(data_node,parameters, user_input,network):
         arrayio.pcl_format.write(M_c,f)
         f.close()
     elif parameters['gene_normalize'] == "sum_of_squares":
-        CLUSTER_BIN = 'cluster'
+        CLUSTER_BIN = config.cluster
+        cluster = module_utils.which(CLUSTER_BIN)
+        assert cluster, 'cannot find the %s' % CLUSTER_BIN
         process = subprocess.Popen([CLUSTER_BIN,'-f',data_node.attributes['filename'],'-ng',
                                     '-u',outfile],shell=False,
                                     stdout=subprocess.PIPE,

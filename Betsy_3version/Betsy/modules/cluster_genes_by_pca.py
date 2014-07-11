@@ -2,10 +2,14 @@
 import os
 import subprocess
 from Betsy import module_utils, bie3, rulebase
+from genomicode import config
+
 
 def run(data_node,parameters, user_input,network):
     """clustering the input file"""
-    CLUSTER_BIN = 'cluster'
+    CLUSTER_BIN = config.cluster
+    cluster = module_utils.which(CLUSTER_BIN)
+    assert cluster, 'cannot find the %s' % CLUSTER_BIN
     distance_para = {'correlation': '1', 'euclidean': '7'}
     dist = distance_para[parameters['distance']]
     com_parameter = ["-g", dist, '-pg', '-e', '1']
