@@ -3,6 +3,8 @@
 
 # Functions:
 # parse_phenotypes
+# parse_ignore_samples
+# ignore_samples
 # calc_association
 
 
@@ -11,6 +13,36 @@ def parse_phenotypes(phenotypes):
     # e.g. ["STEM", "EMT"]
     # Return (potentially empty) list of phenotypes.
     return phenotypes
+
+
+def parse_ignore_samples(ignore_samples):
+    # Return a tuple of <annot>, <value>
+    # Format: <annot>,<value>
+    x = ignore_samples.split(",")
+    assert len(x) == 2
+    return x
+
+
+def ignore_samples(M, clinical_annots, ignore):
+    x = parse_ignore_samples(ignore)
+    annot, value = x
+
+    assert annot in clinical_annots, "Missing annot: %s" % annot
+    values = clinical_annots[annot]
+    
+    I = []  # indexes to keep
+    for i in range(len(values)):
+        if value != values[i]:
+            I.append(i)
+    assert len(I) < len(values), "I could not find any %s=%s" % (annot, value)
+
+    M_f = M.matrix(None, I)
+    annots_f = {}
+    for name, values in clinical_annots.iteritems():
+        values_f = [values[i] for i in I]
+        annots_f[name] = values_f
+        assert len(values_f) == M_f.ncol()
+    return M_f, annots_f
 
 
 def calc_association(phenotypes, scores, expression_or_score):
@@ -327,7 +359,13 @@ def main():
         'expression_file',
         help='Either a gene expression file (GCT,CDT,PCL format) or gene set '
         'scores from score_geneset.py.')
-    parser.add_argument('phenotype_file', help='Table of phenotypes.')
+    parser.add_argument(
+        'phenotype_file', help="Table of phenotypes (tab-delimited text "
+        "file).")
+    parser.add_argument(
+        "--ignore_samples", help="Ignore the samples where an annotation "
+        "(a column in the phenotype file) matches a specific value.  "
+        "Format:<header>,<value>")
     
     group = parser.add_argument_group(title='Analysis')
     group.add_argument(
@@ -420,6 +458,11 @@ def main():
         genes, gene_sets, args.expression_file)
     x = aco.read_clinical_annotations(M, args.phenotype_file)
     M, clinical_annots = x
+
+    # Filter the phenotype files.
+    if args.ignore_samples:
+        x = ignore_samples(M, clinical_annots, args.ignore_samples)
+        M, clinical_annots = x
 
     # Make sure at least one of the phenotypes are in the clinical
     # annotations.
