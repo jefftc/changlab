@@ -26,7 +26,7 @@ def _remove_dups(ids):
 
 def convert_gene_ids(
     gene_ids, in_platform, out_platform, in_delim, out_delim,
-    keep_dups, keep_emptys):
+    keep_dups, keep_emptys, no_na):
     # gene_ids is a list of the gene IDs, one per row of the matrix,
     # from the in_platform.  Each of the gene_ids may contain multiple
     # IDs separated by in_delim.  in_delim is either None (no multiple
@@ -80,6 +80,13 @@ def convert_gene_ids(
     homolog = R['homolog']
     in_ids = [str(x) for x in homolog[0]]
     out_ids = [str(x) for x in homolog[1]]
+
+    # Sometimes BioMart will generate "NA" if something is missing.
+    if no_na:
+        for i in range(len(out_ids)):
+            if out_ids[i].upper() == "NA":
+                out_ids[i] = ""
+    
     in2out = {}
     for x, y in zip(in_ids, out_ids):
         if not y.strip():
@@ -108,7 +115,7 @@ def convert_gene_ids(
 
 
 def convert_geneset(
-    filename, in_delim, out_delim, keep_dups, keep_emptys,
+    filename, in_delim, out_delim, keep_dups, keep_emptys, no_na, 
     in_genesets, out_platforms, out_geneset, out_format):
     from genomicode import genesetlib
     from genomicode import arrayplatformlib
@@ -132,7 +139,7 @@ def convert_geneset(
     for out_platform in out_platforms:
         x = convert_gene_ids(
             gene_ids, in_platform, out_platform, in_delim, out_delim,
-            keep_dups, keep_emptys)
+            keep_dups, keep_emptys, no_na)
         platform2geneid2outids[out_platform] = x
 
     # Write out the gene set.
@@ -162,7 +169,7 @@ def convert_geneset(
     
     
 def convert_matrix(
-    filename, header, in_delim, out_delim, keep_dups, keep_emptys,
+    filename, header, in_delim, out_delim, keep_dups, keep_emptys, no_na, 
     out_platforms, min_match_score):
     import arrayio
     from genomicode import Matrix
@@ -191,7 +198,7 @@ def convert_matrix(
     for out_platform in out_platforms:
         x = convert_gene_ids(
             gene_ids, in_platform, out_platform, in_delim, out_delim,
-            keep_dups, keep_emptys)
+            keep_dups, keep_emptys, no_na)
         output_ids_list.append(x)
 
     # Make a matrix with the new IDs.
@@ -250,6 +257,10 @@ def main():
     parser.add_argument(
         '--keep_emptys', default=False, action="store_true",
         help="Keep empty IDs (e.g. to preserve alignment).")
+    parser.add_argument(
+        '--no_na', default=False, action="store_true",
+        help="If any annotations are NA (e.g. missing), convert to empty "
+        "string.")
                 
     group = parser.add_argument_group(title="Matrix")
     group.add_argument(
@@ -283,13 +294,13 @@ def main():
     if args.geneset:
         convert_geneset(
             args.infile, args.in_delim, args.out_delim,
-            args.keep_dups, args.keep_emptys, 
+            args.keep_dups, args.keep_emptys, args.no_na, 
             args.geneset, args.platform,
             args.out_geneset_name, args.out_geneset_format)
     else:
         convert_matrix(
             args.infile, args.header, args.in_delim, args.out_delim,
-            args.keep_dups, args.keep_emptys, args.platform,
+            args.keep_dups, args.keep_emptys, args.no_na, args.platform,
             args.min_match_score)
             
             
