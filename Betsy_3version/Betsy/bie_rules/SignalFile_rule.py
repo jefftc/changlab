@@ -40,29 +40,24 @@ ILLU_CHIP = [
     'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
     'ilmn_RatRef_12_V1_0_R5_11222119_A.chip'
     ]
+CONTENTS = ["train0", "train1","test", "class0,class1,test",
+             "class0", "class1", "class0,class1","unspecified",
+            "diff_class0","diff_class1","diff_class0,diff_class1","diff_unspecified"]
 
 PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess","tcga"]
 
 GEOSeries = DataType("GEOSeries",
-                     AttributeDef("contents",[
-                         "train0", "train1","test", "class0,class1,test",
-                         "class0", "class1", "class0,class1","unspecified"],
+                     AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified'))
 GEOfamily = DataType("GEOfamily",
-                     AttributeDef("contents",[
-                         "train0", "train1","test", "class0,class1,test",
-                         "class0", "class1", "class0,class1","unspecified"],
+                     AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified'))
 TCGAID = DataType("TCGAID",
-                     AttributeDef("contents",[
-                         "train0", "train1","test", "class0,class1,test",
-                         "class0", "class1", "class0,class1","unspecified"],
+                     AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified'),
                     )
 TCGAFile = DataType("TCGAFile",
-                     AttributeDef("contents",[
-                         "train0", "train1","test", "class0,class1,test",
-                         "class0", "class1", "class0,class1","unspecified"],
+                     AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified'),
                      AttributeDef("data",['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
@@ -70,39 +65,26 @@ TCGAFile = DataType("TCGAFile",
                                           'RSEM_genes'))
 
 GEOSeries = DataType("GEOSeries",
-                     AttributeDef("contents",[
-                         "train0", "train1","test", "class0,class1,test",
-                         "class0", "class1", "class0,class1","unspecified"],
+                     AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified'))
 ExpressionFiles = DataType("ExpressionFiles",
                            AttributeDef("contents",
-                                        ["train0","train1", "test",
-                                         "class0,class1,test","class0",
-                                         "class1", "class0,class1","unspecified"],
+                                        CONTENTS,
                                         'unspecified','unspecified'))
 
 CELFiles = DataType(
     "CELFiles",
     AttributeDef("version", ["unknown", "cc", "v3_v4"], "unknown", "v3_v4"),
-    AttributeDef("contents",["train0","train1", "test",
-                             "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],
-                               'unspecified','unspecified')
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified')
     )
 RenameFile = DataType(
     'RenameFile',
-    AttributeDef("contents",["train0","train1", "test",
-                             "class0,class1,test","class0",
-                             "class1", "class0,class1","unspecified"],
-                             'unspecified','unspecified'),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
     AttributeDef("labels_from",["title","description"],'title','title'))
 
 AgilentFiles = DataType(
     "AgilentFiles",
-    AttributeDef("contents",["train0","train1", "test",
-                            "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],
-                              'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
 
 ControlFile = DataType(
     "ControlFile",
@@ -120,32 +102,21 @@ ControlFile = DataType(
     AttributeDef(
         'format',["gct"],
         "gct","gct"),
-    AttributeDef("contents",["train0","train1", "test",
-                            "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],
-                              'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
     
     
 GPRFiles = DataType(
     "GPRFiles",
-    AttributeDef("contents",["train0","train1", "test",
-                            "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],
-                              'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
 
 IDATFiles = DataType(
     "IDATFiles",
-    AttributeDef("contents",["train0","train1", "test",
-                            "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],
-                              'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
 
 ClassLabelFile = DataType(
     "ClassLabelFile",
     AttributeDef(
-    "contents",["train0", "train1", "test", "class0,class1,test",
-                  "class0", "class1", "class0,class1",
-                  "unspecified"],'unspecified','unspecified'),
+    "contents",CONTENTS,'unspecified','unspecified'),
     AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls")
     )
 
@@ -159,10 +130,7 @@ ILLUFolder = DataType(
         'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip','ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
     AttributeDef('illu_bg_mode',['false', 'true'], "false", "false"),
     AttributeDef('illu_coll_mode',['none', 'max', 'median'], "none","none"),
-    AttributeDef("contents",["train0","train1", "test",
-                            "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],
-                              'unspecified','unspecified')
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified')
     )
 
 
@@ -172,11 +140,10 @@ GeneListFile=DataType(
     AttributeDef('cn_ttest_or_snr',['t_test','snr'], 't_test','t_test'),
     AttributeDef('cn_filter_data',['yes','no'], 'no','no'),
     AttributeDef('gene_order',['no', "gene_list", "class_neighbors",
-                          "t_test_p", "t_test_fdr"], 't_test_p',"t_test_p"),
-    AttributeDef("contents",["train0","train1", "test",
-                            "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],
-                              'unspecified','unspecified'))
+                               "t_test_p", "t_test_fdr",'diff_ttest','diff_sam',
+                               'diff_ebayes','diff_fold_change'],
+                 't_test_p',"t_test_p"),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
    
 SignalFile_Postprocess = DataType(
     "SignalFile_Postprocess",
@@ -186,10 +153,7 @@ SignalFile_Postprocess = DataType(
     AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
     AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
 
 SignalFile_Impute = DataType(
     "SignalFile_Impute",
@@ -200,10 +164,7 @@ SignalFile_Impute = DataType(
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
 
 
 SignalFile_Merge = DataType(
@@ -221,10 +182,7 @@ SignalFile_Merge = DataType(
     AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
     AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
     AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
 
 SignalFile_Normalize = DataType(
     "SignalFile_Normalize",
@@ -246,10 +204,7 @@ SignalFile_Normalize = DataType(
     AttributeDef(
         "gene_normalize", ["unknown", "no", "variance", "sum_of_squares"],
         "unknown", "no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"))    
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))    
     
     
     
@@ -276,12 +231,10 @@ SignalFile_Order = DataType(
         "no", "no"),
     AttributeDef(
         "gene_order",
-        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
+         'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
        "no", "no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
 
 SignalFile_Annotate= DataType( 
     "SignalFile_Annotate",
@@ -305,15 +258,13 @@ SignalFile_Annotate= DataType(
         "no", "no"),
     AttributeDef(
         "gene_order",
-        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
+         'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
        "no", "no"),
     AttributeDef("annotate", ["no", "yes"], "no", "no"),
     AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
     AttributeDef("platform", ["yes","no"], "no", "no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
 
 SignalFile_Filter= DataType( 
     "SignalFile_Filter",
@@ -337,7 +288,8 @@ SignalFile_Filter= DataType(
         "no", "no"),
     AttributeDef(
         "gene_order",
-        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
+         'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
        "no", "no"),
     AttributeDef("annotate", ["no", "yes"], "no", "no"),
     AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
@@ -350,10 +302,7 @@ SignalFile_Filter= DataType(
         "duplicate_probe", ["no", "closest_probe", "high_var_probe"],
         "no", "no"),
     AttributeDef("group_fc", ["yes","no"], "no","no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
     AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
     AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),)
 
@@ -379,7 +328,8 @@ SignalFile= DataType(
         "no", "no"),
     AttributeDef(
         "gene_order",
-        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr"],
+        ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
+         'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
        "no", "no"),
     AttributeDef("annotate", ["no", "yes"], "no", "no"),
     AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
@@ -392,10 +342,7 @@ SignalFile= DataType(
         "duplicate_probe", ["no", "closest_probe", "high_var_probe"],
         "no", "no"),
     AttributeDef("group_fc", ["yes","no"], "no","no"),
-    AttributeDef("contents", [
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],
-              "unspecified", "unspecified"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
     AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
     AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),)
 
@@ -405,18 +352,14 @@ all_modules = [
     #TCGA Files
     Module('download_tcga', TCGAID, TCGAFile,
            UserInputDef("disease"),UserInputDef("date",""),
-           Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+           Constraint("contents",CAN_BE_ANY_OF,CONTENTS,),
          Consequence("contents",SAME_AS_CONSTRAINT),
          Consequence("data",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
                                           'rppa','clinical'])),
     
     Module('preprocess_tcga',TCGAFile,SignalFile_Postprocess,
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF, CONTENTS,),
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence('logged',SET_TO,"unknown"),
         Consequence('predataset', SET_TO, "no"),
@@ -426,18 +369,14 @@ all_modules = [
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
          UserInputDef("GSEID"), UserInputDef("GPLID",""),
-         Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         ),
     #CELFiles
     Module(
         "extract_CEL_files", ExpressionFiles, CELFiles,
          Consequence("version", SET_TO, "unknown"),
-         Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         ),
     Module(
@@ -445,9 +384,7 @@ all_modules = [
         CELFiles, CELFiles,
         Constraint("version", MUST_BE, "unknown"),
         Consequence("version", BASED_ON_DATA, ["cc", "v3_v4"]),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         ),
     Module(
@@ -455,17 +392,13 @@ all_modules = [
         CELFiles, CELFiles,
         Constraint("version", MUST_BE, "cc"),
         Consequence("version", SET_TO, "v3_v4"),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         ),
      # IDATFiles
     Module("extract_illumina_idat_files",
             ExpressionFiles, IDATFiles,
-           Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+           Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),),
     Module(
         "preprocess_illumina",
@@ -477,9 +410,7 @@ all_modules = [
         UserInputDef("illu_clm",''),
         UserInputDef("illu_custom_chip",''),
         UserInputDef("illu_custom_manifest",''),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         ),
        Module(
@@ -489,9 +420,7 @@ all_modules = [
          Consequence('format', SET_TO, "gct"),
          Consequence('logged', SET_TO, "no"),
          Consequence('predataset', SET_TO, "no"),
-         Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),),
     Module(
         "get_illumina_control",
@@ -499,25 +428,19 @@ all_modules = [
          Consequence('preprocess',SET_TO,"illumina"),
          Consequence("format",SET_TO,"gct"),
          Consequence("logged",SET_TO,"no"),
-         Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT), 
         ),
     
     # AgilentFiles
     Module(
         "extract_agilent_files", ExpressionFiles, AgilentFiles,
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT)),
     Module(
         "preprocess_agilent",
          AgilentFiles,SignalFile_Postprocess,
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence('logged',SET_TO,"unknown"),
         Consequence('predataset', SET_TO, "no"),
@@ -527,9 +450,7 @@ all_modules = [
     # GPRFiles
     Module(
         "extract_gpr_files", ExpressionFiles, GPRFiles,
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT)),
     Module(
         "normalize_with_loess",
@@ -538,9 +459,7 @@ all_modules = [
         Consequence("logged",SET_TO,"unknown"),
         Consequence('predataset', SET_TO, "no"),
         Consequence("preprocess",SET_TO,"loess"),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT)),
     
     Module(
@@ -551,9 +470,7 @@ all_modules = [
         Consequence("preprocess", SET_TO, "rma"),
         Consequence("format", SET_TO, "jeffs"),
         Consequence('predataset', SET_TO, "no"),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         ),
     Module(
@@ -564,9 +481,7 @@ all_modules = [
         Consequence("preprocess", SET_TO, "mas5"),
         Consequence('predataset', SET_TO, "no"),
         Consequence("format", SET_TO, "jeffs"),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         ),
     ####postprocess
@@ -608,9 +523,7 @@ all_modules = [
         Constraint("format", MUST_BE,"tdf"),
         Constraint("logged", MUST_BE,"yes"),
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF,CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
@@ -655,9 +568,7 @@ all_modules = [
         "convert_impute_merge",
         SignalFile_Impute, SignalFile_Merge,
         Constraint("preprocess", CAN_BE_ANY_OF, ["unknown", "illumina", "agilent", "mas5", "loess","tcga"]),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF,CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("missing_values",MUST_BE,"no"),
@@ -677,9 +588,7 @@ all_modules = [
         SignalFile_Impute, SignalFile_Merge,
         Constraint("preprocess",
             MUST_BE,"rma"),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF,CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("missing_values",MUST_BE,"no"),
@@ -789,9 +698,7 @@ all_modules = [
         Consequence("bfrm_norm",SAME_AS_CONSTRAINT,1),
         Consequence("dwd_norm",SAME_AS_CONSTRAINT,1),
         Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,1),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],0),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1)),
@@ -800,9 +707,7 @@ all_modules = [
         "normalize_samples_with_dwd",  
         [ClassLabelFile,SignalFile_Merge],SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],0),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS,0),
         Constraint("dwd_norm",MUST_BE,"no",1),
         Consequence("dwd_norm",SET_TO,"yes"),
         Constraint("bfrm_norm",MUST_BE,"no",1),
@@ -819,9 +724,7 @@ all_modules = [
         "normalize_samples_with_shiftscale",  
         [ClassLabelFile,SignalFile_Merge],SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],0),
+        Constraint("contents",CAN_BE_ANY_OF,CONTENTS,0),
         Constraint("shiftscale_norm",MUST_BE,"no",1),
         Consequence("shiftscale_norm",SET_TO,"yes"),
         Constraint("bfrm_norm",MUST_BE,"no",1),
@@ -838,9 +741,7 @@ all_modules = [
         "convert_merge_normalize",
         SignalFile_Merge, SignalFile_Normalize,
         Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF,CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
@@ -911,9 +812,7 @@ all_modules = [
         "convert_normalize_order",
         SignalFile_Normalize, SignalFile_Order,
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF, CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
@@ -953,9 +852,7 @@ all_modules = [
         UserInputDef("cn_abs_diff",50),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"],0),
+            "contents", CAN_BE_ANY_OF, CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Constraint("gene_order", MUST_BE,"no",1),
         Consequence("gene_order",SET_TO,"class_neighbors"),
@@ -972,9 +869,7 @@ all_modules = [
         Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("gene_order", MUST_BE, "no", 1),
         Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"],0),
+            "contents", CAN_BE_ANY_OF, CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO_ONE_OF, ["t_test_p", "t_test_fdr"]),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
@@ -989,9 +884,7 @@ all_modules = [
          Constraint(
             "preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
          Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"],0),
+            "contents", CAN_BE_ANY_OF, CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),
          Constraint("gene_center",CAN_BE_ANY_OF,['median','mean','no'],1),
          Constraint("gene_normalize",CAN_BE_ANY_OF,['sum_of_squares','variance','no'],1),
@@ -1003,14 +896,34 @@ all_modules = [
          
          DefaultAttributesFrom(1),
         ),
+    Module(  
+         "reorder_genes_with_diff",  
+         [GeneListFile,SignalFile_Order], SignalFile_Order,
+         Constraint("gene_order", CAN_BE_ANY_OF, ['diff_ttest','diff_sam',
+                               'diff_ebayes','diff_fold_change'],0),
+         Constraint("gene_order", MUST_BE,"no",1),
+         Constraint(
+            "preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
+         Constraint(
+            "contents", CAN_BE_ANY_OF, ["diff_class0","diff_class1",
+                                        "diff_class0,diff_class1","diff_unspecified"],0),
+         Constraint("contents",CAN_BE_ANY_OF,CONTENTS,1),
+         Constraint("gene_center",CAN_BE_ANY_OF,['median','mean','no'],1),
+         Constraint("gene_normalize",CAN_BE_ANY_OF,['sum_of_squares','variance','no'],1),
+         Consequence("gene_center",SAME_AS_CONSTRAINT,1),
+         Consequence("gene_normalize",SAME_AS_CONSTRAINT,1),
+         Consequence("gene_order",SAME_AS_CONSTRAINT,0),
+         Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+         Consequence("contents",SAME_AS_CONSTRAINT,1),
+         
+         DefaultAttributesFrom(1),
+        ),
     ##Annotate
     Module(
         "convert_order_annotate",
         SignalFile_Order, SignalFile_Annotate,
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF, CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
@@ -1052,18 +965,14 @@ all_modules = [
          'download_GEO_family_soft',
          GEOSeries,GEOfamily,
          UserInputDef("GSEID"),
-         Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+         Constraint("contents",CAN_BE_ANY_OF, CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT)),
     
     Module(
          'convert_family_soft_to_rename',
          GEOfamily,RenameFile,
          UserInputDef("GSEID"),
-         Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"]),
+         Constraint("contents",CAN_BE_ANY_OF, CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
          Consequence("labels_from",SET_TO_ONE_OF,["title","description"])),
     
@@ -1072,9 +981,7 @@ all_modules = [
         [RenameFile,SignalFile_Annotate],SignalFile_Annotate,
          Constraint("rename_sample",MUST_BE,"no",1),
          Constraint("labels_from",CAN_BE_ANY_OF,["title","description"],0),
-         Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],0),
+         Constraint("contents",CAN_BE_ANY_OF,CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),
          Consequence("rename_sample",SET_TO,"yes"),
          Consequence("contents", SAME_AS_CONSTRAINT,0),
@@ -1096,9 +1003,7 @@ all_modules = [
         "convert_annotate_filter",
         SignalFile_Annotate, SignalFile_Filter,
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF, CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),
@@ -1207,9 +1112,7 @@ all_modules = [
         Constraint("num_features", MUST_BE,"no",1),
         Constraint("duplicate_probe", MUST_BE,"no",1),
         Constraint("unique_genes", MUST_BE,"no",1),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],0),
+        Constraint("contents",CAN_BE_ANY_OF, CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
         Consequence("num_features",SAME_AS_CONSTRAINT,1),
@@ -1234,9 +1137,7 @@ all_modules = [
         "convert_label_to_cls",   
         [ClassLabelFile,SignalFile_Merge],ClassLabelFile,
         Constraint("cls_format",MUST_BE,'label',0),
-        Constraint("contents",CAN_BE_ANY_OF,[
-        "unspecified", "train0", "train1", "test", 'class0,class1,test',
-        "class0", "class1", "class0,class1"],0),
+        Constraint("contents",CAN_BE_ANY_OF, CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
         Consequence("cls_format",SET_TO,'cls'),
@@ -1245,9 +1146,7 @@ all_modules = [
         'transfer',
         SignalFile_Filter,SignalFile,
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
-        Constraint("contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0", "class1",
-             "class0,class1","class0,class1,test", "unspecified"]),
+        Constraint("contents", CAN_BE_ANY_OF, CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
         Constraint("missing_algorithm",CAN_BE_ANY_OF,['none','zero_fill','median_fill']),

@@ -6,7 +6,8 @@ import shutil
 import getpass
 import argparse
 from Betsy import rule_engine_bie3
-from Betsy import bie3
+#from Betsy import rule_engine_bie3_paralleling as rule_engine_bie3
+from Betsy import bie3 
 from Betsy import rulebase
 from Betsy import userfile
 

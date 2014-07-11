@@ -80,6 +80,7 @@ def job_kill(job_number=None,kill_all=False):
     process = subprocess.Popen(command,shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
+    message = process.communicate()
     #update the log file
     if job_number and str(job_number) in update_dict:
         update_log(job_number,'killed')

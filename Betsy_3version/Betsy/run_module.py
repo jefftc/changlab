@@ -22,8 +22,8 @@ def main():
     parser.add_argument('--user_inputs', dest='user_inputs',type=str,
                         default=None,
                         help='user_input')
-    parser.add_argument('--pipeline_sequence', dest='pipeline_sequence', default=None,
-                        type=str,help='pipeline sequence')
+    parser.add_argument('--pipeline_sequence', dest='pipeline_sequence',
+                        default=None, type=str,help='pipeline sequence')
     parser.add_argument('--user', dest='user', default=False,
                         type=str,help='user')
     parser.add_argument('--job_name', dest='job_name', default=None,
@@ -41,7 +41,6 @@ def main():
     f = file(args.out,'wb')
     pickle.dump(out_node,f)
     f.close()
-
 
 def convert_input_to_objects(network_file, pool_file,
                              user_inputs_file, pipeline_sequence_file):
