@@ -3271,7 +3271,7 @@ def _is_data_compatible_with(data_specific, data_general):
                 # values.
                 return False
             else:
-                if not is_subset(s_value, g_value):
+                if not _is_subset(s_value, g_value):
                     return False
         #s_type = _get_attribute_type(s_value)
         #g_type = _get_attribute_type(g_value)

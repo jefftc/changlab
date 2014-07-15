@@ -131,7 +131,7 @@ class HeatmapLayout:
         self.inverse_colors = inverse_colors
         self.black0 = black0
         self.color_fn = color_fn
-        self.BORDER = int(round(min(boxwidth, boxheight)*0.20) * scale_border)
+        self.BORDER = int(round(min(boxwidth, boxheight)*0.15) * scale_border)
         self.GRID_SIZE = int(round(min(boxwidth, boxheight)*0.10))
         if not grid:
             self.GRID_SIZE = 0
