@@ -16,6 +16,8 @@ def run(in_nodes, parameters,user_input, network):
     assert gsea_module, 'cannot find the %s' % gsea_path
     M = arrayio.read(data_node.identifier)
     x = arrayplatformlib.identify_all_platforms_of_matrix(M)
+    #print x
+    #chipname='ilmn_HumanHT_12_V3_0_R3_11283641_A'
     chipname = x[0][1]
     platform = chipname + '.chip'
     download_directory = os.path.join(os.getcwd(),'gsea_result')

@@ -1074,7 +1074,20 @@ def run_case35():
                     print "%s%s=%s" % (" "*5, name, node.attributes[name])
             print
         print
-    
+def run_case36():
+    """get an error with bie3.py "global name 'is_subset' is not defined"
+
+    """
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.SignalFile_Order,
+        bie3.Attribute(rulebase.SignalFile_Order, "gene_order", "diff_sam"),
+        
+        )
+
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
 
     
 def main():
@@ -1113,8 +1126,8 @@ def main():
     #run_case32()
     #run_case33()
     #run_case34()
-    run_case35()
-    
+    #run_case35()
+    run_case36()
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")
