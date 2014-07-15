@@ -142,7 +142,6 @@ def binreg_raw(expression_file, description_file, is_logged, params,
             "-nosplash", "-nodesktop", "-nodisplay", "-nojvm"]
         x = " ".join(matlab_args)
         cmd = "%s %s" % (matlab, x)
-        #print cmd
         #w, r = os.popen4(cmd, bufsize=0)
         p = subprocess.Popen(
             cmd, shell=True, bufsize=0, stdin=subprocess.PIPE,
@@ -239,10 +238,18 @@ def format_data_files(train0, train1, test):
 
     return desc_str, express_str
 
+#def _escape_filename(filename):
+#    if " " in filename:
+#        return "'%s'" % filename
+#    return filename
+
 def format_pref_file(expression_file, description_file, is_logged, params):
     # Return a string with the formatted preference file.
     expression_file = os.path.realpath(expression_file)
     description_file = os.path.realpath(description_file)
+    # Don't need to escape spaces in filename.  Filenames are one per
+    # line, so delimited by newlines.
+    #e = _escape_filename
     x = [
         expression_file,
         description_file,
