@@ -299,6 +299,12 @@ def init_paths(file_layout):
             continue
         os.mkdir(dirpath)
 
+
+def _escape_path(path):
+    if " " in path:
+        return "'%s'" % path
+    return path
+
 def make_pybinreg_cmd(
     pybinreg, python, binreg_path, matlab, arrayplot, povray, cluster, libpath,
     outpath, archive, num_genes, num_metagenes,
@@ -321,21 +327,22 @@ def make_pybinreg_cmd(
     if python:
         cmd.append(python)
     cmd.append(pybinreg)
+    e = _escape_path
     if python:
-        cmd.append("--python=%s" % python)
+        cmd.append("--python %s" % e(python))
     if binreg_path:
-        cmd.append("--binreg=%s" % binreg_path)
+        cmd.append("--binreg %s" % e(binreg_path))
     if matlab:
-        cmd.append("--matlab=%s" % matlab)
+        cmd.append("--matlab %s" % e(matlab))
     if arrayplot:
-        cmd.append("--arrayplot=%s" % arrayplot)
+        cmd.append("--arrayplot %s" % e(arrayplot))
     if povray:
-        cmd.append("--povray=%s" % povray)
+        cmd.append("--povray %s" % e(povray))
     if cluster:
-        cmd.append("--cluster=%s" % cluster)
+        cmd.append("--cluster %s" % e(cluster))
     for path in libpath:
-        cmd.append("--libpath=%s" % path)
-    cmd.append("-o %s" % outpath)
+        cmd.append("--libpath %s" % e(path))
+    cmd.append("-o %s" % e(outpath))
     if archive:
         cmd.append("-z")
     cmd.append("-g %d" % num_genes)
@@ -345,9 +352,9 @@ def make_pybinreg_cmd(
         cmd.append("-q")
     if shift_scale_normalize:
         cmd.append("-s")
-    cmd.append("'%s'" % train0_file)
-    cmd.append("'%s'" % train1_file)
-    cmd.append("'%s'" % test_file)
+    cmd.append(e(train0_file))
+    cmd.append(e(train1_file))
+    cmd.append(e(test_file))
     cmd = " ".join(cmd)
 
     return cmd
