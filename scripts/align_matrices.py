@@ -35,7 +35,9 @@ class AnnotationMatrix:
         self.name_order = name_order[:]
 
 
-def list_all_samples(matrix_data, case_insensitive):
+def list_all_samples(matrix_data, case_insensitive, hash_samples):
+    from genomicode import hashlib
+    
     assert matrix_data
 
     # Get the samples that occur in any of the files.  Preserve the
@@ -49,7 +51,10 @@ def list_all_samples(matrix_data, case_insensitive):
     duplicated = [False] * len(all_samples)
     all_samples_cmp = all_samples
     if case_insensitive:
-        all_samples_cmp = [x.upper() for x in all_samples]
+        all_samples_cmp = [x.upper() for x in all_samples_cmp]
+    if hash_samples:
+        all_samples_cmp = [hashlib.hash_var(x) for x in all_samples_cmp]
+
     seen = {}
     for i, s in enumerate(all_samples_cmp):
         if s in seen:
@@ -61,11 +66,11 @@ def list_all_samples(matrix_data, case_insensitive):
     return all_samples
 
 
-def list_common_samples(matrix_data, case_insensitive):
+def list_common_samples(matrix_data, case_insensitive, hash_samples):
     assert matrix_data
 
     # Initialize the common samples.
-    samples_hint = peek_samples_hint(matrix_data, case_insensitive)
+    samples_hint = peek_samples_hint(matrix_data)
     assert samples_hint
     common = samples_hint
 
@@ -75,18 +80,20 @@ def list_common_samples(matrix_data, case_insensitive):
     first_samples = None
     for i, x in enumerate(matrix_data):
         infile, outfile, matrix, header, samples = x
-        common = intersect_samples(common, samples, case_insensitive)
+        common = intersect_samples(
+            common, samples, case_insensitive, hash_samples)
         if i == 0:
             first_samples = samples
 
     # Finally, order the annotations according to the first file given.  
     assert first_samples
-    samples = intersect_samples(first_samples, common, case_insensitive)
+    samples = intersect_samples(
+        first_samples, common, case_insensitive, hash_samples)
     
     return samples
 
 
-def peek_samples_hint(matrix_data, case_insensitive):
+def peek_samples_hint(matrix_data):
     # Figure out what the samples look like.  Look for an expression
     # file first.  If an expression file is not found, use the
     # annotation files.
@@ -116,9 +123,11 @@ def peek_samples_hint(matrix_data, case_insensitive):
 
 
 def align_matrices(
-    matrix_data, align_samples, case_insensitive, null_string, outer_join):
+    matrix_data, align_samples, case_insensitive, hash_samples,
+    null_string, outer_join):
     # align_samples is a list of unique samples.
     import itertools
+    from genomicode import hashlib
 
     sample2matrix2indexes = {}  # sample_i -> matrix_i -> list of indexes
     for i, sample in enumerate(align_samples):
@@ -130,7 +139,10 @@ def align_matrices(
             sample_cmp = sample
             if case_insensitive:
                 samples_cmp = [x.upper() for x in samples_cmp]
-                sample_cmp = sample.upper()
+                sample_cmp = sample_cmp.upper()
+            if hash_samples:
+                samples_cmp = [hashlib.hash_var(x) for x in samples_cmp]
+                sample_cmp = hashlib.hash_var(sample_cmp)
 
             indexes = [
                 k for k in range(len(samples_cmp))
@@ -211,9 +223,9 @@ def align_matrix(matrix, indexes, null_string):
 
 def align_express(matrix, indexes, null_string):
     import arrayio
-    
-    # The Matrix class requires actually indexes.  Give it index 0,
-    # and then remove those lines myself later.
+
+    # The Matrix class requires actual indexes and not None.  Give it
+    # index 0, and then remove those lines myself later.
     I_index = []
     for i in indexes:
         if i != None:
@@ -246,7 +258,10 @@ def align_express(matrix, indexes, null_string):
             if i_old != None:
                 annots_new.append(annots[i_new])
             elif name == header:
-                annots_new.append(samples[i_new])
+                # Should figure out how to pull out the new sample
+                # names.
+                #annots_new.append(samples[i_new])
+                annots_new.append(null_string)
             else:
                 annots_new.append(null_string)
         matrix_aligned._col_names[name] = annots_new
@@ -452,13 +467,14 @@ def align_annot(matrix, indexes, null_string):
 ##     return AnnotationMatrix(name2annots_new, matrix.name_order)
 
 
-def get_samples(matrix, header_hint, samples_hint, case_insensitive):
+def get_samples(
+    matrix, header_hint, samples_hint, case_insensitive, hash_samples):
     # Get the samples from the matrix.  Since in principle anything in
     # the annotation file can be a sample, need to give it a hint of
     # what the samples look like.
     if isinstance(matrix, AnnotationMatrix):
         return get_annot_samples(
-            matrix, header_hint, samples_hint, case_insensitive)
+            matrix, header_hint, samples_hint, case_insensitive, hash_samples)
     return get_express_samples(matrix)
 
 
@@ -473,15 +489,17 @@ def get_express_samples(matrix):
     return x
 
 
-def get_annot_samples(matrix, header_hint, samples_hint, case_insensitive):
+def get_annot_samples(matrix, header_hint, samples_hint,
+                      case_insensitive, hash_samples):
     if header_hint:
         assert header_hint in matrix.name2annots
         return matrix.name2annots[header_hint]
     
     all_matches = []  # list of (num_matches, name, matches)
     for name, annots in matrix.name2annots.iteritems():
-        x = intersect_samples(annots, samples_hint, case_insensitive)
-        matches = uniq_samples(x, case_insensitive)
+        x = intersect_samples(
+            annots, samples_hint, case_insensitive, hash_samples)
+        matches = uniq_samples(x, case_insensitive, hash_samples)
         x = len(matches), name, matches
         all_matches.append(x)
     assert all_matches
@@ -491,9 +509,13 @@ def get_annot_samples(matrix, header_hint, samples_hint, case_insensitive):
     return matrix.name2annots[name]
 
 
-def cmp_sample(x, y, case_insensitive):
+def cmp_sample(x, y, case_insensitive, hash_samples):
+    from genomicode import hashlib
+    
     if case_insensitive:
         x, y = x.upper(), y.upper()
+    if hash_samples:
+        x, y = hashlib.hash_var(x), hashlib.hash_var(y)
     return x == y
 
 
@@ -502,13 +524,18 @@ def cmp_sample(x, y, case_insensitive):
 ##     assert i >= 0, "Missing: %s" % sample
 
 
-def find_sample(sample_list, sample, case_insensitive):
+def find_sample(sample_list, sample, case_insensitive, hash_samples):
     # Return the index of this sample or -1.
+    from genomicode import hashlib
+
     sample_list_cmp = sample_list
     sample_cmp = sample
     if case_insensitive:
-        sample_list_cmp = [x.upper() for x in sample_list]
-        sample_cmp = sample.upper()
+        sample_list_cmp = [x.upper() for x in sample_list_cmp]
+        sample_cmp = sample_cmp.upper()
+    if hash_samples:
+        sample_list_cmp = [hashlib.hash_var(x) for x in sample_list_cmp]
+        sample_cmp = hashlib.hash_var(sample_cmp)
 
     ## Too slow.
     ##for i, x in enumerate(sample_list_cmp):
@@ -523,9 +550,10 @@ def find_sample(sample_list, sample, case_insensitive):
     return -1
     
 
-def intersect_samples(samples1, samples2, case_insensitive):
+def intersect_samples(samples1, samples2, case_insensitive, hash_samples):
     # Return the intersection of samples1 and samples2.  Preserves the
     # order according to samples1.
+    from genomicode import hashlib
 
     ## TOO SLOW.
     ## in_both = []
@@ -542,8 +570,11 @@ def intersect_samples(samples1, samples2, case_insensitive):
     samples1_cmp = samples1
     samples2_cmp = samples2
     if case_insensitive:
-        samples1_cmp = [x.upper() for x in samples1]
-        samples2_cmp = [x.upper() for x in samples2]
+        samples1_cmp = [x.upper() for x in samples1_cmp]
+        samples2_cmp = [x.upper() for x in samples2_cmp]
+    if hash_samples:
+        samples1_cmp = [hashlib.hash_var(x) for x in samples1_cmp]
+        samples2_cmp = [hashlib.hash_var(x) for x in samples2_cmp]
     samples2_cmp = {}.fromkeys(samples2_cmp)
     in_both = [
         samples1[i] for i in range(len(samples1)) if
@@ -551,10 +582,14 @@ def intersect_samples(samples1, samples2, case_insensitive):
     return in_both
 
 
-def uniq_samples(samples, case_insensitive):
+def uniq_samples(samples, case_insensitive, hash_samples):
+    from genomicode import hashlib
+
     samples_cmp = samples
     if case_insensitive:
-        samples_cmp = [x.upper() for x in samples]
+        samples_cmp = [x.upper() for x in samples_cmp]
+    if hash_samples:
+        samples_cmp = [hashlib.hash_var(x) for x in samples_cmp]
         
     seen = {}  # dict of sample_cmp -> sample
     for sample, sample_cmp in zip(samples, samples_cmp):
@@ -645,6 +680,9 @@ def main():
         "--case_insensitive", default=False, action="store_true",
         help="Do a case insensitive search of sample names.")
     parser.add_argument(
+        "--hash", default=False, action="store_true",
+        help="Hash the sample names to [a-zA-Z0-9_] before comparison.")
+    parser.add_argument(
         "--outer_join", default=False, action="store_true",
         help='By default, does an "inner join" and keeps only the '
         'records that are present in all files.  An "outer join" will '
@@ -732,31 +770,36 @@ def main():
 
     # Find the samples in each matrix.
     new_matrix_data = []  # list of (infile, outfile, matrix, header, samples)
-    samples_hint = peek_samples_hint(matrix_data, args.case_insensitive)
+    samples_hint = peek_samples_hint(matrix_data)
     for x in matrix_data:
         infile, outfile, matrix, header = x
         samples = get_samples(
-            matrix, header, samples_hint, args.case_insensitive)
+            matrix, header, samples_hint, args.case_insensitive, args.hash)
         x = infile, outfile, matrix, header, samples
         new_matrix_data.append(x)
     matrix_data = new_matrix_data
 
     if args.outer_join:
         assert not args.strict, "Can't do a strict outer join."
-        samples = list_all_samples(matrix_data, args.case_insensitive)
+        samples = list_all_samples(
+            matrix_data, args.case_insensitive, args.hash)
         assert samples, "No samples."
     else:
-        samples = list_common_samples(matrix_data, args.case_insensitive)
+        samples = list_common_samples(
+            matrix_data, args.case_insensitive, args.hash)
         assert samples, "No common samples found."
 
     if args.strict:
-        all_samples = list_all_samples(matrix_data, args.case_insensitive)
+        all_samples = list_all_samples(
+            matrix_data, args.case_insensitive, args.hash)
         common_samples = list_common_samples(
-            matrix_data, args.case_insensitive)
+            matrix_data, args.case_insensitive, args.hash)
         if sorted(all_samples) != sorted(common_samples):
             missing_samples = []
             for x in all_samples:
-                if find_sample(common_samples, x, args.case_insensitive) >= 0:
+                i = find_sample(
+                    common_samples, x, args.case_insensitive, args.hash)
+                if i >= 0:
                     continue
                 missing_samples.append(x)
             short = missing_samples
@@ -768,8 +811,8 @@ def main():
 
     # Align each of the matrices.
     matrix_data = align_matrices(
-        matrix_data, samples, args.case_insensitive, args.null_string,
-        args.outer_join)
+        matrix_data, samples, args.case_insensitive, args.hash,
+        args.null_string, args.outer_join)
 
     # Write out each of the matrices.
     for x in matrix_data:
