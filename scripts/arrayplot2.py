@@ -131,8 +131,8 @@ class HeatmapLayout:
         self.inverse_colors = inverse_colors
         self.black0 = black0
         self.color_fn = color_fn
-        self.BORDER = int(round(min(boxwidth, boxheight)*0.15) * scale_border)
-        self.GRID_SIZE = int(round(min(boxwidth, boxheight)*0.10))
+        self.BORDER = int(round(min(boxwidth, boxheight)*0.10) * scale_border)
+        self.GRID_SIZE = int(round(min(boxwidth, boxheight)*0.05))
         if not grid:
             self.GRID_SIZE = 0
         assert self.GRID_SIZE <= self.BORDER
@@ -1735,7 +1735,7 @@ def main():
 
     # Parse the input arguments.
     options, args = parser.parse_args()
-    if not args or len(args) > 2:
+    if not args or len(args) != 2:
         parser.error("Please specify an infile and an outfile.")
     infile, outfile = args
     if not os.path.exists(infile):
