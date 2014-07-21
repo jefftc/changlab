@@ -166,6 +166,26 @@ def check_matrix(X):
     for i, name in enumerate(sample_names):
         assert name not in seen, "Duplicate sample name: %s" % name
         seen[name] = 1
+
+
+def check_classes(classes, permutation_type):
+    assert classes
+
+    class2count = {}
+    for x in classes:
+        if x not in class2count:
+            class2count[x] = 0
+        class2count[x] += 1
+    
+    # Make sure there are exactly 2 classes.
+    assert len(class2count) != 1, "Only 1 class given."
+    assert len(class2count) == 2, "Cannot have more than 2 classes."
+
+    # If permutation_type=phenotype, need at least 3 samples per class.
+    if permutation_type == "phenotype":
+        counts = class2count.values()
+        assert min(counts) >= 3, \
+               "Need at least 3 samples for phenotype permutations."
         
 
 def main():
@@ -226,6 +246,12 @@ def main():
         "already unique gene symbols.  Also, can use this if you "
         "provide the database_file and the gene IDs match the ones "
         "in our gene expression file.")
+
+    # phenotype is more accurate.  But if only 2 samples, need to be
+    # gene_set.  (Not sure about 3 samples?  Where is the limit?)
+    group.add_argument(
+        "--permutation_type", default="phenotype",
+        choices=["phenotype", "gene_set"])
     
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
@@ -292,9 +318,16 @@ def main():
         if platform is None:  # Gene Symbol
             args.no_collapse_dataset = True
 
+    # Do some sanity checking to make sure imputs are reasonable.
+    check_matrix(MATRIX)
+    check_classes(classes, args.permutation_type)
+    
     # Set up file names.
     opj = os.path.join
-    x = os.path.splitext(os.path.split(args.expression_file)[1])[0]
+    x = os.path.split(args.expression_file)[1]
+    if x.lower().endswith(".gz"):
+        x = x[:-3]
+    x = os.path.splitext(x)[0]
     x = x.replace(" ", "_")  # GenePattern cannot work with spaces.
     assert x, "empty file name"
     gct_file = "%s.gct" % x
@@ -311,7 +344,6 @@ def main():
     # is better to have local copies of the files.  It is unclear how
     # to upload files to GenePattern if the file names have spaces in
     # them.  Get around this by making all the files local.
-    check_matrix(MATRIX)
     arrayio.gct_format.write(MATRIX, open(gct_full, 'w'))
     open(cls_full, 'w').write(cls_data)
     if database_file:
@@ -326,6 +358,7 @@ def main():
         "expression.dataset" : gct_file,
         "phenotype.labels" : cls_file,
         "collapse.dataset" : collapse_dataset,
+        "permutation.type" : args.permutation_type,
         }
     # platform is required, even if collapse.dataset is false.  If no
     # platform is given, then specify a default one.
