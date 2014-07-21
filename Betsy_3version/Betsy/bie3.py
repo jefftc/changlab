@@ -150,7 +150,7 @@ MAX_NETWORK_SIZE = 1024*8
 
 
 class AttributeDef:
-    def __init__(self, name, values, default_in, default_out):
+    def __init__(self, name, values, default_in, default_out, help=None):
         # Make sure name and values are valid.
         assert type(name) is type("")
         assert type(values) is type([])
@@ -174,6 +174,7 @@ class AttributeDef:
         self.values = values
         self.default_in = default_in
         self.default_out = default_out
+        self.help = help
     def is_valid_value(self, value):
         if type(value) is type(""):
             return value in self.values
@@ -184,12 +185,15 @@ class AttributeDef:
         if not isinstance(other, AttributeDef):
             return cmp(id(self), id(other))
         x1 = [
-            self.name, self.values, self.default_in, self.default_out]
+            self.name, self.values, self.default_in, self.default_out,
+            self.help]
         x2 = [
-            other.name, other.values, other.default_in, other.default_out]
+            other.name, other.values, other.default_in, other.default_out,
+            self.help]
         return cmp(x1, x2)
     def __hash__(self):
-        x = self.name, tuple(self.values), self.default_in, self.default_out
+        x = self.name, tuple(self.values), self.default_in, self.default_out, \
+            self.help
         return hash(x)
     def __str__(self):
         return self.__repr__()
@@ -200,12 +204,14 @@ class AttributeDef:
             repr(self.default_in),
             repr(self.default_out),
             ]
+        if self.help is not None:
+            x.append("help=%r" % self.help)
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
     @staticmethod
     def __init_from_dict(args):
-         inst = AttributeDef(**args)
-         return inst
+        inst = AttributeDef(**args)
+        return inst
 
 
 class Attribute:
@@ -238,18 +244,19 @@ class Attribute:
 
 
 class UserInputDef:
-    def __init__(self, name, default=None):
+    def __init__(self, name, default=None, help=None):
         assert type(name) is type("")
         self.name = name
         self.default = default
+        self.help = help
     def __cmp__(self, other):
         if not isinstance(other, UserInputDef):
             return cmp(id(self), id(other))
-        x1 = [self.name, self.default]
-        x2 = [other.name, other.default]
+        x1 = [self.name, self.default, self.help]
+        x2 = [other.name, other.default, self.help]
         return cmp(x1, x2)
     def __hash__(self):
-        x = self.name, self.default
+        x = self.name, self.default, self.help
         return hash(x)
     def __str__(self):
         return self.__repr__()
@@ -258,14 +265,18 @@ class UserInputDef:
             repr(self.name),
             ]
         if self.default is not None:
-            x.append(repr(self.default))
+            x.append("default=%r" % self.default)
+        if self.help is not None:
+            x.append("help=%r" % self.help)
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
     @staticmethod
     def __init_from_dict(args):
         assert 'name' in args
         assert 'default' in args
-        inst = UserInputDef(args['name'],default=args['default'])
+        assert 'help' in args
+        inst = UserInputDef(
+            args['name'], default=args['default'], help=args['help'])
         return inst
 
 
@@ -427,9 +438,11 @@ class DefaultAttributesFrom:
 
 
 class DataType:
-    def __init__(self, name, *attributes):
+    def __init__(self, name, *attributes, **keywds):
         for x in attributes:
             assert isinstance(x, AttributeDef)
+        for x in keywds:
+            assert x in ["help"]
 
         ## # Make sure no overlap between the attributes and user inputs.
         ## attr_names = [x.name for x in attributes]
@@ -441,6 +454,7 @@ class DataType:
         self.name = name
         self.attributes = attributes   # AttributeDef
         ## self.user_inputs = user_inputs
+        self.help = keywds.get("help")
     def get_attribute(self, name):
         x = [x for x in self.attributes if x.name == name]
         assert len(x) > 0, "DataType %s has no attribute %s." % (
@@ -463,12 +477,12 @@ class DataType:
         # to order.
         #x1 = [self.name, self.attributes, self.user_inputs]
         #x2 = [other.name, other.attributes, self.user_inputs]
-        x1 = [self.name, self.attributes]
-        x2 = [other.name, other.attributes]
+        x1 = [self.name, self.attributes, self.help]
+        x2 = [other.name, other.attributes, other.help]
         return cmp(x1, x2)
     def __hash__(self):
         #x = self.name, tuple(self.attributes), tuple(self.user_inputs)
-        x = self.name, tuple(self.attributes)
+        x = self.name, tuple(self.attributes), self.help
         return hash(x)
     ## def _resolve_attributes(self, attribute_objs, attribute_dict, is_input):
     ##     # Make a dictionary of all the attributes.  The values given
@@ -528,13 +542,16 @@ class DataType:
     def __repr__(self):
         x = [self.name]
         x += [repr(x) for x in self.attributes]
+        if self.help:
+            x.append("help=%r" % self.help)
         #x += [repr(x) for x in self.user_inputs]
         return "DataType(%s)" % ", ".join(x)
     @staticmethod
     def __init_from_dict(args):
         assert 'name' in args
         assert 'attributes' in args
-        inst = DataType(args['name'],*args['attributes'])
+        assert 'help' in args
+        inst = DataType(args['name'],*args['attributes'], help=args['help'])
         return inst
 
 
@@ -605,10 +622,12 @@ class Data(object):
 
 
 class Module:
-    def __init__(self, name, in_datatypes, out_datatype, *params):
+    def __init__(self, name, in_datatypes, out_datatype, *params, **keywds):
         # params is a list of Constraint, Consequence, and UserInputDef.
         # objects.
         assert type(name) is type("")
+        for k in keywds:
+            assert k in ["help"]
 
         # The caller can provide either a single DataType object or a
         # list of DataType objects.  Make sure it is always a list of
@@ -682,13 +701,14 @@ class Module:
         self.consequences = consequences
         self.default_attributes_from = default_attributes_from
         self.user_inputs = user_inputs
+        self.help = keywds.get("help")
 
         for x in constraints:
             self._assert_constraint(
                 name, in_datatypes, out_datatype, constraints, consequences, x)
         for x in consequences:
             self._assert_consequence(
-                name, in_datatypes, out_datatype, constraints, consequences, x)
+                name, in_datatypes, out_datatype, constraints, x)
             
     def _assert_constraint(
         self, name, in_datatypes, out_datatype, constraints, consequences,
@@ -736,8 +756,7 @@ class Module:
                 name, constraint.name)
 
     def _assert_consequence(
-        self, name, in_datatypes, out_datatype, constraints, consequences,
-        consequence):
+        self, name, in_datatypes, out_datatype, constraints, consequence):
         import itertools
         assert consequence.name in out_datatype.get_attribute_names(), \
                "Module %r refers to an unknown attribute %r." % (
@@ -804,10 +823,10 @@ class Module:
             return cmp(id(self), id(other))
         x1 = [self.name, self.in_datatypes, self.out_datatype,
               self.constraints, self.consequences,
-              self.default_attributes_from, self.user_inputs]
+              self.default_attributes_from, self.user_inputs, self.help]
         x2 = [other.name, other.in_datatypes, other.out_datatype,
               other.constraints, other.consequences,
-              other.default_attributes_from, other.user_inputs]
+              other.default_attributes_from, other.user_inputs, other.help]
         return cmp(x1, x2)
     def __str__(self):
         return self.__repr__()
@@ -824,6 +843,8 @@ class Module:
         x6 = [repr(x) for x in self.default_attributes_from]
         x7 = [repr(x) for x in self.user_inputs]
         x = [x1, x2, x3] + x4 + x5 + x6 + x7
+        if self.help is not None:
+            x.append("help=%r" % self.help)
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
     @staticmethod
@@ -835,16 +856,21 @@ class Module:
         assert 'constraints' in args
         assert 'user_inputs' in args
         assert 'default_attributes_from' in args
+        assert 'help' in args
         name = args['name']
         in_datatypes = args['in_datatypes']
         out_datatype = args['out_datatype']
-        params = args.copy()
-        del params['name']
-        del params['in_datatypes']
-        del params['out_datatype']
-        params = (params['consequences']+params['constraints']+
-                    params['user_inputs']+params['default_attributes_from'])
-        inst = Module(name,in_datatypes,out_datatype,*params)
+        help_ = args['help']
+        #params = args.copy()
+        #del params['name']
+        #del params['in_datatypes']
+        #del params['out_datatype']
+        #del params['help']
+        #params = (params['consequences']+params['constraints']+
+        #            params['user_inputs']+params['default_attributes_from'])
+        params = (args['consequences']+args['constraints']+
+                    args['user_inputs']+args['default_attributes_from'])
+        inst = Module(name, in_datatypes, out_datatype, *params, help=help_)
         return inst
 
 
@@ -1127,8 +1153,8 @@ def complete_network(network):
                   if isinstance(network.nodes[x], Module)]
     for x in itertools.product(data_ids, module_ids):
         input_id, module_id = x
-        input_node = network.nodes[input_id]
-        module_node = network.nodes[module_id]
+        ##input_node = network.nodes[input_id]
+        ##module_node = network.nodes[module_id]
     
         # If data_id already points to module_id, then ignore
         # this.
@@ -2174,8 +2200,9 @@ def _dict_to_object(d):
         class_name = args.pop('__class__')
         module_name = args.pop('__module__')
         if '.' in module_name:
-            module = __import__(module_name, globals(),
-                        locals(), [module_name.split('.')[-1]], -1)
+            module = __import__(
+                module_name, globals(), locals(), [module_name.split('.')[-1]],
+                -1)
         else:
             module = __import__(module_name)
         class_ = getattr(module, class_name)
@@ -2645,14 +2672,14 @@ def _can_module_take_one_data(module, input_num, data):
                        if x.behavior in [MUST_BE, CAN_BE_ANY_OF]]
             assert not (x_same and x_value)
             if x_same:
-                contraint = x_same[0]
+                constraint = x_same[0]
             elif x_value:
                 assert len(x_value) == 1
                 constraint = x_value[0]
             else:
                 # If the SAME_AS chain does not end with MUST_BE or
                 # CAN_BE_ANY_OF, then we cannot test this.
-                contraint = None
+                constraint = None
         # SAME_AS did not lead to a testable constraint.
         if not constraint:
             continue
@@ -2951,7 +2978,8 @@ def _can_module_produce_data(module, data, user_attributes):
         # XXX _resolve_constraint
         while const1.behavior == SAME_AS:
             x = [x for x in module.constraints
-                 if x.name == conseq1.name and x.input_index == const1.arg1]
+                 if x.name == consequence.name and
+                 x.input_index == const1.arg1]
             assert len(x) == 1
             const1 = x[0]
         while const2.behavior == SAME_AS:
