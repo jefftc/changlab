@@ -1,4 +1,4 @@
-#score_pathway_with_geneset.py
+#score_pathway_with_geneset_all.py
 import os
 import subprocess
 from genomicode import config
@@ -13,17 +13,12 @@ def run(in_nodes, parameters, user_input, network):
     score_geneset_path = config.score_geneset
     score_geneset_BIN = module_utils.which(score_geneset_path)
     assert score_geneset_BIN,'cannot find the %s' %score_geneset_path
-    geneset = user_input['geneset_value']
-    assert geneset,'please select geneset to score pathway'
     automatch = parameters['automatch']
     command = ['python', score_geneset_BIN, '-o', outfile,
                '--geneset_file', geneset_node.identifier,
-               data_node.identifier]
+               data_node.identifier,'--all']
     if automatch == 'yes':
         command.append('--automatch')
-    genesets = geneset.split('/')
-    for gene in genesets:
-        command.extend(['-g', gene])
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)

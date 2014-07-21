@@ -16,13 +16,15 @@ def run(in_nodes, parameters,user_input, network):
     assert gsea_module, 'cannot find the %s' % gsea_path
     M = arrayio.read(data_node.identifier)
     x = arrayplatformlib.identify_all_platforms_of_matrix(M)
-    #print x
-    #chipname='ilmn_HumanHT_12_V3_0_R3_11283641_A'
     chipname = x[0][1]
-    platform = chipname + '.chip'
+    assert chipname in arrayplatform.platform_to_GSEA_chipname,(
+        'we cannot find chipname %s in gsea' % chipname)
+    chipname_in_gsea = arrayplatform.platform_to_GSEA_chipname[chipname]
+    platform = chipname_in_gsea + '.chip'
     download_directory = os.path.join(os.getcwd(),'gsea_result')
     command = [gsea_module, data_node.identifier, '--cls_file',
                cls_node.identifier, '--platform', platform,
+               '--database',parameters['geneset_database'],
                download_directory]
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,

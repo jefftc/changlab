@@ -37,16 +37,6 @@ GENE_SYMBOL
 DESCRIPTION
 
 
-XXX document how the psid2platform path is organized
-XXX document what these variables are for:
-  annotate_header
-  affy_headers
-  illu_headers
-  biomart_headers
-
-
-
-
 TODO:
 - Need a function like:
   find_header(MATRIX, GENE_SYMBOL) -> "Gene Symbol"
@@ -67,13 +57,13 @@ PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION = range(4)
 
 class Platform:
     def __init__(self, name, bm_attribute, bm_organism, category, priority):
-        # XXX document what each of these variables are for
-        # what is priority?  low number is higher priority?
-        self.name = name
-        self.bm_attribute = bm_attribute
-        self.bm_organism = bm_organism
+        self.name = name # our description of platform, corresponds to files
+                         # in genemodata/pid2platform,also matches annotation files in
+                         # /data/genomidata/affymetrix and /data/genomidata/illumina       
+        self.bm_attribute = bm_attribute #correspond to BioMart filters and attribute
+        self.bm_organism = bm_organism #correspond to BioMart mart
         self.category = category  # PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION
-        self.priority = priority
+        self.priority = priority # order of platform priority, lower number means higher priority
 
 
 def find_platform_by_name(name):
@@ -105,7 +95,7 @@ def get_priority(platform_name):
 
 
 def prioritize_platforms(platform_names):
-    # XXX what is order?  highest priority to lowest?
+    """highest priority to lowest, lower number is higher priority"""
     order_prioritize = [
         (get_priority(name), name) for name in platform_names]
     order_prioritize.sort()
@@ -196,6 +186,11 @@ def chipname2filename_affy(chipname):
 
 
 def _read_annotations_h():
+    #/data/genomidata/pid2platform has 2 folders, case_sensitive and
+    # case_insensitive. Platforms in case_sensitive need to match the ids
+    # in exactly uppercase and lowercase, while platforms in case_insensitive
+    # do not care the uppercase and lowercase.
+    
     paths = []
     result = []
     root = config.psid2platform
@@ -428,24 +423,52 @@ PLATFORMS = [
 
 
 
-annotate_header = [
+annotate_header = [#The added header names when annotate a file
     'Description', 'Gene Symbol', 'Gene ID', 'Swiss-Prot ID']
 
-affy_headers = {
+affy_headers = {# Header names in affymetrix annotation
+                # files in /data/genomidata/affymetrix
     'Description' : ['Target Description'],
     'Gene Symbol' : ['Gene Symbol'],
     'Gene ID' : ['Entrez Gene'],
     'Swiss-Prot ID' : ['SwissProt']
     }
-illu_headers = {
+illu_headers = {# Header names in illumina annotation
+                # files in /data/genomidata/illumina
     'Description' : ['Definition'],
     'Gene Symbol' : ['Symbol'],
     'Gene ID' : ['Entrez_Gene_ID'],
     'Swiss-Prot ID' : ['swissport_id']
     }
-biomart_headers = {
+biomart_headers = {# Header names in biomart attributesL
     'Description' : ['description'],
     'Gene Symbol' : ['hgnc_symbol','mgi_symbol'],
     'Gene ID' : ['entrezgene'],
     'Swiss-Prot ID' : ['uniprot_swissprot']
     }
+
+platform_to_GSEA_chipname={
+    'Agilent_Human1A':'Agilent_Human1A',
+    'HG_U133A_2':'HG_U133A_2',
+    'HG_U133A':'HG_U133A',
+    'HG_U133B':'HG_U133B',
+    'HG_U133_Plus_2':'HG_U133_Plus_2',
+    'HG_U95Av2':'HG_U95Av2',
+    'Hu35KsubA':'Hu35KsubA',
+    'Hu35KsubB':'Hu35KsubB',
+    'Hu35KsubC':'Hu35KsubC',
+    'Hu35KsubD':'Hu35KsubD',
+    'Hu6800':'Hu6800',
+    'MG_U74Av2':'MG_U74Av2',
+    'MG_U74Bv2':'MG_U74Bv2',
+    'MG_U74Cv2':'MG_U74Cv2',
+    'Mouse430_2':'Mouse430_2',
+    'Mouse430A_2':'Mouse430A_2',
+    'Mu11KsubA':'Mu11KsubA',
+    'Mu11KsubB':'Mu11KsubB',
+    'RAE230A':'RAE230A',
+    'RG_U34A':'RG_U34A',
+    'HumanWG_6':'ilmn_HumanWG_6_V3_0_R3_11282955_A',
+    'HumanHT_12':'ilmn_HumanHT_12_V3_0_R3_11283641_A',
+    'MouseRef_8':'ilmn_MouseRef_8_V2_0_R3_11278551_A'
+    } # corresponds to chipname in genepattern GSEA module

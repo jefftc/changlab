@@ -61,7 +61,8 @@ def correlation(M, Y):
 
 
 def find_sorted_index(inputlist, gene_list):
-    """get a list of index for mapping aftersort to inputlist"""
+    """get a list of index for mapping aftersort to inputlist
+        for multiple genes with the same name,just add the last one"""
     indexlist = []
     for key in gene_list:
         if key not in inputlist:
