@@ -83,34 +83,6 @@ def is_module_running(Job):
     return status
 
 
-##def is_module_running(Job):
-##    command = ['python', queue_path, '--list']
-##    fd,status_file = tempfile.mkstemp()
-##    handle = file(status_file,'w')
-##    try:
-##        process = subprocess.Popen(command,shell=False,
-##                                stdout=handle,
-##                                stderr=subprocess.PIPE)
-##        handle.close()
-##        error_message = process.communicate()[1]
-##        if error_message:
-##            raise ValueError(error_message)
-##        status = None
-##        with open(status_file) as FileObj:
-##            for jobs in FileObj:
-##                words = jobs.split('\t')
-##                jobid = words[0]
-##                jobname = words[1]
-##                if jobname == Job.module_jobname:
-##                    status = words[2]
-##                    break
-##        FileObj.close()
-##        return status
-##    except:
-##        raise
-##    finally:
-##        os.close(fd)
-##        os.remove(status_file)
 
 def get_module_results(job,clean=False):
     outfile = job.outdata

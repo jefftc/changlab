@@ -94,7 +94,7 @@ def write_cls_file(outhandle, name0, name1, classes):
 
 
 def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):
-    # indexes1 is a string.  indexes is a string or None.
+    # indexes1 is a string.  indexes2 is a string or None.
     # Return name1, name2, classes.  classes is 0, 1, or None.
     from genomicode import parselib
     
@@ -111,7 +111,6 @@ def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):
 
     I1 = []
     for s, e in parselib.parse_ranges(indexes1):
-        #print s, e, num_headers
         if count_headers:
             s, e = s - num_headers, e - num_headers
         assert s >= 1, "Index out of range: %s" % s

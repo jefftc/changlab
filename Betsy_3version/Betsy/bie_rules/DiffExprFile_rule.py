@@ -5,7 +5,7 @@ import SignalFile_rule
 DiffExprFile=DataType(
     'DiffExprFile',
     AttributeDef("gene_order",['diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],"diff_ttest",'diff_ttest'),
-    AttributeDef("contents",SignalFile_rule.CONTENTS,'unspecified','unspecified'))
+    AttributeDef("contents",SignalFile_rule.CONTENTS,'diff_unspecified','diff_unspecified'))
 
 list_files = [DiffExprFile]
 
@@ -63,7 +63,8 @@ all_modules = [
     Module(
         'generate_genelist_from_diffexprfile',
         DiffExprFile,SignalFile_rule.GeneListFile,
-        Constraint("gene_order",CAN_BE_ANY_OF,['diff_ttest','diff_sam','diff_ebayes','diff_fold_change']),
+        Constraint("gene_order",CAN_BE_ANY_OF,['diff_ttest',
+                                               'diff_sam','diff_ebayes','diff_fold_change']),
         Constraint(
             "contents", CAN_BE_ANY_OF, SignalFile_rule.CONTENTS),
         Consequence("gene_order",SAME_AS_CONSTRAINT),
