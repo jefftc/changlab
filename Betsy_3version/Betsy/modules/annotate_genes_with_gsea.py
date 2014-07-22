@@ -17,14 +17,15 @@ def run(in_nodes, parameters,user_input, network):
     M = arrayio.read(data_node.identifier)
     x = arrayplatformlib.identify_all_platforms_of_matrix(M)
     chipname = x[0][1]
-    assert chipname in arrayplatform.platform_to_GSEA_chipname,(
+    assert chipname in arrayplatformlib.platform_to_GSEA_chipname,(
         'we cannot find chipname %s in gsea' % chipname)
-    chipname_in_gsea = arrayplatform.platform_to_GSEA_chipname[chipname]
+    chipname_in_gsea = arrayplatformlib.platform_to_GSEA_chipname[chipname]
     platform = chipname_in_gsea + '.chip'
     download_directory = os.path.join(os.getcwd(),'gsea_result')
     command = [gsea_module, data_node.identifier, '--cls_file',
                cls_node.identifier, '--platform', platform,
                '--database',parameters['geneset_database'],
+               '--permutation_type', parameters['permutation_type'],
                download_directory]
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,

@@ -447,7 +447,7 @@ biomart_headers = {# Header names in biomart attributesL
     'Swiss-Prot ID' : ['uniprot_swissprot']
     }
 
-platform_to_GSEA_chipname={
+platform_to_GSEA_chipname={# corresponds to chipname in genepattern GSEA module
     'Agilent_Human1A':'Agilent_Human1A',
     'HG_U133A_2':'HG_U133A_2',
     'HG_U133A':'HG_U133A',
@@ -471,4 +471,4 @@ platform_to_GSEA_chipname={
     'HumanWG_6':'ilmn_HumanWG_6_V3_0_R3_11282955_A',
     'HumanHT_12':'ilmn_HumanHT_12_V3_0_R3_11283641_A',
     'MouseRef_8':'ilmn_MouseRef_8_V2_0_R3_11278551_A'
-    } # corresponds to chipname in genepattern GSEA module
+    } 
