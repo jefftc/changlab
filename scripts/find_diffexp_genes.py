@@ -54,14 +54,16 @@ def find_diffexp_genes(
     assert len(I)
     MATRIX = MATRIX.matrix(None, I)
     classes = [classes[i] for i in I]
-    
-    # Make sure at least 2 of each class.
+
+    # All algorithms except "fold_change" need at least 2 samples of
+    # each class.
     counts = {}
     for x in classes:
         counts[x] = counts.get(x, 0) + 1
     assert sorted(counts) == [0, 1], "Only one class represented."
-    assert counts[0] >= 2, "There must be at least 2 of each class."
-    assert counts[1] >= 2, "There must be at least 2 of each class."
+    if algorithm != "fold_change":
+        assert counts[0] >= 2, "There must be at least 2 of each class."
+        assert counts[1] >= 2, "There must be at least 2 of each class."
 
     names = [name1, name2]
     X = MATRIX._X
@@ -310,8 +312,11 @@ def main():
                "File not found: %s" % args.cls_file
         assert not args.indexes1 and not args.indexes2
         assert not args.name1 and not args.name2
-    if args.indexes1:
-        assert args.name1 and args.name2
+    # Don't need to check.  If name1 is missing, then a default will
+    # be provided.
+    #if args.indexes1:
+    #    assert args.name1, "--name1 missing"
+    #    assert args.name2, "--name2 missing"
     if args.indexes2:
         assert args.indexes1
 

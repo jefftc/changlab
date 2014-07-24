@@ -377,9 +377,14 @@ find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0,
   Y[Y.orig == Y.all[1]] <- 1
   Y[Y.orig == Y.all[2]] <- 2
   if(any(is.na(Y))) stop("bad")
-  if(sum(Y == 1, na.rm=TRUE) <= 1) stop("not enough samples")
-  if(sum(Y == 2, na.rm=TRUE) <= 1) stop("not enough samples")
 
+  #if(sum(Y == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+  #if(sum(Y == 2, na.rm=TRUE) <= 1) stop("not enough samples")
+  # Need at least 1 sample to calculate fold change.
+  if(sum(Y == 1, na.rm=TRUE) < 1) stop("not enough samples")
+  if(sum(Y == 2, na.rm=TRUE) < 1) stop("not enough samples")
+
+  # Set up the geneid and genenames.
   if((length(geneid) == 1) && is.na(geneid)) {
     ndigits <- floor(log(nrow(X), 10)) + 1
     geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
@@ -392,8 +397,10 @@ find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0,
   if(nrow(X) != length(geneid)) stop("unaligned")
   if(nrow(X) != length(genenames)) stop("unaligned")
 
-  X.1 <- X[,Y == 1]
-  X.2 <- X[,Y == 2]
+  X.1 <- matrix(X[,Y == 1], nrow=nrow(X))
+  X.2 <- matrix(X[,Y == 2], nrow=nrow(X))
+  colnames(X.1) <- colnames(X)[Y==1]
+  colnames(X.2) <- colnames(X)[Y==2]
   if(is.null(colnames(X.1)))
     colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
   if(is.null(colnames(X.2)))
@@ -428,6 +435,9 @@ find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0,
     sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
     "Log_2 Fold Change", "Direction", 
     colnames(X.1), colnames(X.2))
+  # Sort by decreasing fold change.
+  O <- order(as.numeric(DATA[,2+length(Y.all)*2+1]), decreasing=TRUE)
+  DATA <- DATA[O,]
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA)
 }

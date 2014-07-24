@@ -103,11 +103,6 @@ def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):
     assert max_index, "empty matrix"
     
     assert indexes1 and type(indexes1) is type("")
-    name1 = name1 or "group1"
-    name2 = name2 or "group2"
-    if name1 == name2:
-        name1 = "%s-1" % name1
-        name2 = "%s-2" % name2
 
     I1 = []
     for s, e in parselib.parse_ranges(indexes1):
@@ -135,6 +130,23 @@ def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):
     # Make sure no overlap between I1 and I2.
     for i in I1:
         assert i not in I2, "Overlap in classes."
+
+    # Provide default group names.
+    # If there is only 1 index, then use the sample name from the
+    # matrix.
+    col_header = None
+    if MATRIX.col_names():
+        col_header = MATRIX.col_names()[0]
+    if not name1 and col_header and len(I1) == 1:
+        name1 = MATRIX.col_names(col_header)[I1[0]]
+    if not name2 and col_header and len(I2) == 1:
+        name2 = MATRIX.col_names(col_header)[I2[0]]
+    
+    name1 = name1 or "group1"
+    name2 = name2 or "group2"
+    if name1 == name2:
+        name1 = "%s-1" % name1
+        name2 = "%s-2" % name2
 
     classes = [None]*MATRIX.ncol()
     for i in I1:
