@@ -19,6 +19,8 @@ def run(in_nodes, parameters, user_input,network):
         id = x[0][0]
         platform = x[0][1]
         chip = arrayplatformlib.identify_platform_of_annotations(gene_list)
+        if not chip:
+            chip = []
         signal_file = data_node.identifier
         if platform == chip:
             tmpfile = data_node.identifier
@@ -51,7 +53,7 @@ def run(in_nodes, parameters, user_input,network):
                 gene_list = module_utils.convert_gene_list_platform(
                     genes, platform)
     else:
-        id = M._row_order[0] 
+        id = M._row_order[0]
     original_list = M._row_names[id]
     #get the order index and write to the outout file
     indexlist = gene_ranking.find_sorted_index(original_list, gene_list)

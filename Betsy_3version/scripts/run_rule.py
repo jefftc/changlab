@@ -139,7 +139,14 @@ def print_user_input(modules):
                 default = str(', default\t ' + str(user_input.default)
                               if user_input.default else '')
                 print user_input.name + default
-
+def get_necessary_user_input(modules):
+    user_inputs = []
+    for module in modules:
+        for user_input in module.user_inputs:
+            if user_input.name not in user_inputs:
+                if not user_input.default:
+                    user_inputs.append(user_input.name)
+    return user_inputs
 
 def assign_args(args):
     intypes = []
@@ -150,15 +157,15 @@ def assign_args(args):
     out_identifier = None
     flag = None
     for i, arg in enumerate(args):
-        if arg == "--intype":
+        if arg == "--input":
             assert len(args) > i + 1
             intypes.append(args[i + 1])
             flag = 'in'
-        elif arg == "--outtype":
+        elif arg == "--output":
             assert len(args) > i + 1
             outtype = args[i+1]
             flag = 'out'
-        elif arg == "--attr":
+        elif arg == "--dattr":
             assert len(args) > i + 1
             if flag == 'in':
                 assert intypes
@@ -175,7 +182,7 @@ def assign_args(args):
                 key = x[0]
                 value = x[1]
                 out_parameters.append([sub_datatype,key,value])
-        elif arg == '--input':
+        elif arg == '--input_file':
             if flag == 'in':
                 if not len(intypes) == len(in_identifiers) + 1:
                     in_identifiers.extend([None] * (len(intypes) - len(in_identifiers) - 1))
@@ -199,23 +206,23 @@ def main():
     parser = argparse.ArgumentParser(description='Run the engine')
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
-        '--intype',  default=None, action='append',
+        '--input',  default=None, action='append',
         type=str, help='input data type for network')
     group.add_argument(
-        '--input', default=None, action='append',
+        '--input_file', default=None, action='append',
         type=str, help='input data path')
     group.add_argument(
-        '--user_input',  default=[], action='append',
-        type=str, help='user input in key=value format')
+        '--mattr',  default=[], action='append',
+        type=str, help='module attribute in key=value format')
     group.add_argument(
-        '--outtype',  default=None, type=str,
-        help='outtype')
+        '--output',  default=None, type=str,
+        help='output type')
     group.add_argument(
-        '--attr', default=[], type=str, action='append',
+        '--dattr', default=[], type=str, action='append',
         help='attribute for datatype in "datatype,key=value" or "key=value" '
         'format')
     group.add_argument(
-        '--output', type=str, default=None,
+        '--output_file', type=str, default=None,
         help='file or folder of output result')
     
     group = parser.add_argument_group(title="Outfiles")
@@ -228,23 +235,6 @@ def main():
     group.add_argument(
         '--json_file', type=str, default=None,
         help='generate the output network json file')
-    
-    group = parser.add_argument_group(title="Introspection")
-    group.add_argument(
-        '--list_datatypes', action='store_const',
-        const=True, default=False,
-        help='show all the possbile datatypes and their attributes')
-    group.add_argument(
-        '--list_attributes_for_network', 
-        action='store_const', const=True, default=False,
-        help='show all the possbile datatypes and attributes for the network')
-    group.add_argument(
-        '--diagnose', action='store_const',
-        const=True, default=False,
-        help='diagnose the input data')
-    group.add_argument(
-        '--show_inputs',action='store_const', const=True,
-        default=False, help='show the possible inputs')
     parser.add_argument(
         '--clobber', action='store_const',
         const=True, default=False,
@@ -258,11 +248,16 @@ def main():
     parser_list, out_list = assign_args(sys.argv)
     outtype, out_identifier, out_attributes = out_list
     # test
-    assert not out_identifier,' --input is not for outtype'
+    if not args.output and not args.input:
+        list_datatypes(rulebase)
+        return
+    if not args.output and args.input:
+        raise ValueError("output is expected")
+    assert not out_identifier,' --input_file is not for outtype'
     for x in parser_list:
         intype, identifier, attributes = x
         if identifier:
-            assert os.path.exists(identifier),'input %s does not exists' %identifier
+            assert os.path.exists(identifier),'input_file %s does not exists' %identifier
     # test outtype and build Attributes
     if outtype:
         goal_datatype = getattr(rulebase, outtype)
@@ -285,10 +280,10 @@ def main():
                  in_data = fn.input(**parameters)
          in_object = rule_engine_bie3.DataObject(in_data,identifier)
          in_objects.append(in_object)
-    # test user_input
+    # test mattr are valid
     all_inputs = get_all_user_inputs()
     user_inputs = {}
-    for i in args.user_input:
+    for i in args.mattr:
         assert '=' in i
         key, value = i.split('=')
         assert key in all_inputs,'user input %s is not valid' % i
@@ -301,30 +296,7 @@ def main():
                 raise ValueError('the output path %s is already exisit,\
                                  please use --clobber option to overwrite'
                                  % args.output)
-    if args.list_datatypes:
-        assert not (args.list_attributes_for_network or args.diagnose)
-        assert not args.show_inputs
-        assert not parser_list, 'no intype should be given'
-        assert not outtype, 'no outtype should be given'
-    if args.list_attributes_for_network:
-        assert not (args.list_datatypes or args.diagnose)
-        assert not args.show_inputs
-        assert outtype,'an outtype should be given'
-    if args.diagnose:
-        assert not (args.list_datatypes or args.list_attributes_for_network)
-        assert not args.show_inputs
-        assert outtype,'an outtype should be given'
-    if args.show_inputs:
-        assert not (args.list_datatypes or args.diagnose)
-        assert not args.list_attributes_for_network
-        assert outtype,'an outtype should be given'
-    if not args.list_datatypes:
-        assert args.outtype, 'please specify the outtype'
-    
-    # Action
-    if args.list_datatypes:
-         list_datatypes(rulebase)
-         return
+
     print 'Generating network...'
     network = bie3.backchain(rulebase.all_modules, goal_datatype, *Attributes)
     network = bie3.complete_network(network)
@@ -342,20 +314,8 @@ def main():
             handle.close()
     if args.json_file:
         bie3.write_network(args.json_file, network)
-    if args.list_attributes_for_network:
-        assert network, 'no network generated'
-        network_datas = [i for i in network.nodes
-                         if isinstance(i, bie3.Data)]
-        network_modules = [i for i in network.nodes
-                           if isinstance(i, bie3.Module)]
-        datatype_names = list(set([i.datatype.name for i in network_datas]))
-        for datatype_name in datatype_names:
-            print_attribute(datatype_name)
-        print_user_input(network_modules)
-    if args.diagnose:
-        in_datas = [i.data for i in in_objects]
-        bie3.diagnose_start_node(network, in_datas)
-    if args.show_inputs:
+        
+    if args.output and not in_objects:
         assert network, 'no network generated'
         print "Possible Inputs"
         inputs = bie3.get_inputs(network)
@@ -375,19 +335,29 @@ def main():
         return 
     if args.dry_run:
         return
-    assert in_objects, 'please specify the intype'
+    if not network or len(network.nodes)==1:
+        in_datas = [i.data for i in in_objects]
+        bie3.diagnose_start_node(network, in_datas)
     for i in in_objects:
         start_node = bie3._find_start_nodes(network,i.data)
-        assert start_node, 'intype %s is not matched any node in the network' % i.data.datatype.name
+        assert start_node, 'input %s is not matched any node in the network' % i.data.datatype.name
         if os.path.exists(i.identifier):
             store_file = userfile.set(getpass.getuser(), i.identifier)
             i.identifier = store_file
+    #test mattr are given when necessary
+    network_modules = [i for i in network.nodes
+                           if isinstance(i, bie3.Module)]
+    necessary_user_inputs = get_necessary_user_input(network_modules)
+    for user_input in necessary_user_inputs:
+        assert user_input in user_inputs, 'mattr %s should be given' % user_input
+        
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects, user_inputs)
-    if args.output:
-        if os.path.exists(args.output) and args.clobber:
-            if os.path.isdir(args.output):
-                shutil.rmtree(args.output)
+    
+    if args.output_file:
+        if os.path.exists(args.output_file) and args.clobber:
+            if os.path.isdir(args.output_file):
+                shutil.rmtree(args.output_file)
         if os.path.isdir(output_file):
             shutil.copytree(output_file, realpath)
         else:
@@ -396,3 +366,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

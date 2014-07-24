@@ -48,43 +48,49 @@ PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess","tcga"]
 
 GEOSeries = DataType("GEOSeries",
                      AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified'))
+                                  'unspecified','unspecified'),
+                     help="GEOID to download from the GEO database")
 GEOfamily = DataType("GEOfamily",
                      AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified'))
+                                  'unspecified','unspecified'),
+                     help="GEO fmaily soft file download from the GEO database")
 TCGAID = DataType("TCGAID",
                      AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified'),
-                    )
+                     help="TCGA ID to download from TCGA database")
 TCGAFile = DataType("TCGAFile",
                      AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified'),
                      AttributeDef("data",['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
                                           'rppa','clinical'],'RSEM_genes',
-                                          'RSEM_genes'))
+                                          'RSEM_genes'),
+                     help="TCGA file download from TCGA database")
 
-GEOSeries = DataType("GEOSeries",
-                     AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified'))
+
 ExpressionFiles = DataType("ExpressionFiles",
                            AttributeDef("contents",
                                         CONTENTS,
-                                        'unspecified','unspecified'))
+                                        'unspecified','unspecified'),
+                           help="Expression file folder, can be CELFiles , IDATFiles,\
+                                 AgilentFile,GPRFiles")
 
 CELFiles = DataType(
     "CELFiles",
     AttributeDef("version", ["unknown", "cc", "v3_v4"], "unknown", "v3_v4"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified')
-    )
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    help="A folder of cel files")
+
 RenameFile = DataType(
     'RenameFile',
     AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
-    AttributeDef("labels_from",["title","description"],'title','title'))
+    AttributeDef("labels_from",["title","description"],'title','title'),
+    help="A file used to rename the sample name in the gene expression file.")
 
 AgilentFiles = DataType(
     "AgilentFiles",
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    help="A folder of agilent files.")
 
 ControlFile = DataType(
     "ControlFile",
@@ -102,23 +108,26 @@ ControlFile = DataType(
     AttributeDef(
         'format',["gct"],
         "gct","gct"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    help="The control file in the ILLUFolder")
     
     
 GPRFiles = DataType(
     "GPRFiles",
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    help="A folder of GPR files.")
 
 IDATFiles = DataType(
     "IDATFiles",
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    help="A folder of IDAFiles.")
 
 ClassLabelFile = DataType(
     "ClassLabelFile",
     AttributeDef(
     "contents",CONTENTS,'unspecified','unspecified'),
-    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls")
-    )
+    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls"),
+    help="The Class label file, can be cls format or label format")
 
 ILLUFolder = DataType(
     "ILLUFolder", 
@@ -130,8 +139,9 @@ ILLUFolder = DataType(
         'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip','ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
     AttributeDef('illu_bg_mode',['false', 'true'], "false", "false"),
     AttributeDef('illu_coll_mode',['none', 'max', 'median'], "none","none"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified')
-    )
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    help="A folder generated from preprocess_illumina, \
+          it contains SignalFile_Postprocess and ControlFile.")
 
 
 GeneListFile=DataType(
@@ -143,7 +153,8 @@ GeneListFile=DataType(
                                "t_test_p", "t_test_fdr",'diff_ttest','diff_sam',
                                'diff_ebayes','diff_fold_change'],
                  't_test_p',"t_test_p"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'))
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    help="A file contains a list of genes.")
    
 SignalFile_Postprocess = DataType(
     "SignalFile_Postprocess",
@@ -153,7 +164,9 @@ SignalFile_Postprocess = DataType(
     AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
     AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+    help="The input SignalFile which care the format,preprocess, \
+          logged,predataset,contents.")
 
 SignalFile_Impute = DataType(
     "SignalFile_Impute",
@@ -164,7 +177,9 @@ SignalFile_Impute = DataType(
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+    help="The SignalFile after SignalFile_Postprocess, care missing_values,missing_algorithm\
+          and filter.")
 
 
 SignalFile_Merge = DataType(
@@ -182,7 +197,9 @@ SignalFile_Merge = DataType(
     AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
     AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
     AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+    help="The SignalFile after SiganlFile_Impute, care dwd_norm,bfrm_norm,\
+          quantile_norm,shiftscale_norm,combat_norm.")
 
 SignalFile_Normalize = DataType(
     "SignalFile_Normalize",
@@ -204,7 +221,9 @@ SignalFile_Normalize = DataType(
     AttributeDef(
         "gene_normalize", ["unknown", "no", "variance", "sum_of_squares"],
         "unknown", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))    
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+    help="The SignalFile after SiganlFile_Merge, care gene_center,\
+          gene_normalize.")    
     
     
     
@@ -234,7 +253,8 @@ SignalFile_Order = DataType(
         ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
          'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
        "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+    help="The SignalFile after SiganlFile_Normalize, care gene_order.")
 
 SignalFile_Annotate= DataType( 
     "SignalFile_Annotate",
@@ -264,7 +284,8 @@ SignalFile_Annotate= DataType(
     AttributeDef("annotate", ["no", "yes"], "no", "no"),
     AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
     AttributeDef("platform", ["yes","no"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"))
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+    help="The SignalFile after SiganlFile_Order, care annotate,rename_sample,platform.")
 
 SignalFile_Filter= DataType( 
     "SignalFile_Filter",
@@ -304,7 +325,9 @@ SignalFile_Filter= DataType(
     AttributeDef("group_fc", ["yes","no"], "no","no"),
     AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
     AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
-    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),)
+    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),
+    help="The SignalFile after SiganlFile_Annotate, care num_features,\
+          unique_genes,duplicate_probe,group_fc,logged,format.")
 
 SignalFile= DataType( 
     "SignalFile",
@@ -344,7 +367,8 @@ SignalFile= DataType(
     AttributeDef("group_fc", ["yes","no"], "no","no"),
     AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
     AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
-    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),)
+    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),
+    help="The SignalFile after SiganlFile_Filter, the attributes are the same as SignalFile_Filter.")
 
     
 
@@ -905,8 +929,7 @@ all_modules = [
          Constraint(
             "preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
          Constraint(
-            "contents", CAN_BE_ANY_OF, ["diff_class0","diff_class1",
-                                        "diff_class0,diff_class1","diff_unspecified"],0),
+            "contents", CAN_BE_ANY_OF, CONTENTS,0),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS,1),
          Constraint("gene_center",CAN_BE_ANY_OF,['median','mean','no'],1),
          Constraint("gene_normalize",CAN_BE_ANY_OF,['sum_of_squares','variance','no'],1),
@@ -940,7 +963,8 @@ all_modules = [
         Constraint("gene_center", CAN_BE_ANY_OF, ["no", "median","mean"]),
         Constraint("gene_normalize", CAN_BE_ANY_OF, ["no", "variance","sum_of_squares"]),
         Constraint("gene_order", CAN_BE_ANY_OF,["no",'t_test_p', "t_test_fdr",
-                                   'class_neighbors', "gene_list"]),
+                                   'class_neighbors', "gene_list",'diff_ttest','diff_sam',
+                               'diff_ebayes','diff_fold_change']),
         Consequence("dwd_norm", SAME_AS_CONSTRAINT),
         Consequence("combat_norm", SAME_AS_CONSTRAINT),
         Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
@@ -1020,7 +1044,8 @@ all_modules = [
         Constraint("gene_center", CAN_BE_ANY_OF, ["no", "median","mean"]),
         Constraint("gene_normalize", CAN_BE_ANY_OF, ["no", "variance","sum_of_squares"]),
         Constraint("gene_order", CAN_BE_ANY_OF,["no",'t_test_p', "t_test_fdr",
-                                   'class_neighbors', "gene_list"]),
+                                   'class_neighbors', "gene_list",'diff_ttest','diff_sam',
+                               'diff_ebayes','diff_fold_change']),
         Constraint("annotate",CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("rename_sample",CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("platform",CAN_BE_ANY_OF, ["no", "yes"]),
@@ -1163,7 +1188,8 @@ all_modules = [
         Constraint("gene_center", CAN_BE_ANY_OF, ["no", "median","mean"]),
         Constraint("gene_normalize", CAN_BE_ANY_OF, ["no", "variance","sum_of_squares"]),
         Constraint("gene_order", CAN_BE_ANY_OF,["no",'t_test_p', "t_test_fdr",
-                                   'class_neighbors', "gene_list"]),
+                                   'class_neighbors', "gene_list",'diff_ttest','diff_sam',
+                               'diff_ebayes','diff_fold_change']),
         Constraint("annotate",CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("rename_sample",CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("platform",CAN_BE_ANY_OF, ["no", "yes"]),
@@ -1179,9 +1205,6 @@ all_modules = [
         Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
         Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
         Consequence("quantile_norm", SAME_AS_CONSTRAINT),
-        Consequence("combat_norm", SAME_AS_CONSTRAINT),
-        Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
-        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
         Consequence("gene_center", SAME_AS_CONSTRAINT),
         Consequence("gene_normalize", SAME_AS_CONSTRAINT),
         Consequence("gene_order",SAME_AS_CONSTRAINT),

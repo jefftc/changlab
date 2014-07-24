@@ -1089,7 +1089,31 @@ def run_case36():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+def run_case37():
+    """test case for diff expr analysis. 
+    Expected a network generated from:
+    SignalFile_Proprocess -> ... -> SignalFile ->
+      (cal_diffexp_with_ttest)->DiffExprFile
+      
     
+    However, we got a network which only show DiffExprFile as input node but
+    no SignalFile to generate DiffExprFile
+    """
+##    network = bie3.backchain(  
+##        rulebase.all_modules, rulebase.SignalFile_Filter,
+##        bie3.Attribute(rulebase.SignalFile_Filter, "gene_order", "diff_ttest"),
+##        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
+##        )
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.SignalFile,
+        bie3.Attribute(rulebase.SignalFile, "gene_order", "diff_ttest"),
+        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
+        
+        )
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)    
 def main():
     #run_case01()
     #run_case02()
@@ -1127,8 +1151,8 @@ def main():
     #run_case33()
     #run_case34()
     #run_case35()
-    run_case36()
-    
+    #run_case36()
+    run_case37()
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")
