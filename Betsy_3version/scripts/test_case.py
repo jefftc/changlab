@@ -272,7 +272,7 @@ def run_case14():
         bie3.Attribute(rulebase.PrettySignalFile,"preprocess","unknown"),
         bie3.Attribute(rulebase.PrettySignalFile,"contents","test"),
         #bie3.Attribute(rulebase.PrettySignalFile,"quantile_norm","yes")
-        
+
         )
     network = bie3.optimize_network(network)
 
@@ -487,7 +487,7 @@ def run_case21():
     PrettySignalFile and PcaPlot?
 
     JC: Fixed.  Will accept user constraints now.
-    
+
     """
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
@@ -561,7 +561,7 @@ def run_case23():
 def run_case24():
     """Generate a network start from SignalFile_order, cannot trace back
     to SignalFile_Postprocess.
-    
+
     Expected a network with the nodes:
     DATA                               MODULE
     SignalFile_Postprocess       ->   convert_signal_to_tdf          ->
@@ -585,7 +585,7 @@ def run_case24():
     SignalFile_Order             ->   convert_order_annotate         ->
     SignalFile_Annotate          ->   convert_annotate_filter        ->
     SignalFile
-    
+
     """
     out_data = rulebase.SignalFile.output(
         format="tdf", logged="yes",
@@ -597,21 +597,21 @@ def run_case24():
 
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
-    
+
 def run_case25():
     """
     cannot trace back to GEOSeries and SignalFile_Postprocess to
     generate SignalFile_Merge with preprocess=aiglent.
-    
+
     Expected a network generate from GeoSeries or SignalFile_Postprocess
-    The Data path in the network is like: 
+    The Data path in the network is like:
     GEOSeries -> SignalFile_Postprocess ->
-    SignalFile_Impute -> SignalFile_Merge -> (plot_actb_line) -> 
+    SignalFile_Impute -> SignalFile_Merge -> (plot_actb_line) ->
     ActPlot
-    
+
     However, we currently get a network with only one node
     Data(ActbPlot, contents='unspecified')
-    
+
     """
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ActbPlot,
@@ -624,7 +624,7 @@ def run_case25():
 
 def run_case26():
     '''Test normalize report,
-    
+
     Expected a network generated form SignalFile_Postprocess with
     contents='test' and preprocess="unknown".
     - The make_normalize_report module has 5 input Data nodes, which
@@ -637,14 +637,14 @@ def run_case26():
 
     However, we got a network which has three SignalFile_Postprocess
     with different values for "contents".
-     
+
     Also the network has ExpressionFiles, AgilentFiles,GPRFiles,
     which lead the SignalFile has different "contents" values and
     "preprocess" values.
-     
+
     The IntensityPlot, ControlPlot, PcaPlot and ActvPlot are not
     generated from any other Data.
-     
+
     '''
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
@@ -703,13 +703,13 @@ def run_case28():
     """
     out_data = rulebase.SignalFile.output(group_fc='yes')
     network = bie3.backchain(rulebase.all_modules, out_data)
-    network = bie3.optimize_network(network)    
+    network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
 def run_case29():
     """Expected a network generated from GEOSeries
-    
+
     the path of Data is:
     GEOSeries -> ... -> SignalFile_Merge -> ...
     ->SignalFile_Order -> SignalFile
@@ -754,7 +754,7 @@ def run_case29():
 
 def run_case30():
     '''test normalize report,
-    
+
     Expect a network generated from GEOSeries, the
     make_normalize_report [1] has 6 input data:
     [2] SignalFile
@@ -771,7 +771,7 @@ def run_case30():
     SignalFile and first PcaPlot are the same. If it is not specified
     by the user in the output, the value of these attributes will be
     set to output default.
-    
+
     The second PcaPlot [7] is generated from SignalFile and we require the
     attributes of quantile_norm, combat_norm, shiftscale_norm,
     bfrm_norm, dwd_norm, gene_center, gene_normalize, unique_genes,
@@ -780,21 +780,21 @@ def run_case30():
 
     The reason of two PcaPlot is that we want to compare the SignalFile
     before any normalization and after normalization.
-     
+
     However, the network we currently got is:
     the attributes of SignalFile, which we are not specified in the output,
     can set to different values, like:
     bfrm_norm=['yes', 'no']
     combat_norm=['yes', 'no']
-    dwd_norm=['yes', 'no'] 
+    dwd_norm=['yes', 'no']
     gene_normalize=['variance', 'sum_of_squares', 'no'],
-    group_fc=['yes', 'no'],  
+    group_fc=['yes', 'no'],
     num_features=['yes', 'no'],
     platform=['yes', 'no'],
     shiftscale_norm=['yes', 'no'],
     unique_genes=['average_genes', 'high_var', 'first_gene'])
     duplicate_probes=["no", "closest_probe", "high_var_probe"]
-    
+
     The path from node 27 to node 2 is very complicated since the
     combination of different attributes. I expected the node 2 has the
     following attributes
@@ -806,12 +806,12 @@ def run_case30():
        s='mas5', quantile_norm='yes', rename_sample='no', shiftscale_nor
        m='no', unique_genes='no')
     I expect the network: node 64 and node 58 is the same node.
-    
+
     Also the path to node 2(SignalFile) is like:
     SignalFile_Annotate(node 68)->annotate_probes->SignalFile_Annotate->
     convert_annotate_filter->SignalFile_Filter->transfter->SignalFile(node 2)
 
-    JC: 
+    JC:
     SignalFile [64] -> plot_affy_affx_line [63]
     SignalFile [58] -> analyze_samples_pca [57] -> PcaAnalysis [56] ->
       plot_sample_pca_wo_label [55] -> PcaPlot [5] ->
@@ -843,16 +843,16 @@ def run_case30():
     XC:
     The SignalFile mentioned above(SignalFile[64],SignalFile[58],
     SignalFile[56],SiganlFile[2],PcaPlot[5] all have bfrm_norm="no".
-    
+
     SignalFile[86],SignalFile[84] and SignalFile[2] has attribute
     unique_genes=['average_genes', 'high_var', 'first_gene'],
     since we do not specify in the output, why it is not the default?
     Expect SignalFile[86] -> transfter[83]->SignalFile[2]
     Also SignalFile_Filter[60]  has unique_genes=['average_genes', 'high_var', 'first_gene'],
     that it is why the PcaPlot[5] is not generated from SignalFile_Filter[64].
-    
+
     '''
-    network = bie3.backchain(  
+    network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
         bie3.Attribute(rulebase.SignalFile,"preprocess","illumina"),
@@ -861,11 +861,11 @@ def run_case30():
         bie3.Attribute(rulebase.SignalFile,'gene_center',"median"),
         )
     network = bie3.optimize_network(network)
-    
+
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
-    
+
 def run_case31():
     """test case for batch effect remove, need a function to select
     the order of different normalization methods
@@ -924,7 +924,7 @@ def run_case31():
         bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
         bie3.Attribute(rulebase.SignalFile_Merge, "combat_norm", "yes"),
         )
-    
+
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
@@ -932,11 +932,11 @@ def run_case31():
 
 def run_case32():
     """test case for multiple batch effect remove methods.
-    
+
     Expected a network generated from:
     SignalFile_Proprocess -> ... -> SignalFile_Impute ->
       (convert_impute_merge)->SignalFile_Merge[18]
-      
+
     SignalFile_Merge[18], ClassLableFile[17] ->
       (normalize_samples_with_dwd [40,16]) ->
       SignalFile_Merge[39] -> (normalize_samples_with_quantile[15]) ->
@@ -946,7 +946,7 @@ def run_case32():
     normalize_samples_with_dwd[40] has only one input (SignalFile_Merge[18])
     normalize_samples_with_dwd[16] has only one input (ClassLabelFile[17])
     node 40 and 16 should be the same node.
-    
+
     """
     out_data = rulebase.SignalFile.output(
         quantile_norm="yes",
@@ -965,7 +965,7 @@ def run_case32():
         )
     bie3.plot_network_gv("out_after.png", network)
     bie3.print_network(network, open("out_after.log", 'w'))
-        
+
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
@@ -973,25 +973,25 @@ def run_case32():
 
 def run_case33():
     """test case for 3 batch effect remove methods.
-    
+
     Expected a network generated from:
     SignalFile_Proprocess -> ... -> SignalFile_Impute ->
       (convert_impute_merge)->SignalFile_Merge[19]
-      
+
     SignalFile_Merge[19]->(normalize_samples_with_quantile)->
     SignalFile_Merge[17]
     SignalFile_Merge[17],ClassLableFile[16] -> (normalize_samples_with_shiftscale)
     ->SignalFile_Merge
     SignalFile_Merge,ClassLabelFile[16]->(normalize_samples_with_dwd)->
     SignalFile_Merge
-      
+
 
     However, we got a network which
     normalize_samples_with_shiftscale is missing
     SignalFile_Merge[19] and SignalFile_Merge[17] both
     go to convert_label_to_cls but not go to the
     normalize_samples_with_shiftscale
-    
+
     """
     out_data = rulebase.SignalFile.output(
         quantile_norm="yes",
@@ -1022,7 +1022,7 @@ def run_case33():
         )
     bie3.plot_network_gv("out_after.png", network)
     bie3.print_network(network, open("out_after.log", 'w'))
-        
+
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
@@ -1034,7 +1034,7 @@ def run_case34():
     to generate the network, when the report include 8 files, it runs
     quick, but when including 10 or 12 files, it takes few hours to
     finish.
-      
+
     """
     out_data = rulebase.ReportFile.output(
         report_type="batch_effect_remove",
@@ -1074,14 +1074,16 @@ def run_case35():
                     print "%s%s=%s" % (" "*5, name, node.attributes[name])
             print
         print
+
+
 def run_case36():
     """get an error with bie3.py "global name 'is_subset' is not defined"
 
     """
-    network = bie3.backchain(  
+    network = bie3.backchain(
         rulebase.all_modules, rulebase.SignalFile_Order,
         bie3.Attribute(rulebase.SignalFile_Order, "gene_order", "diff_sam"),
-        
+
         )
 
     network = bie3.complete_network(network)
@@ -1089,31 +1091,48 @@ def run_case36():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+
 def run_case37():
-    """test case for diff expr analysis. 
+    """test case for diff expr analysis.
+    
     Expected a network generated from:
     SignalFile_Proprocess -> ... -> SignalFile ->
       (cal_diffexp_with_ttest)->DiffExprFile
-      
-    
+
     However, we got a network which only show DiffExprFile as input node but
     no SignalFile to generate DiffExprFile
+    
     """
-##    network = bie3.backchain(  
-##        rulebase.all_modules, rulebase.SignalFile_Filter,
-##        bie3.Attribute(rulebase.SignalFile_Filter, "gene_order", "diff_ttest"),
-##        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
-##        )
-    network = bie3.backchain(  
-        rulebase.all_modules, rulebase.SignalFile,
-        bie3.Attribute(rulebase.SignalFile, "gene_order", "diff_ttest"),
+    #network = bie3.backchain(
+    #    rulebase.all_modules, rulebase.SignalFile_Filter,
+    #    bie3.Attribute(rulebase.SignalFile_Filter, "gene_order","diff_ttest"),
+    #    bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
+    #    )
+    # This network is truncated for some reason.
+    #network = bie3.backchain(
+    #    rulebase.all_modules, rulebase.SignalFile,
+    #    bie3.Attribute(rulebase.SignalFile, "gene_order", "diff_ttest"),
+    #    bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
+    #    )
+    #network = bie3.backchain(
+    #    rulebase.all_modules, rulebase.SignalFile_Filter,
+    #    bie3.Attribute(rulebase.SignalFile_Filter, "gene_order","diff_ttest"),
+    #    bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
+    #    )
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.GeneListFile,
+        bie3.Attribute(rulebase.SignalFile_Filter, "gene_order","diff_ttest"),
+        bie3.Attribute(rulebase.GeneListFile, "gene_order", "diff_ttest"),
         bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
-        
         )
+    
+    
     network = bie3.complete_network(network)
-    network = bie3.optimize_network(network)
+    #network = bie3.optimize_network(network)
     bie3.print_network(network)
-    bie3.plot_network_gv("out.png", network)    
+    bie3.plot_network_gv("out.png", network)
+
+
 def main():
     #run_case01()
     #run_case02()
@@ -1153,6 +1172,7 @@ def main():
     #run_case35()
     #run_case36()
     run_case37()
+
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")
