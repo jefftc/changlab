@@ -13,8 +13,7 @@ import module_runner_parallel as module_runner
 from Betsy import module_utils 
 import tempfile
 import pickle
-#sys.modules['module_utils'] = module_utils
-#sys.modules['bie3'] = bie3
+
 
 """
 Functions:
@@ -24,15 +23,17 @@ test_require_data
 run_pipeline
 """
 class TempFileManager:
-    tempfiles_list = []
+    def __init__(self):
+        self.files = []
     def make(self):
         fd,filename = tempfile.mkstemp()
-        self.__class__.tempfiles_list.append(filename)
+        self.files.append(filename)
         return fd, filename
     def flush(self):
-        for temp in self.__class__.tempfiles_list:
+        for temp in self.files:
             if os.path.exists(temp):
                 os.remove(temp)
+        self.files = []
     def __del__(self):
         self.flush()
         
@@ -148,8 +149,8 @@ def run_pipeline(network, in_objects, user_inputs,
                     raise Exception
             elif isinstance(x, module_runner.ModuleJob):
                 job = x
-                if job.outdata not in tempfile_manager.tempfiles_list:
-                    tempfile_manager.tempfiles_list.append(job.outdata)
+                if job.outdata not in tempfile_manager.files:
+                    tempfile_manager.files.append(job.outdata)
                 if module_runner.get_run_time(job)>100:
                     for in_dat in job.input_data:
                             assert os.path.exists(in_dat)

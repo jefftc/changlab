@@ -62,6 +62,7 @@ def pretty_print_datatype(datatype, handle=None):
     handle = handle or sys.stdout
     
     print >>handle, "DATATYPE %s:" % datatype.name
+    print >>handle, datatype.help
     for attr in datatype.attributes:
         x1 = "%-20s" % attr.name
         x2 = []
@@ -82,6 +83,7 @@ def pretty_print_module(module, handle=None):
     handle = handle or sys.stdout
 
     print >>handle, "MODULE %s:" % module.name
+    print >>handle, module.help
     for user_input in module.user_inputs:
         x1 = "%-20s" % user_input.name
         default = ""
@@ -92,6 +94,7 @@ def pretty_print_module(module, handle=None):
         lines = _break_into_lines(x)
         for line in lines:
             print >>handle, line
+        print >>handle, user_input.help
             
     
 
@@ -139,6 +142,8 @@ def print_user_input(modules):
                 default = str(', default\t ' + str(user_input.default)
                               if user_input.default else '')
                 print user_input.name + default
+                print user_input.help
+                
 def get_necessary_user_input(modules):
     user_inputs = []
     for module in modules:
@@ -201,7 +206,24 @@ def assign_args(args):
     out_result = [outtype, out_identifier, out_parameters]
     return in_result, out_result
 
-
+def print_possible_inputs(network):
+    print "Possible Inputs"
+    inputs = bie3.get_inputs(network)
+    dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
+    for i, dt in enumerate(sorted(dt2inputs)):
+        x = [x.name for x in dt]
+        print "%d.  %s" % (i+1, ", ".join(x))
+        for j, inputs in enumerate(dt2inputs[dt]):
+            for k, inp in enumerate(inputs):
+                node = network.nodes[inp]
+                assert isinstance(node, bie3.Data)
+                print node.datatype.name
+                print node.datatype.help
+                for name in sorted(node.attributes):
+                    print "%s%s=%s" % (" "*5, name, node.attributes[name])
+            print
+        print
+        
 def main():
     parser = argparse.ArgumentParser(description='Run the engine')
     group = parser.add_argument_group(title="Input/Output Nodes")
@@ -214,6 +236,10 @@ def main():
     group.add_argument(
         '--mattr',  default=[], action='append',
         type=str, help='module attribute in key=value format')
+    
+    group.add_argument(
+        '--output_file', type=str, default=None,
+        help='file or folder of output result')
     group.add_argument(
         '--output',  default=None, type=str,
         help='output type')
@@ -221,10 +247,6 @@ def main():
         '--dattr', default=[], type=str, action='append',
         help='attribute for datatype in "datatype,key=value" or "key=value" '
         'format')
-    group.add_argument(
-        '--output_file', type=str, default=None,
-        help='file or folder of output result')
-    
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
         '--png_file',  type=str, default=None,
@@ -245,16 +267,11 @@ def main():
         help='generate the network, do not run the network')
     # parse
     args = parser.parse_args()
-    parser_list, out_list = assign_args(sys.argv)
-    outtype, out_identifier, out_attributes = out_list
+    input_list, output = assign_args(sys.argv)
+    outtype, out_identifier, out_attributes = output
     # test
-    if not args.output and not args.input:
-        list_datatypes(rulebase)
-        return
-    if not args.output and args.input:
-        raise ValueError("output is expected")
     assert not out_identifier,' --input_file is not for outtype'
-    for x in parser_list:
+    for x in input_list:
         intype, identifier, attributes = x
         if identifier:
             assert os.path.exists(identifier),'input_file %s does not exists' %identifier
@@ -268,7 +285,7 @@ def main():
             Attributes.append(bie3.Attribute(fn, key, value))
     # test intype attributes and build objects
     in_objects = []
-    for x in parser_list:
+    for x in input_list:
          intype, identifier, attributes = x
          fn = getattr(rulebase, intype)
          in_data = fn.input()
@@ -296,7 +313,11 @@ def main():
                 raise ValueError('the output path %s is already exisit,\
                                  please use --clobber option to overwrite'
                                  % args.output)
-
+    if not args.output and not args.input:
+        list_datatypes(rulebase)
+        return
+    if not args.output and args.input:
+        raise ValueError("output is expected")
     print 'Generating network...'
     network = bie3.backchain(rulebase.all_modules, goal_datatype, *Attributes)
     network = bie3.complete_network(network)
@@ -317,21 +338,7 @@ def main():
         
     if args.output and not in_objects:
         assert network, 'no network generated'
-        print "Possible Inputs"
-        inputs = bie3.get_inputs(network)
-        dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
-        for i, dt in enumerate(sorted(dt2inputs)):
-            x = [x.name for x in dt]
-            print "%d.  %s" % (i+1, ", ".join(x))
-            for j, inputs in enumerate(dt2inputs[dt]):
-                for k, inp in enumerate(inputs):
-                    node = network.nodes[inp]
-                    assert isinstance(node, bie3.Data)
-                    print node.datatype.name
-                    for name in sorted(node.attributes):
-                        print "%s%s=%s" % (" "*5, name, node.attributes[name])
-                print
-            print
+        print_possible_inputs(network)
         return 
     if args.dry_run:
         return

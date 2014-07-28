@@ -48,7 +48,7 @@ PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess","tcga"]
 
 GEOSeries = DataType("GEOSeries",
                      AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified'),
+                                  'unspecified','unspecified',help=""),
                      help="GEOID to download from the GEO database")
 GEOfamily = DataType("GEOfamily",
                      AttributeDef("contents",CONTENTS,
@@ -72,8 +72,8 @@ ExpressionFiles = DataType("ExpressionFiles",
                            AttributeDef("contents",
                                         CONTENTS,
                                         'unspecified','unspecified'),
-                           help="Expression file folder, can be CELFiles , IDATFiles,\
-                                 AgilentFile,GPRFiles")
+                           help="Expression file folder, can be CELFiles, IDATFiles,"\
+                                 "AgilentFile,GPRFiles")
 
 CELFiles = DataType(
     "CELFiles",
@@ -140,8 +140,8 @@ ILLUFolder = DataType(
     AttributeDef('illu_bg_mode',['false', 'true'], "false", "false"),
     AttributeDef('illu_coll_mode',['none', 'max', 'median'], "none","none"),
     AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
-    help="A folder generated from preprocess_illumina, \
-          it contains SignalFile_Postprocess and ControlFile.")
+    help="A folder generated from preprocess_illumina," \
+          "it contains SignalFile_Postprocess and ControlFile.")
 
 
 GeneListFile=DataType(
@@ -165,8 +165,8 @@ SignalFile_Postprocess = DataType(
     AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
     AttributeDef("predataset", ["no", "yes"], "no", "no"),
     AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
-    help="The input SignalFile which care the format,preprocess, \
-          logged,predataset,contents.")
+    help="The input SignalFile which care the format,preprocess," \
+          "logged,predataset,contents.")
 
 SignalFile_Impute = DataType(
     "SignalFile_Impute",
@@ -178,8 +178,8 @@ SignalFile_Impute = DataType(
               "zero_fill","zero_fill"),
     AttributeDef("filter", ["no", "yes"], "no", "no"),
     AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
-    help="The SignalFile after SignalFile_Postprocess, care missing_values,missing_algorithm\
-          and filter.")
+    help="The SignalFile after SignalFile_Postprocess, care missing_values,missing_algorithm"\
+          "and filter.")
 
 
 SignalFile_Merge = DataType(
@@ -198,8 +198,8 @@ SignalFile_Merge = DataType(
     AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
     AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
     AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
-    help="The SignalFile after SiganlFile_Impute, care dwd_norm,bfrm_norm,\
-          quantile_norm,shiftscale_norm,combat_norm.")
+    help="The SignalFile after SiganlFile_Impute, care dwd_norm,bfrm_norm,"\
+          "quantile_norm,shiftscale_norm,combat_norm.")
 
 SignalFile_Normalize = DataType(
     "SignalFile_Normalize",
@@ -222,8 +222,8 @@ SignalFile_Normalize = DataType(
         "gene_normalize", ["unknown", "no", "variance", "sum_of_squares"],
         "unknown", "no"),
     AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
-    help="The SignalFile after SiganlFile_Merge, care gene_center,\
-          gene_normalize.")    
+    help="The SignalFile after SiganlFile_Merge, care gene_center,"\
+          "gene_normalize.")    
     
     
     
@@ -326,8 +326,8 @@ SignalFile_Filter= DataType(
     AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
     AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
     AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),
-    help="The SignalFile after SiganlFile_Annotate, care num_features,\
-          unique_genes,duplicate_probe,group_fc,logged,format.")
+    help="The SignalFile after SiganlFile_Annotate, care num_features,"\
+          "unique_genes,duplicate_probe,group_fc,logged,format.")
 
 SignalFile= DataType( 
     "SignalFile",
@@ -375,12 +375,13 @@ SignalFile= DataType(
 all_modules = [
     #TCGA Files
     Module('download_tcga', TCGAID, TCGAFile,
-           UserInputDef("disease"),UserInputDef("date",""),
+           UserInputDef("disease",help="tcga disease type"),UserInputDef("date",""),
            Constraint("contents",CAN_BE_ANY_OF,CONTENTS,),
          Consequence("contents",SAME_AS_CONSTRAINT),
          Consequence("data",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
-                                          'rppa','clinical'])),
+                                          'rppa','clinical']),
+           help="download data from tcga website according to TCGAID"),
     
     Module('preprocess_tcga',TCGAFile,SignalFile_Postprocess,
         Constraint("contents",CAN_BE_ANY_OF, CONTENTS,),
@@ -388,13 +389,15 @@ all_modules = [
         Consequence('logged',SET_TO,"unknown"),
         Consequence('predataset', SET_TO, "no"),
         Consequence('preprocess',SET_TO,"tcga"),
-        Consequence('format',SET_TO,"tdf")),
+        Consequence('format',SET_TO,"tdf"),
+           help="preprocess tcga file, generate to SignalFile_Postprocess"),
            
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
          UserInputDef("GSEID"), UserInputDef("GPLID",""),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
+        help="download GEO data from geo website according to GSEID and GPLID"
         ),
     #CELFiles
     Module(
@@ -402,6 +405,7 @@ all_modules = [
          Consequence("version", SET_TO, "unknown"),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
+        help="extract CEL files from Expression Files folder"
         ),
     Module(
         "detect_CEL_version",
@@ -410,6 +414,7 @@ all_modules = [
         Consequence("version", BASED_ON_DATA, ["cc", "v3_v4"]),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
+        help="detect the version of cel files"
         ),
     Module(
         "convert_CEL_to_v3",
@@ -418,12 +423,14 @@ all_modules = [
         Consequence("version", SET_TO, "v3_v4"),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
+        help="convert cel files to v3 version"
         ),
      # IDATFiles
     Module("extract_illumina_idat_files",
             ExpressionFiles, IDATFiles,
            Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT),),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+           help="extract idat files from Expression File folder"),
     Module(
         "preprocess_illumina",
         IDATFiles, ILLUFolder,
@@ -436,6 +443,7 @@ all_modules = [
         UserInputDef("illu_custom_manifest",''),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
+        help="preprocess idat files,generate SignalFile_Postprocess"
         ),
        Module(
         "get_illumina_signal",
@@ -445,7 +453,8 @@ all_modules = [
          Consequence('logged', SET_TO, "no"),
          Consequence('predataset', SET_TO, "no"),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT),),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+        help="extract the SignalFile_Postprocess from ILLUFolder"),
     Module(
         "get_illumina_control",
          ILLUFolder,ControlFile,
@@ -453,14 +462,16 @@ all_modules = [
          Consequence("format",SET_TO,"gct"),
          Consequence("logged",SET_TO,"no"),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT), 
+         Consequence("contents",SAME_AS_CONSTRAINT),
+        help="extract illumina ControlFile from ILLUFolder"
         ),
     
     # AgilentFiles
     Module(
         "extract_agilent_files", ExpressionFiles, AgilentFiles,
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT)),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+        help="extract agilent files from ExpressionFiles"),
     Module(
         "preprocess_agilent",
          AgilentFiles,SignalFile_Postprocess,
@@ -469,13 +480,15 @@ all_modules = [
         Consequence('logged',SET_TO,"unknown"),
         Consequence('predataset', SET_TO, "no"),
         Consequence('preprocess',SET_TO,"agilent"),
-        Consequence('format',SET_TO,"tdf")),
+        Consequence('format',SET_TO,"tdf"),
+        help="preprocess agilent, generate SignalFile_Postprocess"),
 
     # GPRFiles
     Module(
         "extract_gpr_files", ExpressionFiles, GPRFiles,
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT)),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+        help="extract gpr files from ExpressionFiles"),
     Module(
         "normalize_with_loess",
         GPRFiles,SignalFile_Postprocess,
@@ -484,7 +497,8 @@ all_modules = [
         Consequence('predataset', SET_TO, "no"),
         Consequence("preprocess",SET_TO,"loess"),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT)),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+        help="normalize GPRFiles,generate SignalFile_Postprocess"),
     
     Module(
         "preprocess_rma",
@@ -496,6 +510,7 @@ all_modules = [
         Consequence('predataset', SET_TO, "no"),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
+        help="preprocess CELFiles with rma method,generate SignalFile_Postprocess"
         ),
     Module(
         "preprocess_mas5",
@@ -507,13 +522,15 @@ all_modules = [
         Consequence("format", SET_TO, "jeffs"),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
+        help="preprocess CELFiles with mas5 method,generate SignalFile_Postprocess"
         ),
     ####postprocess
     Module(
         "convert_signal_to_tdf",
         SignalFile_Postprocess, SignalFile_Postprocess,
         Constraint("format", CAN_BE_ANY_OF, ["unknown", "pcl", "gct", "res", "jeffs"]),
-        Consequence("format", SET_TO, "tdf")
+        Consequence("format", SET_TO, "tdf"),
+        help="convert SignalFile_Postprocess to tdf format"
         ),
     Module(
         "check_for_log",
@@ -522,6 +539,7 @@ all_modules = [
         Constraint("logged", MUST_BE, "unknown"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", BASED_ON_DATA, ["yes", "no"]),
+        help="check for log in SignalFile_Postprocess"
         ),
     Module(
         "filter_and_threshold_genes",
@@ -531,14 +549,16 @@ all_modules = [
         Constraint('predataset',MUST_BE,"no"),
         Consequence('format',SAME_AS_CONSTRAINT),
         Consequence('logged',SAME_AS_CONSTRAINT),
-        Consequence('predataset',SET_TO,'yes')),
+        Consequence('predataset',SET_TO,'yes'),
+        help="filter genes by a threshold using genepattern module"),
     Module(
         "log_signal",
         SignalFile_Postprocess, SignalFile_Postprocess,
         Constraint("format", MUST_BE, "tdf"),
         Constraint("logged", MUST_BE, "no"),
         Consequence("format", SAME_AS_CONSTRAINT),
-        Consequence("logged", SET_TO, "yes")),
+        Consequence("logged", SET_TO, "yes"),
+        help="log SignalFile_Postprocess"),
     
     #impute
     Module(
@@ -554,13 +574,15 @@ all_modules = [
         Consequence("predataset", SAME_AS_CONSTRAINT),
         Consequence("missing_algorithm",SET_TO, 'zero_fill'),
         Consequence("missing_values", SET_TO, "unknown"),
-        Consequence("filter", SET_TO, 'no')),
+        Consequence("filter", SET_TO, 'no'),
+        help="convert SignalFile_Postprocess to SignalFile_Impute"),
         
     Module(
         "check_for_missing_values",
         SignalFile_Impute, SignalFile_Impute,
         Constraint("missing_values", MUST_BE, "unknown"),
         Consequence("missing_values", BASED_ON_DATA, ["no", "yes"]),
+        help="check missing values in SignalFile_Impute"
         ),
     
     Module(
@@ -571,6 +593,7 @@ all_modules = [
         Constraint("filter", MUST_BE, "no"),
         Consequence("missing_values", SAME_AS_CONSTRAINT),
         Consequence("filter", SET_TO, "yes"),
+        help="filter genes by missing values in SignalFile_Impute"
         ),
     Module(
         "fill_missing_with_zeros",
@@ -579,6 +602,7 @@ all_modules = [
         Consequence("missing_values", SET_TO, "no"),
         Consequence(
             "missing_algorithm", SET_TO, "zero_fill", side_effect=True),
+        help="fill missing values in SignalFile_Impute with zeros"
         ),
     Module(
         "fill_missing_with_median",
@@ -586,7 +610,8 @@ all_modules = [
         Constraint('missing_algorithm',MUST_BE,'zero_fill'),
         Constraint('missing_values',MUST_BE,'yes'),
         Consequence('missing_algorithm',SET_TO,"median_fill",side_effect=True),
-        Consequence('missing_values',SET_TO,'no')),
+        Consequence('missing_values',SET_TO,'no'),
+        help="fill missing values in SignalFile_Impute with median"),
     #merge
     Module(
         "convert_impute_merge",
@@ -606,7 +631,9 @@ all_modules = [
         Consequence("dwd_norm", SET_TO,'no'),
         Consequence("combat_norm", SET_TO,'no'),
         Consequence("bfrm_norm",SET_TO,'no'),
-        Consequence("shiftscale_norm", SET_TO,'no')),
+        Consequence("shiftscale_norm", SET_TO,'no'),
+        help="convert SignalFile_Impute to SignalFile_Merge"),
+    
     Module(
         "convert_impute_merge_rma",
         SignalFile_Impute, SignalFile_Merge,
@@ -626,7 +653,8 @@ all_modules = [
         Consequence("dwd_norm", SET_TO,'no'),
         Consequence("combat_norm", SET_TO,'no'),
         Consequence("bfrm_norm",SET_TO,'no'),
-        Consequence("shiftscale_norm", SET_TO,'no')),
+        Consequence("shiftscale_norm", SET_TO,'no'),
+        help="convert SignalFile_Impute to SignalFile_Merge with preprocess=rma"),
     
     Module(  
         "merge_two_classes_rma", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge,  
@@ -653,6 +681,7 @@ all_modules = [
          Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,0),
          DefaultAttributesFrom(0),
          DefaultAttributesFrom(1),
+        help="merge two classes SignalFile_Merge with preprocess=rma,generate SignalFile_Merge"
         ),
 
     Module(  
@@ -680,7 +709,8 @@ all_modules = [
          Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,0),
          DefaultAttributesFrom(0),
          DefaultAttributesFrom(1),
-        ),
+         help="merge two classes SignalFile_Merge,generate SignalFile_Merge"
+         ),
     
         Module(
         "normalize_samples_with_quantile",
@@ -695,6 +725,7 @@ all_modules = [
         Consequence("bfrm_norm", SAME_AS_CONSTRAINT),
         Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
         Consequence("dwd_norm", SAME_AS_CONSTRAINT),
+        help="nommalize SignalFile_Merge with quantile method"
         ),
     Module(
         "normalize_samples_with_bfrm",
@@ -708,6 +739,7 @@ all_modules = [
         Consequence("dwd_norm", SAME_AS_CONSTRAINT),
         Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
         Consequence("combat_norm", SAME_AS_CONSTRAINT),
+        help="nommalize SignalFile_Merge with bfrm method"
         ),
 
     Module(
@@ -725,7 +757,8 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        DefaultAttributesFrom(1)),
+        DefaultAttributesFrom(1),
+        help="nommalize SignalFile_Merge with combat method"),
            
     Module(
         "normalize_samples_with_dwd",  
@@ -742,7 +775,8 @@ all_modules = [
         Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        DefaultAttributesFrom(1),),
+        DefaultAttributesFrom(1),
+        help="nommalize SignalFile_Merge with dwd method"),
 
     Module(
         "normalize_samples_with_shiftscale",  
@@ -759,7 +793,8 @@ all_modules = [
         Consequence("dwd_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        DefaultAttributesFrom(1)),
+        DefaultAttributesFrom(1),
+        help="nommalize SignalFile_Merge with shiftscale method"),
     ###normalize
     Module(
         "convert_merge_normalize",
@@ -787,6 +822,7 @@ all_modules = [
         Consequence("gene_center", SET_TO,'unknown'),
         Consequence("gene_normalize", SET_TO,'unknown'),
         Consequence("format", SET_TO,'tdf'),
+        help="convert SignalFile_Merge to SignalFile_Normalize"
         ),
     Module(
         "check_gene_center",
@@ -796,7 +832,8 @@ all_modules = [
         Constraint("gene_normalize", MUST_BE, "unknown"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("gene_center",BASED_ON_DATA,["no", "mean", "median"]),
-        Consequence("gene_normalize", SAME_AS_CONSTRAINT)),
+        Consequence("gene_normalize", SAME_AS_CONSTRAINT),
+        help="check SignalFile_Normalize if it is gene center or not"),
         
     Module(
         "check_gene_normalize",
@@ -806,13 +843,15 @@ all_modules = [
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence(
             "gene_normalize", BASED_ON_DATA,
-            ["no", "variance", "sum_of_squares"])),
+            ["no", "variance", "sum_of_squares"]),
+        help="check SignalFile_Normalize if gene normalize or nto"),
         
     Module(   
         "convert_signal_to_pcl",
         SignalFile_Normalize,SignalFile_Normalize,
         Constraint("format",MUST_BE,'tdf'),
-        Consequence("format",SET_TO,'pcl')),
+        Consequence("format",SET_TO,'pcl'),
+        help="convert SignalFile_Normalize from tdf format to pcl format"),
     
     Module(
         "center_genes",
@@ -822,7 +861,8 @@ all_modules = [
         Constraint("gene_normalize",MUST_BE,'unknown'),
         Consequence("format",SET_TO,"tdf"),
         Consequence("gene_center",SET_TO_ONE_OF,["mean", "median"]),
-        Consequence("gene_normalize",SAME_AS_CONSTRAINT)),
+        Consequence("gene_normalize",SAME_AS_CONSTRAINT),
+        help="center genes in SignalFile_Normalize"),
     
     Module(
         "normalize_genes",
@@ -830,7 +870,8 @@ all_modules = [
         Constraint("format",MUST_BE,"pcl"),
         Constraint("gene_normalize",MUST_BE,"no"),
         Consequence("format",SET_TO,"tdf"),
-        Consequence("gene_normalize",SET_TO_ONE_OF,["variance", "sum_of_squares"])),
+        Consequence("gene_normalize",SET_TO_ONE_OF,["variance", "sum_of_squares"]),
+        help="normalize genes in SignalFile_Normalize"),
     ##Order
     Module(
         "convert_normalize_order",
@@ -861,6 +902,7 @@ all_modules = [
         Consequence("gene_center", SAME_AS_CONSTRAINT),
         Consequence("gene_normalize", SAME_AS_CONSTRAINT),
         Consequence("gene_order", SET_TO,'no'),
+        help="convert SignalFile_Normalize to SignalFile_Order"
         ),
 
 
@@ -884,6 +926,7 @@ all_modules = [
         Consequence("cn_ttest_or_snr",SET_TO_ONE_OF, ['t_test','snr']),
         Consequence("cn_filter_data",SET_TO_ONE_OF, ['yes','no']),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
+        help="rank the genes in SignalFile_Order by class neighbors method"
         ),
     
     Module(
@@ -897,6 +940,7 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO_ONE_OF, ["t_test_p", "t_test_fdr"]),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
+        help="rank the genes in SignalFile_Order by ttest method"
        ),
          
     Module(  
@@ -917,8 +961,8 @@ all_modules = [
          Consequence("gene_order",SAME_AS_CONSTRAINT,0),
          Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
          Consequence("contents",SAME_AS_CONSTRAINT,0),
-         
          DefaultAttributesFrom(1),
+         help="rank the genes in SignalFile_Order by genes in GeneListFile"
         ),
     Module(  
          "reorder_genes_with_diff",  
@@ -940,6 +984,7 @@ all_modules = [
          Consequence("contents",SAME_AS_CONSTRAINT,1),
          
          DefaultAttributesFrom(1),
+         help="reorder SignalFile_Order with genes in GeneListFile"
         ),
     ##Annotate
     Module(
@@ -976,6 +1021,7 @@ all_modules = [
         Consequence("annotate",SET_TO,"no"),
         Consequence("rename_sample",SET_TO,"no"),
         Consequence("platform",SET_TO,"no"),
+        help="convert SignalFile_Order to SignalFile_Annotate"
         ),
     Module(
          'annotate_probes',
@@ -983,22 +1029,25 @@ all_modules = [
          Constraint("annotate", MUST_BE,"no"),
          Constraint("platform", MUST_BE,"no"),
          Consequence("annotate",SET_TO,"yes"),
-         Consequence("platform",SAME_AS_CONSTRAINT)),
+         Consequence("platform",SAME_AS_CONSTRAINT),
+         help="annotate SignalFile_Annotate"),
     
     Module(
          'download_GEO_family_soft',
          GEOSeries,GEOfamily,
-         UserInputDef("GSEID"),
+         UserInputDef("GSEID",help='GSEID for download family_soft file'),
          Constraint("contents",CAN_BE_ANY_OF, CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT)),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+         help="download geo family soft file"),
     
     Module(
          'convert_family_soft_to_rename',
          GEOfamily,RenameFile,
-         UserInputDef("GSEID"),
+         UserInputDef("GSEID",help='GSEID for download family_soft file'),
          Constraint("contents",CAN_BE_ANY_OF, CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
-         Consequence("labels_from",SET_TO_ONE_OF,["title","description"])),
+         Consequence("labels_from",SET_TO_ONE_OF,["title","description"]),
+         help="convert famliy soft file to RenameFile"),
     
     Module( 
        "relabel_samples",  
@@ -1014,13 +1063,15 @@ all_modules = [
          Constraint('platform',MUST_BE,'no',1),
          Consequence("platform",SAME_AS_CONSTRAINT,1),
          DefaultAttributesFrom(1),
+         help="relabel the sample names in SignalFile_Annotate given RenameFile"
        ),
     Module(
          'add_crossplatform_probeid',
          SignalFile_Annotate,SignalFile_Annotate,
-         UserInputDef("platform_name"),
+         UserInputDef("platform_name",help="given the new platform name to add to the file"),
          Constraint("platform", MUST_BE,"no"),
-         Consequence("platform",SET_TO,"yes")),
+         Consequence("platform",SET_TO,"yes"),
+         help="add a cross platform to SignalFile_Annotate"),
     
     #Filter
     Module(
@@ -1069,6 +1120,7 @@ all_modules = [
         Consequence("unique_genes",SET_TO,"no"),
         Consequence("duplicate_probe",SET_TO,"no"),
         Consequence("group_fc",SET_TO,"no"),
+        help="convert SignalFile_Annotate to SignalFile_Filter"
         ),
     Module(
         'remove_duplicate_genes',
@@ -1086,12 +1138,13 @@ all_modules = [
         Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence(
             "unique_genes", SET_TO_ONE_OF,
-            ['average_genes', 'high_var', 'first_gene'])),
+            ['average_genes', 'high_var', 'first_gene']),
+        help="remove duplicate genes in SignalFile_Filter"),
       
     Module(
          'select_first_n_genes',
         SignalFile_Filter,SignalFile_Filter,
-        UserInputDef("num_features_value",500),
+        UserInputDef("num_features_value",500,help="num of features to be selected in the SignalFile"),
         Constraint("format", MUST_BE,"tdf"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Constraint("logged", MUST_BE,"yes"),
@@ -1099,7 +1152,8 @@ all_modules = [
         Constraint("num_features", MUST_BE,"no"),
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("num_features",SET_TO,"yes"),
-        Consequence("duplicate_probe",SAME_AS_CONSTRAINT)), 
+        Consequence("duplicate_probe",SAME_AS_CONSTRAINT),
+         help="select first n genes in SignalFile_Filter"), 
       
      Module(
         'remove_duplicate_probes',
@@ -1111,7 +1165,8 @@ all_modules = [
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'high_var_probe'),
         Constraint("platform", MUST_BE,"yes"),
-        Consequence("platform",SAME_AS_CONSTRAINT)),
+        Consequence("platform",SAME_AS_CONSTRAINT),
+        help="remove duplciate probes in SignalFile_Filter by high_var_probe method"),
     Module(
          'select_probe_by_best_match',
         SignalFile_Filter,SignalFile_Filter,
@@ -1122,12 +1177,13 @@ all_modules = [
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'closest_probe'),
         Constraint("platform", MUST_BE,"yes"),
-        Consequence("platform",SAME_AS_CONSTRAINT)),
+        Consequence("platform",SAME_AS_CONSTRAINT),
+         help="remove duplciate probes in SignalFile_Filter by closest_probe method"),
     
     Module(
         "filter_genes_by_fold_change_across_classes",
         [ClassLabelFile,SignalFile_Filter],SignalFile_Filter,
-        UserInputDef("group_fc_num"),
+        UserInputDef("group_fc_num",help="group fold change number"),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint("format", MUST_BE,"tdf",1),
         Consequence("format", SAME_AS_CONSTRAINT,1),
@@ -1144,19 +1200,22 @@ all_modules = [
         Consequence("duplicate_probe",SAME_AS_CONSTRAINT,1),
         Consequence("unique_genes",SAME_AS_CONSTRAINT,1),
         Consequence("group_fc",SET_TO,"yes"),
-        DefaultAttributesFrom(1)),
+        DefaultAttributesFrom(1),
+        help="filter genes in SignalFile_Filter by fold change in different classes"),
     Module(   
         "convert_signal_to_gct",
         SignalFile_Filter,SignalFile_Filter,
         Constraint("format",MUST_BE,'tdf'),
-        Consequence("format",SET_TO,'gct')),
+        Consequence("format",SET_TO,'gct'),
+        help="convert SignalFile_Filter in tdf format to gct format"),
     Module( 
         'unlog_signal',
         SignalFile_Filter,SignalFile_Filter,
         Constraint("format", MUST_BE,"tdf"),
         Constraint("logged", MUST_BE,"yes"),
         Consequence("format",SAME_AS_CONSTRAINT),
-        Consequence("logged",SET_TO,"no")),
+        Consequence("logged",SET_TO,"no"),
+        help="unlog SignalFile_Filter"),
     
     Module(
         "convert_label_to_cls",   
@@ -1166,6 +1225,7 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
         Consequence("cls_format",SET_TO,'cls'),
+        help="convert ClassLabelFile with label format to cls format"
         ),
     Module( 
         'transfer',
@@ -1217,6 +1277,7 @@ all_modules = [
         Consequence("unique_genes",SAME_AS_CONSTRAINT),
         Consequence("duplicate_probe",SAME_AS_CONSTRAINT),
         Consequence("group_fc",SAME_AS_CONSTRAINT),
+        help="transfer SignalFile_Filter to SignalFile"
         )
     ]
 
