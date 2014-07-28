@@ -109,7 +109,7 @@ def find_header(MATRIX, category):
     # XXX NEED TO FIX THIS
     name_fix = {
         "entrez_ID_human" : "Entrez_ID_human",
-        "entrez_ID_symbol_human" : "Entrez_symbol_human",
+        "entrez_ID_symbol_human" : "Entrez_Symbol_human",
         }
     
     for x in score_all_platforms_of_matrix(MATRIX):

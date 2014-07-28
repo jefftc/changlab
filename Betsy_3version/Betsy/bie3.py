@@ -143,8 +143,8 @@ CONST2STR = {
     }
 
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 MAX_NETWORK_SIZE = 1024*8
 
@@ -2744,7 +2744,9 @@ def _can_module_produce_data(module, data, user_attributes):
     # - The module's output data type is not the same as the data.
     # - One or more of the consequences conflict.
     # - An input does not go into the output, and a user_attribute
-    #   doesn't match a constraint.
+    #   doesn't match a constraint.  OBSOLETE.  Constraint now takes
+    #   precedence over user_attribute.  So user_attribute doesn't
+    #   matter.
     # - An input does not go into the output, and the data attribute
     #   doesn't match the (in) defaults of the output data type.
     # 
@@ -2755,6 +2757,8 @@ def _can_module_produce_data(module, data, user_attributes):
     #   consequences (SET_TO, SET_TO_ONE_OF, BASED_ON_DATA), and the
     #   output data type has no attributes.
     #   e.g. download_geo_GSEID  gseid -> expression_files  (no attributes)
+    #
+    # These rules need to match the policies in _backchain_to_input_v2.
     debug_print("Testing if module %s can produce data %s." % (
         repr(module.name), str(data)))
 
@@ -2843,41 +2847,45 @@ def _can_module_produce_data(module, data, user_attributes):
             raise AssertionError
 
     # Make sure the module's constraints are aligned with the
-    # user_attributes.
+    # user_attributes.  THIS IS OBSOLETE.  Constraint now takes
+    # precedence over user_attribute.  So user_attribute doesn't
+    # matter.
+    
     # Get a list of the in_datatypes that don't continue into the
     # out_datatype.
-    indexes = [x.input_index for x in module.default_attributes_from]
-    for i in range(len(module.in_datatypes)):
-        if i in indexes:
-            # The values from this datatype should be passed through.
-            # The user attributes does not apply.
-            continue
-
-        user_attrs = [
-            x for x in user_attributes if x.datatype == module.in_datatypes[i]]
-        for attr in user_attrs:
-            x = [x for x in module.constraints if x.input_index == i]
-            x = [x for x in x if x.name == attr.name]
-            constraints = x
-
-            for cons in constraints:
-                if cons.behavior == MUST_BE:
-                    if attr.value != cons.arg1:
-                        debug_print(
-                            "Consequence %s conflicts with user attribute." % (
-                                cons.name))
-                        return False
-                elif cons.behavior == CAN_BE_ANY_OF:
-                    if attr.value not in cons.arg1:
-                        debug_print(
-                            "Consequence %s conflicts with user attribute." % (
-                                cons.name))
-                        return False
-                elif cons.behavior == SAME_AS:
-                    # No conflict with user_attribute.
-                    pass
-                else:
-                    raise AssertionError
+    #indexes = [x.input_index for x in module.default_attributes_from]
+    #for i in range(len(module.in_datatypes)):
+    #    if i in indexes:
+    #        # The values from this datatype should be passed through.
+    #        # The user attributes does not apply.
+    #        continue
+    #
+    #    user_attrs = [
+    #       x for x in user_attributes
+    #        if x.datatype == module.in_datatypes[i]]
+    #    for attr in user_attrs:
+    #        x = [x for x in module.constraints if x.input_index == i]
+    #        x = [x for x in x if x.name == attr.name]
+    #        constraints = x
+    #
+    #        for cons in constraints:
+    #            if cons.behavior == MUST_BE:
+    #                if attr.value != cons.arg1:
+    #                    debug_print(
+    #                        "Consequence %s conflicts with user attribute." %(
+    #                            cons.name))
+    #                    return False
+    #            elif cons.behavior == CAN_BE_ANY_OF:
+    #                if attr.value not in cons.arg1:
+    #                    debug_print(
+    #                        "Consequence %s conflicts with user attribute." %(
+    #                            cons.name))
+    #                    return False
+    #            elif cons.behavior == SAME_AS:
+    #                # No conflict with user_attribute.
+    #                pass
+    #            else:
+    #                raise AssertionError
     
 
     # If the module converts the datatype, and no
