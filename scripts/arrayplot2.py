@@ -719,8 +719,10 @@ def make_layout(
     if cluster_data.gene_cluster:
         gc_layout = GeneClusterLayout(MATRIX.nrow(), boxwidth, boxheight, grid)
     if cluster_data.array_cluster:
+        # Make these variables.
+        arraycluster_width, arraycluster_height = boxwidth, 20
         ac_layout = ArrayClusterLayout(
-            MATRIX.ncol(), boxwidth, boxheight, grid)
+            MATRIX.ncol(), arraycluster_width, arraycluster_height, grid)
 
     # Make the layout for the gene or array labels.
     gl_layout = al_layout = None
