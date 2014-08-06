@@ -3,99 +3,96 @@ from Betsy.bie3 import *
 import SignalFile_rule
 PcaAnalysis = DataType(
     'PcaAnalysis',
-    AttributeDef('contents',["train0", "train1", "test", "class0,class1,test",
-                  "class0", "class1", "class0,class1",
-                  "unspecified"],"unspecified","unspecified"),
+    AttributeDef('contents',SignalFile_rule.CONTENTS,"unspecified","unspecified",help="contents"),
     AttributeDef(
         "preprocess",SignalFile_rule.PREPROCESS,
-        "unknown","unknown"),
+        "unknown","unknown",help="preprocess method"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
-        "zero_fill", "zero_fill"),
+        "zero_fill", "zero_fill",help="missing algorithm"),
     AttributeDef(
-        "logged",[ "no", "yes"],"yes","yes"),
+        "logged",[ "no", "yes"],"yes","yes",help="logged or not"),
     # Normalizing the genes.
     AttributeDef(
         "gene_center",[ "no", "mean", "median"],
-        "no","no"),
+        "no","no",help="gene center method"),
     AttributeDef(
         "gene_normalize",["unknown", "no", "variance", "sum_of_squares"],
-        "no","no"),
+        "no","no",help="gene normalize method"),
 
     # Normalizing the data.  Very difficult to check normalization.
     # If you're not sure if the data is normalized, then the answer is
     # "no".
     AttributeDef(
-        "dwd_norm",["no", "yes"], "no","no"),
+        "dwd_norm",["no", "yes"], "no","no",help="dwd normalization"),
     AttributeDef(
-        "bfrm_norm",["no", "yes"], "no","no"),
+        "bfrm_norm",["no", "yes"], "no","no",help="bfrm normalization"),
     AttributeDef(
-        "quantile_norm",["no", "yes"], "no","no"),
+        "quantile_norm",["no", "yes"], "no","no",help="quantile normalization"),
     AttributeDef(
-        "shiftscale_norm",["no", "yes"], "no","no"),
+        "shiftscale_norm",["no", "yes"], "no","no",help="shiftscale normalization"),
     AttributeDef(
-        "combat_norm",["no", "yes"], "no","no"),
+        "combat_norm",["no", "yes"], "no","no",help="combat normalization"),
     # Annotations.
     AttributeDef(
         "unique_genes",["no", "average_genes", "high_var", "first_gene"],
-        "no","no"),
+        "no","no",help="method to get unique genes"),
     AttributeDef(
         "duplicate_probe",["no", "yes", "closest_probe", "high_var_probe"],
-        "no","no"),
+        "no","no",help="method to remove duplicated probes"),
     # Unclassified.
-    AttributeDef("num_features",["yes","no"],"no","no"), 
-    AttributeDef("predataset",["no", "yes"], "no","no"),
-    AttributeDef("platform",["yes","no"],"no","no"),
-    AttributeDef("filter",["yes","no"],"no","no"),
-    AttributeDef("group_fc",["yes","no"],"no","no"))
+    AttributeDef("num_features",["yes","no"],"no","no",help="select a num of features or not"), 
+    AttributeDef("predataset",["no", "yes"], "no","no",help="predataset or not"),
+    AttributeDef("platform",["yes","no"],"no","no",help="add platform or not"),
+    AttributeDef("filter",["yes","no"],"no","no",help="filter missing or not"),
+    AttributeDef("group_fc",["yes","no"],"no","no",help="group fold change or not"),
+    help="Pca Analysis File")
 
 PcaPlot = DataType(
     'PcaPlot',
-    AttributeDef("pca_gene_num",["yes","no"],"no","no"),
-    AttributeDef("contents",["train0", "train1", "test", "class0,class1,test",
-                  "class0", "class1", "class0,class1",
-                  "unspecified"],"unspecified","unspecified"),
+    AttributeDef("contents",SignalFile_rule.CONTENTS,"unspecified","unspecified",help="contents"),
     # Properties of the data.
     AttributeDef("preprocess",SignalFile_rule.PREPROCESS,
-        "unknown","unknown"),
+        "unknown","unknown",help="preprocess method"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
-        "zero_fill","zero_fill"),
+        "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef(
-        "logged",[ "no", "yes"], "yes","yes"),
+        "logged",[ "no", "yes"], "yes","yes",help="logged or not"),
     # Normalizing the genes.
     AttributeDef(
         "gene_center",["no", "mean", "median"],
-        "no","no"),
+        "no","no",help="gene center method"),
     AttributeDef(
         "gene_normalize",[ "no", "variance", "sum_of_squares"],
-        "no","no"),
+        "no","no",help="gene normalize method"),
 
     AttributeDef(
-        "dwd_norm",["no", "yes"], "no","no"),
+        "dwd_norm",["no", "yes"], "no","no",help="dwd normalization"),
     AttributeDef(
-        "bfrm_norm",["no", "yes"], "no","no"),
+        "bfrm_norm",["no", "yes"], "no","no",help="bfrm normalization"),
     AttributeDef(
-        "quantile_norm",["no", "yes"], "no","no"),
+        "quantile_norm",["no", "yes"], "no","no",help="quantile normalization"),
     AttributeDef(
-        "shiftscale_norm",["no", "yes"], "no","no"),
+        "shiftscale_norm",["no", "yes"], "no","no",help="shiftscale normalization"),
     AttributeDef(
-        "combat_norm",["no", "yes"], "no","no"),
+        "combat_norm",["no", "yes"], "no","no",help="combat normalization"),
 
     # Annotations.
     AttributeDef(
         "unique_genes",["no", "average_genes", "high_var", "first_gene"],
-        "no","no"),
+        "no","no",help="method to get unique genes"),
     AttributeDef(
         "duplicate_probe",["no", "yes", "closest_probe", "high_var_probe"],
-        "no","no"),
+        "no","no",help="method to remove duplicated probes"),
     
     # Unclassified.
-    AttributeDef("num_features",["yes","no"], "no","no"),
-    AttributeDef("predataset",["no", "yes"], "no","no"),
-    AttributeDef("platform",["yes","no"],"no","no"),
-    AttributeDef("filter",["yes","no"],"no","no"),
-    AttributeDef("group_fc",["yes","no"],"no","no"),
+    AttributeDef("num_features",["yes","no"], "no","no",help="select a num of features or not"),
+    AttributeDef("predataset",["no", "yes"], "no","no",help="predataset or not"),
+    AttributeDef("platform",["yes","no"],"no","no",help="add platform or not"),
+    AttributeDef("filter",["yes","no"],"no","no",help="filter missing or not"),
+    AttributeDef("group_fc",["yes","no"],"no","no",help="group fold change or not"),
+    help="Pca analysis plot file"
     )
     
 
@@ -104,7 +101,7 @@ all_modules = [
     Module(
         'analyze_samples_pca',
         SignalFile_rule.SignalFile,PcaAnalysis,
-        UserInputDef('pca_gene_num',500),
+        UserInputDef('pca_gene_num',500,help="number of genes in pca"),
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", "class0,class1,test",
                  "class0", "class1", "class0,class1",
                   "unspecified"]),
@@ -144,7 +141,8 @@ all_modules = [
         Consequence("filter",SAME_AS_CONSTRAINT),
         Consequence("predataset",SAME_AS_CONSTRAINT),
         Consequence("platform",SAME_AS_CONSTRAINT),
-        Consequence("group_fc",SAME_AS_CONSTRAINT)
+        Consequence("group_fc",SAME_AS_CONSTRAINT),
+        help="analyze samples by pca method"
         ),
     
     Module(
@@ -187,7 +185,8 @@ all_modules = [
         Consequence("filter",SAME_AS_CONSTRAINT),
         Consequence("predataset",SAME_AS_CONSTRAINT),
         Consequence("platform",SAME_AS_CONSTRAINT),
-        Consequence("group_fc",SAME_AS_CONSTRAINT)
+        Consequence("group_fc",SAME_AS_CONSTRAINT),
+        help="plot pca analysis result"
         ),
              
  ]

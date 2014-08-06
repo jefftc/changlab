@@ -7,49 +7,49 @@ IntensityPlot = DataType(
     'IntensityPlot',
     AttributeDef(
         "contents",
-        ["train0", "train1", "test", "class0,class1,test",
-         "class0", "class1", "class0,class1", "unspecified"],
-        "unspecified", "unspecified")
+        SignalFile_rule.CONTENTS,
+        "unspecified", "unspecified",help='contents'),
+    help="Intensity plot file"
     )
     
 ActbPlot = DataType(
     'ActbPlot',
     AttributeDef(
         "contents",
-        ["train0", "train1", "test", "class0,class1,test",
-         "class0", "class1", "class0,class1", "unspecified"],
-        "unspecified", "unspecified"),
+        SignalFile_rule.CONTENTS,
+        "unspecified", "unspecified",help='contents'),
     AttributeDef("preprocess",SignalFile_rule.PREPROCESS,
-                 'unknown','unknown')
+                 'unknown','unknown',help="preprocess method"),
+    help="Actb plot file"
     )
 Hyb_barPlot = DataType(
     'Hyb_barPlot',
     AttributeDef(
         "contents",
-        ["train0", "train1", "test", "class0,class1,test",
-         "class0", "class1", "class0,class1", "unspecified"],
-        "unspecified", "unspecified"))
+        SignalFile_rule.CONTENTS,
+        "unspecified", "unspecified",help='contents'),
+    help="Hyb bar plot file")
 ControlPlot = DataType(
     'ControlPlot',
     AttributeDef(
         "contents",
-        ["train0", "train1", "test", "class0,class1,test",
-         "class0", "class1", "class0,class1", "unspecified"],
-        "unspecified", "unspecified"))
+        SignalFile_rule.CONTENTS,
+        "unspecified", "unspecified",help='contents'),
+    help="control plot file")
 BiotinPlot = DataType(
     'BiotinPlot',
     AttributeDef(
         "contents",
-        ["train0", "train1", "test", "class0,class1,test",
-         "class0", "class1", "class0,class1", "unspecified"],
-        "unspecified", "unspecified"))
+        SignalFile_rule.CONTENTS,
+        "unspecified", "unspecified",help='contents'),
+    help="Biotin plot file")
 HousekeepingPlot = DataType(
     'HousekeepingPlot',
     AttributeDef(
         "contents",
-        ["train0", "train1", "test", "class0,class1,test",
-         "class0", "class1", "class0,class1", "unspecified"],
-        "unspecified", "unspecified"))
+        SignalFile_rule.CONTENTS,
+        "unspecified", "unspecified",help='contents'),
+    help="Housekeeping plot file")
 
 list_files=[
     IntensityPlot,
@@ -69,6 +69,7 @@ all_modules = [
             ["train0", "train1", "test", "class0,class1,test",
              "class0", "class1", "class0,class1", "unspecified"]),
         Consequence("contents", SAME_AS_CONSTRAINT),
+        help="plot intensity boxplot"
         ),
                     
 
@@ -82,6 +83,7 @@ all_modules = [
              "class0", "class1", "class0,class1", "unspecified"]),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
+        help="plot actb line"
         ),
     
 
@@ -92,7 +94,8 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,["train0","train1", "test",
                              "class0,class1,test","class0",
                               "class1", "class0,class1","unspecified"]),
-        Consequence("contents",SAME_AS_CONSTRAINT)
+        Consequence("contents",SAME_AS_CONSTRAINT),
+        help="plot affy affx line"
         ),
     Module(
        'plot_illu_hyb_bar',
@@ -104,7 +107,8 @@ all_modules = [
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0,class1,test",
              "class0", "class1", "class0,class1", "unspecified"]),
-        Consequence("contents", SAME_AS_CONSTRAINT),),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+       help="plot illumina affx line"),
     Module(
         'plot_illu_biotin_line',
         SignalFile_rule.ControlFile,BiotinPlot,
@@ -115,7 +119,8 @@ all_modules = [
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0,class1,test",
              "class0", "class1", "class0,class1", "unspecified"]),
-        Consequence("contents", SAME_AS_CONSTRAINT),),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        help="plot illumina biotin line"),
        
     Module(
         'plot_illu_housekeeping_line',
@@ -127,5 +132,6 @@ all_modules = [
             "contents", CAN_BE_ANY_OF,
             ["train0", "train1", "test", "class0,class1,test",
              "class0", "class1", "class0,class1", "unspecified"]),
-        Consequence("contents", SAME_AS_CONSTRAINT)),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        help="plot illumina housekeeping line"),
     ]

@@ -40,6 +40,8 @@ def _hash_storefile(username,filename, checksum,file_length):
     return store_name
 
 def _unhash_storefile(storefilename):
+    if '___' not in storefilename:
+        return storefilename
     x = storefilename.split('___')
     username, filename, checksum, file_length = x
     real_filename = filename.replace('__','/')

@@ -62,7 +62,7 @@ def pretty_print_datatype(datatype, handle=None):
     handle = handle or sys.stdout
     
     print >>handle, "DATATYPE %s:" % datatype.name
-    print >>handle, datatype.help
+    print >>handle, "(", datatype.help , ")"
     for attr in datatype.attributes:
         x1 = "%-20s" % attr.name
         x2 = []
@@ -83,7 +83,7 @@ def pretty_print_module(module, handle=None):
     handle = handle or sys.stdout
 
     print >>handle, "MODULE %s:" % module.name
-    print >>handle, module.help
+    print >>handle, "(", module.help, ")"
     for user_input in module.user_inputs:
         x1 = "%-20s" % user_input.name
         default = ""
@@ -94,7 +94,7 @@ def pretty_print_module(module, handle=None):
         lines = _break_into_lines(x)
         for line in lines:
             print >>handle, line
-        print >>handle, user_input.help
+        print >>handle, "(", user_input.help , ")"
             
     
 
@@ -149,7 +149,7 @@ def get_necessary_user_input(modules):
     for module in modules:
         for user_input in module.user_inputs:
             if user_input.name not in user_inputs:
-                if not user_input.default:
+                if user_input.default is None:
                     user_inputs.append(user_input.name)
     return user_inputs
 

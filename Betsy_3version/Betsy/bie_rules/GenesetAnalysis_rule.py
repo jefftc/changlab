@@ -3,14 +3,16 @@ from Betsy.bie3 import *
 import SignalFile_rule
 GenesetAnalysis=DataType(
     'GenesetAnalysis',
-    AttributeDef("allgenes",['yes','no'], "no","no"),
-    AttributeDef("automatch",['yes','no'], "no","no"),
+    AttributeDef("allgenes",['yes','no'], "no","no",help="analyze all geneset"),
+    AttributeDef("automatch",['yes','no'], "no","no",help="automatch in geneset analysis"),
+    help="Geneset analysis file"
     
     )
 GenesetPlot=DataType(
     'GenesetPlot',
-    AttributeDef("allgenes",['yes','no'], "no","no"),
-    AttributeDef("automatch",['yes','no'], "no","no"),
+    AttributeDef("allgenes",['yes','no'], "no","no",help="analyze all geneset"),
+    AttributeDef("automatch",['yes','no'], "no","no",help="automatch in geneset analysis"),
+    help="Geneset plot file"
     )
 
 GenesetFile = DataType('GenesetFile')
@@ -21,7 +23,7 @@ all_modules = [
         'score_pathway_with_geneset',
         [GenesetFile,
          SignalFile_rule.SignalFile],GenesetAnalysis,
-         UserInputDef("geneset_value"),
+         UserInputDef("geneset_value",help="geneset to score pathway"),
          #Constraint("quantile_norm",MUST_BE,'yes',1),
          Constraint("gene_center",MUST_BE,'mean',1),
          Constraint("gene_normalize",MUST_BE,'variance',1),
@@ -29,6 +31,7 @@ all_modules = [
          Constraint("unique_genes",MUST_BE,'high_var',1),
          Consequence("allgenes",SET_TO,'no'),
          Consequence("automatch",SET_TO_ONE_OF,['yes','no']),
+         help="score pathway with geneset"
         ),
     Module(
         'score_pathway_with_geneset_all',
@@ -41,6 +44,7 @@ all_modules = [
          Constraint("unique_genes",MUST_BE,'high_var',1),
          Consequence("allgenes",SET_TO,'yes'),
          Consequence("automatch",SET_TO_ONE_OF,['yes','no']),
+         help="score pathway with all the geneset"
          ),
     
     Module(
@@ -50,5 +54,6 @@ all_modules = [
         Constraint("automatch",CAN_BE_ANY_OF,['yes','no']),
         Consequence("allgenes",SAME_AS_CONSTRAINT),
         Consequence("automatch",SAME_AS_CONSTRAINT),
+        help="plot geneset analysis file to bar plot"
         ),
     ]

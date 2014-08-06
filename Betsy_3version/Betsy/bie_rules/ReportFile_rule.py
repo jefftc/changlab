@@ -9,7 +9,8 @@ ReportFile = DataType(
         "report_type",
         ['normalize_file', 'batch_effect_remove', 'classify', 'cluster',
          'diffgenes', 'heatmap', 'geneset', 'all'],
-        'normalize_file', 'normalize_file')
+        'normalize_file', 'normalize_file',help="report type"),
+    help="Report file"
     )
 
 list_files = [ReportFile]
@@ -29,7 +30,7 @@ all_modules = [
         ReportFile,
         
         Constraint(
-            'preprocess', CAN_BE_ANY_OF, ['mas5','agilent','loess','unknown','tcga'],
+            'preprocess', CAN_BE_ANY_OF, ['mas5','agilent','loess','unknown','tcga','rsem'],
             0),
         Constraint("annotate", MUST_BE, "yes", 0),
         Constraint(
@@ -95,6 +96,7 @@ all_modules = [
         Constraint("preprocess", SAME_AS, 0, 4),
         Constraint("preprocess", SAME_AS, 0, 5),
         Consequence('report_type', SET_TO, 'normalize_file'),
+        help="make normalize report for mas5,agilent,loess,unknown,tcga,rsem"
         ),
     Module(
         'make_normalize_report_rma',
@@ -167,6 +169,7 @@ all_modules = [
          Constraint("preprocess",SAME_AS,0,4),
          Constraint("preprocess",SAME_AS,0,5),
          Consequence('report_type',SET_TO,'normalize_file'),
+        help="make normalize report for rma"
         ),
 Module(
         'make_normalize_report_illumina',
@@ -247,7 +250,8 @@ Module(
          Constraint('contents',SAME_AS,0,7),
          Constraint('contents',SAME_AS,0,8),
          Constraint("preprocess",SAME_AS,0,4),
-         Consequence('report_type',SET_TO,'normalize_file')),
+         Consequence('report_type',SET_TO,'normalize_file'),
+         help="make normalize report for illumina"),
                                       
     Module(
         'make_cluster_report',
@@ -257,7 +261,8 @@ Module(
          Constraint("distance",CAN_BE_ANY_OF,['correlation','euclidean'],0),
          Constraint("cluster_alg",SAME_AS,0,1),
          Constraint("distance",SAME_AS,0,1),
-         Consequence('report_type',SET_TO,'cluster'),),
+         Consequence('report_type',SET_TO,'cluster'),
+         help="make cluster report"),
     Module(
         'make_classify_report',
         [SignalFile_rule.SignalFile,
@@ -304,17 +309,20 @@ Module(
          Constraint("classify_alg",MUST_BE,'weighted_voting',10),
          Constraint("actual_label",MUST_BE,'yes',10),
          Constraint("loocv",MUST_BE,'no',10),
-         Consequence('report_type',SET_TO,'classify')),
+         Consequence('report_type',SET_TO,'classify'),
+         help="make classification report"),
     Module(
         'make_heatmap_report',
         ClusterFile_rule.Heatmap,ReportFile,
         Constraint("cluster_alg",MUST_BE,'no_cluster_alg'),
-        Consequence("report_type",SET_TO,'heatmap')),
+        Consequence("report_type",SET_TO,'heatmap'),
+        help="make heatmap report"),
     Module(
         'make_geneset_report',
         [GenesetAnalysis_rule.GenesetAnalysis,
          GenesetAnalysis_rule.GenesetPlot],ReportFile,
-         Consequence("report_type",SET_TO,'geneset')),
+         Consequence("report_type",SET_TO,'geneset'),
+        help="make geneset report"),
         
 ##    Module(
 ##        'make_diffgenes_report',
@@ -374,7 +382,8 @@ Module(
          Constraint("quantile_norm",SAME_AS,10,11),
          Constraint("combat_norm",SAME_AS,10,11),
         
-         Consequence("report_type",SET_TO,'batch_effect_remove'))
+         Consequence("report_type",SET_TO,'batch_effect_remove'),
+         help="make batch effect remove report")
 
         ]
   

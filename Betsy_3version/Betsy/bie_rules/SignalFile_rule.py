@@ -44,140 +44,142 @@ CONTENTS = ["train0", "train1","test", "class0,class1,test",
              "class0", "class1", "class0,class1","unspecified",
             "diff_class0","diff_class1","diff_class0,diff_class1","diff_unspecified"]
 
-PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess","tcga"]
+PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
+              "tcga","rsem"]
 
 GEOSeries = DataType("GEOSeries",
                      AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified',help=""),
+                                  'unspecified','unspecified',help="contents"),
                      help="GEOID to download from the GEO database")
 GEOfamily = DataType("GEOfamily",
                      AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified'),
+                                  'unspecified','unspecified',help="contents"),
                      help="GEO fmaily soft file download from the GEO database")
 TCGAID = DataType("TCGAID",
                      AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified'),
+                                  'unspecified','unspecified',help="contents"),
                      help="TCGA ID to download from TCGA database")
 TCGAFile = DataType("TCGAFile",
                      AttributeDef("contents",CONTENTS,
-                                  'unspecified','unspecified'),
+                                  'unspecified','unspecified',help="contents"),
                      AttributeDef("data",['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
                                           'rppa','clinical'],'RSEM_genes',
-                                          'RSEM_genes'),
+                                          'RSEM_genes',help="TCGA data type"),
                      help="TCGA file download from TCGA database")
 
 
 ExpressionFiles = DataType("ExpressionFiles",
                            AttributeDef("contents",
                                         CONTENTS,
-                                        'unspecified','unspecified'),
+                                        'unspecified','unspecified',help="contents"),
                            help="Expression file folder, can be CELFiles, IDATFiles,"\
                                  "AgilentFile,GPRFiles")
 
 CELFiles = DataType(
     "CELFiles",
-    AttributeDef("version", ["unknown", "cc", "v3_v4"], "unknown", "v3_v4"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    AttributeDef("version", ["unknown", "cc", "v3_v4"], "unknown", "v3_v4",help="cel file version"),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
     help="A folder of cel files")
 
 RenameFile = DataType(
     'RenameFile',
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
-    AttributeDef("labels_from",["title","description"],'title','title'),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
+    AttributeDef("labels_from",["title","description"],'title','title',help="labels from title or description"),
     help="A file used to rename the sample name in the gene expression file.")
 
 AgilentFiles = DataType(
     "AgilentFiles",
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
     help="A folder of agilent files.")
 
 ControlFile = DataType(
     "ControlFile",
     AttributeDef(
         'preprocess',["illumina"],
-        "illumina","illumina"),
+        "illumina","illumina",help="preprocess for ControlFile"),
     AttributeDef(
         'missing_values',["unknown", "no", "yes"],
-        "no","no"),
+        "no","no",help="missing values yes or not"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
-        "zero_fill", "zero_fill"),
+        "zero_fill", "zero_fill",help="missing algorithm"),
     AttributeDef(
-        "logged",["no"],"no","no"),
+        "logged",["no"],"no","no",help="logged yes or not"),
     AttributeDef(
         'format',["gct"],
-        "gct","gct"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+        "gct","gct",help="file format"),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
     help="The control file in the ILLUFolder")
     
     
 GPRFiles = DataType(
     "GPRFiles",
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
     help="A folder of GPR files.")
 
 IDATFiles = DataType(
     "IDATFiles",
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
     help="A folder of IDAFiles.")
 
 ClassLabelFile = DataType(
     "ClassLabelFile",
     AttributeDef(
-    "contents",CONTENTS,'unspecified','unspecified'),
-    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls"),
+    "contents",CONTENTS,'unspecified','unspecified',help="contents"),
+    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls",help="cls format for ClassLabelFile"),
     help="The Class label file, can be cls format or label format")
 
 ILLUFolder = DataType(
     "ILLUFolder", 
     AttributeDef(
         "illu_manifest",ILLU_MANIFEST,
-        'HumanHT-12_V4_0_R2_15002873_B.txt','HumanHT-12_V4_0_R2_15002873_B.txt'),
+        'HumanHT-12_V4_0_R2_15002873_B.txt','HumanHT-12_V4_0_R2_15002873_B.txt',help="illumina manifest"),
     AttributeDef(
         'illu_chip',ILLU_CHIP,
-        'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip','ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'),
-    AttributeDef('illu_bg_mode',['false', 'true'], "false", "false"),
-    AttributeDef('illu_coll_mode',['none', 'max', 'median'], "none","none"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+        'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip','ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',help="illumina chip type"),
+    AttributeDef('illu_bg_mode',['false', 'true'], "false", "false",help="illumina background mode"),
+    AttributeDef('illu_coll_mode',['none', 'max', 'median'], "none","none",help="illumina coll mode"),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
     help="A folder generated from preprocess_illumina," \
           "it contains SignalFile_Postprocess and ControlFile.")
 
 
 GeneListFile=DataType(
     "GeneListFile", 
-    AttributeDef('cn_mean_or_median',['mean', 'median'], 'mean','mean'),
-    AttributeDef('cn_ttest_or_snr',['t_test','snr'], 't_test','t_test'),
-    AttributeDef('cn_filter_data',['yes','no'], 'no','no'),
+    AttributeDef('cn_mean_or_median',['mean', 'median'], 'mean','mean',help="class neighbors mean or median"),
+    AttributeDef('cn_ttest_or_snr',['t_test','snr'], 't_test','t_test',help="class neighbors ttest or snr"),
+    AttributeDef('cn_filter_data',['yes','no'], 'no','no',help="class neighbors filter data or not"),
     AttributeDef('gene_order',['no', "gene_list", "class_neighbors",
                                "t_test_p", "t_test_fdr",'diff_ttest','diff_sam',
                                'diff_ebayes','diff_fold_change'],
-                 't_test_p',"t_test_p"),
-    AttributeDef("contents",CONTENTS,'unspecified','unspecified'),
+                 't_test_p',"t_test_p",help="gene order method"),
+    AttributeDef("contents",CONTENTS,'unspecified','unspecified',help="contents"),
     help="A file contains a list of genes.")
    
 SignalFile_Postprocess = DataType(
     "SignalFile_Postprocess",
     AttributeDef("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
-              "unknown", "tdf"),
+              "unknown", "tdf",help="file format"),
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
-    AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes",help="logged or not"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
     help="The input SignalFile which care the format,preprocess," \
           "logged,predataset,contents.")
 
 SignalFile_Impute = DataType(
     "SignalFile_Impute",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
-    AttributeDef("missing_values", ["unknown", "no", "yes"], "unknown", "no"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
+    AttributeDef("missing_values", ["unknown", "no", "yes"], "unknown", "no",
+                 help="missing values unknown,yes or not"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "zero_fill","zero_fill"),
-    AttributeDef("filter", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+              "zero_fill","zero_fill",help="missing algorithm"),
+    AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
     help="The SignalFile after SignalFile_Postprocess, care missing_values,missing_algorithm"\
           "and filter.")
 
@@ -187,41 +189,41 @@ SignalFile_Merge = DataType(
     # Properties of the data.
     AttributeDef("preprocess",
               PREPROCESS,
-              "unknown", "unknown"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+              "unknown", "unknown",help="preprocess method"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "zero_fill","zero_fill"),
-    AttributeDef("filter", ["no", "yes"], "no", "no"),
-    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+              "zero_fill","zero_fill",help="missing algorithm"),
+    AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no",help="dwd normalization"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no",help="bfrm normalization"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no",help="quantile normalization"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no",help="shiftscale normalization"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no",help="combat normalization"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
     help="The SignalFile after SiganlFile_Impute, care dwd_norm,bfrm_norm,"\
           "quantile_norm,shiftscale_norm,combat_norm.")
 
 SignalFile_Normalize = DataType(
     "SignalFile_Normalize",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "zero_fill","zero_fill"),
-    AttributeDef("format", ["tdf", "pcl"], "tdf", "tdf"),
-    AttributeDef("filter", ["no", "yes"], "no", "no"),
-    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
+              "zero_fill","zero_fill",help="missing algorithm"),
+    AttributeDef("format", ["tdf", "pcl"], "tdf", "tdf",help="file format"),
+    AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no",help="dwd normalization"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no",help="bfrm normalization"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no",help="quantile normalization"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no",help="shiftscale normalization"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no",help="combat normalization"),
     AttributeDef(
         "gene_center", ["unknown", "no", "mean", "median"],
-        "unknown", "no"),
+        "unknown", "no",help="gene center method"),
     AttributeDef(
         "gene_normalize", ["unknown", "no", "variance", "sum_of_squares"],
-        "unknown", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+        "unknown", "no",help="gene normalize method"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
     help="The SignalFile after SiganlFile_Merge, care gene_center,"\
           "gene_normalize.")    
     
@@ -231,143 +233,143 @@ SignalFile_Normalize = DataType(
 SignalFile_Order = DataType(
     "SignalFile_Order",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "zero_fill","zero_fill"),
-    AttributeDef("filter", ["no", "yes"], "no", "no"),
+              "zero_fill","zero_fill",help="missing algorithm"),
+    AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
     # Normalization of the data.
-    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no",help="dwd normalization"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no",help="bfrm normalization"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no",help="quantile normalization"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no",help="shiftscale normalization"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no",help="combat normalization"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef(
         "gene_center", [ "no", "mean", "median"],
-        "no", "no"),
+        "no", "no",help="gene center method"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"],
-        "no", "no"),
+        "no", "no",help="gene normalize method"),
     AttributeDef(
         "gene_order",
         ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
          'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
-       "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+       "no", "no",help="gene order method"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
     help="The SignalFile after SiganlFile_Normalize, care gene_order.")
 
 SignalFile_Annotate= DataType( 
     "SignalFile_Annotate",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "zero_fill","zero_fill"),
-    AttributeDef("filter", ["no", "yes"], "no", "no"),
+              "zero_fill","zero_fill",help="missing algorithm"),
+    AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
     # Normalization of the data.
-    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no",help="dwd normalization"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no",help="bfrm normalization"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no",help="quantile normalization"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no",help="shiftscale normalization"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no",help="combat normalization"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef(
         "gene_center", [ "no", "mean", "median"],
-        "no", "no"),
+        "no", "no",help="gene center method"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"],
-        "no", "no"),
+        "no", "no",help="gene normalize method"),
     AttributeDef(
         "gene_order",
         ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
          'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
-       "no", "no"),
-    AttributeDef("annotate", ["no", "yes"], "no", "no"),
-    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
-    AttributeDef("platform", ["yes","no"], "no", "no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
+       "no", "no",help="gene order method"),
+    AttributeDef("annotate", ["no", "yes"], "no", "no",help="annotate file or not"),
+    AttributeDef("rename_sample", ["no", "yes"], "no", "no",help="rename sample or not"),
+    AttributeDef("platform", ["yes","no"], "no", "no",help="add platform or not"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
     help="The SignalFile after SiganlFile_Order, care annotate,rename_sample,platform.")
 
 SignalFile_Filter= DataType( 
     "SignalFile_Filter",
     # Properties of the data.
-    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown"),
+    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "zero_fill","zero_fill"),
-    AttributeDef("filter", ["no", "yes"], "no", "no"),
+              "zero_fill","zero_fill",help="missing algorithm"),
+    AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
     # Normalization of the data.
-    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no",help="dwd normalization"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no",help="bfrm normalization"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no",help="quantile normalization"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no",help="shiftscale normalization"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no",help="combat normalization"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef(
         "gene_center", [ "no", "mean", "median"],
-        "no", "no"),
+        "no", "no",help="gene center method"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"],
-        "no", "no"),
+        "no", "no",help="gene normalize method"),
     AttributeDef(
         "gene_order",
         ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
          'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
-       "no", "no"),
-    AttributeDef("annotate", ["no", "yes"], "no", "no"),
-    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
-    AttributeDef("platform", ["yes","no"], "no", "no"),
-    AttributeDef("num_features", ["yes","no"], "no", "no"),
+       "no", "no",help="gene order method"),
+    AttributeDef("annotate", ["no", "yes"], "no", "no",help="annotate file or not"),
+    AttributeDef("rename_sample", ["no", "yes"], "no", "no",help="rename sample or not"),
+    AttributeDef("platform", ["yes","no"], "no", "no",help="add platform or not"),
+    AttributeDef("num_features", ["yes","no"], "no", "no",help="select a num of features or not"),
     AttributeDef(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
-        "no", "no"),
+        "no", "no",help="method to get unique genes"),
     AttributeDef(
         "duplicate_probe", ["no", "closest_probe", "high_var_probe"],
-        "no", "no"),
-    AttributeDef("group_fc", ["yes","no"], "no","no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
-    AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
-    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),
+        "no", "no",help="method to remove duplicated probes"),
+    AttributeDef("group_fc", ["yes","no"], "no","no",help="group fold change or not"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
+    AttributeDef("logged", [ "no", "yes"], "yes", "yes",help="logged or not"),
+    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf",help="file format"),
     help="The SignalFile after SiganlFile_Annotate, care num_features,"\
           "unique_genes,duplicate_probe,group_fc,logged,format.")
 
 SignalFile= DataType( 
     "SignalFile",
     # Properties of the data.
-    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown"),
+    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
-              "zero_fill","zero_fill"),
-    AttributeDef("filter", ["no", "yes"], "no", "no"),
+              "zero_fill","zero_fill",help="missing algorithm"),
+    AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
     # Normalization of the data.
-    AttributeDef("dwd_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("quantile_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("combat_norm", ["no", "yes"], "no", "no"),
-    AttributeDef("predataset", ["no", "yes"], "no", "no"),
+    AttributeDef("dwd_norm", ["no", "yes"], "no", "no",help="dwd normalization"),
+    AttributeDef("bfrm_norm", ["no", "yes"], "no", "no",help="bfrm normalization"),
+    AttributeDef("quantile_norm", ["no", "yes"], "no", "no",help="quantile normalization"),
+    AttributeDef("shiftscale_norm", ["no", "yes"], "no", "no",help="shiftscale normalization"),
+    AttributeDef("combat_norm", ["no", "yes"], "no", "no",help="combat normalization"),
+    AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef(
         "gene_center", [ "no", "mean", "median"],
-        "no", "no"),
+        "no", "no",help="gene center method"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"],
-        "no", "no"),
+        "no", "no",help="gene normalize method"),
     AttributeDef(
         "gene_order",
         ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
          'diff_ttest','diff_sam','diff_ebayes','diff_fold_change'],
-       "no", "no"),
-    AttributeDef("annotate", ["no", "yes"], "no", "no"),
-    AttributeDef("rename_sample", ["no", "yes"], "no", "no"),
-    AttributeDef("platform", ["yes","no"], "no", "no"),
-    AttributeDef("num_features", ["yes","no"], "no", "no"),
+       "no", "no",help="gene order method"),
+    AttributeDef("annotate", ["no", "yes"], "no", "no",help="annotate file or not"),
+    AttributeDef("rename_sample", ["no", "yes"], "no", "no",help="rename sample or not"),
+    AttributeDef("platform", ["yes","no"], "no", "no",help="add platform or not"),
+    AttributeDef("num_features", ["yes","no"], "no", "no",help="select a num of features or not"),
     AttributeDef(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
-        "no", "no"),
+        "no", "no",help="method to get unique genes"),
     AttributeDef(
         "duplicate_probe", ["no", "closest_probe", "high_var_probe"],
-        "no", "no"),
-    AttributeDef("group_fc", ["yes","no"], "no","no"),
-    AttributeDef("contents", CONTENTS,"unspecified", "unspecified"),
-    AttributeDef("logged", [ "no", "yes"], "yes", "yes"),
-    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf"),
+        "no", "no",help="method to remove duplicated probes"),
+    AttributeDef("group_fc", ["yes","no"], "no","no",help="group fold change or not"),
+    AttributeDef("contents", CONTENTS,"unspecified", "unspecified",help="contents"),
+    AttributeDef("logged", [ "no", "yes"], "yes", "yes",help="logged or not"),
+    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf",help="file format"),
     help="The SignalFile after SiganlFile_Filter, the attributes are the same as SignalFile_Filter.")
 
     
@@ -375,10 +377,11 @@ SignalFile= DataType(
 all_modules = [
     #TCGA Files
     Module('download_tcga', TCGAID, TCGAFile,
-           UserInputDef("disease",help="tcga disease type"),UserInputDef("date",""),
+           UserInputDef("disease",help="tcga disease type"),
+           UserInputDef("date","",help="date for tcga disease"),
            Constraint("contents",CAN_BE_ANY_OF,CONTENTS,),
-         Consequence("contents",SAME_AS_CONSTRAINT),
-         Consequence("data",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
+           Consequence("contents",SAME_AS_CONSTRAINT),
+           Consequence("data",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
                                           'rppa','clinical']),
            help="download data from tcga website according to TCGAID"),
@@ -390,11 +393,12 @@ all_modules = [
         Consequence('predataset', SET_TO, "no"),
         Consequence('preprocess',SET_TO,"tcga"),
         Consequence('format',SET_TO,"tdf"),
-           help="preprocess tcga file, generate to SignalFile_Postprocess"),
+        help="preprocess tcga file, generate to SignalFile_Postprocess"),
            
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
-         UserInputDef("GSEID"), UserInputDef("GPLID",""),
+         UserInputDef("GSEID",help="GSEID to download"),
+         UserInputDef("GPLID","",help="GPDID to download"),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         help="download GEO data from geo website according to GSEID and GPLID"
@@ -438,9 +442,9 @@ all_modules = [
         Consequence('illu_chip',SET_TO_ONE_OF,ILLU_CHIP),
         Consequence('illu_bg_mode',SET_TO_ONE_OF,["false", "true"]),
         Consequence('illu_coll_mode',SET_TO_ONE_OF,["none", "max", "median"]),
-        UserInputDef("illu_clm",''),
-        UserInputDef("illu_custom_chip",''),
-        UserInputDef("illu_custom_manifest",''),
+        UserInputDef("illu_clm",'',help="illumina clm"),
+        UserInputDef("illu_custom_chip",'',help="illumina custom chip name"),
+        UserInputDef("illu_custom_manifest",'',help='illumina custrom manifest file'),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="preprocess idat files,generate SignalFile_Postprocess"
@@ -454,7 +458,7 @@ all_modules = [
          Consequence('predataset', SET_TO, "no"),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
-        help="extract the SignalFile_Postprocess from ILLUFolder"),
+         help="extract the SignalFile_Postprocess from ILLUFolder"),
     Module(
         "get_illumina_control",
          ILLUFolder,ControlFile,
@@ -588,7 +592,8 @@ all_modules = [
     Module(
         "filter_genes_by_missing_values",
         SignalFile_Impute, SignalFile_Impute,
-        UserInputDef("filter_value", 0.50),
+        UserInputDef("filter_value", 0.50,
+                     help="filter by missing values in percentage, etc.(0-1)"),
         Constraint("missing_values", MUST_BE, "yes"),
         Constraint("filter", MUST_BE, "no"),
         Consequence("missing_values", SAME_AS_CONSTRAINT),
@@ -616,7 +621,7 @@ all_modules = [
     Module(
         "convert_impute_merge",
         SignalFile_Impute, SignalFile_Merge,
-        Constraint("preprocess", CAN_BE_ANY_OF, ["unknown", "illumina", "agilent", "mas5", "loess","tcga"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, ["unknown", "illumina", "agilent", "mas5", "loess","tcga","rsem"]),
         Constraint("contents", CAN_BE_ANY_OF,CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
@@ -656,8 +661,8 @@ all_modules = [
         Consequence("shiftscale_norm", SET_TO,'no'),
         help="convert SignalFile_Impute to SignalFile_Merge with preprocess=rma"),
     
-    Module(  
-        "merge_two_classes_rma", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge,  
+    Module(  #did not consider the diff_expr case 
+        "merge_two_classes_rma", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge, 
          Constraint("contents", MUST_BE, "class0", 0),
          Constraint("preprocess",MUST_BE,'rma',0),
          Constraint("combat_norm",MUST_BE,'no',0),
@@ -684,7 +689,7 @@ all_modules = [
         help="merge two classes SignalFile_Merge with preprocess=rma,generate SignalFile_Merge"
         ),
 
-    Module(  
+    Module(  #did not consider the diff_expr case 
         "merge_two_classes", [SignalFile_Merge, SignalFile_Merge], SignalFile_Merge,
          Constraint("preprocess",CAN_BE_ANY_OF, ["unknown", "illumina",
                                                  "agilent", "mas5", "loess","tcga"]),
@@ -730,7 +735,7 @@ all_modules = [
     Module(
         "normalize_samples_with_bfrm",
         SignalFile_Merge,SignalFile_Merge,
-        UserInputDef("num_factors",1),
+        UserInputDef("num_factors",1,help="num factors for bfrm normalization"),
         Constraint('bfrm_norm',MUST_BE,"no"),
         Constraint('combat_norm',MUST_BE,"no"),
         Constraint('shiftscale_norm',MUST_BE,"no"),
@@ -909,13 +914,13 @@ all_modules = [
     Module(  
         "rank_genes_by_class_neighbors",
         [ClassLabelFile,SignalFile_Order],GeneListFile,
-        UserInputDef("cn_num_neighbors",50),
-        UserInputDef("cn_num_perm",100),
-        UserInputDef("cn_user_pval",0.5),
-        UserInputDef("cn_min_threshold",10),
-        UserInputDef("cn_max_threshold",16000),
-        UserInputDef("cn_min_folddiff",5),
-        UserInputDef("cn_abs_diff",50),
+        UserInputDef("cn_num_neighbors",50,help='number of neighbors for class neighbors method'),
+        UserInputDef("cn_num_perm",100,help='number of permutation for class neighbors method'),
+        UserInputDef("cn_user_pval",0.5,help='number of user p value for class neighbors method'),
+        UserInputDef("cn_min_threshold",10,help='min threshold for class neighbors method'),
+        UserInputDef("cn_max_threshold",16000,help='max threshold for class neighbors method'),
+        UserInputDef("cn_min_folddiff",5,help='min fold diff for class neighbors method'),
+        UserInputDef("cn_abs_diff",50,help='abs diff for class neighbors method'),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint(
             "contents", CAN_BE_ANY_OF, CONTENTS,0),
@@ -932,7 +937,7 @@ all_modules = [
     Module(
         "rank_genes_by_sample_ttest",
         [ClassLabelFile, SignalFile_Order], GeneListFile,
-        UserInputDef("gene_select_threshold", 0.05),
+        UserInputDef("gene_select_threshold", 0.05,help="threshold for sample ttest"),
         Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("gene_order", MUST_BE, "no", 1),
         Constraint(

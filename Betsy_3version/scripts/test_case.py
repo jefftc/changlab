@@ -1104,18 +1104,18 @@ def run_case37():
     
     """
 
-    network = bie3.backchain(  
-        rulebase.all_modules, rulebase.SignalFile_Filter,
-        bie3.Attribute(rulebase.SignalFile_Filter, "gene_order", "diff_ttest"),
-        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
-        )
 ##    network = bie3.backchain(  
-##        rulebase.all_modules, rulebase.SignalFile,
-##        bie3.Attribute(rulebase.SignalFile, "gene_order", "diff_ttest"),
+##        rulebase.all_modules, rulebase.SignalFile_Filter,
+##        bie3.Attribute(rulebase.SignalFile_Filter, "gene_order", "diff_ttest"),
 ##        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
-##        
-##        
 ##        )
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.SignalFile,
+        bie3.Attribute(rulebase.SignalFile, "gene_order", "diff_ttest"),
+        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
+        
+        
+        )
 
     #network = bie3.backchain(
     #    rulebase.all_modules, rulebase.SignalFile_Filter,
@@ -1133,17 +1133,17 @@ def run_case37():
     #    bie3.Attribute(rulebase.SignalFile_Filter, "gene_order","diff_ttest"),
     #    bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
     #    )
-    network = bie3.backchain(
-        rulebase.all_modules, rulebase.GeneListFile,
-        bie3.Attribute(rulebase.SignalFile_Filter, "gene_order","diff_ttest"),
-        bie3.Attribute(rulebase.GeneListFile, "gene_order", "diff_ttest"),
-        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
-        )
+##    network = bie3.backchain(
+##        rulebase.all_modules, rulebase.GeneListFile,
+##        bie3.Attribute(rulebase.SignalFile_Filter, "gene_order","diff_ttest"),
+##        bie3.Attribute(rulebase.GeneListFile, "gene_order", "diff_ttest"),
+##        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
+##        )
     
     
 
     network = bie3.complete_network(network)
-    #network = bie3.optimize_network(network)
+    network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 

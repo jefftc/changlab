@@ -1,7 +1,7 @@
 #calc_diffexp_with_sam.py
 import subprocess
 import os
-from Betsy import module_utils, 
+from Betsy import module_utils 
 from Betsy import bie3, rulebase
 from genomicode import config
 

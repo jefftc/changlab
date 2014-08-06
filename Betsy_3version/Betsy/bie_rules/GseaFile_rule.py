@@ -3,13 +3,15 @@ import SignalFile_rule
 
 GseaFile = DataType('GseaFile',
                     AttributeDef("contents",SignalFile_rule.CONTENTS,
-                               'unspecified','unspecified'),
-                    AttributeDef("permutation_type",["phenotype", "gene_set"], "phenotype","phenotype"),
+                               'unspecified','unspecified',help="contents"),
+                    AttributeDef("permutation_type",["phenotype", "gene_set"],
+                                 "phenotype","phenotype",help="permutation type"),
                     AttributeDef("geneset_database",['computational', 'curated', 'curated:biocarta',
                         'curated:canonical', 'curated:kegg', 'curated:reactome',
                         'gene_ontology', 'gene_ontology:process', 'motif',
                         'motif:tfactor', 'positional'],
-                        "gene_ontology:process","gene_ontology:process"),)
+                        "gene_ontology:process","gene_ontology:process",help="geneset database"),
+                    help="Gsea file")
 list_files = [GseaFile]
 all_modules=[
     Module(
@@ -25,7 +27,8 @@ all_modules=[
          Consequence("geneset_database",SET_TO_ONE_OF,['computational', 'curated', 'curated:biocarta',
                         'curated:canonical', 'curated:kegg', 'curated:reactome',
                         'gene_ontology', 'gene_ontology:process', 'motif',
-                        'motif:tfactor', 'positional']))]
+                        'motif:tfactor', 'positional']),
+        help="annotate genes with gsea method")]
     
 
 
