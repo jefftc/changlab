@@ -50,6 +50,7 @@ def name_outfile(data_node,user_input):
 
 
 def get_out_attributes(parameters,data_node):
+    new_parameters = parameters.copy()
     return parameters
 
 def find_antecedents(network, module_id,data_nodes, parameters):

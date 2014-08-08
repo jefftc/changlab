@@ -65,9 +65,7 @@ all_modules = [
         'plot_intensity_boxplot',
         SignalFile_rule.SignalFile, IntensityPlot,
         Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0,class1,test",
-             "class0", "class1", "class0,class1", "unspecified"]),
+            "contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="plot intensity boxplot"
         ),
@@ -77,10 +75,9 @@ all_modules = [
         'plot_actb_line',
         SignalFile_rule.SignalFile_Impute, ActbPlot,
         Constraint("preprocess",CAN_BE_ANY_OF,SignalFile_rule.PREPROCESS),
+        Constraint("missing_values",MUST_BE,'no'),
         Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0,class1,test",
-             "class0", "class1", "class0,class1", "unspecified"]),
+            "contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
         help="plot actb line"
@@ -91,9 +88,7 @@ all_modules = [
         'plot_affy_affx_line',
         SignalFile_rule.SignalFile,ControlPlot,
         Constraint("annotate", MUST_BE,'no'),
-        Constraint("contents",CAN_BE_ANY_OF,["train0","train1", "test",
-                             "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"]),
+        Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="plot affy affx line"
         ),
@@ -104,9 +99,7 @@ all_modules = [
        Constraint("format", MUST_BE,"gct"),
        Constraint("logged", MUST_BE,"no"),
        Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0,class1,test",
-             "class0", "class1", "class0,class1", "unspecified"]),
+            "contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
        help="plot illumina affx line"),
     Module(
@@ -116,9 +109,7 @@ all_modules = [
         Constraint("format", MUST_BE,"gct"),
         Constraint("logged", MUST_BE,"no"),
         Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0,class1,test",
-             "class0", "class1", "class0,class1", "unspecified"]),
+            "contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="plot illumina biotin line"),
        
@@ -129,9 +120,7 @@ all_modules = [
         Constraint("format", MUST_BE,"gct"),
         Constraint("logged", MUST_BE,"no"),
         Constraint(
-            "contents", CAN_BE_ANY_OF,
-            ["train0", "train1", "test", "class0,class1,test",
-             "class0", "class1", "class0,class1", "unspecified"]),
+            "contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="plot illumina housekeeping line"),
     ]

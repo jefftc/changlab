@@ -110,9 +110,7 @@ all_modules = [
          ReportFile,
          Constraint('preprocess',MUST_BE,'rma',0),
          Constraint("annotate",MUST_BE,"yes",0),
-         Constraint("contents",CAN_BE_ANY_OF,["train0","train1", "test",
-                             "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],0),
+         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
         #SignalFile
         Constraint('quantile_norm', MUST_BE, 'yes', 0),
         Constraint('combat_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
@@ -182,9 +180,7 @@ Module(
          plot_rule.HousekeepingPlot,
          plot_rule.Hyb_barPlot,
          SignalFile_rule.ControlFile],ReportFile,
-         Constraint("contents",CAN_BE_ANY_OF,["train0","train1", "test",
-                             "class0,class1,test","class0",
-                              "class1", "class0,class1","unspecified"],0),
+         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
          Constraint('preprocess',MUST_BE,'illumina',0),
          Constraint('annotate',MUST_BE,'yes',0),
 
@@ -252,7 +248,7 @@ Module(
          Constraint("preprocess",SAME_AS,0,4),
          Consequence('report_type',SET_TO,'normalize_file'),
          help="make normalize report for illumina"),
-                                      
+                                   
     Module(
         'make_cluster_report',
         [ClusterFile_rule.ClusterFile,
@@ -324,17 +320,17 @@ Module(
          Consequence("report_type",SET_TO,'geneset'),
         help="make geneset report"),
         
-##    Module(
-##        'make_diffgenes_report',
-##        [DiffExprFile_rule.DiffExprFile,DiffExprFile_rule.DiffExprFile,
-##         ClusterFile_rule.Heatmap,GatherFile_rule.GatherFile,
-##         GseaFile_rule.GseaFile],ReportFile,
-##         UserInputDef("hm_width",20),
-##         UserInputDef("hm_height",1),
-##         Constraint("diff_expr",MUST_BE,'t_test',0),
-##         Constraint("diff_expr",MUST_BE,'sam',1),
-##         Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),
-##         Consequence("report_type",SET_TO,'diffgenes')),
+    Module(
+        'make_diffgenes_report',
+        [DiffExprFile_rule.DiffExprFile,DiffExprFile_rule.DiffExprFile,
+         ClusterFile_rule.Heatmap,GatherFile_rule.GatherFile,
+         GseaFile_rule.GseaFile],ReportFile,
+         UserInputDef("hm_width",20),
+         UserInputDef("hm_height",1),
+         Constraint("gene_order",MUST_BE,'diff_ttest',0),
+         Constraint("gene_order",MUST_BE,'diff_sam',1),
+         Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),
+         Consequence("report_type",SET_TO,'diffgenes')),
     Module(
         'make_batch_effect_report',
         [SignalFile_rule.SignalFile,

@@ -18,7 +18,7 @@ datatype_match = {'RSEM_genes':'RSEM_genes_normalized__data.Level_3',
 def read_url(url):
     response = urllib2.urlopen(url)
     html = response.read()
-    timer.wait(2,'tcga')
+    #timer.wait(2,'tcga')
     return html
 
 def get_all_dates():
@@ -409,6 +409,7 @@ def main():
         txt_file = extract_files(args.input)
         process_data(args.data, txt_file, args.output)
         return
+    assert args.disease,'please specify disease'
     all_data = get_data_type(args.disease,require_date)
     if args.list_data:
         for i in all_data:
