@@ -143,8 +143,8 @@ CONST2STR = {
     }
 
 
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
 
 MAX_NETWORK_SIZE = 1024*8
 

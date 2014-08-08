@@ -154,57 +154,85 @@ def get_necessary_user_input(modules):
     return user_inputs
 
 def assign_args(args):
-    intypes = []
-    in_parameters = {}
-    in_identifiers = []
-    outtype = None
-    out_parameters = []
-    out_identifier = None
-    flag = None
-    for i, arg in enumerate(args):
+    inputs = []            # list of names of datatypes
+    in_parameters = {}     # index (into inputs) -> list of (key, value)
+    in_identifiers = {}    # index (into inputs) -> identifier (e.g. filename)
+    
+    output = None          # name of datatype
+    out_parameters = []    # list of (key, value)
+    out_identifier = None  # identifier
+
+    input_or_output = None
+    i = 0
+    while i < len(args):
+        arg = args[i]
         if arg == "--input":
-            assert len(args) > i + 1
-            intypes.append(args[i + 1])
-            flag = 'in'
+            assert len(args) >= i+1
+            inputs.append(args[i + 1])
+            input_or_output = arg
+            i += 2
         elif arg == "--output":
-            assert len(args) > i + 1
-            outtype = args[i+1]
-            flag = 'out'
+            assert len(args) >= i+1
+            assert not output, "multiple --output not allowed"
+            output = args[i+1]
+            input_or_output = arg
+            i += 2
+        elif arg == "--dattr" and input_or_output == "--input":
+            assert len(args) >= i+1
+            dattr = args[i+1]
+            i += 2
+
+            # Format: key=value
+            assert inputs
+            x = dattr.split('=', 1)
+            assert len(x) == 2, "--dattr should be <key>=<value>"
+            key, value = x
+            index = len(inputs) - 1
+            if index not in in_parameters:
+                in_parameters[index] = []
+            in_parameters[index].append((key,value))
+        elif arg == "--dattr" and input_or_output == "--output":
+            assert len(args) >= i+1
+            dattr = args[i+1]
+            i += 2
+            
+            # Format: <datatype>,<key>=<value>
+            x = dattr.split(",", 1)
+            assert len(x) == 2, \
+                   "--dattr for output should be <datatype>,<key>=<value>"
+            datatype, dattr = x
+            x = dattr.split('=', 1)
+            assert len(x) == 2, \
+                   "--dattr for output should be <datatype>,<key>=<value>"
+            key, value = x
+            out_parameters.append((datatype, key, value))
         elif arg == "--dattr":
-            assert len(args) > i + 1
-            if flag == 'in':
-                assert intypes
-                x = args[i + 1].split('=')
-                key, value = x
-                index = len(intypes) - 1
-                if index not in in_parameters:
-                    in_parameters[index] = []
-                in_parameters[index].append([key,value])
-            elif flag == 'out':
-                sub_datatype = args[i + 1].split(',')[0]
-                attr = ','.join(args[i + 1].split(',')[1:])
-                x = attr.split('=')
-                key = x[0]
-                value = x[1]
-                out_parameters.append([sub_datatype,key,value])
+            raise AssertionError, "--dattr before --input or --output"
         elif arg == '--input_file':
-            if flag == 'in':
-                if not len(intypes) == len(in_identifiers) + 1:
-                    in_identifiers.extend([None] * (len(intypes) - len(in_identifiers) - 1))
-                in_identifiers.append(args[i + 1])  
-            elif flag == 'out':
-                out_identifier = args[i + 1]
-    in_result = []
-    if not in_identifiers:
-        in_identifiers = ['']*len(intypes)
-    for i, intype in enumerate(intypes):
-        param = []
-        if in_parameters:
-            if i in in_parameters:
-                param = in_parameters[i]
-        in_result.append([intype,in_identifiers[i],param])
-    out_result = [outtype, out_identifier, out_parameters]
-    return in_result, out_result
+            assert input_or_output == "--input"
+            assert len(args) >= i+1
+            filename = args[i+1]
+            i += 2
+            index = len(inputs) - 1
+            assert index not in in_identifiers, \
+                   "only one --input_file per --input"
+            in_identifiers[index] = filename
+        elif arg == '--output_file':
+            assert input_or_output == "--output"
+            assert len(args) >= i+1
+            filename = args[i+1]
+            i += 2
+            assert not out_identifier
+            out_identifier = filename
+        else:
+            i += 1
+
+    in_results = []
+    for i, input_ in enumerate(inputs):
+        x = input_, in_identifiers.get(i, ""), in_parameters.get(i, [])
+        in_results.append(x)
+    out_result = output, out_identifier, out_parameters
+    return in_results, out_result
 
 def print_possible_inputs(network):
     print "Possible Inputs"
@@ -245,8 +273,9 @@ def main():
         help='output type')
     group.add_argument(
         '--dattr', default=[], type=str, action='append',
-        help='attribute for datatype in "datatype,key=value" or "key=value" '
-        'format')
+        help='Attribute for a Datatype.  For input datatype, attribute '
+        'should be given as: <datatype>,<key>=<value>.  For output '
+        'datatype, the format is: <key>=<value>.')
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
         '--png_file',  type=str, default=None,
@@ -338,6 +367,8 @@ def main():
         
     if args.output and not in_objects:
         assert network, 'no network generated'
+        print "No inputs given.  Here are the possibilities."
+        print
         print_possible_inputs(network)
         return 
     if args.dry_run:
