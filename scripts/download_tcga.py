@@ -1,10 +1,16 @@
+#!/usr/bin/env python
+
 import urllib2
 import re
 import argparse
+import sys
 import os
 from genomicode import parselib, filelib
 import arrayio
 from genomicode import genefinder,timer
+
+# retrieve_all_dates
+# retrieve_diseases
 
 datatype_match = {'RSEM_genes':'RSEM_genes_normalized__data.Level_3',
                   'RSEM_exons':'exon_expression__data.Level_3',
@@ -15,28 +21,90 @@ datatype_match = {'RSEM_genes':'RSEM_genes_normalized__data.Level_3',
                   'clinical':'Merge_Clinical.Level_1',
                   'rppa':'.RPPA_AnnotateWithGene.Level_3'}
 
+URL2HTML = {}
 def read_url(url):
-    response = urllib2.urlopen(url)
-    html = response.read()
-    #timer.wait(2,'tcga')
-    return html
+    global URL2HTML
 
-def get_all_dates():
+    if url not in URL2HTML:
+        #print "Reading %s" % url; sys.stdout.flush()
+        timer.wait(2, 'tcga')
+        response = urllib2.urlopen(url)
+        html = response.read()
+        URL2HTML[url] = html
+    return URL2HTML[url]
+
+
+def retrieve_all_dates():
+    # Return a dictionary of the date -> url.  url points to an HTML
+    # page for the runs for a specific date.  It has a table of the
+    # diseases and HREFs to the data for the diseases at that date.
+    all_dates = {}  # date -> url
+
+    # The latest data is listed on the "Dashboard" page.  The old data
+    # is shown on a different one.  Download them separately.
+    dashboard_url = (
+        'https://confluence.broadinstitute.org/display/GDAC/Dashboard-Stddata')
+    urls = read_and_extract_urls(dashboard_url)
+    diseases, date = get_disease_lastest(urls)
+    date = date.replace("_", "")
+    all_dates[date] = dashboard_url
+
+    # Read the old data.
     url = 'http://gdac.broadinstitute.org/runs/info/stddata__runs_list.html'
     html = read_url(url)
-    all_dates = {}
     link_tags = parselib.get_tags_and_contents(html,'a')
     for i in link_tags:
         url = parselib.get_href(i)
         date = re.search(r'[0-9]{4}_[0-9]{2}_[0-9]{2}', url)
-        if date:
-           date = date.group(0)
-           all_dates[date] = url   
+        if not date:
+            continue
+        date = date.group(0)
+        date = date.replace("_", "")
+        all_dates[date] = url
+        
+    assert all_dates, "No dates found"
     return all_dates
 
 
-def download_file(disease,date,datatype):
-    link = 'http://gdac.broadinstitute.org/runs/stddata__'+date+'/data/'+disease+'/'+date.replace('_','')+'/'
+def extract_all_hrefs(html):
+    x = parselib.get_tags_and_contents(html,'a')
+    x = [parselib.get_href(x) for x in x]
+    x = [x for x in x if x]
+    x = [x for x in x if not x.startswith("#")]
+    return x
+
+
+def retrieve_diseases(date):
+    all_dates = retrieve_all_dates()
+    assert date in all_dates, "Unknown date: %s" % date
+    url = all_dates[date]
+    
+    # URL:
+    # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
+    pattern = re.compile(
+        r'http://%s/runs/stddata__[0-9_]{10}/data/([A-Z]+)/([0-9]{8})' % (
+            "gdac.broadinstitute.org"), re.IGNORECASE)
+
+    diseases = []
+    html = read_url(url)
+    for href in extract_all_hrefs(html):
+        m = pattern.match(href)
+        if not m:
+            continue
+        x = m.group(1)
+        diseases.append(x)
+    assert diseases, "could not find diseases"
+    return diseases
+
+
+def download_file(disease, date, datatype):
+    assert len(date) == 8
+    long_date = "%s_%s_%s" % (date[:4], date[4:6], date[6:8])
+    # URL:
+    # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
+    link = "http://%s/runs/stddata__%s/data/%s/%s/" % (
+        "gdac.broadinstitute.org", long_date, disease, date)
+        
     newlinks = get_all_datas_on_page(link)
     for newlink in newlinks:
         if datatype_match[datatype] in newlink and disease+'-FFPE' not in newlink:
@@ -48,32 +116,50 @@ def download_file(disease,date,datatype):
     assert ValueError('download fails')
 
     
-def get_data_type(disease,date):
-    link = 'http://gdac.broadinstitute.org/runs/stddata__'+date+'/data/'+disease+'/'+date.replace('_','')+'/'
+def get_data_type(disease, date):
+    assert len(date) == 8
+    long_date = "%s_%s_%s" % (date[:4], date[4:6], date[6:8])
+    # URL:
+    # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
+    link = "http://%s/runs/stddata__%s/data/%s/%s/" % (
+        "gdac.broadinstitute.org", long_date, disease, date)
     newlinks = get_all_datas_on_page(link)
     result = []
-    for datatype in datatype_match:
-        for newlink in newlinks:
-            if datatype_match[datatype] in newlink and disease+'-FFPE' not in newlink:
-                  if datatype not in result:
-                      result.append(datatype)
+    for newlink in newlinks:
+        for datatype in datatype_match:
+            if datatype_match[datatype] not in newlink:
+                continue
+            # Brittle
+            if disease+'-FFPE' in newlink:
+                continue
+            assert datatype not in result, "dup datatype"
+            result.append(datatype)
     return result
                 
             
 def get_disease_lastest(urls):
-    disease = []
-    pattern = re.compile(r'http://gdac.broadinstitute.org/runs/stddata__[0-9_]*/[A-Z]*.html')
+    # Return list of diseases, latest_date
+    diseases = []
+    pattern = re.compile(
+        r'http://gdac.broadinstitute.org/runs/stddata__[0-9_]*/[A-Z]*.html')
     lastest = None
+    
     for url in urls:
         disease_link = re.findall(pattern, url)
-        if not disease_link:
-            continue
         for link in disease_link:
-            result = re.search(r'[A-Z]+', link)
-            lastest = re.search(r'[0-9]{4}_[0-9]{2}_[0-9]{2}',link).group(0)
-            if result and result.group(0) not in disease:
-               disease.append(result.group(0))
-    return disease,lastest 
+            x = re.search(r'[A-Z]+', link)
+            if not x:
+                continue
+            disease = x.group(0)
+            assert disease not in diseases
+            diseases.append(disease)
+
+            x = re.search(r'[0-9]{4}_[0-9]{2}_[0-9]{2}', link)
+            assert x, "date not found"
+            date = x.group(0)
+            assert not lastest or lastest == date
+            lastest = date
+    return diseases, lastest 
 
 
 def get_all_datas_on_page(page):
@@ -82,21 +168,19 @@ def get_all_datas_on_page(page):
     link_tags = parselib.get_tags_and_contents(html,'a')
     for i in link_tags:
         url = parselib.get_href(i)
+        # This is brittle.
         if url.startswith("gdac.broadinstitute.org_") and url.endswith(".gz"):
-                links.append(url)
-    return links
-
-
-
-def read_date_page(page):
-    html = read_url(page)
-    links = []
-    link_tags = parselib.get_tags_and_contents(html,'a')
-    for i in link_tags:
-        url = parselib.get_href(i)
-        if url and url.startswith('http'):
             links.append(url)
     return links
+
+
+def read_and_extract_urls(page):
+    # Read a webpage a return a list of the URLs on that page.
+    html = read_url(page)
+    x = parselib.get_tags_and_contents(html,'a')
+    x = [parselib.get_href(x) for x in x]
+    x = [x for x in x if x]
+    return x
 
 
 def extract_files(gzfile):
@@ -297,9 +381,9 @@ def format_firehose_rppa(filename, output):
         f.write("\t".join(map(str, x))+'\n')
     f.close()
             
-def process_data(data,txt_file,outfile):
+def process_data(data, txt_file, outfile):
     if data == 'RSEM_genes':
-            format_firehose_rsem(txt_file, outfile)
+        format_firehose_rsem(txt_file, outfile)
     elif data == 'RSEM_exons':
         format_firehose_exonexp(txt_file, outfile)
     elif data == 'humanmethylation450':
@@ -313,119 +397,130 @@ def process_data(data,txt_file,outfile):
     else:
         raise
     print 'processing finished '
+
     
 def main():
-    parser = argparse.ArgumentParser(description='download_tcga')
-    parser.add_argument(
-        '--download_only', dest='download', action='store_const',
-        const=True, default=False, help='Download the raw data file')
-    parser.add_argument(
-        '--process_only', dest='process', action='store_const',
-        const=True, default=False, help='process the gz data file')
-    parser.add_argument(
-        '--input', dest='input',default=None,type=str,
-        help='input file for process')
-    parser.add_argument(
-        '--list_diseases', dest='list_disease', action='store_const',
-        const=True,default=False, help='show the available disease types')
-        
-    parser.add_argument(
-        '--disease', dest='disease', default=None, type=str,
-        help='which disease to download data from')
+    parser = argparse.ArgumentParser()
     
     parser.add_argument(
-        '--list_dates', dest='list_dates', action='store_const',
-        const=True, default=False,
-        help='show the dates that have data,if disease is given, show the dates for this disease')
-
+        '--disease', 
+        help='which disease to download data from.  Format: BRCA')
     parser.add_argument(
-        '--date', dest='date', default=None, type=str,
-        help='download data from this date, if not given, get the most recent.')
-
+        '--date', 
+        help='download data from this date, if not given, get the most '
+        'recent.  Format: 20140715')
+    x = sorted(datatype_match)
+    x = ", ".join(x)
+    parser.add_argument(
+        '--data', 
+        help="Which type of data to download.  Possibilities: %s" % x)
+    
+    parser.add_argument(
+        'output', nargs="?", 
+        help='output file for the processed data')
+    
+    parser.add_argument(
+        '--list_dates', action='store_true',
+        help='show the dates that have data.  If disease is given, show the '
+        'dates for this disease')
+    parser.add_argument(
+        '--list_diseases', action='store_true',
+        help='show the available diseases.  If date is not given, '
+        'show for the latest date.')
     parser.add_argument(
         '--list_data', dest='list_data', action='store_const',
         const=True, default=False,
-        help='show the data available for the specify disease and date, if not, give the lastest one')
+        help='show the data available for the specify disease and date, '
+        'if date is not given, give the lastest one')
 
     parser.add_argument(
-        '--data', dest='data', default=None, type=str,
-        help='give the data type')
-    
+        '--download_only', action='store_true',
+        help='Download the raw data file without processing.')
     parser.add_argument(
-        'output', nargs="?", default=None, type=str,
-        help='output file for the processed data')
-   
+        '--process_only', action='store_true',
+        help='Process a previously downloaded file.  Must be the original '
+        '.tar.gz archive.')
+    parser.add_argument('--input', help='input file for process')
+
     args = parser.parse_args()
     if args.data:
-        assert args.data in datatype_match.keys(),'the data you enter is not recognized'
-    if args.list_data:
-        assert args.disease,'please specify the disease'
-    if args.download:
-        assert args.disease,'please specify the disease'
-        assert args.data,'please specify the data'
-    if args.process:
-        assert args.data,'please specify the data'
-        
-    homepage = 'https://confluence.broadinstitute.org/display/GDAC/Dashboard-Stddata'
-    new_links = read_date_page(homepage)
-    lastest_diseases, lastest_date = get_disease_lastest(new_links)
-    all_dates_dict = get_all_dates()
-    all_dates_dict[lastest_date] = homepage
-    all_dates = all_dates_dict.keys()
-    all_dates.sort(reverse=True)
-    all_diseases = lastest_diseases
-    disease_in_date_dict = {}
-    for date in all_dates:
-        urls = read_date_page(all_dates_dict[date])
-        diseases_in_date, x = get_disease_lastest(urls)
-        disease_in_date_dict[date] = diseases_in_date
-        all_diseases = list(set(all_diseases).union(set(diseases_in_date)))
-    if args.list_disease:
+        assert args.data in datatype_match.keys(), \
+               'the data you enter is not recognized'
+    if args.date:
+        assert re.search(r'[0-9]{8}', args.date)
+    if args.download_only:
+        assert args.disease, 'please specify the disease'
+        assert args.data, 'please specify the data'
+    if args.process_only:
+        assert args.data, 'please specify the data'
+
+    if args.list_dates:
+        assert not args.date
+        assert not args.data
+        print "Dates"
+        if args.disease:
+            raise NotImplementedError
+        else:
+            all_dates = retrieve_all_dates()
+            for date in sorted(all_dates):
+                print date
+        return
+    elif args.list_diseases:
+        assert not args.disease
+        assert not args.data
+
+        all_dates = retrieve_all_dates()
+        date = sorted(all_dates)[-1]
+        if args.date:
+            date = args.date
+        all_diseases = retrieve_diseases(date)
+        print "Diseases available at %s" % date
         for name in all_diseases:
             print name
-    if args.disease:
-        assert args.disease in all_diseases
-    if args.list_dates:
-        if not args.disease:
-            for date in all_dates:
-                print date
-        else:
-            date_for_disease = []
-            for date in all_dates_dict:
-                if args.disease in disease_in_date_dict[date]:
-                    date_for_disease.append(date)
-            date_for_disease.sort(reverse=True)
-            for date in date_for_disease:
-                print date
-    if args.date:
-        assert re.search(r'[0-9]{4}_[0-9]{2}_[0-9]{2}',args.date)
-        assert args.date in all_dates,'there is no data available for the date you enter'
-        require_date = args.date
-    else:
-        require_date = lastest_date
-    if args.process:
+        return
+    elif args.list_data:
+        assert args.disease, "disease must be given."
+        all_dates = retrieve_all_dates()
+        date = sorted(all_dates)[-1]
+        if args.date:
+            date = args.date
+
+        all_data = get_data_type(args.disease, date)
+        for d in all_data:
+            print d
+        return
+
+
+    if args.process_only:
         assert args.input
-        assert os.path.exists(args.input),'%s does not exists'%args.input
+        assert os.path.exists(args.input), '%s does not exists' % args.input
         txt_file = extract_files(args.input)
         process_data(args.data, txt_file, args.output)
-        return
-    assert args.disease,'please specify disease'
-    all_data = get_data_type(args.disease,require_date)
-    if args.list_data:
-        for i in all_data:
-            print i
-    if args.download:
+    elif args.download_only:
+        assert args.disease, "disease must be given."
+        assert args.data, "data must be given."
+
+        all_dates = retrieve_all_dates()
+        date = sorted(all_dates)[-1]
+        if args.date:
+            date = args.date
         download_file(args.disease,require_date,args.data)
     else:
-        if args.list_disease or args.list_dates or args.list_data:
-            return
-        assert args.disease in disease_in_date_dict[require_date], (
-            'the diesease %s is not found in the date %s' %(
-                args.disease,args.require_date))
-        assert args.data in all_data,('%s is not found in %s for %s' %(
-            args.data,require_date,args.disease))
-        download_filename = download_file(args.disease,require_date,args.data)
-        txt_file = extract_files(download_filename)
+        assert args.disease, "Please specify a disease to download."
+        assert args.data, "data must be given."
+
+        all_dates = retrieve_all_dates()
+        date = sorted(all_dates)[-1]
+        if args.date:
+            date = args.date
+            
+        #assert args.disease in disease_in_date_dict[require_date], (
+        #    'the diesease %s is not found in the date %s' %(
+        #        args.disease,args.require_date))
+        #assert args.data in all_data,('%s is not found in %s for %s' %(
+        #    args.data,require_date,args.disease))
+        filename = download_file(args.disease, date, args.data)
+        txt_file = extract_files(filename)
         process_data(args.data, txt_file, args.output)
             
 if __name__ == '__main__':
