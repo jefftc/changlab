@@ -28,7 +28,6 @@ all_modules = [
             PcaAnalysis_rule.PcaPlot,
             ],
         ReportFile,
-        
         Constraint(
             'preprocess', CAN_BE_ANY_OF, ['mas5','agilent','loess','unknown','tcga','rsem'],
             0),
@@ -328,6 +327,9 @@ Module(
          UserInputDef("hm_width",20),
          UserInputDef("hm_height",1),
          Constraint("gene_order",MUST_BE,'diff_ttest',0),
+         Constraint("gene_order",SAME_AS,0,3),
+         Constraint("contents",MUST_BE,'unspecified',0),
+         Constraint("contents",MUST_BE,'unspecified',1),
          Constraint("gene_order",MUST_BE,'diff_sam',1),
          Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),
          Consequence("report_type",SET_TO,'diffgenes')),

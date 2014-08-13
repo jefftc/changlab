@@ -299,7 +299,6 @@ def main():
     input_list, output = assign_args(sys.argv)
     outtype, out_identifier, out_attributes = output
     # test
-    assert not out_identifier,' --input_file is not for outtype'
     for x in input_list:
         intype, identifier, attributes = x
         if identifier:

@@ -66,6 +66,27 @@ Preprocess Usage
      --output 'SignalFile' \
      --dattr 'SignalFile,preprocess=loess' \
      --png_file 'out.png'
+ ----------------------------------------------------------------  
+ (5) Betsy can download TCGA data and process it to a SignalFile
+    Example:
+   python run_rule.py \
+   --input 'TCGAID'  \
+   --mattr 'disease=BLCA' \
+   --output 'SignalFile'  \
+   --dattr 'SignalFile,preprocess=tcga' \
+   --dattr 'TCGAFile,data=rppa' \
+   --png_file 'out.png' 
+----------------------------------------------------------------
+(6) Betsy can preprocess RNA Seq with RSEM and convert into a SignalFile
+   python run_rule.py \
+   --input 'RNA_SeqFile' \
+   --dattr 'format_type=fastqfolder' \
+   --input_file '/home/xchen/NGS/try_RSEM/sample_data' \
+   --output 'SignalFile' \
+   --dattr SignalFile,preprocess=rsem \
+   --input SampleGroupFile \
+   --input_file '/home/xchen/NGS/try_RSEM/sample_data/samplegroup.txt' \
+   --mattr 'fastq_ref=human' --png_file 'out.png'
 =============================================================================
 Process Usage
 Betsy can do predataset,log,unlog,gene_filter,quantile,combat, shiftscale,dwd,bfrm, predataset,gene_center,gene_normalize,gene_order, annotate, rename_sample, platform,
@@ -73,7 +94,28 @@ num_features,unique_genes, duplicate_probe,group_fc,change format,for signal fil
 
 The option of the attributes are:
     preprocess:   unknown, illumina, agilent, mas5, rma, loess
-    missing_algorithm: none, median_fill, zero_fill             filter:no, yes     dwd_norm: no, yes    bfrm_norm: no, yes    quantile_norm: no, yes    shiftscale_norm: no, yes    combat_norm: no", yes    predataset: no, yes    gene_center: no, mean, median    gene_normalize:  no, variance, sum_of_squares    gene_order:no, class_neighbors, gene_list, t_test_p, t_test_fdr    annotate: no,yes    rename_sample: no, yes    platform: yes,no    num_features: yes,no    unique_genes: no, average_genes, high_var, first_gene,    duplicate_probe:no, closest_probe, high_var_probe        group_fc: yes,no    contents:unspecified, train0, train1, test, class0,class1,test,        class0, class1, class0,class1,          logged: no, yes    format: tdf, gct
+    missing_algorithm: none, median_fill, zero_fill         
+    filter:no, yes 
+    dwd_norm: no, yes
+    bfrm_norm: no, yes
+    quantile_norm: no, yes
+    shiftscale_norm: no, yes
+    combat_norm: no", yes
+    predataset: no, yes
+    gene_center: no, mean, median
+    gene_normalize:  no, variance, sum_of_squares
+    gene_order:no, class_neighbors, gene_list, t_test_p, t_test_fdr
+    annotate: no,yes
+    rename_sample: no, yes
+    platform: yes,no
+    num_features: yes,no
+    unique_genes: no, average_genes, high_var, first_gene,
+    duplicate_probe:no, closest_probe, high_var_probe    
+    group_fc: yes,no
+    contents:unspecified, train0, train1, test, class0,class1,test,
+        class0, class1, class0,class1,      
+    logged: no, yes
+    format: tdf, gct
 
  ----------------------------------------------------------------
     Example:
@@ -239,4 +281,45 @@ When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene
 	--dattr 'SignalFile,preprocess=illumina' \
 	--dattr 'SignalFile,gene_center=median' \
 	--png_file 'out.png'
---------------------------------------------------
+==============================================================================
+DNA NGS Usage
+When given a DNA fa file, require a vcf file.
+python run_rule.py \
+--output VcfFile \
+--dattr  VcfFile,vcf_filter=yes \
+--input FastqFile --input_file /data/xchen/human/human1_cut.fa \
+--png_file out.png
+==============================================================================
+Clinical outcomes Usage
+Given an expression file and clinical file, doing clinical outcome analysis.
+python run_rule.py \
+--input SignalFile_Postprocess \
+--input_file  /home/xchen/chencode/examples/survial_analysis/GSE17907.rma.gz \
+--input ClinicalFile \
+--input_file /home/xchen/chencode/examples/survial_analysis/GSE17907.stdclin \
+--mattr outcome=DMFS \
+--mattr dead=DMFS_DEAD \
+--mattr genename=117_at,1007_s_at \
+--output ClinicalAnalysis   \
+--png_file out.png --text_file 1.txt
+==============================================================================
+EMT analysis Usage
+Given an expression file and a cellType File, do EMT analysis on some genesets.
+
+python run_rule.py \
+--input SignalFile_Postprocess  \
+--input_file /data/genomidata/stem_cell/EMT.cent.rma.gz \
+--input CellTypeFile \
+--input_file /data/genomidata/stem_cell/EMT.stdclin  \
+--output EMTAnalysis \
+--png_file 'out.png' \
+--mattr 'geneset_value=CDH1,CDH2,VIM,ABCA1' \
+--output_file 'text0'
+==============================================================================
+Pathway Signature Score Usage
+python run_rule.py \
+--input 'ExpressionFiles' \
+--input_file '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+--output 'SignatureScore'  \
+--mattr 'platform_name=HG_U133A' \
+--png_file 'out.png' --text_file 'out.txt' 

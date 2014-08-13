@@ -5,7 +5,7 @@ def run_case01():
     in_data = rulebase.GEOSeries
     out_data = rulebase.SignalFile.output(preprocess="rma",
         format="tdf", logged="yes",gene_center='mean',#annotate='yes',
-        missing_values="no",quantile_norm='yes',#contents="class0,class1"
+        quantile_norm='yes',#contents="class0,class1"
                                           )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
@@ -33,10 +33,11 @@ def run_case02():
     out_data = rulebase.SignalFile.output(
         preprocess="illumina",
         format="tdf", logged="yes",
-        missing_values="no", shiftscale_norm='yes'
+         shiftscale_norm='yes'
         )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
 
     print "INPUT:"
@@ -54,7 +55,7 @@ def run_case03():
     in_data = rulebase.GEOSeries
     out_data = rulebase.SignalFile.output(preprocess="illumina",
         format="tdf",  logged="yes",
-        missing_values="no")
+        )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
@@ -82,14 +83,15 @@ def run_case04():
     # Work around is to make gene_center="unknown" and
     # gene_normalize="unknown".  Better solution is to rethink how the
     # SignalFiles work.
-    out_data = rulebase.PrettySignalFile.output(
+    out_data = rulebase.SignalFile.output(
         preprocess="illumina",
         format="tdf", logged="yes",
-        missing_values="no", gene_order='t_test_p',
+        gene_order='t_test_p',
         #gene_center="unknown", gene_normalize="unknown",
         )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
 
     print "INPUT:"
@@ -140,6 +142,7 @@ def run_case07():
         rulebase.all_modules, rulebase.SignalFile,
         bie3.Attribute(rulebase.SignalFile,"contents","class0,class1"),
          bie3.Attribute(rulebase.SignalFile,"preprocess","rma"),
+        bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes")
         )
     network = bie3.optimize_network(network)
 
@@ -216,7 +219,7 @@ def run_case11():
         network = bie3.optimize_network(network)
     else:
         # network too large.
-        out_data = rulebase.PrettySignalFile.output()
+        out_data = rulebase.SignalFile.output()
         network = bie3.backchain(rulebase.all_modules, out_data)
         network = bie3.optimize_network(network)
 
@@ -234,8 +237,8 @@ def run_case12():
         bfrm_norm='no', combat_norm='no', contents='class1',
         dwd_norm='no', filter='no', format='tdf', gene_center='no',
         gene_normalize='no', logged='yes', missing_algorithm='zero_fill',
-        missing_values='no', predataset='no', preprocess='mas5',
-        processing_step='merge', quantile_norm='no', shiftscale_norm='no')
+         predataset='no', preprocess='mas5',
+         quantile_norm='no', shiftscale_norm='no')
 
     network = bie3.backchain(rulebase.all_modules, out_data)
     network = bie3.optimize_network(network)
@@ -248,9 +251,9 @@ def run_case13():
        four different cluster algorithms'''
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
-        bie3.Attribute(rulebase.PrettySignalFile, "preprocess", "mas5"),
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "mas5"),
         bie3.Attribute(rulebase.ReportFile, "report_type", "cluster"),
-        bie3.Attribute(rulebase.PrettySignalFile, "quantile_norm", "yes"),
+        bie3.Attribute(rulebase.SignalFile, "quantile_norm", "yes"),
         bie3.Attribute(rulebase.ClusterFile, "cluster_alg", "pca"),
         bie3.Attribute(rulebase.Heatmap, "cluster_alg", "pca"),
         )
@@ -269,9 +272,9 @@ def run_case14():
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
-        bie3.Attribute(rulebase.PrettySignalFile,"preprocess","unknown"),
-        bie3.Attribute(rulebase.PrettySignalFile,"contents","test"),
-        #bie3.Attribute(rulebase.PrettySignalFile,"quantile_norm","yes")
+        bie3.Attribute(rulebase.SignalFile,"preprocess","unknown"),
+        bie3.Attribute(rulebase.SignalFile,"contents","test"),
+        bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes")
 
         )
     network = bie3.optimize_network(network)
@@ -297,7 +300,7 @@ def run_case15():
     #bie3.complete_network(network)
     #network = bie3.optimize_network(network)
 
-    out_data = rulebase.PrettySignalFile.output(
+    out_data = rulebase.SignalFile.output(
         gene_order='class_neighbors', preprocess='illumina')
     network = bie3.backchain(rulebase.all_modules, out_data)
 
@@ -355,8 +358,9 @@ def run_case17():
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ClassifyFile,
         bie3.Attribute(rulebase.ClassifyFile,"classify_alg","weighted_voting"),
-        bie3.Attribute(rulebase.PrettySignalFile,"quantile_norm","yes")
+        bie3.Attribute(rulebase.SignalFile,"quantile_norm","yes")
         )
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
@@ -387,9 +391,9 @@ def run_case18():
 
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
-        bie3.Attribute(rulebase.PrettySignalFile, "preprocess", "mas5"),
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "mas5"),
         bie3.Attribute(rulebase.ReportFile, "report_type", "cluster"),
-        bie3.Attribute(rulebase.PrettySignalFile, "quantile_norm", "yes"),
+        bie3.Attribute(rulebase.SignalFile, "quantile_norm", "yes"),
         bie3.Attribute(rulebase.ClusterFile, "cluster_alg", "pca"),
         bie3.Attribute(rulebase.Heatmap, "cluster_alg", "pca"),
         )
@@ -425,7 +429,7 @@ def run_case19():
 
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
-        bie3.Attribute(rulebase.PrettySignalFile, "preprocess", "mas5"),
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "mas5"),
         bie3.Attribute(rulebase.ReportFile, "report_type", "cluster"),
         )
     network = bie3.optimize_network(network)
@@ -462,16 +466,16 @@ def run_case20():
     #    preprocess='illumina', missing_algorithm="zero_fill",
     #    missing_values='no', logged='yes', quantile_norm="yes",
     #    predataset='yes')
-    #out_data = rulebase.SignalFile.output(
-    #    preprocess='illumina',
-    #    format="gct",
-    #    missing_values="unknown",
-    #    logged="yes",
-    #    )
+    out_data = rulebase.SignalFile.output(
+        preprocess='illumina',
+        format="gct",
+        logged="yes",
+        )
     #    #missing_values="no",
     #    #missing_algorithm="zero_fill",
     #    #quantile_norm="yes")
     network = bie3.backchain(rulebase.all_modules, out_data)
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
@@ -492,9 +496,9 @@ def run_case21():
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile,
         bie3.Attribute(rulebase.ReportFile,"report_type","normalize_file"),
-        bie3.Attribute(rulebase.PrettySignalFile,"preprocess","mas5"),
-        bie3.Attribute(rulebase.PrettySignalFile,"contents","test"),
-        bie3.Attribute(rulebase.PrettySignalFile,'gene_center',"median"),
+        bie3.Attribute(rulebase.SignalFile,"preprocess","mas5"),
+        bie3.Attribute(rulebase.SignalFile,"contents","test"),
+        bie3.Attribute(rulebase.SignalFile,'gene_center',"median"),
         )
     network = bie3.optimize_network(network)
     bie3.print_network(network)
@@ -518,8 +522,8 @@ def run_case22():
 
     """
     network = bie3.backchain(
-        rulebase.all_modules, rulebase.PrettySignalFile,
-        #bie3.Attribute(rulebase.PrettySignalFile,"gene_order","t_test_p"),
+        rulebase.all_modules, rulebase.SignalFile,
+        bie3.Attribute(rulebase.SignalFile,"gene_order","t_test_p"),
        )
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
@@ -615,10 +619,11 @@ def run_case25():
     """
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ActbPlot,
-        bie3.Attribute(rulebase.SignalFile_Merge, "preprocess", "agilent"),
+        bie3.Attribute(rulebase.ActbPlot, "preprocess", "agilent"),
         )
+    network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
-
+    
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
@@ -879,51 +884,51 @@ def run_case31():
         filter='yes',
         quantile_norm="yes",
         dwd_norm='yes',
-        shiftscale_norm="yes",
-        bfrm_norm='yes',
-        combat_norm='yes',
-        predataset='yes',
+##        shiftscale_norm="yes",
+##        bfrm_norm='yes',
+##        combat_norm='yes',
+##        predataset='yes',
         )
 
     network = bie3.backchain(rulebase.all_modules, out_data)
 
-    # Make sure quantile_norm occurs before dwd, shiftscale, bfrm, combat.
-    network = bie3.remove_data_node(
-        network,
-        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
-        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
-        )
-    network = bie3.remove_data_node(
-        network,
-        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
-        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "yes"),
-        )
-    network = bie3.remove_data_node(
-        network,
-        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
-        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "yes"),
-        )
-    network = bie3.remove_data_node(
-        network,
-        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
-        bie3.Attribute(rulebase.SignalFile_Merge, "combat_norm", "yes"),
-        )
-    # Make sure bfrm occurs before dwd, shiftscale, combat.
-    network = bie3.remove_data_node(
-        network,
-        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
-        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
-        )
-    network = bie3.remove_data_node(
-        network,
-        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
-        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "yes"),
-        )
-    network = bie3.remove_data_node(
-        network,
-        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
-        bie3.Attribute(rulebase.SignalFile_Merge, "combat_norm", "yes"),
-        )
+##    # Make sure quantile_norm occurs before dwd, shiftscale, bfrm, combat.
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+##        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
+##        )
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+##        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "yes"),
+##        )
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+##        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "yes"),
+##        )
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile_Merge, "quantile_norm", "no"),
+##        bie3.Attribute(rulebase.SignalFile_Merge, "combat_norm", "yes"),
+##        )
+##    # Make sure bfrm occurs before dwd, shiftscale, combat.
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
+##        bie3.Attribute(rulebase.SignalFile_Merge, "dwd_norm", "yes"),
+##        )
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
+##        bie3.Attribute(rulebase.SignalFile_Merge, "shiftscale_norm", "yes"),
+##        )
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile_Merge, "bfrm_norm", "no"),
+##        bie3.Attribute(rulebase.SignalFile_Merge, "combat_norm", "yes"),
+##        )
 
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
@@ -1114,7 +1119,6 @@ def run_case37():
         bie3.Attribute(rulebase.SignalFile, "gene_order", "diff_ttest"),
         bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
         
-        
         )
 
     #network = bie3.backchain(
@@ -1147,7 +1151,47 @@ def run_case37():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+def run_case38():
+    """test case for make_normalize_file, 
+       SignalFile -> plot_intensity_boxplot[80], preprocess of SignalFile is
+       ['mas5', 'agilent', 'loess', 'unknown', 'tcga', 'rsem'] or
+       illumina or rma, but we expect it to be only illumina.
+       Also we only want the ReportFile from make_normalize_report_illumina[2],
+       but it shows make_normalize_report[1] as well.
+    """
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
+        bie3.Attribute(rulebase.SignalFile, "quantile_norm","yes"),
+        
+        )
+##    network = bie3.remove_data_node(
+##        network,
+##        bie3.Attribute(rulebase.SignalFile, "preprocess", "rsem"),
+##        )
 
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case39():
+    """test case for make_normalize_file, 
+       when we require a ReportFile without any normalization,
+       the network only contains 1 node. This may be because the conflicts
+       between two same Pcaplot pipeline.
+    """
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina")
+        )
+
+    network = bie3.complete_network(network)
+    network = bie3.optimize_network(network)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+    
 def main():
     #run_case01()
     #run_case02()
@@ -1186,8 +1230,9 @@ def main():
     #run_case34()
     #run_case35()
     #run_case36()
-    run_case37()
-
+    #run_case37()
+    #run_case38()
+    run_case39()
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")

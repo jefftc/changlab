@@ -47,9 +47,9 @@ def run(in_nodes,parameters,user_input, network):
         w(htmllib.P())
         w('I generated a file that contains the sam results')
         w(htmllib.P())
-        sam_result = os.path.join(result_files[1],'sam_result.txt')
-        sam_fig = os.path.join(result_files[1],'sam_plot.png')
-        w(htmllib.A(sam_result, sam_result))
+        #sam_result = os.path.join(result_files[1],'sam_result.txt')
+        #sam_fig = os.path.join(result_files[1],'sam_plot.png')
+        w(htmllib.A(result_files[1], result_files[1]))
         w(htmllib.P())
         #---------------------------------
         name = 'Table 1: Table of significant genes p<0.05 sorted in order of significance'
@@ -98,11 +98,11 @@ def run(in_nodes,parameters,user_input, network):
             w(htmllib.A(str(more_genes)+' more annotations', result_files[3]))
             w(htmllib.P())
         #-----------------------------------
-        w(htmllib.A(htmllib.IMG(height=500,
-                src=sam_fig), href=sam_fig))
-        w(htmllib.P())
-        name = 'Figure 2: SAM plot'
-        w(htmllib.B(name))
+##        w(htmllib.A(htmllib.IMG(height=500,
+##                src=sam_fig), href=sam_fig))
+##        w(htmllib.P())
+##        name = 'Figure 2: SAM plot'
+##        w(htmllib.B(name))
         #-----------------------------------
         w(htmllib.P())
         w('The full result of Gather is in')
@@ -182,12 +182,12 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
 def find_antecedents(network, module_id,data_nodes,parameters):
     data_node1 = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='DiffExprFile',
-                                             optional_key='diff_expr',
-                                             optional_value='t_test')
+                                             optional_key='gene_order',
+                                             optional_value='diff_ttest')
     data_node2 = module_utils.get_identifier(network, module_id,
                                             data_nodes,datatype='DiffExprFile',
-                                             optional_key='diff_expr',
-                                             optional_value='sam')
+                                             optional_key='gene_order',
+                                             optional_value='diff_sam')
     data_node3 = module_utils.get_identifier(network, module_id, data_nodes,
                                            datatype='Heatmap')
     data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
