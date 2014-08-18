@@ -1642,12 +1642,16 @@ def main():
     parser.add_option(
         "--libpath", action="append", default=[],
         help="Add to the Python library search path.")
-    # XXX way to save processed matrix to a file
+    # XXX need way to save processed matrix to a file
 
+    # For discrete clusters, like in k-means.
     parser.add_option("--gene_cluster_file", help="kgg file")
     parser.add_option("--array_cluster_file", help="kag file")
+    # For trees.
     parser.add_option("--gene_tree_file", help="gtr file")
     parser.add_option("--array_tree_file", help="atr file")
+    # A way to associate trees with specific cluster for the branches.
+    # (Not required for trees).
     parser.add_option("--gene_tree_cluster_file", help="gtc file")
     parser.add_option("--array_tree_cluster_file", help="atc file")
     

@@ -575,20 +575,25 @@ def rename_col_id(MATRIX, rename_list, ignore_missing):
         from_str, to_str = x
         rename_all.append((from_str, to_str))
 
+    name = arrayio.COL_ID
+    if name not in MATRIX._col_names:
+        name = MATRIX._synonyms[name]
+    assert name in MATRIX._col_names, "I can not find the sample names."
+    names = MATRIX.col_names(name)
+
     if not ignore_missing:
         missing = []
         for (from_str, to_str) in rename_all:
-            if from_str not in MATRIX.col_names():
+            if from_str not in names:
                 missing.append(from_str)
-        x = ", ".join(missing)
-        assert not missing, "Missing col ids: %s" % x
+        x1 = ", ".join(missing)
+        x2 = names
+        if len(x2) > 5:
+            x2 = x2[:5] + ["..."]
+        x2 = ", ".join(x2)
+        assert not missing, "Can't find col ids (%s) in %s" % (x1, x2)
 
     MATRIX_new = MATRIX.matrix()
-    name = arrayio.COL_ID
-    if name not in MATRIX_new._col_names:
-        name = MATRIX_new._synonyms[name]
-    assert name in MATRIX_new._col_names, "I can not find the sample names."
-    names = MATRIX_new.col_names(name)
     for i in range(len(names)):
         for (from_str, to_str) in rename_all:
             if names[i] == from_str:

@@ -2189,6 +2189,7 @@ def main():
         default=1.0,
         help="Scale the thickness of the lines in the array tree by this "
         "factor.")
+    parser.add_option_group(group)
 
     group = OptionGroup(parser, "Border and Grid")
     group.add_option(
@@ -2205,6 +2206,7 @@ def main():
         "--grid_color",
         help="Specify the color of the grid.  "
         "Format: <R>,<G>,<B>  (e.g. 128,128,128)")
+    parser.add_option_group(group)
     
     group = OptionGroup(parser, "Graphics")
     group.add_option(
@@ -2239,7 +2241,6 @@ def main():
     group.add_option(
         "--colorbar", dest="colorbar", default=False, action="store_true",
         help="Add a colorbar to the plot.")
-    
     parser.add_option_group(group)
 
     # Parse the input arguments.

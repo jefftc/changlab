@@ -44,6 +44,7 @@ def cell2str(book, cell):
         raise AssertionError, "Unknown cell type: %s" % cell.ctype
 
 def listws_xls(filename):
+    import StringIO
     import xlrd
     
     book = xlrd.open_workbook(filename, logfile=StringIO.StringIO())
