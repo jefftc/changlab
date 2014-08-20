@@ -32,8 +32,11 @@ def is_format(locator_str, hrows=None, hcols=None):
     # only 5 lines, and had problems.  In a matrix, one of the
     # annotation columns had spaces in the first 5 lines, so it was
     # mistakenly annotated as part of the matrix, rather than part of
-    # the annotations.
-    NUM_LINES = 25
+    # the annotations.  Probably should look at least at the first 100
+    # lines.  U133Av2 has 62 AFFX genes that may or may not have
+    # annotations.
+    #NUM_LINES = 25
+    NUM_LINES = 100
     handle = filelib.openfh(locator_str)
     lines = [handle.readline() for i in range(NUM_LINES)]
     handle.close()   # need to close it properly, or gunzip might not die.

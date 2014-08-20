@@ -984,7 +984,7 @@ def apply_re_col_ids(MATRIX, apply_re_col_ids):
     MATRIX = MATRIX.matrix()
     names = MATRIX.col_names(tdf.SAMPLE_NAME)
     for i in range(len(names)):
-        m = re.match(apply_re_col_ids, names[i])
+        m = re.search(apply_re_col_ids, names[i])
         if m:
             names[i] = m.group(1)
     MATRIX._col_names[tdf.SAMPLE_NAME] = names
