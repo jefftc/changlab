@@ -17,8 +17,6 @@ write_kag_file
 parse_node
 format_node
 
-cut_dendrogram
-
 """
 
 def read_gtr_file(filename):
@@ -160,87 +158,3 @@ def format_node(id, item):
     else:
         s = "%s%dX" % (item, id)
     return s
-
-def cut_dendrogram(tree, k):
-    # Use a BFS to cut the tree into k clusters.  Return a dictionary
-    # of id -> cluster.
-    assert len(tree)
-    
-    tree_cluster = {}  # id -> cluster
-    depth = 1          # The root is at depth 1.
-    next_cluster = 0
-
-    # Do a BFS through the tree, assigning clusters.
-    stack = []         # node id, dist, cluster_num
-    
-    # Assume the root node is the last element of the tree and add it
-    # to the stack.
-    stack.append((-len(tree), tree[-1][2], None))
-    while stack:
-        # Sort the nodes from highest (closest to root) to lowest.
-        # Small numbers are high nodes, big numbers are low nodes.
-        stack = sorted(stack, cmp=lambda x, y: cmp(x[1], y[1]))
-
-        # To do a BFS, get the highest node.
-        id, dist, num = stack.pop(0)
-
-        # If deep enough, and there's no cluster, create a new one.
-
-        # If this node is not already in a cluster, and I'm deep
-        # enough down the tree (for the number of clusters wanted), or
-        # this node is a leaf (which is automatically deep enough),
-        # then assign it to a cluster.
-        if num is None and (depth >= k or id >= 0):
-            num = next_cluster
-            next_cluster += 1
-            assert next_cluster <= k, "more clusters than items"
-
-        # Assign the cluster.
-        tree_cluster[id] = num
-
-        if id >= 0:
-            # If this is a leaf, then do nothing more.
-            continue
-
-        # Add the left and right nodes to the stack.
-        left_id, right_id, dist = tree[-id-1]
-        left_num = right_num = num
-        left_dist = right_dist = 0
-        if left_id < 0:
-            # If this is an internal node, then set the distance.  The
-            # default distance for leaves are 0, so they'll be
-            # processed before internal nodes.
-            left_dist = tree[-left_id-1][2]
-        if right_id < 0:
-            right_dist = tree[-right_id-1][2]
-        stack.append((left_id, left_dist, left_num))
-        stack.append((right_id, right_dist, right_num))
-
-        # I've gone down one node, so increase the depth.
-        depth += 1
-
-    return tree_cluster
-
-##     # The clustering reordered the items in the expression data set.
-##     # Order cluster so that it matches the order in the expression
-##     # data.
-##     # item_order  item_ids      oindex   cindex
-##     # GENE12X     200648_s_at     12       0
-##     # GENE5X      200604_s_at      5       1
-##     # GENE20X     200722_s_at     20       2
-##     # [...]
-##     #
-##     # item2cluster is based on oindex.  Need to return the clusters in
-##     # cindex order.
-
-##     # Calculate the original indexes.
-##     oindex = [_parse_gene_or_node(x) for x in item_order]
-
-##     assert len(item2cluster) == len(tree)+1
-##     cluster = [None] * (len(item2cluster))
-##     for oi, n in item2cluster.iteritems():
-##         ci = oindex.index(oi)
-##         cluster[ci] = item_ids[oi], n
-
-##     return cluster
-

@@ -676,8 +676,7 @@ def make_layout(
     gd_layout = ad_layout = None
     #if(cluster_genes and cluster_data.gene_tree and gene_tree_scale > 0 and 
     #   cluster_alg == "hierarchical" and MATRIX.ncol() > 1):
-    if(cluster_data.gene_tree and gene_tree_scale > 0 and 
-       cluster_alg == "hierarchical" and MATRIX.ncol() > 1):
+    if(cluster_data.gene_tree and gene_tree_scale > 0 and MATRIX.ncol() > 1):
         # Only add the dendrogram if hierarchical clustering was
         # requested.  If clustering not done, then the matrix file
         # will not have the GID annotations, and there will be no way
@@ -695,8 +694,7 @@ def make_layout(
             gene_tree_scale, gene_tree_thickness, 
             cluster_data.gene_tree, cluster_data.gene_tree_cluster,
             colorlib.matlab_colors)
-    if(cluster_data.array_tree and array_tree_scale > 0 and
-       cluster_alg == "hierarchical" and MATRIX.nrow() > 1):
+    if(cluster_data.array_tree and array_tree_scale > 0 and MATRIX.nrow() > 1):
         #print "Making ad_layout."
         assert array_tree_scale > 0
         assert array_tree_thickness > 0

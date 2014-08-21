@@ -523,8 +523,6 @@ def select_col_random(MATRIX, col_random):
 
 def select_col_numeric_value(MATRIX, col_numeric):
     # Format: <row_id>,<value>[,<value,...]
-    from genomicode import matrixlib
-
     if not col_numeric:
         return None
 
@@ -562,8 +560,6 @@ def select_col_numeric_value(MATRIX, col_numeric):
 def rename_col_id(MATRIX, rename_list, ignore_missing):
     # rename_list is list of strings in format of: <from>,<to>.
     import arrayio
-    from genomicode import genesetlib
-    from genomicode import matrixlib
 
     if not rename_list:
         return MATRIX
@@ -606,8 +602,6 @@ def rename_col_id(MATRIX, rename_list, ignore_missing):
 def replace_col_ids(MATRIX, replace_list, ignore_missing):
     # replace_list is list of strings in format of: <from>,<to>.
     import arrayio
-    from genomicode import genesetlib
-    from genomicode import matrixlib
 
     if not replace_list:
         return MATRIX
@@ -803,23 +797,33 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
-def reorder_col_cluster(MATRIX, cluster, cluster_method, distance_method):
-    from genomicode import jmath
+def reorder_col_cluster(MATRIX, cluster, tree_file,
+                        cluster_method, distance_method):
+    #from genomicode import jmath
+    from genomicode import cluster30
+    from genomicode import clusterio
     
     if not cluster:
+        assert not tree_file
         return MATRIX
     if not MATRIX.nrow() or not MATRIX.ncol():
         return MATRIX
 
-    R = jmath.start_R()
-    jmath.R_equals(MATRIX._X, "X")
-    x = 'dist(t(X), method="%s")' % distance_method
-    x = 'hclust(%s, method="%s")' % (x, cluster_method)
-    I = list(R("%s$order" % x))   # 1-based indexes
-    #I = list(R("hclust(dist(t(X)))$order"))   # 1-based indexes
-    I = [x-1 for x in I]
-    MATRIX_new = MATRIX.matrix(None, I)
-    return MATRIX_new
+    cdata = cluster30.cluster_hierarchical(
+        MATRIX, False, True, distance=distance_method, method=cluster_method)
+    if tree_file:
+        clusterio.write_atr_file(cdata.array_tree, open(tree_file, 'w'))
+    return cdata.matrix
+
+    ## R = jmath.start_R()
+    ## jmath.R_equals(MATRIX._X, "X")
+    ## x = 'dist(t(X), method="%s")' % distance_method
+    ## x = 'hclust(%s, method="%s")' % (x, cluster_method)
+    ## I = list(R("%s$order" % x))   # 1-based indexes
+    ## #I = list(R("hclust(dist(t(X)))$order"))   # 1-based indexes
+    ## I = [x-1 for x in I]
+    ## MATRIX_new = MATRIX.matrix(None, I)
+    ## return MATRIX_new
 
 
 def reorder_col_alphabetical(MATRIX, alphabetize):
@@ -1116,8 +1120,6 @@ def select_row_ids(MATRIX, ids):
 
 def select_row_string(MATRIX, row_annotation):
     # Format: <header>,<value>[,<value,...]
-    from genomicode import matrixlib
-
     if not row_annotation:
         return None
 
@@ -1136,8 +1138,6 @@ def select_row_string(MATRIX, row_annotation):
 
 def select_row_numeric(MATRIX, row_annotation):
     # Format: <header>,<value>[,<value,...]
-    from genomicode import matrixlib
-
     if not row_annotation:
         return None
 
@@ -1277,8 +1277,6 @@ def select_row_numeric_annotation(MATRIX, row_annotation):
 
 def select_row_nonempty(MATRIX, row_nonempty):
     # Format: <header>
-    from genomicode import matrixlib
-
     if not row_nonempty:
         return None
 
@@ -1412,22 +1410,32 @@ def reorder_row_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
-def reorder_row_cluster(MATRIX, cluster, cluster_method, distance_method):
-    from genomicode import jmath
-    
+def reorder_row_cluster(MATRIX, cluster, tree_file,
+                        cluster_method, distance_method):
+    #from genomicode import jmath
+    from genomicode import cluster30
+    from genomicode import clusterio
+
     if not cluster:
+        assert not tree_file
         return MATRIX
     if not MATRIX.nrow() or not MATRIX.ncol():
         return MATRIX
 
-    R = jmath.start_R()
-    jmath.R_equals(MATRIX._X, "X")
-    x = 'dist(X, method="%s")' % distance_method
-    x = 'hclust(%s, method="%s")' % (x, cluster_method)
-    I = list(R("%s$order" % x))   # 1-based indexes
-    I = [x-1 for x in I]
-    MATRIX_new = MATRIX.matrix(I, None)
-    return MATRIX_new
+    cdata = cluster30.cluster_hierarchical(
+        MATRIX, True, False, distance=distance_method, method=cluster_method)
+    if tree_file:
+        clusterio.write_gtr_file(cdata.gene_tree, open(tree_file, 'w'))
+    return cdata.matrix
+
+    ## R = jmath.start_R()
+    ## jmath.R_equals(MATRIX._X, "X")
+    ## x = 'dist(X, method="%s")' % distance_method
+    ## x = 'hclust(%s, method="%s")' % (x, cluster_method)
+    ## I = list(R("%s$order" % x))   # 1-based indexes
+    ## I = [x-1 for x in I]
+    ## MATRIX_new = MATRIX.matrix(I, None)
+    ## return MATRIX_new
 
 
 def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
@@ -1451,7 +1459,7 @@ def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
     nrow, ncol = len(X), len(X[0])
     assert len(vec) == ncol, "vector %d indexes %d" % (len(vec), ncol)
 
-    R = jmath.start_R()
+    jmath.start_R()
     jmath.R_equals(X, "X")
     jmath.R_equals(vec, "vec")
     jmath.R("cors <- cor(vec, t(X))")
@@ -1866,8 +1874,6 @@ def median_fill_genes(MATRIX):
 
 
 def zero_fill_genes(MATRIX):
-    from genomicode import jmath
-
     # Zero-fill the genes in place.
     X = MATRIX._X
     for i in range(len(X)):
@@ -2236,17 +2242,34 @@ def main():
         "--reorder_col_cluster", default=False, action="store_true",
         help="Cluster the cols.")
     group.add_argument(
+        "--col_tree_file", help="Write out the dendrogram of the col clusters "
+        "in atr format.")
+    # Cluster 3.0 implementation of clustering.
+    group.add_argument(
         "--cluster_method", choices=[
-            "complete", "ward", "single", "average", "mcquitty",
-            "median", "centroid"],
+            "complete", "single", "average", "centroid"],
         default="complete", help="Agglomeration method.  "
         "Applies to reorder_col_cluster and reorder_row_cluster.")
     group.add_argument(
         "--distance_method", choices=[
-            "euclidean", "maximum", "manhattan", "canberra", "binary",
-            "minkowski"],
+            "uncent-cor", "pearson", "abs-uncent-cor", 
+            "abs-pearson", "spearman", "kendall",
+            "euclidean", "city-block"],
         default="euclidean", help="Distance measure for clustering.  "
         "Applies to reorder_col_cluster and reorder_row_cluster.")
+    # For R implementation of clustering.
+    #group.add_argument(
+    #    "--cluster_method", choices=[
+    #        "complete", "ward", "single", "average", "mcquitty",
+    #        "median", "centroid"],
+    #    default="complete", help="Agglomeration method.  "
+    #    "Applies to reorder_col_cluster and reorder_row_cluster.")
+    #group.add_argument(
+    #    "--distance_method", choices=[
+    #        "euclidean", "maximum", "manhattan", "canberra", "binary",
+    #        "minkowski"],
+    #    default="euclidean", help="Distance measure for clustering.  "
+    #    "Applies to reorder_col_cluster and reorder_row_cluster.")
     group.add_argument(
         "--reorder_col_alphabetical", default=False, action="store_true",
         help="Sort the columns alphabetically.")
@@ -2401,6 +2424,9 @@ def main():
     group.add_argument(
         "--reorder_row_cluster", default=False, action="store_true",
         help="Cluster the rows.")
+    group.add_argument(
+        "--row_tree_file", help="Write out the dendrogram of the row clusters "
+        "in gtr format.")
     group.add_argument(
         "--reorder_row_cor", 
         help="Reorder the rows based on a correlation to this vector.  "
@@ -2635,11 +2661,11 @@ def main():
 
     # Cluster the rows and columns.  Do this after normalizing, zero-fill, log.
     MATRIX = reorder_row_cluster(
-        MATRIX, args.reorder_row_cluster, args.cluster_method,
-        args.distance_method)
+        MATRIX, args.reorder_row_cluster, args.row_tree_file,
+        args.cluster_method, args.distance_method)
     MATRIX = reorder_col_cluster(
-        MATRIX, args.reorder_col_cluster, args.cluster_method,
-        args.distance_method)
+        MATRIX, args.reorder_col_cluster, args.col_tree_file,
+        args.cluster_method, args.distance_method)
 
     # Reorder the rows based on correlation.
     MATRIX = reorder_row_cor(
