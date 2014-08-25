@@ -2,7 +2,11 @@
 from Betsy.bie3 import *
 import SignalFile_rule
 DavidFile = DataType(
-    'DavidFile',help="David result file")
+    'DavidFile',AttributeDef(
+        "contents",
+        SignalFile_rule.CONTENTS,
+        "unspecified", "unspecified",help='contents'),
+    help="David result file")
 
 list_files = [DavidFile]
 
@@ -11,4 +15,6 @@ all_modules = [
         'annotate_genes_with_david',
          SignalFile_rule.GeneListFile,
          DavidFile,
+         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+         Consequence("contents",SAME_AS_CONSTRAINT),
          help="annotate genes with david tool")]

@@ -8,7 +8,7 @@ ReportFile = DataType(
     AttributeDef(
         "report_type",
         ['normalize_file', 'batch_effect_remove', 'classify', 'cluster',
-         'diffgenes', 'heatmap', 'geneset', 'all'],
+         'diffgenes', 'heatmap', 'geneset'],
         'normalize_file', 'normalize_file',help="report type"),
     help="Report file"
     )

@@ -504,7 +504,7 @@ def main():
         date = sorted(all_dates)[-1]
         if args.date:
             date = args.date
-        download_file(args.disease,require_date,args.data)
+        download_file(args.disease,date,args.data)
     else:
         assert args.disease, "Please specify a disease to download."
         assert args.data, "data must be given."

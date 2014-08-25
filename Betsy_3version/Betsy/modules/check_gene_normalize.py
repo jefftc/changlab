@@ -49,12 +49,12 @@ def find_antecedents(network, module_id,data_nodes,parameters):
 
 def is_gene_normalize_varaince(M):
     for line in M.slice():
-        if numpy.var(line)-1>0.000001:
+        if abs(numpy.var(line)-1)>0.000001:
             return False
     return True
 
 def is_gene_normalize_ss(M):
     for line in M.slice():
-        if numpy.sum([(x-numpy.mean(line))**2 for x in line])-1>0.000001:
+        if abs(numpy.sum([(x-numpy.mean(line))**2 for x in line])-1)>0.000001:
             return False
     return True
