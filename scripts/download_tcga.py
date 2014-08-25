@@ -391,7 +391,7 @@ def process_data(data, txt_file, outfile):
     elif data == 'mirnaseq':
         format_firehose_mirna(txt_file, outfile)
     elif data == 'clinical':
-        raise
+        raise NotImplementedError
     elif data == 'rppa':
         format_firehose_rppa(txt_file, outfile)
     else:
@@ -513,6 +513,8 @@ def main():
         date = sorted(all_dates)[-1]
         if args.date:
             date = args.date
+
+        # BUG: Need to test if the disease at this date exists.
             
         #assert args.disease in disease_in_date_dict[require_date], (
         #    'the diesease %s is not found in the date %s' %(

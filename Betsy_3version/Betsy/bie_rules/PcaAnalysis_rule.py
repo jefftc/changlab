@@ -101,7 +101,7 @@ all_modules = [
     Module(
         'analyze_samples_pca',
         SignalFile_rule.SignalFile,PcaAnalysis,
-        UserInputDef('pca_gene_num',500,help="number of genes in pca"),
+        OptionDef('pca_gene_num',500,help="number of genes in pca"),
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", "class0,class1,test",
                  "class0", "class1", "class0,class1",
                   "unspecified"]),

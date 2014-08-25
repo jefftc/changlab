@@ -10,7 +10,7 @@ all_modules = [
     Module(
         'score_pathway_with_scoresig',
         [SignalFile_rule.SignalFile,SignalFile_rule.SignalFile],SignatureScore,
-        UserInputDef('platform_value','HG_U133A',help="platform to add"),
+        OptionDef('platform_value','HG_U133A',help="platform to add"),
         Constraint("format",MUST_BE,'tdf',0),
         Constraint("preprocess",MUST_BE,'rma',0),
         Constraint("quantile_norm",MUST_BE,'yes',0),

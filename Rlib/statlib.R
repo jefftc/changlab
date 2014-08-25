@@ -5,6 +5,7 @@
 # calc.specificity
 # calc.recall
 # calc.precision
+# make.roc.curve
 #
 # logadd
 # logsum
@@ -86,6 +87,24 @@ calc.precision <- function(results, interpolate=FALSE) {
       x[i] <- max(x[i], x[i+1])
   }
   x
+}
+
+make.roc.curve <- function(results) {
+  # X-axis: false positive rate  1-specificity
+  # Y-axis: true positive rate   sensitivity
+  sens <- calc.sensitivity(results)
+  spec <- calc.specificity(results)
+  fpr <- (1-spec)*100
+  tpr <- sens*100
+  auc <- 0
+  for(i in 1:(length(fpr)-1)) {
+    x1 <- fpr[i]
+    x2 <- fpr[i+1]
+    y <- tpr[i+1]
+    auc <- auc + (x2-x1)*y
+  }
+  auc <- auc / 100 / 100  # compensate for scaling fpr and tpr above
+  list(fpr=fpr, tpr=tpr, auc=auc)
 }
 
 logadd <- function(logx, logy) {

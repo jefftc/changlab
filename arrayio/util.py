@@ -575,7 +575,10 @@ def _num_headers_h(matrix):
     # This is REALLY SLOW for big matrices.  Optimize by assuming a
     # maximum number of header rows.  Just look at the first rows for
     # the header.
-    MAX_HEADER_ROWS = 50
+    MAX_HEADER_ROWS = 100
+    # 50 rows might not be sufficient for affymetrix arrays.  U133Av2
+    # has 62 AFFX genes that may or may not have annotations.
+    #MAX_HEADER_ROWS = 50
     matrix = matrix[:MAX_HEADER_ROWS]
     num_rows = len(matrix)
 

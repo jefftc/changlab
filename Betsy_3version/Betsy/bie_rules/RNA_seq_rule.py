@@ -132,4 +132,19 @@ all_modules = [
          help=("process BamFolder , generate SignalFile_Postprocess with preprocess rsem")
         ),
 
+
+    Module(
+        'normalize_with_rsem_fastq',
+         [FastqFolder,SampleGroupFile],
+         SignalFile_rule.SignalFile_Postprocess,
+         OptionDef("fastq_ref",'human',help='ref for fastq file to align,human or mouse'),
+         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
+         Constraint("contents",SAME_AS,0,1),
+         Consequence("contents",SAME_AS_CONSTRAINT,0),
+         Consequence("preprocess",SET_TO,"rsem"),
+         Consequence("logged",SET_TO,"unknown"),
+         Consequence("predataset",SET_TO,"no"),
+         Consequence("format",SET_TO,"tdf"),
+         help=("process FastqFolder , generate SignalFile_Postprocess with preprocess rsem")
+        ),
     ]

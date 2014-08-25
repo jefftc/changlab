@@ -377,8 +377,8 @@ SignalFile= DataType(
 all_modules = [
     #TCGA Files
     Module('download_tcga', TCGAID, TCGAFile,
-           UserInputDef("disease",help="tcga disease type"),
-           UserInputDef("date","",help="date for tcga disease"),
+           OptionDef("disease",help="tcga disease type"),
+           OptionDef("date","",help="date for tcga disease"),
            Constraint("contents",CAN_BE_ANY_OF,CONTENTS,),
            Consequence("contents",SAME_AS_CONSTRAINT),
            Consequence("data",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
@@ -397,8 +397,8 @@ all_modules = [
            
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
-         UserInputDef("GSEID",'',help="GSEID to download"),
-         UserInputDef("GPLID","",help="GPDID to download"),
+         OptionDef("GSEID",'',help="GSEID to download"),
+         OptionDef("GPLID","",help="GPDID to download"),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         help="download GEO data from geo website according to GSEID and GPLID"
@@ -442,9 +442,9 @@ all_modules = [
         Consequence('illu_chip',SET_TO_ONE_OF,ILLU_CHIP),
         Consequence('illu_bg_mode',SET_TO_ONE_OF,["false", "true"]),
         Consequence('illu_coll_mode',SET_TO_ONE_OF,["none", "max", "median"]),
-        UserInputDef("illu_clm",'',help="illumina clm"),
-        UserInputDef("illu_custom_chip",'',help="illumina custom chip name"),
-        UserInputDef("illu_custom_manifest",'',help='illumina custrom manifest file'),
+        OptionDef("illu_clm",'',help="illumina clm"),
+        OptionDef("illu_custom_chip",'',help="illumina custom chip name"),
+        OptionDef("illu_custom_manifest",'',help='illumina custrom manifest file'),
         Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="preprocess idat files,generate SignalFile_Postprocess"
@@ -592,7 +592,7 @@ all_modules = [
     Module(
         "filter_genes_by_missing_values",
         SignalFile_Impute, SignalFile_Impute,
-        UserInputDef("filter_value", 0.50,
+        OptionDef("filter_value", 0.50,
                      help="filter by missing values in percentage, etc.(0-1)"),
         Constraint("missing_values", MUST_BE, "yes"),
         Constraint("filter", MUST_BE, "no"),
@@ -735,7 +735,7 @@ all_modules = [
     Module(
         "normalize_samples_with_bfrm",
         SignalFile_Merge,SignalFile_Merge,
-        UserInputDef("num_factors",1,help="num factors for bfrm normalization"),
+        OptionDef("num_factors",1,help="num factors for bfrm normalization"),
         Constraint('bfrm_norm',MUST_BE,"no"),
         Constraint('combat_norm',MUST_BE,"no"),
         Constraint('shiftscale_norm',MUST_BE,"no"),
@@ -914,13 +914,13 @@ all_modules = [
     Module(  
         "rank_genes_by_class_neighbors",
         [ClassLabelFile,SignalFile_Order],GeneListFile,
-        UserInputDef("cn_num_neighbors",50,help='number of neighbors for class neighbors method'),
-        UserInputDef("cn_num_perm",100,help='number of permutation for class neighbors method'),
-        UserInputDef("cn_user_pval",0.5,help='number of user p value for class neighbors method'),
-        UserInputDef("cn_min_threshold",10,help='min threshold for class neighbors method'),
-        UserInputDef("cn_max_threshold",16000,help='max threshold for class neighbors method'),
-        UserInputDef("cn_min_folddiff",5,help='min fold diff for class neighbors method'),
-        UserInputDef("cn_abs_diff",50,help='abs diff for class neighbors method'),
+        OptionDef("cn_num_neighbors",50,help='number of neighbors for class neighbors method'),
+        OptionDef("cn_num_perm",100,help='number of permutation for class neighbors method'),
+        OptionDef("cn_user_pval",0.5,help='number of user p value for class neighbors method'),
+        OptionDef("cn_min_threshold",10,help='min threshold for class neighbors method'),
+        OptionDef("cn_max_threshold",16000,help='max threshold for class neighbors method'),
+        OptionDef("cn_min_folddiff",5,help='min fold diff for class neighbors method'),
+        OptionDef("cn_abs_diff",50,help='abs diff for class neighbors method'),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint(
             "contents", CAN_BE_ANY_OF, CONTENTS,0),
@@ -937,7 +937,7 @@ all_modules = [
     Module(
         "rank_genes_by_sample_ttest",
         [ClassLabelFile, SignalFile_Order], GeneListFile,
-        UserInputDef("gene_select_threshold", 0.05,help="threshold for sample ttest"),
+        OptionDef("gene_select_threshold", 0.05,help="threshold for sample ttest"),
         Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("gene_order", MUST_BE, "no", 1),
         Constraint(
@@ -1040,7 +1040,7 @@ all_modules = [
     Module(
          'download_GEO_family_soft',
          GEOSeries,GEOfamily,
-         UserInputDef("GSEID",help='GSEID for download family_soft file'),
+         OptionDef("GSEID",help='GSEID for download family_soft file'),
          Constraint("contents",CAN_BE_ANY_OF, CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
          help="download geo family soft file"),
@@ -1048,7 +1048,7 @@ all_modules = [
     Module(
          'convert_family_soft_to_rename',
          GEOfamily,RenameFile,
-         UserInputDef("GSEID",help='GSEID for download family_soft file'),
+         OptionDef("GSEID",help='GSEID for download family_soft file'),
          Constraint("contents",CAN_BE_ANY_OF, CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
          Consequence("labels_from",SET_TO_ONE_OF,["title","description"]),
@@ -1073,7 +1073,7 @@ all_modules = [
     Module(
          'add_crossplatform_probeid',
          SignalFile_Annotate,SignalFile_Annotate,
-         UserInputDef("platform_name",help="given the new platform name to add to the file"),
+         OptionDef("platform_name",help="given the new platform name to add to the file"),
          Constraint("platform", MUST_BE,"no"),
          Consequence("platform",SET_TO,"yes"),
          help="add a cross platform to SignalFile_Annotate"),
@@ -1149,7 +1149,7 @@ all_modules = [
     Module(
          'select_first_n_genes',
         SignalFile_Filter,SignalFile_Filter,
-        UserInputDef("num_features_value",500,help="num of features to be selected in the SignalFile"),
+        OptionDef("num_features_value",500,help="num of features to be selected in the SignalFile"),
         Constraint("format", MUST_BE,"tdf"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Constraint("logged", MUST_BE,"yes"),
@@ -1188,7 +1188,7 @@ all_modules = [
     Module(
         "filter_genes_by_fold_change_across_classes",
         [ClassLabelFile,SignalFile_Filter],SignalFile_Filter,
-        UserInputDef("group_fc_num",help="group fold change number"),
+        OptionDef("group_fc_num",help="group fold change number"),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint("format", MUST_BE,"tdf",1),
         Consequence("format", SAME_AS_CONSTRAINT,1),

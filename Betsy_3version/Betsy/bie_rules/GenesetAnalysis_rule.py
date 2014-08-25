@@ -29,7 +29,7 @@ all_modules = [
         'score_pathway_with_geneset',
         [GenesetFile,
          SignalFile_rule.SignalFile],GenesetAnalysis,
-         UserInputDef("geneset_value",help="geneset to score pathway"),
+         OptionDef("geneset_value",help="geneset to score pathway"),
          #Constraint("quantile_norm",MUST_BE,'yes',1),
          Constraint("gene_center",MUST_BE,'mean',1),
          Constraint("gene_normalize",MUST_BE,'variance',1),

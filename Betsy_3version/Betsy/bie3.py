@@ -3,21 +3,24 @@
 Glossary:
 data              A unit of information.  Typically a file made by a program.
 attribute         Describes something about the data.  e.g. logged="yes".
-user input        Used in the modules, but does not affect the inferencing.
+input attribute   An attribute of an input data.
+output attribute  An attribute of an output data.
+user attribute    An attribute provided by the user that can specify
+                  preferences
 data type         Describes a set of data that share the same attributes.
 
 module            Takes one or more data objects as input and produces a single
                   data object as output.
                   Modules "produce" data.
                   Modules can "convert" data from one type to another.
-input attribute   An attribute of an input data.
-output attribute  An attribute of an output data.
+option            Used in the modules, but does not affect the inferencing.
+
 
 Classes:
-AttributeDef
+AttributeDef      Describes something about the Data.
 Attribute
-UserInputDef
-UserInput
+OptionDef         Something that modifies how a Module works.
+Option
 DataType
 Data
 Constraint
@@ -28,6 +31,7 @@ ModuleDbSummary
 Network
 
 Functions:
+make_network
 backchain
 complete_network
 optimize_network
@@ -43,15 +47,16 @@ check_moduledb
 print_modules
 print_network
 plot_network_gv
-write_network
+
 read_network
+write_network
 
 diagnose_start_node
 
 """
 # Functions:
 # _backchain_to_modules     Given an output Data, find compatible Modules.
-# _backchain_to_input       Given an output Data and Module, make one in Data.
+# _backchain_to_input       DO NOT CALL.
 # _backchain_to_all_inputs  Given an output Data and Module, make all in Datas.
 # _forwardchain_to_outputs  Given Module and Datas, make output Data.
 # 
@@ -60,6 +65,7 @@ diagnose_start_node
 # _make_ancestor_dict
 # 
 # _can_module_take_data
+# _can_module_take_data_network    Uses information from Network.
 # _can_module_produce_data
 # _get_valid_input_combinations
 # 
@@ -91,11 +97,8 @@ diagnose_start_node
 
 
 # TODO:
-# - Rename UserInput.  Is an attribute that's not used for
-#   inferencing.  Distinction should be clear from the name.
 # - Some input data objects flow through the module and becomes the
 #   output.  Need a name for this.
-# - Implement _resolve_constraint.
 
 
 TYPE_ATOM = 100
@@ -116,7 +119,11 @@ SAME_AS_CONSTRAINT = 303
 # behavior       arg1               input_index
 # MUST_BE        value              <optional> (set to 0 by default)
 # CAN_BE_ANY_OF  list of values     <optional> (set to 0 by default)
-# SAME_AS        index of datatype  index of input data type
+# SAME_AS        index of datatype  index of datatype
+#
+# input_index is the index of the DataType that this constraint
+# applies to.  So for SAME_AS, that means data[input_index] should get
+# its value from data[arg1].
 
 # CONSEQUENCE
 # behavior            arg1                 arg2
@@ -145,6 +152,9 @@ CONST2STR = {
 
 DEBUG = False
 #DEBUG = True
+
+DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
+#DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True
 
 MAX_NETWORK_SIZE = 1024*8
 
@@ -221,7 +231,7 @@ class Attribute:
         assert type(value) is type("")
         
         # Check if this is a valid attribute name for the datatype.
-        x = [x for x in datatype.attributes if x.name == name]
+        x = [x for x in datatype.attribute_defs if x.name == name]
         assert len(x) == 1, "datatype %r does not have attribute %r." % (
             datatype.name, name)
         attr = x[0]
@@ -243,14 +253,14 @@ class Attribute:
         return x
 
 
-class UserInputDef:
+class OptionDef:
     def __init__(self, name, default=None, help=None):
         assert type(name) is type("")
         self.name = name
         self.default = default
         self.help = help
     def __cmp__(self, other):
-        if not isinstance(other, UserInputDef):
+        if not isinstance(other, OptionDef):
             return cmp(id(self), id(other))
         x1 = [self.name, self.default, self.help]
         x2 = [other.name, other.default, self.help]
@@ -275,12 +285,12 @@ class UserInputDef:
         assert 'name' in args
         assert 'default' in args
         assert 'help' in args
-        inst = UserInputDef(
+        inst = OptionDef(
             args['name'], default=args['default'], help=args['help'])
         return inst
 
 
-class UserInput:
+class Option:
     def __init__(self, module, name, value):
         assert isinstance(module, Module)
         assert type(name) is type("")
@@ -438,8 +448,8 @@ class DefaultAttributesFrom:
 
 
 class DataType:
-    def __init__(self, name, *attributes, **keywds):
-        for x in attributes:
+    def __init__(self, name, *attribute_defs, **keywds):
+        for x in attribute_defs:
             assert isinstance(x, AttributeDef)
         for x in keywds:
             assert x in ["help"]
@@ -452,37 +462,30 @@ class DataType:
         ##         x, name)
             
         self.name = name
-        self.attributes = attributes   # AttributeDef
-        ## self.user_inputs = user_inputs
+        self.attribute_defs = attribute_defs   # AttributeDef
         self.help = keywds.get("help")
-    def get_attribute(self, name):
-        x = [x for x in self.attributes if x.name == name]
+    def get_attribute_def(self, name):
+        x = [x for x in self.attribute_defs if x.name == name]
         assert len(x) > 0, "DataType %s has no attribute %s." % (
             repr(self.name), repr(name))
         assert len(x) == 1, "Multiple attributes with same name?"
         return x[0]
     def get_attribute_names(self):
-        return [x.name for x in self.attributes]
-    #def get_user_input_names(self):
-    #    return [x.name for x in self.user_inputs]
+        return [x.name for x in self.attribute_defs]
     def is_valid_attribute_name(self, name):
         return name in self.get_attribute_names()
     def is_valid_attribute_value(self, name, value):
-        attr = self.get_attribute(name)
+        attr = self.get_attribute_def(name)
         return attr.is_valid_value(value)
     def __cmp__(self, other):
         if not isinstance(other, DataType):
             return cmp(id(self), id(other))
-        # Bug: should compare attributes and user_inputs without regard
-        # to order.
-        #x1 = [self.name, self.attributes, self.user_inputs]
-        #x2 = [other.name, other.attributes, self.user_inputs]
-        x1 = [self.name, self.attributes, self.help]
-        x2 = [other.name, other.attributes, other.help]
+        # Bug: should compare attributes without regard to order.
+        x1 = [self.name, self.attribute_defs, self.help]
+        x2 = [other.name, other.attribute_defs, other.help]
         return cmp(x1, x2)
     def __hash__(self):
-        #x = self.name, tuple(self.attributes), tuple(self.user_inputs)
-        x = self.name, tuple(self.attributes), self.help
+        x = self.name, tuple(self.attribute_defs), self.help
         return hash(x)
     ## def _resolve_attributes(self, attribute_objs, attribute_dict, is_input):
     ##     # Make a dictionary of all the attributes.  The values given
@@ -520,7 +523,7 @@ class DataType:
         for (name, value) in attribute_dict.iteritems():
             attrdict[name] = value
         # Priority 2: Set to default attributes.
-        for attr in self.attributes:
+        for attr in self.attribute_defs:
             if attr.name in attrdict:
                 continue
             value = attr.default_in
@@ -541,29 +544,29 @@ class DataType:
         return self.__repr__()
     def __repr__(self):
         x = [self.name]
-        x += [repr(x) for x in self.attributes]
+        x += [repr(x) for x in self.attribute_defs]
         if self.help:
             x.append("help=%r" % self.help)
-        #x += [repr(x) for x in self.user_inputs]
         return "DataType(%s)" % ", ".join(x)
     @staticmethod
     def __init_from_dict(args):
         assert 'name' in args
-        assert 'attributes' in args
+        assert 'attribute_defs' in args
         assert 'help' in args
-        inst = DataType(args['name'],*args['attributes'], help=args['help'])
+        inst = DataType(
+            args['name'], *args['attribute_defs'], help=args['help'])
         return inst
 
 
 class Data(object):
     # Members:
     # datatype      Datatype object.
-    # attributes    Dict of attribute name -> value.
+    # attributes    Dict of attribute name -> value or list of values
 
     # Should not be called by the user.  Should always be created from
     # a DataType object.
     def __init__(self, datatype, **keywds):
-        # keywds is a dictionary of (attribute or user_input) name ->
+        # keywds is a dictionary of attribute name ->
         # value (or list of values).
         
         # Make sure values are provided for every attribute.
@@ -581,7 +584,6 @@ class Data(object):
                 datatype.name, value, name)
 
         ## attributes = {}
-        ## user_inputs = {}
         ## for name, value in keywds.iteritems():
         ##     if name in attr_names:
         ##         attributes[name] = value
@@ -592,12 +594,9 @@ class Data(object):
 
         self.datatype = datatype
         self.attributes = keywds.copy()
-        #self.user_inputs = user_inputs
     def __cmp__(self, other):
         if not isinstance(other, Data):
             return cmp(id(self), id(other))
-        #x1 = [self.datatype, self.attributes, self.user_inputs]
-        #x2 = [other.datatype, other.attributes, self.user_inputs]
         x1 = [self.datatype, self.attributes]
         x2 = [other.datatype, other.attributes]
         return cmp(x1, x2)
@@ -605,7 +604,6 @@ class Data(object):
         return self.__repr__()
     def __repr__(self):
         #keywds = self.attributes.copy()
-        #keywds.update(self.user_inputs)
         x = [
             self.datatype.name,
             #_pretty_attributes(keywds),
@@ -623,7 +621,7 @@ class Data(object):
 
 class Module:
     def __init__(self, name, in_datatypes, out_datatype, *params, **keywds):
-        # params is a list of Constraint, Consequence, and UserInputDef.
+        # params is a list of Constraint, Consequence, and OptionDef.
         # objects.
         assert type(name) is type("")
         for k in keywds:
@@ -643,15 +641,15 @@ class Module:
         # Separate the param objects.
         constraints = []
         consequences = []
-        user_inputs = []
+        option_defs = []   # OptionDef
         default_attributes_from = []
         for x in params:
             if isinstance(x, Constraint):
                 constraints.append(x)
             elif isinstance(x, Consequence):
                 consequences.append(x)
-            elif isinstance(x, UserInputDef):
-                user_inputs.append(x)
+            elif isinstance(x, OptionDef):
+                option_defs.append(x)
             elif isinstance(x, DefaultAttributesFrom):
                 default_attributes_from.append(x)
             else:
@@ -692,7 +690,7 @@ class Module:
         #    assert out_datatype == \
         #           in_datatypes[default_attributes_from.input_index]
 
-        # Any checking necessary on UserInput?
+        # Any checking necessary on Option?
             
         self.name = name
         self.in_datatypes = in_datatypes
@@ -700,7 +698,7 @@ class Module:
         self.constraints = constraints
         self.consequences = consequences
         self.default_attributes_from = default_attributes_from
-        self.user_inputs = user_inputs
+        self.option_defs = option_defs
         self.help = keywds.get("help")
 
         for x in constraints:
@@ -725,26 +723,29 @@ class Module:
                 "%r: Invalid value %r for attribute %r." % (
                     name, constraint.arg1, constraint.name))
         elif constraint.behavior == SAME_AS:
-            assert len(in_datatypes) > 1, (
-                "%r: SAME_AS constraint requires at least two input "
-                "datatypes." % name)
-            assert constraint.arg1 < len(in_datatypes)
-            assert constraint.arg1 != constraint.input_index
-            # Make sure there is a MUST_BE or CAN_BE_ANY_OF constraint
-            # on constraint.arg1.
-            x = constraints
-            x = [x for x in x if x.name == constraint.name]
-            x = [x for x in x if x.input_index == constraint.arg1]
-            assert len(x) > 0, (
-                "%r: %r SAME_AS %d, but datatype %d has no constraint on %r." %
-                (name, constraint.name, constraint.arg1, constraint.arg1,
-                 constraint.name))
-            assert len(x) == 1
-            x = x[0]
-            assert x.behavior in [MUST_BE, CAN_BE_ANY_OF]
             # Make sure the datatype has this attribute.
             dt = in_datatypes[constraint.arg1]
             assert dt.is_valid_attribute_name(constraint.name)
+            # Make sure value can be resolved.
+            assert len(in_datatypes) > 1, (
+                "%r: SAME_AS constraint requires at least two input "
+                "datatypes." % name)
+            const = _resolve_constraint(constraint, constraints)
+            assert const.behavior in [MUST_BE, CAN_BE_ANY_OF]
+            #assert constraint.arg1 < len(in_datatypes)
+            #assert constraint.arg1 != constraint.input_index
+            ## Make sure there is a MUST_BE or CAN_BE_ANY_OF constraint
+            ## on constraint.arg1.
+            #x = constraints
+            #x = [x for x in x if x.name == constraint.name]
+            #x = [x for x in x if x.input_index == constraint.arg1]
+            #assert len(x) > 0, (
+            #    "%r: %r SAME_AS %d, but datatype %d has no constraint on %r."%
+            #    (name, constraint.name, constraint.arg1, constraint.arg1,
+            #     constraint.name))
+            #assert len(x) == 1
+            #x = x[0]
+            #assert x.behavior in [MUST_BE, CAN_BE_ANY_OF]
         else:
             raise NotImplementedError
 
@@ -788,10 +789,12 @@ class Module:
             cons = x[0]
 
             # Make sure the values of this constraint are allowed in
-            # the input and output datatypes.
+            # the input and output datatypes.  The values of the
+            # consequent should be a subset of the values of the
+            # constraint.
             if cons.behavior in [MUST_BE, CAN_BE_ANY_OF]:
-                in_attr = in_datatype.get_attribute(consequence.name)
-                out_attr = out_datatype.get_attribute(consequence.name)
+                in_attr = in_datatype.get_attribute_def(consequence.name)
+                out_attr = out_datatype.get_attribute_def(consequence.name)
                 assert in_attr.is_valid_value(cons.arg1), \
                        "Invalid value for %s (%s) in module %s" % (
                     in_attr.name, cons.arg1, self.name)
@@ -823,10 +826,10 @@ class Module:
             return cmp(id(self), id(other))
         x1 = [self.name, self.in_datatypes, self.out_datatype,
               self.constraints, self.consequences,
-              self.default_attributes_from, self.user_inputs, self.help]
+              self.default_attributes_from, self.option_defs, self.help]
         x2 = [other.name, other.in_datatypes, other.out_datatype,
               other.constraints, other.consequences,
-              other.default_attributes_from, other.user_inputs, other.help]
+              other.default_attributes_from, other.option_defs, other.help]
         return cmp(x1, x2)
     def __str__(self):
         return self.__repr__()
@@ -841,7 +844,7 @@ class Module:
         x4 = [repr(x) for x in self.constraints]
         x5 = [repr(x) for x in self.consequences]
         x6 = [repr(x) for x in self.default_attributes_from]
-        x7 = [repr(x) for x in self.user_inputs]
+        x7 = [repr(x) for x in self.option_defs]
         x = [x1, x2, x3] + x4 + x5 + x6 + x7
         if self.help is not None:
             x.append("help=%r" % self.help)
@@ -854,7 +857,7 @@ class Module:
         assert 'out_datatype' in args
         assert 'consequences' in args
         assert 'constraints' in args
-        assert 'user_inputs' in args
+        assert 'option_defs' in args
         assert 'default_attributes_from' in args
         assert 'help' in args
         name = args['name']
@@ -869,7 +872,7 @@ class Module:
         #params = (params['consequences']+params['constraints']+
         #            params['user_inputs']+params['default_attributes_from'])
         params = (args['consequences']+args['constraints']+
-                    args['user_inputs']+args['default_attributes_from'])
+                    args['option_defs']+args['default_attributes_from'])
         inst = Module(name, in_datatypes, out_datatype, *params, help=help_)
         return inst
 
@@ -1001,10 +1004,19 @@ class Network:
         return cmp(x1, x2)
 
 
-def backchain(moduledb, out_data, *user_attributes):
-    # Return a Network object.
-    global MAX_NETWORK_SIZE
+def make_network(moduledb, out_data, *user_attributes):
+    x = backchain(moduledb, out_data, user_attributes)
+    x = complete_network(x, user_attributes)
+    x = optimize_network(x, user_attributes)
+    return x
 
+
+def backchain(moduledb, out_data, user_attributes):
+    # Return a Network object.
+    assert type(user_attributes) in [type([]), type(())]
+    for x in user_attributes:
+        assert isinstance(x, Attribute)
+    
     check_moduledb(moduledb)
     if isinstance(out_data, DataType):
         attrdict = {}
@@ -1015,9 +1027,6 @@ def backchain(moduledb, out_data, *user_attributes):
         out_data = out_data.output(**attrdict)
     assert isinstance(out_data, Data)
 
-    for x in user_attributes:
-        assert isinstance(x, Attribute)
-    
 
     nodes = []        # list of Data or Module objects.
     transitions = {}  # list of index -> list of indexes
@@ -1043,7 +1052,7 @@ def backchain(moduledb, out_data, *user_attributes):
 
         if isinstance(node, Data):
             # Backwards chain to the previous module.
-            modules = _backchain_to_modules(moduledb, node, user_attributes)
+            modules = _backchain_to_modules(moduledb, node)
             for m in modules:
                 nodes.append(m)
                 m_id = len(nodes) - 1
@@ -1116,7 +1125,7 @@ def _make_ancestor_dict(network):
     return ancestors
 
 
-def complete_network(network):
+def complete_network(network, user_attributes):
     # Sometimes, the network generated by backchaining may be missing
     # some links.  This function will search for missing links and add
     # them back into the network.  Returns a new Network object.
@@ -1177,7 +1186,8 @@ def complete_network(network):
         # Find combinations of inputs that are compatible with the
         # network.
         combos = _get_valid_input_combinations(
-            network, module_id, combined_ids, node2previds=node2previds)
+            network, module_id, combined_ids, user_attributes, 
+            node2previds=node2previds)
 
         # Add the new transitions.
         for id_ in itertools.chain.from_iterable(combos):
@@ -1189,7 +1199,7 @@ def complete_network(network):
     return network
 
 
-def optimize_network(network):
+def optimize_network(network, user_attributes):
     # Clean up the network by removing cycles, extra nodes, etc.
     # Returns a new Network object.
     optimizers = [
@@ -1206,7 +1216,7 @@ def optimize_network(network):
     while old_network != network:
         old_network = network
         for opt in optimizers:
-            network = opt.optimize(network)
+            network = opt.optimize(network, user_attributes)
         it += 1
 
     return network
@@ -1223,7 +1233,7 @@ class _OptimizeNoCycles:
     # _break_cycle         Break a cycle
     def __init__(self):
         pass
-    def optimize(self, network):
+    def optimize(self, network, user_attributes):
         global NUM_TIMES
         # Do backwards chaining.  If I encounter a cycle, then break it.
 
@@ -1405,7 +1415,7 @@ class _OptimizeNoDuplicateData:
     def __init__(self):
         pass
     
-    def optimize(self, network):
+    def optimize(self, network, user_attributes):
         # This could be made much more efficient with a better way of
         # finding duplicates.
         while True:
@@ -1443,7 +1453,7 @@ class _OptimizeNoDuplicateModules:
     def __init__(self):
         pass
     
-    def optimize(self, network):
+    def optimize(self, network, user_attributes):
         while 1:
             duplicates = self.find_duplicate_modules(network)
             if not duplicates:
@@ -1479,33 +1489,35 @@ class _OptimizeNoDuplicateModules:
 class _OptimizeNoDanglingNodes:
     def __init__(self):
         pass
-    def optimize(self, network):
+    def optimize(self, network, user_attributes):
         # Remove nodes that have been made irrelevant due to
         # optimizing.
         while True:
-            dangling = self.find_dangling_nodes(network)
+            dangling = self.find_dangling_nodes(network, user_attributes)
             if not dangling:
                 break
             # Make sure root not is never deleted.
             assert 0 not in dangling
             network = network.delete_nodes(dangling)
         return network
-    def find_dangling_nodes(self, network):
+    def find_dangling_nodes(self, network, user_attributes):
         dangling = []
-        for (node_id, node) in enumerate(network.nodes):
-            if self.is_dangling_node(network, node_id, node):
+        for node_id in range(len(network.nodes)):
+            if self.is_dangling_node(network, node_id, user_attributes):
                 dangling.append(node_id)
         return dangling
-    def is_dangling_node(self, network, node_id, node):
+    def is_dangling_node(self, network, node_id, user_attributes):
         # 1.  Module nodes with no valid input_combinations.
         # 2.  Module nodes with no outputs.
         # 3.  Data nodes (except for node 0) that don't point to any
         #     Modules.
 
         # Case 1.
+        node = network.nodes[node_id]
         if isinstance(node, Module):
             prev_ids = _backchain_to_ids(network, node_id)
-            x = _get_valid_input_combinations(network, node_id, prev_ids)
+            x = _get_valid_input_combinations(
+                network, node_id, prev_ids, user_attributes)
             if not x:
                 return True
         # Case 2.
@@ -1548,7 +1560,7 @@ class _OptimizeNoOverlappingData:
     def __init__(self):
         pass
 
-    def optimize(self, network):
+    def optimize(self, network, user_attributes):
         # Look for pairs of Data objects (Data_1, Data_2) where an
         # attribute is overlapping.
         import copy
@@ -1561,7 +1573,8 @@ class _OptimizeNoOverlappingData:
             if not x:
                 break
             node_id1, node_id2, attr_name = x
-            self._fix_overlapping_data(network, node_id1, node_id2, attr_name)
+            self._fix_overlapping_data(
+                network, node_id1, node_id2, attr_name, user_attributes)
             
         return network
 
@@ -1653,7 +1666,8 @@ class _OptimizeNoOverlappingData:
             return None
         return overlapping[0]
 
-    def _fix_overlapping_data(self, network, data_id1, data_id2, attr_name):
+    def _fix_overlapping_data(
+        self, network, data_id1, data_id2, attr_name, user_attributes):
         # Changes network in place.
 
         data1 = network.nodes[data_id1]
@@ -1676,7 +1690,8 @@ class _OptimizeNoOverlappingData:
         elif sorted(DATA2_VALUE) == sorted(COMMON_VALUES):
             self._remove_list_from_list(network, data_id1, data_id2, attr_name)
         else:
-            self._split_list(network, data_id1, data_id2, attr_name)
+            self._split_list(
+                network, data_id1, data_id2, attr_name, user_attributes)
 
     def _remove_atom_from_list(self, network, data_id1, data_id2, attr_name):
         # Changes network in place.  data1 is a ENUM and data2 is an
@@ -1755,7 +1770,8 @@ class _OptimizeNoOverlappingData:
                 network.transitions[data_id2].append(node_id)
 
 
-    def _split_list(self, network, data_id1, data_id2, attr_name):
+    def _split_list(self, network, data_id1, data_id2, attr_name,
+                    user_attributes):
         # Changes network in place.  data1 and data2 are both a ENUMs.
 
         data1 = network.nodes[data_id1]
@@ -1807,11 +1823,17 @@ class _OptimizeNoOverlappingData:
         x2 = network.transitions.get(data_id2, [])
         module_ids = sorted({}.fromkeys(x1+x2))
         for module_id in module_ids:
-            module = network.nodes[module_id]
-            if _can_module_take_data(module, [data3]):
+            if _can_module_in_network_take_data(
+                network, module_id, [data3], user_attributes):
                 if data_id3 not in network.transitions:
                     network.transitions[data_id3] = []
                 network.transitions[data_id3].append(module_id)
+            # Bug here.  Need to check output and user attributes.
+            #module = network.nodes[module_id]
+            #if _can_module_take_data(module, [data3]):
+            #    if data_id3 not in network.transitions:
+            #        network.transitions[data_id3] = []
+            #    network.transitions[data_id3].append(module_id)
         
 
 class _OptimizeNoInvalidOutputs:
@@ -1825,7 +1847,7 @@ class _OptimizeNoInvalidOutputs:
     # Since one of these is now incorrect, remove it.
     def __init__(self):
         pass
-    def optimize(self, network):
+    def optimize(self, network, user_attributes):
         import copy
 
         bad_transitions = {}  # (node_id, next_id) -> 1
@@ -1834,7 +1856,7 @@ class _OptimizeNoInvalidOutputs:
             for next_id in next_ids:
                 node = network.nodes[next_id]
                 assert isinstance(node, Data)
-                if not _can_module_produce_data(module, node, []):
+                if not _can_module_produce_data(module, node):
                     bad_transitions[(node_id, next_id)] = 1
                     
         network = copy.deepcopy(network)
@@ -1971,7 +1993,7 @@ def remove_data_node(network, *attributes):
     return network
 
 
-def _get_inputs_h(network, node_id, nodeid2previds):
+def _get_inputs_h(network, node_id, nodeid2previds, user_attributes):
     import itertools
     node = network.nodes[node_id]
 
@@ -1981,20 +2003,22 @@ def _get_inputs_h(network, node_id, nodeid2previds):
         # of the previous nodes.
         inputs = [(node_id,)]
         for previd in nodeid2previds.get(node_id, []):
-            x = _get_inputs_h(network, previd, nodeid2previds)
+            x = _get_inputs_h(network, previd, nodeid2previds, user_attributes)
             inputs.extend(x)
     elif isinstance(node, Module):
         # Find all potential sets of Data notes that can feed into me.
         assert node_id in nodeid2previds
         previds = nodeid2previds[node_id]
         combos = _get_valid_input_combinations(
-            network, node_id, previds, node2previds=nodeid2previds)
+            network, node_id, previds, user_attributes, 
+            node2previds=nodeid2previds)
 
         # Get the inputs from each of the combinations.
         for combo in combos:
             # Get the inputs for each branch of this combination.
             branch2inputs = [
-                _get_inputs_h(network, x, nodeid2previds) for x in combo]
+                _get_inputs_h(network, x, nodeid2previds, user_attributes)
+                for x in combo]
 
             # Find all permutations for the inputs for each branch.
             # [ [(49, 40)]              Each branch has a set of inputs.
@@ -2015,7 +2039,7 @@ def _get_inputs_h(network, node_id, nodeid2previds):
     return inputs
     
 
-def get_inputs(network):
+def get_inputs(network, user_attributes):
     # Return a list of tuples of node ids.  Each tuple contains a set
     # of node IDs that can serve as the inputs to this network.
     # 
@@ -2025,14 +2049,14 @@ def get_inputs(network):
     # to this network.  Or, node 8 by itself would also be a valid
     # input.
     nodeid2previds = _make_backchain_dict(network)
-    inputs = _get_inputs_h(network, 0, nodeid2previds)
+    inputs = _get_inputs_h(network, 0, nodeid2previds, user_attributes)
     return inputs
 
 
 def group_inputs_by_datatype(network, inputs):
     # Take a network and inputs (e.g. from get_inputs) and return a
     # dictionary where the keys are tuples of DataTypes and the values
-    # are the inputs with that pattern of inputs.
+    # are the inputs with that pattern of DataTypes.
     #
     # Example return value:
     # {
@@ -2173,50 +2197,7 @@ def plot_network_gv(filename, network):
         filename, gv_nodes, gv_edges, node2attributes=gv_node2attr, prog="dot",
         directed=True)
 
-def _object_to_dict(obj):
-    # Convert objects to a dictionary of their representation
-    d = { '__class__':obj.__class__.__name__, 
-          '__module__':obj.__module__,
-          }
-    d.update(obj.__dict__)
-    return d
 
-def _dict_to_object(d):
-    assert isinstance(d,dict)
-    args = dict((key.encode('ascii'), value) for key, value in d.items())
-    for key,value in args.iteritems():
-        if isinstance(value,dict):
-            args[key]=_dict_to_object(value)
-        elif isinstance(value,list):
-            if value:
-                if isinstance(value[0],unicode):
-                    args[key]=[i.encode('ascii') for i in value]
-        elif isinstance(value,unicode):
-            args[key]=value.encode('ascii')
-        else:
-            assert 'not expected type %s' %value
-    inst = args
-    if '__class__' in args:
-        class_name = args.pop('__class__')
-        module_name = args.pop('__module__')
-        if '.' in module_name:
-            module = __import__(
-                module_name, globals(), locals(), [module_name.split('.')[-1]],
-                -1)
-        else:
-            module = __import__(module_name)
-        class_ = getattr(module, class_name)
-        fn = getattr(class_,'_' + class_name + '__init_from_dict')
-        inst = fn(args)
-    return inst
-
-def write_network(file_or_handle, network):
-    import json
-    handle = file_or_handle
-    if type(handle) is type(""):
-        handle = open(file_or_handle, 'w')
-    json.dump(network, handle, default=_object_to_dict, indent=2)
-    
 def read_network(file_or_handle):
     import json
     handle = file_or_handle
@@ -2226,6 +2207,15 @@ def read_network(file_or_handle):
     network = json.loads(text, object_hook=_dict_to_object)
     return network
     
+
+def write_network(file_or_handle, network):
+    import json
+    handle = file_or_handle
+    if type(handle) is type(""):
+        handle = open(file_or_handle, 'w')
+    json.dump(network, handle, default=_object_to_dict, indent=2)
+    
+
 ##def write_network(file_or_handle, network):
 ##    import pickle
 ##    
@@ -2257,94 +2247,30 @@ def diagnose_start_node(network, user_data):
             print "\t".join(map(str, x))
 
     
-def _backchain_to_modules(moduledb, data, user_attributes):
+def _backchain_to_modules(moduledb, data):
     # Return list of modules that can generate an output that is
     # compatible with data.
 
     modules = []  # list of (module, num compatible attributes)
     for module in moduledb:
-        if _can_module_produce_data(module, data, user_attributes):
+        if _can_module_produce_data(module, data):
             modules.append(module)
     return modules
 
 
-def _backchain_to_input_v2(module, in_num, out_data, user_attributes):
-    # Given a module and output_data, return the input_data object
-    # that can generate the output.
-    assert in_num < len(module.in_datatypes)
-
-    in_datatype = module.in_datatypes[in_num]
-    out_datatype = out_data.datatype
-    debug_print("Backchaining %s from %s to %s (%d)." % (
-        module.name, out_datatype.name, in_datatype.name, in_num))
-
-    # BUG: What if module has two in_datatypes with the same datatype?
-    # Which one to copy?
-    if in_datatype == out_datatype:
-        # Start with the attributes in the out_data.
-        attributes = out_data.attributes.copy()
-    else:
-        # If the datatypes are different, then clear all the values.
-        attributes = {}
-        
-    # Modify the attributes based on the Constraints and Consequences
-    # of the module.
-
-    # If there is a Consequence that is SAME_AS_CONSTRAINT, then
-    # the attribute should be determined by the out_data.  e.g.
-    # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
-    # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
-    #
-    # The module takes anything, produces the same value.  So
-    # the backchainer needs to preserve the value from the
-    # out_data.
-    for consequence in module.consequences:
-        n = consequence.name
-        if consequence.behavior == SAME_AS_CONSTRAINT:
-            # Keep the same attribute.
-            if consequence.arg1 == in_num:
-                attributes[n] = out_data.attributes[n]
-        elif consequence.behavior in [
-            SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
-            # Don't know what it should be.
-            if n in attributes:
-                del attributes[n]
-        else:
-            raise AssertionError
-        
-    debug_print("Taking attributes from out_data %s." % attributes)
-
-    # Now make sure the attributes meet the constraints.
-    for constraint in module.constraints:
-        if constraint.input_index != in_num:
-            continue
-        if constraint.behavior == MUST_BE:
-            attributes[constraint.name] = constraint.arg1
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            if constraint.name not in attributes:
-                attributes[constraint.name] = constraint.arg1
-        elif constraint.behavior == SAME_AS:
-            continue
-        else:
-            raise AssertionError
-
-    # make_out.  This module should take in a "finished" Data object,
-    # and use it to generate a new Data object.
-    debug_print("Generating a %s with attributes %s." % (
-        in_datatype.name, attributes))
-    return in_datatype.output(*user_attributes, **attributes)
-
-
-def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
+def _backchain_to_input(module, in_num, out_data, user_attributes):
     # Given a module and output_data, return the input_data object
     # that can generate the output.  This should only be called by
-    # _backchain_to_all_inputs.
+    # _backchain_to_all_inputs.  The SAME_AS constraint is handled
+    # there.  If this is called by itself, the attributes might not be
+    # right.
     assert in_num < len(module.in_datatypes)
 
     in_datatype = module.in_datatypes[in_num]
     out_datatype = out_data.datatype
-    debug_print("Backchaining %s (input=%d) -> %s -> %s." % (
-        in_datatype.name, in_num, module.name, out_datatype.name))
+    
+    # Can't generate debug messages here because the SAME_AS
+    # constraints aren't handled in this function.
 
     # The attributes for the input object should come from (in
     # decreasing priority):
@@ -2382,11 +2308,13 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
     # mitigates combinatorial explosion.  However, it can close up
     # some possibilities.  What if the value should be something other
     # than the default?
-    for attr in in_datatype.attributes:
-        attributes[attr.name] = attr.default_out
-        attrsource[attr.name] = "default"
+    for attrdef in in_datatype.attribute_defs:
+        default = attrdef.default_out
+        if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES:
+            default = attrdef.values
+        attributes[attrdef.name] = default
+        attrsource[attrdef.name] = "default"
     
-
 
     # Case 4.  If default_attributes_from is the same as in_num, then
     # fill with the same values as the out_data.
@@ -2470,40 +2398,67 @@ def _backchain_to_input_v3(module, in_num, out_data, user_attributes):
     #
     # The module takes anything, produces the same value.  So the
     # backchainer needs to preserve the value from the out_data.
-    for consequence in module.consequences:
+
+    # Get SAME_AS_CONSTRAINT.  Nothing to do for SET_TO,
+    # SET_TO_ONE_OF, BASED_ON_DATA.
+    x = [x for x in module.consequences if x.behavior == SAME_AS_CONSTRAINT]
+    # Get the consequences that are based on this datatype.
+    x = [x for x in x if x.arg1 == in_num]
+    consequences = x
+    for consequence in consequences:
         n = consequence.name
         
-        if consequence.behavior == SAME_AS_CONSTRAINT:
-            # Keep the same attribute.
-            if consequence.arg1 == in_num:
-                attributes[n] = out_data.attributes[n]
-                attrsource[n] = "consequence"
-        elif consequence.behavior in [
-            SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
-            # Don't know what it should be.
-            pass
+        # Copy the value from the output data.
+        data_value = out_data.attributes[n]
+        data_type = _get_attribute_type(data_value)
+        
+        # Since more values may be allowed in the consequence,
+        # further refine based on the constraint.  E.g.:
+        # Constraint  [A, B]
+        # Consequence [A, B, C, D]
+        x = [x for x in module.constraints if x.name == n]
+        x = [x for x in x if x.input_index == in_num]
+        assert len(x) > 0
+        assert len(x) == 1
+        constraint = x[0]
+        if constraint.behavior == SAME_AS:
+            constraint = _resolve_constraint(constraint, module.constraints)
+        if constraint.behavior == MUST_BE:
+            # constraint.arg1  <value>
+            if data_type == TYPE_ATOM:
+                assert constraint.arg1 == data_value
+            elif data_type == TYPE_ENUM:
+                assert constraint.arg1 in data_value
+                data_value = constraint.arg1
+            else:
+                raise AssertionError
+        elif constraint.behavior == CAN_BE_ANY_OF:
+            # constraint.arg1  list of <values>
+            if data_type == TYPE_ATOM:
+                assert data_value in constraint.arg1
+            elif data_type == TYPE_ENUM:
+                common = _intersection(constraint.arg1, data_value)
+                assert common
+                data_value = common
+            else:
+                raise AssertionError
         else:
             raise AssertionError
+                
+        attributes[n] = data_value
+        attrsource[n] = "consequence"
 
-
-    # make_out.  This module should take in a "finished" Data object,
-    # and use it to generate a new Data object.
-    debug_print("Generating a %s with attributes:" % in_datatype.name)
-    for name in sorted(attributes):
-        debug_print("  %s=%s (%s)" % (
-            name, attributes[name], attrsource[name]))
-    return in_datatype.output(**attributes)
-
-
-#_backchain_to_input = _backchain_to_input_v2
-_backchain_to_input = _backchain_to_input_v3
+    return attributes, attrsource
 
 
 def _backchain_to_all_inputs(module, out_data, user_attributes):
-    all_inputs = []
+    all_attributes = []
+    all_attrsource = []
     for in_num in range(len(module.in_datatypes)):
         x = _backchain_to_input(module, in_num, out_data, user_attributes)
-        all_inputs.append(x)
+        attributes, attrsource = x
+        all_attributes.append(attributes)
+        all_attrsource.append(attrsource)
 
     # Handle the SAME_AS constraints here.  Difficult to do it in
     # _backchain_to_input because not all inputs have been created
@@ -2518,15 +2473,36 @@ def _backchain_to_all_inputs(module, out_data, user_attributes):
         # value of the copied constraint.
         i_src = constraint.arg1
         i_dst = constraint.input_index
-        assert i_src < len(all_inputs)
-        assert i_dst < len(all_inputs)
-        input_src = all_inputs[i_src]
-        input_dst = all_inputs[i_dst]
+        assert i_src < len(module.in_datatypes)
+        assert i_dst < len(module.in_datatypes)
+        #input_src = all_inputs[i_src]
+        #input_dst = all_inputs[i_dst]
 
+        attr_src = all_attributes[i_src]
+        attr_dst = all_attributes[i_dst]
+        
         name = constraint.name
-        assert name in input_src.attributes
-        assert name in input_dst.attributes
-        input_dst.attributes[name] = input_src.attributes[name]
+        assert name in attr_src
+        assert name in attr_dst
+        attr_dst[name] = attr_src[name]
+        all_attrsource[i_dst][name] = "SAME_AS,%d" % (i_src)
+
+    # Make the input objects.
+    all_inputs = []
+    for in_num in range(len(module.in_datatypes)):
+        in_datatype = module.in_datatypes[in_num]
+        out_datatype = out_data.datatype
+        attributes = all_attributes[in_num]
+        attrsource = all_attrsource[in_num]
+        
+        debug_print("Backchaining %s (input=%d) -> %s -> %s." % (
+            in_datatype.name, in_num, module.name, out_datatype.name))
+        #debug_print("Generating a %s with attributes:" % in_datatype.name)
+        for name in sorted(attributes):
+            debug_print("  %s=%s (%s)" % (
+                name, attributes[name], attrsource[name]))
+        x = in_datatype.output(**attributes)
+        all_inputs.append(x)
 
     return all_inputs
 
@@ -2567,19 +2543,19 @@ def _forwardchain_to_outputs(module, in_datas):
         attributes.update(data.attributes)
     # Case 2.
     else:
-        for attr in datatype.attributes:
-            attributes[attr.name] = attr.default_in
+        for attrdef in datatype.attribute_defs:
+            attributes[attrdef.name] = attrdef.default_in
         
     # Set the attributes based on the consequences of the module.
-    options = {}
+    possibilities = {}
     
     for cons in module.consequences:
         if cons.behavior == SET_TO:
             attributes[cons.name] = cons.arg1
         elif cons.behavior == SET_TO_ONE_OF:
-            options[cons.name] = cons.arg1
+            possibilities[cons.name] = cons.arg1
         elif cons.behavior == BASED_ON_DATA:
-            options[cons.name] = cons.arg1
+            possibilities[cons.name] = cons.arg1
         elif cons.behavior == SAME_AS_CONSTRAINT:
             input_index = cons.arg1
             data = in_datas[input_index]
@@ -2587,18 +2563,18 @@ def _forwardchain_to_outputs(module, in_datas):
         else:
             raise AssertionError
 
-    # If no options, then make one output variable.
-    if not options:
+    # If no possibilities, then make one output variable.
+    if not possibilities:
         x = Data.__new__(Data)
         x.datatype = datatype
         x.attributes = attributes.copy()
         return [x]
 
-    option_names = sorted(options)
-    args = [options[x] for x in option_names]
+    names = sorted(possibilities)
+    args = [possibilities[x] for x in names]
     outputs = []
     for values in itertools.product(*args):
-        for key, value in zip(option_names, values):
+        for key, value in zip(names, values):
             attributes[key] = value
             # Optimization: Data.__init__ is very expensive because of
             # all the checks.  Skip the checks and instantiate the
@@ -2633,111 +2609,189 @@ def _make_backchain_dict(network):
     return nodeid2previds
 
 
-def _can_module_take_one_data(module, input_num, data):
-    if data.datatype != module.in_datatypes[input_num]:
-        return False
+## def _can_module_take_one_data(module, input_num, data):
+##     if data.datatype != module.in_datatypes[input_num]:
+##         return False
 
-    # Make sure the data satisfies each of the module's constraints.
-    for constraint in module.constraints:
-        # If the constraint does not apply to this data object,
-        # then ignore.
-        if constraint.input_index != input_num:
-            continue
+##     # Make sure the data satisfies each of the module's constraints.
+##     for constraint in module.constraints:
+##         # If the constraint does not apply to this data object,
+##         # then ignore.
+##         if constraint.input_index != input_num:
+##             continue
 
-        assert constraint.name in data.attributes
-        data_value = data.attributes.get(constraint.name)
-        data_type = _get_attribute_type(data_value)
-        assert data_type in [TYPE_ATOM, TYPE_ENUM]
+##         assert constraint.name in data.attributes
+##         data_value = data.attributes.get(constraint.name)
+##         data_type = _get_attribute_type(data_value)
+##         assert data_type in [TYPE_ATOM, TYPE_ENUM]
 
-        # If this is a SAME_AS constraint, follow SAME_AS.  This value
-        # must be the same as the value for another input data.  If
-        # there is a constraint on that input data, we might be able
-        # to figure out what it is.
-        # e.g.
-        # input_0   quantile_norm MUST_BE "no"
-        # input_1   quantile_norm SAME_AS input_0
-        #
-        # OR:
-        # input_0   quantile_norm MUST_BE "no"
-        # input_1   quantile_norm SAME_AS input_0
-        # input_2   quantile_norm SAME_AS input_1
-        #
-        while constraint and constraint.behavior == SAME_AS:
-            x_cons = [
-                x for x in module.constraints
-                if x.input_index == constraint.arg1 and
-                x.name == constraint.name]
-            x_same = [x for x in x_cons if x.behavior == SAME_AS]
-            x_value = [x for x in x_cons
-                       if x.behavior in [MUST_BE, CAN_BE_ANY_OF]]
-            assert not (x_same and x_value)
-            if x_same:
-                constraint = x_same[0]
-            elif x_value:
-                assert len(x_value) == 1
-                constraint = x_value[0]
-            else:
-                # If the SAME_AS chain does not end with MUST_BE or
-                # CAN_BE_ANY_OF, then we cannot test this.
-                constraint = None
-        # SAME_AS did not lead to a testable constraint.
-        if not constraint:
-            continue
+##         # If this is a SAME_AS constraint, follow SAME_AS.  This value
+##         # must be the same as the value for another input data.  If
+##         # there is a constraint on that input data, we might be able
+##         # to figure out what it is.
+##         # e.g.
+##         # input_0   quantile_norm MUST_BE "no"
+##         # input_1   quantile_norm SAME_AS input_0
+##         #
+##         # OR:
+##         # input_0   quantile_norm MUST_BE "no"
+##         # input_1   quantile_norm SAME_AS input_0
+##         # input_2   quantile_norm SAME_AS input_1
+##         #
+##         while constraint and constraint.behavior == SAME_AS:
+##             x_cons = [
+##                 x for x in module.constraints
+##                 if x.input_index == constraint.arg1 and
+##                 x.name == constraint.name]
+##             x_same = [x for x in x_cons if x.behavior == SAME_AS]
+##             x_value = [x for x in x_cons
+##                        if x.behavior in [MUST_BE, CAN_BE_ANY_OF]]
+##             assert not (x_same and x_value)
+##             if x_same:
+##                 constraint = x_same[0]
+##             elif x_value:
+##                 assert len(x_value) == 1
+##                 constraint = x_value[0]
+##             else:
+##                 # If the SAME_AS chain does not end with MUST_BE or
+##                 # CAN_BE_ANY_OF, then we cannot test this.
+##                 constraint = None
+##         # SAME_AS did not lead to a testable constraint.
+##         if not constraint:
+##             continue
 
-        if constraint.behavior == MUST_BE:
-            if data_type == TYPE_ATOM:
-                if data_value != constraint.arg1:
-                    return False
-            elif data_type == TYPE_ENUM:
-                return False
-            else:
-                raise AssertionError
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            if data_type == TYPE_ATOM:
-                if data_value not in constraint.arg1:
-                    return False
-            elif data_type == TYPE_ENUM:
-                # data_value contains the possible values of this Data
-                # object.  The values that are acceptable by module is
-                # in constraint.arg1.  Make sure the module can handle
-                # all of the possible values.
-                if not _is_subset(data_value, constraint.arg1):
-                    return False
-            else:
-                raise AssertionError
-        elif constraint.behavior == SAME_AS:
-            # Should not end up with SAME_AS constraints.
-            raise AssertionError
-        else:
-            raise AssertionError
-    return True
+##         if constraint.behavior == MUST_BE:
+##             if data_type == TYPE_ATOM:
+##                 if data_value != constraint.arg1:
+##                     return False
+##             elif data_type == TYPE_ENUM:
+##                 return False
+##             else:
+##                 raise AssertionError
+##         elif constraint.behavior == CAN_BE_ANY_OF:
+##             if data_type == TYPE_ATOM:
+##                 if data_value not in constraint.arg1:
+##                     return False
+##             elif data_type == TYPE_ENUM:
+##                 # data_value contains the possible values of this Data
+##                 # object.  The values that are acceptable by module is
+##                 # in constraint.arg1.  Make sure the module can handle
+##                 # all of the possible values.
+##                 if not _is_subset(data_value, constraint.arg1):
+##                     return False
+##             else:
+##                 raise AssertionError
+##         elif constraint.behavior == SAME_AS:
+##             # Should not end up with SAME_AS constraints.
+##             raise AssertionError
+##         else:
+##             raise AssertionError
+##     return True
 
 
-def _can_module_take_data(module, datas):
-    # Return True/False if a module can take this list of Data nodes
-    # as an input.
-    if len(module.in_datatypes) != len(datas):
-        return False
-    for input_num in range(len(module.in_datatypes)):
-        data = datas[input_num]
-        if not _can_module_take_one_data(module, input_num, data):
+## def _can_module_take_data(module, datas):
+##     # Return True/False if a module can take this list of Data nodes
+##     # as an input.
+##     if len(module.in_datatypes) != len(datas):
+##         return False
+##     for input_num in range(len(module.in_datatypes)):
+##         data = datas[input_num]
+##         if not _can_module_take_one_data(module, input_num, data):
+##             return False
+
+##         # Test SAME_AS constraints for this input_num.
+##         x = module.constraints
+##         x = [x for x in x if x.behavior == SAME_AS]
+##         x = [x for x in x if x.input_index == input_num]
+##         constraints = x
+##         for constraint in constraints:
+##             data_value = data.attributes.get(constraint.name)
+##             # Should only be encountered if there are multiple input
+##             # data types.
+##             target_data = datas[constraint.arg1]
+##             if data_value != target_data.attributes[constraint.name]:
+##                 return False
+##     return True
+
+
+def _can_module_take_one_data(
+    module, input_num, in_data, out_data, user_attributes):
+    assert input_num < len(module.in_datatypes)
+
+    # BUG: should not call _backchain_to_input!!!
+    #good_in_data = _backchain_to_input(
+    #    module, input_num, out_data, user_attributes)
+    all_inputs = _backchain_to_all_inputs(module, out_data, user_attributes)
+    return _is_data_compatible_with(in_data, all_inputs[input_num])
+
+
+def _can_module_take_data(module, in_datas, out_data, user_attributes):
+    # Return True/False if a module can take in_datas (list of Data
+    # nodes) as input.
+
+    assert len(in_datas) == len(module.in_datatypes)
+    all_inputs = _backchain_to_all_inputs(module, out_data, user_attributes)
+    for i in range(len(in_datas)):
+        if not _is_data_compatible_with(in_datas[i], all_inputs[i]):
             return False
-
-        # Test SAME_AS constraints.
-        for constraint in module.constraints:
-            if constraint.input_index != input_num:
-                continue
-            data_value = data.attributes.get(constraint.name)
-            if constraint.behavior == SAME_AS:
-                # Should only be encountered if there are multiple input
-                # data types.
-                target_data = datas[constraint.arg1]
-                if data_value != target_data.attributes[constraint.name]:
-                    return False
     return True
 
 
-def _can_module_produce_data(module, data, user_attributes):
+def _can_module_in_network_take_one_data(
+    network, module_id, input_num, in_data, user_attributes):
+    module = network.nodes[module_id]
+    # If in_datas is compatible with any of the out_datas, then return
+    # True.
+    out_data_ids = network.transitions.get(module_id, [])
+    for out_data_id in out_data_ids:
+        out_data = network.nodes[out_data_id]
+        if _can_module_take_one_data(
+            module, input_num, in_data, out_data, user_attributes):
+            return True
+    return False
+
+
+def _can_module_in_network_take_data(
+    network, module_id, in_datas, user_attributes):
+    module = network.nodes[module_id]
+    # If in_datas is compatible with any of the out_datas, then return
+    # True.
+    out_data_ids = network.transitions.get(module_id, [])
+    for out_data_id in out_data_ids:
+        out_data = network.nodes[out_data_id]
+        if _can_module_take_data(module, in_datas, out_data, user_attributes):
+            return True
+    return False
+
+
+def _resolve_constraint(constraint, all_constraints):
+    # If this should be the same as another constraint, then check the
+    # other constraint.
+    # CONSEQUENCE   NAME
+    # CONSTRAINT 1  NAME  CAN_BE_AN_OF
+    # CONSTRAINT 2  NAME  SAME_AS  1
+    # CONSTRAINT 3  NAME  SAME_AS  2
+    #
+    # Given CONSTRAINT_2 or CONSTRAINT_3, return CONSTRAINT_1 (the one
+    # that has the actual value.
+    const = constraint
+    assert const.behavior == SAME_AS
+    assert const.arg1 != const.input_index
+    #assert const.arg1 < module.in_datatypes
+
+    while const.behavior == SAME_AS:
+        #x = [x for x in module.constraints if x.name == const.name]
+        x = [x for x in all_constraints if x.name == const.name]
+        x = [x for x in x if x.input_index == const.arg1]
+        assert len(x) > 0, (
+            "%r SAME_AS %d, but datatype %d has no constraint on %r." %
+            (const.name, const.arg1, const.arg1, const.name))
+        assert len(x) == 1
+        const = x[0]
+    return const
+
+
+def _can_module_produce_data(module, data):
     # Return whether this module can produce this data object.
 
     # A module cannot produce this data if:
@@ -2758,17 +2812,17 @@ def _can_module_produce_data(module, data, user_attributes):
     #   output data type has no attributes.
     #   e.g. download_geo_GSEID  gseid -> expression_files  (no attributes)
     #
-    # These rules need to match the policies in _backchain_to_input_v2.
-    debug_print("Testing if module %s can produce data %s." % (
-        repr(module.name), str(data)))
+    # These rules need to match the policies in _backchain_to_input.
 
     # If this module doesn't produce the same data type, then it can't
     # produce this data object.
     if module.out_datatype != data.datatype:
-        debug_print(
-            "Module can't generate data type: %s." % data.datatype.name)
+        #debug_print(
+        #    "Module can't generate data type: %s." % data.datatype.name)
         return False
 
+    debug_print("Testing if module %s can produce data %s." % (
+        repr(module.name), str(data)))
     # If any of the consequences conflict, then the module can't produce
     # this data object.
     for consequence in module.consequences:
@@ -2797,14 +2851,14 @@ def _can_module_produce_data(module, data, user_attributes):
             # If this should be the same as another constraint, then
             # check the other constraint.
             if constraint.behavior == SAME_AS:
-                # XXX _resolve_constraint
                 assert constraint.arg1 < len(module.in_datatypes)
-                x = [x for x in module.constraints
-                     if x.name == consequence.name]
-                x = [x for x in x if x.input_index == constraint.arg1]
-                assert len(x) == 1
-                constraint = x[0]
-            
+                constraint = _resolve_constraint(
+                    constraint, module.constraints)
+                #x = [x for x in module.constraints
+                #     if x.name == consequence.name]
+                #x = [x for x in x if x.input_index == constraint.arg1]
+                #assert len(x) == 1
+                #constraint = x[0]
             if constraint.behavior == MUST_BE:
                 outc_value = constraint.arg1
                 outc_type = TYPE_ATOM
@@ -2894,30 +2948,30 @@ def _can_module_produce_data(module, data, user_attributes):
     if not module.default_attributes_from:
         debug_print("Module converts datatype.  Checking default attributes.")
         consequence_names = [x.name for x in module.consequences]
-        for attr in module.out_datatype.attributes:
+        for attrdef in module.out_datatype.attribute_defs:
             # Ignore the attributes that have consequences.
-            if attr.name in consequence_names:
+            if attrdef.name in consequence_names:
                 debug_print(
-                    "Attr %r: Skipping--has consequence." % attr.name)
+                    "Attr %r: Skipping--has consequence." % attrdef.name)
                 continue
-            assert attr.name in data.attributes
-            data_value = data.attributes[attr.name]
+            assert attrdef.name in data.attributes
+            data_value = data.attributes[attrdef.name]
             data_type = _get_attribute_type(data_value)
             assert data_type in [TYPE_ATOM, TYPE_ENUM]
 
             if data_type == TYPE_ATOM:
-                if attr.default_in != data_value:
+                if attrdef.default_in != data_value:
                     debug_print("Attr %r: Conflicts (module %r, data %r)." % (
-                        attr.name, attr.default_in, data_value))
+                        attrdef.name, attrdef.default_in, data_value))
                     return False
             elif data_type == TYPE_ENUM:
-                if attr.default_in not in data_value:
+                if attrdef.default_in not in data_value:
                     debug_print("Attr %r: Conflicts (module %r, data %r)." % (
-                        attr.name, attr.default_in, data_value))
+                        attrdef.name, attrdef.default_in, data_value))
                     return False
             else:
                 raise AssertionError
-            debug_print("Attr %r: matches defaults." % attr.name)
+            debug_print("Attr %r: matches defaults." % attrdef.name)
         
 
     # TESTING.
@@ -2982,19 +3036,22 @@ def _can_module_produce_data(module, data, user_attributes):
             raise NotImplementedError
         const2 = x[0]
 
-        # Follow SAME_AS
-        # XXX _resolve_constraint
-        while const1.behavior == SAME_AS:
-            x = [x for x in module.constraints
-                 if x.name == consequence.name and
-                 x.input_index == const1.arg1]
-            assert len(x) == 1
-            const1 = x[0]
-        while const2.behavior == SAME_AS:
-            x = [x for x in module.constraints
-                 if x.name == const2.name and x.input_index == const2.arg1]
-            assert len(x) == 1
-            const2 = x[0]
+        # Follow SAME_AS.
+        if const1.behavior == SAME_AS:
+            const1 = _resolve_constraint(const1, module.constraints)
+        if const2.behavior == SAME_AS:
+            const2 = _resolve_constraint(const2, module.constraints)
+        #while const1.behavior == SAME_AS:
+        #    x = [x for x in module.constraints
+        #         if x.name == consequence.name and
+        #         x.input_index == const1.arg1]
+        #    assert len(x) == 1
+        #    const1 = x[0]
+        #while const2.behavior == SAME_AS:
+        #    x = [x for x in module.constraints
+        #         if x.name == const2.name and x.input_index == const2.arg1]
+        #    assert len(x) == 1
+        #    const2 = x[0]
 
         assert const1.behavior in [MUST_BE, CAN_BE_ANY_OF]
         assert const2.behavior in [MUST_BE, CAN_BE_ANY_OF]
@@ -3029,8 +3086,8 @@ def _can_module_produce_data(module, data, user_attributes):
     return False
 
 
-def _get_valid_input_combinations(network, module_id, all_input_ids,
-                                  node2previds=None):
+def _get_valid_input_combinations(
+    network, module_id, all_input_ids, user_attributes, node2previds=None):
     # Given a list of all input IDs that point to a module, yield
     # tuples of input_ids that can match the input datatypes of the
     # module.  Only checks the datatypes, and does not do any other
@@ -3052,7 +3109,8 @@ def _get_valid_input_combinations(network, module_id, all_input_ids,
     for i in range(len(args)):
         x = args[i]
         x = [x for x in x
-             if _can_module_take_one_data(module, i, network.nodes[x])]
+             if _can_module_in_network_take_one_data(
+                 network, module_id, i, network.nodes[x], user_attributes)]
         args[i] = x
     
     valid = []
@@ -3082,7 +3140,8 @@ def _get_valid_input_combinations(network, module_id, all_input_ids,
 
         # Make sure the inputs are compatible with the module.
         input_datas = [network.nodes[x] for x in input_ids]
-        if not _can_module_take_data(module, input_datas):
+        if not _can_module_in_network_take_data(
+            network, module_id, input_datas, user_attributes):
             continue
 
         # Make sure the outputs are compatible with the module.
@@ -3451,4 +3510,40 @@ def debug_print(s):
         print s
 
 
+def _object_to_dict(obj):
+    # Convert objects to a dictionary of their representation
+    d = { '__class__':obj.__class__.__name__, 
+          '__module__':obj.__module__,
+          }
+    d.update(obj.__dict__)
+    return d
 
+
+def _dict_to_object(d):
+    assert isinstance(d,dict)
+    args = dict((key.encode('ascii'), value) for key, value in d.items())
+    for key,value in args.iteritems():
+        if isinstance(value,dict):
+            args[key]=_dict_to_object(value)
+        elif isinstance(value,list):
+            if value:
+                if isinstance(value[0],unicode):
+                    args[key]=[i.encode('ascii') for i in value]
+        elif isinstance(value,unicode):
+            args[key]=value.encode('ascii')
+        else:
+            assert 'not expected type %s' %value
+    inst = args
+    if '__class__' in args:
+        class_name = args.pop('__class__')
+        module_name = args.pop('__module__')
+        if '.' in module_name:
+            module = __import__(
+                module_name, globals(), locals(), [module_name.split('.')[-1]],
+                -1)
+        else:
+            module = __import__(module_name)
+        class_ = getattr(module, class_name)
+        fn = getattr(class_,'_' + class_name + '__init_from_dict')
+        inst = fn(args)
+    return inst
