@@ -46,7 +46,7 @@ all_modules = [
     Module(
         'cluster_genes_by_kmeans',
          SignalFile_rule.SignalFile,ClusterFile,
-        UserInputDef("k_value",5,help='k value for k means'),
+        OptionDef("k_value",5,help='k value for k means'),
         Consequence("cluster_alg",SET_TO,'kmeans'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean']),
         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
@@ -64,8 +64,8 @@ all_modules = [
     Module(
         'plot_signal_heatmap',
         SignalFile_rule.SignalFile,Heatmap,
-        UserInputDef('hm_width',20,help="width in heatmap plot"),
-        UserInputDef('hm_height',1,help="heigth in heatmap plot"),
+        OptionDef('hm_width',20,help="width in heatmap plot"),
+        OptionDef('hm_height',1,help="heigth in heatmap plot"),
         Constraint("format",MUST_BE,'tdf'),
         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
         Consequence("cluster_alg",SET_TO,'no_cluster_alg'),
@@ -76,8 +76,8 @@ all_modules = [
     Module(
         'plot_cluster_heatmap',
         ClusterFile,Heatmap,
-        UserInputDef('hm_width',20,help="width in heatmap plot"),
-        UserInputDef('hm_height',1,help="heigth in heatmap plot"),
+        OptionDef('hm_width',20,help="width in heatmap plot"),
+        OptionDef('hm_height',1,help="heigth in heatmap plot"),
         Constraint("cluster_alg",CAN_BE_ANY_OF,['hierarchical','pca','som','kmeans']),
         Constraint("distance",CAN_BE_ANY_OF,['correlation','euclidean']),
         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),

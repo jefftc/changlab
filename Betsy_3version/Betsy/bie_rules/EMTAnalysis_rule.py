@@ -16,7 +16,7 @@ all_modules = [
     Module(
         'analyze_phenotype_for_EMT',
          [SignalFile_rule.SignalFile,CellTypeFile],EMTAnalysis,
-         UserInputDef("geneset_value",help="geneset value for EMT analysis"),
+         OptionDef("geneset_value",help="geneset value for EMT analysis"),
          Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),
          Consequence('contents',SAME_AS_CONSTRAINT,0),

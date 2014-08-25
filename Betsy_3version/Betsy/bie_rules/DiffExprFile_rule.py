@@ -16,7 +16,7 @@ all_modules = [
     Module(
         'calc_diffexp_with_ttest',
         [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],DiffExprFile,
-        UserInputDef("diffexp_foldchange_value",0,
+        OptionDef("diffexp_foldchange_value",0,
                      help="fold change value for differential expression analysis"),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
@@ -31,9 +31,9 @@ all_modules = [
     Module(
         'calc_diffexp_with_sam',
         [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],DiffExprFile,
-        UserInputDef("sam_delta_value",1.0,
+        OptionDef("sam_delta_value",1.0,
                      help="delta value for sam differential expression method"),
-        UserInputDef("diffexp_foldchange_value",0,
+        OptionDef("diffexp_foldchange_value",0,
                      help="fold change value for differential expression analysis"),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
@@ -48,7 +48,7 @@ all_modules = [
     Module(
         'calc_diffexp_with_ebayes',
         [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],DiffExprFile,
-        UserInputDef("diffexp_foldchange_value",0,
+        OptionDef("diffexp_foldchange_value",0,
                      help="fold change value for differential expression analysis"),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
@@ -62,7 +62,7 @@ all_modules = [
     Module(
         'calc_diffexp_with_fold_change',
         [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],DiffExprFile,
-        UserInputDef("diffexp_foldchange_value",0,
+        OptionDef("diffexp_foldchange_value",0,
                      help="fold change value for differential expression analysis"),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
@@ -76,12 +76,12 @@ all_modules = [
     Module(
         'generate_genelist_from_diffexprfile',
         DiffExprFile,SignalFile_rule.GeneListFile,
-        UserInputDef("select_gene_by_foldchange","",
-                     help="select gene by foldchange value,etc.5"),
-        UserInputDef("select_gene_by_p_value","",
-                     help="select gene by p-value value, etc. 0.05"),
-        UserInputDef("select_gene_by_fdr","",
-                     help="select gene by fdr value, etc.0.05"),
+        OptionDef("select_gene_by_foldchange","",
+                  help="select gene by foldchange value,etc.5"),
+        OptionDef("select_gene_by_p_value","",
+                  help="select gene by p-value value, etc. 0.05"),
+        OptionDef("select_gene_by_fdr","",
+                  help="select gene by fdr value, etc.0.05"),
         Constraint("gene_order",CAN_BE_ANY_OF,['diff_ttest',
                                                'diff_sam','diff_ebayes','diff_fold_change']),
         Constraint(

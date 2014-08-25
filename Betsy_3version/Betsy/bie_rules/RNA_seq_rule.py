@@ -103,7 +103,7 @@ all_modules = [
         'normalize_with_rsem_fastq',
          [FastqFolder,SampleGroupFile],
          SignalFile_rule.SignalFile_Postprocess,
-         UserInputDef("fastq_ref",'human',help='ref for fastq file to align,human or mouse'),
+         OptionDef("fastq_ref",'human',help='ref for fastq file to align,human or mouse'),
          Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),
          Consequence("contents",SAME_AS_CONSTRAINT,0),

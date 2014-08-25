@@ -13,14 +13,13 @@ from Betsy import userfile
 
 
 
-def get_all_user_inputs():
-    modules = rulebase.all_modules
-    user_inputs = []
-    for module in modules:
-        for user_input in module.user_inputs:
-            if user_input.name not in user_inputs:
-                user_inputs.append(user_input.name)
-    return user_inputs
+def get_all_options():
+    options = []
+    for module in rulebase.all_modules:
+        for option in module.option_defs:
+            if option.name not in options:
+                options.append(option.name)
+    return options
                 
 
 def _break_into_lines(one_long_line, width=72, indent1=0, indento=20):
@@ -84,17 +83,17 @@ def pretty_print_module(module, handle=None):
 
     print >>handle, "MODULE %s:" % module.name
     print >>handle, "(", module.help, ")"
-    for user_input in module.user_inputs:
-        x1 = "%-20s" % user_input.name
+    for option in module.option_defs:
+        x1 = "%-20s" % option.name
         default = ""
-        if user_input.default:
-            default = user_input.default
+        if option.default:
+            default = option.default
         x2 = str(default)
         x = x1 + x2
         lines = _break_into_lines(x)
         for line in lines:
             print >>handle, line
-        print >>handle, "(", user_input.help , ")"
+        print >>handle, "(", option.help , ")"
             
     
 
@@ -112,9 +111,9 @@ def list_datatypes(rulebase):
         pretty_print_datatype(dt)
         print
 
-    # Print the user input from each module.
+    # Print the options from each module.
     for module in modules:
-        if not module.user_inputs:
+        if not module.option_defs:
             continue
         pretty_print_module(module)
         print
@@ -132,26 +131,34 @@ def print_attribute(data):
         if attributes:
             print '-------------------------------'
 
-def print_user_input(modules):
-    print 'user_inputs:'
-    user_inputs = {}
+def print_option(modules):
+    print 'options:'
+    all_options = []
     for module in modules:
-        for user_input in module.user_inputs:
-            if user_input.name not in user_inputs:
-                user_inputs[user_input.name] = user_input.default
-                default = str(', default\t ' + str(user_input.default)
-                              if user_input.default else '')
-                print user_input.name + default
-                print user_input.help
+        for option in module.option_defs:
+            all_options.append(option)
+            
+    seen = {}
+    for option in all_options:
+        if option.name in seen:
+            continue
+        seen[option.name] = 1
+        
+        default = str(', default\t ' + str(option.default)
+                      if option.default else '')
+        print option.name + default
+        print option.help
                 
-def get_necessary_user_input(modules):
-    user_inputs = []
+
+def get_necessary_option(modules):
+    options = []
     for module in modules:
-        for user_input in module.user_inputs:
-            if user_input.name not in user_inputs:
-                if user_input.default is None:
-                    user_inputs.append(user_input.name)
-    return user_inputs
+        for option in module.option_defs:
+            if option.name not in options:
+                if option.default is None:
+                    options.append(option.name)
+    return options
+
 
 def assign_args(args):
     inputs = []            # list of names of datatypes
@@ -252,6 +259,7 @@ def print_possible_inputs(network):
             print
         print
         
+
 def main():
     parser = argparse.ArgumentParser(description='Run the engine')
     group = parser.add_argument_group(title="Input/Output Nodes")
@@ -263,7 +271,8 @@ def main():
         type=str, help='input data path')
     group.add_argument(
         '--mattr',  default=[], action='append',
-        type=str, help='module attribute in key=value format')
+        type=str, help='Set the option for a module.  Format should be: '
+        '<key>=<value>.')
     
     group.add_argument(
         '--output_file', type=str, default=None,
@@ -326,13 +335,13 @@ def main():
          in_object = rule_engine_bie3.DataObject(in_data,identifier)
          in_objects.append(in_object)
     # test mattr are valid
-    all_inputs = get_all_user_inputs()
-    user_inputs = {}
+    all_inputs = get_all_options()
+    options = {}
     for i in args.mattr:
         assert '=' in i
         key, value = i.split('=')
         assert key in all_inputs,'user input %s is not valid' % i
-        user_inputs[key] = value
+        options[key] = value
     # test introspection
     if args.output:
         realpath = os.path.realpath(args.output)
@@ -384,12 +393,12 @@ def main():
     #test mattr are given when necessary
     network_modules = [i for i in network.nodes
                            if isinstance(i, bie3.Module)]
-    necessary_user_inputs = get_necessary_user_input(network_modules)
-    for user_input in necessary_user_inputs:
-        assert user_input in user_inputs, 'mattr %s should be given' % user_input
+    necessary_options = get_necessary_option(network_modules)
+    for option in necessary_options:
+        assert option in options, 'mattr %s should be given' % option
         
     output_file = rule_engine_bie3.run_pipeline(
-        network, in_objects, user_inputs)
+        network, in_objects, options)
     
     if args.output_file:
         if os.path.exists(args.output_file) and args.clobber:
@@ -403,4 +412,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

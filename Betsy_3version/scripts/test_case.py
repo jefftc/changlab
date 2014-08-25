@@ -1144,50 +1144,59 @@ def run_case37():
 ##        bie3.Attribute(rulebase.GeneListFile, "contents", "diff_unspecified"),
 ##        )
     
-    
-
     network = bie3.complete_network(network)
     network = bie3.optimize_network(network)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+
 def run_case38():
-    """test case for make_normalize_file, 
-       SignalFile -> plot_intensity_boxplot[80], preprocess of SignalFile is
-       ['mas5', 'agilent', 'loess', 'unknown', 'tcga', 'rsem'] or
-       illumina or rma, but we expect it to be only illumina.
-       Also we only want the ReportFile from make_normalize_report_illumina[2],
-       but it shows make_normalize_report[1] as well.
+    """test case for make_normalize_file,
+    
+    SignalFile[143] -> plot_intensity_boxplot[80]    <many>
+    SignalFile[25] -> plot_intensity_boxplot[80]     illumina
+    SignalFile[86] -> plot_intensity_boxplot[80]     rma
+    SignalFile[88] -> plot_intensity_boxplot[80]     rma
+    
+    preprocess of SignalFile is ['mas5', 'agilent', 'loess',
+    'unknown', 'tcga', 'rsem'] or illumina or rma, but we expect it to
+    be only illumina.
+    
+    Also we only want the ReportFile from
+    make_normalize_report_illumina[2], but it shows
+    make_normalize_report[1] as well.
+    
     """
-    network = bie3.backchain(  
-        rulebase.all_modules, rulebase.ReportFile,
+    user_attributes = [
         bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
         bie3.Attribute(rulebase.SignalFile, "quantile_norm","yes"),
-        
-        )
+        ]
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.ReportFile, user_attributes)
+    
 ##    network = bie3.remove_data_node(
 ##        network,
 ##        bie3.Attribute(rulebase.SignalFile, "preprocess", "rsem"),
 ##        )
 
-    network = bie3.complete_network(network)
-    network = bie3.optimize_network(network)
+    network = bie3.complete_network(network, user_attributes)
+    network = bie3.optimize_network(network, user_attributes)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
-def run_case39():
-    """test case for make_normalize_file, 
-       when we require a ReportFile without any normalization,
-       the network only contains 1 node. This may be because the conflicts
-       between two same Pcaplot pipeline.
-    """
-    network = bie3.backchain(  
-        rulebase.all_modules, rulebase.ReportFile,
-        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina")
-        )
 
-    network = bie3.complete_network(network)
-    network = bie3.optimize_network(network)
+def run_case39():
+    """test case for make_normalize_file.
+    
+    When we require a ReportFile without any normalization, the
+    network only contains 1 node. This may be because the conflicts
+    between two same Pcaplot pipeline.
+       
+    """
+    network = bie3.make_network(
+        rulebase.all_modules, rulebase.ReportFile,
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
+        )
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
@@ -1231,8 +1240,10 @@ def main():
     #run_case35()
     #run_case36()
     #run_case37()
-    #run_case38()
-    run_case39()
+    run_case38()
+    #run_case39()
+
+    
 if __name__ == '__main__':
     main()
     #import cProfile; cProfile.run("main()")

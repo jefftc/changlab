@@ -29,7 +29,8 @@ all_modules = [
             ],
         ReportFile,
         Constraint(
-            'preprocess', CAN_BE_ANY_OF, ['mas5','agilent','loess','unknown','tcga','rsem'],
+            'preprocess', CAN_BE_ANY_OF,
+            ['mas5','agilent','loess','unknown','tcga','rsem'],
             0),
         Constraint("annotate", MUST_BE, "yes", 0),
         Constraint(
@@ -324,8 +325,8 @@ Module(
         [DiffExprFile_rule.DiffExprFile,DiffExprFile_rule.DiffExprFile,
          ClusterFile_rule.Heatmap,GatherFile_rule.GatherFile,
          GseaFile_rule.GseaFile],ReportFile,
-         UserInputDef("hm_width",20),
-         UserInputDef("hm_height",1),
+         OptionDef("hm_width",20),
+         OptionDef("hm_height",1),
          Constraint("gene_order",MUST_BE,'diff_ttest',0),
          Constraint("gene_order",SAME_AS,0,3),
          Constraint("contents",MUST_BE,'unspecified',0),
