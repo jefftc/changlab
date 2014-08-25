@@ -1191,15 +1191,64 @@ def run_case39():
     When we require a ReportFile without any normalization, the
     network only contains 1 node. This may be because the conflicts
     between two same Pcaplot pipeline.
-       
+
+    If we require any normalization like quantile_norm=yes like in case38, it will get a network.
+    
+    Here normalization means any changes between SignalFile_Merge and SignalFile.
+    
+    In make_normalize_report module, we defined two Pcaplot,the first Pcaplot is
+    required to be no normalization from SignalFile_merge to SignalFile. The second
+    PcaPlot can have different normalization. If we do not require any normalziation,
+    then the two PcaPlot will be the same, then it might make the conflict.
+    
     """
-    network = bie3.make_network(
-        rulebase.all_modules, rulebase.ReportFile,
-        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
-        )
+    user_attributes = [bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina")]
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.ReportFile, user_attributes)
+    network = bie3.optimize_network(network, user_attributes)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
+def run_case40():
+    """test case for make_normalize_file,
+    
+    preprocess of SignalFile is ['mas5', 'agilent', 'loess',
+    'unknown', 'tcga', 'rsem'] or illumina or rma, but we expect it to
+    be only illumina.
+    
+    Also we only want the ReportFile from
+    make_normalize_report_illumina[2], but it shows
+    make_normalize_report[1] as well.
+    
+    """
+    user_attributes = [
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
+        bie3.Attribute(rulebase.SignalFile, "quantile_norm","yes"),
+        ]
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.ReportFile, user_attributes)
+
+    network = bie3.complete_network(network, user_attributes)
+    network = bie3.optimize_network(network, user_attributes)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+
+def run_case41():
+    """
+       The start node of this network is GEOSeries[41]. We want the select_start_node() function
+       can generate a network which from ExpressionFiles[39] and below.
+    """
+    user_attributes = [
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
+        bie3.Attribute(rulebase.SignalFile, "quantile_norm","yes"),
+        ]
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.SignalFile, user_attributes)
+
+    network = bie3.complete_network(network, user_attributes)
+    network = bie3.optimize_network(network, user_attributes)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
     
 def main():
     #run_case01()
@@ -1240,9 +1289,10 @@ def main():
     #run_case35()
     #run_case36()
     #run_case37()
-    run_case38()
+    #run_case38()
     #run_case39()
-
+    run_case40()
+    #run_case41()
     
 if __name__ == '__main__':
     main()
