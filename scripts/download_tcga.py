@@ -391,7 +391,7 @@ def process_data(data, txt_file, outfile):
     elif data == 'mirnaseq':
         format_firehose_mirna(txt_file, outfile)
     elif data == 'clinical':
-        raise NotImplementedError
+        raise
     elif data == 'rppa':
         format_firehose_rppa(txt_file, outfile)
     else:
@@ -508,13 +508,11 @@ def main():
     else:
         assert args.disease, "Please specify a disease to download."
         assert args.data, "data must be given."
-
+        assert args.output, "Please specify output path."
         all_dates = retrieve_all_dates()
         date = sorted(all_dates)[-1]
         if args.date:
             date = args.date
-
-        # BUG: Need to test if the disease at this date exists.
             
         #assert args.disease in disease_in_date_dict[require_date], (
         #    'the diesease %s is not found in the date %s' %(
