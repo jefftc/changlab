@@ -58,17 +58,17 @@ def name_outfile(data_node,user_input):
     return outfile
 
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     fastq1_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='FastqFile',
+                                            data_nodes,user_attributes,datatype='FastqFile',
                                               optional_key='read',optional_value='pair1')
-    sai1_node = module_utils.get_identifier(network, module_id, data_nodes,
+    sai1_node = module_utils.get_identifier(network, module_id, data_nodes,user_attributes,
                                            datatype='SaiFile',
                                             optional_key='read',optional_value='pair1')
     fastq2_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='FastqFile',
+                                            data_nodes,user_attributes,datatype='FastqFile',
                                               optional_key='read',optional_value='pair2')
-    sai2_node = module_utils.get_identifier(network, module_id, data_nodes,
+    sai2_node = module_utils.get_identifier(network, module_id, data_nodes,user_attributes,
                                            datatype='SaiFile',
                                             optional_key='read',optional_value='pair2')
     return fastq1_node, sai1_node, fastq2_node, sai2_node

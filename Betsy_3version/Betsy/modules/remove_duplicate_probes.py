@@ -19,9 +19,9 @@ def run(data_node,parameters, user_input, network):
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
-def find_antecedents(network, module_id,pool,parameters):
+def find_antecedents(network, module_id,pool,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            pool)
+                                            pool,user_attributes)
     return data_node
 
 def name_outfile(data_node,user_input):

@@ -58,14 +58,16 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = svm_model.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     svm_model_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,
+                                            data_nodes,user_attributes,
                                             datatype='SvmModel')
     data_node_test = module_utils.get_identifier(network, module_id,
-                                            data_nodes,contents='class0,class1,test',
+                                            data_nodes,user_attributes,
+                                            contents='class0,class1,test',
                                             datatype='SignalFile')
     cls_node_train = module_utils.get_identifier(network, module_id,
-                                            data_nodes,contents='class0,class1',
+                                            data_nodes,user_attributes,
+                                            contents='class0,class1',
                                             datatype='ClassLabelFile')
     return svm_model_node,data_node_test,cls_node_train

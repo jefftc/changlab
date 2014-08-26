@@ -87,11 +87,13 @@ def run(in_nodes,parameters, user_input, network):
     return out_object
 
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile',
+                                            data_nodes,user_attributes,
+                                            datatype='SignalFile',
                                             contents='class0,class1')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
+                                           user_attributes,
                                            datatype='ClassLabelFile',
                                            contents='class0,class1')
     return data_node, cls_node

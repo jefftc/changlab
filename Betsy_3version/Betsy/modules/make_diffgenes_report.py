@@ -179,19 +179,21 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = data_node1.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node1 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='DiffExprFile',
+                                            data_nodes,user_attributes,
+                                             datatype='DiffExprFile',
                                              optional_key='gene_order',
                                              optional_value='diff_ttest')
     data_node2 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='DiffExprFile',
+                                            data_nodes,user_attributes,
+                                             datatype='DiffExprFile',
                                              optional_key='gene_order',
                                              optional_value='diff_sam')
     data_node3 = module_utils.get_identifier(network, module_id, data_nodes,
-                                           datatype='Heatmap')
+                                           user_attributes,datatype='Heatmap')
     data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
-                                           datatype='GatherFile')
+                                           user_attributes,datatype='GatherFile')
     data_node5 = module_utils.get_identifier(network, module_id, data_nodes,
-                                           datatype='GseaFile')
+                                           user_attributes,datatype='GseaFile')
     return data_node1, data_node2, data_node3, data_node4,data_node5

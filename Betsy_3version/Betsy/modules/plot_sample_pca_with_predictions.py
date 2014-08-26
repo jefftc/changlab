@@ -55,11 +55,11 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = data_node.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PcaAnalysis')
+                                            data_nodes,user_attributes,datatype='PcaAnalysis')
     classify_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='ClassifyFile',
+                                            data_nodes,user_attributes,datatype='ClassifyFile',
                                             optional_key='classify_alg',
                                             optional_value=parameters['classify_alg'])
     return data_node,classify_node

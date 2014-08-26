@@ -38,10 +38,12 @@ def run(in_nodes, parameters,user_input,network):
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile_Filter')
+                                            data_nodes,user_attributes,
+                                            datatype='SignalFile_Filter')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
+                                           user_attributes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node
 

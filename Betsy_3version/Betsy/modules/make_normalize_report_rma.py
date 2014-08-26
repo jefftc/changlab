@@ -159,15 +159,15 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     identifier = data_node1.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node1 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile')
+                                            data_nodes,user_attributes,datatype='SignalFile')
     data_node2, data_node3 = module_utils.find_pcaplots(network,data_nodes,module_id,rma=True)
-    data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node4 = module_utils.get_identifier(network, module_id, data_nodes,user_attributes,
                                            datatype='IntensityPlot')
-    data_node5 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node5 = module_utils.get_identifier(network, module_id, data_nodes,user_attributes,
                                            datatype='ActbPlot')
-    data_node6 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node6 = module_utils.get_identifier(network, module_id, data_nodes,user_attributes,
                                            datatype='ControlPlot')
     return data_node1, data_node2, data_node3, data_node4,data_node5, data_node6
 

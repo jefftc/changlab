@@ -416,7 +416,7 @@ def main():
         
     print "Running the pipeline."
     output_file = rule_engine_bie3.run_pipeline(
-        network, in_objects, options)
+        network, in_objects,  user_attributes, options)
     
     if args.output_file:
         if os.path.exists(args.output_file) and args.clobber:

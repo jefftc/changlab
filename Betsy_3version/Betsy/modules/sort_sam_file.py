@@ -41,9 +41,9 @@ def name_outfile(data_node,user_input):
     return outfile
 
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SamFile')
+                                            data_nodes,user_attributes,datatype='SamFile')
     
     return data_node
 

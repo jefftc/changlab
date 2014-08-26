@@ -52,9 +52,9 @@ def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes)
+                                            data_nodes,user_attributes)
     return data_node
 
 

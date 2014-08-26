@@ -52,11 +52,11 @@ def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     return module_utils.make_unique_hash(identifier,pipeline,
                                          parameters,user_input)
 
-def find_antecedents(network, module_id,pool,parameters):
+def find_antecedents(network, module_id,pool,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            pool,datatype='SignalFile')
+                                            pool,user_attributes,datatype='SignalFile')
     cel_node = module_utils.get_identifier(network, module_id,
-                                            pool,datatype='CellTypeFile')
+                                            pool,user_attributes,datatype='CellTypeFile')
     return data_node, cel_node
 
 

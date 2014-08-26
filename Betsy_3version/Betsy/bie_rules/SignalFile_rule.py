@@ -397,7 +397,7 @@ all_modules = [
            
     Module(
         "download_geo", GEOSeries, ExpressionFiles,
-         OptionDef("GSEID",'',help="GSEID to download"),
+         OptionDef("GSEID",help="GSEID to download"),
          OptionDef("GPLID","",help="GPDID to download"),
          Constraint("contents",CAN_BE_ANY_OF,CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),

@@ -56,7 +56,7 @@ class DataObject:
         return x
 
     
-def get_identifier(network, module_id, pool,
+def get_identifier(network, module_id, pool,user_attributes,
                    datatype=None, contents=None,optional_key=None,
                    optional_value=None,second_key=None,second_value=None,**param):
     require_id = []
@@ -64,7 +64,7 @@ def get_identifier(network, module_id, pool,
         if module_id in network.transitions[key]:
             require_id.append(key)
     combine_ids = bie3._get_valid_input_combinations(
-        network, module_id, require_id)
+        network, module_id, require_id, user_attributes)
     for combine_id in combine_ids:
         flag = True
         for i in combine_id:

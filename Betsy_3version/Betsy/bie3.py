@@ -1463,7 +1463,7 @@ class _OptimizeNoDuplicateModules:
         return network
     
     def find_duplicate_modules(self, network):
-        # Return list of module_ids for modules that are duplicated.  If
+        # Return list of f_ids for modules that are duplicated.  If
         # no duplicates found, return an empty list.
 
         # DEFINITION: If the same data node points to two of the same

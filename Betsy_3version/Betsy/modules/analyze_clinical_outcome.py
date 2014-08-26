@@ -55,9 +55,9 @@ def name_outfile(in_nodes,user_input):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile')
+                                            data_nodes,user_attributes,datatype='SignalFile')
     clinical_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='ClinicalFile')
+                                            data_nodes,user_attributes,datatype='ClinicalFile')
     return data_node, clinical_node

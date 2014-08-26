@@ -59,10 +59,10 @@ def name_outfile(in_nodes,user_input):
     return outfile
 
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     fastq_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='FastqFile')
-    sai_node = module_utils.get_identifier(network, module_id, data_nodes,
+                                            data_nodes,user_attributes,datatype='FastqFile')
+    sai_node = module_utils.get_identifier(network, module_id, data_nodes,user_attributes,
                                            datatype='SaiFile')
     return fastq_node, sai_node
 

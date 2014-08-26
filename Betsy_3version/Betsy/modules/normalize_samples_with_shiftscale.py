@@ -39,11 +39,12 @@ def run(in_nodes,parameters, user_input, network):
         return out_object
     return False
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='SignalFile_Merge')
+                                            data_nodes,user_attributes,
+                                            datatype='SignalFile_Merge')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
-                                           datatype='ClassLabelFile')
+                                           user_attributes,datatype='ClassLabelFile')
     return data_node, cls_node
 
 def name_outfile(in_nodes,user_input):

@@ -31,9 +31,9 @@ def name_outfile(data_node,user_input):
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes)
+                                            data_nodes,user_attributes)
     return data_node
     
 def get_out_attributes(parameters,data_node):

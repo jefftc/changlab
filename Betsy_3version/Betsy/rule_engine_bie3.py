@@ -31,10 +31,10 @@ run_pipeline
 
 def make_module_wd_name(network, module_file, module_id,
                         user_input, pipeline_sequence,
-                        pool, current_attributes):
+                        pool, current_attributes,user_attributes):
     module_name = network.nodes[module_id].name
     data_object = module_file.find_antecedents(network, module_id,
-                                               pool, current_attributes)
+                                               pool, current_attributes,user_attributes)
     hash_string = module_file.make_unique_hash(
         data_object, pipeline_sequence, current_attributes, user_input)
     working_dir = module_name + '_BETSYHASH1_' + hash_string
@@ -98,12 +98,12 @@ def compare_two_dict(dict_A, dict_B):
 
 
 def get_out_node(working_dir, network, module_id, module_file, parameters,
-                pool, user_input):
+                pool, user_input,user_attributes):
     current_dir = os.getcwd()
     try:
         os.chdir(working_dir)
         data_node = module_file.find_antecedents(network,
-                                                 module_id, pool, parameters)
+                                                 module_id, pool, parameters,user_attributes)
         outfile = module_file.name_outfile(data_node, user_input)
         next_possible_ids = network.transitions[module_id]
         out_object = None
@@ -121,7 +121,7 @@ def get_out_node(working_dir, network, module_id, module_file, parameters,
         os.chdir(current_dir)
 
 
-def create_out_attributes(network, module_id, module_file, pool):
+def create_out_attributes(network, module_id, module_file, pool,user_attributes):
     # return out_attributes, if the output already generated, return None
     next_ids = network.transitions[module_id]
     for next_id in next_ids:
@@ -129,14 +129,14 @@ def create_out_attributes(network, module_id, module_file, pool):
             continue
         out_attributes = network.nodes[next_id].attributes
         data_node = module_file.find_antecedents(
-            network, module_id, pool, out_attributes)
+            network, module_id, pool, out_attributes,user_attributes)
         parameters = module_file.get_out_attributes(
             out_attributes, data_node)
         return parameters
     return None
 
 
-def choose_next_module(network, node_id, pool):
+def choose_next_module(network, node_id, pool,user_attributes):
     # choose the next module and return a list of (module,id)
     if node_id not in network.transitions:
         return False
@@ -145,20 +145,20 @@ def choose_next_module(network, node_id, pool):
     for next_node_id in next_node_ids:
         next_node = network.nodes[next_node_id]
         assert isinstance(next_node, bie3.Module),'next node supposed to be a module'
-        if test_require_data(network, next_node_id, pool):
+        if test_require_data(network, next_node_id, pool, user_attributes):
             result.append((next_node, next_node_id))
     result.sort(key=lambda x: x[1], reverse=False)
     return result
 
 
-def test_require_data(network, module_id, pool):
+def test_require_data(network, module_id, pool,user_attributes):
     # test if the required data for the module is met.
     require_id = []
     for key in network.transitions:
         if module_id in network.transitions[key]:
             require_id.append(key)
     combine_ids = bie3._get_valid_input_combinations(
-        network, module_id, require_id)
+        network, module_id, require_id,user_attributes)
     for combine_id in combine_ids:
         flag = True
         for i in combine_id:
@@ -169,7 +169,7 @@ def test_require_data(network, module_id, pool):
     return False
 
 
-def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
+def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_attributes,
                user=getpass.getuser(), job_name='', clean_up=True):
     current_dir = os.getcwd()
     output_path = config.OUTPUTPATH
@@ -178,8 +178,9 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
     # get module
     module_node = network.nodes[module_id]
     sub_user_input = {}
-    if module_node.user_inputs:
-        for user_in in module_node.user_inputs:
+    #if module_node.user_inputs:
+    if module_node.option_defs:
+        for user_in in module_node.option_defs:
             if user_in.name in user_inputs:
                 sub_user_input[user_in.name] = user_inputs[user_in.name]
             if user_in.default is None:
@@ -189,17 +190,17 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
     module = __import__('modules.' + module_name, globals(),
                         locals(), [module_name], -1)
     out_attributes = create_out_attributes(
-        network, module_id, module, pool)
+        network, module_id, module, pool, user_attributes)
     if out_attributes is None:
         return []
     print "[%s].  %s" % (time.strftime('%l:%M%p'), module_name)
     #print '[' + time.strftime('%l:%M%p') + '].' + module_name
     working_dir = os.path.join(output_path, make_module_wd_name(
         network, module, module_id, sub_user_input, pipeline_sequence,
-        pool, out_attributes))
+        pool, out_attributes,user_attributes))
     # make name of outfile
     data_node = module.find_antecedents(network, module_id,
-                                        pool, out_attributes)
+                                        pool, out_attributes,user_attributes)
     outfile = os.path.split(module.name_outfile(data_node, sub_user_input))[-1]
     temp_dir = ''
     temp_outfile = ''
@@ -249,12 +250,12 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,
             if clean_up and os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
     out_nodes = get_out_node(working_dir,
-        network, module_id, module, out_attributes, pool, sub_user_input)
+        network, module_id, module, out_attributes, pool, sub_user_input,user_attributes)
     assert out_nodes, 'module %s fails' % module_node.name
     return out_nodes
 
 
-def run_pipeline(network, in_objects, user_inputs,
+def run_pipeline(network, in_objects, user_attributes, user_inputs,
                  user=getpass.getuser(), job_name=''):
     output_path = config.OUTPUTPATH
     if not os.path.exists(output_path):
@@ -280,18 +281,18 @@ def run_pipeline(network, in_objects, user_inputs,
             pool[node_id] = data_object
             if node_id == 0:
                 return None
-            next_modules = choose_next_module(network, node_id, pool)
+            next_modules = choose_next_module(network, node_id, pool,user_attributes)
             stack_list.extend(next_modules)
         elif isinstance(data_object, bie3.Module):
             module_id = node_id
-            test_required = test_require_data(network, module_id, pool)
+            test_required = test_require_data(network, module_id, pool,user_attributes)
             if not test_required:
                 stack_list.insert(0, (data_object, node_id))
                 num_failures += 1
                 continue
             pipeline_sequence.append(data_object.name)
             out_nodes = run_module(network, module_id, pool,
-                                   user_inputs, pipeline_sequence,
+                                   user_inputs, pipeline_sequence,user_attributes,
                                    user, job_name)
             flag = False
             for x in out_nodes:

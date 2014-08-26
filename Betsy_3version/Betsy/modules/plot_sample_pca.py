@@ -55,13 +55,13 @@ def name_outfile(in_nodes,user_input):
 def get_out_attributes(parameters,data_node):
     return parameters
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='PcaAnalysis',
+                                            data_nodes,user_attributes,datatype='PcaAnalysis',
                                             optional_key='process',
                                             optional_value=parameters['process'])
     cls_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,datatype='ClassLabelFile')
+                                            data_nodes,user_attributes,datatype='ClassLabelFile')
     return data_node,cls_node
 
 

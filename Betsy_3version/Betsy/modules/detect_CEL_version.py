@@ -52,8 +52,8 @@ def get_out_attributes(parameters,data_node):
         raise ValueError('the cel file can only be cc,v3,v4')
     return new_parameters
 
-def find_antecedents(network, module_id,data_nodes,parameters):
+def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes)
+                                            data_nodes,user_attributes)
     return data_node
 
