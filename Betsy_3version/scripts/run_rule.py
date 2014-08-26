@@ -413,11 +413,11 @@ def main():
     necessary_options = get_necessary_option(network_modules)
     break_flag = True
     for necessary_option in necessary_options:
-        option = necessary_option[0]
+        neccessary_option_name = necessary_option[0]
         module_name = necessary_option[1]
-        if option not in options:
+        if neccessary_option_name not in options:
             break_flag = False
-            print 'Please set option %s for module %s' % (option, module_name)
+            print 'Please set option %s for module %s' % (option_name, module_name)
     if not break_flag:
          return
     print "Running the pipeline."
