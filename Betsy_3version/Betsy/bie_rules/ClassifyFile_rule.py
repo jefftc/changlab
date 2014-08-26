@@ -29,8 +29,8 @@ PredictionPCAPlot = DataType(
 
 PredictionPlot = DataType(
     'PredictionPlot',
-    AttributeDef('classify_alg',['weighted_voting','svm','random_forest','no'],
-                 'no','no',help="classify algorithm"),
+    AttributeDef('classify_alg',['weighted_voting','svm','random_forest'],
+                 'svm','svm',help="classify algorithm"),
     AttributeDef('loocv',['yes','no'],'no','no',help="loocv yes or not"),
     AttributeDef('actual_label',['yes','no'],'no','no',
                  help="compared with the actual label or not"),
