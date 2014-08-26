@@ -417,7 +417,7 @@ def main():
         module_name = necessary_option[1]
         if neccessary_option_name not in options:
             break_flag = False
-            print 'Please set option %s for module %s' % (option_name, module_name)
+            print 'Please set option %s for module %s' % (neccessary_option_name, module_name)
     if not break_flag:
          return
     print "Running the pipeline."
