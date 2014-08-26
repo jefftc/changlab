@@ -171,7 +171,7 @@ def get_necessary_option(modules):
         for option in module.option_defs:
             if option.name not in options:
                 if option.default is None:
-                    options.append(option.name)
+                    options.append((option.name,module.name))
     return options
 
 
@@ -411,9 +411,15 @@ def main():
     network_modules = [i for i in network.nodes
                            if isinstance(i, bie3.Module)]
     necessary_options = get_necessary_option(network_modules)
-    for option in necessary_options:
-        assert option in options, 'mattr %s should be given' % option
-        
+    break_flag = True
+    for necessary_option in necessary_options:
+        option = necessary_option[0]
+        module_name = necessary_option[1]
+        if option not in options:
+            break_flag = False
+            print 'Please set option %s for module %s' % (option, module_name)
+    if not break_flag:
+         return
     print "Running the pipeline."
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects,  user_attributes, options)
