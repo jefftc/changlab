@@ -98,6 +98,7 @@ all_modules = [
         Consequence('report_type', SET_TO, 'normalize_file'),
         help="make normalize report for mas5,agilent,loess,unknown,tcga,rsem"
         ),
+    
     Module(
         'make_normalize_report_rma',
          [SignalFile_rule.SignalFile,
@@ -106,7 +107,7 @@ all_modules = [
          PcaAnalysis_rule.PcaPlot,
          plot_rule.ActbPlot,
          PcaAnalysis_rule.PcaPlot],
-          
+       
          ReportFile,
          Constraint('preprocess',MUST_BE,'rma',0),
          Constraint("annotate",MUST_BE,"yes",0),
@@ -169,22 +170,26 @@ all_modules = [
          Consequence('report_type',SET_TO,'normalize_file'),
         help="make normalize report for rma"
         ),
-Module(
+    
+    Module(
         'make_normalize_report_illumina',
-       [ SignalFile_rule.SignalFile,
-         plot_rule.IntensityPlot,
-         plot_rule.BiotinPlot,
-         PcaAnalysis_rule.PcaPlot,
-         plot_rule.ActbPlot,
-         PcaAnalysis_rule.PcaPlot,
-         plot_rule.HousekeepingPlot,
-         plot_rule.Hyb_barPlot,
-         SignalFile_rule.ControlFile],ReportFile,
-         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
-         Constraint('preprocess',MUST_BE,'illumina',0),
-         Constraint('annotate',MUST_BE,'yes',0),
+        [
+            SignalFile_rule.SignalFile,
+            plot_rule.IntensityPlot,
+            plot_rule.BiotinPlot,
+            PcaAnalysis_rule.PcaPlot,
+            plot_rule.ActbPlot,
+            PcaAnalysis_rule.PcaPlot,
+            plot_rule.HousekeepingPlot,
+            plot_rule.Hyb_barPlot,
+            SignalFile_rule.ControlFile
+            ],
+        ReportFile,
+        Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
+        Constraint('preprocess',MUST_BE,'illumina',0),
+        Constraint('annotate',MUST_BE,'yes',0),
 
-         #SignalFile
+        #SignalFile
         Constraint('quantile_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
         Constraint('combat_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
         Constraint('shiftscale_norm', CAN_BE_ANY_OF, ['yes','no'], 0),

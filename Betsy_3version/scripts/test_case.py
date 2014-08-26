@@ -1192,22 +1192,57 @@ def run_case39():
     network only contains 1 node. This may be because the conflicts
     between two same Pcaplot pipeline.
 
-    If we require any normalization like quantile_norm=yes like in case38, it will get a network.
+    If we require any normalization like quantile_norm=yes like in
+    case38, it will get a network.
     
-    Here normalization means any changes between SignalFile_Merge and SignalFile.
+    Here normalization means any changes between SignalFile_Merge and
+    SignalFile.
     
-    In make_normalize_report module, we defined two Pcaplot,the first Pcaplot is
-    required to be no normalization from SignalFile_merge to SignalFile. The second
-    PcaPlot can have different normalization. If we do not require any normalziation,
-    then the two PcaPlot will be the same, then it might make the conflict.
+    In make_normalize_report module, we defined two Pcaplot,the first
+    Pcaplot is required to be no normalization from SignalFile_merge
+    to SignalFile. The second PcaPlot can have different
+    normalization. If we do not require any normalization, then the
+    two PcaPlot will be the same, then it might make the conflict.
+
+
+    Need to turn off optimize_network, comment out
+    make_normalize_report_rma, and make_normalize_report_illumina.
+
+    With quantile_norm:
+    bie3.Attribute(rulebase.SignalFile, "quantile_norm","yes"),
+    Points to make_normalize_report [1]:
+    SignalFile [2]       
+    PcaPlot [5]          quantile_norm="yes"
+    PcaPlot [7]          quantile_norm="no"
+    ActbPlot [6]
+    IntensityPlot [3]
+    ControlPlot [4]
+
+    No quantile_norm.  Only 1 PcaPlot going into it.
+    SignalFile[2]
+    PcaPlot[5]           quantile_norm="no"
+    ActbPlot[6]
+    IntensityPlot[3]
+    ControlPlot[4]
+    make_normalize_report[1]
     
     """
-    user_attributes = [bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina")]
+    user_attributes = [
+        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
+        #bie3.Attribute(rulebase.SignalFile, "quantile_norm","yes"),
+        ]
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile, user_attributes)
+
+    #prev_ids = bie3._backchain_to_ids(network, 1)
+    #x = bie3._get_valid_input_combinations(
+    #    network, 1, prev_ids, user_attributes)
+    #print x
+    
     network = bie3.optimize_network(network, user_attributes)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
 
 def run_case40():
     """test case for make_normalize_file,
@@ -1249,6 +1284,22 @@ def run_case41():
     network = bie3.optimize_network(network, user_attributes)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
+
+
+def run_case42():
+    # Testing the flag:
+    # DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES
+    
+    user_attributes = [
+        bie3.Attribute(rulebase.SignalFile, "gene_center", "mean")
+        ]
+    network = bie3.backchain(
+        rulebase.all_modules, rulebase.SignalFile, user_attributes)
+    network = bie3.complete_network(network, user_attributes)
+    network = bie3.optimize_network(network, user_attributes)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out.png", network)
+    
     
 def main():
     #run_case01()
@@ -1290,9 +1341,10 @@ def main():
     #run_case36()
     #run_case37()
     #run_case38()
-    #run_case39()
-    run_case40()
+    run_case39()
+    #run_case40()
     #run_case41()
+    #run_case42()
     
 if __name__ == '__main__':
     main()

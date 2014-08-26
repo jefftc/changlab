@@ -1501,6 +1501,7 @@ class _OptimizeNoDanglingNodes:
             network = network.delete_nodes(dangling)
         return network
     def find_dangling_nodes(self, network, user_attributes):
+        # Return a list of node_ids.
         dangling = []
         for node_id in range(len(network.nodes)):
             if self.is_dangling_node(network, node_id, user_attributes):
@@ -3132,11 +3133,14 @@ def _get_valid_input_combinations(
         # Don't check again if already done.
         if input_ids in valid:
             continue
-        
+
+        # Actually, duplicated IDs are OK.  Some modules may accept
+        # the same data type twice.  Usually, this is a bug in the
+        # rules, but we should allow it.
         # No duplicated IDs.
-        x = {}.fromkeys(input_ids)
-        if len(x) != len(input_ids):
-            continue
+        #x = {}.fromkeys(input_ids)
+        #if len(x) != len(input_ids):
+        #    continue
 
         # Make sure the inputs are compatible with the module.
         input_datas = [network.nodes[x] for x in input_ids]
