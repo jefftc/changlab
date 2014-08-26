@@ -167,11 +167,13 @@ def print_option(modules):
 
 def get_necessary_option(modules):
     options = []
+    option_names = []
     for module in modules:
         for option in module.option_defs:
-            if option.name not in options:
+            if option.name not in option_names:
                 if option.default is None:
                     options.append((option.name,module.name))
+                    option_names.append(option.name)
     return options
 
 
