@@ -59,10 +59,15 @@ def _break_into_lines(one_long_line, width=72, indent1=0, indento=20):
 
 def pretty_print_datatype(datatype, handle=None):
     handle = handle or sys.stdout
-    
-    print >>handle, "DATATYPE %s:" % datatype.name
-    print >>handle, "(", datatype.help , ")"
-    for attr in datatype.attributes:
+
+    LW = 72
+    print >>handle, "="*LW
+    print >>handle, "DataType: %s" % datatype.name
+    if datatype.help:
+        for x in _break_into_lines(datatype.help, indent1=10, indento=10):
+            print >>handle, x
+    print >>handle, "-"*LW
+    for attr in datatype.attribute_defs:
         x1 = "%-20s" % attr.name
         x2 = []
         for val in attr.values:
@@ -81,19 +86,27 @@ def pretty_print_datatype(datatype, handle=None):
 def pretty_print_module(module, handle=None):
     handle = handle or sys.stdout
 
-    print >>handle, "MODULE %s:" % module.name
-    print >>handle, "(", module.help, ")"
+    LW = 72
+    print >>handle, "="*LW
+    print >>handle, "Module: %s" % module.name
+    if module.help:
+        for x in _break_into_lines(module.help, indent1=8, indento=8):
+            print >>handle, x
+    print >>handle, "-"*LW
     for option in module.option_defs:
         x1 = "%-20s" % option.name
+        x2 = ""
+        if option.help:
+            x2 = "%s " % option.help
         default = ""
         if option.default:
-            default = option.default
-        x2 = str(default)
-        x = x1 + x2
+            default = "(default %s)" % option.default
+        x3 = str(default)
+        x = x1 + x2 + x3
+        x = x.strip()
         lines = _break_into_lines(x)
         for line in lines:
             print >>handle, line
-        print >>handle, "(", option.help , ")"
             
     
 
@@ -110,12 +123,14 @@ def list_datatypes(rulebase):
     for dt in datatypes:
         pretty_print_datatype(dt)
         print
+        print
 
     # Print the options from each module.
     for module in modules:
         if not module.option_defs:
             continue
         pretty_print_module(module)
+        print
         print
 
 
@@ -241,9 +256,9 @@ def assign_args(args):
     out_result = output, out_identifier, out_parameters
     return in_results, out_result
 
-def print_possible_inputs(network):
+def print_possible_inputs(network, user_attributes):
     print "Possible Inputs"
-    inputs = bie3.get_inputs(network)
+    inputs = bie3.get_inputs(network, user_attributes)
     dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
     for i, dt in enumerate(sorted(dt2inputs)):
         x = [x.name for x in dt]
@@ -265,7 +280,7 @@ def main():
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
         '--input',  default=None, action='append',
-        type=str, help='input data type for network')
+        type=str, help='DataType of the input')
     group.add_argument(
         '--input_file', default=None, action='append',
         type=str, help='input data path')
@@ -275,16 +290,17 @@ def main():
         '<key>=<value>.')
     
     group.add_argument(
-        '--output_file', type=str, default=None,
-        help='file or folder of output result')
-    group.add_argument(
         '--output',  default=None, type=str,
-        help='output type')
+        help='Desired DataType for the output.')
     group.add_argument(
         '--dattr', default=[], type=str, action='append',
         help='Attribute for a Datatype.  For input datatype, attribute '
         'should be given as: <datatype>,<key>=<value>.  For output '
         'datatype, the format is: <key>=<value>.')
+    group.add_argument(
+        '--output_file', type=str, default=None,
+        help='file or folder of output result')
+
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
         '--png_file',  type=str, default=None,
@@ -312,14 +328,14 @@ def main():
         intype, identifier, attributes = x
         if identifier:
             assert os.path.exists(identifier),'input_file %s does not exists' %identifier
-    # test outtype and build Attributes
+    # test outtype and build the list of user_attributes.
     if outtype:
         goal_datatype = getattr(rulebase, outtype)
-        Attributes = []
+        user_attributes = []
         for x in out_attributes:
             subtype, key, value = x
             fn = getattr(rulebase, subtype)
-            Attributes.append(bie3.Attribute(fn, key, value))
+            user_attributes.append(bie3.Attribute(fn, key, value))
     # test intype attributes and build objects
     in_objects = []
     for x in input_list:
@@ -356,9 +372,10 @@ def main():
     if not args.output and args.input:
         raise ValueError("output is expected")
     print 'Generating network...'
-    network = bie3.backchain(rulebase.all_modules, goal_datatype, *Attributes)
-    network = bie3.complete_network(network)
-    network = bie3.optimize_network(network)
+    network = bie3.backchain(
+        rulebase.all_modules, goal_datatype, user_attributes)
+    network = bie3.complete_network(network, user_attributes)
+    network = bie3.optimize_network(network, user_attributes)
     assert network, ('No pipeline has been generated,\
                       please check your command.')
     if args.png_file:
@@ -377,7 +394,7 @@ def main():
         assert network, 'no network generated'
         print "No inputs given.  Here are the possibilities."
         print
-        print_possible_inputs(network)
+        print_possible_inputs(network, user_attributes)
         return 
     if args.dry_run:
         return
@@ -397,6 +414,7 @@ def main():
     for option in necessary_options:
         assert option in options, 'mattr %s should be given' % option
         
+    print "Running the pipeline."
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects, options)
     
