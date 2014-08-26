@@ -1153,18 +1153,15 @@ def run_case37():
 def run_case38():
     """test case for make_normalize_file,
     
-    SignalFile[143] -> plot_intensity_boxplot[80]    <many>
-    SignalFile[25] -> plot_intensity_boxplot[80]     illumina
-    SignalFile[86] -> plot_intensity_boxplot[80]     rma
-    SignalFile[88] -> plot_intensity_boxplot[80]     rma
+    We expect the ReportFile only generated from
+    make_normalize_report_illumina since the SignalFile is
+    set preprocess=illumina.
+    But we get the ReportFile generated not only from
+    make_normalize_report_illumina but also make_normalize_report
+    and make_normalize_report_rma.
     
-    preprocess of SignalFile is ['mas5', 'agilent', 'loess',
-    'unknown', 'tcga', 'rsem'] or illumina or rma, but we expect it to
-    be only illumina.
-    
-    Also we only want the ReportFile from
-    make_normalize_report_illumina[2], but it shows
-    make_normalize_report[1] as well.
+    The expect network will be only the right part network
+    of the current network it generates with preprocess=illumina .
     
     """
     user_attributes = [
@@ -1173,11 +1170,6 @@ def run_case38():
         ]
     network = bie3.backchain(
         rulebase.all_modules, rulebase.ReportFile, user_attributes)
-    
-##    network = bie3.remove_data_node(
-##        network,
-##        bie3.Attribute(rulebase.SignalFile, "preprocess", "rsem"),
-##        )
 
     network = bie3.complete_network(network, user_attributes)
     network = bie3.optimize_network(network, user_attributes)
@@ -1244,30 +1236,6 @@ def run_case39():
     bie3.plot_network_gv("out.png", network)
 
 
-def run_case40():
-    """test case for make_normalize_file,
-    
-    preprocess of SignalFile is ['mas5', 'agilent', 'loess',
-    'unknown', 'tcga', 'rsem'] or illumina or rma, but we expect it to
-    be only illumina.
-    
-    Also we only want the ReportFile from
-    make_normalize_report_illumina[2], but it shows
-    make_normalize_report[1] as well.
-    
-    """
-    user_attributes = [
-        bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
-        bie3.Attribute(rulebase.SignalFile, "quantile_norm","yes"),
-        ]
-    network = bie3.backchain(
-        rulebase.all_modules, rulebase.ReportFile, user_attributes)
-
-    network = bie3.complete_network(network, user_attributes)
-    network = bie3.optimize_network(network, user_attributes)
-    bie3.print_network(network)
-    bie3.plot_network_gv("out.png", network)
-
 def run_case41():
     """
        The start node of this network is GEOSeries[41]. We want the select_start_node() function
@@ -1283,7 +1251,17 @@ def run_case41():
     network = bie3.complete_network(network, user_attributes)
     network = bie3.optimize_network(network, user_attributes)
     bie3.print_network(network)
-    bie3.plot_network_gv("out.png", network)
+    bie3.plot_network_gv("out_before.png", network)
+    
+    fn = getattr(rulebase, 'ExpressionFiles')
+    in_data = fn.input()
+    start_node = bie3._find_start_nodes(network,in_data)
+    print 'start_node',start_node
+    # Here is the function to generate new network. We expect it is from Node[39]
+    # and all the nodes below. Get rid of the Node [41] and Node[40].
+    network = bie3.select_start_node(network,in_data)
+    bie3.print_network(network)
+    bie3.plot_network_gv("out_after.png", network)
 
 
 def run_case42():
@@ -1291,10 +1269,10 @@ def run_case42():
     # DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES
     
     user_attributes = [
-        bie3.Attribute(rulebase.SignalFile, "gene_center", "mean")
+        #bie3.Attribute(rulebase.SignalFile, "gene_center", "mean")
         ]
     network = bie3.backchain(
-        rulebase.all_modules, rulebase.SignalFile, user_attributes)
+        rulebase.all_modules, rulebase.Heatmap, user_attributes)
     network = bie3.complete_network(network, user_attributes)
     network = bie3.optimize_network(network, user_attributes)
     bie3.print_network(network)
@@ -1341,9 +1319,8 @@ def main():
     #run_case36()
     #run_case37()
     #run_case38()
-    run_case39()
-    #run_case40()
-    #run_case41()
+    #run_case39()
+    run_case41()
     #run_case42()
     
 if __name__ == '__main__':
