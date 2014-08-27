@@ -361,13 +361,13 @@ def main():
         assert key in all_inputs,'user input %s is not valid' % i
         options[key] = value
     # test introspection
-    if args.output:
-        realpath = os.path.realpath(args.output)
-        if os.path.exists(args.output):
+    if args.output_file:
+        realpath = os.path.realpath(args.output_file)
+        if os.path.exists(args.output_file):
             if not args.clobber:
                 raise ValueError('the output path %s is already exisit,\
                                  please use --clobber option to overwrite'
-                                 % args.output)
+                                 % args.output_file)
     if not args.output and not args.input:
         list_datatypes(rulebase)
         return
