@@ -28,9 +28,9 @@ def choose_gene_names(MATRIX):
     
     
 def find_diffexp_genes(
-    outfile, gmt_file, gmt_p_cutoff, gmt_fdr_cutoff,
-    algorithm, MATRIX, name1, name2, classes, fold_change, 
-    sam_DELTA, sam_qq_file, show_all_genes, num_procs):
+    outfile, gmt_file, algorithm, MATRIX, geneid_header, genename_header, 
+    name1, name2, classes, fold_change, p_cutoff, fdr_cutoff,
+    sam_DELTA, sam_qq_file, num_procs):
     # classes must be 0, 1, None.
     import os
     import sys
@@ -73,7 +73,12 @@ def find_diffexp_genes(
         sample_name = MATRIX.col_names(MATRIX.col_names()[0])
 
     x = choose_gene_names(MATRIX)
-    geneid_header, genename_header = x
+    if not geneid_header:
+        geneid_header = x[0]
+    if not genename_header:
+        genename_header = x[1]
+    assert not geneid_header or geneid_header in MATRIX.row_names()
+    assert not genename_header or genename_header in MATRIX.row_names()
 
     R = jmath.start_R()
     de_lib = os.path.join(config.changlab_Rlib, "diffexp.R")
@@ -105,11 +110,14 @@ def find_diffexp_genes(
         args.append("geneid=geneid")
     if genenames:
         args.append("genenames=genenames")
+    # Pass the fold change to the algorithm, because it can affect the
+    # multiple hypothesis correction.
     if fold_change is not None:
         args.append("FOLD.CHANGE=%g" % fold_change)
     if algorithm == "ttest":
         args.append("NPROCS=%d" % num_procs)  # t-test only
-    if show_all_genes and algorithm != "sam":
+    #if show_all_genes and algorithm != "sam":
+    if algorithm != "sam":
         args.append("all.genes=TRUE")
 
 
@@ -150,6 +158,27 @@ def find_diffexp_genes(
     DATA_py = jmath.transpose(tDATA_py)
     header = [DATA_R.colnames[x] for x in range(DATA_R.ncol)]
 
+    # Filter based on user criteria.
+    if fold_change is not None:
+        name = "Log_2 Fold Change"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        log_2_fc = math.log(fold_change, 2)
+        DATA_py = [x for x in DATA_py if abs(x[I]) >= log_2_fc]
+    if p_cutoff is not None:
+        name  = "NL10P"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        nl10p_cutoff = -math.log(p_cutoff, 10)
+        DATA_py = [x for x in DATA_py if float(x[I]) > nl10p_cutoff]
+    if fdr_cutoff is not None:
+        name  = "NL10 FDR"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        nl10fdr_cutoff = -math.log(fdr_cutoff, 10)
+        DATA_py = [x for x in DATA_py if float(x[I]) > nl10fdr_cutoff]
+    
+
     # Write to the outhandle.
     outhandle = open(outfile, 'w')
     print >>outhandle, "\t".join(header)
@@ -160,6 +189,7 @@ def find_diffexp_genes(
         outhandle.flush()
     outhandle.close()
 
+
     # Write out the gene sets in GMT format, if requested.
     if not gmt_file:
         return
@@ -169,16 +199,6 @@ def find_diffexp_genes(
     I_direction = header.index("Direction")
     I_geneid = header.index("Gene ID")
     I_genename = header.index("Gene Name")
-    I_NL10P = header.index("NL10P")
-    I_NL10FDR = header.index("NL10 FDR")
-
-    assert not (gmt_p_cutoff and gmt_fdr_cutoff)
-    if gmt_p_cutoff:
-        nl10p_cutoff = -math.log(gmt_p_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I_NL10P]) > nl10p_cutoff]
-    elif gmt_fdr_cutoff:
-        nl10fdr_cutoff = -math.log(gmt_fdr_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I_NL10FDR]) > nl10fdr_cutoff]
 
     # "Higher in <name1>"
     # "Higher in <name2>"
@@ -239,20 +259,18 @@ def main():
         choices=["yes", "no", "auto"], default="auto",
         help="Log the data before analyzing.  "
         "Must be 'yes', 'no', or 'auto' (default).")
-    parser.add_argument(
-        "--show_all_genes", default=False, action="store_true",
-        help="List all the genes (default shows only p<0.05).")
+    #parser.add_argument(
+    #    "--show_all_genes", default=False, action="store_true",
+    #    help="List all the genes (default shows only p<0.05).")
     parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,
         help="Number of processors to use.")
     parser.add_argument(
+        "--geneid_header", help="The column header of the gene IDs.")
+    parser.add_argument(
+        "--genename_header", help="The column header of the gene names.")
+    parser.add_argument(
         "--gmt_file", help="Save the results in GMT format.")
-    parser.add_argument(
-        "--gmt_p_cutoff", default=None, type=float,
-        help="Put genes with p-value less than this value into GMT file.")
-    parser.add_argument(
-        "--gmt_fdr_cutoff", default=None, type=float,
-        help="Put genes with FDR less than this value into GMT file.")
     
     group = parser.add_argument_group(title="Algorithm Parameters")
     group.add_argument(
@@ -262,6 +280,13 @@ def main():
     group.add_argument(
         "--fold_change", type=float, default=None,
         help="Minimum change in gene expression.")
+    parser.add_argument(
+        "--p_cutoff", default=None, type=float,
+        help="Only keep genes with p-value less than this value.")
+    parser.add_argument(
+        "--fdr_cutoff", default=None, type=float,
+        help="Only keep genes with FDR less than this value.")
+    
 
     group = parser.add_argument_group(title="Algorithm-specific Parameters")
     group.add_argument(
@@ -296,13 +321,11 @@ def main():
     if args.fold_change is not None:
         assert args.fold_change >= 0 and args.fold_change < 1000
     assert args.sam_delta > 0 and args.sam_delta < 100
-    if args.gmt_fdr_cutoff is not None:
-        assert args.gmt_file, "Found --gmt_fdr_cutoff but no --gmt_cutoff."
-        assert args.gmt_fdr_cutoff > 0.0 and args.gmt_fdr_cutoff < 1.0
-        assert args.gmt_p_cutoff is None, "Cannot have both FDR and p cutoff."
-    if args.gmt_p_cutoff is not None:
-        assert args.gmt_file, "Found --gmt_p_cutoff but no --gmt_cutoff."
-        assert args.gmt_p_cutoff > 0.0 and args.gmt_p_cutoff < 1.0
+    if args.fdr_cutoff is not None:
+        assert args.fdr_cutoff > 0.0 and args.fdr_cutoff < 1.0
+        assert args.p_cutoff is None, "Cannot have both FDR and p cutoff."
+    if args.p_cutoff is not None:
+        assert args.p_cutoff > 0.0 and args.p_cutoff < 1.0
     
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
@@ -377,10 +400,13 @@ def main():
             w = os.fdopen(w, 'w')
             os.dup2(w.fileno(), sys.stdout.fileno())
             find_diffexp_genes(
-                outfile, args.gmt_file, args.gmt_p_cutoff, args.gmt_fdr_cutoff,
-                args.algorithm, MATRIX, name1, name2, classes,
-                args.fold_change, args.sam_delta, args.sam_qq_file,
-                args.show_all_genes, args.num_procs)
+                outfile, args.gmt_file,
+                args.algorithm,
+                MATRIX, args.geneid_header, args.genename_header, 
+                name1, name2, classes,
+                args.fold_change, args.p_cutoff, args.fdr_cutoff,
+                args.sam_delta, args.sam_qq_file,
+                args.num_procs)
             sys.exit(0)
     finally:
         if pid:

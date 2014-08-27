@@ -354,9 +354,9 @@ def main():
     all_inputs = get_all_options()
     options = {}
     for i in args.mattr:
-        assert '=' in i
+        assert '=' in i, "--mattr should be in format: <option>=<value>"
         key, value = i.split('=')
-        assert key in all_inputs,'user input %s is not valid' % i
+        assert key in all_inputs, "I don't recognize the option: %s" % key
         options[key] = value
     # test introspection
     if args.output:
