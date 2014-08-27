@@ -167,11 +167,13 @@ def print_option(modules):
 
 def get_necessary_option(modules):
     options = []
+    option_names = []
     for module in modules:
         for option in module.option_defs:
-            if option.name not in options:
+            if option.name not in option_names:
                 if option.default is None:
                     options.append((option.name,module.name))
+                    option_names.append(option.name)
     return options
 
 
@@ -359,13 +361,13 @@ def main():
         assert key in all_inputs, "I don't recognize the option: %s" % key
         options[key] = value
     # test introspection
-    if args.output:
-        realpath = os.path.realpath(args.output)
-        if os.path.exists(args.output):
+    if args.output_file:
+        realpath = os.path.realpath(args.output_file)
+        if os.path.exists(args.output_file):
             if not args.clobber:
                 raise ValueError('the output path %s is already exisit,\
                                  please use --clobber option to overwrite'
-                                 % args.output)
+                                 % args.output_file)
     if not args.output and not args.input:
         list_datatypes(rulebase)
         return

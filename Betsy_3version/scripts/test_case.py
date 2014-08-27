@@ -1278,6 +1278,30 @@ def run_case42():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
     
+def run_case43():
+    """
+    Test case for running a network about 2 minutes.
+    """
+    import time
+    user_attributes=[
+    bie3.Attribute(rulebase.SignalFile, "gene_center", "mean"),
+    bie3.Attribute(rulebase.SignalFile, "gene_normalize", "variance"),
+    bie3.Attribute(rulebase.SignalFile,"predataset",'yes'),
+    bie3.Attribute(rulebase.SignalFile,"gene_order",'class_neighbors'),
+        bie3.Attribute(rulebase.SignalFile,"predataset",'yes'),
+        bie3.Attribute(rulebase.SignalFile,"annotate",'yes'),
+        bie3.Attribute(rulebase.SignalFile,"rename_sample",'yes'),
+    ]
+    start = time.strftime("%H:%M:%S")
+    print start
+    network = bie3.backchain(rulebase.all_modules,
+                                 rulebase.NetworkFile_Test,user_attributes)
+    network = bie3.complete_network(network,user_attributes)
+    network = bie3.optimize_network(network,user_attributes)
+    stop = time.strftime("%H:%M:%S")
+    print stop
+    #bie3.print_network(network)
+    #bie3.plot_network_gv("out.png", network)    
     
 def main():
     #run_case01()
@@ -1320,8 +1344,9 @@ def main():
     #run_case37()
     #run_case38()
     #run_case39()
-    run_case41()
+    #run_case41()
     #run_case42()
+    run_case43()
     
 if __name__ == '__main__':
     main()
