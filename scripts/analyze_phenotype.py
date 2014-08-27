@@ -47,6 +47,8 @@ def ignore_samples(M, clinical_annots, ignore):
 
 def calc_association(phenotypes, scores, expression_or_score):
     # Return a dictionary with keys:
+    # n                    Number of samples.
+    # m                    Number of groups.
     # scores               n-list of <float>
     # phenotypes           n-list of <string>
     # groups               n-list of <int>  [0, length(group_names)-1]
@@ -56,6 +58,7 @@ def calc_association(phenotypes, scores, expression_or_score):
     # p_value              <float>
     # relationship         <string>
     from genomicode import jmath
+    from genomicode import sortlib
     
     # Select only the samples with phenotype and score information.
     I1 = [i for (i, x) in enumerate(phenotypes) if x]
@@ -67,7 +70,8 @@ def calc_association(phenotypes, scores, expression_or_score):
     scores = [float(scores[i]) for i in I]
 
     # Figure out the groupings.
-    group_names = sorted({}.fromkeys(phenotypes))
+    #group_names = sorted({}.fromkeys(phenotypes))
+    group_names = sortlib.sort_natural({}.fromkeys(phenotypes))
     assert len(group_names) >= 2, "Need at least 2 groups."
     groups = [None] * len(phenotypes)
     for i in range(len(phenotypes)):
