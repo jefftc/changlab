@@ -127,6 +127,19 @@ def peek_samples_hint(matrix_data):
     return samples_hint
 
 
+def _process_sample(sample, case_insensitive, hash_samples, ignore_nonalnum):
+    from genomicode import hashlib
+    
+    x = sample
+    if case_insensitive:
+        x = x.upper()
+    if hash_samples:
+        x = hashlib.hash_var(x)
+    if ignore_nonalnum:
+        x = strip_nonalnum(x)
+    return x
+
+
 def align_matrices(
     matrix_data, align_samples, case_insensitive, hash_samples,
     ignore_nonalnum, ignore_blank, left_join, outer_join, null_string):
@@ -134,32 +147,44 @@ def align_matrices(
     import itertools
     from genomicode import hashlib
 
+    align_samples_cmp = [
+        _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
+        for x in align_samples]
+
+    # Pre-process the samples so I don't have to do it repeatedly.
+    # This list should be aligned to matrix_data.
+    matrix_samples_cmp = []
+    for x in matrix_data:
+        infile, outfile, matrix, header, samples = x
+        x = [
+            _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
+            for x in samples]
+        matrix_samples_cmp.append(x)
+
+    # Pre-process, for each matrix, a dictionary of sample -> list of
+    # indexes.
+    matrix_sample2indexes = []
+    for samples_cmp in matrix_samples_cmp:
+        sample2indexes = {}
+        for i, s in enumerate(samples_cmp):
+            if s not in sample2indexes:
+                sample2indexes[s] = []
+            sample2indexes[s].append(i)
+        matrix_sample2indexes.append(sample2indexes)
+
     sample2matrix2indexes = {}  # sample_i -> matrix_i -> list of indexes
     for i, sample in enumerate(align_samples):
         sample2matrix2indexes[i] = {}
+        sample_cmp = align_samples_cmp[i]
         for j, x in enumerate(matrix_data):
-            infile, outfile, matrix, header, samples = x
-
-            samples_cmp = samples
-            sample_cmp = sample
-            if case_insensitive:
-                samples_cmp = [x.upper() for x in samples_cmp]
-                sample_cmp = sample_cmp.upper()
-            if hash_samples:
-                samples_cmp = [hashlib.hash_var(x) for x in samples_cmp]
-                sample_cmp = hashlib.hash_var(sample_cmp)
-            if ignore_nonalnum:
-                samples_cmp = [strip_nonalnum(x) for x in samples_cmp]
-                sample_cmp = strip_nonalnum(sample_cmp)
+            sample2indexes = matrix_sample2indexes[j]
 
             # Keep the blanks in the first matrix.  Just don't align
             # them to anything in the remaining matrices.
             if ignore_blank and not sample_cmp.strip() and j > 0:
                 indexes = []
             else:
-                indexes = [
-                    k for k in range(len(samples_cmp))
-                    if samples_cmp[k] == sample_cmp]
+                indexes = sample2indexes.get(sample_cmp, [])
             sample2matrix2indexes[i][j] = indexes
 
     # Now align the indexes for each matrix.  Here, len(indexes)
