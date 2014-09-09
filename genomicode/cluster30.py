@@ -103,7 +103,7 @@ def cluster30(MATRIX, cluster_genes, cluster_arrays,
         args.append("-k %d" % kmeans_k)
 
     cluster_data = _cluster(MATRIX, cluster=cluster_bin, *args)
-    
+
     ## # Cluster the hierarchical trees, if necessary.
     ## gene_tree_cluster = array_tree_cluster = None
     ## # If I haven't reclustered the data, then the old tree is still
