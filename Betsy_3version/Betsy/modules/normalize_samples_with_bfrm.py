@@ -42,7 +42,7 @@ def run(data_node, parameters, user_input,network):
     f = file(outfile,'w')
     arrayio.tab_delimited_format.write(M_new,f)
     f.close()
-    out_node = bie3.Data(rulebase.SignalFile_Merge,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Merge,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

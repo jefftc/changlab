@@ -19,7 +19,7 @@ def run(data_node,parameters, user_input, network):
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for select_first_n_genes fails'%outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Filter,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Filter,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

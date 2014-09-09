@@ -40,7 +40,7 @@ def run(data_node,parameters, user_input,network):
         os.rename(outputfile,outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for normalize fails'%outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Normalize,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Normalize,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

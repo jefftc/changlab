@@ -28,7 +28,7 @@ def run(in_nodes,parameters, user_input, network):
      
     assert module_utils.exists_nz(outfile),(
         'the output file %s for relabel_samples does not exist'%outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Annotate,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Annotate,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 
@@ -36,7 +36,7 @@ def run(in_nodes,parameters, user_input, network):
 def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,user_attributes,
-                                            datatype='SignalFile_Annotate')
+                                            datatype='_SignalFile_Annotate')
     rename_node = module_utils.get_identifier(network, module_id, data_nodes,
                                               user_attributes,
                                            datatype='RenameFile')

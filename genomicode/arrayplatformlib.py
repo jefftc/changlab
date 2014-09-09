@@ -193,7 +193,9 @@ def _read_annotations_h():
     
     paths = []
     result = []
-    root = config.psid2platform
+    
+    #root = config.psid2platform
+    root = '/home/xchen/chencode/psid2platform'
     assert os.path.exists(root), "path %s not exist: %s" % root
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
@@ -419,6 +421,13 @@ PLATFORMS = [
     Platform(
         'RefSeq_transcript_ID_human', "refseq_mrna", "hsapiens_gene_ensembl",
         PROBE_ID, 31),
+    Platform(
+        'UCSC_human_hg19_kg7', None, None, GENE_ID, 32), 
+    Platform(
+        'UCSC_human_hg19_kg6', None, None, GENE_ID, 33),  
+    Platform(
+        'UCSC_human_hg19_kg5', None, None, GENE_ID, 34),  
+           
     ]
 
 

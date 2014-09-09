@@ -63,7 +63,7 @@ def run(in_nodes, parameters, user_input, network):
 def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,user_attributes,
-                                            datatype='SignalFile_Order')
+                                            datatype='_SignalFile_Order')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            user_attributes,
                                            datatype='ClassLabelFile')

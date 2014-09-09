@@ -1,7 +1,8 @@
-#ClassifyFile
+#Classification
 from Betsy.bie3 import *
-import SignalFile_rule
-import PcaAnalysis_rule
+import GeneExpProcessing
+import PcaAnalysis
+import BasicDataTypes
 
 ClassifyFile=DataType(
     'ClassifyFile',
@@ -48,8 +49,8 @@ list_files = [ClassifyFile,SvmModel,PredictionPCAPlot,PredictionPlot]
 all_modules = [
     Module(
         "merge_files_for_classification",
-        [SignalFile_rule.SignalFile,SignalFile_rule.SignalFile],
-        SignalFile_rule.SignalFile,
+        [GeneExpProcessing.SignalFile,GeneExpProcessing.SignalFile],
+        GeneExpProcessing.SignalFile,
         Constraint('contents',MUST_BE,"class0,class1",0),
         Constraint('format',MUST_BE,'gct',0),
         Constraint('logged',MUST_BE,"yes",0),
@@ -65,8 +66,8 @@ all_modules = [
         ),
     Module(
        'classify_with_weighted_voting',
-       [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile,
-        SignalFile_rule.SignalFile],ClassifyFile,
+       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile,
+        GeneExpProcessing.SignalFile],ClassifyFile,
        OptionDef('wv_num_features',10,help="number of features for weighted voting"),
        OptionDef('wv_minstd',1,help="minstd for weighted voting"),
        Constraint('contents',MUST_BE,'class0,class1',0),
@@ -87,7 +88,7 @@ all_modules = [
        ),
     Module(
        'classify_with_random_forest',
-       [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],ClassifyFile,
+       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -106,7 +107,7 @@ all_modules = [
     
      Module(
        'train_svm_model',
-       [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],SvmModel,
+       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],SvmModel,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -118,7 +119,7 @@ all_modules = [
        help="train data using svm method"), 
      Module(
        'classify_with_svm',
-       [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile,SvmModel],ClassifyFile,
+       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile,SvmModel],ClassifyFile,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -136,7 +137,7 @@ all_modules = [
     
     Module(
        'run_loocv_weighted_voting',
-       [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],ClassifyFile,
+       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        OptionDef('wv_num_features',10,help="number of features for weighted voting"),
        OptionDef('wv_minstd',1,help="minstd for weighted voting"),
        Constraint("contents",MUST_BE,'class0,class1',0),
@@ -157,7 +158,7 @@ all_modules = [
        help="run loocv in weighted voting method"),
     Module(
        'run_loocv_svm',
-       [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],ClassifyFile,
+       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        Constraint('contents',MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1',1),
@@ -176,7 +177,7 @@ all_modules = [
        help="run loocv in svm method"),
     Module(
        'run_loocv_random_forest',
-       [SignalFile_rule.ClassLabelFile,SignalFile_rule.SignalFile],ClassifyFile,
+       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        Constraint('contents',MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1',1),
@@ -196,7 +197,7 @@ all_modules = [
                   
     Module(
         'evaluate_prediction',
-        [SignalFile_rule.ClassLabelFile,ClassifyFile],ClassifyFile,
+        [BasicDataTypes.ClassLabelFile,ClassifyFile],ClassifyFile,
         Constraint("contents",MUST_BE,'test',0),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("loocv",MUST_BE,'no',1),
@@ -219,7 +220,7 @@ all_modules = [
 
     Module(
         'plot_sample_pca_with_predictions',
-         [ClassifyFile,PcaAnalysis_rule.PcaAnalysis],PredictionPCAPlot,
+         [ClassifyFile,PcaAnalysis.PcaAnalysis],PredictionPCAPlot,
         Constraint('classify_alg',CAN_BE_ANY_OF,['svm','weighted_voting',
                                      'random_forest'],0),
         Constraint("actual_label",CAN_BE_ANY_OF,['yes','no'],0),
@@ -229,4 +230,52 @@ all_modules = [
         Consequence("actual_label",SAME_AS_CONSTRAINT,0),
         Consequence("loocv",SAME_AS_CONSTRAINT,0),
         help="plot sample pca plot labeled with prediction result"),
+    Module(
+        'make_classify_report',
+        [GeneExpProcessing.SignalFile,
+         ClassifyFile,
+         ClassifyFile,
+         PredictionPlot,
+         PredictionPlot,
+         PredictionPCAPlot,
+         ClassifyFile,
+         ClassifyFile,
+         PredictionPlot,
+         PredictionPlot,
+         PredictionPCAPlot
+         ],BasicDataTypes.ReportFile,
+         Constraint('contents',MUST_BE,'class0,class1,test',0),
+         Constraint('logged',MUST_BE,'yes',0),
+         Constraint("format",MUST_BE,'gct',0),
+         Constraint("classify_alg",MUST_BE,'svm',1),
+         Constraint("actual_label",MUST_BE,'yes',1),
+         Constraint("classify_alg",MUST_BE,'svm',2),
+         Constraint("actual_label",MUST_BE,'no',2),
+         Constraint("loocv",MUST_BE,'yes',2),
+         Constraint("classify_alg",MUST_BE,'svm',3),
+         Constraint("actual_label",MUST_BE,'yes',3),
+         Constraint("loocv",MUST_BE,'no',3),
+         Constraint("classify_alg",MUST_BE,'svm',4),
+         Constraint("actual_label",MUST_BE,'no',4),
+         Constraint("loocv",MUST_BE,'yes',4),
+         Constraint("classify_alg",MUST_BE,'svm',5),
+         Constraint("actual_label",MUST_BE,'yes',5),
+         Constraint("loocv",MUST_BE,'no',5),
+         Constraint("classify_alg",MUST_BE,'weighted_voting',6),
+         Constraint("actual_label",MUST_BE,'yes',6),
+         Constraint("loocv",MUST_BE,'no',6),
+         Constraint("classify_alg",MUST_BE,'weighted_voting',7),
+         Constraint("actual_label",MUST_BE,'no',7),
+         Constraint("loocv",MUST_BE,'yes',7),
+         Constraint("classify_alg",MUST_BE,'weighted_voting',8),
+         Constraint("actual_label",MUST_BE,'yes',8),
+         Constraint("loocv",MUST_BE,'no',8),
+         Constraint("classify_alg",MUST_BE,'weighted_voting',9),
+         Constraint("actual_label",MUST_BE,'no',9),
+         Constraint("loocv",MUST_BE,'yes',9),
+         Constraint("classify_alg",MUST_BE,'weighted_voting',10),
+         Constraint("actual_label",MUST_BE,'yes',10),
+         Constraint("loocv",MUST_BE,'no',10),
+         Consequence('report_type',SET_TO,'classify'),
+         help="make classification report"),
     ]

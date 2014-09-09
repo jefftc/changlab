@@ -23,7 +23,7 @@ def run(data_node,parameters, user_input,network):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for median_fill_if_missing does not exist'
         % outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Impute,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Impute,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     

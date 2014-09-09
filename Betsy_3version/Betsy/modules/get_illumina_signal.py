@@ -16,7 +16,7 @@ def run(data_node, parameters, user_input,network):
             shutil.copyfile(goal_file,outfile)
     assert module_utils.exists_nz(outfile),(
         'the output file %s for illu_signal fails'%outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Postprocess,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Postprocess,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

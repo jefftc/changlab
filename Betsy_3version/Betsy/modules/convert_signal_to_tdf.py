@@ -62,7 +62,7 @@ def run(data_node,parameters, user_input,network):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for convert_signal_to_tdf does not exists'
         % outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Postprocess,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Postprocess,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

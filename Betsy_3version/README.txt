@@ -151,8 +151,7 @@ Betsy can make heatmap for a SignalFile without clustering.
 	python run_rule.py \
 	--input 'SignalFile_Postprocess' \
 	--input_file '/home/xchen/chencode/betsy_test/breast_19.mas5'  \
-	--output 'ReportFile'   \
-	--dattr 'ReportFile,report_type=heatmap' \
+	--output ‘Heatmap’   \
      --mattr 'hm_width=20' \
      --mattr 'hm_height=20' \
      --png_file 'out.png'
@@ -293,7 +292,7 @@ python run_rule.py \
 Clinical outcomes Usage
 Given an expression file and clinical file, doing clinical outcome analysis.
 python run_rule.py \
---input SignalFile_Postprocess \
+--input _SignalFile_Postprocess \
 --input_file  /home/xchen/chencode/examples/survial_analysis/GSE17907.rma.gz \
 --input ClinicalFile \
 --input_file /home/xchen/chencode/examples/survial_analysis/GSE17907.stdclin \
@@ -307,7 +306,7 @@ EMT analysis Usage
 Given an expression file and a cellType File, do EMT analysis on some genesets.
 
 python run_rule.py \
---input SignalFile_Postprocess  \
+--input _SignalFile_Postprocess  \
 --input_file /data/genomidata/stem_cell/EMT.cent.rma.gz \
 --input CellTypeFile \
 --input_file /data/genomidata/stem_cell/EMT.stdclin  \

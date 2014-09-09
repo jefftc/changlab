@@ -1,8 +1,8 @@
 # ReportFile
 from Betsy.bie3 import *
-from Betsy.bie_rules import SignalFile_rule,ClusterFile_rule,ClassifyFile_rule,PcaAnalysis_rule,plot_rule,DavidFile_rule
-from Betsy.bie_rules import GenesetAnalysis_rule, DiffExprFile_rule,GatherFile_rule,GseaFile_rule,ReportFile_rule,EMTAnalysis_rule
-from Betsy.bie_rules import ClinicalAnalysis_rule,SignatureScore_rule
+from Betsy.bie_rules import GeneExpProcessing,ArrayPlatforms,Clustering,Classification,GOAnalysis,PcaAnalysis,BasicDataTypes
+from Betsy.bie_rules import GeneExpSignature, DiffExp,GSEAAnalysis,ClinicalOutcomes,Heatmap
+
 NetworkFile = DataType(
     'NetworkFile',
     help="network file"
@@ -15,31 +15,15 @@ list_files = [NetworkFile,NetworkFile_Test]
 
                                   
 all_modules = [
-##    Module('group_all',
-##           [ReportFile_rule.ReportFile,
-##            ReportFile_rule.ReportFile,
-##            ReportFile_rule.ReportFile,
-##            ReportFile_rule.ReportFile,
-##            ReportFile_rule.ReportFile,
-##            ReportFile_rule.ReportFile,
-##            ReportFile_rule.ReportFile,
-##            EMTAnalysis_rule.EMTAnalysis],
-##            NetworkFile,
-##            Constraint('report_type',MUST_BE,'classify',0),
-##            Constraint('report_type',MUST_BE,'geneset',1),
-##            Constraint('report_type',MUST_BE,'heatmap',2),
-##            Constraint('report_type',MUST_BE,'diffgenes',3),
-##            Constraint('report_type',MUST_BE,'cluster',4),
-##            Constraint('report_type',MUST_BE,'batch_effect_remove',5),
-##            Constraint('report_type',MUST_BE,'normalize_file',6),),
+
     Module('group_all_module_2mintues',
-           [SignalFile_rule.SignalFile,#0
-            SignalFile_rule.SignalFile,#1
-            SignalFile_rule.SignalFile,#2
-            SignalFile_rule.SignalFile,#3
-            SignalFile_rule.SignalFile,#4
-            SignalFile_rule.SignalFile,#5
-            SignalFile_rule.ControlFile,#6
+           [GeneExpProcessing.SignalFile,#0
+            GeneExpProcessing.SignalFile,#1
+            GeneExpProcessing.SignalFile,#2
+            GeneExpProcessing.SignalFile,#3
+            GeneExpProcessing.SignalFile,#4
+            GeneExpProcessing.SignalFile,#5
+            ArrayPlatforms.ControlFile,#6
             ],
             NetworkFile_Test,
             Constraint('preprocess', MUST_BE, 'mas5',0),
@@ -55,7 +39,7 @@ all_modules = [
             Constraint("contents", MUST_BE, "class0,class1", 4),
             Constraint("contents", MUST_BE, "class0,class1", 5),
             Constraint("contents", MUST_BE, "class0,class1", 6),
-           Constraint('quantile_norm', MUST_BE, 'yes', 0),
+            Constraint('quantile_norm', MUST_BE, 'yes', 0),
             Constraint('quantile_norm', MUST_BE, 'yes', 1),
             Constraint('quantile_norm', MUST_BE, 'yes', 2),
             Constraint('quantile_norm', MUST_BE, 'yes', 3),
@@ -70,45 +54,45 @@ all_modules = [
             Constraint('gene_order', MUST_BE, 'diff_ttest', 3),
             Constraint('duplicate_probe',MUST_BE,'closest_probe',2),),
     Module('group_all_module',
-           [SignalFile_rule.SignalFile,#0
-            SignalFile_rule.SignalFile,#1
-            SignalFile_rule.SignalFile,#2
-            SignalFile_rule.SignalFile,#3
-            SignalFile_rule.SignalFile,#4
-            SignalFile_rule.SignalFile,#5
-            SignalFile_rule.ControlFile,#6
+           [GeneExpProcessing.SignalFile,#0
+            GeneExpProcessing.SignalFile,#1
+            GeneExpProcessing.SignalFile,#2
+            GeneExpProcessing.SignalFile,#3
+            GeneExpProcessing.SignalFile,#4
+            GeneExpProcessing.SignalFile,#5
+            ArrayPlatforms.ControlFile,#6
             #---------------------------
-            plot_rule.IntensityPlot,#7
-            plot_rule.ActbPlot,#8
-            plot_rule.Hyb_barPlot,#9
-            plot_rule.ControlPlot,#10
-            plot_rule.BiotinPlot,#11
-            plot_rule.HousekeepingPlot,#12
+            GeneExpProcessing.IntensityPlot,#7
+            ArrayPlatforms.ActbPlot,#8
+            ArrayPlatforms.Hyb_barPlot,#9
+            ArrayPlatforms.ControlPlot,#10
+            ArrayPlatforms.BiotinPlot,#11
+            ArrayPlatforms.HousekeepingPlot,#12
             #--------------------------
-            GatherFile_rule.GatherFile,#13
-            GseaFile_rule.GseaFile,#14
-            GenesetAnalysis_rule.GenesetPlot,#15
-            GenesetAnalysis_rule.GenesetPlot,#16
-            DavidFile_rule.DavidFile,#17
-            EMTAnalysis_rule.EMTAnalysis,#18
-            DiffExprFile_rule.DiffExprFile,#19
-            DiffExprFile_rule.DiffExprFile,#20
-            DiffExprFile_rule.DiffExprFile,#21
-            ClinicalAnalysis_rule.ClinicalAnalysis,#22
-            PcaAnalysis_rule.PcaPlot,#23
-            SignatureScore_rule.SignatureScore,#24
-            ClusterFile_rule.Heatmap,#25
-            ClusterFile_rule.Heatmap,#26
-            ClusterFile_rule.Heatmap,#27
-            ClusterFile_rule.Heatmap,#28
-            ClusterFile_rule.Heatmap,#29
-            ClassifyFile_rule.PredictionPCAPlot,#30
-            ClassifyFile_rule.PredictionPlot,#31
-            ClassifyFile_rule.PredictionPCAPlot,#32
-            ClassifyFile_rule.PredictionPlot,#33
-            ClassifyFile_rule.PredictionPCAPlot,#34
-            ClassifyFile_rule.PredictionPlot,#35
-            
+            GOAnalysis.GatherFile,#13
+            GSEAAnalysis.GseaFile,#14
+            GeneExpSignature.GenesetPlot,#15
+            GeneExpSignature.GenesetPlot,#16
+            GOAnalysis.DavidFile,#17
+            ClinicalOutcomes.EMTAnalysis,#18
+            DiffExp.DiffExprFile,#19
+            DiffExp.DiffExprFile,#20
+            DiffExp.DiffExprFile,#21
+            ClinicalOutcomes.ClinicalAnalysis,#22
+            PcaAnalysis.PcaPlot,#23
+            GeneExpSignature.SignatureScore,#24
+            Heatmap.Heatmap,#25
+            Heatmap.Heatmap,#26
+            Heatmap.Heatmap,#27
+            Heatmap.Heatmap,#28
+            Heatmap.Heatmap,#29
+            Classification.PredictionPCAPlot,#30
+            Classification.PredictionPlot,#31
+            Classification.PredictionPCAPlot,#32
+            Classification.PredictionPlot,#33
+            Classification.PredictionPCAPlot,#34
+            Classification.PredictionPlot,#35
+            GeneExpProcessing.SignalFile,#36 tcga
             ],
             NetworkFile,
             Constraint('preprocess', MUST_BE, 'mas5',0),
@@ -117,6 +101,7 @@ all_modules = [
             Constraint('preprocess', MUST_BE, 'illumina',3),
             Constraint('preprocess', MUST_BE, 'loess',4),
             Constraint('preprocess', MUST_BE, 'agilent',5),
+            Constraint('preprocess', MUST_BE, 'tcga',36),
             Constraint("contents", MUST_BE, "class0,class1", 0),
             Constraint("contents", MUST_BE, "class0,class1", 1),
             Constraint("contents", MUST_BE, "class0,class1", 2),
@@ -147,20 +132,49 @@ all_modules = [
             Constraint("contents", MUST_BE, "class0,class1", 27),
             Constraint("contents", MUST_BE, "class0,class1", 28),
             Constraint("contents", MUST_BE, "class0,class1", 29),
+            Constraint("contents", MUST_BE, "class0,class1", 36),
+	    Constraint('quantile_norm', MUST_BE, 'yes', 0),
+            Constraint('gene_center', MUST_BE, 'mean', 0),
+            Constraint('gene_normalize', MUST_BE, 'variance', 0),
+            Constraint('gene_order', MUST_BE, 'class_neighbors', 0),
+           Constraint('annotate', MUST_BE, 'yes', 0),
+           Constraint('rename_sample', MUST_BE, 'yes', 0),
+           Constraint('platform', MUST_BE, 'yes', 0),
+           Constraint('rename_sample', MUST_BE, 'yes', 0),
+           Constraint('num_features', MUST_BE, 'yes', 0),
+           Constraint('unique_genes', MUST_BE, 'high_var', 0),
+           Constraint('duplicate_probe', MUST_BE, 'high_var_probe', 0),
+           Constraint('group_fc', MUST_BE, 'yes', 0),
+           Constraint('filter', MUST_BE, 'yes', 0),
+           #bie3.Attribute(rulebase.SignalFile, "gene_center", "mean"),
+    #bie3.Attribute(rulebase.SignalFile, "gene_normalize", "variance"),
+    #bie3.Attribute(rulebase.SignalFile,"gene_order",'class_neighbors'),
+        #bie3.Attribute(rulebase.SignalFile,"annotate",'yes'),
+        #bie3.Attribute(rulebase.SignalFile,"rename_sample",'yes'),
+        #bie3.Attribute(rulebase.SignalFile,"platform",'yes'),
+        #bie3.Attribute(rulebase.SignalFile,"rename_sample",'yes'),
+        #bie3.Attribute(rulebase.SignalFile,"num_features",'yes'),
+        #bie3.Attribute(rulebase.SignalFile,"unique_genes",'high_var'),
+         #bie3.Attribute(rulebase.SignalFile,"duplicate_probe",'high_var_probe'),
+        #bie3.Attribute(rulebase.SignalFile,"group_fc",'yes'),
+        #bie3.Attribute(rulebase.SignalFile,"filter",'yes'),
            
-            Constraint('quantile_norm', MUST_BE, 'yes', 0),
-            Constraint('quantile_norm', MUST_BE, 'yes', 1),
+	        Constraint('quantile_norm', MUST_BE, 'yes', 1),
             Constraint('quantile_norm', MUST_BE, 'yes', 2),
             Constraint('quantile_norm', MUST_BE, 'yes', 3),
             Constraint('quantile_norm', MUST_BE, 'yes', 4),
             Constraint('quantile_norm', MUST_BE, 'yes', 5),
+            Constraint('quantile_norm', MUST_BE, 'yes', 36),
             Constraint('combat_norm', MUST_BE, 'yes', 0),
+	        Constraint('predataset', MUST_BE, 'yes', 0),
+	        Constraint('logged', MUST_BE, 'no', 0),
             Constraint('shiftscale_norm', MUST_BE, 'yes', 1),
             Constraint('dwd_norm', MUST_BE, 'yes', 2),
             Constraint('bfrm_norm', MUST_BE, 'yes', 3),
-            Constraint('missing_algorithm', MUST_BE, 'median_fill', 2),
+            Constraint('missing_algorithm', MUST_BE, 'median_fill', 36),
             Constraint('gene_order', MUST_BE, 't_test_p', 2),
             Constraint('gene_order', MUST_BE, 'diff_ttest', 3),
+            Constraint('platform', MUST_BE, 'yes', 2),
             Constraint('duplicate_probe',MUST_BE,'closest_probe',2),
             Constraint("allgenes",MUST_BE,'yes',15),
             Constraint("allgenes",MUST_BE,'no',16),
@@ -171,8 +185,8 @@ all_modules = [
             Constraint("cluster_alg",MUST_BE,'pca',27),
             Constraint("cluster_alg",MUST_BE,'kmeans',28),
             Constraint("cluster_alg",MUST_BE,'hierarchical',29),
-            Constraint("classify_alg",MUST_BE,'svm',30),
-            Constraint("actual_label",MUST_BE,'yes',30),
+	        Constraint("classify_alg",MUST_BE,'svm',30),#30
+	        Constraint("actual_label",MUST_BE,'yes',30),#30
             Constraint("classify_alg",MUST_BE,'svm',31),
             Constraint("loocv",MUST_BE,'yes',31),
             Constraint("classify_alg",MUST_BE,'weighted_voting',32),
@@ -184,7 +198,7 @@ all_modules = [
             Constraint("classify_alg",MUST_BE,'random_forest',35),
             Constraint("loocv",MUST_BE,'yes',35),
             
-        
+	
            ),
     
         ]

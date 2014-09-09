@@ -1,103 +1,14 @@
 #Calling_variants_rule
 from Betsy.bie3 import *
-import SignalFile_rule
-
-FastqFile=DataType(
-    'FastqFile',
-    AttributeDef("read",['single','pair','pair1','pair2'],
-                 "single","single",help='single or pair read'),
-    AttributeDef("ref",['hg18','hg19','mm9','dm3'], "hg19","hg19",
-                 help='ref species'),
-    AttributeDef("contents",SignalFile_rule.CONTENTS,
-                 'unspecified','unspecified',help="contents"),
-    help="Fastq file"
-    )
-SaiFile=DataType(
-    'SaiFile',
-    AttributeDef("read",['single','pair','pair1','pair2'],
-                 "single","single",help='single or pair read'),
-    AttributeDef("ref",['hg18','hg19','mm9','dm3'],
-                 "hg19","hg19",help='ref species'),
-    AttributeDef("contents",SignalFile_rule.CONTENTS,
-                 'unspecified','unspecified',help="contents"),
-    help="Sai file"
-    )
-
-SamFile=DataType(
-    'SamFile',
-    AttributeDef("contents",SignalFile_rule.CONTENTS,
-                 'unspecified','unspecified',
-                 help="contents"),
-    AttributeDef("sorted",["yes","no"],"no","no",
-                 help='sorted or not'),
-    AttributeDef("duplicates_marked",["yes","no"],"no","no",
-                 help='mark duplicate or not'),
-    AttributeDef("recalibration",["yes","no"],"no","no",
-                 help='recalibration or not'),
-    AttributeDef("has_header",["yes","no"],"no","no",
-                 help='fix header or not'),
-    AttributeDef("read",['single','pair'],
-                 "single","single",
-                 help='single or pair read'),
-    AttributeDef("ref",['hg18','hg19','mm9','dm3'],
-                 "hg19","hg19",
-                 help='ref species'),
-    help="Sam file"
-    )
-BamFile=DataType(
-    'BamFile',
-    AttributeDef("contents",SignalFile_rule.CONTENTS,
-                 'unspecified','unspecified',
-                 help="contents"),
-    AttributeDef("sorted",["yes","no"],"no","no",
-                 help='sorted or not'),
-    AttributeDef("duplicates_marked",["yes","no"],"no","no",
-                 help='mark duplicate or not'),
-    AttributeDef("recalibration",["yes","no"],"no","no",
-                 help='recalibration or not'),
-    AttributeDef("has_header",["yes","no"],"no","no",
-                 help='fix header or not'),
-    AttributeDef("read",['single','pair'],
-                 "single","single",
-                 help='single or pair read'),
-    AttributeDef("ref",['hg18','hg19','mm9','dm3'],
-                 "hg19","hg19",
-                 help='ref species'),
-    help='Bam file'
-    )
-VcfFile=DataType(
-    'VcfFile',
-    AttributeDef("contents",SignalFile_rule.CONTENTS,
-                 'unspecified','unspecified',
-                 help="contents"),
-    AttributeDef("recalibration",["yes","no"],"no","no",
-                 help='recalibration or not'),
-    AttributeDef("read",['single','pair'],
-                 "single","single",
-                 help='single or pair read'),
-    AttributeDef("ref",['hg18','hg19','mm9','dm3'],
-                 "hg19","hg19",
-                 help='ref species'),
-    AttributeDef("vcf_filter",['yes','no'], "no","no",
-                 help='filter VcfFile or not'),
-    AttributeDef("reheader",['standard','bcftool'],
-                 "standard","standard",
-                 help='method to convert to VcfFile'),
-    AttributeDef("vcf_annotate",['yes','no'], "no","no",
-                 help='annotate VcfFile or not'),
-    help='Vcf file'
-    )
-
-
-list_files = [FastqFile, SaiFile, SamFile, BamFile, VcfFile]
-
+import BasicDataTypesNGS
+import Database
 all_modules = [
     Module(
         'align_sequence',
-         FastqFile,SaiFile,
+         BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.SaiFile,
          Constraint("read",CAN_BE_ANY_OF,['single','pair1','pair2']),
          Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19','mm9','dm3']),
-         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
          Consequence("read",SAME_AS_CONSTRAINT),
          Consequence("ref",SAME_AS_CONSTRAINT),
          Consequence("contents",SAME_AS_CONSTRAINT),
@@ -105,8 +16,8 @@ all_modules = [
         ),
     Module(
         'generate_alignment_sam',
-         [FastqFile,SaiFile], SamFile,
-         Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+         [BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.SaiFile], BasicDataTypesNGS.SamFile,
+         Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
          Constraint("read", MUST_BE,'single'),
          Constraint("ref", CAN_BE_ANY_OF,['hg18','hg19','mm9','dm3']),
          Consequence("read",SAME_AS_CONSTRAINT),
@@ -120,7 +31,8 @@ all_modules = [
          ),
     Module(
         'generate_alignment_sam_pair',
-         [FastqFile,FastqFile,SaiFile,SaiFile], SamFile,
+         [BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.FastqFile,
+         BasicDataTypesNGS.SaiFile,BasicDataTypesNGS.SaiFile], BasicDataTypesNGS.SamFile,
          
          Constraint("read", MUST_BE,'pair1',0),
          Constraint("read", MUST_BE,'pair2',1),
@@ -134,7 +46,7 @@ all_modules = [
          Constraint("ref", SAME_AS,0,3),
          Consequence("ref", SAME_AS_CONSTRAINT,0),
 
-         Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
+         Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS,0),
          Constraint("contents", SAME_AS,0,1),
          Constraint("contents", SAME_AS,0,2),
          Constraint("contents", SAME_AS,0,3),
@@ -148,8 +60,8 @@ all_modules = [
          ),
     Module(
         'sort_sam_file',
-        SamFile,BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        BasicDataTypesNGS.SamFile,BasicDataTypesNGS.BamFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("duplicates_marked",MUST_BE,'no'),
         Constraint("recalibration",MUST_BE,'no'),
         Constraint("has_header",MUST_BE,'no'),
@@ -163,8 +75,8 @@ all_modules = [
         ),
      Module(
         'mark_duplicates',
-        BamFile,BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("duplicates_marked",MUST_BE,'no'),
         Constraint("recalibration",MUST_BE,'no'),
         Constraint("has_header",MUST_BE,'no'),
@@ -178,8 +90,8 @@ all_modules = [
         ),
     Module(
         'fix_header_GATK',
-        BamFile,BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("recalibration",MUST_BE,'no'),
         Constraint("has_header",MUST_BE,'no'),
@@ -192,9 +104,9 @@ all_modules = [
         help="use GATK to fix header"
         ),
     Module(
-        'base_quality_score_recalibration',
-        BamFile,BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        'recalibrate_base_quality_score',
+        BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("recalibration",MUST_BE,'no'),
@@ -210,8 +122,8 @@ all_modules = [
         ),
     Module(
         'call_variants_mpileup',
-        BamFile,VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        BasicDataTypesNGS.BamFile,BasicDataTypesNGS.VcfFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("sorted", MUST_BE,'yes'),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("has_header",MUST_BE,'yes'),
@@ -224,8 +136,8 @@ all_modules = [
         help="use mpileup to call variants"),
     Module(
         'filter_vcf_file',
-        VcfFile,VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        BasicDataTypesNGS.VcfFile,BasicDataTypesNGS.VcfFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("recalibration",CAN_BE_ANY_OF,['yes','no']),
         Constraint("vcf_annotate",MUST_BE,'no'),
         Constraint("vcf_filter",MUST_BE,'no'),
@@ -238,8 +150,8 @@ all_modules = [
         help="filter vcf file"),
     Module(
         'call_variants_GATK',
-        BamFile,VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        BasicDataTypesNGS.BamFile,BasicDataTypesNGS.VcfFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("sorted", MUST_BE,'yes'),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("has_header",MUST_BE,'yes'),
@@ -252,8 +164,8 @@ all_modules = [
         help="use GATK to call variants"),
     Module(
         'annotate_vcf_file',
-        VcfFile,VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,SignalFile_rule.CONTENTS),
+        BasicDataTypesNGS.VcfFile,BasicDataTypesNGS.VcfFile,
+        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("recalibration",CAN_BE_ANY_OF,['yes','no']),
         Constraint("vcf_annotate",MUST_BE,'no'),
         Constraint("vcf_filter",MUST_BE,'yes'),
@@ -264,4 +176,6 @@ all_modules = [
         Consequence("vcf_annotate",SET_TO,'yes'),
         Consequence("recalibration", SAME_AS_CONSTRAINT),
         help="annotate vcf file"),
+        
     ]
+list_files=[]

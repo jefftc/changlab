@@ -1,4 +1,4 @@
-#base_quality_score_recalibration.py
+#recalibrate_base_quality_score.py
 import os
 from Betsy import module_utils,bie3, rulebase
 import subprocess

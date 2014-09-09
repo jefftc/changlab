@@ -1,42 +1,31 @@
-# ReportFile
+# Normalization
 from Betsy.bie3 import *
-from Betsy.bie_rules import SignalFile_rule,ClusterFile_rule,ClassifyFile_rule,PcaAnalysis_rule,plot_rule
-from Betsy.bie_rules import GenesetAnalysis_rule, DiffExprFile_rule,GatherFile_rule,GseaFile_rule
+import PcaAnalysis
+import GeneExpProcessing
+import BasicDataTypes
+import ArrayPlatforms
+import Database
 
-ReportFile = DataType(
-    'ReportFile',
-    AttributeDef(
-        "report_type",
-        ['normalize_file', 'batch_effect_remove', 'classify', 'cluster',
-         'diffgenes', 'heatmap', 'geneset'],
-        'normalize_file', 'normalize_file',help="report type"),
-    help="Report file"
-    )
-
-list_files = [ReportFile]
-
-                                  
+list_files = []
 all_modules = [
-    Module(
+Module(
         'make_normalize_report',
         [
-            SignalFile_rule.SignalFile,
-            plot_rule.IntensityPlot,
-            plot_rule.ControlPlot,
-            PcaAnalysis_rule.PcaPlot,
-            plot_rule.ActbPlot,
-            PcaAnalysis_rule.PcaPlot,
+            GeneExpProcessing.SignalFile,
+            GeneExpProcessing.IntensityPlot,
+            ArrayPlatforms.ControlPlot,
+            PcaAnalysis.PcaPlot,
+            ArrayPlatforms.ActbPlot,
+            PcaAnalysis.PcaPlot,
             ],
-        ReportFile,
+        BasicDataTypes.ReportFile,
         Constraint(
             'preprocess', CAN_BE_ANY_OF,
             ['mas5','agilent','loess','unknown','tcga','rsem'],
             0),
         Constraint("annotate", MUST_BE, "yes", 0),
         Constraint(
-            "contents", CAN_BE_ANY_OF, [
-                "train0","train1", "test", "class0,class1,test","class0",
-                "class1", "class0,class1", "unspecified"],
+            "contents", CAN_BE_ANY_OF, Database.CONTENTS,
             0),
 
         #SignalFile
@@ -101,17 +90,17 @@ all_modules = [
     
     Module(
         'make_normalize_report_rma',
-         [SignalFile_rule.SignalFile,
-         plot_rule.IntensityPlot,
-         plot_rule.ControlPlot,
-         PcaAnalysis_rule.PcaPlot,
-         plot_rule.ActbPlot,
-         PcaAnalysis_rule.PcaPlot],
+         [GeneExpProcessing.SignalFile,
+         GeneExpProcessing.IntensityPlot,
+         ArrayPlatforms.ControlPlot,
+         PcaAnalysis.PcaPlot,
+         ArrayPlatforms.ActbPlot,
+         PcaAnalysis.PcaPlot],
        
-         ReportFile,
+         BasicDataTypes.ReportFile,
          Constraint('preprocess',MUST_BE,'rma',0),
          Constraint("annotate",MUST_BE,"yes",0),
-         Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
+         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         #SignalFile
         Constraint('quantile_norm', MUST_BE, 'yes', 0),
         Constraint('combat_norm', CAN_BE_ANY_OF, ['yes','no'], 0),
@@ -174,18 +163,18 @@ all_modules = [
     Module(
         'make_normalize_report_illumina',
         [
-            SignalFile_rule.SignalFile,
-            plot_rule.IntensityPlot,
-            plot_rule.BiotinPlot,
-            PcaAnalysis_rule.PcaPlot,
-            plot_rule.ActbPlot,
-            PcaAnalysis_rule.PcaPlot,
-            plot_rule.HousekeepingPlot,
-            plot_rule.Hyb_barPlot,
-            SignalFile_rule.ControlFile
+            GeneExpProcessing.SignalFile,
+            GeneExpProcessing.IntensityPlot,
+            ArrayPlatforms.BiotinPlot,
+            PcaAnalysis.PcaPlot,
+            ArrayPlatforms.ActbPlot,
+            PcaAnalysis.PcaPlot,
+            ArrayPlatforms.HousekeepingPlot,
+            ArrayPlatforms.Hyb_barPlot,
+            ArrayPlatforms.ControlFile
             ],
-        ReportFile,
-        Constraint("contents",CAN_BE_ANY_OF,SignalFile_rule.CONTENTS,0),
+        BasicDataTypes.ReportFile,
+        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint('preprocess',MUST_BE,'illumina',0),
         Constraint('annotate',MUST_BE,'yes',0),
 
@@ -253,113 +242,28 @@ all_modules = [
          Constraint("preprocess",SAME_AS,0,4),
          Consequence('report_type',SET_TO,'normalize_file'),
          help="make normalize report for illumina"),
-                                   
-    Module(
-        'make_cluster_report',
-        [ClusterFile_rule.ClusterFile,
-         ClusterFile_rule.Heatmap],ReportFile,
-         Constraint("cluster_alg",CAN_BE_ANY_OF,['som','pca','kmeans','hierarchical'],0),
-         Constraint("distance",CAN_BE_ANY_OF,['correlation','euclidean'],0),
-         Constraint("cluster_alg",SAME_AS,0,1),
-         Constraint("distance",SAME_AS,0,1),
-         Consequence('report_type',SET_TO,'cluster'),
-         help="make cluster report"),
-    Module(
-        'make_classify_report',
-        [SignalFile_rule.SignalFile,
-         ClassifyFile_rule.ClassifyFile,
-         ClassifyFile_rule.ClassifyFile,
-         ClassifyFile_rule.PredictionPlot,
-         ClassifyFile_rule.PredictionPlot,
-         ClassifyFile_rule.PredictionPCAPlot,
-         ClassifyFile_rule.ClassifyFile,
-         ClassifyFile_rule.ClassifyFile,
-         ClassifyFile_rule.PredictionPlot,
-         ClassifyFile_rule.PredictionPlot,
-         ClassifyFile_rule.PredictionPCAPlot
-         ],ReportFile,
-         Constraint('contents',MUST_BE,'class0,class1,test',0),
-         Constraint('logged',MUST_BE,'yes',0),
-         Constraint("format",MUST_BE,'gct',0),
-         Constraint("classify_alg",MUST_BE,'svm',1),
-         Constraint("actual_label",MUST_BE,'yes',1),
-         Constraint("classify_alg",MUST_BE,'svm',2),
-         Constraint("actual_label",MUST_BE,'no',2),
-         Constraint("loocv",MUST_BE,'yes',2),
-         Constraint("classify_alg",MUST_BE,'svm',3),
-         Constraint("actual_label",MUST_BE,'yes',3),
-         Constraint("loocv",MUST_BE,'no',3),
-         Constraint("classify_alg",MUST_BE,'svm',4),
-         Constraint("actual_label",MUST_BE,'no',4),
-         Constraint("loocv",MUST_BE,'yes',4),
-         Constraint("classify_alg",MUST_BE,'svm',5),
-         Constraint("actual_label",MUST_BE,'yes',5),
-         Constraint("loocv",MUST_BE,'no',5),
-         Constraint("classify_alg",MUST_BE,'weighted_voting',6),
-         Constraint("actual_label",MUST_BE,'yes',6),
-         Constraint("loocv",MUST_BE,'no',6),
-         Constraint("classify_alg",MUST_BE,'weighted_voting',7),
-         Constraint("actual_label",MUST_BE,'no',7),
-         Constraint("loocv",MUST_BE,'yes',7),
-         Constraint("classify_alg",MUST_BE,'weighted_voting',8),
-         Constraint("actual_label",MUST_BE,'yes',8),
-         Constraint("loocv",MUST_BE,'no',8),
-         Constraint("classify_alg",MUST_BE,'weighted_voting',9),
-         Constraint("actual_label",MUST_BE,'no',9),
-         Constraint("loocv",MUST_BE,'yes',9),
-         Constraint("classify_alg",MUST_BE,'weighted_voting',10),
-         Constraint("actual_label",MUST_BE,'yes',10),
-         Constraint("loocv",MUST_BE,'no',10),
-         Consequence('report_type',SET_TO,'classify'),
-         help="make classification report"),
-    Module(
-        'make_heatmap_report',
-        ClusterFile_rule.Heatmap,ReportFile,
-        Constraint("cluster_alg",MUST_BE,'no_cluster_alg'),
-        Consequence("report_type",SET_TO,'heatmap'),
-        help="make heatmap report"),
-    Module(
-        'make_geneset_report',
-        [GenesetAnalysis_rule.GenesetAnalysis,
-         GenesetAnalysis_rule.GenesetPlot],ReportFile,
-         Consequence("report_type",SET_TO,'geneset'),
-        help="make geneset report"),
-        
-    Module(
-        'make_diffgenes_report',
-        [DiffExprFile_rule.DiffExprFile,DiffExprFile_rule.DiffExprFile,
-         ClusterFile_rule.Heatmap,GatherFile_rule.GatherFile,
-         GseaFile_rule.GseaFile],ReportFile,
-         OptionDef("hm_width",20),
-         OptionDef("hm_height",1),
-         Constraint("gene_order",MUST_BE,'diff_ttest',0),
-         Constraint("gene_order",SAME_AS,0,3),
-         Constraint("contents",MUST_BE,'unspecified',0),
-         Constraint("contents",MUST_BE,'unspecified',1),
-         Constraint("gene_order",MUST_BE,'diff_sam',1),
-         Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),
-         Consequence("report_type",SET_TO,'diffgenes')),
     Module(
         'make_batch_effect_report',
-        [SignalFile_rule.SignalFile,
-         PcaAnalysis_rule.PcaPlot,
+        [GeneExpProcessing.SignalFile,
+         PcaAnalysis.PcaPlot,
          
-         SignalFile_rule.SignalFile,
-         PcaAnalysis_rule.PcaPlot,
+         GeneExpProcessing.SignalFile,
+         PcaAnalysis.PcaPlot,
          
-         SignalFile_rule.SignalFile,
-         PcaAnalysis_rule.PcaPlot,
+         GeneExpProcessing.SignalFile,
+         PcaAnalysis.PcaPlot,
          
-         SignalFile_rule.SignalFile,
-         PcaAnalysis_rule.PcaPlot,
+         GeneExpProcessing.SignalFile,
+         PcaAnalysis.PcaPlot,
          
-         SignalFile_rule.SignalFile,
-         PcaAnalysis_rule.PcaPlot,
+         GeneExpProcessing.SignalFile,
+         PcaAnalysis.PcaPlot,
          
-         SignalFile_rule.SignalFile,
-         PcaAnalysis_rule.PcaPlot
+         GeneExpProcessing.SignalFile,
+         PcaAnalysis.PcaPlot
          
-         ],ReportFile,
+         ],
+         BasicDataTypes.ReportFile,
          Constraint("quantile_norm",MUST_BE,'no',0),
          Constraint("quantile_norm",SAME_AS,0,1),
         
@@ -387,8 +291,5 @@ all_modules = [
          Constraint("combat_norm",SAME_AS,10,11),
         
          Consequence("report_type",SET_TO,'batch_effect_remove'),
-         help="make batch effect remove report")
-
-        ]
-  
-        
+         help="make batch effect remove report"),
+         ]

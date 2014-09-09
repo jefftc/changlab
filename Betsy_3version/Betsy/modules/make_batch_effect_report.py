@@ -272,7 +272,7 @@ def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
                                              optional_value='yes',second_key='dwd_norm',
                                              second_value='yes')
     data_node11 = module_utils.get_identifier(network, module_id,
-                                            data_nodes,duser_attributes,atatype='SignalFile',
+                                            data_nodes,user_attributes,datatype='SignalFile',
                                              optional_key='quantile_norm',
                                              optional_value='yes',second_key='shiftscale_norm',
                                              second_value='yes')

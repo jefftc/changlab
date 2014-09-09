@@ -63,14 +63,14 @@ def run(in_nodes, parameters, user_input,network):
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for reorder_genes fails' % outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Order,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Order,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
 def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,user_attributes,
-                                            datatype='SignalFile_Order')
+                                            datatype='_SignalFile_Order')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            user_attributes,
                                            datatype='GeneListFile')
@@ -91,7 +91,8 @@ def get_out_attributes(parameters,in_nodes):
 def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     data_node,cls_node = in_nodes
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(
+        identifier,pipeline,parameters,user_input)
 
 
    

@@ -138,7 +138,7 @@ def run(in_nodes,parameters,user_input,network):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for normalize_with_rsem does not exist'
         % outfile)
-    out_node = bie3.Data(rulebase.SignalFile_Postprocess,**parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Postprocess,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
 

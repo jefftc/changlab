@@ -115,7 +115,7 @@ def list_datatypes(rulebase):
     x = [getattr(rulebase, x) for x in dir(rulebase)]
     x = [x for x in x if isinstance(x, bie3.DataType)]
     datatypes = x
-
+    
     # Make a list of the modules
     modules = rulebase.all_modules
 

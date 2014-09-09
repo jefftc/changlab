@@ -1,11 +1,13 @@
 #PcaAnalysis
 from Betsy.bie3 import *
-import SignalFile_rule
+import Database
+import GeneExpProcessing
+
 PcaAnalysis = DataType(
     'PcaAnalysis',
-    AttributeDef('contents',SignalFile_rule.CONTENTS,"unspecified","unspecified",help="contents"),
+    AttributeDef('contents',Database.CONTENTS,"unspecified","unspecified",help="contents"),
     AttributeDef(
-        "preprocess",SignalFile_rule.PREPROCESS,
+        "preprocess",GeneExpProcessing.PREPROCESS,
         "unknown","unknown",help="preprocess method"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
@@ -50,9 +52,9 @@ PcaAnalysis = DataType(
 
 PcaPlot = DataType(
     'PcaPlot',
-    AttributeDef("contents",SignalFile_rule.CONTENTS,"unspecified","unspecified",help="contents"),
+    AttributeDef("contents",Database.CONTENTS,"unspecified","unspecified",help="contents"),
     # Properties of the data.
-    AttributeDef("preprocess",SignalFile_rule.PREPROCESS,
+    AttributeDef("preprocess",GeneExpProcessing.PREPROCESS,
         "unknown","unknown",help="preprocess method"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
@@ -100,7 +102,7 @@ list_files = [PcaAnalysis,PcaPlot]
 all_modules = [
     Module(
         'analyze_samples_pca',
-        SignalFile_rule.SignalFile,PcaAnalysis,
+        GeneExpProcessing.SignalFile,PcaAnalysis,
         OptionDef('pca_gene_num',500,help="number of genes in pca"),
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", "class0,class1,test",
                  "class0", "class1", "class0,class1",
@@ -108,7 +110,7 @@ all_modules = [
         Constraint("format",MUST_BE,'tdf'),
         Constraint("logged",MUST_BE,'yes'),
         Constraint("filter",CAN_BE_ANY_OF,["yes","no"]),
-        Constraint("preprocess",CAN_BE_ANY_OF,SignalFile_rule.PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS),
         Constraint("quantile_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("bfrm_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),
@@ -153,7 +155,7 @@ all_modules = [
                   "unspecified"]),
         Constraint("logged",MUST_BE,'yes'),
         Constraint("filter",CAN_BE_ANY_OF,["yes","no"]),
-        Constraint("preprocess",CAN_BE_ANY_OF,SignalFile_rule.PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS),
         Constraint("quantile_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("bfrm_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),

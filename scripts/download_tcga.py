@@ -19,12 +19,12 @@ datatype_match = {'RSEM_genes':'RSEM_genes_normalized__data.Level_3',
                   'mirnaseq':
                   'Merge_mirnaseq__illuminahiseq_mirnaseq__bcgsc_ca__Level_3__miR_gene_expression__data.Level_3',
                   'clinical':'Merge_Clinical.Level_1',
-                  'rppa':'.RPPA_AnnotateWithGene.Level_3'}
+                  'rppa':'.RPPA_AnnotateWithGene.Level_3',
+                  'RSEM_isoforms':'RSEM_isoforms_normalized__data.Level_3'}
 
 URL2HTML = {}
 def read_url(url):
     global URL2HTML
-
     if url not in URL2HTML:
         #print "Reading %s" % url; sys.stdout.flush()
         timer.wait(2, 'tcga')
@@ -46,6 +46,7 @@ def retrieve_all_dates():
         'https://confluence.broadinstitute.org/display/GDAC/Dashboard-Stddata')
     urls = read_and_extract_urls(dashboard_url)
     diseases, date = get_disease_lastest(urls)
+    #print diseases,date
     date = date.replace("_", "")
     all_dates[date] = dashboard_url
 
@@ -143,7 +144,6 @@ def get_disease_lastest(urls):
     pattern = re.compile(
         r'http://gdac.broadinstitute.org/runs/stddata__[0-9_]*/[A-Z]*.html')
     lastest = None
-    
     for url in urls:
         disease_link = re.findall(pattern, url)
         for link in disease_link:
@@ -391,11 +391,14 @@ def process_data(data, txt_file, outfile):
     elif data == 'mirnaseq':
         format_firehose_mirna(txt_file, outfile)
     elif data == 'clinical':
-        raise
+        raise NotImplementedError("have not figure out how to process")
     elif data == 'rppa':
         format_firehose_rppa(txt_file, outfile)
+    elif data == 'RSEM_isoforms':
+        raise NotImplementedError("have not figure out how to process") 
     else:
-        raise
+        raise NotImplementedError("the data type is not matched to our list and"
+                                  "have not figure out how to process")
     print 'processing finished '
 
     
@@ -453,7 +456,7 @@ def main():
         assert args.data, 'please specify the data'
     if args.process_only:
         assert args.data, 'please specify the data'
-
+    all_dates = retrieve_all_dates()
     if args.list_dates:
         assert not args.date
         assert not args.data
@@ -461,30 +464,31 @@ def main():
         if args.disease:
             raise NotImplementedError
         else:
-            all_dates = retrieve_all_dates()
             for date in sorted(all_dates):
                 print date
         return
     elif args.list_diseases:
         assert not args.disease
-        assert not args.data
-
-        all_dates = retrieve_all_dates()
         date = sorted(all_dates)[-1]
         if args.date:
             date = args.date
         all_diseases = retrieve_diseases(date)
         print "Diseases available at %s" % date
-        for name in all_diseases:
-            print name
-        return
+        if not args.data:
+            for name in all_diseases:
+                print name
+            return
+        else:
+            for name in all_diseases:
+                all_data = get_data_type(name, date)
+                if args.data in all_data:
+                    print name
+            return
     elif args.list_data:
         assert args.disease, "disease must be given."
-        all_dates = retrieve_all_dates()
         date = sorted(all_dates)[-1]
         if args.date:
             date = args.date
-
         all_data = get_data_type(args.disease, date)
         for d in all_data:
             print d
@@ -499,8 +503,6 @@ def main():
     elif args.download_only:
         assert args.disease, "disease must be given."
         assert args.data, "data must be given."
-
-        all_dates = retrieve_all_dates()
         date = sorted(all_dates)[-1]
         if args.date:
             date = args.date
@@ -509,16 +511,18 @@ def main():
         assert args.disease, "Please specify a disease to download."
         assert args.data, "data must be given."
         assert args.output, "Please specify output path."
-        all_dates = retrieve_all_dates()
+        #all_dates = retrieve_all_dates()
         date = sorted(all_dates)[-1]
         if args.date:
             date = args.date
+        diseases_in_date = retrieve_diseases(date)
+        assert args.disease in diseases_in_date, (
+            'the diesease %s is not found in the date %s' %(
+            args.disease,date))
             
-        #assert args.disease in disease_in_date_dict[require_date], (
-        #    'the diesease %s is not found in the date %s' %(
-        #        args.disease,args.require_date))
-        #assert args.data in all_data,('%s is not found in %s for %s' %(
-        #    args.data,require_date,args.disease))
+##        assert args.data in all_data,('%s is not found in %s for %s' %(
+##            args.data,require_date,args.disease))
+        
         filename = download_file(args.disease, date, args.data)
         txt_file = extract_files(filename)
         process_data(args.data, txt_file, args.output)

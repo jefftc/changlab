@@ -1002,6 +1002,15 @@ class Network:
         x1 = [self.nodes, self.transitions]
         x2 = [other.nodes, other.transitions]
         return cmp(x1, x2)
+    @staticmethod
+    def __init_from_dict(args):
+        assert 'nodes' in args
+        assert 'transitions' in args
+        new_transition = dict()
+        for key,value in args['transitions'].items():
+            new_transition[int(key)]=value
+        inst = Network(args['nodes'],new_transition)
+        return inst
 
 
 def make_network(moduledb, out_data, *user_attributes):

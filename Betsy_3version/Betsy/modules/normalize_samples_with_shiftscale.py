@@ -34,7 +34,7 @@ def run(in_nodes,parameters, user_input, network):
         f.close()
         assert module_utils.exists_nz(outfile),(
             'the output file %s for shiftscale fails'%outfile)
-        out_node = bie3.Data(rulebase.SignalFile_Merge,**parameters)
+        out_node = bie3.Data(rulebase._SignalFile_Merge,**parameters)
         out_object = module_utils.DataObject(out_node,outfile)
         return out_object
     return False
@@ -42,7 +42,7 @@ def run(in_nodes,parameters, user_input, network):
 def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,user_attributes,
-                                            datatype='SignalFile_Merge')
+                                            datatype='_SignalFile_Merge')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
                                            user_attributes,datatype='ClassLabelFile')
     return data_node, cls_node
