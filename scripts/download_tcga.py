@@ -397,8 +397,7 @@ def process_data(data, txt_file, outfile):
     elif data == 'RSEM_isoforms':
         raise NotImplementedError("have not figure out how to process") 
     else:
-        raise NotImplementedError("the data type is not matched to our list and"
-                                  "have not figure out how to process")
+        raise ValueError("the data type is not matched to our list")
     print 'processing finished '
 
     
