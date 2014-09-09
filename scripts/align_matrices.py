@@ -127,34 +127,64 @@ def peek_samples_hint(matrix_data):
     return samples_hint
 
 
+def _process_sample(sample, case_insensitive, hash_samples, ignore_nonalnum):
+    from genomicode import hashlib
+    
+    x = sample
+    if case_insensitive:
+        x = x.upper()
+    if hash_samples:
+        x = hashlib.hash_var(x)
+    if ignore_nonalnum:
+        x = strip_nonalnum(x)
+    return x
+
+
 def align_matrices(
     matrix_data, align_samples, case_insensitive, hash_samples,
-    ignore_nonalnum, null_string, outer_join):
+    ignore_nonalnum, ignore_blank, left_join, outer_join, null_string):
     # align_samples is a list of unique samples.
     import itertools
     from genomicode import hashlib
 
+    align_samples_cmp = [
+        _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
+        for x in align_samples]
+
+    # Pre-process the samples so I don't have to do it repeatedly.
+    # This list should be aligned to matrix_data.
+    matrix_samples_cmp = []
+    for x in matrix_data:
+        infile, outfile, matrix, header, samples = x
+        x = [
+            _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
+            for x in samples]
+        matrix_samples_cmp.append(x)
+
+    # Pre-process, for each matrix, a dictionary of sample -> list of
+    # indexes.
+    matrix_sample2indexes = []
+    for samples_cmp in matrix_samples_cmp:
+        sample2indexes = {}
+        for i, s in enumerate(samples_cmp):
+            if s not in sample2indexes:
+                sample2indexes[s] = []
+            sample2indexes[s].append(i)
+        matrix_sample2indexes.append(sample2indexes)
+
     sample2matrix2indexes = {}  # sample_i -> matrix_i -> list of indexes
     for i, sample in enumerate(align_samples):
         sample2matrix2indexes[i] = {}
+        sample_cmp = align_samples_cmp[i]
         for j, x in enumerate(matrix_data):
-            infile, outfile, matrix, header, samples = x
+            sample2indexes = matrix_sample2indexes[j]
 
-            samples_cmp = samples
-            sample_cmp = sample
-            if case_insensitive:
-                samples_cmp = [x.upper() for x in samples_cmp]
-                sample_cmp = sample_cmp.upper()
-            if hash_samples:
-                samples_cmp = [hashlib.hash_var(x) for x in samples_cmp]
-                sample_cmp = hashlib.hash_var(sample_cmp)
-            if ignore_nonalnum:
-                samples_cmp = [strip_nonalnum(x) for x in samples_cmp]
-                sample_cmp = strip_nonalnum(sample_cmp)
-
-            indexes = [
-                k for k in range(len(samples_cmp))
-                if samples_cmp[k] == sample_cmp]
+            # Keep the blanks in the first matrix.  Just don't align
+            # them to anything in the remaining matrices.
+            if ignore_blank and not sample_cmp.strip() and j > 0:
+                indexes = []
+            else:
+                indexes = sample2indexes.get(sample_cmp, [])
             sample2matrix2indexes[i][j] = indexes
 
     # Now align the indexes for each matrix.  Here, len(indexes)
@@ -164,7 +194,24 @@ def align_matrices(
         matrix2indexes = sample2matrix2indexes[i].copy()
         matrix2aligned = {}
 
-        if not outer_join:
+        if left_join or outer_join:
+            for j in range(len(matrix_data)):
+                matrix2aligned[j] = []
+
+            # list (of len(matrix_data)) of list of indexes
+            all_indexes = []  
+            for j in range(len(matrix_data)):
+                indexes = matrix2indexes[j]
+                if not indexes:
+                    indexes = [None]
+                all_indexes.append(indexes)
+
+            # Do a product of all matching indexes across the matrices.
+            for x in itertools.product(*all_indexes):
+                assert len(x) == len(matrix_data)
+                for j in range(len(matrix_data)):
+                    matrix2aligned[j].append(x[j])
+        else:
             # If this sample is not found in all data sets, then
             # ignore it.
             found = True
@@ -179,21 +226,6 @@ def align_matrices(
                 for j in range(len(matrix_data)):
                     indexes = matrix2indexes[j]
                     matrix2aligned[j] = [indexes[0]]
-        else:
-            for j in range(len(matrix_data)):
-                matrix2aligned[j] = []
-            
-            # list (of len(matrix_data)) of list of indexes
-            all_indexes = []  
-            for j in range(len(matrix_data)):
-                indexes = matrix2indexes[j]
-                if not indexes:
-                    indexes = [None]
-                all_indexes.append(indexes)
-            for x in itertools.product(*all_indexes):
-                assert len(x) == len(matrix_data)
-                for j in range(len(matrix_data)):
-                    matrix2aligned[j].append(x[j])
             
         sample2matrix2aligned[i] = matrix2aligned
 
@@ -521,8 +553,12 @@ def get_annot_samples(matrix, header_hint, samples_hint,
     return matrix.name2annots[name]
 
 
-def cmp_sample(x, y, case_insensitive, hash_samples, ignore_nonalnum):
+def cmp_sample(x, y,
+               case_insensitive, hash_samples, ignore_nonalnum, ignore_blank):
     from genomicode import hashlib
+
+    if ignore_blank and x.strip():
+        return False
     
     if case_insensitive:
         x, y = x.upper(), y.upper()
@@ -539,9 +575,12 @@ def cmp_sample(x, y, case_insensitive, hash_samples, ignore_nonalnum):
 
 
 def find_sample(sample_list, sample, case_insensitive, hash_samples,
-                ignore_nonalnum):
+                ignore_nonalnum, ignore_blank):
     # Return the index of this sample or -1.
     from genomicode import hashlib
+
+    if ignore_blank and not sample.strip():
+        return -1
 
     sample_list_cmp = sample_list
     sample_cmp = sample
@@ -716,15 +755,23 @@ def main():
         help="Hash the sample names to [a-zA-Z0-9_] before comparison.")
     parser.add_argument(
         "--ignore_nonalnum", default=False, action="store_true",
-        help="Ignore non-alphanumeric characters.")
+        help="Ignore non-alphanumeric characters in the IDs.")
+    parser.add_argument(
+        "--ignore_blank", default=False, action="store_true",
+        help="Ignore IDs that are blank (don't align them.")
+    parser.add_argument(
+        "--left_join", default=False, action="store_true",
+        help='By default, does an "inner join" and keeps only the '
+        'records that are present in all files.  A "left join" will '
+        'keep all records that occur in the first file.')
     parser.add_argument(
         "--outer_join", default=False, action="store_true",
         help='By default, does an "inner join" and keeps only the '
         'records that are present in all files.  An "outer join" will '
-        'also keep records that occur in one file.')
+        'also keep records that occur in any file.')
     parser.add_argument(
         "--null_string", default="",
-        help='For outer_join, what to give the missing values.')
+        help='For left_join or outer_join, what to give the missing values.')
 
     parser.add_argument(
         "--express_file", default=[], action="append", help="")
@@ -745,8 +792,9 @@ def main():
         assert os.path.exists(x), "I could not find file: %s" % x
     for x in args.outfile:
         assert args.clobber or not os.path.exists(x), "File exists: %s" % x
+    assert not (args.left_join and args.outer_join)
     if args.null_string:
-        assert args.outer_join, \
+        assert args.outer_join or args.left_join, \
                "null_string given, but only used for outer_join"
 
     # Align the outfiles to the expression and annotation files.
@@ -815,7 +863,13 @@ def main():
         new_matrix_data.append(x)
     matrix_data = new_matrix_data
 
-    if args.outer_join:
+    if args.left_join:
+        assert not args.strict, "Can't do a strict left join."
+        samples = list_all_samples(
+            matrix_data[:1], args.case_insensitive, args.hash,
+            args.ignore_nonalnum)
+        assert samples, "No samples."
+    elif args.outer_join:
         assert not args.strict, "Can't do a strict outer join."
         samples = list_all_samples(
             matrix_data, args.case_insensitive, args.hash,
@@ -839,7 +893,7 @@ def main():
             for x in all_samples:
                 i = find_sample(
                     common_samples, x, args.case_insensitive, args.hash,
-                    args.ignore_nonalnum)
+                    args.ignore_nonalnum, args.ignore_blank)
                 if i >= 0:
                     continue
                 missing_samples.append(x)
@@ -853,7 +907,8 @@ def main():
     # Align each of the matrices.
     matrix_data = align_matrices(
         matrix_data, samples, args.case_insensitive, args.hash,
-        args.ignore_nonalnum, args.null_string, args.outer_join)
+        args.ignore_nonalnum, args.ignore_blank,
+        args.left_join, args.outer_join, args.null_string)
 
     # Write out each of the matrices.
     for x in matrix_data:

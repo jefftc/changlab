@@ -203,13 +203,23 @@ def find_many_genes_detailed(genes, tax_id=None):
 
 def find_discontinued(name, tax_id=None):
     # Return current gene_id or None if not found.
-    from genomicode import config
-    from genomicode import dblib
+    import config
+    import dblib
+
+    # If name looks like a gene_id, see if it's a discontinued gene ID.
+    is_gene_id = True
+    try:
+        int(name)
+    except ValueError, x:
+        is_gene_id = False
 
     # Need to clean up name for security reasons.
     columns = "old_gene_id, old_symbol, gene_id, tax_id"
     q = "SELECT %s FROM %s WHERE old_symbol='%s';" % (
         columns, "DISCONTINUED", name)
+    if is_gene_id:
+        q = "SELECT %s FROM %s WHERE old_gene_id=%s;" % (
+            columns, "DISCONTINUED", name)
     x = dblib.query(
         q, config.gm_user, config.gm_passwd, config.gm_db,
         config.gm_host, config.gm_port)

@@ -65,6 +65,8 @@
 }
 
 .calc.km.curve <- function(survival, dead) {
+  if(any(is.na(survival))) stop("na in survival")
+  if(any(is.na(dead))) stop("na in dead")
   O <- order(survival)
   survival <- survival[O]; dead <- dead[O]
 
@@ -167,19 +169,19 @@ calc.km.multi <- function(survival, dead, group) {
   if(length(survival) != length(dead)) stop("unaligned")
   if(length(survival) != length(group)) stop("unaligned")
 
-  group.all <- sort(unique(group))
+  group.all <- sort(unique(group[!is.na(group)]))
 
   status <- factor(group)
   res <- coxph(Surv(survival, dead) ~ status, method="breslow")
   # rho=0 does log-rank test
   sd <- survdiff(Surv(survival, dead) ~ status, rho=0)
-  df <- length(unique(group))-1
+  df <- length(group.all)-1
   p.value <- 1 - pchisq(res$score, df)
   hr <- exp(res$coefficients)
 
   num.samples <- list()
   for(g in group.all)
-    num.samples[[as.character(g)]] <- sum(group == g)
+    num.samples[[as.character(g)]] <- sum(!is.na(group) & (group == g))
 
   surv <- list()
   for(g in group.all) {
@@ -247,11 +249,13 @@ plot.km.multi <- function(survival, dead, group, col=NA,
   title(xlab=xlab, ylab=ylab, cex.lab=1.5)
   title(sub=sub, cex.sub=cex.sub, col.sub="#A60400", line=sub.line)
 
-  for(g in unique(group)) {
+  all.groups <- sort(unique(group[!is.na(group)]))
+  for(g in all.groups) {
     co <- col[[as.character(g)]]
     if(is.null(co))
       co <- "#000000"
-    km <- .calc.km.curve(survival[g==group], dead[g==group])
+    I <- !is.na(group) & (g == group)
+    km <- .calc.km.curve(survival[I], dead[I])
     lines(km$surv.x, km$surv.y*100, col=co, lwd=lwd)
     # Draw the censor lines.
     points(km$cens.x, km$cens.y*100, pch=15, cex=0.8)
@@ -287,19 +291,27 @@ write.km.prism <- function(filename, class1, survival1, dead1,
 }
 
 # Write out results for Prism.
-write.km.prism.multi <- function(filename, survival, dead, group) {
+write.km.prism.multi <- function(filename, survival, dead, group, sample=NA) {
   if(length(survival) != length(dead)) stop("unaligned")
   if(length(survival) != length(group)) stop("unaligned")
+  if(!all(is.na(sample))) {
+    if(length(sample) != length(group)) stop("unaligned")
+  }
 
-  all.groups <- sort(unique(group))
+  all.groups <- sort(unique(group[!is.na(group)]))
   data.out <- survival
   for(g in all.groups) {
     x <- rep("", length(dead))
-    x[group==g] <- dead[group==g]
+    I <- !is.na(group) & (group == g)
+    x[I] <- dead[I]
     data.out <- cbind(data.out, x)
   }
   data.out <- cbind(data.out, dead)
   colnames(data.out) <- c("Survival", all.groups, "All")
+  if(!all(is.na(sample))) {
+    data.out <- cbind(sample, data.out)
+    colnames(data.out)[1] <- "Sample"
+  }
   write.table(data.out, filename, quote=FALSE, sep="\t",
     row.names=FALSE, col.names=TRUE)
 }
