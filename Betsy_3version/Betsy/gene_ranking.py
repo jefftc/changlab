@@ -68,10 +68,12 @@ def find_sorted_index(inputlist, gene_list):
         if key not in inputlist:
             continue
         index = inputlist.index(key)
-        try:
-            inputlist.index(key, index + 1)
-        except ValueError:
-            indexlist.append(index)
+        while True:
+            try:
+                index = inputlist.index(key, index + 1)
+            except ValueError:
+                indexlist.append(index)
+                break
     return indexlist
 
 

@@ -12,7 +12,8 @@ from genomicode import genefinder,timer
 # retrieve_all_dates
 # retrieve_diseases
 
-datatype_match = {'RSEM_genes':'RSEM_genes_normalized__data.Level_3',
+datatype_match = {'RSEM_genes':
+                  'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_genes_normalized__data.Level_3',
                   'RSEM_exons':'exon_expression__data.Level_3',
                   'humanmethylation450':
                   'Merge_methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.Level_3',
@@ -20,7 +21,19 @@ datatype_match = {'RSEM_genes':'RSEM_genes_normalized__data.Level_3',
                   'Merge_mirnaseq__illuminahiseq_mirnaseq__bcgsc_ca__Level_3__miR_gene_expression__data.Level_3',
                   'clinical':'Merge_Clinical.Level_1',
                   'rppa':'.RPPA_AnnotateWithGene.Level_3',
-                  'RSEM_isoforms':'RSEM_isoforms_normalized__data.Level_3'}
+                  'RSEM_isoforms':'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_isoforms_normalized__data.Level_3',
+                  'Copy_number':'CopyNumber_Gistic2.Level_4'}
+
+datatype2resource = {'RSEM_genes':'stddata',
+                    'RSEM_exons':'stddata',
+                    'humanmethylation450':'stddata',
+                    'mirnaseq':'stddata',
+                    'clinical':'stddata',
+                    'rppa':'stddata',
+                    'RSEM_isoforms':'stddata',
+                    'Copy_number':'analyses'}
+
+resources = ['stddata','analyses']
 
 URL2HTML = {}
 def read_url(url):
@@ -33,25 +46,32 @@ def read_url(url):
         URL2HTML[url] = html
     return URL2HTML[url]
 
-
-def retrieve_all_dates():
-    # Return a dictionary of the date -> url.  url points to an HTML
-    # page for the runs for a specific date.  It has a table of the
+def retieve_dates_from_resource(resource):
+    import pprint  ###
+    # Return a dictionary of the date -> url with given resource.
+    #url points to an HTML page for the runs for a specific date.  It has a table of the
     # diseases and HREFs to the data for the diseases at that date.
-    all_dates = {}  # date -> url
-
+    download_url = None
+    url = None
+    if resource == 'stddata':
+        dashboard_url = (
+        'https://confluence.broadinstitute.org/display/GDAC/Dashboard-Stddata')
+        url = 'http://gdac.broadinstitute.org/runs/info/stddata__runs_list.html'
+    elif resource == 'analyses':
+        dashboard_url =(
+            'https://confluence.broadinstitute.org/display/GDAC/Dashboard-Analyses')
+        url = 'http://gdac.broadinstitute.org/runs/info/analyses__runs_list.html'
+    else:
+        raise ValueError('we do not recognize the resource %s' %resource)
     # The latest data is listed on the "Dashboard" page.  The old data
     # is shown on a different one.  Download them separately.
-    dashboard_url = (
-        'https://confluence.broadinstitute.org/display/GDAC/Dashboard-Stddata')
+    all_dates = {}
     urls = read_and_extract_urls(dashboard_url)
-    diseases, date = get_disease_lastest(urls)
-    #print diseases,date
+    diseases, date = get_disease_lastest(urls,resource)
     date = date.replace("_", "")
     all_dates[date] = dashboard_url
 
     # Read the old data.
-    url = 'http://gdac.broadinstitute.org/runs/info/stddata__runs_list.html'
     html = read_url(url)
     link_tags = parselib.get_tags_and_contents(html,'a')
     for i in link_tags:
@@ -62,9 +82,24 @@ def retrieve_all_dates():
         date = date.group(0)
         date = date.replace("_", "")
         all_dates[date] = url
-        
     assert all_dates, "No dates found"
     return all_dates
+
+
+def retrieve_all_dates():
+    # Return a dictionary of the resource-> date and date is a dict which date -> url.
+    # url points to an HTML page for the runs for a specific date.  It has a table of the
+    # diseases and HREFs to the data for the diseases at that date.
+    resources = ['stddata','analyses']
+    all_dates = {}  # resource->date
+    all_dates_list = []
+    for resource in resources:
+        all_date_from_resource = retieve_dates_from_resource(resource)
+        all_dates[resource] = all_date_from_resource
+        all_dates_list.extend(all_date_from_resource.keys())
+    all_dates_list = list(set(all_dates_list))
+    all_dates_list = sorted(all_dates_list)
+    return all_dates, all_dates_list
 
 
 def extract_all_hrefs(html):
@@ -74,18 +109,15 @@ def extract_all_hrefs(html):
     x = [x for x in x if not x.startswith("#")]
     return x
 
-
-def retrieve_diseases(date):
-    all_dates = retrieve_all_dates()
-    assert date in all_dates, "Unknown date: %s" % date
-    url = all_dates[date]
-    
+def retrieve_disease_resource(date,resource):
+    all_dates_from_resource = retieve_dates_from_resource(resource)
+    assert date in all_dates_from_resource, "Unknown date: %s in %s" % (date,resource)
+    url = all_dates_from_resource[date]
     # URL:
     # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
     pattern = re.compile(
-        r'http://%s/runs/stddata__[0-9_]{10}/data/([A-Z]+)/([0-9]{8})' % (
-            "gdac.broadinstitute.org"), re.IGNORECASE)
-
+        r'http://%s/runs/%s__[0-9_]{10}/data/([A-Z]+)/([0-9]{8})' % (
+            "gdac.broadinstitute.org",resource), re.IGNORECASE)
     diseases = []
     html = read_url(url)
     for href in extract_all_hrefs(html):
@@ -94,17 +126,26 @@ def retrieve_diseases(date):
             continue
         x = m.group(1)
         diseases.append(x)
-    assert diseases, "could not find diseases"
     return diseases
+
+def retrieve_diseases(date):
+    all_diseases = []
+    for resource in resources:
+        disease = retrieve_disease_resource(date,resource)
+        all_diseases.extend(disease)
+    all_diseases = list(set(all_diseases))
+    assert all_diseases, "could not find diseases"
+    return all_diseases
 
 
 def download_file(disease, date, datatype):
     assert len(date) == 8
     long_date = "%s_%s_%s" % (date[:4], date[4:6], date[6:8])
+    resource = datatype2resource[datatype]
     # URL:
     # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
-    link = "http://%s/runs/stddata__%s/data/%s/%s/" % (
-        "gdac.broadinstitute.org", long_date, disease, date)
+    link = "http://%s/runs/%s__%s/data/%s/%s/" % (
+        "gdac.broadinstitute.org", resource, long_date, disease, date)
         
     newlinks = get_all_datas_on_page(link)
     for newlink in newlinks:
@@ -116,18 +157,18 @@ def download_file(disease, date, datatype):
             return newlink
     assert ValueError('download fails')
 
-    
-def get_data_type(disease, date):
-    assert len(date) == 8
+def get_data_type_resource(disease,date,resource):
     long_date = "%s_%s_%s" % (date[:4], date[4:6], date[6:8])
     # URL:
     # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
-    link = "http://%s/runs/stddata__%s/data/%s/%s/" % (
-        "gdac.broadinstitute.org", long_date, disease, date)
+    link = "http://%s/runs/%s__%s/data/%s/%s/" % (
+        "gdac.broadinstitute.org",resource, long_date, disease, date)
     newlinks = get_all_datas_on_page(link)
     result = []
     for newlink in newlinks:
         for datatype in datatype_match:
+            if datatype2resource[datatype] != resource:
+                continue
             if datatype_match[datatype] not in newlink:
                 continue
             # Brittle
@@ -136,13 +177,21 @@ def get_data_type(disease, date):
             assert datatype not in result, "dup datatype"
             result.append(datatype)
     return result
+    
+def get_data_type(disease, date):
+    assert len(date) == 8
+    long_date = "%s_%s_%s" % (date[:4], date[4:6], date[6:8])
+    result = []
+    for resource in resources:
+       result.extend(get_data_type_resource(disease,date,resource))
+    return result
                 
             
-def get_disease_lastest(urls):
+def get_disease_lastest(urls,resource):
     # Return list of diseases, latest_date
     diseases = []
     pattern = re.compile(
-        r'http://gdac.broadinstitute.org/runs/stddata__[0-9_]*/[A-Z]*.html')
+        r'http://gdac.broadinstitute.org/runs/%s__[0-9_]*/[A-Z]*.html'%resource)
     lastest = None
     for url in urls:
         disease_link = re.findall(pattern, url)
@@ -183,7 +232,7 @@ def read_and_extract_urls(page):
     return x
 
 
-def extract_files(gzfile):
+def extract_files(gzfile,resource):
     assert gzfile.endswith('tar.gz')
     import tarfile
     tfile = tarfile.open(gzfile, 'r:gz')
@@ -194,9 +243,16 @@ def extract_files(gzfile):
     directory = os.path.join(newdir,folder[0])
     assert os.path.exists(directory)
     files = os.listdir(directory)
-    for filename in files:
-        if filename.endswith('txt') and filename != 'MANIFEST.txt':
-            return os.path.join(directory,filename)
+    if resource == 'stddata':
+        for filename in files:
+            if filename.endswith('txt') and filename != 'MANIFEST.txt':
+                return os.path.join(directory,filename)
+    elif resource == 'analyses':
+        for filename in files:
+            if filename =='all_data_by_genes.txt':
+                return os.path.join(directory,filename)
+    else:
+        raise ValueError('not recoginzed resource %s'%resource)
     return None    
 
     
@@ -380,7 +436,21 @@ def format_firehose_rppa(filename, output):
         assert len(x) == len(header)
         f.write("\t".join(map(str, x))+'\n')
     f.close()
-            
+    
+def format_firehose_gistic(filename, output):
+    print filename
+    iter = filelib.read_row(filename, header=1)
+    header = ["Gene ID", "Gene Symbol"] + iter._header[2:]
+    f = file(output, 'w')
+    f.write("\t".join(header))
+    for d in iter:
+        gene_symbol = d.Gene_Symbol
+        gene_id = d.Locus_ID
+        x = [gene_id, gene_symbol] + d._cols[2:]
+        assert len(x) == len(header)
+        f.write("\t".join(map(str, x))+'\n')
+    f.close()
+    
 def process_data(data, txt_file, outfile):
     if data == 'RSEM_genes':
         format_firehose_rsem(txt_file, outfile)
@@ -391,11 +461,13 @@ def process_data(data, txt_file, outfile):
     elif data == 'mirnaseq':
         format_firehose_mirna(txt_file, outfile)
     elif data == 'clinical':
-        raise NotImplementedError("have not figure out how to process")
+        raise NotImplementedError("have not figured out how to process")
     elif data == 'rppa':
         format_firehose_rppa(txt_file, outfile)
+    elif data == 'Copy_number':
+        format_firehose_gistic(txt_file, outfile)
     elif data == 'RSEM_isoforms':
-        raise NotImplementedError("have not figure out how to process") 
+        raise NotImplementedError("have not figure out how to process")
     else:
         raise ValueError("the data type is not matched to our list")
     print 'processing finished '
@@ -455,7 +527,7 @@ def main():
         assert args.data, 'please specify the data'
     if args.process_only:
         assert args.data, 'please specify the data'
-    all_dates = retrieve_all_dates()
+    all_dates,all_dates_list = retrieve_all_dates()
     if args.list_dates:
         assert not args.date
         assert not args.data
@@ -463,12 +535,12 @@ def main():
         if args.disease:
             raise NotImplementedError
         else:
-            for date in sorted(all_dates):
+            for date in all_dates_list:
                 print date
         return
     elif args.list_diseases:
         assert not args.disease
-        date = sorted(all_dates)[-1]
+        date = all_dates_list[-1]
         if args.date:
             date = args.date
         all_diseases = retrieve_diseases(date)
@@ -485,7 +557,7 @@ def main():
             return
     elif args.list_data:
         assert args.disease, "disease must be given."
-        date = sorted(all_dates)[-1]
+        date = all_dates_list[-1]
         if args.date:
             date = args.date
         all_data = get_data_type(args.disease, date)
@@ -497,7 +569,7 @@ def main():
     if args.process_only:
         assert args.input
         assert os.path.exists(args.input), '%s does not exists' % args.input
-        txt_file = extract_files(args.input)
+        txt_file = extract_files(args.input,datatype2resource[args.data])
         process_data(args.data, txt_file, args.output)
     elif args.download_only:
         assert args.disease, "disease must be given."
@@ -510,8 +582,7 @@ def main():
         assert args.disease, "Please specify a disease to download."
         assert args.data, "data must be given."
         assert args.output, "Please specify output path."
-        #all_dates = retrieve_all_dates()
-        date = sorted(all_dates)[-1]
+        date = all_dates_list[-1]
         if args.date:
             date = args.date
         diseases_in_date = retrieve_diseases(date)
@@ -523,7 +594,7 @@ def main():
 ##            args.data,require_date,args.disease))
         
         filename = download_file(args.disease, date, args.data)
-        txt_file = extract_files(filename)
+        txt_file = extract_files(filename,datatype2resource[args.data])
         process_data(args.data, txt_file, args.output)
             
 if __name__ == '__main__':

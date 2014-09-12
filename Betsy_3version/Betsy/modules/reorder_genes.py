@@ -54,6 +54,8 @@ def run(in_nodes, parameters, user_input,network):
                     genes, platform)
     else:
         id = M._row_order[0]
+    #id = M._row_order[3]
+    #print id
     original_list = M._row_names[id]
     #get the order index and write to the outout file
     indexlist = gene_ranking.find_sorted_index(original_list, gene_list)
@@ -72,7 +74,7 @@ def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
                                             data_nodes,user_attributes,
                                             datatype='_SignalFile_Order')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
-                                           user_attributes,datatype='_GeneListFile')
+                                           user_attributes,datatype='GeneListFile')
     return data_node, cls_node
 
 def name_outfile(in_nodes,user_input):
