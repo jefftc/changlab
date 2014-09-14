@@ -194,9 +194,9 @@ def _read_annotations_h():
     paths = []
     result = []
     
-    #root = config.psid2platform
-    root = '/home/xchen/chencode/psid2platform'
-    assert os.path.exists(root), "path %s not exist: %s" % root
+    root = config.psid2platform
+    #root = '/home/xchen/chencode/psid2platform'
+    assert os.path.exists(root), "path not exist: %s" % root
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
             continue
@@ -259,7 +259,9 @@ def _compare_annotations(annots1, annots2, case_sensitive):
     num_shared_annots = len(x)
     num_annots1_only = len(annots1) - num_shared_annots
     num_annots2_only = len(annots2) - num_shared_annots
-    perc_shared = float(num_shared_annots)/min(len(annots1), len(annots2))
+    perc_shared = 0
+    if annots1 and annots2:
+        perc_shared = float(num_shared_annots)/min(len(annots1), len(annots2))
     x = num_shared_annots, num_annots1_only, num_annots2_only, perc_shared
     return x
 

@@ -374,7 +374,7 @@ def main():
     group = parser.add_argument_group(title='Analysis')
     group.add_argument(
         '--phenotype', default=[], action='append',
-        help='Header in the phenotype file.  Format: <header>')
+        help='Header in the phenotype file (MULTI).  Format: <header>')
     group.add_argument(
         '--gene', default=[], action='append',
         help='Comma separated name or ID of genes to analyze.  '
@@ -390,6 +390,10 @@ def main():
     group.add_argument(
         '-o', dest='filestem', default=None,
         help='Prefix used to name files.  e.g. "myanalysis".')
+    group.add_argument(
+        "--gene_header", action="append", default=[],
+        help="Header of gene name to include in the name of the output file "
+        "(MULTI).  By default, will try to find the gene symbol.")
 
     group = parser.add_argument_group(title='Formatting the boxplot')
     group.add_argument(
@@ -510,7 +514,7 @@ def main():
 
     outhandle = sys.stdout
     if filestem:
-        outhandle = open("%sstats.txt" % filestem, 'w')
+        outhandle = open("%s.stats.txt" % filestem, 'w')
 
     # Figure out the header for the table.
     header = M.row_names() + [
@@ -542,21 +546,25 @@ def main():
 
 
         # Write out plots.
-        # Better way to pick gene ID.
         gene_id = aco.get_gene_name(M, gene_i)
-        gene_id_h = hashlib.hash_var(gene_id)
+        #gene_id_h = hashlib.hash_var(gene_id)
         sample_names = M.col_names(arrayio.COL_ID)
-
         if filestem:
-            filename = "%s%s.%s.prism.txt" % (
-                filestem, pheno_header, gene_id_h)
+            #filename = "%s%s.%s.prism.txt" % (
+            #    filestem, pheno_header, gene_id_h)
+            filename = aco._make_filename(
+                M, gene_i, filestem, pheno_header, args.gene_header,
+                "prism", "txt")
             write_prism_file(
                 filename, SCORE["scores"], SCORE["phenotypes"],
                 SCORE["group_names"])
 
         if filestem:
-            filename = "%s%s.%s.boxplot.png" % (
-                filestem, pheno_header, gene_id_h)
+            #filename = "%s%s.%s.boxplot.png" % (
+            #    filestem, pheno_header, gene_id_h)
+            filename = aco._make_filename(
+                M, gene_i, filestem, pheno_header, args.gene_header,
+                "boxplot", "png")
             plot_boxplot(
                 filename, SCORE["scores"], SCORE["phenotypes"],
                 SCORE["group_names"], SCORE["p_value"], gene_id,
@@ -564,8 +572,11 @@ def main():
                 )
             
         if filestem:
-            filename = "%s%s.%s.waterfall.png" % (
-                filestem, pheno_header, gene_id_h)
+            #filename = "%s%s.%s.waterfall.png" % (
+            #    filestem, pheno_header, gene_id_h)
+            filename = aco._make_filename(
+                M, gene_i, filestem, pheno_header, args.gene_header,
+                "waterfall", "png")
             plot_waterfall(
                 filename, SCORE["scores"], SCORE["phenotypes"],
                 SCORE["group_names"], sample_names, SCORE["p_value"], gene_id)

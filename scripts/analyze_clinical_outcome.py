@@ -164,11 +164,13 @@ def parse_outcomes(outcomes):
 
 
 def parse_filestem(filestem):
-    # Return an empty string, or a filestem with a '.' at the end.
+    # Return an empty string, or a filestem without a '.' at the end.
     if filestem is None:
         filestem = ""
-    elif not filestem.endswith("."):
-        filestem += "."
+    if filestem.endswith("."):
+        filestem = filestem[:-1]
+    #elif not filestem.endswith("."):
+    #    filestem += "."
     return filestem
 
 
@@ -306,6 +308,7 @@ def discretize_scores(
 
 
 def get_gene_name(MATRIX, gene_i):
+    # gene_i is index of gene in this MATRIX.
     from genomicode import arrayplatformlib as apl
 
     probe_id = gene_id = gene_symbol = None
@@ -320,7 +323,7 @@ def get_gene_name(MATRIX, gene_i):
     if header is not None:
         gene_id = MATRIX.row_names(header)[gene_i]
 
-    # Just us a probe ID.
+    # Just use a probe ID.
     header = apl.find_header(MATRIX, apl.PROBE_ID)
     if header is not None:
         probe_id = MATRIX.row_names(header)[gene_i]
@@ -843,6 +846,45 @@ def _format_list(x):
     return ";".join(x)
 
 
+def _make_filename(M, gene_i,
+                   filestem, analysis, gene_headers, filetype, fileext):
+    # gene_i is the index of the gene in the matrix.
+    # If filestem is None, will not use a filestem.
+    # gene_headers is a list of headers from Matrix.  If empty, will
+    # try to provide one.
+    
+    # Format:
+    # <filestem>.<analysis>.<gene_name>.<filetype>.<fileext>
+    #
+    # <filestem>    BRCA  (has no "." at end)
+    # <analysis>    SUBTYPE,ER,OS
+    # <gene_name>   GAPDH
+    # <filetype>    boxplot, prism, waterfall
+    # <fileext>     txt, png
+    from genomicode import hashlib
+
+    assert type(analysis) is type("") and analysis
+    assert type(filetype) is type("") and filetype
+    assert type(fileext) is type("") and fileext
+    for h in gene_headers:
+        assert h in M.row_names()
+
+    # Figure out the gene_name.
+    if gene_headers:
+        x = [M.row_names(x)[gene_i] for x in gene_headers]
+        gene_name = "_".join(x)
+    else:
+        x = get_gene_name(M, gene_i)
+        x = hashlib.hash_var(x)
+        gene_name = x
+
+    parts = [analysis, gene_name, filetype, fileext]
+    if filestem:
+        parts.insert(0, filestem)
+    filename = ".".join(parts)
+    return filename
+    
+
 def main():
     import os
     import sys
@@ -912,8 +954,12 @@ def main():
 
     group = parser.add_argument_group(title='Output')
     group.add_argument(
-        '-o', dest='filestem', default=None,
+        '-o', dest='filestem',
         help='Prefix used to name files.  e.g. "myanalysis".')
+    group.add_argument(
+        "--gene_header", action="append", default=[],
+        help="Header of gene name to include in the name of the output file "
+        "(MULTI).  By default, will try to find the gene symbol.")
     group.add_argument(
         '--no_plots', action='store_true', default=False,
         help="Don't produce any plots or Prism files.")
@@ -1090,7 +1136,7 @@ def main():
 
     outhandle = sys.stdout
     if filestem:
-        outhandle = open("%sstats.txt" % filestem, 'w')
+        outhandle = open("%s.stats.txt" % filestem, 'w')
 
     # Figure out the header for the table.
     header = M.row_names() + [
@@ -1137,12 +1183,16 @@ def main():
             continue
 
         # Write out Prism, Kaplan-Meier curves, etc.
-        # Better way to pick gene ID.
-        gene_id = get_gene_name(M, gene_i)
-        gene_id_h = hashlib.hash_var(gene_id)
+        
+        ### Better way to pick gene ID.
+        ##gene_id = get_gene_name(M, gene_i)
+        ##gene_id_h = hashlib.hash_var(gene_id)
 
         # Make the Kaplan-Meier plot.
-        filename = "%s%s.%s.km.png" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.km.png" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header, "km", "png")
+        gene_id = get_gene_name(M, gene_i)
         plot_km(
             filename, SURV["survival"], SURV["dead"], SURV["groups"],
             SURV["p_value"], gene_id, SURV["group_names"], 
@@ -1152,19 +1202,27 @@ def main():
             args.km_xlab, args.km_ylab, args.km_legend_size)
         
         # Write out a Prism file for the Kaplan-Meier plot.
-        filename = "%s%s.%s.km.txt" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.km.txt" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header, "km", "txt")
         write_km_prism_file(
             filename, SURV["survival"], SURV["dead"], SURV["groups"],
             SURV["group_names"])
 
         # Make the group plot.
-        filename = "%s%s.%s.groups.png" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.groups.png" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header,
+            "groups", "png")
         plot_groups(
             filename, SURV["scores"], SURV["group_names"], SURV["groups"],
             args.unlog_group_plot)
 
         # Write out a Prism file for the group plot.
-        filename = "%s%s.%s.groups.txt" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.groups.txt" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header,
+            "groups", "txt")
         write_km_group_file(
             filename, SURV["scores"], SURV["group_names"], SURV["groups"],
             args.unlog_group_plot)
