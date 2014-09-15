@@ -1162,6 +1162,10 @@ def run_case38():
     
     The expect network will be only the right part network
     of the current network it generates with preprocess=illumina .
+
+    140914 JTC Doesn't appear to be a bug in the inferencing engine.
+    Need to split ReportFile data type and have some way in the rules
+    of specifying desired preprocessing.
     
     """
     user_attributes = [
@@ -1190,7 +1194,7 @@ def run_case39():
     Here normalization means any changes between SignalFile_Merge and
     SignalFile.
     
-    In make_normalize_report module, we defined two Pcaplot,the first
+    In make_normalize_report module, we defined two Pcaplot, the first
     Pcaplot is required to be no normalization from SignalFile_merge
     to SignalFile. The second PcaPlot can have different
     normalization. If we do not require any normalization, then the
@@ -1231,15 +1235,18 @@ def run_case39():
     #    network, 1, prev_ids, user_attributes)
     #print x
     
-    network = bie3.optimize_network(network, user_attributes)
+    #network = bie3.optimize_network(network, user_attributes)
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
 
 
 def run_case41():
-    """
-       The start node of this network is GEOSeries[41]. We want the select_start_node() function
-       can generate a network which from ExpressionFiles[39] and below.
+    """The start node of this network is GEOSeries[41]. We want the
+    select_start_node() function can generate a network which from
+    ExpressionFiles[39] and below.
+
+    140914 JTC  Implemented now.
+    
     """
     user_attributes = [
         bie3.Attribute(rulebase.SignalFile, "preprocess", "illumina"),
@@ -1255,19 +1262,22 @@ def run_case41():
     
     fn = getattr(rulebase, 'ExpressionFiles')
     in_data = fn.input()
-    start_node = bie3._find_start_nodes(network,in_data)
+    start_node = bie3._find_start_nodes(network, in_data)
     print 'start_node',start_node
-    # Here is the function to generate new network. We expect it is from Node[39]
-    # and all the nodes below. Get rid of the Node [41] and Node[40].
-    network = bie3.select_start_node(network,in_data)
+    
+    # Here is the function to generate new network. We expect it is
+    # from Node[39] and all the nodes below. Get rid of the Node [41]
+    # and Node[40].
+    network = bie3.select_start_node(network, in_data)
     bie3.print_network(network)
     bie3.plot_network_gv("out_after.png", network)
 
 
 def run_case42():
-    # Testing the flag:
-    # DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES
-    
+    """Testing the flag:
+    DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES
+
+    """
     user_attributes = [
         #bie3.Attribute(rulebase.SignalFile, "gene_center", "mean")
         ]
@@ -1278,9 +1288,11 @@ def run_case42():
     bie3.print_network(network)
     bie3.plot_network_gv("out.png", network)
     
+
 def run_case43():
     """
-    Test case for running a network about 2 minutes.
+    Generates a network about 2 minutes.  For optimization.
+    
     """
     import time
     user_attributes=[
@@ -1300,7 +1312,7 @@ def run_case43():
     network = bie3.optimize_network(network,user_attributes)
     stop = time.strftime("%H:%M:%S")
     print stop
-    #bie3.print_network(network)
+    bie3.print_network(network)
     #bie3.plot_network_gv("out.png", network)    
     
 def main():
@@ -1349,5 +1361,5 @@ def main():
     run_case43()
     
 if __name__ == '__main__':
-    main()
-    #import cProfile; cProfile.run("main()")
+    #main()
+    import cProfile; cProfile.run("main()")

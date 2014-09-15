@@ -231,11 +231,11 @@ class Attribute:
         assert type(value) is type("")
         
         # Check if this is a valid attribute name for the datatype.
-        x = [x for x in datatype.attribute_defs if x.name == name]
-        assert len(x) == 1, "datatype %r does not have attribute %r." % (
-            datatype.name, name)
-        attr = x[0]
-        assert attr.is_valid_value(value), \
+        #x = [x for x in datatype.attribute_defs if x.name == name]
+        #assert len(x) == 1, "datatype %r does not have attribute %r." % (
+        #    datatype.name, name)
+        #attr = x[0]
+        assert datatype.is_valid_attribute_value(name, value), \
                "Invalid value %r for attribute %r." % (value, name)
         
         self.datatype = datatype
@@ -460,33 +460,91 @@ class DataType:
         ## for x in attr_names:
         ##     assert x not in user_names, "%s overlaps in DataType %s." % (
         ##         x, name)
+
+        # Optimizations:
+        # 1.  Save attribute_defs as a dictionary for fast lookups.
+        # 2.  Pre-hash objects for fast comparisons.
+        attr_defs_dict = {}  # name -> AttributeDer
+        for adef in attribute_defs:
+            assert adef.name not in attr_defs_dict, \
+                   "Multiple attributes named %s" % adef.name
+            attr_defs_dict[adef.name] = adef
+
+        x = [attr_defs_dict[x] for x in sorted(attr_defs_dict)]
+        attr_defs_tuple = tuple(x)
             
         self.name = name
-        self.attribute_defs = attribute_defs   # AttributeDef
+        #self.attribute_defs = attribute_defs   # AttributeDef
+        self.attribute_defs = attr_defs_dict
         self.help = keywds.get("help")
+        self.hash_ = hash((name, hash(attr_defs_tuple), self.help))
+        
     def get_attribute_def(self, name):
-        x = [x for x in self.attribute_defs if x.name == name]
-        assert len(x) > 0, "DataType %s has no attribute %s." % (
-            repr(self.name), repr(name))
-        assert len(x) == 1, "Multiple attributes with same name?"
-        return x[0]
+        #x = [x for x in self.attribute_defs if x.name == name]
+        #assert len(x) > 0, "DataType %s has no attribute %s." % (
+        #    repr(self.name), repr(name))
+        #assert len(x) == 1, "Multiple attributes with same name?"
+        #return x[0]
+        if name not in self.attribute_defs:
+            raise KeyError, "DataType %s has no attribute %s." % (
+                repr(self.name), repr(name))
+        return self.attribute_defs[name]
     def get_attribute_names(self):
-        return [x.name for x in self.attribute_defs]
+        #return [x.name for x in self.attribute_defs]
+        return sorted(self.attribute_defs)
     def is_valid_attribute_name(self, name):
         return name in self.get_attribute_names()
     def is_valid_attribute_value(self, name, value):
         attr = self.get_attribute_def(name)
         return attr.is_valid_value(value)
+    def assert_valid_attribute_dict(self, attr_dict):
+        # attr_dict is dictionary of name -> value.  Check if
+        # everything in this dictionary is valid.
+
+        # This function is called frequently, so inline many of the
+        # function calls for speed.
+        x = self.get_attribute_names()
+        all_names = {}.fromkeys(x)
+
+        for name, value in attr_dict.iteritems():
+            assert name in all_names, \
+                   "'%s' is not a known attribute for datatype %s." % (
+                name, self.name)
+
+            if name not in self.attribute_defs:
+                raise KeyError, "DataType %s has no attribute %s." % (
+                    repr(self.name), repr(name))
+            attr = self.attribute_defs[name]
+            # Optimization for:
+            assert attr.is_valid_value(value), \
+                   "In a %s, '%s' is not a valid value for '%s'." % (
+                self.name, value, name)
+            # Makes code more complicated for a minor speedup.
+            #attr_values_dict = attr.values_dict
+            #is_valid = True
+            #if type(value) is type(""):
+            #    is_valid = value in attr_values_dict
+            #elif type(value) is type([]):
+            #    for x in value:
+            #        if x not in attr_values_dict:
+            #            is_valid = False
+            #            break
+            #assert is_valid, \
+            #       "In a %s, '%s' is not a valid value for '%s'." % (
+            #    self.name, value, name)
+    
     def __cmp__(self, other):
         if not isinstance(other, DataType):
             return cmp(id(self), id(other))
         # Bug: should compare attributes without regard to order.
-        x1 = [self.name, self.attribute_defs, self.help]
-        x2 = [other.name, other.attribute_defs, other.help]
-        return cmp(x1, x2)
+        #x1 = [self.name, self.attribute_defs, self.help]
+        #x2 = [other.name, other.attribute_defs, other.help]
+        #return cmp(x1, x2)
+        return cmp(self.hash_, other.hash_)
     def __hash__(self):
-        x = self.name, tuple(self.attribute_defs), self.help
-        return hash(x)
+        #x = self.name, tuple(self.attribute_defs), self.help
+        #return hash(x)
+        return self.hash_
     ## def _resolve_attributes(self, attribute_objs, attribute_dict, is_input):
     ##     # Make a dictionary of all the attributes.  The values given
     ##     # by the caller take precedence.  Anything else should be set
@@ -523,7 +581,7 @@ class DataType:
         for (name, value) in attribute_dict.iteritems():
             attrdict[name] = value
         # Priority 2: Set to default attributes.
-        for attr in self.attribute_defs:
+        for attr in self.attribute_defs.itervalues():
             if attr.name in attrdict:
                 continue
             value = attr.default_in
@@ -544,7 +602,7 @@ class DataType:
         return self.__repr__()
     def __repr__(self):
         x = [self.name]
-        x += [repr(x) for x in self.attribute_defs]
+        x += [repr(x) for x in self.attribute_defs.itervalues()]
         if self.help:
             x.append("help=%r" % self.help)
         return "DataType(%s)" % ", ".join(x)
@@ -575,13 +633,14 @@ class Data(object):
             assert name in keywds, "No value given for %s." % name
 
         # Make sure the values of the attributes are legal.
-        for name, value in keywds.iteritems():
-            assert datatype.is_valid_attribute_name(name), \
-                   "'%s' is not a known attribute for datatype %s." % (
-                name, datatype.name)
-            assert datatype.is_valid_attribute_value(name, value), \
-                   "In a %s, '%s' is not a valid value for '%s'." % (
-                datatype.name, value, name)
+        #for name, value in keywds.iteritems():
+        #    assert datatype.is_valid_attribute_name(name), \
+        #           "'%s' is not a known attribute for datatype %s." % (
+        #        name, datatype.name)
+        #    assert datatype.is_valid_attribute_value(name, value), \
+        #           "In a %s, '%s' is not a valid value for '%s'." % (
+        #        datatype.name, value, name)
+        datatype.assert_valid_attribute_dict(keywds)
 
         ## attributes = {}
         ## for name, value in keywds.iteritems():
@@ -1884,9 +1943,6 @@ def select_start_node(network, start_data):
     # start_data may be a single Data object or a list of Data
     # objects.  DataTypes are also allowed in lieu of Data objects.
 
-    raise NotImplementedError, "Not finished yet."
-
-
     # Strategy:
     # 1.  Include all nodes that can reach both a start and end node.
     # 2.  Remove modules that have no inputs.
@@ -1927,7 +1983,7 @@ def select_start_node(network, start_data):
             del good_ids[node_id]
         if not delete_ids:
             break
-        
+
     # Delete all the IDs that aren't in good_ids.
     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
     network = network.delete_nodes(bad_ids)
@@ -2124,7 +2180,12 @@ def check_moduledb(moduledb):
 
     # Make sure no duplicate modules.
     dups = ["%s (%d times)" % (x, seen[x]) for x in seen if seen[x] > 1]
-    assert not dups, "Duplicate modules: %s" % "\n".join(dups)
+    msg = ""
+    x = dups
+    if len(x) > 5:
+        x = x[:5] + ["... plus %s more" % (len(dups)-5)]
+        msg = "\n".join(x)
+    assert not dups, "Duplicate modules: %s" % msg
         
 
 def print_modules(moduledb):
@@ -2318,7 +2379,7 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
     # mitigates combinatorial explosion.  However, it can close up
     # some possibilities.  What if the value should be something other
     # than the default?
-    for attrdef in in_datatype.attribute_defs:
+    for attrdef in in_datatype.attribute_defs.itervalues():
         default = attrdef.default_out
         if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES:
             default = attrdef.values
@@ -2553,7 +2614,7 @@ def _forwardchain_to_outputs(module, in_datas):
         attributes.update(data.attributes)
     # Case 2.
     else:
-        for attrdef in datatype.attribute_defs:
+        for attrdef in datatype.attribute_defs.itervalues():
             attributes[attrdef.name] = attrdef.default_in
         
     # Set the attributes based on the consequences of the module.
@@ -2958,7 +3019,7 @@ def _can_module_produce_data(module, data):
     if not module.default_attributes_from:
         debug_print("Module converts datatype.  Checking default attributes.")
         consequence_names = [x.name for x in module.consequences]
-        for attrdef in module.out_datatype.attribute_defs:
+        for attrdef in module.out_datatype.attribute_defs.itervalues():
             # Ignore the attributes that have consequences.
             if attrdef.name in consequence_names:
                 debug_print(
