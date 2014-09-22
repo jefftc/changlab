@@ -197,6 +197,11 @@ all_modules = [
             Constraint("actual_label",MUST_BE,'yes',34),
             Constraint("classify_alg",MUST_BE,'random_forest',35),
             Constraint("loocv",MUST_BE,'yes',35),
+            #Constraint('annotate', MUST_BE, 'yes', 1),
+            #Constraint('annotate', MUST_BE, 'yes', 2),
+            #Constraint('annotate', MUST_BE, 'yes', 3),
+            #Constraint('annotate', MUST_BE, 'yes', 4),
+            #Constraint('annotate', MUST_BE, 'yes', 5),
             
 	
            ),

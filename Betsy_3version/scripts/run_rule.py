@@ -423,6 +423,7 @@ def main():
     if not break_flag:
          return
     print "Running the pipeline."
+    
     output_file = rule_engine_bie3.run_pipeline(
         network, in_objects,  user_attributes, options)
     

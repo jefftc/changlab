@@ -121,6 +121,8 @@ ControlPlot = DataType(
         "contents",
         Database.CONTENTS,
         "unspecified", "unspecified",help='contents'),
+    AttributeDef("preprocess",GeneExpProcessing.PREPROCESS,
+                 'unknown','unknown',help="preprocess method"),
     help="control plot file")
 BiotinPlot = DataType(
     'BiotinPlot',
@@ -280,7 +282,8 @@ all_modules = [
     Module(
         'plot_affy_affx_line',
         GeneExpProcessing.SignalFile,ControlPlot,
-        Constraint("annotate", MUST_BE,'no'),
+        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="plot affy affx line"

@@ -6,7 +6,18 @@ import BasicDataTypes
 import ArrayPlatforms
 import Database
 
-list_files = []
+NormalizeReportFile = DataType(
+    'NormalizeReportFile',
+    AttributeDef(
+        "preprocess",GeneExpProcessing.PREPROCESS,'unknown','unknown',
+        help="preprocess for normalize report file"),
+    help="Report file for normalize report"
+    )
+BatchEffectReportFile = DataType(
+    'BatchEffectReportFile',
+    help="Report file for batch effect remove report"
+    )
+list_files = [NormalizeReportFile,BatchEffectReportFile]
 all_modules = [
     
     Module(
@@ -19,7 +30,7 @@ all_modules = [
             ArrayPlatforms.ActbPlot,
             PcaAnalysis.PcaPlot,
             ],
-        BasicDataTypes.ReportFile,
+        NormalizeReportFile,
         Constraint(
             'preprocess', CAN_BE_ANY_OF,
             ['mas5','agilent','loess','unknown','tcga','rsem'],
@@ -82,10 +93,12 @@ all_modules = [
         Constraint('contents', SAME_AS, 0, 3),
         Constraint('contents', SAME_AS, 0, 4),
         Constraint('contents', SAME_AS, 0, 5),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Constraint("preprocess", SAME_AS, 0, 2),
         Constraint("preprocess", SAME_AS, 0, 3),
         Constraint("preprocess", SAME_AS, 0, 4),
         Constraint("preprocess", SAME_AS, 0, 5),
-        Consequence('report_type', SET_TO, 'normalize_file'),
+        Consequence('preprocess', SAME_AS_CONSTRAINT),
         help="make normalize report for mas5,agilent,loess,unknown,tcga,rsem"
         ),
     
@@ -99,7 +112,7 @@ all_modules = [
             ArrayPlatforms.ActbPlot,
             PcaAnalysis.PcaPlot,
             ],
-        BasicDataTypes.ReportFile,
+        NormalizeReportFile,
         
         Constraint('preprocess',MUST_BE,'rma',0),
         Constraint("annotate",MUST_BE,"yes",0),
@@ -158,10 +171,12 @@ all_modules = [
         Constraint('contents',SAME_AS,0,3),
         Constraint('contents',SAME_AS,0,4),
         Constraint('contents',SAME_AS,0,5),
+        Constraint("preprocess",SAME_AS,0,1),
+        Constraint("preprocess",SAME_AS,0,2),
         Constraint("preprocess",SAME_AS,0,3),
         Constraint("preprocess",SAME_AS,0,4),
         Constraint("preprocess",SAME_AS,0,5),
-        Consequence('report_type',SET_TO,'normalize_file'),
+        Consequence('preprocess',SAME_AS_CONSTRAINT),
         help="make normalize report for rma"
         ),
     
@@ -178,7 +193,7 @@ all_modules = [
             ArrayPlatforms.Hyb_barPlot,
             ArrayPlatforms.ControlFile
             ],
-        BasicDataTypes.ReportFile,
+        NormalizeReportFile,
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint('preprocess',MUST_BE,'illumina',0),
         Constraint('annotate',MUST_BE,'yes',0),
@@ -230,7 +245,7 @@ all_modules = [
         Constraint('group_fc',MUST_BE,'no',5),
         Constraint('num_features',MUST_BE,'no',5),
         Constraint('duplicate_probe', MUST_BE, 'no', 5),
-        
+        Constraint('preprocess',MUST_BE,'illumina',1),
         Constraint('preprocess',MUST_BE,'illumina',3),
         Constraint('preprocess',MUST_BE,'illumina',5),
         Constraint('preprocess',MUST_BE,'illumina',8),
@@ -246,7 +261,7 @@ all_modules = [
         Constraint('contents',SAME_AS,0,7),
         Constraint('contents',SAME_AS,0,8),
         Constraint("preprocess",SAME_AS,0,4),
-        Consequence('report_type',SET_TO,'normalize_file'),
+        Consequence('preprocess',SAME_AS_CONSTRAINT),
         help="make normalize report for illumina"),
     
     Module(
@@ -270,7 +285,7 @@ all_modules = [
             GeneExpProcessing.SignalFile,
             PcaAnalysis.PcaPlot
             ],
-        BasicDataTypes.ReportFile,
+        BatchEffectReportFile,
         
         Constraint("quantile_norm",MUST_BE,'no',0),
         Constraint("quantile_norm",SAME_AS,0,1),
@@ -298,7 +313,6 @@ all_modules = [
         Constraint("quantile_norm",SAME_AS,10,11),
         Constraint("combat_norm",SAME_AS,10,11),
         
-        Consequence("report_type",SET_TO,'batch_effect_remove'),
         help="make batch effect remove report",
         ),
     ]

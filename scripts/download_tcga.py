@@ -5,9 +5,9 @@ import re
 import argparse
 import sys
 import os
-from genomicode import parselib, filelib
+from genomicode import parselib, filelib,arrayannot,arrayplatformlib
 import arrayio
-from genomicode import genefinder,timer
+from genomicode import genefinder,timer,Matrix
 
 # retrieve_all_dates
 # retrieve_diseases
@@ -22,7 +22,7 @@ datatype_match = {'RSEM_genes':
                   'clinical':'Merge_Clinical.Level_1',
                   'rppa':'.RPPA_AnnotateWithGene.Level_3',
                   'RSEM_isoforms':'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_isoforms_normalized__data.Level_3',
-                  'Copy_number':'CopyNumber_Gistic2.Level_4'}
+                  'cnv_gistic2':'CopyNumber_Gistic2.Level_4'}
 
 datatype2resource = {'RSEM_genes':'stddata',
                     'RSEM_exons':'stddata',
@@ -31,7 +31,7 @@ datatype2resource = {'RSEM_genes':'stddata',
                     'clinical':'stddata',
                     'rppa':'stddata',
                     'RSEM_isoforms':'stddata',
-                    'Copy_number':'analyses'}
+                    'cnv_gistic2':'analyses'}
 
 resources = ['stddata','analyses']
 
@@ -438,7 +438,6 @@ def format_firehose_rppa(filename, output):
     f.close()
     
 def format_firehose_gistic(filename, output):
-    print filename
     iter = filelib.read_row(filename, header=1)
     header = ["Gene ID", "Gene Symbol"] + iter._header[2:]
     f = file(output, 'w')
@@ -450,7 +449,65 @@ def format_firehose_gistic(filename, output):
         assert len(x) == len(header)
         f.write("\t".join(map(str, x))+'\n')
     f.close()
+
     
+def format_rsem_isoforms(txt_file, outfile):
+    M = arrayio.read(txt_file)
+    # detect platform
+    x = arrayplatformlib.identify_all_platforms_of_matrix(M)
+    header, platform = x[0]
+    probe_ids = M.row_names(header)
+    #if kg5, convert to kg7
+    if platform == 'UCSC_human_hg19_kg5':
+        new_platform = 'UCSC_human_hg19_kg7'
+        kg7_ids = arrayannot.convert_probe_ids(probe_ids,new_platform)
+        kg7_header = 'Hybridization REF kg7'
+        M = make_matrix_new_ids(M, kg7_ids,kg7_header,1) 
+        probe_ids = M.row_names(kg7_header)   
+    # add LocusLink ids
+    LocusLink_ids = arrayannot.convert_probe_ids(probe_ids,'Entrez_ID_human')
+    gene_symbol_ids = arrayannot.convert_probe_ids(probe_ids,'Entrez_Symbol_human')
+    newMatrix = make_matrix_new_ids(M,LocusLink_ids,'Entrez_ID_human',2)
+    newMatrix = make_matrix_new_ids(newMatrix,gene_symbol_ids,'Entrez_Symbol_human',3)
+    #get rid of scaled_estimate
+    assert 'scaled_estimate' in newMatrix._col_names['isoform_id']
+    assert 'raw_count' in newMatrix._col_names['isoform_id']
+    col_names = {}
+    col_names['_SAMPLE_NAME'] =[newMatrix._col_names['_SAMPLE_NAME'][i]
+                                for i in range(len(newMatrix._col_names['_SAMPLE_NAME']))
+                                if not i%2]
+    row_names = newMatrix._row_names.copy()
+    row_order = newMatrix._row_order[:]
+    col_order = newMatrix._col_order[:]
+    col_order.remove('isoform_id')
+    synonyms = newMatrix._synonyms.copy()
+    X = []
+    for line in newMatrix._X:
+        line = [line[i] for i in range(len(line)) if not i%2]
+        X.append(line)
+    x = Matrix.InMemoryMatrix(
+            X, row_names=row_names, col_names=col_names,
+            row_order=row_order, col_order=col_order, synonyms=synonyms)
+    f = file(outfile,'w')
+    arrayio.tab_delimited_format.write(x, f)
+    f.close()
+
+def make_matrix_new_ids(DATA,output_ids,header,index):
+ # Make a matrix with the new IDs.
+    X = DATA._X
+    row_names = DATA._row_names.copy()
+    row_order = DATA._row_order[:]
+    col_names = DATA._col_names.copy()
+    col_order = DATA._col_order[:]
+    synonyms = DATA._synonyms.copy()
+    row_order.insert(index,header)
+    row_names[header] = output_ids
+    # Write the outfile.
+    x = Matrix.InMemoryMatrix(
+        X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return x
+
 def process_data(data, txt_file, outfile):
     if data == 'RSEM_genes':
         format_firehose_rsem(txt_file, outfile)
@@ -464,10 +521,10 @@ def process_data(data, txt_file, outfile):
         raise NotImplementedError("have not figured out how to process")
     elif data == 'rppa':
         format_firehose_rppa(txt_file, outfile)
-    elif data == 'Copy_number':
+    elif data == 'cnv_gistic2':
         format_firehose_gistic(txt_file, outfile)
     elif data == 'RSEM_isoforms':
-        raise NotImplementedError("have not figure out how to process")
+        format_rsem_isoforms(txt_file, outfile)
     else:
         raise ValueError("the data type is not matched to our list")
     print 'processing finished '

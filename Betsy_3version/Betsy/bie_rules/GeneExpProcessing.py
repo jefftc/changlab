@@ -10,10 +10,10 @@ PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
               
 IntensityPlot = DataType(
     'IntensityPlot',
+    AttributeDef('contents',Database.CONTENTS,"unspecified","unspecified",help="contents"),
     AttributeDef(
-        "contents",
-        Database.CONTENTS,
-        "unspecified", "unspecified",help='contents'),
+        "preprocess",PREPROCESS,
+        "unknown","unknown",help="preprocess method"),
     help="Intensity plot file"
     )
 
@@ -982,9 +982,11 @@ all_modules = [
     Module(    
         'plot_intensity_boxplot',
         SignalFile, IntensityPlot,
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
         Constraint(
             "contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
         help="plot intensity boxplot"
         ),
     

@@ -54,8 +54,8 @@ def run(in_nodes, parameters, user_input,network):
                     genes, platform)
     else:
         id = M._row_order[0]
-    #id = M._row_order[3]
-    #print id
+    id = M._row_order[3]
+    print id
     original_list = M._row_names[id]
     #get the order index and write to the outout file
     indexlist = gene_ranking.find_sorted_index(original_list, gene_list)
@@ -92,7 +92,9 @@ def get_out_attributes(parameters,in_nodes):
 def make_unique_hash(in_nodes,pipeline,parameters,user_input):
     data_node,cls_node = in_nodes
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    newparameters = parameters.copy()
+    newparameters['genelistfile']=cls_node.identifier
+    return module_utils.make_unique_hash(identifier,pipeline,newparameters,user_input)
 
 
    

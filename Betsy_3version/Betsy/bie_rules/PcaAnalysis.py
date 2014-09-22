@@ -126,7 +126,11 @@ all_modules = [
         Constraint("group_fc",CAN_BE_ANY_OF,["yes","no"]),
         Constraint("num_features",CAN_BE_ANY_OF,["yes","no"]),
         Constraint("platform",CAN_BE_ANY_OF,["yes","no"]),
-        Constraint("annotate",MUST_BE,"no"),
+        #Constraint("annotate",MUST_BE,"no"),
+        #Constraint("annotate",MUST_BE,"yes"),  ## for the big network
+        #Constraint("gene_order",MUST_BE,'class_neighbors'),## for the big network
+        #Constraint("rename_sample",MUST_BE,'yes'),## for the big network
+        #Consequence("annotate",SAME_AS_CONSTRAINT),
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence("preprocess",SAME_AS_CONSTRAINT),
         Consequence("logged",SAME_AS_CONSTRAINT),

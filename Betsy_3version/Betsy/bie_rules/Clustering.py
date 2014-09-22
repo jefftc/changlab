@@ -15,9 +15,12 @@ ClusterFile = DataType(
                                'unspecified','unspecified',help='contents'),
     help="Cluster file")
 
+ClusterReportFile = DataType(
+    'ClusterReportFile',
+    help="Report file for cluster report"
+    )
 
-
-list_files = [ClusterFile]
+list_files = [ClusterFile,ClusterReportFile]
 
 all_modules = [
     Module(
@@ -71,11 +74,10 @@ all_modules = [
     Module(
         'make_cluster_report',
         [ClusterFile,
-         Heatmap.Heatmap],BasicDataTypes.ReportFile,
+         Heatmap.Heatmap],ClusterReportFile,
          Constraint("cluster_alg",CAN_BE_ANY_OF,['som','pca','kmeans','hierarchical'],0),
          Constraint("distance",CAN_BE_ANY_OF,['correlation','euclidean'],0),
          Constraint("cluster_alg",SAME_AS,0,1),
          Constraint("distance",SAME_AS,0,1),
-         Consequence('report_type',SET_TO,'cluster'),
          help="make cluster report"),        
     ]
