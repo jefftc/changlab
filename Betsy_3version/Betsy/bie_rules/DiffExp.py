@@ -14,8 +14,11 @@ DiffExprFile=DataType(
     AttributeDef("contents",Database.CONTENTS,'diff_unspecified',
                  'diff_unspecified',help='contents'),
     help="Differential expression result file")
-
-list_files = [DiffExprFile]
+DiffReportFile = DataType(
+    'DiffReportFile',
+    help="Report file for diff exp report"
+    )
+list_files = [DiffExprFile,DiffReportFile]
 
 all_modules = [
     Module(
@@ -99,7 +102,7 @@ all_modules = [
         'make_diffgenes_report',
         [DiffExprFile,DiffExprFile,
          Heatmap.Heatmap,GOAnalysis.GatherFile,
-         GSEAAnalysis.GseaFile],BasicDataTypes.ReportFile,
+         GSEAAnalysis.GseaFile],DiffReportFile,
          OptionDef("hm_width",20),
          OptionDef("hm_height",1),
          Constraint("gene_order",MUST_BE,'diff_ttest',0),
@@ -107,6 +110,5 @@ all_modules = [
          Constraint("contents",MUST_BE,'unspecified',0),
          Constraint("contents",MUST_BE,'unspecified',1),
          Constraint("gene_order",MUST_BE,'diff_sam',1),
-         Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2),
-         Consequence("report_type",SET_TO,'diffgenes')),
+         Constraint("cluster_alg",MUST_BE,'no_cluster_alg',2)),
     ]

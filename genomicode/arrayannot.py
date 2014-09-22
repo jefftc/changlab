@@ -4,6 +4,8 @@ import subprocess
 import tempfile
 import arrayio
 from genomicode import jmath, config, filelib, arrayplatformlib
+import re
+
 
 def create_annot_file_affymetrix(filename):
     slice_BIN = config.slice_matrix
@@ -138,3 +140,62 @@ def annotate_probes(probe_ids, annotation):
             result = annotate_probe_biomart(probe_ids,annotation)
     return result
 
+def read_platform_file(platform_file):
+    """read the platform file and return a mapping 
+        dictionary<probe_id:new_probe_id>"""
+    probe_map = {}
+    f = file(platform_file,'r')
+    text = f.read()
+    line1 = re.split('\r|\n',text)
+    f.close()
+    probes = []
+    new_probes = []
+    for line in line1[1:]:
+        words = line.split('\t')
+        if len(words)==1:
+            words.append('')
+        if words[0] not in probe_map:
+        	probe_map[words[0]]=words[1]
+        else:
+            probe_map[words[0]]=probe_map[words[0]]+'///'+words[1]
+    return probe_map
+    
+def get_new_probes(probe_ids, platform_file):
+    """given a list of probe_ids and the platform_file for 
+    mapping, return a list of probe_ids in new platform"""
+    probe_map = read_platform_file(platform_file)
+    new_probes = []
+    for probe_id in probe_ids:
+        #consider multiple probe_ids in one item example,1///2
+        multiple_probe_ids = probe_id.split('///')
+        newid = ''
+        for single_probe_id in multiple_probe_ids:
+            
+            if single_probe_id in probe_map:
+            	single_newid = probe_map[probe_id]
+            else:
+            	single_newid = ''
+            if newid:
+                newid = newid + '///' + single_newid
+            else:
+                newid = single_newid
+        new_probes.append(newid)
+    return new_probes
+
+
+def convert_probe_ids(probe_ids,platform_name):
+    new_probes = _convert_probe_ids_local(probe_ids, platform_name)
+    if not new_probes:
+       new_probes = arrayannot.annotate_probe_biomart(probe_ids, platform_name)
+    return new_probes
+
+
+def _convert_probe_ids_local(probe_ids, platform_name):
+    platform_path = config.convert_platform
+    assert os.path.exists(platform_path)
+    old_platform = arrayplatformlib.identify_platform_of_annotations(probe_ids)
+    filename = old_platform + '___' + platform_name + '.txt'
+    if not os.path.exists(os.path.join(platform_path,filename)):
+        return None
+    new_probes = get_new_probes(probe_ids,os.path.join(platform_path,filename))
+    return new_probes

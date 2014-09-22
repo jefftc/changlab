@@ -32,8 +32,11 @@ SignatureScore = DataType(
                                   'unspecified','unspecified',help="contents"),
     help="Signature score file")
 
-
-list_files = [GenesetAnalysis,GenesetPlot,GenesetFile,SignatureScore]
+GenesetReportFile = DataType(
+    'GenesetReportFile',
+    help="Report file for gene set report"
+    )
+list_files = [GenesetAnalysis,GenesetPlot,GenesetFile,SignatureScore,GenesetReportFile]
 
 all_modules = [
     Module(
@@ -105,7 +108,6 @@ all_modules = [
     Module(
         'make_geneset_report',
         [GenesetAnalysis,
-         GenesetPlot],BasicDataTypes.ReportFile,
-         Consequence("report_type",SET_TO,'geneset'),
+         GenesetPlot],GenesetReportFile,
         help="make geneset report"),
     ]

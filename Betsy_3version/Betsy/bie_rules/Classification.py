@@ -43,8 +43,11 @@ SvmModel = DataType(
     AttributeDef('svm_kernel',['linear','polynomial','RBF','sigmoid','precomputed_kernel'],
               'linear','linear',help="svm kernel"),
     help='svm model file')
-
-list_files = [ClassifyFile,SvmModel,PredictionPCAPlot,PredictionPlot]
+ClassifyReportFile = DataType(
+    'ClassifyReportFile',
+    help="Report file for Classify report"
+    )
+list_files = [ClassifyFile,SvmModel,PredictionPCAPlot,PredictionPlot,ClassifyReportFile]
 
 all_modules = [
     Module(
@@ -243,7 +246,7 @@ all_modules = [
          PredictionPlot,
          PredictionPlot,
          PredictionPCAPlot
-         ],BasicDataTypes.ReportFile,
+         ],ClassifyReportFile,
          Constraint('contents',MUST_BE,'class0,class1,test',0),
          Constraint('logged',MUST_BE,'yes',0),
          Constraint("format",MUST_BE,'gct',0),
@@ -276,6 +279,5 @@ all_modules = [
          Constraint("classify_alg",MUST_BE,'weighted_voting',10),
          Constraint("actual_label",MUST_BE,'yes',10),
          Constraint("loocv",MUST_BE,'no',10),
-         Consequence('report_type',SET_TO,'classify'),
          help="make classification report"),
     ]

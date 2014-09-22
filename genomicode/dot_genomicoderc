@@ -75,6 +75,7 @@ rna_mouse_ref=/data/biocore/ensembl_reference_genome/ref/mouse.transcripts.fa
 annotate_vcf=/home/xchen/chencode/scripts/annovar/annotate_vcf.py
 chrom2genome=/data/genomidata/chrom2genome
 genomes=/data/genomidata/genomes
+convert_platform=/data/genomidata/convert_platform
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation

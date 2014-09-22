@@ -611,8 +611,14 @@ class DataType:
         assert 'name' in args
         assert 'attribute_defs' in args
         assert 'help' in args
+        #inst = DataType(
+        #    args['name'], *args['attribute_defs'], help=args['help'])
+        dictionary = args['attribute_defs']
+        attributes = []
+        for i in dictionary:
+            attributes.append(dictionary[i])
         inst = DataType(
-            args['name'], *args['attribute_defs'], help=args['help'])
+            args['name'], *attributes, help=args['help'])
         return inst
 
 

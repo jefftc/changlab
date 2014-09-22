@@ -35,17 +35,9 @@ GeneListFile=DataType(
     AttributeDef("contents",Database.CONTENTS,'unspecified','unspecified',help="contents"),
     help="A file contains a list of genes.")
 
-ReportFile = DataType(
-    'ReportFile',
-    AttributeDef(
-        "report_type",
-        ['normalize_file', 'batch_effect_remove', 'classify', 'cluster',
-         'diffgenes', 'geneset'],
-        'normalize_file', 'normalize_file',help="report type"),
-    help="Report file"
-    )
+
 list_files = [RenameFile,ExpressionFiles,ClassLabelFile,
-              GeneListFile,ReportFile]
+              GeneListFile]
 
 all_modules = [
  Module(
