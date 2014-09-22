@@ -210,13 +210,14 @@ def rgb2hex(c):
     r = hex(r)[2:].upper()
     g = hex(g)[2:].upper()
     b = hex(b)[2:].upper()
-    if r == "0":
-        r = "00"
-    if g == "0":
-        g = "00"
-    if b == "0":
-        b = "00"
+    if len(r) == 1:
+        r = "0%s" % r
+    if len(g) == 1:
+        g = "0%s" % g
+    if len(b) == 1:
+        b = "0%s" % b
     x = "0x%s%s%s" % (r, g, b)
+    assert len(x) == 8
     return x
 
 def choose_contrasting_color(col):
