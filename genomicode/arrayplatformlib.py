@@ -267,7 +267,7 @@ def _compare_annotations(annots1, annots2, case_sensitive):
 
 
 def score_platform_of_annotations(annotations):
-    # Tuple of (platform, match score) or None.
+    # Tuple of (platform, match score) or None if nothing matches.
     possible_platforms = score_platforms(annotations)
     assert possible_platforms
     if possible_platforms[0][1] <= 0:

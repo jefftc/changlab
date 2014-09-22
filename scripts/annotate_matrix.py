@@ -186,6 +186,7 @@ def convert_matrix(
         # Take the platform with the highest match score.
         platforms = arrayplatformlib.score_all_platforms_of_matrix(
             DATA, annot_delim=in_delim)
+        assert platforms, "No platforms found"
         schwartz = [(-x[-1], x) for x in platforms]
         schwartz.sort()
         platforms = [x[-1] for x in schwartz]
