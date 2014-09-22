@@ -436,10 +436,10 @@ PLATFORMS = [
     Platform(
         'UCSC_human_hg19_kg5', None, None, GENE_ID, 34),  
     Platform(
-        'RefSeq_protein_ID_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
+        'RefSeq_protein_ID_mouse', "refseq_peptide", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 35),
     Platform(
-        'RefSeq_transcript_ID_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
+        'RefSeq_transcript_ID_mouse', "refseq_mrna", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 36),
     Platform(
         'Agilent_Human1A', None, None, GENE_ID, 37), 

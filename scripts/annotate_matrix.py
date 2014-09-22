@@ -23,6 +23,33 @@ def _remove_dups(ids):
             ids_c.append(x)
     return ids_c
 
+def _remove_refseq_version(refseq_id):
+    i = refseq_id.find(".")
+    if i < -1:
+        return refseq_id
+    return refseq_id[:i]
+
+
+def _clean_id(gene_id, delimiter, in_platform):
+    # Return a list of this ID cleaned up.  gene_id might be split
+    # into multiple IDs by the delimiter.
+    x = [gene_id]
+    if delimiter:
+        x = gene_id.split(delimiter)
+    # Clean up whitespace.
+    x = [x.strip() for x in x]
+    # No empty IDs.
+    x = [x for x in x if x]
+    # Hack: Remove version numbers from RefSeq IDs.
+    if in_platform in [
+        "RefSeq_protein_ID_human", "RefSeq_transcript_ID_human",
+        "RefSeq_protein_ID_mouse", "RefSeq_transcript_ID_mouse",
+        ]:
+        x = [_remove_refseq_version(x) for x in x]
+    # No duplicates.
+    x = {}.fromkeys(x).keys()
+    return x
+
 
 def convert_gene_ids(
     gene_ids, in_platform, out_platform, in_delim, out_delim,
@@ -41,20 +68,13 @@ def convert_gene_ids(
     R_fn, R_var = jmath.R_fn, jmath.R_var
 
     # Make a cleaned up version of the gene_ids to convert.
-    # Split by delimiter.
-    x = gene_ids
-    if in_delim:
-        x = []
-        for gene_id in gene_ids:
-            x.extend(gene_id.split(in_delim))
-    # Clean up whitespace.
-    x = [x.strip() for x in x]
-    # No empty IDs.
-    x = [x for x in x if x]
+    x = []
+    for gene_id in gene_ids:
+        x.extend(_clean_id(gene_id, in_delim, in_platform))
     # No duplicates.
     x = {}.fromkeys(x).keys()
     gene_ids_c = x
-    
+
     # An attribute is the biomart name for the platform.
     in_attribute = arrayplatformlib.get_bm_attribute(in_platform)
     out_attribute = arrayplatformlib.get_bm_attribute(out_platform)
@@ -78,6 +98,13 @@ def convert_gene_ids(
         RETVAL="homolog")
     
     homolog = R['homolog']
+    # homolog is DataFrame with two parallel rows:
+    # <in_ids>
+    # <out_ids>
+    assert len(homolog) == 2, \
+           "BioMart returned no results mapping from %s to %s." % (
+        in_mart, out_mart)
+
     in_ids = [str(x) for x in homolog[0]]
     out_ids = [str(x) for x in homolog[1]]
 
@@ -98,9 +125,7 @@ def convert_gene_ids(
     # Make a parallel list of the output IDs.
     output_ids = []
     for gene_id in gene_ids:
-        in_ids = [gene_id]
-        if in_delim:
-            in_ids = gene_id.split(in_delim)
+        in_ids = _clean_id(gene_id, in_delim, in_platform)
         out_ids = []
         for x in in_ids:
             x = in2out.get(x, [""])
