@@ -106,7 +106,8 @@ find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA,
 # requires statlib.R
 find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA, 
   FOLD.CHANGE=0, NPROCS=1, all.genes=FALSE) {
-  library(multicore)
+  #library(multicore)
+  library(parallel)
   # X must be logged.
   # Y should be the labels for two classes.  NA will be filtered out.
   # FOLD.CHANGE should not be logged.

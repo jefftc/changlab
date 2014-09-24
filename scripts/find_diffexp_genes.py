@@ -177,6 +177,14 @@ def find_diffexp_genes(
         I = header.index(name)
         nl10fdr_cutoff = -math.log(fdr_cutoff, 10)
         DATA_py = [x for x in DATA_py if float(x[I]) > nl10fdr_cutoff]
+
+    # Sort by decreasing p-value.
+    name  = "NL10P"
+    assert name in header, 'I could not find the "%s" column.' % name
+    I = header.index(name)
+    schwartz = [(-float(x[I]), x) for x in DATA_py]
+    schwartz.sort()
+    DATA_py = [x[-1] for x in schwartz]
     
 
     # Write to the outhandle.
