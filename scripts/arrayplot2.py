@@ -988,6 +988,8 @@ def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
 
     if dim == "GENE":
         n = "GID"  # Use the gene ID if available.
+        if n not in MATRIX.row_names():
+            n = "GID.OLD"
         assert n in MATRIX.row_names(), "Gene dendrogram not available."
         ids = MATRIX.row_names(n)
     elif dim == "ARRAY":

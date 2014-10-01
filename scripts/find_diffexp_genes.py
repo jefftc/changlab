@@ -187,6 +187,10 @@ def find_diffexp_genes(
     DATA_py = [x[-1] for x in schwartz]
     
 
+    # If no significant genes, then don't produce any output.
+    if not DATA_py:
+        return
+
     # Write to the outhandle.
     outhandle = open(outfile, 'w')
     print >>outhandle, "\t".join(header)

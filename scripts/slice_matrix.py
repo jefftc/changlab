@@ -425,10 +425,14 @@ def _parse_file_num_annot(annotation):
     return filename, header, values
 
 
-def select_col_indexes(MATRIX, indexes, count_headers):
-    if not indexes:
+def select_col_indexes(MATRIX, indexes_list, count_headers):
+    if not indexes_list:
         return None
-    return parse_indexes(MATRIX, False, indexes, count_headers)
+    indexes = []
+    for x in indexes_list:
+        x = parse_indexes(MATRIX, False, x, count_headers)
+        indexes.extend(x)
+    return indexes
 
 
 def select_col_ids(MATRIX, ids):
@@ -2278,8 +2282,9 @@ def main():
         
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
-        "--select_col_indexes", 
-        help="Which columns to include e.g. 1-5,8 (1-based, inclusive).")
+        "--select_col_indexes", default=[], action="append",
+        help="Which columns to include e.g. 1-5,8 (1-based, inclusive).  "
+        "(MULTI)")
     group.add_argument(
         "--col_indexes_include_headers", default=False, action="store_true",
         help="If not given (default), then column 1 is the first column "
