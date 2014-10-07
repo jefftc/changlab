@@ -1,6 +1,7 @@
 # find.de.genes.sam    Use SAM to find differentially expressed genes.
 # find.de.genes.ttest
 # find.de.genes.ebayes
+# find.de.genes.paired.ebayes
 # find.de.genes.2cnoref.ebayes
 # find.de.genes.fc
 
@@ -259,7 +260,7 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   #  number=nrow(fit2))
   TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), 
     lfc=log(FOLD.CHANGE, 2))
-  write.table(TOP, "out.dat", col.names=TRUE, sep="\t", quote=FALSE)
+  #write.table(TOP, "out.dat", col.names=TRUE, sep="\t", quote=FALSE)
   if(!all.genes) {
     TOP <- TOP[TOP[["P.Value"]] < 0.05,]
   }
@@ -309,6 +310,130 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   list(DATA=DATA, fit=fit2, TOP=TOP)
 }
 
+
+# Assume that the pairing is in order.
+find.de.genes.paired.ebayes <- function(X, Y, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0, all.genes=FALSE) {
+  library(limma)
+  # X must be logged.
+  # Y should be the labels for two classes.  NA will be filtered out.
+
+  if(ncol(X) != length(Y)) stop("X and Y not aligned")
+
+  I <- which(!is.na(Y))
+  X <- as.matrix(X[,I])
+  Y <- Y[I]
+
+  # Make sure only two classes.
+  Y.all <- sort(unique(Y))
+  if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
+
+  GROUP1 <- as.numeric(Y == Y.all[1])
+  GROUP2 <- as.numeric(Y == Y.all[2])
+  if(sum(GROUP1 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+  if(sum(GROUP2 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+
+  # For paired analysis, number of samples in the classes should be
+  # the same.
+  if(sum(GROUP1 == 1) != sum(GROUP2 == 1)) stop("unequal number of samples")
+
+  # Make sure geneid and genenames are aligned.
+  if((length(geneid) == 1) && is.na(geneid)) {
+    ndigits <- floor(log(nrow(X), 10)) + 1
+    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
+  }
+  if((length(genenames) == 1) && is.na(genenames)) {
+    genenames <- geneid
+  }
+  if(ncol(X) != length(Y)) stop("unaligned")
+  if(nrow(X) != length(geneid)) stop("unaligned")
+  if(nrow(X) != length(genenames)) stop("unaligned")
+
+  num.pairs <- sum(GROUP1)
+  PAIRS <- rep(0, length(GROUP1))
+  PAIRS[GROUP1 == 1] <- 1:num.pairs
+  PAIRS[GROUP2 == 1] <- 1:num.pairs
+  if(any(PAIRS == 0)) stop("bad")
+  PAIRS <- factor(PAIRS)
+  Y.fact <- factor(Y, levels=Y.all)
+  design <- model.matrix(~PAIRS+Y.fact)
+  fit <- lmFit(X, design=design)
+  fit2 <- eBayes(fit)
+  # p.value cutoff is for adjusted p-values.  We want non-adjusted p-values.
+  #TOP <- topTable(fit2, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
+  #  number=nrow(fit2))
+  TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), 
+    lfc=log(FOLD.CHANGE, 2))
+  #write.table(TOP, "out.dat", col.names=TRUE, sep="\t", quote=FALSE)
+  if(!all.genes) {
+    TOP <- TOP[TOP[["P.Value"]] < 0.05,]
+  }
+  if(!nrow(TOP)) {
+    stop("Not implemented")
+    DATA <- matrix(NA, 0, 7+length(Y.all)*2+ncol(X))
+    colnames(DATA) <- c("Gene ID", "Gene Name", 
+      "NL10P", "NL10 FDR", "NL10 Bonf", 
+      sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+      "Log_2 Fold Change", "Direction", 
+      colnames(X))
+    DATA <- matrix2dataframe(DATA)
+    return(list(DATA=DATA, fit=fit2, TOP=TOP))
+  }
+
+  nl10p <- -log(TOP[["P.Value"]], 10)
+  nl10fdr <- -log(TOP[["adj.P.Val"]], 10)
+  bonf <- bonferroni.correct(TOP[["P.Value"]])
+  nl10bonf <- -log(bonf, 10)
+
+  I <- as.numeric(rownames(TOP))
+  X.1 <- matrix(X[I, Y == Y.all[1]], nrow=length(I))
+  X.2 <- matrix(X[I, Y == Y.all[2]], nrow=length(I))
+  if(length(colnames(X)) > 1) {
+    colnames(X.1) <- colnames(X)[Y == Y.all[1]]
+    colnames(X.2) <- colnames(X)[Y == Y.all[2]]
+  }
+  if(is.null(colnames(X.1)))
+    colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
+  if(is.null(colnames(X.2)))
+    colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
+
+  # The mean is a little bit meaningless for paired analysis.
+  mean.1 <- apply(X.1, 1, mean)
+  mean.2 <- apply(X.2, 1, mean)
+  nsamp.1 <- ncol(X.1)
+  nsamp.2 <- ncol(X.2)
+
+  # Calculate the fold change by pair.  Actually, paired or unpaired,
+  # the average fold change is the same.
+  #fc <- c()
+  #for(i in 1:num.pairs) {
+  #  I.pairs <- PAIRS == i
+  #  if(sum(I.pairs) != 2) stop("bad")
+  #  I1 <- which(I.pairs & (GROUP1 == 1))
+  #  I2 <- which(I.pairs & (GROUP2 == 1))
+  #  if(length(I1) != 1) stop("bad")
+  #  if(length(I2) != 1) stop("bad")
+  #  x <- X[,I2] - X[,I1]   # Calculate fold change for this pair
+  #  fc <- cbind(fc, x)
+  #}
+  #logFC.paired <- apply(fc, 1, mean)
+  #logFC.paired <- logFC.paired[I]
+  #logFC.unpaired <- mean.2 - mean.1  # Not paired.
+  logFC.paired <- mean.2 - mean.1
+
+  diff <- abs(logFC.paired)
+  direction <- rep(sprintf("Higher in %s", Y.all[1]), nrow(TOP))
+  direction[logFC.paired > 0] <- sprintf("Higher in %s", Y.all[2])
+  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, 
+    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
+  colnames(DATA) <- c("Gene ID", "Gene Name", 
+    "NL10P", "NL10 FDR", "NL10 Bonf", 
+    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+    "Log_2 Fold Change", "Direction", 
+    colnames(X.1), colnames(X.2))
+  DATA <- matrix2dataframe(DATA)
+  list(DATA=DATA, fit=fit2, TOP=TOP)
+}
 
 
 # 2-color no reference

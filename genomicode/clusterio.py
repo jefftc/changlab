@@ -85,6 +85,8 @@ def _write_gtr_file_h(data, handle, item):
     import math
     # Calculate the width of the column.
     # NODE 10 X
+    if not data:
+        return
     colwidth = 4 + int(math.ceil(math.log(len(data), 10))) + 1
     
     for i, x in enumerate(data):
