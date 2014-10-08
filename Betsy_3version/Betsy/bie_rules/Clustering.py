@@ -63,7 +63,7 @@ all_modules = [
         'plot_cluster_heatmap',
         ClusterFile,Heatmap.Heatmap,
         OptionDef('hm_width',20,help="width in heatmap plot"),
-        OptionDef('hm_height',1,help="heigth in heatmap plot"),
+        OptionDef('hm_height',20,help="heigth in heatmap plot"),
         Constraint("cluster_alg",CAN_BE_ANY_OF,['hierarchical','pca','som','kmeans']),
         Constraint("distance",CAN_BE_ANY_OF,['correlation','euclidean']),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),

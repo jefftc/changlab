@@ -17,7 +17,7 @@ list_files = [GseaFile]
 all_modules=[
     Module(
         'annotate_genes_with_gsea',
-        [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],GseaFile,
+        [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile],GseaFile,
          Constraint("cls_format",MUST_BE,'cls',0),
          Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
          Constraint("format",MUST_BE,'gct',1),

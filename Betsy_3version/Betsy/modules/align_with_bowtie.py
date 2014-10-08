@@ -5,20 +5,69 @@ import subprocess
 from genomicode import config
 import tempfile
 import shutil
+import gzip
 
-
-
+def concatenate_files(input_files,outfile):
+    """Concatenate multiple files into a single one"""
+    with open(outfile,'w') as outfile:
+        for fname in input_files:
+            if fname.endswith('.gz'):
+               if os.path.exists(fname):
+                   infile = gzip.open(fname)
+               else:
+                   # see if the unzipped file exists
+                   fname = os.path.splitext(fname)[0] 
+                   if os.path.exists(fname):
+                       infile = open(fname)
+                   else:
+                       raise ValueError('cannot find %s'%fname)
+            else:
+                assert os.path.exists(fname),'cannot find %s'%fname
+                infile = open(fname)   
+            for line in infile:
+                outfile.write(line)
+                    
+def concatenate_multiple_line(group_dict,foldername):
+    """given group_dict, concatenate multiple line fastq files under foldername
+       output is a new dictionary in format <sample:[R1_sample,R2_sample]>
+                   or <sample:[sample]>"""
+    current_dir = os.getcwd()
+    new_group_dict = {}
+    for sample_name, files in group_dict.iteritems():
+        if len(files)==1:
+            outfile = os.path.join(current_dir,sample_name+'.fastq')
+            inputfiles = [os.path.join(foldername,x) for x in files[0]]
+            concatenate_files(inputfiles,outfile)
+            new_group_dict[sample_name]=[outfile]
+        elif len(files)==2:
+            outfile_left = os.path.join(current_dir,sample_name+'_R1.fastq')
+            outfile_right = os.path.join(current_dir,sample_name+'_R2.fastq')
+            inputfiles_left = [os.path.join(foldername,x) for x in files[0]]
+            inputfiles_right = [os.path.join(foldername,x) for x in files[1]]
+    	    concatenate_files(inputfiles_left,outfile_left)
+            concatenate_files(inputfiles_right,outfile_right)
+            new_group_dict[sample_name] = [outfile_left,outfile_right]
+        else:
+            raise ValueError('the number of files for each sample is not correct')
+    return new_group_dict
+   
 def preprocess_multiple_sample(folder, group_dict, outfile,ref):
+    """folder:the folder where files are stored,
+       group_dict: A dictionary in format <sample:[[R1_samples],[R2_samples]]>
+                   or <sample:[[samples]]>
+       outfile: output file name,
+       ref: reference species, human or mouse"""
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     if ref == 'human':
-        ref_file = config.rna_hum
+        ref_file = config.rna_human
     elif ref == 'mouse':
         ref_file = config.rna_mouse
     else:
         raise ValueError("we cannot handle %s" % ref)
-    for sample in group_dict:
-        files = group_dict[sample]
+    new_group_dict = concatenate_multiple_line(group_dict,folder)
+    for sample in new_group_dict:
+        files = new_group_dict[sample]
         if len(files)==1:
             input_file = os.path.join(folder,files[0])
             command = ['bowtie', '-q','--phred33-quals','-n','2','-e','99999999',
@@ -46,27 +95,11 @@ def preprocess_multiple_sample(folder, group_dict, outfile,ref):
             f.close()
 
 
-def process_group_info(group_file):
-    f = file(group_file,'r')
-    text = f.readlines()
-    f.close()
-    group_dict = {}
-    text = [line.strip() for line in text if line.strip()]
-    for line in text:
-        words = line.split('\t')
-        if len(words)==2: 
-            group_dict[words[0]] = [words[1]]
-        elif len(words)==3:
-            group_dict[words[0]] = [words[2],words[3]]
-        else:
-            raise ValueError('group file is invalid')
-    return group_dict
-
 
 def run(in_nodes,parameters,user_input,network):
     data_node, group_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
-    group_dict = process_group_info(group_node.identifier)
+    group_dict = module_utils.process_group_info(group_node.identifier)
     preprocess_multiple_sample(data_node.identifier, group_dict,
                                outfile, parameters['ref'])
     assert module_utils.exists_nz(outfile), (

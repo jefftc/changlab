@@ -55,6 +55,6 @@ def get_out_attributes(parameters,data_node):
 def find_antecedents(network, module_id,data_nodes, parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
                                             data_nodes,user_attributes,
-                                            datatype='RNA_SeqFile')
+                                            datatype='RNASeqFile')
     
     return data_node

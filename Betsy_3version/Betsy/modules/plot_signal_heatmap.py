@@ -16,7 +16,7 @@ def run(data_node,parameters, user_input, network):
 
     command = ['python', Heatmap_BIN,data_node.identifier,
                '-o',outfile,"--label_arrays",
-               "--label_genes",'--no_autoscale']#"--grid"
+               "--label_genes",'--no_autoscale']
     if 'color' in parameters.keys():
         color=['--color' , parameters['color'].replace('_','-')]
         command.extend(color)
@@ -24,8 +24,8 @@ def run(data_node,parameters, user_input, network):
     nrow = M.nrow()
     ncol = M.ncol()
     ratio = float(nrow)/ncol
-    max_box_height = None
-    max_box_width = None
+    max_box_height = 20
+    max_box_width = 60
     if 'hm_width' in user_input:
         max_box_width = user_input['hm_width']
     if 'hm_height' in user_input:
@@ -34,11 +34,13 @@ def run(data_node,parameters, user_input, network):
         x,y=graphlib.find_tall_heatmap_size(nrow,ncol,
                                             max_box_height=max_box_height,
                                             max_box_width=max_box_width,
+                                            min_box_height=20, min_box_width=20,
                                             max_megapixels=128)
     else:
         x,y=graphlib.find_wide_heatmap_size(nrow,ncol,
                                             max_box_height=max_box_height,
                                             max_box_width=max_box_width,
+                                            min_box_height=20, min_box_width=20,
                                             max_megapixels=128)
     command.extend(['-x',str(x),'-y',str(y)])
     process = subprocess.Popen(command,shell=False,

@@ -6,37 +6,10 @@ from genomicode import config
 import tempfile
 import shutil
 
-##def guess_version(chromosomes):
-##    ref_path = config.chrom2genome
-##    filenames = os.listdir(ref_path)
-##    for filename in filenames:
-##        flag=True
-##        f=file(os.path.join(ref_path,filename))
-##        version = f.readlines()
-##        version = [i.strip() for i in version]
-##        f.close()
-##        for chromosome in chromosomes:
-##            if chromosome not in version:
-##                flag=False
-##                break    
-##        if flag:
-##            version_name=os.path.splitext(filename)[0]
-##            version_file=os.path.join(ref_path,os.path.splitext(filename)[0])
-##            return version_name
-##    return None
-##        
-##def guess_format_and_version(input_file):
-##    command='samtools view '+ input_file +'|cut -f 3 |uniq'
-##    text=subprocess.check_output(command,stderr=subprocess.PIPE,shell=True)
-##    text= text.split()
-##    text=[i for i in text if i!='*']
-##    version_name = guess_version(text)
-##    format_type = os.path.splitext(input_file)[-1]
-##    return format_type, version_name
 
 def preprocess_single_sample(folder,sample,files,out_file,ref):
     if ref == 'human':
-        ref_file = config.rna_hum
+        ref_file = config.rna_human
     elif ref == 'mouse':
         ref_file = config.rna_mouse
     else:
@@ -46,14 +19,16 @@ def preprocess_single_sample(folder,sample,files,out_file,ref):
         input_file = os.path.join(folder,sample+'.bam')
         command = ['rsem-calculate-expression', '--bam',input_file,ref_file,
                    '--no-bam-output','-p','8',sample]
+        if len(files)==2:
+            command.append('--paired-end')
     else:
         if len(files)==1:
-            input_file = os.path.join(folder,files[0])
+            input_file = os.path.join(folder,files[0][0])
             command = ['rsem-calculate-expression', '--bam',input_file,ref_file,
                    '--no-bam-output','-p','8',sample]
         elif len(files)==2:
-            input_file1 = os.path.join(folder,files[0])
-            input_file2 = os.path.join(folder,files[1])
+            input_file1 = os.path.join(folder,files[0][0])
+            input_file2 = os.path.join(folder,files[1][0])
             command = ['rsem-calculate-expression','--bam','--paired-end',input_file1,input_file2,
                     ref_file,'--no-bam-output','-p','8',sample]
         else:
@@ -61,7 +36,7 @@ def preprocess_single_sample(folder,sample,files,out_file,ref):
     process=subprocess.Popen(command,shell=False,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
-    process.wait()
+    #process.wait()
     error_message = process.communicate()[1]
     if 'error' in error_message:
         raise ValueError(error_message)
@@ -112,27 +87,10 @@ def preprocess_multiple_sample(folder, group_dict, outfile,ref):
                 os.remove(filename)
 
 
-def process_group_info(group_file):
-    f = file(group_file,'r')
-    text = f.readlines()
-    f.close()
-    group_dict = {}
-    text = [line.strip() for line in text if line.strip()]
-    for line in text:
-        words = line.split('\t')
-        if len(words)==2: 
-            group_dict[words[0]] = [words[1]]
-        elif len(words)==3:
-            group_dict[words[0]] = [words[2],words[3]]
-        else:
-            raise ValueError('group file is invalid')
-    return group_dict
-
-
 def run(in_nodes,parameters,user_input,network):
     data_node, group_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
-    group_dict = process_group_info(group_node.identifier)
+    group_dict = module_utils.process_group_info(group_node.identifier)
     preprocess_multiple_sample(data_node.identifier, group_dict,
                                outfile, data_node.data.attributes['ref'])
     assert module_utils.exists_nz(outfile), (

@@ -210,7 +210,6 @@ def _read_annotations_h():
         platform_name = platform[:-4] #get rid of .txt
         assert platform_name in all_platform,('%s is not a platform in PLATFORMS'
                                          %platform_name)
-        
         assert subfolder in ['case_sensitive','case_insensitive']
         f = file(os.path.join(root,subfolder,platform),'r')
         text = f.readlines()
@@ -434,19 +433,23 @@ PLATFORMS = [
     Platform(
         'UCSC_human_hg19_kg6', None, None, GENE_ID, 33),  
     Platform(
-        'UCSC_human_hg19_kg5', None, None, GENE_ID, 34),  
+        'UCSC_human_hg19_kg5', None, None, GENE_ID, 34),
+    Platform(
+        'UCSC_human_hg38_kg8', None, None, GENE_ID, 35), 
     Platform(
         'RefSeq_protein_ID_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
-        GENE_SYMBOL, 35),
-    Platform(
-        'RefSeq_transcript_ID_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
         GENE_SYMBOL, 36),
     Platform(
-        'Agilent_Human1A', None, None, GENE_ID, 37), 
+        'RefSeq_transcript_ID_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
+        GENE_SYMBOL, 37),
     Platform(
-        'HumanHT_12_control', None, None, GENE_ID, 38),  
+        'Agilent_Human1A', None, None, GENE_ID, 38), 
     Platform(
-        'MouseRef_8_control', None, None, GENE_ID, 39),
+        'HumanHT_12_control', None, None, GENE_ID, 39),  
+    Platform(
+        'MouseRef_8_control', None, None, GENE_ID, 40),
+    Platform(
+        'UCSC_human_hg38_kg8', None, None, GENE_ID, 41), 
     ]
 
 

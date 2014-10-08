@@ -8,6 +8,14 @@ import Database
 PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
               "tcga","rsem"]
               
+ClassLabelFile = DataType(
+    "ClassLabelFile",
+    AttributeDef(
+    "contents",Database.CONTENTS,'unspecified','unspecified',help="contents"),
+    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls",help="cls format for ClassLabelFile"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    help="The Class label file, can be cls format or label format")     
+             
 IntensityPlot = DataType(
     'IntensityPlot',
     AttributeDef('contents',Database.CONTENTS,"unspecified","unspecified",help="contents"),
@@ -468,7 +476,7 @@ all_modules = [
 
     Module(
         "normalize_samples_with_combat",  
-        [BasicDataTypes.ClassLabelFile,_SignalFile_Merge],_SignalFile_Merge,
+        [ClassLabelFile,_SignalFile_Merge],_SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("combat_norm",MUST_BE,"no",1),
         Constraint('shiftscale_norm',MUST_BE,"no",1),
@@ -481,12 +489,15 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", SAME_AS,0,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with combat method"),
            
     Module(
         "normalize_samples_with_dwd",  
-        [BasicDataTypes.ClassLabelFile,_SignalFile_Merge],_SignalFile_Merge,
+        [ClassLabelFile,_SignalFile_Merge],_SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint("dwd_norm",MUST_BE,"no",1),
@@ -499,12 +510,15 @@ all_modules = [
         Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", SAME_AS,0,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with dwd method"),
 
     Module(
         "normalize_samples_with_shiftscale",  
-        [BasicDataTypes.ClassLabelFile,_SignalFile_Merge],_SignalFile_Merge,
+        [ClassLabelFile,_SignalFile_Merge],_SignalFile_Merge,
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint("shiftscale_norm",MUST_BE,"no",1),
@@ -517,6 +531,9 @@ all_modules = [
         Consequence("dwd_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", SAME_AS,0,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with shiftscale method"),
     ###normalize
@@ -632,7 +649,7 @@ all_modules = [
 
     Module(  
         "rank_genes_by_class_neighbors",
-        [BasicDataTypes.ClassLabelFile,_SignalFile_Order],BasicDataTypes.GeneListFile,
+        [ClassLabelFile,_SignalFile_Order],BasicDataTypes.GeneListFile,
         OptionDef("cn_num_neighbors",50,help='number of neighbors for class neighbors method'),
         OptionDef("cn_num_perm",100,help='number of permutation for class neighbors method'),
         OptionDef("cn_user_pval",0.5,help='number of user p value for class neighbors method'),
@@ -650,12 +667,14 @@ all_modules = [
         Consequence("cn_ttest_or_snr",SET_TO_ONE_OF, ['t_test','snr']),
         Consequence("cn_filter_data",SET_TO_ONE_OF, ['yes','no']),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", SAME_AS,0,1),
         help="rank the genes in SignalFile_Order by class neighbors method"
         ),
     
     Module(
         "rank_genes_by_sample_ttest",
-        [BasicDataTypes.ClassLabelFile, _SignalFile_Order], BasicDataTypes.GeneListFile,
+        [ClassLabelFile, _SignalFile_Order], BasicDataTypes.GeneListFile,
         OptionDef("gene_select_threshold", 0.05,help="threshold for sample ttest"),
         Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("gene_order", MUST_BE, "no", 1),
@@ -664,6 +683,8 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO_ONE_OF, ["t_test_p", "t_test_fdr"]),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", SAME_AS,0,1),
         help="rank the genes in SignalFile_Order by ttest method"
        ),
          
@@ -891,7 +912,7 @@ all_modules = [
     
     Module(
         "filter_genes_by_fold_change_across_classes",
-        [BasicDataTypes.ClassLabelFile,_SignalFile_Filter],_SignalFile_Filter,
+        [ClassLabelFile,_SignalFile_Filter],_SignalFile_Filter,
         OptionDef("group_fc_num",help="group fold change number"),
         Constraint("cls_format", MUST_BE,'cls',0),
         Constraint("format", MUST_BE,"tdf",1),
@@ -909,6 +930,9 @@ all_modules = [
         Consequence("duplicate_probe",SAME_AS_CONSTRAINT,1),
         Consequence("unique_genes",SAME_AS_CONSTRAINT,1),
         Consequence("group_fc",SET_TO,"yes"),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", SAME_AS,0,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
         help="filter genes in SignalFile_Filter by fold change in different classes"),
     Module(   
@@ -992,10 +1016,13 @@ all_modules = [
     
     Module(
         "convert_label_to_cls",   
-        [BasicDataTypes.ClassLabelFile,_SignalFile_Merge],BasicDataTypes.ClassLabelFile,
+        [ClassLabelFile,_SignalFile_Merge],ClassLabelFile,
         Constraint("cls_format",MUST_BE,'label',0),
         Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS,0),
+        Constraint("preprocess", SAME_AS,0,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
         Consequence("cls_format",SET_TO,'cls'),
         help="convert ClassLabelFile with label format to cls format"
@@ -1004,5 +1031,5 @@ all_modules = [
 
 list_files=[SignalFile,_SignalFile_Postprocess,_SignalFile_Impute, _SignalFile_Merge,
             _SignalFile_Normalize,_SignalFile_Order,_SignalFile_Annotate,_SignalFile_Filter,
-           IntensityPlot ]
+           IntensityPlot,ClassLabelFile ]
 

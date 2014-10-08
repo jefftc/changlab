@@ -22,7 +22,7 @@ all_modules = [
         'plot_signal_heatmap',
         GeneExpProcessing.SignalFile,Heatmap,
         OptionDef('hm_width',20,help="width in heatmap plot"),
-        OptionDef('hm_height',1,help="heigth in heatmap plot"),
+        OptionDef('hm_height',20,help="heigth in heatmap plot"),
         Constraint("format",MUST_BE,'tdf'),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
         Consequence("cluster_alg",SET_TO,'no_cluster_alg'),

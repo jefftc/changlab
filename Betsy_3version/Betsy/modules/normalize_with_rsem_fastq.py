@@ -9,7 +9,7 @@ import shutil
         
 def preprocess_single_sample(folder,sample,files,out_file,ref):
     if ref == 'human':
-        ref_file = config.rna_hum
+        ref_file = config.rna_human
     elif ref == 'mouse':
         ref_file = config.rna_mouse
     else:

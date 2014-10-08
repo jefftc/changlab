@@ -196,7 +196,7 @@ def run(in_nodes, parameters, user_input, network):
         open(outfile, 'w').write(x)
     except:
         raise 
-    out_node = bie3.Data(rulebase.ReportFile,**parameters)
+    out_node = bie3.Data(rulebase.BatchEffectReportFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     

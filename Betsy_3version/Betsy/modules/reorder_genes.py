@@ -54,8 +54,8 @@ def run(in_nodes, parameters, user_input,network):
                     genes, platform)
     else:
         id = M._row_order[0]
-    id = M._row_order[3]
-    print id
+    #id = M._row_order[3]
+    #print id
     original_list = M._row_names[id]
     #get the order index and write to the outout file
     indexlist = gene_ranking.find_sorted_index(original_list, gene_list)

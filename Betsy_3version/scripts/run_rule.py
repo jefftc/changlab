@@ -276,7 +276,46 @@ def print_possible_inputs(network, user_attributes):
             print
         print
         
+def check_possible_inputs(network,user_attributes,input_nodes):
+    """check if the input_nodes can generate a sub network"""
+    input_nodes.sort()
+    inputs = bie3.get_inputs(network, user_attributes)
+    dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
+    all_possible_required = []
+    for i, dt in enumerate(sorted(dt2inputs)):
+        x = [x.name for x in dt]
+        for j, dtinput in enumerate(dt2inputs[dt]):
+            required = sorted(list(set(dtinput)))
+            if required not in all_possible_required:
+                all_possible_required.append(required)
+    if input_nodes in all_possible_required:
+        return True
+    return False
 
+def print_missing_inputs(network,user_attributes,input_nodes):
+    """print the missing inputs which is required to generate a sub network"""
+    input_nodes.sort()
+    inputs = bie3.get_inputs(network, user_attributes)
+    dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
+    all_possible_required = []
+    for i, dt in enumerate(sorted(dt2inputs)):
+        x = [x.name for x in dt]
+        for j, dtinput in enumerate(dt2inputs[dt]):
+            required = sorted(list(set(dtinput)))
+            if required not in all_possible_required:
+                all_possible_required.append(required)
+    print 'Please provide the following input to generate the network'
+    for required in all_possible_required:
+        if set(input_nodes).issubset(required):
+            missing_nodes = list(set(required)-set(input_nodes))
+            for inp in missing_nodes:
+                node = network.nodes[inp]
+                assert isinstance(node, bie3.Data)
+                print node.datatype.name
+                print node.datatype.help
+                for name in sorted(node.attributes):
+                    print "%s%s=%s" % (" "*5, name, node.attributes[name])
+            print     
 def main():
     parser = argparse.ArgumentParser(description='Run the engine')
     group = parser.add_argument_group(title="Input/Output Nodes")
@@ -302,7 +341,6 @@ def main():
     group.add_argument(
         '--output_file', type=str, default=None,
         help='file or folder of output result')
-
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
         '--png_file',  type=str, default=None,
@@ -391,7 +429,6 @@ def main():
             handle.close()
     if args.json_file:
         bie3.write_network(args.json_file, network)
-        
     if args.output and not in_objects:
         assert network, 'no network generated'
         print "No inputs given.  Here are the possibilities."
@@ -403,12 +440,22 @@ def main():
     if not network or len(network.nodes)==1:
         in_datas = [i.data for i in in_objects]
         bie3.diagnose_start_node(network, in_datas)
+    input_node_ids = []
+    input_nodes = []
     for i in in_objects:
         start_node = bie3._find_start_nodes(network,i.data)
         assert start_node, 'input %s is not matched any node in the network' % i.data.datatype.name
         if os.path.exists(i.identifier):
             store_file = userfile.set(getpass.getuser(), i.identifier)
             i.identifier = store_file
+        input_node_ids.extend(start_node)
+        input_nodes.append(i.data)
+    required_flag = check_possible_inputs(network,user_attributes,input_node_ids)
+    if required_flag:
+        network = bie3.select_start_node(network, input_nodes)
+    else:
+        print_missing_inputs(network,user_attributes,input_node_ids)
+        return
     #test mattr are given when necessary
     network_modules = [i for i in network.nodes
                            if isinstance(i, bie3.Module)]

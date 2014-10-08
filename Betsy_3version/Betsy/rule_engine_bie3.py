@@ -291,6 +291,7 @@ def run_pipeline(network, in_objects, user_attributes, user_inputs,
                 num_failures += 1
                 continue
             pipeline_sequence.append(data_object.name)
+            #print module_id
             out_nodes = run_module(network, module_id, pool,
                                    user_inputs, pipeline_sequence,user_attributes,
                                    user, job_name)
@@ -305,7 +306,7 @@ def run_pipeline(network, in_objects, user_attributes, user_inputs,
                 stack_list.append((next_node, next_id))
             if flag:    
                 break
-    if next_node and module_utils.exists_nz(next_node.identifier):
+    if flag and next_node and module_utils.exists_nz(next_node.identifier):
         msg = "Completed successfully and generated a file:"
         print "[%s].  %s" % (time.strftime('%l:%M%p'), msg)
         print next_node.identifier

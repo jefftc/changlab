@@ -1,4 +1,30 @@
 #arrayannot.py
+
+"""
+Functions:
+create_annot_file_affymetrix       Return a list of column in affymetrix annotation file
+
+annotate_probe_affymetrix_file     Return a list of annotation for affymetrix probes
+
+annotate_probe_illumina_file       Return a list of annotation for illumina probes
+
+annotate_probe_biomart             Return a list of annotation via biomart
+
+annotate_probes_multiple           Return a dict of multiple annotation in
+                                    <annotation_name: list of annotation probes>
+                                    
+annotate_probes                    Return a list of annotation probes without knowing the input platform
+
+read_mapping_file                  Return a dict of mapping probes <in_probe: a list of out_probe>
+
+map_probes                         Return a list of mapping probes
+
+convert_probe_ids                  Return a list of mapping probes using local mapping file or biomart
+
+_convert_probe_ids_local           Return a list of mapping probes using local mapping file
+"""
+
+
 import os
 import subprocess
 import tempfile
@@ -140,11 +166,11 @@ def annotate_probes(probe_ids, annotation):
             result = annotate_probe_biomart(probe_ids,annotation)
     return result
 
-def read_platform_file(platform_file):
+def read_mapping_file(mapping_file):
     """read the platform file and return a mapping 
-        dictionary<probe_id:new_probe_id>"""
+        dictionary<probe_id: a list of new_probe_id>"""
     probe_map = {}
-    f = file(platform_file,'r')
+    f = file(mapping_file,'r')
     text = f.read()
     line1 = re.split('\r|\n',text)
     f.close()
@@ -155,30 +181,23 @@ def read_platform_file(platform_file):
         if len(words)==1:
             words.append('')
         if words[0] not in probe_map:
-        	probe_map[words[0]]=words[1]
+            probe_map[words[0]]=[words[1]]
         else:
-            probe_map[words[0]]=probe_map[words[0]]+'///'+words[1]
+            probe_map[words[0]]=probe_map[words[0]].append(words[1])
     return probe_map
     
-def get_new_probes(probe_ids, platform_file):
+def map_probes(probe_ids, mapping_file,in_delim='///',out_delim='///'):
     """given a list of probe_ids and the platform_file for 
     mapping, return a list of probe_ids in new platform"""
-    probe_map = read_platform_file(platform_file)
+    probe_map = read_mapping_file(mapping_file)
     new_probes = []
     for probe_id in probe_ids:
-        #consider multiple probe_ids in one item example,1///2
-        multiple_probe_ids = probe_id.split('///')
-        newid = ''
-        for single_probe_id in multiple_probe_ids:
-            
-            if single_probe_id in probe_map:
-            	single_newid = probe_map[probe_id]
-            else:
-            	single_newid = ''
-            if newid:
-                newid = newid + '///' + single_newid
-            else:
-                newid = single_newid
+        multiple_in_ids = probe_id.split(in_delim)
+        multiple_out_ids = [probe_map.get(x) for x in multiple_in_ids]
+        multiple_out_ids = [x for x in multiple_out_ids if x]
+        multiple_out_ids = sum(multiple_out_ids,[])
+        multiple_out_ids = sorted({}.fromkeys(multiple_out_ids))
+        newid = out_delim.join(multiple_out_ids)
         new_probes.append(newid)
     return new_probes
 
@@ -186,7 +205,7 @@ def get_new_probes(probe_ids, platform_file):
 def convert_probe_ids(probe_ids,platform_name):
     new_probes = _convert_probe_ids_local(probe_ids, platform_name)
     if not new_probes:
-       new_probes = arrayannot.annotate_probe_biomart(probe_ids, platform_name)
+       new_probes = annotate_probe_biomart(probe_ids, platform_name)
     return new_probes
 
 
@@ -197,5 +216,5 @@ def _convert_probe_ids_local(probe_ids, platform_name):
     filename = old_platform + '___' + platform_name + '.txt'
     if not os.path.exists(os.path.join(platform_path,filename)):
         return None
-    new_probes = get_new_probes(probe_ids,os.path.join(platform_path,filename))
+    new_probes = map_probes(probe_ids,os.path.join(platform_path,filename))
     return new_probes

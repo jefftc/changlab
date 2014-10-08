@@ -69,7 +69,7 @@ all_modules = [
         ),
     Module(
        'classify_with_weighted_voting',
-       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile,
+       [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile,
         GeneExpProcessing.SignalFile],ClassifyFile,
        OptionDef('wv_num_features',10,help="number of features for weighted voting"),
        OptionDef('wv_minstd',1,help="minstd for weighted voting"),
@@ -91,7 +91,7 @@ all_modules = [
        ),
     Module(
        'classify_with_random_forest',
-       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
+       [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -110,7 +110,7 @@ all_modules = [
     
      Module(
        'train_svm_model',
-       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],SvmModel,
+       [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile],SvmModel,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -122,7 +122,7 @@ all_modules = [
        help="train data using svm method"), 
      Module(
        'classify_with_svm',
-       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile,SvmModel],ClassifyFile,
+       [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile,SvmModel],ClassifyFile,
        Constraint("contents",MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1,test',1),
@@ -140,7 +140,7 @@ all_modules = [
     
     Module(
        'run_loocv_weighted_voting',
-       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
+       [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        OptionDef('wv_num_features',10,help="number of features for weighted voting"),
        OptionDef('wv_minstd',1,help="minstd for weighted voting"),
        Constraint("contents",MUST_BE,'class0,class1',0),
@@ -161,7 +161,7 @@ all_modules = [
        help="run loocv in weighted voting method"),
     Module(
        'run_loocv_svm',
-       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
+       [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        Constraint('contents',MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1',1),
@@ -180,7 +180,7 @@ all_modules = [
        help="run loocv in svm method"),
     Module(
        'run_loocv_random_forest',
-       [BasicDataTypes.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
+       [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile],ClassifyFile,
        Constraint('contents',MUST_BE,'class0,class1',0),
        Constraint("cls_format",MUST_BE,'cls',0),
        Constraint("contents",MUST_BE,'class0,class1',1),
@@ -200,7 +200,7 @@ all_modules = [
                   
     Module(
         'evaluate_prediction',
-        [BasicDataTypes.ClassLabelFile,ClassifyFile],ClassifyFile,
+        [GeneExpProcessing.ClassLabelFile,ClassifyFile],ClassifyFile,
         Constraint("contents",MUST_BE,'test',0),
         Constraint("cls_format",MUST_BE,'cls',0),
         Constraint("loocv",MUST_BE,'no',1),

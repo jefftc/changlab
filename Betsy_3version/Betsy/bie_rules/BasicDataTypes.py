@@ -16,12 +16,6 @@ ExpressionFiles = DataType("ExpressionFiles",
                            help="Expression file folder, can be CELFiles, IDATFiles,"\
                                  "AgilentFile,GPRFiles")
 
-ClassLabelFile = DataType(
-    "ClassLabelFile",
-    AttributeDef(
-    "contents",Database.CONTENTS,'unspecified','unspecified',help="contents"),
-    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls",help="cls format for ClassLabelFile"),
-    help="The Class label file, can be cls format or label format")
 
 GeneListFile=DataType(
     "GeneListFile", 
@@ -36,8 +30,7 @@ GeneListFile=DataType(
     help="A file contains a list of genes.")
 
 
-list_files = [RenameFile,ExpressionFiles,ClassLabelFile,
-              GeneListFile]
+list_files = [RenameFile,ExpressionFiles,GeneListFile]
 
 all_modules = [
  Module(

@@ -13,6 +13,7 @@ from time import strftime,localtime
 from stat import *
 import userfile
 import bie3
+import gzip
 """
 DataObject
 contain some functions that are called by many modules
@@ -647,3 +648,58 @@ def replace_matrix_header(M, old_header, new_header):
     return M
 
 
+def process_group_info(group_file):
+    """return a dict with <sample_name:[[left_sample_list],
+                                        [right_sample_list]]"""
+    f = file(group_file,'r')
+    text = f.readlines()
+    f.close()
+    group_dict = {}
+    text = [line.strip() for line in text if line.strip()]
+    for line in text:
+        words = line.split('\t')
+        if len(words)==3:
+            if words[0] not in group_dict:
+        	group_dict[words[0]] = [words[2]]
+            else:
+        	group_dict[words[0]].append(words[2])
+        elif len(words)==4:
+            if words[0] not in group_dict:
+        	group_dict[words[0]] = [[words[2]],[words[3]]]
+            else:
+        	group_dict[words[0]][0].append(words[2])
+        	group_dict[words[0]][1].append(words[3])
+        else:
+            raise ValueError('group file is invalid')
+    return group_dict
+
+##def concatenate_files(input_files,outfile):
+##    with open(outfile,'w') as outfile:
+##        for fname in input_files:
+##            with gzip.open(fname) as infile:
+##                for line in infile:
+##                    outfile.write(line)
+##                    
+##def concatenate_multiple_line(group_dict,foldername):
+##    current_dir = os.getcwd()
+##    new_group_dict = {}
+##    for sample_name, files in group_dict.iteritems():
+##        if len(files)==1:
+##            outfile = os.path.join(current_dir,sample_name+'.fastq')
+##            inputfiles = [os.path.join(foldername,x) for x in files[0]]
+##            concatenate_files(inputfiles,outfile)
+##            new_group_dict[sample_name]=[outfile]
+##        elif len(files)==2:
+##            outfile_left = os.path.join(current_dir,sample_name+'_R1.fastq')
+##            outfile_right = os.path.join(current_dir,sample_name+'_R2.fastq')
+##            inputfiles_left = [os.path.join(foldername,x) for x in files[0]]
+##            inputfiles_right = [os.path.join(foldername,x) for x in files[1]]
+##    	    concatenate_files(inputfiles_left,outfile_left)
+##            concatenate_files(inputfiles_right,outfile_right)
+##            new_group_dict[sample_name] = [outfile_left,outfile_right]
+##    return new_group_dict
+##   
+##           
+##a=process_group_info('/home/xchen/NGS/try_RSEM/big_sample_data/sample_group.txt')
+##b=concatenate_multiple_line(a,'/home/xchen/NGS/try_RSEM/big_sample_data/')
+##print b

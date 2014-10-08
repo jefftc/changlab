@@ -19,18 +19,19 @@ def run(data_node,parameters,user_input,network):
             if filename == '.DS_Store':
                 continue
             fileloc = os.path.join(data_node.identifier, filename)
+            new_file = ''
+            newfname = ''
             if fileloc.endswith(format_type+'.gz'):
                 newfname = os.path.splitext(filename)[0]
                 new_file = module_utils.gunzip(fileloc)
             elif fileloc.endswith(format_type):
-                new_file = fileloc
+            	new_file = fileloc
                 newfname = filename
-                shutil.copyfile(new_file, os.path.join(outfile, newfname))
-            if fileloc.endswith('.gz'):
-                os.remove(new_file)
+            if new_file and newfname:
+            	shutil.copyfile(new_file, os.path.join(outfile, newfname))
     assert module_utils.exists_nz(outfile), (
         'the output file %s for is_fastq_folder fails' % outfile)
-    out_node = bie3.Data(rulebase.RNA_SeqFile,**parameters)
+    out_node = bie3.Data(rulebase.RNASeqFile,**parameters)
     out_object = module_utils.DataObject(out_node,outfile)
     return out_object
     
@@ -75,5 +76,5 @@ def get_out_attributes(parameters,data_node):
 
 def find_antecedents(network, module_id,data_nodes, parameters,user_attributes):
     data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,user_attributes,datatype='RNA_SeqFile')
+                                            data_nodes,user_attributes,datatype='RNASeqFile')
     return data_node

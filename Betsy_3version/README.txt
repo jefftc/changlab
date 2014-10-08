@@ -79,13 +79,23 @@ Preprocess Usage
 ----------------------------------------------------------------
 (6) Betsy can preprocess RNA Seq with RSEM and convert into a SignalFile
    python run_rule.py \
-   --input 'RNA_SeqFile' \
+   --input 'RNASeqFile' \
    --input_file '/home/xchen/NGS/try_RSEM/sample_data' \
    --output 'SignalFile' \
    --dattr SignalFile,preprocess=rsem \
    --dattr SamFolder,ref=human \
    --input SampleGroupFile \
    --input_file '/home/xchen/NGS/try_RSEM/sample_data/samplegroup.txt' \
+   --png_file 'out.png'
+   
+    python run_rule.py \
+   --input 'RNASeqFile' \
+   --input_file '/home/xchen/NGS/try_RSEM/big_sample_data' \
+   --output 'SignalFile' \
+   --dattr SignalFile,preprocess=rsem \
+   --dattr SamFolder,ref=human \
+   --input SampleGroupFile \
+   --input_file '/home/xchen/NGS/try_RSEM/big_sample_data/sample_group.txt' \
    --png_file 'out.png'
 =============================================================================
 Process Usage
