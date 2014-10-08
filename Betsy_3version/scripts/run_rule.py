@@ -67,7 +67,7 @@ def pretty_print_datatype(datatype, handle=None):
         for x in _break_into_lines(datatype.help, indent1=10, indento=10):
             print >>handle, x
     print >>handle, "-"*LW
-    for attr in datatype.attribute_defs:
+    for attr in datatype.attribute_defs.itervalues():
         x1 = "%-20s" % attr.name
         x2 = []
         for val in attr.values:
@@ -395,7 +395,7 @@ def main():
     options = {}
     for i in args.mattr:
         assert '=' in i, "--mattr should be in format: <option>=<value>"
-        key, value = i.split('=')
+        key, value = i.split('=', 1)
         assert key in all_inputs, "I don't recognize the option: %s" % key
         options[key] = value
     # test introspection

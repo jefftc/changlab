@@ -134,7 +134,6 @@ def score_many(jobs, lock=None):
         results.update(x)
     return results
 
-
 def main():
     import argparse
     import glob
@@ -146,6 +145,10 @@ def main():
         "expression_files", nargs="+", help="Data set(s) to score.")
     parser.add_argument(
         "-o", dest="outfile", default=None, help="Name of file for results.")
+    parser.add_argument(
+        "--transpose", action="store_true",
+        help="Transpose the output matrix.")
+    
     parser.add_argument(
         "--libpath", dest="libpath", action="append", default=[],
         help="Add to the Python library search path.")
@@ -218,6 +221,7 @@ def main():
     import multiprocessing
     from genomicode import genesetlib
     from genomicode import genepattern
+    from genomicode import jmath
     
     start_time = time.time()
     
@@ -335,15 +339,23 @@ def main():
     x = sorted({}.fromkeys(x))
     all_genesets = x
 
-    outhandle = open(args.outfile, 'w')
-    header = ["FILE", "SAMPLE"] + all_genesets
-    print >>outhandle, "\t".join(header)
+
+    # Format the output.
+    output = []
+    header = ["SAMPLE", "FILE"] + all_genesets
+    output.append(header)
     for x in all_matrix_samples:
         matrix, index, sample = x
         #x = [scores[(matrix, x, index, sample)] for x in all_genesets]
         x = [scores.get((matrix, x, index, sample), "") for x in all_genesets]
-        x = [matrix, sample] + x
+        x = [sample, matrix] + x
         assert len(x) == len(header)
+        output.append(x)
+    if args.transpose:
+        output = jmath.transpose(output)
+        
+    outhandle = open(args.outfile, 'w')
+    for x in output:
         print >>outhandle, "\t".join(map(str, x))
     outhandle.close()
     

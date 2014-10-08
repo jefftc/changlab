@@ -28,7 +28,8 @@ def choose_gene_names(MATRIX):
     
     
 def find_diffexp_genes(
-    outfile, gmt_file, algorithm, MATRIX, geneid_header, genename_header, 
+    outfile, gmt_file, algorithm, paired,
+    MATRIX, geneid_header, genename_header, 
     name1, name2, classes, fold_change, p_cutoff, fdr_cutoff,
     sam_DELTA, sam_qq_file, num_procs):
     # classes must be 0, 1, None.
@@ -41,14 +42,23 @@ def find_diffexp_genes(
     from genomicode import jmath
     from genomicode import genesetlib
 
-    algorithm2function = {
+    algorithm2function_unpaired = {
         "ttest" : "find.de.genes.ttest",
         "sam" : "find.de.genes.sam",
         "ebayes" : "find.de.genes.ebayes",
         "fold_change" : "find.de.genes.fc",
         }
+    algorithm2function_paired = {
+        "ebayes" : "find.de.genes.paired.ebayes",
+        }
+    algorithm2function = algorithm2function_unpaired
+    if paired:
+        algorithm2function = algorithm2function_paired
+        assert algorithm in algorithm2function_paired, \
+               "No paired version of %s" % algorithm
     assert algorithm in algorithm2function, "Unknown algorithm: %s" % algorithm
 
+    
     # Select the relevant columns from MATRIX.
     I = [i for (i, x) in enumerate(classes) if x in [0, 1]]
     assert len(I)
@@ -125,7 +135,7 @@ def find_diffexp_genes(
     handle = StringIO.StringIO()
     old_stdout = sys.stdout
     sys.stdout = handle
-    
+
     fn = algorithm2function[algorithm]
     x = ", ".join(args)
     R("x <- %s(%s)" % (fn, x))
@@ -177,7 +187,19 @@ def find_diffexp_genes(
         I = header.index(name)
         nl10fdr_cutoff = -math.log(fdr_cutoff, 10)
         DATA_py = [x for x in DATA_py if float(x[I]) > nl10fdr_cutoff]
+
+    # Sort by decreasing p-value.
+    name  = "NL10P"
+    assert name in header, 'I could not find the "%s" column.' % name
+    I = header.index(name)
+    schwartz = [(-float(x[I]), x) for x in DATA_py]
+    schwartz.sort()
+    DATA_py = [x[-1] for x in schwartz]
     
+
+    # If no significant genes, then don't produce any output.
+    if not DATA_py:
+        return
 
     # Write to the outhandle.
     outhandle = open(outfile, 'w')
@@ -244,6 +266,7 @@ def main():
     import sys
     import argparse
     import tempfile
+    from collections import Counter
 
     import arrayio
     from genomicode import arraysetlib
@@ -274,9 +297,16 @@ def main():
     
     group = parser.add_argument_group(title="Algorithm Parameters")
     group.add_argument(
-        "--algorithm", dest="algorithm", 
+        "--algorithm", 
         choices=["ttest", "sam", "ebayes", "fold_change"], default="ebayes",
         help="Which algorithm to use.")
+    group.add_argument(
+        "--paired", action="store_true",
+        help="Do a paired analysis.  The same number of samples should be in "
+        "each group.  Assumes that the samples should be paired in the same "
+        "order that they occur in the file.  For example, if samples 1-5 are "
+        "in group 1 and samples 6-10 are in group 2, then sample 1 will be "
+        "paired with sample 6, 2 with 7, etc.")
     group.add_argument(
         "--fold_change", type=float, default=None,
         help="Minimum change in gene expression.")
@@ -375,6 +405,14 @@ def main():
             args.name1, args.name2)
         name1, name2, classes = x
 
+
+    # For paired analysis, make sure each class has the same number of
+    # samples.
+    if args.paired:
+        counts = Counter(classes)
+        assert counts.get(num0, 0) == counts.get(num1, 0), \
+               "paired analysis requires equal samples"
+
     # Run the analysis.
     outfile = None
     try:
@@ -401,7 +439,7 @@ def main():
             os.dup2(w.fileno(), sys.stdout.fileno())
             find_diffexp_genes(
                 outfile, args.gmt_file,
-                args.algorithm,
+                args.algorithm, args.paired, 
                 MATRIX, args.geneid_header, args.genename_header, 
                 name1, name2, classes,
                 args.fold_change, args.p_cutoff, args.fdr_cutoff,

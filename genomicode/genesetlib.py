@@ -19,6 +19,9 @@ clean_genes
 """
 # Optimization: call _is_known_desc less.
 
+
+DEBUG = None
+
 class GeneSet:
     def __init__(self, name, description, genes):
         assert type(name) is type("")
@@ -322,6 +325,7 @@ def _is_known_desc(desc):
 
 def detect_format(filename):
     # Return "GMX", "GMT", or None.
+    global DEBUG
     import filelib
     import iolib
 
@@ -370,26 +374,32 @@ def detect_format(filename):
 
     # Case 1.
     if not matrix:
+        DEBUG = "detect_format case 1"
         return None
     # Case 2.
     if not matrix[0]:
+        DEBUG = "detect_format case 2"
         return None
     nrow, ncol = len(matrix), len(matrix[0])
     # Case 3.
     if nrow == 1 and ncol == 1:
+        DEBUG = "detect_format case 3"
         return None
     # Case 4.
     if nrow >= 2 and ncol == 1:
+        DEBUG = "detect_format case 4"
         if _is_known_desc(matrix[1][0]):
             return GMX
         return None
     # Case 5.
     if nrow == 1 and ncol >= 2:
+        DEBUG = "detect_format case 5"
         if _is_known_desc(matrix[0][1]):
             return GMT
         return None
     # Case 6.
     if nrow == 2 and ncol == 2:
+        DEBUG = "detect_format case 6"
         desc01 = _is_known_desc(matrix[0][1])
         desc10 = _is_known_desc(matrix[1][0])
         if desc10 and not desc01:
@@ -398,14 +408,17 @@ def detect_format(filename):
             return GMT
         return None
     # Case 7.
+    DEBUG = "detect_format case 7"
     assert nrow >= 2 and ncol >= 2, "%d %d" % (nrow, ncol)
 
     # Check the extension of the file.
     if type(filename) is type(""):
         lfilename = filename.lower()
         if lfilename.endswith(".gmt"):
+            DEBUG = "detect_format filename"
             return GMT
         if lfilename.endswith(".gmx"):
+            DEBUG = "detect_format filename"
             return GMX
 
     # Check if there are any spaces in the first row or column.  If
@@ -418,10 +431,13 @@ def detect_format(filename):
     x = [x for x in col1[2:] if x == ""]
     spaces_in_col1 = (len(x) > 0)
     if spaces_in_row1 and spaces_in_col1:
+        DEBUG = "detect_format spaces in row1 and col1"
         return None
     if not spaces_in_row1 and spaces_in_col1:
+        DEBUG = "detect_format spaces"
         return GMX
     if not spaces_in_col1 and spaces_in_row1:
+        DEBUG = "detect_format spaces"
         return GMT
 
     # Most likely, there will be different numbers of genes per gene
@@ -453,10 +469,13 @@ def detect_format(filename):
         if not is_top_aligned:
             genes_top_aligned = False
     if not genes_top_aligned and not genes_left_aligned:
+        DEBUG = "detect_format alignment"
         return None
     if genes_top_aligned and not genes_left_aligned:
+        DEBUG = "detect_format alignment"
         return GMT
     if genes_left_aligned and not genes_top_aligned:
+        DEBUG = "detect_format alignment"
         return GMX
 
     # Check the descriptions to see if they match up.
@@ -471,10 +490,13 @@ def detect_format(filename):
         if not _is_known_desc(x):
             desc_col = False
     if desc_row and not desc_col:
+        DEBUG = "detect_format descriptions"
         return GMX
     if desc_col and not desc_row:
+        DEBUG = "detect_format descriptions"
         return GMT
     
+    DEBUG = "detect_format default"
     return None
 
 

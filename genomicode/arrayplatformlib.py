@@ -272,7 +272,7 @@ def _compare_annotations(annots1, annots2, case_sensitive):
 
 
 def score_platform_of_annotations(annotations):
-    # Tuple of (platform, match score) or None.
+    # Tuple of (platform, match score) or None if nothing matches.
     possible_platforms = score_platforms(annotations)
     assert possible_platforms
     if possible_platforms[0][1] <= 0:
@@ -444,6 +444,11 @@ PLATFORMS = [
         GENE_SYMBOL, 37),
     Platform(
         'Agilent_Human1A', None, None, GENE_ID, 38), 
+        'RefSeq_protein_ID_mouse', "refseq_peptide", "mmusculus_gene_ensembl",
+        GENE_SYMBOL, 35),
+    Platform(
+        'RefSeq_transcript_ID_mouse', "refseq_mrna", "mmusculus_gene_ensembl",
+        GENE_SYMBOL, 36),
     Platform(
         'HumanHT_12_control', None, None, GENE_ID, 39),  
     Platform(

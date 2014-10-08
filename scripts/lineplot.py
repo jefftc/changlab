@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import os
 
 def find_gene_names(MATRIX, gene_names):
@@ -84,6 +85,9 @@ def main():
         "--mar_bottom", default=1.0, type=float,
         help="Scale margin at bottom of plot.  Default 1.0 (no scaling).")
     parser.add_argument(
+        "--xlabel_size", default=1.0, type=float,
+        help="Scale the size of the labels on X-axis.  Default 1.0.")
+    parser.add_argument(
         "-v", "--verbose", default=False, action="store_true",
         help="")
 
@@ -101,6 +105,7 @@ def main():
            "Please specify some genes to plot."
     assert args.mar_bottom > 0 and args.mar_bottom < 10
     assert args.mar_left > 0 and args.mar_left < 10
+    assert args.xlabel_size > 0 and args.xlabel_size < 10
 
     height = args.height or 1600
     width = args.width or 1600
@@ -145,7 +150,7 @@ def main():
     at = R_var("NULL")
     if labels:
         at = range(1, len(labels)+1)
-    cex_labels = 1
+    cex_labels = 1*args.xlabel_size
     cex_legend = 1
     cex_lab = 1.5
     cex_sub = 1.5

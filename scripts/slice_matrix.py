@@ -29,6 +29,8 @@
 # replace_col_ids
 # relabel_col_ids
 # append_col_ids
+# add_col_ids
+# 
 # reorder_col_indexes
 # reorder_col_cluster
 # reorder_col_alphabetical
@@ -39,6 +41,7 @@
 # toupper_col_ids
 # hash_col_ids
 # apply_re_col_ids
+# add_prefix_col_ids
 # add_suffix_col_ids
 #
 # tcga_solid_tumor_only
@@ -422,10 +425,14 @@ def _parse_file_num_annot(annotation):
     return filename, header, values
 
 
-def select_col_indexes(MATRIX, indexes, count_headers):
-    if not indexes:
+def select_col_indexes(MATRIX, indexes_list, count_headers):
+    if not indexes_list:
         return None
-    return parse_indexes(MATRIX, False, indexes, count_headers)
+    indexes = []
+    for x in indexes_list:
+        x = parse_indexes(MATRIX, False, x, count_headers)
+        indexes.extend(x)
+    return indexes
 
 
 def select_col_ids(MATRIX, ids):
@@ -731,10 +738,12 @@ def append_col_ids(MATRIX, geneset, ignore_missing):
         # Bug: sometimes will mis-identify TDF files as GMX.  The
         # first row will be interpreted as a description instead of a
         # gene (or annotation).  If the extension of the file isn't
-        # gmx or gmt, then assume it's some sort of tdf file.
+        # gmx or gmt, and the description looks like a gene name, then
+        # assume it's some sort of tdf file that has been
+        # misidentified.
         #if not genesetlib._is_known_desc(description) and \
         #       ext not in [".gmx", ".gmt"]:
-        if ext not in [".gmx", ".gmt"]:
+        if description and ext not in [".gmx", ".gmt"]:
             genes = [description] + genes
 
         geneset2genes[geneset] = genes
@@ -783,6 +792,85 @@ def append_col_ids(MATRIX, geneset, ignore_missing):
             names[I_matrix[i]], genes[I_geneset[i]])
     MATRIX_new._col_names[name] = names
 
+    return MATRIX_new
+
+
+def add_col_ids(MATRIX, geneset, ignore_missing):
+    import arrayio
+    from genomicode import genesetlib
+    from genomicode import matrixlib
+
+    if not geneset:
+        return MATRIX
+    filename, genesets = _parse_file_gs(geneset)
+    assert len(genesets) == 1
+
+    # BUG: Should merge this code with append_col_ids.  Duplicated!
+    # Read all genesets out of the geneset file.
+    geneset2genes = {}
+    all_genesets = []  # preserve the order of the genesets
+    all_genes = []
+    ext = os.path.splitext(filename)[1].lower()
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
+        geneset, description, genes = x
+
+        # Bug: sometimes will mis-identify TDF files as GMX.  The
+        # first row will be interpreted as a description instead of a
+        # gene (or annotation).  If the extension of the file isn't
+        # gmx or gmt, and the description looks like a gene name, then
+        # assume it's some sort of tdf file that has been
+        # misidentified.
+        #if not genesetlib._is_known_desc(description) and \
+        #       ext not in [".gmx", ".gmt"]:
+        if description and ext not in [".gmx", ".gmt"]:
+            genes = [description] + genes
+
+        geneset2genes[geneset] = genes
+        all_genesets.append(geneset)
+        all_genes.append(genes)
+
+    # Find an alignment between the sample names and the genesets.
+    x = matrixlib.align_cols_to_many_annots(
+        MATRIX, all_genes, hash=True, get_indexes=True)
+    I_matrix, I_geneset, index = x
+    if len(I_matrix) == 0:
+        raise AssertionError("Matrixes doesn't match any gene sets.")
+    elif len(I_matrix) != MATRIX.ncol() and not ignore_missing:
+        # No matches.  Try to diagnose.
+        gs = all_genesets[index]
+        nm = len(I_matrix)
+        missing = []
+        col_names = MATRIX.col_names(arrayio.COL_ID)
+        missing = [col_names[i] for i in range(len(col_names))
+                   if i not in I_matrix]
+        print >>sys.stderr, \
+            "Matrix best matches column '%s' [%d:%d]." % (
+            gs, nm, MATRIX.ncol())
+        MAX_TO_SHOW = 5
+        if len(missing) > MAX_TO_SHOW:
+            print >>sys.stderr, \
+                "Missing (showing %d of %d):" % (MAX_TO_SHOW, len(missing))
+        else:
+            print >>sys.stderr, "Missing from annotation:"
+        for x_ in missing[:MAX_TO_SHOW]:
+            print >>sys.stderr, x_
+        raise AssertionError("I could not match the matrix to a geneset.")
+    # END DUPLICATED SECTION.
+
+    # Add the new column names to the MATRIX.
+    MATRIX_new = MATRIX.matrix()
+
+    gs = genesets[0]
+    genes = geneset2genes[gs]
+    assert len(I_matrix) == len(I_geneset)
+    new_names = [None] * len(I_matrix)
+    for i in range(len(I_matrix)):
+        new_names[I_matrix[i]] = genes[I_geneset[i]]
+        
+    assert gs not in MATRIX_new._col_names
+    MATRIX_new._col_names[gs] = new_names
+    MATRIX_new._col_order.append(gs)
     return MATRIX_new
 
 
@@ -991,6 +1079,20 @@ def apply_re_col_ids(MATRIX, apply_re_col_ids):
         m = re.search(apply_re_col_ids, names[i])
         if m:
             names[i] = m.group(1)
+    MATRIX._col_names[tdf.SAMPLE_NAME] = names
+    return MATRIX
+
+
+def add_prefix_col_ids(MATRIX, prefix):
+    from arrayio import tab_delimited_format as tdf
+
+    if not prefix:
+        return MATRIX
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    MATRIX = MATRIX.matrix()
+    names = MATRIX.col_names(tdf.SAMPLE_NAME)
+    names = [prefix+x for x in names]
     MATRIX._col_names[tdf.SAMPLE_NAME] = names
     return MATRIX
 
@@ -2180,8 +2282,9 @@ def main():
         
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
-        "--select_col_indexes", 
-        help="Which columns to include e.g. 1-5,8 (1-based, inclusive).")
+        "--select_col_indexes", default=[], action="append",
+        help="Which columns to include e.g. 1-5,8 (1-based, inclusive).  "
+        "(MULTI)")
     group.add_argument(
         "--col_indexes_include_headers", default=False, action="store_true",
         help="If not given (default), then column 1 is the first column "
@@ -2310,7 +2413,12 @@ def main():
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
         "--append_col_ids", 
-        help="Append this to the column IDs.  "
+        help="Append this to the end of the column IDs.  "
+        "Format: <txt/gmx/gmt_file>,<geneset>.  "
+        "One of the genesets in the file must match the current column IDs.")
+    group.add_argument(
+        "--add_col_ids", default=[], action="append",
+        help="Add a new set of column IDs (MULTI).  "
         "Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
@@ -2319,6 +2427,8 @@ def main():
     group.add_argument(
         "--apply_re_col_ids", 
         help="Apply a regular expression to the column IDs and take group 1.")
+    group.add_argument(
+        "--add_prefix_col_ids", help="Add a prefix to each column ID.")
     group.add_argument(
         "--add_suffix_col_ids", help="Add a suffix to each column ID.")
 
@@ -2588,6 +2698,8 @@ def main():
         MATRIX, args.relabel_col_ids, args.ignore_missing_labels)
     MATRIX = append_col_ids(
         MATRIX, args.append_col_ids, args.ignore_missing_labels)
+    for col_ids in args.add_col_ids:
+        MATRIX = add_col_ids(MATRIX, col_ids, args.ignore_missing_labels)
 
     # Remove col IDs.  Do this after relabeling.
     #MATRIX = remove_col_ids(MATRIX, args.remove_col_ids)
@@ -2596,6 +2708,7 @@ def main():
     # removing, but before filtering duplicates.
     MATRIX = toupper_col_ids(MATRIX, args.toupper_col_ids)
     MATRIX = apply_re_col_ids(MATRIX, args.apply_re_col_ids)
+    MATRIX = add_prefix_col_ids(MATRIX, args.add_prefix_col_ids)
     MATRIX = add_suffix_col_ids(MATRIX, args.add_suffix_col_ids)
     MATRIX = hash_col_ids(MATRIX, args.hash_col_ids)
 
