@@ -57,11 +57,20 @@ PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION = range(4)
 
 class Platform:
     def __init__(self, name, bm_attribute, bm_organism, category, priority):
-        self.name = name # our description of platform, corresponds to files
-                         # in genemodata/pid2platform,also matches annotation files in
-                         # /data/genomidata/affymetrix and /data/genomidata/illumina       
-        self.bm_attribute = bm_attribute #correspond to BioMart filters and attribute
-        self.bm_organism = bm_organism #correspond to BioMart mart
+        # our description of platform, corresponds to files
+        # in genemodata/pid2platform, also matches annotation files in
+        # /data/genomidata/affymetrix and /data/genomidata/illumina
+        self.name = name
+        # bm_organism   Which BioMart organism to use.  XXX how to get list?
+        # bm_attribute  Which attribute from this mart.
+        #
+        # To list valid attributes:
+        # library(biomaRt)
+        # x <- useMart("ensembl", "hsapiens_gene_ensembl")
+        # y <- listAttributes(x)
+        # y$name
+        self.bm_attribute = bm_attribute
+        self.bm_organism = bm_organism
         self.category = category  # PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION
         self.priority = priority # order of platform priority, lower number means higher priority
 
@@ -444,6 +453,7 @@ PLATFORMS = [
     Platform(
         'RefSeq_predicted_protein_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
         GENE_SYMBOL, 39),
+
     Platform(
         'RefSeq_protein_human', "refseq_peptide", "hsapiens_gene_ensembl",
         PROBE_ID, 40),

@@ -202,7 +202,7 @@ def map_probes(probe_ids, mapping_file,in_delim='///',out_delim='///'):
     return new_probes
 
 
-def convert_probe_ids(probe_ids,platform_name):
+def convert_probe_ids(probe_ids, platform_name):
     new_probes = _convert_probe_ids_local(probe_ids, platform_name)
     if not new_probes:
        new_probes = annotate_probe_biomart(probe_ids, platform_name)
