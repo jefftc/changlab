@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+# start_R
+# convert_gene_ids
+# _convert_gene_ids_biomart
+# _convert_gene_ids_local
+# convert_geneset
+# convert_matrix
+#
+# _remove_upds
+# _remove_refseq_version
+# _clean_id
+
 import os
 import sys
 
@@ -25,7 +36,7 @@ def _remove_dups(ids):
 
 def _remove_refseq_version(refseq_id):
     i = refseq_id.find(".")
-    if i < -1:
+    if i < 0:
         return refseq_id
     return refseq_id[:i]
 
@@ -105,17 +116,17 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
     out_mart = arrayplatformlib.get_bm_organism(out_platform)
 
     R = start_R()
-    jmath.R_equals_vector(gene_ids, 'gene_ids')
+    jmath.R_equals_vector(gene_ids, 'gene.ids')
 
     # Select the BioMart dataset to use.
-    R_fn("useMart", "ensembl", in_mart, RETVAL="in_dataset")
-    R_fn("useMart", "ensembl", out_mart, RETVAL="out_dataset")
+    R_fn("useMart", "ensembl", in_mart, RETVAL="in.dataset")
+    R_fn("useMart", "ensembl", out_mart, RETVAL="out.dataset")
 
     # Link two data sets and retrieve information from the linked datasets.
     R_fn(
         "getLDS", attributes=in_attribute, filters=in_attribute,
-        values=R_var("gene_ids"), mart=R_var("in_dataset"),
-        attributesL=out_attribute, martL=R_var("out_dataset"),
+        values=R_var("gene.ids"), mart=R_var("in.dataset"),
+        attributesL=out_attribute, martL=R_var("out.dataset"),
         RETVAL="homolog")
     
     homolog = R['homolog']
@@ -123,8 +134,8 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
     # <in_ids>
     # <out_ids>
     assert len(homolog) == 2, \
-           "BioMart returned no results mapping from %s to %s." % (
-        in_mart, out_mart)
+           "BioMart returned no results mapping from %s:%s to %s:%s." % (
+        in_mart, in_attribute, out_mart, out_attribute)
 
     in_ids = [str(x) for x in homolog[0]]
     out_ids = [str(x) for x in homolog[1]]
