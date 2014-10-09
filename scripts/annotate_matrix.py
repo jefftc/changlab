@@ -54,18 +54,6 @@ def _clean_id(gene_id, delimiter, in_platform):
 def convert_gene_ids(
     gene_ids, in_platform, out_platform, in_delim, out_delim,
     keep_dups, keep_emptys, no_na):
-    # gene_ids is a list of the gene IDs, one per row of the matrix,
-    # from the in_platform.  Each of the gene_ids may contain multiple
-    # IDs separated by in_delim.  in_delim is either None (no multiple
-    # IDs) or a character indicating the delimiter used to separate
-    # the IDs.
-    #
-    # Return a list parallel to gene_ids that is the IDs in the
-    # out_platform.
-    from genomicode import jmath
-    from genomicode import arrayplatformlib
-
-    R_fn, R_var = jmath.R_fn, jmath.R_var
 
     # Make a cleaned up version of the gene_ids to convert.
     x = []
@@ -75,16 +63,49 @@ def convert_gene_ids(
     x = {}.fromkeys(x).keys()
     gene_ids_c = x
 
+    in2out = _convert_gene_ids_local(in_platform, out_platform)
+    if in2out is None:
+        in2out = _convert_gene_ids_biomart(
+            gene_ids_c, in_platform, out_platform, no_na)
+    assert in2out, "I could not convert %s to %s" % (in_platform, out_platform)
+
+    # Make a parallel list of the output IDs.
+    output_ids = []
+    for gene_id in gene_ids:
+        in_ids = _clean_id(gene_id, in_delim, in_platform)
+        out_ids = []
+        for x in in_ids:
+            x = in2out.get(x, [""])
+            out_ids.extend(x)
+        if not keep_emptys:
+            out_ids = [x for x in out_ids if x]
+        if not keep_dups:
+            out_ids = _remove_dups(out_ids)
+        x = out_delim.join(out_ids)
+        output_ids.append(x)
+    return output_ids
+
+
+def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
+    # Return a dictionary of gene_id -> list of converted_ids, or None
+    # if these platforms cannot be converted.
+    from genomicode import jmath
+    from genomicode import arrayplatformlib
+
+    R_fn, R_var = jmath.R_fn, jmath.R_var
+
     # An attribute is the biomart name for the platform.
     in_attribute = arrayplatformlib.get_bm_attribute(in_platform)
     out_attribute = arrayplatformlib.get_bm_attribute(out_platform)
-    assert in_attribute, "Bad platform: %s" % in_platform
-    assert out_attribute, "Bad platform: %s" % out_platform
+    #assert in_attribute, "Bad platform: %s" % in_platform
+    #assert out_attribute, "Bad platform: %s" % out_platform
+    if not in_attribute or not out_attribute:
+        return None
     in_mart = arrayplatformlib.get_bm_organism(in_platform)
     out_mart = arrayplatformlib.get_bm_organism(out_platform)
 
     R = start_R()
-    jmath.R_equals_vector(gene_ids_c, 'gene_ids')
+    jmath.R_equals_vector(gene_ids, 'gene_ids')
 
     # Select the BioMart dataset to use.
     R_fn("useMart", "ensembl", in_mart, RETVAL="in_dataset")
@@ -122,21 +143,117 @@ def convert_gene_ids(
         val.append(y)
         in2out[x] = sorted(val)
 
-    # Make a parallel list of the output IDs.
-    output_ids = []
-    for gene_id in gene_ids:
-        in_ids = _clean_id(gene_id, in_delim, in_platform)
-        out_ids = []
-        for x in in_ids:
-            x = in2out.get(x, [""])
-            out_ids.extend(x)
-        if not keep_emptys:
-            out_ids = [x for x in out_ids if x]
-        if not keep_dups:
-            out_ids = _remove_dups(out_ids)
-        x = out_delim.join(out_ids)
-        output_ids.append(x)
-    return output_ids
+    return in2out
+
+
+def _convert_gene_ids_local(in_platform, out_platform):
+    # Return a dictionary of gene_id -> list of converted_ids, or None
+    # if these platforms cannot be converted.
+    from genomicode import config
+    from genomicode import filelib
+    
+    assert os.path.exists(config.convert_platform)
+    x = "%s___%s.txt" % (in_platform, out_platform)
+    filename = os.path.join(config.convert_platform, x)
+    if not os.path.exists(filename):
+        return None
+
+    in2out = {}
+    for cols in filelib.read_cols(filename):
+        # <in_id>  <out_id1> ... <out_idn>
+        assert len(cols) >= 2
+        in_id = cols[0]
+        out_ids = cols[1:]
+        in2out[in_id] = out_ids
+    return in2out
+        
+
+## def convert_gene_ids(
+##     gene_ids, in_platform, out_platform, in_delim, out_delim,
+##     keep_dups, keep_emptys, no_na):
+##     # gene_ids is a list of the gene IDs, one per row of the matrix,
+##     # from the in_platform.  Each of the gene_ids may contain multiple
+##     # IDs separated by in_delim.  in_delim is either None (no multiple
+##     # IDs) or a character indicating the delimiter used to separate
+##     # the IDs.
+##     #
+##     # Return a list parallel to gene_ids that is the IDs in the
+##     # out_platform.
+##     from genomicode import jmath
+##     from genomicode import arrayplatformlib
+
+##     R_fn, R_var = jmath.R_fn, jmath.R_var
+
+##     # Make a cleaned up version of the gene_ids to convert.
+##     x = []
+##     for gene_id in gene_ids:
+##         x.extend(_clean_id(gene_id, in_delim, in_platform))
+##     # No duplicates.
+##     x = {}.fromkeys(x).keys()
+##     gene_ids_c = x
+
+##     # An attribute is the biomart name for the platform.
+##     in_attribute = arrayplatformlib.get_bm_attribute(in_platform)
+##     out_attribute = arrayplatformlib.get_bm_attribute(out_platform)
+##     assert in_attribute, "Bad platform: %s" % in_platform
+##     assert out_attribute, "Bad platform: %s" % out_platform
+##     in_mart = arrayplatformlib.get_bm_organism(in_platform)
+##     out_mart = arrayplatformlib.get_bm_organism(out_platform)
+
+##     R = start_R()
+##     jmath.R_equals_vector(gene_ids_c, 'gene_ids')
+
+##     # Select the BioMart dataset to use.
+##     R_fn("useMart", "ensembl", in_mart, RETVAL="in_dataset")
+##     R_fn("useMart", "ensembl", out_mart, RETVAL="out_dataset")
+
+##     # Link two data sets and retrieve information from the linked datasets.
+##     R_fn(
+##         "getLDS", attributes=in_attribute, filters=in_attribute,
+##         values=R_var("gene_ids"), mart=R_var("in_dataset"),
+##         attributesL=out_attribute, martL=R_var("out_dataset"),
+##         RETVAL="homolog")
+    
+##     homolog = R['homolog']
+##     # homolog is DataFrame with two parallel rows:
+##     # <in_ids>
+##     # <out_ids>
+##     assert len(homolog) == 2, \
+##            "BioMart returned no results mapping from %s to %s." % (
+##         in_mart, out_mart)
+
+##     in_ids = [str(x) for x in homolog[0]]
+##     out_ids = [str(x) for x in homolog[1]]
+
+##     # Sometimes BioMart will generate "NA" if something is missing.
+##     if no_na:
+##         for i in range(len(out_ids)):
+##             if out_ids[i].upper() == "NA":
+##                 out_ids[i] = ""
+    
+##     in2out = {}
+##     for x, y in zip(in_ids, out_ids):
+##         if not y.strip():
+##             continue
+##         val = in2out.get(x, [])
+##         val.append(y)
+##         in2out[x] = sorted(val)
+
+##     # Make a parallel list of the output IDs.
+##     output_ids = []
+##     for gene_id in gene_ids:
+##         in_ids = _clean_id(gene_id, in_delim, in_platform)
+##         out_ids = []
+##         for x in in_ids:
+##             x = in2out.get(x, [""])
+##             out_ids.extend(x)
+##         if not keep_emptys:
+##             out_ids = [x for x in out_ids if x]
+##         if not keep_dups:
+##             out_ids = _remove_dups(out_ids)
+##         x = out_delim.join(out_ids)
+##         output_ids.append(x)
+##     return output_ids
 
 
 def convert_geneset(

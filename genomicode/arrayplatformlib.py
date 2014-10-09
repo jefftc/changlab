@@ -444,11 +444,6 @@ PLATFORMS = [
         GENE_SYMBOL, 37),
     Platform(
         'Agilent_Human1A', None, None, GENE_ID, 38), 
-        'RefSeq_protein_ID_mouse', "refseq_peptide", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 35),
-    Platform(
-        'RefSeq_transcript_ID_mouse', "refseq_mrna", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 36),
     Platform(
         'HumanHT_12_control', None, None, GENE_ID, 39),  
     Platform(
