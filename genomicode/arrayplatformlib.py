@@ -448,41 +448,41 @@ PLATFORMS = [
     Platform(
         'UCSC_human_hg38_kg8', None, None, GENE_ID, 37),
     Platform(
-        'RefSeq_protein_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
+        'RefSeq_protein_mouse', "refseq_peptide", "mmusculus_gene_ensembl",   
         GENE_SYMBOL, 38),
     Platform(
-        'RefSeq_predicted_protein_mouse', "refseq_peptide", "mmusculus_gene_ensemb",   
+        'RefSeq_predicted_protein_mouse', "refseq_peptide_predicted", "mmusculus_gene_ensembl",   
         GENE_SYMBOL, 39),
 
     Platform(
         'RefSeq_protein_human', "refseq_peptide", "hsapiens_gene_ensembl",
         PROBE_ID, 40),
     Platform(
-        'RefSeq_predicted_protein_human', "refseq_peptide", "hsapiens_gene_ensembl",
+        'RefSeq_predicted_protein_human', "refseq_peptide_predicted", "hsapiens_gene_ensembl",
         PROBE_ID, 41),
     Platform(
-        'RefSeq_mRNA_mouse', "refseq_mrna", "mmusculus_gene_ensemb",   
+        'RefSeq_mRNA_mouse', "refseq_mrna", "mmusculus_gene_ensembl",   
         GENE_SYMBOL, 42),
     Platform(
-        'RefSeq_predicted_mRNA_mouse', "refseq_mrna", "mmusculus_gene_ensemb",   
+        'RefSeq_predicted_mRNA_mouse', "refseq_mrna_predicted", "mmusculus_gene_ensembl",   
         GENE_SYMBOL, 43),
     Platform(
-        'RefSeq_ncRNA_mouse', "refseq_mrna", "mmusculus_gene_ensemb",   
+        'RefSeq_ncRNA_mouse', "refseq_ncrna", "mmusculus_gene_ensembl",   
         GENE_SYMBOL, 44),
     Platform(
-        'RefSeq_predicted_ncRNA_mouse', "refseq_mrna", "mmusculus_gene_ensemb",   
+        'RefSeq_predicted_ncRNA_mouse', "refseq_ncrna_predicted", "mmusculus_gene_ensembl",   
         GENE_SYMBOL, 45),
     Platform(
         'RefSeq_mRNA_human', "refseq_mrna", "hsapiens_gene_ensembl",
         PROBE_ID, 46),
     Platform(
-        'RefSeq_predicted_mRNA_human', "refseq_mrna", "hsapiens_gene_ensembl",
+        'RefSeq_predicted_mRNA_human', "refseq_mrna_predicted", "hsapiens_gene_ensembl",
         PROBE_ID, 47),
     Platform(
-        'RefSeq_ncRNA_human', "refseq_mrna", "hsapiens_gene_ensembl",
+        'RefSeq_ncRNA_human', "refseq_ncrna", "hsapiens_gene_ensembl",
         PROBE_ID, 48),
     Platform(
-        'RefSeq_predicted_ncRNA_human', "refseq_mrna", "hsapiens_gene_ensembl",
+        'RefSeq_predicted_ncRNA_human', "refseq_ncrna_predicted", "hsapiens_gene_ensembl",
         PROBE_ID, 49),
     
     ]
