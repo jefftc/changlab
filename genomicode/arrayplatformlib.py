@@ -484,7 +484,8 @@ PLATFORMS = [
     Platform(
         'RefSeq_predicted_ncRNA_human', "refseq_ncrna_predicted", "hsapiens_gene_ensembl",
         PROBE_ID, 49),
-    
+    Platform(
+        'UCSC_mouse_mm10_kg7', None, None, GENE_ID, 50),
     ]
 
 
