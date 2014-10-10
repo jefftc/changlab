@@ -60,7 +60,7 @@ def read_atc_file(filename):
     return read_gtc_file(filename)
 
 def read_kgg_file(filename):
-    import jmath 
+    import jmath
 
     # <ID> GROUP
     #
