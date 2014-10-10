@@ -31,7 +31,8 @@
 
 fdr.correct.bh <- function(p.values, na.rm=FALSE, mc.cores=NA) {
   if(!is.na(mc.cores))
-    library(multicore)
+    #library(multicore)
+    library(parallel)
 
   if(na.rm) {
     I.not.na <- !is.na(p.values)

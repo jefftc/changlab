@@ -1846,7 +1846,8 @@ def main():
     if options.grid_color:
         grid_color = _parse_color(options.grid_color)
 
-    assert len(options.gene_cluster_color) <= len(options.gene_cluster_file)
+    assert len(options.gene_cluster_color) <= len(options.gene_cluster_file), \
+           "More gene cluster colors than files."
     while len(options.gene_cluster_color) < len(options.gene_cluster_file):
         # Fill with defaults.
         options.gene_cluster_color.append("bild")

@@ -52,10 +52,7 @@ def _clean_id(gene_id, delimiter, in_platform):
     # No empty IDs.
     x = [x for x in x if x]
     # Hack: Remove version numbers from RefSeq IDs.
-    if in_platform in [
-        "RefSeq_protein_ID_human", "RefSeq_transcript_ID_human",
-        "RefSeq_protein_ID_mouse", "RefSeq_transcript_ID_mouse",
-        ]:
+    if in_platform.lower().find("refseq") >= 0:
         x = [_remove_refseq_version(x) for x in x]
     # No duplicates.
     x = {}.fromkeys(x).keys()
@@ -322,11 +319,14 @@ def convert_geneset(
     
     
 def convert_matrix(
-    filename, header, in_delim, out_delim, keep_dups, keep_emptys, no_na, 
+    filename, header, header_and_platform, in_delim, out_delim,
+    keep_dups, keep_emptys, no_na, 
     out_platforms, min_match_score):
     import arrayio
     from genomicode import Matrix
     from genomicode import arrayplatformlib
+
+    assert not (header and header_and_platform)
 
     DATA = arrayio.read(filename)
 
@@ -335,6 +335,14 @@ def convert_matrix(
         x = arrayplatformlib.score_platform_of_annotations(gene_ids)
         assert x, "I could not identify the platform for %s." % header
         in_platform, score = x
+    elif header_and_platform:
+        x = header_and_platform.split(",", 1)
+        assert len(x) == 2
+        header, in_platform = x
+        score = 1.0
+        gene_ids = DATA.row_names(header)
+        assert arrayplatformlib.find_platform_by_name(in_platform), \
+               "Unknown platform: %s" % in_platform
     else:
         # Take the platform with the highest match score.
         platforms = arrayplatformlib.score_all_platforms_of_matrix(
@@ -344,7 +352,9 @@ def convert_matrix(
         schwartz.sort()
         platforms = [x[-1] for x in schwartz]
         header, in_platform, score = platforms[0]
-    assert score >= min_match_score, "I could not find any platforms."
+    err = "I could not find any platforms.  The best was %s (%g)." % (
+        in_platform, score)
+    assert score >= min_match_score, err
     gene_ids = DATA.row_names(header)
 
     # Convert each of the platforms.
@@ -395,11 +405,11 @@ def main():
         help="Which platform to add to the matrix.  Options: %s" % x)
 
     parser.add_argument(
-        '--min_match_score', default=0.90,
+        '--min_match_score', default=0.90, type=float,
         help="When trying to identify the rows of a matrix or geneset, "
         "require at least this portion of the IDs to be recognized.")
     parser.add_argument(
-        '--in_delim', default=None, 
+        '--in_delim', 
         help="If a row contains multiple annotations (or gene names), they "
         "are separated by this delimiter, e.g. E2F1,E2F3")
     parser.add_argument(
@@ -421,7 +431,11 @@ def main():
         '--header', 
         help='Which header contains the gene IDs to convert from.  '
         'If not provided, will try to guess')
-
+    group.add_argument(
+        "--header_and_platform",
+        help="Provide a header and the name of platform.  "
+        "Format: <header>,<platform>.")
+    
     group = parser.add_argument_group(title="Gene Set")
     group.add_argument(
         '--geneset', default=[], action='append',
@@ -440,6 +454,8 @@ def main():
     assert len(args.geneset) <= 1, "Not implemented."
 
     assert not (args.header and args.geneset)
+    assert not (args.header_and_platform and args.geneset)
+    assert not (args.header and args.header_and_platform)
     
     assert type(args.min_match_score) is type(0.0)
     assert args.min_match_score > 0.2, "min_match_score too low"
@@ -453,7 +469,8 @@ def main():
             args.out_geneset_name, args.out_geneset_format)
     else:
         convert_matrix(
-            args.infile, args.header, args.in_delim, args.out_delim,
+            args.infile, args.header, args.header_and_platform,
+            args.in_delim, args.out_delim,
             args.keep_dups, args.keep_emptys, args.no_na, args.platform,
             args.min_match_score)
             
