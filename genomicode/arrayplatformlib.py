@@ -241,16 +241,71 @@ def _read_annotations():
     return ALL_PLATFORMS
 
 
-def score_platforms(annotations):
-    all_platforms = _read_annotations()
+# list of (chip_name, case_sensitive, dict of IDs)
+ALL_PLATFORMS_CLEAN = None
+def _score_platforms_fast(annotations):
+    # Optimized version of the function.
+    global ALL_PLATFORMS_CLEAN
+
+    if ALL_PLATFORMS_CLEAN is None:
+        ALL_PLATFORMS_CLEAN = []
+        all_platforms = _read_annotations()
+        for x in all_platforms:
+            chipname, case_sensitive, ids = x
+            ids_clean = _clean_annotations(annots, case_sensitive)
+            x = chipname, case_sensitive, ids_clean
+            ALL_PLATFORMS_CLEAN.append(x)
+
+    annots_clean_cs = _clean_annotations(annotations, True)
+    annots_clean_ci = _clean_annotations(annotations, False)
+            
     results = []
-    for x in all_platforms:
+    for x in ALL_PLATFORMS_CLEAN:
         chipname, case_sensitive, ids = x
-        y = _compare_annotations(annotations, ids, case_sensitive)
-        number_shared_annots, only1, only2, match = y
-        results.append((chipname, number_shared_annots, match))
+
+        annots1 = annots_clean_cs
+        if not case_sensitive:
+            annots1 = annots_clean_ci
+        annots2 = ids
+
+        x = [x for x in annots1 if x in annots2]
+        num_shared_annots = len(x)
+        num_annots1_only = len(annots1) - num_shared_annots
+        num_annots2_only = len(annots2) - num_shared_annots
+        perc_shared = 0
+        if annots1 and annots2:
+            x = float(num_shared_annots)/min(len(annots1), len(annots2))
+            perc_shared = x
+
+        results.append((chipname, number_shared_annots, perc_shared))
     results.sort(key=lambda x: (x[2], x[1]),reverse=True)
     return results
+    
+
+score_platforms = _score_platforms_fast
+## def score_platforms(annotations):
+##     all_platforms = _read_annotations()
+##     results = []
+##     for x in all_platforms:
+##         chipname, case_sensitive, ids = x
+##         y = _compare_annotations(annotations, ids, case_sensitive)
+##         number_shared_annots, only1, only2, match = y
+##         results.append((chipname, number_shared_annots, match))
+##     results.sort(key=lambda x: (x[2], x[1]),reverse=True)
+##     return results
+
+
+def _clean_annotations(annots, case_sensitive):
+    # Return dictionary of annot -> None
+    if not case_sensitive:
+        annots = [psid.upper() for psid in annots]
+    # Ignore differences in whitespace.
+    annots = [x.strip() for x in annots]
+    # No blank annotations.
+    annots = [x for x in annots if x]
+    # No duplicate annotations.
+    annots = {}.fromkeys(annots)
+    return annots
 
 
 def _compare_annotations(annots1, annots2, case_sensitive):
