@@ -83,6 +83,7 @@
 # normalize_genes_var
 # median_fill_genes
 # zero_fill_genes
+# loess_normalize
 #
 # _match_rownames_to_geneset       DEPRECATED
 # _match_colnames_to_geneset       DEPRECATED
@@ -1983,6 +1984,77 @@ def zero_fill_genes(MATRIX):
             if X[i][j] is None:
                 X[i][j] = 0.0
 
+def _loess_normalize(X):
+    from genomicode import jmath
+    from genomicode.jmath import R_fn, R_var, R_equals
+    
+    R = jmath.start_R()
+    R_fn("library", "affy")
+    R_equals(X, "X")
+    R_fn(
+        "normalize.loess", R_var("X"), RETVAL="X_norm",
+        **{"log.it":R_var("FALSE")})
+    X_norm_R = R["X_norm"]
+
+    # Convert this matrix into a Python object.  This matrix is
+    # column-major.
+    X_norm_py = [[None]*X_norm_R.ncol for i in range(X_norm_R.nrow)]
+    zzz = 0
+    for j in range(X_norm_R.ncol):
+        for i in range(X_norm_R.nrow):
+            X_norm_py[i][j] = X_norm_R[zzz]
+            zzz += 1
+    return X_norm_py
+
+def loess_normalize(MATRIX):
+    import os
+    import sys
+    import tempfile
+
+    outfile = pid = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        # Fork a subprocess or R will generate garbage to the screen.
+        r, w = os.pipe()
+        pid = os.fork()
+
+        if not pid:   # child
+            os.close(r)
+            w = os.fdopen(w, 'w')
+            os.dup2(w.fileno(), sys.stdout.fileno())
+            X_norm = _loess_normalize(MATRIX._X)
+            handle = open(outfile, 'w')
+            for x in X_norm:
+                print >>handle, "\t".join(map(str, x))
+            sys.exit(0)
+        else:  # parent
+            os.close(w)
+            r = os.fdopen(r)
+            r_output = r.read()  # output from R library
+            os.waitpid(pid, 0)
+            if not os.path.exists(outfile):
+                assert os.path.exists(outfile), "%s\nR normalization failed" %\
+                       r_output
+            X_norm = []
+            for line in open(outfile):
+                cols = line.rstrip("\r\n").split("\t")
+                cols = map(float, cols)
+                X_norm.append(cols)
+    finally:
+        if pid:
+            if outfile and os.path.exists(outfile):
+                os.unlink(outfile)
+
+    MATRIX_new = MATRIX.matrix()
+    assert len(X_norm) == MATRIX.nrow()
+    for x in X_norm:
+        assert len(x) == MATRIX.ncol()
+    MATRIX_new._X = X_norm
+    return MATRIX_new
+
 
 ## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
 ##     # Return tuple of (I_matrix, I_geneset) or None if no match can be
@@ -2251,6 +2323,8 @@ def main():
         "-q", "--quantile", dest="quantile", action="store_true",
         default=False,
         help="Quantile normalize the data.")
+    group.add_argument(
+        "--loess", action="store_true", help="Loess normalize the data.")
     group.add_argument(
         "--gc", "--gene_center", dest="gene_center", default=None,
         choices=["mean", "median"],
@@ -2755,6 +2829,10 @@ def main():
     # Quantile normalize, if requested.  After log.
     if args.quantile:
         MATRIX = quantnorm.normalize(MATRIX)
+
+    # Loess normalize, if requested.  After log.
+    if args.loess:
+        MATRIX = loess_normalize(MATRIX)
 
     # This has to happen before any normalization by variance, but
     # after logging and quantile normalization.

@@ -414,9 +414,11 @@ def main():
                "paired analysis requires equal samples"
 
     # Run the analysis.
-    outfile = None
+    outfile = pid = None
     try:
         x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
 
         # Fork a subprocess, because some R libraries generate garbage
         # to the screen.
@@ -427,7 +429,6 @@ def main():
             r = os.fdopen(r)
             for line in r:
                 sys.stdout.write(line)   # output from R library
-                pass
             os.waitpid(pid, 0)
 
             assert os.path.exists(outfile), "failed"
