@@ -252,7 +252,7 @@ def _score_platforms_fast(annotations):
         all_platforms = _read_annotations()
         for x in all_platforms:
             chipname, case_sensitive, ids = x
-            ids_clean = _clean_annotations(annots, case_sensitive)
+            ids_clean = _clean_annotations(ids, case_sensitive)
             x = chipname, case_sensitive, ids_clean
             ALL_PLATFORMS_CLEAN.append(x)
 
@@ -277,7 +277,7 @@ def _score_platforms_fast(annotations):
             x = float(num_shared_annots)/min(len(annots1), len(annots2))
             perc_shared = x
 
-        results.append((chipname, number_shared_annots, perc_shared))
+        results.append((chipname, num_shared_annots, perc_shared))
     results.sort(key=lambda x: (x[2], x[1]),reverse=True)
     return results
     
