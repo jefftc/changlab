@@ -37,12 +37,18 @@ def get_pretty_gene_name(MATRIX, gene_i):
         if gene_name:
             return "GeneID %s" % gene_name
 
-    # Just us a probe ID.
+    # Just use a probe ID.
     header = apl.find_header(MATRIX, apl.PROBE_ID)
     if header is not None:
         gene_name = MATRIX.row_names(header)[gene_i]
         if gene_name:
             return "ProbeID %s" % gene_name
+
+    # Use whatever's in the first column.
+    if MATRIX.row_names():
+        gene_name = MATRIX.row_names(MATRIX.row_names()[0])[gene_i]
+        if gene_name:
+            return gene_name
 
     # Just return the index of the gene
     return "Gene %04d" % gene_i
