@@ -190,6 +190,8 @@ def find_diffexp_genes(
 
     # Sort by decreasing p-value.
     name  = "NL10P"
+    if algorithm == "sam":
+        name = "Score(d)"
     assert name in header, 'I could not find the "%s" column.' % name
     I = header.index(name)
     schwartz = [(-float(x[I]), x) for x in DATA_py]
