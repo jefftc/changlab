@@ -15,6 +15,7 @@ def run(in_nodes,parameters, user_input,network):
     assert "geneset_value" in user_input,'no geneset are provided'
     if not os.path.exists(outfile):
         os.mkdir(outfile)
+    
     command = ['python', phenotype_BIN,'--phenotype','EMT',
                '--ignore_samples', 'shCDH1,1',
                '--gene',user_input['geneset_value'],

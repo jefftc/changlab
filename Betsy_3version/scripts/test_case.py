@@ -1313,8 +1313,26 @@ def run_case43():
     stop = time.strftime("%H:%M:%S")
     print stop
     bie3.print_network(network)
-    #bie3.plot_network_gv("out.png", network)    
+    #bie3.plot_network_gv("out.png", network)
     
+def run_case44():
+    """
+    Test the bie3.get_inputs() function. It runs too slow.
+    
+    """
+    user_attributes = []
+    network = bie3.backchain(  
+        rulebase.all_modules, rulebase.DiffReportFile,user_attributes)
+    network = bie3.complete_network(network,
+                                user_attributes)
+    network = bie3.optimize_network(network,user_attributes)
+    bie3.plot_network_gv("out.png", network)
+    print 'generate network'
+    inputs = bie3.get_inputs(network, user_attributes)
+    dt2inputs = bie3.group_inputs_by_datatype(network, inputs)        
+    
+    print 'done'
+        
 def main():
     #run_case01()
     #run_case02()
@@ -1356,10 +1374,11 @@ def main():
     #run_case37()
     #run_case38()
     #run_case39()
-    run_case41()
+    #run_case41()
     #run_case42()
     #run_case43()
-    
+    run_case44()
+
 if __name__ == '__main__':
     #main()
     import cProfile; cProfile.run("main()")

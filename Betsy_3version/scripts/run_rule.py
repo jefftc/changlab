@@ -281,15 +281,12 @@ def check_possible_inputs(network,user_attributes,input_nodes):
     input_nodes.sort()
     inputs = bie3.get_inputs(network, user_attributes)
     dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
-    all_possible_required = []
     for i, dt in enumerate(sorted(dt2inputs)):
         x = [x.name for x in dt]
         for j, dtinput in enumerate(dt2inputs[dt]):
             required = sorted(list(set(dtinput)))
-            if required not in all_possible_required:
-                all_possible_required.append(required)
-    if input_nodes in all_possible_required:
-        return True
+            if input_nodes == required:
+                return True
     return False
 
 def print_missing_inputs(network,user_attributes,input_nodes):

@@ -212,6 +212,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_att
             starttime = strftime(module_utils.FMT, localtime())
             out_node = module.run(data_node, out_attributes,
                                   sub_user_input, network)
+            
             if not out_node:
                 return False
             module_utils.write_Betsy_parameters_file(out_node.data.attributes,
@@ -274,6 +275,7 @@ def run_pipeline(network, in_objects, user_attributes, user_inputs,
             stack_list.append((data_object, start_node_id))
             pool[start_node_id] = data_object
     num_failures = 0
+    flag = False
     while stack_list:
         assert num_failures < len(stack_list)
         data_object, node_id = stack_list.pop()
