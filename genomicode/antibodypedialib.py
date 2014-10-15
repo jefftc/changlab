@@ -29,9 +29,9 @@ def search_gene(gene_name, wait=5):
 
 
 def find_antibodies(gene_name, wait=5):
-    # Return list of tuples (provider, antibody, clonality, western, elisa,
-    # immunocytochemistry, immunoprecipitation, immunohistochemistry,
-    # flow_cytometry).
+    # Return list of tuples (provider, antibody, num_references,
+    # clonality, western, elisa, immunocytochemistry, immunoprecipitation,
+    # immunohistochemistry, flow_cytometry).
     import urllib
     
     import timer
@@ -119,7 +119,7 @@ def _parse_gene_search(html):
 
 
 def _parse_gene_page_table(html):
-    # Yield tuples (provider, antibody, clonality, western, elisa,
+    # Yield tuples (provider, antibody, num_refs, clonality, western, elisa,
     # immunocytochemistry, immunoprecipitation, immunohistochemistry,
     # flow_cytometry).
 
@@ -128,7 +128,8 @@ def _parse_gene_page_table(html):
         for (key, value) in antibody_tups:
             antibody_dict[key] = value
         ad = antibody_dict
-        x = ad["PROVIDER"], ad["ANTIBODY"], ad["CLONALITY"], \
+        x = ad["PROVIDER"], ad["ANTIBODY"], ad.get("NUM_REFERENCES", 0), \
+            ad["CLONALITY"], \
             ad.get("WESTERN", ""), ad.get("ELISA", ""), \
             ad.get("IMMUNOCYTOCHEMISTRY", ""), \
             ad.get("IMMUNOPRECIPITATION", ""), \
@@ -145,6 +146,7 @@ def _parse_gene_page_keyvalue(html):
     # PROVIDER              <name>
     # NUM_ANTIBODIES        <num> (OPTIONAL)
     # ANTIBODY              <name>
+    # NUM_REFERENCES        (OPTIONAL)
     # CLONALITY             Polyclonal, Monoclonal
     # WESTERN               <evidence> (OPTIONAL)
     # ELISA                 <evidence> (OPTIONAL)
@@ -201,7 +203,7 @@ def _parse_gene_page_keyvalue(html):
             #
             # Must do this after "class=provider", because that also
             # has colspan=10.
-            print row.prettify()
+            #print row.prettify()
             assert str(row.text).find("No antibodies") >= 0
             continue
         elif row.find_all("td", **{"class" : "title"}):

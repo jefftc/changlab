@@ -2065,8 +2065,14 @@ def remove_data_node(network, *attributes):
     return network
 
 
-def _get_inputs_h(network, node_id, nodeid2previds, user_attributes):
+def _get_inputs_h(network, node_id, nodeid2previds, user_attributes, memoize):
+    # Return list of tuples of node_ids.
     import itertools
+
+    # memoize is node_id -> list of inputs.
+    if node_id in memoize:
+        return memoize[node_id]
+
     node = network.nodes[node_id]
 
     inputs = []
@@ -2075,12 +2081,16 @@ def _get_inputs_h(network, node_id, nodeid2previds, user_attributes):
         # of the previous nodes.
         inputs = [(node_id,)]
         for previd in nodeid2previds.get(node_id, []):
-            x = _get_inputs_h(network, previd, nodeid2previds, user_attributes)
+            x = _get_inputs_h(
+                network, previd, nodeid2previds, user_attributes, memoize)
             inputs.extend(x)
     elif isinstance(node, Module):
         # Find all potential sets of Data notes that can feed into me.
         assert node_id in nodeid2previds
         previds = nodeid2previds[node_id]
+        # combos is a list of tuples.
+        # [(33,)]
+        # [(2, 3, 4, 5, 6)]
         combos = _get_valid_input_combinations(
             network, node_id, previds, user_attributes, 
             node2previds=nodeid2previds)
@@ -2089,31 +2099,53 @@ def _get_inputs_h(network, node_id, nodeid2previds, user_attributes):
         for combo in combos:
             # Get the inputs for each branch of this combination.
             branch2inputs = [
-                _get_inputs_h(network, x, nodeid2previds, user_attributes)
+                _get_inputs_h(
+                    network, x, nodeid2previds, user_attributes, memoize)
                 for x in combo]
 
             # Find all permutations for the inputs for each branch.
-            # [ [(49, 40)]              Each branch has a set of inputs.
+            # combo is a tuple
+            # branch2inputs is a list of lists of tuples.
+            # 
+            # [ [(49, 40)],             Each branch has a set of inputs.
             #   [(38,), (35,)] ]
             # ->                        itertools.product
             # [ ((49, 40), (38,)),
             #   ((49, 40), (35,)) ]
             # ->                        flatten
             # [ (49, 40, 38), (49, 40, 35) ]
-            x = itertools.product(*branch2inputs)
-            # Flatten the tuples.
-            x = [_flatten(x) for x in x]
-            inputs = x
+            
+            # Naive implementation too slow due to exponential
+            # explosion of inputs.  Do two branches at a time, getting
+            # rid of duplicates at each step.
+            #x = itertools.product(*branch2inputs)
+            #x = list(x)
+            ## Flatten the tuples.
+            #x = [_flatten(x) for x in x]
+            #inputs = x
+
+            while len(branch2inputs) > 1:
+                b1 = branch2inputs[0]         # list of tuples
+                b2 = branch2inputs[1]         # list of tuples
+                x = itertools.product(b1, b2)
+                x = [_flatten(x) for x in x]  # list of tuples
+                x = [sorted({}.fromkeys(x)) for x in x]  # sort the tuples
+                x = [tuple(x) for x in x]
+                x = sorted({}.fromkeys(x))    # list of tuples
+                branch2inputs.pop(0)
+                branch2inputs[0] = x
+            inputs = branch2inputs[0]
     else:
         raise AssertionError
 
     inputs = sorted({}.fromkeys(inputs))
+    memoize[node_id] = inputs
     return inputs
     
 
 def get_inputs(network, user_attributes):
-    # Return a list of tuples of node ids.  Each tuple contains a set
-    # of node IDs that can serve as the inputs to this network.
+    # Return a list of tuples of Data node ids.  Each tuple contains a
+    # set of node IDs that can serve as the inputs to this network.
     # 
     # Example return value:
     #   [(1, 5), (8,)]
@@ -2121,7 +2153,9 @@ def get_inputs(network, user_attributes):
     # to this network.  Or, node 8 by itself would also be a valid
     # input.
     nodeid2previds = _make_backchain_dict(network)
-    inputs = _get_inputs_h(network, 0, nodeid2previds, user_attributes)
+    memoize = {}
+    inputs = _get_inputs_h(
+        network, 0, nodeid2previds, user_attributes, memoize)
     return inputs
 
 
