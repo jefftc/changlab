@@ -501,7 +501,9 @@ def detect_format(filename):
 
 
 def score_geneset(MATRIX, pos_genes, neg_genes):
-    # Return MATRIX_p, MATRIX_n, num_matches, list of scores
+    # Return MATRIX_p, MATRIX_n, num_matches, list of scores (one for
+    # each column), list of p-values.
+    
     import matrixlib
 
     all_genes = pos_genes + neg_genes
@@ -515,26 +517,64 @@ def score_geneset(MATRIX, pos_genes, neg_genes):
     MATRIX_n = MATRIX.matrix(neg_I, None)
 
     x = score_geneset_I(MATRIX._X, pos_I, neg_I)
-    x, x, num_rows, scores = x
-    return MATRIX_p, MATRIX_n, num_rows, scores
+    x, x, num_rows, scores, scores_o, pvalues = x
+    return MATRIX_p, MATRIX_n, num_rows, scores, scores_o, pvalues
 
 
-def score_geneset_I(X, pos_I, neg_I):
+def wilcox_test(x, y):
+    import jmath
+    from jmath import R_fn, R_equals, R_var
+
+    R = jmath.start_R()
+    R_equals(x, "x")
+    R_equals(y, "y")
+    wt = R_fn("wilcox.test", R_var("x"), R_var("y"), RETVAL="wt")
+    p_value = R("wt$p.value")[0]
+    return p_value
+
+
+def score_geneset_I(X, I_pos, I_neg):
     # Return X_p, X_n, num_matches, list of scores
     import jmath
-    
-    X_p = [X[i] for i in pos_I]
-    X_n_orig = [X[i] for i in neg_I]
+
+    assert len(X)
+    for i in range(len(X)):
+        assert len(X[i]) == len(X[0])
+
+    # Make a matrix with the positive genes.
+    X_p = [X[i] for i in I_pos]
+
+    # Make a matrix with the negative genes.
+    X_n_orig = [X[i] for i in I_neg]
     X_n = []
     for x in X_n_orig:
         x = [-x for x in x]
         X_n.append(x)
+
+    # Make a matrix with all other genes.
+    I_other = [i for i in range(len(X)) if i not in I_pos and i not in I_neg]
+    X_o = [X[i] for i in I_other]
+
+    # Combine the positive and negative genes.
     X_pn = X_p + X_n
-    
+
+    # Calculate the scores.
     num_rows = len(X_pn)
-    scores = jmath.mean(X_pn, byrow=False)
+    scores_pn = jmath.mean(X_pn, byrow=False)
+    scores_o = jmath.mean(X_o, byrow=False)
+    #scores_delta = [scores_pn[i]-scores_o[i] for i in range(len(scores_pn))]
+
+    # Calculate the p-values.
+    nc = len(X[0])
+    pvalues = [None] * nc
+    for j in range(nc):
+        col_pn = [x[j] for x in X_pn]
+        col_o = [x[j] for x in X_o]
+        # Compare col_pn and col_o with wilcoxon test.
+        p = wilcox_test(col_o, col_pn)
+        pvalues[j] = p
     
-    return X_p, X_n_orig, num_rows, scores
+    return X_p, X_n_orig, num_rows, scores_pn, scores_o, pvalues
 
 
 def int_if_possible(x):

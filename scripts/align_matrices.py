@@ -736,6 +736,8 @@ def write_annot(filename, annot_matrix):
 def main():
     import argparse
 
+    SKIP_OUTFILE = "_"
+
     parser = argparse.ArgumentParser(
         description="Align a set of matrices.  Preserve the order of the "
         "first file given.")
@@ -791,6 +793,8 @@ def main():
     for x in args.express_file + args.annot_file:
         assert os.path.exists(x), "I could not find file: %s" % x
     for x in args.outfile:
+        if x == SKIP_OUTFILE:
+            continue
         assert args.clobber or not os.path.exists(x), "File exists: %s" % x
     assert not (args.left_join and args.outer_join)
     if args.null_string:
@@ -913,6 +917,8 @@ def main():
     # Write out each of the matrices.
     for x in matrix_data:
         infile, outfile, matrix, header, samples = x
+        if outfile == SKIP_OUTFILE:
+            continue
         write_matrix(outfile, matrix)
     
 

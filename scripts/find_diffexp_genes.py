@@ -30,7 +30,7 @@ def choose_gene_names(MATRIX):
 def find_diffexp_genes(
     outfile, gmt_file, algorithm, paired,
     MATRIX, geneid_header, genename_header, 
-    name1, name2, classes, fold_change, p_cutoff, fdr_cutoff,
+    name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff, 
     sam_DELTA, sam_qq_file, num_procs):
     # classes must be 0, 1, None.
     import os
@@ -181,12 +181,12 @@ def find_diffexp_genes(
         I = header.index(name)
         nl10p_cutoff = -math.log(p_cutoff, 10)
         DATA_py = [x for x in DATA_py if float(x[I]) > nl10p_cutoff]
-    if fdr_cutoff is not None:
-        name  = "NL10 FDR"
+    if bonf_cutoff is not None:
+        name  = "NL10 Bonf"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        nl10fdr_cutoff = -math.log(fdr_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I]) > nl10fdr_cutoff]
+        nl10bonf_cutoff = -math.log(bonf_cutoff, 10)
+        DATA_py = [x for x in DATA_py if float(x[I]) > nl10bonf_cutoff]
 
     # Sort by decreasing p-value.
     name  = "NL10P"
@@ -318,6 +318,9 @@ def main():
     parser.add_argument(
         "--fdr_cutoff", default=None, type=float,
         help="Only keep genes with FDR less than this value.")
+    parser.add_argument(
+        "--bonf_cutoff", default=None, type=float,
+        help="Only keep genes with BONFERRONI less than this value.")
     
 
     group = parser.add_argument_group(title="Algorithm-specific Parameters")
@@ -356,8 +359,15 @@ def main():
     if args.fdr_cutoff is not None:
         assert args.fdr_cutoff > 0.0 and args.fdr_cutoff < 1.0
         assert args.p_cutoff is None, "Cannot have both FDR and p cutoff."
+        assert args.bonf_cutoff is None, \
+               "Cannot have both FDR and bonferroni cutoff."
     if args.p_cutoff is not None:
+        assert args.bonf_cutoff is None, \
+               "Cannot have both p and bonferroni cutoff."
         assert args.p_cutoff > 0.0 and args.p_cutoff < 1.0
+    if args.bonf_cutoff is not None:
+        assert args.bonf_cutoff > 0.0 and args.bonf_cutoff < 1.0
+        
     
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
@@ -412,7 +422,7 @@ def main():
     # samples.
     if args.paired:
         counts = Counter(classes)
-        assert counts.get(num0, 0) == counts.get(num1, 0), \
+        assert counts.get(0, 0) == counts.get(1, 0), \
                "paired analysis requires equal samples"
 
     # Run the analysis.
@@ -445,7 +455,8 @@ def main():
                 args.algorithm, args.paired, 
                 MATRIX, args.geneid_header, args.genename_header, 
                 name1, name2, classes,
-                args.fold_change, args.p_cutoff, args.fdr_cutoff,
+                args.fold_change,
+                args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
                 args.sam_delta, args.sam_qq_file,
                 args.num_procs)
             sys.exit(0)
