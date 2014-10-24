@@ -3,9 +3,12 @@
 
 # Functions:
 # parse_phenotypes
+# parse_groups
 # parse_ignore_samples
+# 
 # ignore_samples
 # calc_association
+# center_scores
 
 
 def parse_phenotypes(phenotypes):
@@ -13,6 +16,23 @@ def parse_phenotypes(phenotypes):
     # e.g. ["STEM", "EMT"]
     # Return (potentially empty) list of phenotypes.
     return phenotypes
+
+
+def parse_groups(center_by_groups):
+    # Return tuple of batch_header, list of group 1, list of group 2.
+    # Format: <BATCH_HEADER>;
+    #         <GROUP 1 VALUE>[,<GROUP 1 VALUE>,...];
+    #         <GROUP 2 VALUE>[,<GROUP 2 VALUE>,...]
+    # If not given, return a tuple of None's.
+    if not center_by_groups:
+        return None, None, None
+    
+    x = center_by_groups.split(";")
+    assert len(x) == 3
+    batch_header, x1, x2 = x
+    group1 = x1.split(",")
+    group2 = x2.split(",")
+    return batch_header, group1, group2
 
 
 def parse_ignore_samples(ignore_samples):
@@ -45,7 +65,7 @@ def ignore_samples(M, clinical_annots, ignore):
     return M_f, annots_f
 
 
-def calc_association(phenotypes, scores, expression_or_score):
+def calc_association(phenotypes, scores):
     # Return a dictionary with keys:
     # n                    Number of samples.
     # m                    Number of groups.
@@ -90,7 +110,7 @@ def calc_association(phenotypes, scores, expression_or_score):
     x = [[0]*len(group_names) for i in range(len(y))]
     for i in range(len(groups)):
         x[i][groups[i]] = 1
-    R = jmath.start_R()
+    jmath.start_R()
     jmath.R_equals(x, "x")
     jmath.R_equals(y, "y")
     jmath.R("m <- aov(y~x)")
@@ -116,6 +136,37 @@ def calc_association(phenotypes, scores, expression_or_score):
     SCORE["p_value"] = p_value
     SCORE["relationship"] = relationship
     return SCORE
+
+
+def center_scores(scores, batches, phenotypes, group1, group2):
+    from genomicode import jmath
+    
+    assert len(scores) == len(phenotypes)
+    assert len(batches) == len(phenotypes)
+    batches_all = sorted({}.fromkeys(batches))
+    scores_c = [None] * len(scores)
+    for batch in batches_all:
+        I = [i for i in range(len(batches)) if batches[i] == batch]
+        
+        scores1, scores2 = [], []
+        for i in I:
+            pheno = phenotypes[i]
+            if pheno in group1:
+                scores1.append(scores[i])
+            elif pheno in group2:
+                scores2.append(scores[i])
+            else:
+                raise AssertionError, "%s not in groups" % pheno
+        assert scores1, "No samples from group1 in batch %s" % batch
+        assert scores2, "No samples from group2 in batch %s" % batch
+
+        mean1 = jmath.mean(scores1)
+        mean2 = jmath.mean(scores2)
+        n = (mean1 + mean2)/2.0
+        for i in I:
+            scores_c[i] = scores[i] - n
+    assert None not in scores_c
+    return scores_c
 
 
 def write_prism_file(filename, scores, phenotypes, group_names):
@@ -188,7 +239,7 @@ def plot_boxplot(
     if labels:
         at = range(1, len(labels)+1)
     cex_labels = 1.25*xlabel_size
-    cex_legend = 1
+    #cex_legend = 1
     cex_lab = 1.5
     cex_sub = 1.5
 
@@ -294,7 +345,7 @@ def plot_waterfall(
     las = 3   # vertical labels
     cex_labels = 1.25*xlabel_size
     cex_ytick = 1.5
-    cex_legend = 1
+    #cex_legend = 1
     cex_xlab = 2.0
     cex_ylab = 2.0
     cex_sub = 2.0
@@ -353,7 +404,7 @@ def main():
 
     import arrayio
     import analyze_clinical_outcome as aco
-    from genomicode import hashlib
+    #from genomicode import hashlib
 
     parser = argparse.ArgumentParser(
         description="Associate gene expression patterns with a "
@@ -385,7 +436,15 @@ def main():
         '--geneset', default=[], action='append',
         help='Name of the geneset to analyze. To specify multiple gene sets, '
         'use this parameter multiple times.')
-    
+    group.add_argument(
+        "--center_by_phenotype",
+        help="Center the scores or gene expression values seen for a "
+        "phenotype to 0.  Only one --phenotype can be analyzed in this way "
+        "at a time.  This phenotype should have two possible values.  "
+        "If there are more values, they need to be merged into two groups.  "
+        "Each phenotype must be seen in each BATCH.  "
+        "Format: <BATCH_HEADER>;<PHENO 1 VALUE>[,<PHENO 1 VALUE>,...];"
+        "<PHENO 2 VALUE>[,<PHENO 2 VALUE>,...]")
     group = parser.add_argument_group(title='Output')
     group.add_argument(
         '-o', dest='filestem', default=None,
@@ -456,10 +515,16 @@ def main():
     ## assert args.km_legend_size > 0 and args.km_legend_size < 10
     
     # Clean up the input.
+    phenotypes = parse_phenotypes(args.phenotype)
     genes = aco.parse_genes(args.gene)
     gene_sets = aco.parse_gene_sets(args.geneset)
-    phenotypes = parse_phenotypes(args.phenotype)
+    x = parse_groups(args.center_by_phenotype)
+    center_batch, center_group1, center_group2 = x
     filestem = aco.parse_filestem(args.filestem)
+
+    if center_batch:
+        assert len(phenotypes) == 1, \
+               "Only 1 phenotype can be centered by groups."
 
     # Read the input files.
     M = aco.read_expression_or_geneset_scores(
@@ -482,10 +547,21 @@ def main():
     M = M.matrix(row=x)
     assert M.nrow(), "I could not find any of the genes or gene sets."
 
+    # Make sure the batch information is valid.
+    if center_batch:
+        assert center_batch in clinical_annots, "Missing annotation: %s" % \
+               center_batch
+        assert len(phenotypes) == 1
+        pheno = phenotypes[0]
+        values = clinical_annots[pheno]
+        for x in values:
+            assert x in center_group1 or x in center_group2, \
+                   "Unknown phenotype: %s" % x
+
     # Calculate the association of each gene and each phenotype.
-    expression_or_score = "Expression"
-    if gene_sets:
-        expression_or_score = "Score"
+    #expression_or_score = "Expression"
+    #if gene_sets:
+    #    expression_or_score = "Score"
 
     # (header, gene_index) -> returned from calc_association
     gene_phenotype_scores = {}  
@@ -493,8 +569,12 @@ def main():
         pheno_header, i = x
         phenotype = clinical_annots[pheno_header]
         scores = M.value(i, None)
-
-        x = calc_association(phenotype, scores, expression_or_score)
+        if center_batch:
+            batch = clinical_annots[center_batch]
+            scores = center_scores(
+                scores, batch, phenotype, center_group1, center_group2)
+        
+        x = calc_association(phenotype, scores)
         gene_phenotype_scores[(pheno_header, i)] = x
 
     # Files generated:

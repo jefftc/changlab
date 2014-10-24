@@ -100,6 +100,11 @@ def _transpose_gmx(matrix):
     # <gene>           ...
     #
     # Each column is a gene set.
+
+    if not matrix:
+        return []
+    assert matrix[0]
+    
     t_matrix = []
     # Iterate over each of the columns (gene sets).
     for j in range(len(matrix[0])):
@@ -199,6 +204,8 @@ def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
 
     matrix = [x for x in filelib.read_cols(filename)]
     t_matrix = _transpose_gmx(matrix)
+    if not matrix:
+        return
 
     # For the TDF file, each of the rows should be exactly the same
     # length.  Make sure they are the same length.

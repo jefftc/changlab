@@ -181,6 +181,12 @@ def find_diffexp_genes(
         I = header.index(name)
         nl10p_cutoff = -math.log(p_cutoff, 10)
         DATA_py = [x for x in DATA_py if float(x[I]) > nl10p_cutoff]
+    if fdr_cutoff is not None:
+        name  = "NL10 FDR"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        nl10fdr_cutoff = -math.log(fdr_cutoff, 10)
+        DATA_py = [x for x in DATA_py if float(x[I]) > nl10fdr_cutoff]
     if bonf_cutoff is not None:
         name  = "NL10 Bonf"
         assert name in header, 'I could not find the "%s" column.' % name

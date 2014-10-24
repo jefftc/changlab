@@ -744,42 +744,9 @@ def main():
     parser.add_argument("outfile", nargs="+")
     
     parser.add_argument(
-        "--clobber", default=False, action="store_true",
-        help="Overwrite output files, if they already exist.")
-    parser.add_argument(
-        "--strict", default=False, action="store_true",
-        help="Complain if a file is missing a sample.")
-    parser.add_argument(
-        "--case_insensitive", default=False, action="store_true",
-        help="Do a case insensitive search of sample names.")
-    parser.add_argument(
-        "--hash", default=False, action="store_true",
-        help="Hash the sample names to [a-zA-Z0-9_] before comparison.")
-    parser.add_argument(
-        "--ignore_nonalnum", default=False, action="store_true",
-        help="Ignore non-alphanumeric characters in the IDs.")
-    parser.add_argument(
-        "--ignore_blank", default=False, action="store_true",
-        help="Ignore IDs that are blank (don't align them.")
-    parser.add_argument(
-        "--left_join", default=False, action="store_true",
-        help='By default, does an "inner join" and keeps only the '
-        'records that are present in all files.  A "left join" will '
-        'keep all records that occur in the first file.')
-    parser.add_argument(
-        "--outer_join", default=False, action="store_true",
-        help='By default, does an "inner join" and keeps only the '
-        'records that are present in all files.  An "outer join" will '
-        'also keep records that occur in any file.')
-    parser.add_argument(
-        "--null_string", default="",
-        help='For left_join or outer_join, what to give the missing values.')
-
-    parser.add_argument(
         "--express_file", default=[], action="append", help="")
     parser.add_argument(
         "--annot_file", default=[], action="append", help="")
-
     parser.add_argument(
         "--header", default=[], action="append",
         help="Specify the header for an annotation file.")
@@ -787,6 +754,42 @@ def main():
     #    "--first_annot_header", help="If only aligning annotation files, "
     #    "find the samples to be matched under this header in the first "
     #    "annotation file.")
+    parser.add_argument(
+        "--clobber", default=False, action="store_true",
+        help="Overwrite output files, if they already exist.")
+
+    group = parser.add_argument_group(title="Comparisons")
+    group.add_argument(
+        "--case_insensitive", default=False, action="store_true",
+        help="Do a case insensitive search of sample names.")
+    group.add_argument(
+        "--hash", default=False, action="store_true",
+        help="Hash the sample names to [a-zA-Z0-9_] before comparison.")
+    group.add_argument(
+        "--ignore_nonalnum", default=False, action="store_true",
+        help="Ignore non-alphanumeric characters in the IDs.")
+    group.add_argument(
+        "--ignore_blank", default=False, action="store_true",
+        help="Ignore IDs that are blank (don't align them.")
+    
+    group = parser.add_argument_group(title="Joins")
+    group.add_argument(
+        "--strict", default=False, action="store_true",
+        help="Complain if a file is missing a sample.")
+    group.add_argument(
+        "--left_join", default=False, action="store_true",
+        help='By default, does an "inner join" and keeps only the '
+        'records that are present in all files.  A "left join" will '
+        'keep all records that occur in the first file.')
+    group.add_argument(
+        "--outer_join", default=False, action="store_true",
+        help='By default, does an "inner join" and keeps only the '
+        'records that are present in all files.  An "outer join" will '
+        'also keep records that occur in any file.')
+    group.add_argument(
+        "--null_string", default="",
+        help='For left_join or outer_join, what to give the missing values.')
+
     
     args = parser.parse_args()
     assert len(args.outfile) == len(args.express_file) + len(args.annot_file)

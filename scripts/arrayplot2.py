@@ -149,6 +149,7 @@ class HeatmapLayout:
         width += self.boxwidth * self.ncol
         height += (self.nrow-1) * self.GRID_SIZE
         width += (self.ncol-1) * self.GRID_SIZE
+        # height = boxheight*nrow + BORDER*2 + (nrow-1)*GRID_SIZE
         return width, height
     def coord(self, row, col):
         x = self.BORDER
@@ -516,9 +517,10 @@ class ArrayDendrogramLayout(DendrogramLayout):
 
 
 class GeneClusterLayout:
-    def __init__(self, num_items, item_width, item_height, grid, color_fn):
+    def __init__(self, num_items, item_width, item_height,
+                 border_size, grid_size, color_fn):
         array_layout = ArrayClusterLayout(
-            num_items, item_height, item_width, grid)
+            num_items, item_height, item_width, border_size, grid_size)
         self.array_layout = array_layout
         # XXX should integrate this with ArrayClusterLayout.
         self.color_fn = color_fn
@@ -535,15 +537,16 @@ class GeneClusterLayout:
 
 
 class ArrayClusterLayout:
-    def __init__(self, num_items, item_width, item_height, grid):
+    def __init__(
+        self, num_items, item_width, item_height, border_size, grid_size):
         self.num_items = num_items
         self.item_width = item_width
         self.item_height = item_height
-        self.BORDER = 1
-        self.GRID_SIZE = 1
-        if not grid:
-            self.GRID_SIZE = 0
-        assert self.GRID_SIZE <= self.BORDER
+        self.BORDER = border_size
+        self.GRID_SIZE = grid_size
+        #if not grid:
+        #    self.GRID_SIZE = 0
+        #assert self.GRID_SIZE <= self.BORDER
     def width(self):
         return self.size()[0]
     def height(self):
@@ -552,8 +555,9 @@ class ArrayClusterLayout:
         height = self.BORDER*2
         width = self.BORDER*2
         height += self.item_height
-        width = self.item_width * self.num_items
+        width += self.item_width * self.num_items
         width += (self.num_items-1) * self.GRID_SIZE
+        # width = item_width*num_items + BORDER*2 + (num_items-1)*GRID_SIZE
         return width, height
     def coord(self, num):
         # Return a box that bounds the region.
@@ -656,7 +660,7 @@ def make_layout(
     # Label
     label_genes, label_arrays, scale_gene_labels, scale_array_labels,
     # Clusters
-    gene_cluster_colors, 
+    gene_cluster_width, gene_cluster_colors, 
     # Dendrogram
     gene_tree_scale, gene_tree_thickness,
     array_tree_scale, array_tree_thickness,
@@ -715,7 +719,6 @@ def make_layout(
         width, height = boxwidth, boxheight
         width += hm_layout.GRID_SIZE
         height += hm_layout.GRID_SIZE
-        #print "HERE", width, height
         ad_layout = ArrayDendrogramLayout(
             MATRIX.nrow(), MATRIX.ncol(), width, height,
             array_tree_scale, array_tree_thickness, 
@@ -730,21 +733,23 @@ def make_layout(
     gc_layouts, ac_layout = [], None
     if cluster_data.gene_clusters:
         # Make genecluster_width a user-settable variable.
-        genecluster_width, genecluster_height = 20, boxheight
+        #genecluster_width, genecluster_height = 20, boxheight
+        gene_cluster_height = boxheight
         #gc_layout = GeneClusterLayout(
         #    MATRIX.nrow(), genecluster_width, genecluster_height, grid)
         assert len(gene_cluster_colors) == len(cluster_data.gene_clusters)
         color_fns = [get_color_scheme_fn(x) for x in gene_cluster_colors]
         gc_layouts = [
             GeneClusterLayout(
-                MATRIX.nrow(), genecluster_width, genecluster_height, grid,
-                color_fns[i])
+                MATRIX.nrow(), gene_cluster_width, gene_cluster_height, 
+                hm_layout.BORDER, hm_layout.GRID_SIZE, color_fns[i])
             for i in range(len(cluster_data.gene_clusters))]
     if cluster_data.array_cluster:
         # Make arraycluster_height a user-settable variable.
         arraycluster_width, arraycluster_height = boxwidth, 20
         ac_layout = ArrayClusterLayout(
-            MATRIX.ncol(), arraycluster_width, arraycluster_height, grid)
+            MATRIX.ncol(), arraycluster_width, arraycluster_height,
+            hm_layout.BORDER, hm_layout.GRID_SIZE)
 
     # Make the layout for the gene or array labels.
     gl_layout = al_layout = None
@@ -848,12 +853,13 @@ def calc_coords_for_layout(layout):
     # On X-axis: gene dendrogram, label, cluster, then heatmap.
     gd_x, gd_y = x, hm_y+layout.heatmap.BORDER
     gl_x, gl_y = gd_x+gd_width+gb1, gd_y
-    gc_x, gc_y = gl_x+gl_width+gb2, gd_y
-    
+    gc_x, gc_y = gl_x+gl_width+gb2, hm_y
+
     # On Y-axis: array dendrogram, label, cluster, then heatmap.
     ad_x, ad_y = hm_x+layout.heatmap.BORDER, y
     al_x, al_y = ad_x, ad_y+ad_height+ab1
-    ac_x, ac_y = ad_x, al_y+al_height+ab2
+    ac_x, ac_y = hm_x, al_y+al_height+ab2
+
 
     # Add the colorbar.
     cb_x = cb_y = None
@@ -1294,7 +1300,6 @@ def plot_array_labels(plotlib, image, X, xoff, yoff, layout, labels):
     for i in range(X.ncol()):
         x, y, width, height = layout.coord(i)
         w, h = plotlib.get_text_size(labels[i], fontsize)
-        #print "HERE1", xoff, yoff, x, y, width, height, fontsize
         # Center the text.
         x += (width-h)/2
         plotlib.text90(image, xoff+x, yoff+y, labels[i], fontsize, (0, 0, 0))
@@ -1855,6 +1860,9 @@ def main():
         help="kgg file (MULTI)")
     group.add_option("--array_cluster_file", help="kag file")
     group.add_option(
+        "--gene_cluster_width", type="int", default=20,
+        help="Set the width of the gene cluster boxes.")
+    group.add_option(
         "--gene_cluster_color", action="append", default=[],
         help="Color scheme for gene clusters: red, white, red-green, "
         "blue-yellow, matlab, bild (default), genespring, or yahoo.  "
@@ -1924,6 +1932,7 @@ def main():
     if options.grid_color:
         grid_color = _parse_color(options.grid_color)
 
+    assert options.gene_cluster_width > 0
     assert len(options.gene_cluster_color) <= len(options.gene_cluster_file), \
            "More gene cluster colors than files."
     while len(options.gene_cluster_color) < len(options.gene_cluster_file):
@@ -1956,7 +1965,7 @@ def main():
         options.label_genes, options.label_arrays,
         options.scale_gene_labels, options.scale_array_labels,
         # Clusters
-        options.gene_cluster_color,
+        options.gene_cluster_width, options.gene_cluster_color,
         # Dendrograms
         options.gene_tree_scale, options.gene_tree_thickness,
         options.array_tree_scale, options.array_tree_thickness,
