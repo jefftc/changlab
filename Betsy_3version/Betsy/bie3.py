@@ -176,9 +176,9 @@ class AttributeDef:
             
         # Make sure default_in and default_out are valid values.
         assert type(default_in) is type("")
-        assert type(default_out) is type("")
+        #assert type(default_out) is type("")
         assert default_in in values
-        assert default_out in values
+        #assert default_out in values
         
         self.name = name
         self.values = values

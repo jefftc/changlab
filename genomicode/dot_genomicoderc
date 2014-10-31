@@ -17,7 +17,7 @@ AddOrReplaceReadGroups=/usr/local/bin/picard-tools-1.87/AddOrReplaceReadGroups.j
 samtools=/usr/local/bin/samtools
 bcftools=/usr/local/bin/bcftools
 vcfutils=/usr/local/bin/vcfutils.pl
-
+RNASeQC=/usr/local/bin/RNA-SeQC_v1.1.8.jar 
 
 [BINREG]
 bfrm=/data/genomidata/bfrm64
@@ -76,6 +76,9 @@ annotate_vcf=/home/xchen/chencode/scripts/annovar/annotate_vcf.py
 chrom2genome=/data/genomidata/chrom2genome
 genomes=/data/genomidata/genomes
 convert_platform=/data/genomidata/convert_platform
+UCSC_REF=/data/biocore/genomes/UCSC/hg38.fa
+UCSC_GTF=/data/biocore/rsem/human_refseq_hg38/UCSC_knownGenes.gtf
+
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation

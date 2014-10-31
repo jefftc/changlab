@@ -171,6 +171,7 @@ def test_require_data(network, module_id, pool,user_attributes):
 
 def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_attributes,
                user=getpass.getuser(), job_name='', clean_up=True):
+    
     current_dir = os.getcwd()
     output_path = config.OUTPUTPATH
     assert os.path.exists(output_path), (
@@ -191,6 +192,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_att
                         locals(), [module_name], -1)
     out_attributes = create_out_attributes(
         network, module_id, module, pool, user_attributes)
+    
     if out_attributes is None:
         return []
     print "[%s].  %s" % (time.strftime('%l:%M%p'), module_name)
@@ -214,7 +216,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_att
                                   sub_user_input, network)
             
             if not out_node:
-                return False
+                return None
             module_utils.write_Betsy_parameters_file(out_node.data.attributes,
                                                      data_node, sub_user_input,
                                                      pipeline_sequence,
@@ -298,6 +300,8 @@ def run_pipeline(network, in_objects, user_attributes, user_inputs,
                                    user_inputs, pipeline_sequence,user_attributes,
                                    user, job_name)
             flag = False
+            if not out_nodes:
+                break
             for x in out_nodes:
                 next_node, next_id = x
                 if next_id == 0:

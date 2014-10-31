@@ -332,9 +332,10 @@ def main():
         help='Desired DataType for the output.')
     group.add_argument(
         '--dattr', default=[], type=str, action='append',
-        help='Attribute for a Datatype.  For input datatype, attribute '
-        'should be given as: <datatype>,<key>=<value>.  For output '
-        'datatype, the format is: <key>=<value>.')
+        help='Attribute for a Datatype. Each --dattr should be given following \
+        its related Datatype immediately. For input datatype, attribute '
+        'should be given as: <key>=<value>.  For output '
+        'datatype, the format is: <datatype>,<key>=<value>.')
     group.add_argument(
         '--output_file', type=str, default=None,
         help='file or folder of output result')
@@ -356,6 +357,14 @@ def main():
         '--dry_run',  action='store_const',
         const=True, default=False,
         help='generate the network, do not run the network')
+    parser.add_argument('--user',
+                        dest='user', default=getpass.getuser(),
+                        type=str,
+                        help='the username who run the command')
+    parser.add_argument('--job_name',
+                        dest='job_name', default='',
+                        type=str,
+                        help='the name of this job')
     # parse
     args = parser.parse_args()
     input_list, output = assign_args(sys.argv)
@@ -447,12 +456,12 @@ def main():
             i.identifier = store_file
         input_node_ids.extend(start_node)
         input_nodes.append(i.data)
-    required_flag = check_possible_inputs(network,user_attributes,input_node_ids)
-    if required_flag:
-        network = bie3.select_start_node(network, input_nodes)
-    else:
-        print_missing_inputs(network,user_attributes,input_node_ids)
-        return
+    #required_flag = check_possible_inputs(network,user_attributes,input_node_ids)
+    #if required_flag:
+    network = bie3.select_start_node(network, input_nodes)
+    #else:
+     #   print_missing_inputs(network,user_attributes,input_node_ids)
+     #   return
     #test mattr are given when necessary
     network_modules = [i for i in network.nodes
                            if isinstance(i, bie3.Module)]
@@ -469,7 +478,7 @@ def main():
     print "Running the pipeline."
     
     output_file = rule_engine_bie3.run_pipeline(
-        network, in_objects,  user_attributes, options)
+        network, in_objects,  user_attributes, options,args.user,args.job_name)
     
     if args.output_file:
         if os.path.exists(args.output_file) and args.clobber:

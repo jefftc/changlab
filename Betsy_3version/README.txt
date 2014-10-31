@@ -90,6 +90,7 @@ Preprocess Usage
    --png_file 'out.png'
 =============================================================================
 Process Usage
+
 Betsy can do predataset,log,unlog,gene_filter,quantile,combat, shiftscale,dwd,bfrm, predataset,gene_center,gene_normalize,gene_order, annotate, rename_sample, platform,
 num_features,unique_genes, duplicate_probe,group_fc,change format,for signal files
 
@@ -145,6 +146,7 @@ The option of the attributes are:
 	--png_file 'out.png'
 =============================================================================
 Heatmap Usage
+
 Betsy can make heatmap for a SignalFile without clustering.
     Example:
     When given a signal_file, plot the heatmap and set the heatmap size as x=20,y=20.
@@ -161,6 +163,7 @@ Betsy can make heatmap for a SignalFile without clustering.
     The result folder will contain a png file showing the heatmap.
 =============================================================================
 Clustering Usage
+
 Betsy can do clustering for a SignalFile and plot the heatmap.
 
     Example:
@@ -183,6 +186,7 @@ Betsy can do clustering for a SignalFile and plot the heatmap.
 The result folder will contain a clustering file and a png file showing the heatmap.
 ===============================================================================
 Classification Usage
+
 Betsy can do classification with svm and weighted_voting method for dataset. 
 Also it can leave one out cross validation by these two methods.
 The command is:
@@ -207,6 +211,7 @@ The command is:
 
 ===============================================================================
 Differential expressed genes analysis usage
+
 Betsy can do the differential expressed genes analysis for signal_files.
 The command is:
 	python run_rule.py \
@@ -219,18 +224,18 @@ The command is:
 	--png_file 'out.png'
 ===============================================================================
 Geneset Analysis Usage 
+
 Example:
 When given a signal_file and a gene set file, try do geneset score analysis and plot the result.
 
 	python run_rule.py \
-	--output 'ReportFile' \
-	--dattr 'ReportFile,report_type=geneset' \
+	--output 'GenesetReportFile' \
 	--dattr 'SignalFile,quantile_norm=yes' \
 	--dattr 'SignalFile,gene_center=mean' \
-      --dattr 'SignalFile,gene_normalize=variance' \
+        --dattr 'SignalFile,gene_normalize=variance' \
 	--dattr 'SignalFile,unique_genes=high_var' \
 	--dattr 'SignalFile,annotate=yes'  \
-	--input 'SignalFile_Postprocess'  \
+	--input '_SignalFile_Postprocess'  \
 	--input_file '/home/xchen/chencode/betsy_test/se2fplate6_48.illu.gz' \
 	--input 'GenesetFile' \
 	--input_file '/home/xchen/chencode/betsy_test/genesets.gmt' \
@@ -238,6 +243,7 @@ When given a signal_file and a gene set file, try do geneset score analysis and 
 	--png_file 'out.png'
 ===============================================================================
 Normalization Usage
+
 Example:
 When given a signal_file, try do quantile_norm and gene_center=median,get a normalization report
 
@@ -251,7 +257,7 @@ When given a signal_file, try do quantile_norm and gene_center=median,get a norm
 	--png_file 'out.png' \
       --json_file 'outjson.txt'
 --------------------------------------------------
-When given a ExpressionFiles, try rma preprocess, do quantile_norm and gene_center=median,get a NormalizeReportFile report
+	When given a ExpressionFiles, try rma preprocess, do quantile_norm and gene_center=median,get a NormalizeReportFile report
 
 	python run_rule.py \
 	--input 'ExpressionFiles'  \
@@ -262,7 +268,7 @@ When given a ExpressionFiles, try rma preprocess, do quantile_norm and gene_cent
 	--dattr 'SignalFile,gene_center=median' \
 	--png_file 'out.png'
 --------------------------------------------------
-When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene_center=median,get a NormalizeReportFile report
+	When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene_center=median,get a NormalizeReportFile report
 
 	python run_rule.py \
 	--input 'ExpressionFiles'  \
@@ -274,43 +280,60 @@ When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene
 	--png_file 'out.png'
 ==============================================================================
 DNA NGS Usage
+
 When given a DNA fa file, require a vcf file.
-python run_rule.py \
---output VcfFile \
---dattr  VcfFile,vcf_filter=yes \
---input FastqFile --input_file /data/xchen/human/human1_cut.fa \
---png_file out.png
+	python run_rule.py \
+	--output VcfFile \
+	--dattr  VcfFile,vcf_filter=yes \
+	--input FastqFile --input_file /data/xchen/human/human1_cut.fa \
+	--png_file out.png
 ==============================================================================
 Clinical outcomes Usage
+
 Given an expression file and clinical file, doing clinical outcome analysis.
-python run_rule.py \
---input _SignalFile_Postprocess \
---input_file  /home/xchen/chencode/examples/survial_analysis/GSE17907.rma.gz \
---input ClinicalFile \
---input_file /home/xchen/chencode/examples/survial_analysis/GSE17907.stdclin \
---mattr outcome=DMFS \
---mattr dead=DMFS_DEAD \
---mattr genename=117_at,1007_s_at \
---output ClinicalAnalysis   \
---png_file out.png --text_file 1.txt
+	python run_rule.py \
+	--input _SignalFile_Postprocess \
+	--input_file  /home/xchen/chencode/examples/survial_analysis/GSE17907.rma.gz \
+	--input ClinicalFile \
+	--input_file /home/xchen/chencode/examples/survial_analysis/GSE17907.stdclin \
+	--mattr outcome=DMFS \
+	--mattr dead=DMFS_DEAD \
+	--mattr genename=117_at,1007_s_at \
+	--output ClinicalAnalysis   \
+	--png_file out.png --text_file 1.txt
 ==============================================================================
 EMT analysis Usage
+
 Given an expression file and a cellType File, do EMT analysis on some genesets.
 
 python run_rule.py \
---input _SignalFile_Postprocess  \
---input_file /data/genomidata/stem_cell/EMT.cent.rma.gz \
---input CellTypeFile \
---input_file /data/genomidata/stem_cell/EMT.stdclin  \
---output EMTAnalysis \
---png_file 'out.png' \
---mattr 'geneset_value=CDH1,CDH2,VIM,ABCA1' \
---output_file 'text0'
+	--input _SignalFile_Postprocess  \
+	--input_file /data/genomidata/stem_cell/EMT.cent.rma.gz \
+	--input CellTypeFile \
+	--input_file /data/genomidata/stem_cell/EMT.stdclin  \
+	--output EMTAnalysis \
+	--png_file 'out.png' \
+	--mattr 'geneset_value=CDH1,CDH2,VIM,ABCA1' \
+	--output_file 'text0'
 ==============================================================================
 Pathway Signature Score Usage
-python run_rule.py \
---input 'ExpressionFiles' \
---input_file '/home/xchen/chencode/betsy_test/GSE8286_folder' \
---output 'SignatureScore'  \
---mattr 'platform_name=HG_U133A' \
---png_file 'out.png' --text_file 'out.txt' 
+
+	python run_rule.py \
+	--input 'ExpressionFiles' \
+	--input_file '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+	--output 'SignatureScore'  \
+	--mattr 'platform_name=HG_U133A' \
+	--png_file 'out.png' --text_file 'out.txt' 
+==============================================================================
+Batch effect remove usage
+
+Betsy can do the batch effect remove analysis for signal_files.
+The command is:
+	python run_rule.py \
+	--input '_SignalFile_Postprocess'  \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--input 'ClassLabelFile' \
+	--dattr 'cls_format=cls' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--output 'BatchEffectReportFile'  \
+	--png_file 'out.png'
