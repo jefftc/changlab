@@ -2,112 +2,33 @@
 
 import sys, os
 
-# _parse_gene_names
-# _parse_geneset
-# has_missing_values
+# score_many
 # score_gene_set
 # score_gene
-# score_many
+#
+# match_gene_sets
+# has_missing_values
+# 
+# _parse_geneset
+# _parse_gene_names
 
 
-def _parse_gene_names(gene_name_list):
-    # This can a list of comma separated genes, e.g.
-    # ["E2F1", "E2F2,E2F3"]
-    # Need to separate them out.
-    gene_names = []
-    for x in gene_name_list:
-        x = x.split(",")
-        gene_names.extend(x)
-    return gene_names
+class GeneSetScore:
+    # Score for a gene set on one sample.
+    def __init__(self, score, direction, pvalue):
+        self.score = score
+        self.direction = direction
+        self.pvalue = pvalue
 
 
-def _parse_geneset(geneset):
-    # Return tuple of (positive_geneset, negative_geneset).
-    # negative_geneset can be None.
-    
-    # geneset is in the format:
-    # <positive_geneset>
-    # <positive_geneset>,<negative_geneset>
-    assert type(geneset) is type("")
-    x = geneset.split(",")
-    assert len(x) <= 2, "Unknown format for geneset: %s" % x
-    pos, neg = x[0], None
-    if len(x) == 2:
-        neg = x[1]
-    return pos, neg
-
-
-def has_missing_values(MATRIX):
-    for x in MATRIX._X:
-        if None in x:
-            return True
-    return False
-
-
-def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
-    from genomicode import genesetlib
-
-    x = genesetlib.score_geneset(MATRIX, pos_genes, neg_genes)
-    MATRIX_p, MATRIX_n, num_matches, scores = x
-
-    if lock:
-        lock.acquire()
-    x = "Gene set %s contains %d genes and matched %d rows in %s." 
-    print x % (name, len(pos_genes)+len(neg_genes), num_matches, matrix_name)
-    sys.stdout.flush()
-    if lock:
-        lock.release()
-
-    return scores
-
-
-def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
-                   ignore_gene_not_found, lock=None):
-    # Return dict of (matrix_name, gs_name, sample) -> score.
-    import arrayio
-
-    try:
-        scores = _score_gene_set_h(
-            MATRIX, matrix_name, gs_name, pos_genes, neg_genes, lock)
-    except AssertionError, x:
-        if ignore_gene_not_found and \
-               str(x) == "I could not find any genes in the gene set.":
-            return {}
-        raise
-    sample_names = MATRIX.col_names(arrayio.COL_ID)
-    assert len(sample_names) == len(scores)
-    
-    results = {}
-    for i, (sample, score) in enumerate(zip(sample_names, scores)):
-        key = matrix_name, gs_name, i, sample
-        #assert key not in results, "Duplicate: %s" % str(key)
-        assert key not in results, "Duplicate: %s" % sample
-        results[key] = score
-    return results
-
-
-def score_gene(gene_name, matrix_name, MATRIX, lock=None):
-    # Return dict of (matrix_name, gene_name, sample) -> score.
-    import arrayio
-    from genomicode import genesetlib
-
-    I_row, x = MATRIX._index(row=gene_name)
-    if not I_row:
-        return {}
-    I = I_row[0]
-    scores = MATRIX._X[I]
-    sample_names = MATRIX.col_names(arrayio.COL_ID)
-    assert len(sample_names) == len(scores)
-    
-    results = {}
-    for i, (sample, score) in enumerate(zip(sample_names, scores)):
-        key = matrix_name, gene_name, i, sample
-        assert key not in results, "Duplicate: %s" % sample
-        results[key] = score
-    return results
+class GeneScore:
+    def __init__(self, score):
+        self.score = score
 
 
 def score_many(jobs, lock=None):
+    # Return dict of (matrix_name, gs_name, index, sample) ->
+    # GeneSetScore or GeneScore.
     import arrayio
 
     file2matrix = {}
@@ -129,15 +50,159 @@ def score_many(jobs, lock=None):
         else:
             assert pos_genes is None
             assert neg_genes is None
-            x = score_gene(gs_name, matrix_name, MATRIX, lock=lock)
+            x = score_gene(gs_name, matrix_name, MATRIX)
         # TODO: should make sure we don't overwrite previous results.
         results.update(x)
     return results
 
+
+def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
+    # Return list of GeneSetScores.
+    from genomicode import genesetlib
+
+    x = genesetlib.score_geneset(MATRIX, pos_genes, neg_genes)
+    MATRIX_p, MATRIX_n, num_matches, scores, scores_bgrnd, pvalues = x
+
+    if lock:
+        lock.acquire()
+    x = "Gene set %s contains %d genes and matched %d rows in %s." 
+    print x % (name, len(pos_genes)+len(neg_genes), num_matches, matrix_name)
+    sys.stdout.flush()
+    if lock:
+        lock.release()
+
+    assert len(scores) == len(scores_bgrnd)
+    directions = []
+    for x in zip(scores, scores_bgrnd):
+        score, background = x
+        x = "UP"
+        if score < background:
+            x = "DOWN"
+        directions.append(x)
+
+    geneset_scores = []
+    for x in zip(scores, directions, pvalues):
+        score, direction, pvalue = x
+        x = GeneSetScore(score, direction, pvalue)
+        geneset_scores.append(x)
+    return geneset_scores
+
+
+
+def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
+                   ignore_gene_not_found, lock=None):
+    # Return dict of (matrix_name, gs_name, index, sample) ->
+    # GeneSetScore.
+    import arrayio
+
+    try:
+        scores = _score_gene_set_h(
+            MATRIX, matrix_name, gs_name, pos_genes, neg_genes, lock)
+    except AssertionError, x:
+        if ignore_gene_not_found and \
+               str(x) == "I could not find any genes in the gene set.":
+            return {}
+        raise
+    sample_names = MATRIX.col_names(arrayio.COL_ID)
+    assert len(sample_names) == len(scores)
+    
+    results = {}
+    for i, x in enumerate(zip(sample_names, scores)):
+        sample, geneset_score = x
+        key = matrix_name, gs_name, i, sample
+        #assert key not in results, "Duplicate: %s" % str(key)
+        assert key not in results, "Duplicate: %s" % sample
+        results[key] = geneset_score
+    return results
+
+
+def score_gene(gene_name, matrix_name, MATRIX):
+    # Return dict of (matrix_name, gene_name, index, sample) ->
+    # GeneScore.  Used to add gene expression to the output.
+    import arrayio
+
+    I_row, x = MATRIX._index(row=gene_name)
+    if not I_row:
+        return {}
+    I = I_row[0]
+    scores = MATRIX._X[I]
+    sample_names = MATRIX.col_names(arrayio.COL_ID)
+    assert len(sample_names) == len(scores)
+
+    results = {}
+    for i, (sample, score) in enumerate(zip(sample_names, scores)):
+        key = matrix_name, gene_name, i, sample
+        assert key not in results, "Duplicate: %s" % sample
+        results[key] = GeneScore(score)
+    return results
+
+
+def match_gene_sets(genesets):
+    # Return a list of genesets where the _UP and _DN (_DOWN) are
+    # combined.
+    genesets = sorted(genesets)
+    i = 0
+    while i < len(genesets)-1:
+        gs1, gs2 = genesets[i], genesets[i+1]
+        ugs1, ugs2 = gs1.upper(), gs2.upper()
+        
+        # If there is already a positive and negative, skip it.
+        if gs1.find(",") >= 0:
+            i += 1
+            continue
+        if ugs1.endswith("_DOWN"):
+            ugs1 = ugs1[:-5] + "_DN"
+        if ugs1.endswith("_DN") and ugs2.endswith("_UP") and \
+               ugs1[:-3] == ugs2[:-3]:
+            x = "%s,%s" % (gs2, gs1)
+            genesets[i] = x
+            del genesets[i+1]
+        else:
+            i += 1
+    return genesets
+
+
+def has_missing_values(MATRIX):
+    for x in MATRIX._X:
+        if None in x:
+            return True
+    return False
+
+
+def _parse_geneset(geneset):
+    # Return tuple of (positive_geneset, negative_geneset).
+    # negative_geneset can be None.
+    
+    # geneset is in the format:
+    # <positive_geneset>
+    # <positive_geneset>,<negative_geneset>
+    assert type(geneset) is type("")
+    x = geneset.split(",")
+    assert len(x) <= 2, "Unknown format for geneset: %s" % x
+    pos, neg = x[0], None
+    if len(x) == 2:
+        neg = x[1]
+    return pos, neg
+
+
+def _parse_gene_names(gene_name_list):
+    # This can a list of comma separated genes, e.g.
+    # ["E2F1", "E2F2,E2F3"]
+    # Need to separate them out.
+    gene_names = []
+    for x in gene_name_list:
+        x = x.split(",")
+        gene_names.extend(x)
+    return gene_names
+
+
 def main():
     import argparse
     import glob
+    import itertools
     
+    DEF_PVALUE = 0.05
+
     parser = argparse.ArgumentParser(
         description="Score a gene set on a gene expression data set.")
 
@@ -148,6 +213,10 @@ def main():
     parser.add_argument(
         "--transpose", action="store_true",
         help="Transpose the output matrix.")
+    parser.add_argument(
+        "--pvalue", type=float, default=DEF_PVALUE,
+        help="p-value cutoff for determining significant changes "
+        "(default %g)." % DEF_PVALUE)
     
     parser.add_argument(
         "--libpath", dest="libpath", action="append", default=[],
@@ -180,9 +249,9 @@ def main():
         help="Will match _UP with _DN (or _DOWN).")
     
     group = parser.add_argument_group(
-        title="Genes", description="Add gene expression to output.")
-    parser.add_argument(
-        "--gene_names", default=[], action="append",
+        title="Genes", description="Add gene expression profiles to output.")
+    group.add_argument(
+        "--genes", default=[], action="append",
         help="Comma-separated list of IDs (e.g. probes, gene names) "
         "to include.")
 
@@ -198,6 +267,12 @@ def main():
         assert os.path.exists(x), \
            "I could not find the expression file: %s" % x
     assert args.outfile, "Please specify the name of an outfile."
+    
+    if args.num_procs < 1 or args.num_procs > 100:
+        parser.error("Please specify between 1 and 100 processes.")
+    assert args.pvalue > 0 and args.pvalue <= 1, \
+           "Invalid pvalue %g" % args.pvalue
+
     assert args.geneset_files, "Please specify one or more geneset files."
     for x in args.geneset_files:
         assert os.path.exists(x), "I could not find the gene set file: %s" % x
@@ -208,26 +283,23 @@ def main():
     if args.any_matching_gene_sets:
         assert not args.gene_set and not args.all_gene_sets
     
-    if args.num_procs < 1 or args.num_procs > 100:
-        parser.error("Please specify between 1 and 100 processes.")
-
     #if args.num_procs > 1:
     #    raise NotImplementedError, "Doesn't work.  Matrix class decorator."
 
     if args.libpath:
-        sys.path = options.libpath + sys.path
+        sys.path = args.libpath + sys.path
     # Import after the library path is set.
-    import time
+    #import time
     import multiprocessing
     from genomicode import genesetlib
     from genomicode import genepattern
     from genomicode import jmath
     
-    start_time = time.time()
+    #start_time = time.time()
     
     genepattern.fix_environ_path()
 
-    gene_names = _parse_gene_names(args.gene_names)
+    gene_names = _parse_gene_names(args.genes)
     
     msg = "Reading gene set file."
     if len(args.geneset_files) > 1:
@@ -244,24 +316,7 @@ def main():
     if args.all_gene_sets or args.any_matching_gene_sets:
         genesets = sorted(geneset2genes)
     if args.automatch:
-        genesets = sorted(genesets)
-        i = 0
-        while i < len(genesets)-1:
-            # Already have positive and negative.
-            gs1, gs2 = genesets[i], genesets[i+1]
-            ugs1, ugs2 = gs1.upper(), gs2.upper()
-            if gs1.find(",") >= 0:
-                i += 1
-                continue
-            if ugs1.endswith("_DOWN"):
-                ugs1 = ugs1[:-5] + "_DN"
-            if ugs1.endswith("_DN") and ugs2.endswith("_UP") and \
-                   ugs1[:-3] == ugs2[:-3]:
-                x = "%s,%s" % (gs2, gs1)
-                genesets[i] = x
-                del genesets[i+1]
-            else:
-                i += 1
+        genesets = match_gene_sets(genesets)
     #genesets = genesets[:10]
 
     matrix_names = [os.path.split(x)[1] for x in expression_files]
@@ -291,7 +346,7 @@ def main():
             jobs.append(x)
     for name in gene_names:
         for matrix_name, matrix_file in zip(matrix_names, expression_files):
-            x = name, None, None, matrix_name, matrix_file
+            x = name, None, None, matrix_name, matrix_file, None
             jobs.append(x)
         
 
@@ -314,7 +369,8 @@ def main():
     lock = manager.Lock()
     pool = multiprocessing.Pool(args.num_procs)
 
-    scores = {}   # (matrix, geneset, index, sample) -> score
+    # (matrix, geneset, index, sample) -> GeneSetScore or GeneScore
+    score_dict = {}
     results = []  # AsyncResults
     for batch in batched_jobs:
         fn_args = (batch,)
@@ -322,7 +378,7 @@ def main():
         fn_keywds["lock"] = lock
         if args.num_procs == 1:
             x = score_many(batch)
-            scores.update(x)
+            score_dict.update(x)
         else:
             x = pool.apply_async(score_many, fn_args, fn_keywds)
             results.append(x)
@@ -330,27 +386,69 @@ def main():
     pool.join()
     for x in results:
         x = x.get()
-        scores.update(x)
+        score_dict.update(x)
+
+    all_matrix_samples = []
+    all_genesets = []
+    all_genes = []
+    for (x, score) in score_dict.iteritems():
+        matrix_name, gene_name, index, sample = x
+        x = matrix_name, index, sample
+        all_matrix_samples.append(x)
+        if isinstance(score, GeneSetScore):
+            all_genesets.append(gene_name)
+        elif isinstance(score, GeneScore):
+            all_genes.append(gene_name)
+        else:
+            raise AssertionError
+    all_matrix_samples = sorted({}.fromkeys(all_matrix_samples))
+    all_genesets = sorted({}.fromkeys(all_genesets))
+    all_genes = sorted({}.fromkeys(all_genes))
+
+    # Format the output.  Columns should be in order:
+    # <SAMPLE> <FILE>
+    # <GS SCORES> ... <GS DIRECTION> ... <GS PVALUE> ... <GS SIGNIFICANT> ...
+    # <GENES> ...
+    header = ["SAMPLE", "FILE"]
+    x = ["", "direction", "pvalue", "significant"]
+    for x in itertools.product(x, all_genesets):
+        suffix, name = x
+        x = "%s %s" % (name, suffix)
+        x = x.strip()
+        header = header + [x]
+    for g in all_genes:
+        header = header + [g]
         
-    x = [(x[0], x[2], x[3]) for x in scores]
-    x = sorted({}.fromkeys(x))
-    all_matrix_samples = x
-    x = [x[1] for x in scores]
-    x = sorted({}.fromkeys(x))
-    all_genesets = x
-
-
-    # Format the output.
     output = []
-    header = ["SAMPLE", "FILE"] + all_genesets
     output.append(header)
     for x in all_matrix_samples:
         matrix, index, sample = x
         #x = [scores[(matrix, x, index, sample)] for x in all_genesets]
-        x = [scores.get((matrix, x, index, sample), "") for x in all_genesets]
-        x = [sample, matrix] + x
+
+        # Get the scores for the gene sets.
+        keys = [(matrix, x, index, sample) for x in all_genesets]
+        default = GeneSetScore("", "", "")
+        scores = [score_dict.get(x, default).score for x in keys]
+        directs = [score_dict.get(x, default).direction for x in keys]
+        pvalues = [score_dict.get(x, default).pvalue for x in keys]
+        signifs = []
+        for x in zip(directs, pvalues):
+            direct, pvalue = x
+            x = ""
+            if type(pvalue) is type(0.0) and pvalue < args.pvalue:
+                x = direct
+            signifs.append(x)
+
+        # Get the scores for the genes.
+        keys = [(matrix, x, index, sample) for x in all_genes]
+        default = GeneScore("")
+        gene_scores = [score_dict.get(x, default).score for x in keys]
+
+        x = [sample, matrix] + \
+            scores + directs + pvalues + signifs + gene_scores
         assert len(x) == len(header)
         output.append(x)
+
     if args.transpose:
         output = jmath.transpose(output)
         

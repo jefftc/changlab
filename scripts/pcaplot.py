@@ -113,6 +113,9 @@ def main():
         "--label", default=False, action="store_true",
         help="Label the samples.")
     parser.add_option(
+        "--scale_label", type=float, default=1.0, 
+        help="Scale the size of the labels.")
+    parser.add_option(
         "--title", help="Put a title on the plot.")
     parser.add_option(
         "--width", default=None, type="int",
@@ -133,6 +136,7 @@ def main():
     if options.width is not None:
         assert options.width > 10, "too small"
         assert options.width < 4096*16, "width too big"
+    assert options.scale_label > 0.01 and options.scale_label < 100
 
     num_genes = options.genes
     #K = 10  # number of dimensions
@@ -177,7 +181,8 @@ def main():
         height, width = int(options.width*0.75), options.width
     pcalib.plot_scatter(
         X, Y, outfile, group=cluster, color=color, title=options.title,
-        label=LABEL, height=height, width=width)
+        label=LABEL, scale_label=options.scale_label,
+        height=height, width=width)
 
     if options.verbose:
         # Write out the principal components.

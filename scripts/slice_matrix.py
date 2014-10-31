@@ -223,15 +223,19 @@ def transpose_matrix(MATRIX, transpose):
     #print MATRIX.row_names()
     #import sys; sys.exit(0)
 
+    rnames = [x for x in MATRIX.row_names() if x != old_row_id]
+
     X = jmath.transpose(MATRIX._X)
     row_order = [new_row_id]
-    col_order = [tdf.SAMPLE_NAME]
+    col_order = [tdf.SAMPLE_NAME] + rnames
     row_names = {
         row_order[0] : MATRIX.col_names(const.COL_ID),
         }
     col_names = {
         col_order[0] : MATRIX.row_names(old_row_id),
         }
+    for rn in rnames:
+        col_names[rn] = MATRIX.row_names(rn)
     synonyms = {
         const.ROW_ID : row_order[0],
         const.COL_ID : col_order[0],

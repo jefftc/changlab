@@ -61,7 +61,7 @@ def choose_colors(group):
 
 def plot_scatter(
     X, Y, out_file, group=None, color=None, height=None, width=None,
-    label=None, title=None, pov_file=None, povray=None):
+    label=None, scale_label=None, title=None, pov_file=None, povray=None):
     # group should be a list of 0-N indicating the groupings of the
     # data points.  It should be the same length of X and Y.
     # Returns the output from povray.
@@ -73,6 +73,8 @@ def plot_scatter(
         width, height = 1024, 768
     assert width >= 16 and width < 4096*16
     assert height >= 16 and height < 4096*16
+    if scale_label is None:
+        scale_label = 1.0
 
     if not len(X):
         return None
@@ -101,9 +103,9 @@ def plot_scatter(
         graph = graphlib.scatter(
             points, color=color,
             xtick=True, xtick_label=True, ytick=True, ytick_label=True,
-            overpoint_label=label,
+            overpoint_label=label, overpoint_label_size=1.5*scale_label,
             xlabel="Principal Component 1", ylabel="Principal Component 2",
-            label_size=1,
+            label_size=1, 
             title=title,
             width=plot_width, height=plot_height)
         output = graph.write(out_file, povray_bin=povray)

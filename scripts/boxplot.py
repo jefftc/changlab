@@ -108,7 +108,7 @@ def main():
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    x = 5*args.mar_bottom, 4*args.mar_left, 4, 2
+    x = 5*1.2*args.mar_bottom, 4*1.2*args.mar_left, 4, 2
     mar = [x+0.1 for x in x]
     jmath.R_fn("par", mar=mar, RETVAL="op")
         

@@ -242,7 +242,8 @@ def assign_args(args):
                    "only one --input_file per --input"
             in_identifiers[index] = filename
         elif arg == '--output_file':
-            assert input_or_output == "--output"
+            assert input_or_output == "--output", \
+                   "--output must precede --output_file"
             assert len(args) >= i+1
             filename = args[i+1]
             i += 2
@@ -416,7 +417,7 @@ def main():
         list_datatypes(rulebase)
         return
     if not args.output and args.input:
-        raise ValueError("output is expected")
+        raise AssertionError, "Missing --output"
     print 'Generating network...'
     network = bie3.backchain(
         rulebase.all_modules, goal_datatype, user_attributes)
