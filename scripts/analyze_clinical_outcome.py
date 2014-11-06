@@ -198,7 +198,10 @@ def read_geneset_scores(filename):
     matrix = jmath.transpose(matrix)
     # BUG: Need more checks on size and format of matrix.
     col_names = {}
-    col_names[tdf.SAMPLE_NAME] = matrix[1][1:]
+    sample_row = 0
+    if matrix[1][0].upper() == "SAMPLE":
+        sample_row = 1
+    col_names[tdf.SAMPLE_NAME] = matrix[sample_row][1:]
     row_names = {}
     row_names['geneset'] = []
     synonyms = {}

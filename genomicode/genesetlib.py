@@ -566,6 +566,8 @@ def score_geneset_I(X, I_pos, I_neg):
     X_pn = X_p + X_n
 
     # Calculate the scores.
+    assert X_pn, "No genes in gene set"
+    assert X_o, "No genes not in gene set"
     num_rows = len(X_pn)
     scores_pn = jmath.mean(X_pn, byrow=False)
     scores_o = jmath.mean(X_o, byrow=False)
