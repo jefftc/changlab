@@ -451,6 +451,9 @@ def detect_format(filename):
     # set.  This will lead to there being empty strings.  Check for a
     # pattern of empty strings and filled strings to distinguish GMX
     # or GMT.
+    
+    # if there are spaces in the middle of the row.  E.g. gene <space>
+    # gene.
     genes_left_aligned = True
     for i in range(nrow):
         is_left_aligned = True
@@ -479,10 +482,10 @@ def detect_format(filename):
         DEBUG = "detect_format alignment"
         return None
     if genes_top_aligned and not genes_left_aligned:
-        DEBUG = "detect_format alignment"
+        DEBUG = "detect_format alignment (top)"
         return GMT
     if genes_left_aligned and not genes_top_aligned:
-        DEBUG = "detect_format alignment"
+        DEBUG = "detect_format alignment (top left)"
         return GMX
 
     # Check the descriptions to see if they match up.

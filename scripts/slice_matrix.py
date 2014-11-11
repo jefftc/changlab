@@ -652,18 +652,31 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     ext = os.path.splitext(filename)[1].lower()
-    for x in genesetlib.read_genesets(
-        filename, allow_tdf=True, allow_duplicates=True, preserve_spaces=True):
-        geneset, description, genes = x
 
-        # Bug: sometimes will mis-identify TDF files as GMX.  The
-        # first row will be interpreted as a description instead of a
-        # gene (or annotation).  If the extension of the file isn't
-        # gmx or gmt, then assume it's some sort of tdf file.
-        #if not genesetlib._is_known_desc(description) and \
-        #       ext not in [".gmx", ".gmt"]:
-        if ext not in [".gmx", ".gmt"]:
-            genes = [description] + genes
+    # Bug: sometimes will mis-identify TDF files as GMX.  The first
+    # row will be interpreted as a description instead of a gene (or
+    # annotation).  If the extension of the file isn't gmx or gmt,
+    # then assume it's some sort of tdf file.  Also may mis-identify
+    # as GMT (via detect_format alignment (top)).
+    #if not genesetlib._is_known_desc(description) and \
+    #       ext not in [".gmx", ".gmt"]:
+    if ext not in [".gmx", ".gmt"]:
+        read_fn = genesetlib.read_tdf
+    else:
+        fmt = genesetlib.detect_format(filename)
+        if fmt == "GMX":
+            read_fn = read_gmx
+        elif fmt == "GMT":
+            read_fn = read_gmt
+        elif fmt:
+            raise AssertionError, "Unknown format: %s" % fmt
+        raise AssertionError, \
+              "I could not figure out the format of geneset file: %s" % \
+           filename
+
+    for x in read_fn(
+        filename, allow_duplicates=True, preserve_spaces=True):
+        geneset, description, genes = x
 
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
@@ -892,9 +905,11 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
 
 def reorder_col_cluster(MATRIX, cluster, tree_file,
                         cluster_method, distance_method):
+    import arrayio
     #from genomicode import jmath
     from genomicode import cluster30
     from genomicode import clusterio
+    from genomicode import matrixlib
     
     if not cluster:
         assert not tree_file
@@ -906,8 +921,29 @@ def reorder_col_cluster(MATRIX, cluster, tree_file,
         MATRIX, False, True, distance=distance_method, method=cluster_method)
     if tree_file:
         clusterio.write_atr_file(cdata.array_tree, open(tree_file, 'w'))
-    return cdata.matrix
 
+    # cluster30 will convert the MATRIX to PCL format, losing row
+    # annotations.  Put missing row annotations back.
+    all_annots = []
+    for x in MATRIX.row_names():
+        x = MATRIX.row_names(x)
+        all_annots.append(x)
+    x = matrixlib.align_rows_to_many_annots(
+        cdata.matrix, all_annots, get_indexes=True)
+    I_MATRIX, I_row_names, index = x
+    assert I_MATRIX and I_row_names
+    assert I_MATRIX == range(cdata.matrix.nrow())
+
+    for header in MATRIX.row_names():
+        if header in cdata.matrix.row_names():
+            continue
+        x = MATRIX.row_names(header)
+        x = [x[i] for i in I_row_names]
+        cdata.matrix._row_order.append(header)
+        cdata.matrix._row_names[header] = x
+
+    return cdata.matrix
+    
     ## R = jmath.start_R()
     ## jmath.R_equals(MATRIX._X, "X")
     ## x = 'dist(t(X), method="%s")' % distance_method
@@ -1534,7 +1570,8 @@ def reorder_row_cluster(
         raise NotImplementedError
 
     cdata = cluster30.cluster_hierarchical(
-        MATRIX, True, False, distance=distance_method, method=cluster_method)
+        MATRIX, True, False, distance=distance_method,
+        method=cluster_method)
     if tree_file:
         clusterio.write_gtr_file(cdata.gene_tree, open(tree_file, 'w'))
     return cdata.matrix

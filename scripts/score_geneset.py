@@ -65,8 +65,10 @@ def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
 
     if lock:
         lock.acquire()
-    x = "Gene set %s contains %d genes and matched %d rows in %s." 
-    print x % (name, len(pos_genes)+len(neg_genes), num_matches, matrix_name)
+    x = "Gene set %s contains %d genes (%d:%d) and matched %d rows in %s." 
+    print x % (
+        name, len(pos_genes)+len(neg_genes), len(pos_genes), len(neg_genes), 
+        num_matches, matrix_name)
     sys.stdout.flush()
     if lock:
         lock.release()
