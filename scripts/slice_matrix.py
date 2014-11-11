@@ -109,7 +109,7 @@ def _clean(s):
 
 
 def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
-                  clean_only):
+                  clean_only, num_header_cols):
     import csv
     import tempfile
     import arrayio
@@ -173,7 +173,7 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
             fmt_module = arrayio.choose_format(filename)
             assert fmt_module, \
                 "I could not figure out the format of file: %s" % filename
-            x = fmt_module.read(filename)
+            x = fmt_module.read(filename, hcols=num_header_cols)
             matrices.append(x)
     finally:
         for f in temp_files:
@@ -652,18 +652,31 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     ext = os.path.splitext(filename)[1].lower()
-    for x in genesetlib.read_genesets(
-        filename, allow_tdf=True, allow_duplicates=True, preserve_spaces=True):
-        geneset, description, genes = x
 
-        # Bug: sometimes will mis-identify TDF files as GMX.  The
-        # first row will be interpreted as a description instead of a
-        # gene (or annotation).  If the extension of the file isn't
-        # gmx or gmt, then assume it's some sort of tdf file.
-        #if not genesetlib._is_known_desc(description) and \
-        #       ext not in [".gmx", ".gmt"]:
-        if ext not in [".gmx", ".gmt"]:
-            genes = [description] + genes
+    # Bug: sometimes will mis-identify TDF files as GMX.  The first
+    # row will be interpreted as a description instead of a gene (or
+    # annotation).  If the extension of the file isn't gmx or gmt,
+    # then assume it's some sort of tdf file.  Also may mis-identify
+    # as GMT (via detect_format alignment (top)).
+    #if not genesetlib._is_known_desc(description) and \
+    #       ext not in [".gmx", ".gmt"]:
+    if ext not in [".gmx", ".gmt"]:
+        read_fn = genesetlib.read_tdf
+    else:
+        fmt = genesetlib.detect_format(filename)
+        if fmt == "GMX":
+            read_fn = read_gmx
+        elif fmt == "GMT":
+            read_fn = read_gmt
+        elif fmt:
+            raise AssertionError, "Unknown format: %s" % fmt
+        raise AssertionError, \
+              "I could not figure out the format of geneset file: %s" % \
+           filename
+
+    for x in read_fn(
+        filename, allow_duplicates=True, preserve_spaces=True):
+        geneset, description, genes = x
 
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
@@ -892,9 +905,11 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
 
 def reorder_col_cluster(MATRIX, cluster, tree_file,
                         cluster_method, distance_method):
+    import arrayio
     #from genomicode import jmath
     from genomicode import cluster30
     from genomicode import clusterio
+    from genomicode import matrixlib
     
     if not cluster:
         assert not tree_file
@@ -906,8 +921,29 @@ def reorder_col_cluster(MATRIX, cluster, tree_file,
         MATRIX, False, True, distance=distance_method, method=cluster_method)
     if tree_file:
         clusterio.write_atr_file(cdata.array_tree, open(tree_file, 'w'))
-    return cdata.matrix
 
+    # cluster30 will convert the MATRIX to PCL format, losing row
+    # annotations.  Put missing row annotations back.
+    all_annots = []
+    for x in MATRIX.row_names():
+        x = MATRIX.row_names(x)
+        all_annots.append(x)
+    x = matrixlib.align_rows_to_many_annots(
+        cdata.matrix, all_annots, get_indexes=True)
+    I_MATRIX, I_row_names, index = x
+    assert I_MATRIX and I_row_names
+    assert I_MATRIX == range(cdata.matrix.nrow())
+
+    for header in MATRIX.row_names():
+        if header in cdata.matrix.row_names():
+            continue
+        x = MATRIX.row_names(header)
+        x = [x[i] for i in I_row_names]
+        cdata.matrix._row_order.append(header)
+        cdata.matrix._row_names[header] = x
+
+    return cdata.matrix
+    
     ## R = jmath.start_R()
     ## jmath.R_equals(MATRIX._X, "X")
     ## x = 'dist(t(X), method="%s")' % distance_method
@@ -1517,9 +1553,9 @@ def reorder_row_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
-def reorder_row_cluster(MATRIX, cluster, tree_file,
-                        cluster_method, distance_method):
-    #from genomicode import jmath
+def reorder_row_cluster(
+    MATRIX, cluster, tree_file, cluster_method, distance_method,
+    indexes, count_headers):
     from genomicode import cluster30
     from genomicode import clusterio
 
@@ -1529,8 +1565,13 @@ def reorder_row_cluster(MATRIX, cluster, tree_file,
     if not MATRIX.nrow() or not MATRIX.ncol():
         return MATRIX
 
+    # Parse the indexes.
+    if indexes:
+        raise NotImplementedError
+
     cdata = cluster30.cluster_hierarchical(
-        MATRIX, True, False, distance=distance_method, method=cluster_method)
+        MATRIX, True, False, distance=distance_method,
+        method=cluster_method)
     if tree_file:
         clusterio.write_gtr_file(cdata.gene_tree, open(tree_file, 'w'))
     return cdata.matrix
@@ -2294,14 +2335,14 @@ def main():
         "--read_as_csv", default=False, action="store_true",
         help="Read as a CSV file.")
     parser.add_argument(
-        "--output_format", default="tdf", choices=["tdf", "gct"],
-        help="Specify the format for the output file.")
-    parser.add_argument(
         "--skip_lines", default=None, type=int,
         help="Skip this number of lines in the file.")
     parser.add_argument(
         "--remove_comments", 
         help="Remove rows that start with this character (e.g. '#')")
+    parser.add_argument(
+        "--num_header_cols", type=int,
+        help="This number of columns are headers.  If not given, will guess.")
     parser.add_argument(
         "--clean_only", default=False, action="store_true",
         help="Only read_as_csv and remove_comments.")
@@ -2312,6 +2353,9 @@ def main():
         "should be used for the headers in the transposed file.  "
         "<new row ID> is what should be the name of the column of the IDs "
         "in the transposed file.")
+    parser.add_argument(
+        "--output_format", default="tdf", choices=["tdf", "gct"],
+        help="Specify the format for the output file.")
     # If the user chooses an outfile, will need to implement it for
     # clean_only as well.
     #parser.add_argument(
@@ -2343,7 +2387,7 @@ def main():
         choices=["ss", "var"],
         help="Normalize each gene by: ss (sum of squares), var (variance).")
     group.add_argument(
-        "--gn_subset_indexes", dest="gn_subset_indexes", default=None,
+        "--gn_subset_indexes", 
         help="Will normalize the genes based on the variance (or sum "
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
@@ -2369,7 +2413,7 @@ def main():
         "with data.  If given, then column 1 is the very first column in "
         "the file, including the headers.  "
         "Applies to: select_col_indexes, reorder_col_indexes, "
-        "rrc_subset_indexes")
+        "reorder_row_cluster_subset_indexes, reorder_row_cor_subset_indexes")
     group.add_argument(
         "--select_col_ids", default=[], action="append",
         help="Comma-separate list of IDs to include.  (MULTI)")
@@ -2613,6 +2657,10 @@ def main():
         "--reorder_row_cluster", default=False, action="store_true",
         help="Cluster the rows.")
     group.add_argument(
+        "--reorder_row_cluster_subset_indexes", 
+        help="Will cluster the rows based on a subset of the samples.")
+    
+    group.add_argument(
         "--row_tree_file", help="Write out the dendrogram of the row clusters "
         "in gtr format.")
     group.add_argument(
@@ -2624,7 +2672,7 @@ def main():
         "--reverse_negative_cors", default=False, action="store_true",
         help="UNDOCUMENTED")
     group.add_argument(
-        "--rrc_subset_indexes", 
+        "--reorder_row_cor_subset_indexes", 
         help="Will reorder rows based on correlation to this subset of "
         "samples.")
     group.add_argument(
@@ -2674,9 +2722,12 @@ def main():
     args = parser.parse_args()
     assert len(args.filename) >= 1
 
+    if args.num_header_cols is not None:
+        assert args.num_header_cols > 0 and args.num_header_cols < 100
+
     x = read_matrices(
         args.filename, args.skip_lines, args.read_as_csv, args.remove_comments,
-        args.clean_only)
+        args.clean_only, args.num_header_cols)
     fmt_module, matrices = x
     if len(matrices) == 1:
         MATRIX = matrices[0]
@@ -2857,7 +2908,8 @@ def main():
     # Cluster the rows and columns.  Do this after normalizing, zero-fill, log.
     MATRIX = reorder_row_cluster(
         MATRIX, args.reorder_row_cluster, args.row_tree_file,
-        args.cluster_method, args.distance_method)
+        args.cluster_method, args.distance_method, 
+        args.reorder_row_cor_subset_indexes, args.col_indexes_include_headers)
     MATRIX = reorder_col_cluster(
         MATRIX, args.reorder_col_cluster, args.col_tree_file,
         args.cluster_method, args.distance_method)
@@ -2865,7 +2917,7 @@ def main():
     # Reorder the rows based on correlation.
     MATRIX = reorder_row_cor(
         MATRIX, args.reorder_row_cor, args.reverse_negative_cors,
-        args.rrc_subset_indexes, args.col_indexes_include_headers)
+        args.reorder_row_cor_subset_indexes, args.col_indexes_include_headers)
 
     # Reverse the rows.  Do after all the selection.  Do after
     # aligning to a file.

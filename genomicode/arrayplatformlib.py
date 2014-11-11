@@ -346,6 +346,12 @@ def score_platform_of_annotations(annotations):
 
 
 def _parse_matrix_annotations(annots, delim):
+    # No blank annotations.
+    x = annots
+    x = [x.strip() for x in x]
+    x = [x for x in x if x]
+    annots = x
+    
     if delim is None:
         return annots
     parsed = []
@@ -365,11 +371,17 @@ def score_all_platforms_of_matrix(DATA, annot_delim=None):
     for header in DATA.row_names():
         x = DATA.row_names(header)
         annots = _parse_matrix_annotations(x, annot_delim)
-        x = score_platform_of_annotations(annots)
-        if x is None:
-            continue
-        platform, score = x
-        platform2score[platform] = (header, score)
+
+        platforms = score_platforms(annots)
+        for platform, x, score in platforms:
+            if score <= 0:
+                continue
+            platform2score[platform] = (header, score)
+        #x = score_platform_of_annotations(annots)
+        #if x is None:
+        #    continue
+        #platform, score = x
+        #platform2score[platform] = (header, score)
     order_platforms = prioritize_platforms(platform2score.keys())
     # if chips is empty, will return an empty list
     x = [(platform2score[platform][0], platform, platform2score[platform][1])

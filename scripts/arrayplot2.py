@@ -984,7 +984,7 @@ def plot_matrix(
         return
     MIN_P_WIDTH = 10
     MIN_P_HEIGHT = 10
-    P_BORDER = max(layout.boxheight*0.1, layout.boxwidth*0.1)
+    P_BORDER = min(layout.boxheight*0.1, layout.boxwidth*0.1)
     X = MATRIX._X
     X_p = MATRIX_p._X
     for i in range(MATRIX_p.nrow()):
@@ -1004,8 +1004,8 @@ def plot_matrix(
             width_p = width - P_BORDER*2
             height_p = height - P_BORDER*2
             # Make sure the scale isn't off by too much.
-            width_p = min(width_p, height_p*1.5)
-            height_p = min(width_p*1.5, height_p)
+            width_p = min(width_p, height_p*1.4)
+            height_p = min(width_p*1.4, height_p)
             assert width_p < width
             assert height_p < height
             
