@@ -14,6 +14,10 @@ GEOfamily = DataType("GEOfamily",
                      AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified',help="contents"),
                      help="GEO fmaily soft file download from the GEO database")
+MatrixFile = DataType("MatrixFile",
+                     AttributeDef("contents",CONTENTS,
+                                  'unspecified','unspecified',help="contents"),
+                     help="GEO matrix series file download from the GEO database")
 TCGAID = DataType("TCGAID",
                      AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified',help="contents"),
@@ -27,7 +31,7 @@ TCGAFile = DataType("TCGAFile",
                                           'RSEM_genes',help="TCGA data type"),
                      help="TCGA file download from TCGA database")
 
-list_files = [GEOSeries,GEOfamily,TCGAID,TCGAFile]
+list_files = [GEOSeries,GEOfamily,TCGAID,TCGAFile,MatrixFile]
 
 all_modules = [
    

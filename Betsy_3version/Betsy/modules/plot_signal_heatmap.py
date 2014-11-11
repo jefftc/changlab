@@ -7,7 +7,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node,parameters, user_input, network):
+def run(data_node,parameters, user_input, network,num_cores):
     """generate a heatmap of input file"""
     outfile =  name_outfile(data_node,user_input)
     Heatmap_path = config.arrayplot

@@ -4,7 +4,7 @@ from Betsy import module_utils, bie3, rulebase
 import subprocess
 from genomicode import config
 
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     sortsam_BIN = config.sortsam
     assert os.path.exists(sortsam_BIN), 'cannot find the %s' % sortsam_BIN

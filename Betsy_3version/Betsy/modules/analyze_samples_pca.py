@@ -6,7 +6,7 @@ from Betsy import module_utils
 from Betsy import bie3
 from Betsy import rulebase
 
-def run(data_node,parameters,user_input,network):
+def run(data_node,parameters,user_input,network,num_cores):
     outfile = name_outfile(data_node,user_input)
     M = arrayio.read(data_node.identifier)
     X = M._X

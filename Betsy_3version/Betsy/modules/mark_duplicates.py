@@ -4,7 +4,7 @@ from Betsy import module_utils,bie3, rulebase
 import subprocess
 from genomicode import config
 
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     mark_duplicates_path = config.Mark_duplicates
     assert os.path.exists(mark_duplicates_path),'cannot find the %s' %mark_duplicates_path

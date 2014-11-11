@@ -22,7 +22,7 @@ def zip_directory(dir, zip_file):
             zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
     zip.close()
 
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     module_name = 'IlluminaExpressionFileCreator'
     gp_parameters = dict()

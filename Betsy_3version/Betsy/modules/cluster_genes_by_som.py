@@ -5,7 +5,7 @@ from Betsy import module_utils,bie3,rulebase
 from genomicode import config
 
 
-def run(data_node,parameters, user_input, network):
+def run(data_node,parameters, user_input, network,num_cores):
     """clustering the input file"""
     CLUSTER_BIN = config.cluster
     cluster = module_utils.which(CLUSTER_BIN)

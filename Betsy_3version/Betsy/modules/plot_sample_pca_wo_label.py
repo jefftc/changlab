@@ -8,7 +8,7 @@ from Betsy import rulebase
 from Betsy import read_label_file
 from Betsy import module_utils
 
-def run(data_node,parameters, user_input, network):
+def run(data_node,parameters, user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     module_utils.plot_pca(data_node.identifier,outfile)
     assert module_utils.exists_nz(outfile),(

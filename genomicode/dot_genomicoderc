@@ -76,8 +76,7 @@ annotate_vcf=/home/xchen/chencode/scripts/annovar/annotate_vcf.py
 chrom2genome=/data/genomidata/chrom2genome
 genomes=/data/genomidata/genomes
 convert_platform=/data/genomidata/convert_platform
-UCSC_REF=/data/biocore/genomes/UCSC/hg38.fa
-UCSC_GTF=/data/biocore/rsem/human_refseq_hg38/UCSC_knownGenes.gtf
+
 
 
 [MICROARRAY DATA]

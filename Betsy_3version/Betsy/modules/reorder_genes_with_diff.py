@@ -8,7 +8,7 @@ from Betsy import rulebase
 from Betsy import gene_ranking
 from Betsy import module_utils
 
-def run(in_nodes, parameters, user_input,network):
+def run(in_nodes, parameters, user_input,network,num_cores):
     data_node,gene_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     #read the gene order list

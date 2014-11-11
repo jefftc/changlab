@@ -5,7 +5,7 @@ from genomicode import jmath
 import math
 from Betsy import bie3, rulebase
 
-def run(in_nodes, parameters,user_input,network):
+def run(in_nodes, parameters,user_input,network,num_cores):
     import arrayio
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)

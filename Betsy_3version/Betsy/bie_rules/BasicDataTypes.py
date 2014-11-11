@@ -13,6 +13,8 @@ RenameFile = DataType(
 ExpressionFiles = DataType("ExpressionFiles",
                            AttributeDef("contents",Database.CONTENTS,
                                         'unspecified','unspecified',help="contents"),
+                           AttributeDef("filetype",['unknown','cel','gpr','idat','agilent','matrix'],
+                                        'unknown','unknown',help="filetype"),
                            help="Expression file folder, can be CELFiles, IDATFiles,"\
                                  "AgilentFile,GPRFiles")
 
@@ -34,13 +36,22 @@ list_files = [RenameFile,ExpressionFiles,GeneListFile]
 
 all_modules = [
  Module(
-        "download_geo", Database.GEOSeries, ExpressionFiles,
+        "download_geo_supplement", Database.GEOSeries, ExpressionFiles,
+         OptionDef("GSEID",help="GSEID to download"),
+         OptionDef("GPLID","",help="GPDID to download"),
+         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+         Consequence("filetype",SET_TO,'unknown'),
+        help="download GEO data from geo website according to GSEID and GPLID"
+        ),
+Module("download_geo_seriesmatrix", Database.GEOSeries, Database.MatrixFile,
          OptionDef("GSEID",help="GSEID to download"),
          OptionDef("GPLID","",help="GPDID to download"),
          Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         help="download GEO data from geo website according to GSEID and GPLID"
         ),
+
     Module(
          'convert_family_soft_to_rename',
          Database.GEOfamily,RenameFile,
@@ -50,5 +61,14 @@ all_modules = [
          Consequence("labels_from",SET_TO_ONE_OF,["title","description"]),
          help="convert famliy soft file to RenameFile"),
 
-    
+     Module(
+        "check_geo_file_type", [ExpressionFiles,Database.MatrixFile], ExpressionFiles,
+         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+         Constraint("contents",SAME_AS,0,1),
+         Consequence("contents",SAME_AS_CONSTRAINT,0),
+         Constraint("filetype",MUST_BE,'unknown',0),
+         Consequence("filetype",BASED_ON_DATA,['matrix','cel','gpr','idat','agilent']),
+        help="check the file type downloaded from geo database"
+        ),
+
 ]

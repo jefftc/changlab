@@ -7,7 +7,7 @@ from Betsy import module_utils
 from genomicode import config
 
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """variance or sum_of_square"""
     norm_para = ["variance","sum_of_squares"]
     if parameters['gene_normalize'] not in norm_para:

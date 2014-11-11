@@ -6,7 +6,7 @@ from genomicode import mplgraph,jmath
 import arrayio
 from Betsy import module_utils, bie3, rulebase
 
-def run(data_node,parameters,user_input, network):
+def run(data_node,parameters,user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     M = arrayio.read(data_node.identifier)
     data = jmath.transpose(M._X)

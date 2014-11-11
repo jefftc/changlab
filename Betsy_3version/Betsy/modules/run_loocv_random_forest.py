@@ -7,7 +7,7 @@ from Betsy import rulebase
 from Betsy import read_label_file
 from Betsy import module_utils
 
-def run(in_nodes,parameters, user_input,network):
+def run(in_nodes,parameters, user_input,network,num_cores):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     M = arrayio.read(data_node.identifier)

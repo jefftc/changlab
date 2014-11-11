@@ -7,7 +7,7 @@ from Betsy import read_label_file, module_utils
 from genomicode import jmath
 from Betsy import bie3, rulebase
 
-def run(in_nodes, parameters, user_input, network):
+def run(in_nodes, parameters, user_input, network,num_cores):
     data_node,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     result, label_line, second_line = read_label_file.read(

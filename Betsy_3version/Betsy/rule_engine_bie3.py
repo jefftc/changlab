@@ -170,7 +170,9 @@ def test_require_data(network, module_id, pool,user_attributes):
 
 
 def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_attributes,
-               user=getpass.getuser(), job_name='', clean_up=True):
+               user=getpass.getuser(), job_name='', clean_up=True,num_cores=8):
+    """return out_nodes, if module fails, the module itself will raise a break,
+       if cannot find a outnode inside the network, will return a empty list"""
     
     current_dir = os.getcwd()
     output_path = config.OUTPUTPATH
@@ -213,10 +215,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_att
             os.chdir(temp_dir) 
             starttime = strftime(module_utils.FMT, localtime())
             out_node = module.run(data_node, out_attributes,
-                                  sub_user_input, network)
-            
-            if not out_node:
-                return None
+                                  sub_user_input, network,num_cores)
             module_utils.write_Betsy_parameters_file(out_node.data.attributes,
                                                      data_node, sub_user_input,
                                                      pipeline_sequence,
@@ -259,7 +258,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_att
 
 
 def run_pipeline(network, in_objects, user_attributes, user_inputs,
-                 user=getpass.getuser(), job_name=''):
+                 user=getpass.getuser(), job_name='',num_cores=8):
     output_path = config.OUTPUTPATH
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -298,7 +297,7 @@ def run_pipeline(network, in_objects, user_attributes, user_inputs,
             #print module_id
             out_nodes = run_module(network, module_id, pool,
                                    user_inputs, pipeline_sequence,user_attributes,
-                                   user, job_name)
+                                   user, job_name,num_cores=num_cores)
             flag = False
             if not out_nodes:
                 break

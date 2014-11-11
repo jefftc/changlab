@@ -6,7 +6,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     outfile = name_outfile(data_node,user_input)
     result_files = os.listdir(data_node.identifier)
     for result_file in result_files:

@@ -6,7 +6,7 @@ from genomicode import binreg
 import arrayio
 import numpy
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """check gene normalize"""
     outfile = name_outfile(data_node,user_input)
     parameters = get_out_attributes(parameters,data_node)

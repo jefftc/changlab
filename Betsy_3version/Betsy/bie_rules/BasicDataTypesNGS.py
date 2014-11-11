@@ -103,7 +103,7 @@ FastqFolder=DataType(
     )
 SamFolder=DataType(
     'SamFolder',
-    AttributeDef("ref",['human','mouse'], "human","human",
+    AttributeDef("ref",['human','mouse','hg18','hg19'], "human","human",
                  help='ref species'),
     AttributeDef("contents",Database.CONTENTS,
                  'unspecified','unspecified',help="contents"),
@@ -114,12 +114,18 @@ SamFolder=DataType(
 
 BamFolder=DataType(
     'BamFolder',
-    AttributeDef("ref",['human','mouse'], "human","human",
+    AttributeDef("ref",['human','mouse','hg18','hg19'], "human","human",
                  help='ref species'),
     AttributeDef("contents",Database.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     AttributeDef("sample_type",['RNA','DNA'],
                  'RNA','RNA',help="RNA or DNA type"),
+    AttributeDef("duplicates_marked",["yes","no"],"no","no",
+                 help='mark duplicate or not'),
+    AttributeDef("sorted",["yes","no",'unknown'],"unknown","unknown",
+                 help='sorted or not'),
+    AttributeDef("indexed",["yes","no"],"no","no",
+                 help='indexed or not'),
     help="RNA seq Bam folder"
     )
 SampleGroupFile=DataType(
@@ -128,7 +134,13 @@ SampleGroupFile=DataType(
                  'unspecified','unspecified',help="contents"),
     help="File contains sample group infomation"
     )
+RNASeQCFile=DataType(
+    'RNASeQCFile',
+    AttributeDef("contents",Database.CONTENTS,
+                 'unspecified','unspecified',help="contents"),
+    help="File contains sample group infomation"
+    )
 list_files = [FastqFile, SaiFile, SamFile, BamFile, VcfFile,
-              RNASeqFile, FastqFolder, SamFolder, BamFolder,SampleGroupFile]
+              RNASeqFile, FastqFolder, SamFolder, BamFolder,SampleGroupFile,RNASeQCFile]
 
 all_modules = []

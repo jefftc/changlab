@@ -10,7 +10,7 @@ from Betsy import config
 from Betsy import module_utils
 from Betsy import hash_method
 
-def run(data_node,parameters, user_input, network):
+def run(data_node,parameters, user_input, network,num_cores):
     outfile_folder=name_outfile(data_node,user_input)
     outfile = os.path.join(outfile_folder,'report.html')
     if not os.path.exists(outfile_folder):

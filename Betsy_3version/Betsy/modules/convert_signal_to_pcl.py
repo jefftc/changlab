@@ -4,7 +4,7 @@ from Betsy import module_utils
 import shutil
 from Betsy import bie3,rulebase
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """convert signal file to pcl format"""
     import arrayio
     outfile = name_outfile(data_node,user_input)

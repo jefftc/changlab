@@ -5,7 +5,7 @@ import subprocess
 from genomicode import config
 
 
-def run(in_nodes, parameters, user_input, network):
+def run(in_nodes, parameters, user_input, network,num_cores):
     fastq1_node, sai1_node, fastq2_node, sai2_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     species = parameters['ref']

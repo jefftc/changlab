@@ -8,8 +8,8 @@ import string
 import gzip
 
 
-def run(data_node, parameters, user_input, network):
-    """given a database ID and GPLID, get the cel files"""
+def run(data_node, parameters, user_input, network,num_cores):
+    """given a database ID and GPLID, get the files"""
     outfile = name_outfile(data_node,user_input)
     GSEID = user_input['GSEID']
     GPLID = None
@@ -75,8 +75,9 @@ def clean_cel_filename(cel_file):
         return cel_file
 
 def download_geo_with_GSEID(GSEID, outfile):
-    file_folder = os.path.join(os.getcwd(), GSEID)
-    module_utils.download_dataset(GSEID)
+    #file_folder = os.path.join(os.getcwd(), GSEID)
+    
+    file_folder = module_utils.download_dataset(GSEID)
     #get chip name
     cel_files = os.listdir(file_folder)
     unknown_folder = os.path.join(os.getcwd(), 'unknown_folder')
@@ -170,6 +171,10 @@ def download_geo_with_GSEID(GSEID, outfile):
                 else:
                     raise ValueError('does not recognazie the platform')
     os.rename(out_filename, outfile)
+    matrix_files = get_seriesmatrix_file(GSEID)
+    for matrix_file in matrix_files:
+        newmatrix_filename = os.path.split(matrix_file)[-1]
+        shutil.copyfile(matrix_file,os.path.join(outfile, newmatrix_filename))
     
 def download_geo_with_GPLID(GSEID, GPLID, outfile):
     GSEID_path = module_utils.download_dataset(GSEID)
@@ -213,7 +218,11 @@ def download_geo_with_GPLID(GSEID, GPLID, outfile):
                                 outfilename)
     else:
         os.rename(GSEID_path, outfile)
+    for matrix_file in platform_txtfiles:
+        newmatrix_filename = os.path.split(matrix_file)[-1]
+        shutil.copyfile(matrix_file,os.path.join(outfile, newmatrix_filename))
 
+        
 def get_seriesmatrix_file(GSEID, GPLID):
     'download series matrix and unzip'
     try:
@@ -252,6 +261,48 @@ def get_seriesmatrix_file(GSEID, GPLID):
             assert os.path.exists(platform_txtfile), (
                 'the unzip %s in download_geo_dataset_GPL fails'
                 % platform_txtfile)
-            platform_txtfiles.append(platform_txtfile)
+            platform_txtfiles.append(os.path.realpath(platform_txtfile))
     ftp.close()
     return platform_txtfiles
+
+def get_seriesmatrix_file(GSEID):
+    'download series matrix and unzip'
+    try:
+        ftp = FTP('ftp.ncbi.nih.gov')
+        ftp.login()
+    except Exception, e:
+        raise ValueError(e)
+    try:
+        ftp.cwd('pub/geo/DATA/SeriesMatrix/' + GSEID)
+    except FTP.error_perm, x:
+        if str(x).find('No such file') >= 0:
+            raise AssertionError('cannot find the %s' % path)
+    entry = []
+    ftp.retrlines('NLST', entry.append)
+    platform_txtfiles = []
+    for platform_filename in entry:
+        f = open(platform_filename, 'wb')
+        ftp.retrbinary('RETR ' + platform_filename, f.write)
+        f.close()
+        platform_txtfile = platform_filename[: -3]
+        assert not os.path.exists(platform_txtfile), (
+            'the seriesmatrix file %s already exists' % platform_txtfile)
+        #unzip the gz data
+        import gzip
+        fileObj = gzip.GzipFile(platform_filename, 'rb')
+        fileObjOut = file(platform_txtfile, 'wb')
+        while 1:
+            line = fileObj.readline()
+            if line == '':
+                break
+            fileObjOut.write(line)
+        fileObj.close()
+        fileObjOut.close()
+        os.remove(platform_filename)
+        assert os.path.exists(platform_txtfile), (
+            'the unzip %s in download_geo_dataset_GPL fails'
+            % platform_txtfile)
+        platform_txtfiles.append(os.path.realpath(platform_txtfile))
+    ftp.close()
+    return platform_txtfiles
+

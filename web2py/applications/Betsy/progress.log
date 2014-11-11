@@ -1713,3 +1713,6 @@
 [2013-12-16 14:36:29] EDIT Betsy/views/default/show_status.html: -3
 [2013-12-16 14:38:52] EDIT Betsy/views/default/show_status.html: 3
 [2013-12-17 13:47:32] EDIT Betsy/controllers/default.py: 0
+[2014-11-06 14:43:15] EDIT Betsy/models/parameters_data.py: 1
+[2014-11-06 14:44:00] EDIT Betsy/models/parameters_data.py: 0
+[2014-11-06 14:44:14] EDIT Betsy/models/parameters_data.py: -1

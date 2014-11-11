@@ -6,7 +6,7 @@ import gzip
 from genomicode import smarray
 from Betsy import gpr_module, bie3,rulebase
 
-def run(data_node, parameters, user_input,network):
+def run(data_node, parameters, user_input,network,num_cores):
     parameters = get_out_attributes(parameters,data_node)
     filenames=os.listdir(data_node.identifier)
     outfile = name_outfile(data_node,user_input)

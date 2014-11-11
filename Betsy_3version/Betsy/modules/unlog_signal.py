@@ -6,7 +6,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """unlog the pcl file"""
     import arrayio
     import math

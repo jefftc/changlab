@@ -4,7 +4,7 @@ import subprocess
 from Betsy import module_utils,bie3,rulebase
 from genomicode import config
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """mean or median"""
     CLUSTER_BIN = config.cluster
     cluster = module_utils.which(CLUSTER_BIN)

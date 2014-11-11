@@ -5,7 +5,7 @@ from genomicode import config
 import subprocess
 
 
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     """preprocess the inputfile with  MAS5
        using preprocess.py will generate a output file"""
     #preprocess the cel file to text signal file

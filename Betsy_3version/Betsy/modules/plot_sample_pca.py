@@ -8,7 +8,7 @@ import matplotlib.cm as cm
 from Betsy import bie3
 from Betsy import rulebase
 
-def run(in_nodes,parameters, user_input, network):
+def run(in_nodes,parameters, user_input, network,num_cores):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     a,b,c = read_label_file.read(cls_node.identifier)

@@ -7,7 +7,7 @@ import arrayio
 from Betsy import bie3, rulebase
 import numpy
 
-def run(data_node,parameters, user_input, network):
+def run(data_node,parameters, user_input, network,num_cores):
     """check gene cetenr"""
     outfile = name_outfile(data_node,user_input)
     parameters = get_out_attributes(parameters,data_node)

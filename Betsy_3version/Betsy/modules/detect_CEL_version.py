@@ -6,7 +6,7 @@ import gzip
 from genomicode import affyio
 from Betsy import bie3, rulebase
 
-def run(data_node, parameters, user_input,network):
+def run(data_node, parameters, user_input,network,num_cores):
     """convert the cel file with ccl or v3_4 to v3_4"""
     outfile = name_outfile(data_node,user_input)
     new_parameters = get_out_attributes(parameters,data_node)

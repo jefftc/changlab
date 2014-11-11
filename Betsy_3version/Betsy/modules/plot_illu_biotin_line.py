@@ -4,7 +4,7 @@ from Betsy import module_utils,bie3,rulebase
 import shutil
 
 
-def run(data_node,parameters,user_input,network):
+def run(data_node,parameters,user_input,network,num_cores):
     outfile = name_outfile(data_node,user_input)
     module_utils.plot_line_keywd(data_node.identifier,'biotin',outfile)
     assert module_utils.exists_nz(outfile),(

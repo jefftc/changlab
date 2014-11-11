@@ -9,7 +9,7 @@ import numpy
 from Betsy import read_label_file,bie3,rulebase
 
 
-def run(in_nodes, parameters, user_input, network):
+def run(in_nodes, parameters, user_input, network,num_cores):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     label,label_line,second_line = read_label_file.read(

@@ -6,7 +6,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(in_nodes, parameters, user_input, network):
+def run(in_nodes, parameters, user_input, network,num_cores):
     """merge three signal file to generate a joined signal file"""
     merge_node1, merge_node2 = in_nodes
     assert os.path.exists(merge_node1.identifier),(

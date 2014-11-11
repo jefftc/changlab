@@ -37,7 +37,7 @@ def convert_family_to_relabel_file(relabel_dict, outfile):
         f.write('\t'.join([key,relabel_dict[key]])+'\n')
     f.close()
     
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """convert family soft file to RenameFile"""
     outfile = name_outfile(data_node,user_input)
     GSEID = user_input['GSEID']

@@ -7,7 +7,7 @@ from Betsy import rulebase
 from Betsy import module_utils
 
 
-def run(data_node, parameters, user_input,network):
+def run(data_node, parameters, user_input,network,num_cores):
     outfile = name_outfile(data_node,user_input)
     directory = module_utils.unzip_if_zip(data_node.identifier)
     illumina_file = []
@@ -31,8 +31,8 @@ def run(data_node, parameters, user_input,network):
     	out_object = module_utils.DataObject(out_node,outfile)
     	return out_object
     else:
-        print 'There is no illumina idat file in the input.'
-        return None
+        assert ValueError('There is no illumina idat file in the input.')
+        
 
         
 ##def run(data_node, parameters, user_input,network):

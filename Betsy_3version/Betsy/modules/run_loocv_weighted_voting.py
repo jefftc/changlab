@@ -10,7 +10,7 @@ from genomicode import config
 import subprocess
 
 
-def run(in_nodes,parameters, user_input, network):
+def run(in_nodes,parameters, user_input, network,num_cores):
     data_node_train,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     module_name = 'WeightedVotingXValidation'

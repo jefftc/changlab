@@ -6,7 +6,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node, parameters, user_input,network):
+def run(data_node, parameters, user_input,network,num_cores):
     """preprocess the inputfile with RMA 
        using preprocess.py will generate a output file"""
     #preprocess the cel file to text signal file

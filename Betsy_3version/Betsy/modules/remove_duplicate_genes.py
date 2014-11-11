@@ -7,7 +7,7 @@ from Betsy import rulebase
 from Betsy import module_utils
 from genomicode import jmath,arrayplatformlib,arrayannot
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """remove duplicate genes"""
     outfile = name_outfile(data_node,user_input)
     M = arrayio.read(data_node.identifier)

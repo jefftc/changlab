@@ -93,7 +93,7 @@ def process_group_info(group_file):
             raise ValueError('group file is invalid')
     return group_dict
 
-def run(in_nodes,parameters,user_input,network):
+def run(in_nodes,parameters,user_input,network,num_cores):
     data_node, group_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     group_dict = process_group_info(group_node.identifier)

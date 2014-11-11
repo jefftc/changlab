@@ -9,7 +9,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node, parameters, user_input,network):
+def run(data_node, parameters, user_input,network,num_cores):
     outfile = name_outfile(data_node,user_input)
     bfrm_path = config.bfrmnorm
     bfrm_BIN = module_utils.which(bfrm_path)

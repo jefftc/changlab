@@ -5,7 +5,7 @@ from Betsy import module_utils
 from Betsy import bie3, rulebase
 from genomicode import config
 
-def run(in_nodes, parameters, user_input, network):
+def run(in_nodes, parameters, user_input, network,num_cores):
     data_node,cls_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     diffexp_bin = config.find_diffexp_genes

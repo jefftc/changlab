@@ -7,7 +7,7 @@ import tempfile
 import shutil
 
 
-def preprocess_single_sample(folder,sample,files,out_file,ref):
+def preprocess_single_sample(folder,sample,files,out_file,ref,num_cores):
     if ref == 'human':
         ref_file = config.rna_human
     elif ref == 'mouse':
@@ -18,19 +18,19 @@ def preprocess_single_sample(folder,sample,files,out_file,ref):
     if sample+'.bam' in bamfiles:
         input_file = os.path.join(folder,sample+'.bam')
         command = ['rsem-calculate-expression', '--bam',input_file,ref_file,
-                   '--no-bam-output','-p','8',sample]
+                   '--no-bam-output','-p',str(num_cores),sample]
         if len(files)==2:
             command.append('--paired-end')
     else:
         if len(files)==1:
             input_file = os.path.join(folder,files[0][0])
             command = ['rsem-calculate-expression', '--bam',input_file,ref_file,
-                   '--no-bam-output','-p','8',sample]
+                   '--no-bam-output','-p',str(num_cores),sample]
         elif len(files)==2:
             input_file1 = os.path.join(folder,files[0][0])
             input_file2 = os.path.join(folder,files[1][0])
             command = ['rsem-calculate-expression','--bam','--paired-end',input_file1,input_file2,
-                    ref_file,'--no-bam-output','-p','8',sample]
+                    ref_file,'--no-bam-output','-p',str(num_cores),sample]
         else:
             raise ValueError('number files is not correct')
     process=subprocess.Popen(command,shell=False,
@@ -60,13 +60,13 @@ def preprocess_single_sample(folder,sample,files,out_file,ref):
         % out_file)
 
 
-def preprocess_multiple_sample(folder, group_dict, outfile,ref):
+def preprocess_multiple_sample(folder, group_dict, outfile,ref,num_cores):
     filenames = os.listdir(folder)
     file_list = []
     for sample in group_dict:
         temp_file = tempfile.mkstemp()[1]
         preprocess_single_sample(folder,sample,group_dict[sample],
-                                 temp_file,ref)
+                                 temp_file,ref,num_cores)
         file_list.append(temp_file)
     result_file = file_list[0]
     tmp_list=file_list[:]
@@ -87,12 +87,12 @@ def preprocess_multiple_sample(folder, group_dict, outfile,ref):
                 os.remove(filename)
 
 
-def run(in_nodes,parameters,user_input,network):
+def run(in_nodes,parameters,user_input,network,num_cores):
     data_node, group_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     group_dict = module_utils.process_group_info(group_node.identifier)
     preprocess_multiple_sample(data_node.identifier, group_dict,
-                               outfile, data_node.data.attributes['ref'])
+                               outfile, data_node.data.attributes['ref'],num_cores)
     assert module_utils.exists_nz(outfile), (
         'the output file %s for normalize_with_rsem does not exist'
         % outfile)

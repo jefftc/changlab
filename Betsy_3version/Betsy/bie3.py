@@ -176,9 +176,9 @@ class AttributeDef:
             
         # Make sure default_in and default_out are valid values.
         assert type(default_in) is type("")
-        #assert type(default_out) is type("")
+        #assert type(default_out) is type("")  #here is changed to make the default can be tuple
         assert default_in in values
-        #assert default_out in values
+        #assert default_out in values    #here is changed to make the default can be tuple
         
         self.name = name
         self.values = values
@@ -229,7 +229,7 @@ class Attribute:
         assert isinstance(datatype, DataType)
         assert type(name) is type("")
         assert type(value) is type("")
-        
+        #here is comment to make the default out can be tuple
         # Check if this is a valid attribute name for the datatype.
         #x = [x for x in datatype.attribute_defs if x.name == name]
         #assert len(x) == 1, "datatype %r does not have attribute %r." % (
@@ -516,9 +516,9 @@ class DataType:
                     repr(self.name), repr(name))
             attr = self.attribute_defs[name]
             # Optimization for:
-            assert attr.is_valid_value(value), \
-                   "In a %s, '%s' is not a valid value for '%s'." % (
-                self.name, value, name)
+            #assert attr.is_valid_value(value), \
+            #       "In a %s, '%s' is not a valid value for '%s'." % (
+            #    self.name, value, name)
             # Makes code more complicated for a minor speedup.
             #attr_values_dict = attr.values_dict
             #is_valid = True
@@ -2065,14 +2065,8 @@ def remove_data_node(network, *attributes):
     return network
 
 
-def _get_inputs_h(network, node_id, nodeid2previds, user_attributes, memoize):
-    # Return list of tuples of node_ids.
+def _get_inputs_h(network, node_id, nodeid2previds, user_attributes):
     import itertools
-
-    # memoize is node_id -> list of inputs.
-    if node_id in memoize:
-        return memoize[node_id]
-
     node = network.nodes[node_id]
 
     inputs = []
@@ -2081,16 +2075,12 @@ def _get_inputs_h(network, node_id, nodeid2previds, user_attributes, memoize):
         # of the previous nodes.
         inputs = [(node_id,)]
         for previd in nodeid2previds.get(node_id, []):
-            x = _get_inputs_h(
-                network, previd, nodeid2previds, user_attributes, memoize)
+            x = _get_inputs_h(network, previd, nodeid2previds, user_attributes)
             inputs.extend(x)
     elif isinstance(node, Module):
         # Find all potential sets of Data notes that can feed into me.
         assert node_id in nodeid2previds
         previds = nodeid2previds[node_id]
-        # combos is a list of tuples.
-        # [(33,)]
-        # [(2, 3, 4, 5, 6)]
         combos = _get_valid_input_combinations(
             network, node_id, previds, user_attributes, 
             node2previds=nodeid2previds)
@@ -2099,53 +2089,31 @@ def _get_inputs_h(network, node_id, nodeid2previds, user_attributes, memoize):
         for combo in combos:
             # Get the inputs for each branch of this combination.
             branch2inputs = [
-                _get_inputs_h(
-                    network, x, nodeid2previds, user_attributes, memoize)
+                _get_inputs_h(network, x, nodeid2previds, user_attributes)
                 for x in combo]
 
             # Find all permutations for the inputs for each branch.
-            # combo is a tuple
-            # branch2inputs is a list of lists of tuples.
-            # 
-            # [ [(49, 40)],             Each branch has a set of inputs.
+            # [ [(49, 40)]              Each branch has a set of inputs.
             #   [(38,), (35,)] ]
             # ->                        itertools.product
             # [ ((49, 40), (38,)),
             #   ((49, 40), (35,)) ]
             # ->                        flatten
             # [ (49, 40, 38), (49, 40, 35) ]
-            
-            # Naive implementation too slow due to exponential
-            # explosion of inputs.  Do two branches at a time, getting
-            # rid of duplicates at each step.
-            #x = itertools.product(*branch2inputs)
-            #x = list(x)
-            ## Flatten the tuples.
-            #x = [_flatten(x) for x in x]
-            #inputs = x
-
-            while len(branch2inputs) > 1:
-                b1 = branch2inputs[0]         # list of tuples
-                b2 = branch2inputs[1]         # list of tuples
-                x = itertools.product(b1, b2)
-                x = [_flatten(x) for x in x]  # list of tuples
-                x = [sorted({}.fromkeys(x)) for x in x]  # sort the tuples
-                x = [tuple(x) for x in x]
-                x = sorted({}.fromkeys(x))    # list of tuples
-                branch2inputs.pop(0)
-                branch2inputs[0] = x
-            inputs = branch2inputs[0]
+            x = itertools.product(*branch2inputs)
+            # Flatten the tuples.
+            x = [_flatten(x) for x in x]
+            inputs = x
     else:
         raise AssertionError
 
     inputs = sorted({}.fromkeys(inputs))
-    memoize[node_id] = inputs
     return inputs
     
 
 def get_inputs(network, user_attributes):
-    # Return a list of tuples of Data node ids.  Each tuple contains a
-    # set of node IDs that can serve as the inputs to this network.
+    # Return a list of tuples of node ids.  Each tuple contains a set
+    # of node IDs that can serve as the inputs to this network.
     # 
     # Example return value:
     #   [(1, 5), (8,)]
@@ -2153,9 +2121,7 @@ def get_inputs(network, user_attributes):
     # to this network.  Or, node 8 by itself would also be a valid
     # input.
     nodeid2previds = _make_backchain_dict(network)
-    memoize = {}
-    inputs = _get_inputs_h(
-        network, 0, nodeid2previds, user_attributes, memoize)
+    inputs = _get_inputs_h(network, 0, nodeid2previds, user_attributes)
     return inputs
 
 

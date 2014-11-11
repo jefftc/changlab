@@ -96,7 +96,7 @@ def preprocess_multiple_sample(folder, group_dict, outfile,ref):
 
 
 
-def run(in_nodes,parameters,user_input,network):
+def run(in_nodes,parameters,user_input,network,num_cores):
     data_node, group_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     group_dict = module_utils.process_group_info(group_node.identifier)

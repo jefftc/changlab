@@ -73,7 +73,7 @@ all_modules = [
          BasicDataTypesNGS.SamFolder,BasicDataTypesNGS.BamFolder,
          Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
-         Consequence("ref",SET_TO_ONE_OF,['human','mouse']),
+         #Consequence("ref",SET_TO_ONE_OF,['human','mouse']),
          help=("convert sam folder into bam folder")
         ),
      Module(

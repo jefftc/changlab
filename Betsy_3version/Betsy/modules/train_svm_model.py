@@ -7,7 +7,7 @@ from Betsy import module_utils,bie3,rulebase
 import os
 
 
-def run(in_nodes, parameters, user_input,network):
+def run(in_nodes, parameters, user_input,network,num_cores):
     data_node_train,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     a,training_label,second_line = read_label_file.read(

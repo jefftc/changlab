@@ -7,7 +7,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node, parameters,user_input, network):
+def run(data_node, parameters,user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     directory = module_utils.unzip_if_zip(data_node.identifier)
     agilent_files = []
@@ -48,8 +48,7 @@ def run(data_node, parameters,user_input, network):
     	out_object = module_utils.DataObject(out_node,outfile)
     	return out_object
     else:
-        print 'There is no agilent file in the input.'
-        return None
+        assert ValueErro('There is no agilent file in the input.')
 
 def make_unique_hash(data_node,pipeline,parameters,user_input):
     identifier = data_node.identifier

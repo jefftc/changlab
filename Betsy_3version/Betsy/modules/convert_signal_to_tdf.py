@@ -10,7 +10,7 @@ from genomicode import config, arrayplatformlib
 from Betsy import bie3
 from Betsy import rulebase
         
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     """check an input file is xls or xlsx format"""
     outfile = name_outfile(data_node,user_input)
     real_name = data_node.identifier

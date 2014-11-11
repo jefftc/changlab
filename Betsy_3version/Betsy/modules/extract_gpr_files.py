@@ -6,7 +6,7 @@ from Betsy import module_utils
 from Betsy import gpr_module
 from Betsy import bie3,rulebase
 
-def run(data_node,parameters, user_input, network):
+def run(data_node,parameters, user_input, network,num_cores):
     """extract the files that are gpr format"""
     outfile = name_outfile(data_node,user_input)
     directory = module_utils.unzip_if_zip(data_node.identifier)
@@ -36,8 +36,7 @@ def run(data_node,parameters, user_input, network):
     	out_object = module_utils.DataObject(out_node,outfile)
     	return out_object
     else:
-        print 'There is no gpr file in the input.'
-        return None
+        assert ValueError('There is no gpr file in the input.')
 
 
 

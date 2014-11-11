@@ -7,7 +7,7 @@ from Betsy import read_label_file, module_utils
 from Betsy import bie3
 from Betsy import rulebase
 
-def run(in_nodes,parameters, user_input, network):
+def run(in_nodes,parameters, user_input, network,num_cores):
     svm_model,data_node_test,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     a, train_label, second_line = read_label_file.read(

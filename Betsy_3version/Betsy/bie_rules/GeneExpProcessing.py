@@ -31,7 +31,8 @@ _SignalFile_Postprocess = DataType(
     AttributeDef("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
               "unknown", "tdf",help="file format"),
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes",help="logged or not"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("contents", Database.CONTENTS,"unspecified", "unspecified",help="contents"),
@@ -41,7 +42,8 @@ _SignalFile_Postprocess = DataType(
 _SignalFile_Impute = DataType(
     "_SignalFile_Impute",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+   # AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_values", ["unknown", "no", "yes"], "unknown", "no",
                  help="missing values unknown,yes or not"),
@@ -56,9 +58,10 @@ _SignalFile_Impute = DataType(
 _SignalFile_Merge = DataType(
     "_SignalFile_Merge",
     # Properties of the data.
-    AttributeDef("preprocess",
-              PREPROCESS,
-              "unknown", "unknown",help="preprocess method"),
+    #AttributeDef("preprocess",
+    #          PREPROCESS,
+    #          "unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
@@ -75,7 +78,8 @@ _SignalFile_Merge = DataType(
 _SignalFile_Normalize = DataType(
     "_SignalFile_Normalize",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
@@ -102,7 +106,8 @@ _SignalFile_Normalize = DataType(
 _SignalFile_Order = DataType(
     "_SignalFile_Order",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
@@ -130,7 +135,8 @@ _SignalFile_Order = DataType(
 _SignalFile_Annotate= DataType( 
     "_SignalFile_Annotate",
     # Properties of the data.
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
@@ -161,7 +167,8 @@ _SignalFile_Annotate= DataType(
 _SignalFile_Filter= DataType( 
     "_SignalFile_Filter",
     # Properties of the data.
-    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
+    #AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
@@ -203,7 +210,8 @@ _SignalFile_Filter= DataType(
 SignalFile= DataType( 
     "SignalFile",
     # Properties of the data.
-    AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
+    #AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),

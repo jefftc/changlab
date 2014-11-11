@@ -6,7 +6,7 @@ from genomicode import binreg
 from Betsy import bie3
 from Betsy import rulebase
 
-def run(data_node, parameters,user_input, network):
+def run(data_node, parameters,user_input, network,num_cores):
     """log the input file"""
     import arrayio
     import math

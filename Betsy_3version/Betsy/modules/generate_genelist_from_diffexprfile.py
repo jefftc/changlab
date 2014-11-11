@@ -5,7 +5,7 @@ import math
 from Betsy import read_label_file,bie3,rulebase
 
 
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     foldchange = None
     p_value = None

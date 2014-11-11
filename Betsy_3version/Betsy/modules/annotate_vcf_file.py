@@ -4,7 +4,7 @@ from Betsy import module_utils, bie3, rulebase
 import os
 import subprocess
 
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     outfile = name_outfile(data_node,user_input)
     species = parameters['ref']
     annotate_BIN=config.annotate_vcf

@@ -6,7 +6,7 @@ from genomicode import binreg
 import arrayio
 from Betsy import bie3, rulebase
 
-def run(data_node,parameters, user_input,network):
+def run(data_node,parameters, user_input,network,num_cores):
     outfile = name_outfile(data_node,user_input)
     parameters = get_out_attributes(parameters,data_node)
     shutil.copyfile(data_node.identifier,outfile)

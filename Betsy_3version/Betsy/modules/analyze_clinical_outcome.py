@@ -5,7 +5,7 @@ from genomicode import config
 import subprocess
 import shutil
 
-def run(in_nodes, parameters, user_input, network):
+def run(in_nodes, parameters, user_input, network,num_cores):
     data_node, clinical_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     analyze_path = config.analyze_clinical

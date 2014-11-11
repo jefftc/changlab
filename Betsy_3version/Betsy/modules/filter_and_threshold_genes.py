@@ -3,7 +3,7 @@ import os
 from Betsy import module_utils
 from Betsy import bie3, rulebase
 
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     """run preprocessdataset """
     import arrayio
     outfile = name_outfile(data_node,user_input)

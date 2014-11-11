@@ -5,7 +5,7 @@ import shutil
 import gzip
 
 
-def run(data_node,parameters,user_input,network):
+def run(data_node,parameters,user_input,network,num_cores):
     """check is fastq folder"""
     outfile = name_outfile(data_node,user_input)
     directory = module_utils.unzip_if_zip(data_node.identifier)

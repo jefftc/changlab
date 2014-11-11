@@ -366,6 +366,10 @@ def main():
                         dest='job_name', default='',
                         type=str,
                         help='the name of this job')
+    parser.add_argument('--num_cores',
+                        dest='num_cores', default=8,
+                        type=str,
+                        help='number of cores used in the processing')
     # parse
     args = parser.parse_args()
     input_list, output = assign_args(sys.argv)
@@ -418,6 +422,8 @@ def main():
         return
     if not args.output and args.input:
         raise AssertionError, "Missing --output"
+    if args.num_cores:
+        assert args.num_cores>0,'num_cores should be bigger than 0'
     print 'Generating network...'
     network = bie3.backchain(
         rulebase.all_modules, goal_datatype, user_attributes)
@@ -479,7 +485,7 @@ def main():
     print "Running the pipeline."
     
     output_file = rule_engine_bie3.run_pipeline(
-        network, in_objects,  user_attributes, options,args.user,args.job_name)
+        network, in_objects,  user_attributes, options,args.user,args.job_name,args.num_cores)
     
     if args.output_file:
         if os.path.exists(args.output_file) and args.clobber:

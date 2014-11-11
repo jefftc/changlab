@@ -6,7 +6,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils, read_label_file
 
-def run(in_nodes,parameters, user_input, network):
+def run(in_nodes,parameters, user_input, network,num_cores):
     data_node, cls_node = in_nodes
     if data_node and cls_node:
         outfile = name_outfile(in_nodes,user_input)

@@ -6,7 +6,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(in_nodes, parameters, user_input, network):
+def run(in_nodes, parameters, user_input, network,num_cores):
     """analyze geneset"""
     data_node,geneset_node = in_nodes
     outfile = name_outfile(in_nodes,user_input)

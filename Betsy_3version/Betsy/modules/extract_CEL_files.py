@@ -5,7 +5,7 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node, parameters, user_input,network):
+def run(data_node, parameters, user_input,network,num_cores):
     """extract the cel files with cc or v3_4"""
     from genomicode import affyio
     outfile = name_outfile(data_node,user_input)
@@ -34,8 +34,8 @@ def run(data_node, parameters, user_input,network):
         out_object = module_utils.DataObject(out_node,outfile)
         return out_object
     else:
-        print 'There is no cel file in the input.'
-        return None
+        assert ValueError('There is no cel file in the input.')
+       
 
 
 

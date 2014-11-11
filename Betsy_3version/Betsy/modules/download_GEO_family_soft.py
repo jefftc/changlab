@@ -21,7 +21,7 @@ def download_series_family(**params):
     for line in handle:
         print >>outhandle, line,
         
-def run(data_node, parameters, user_input, network):
+def run(data_node, parameters, user_input, network,num_cores):
     """given a GEOID  get the family soft file"""
     outfile = name_outfile(data_node,user_input)
     GSEID = user_input['GSEID']

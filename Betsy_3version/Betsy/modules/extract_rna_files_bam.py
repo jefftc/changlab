@@ -5,7 +5,7 @@ import shutil
 import gzip
 
 
-def run(data_node,parameters,user_input,network):
+def run(data_node,parameters,user_input,network,num_cores):
     """extract the bam rna seq files"""
     outfile = name_outfile(data_node,user_input)
     

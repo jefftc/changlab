@@ -142,10 +142,21 @@ list_files = [AgilentFiles, CELFiles, ControlFile, GPRFiles, IDATFiles, ILLUFold
               ActbPlot,Hyb_barPlot,ControlPlot,BiotinPlot,HousekeepingPlot]
 
 all_modules = [
-        
+    Module(
+        "extract_matrix_data", BasicDataTypes.ExpressionFiles, GeneExpProcessing._SignalFile_Postprocess,
+         Constraint("filetype",MUST_BE,'matrix'),
+         Consequence("preprocess", SET_TO, "unknown"),
+         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+         Consequence("contents",SAME_AS_CONSTRAINT),
+         Consequence("logged", SET_TO, "unknown"),
+         Consequence('predataset', SET_TO, "no"),
+         Consequence("format", SET_TO, "tdf"),
+        help="extract SignalFile_Postprocess files from Expression Files"
+        ),
         #CELFiles
     Module(
         "extract_CEL_files", BasicDataTypes.ExpressionFiles, CELFiles,
+         Constraint("filetype",MUST_BE,'cel'),
          Consequence("version", SET_TO, "unknown"),
          Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
@@ -196,8 +207,9 @@ all_modules = [
      # IDATFiles
     Module("extract_illumina_idat_files",
             BasicDataTypes.ExpressionFiles, IDATFiles,
+           Constraint("filetype",MUST_BE,'idat'),
            Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
-         Consequence("contents",SAME_AS_CONSTRAINT),
+           Consequence("contents",SAME_AS_CONSTRAINT),
            help="extract idat files from Expression File folder"),
     Module(
         "preprocess_illumina",
@@ -237,6 +249,7 @@ all_modules = [
     # AgilentFiles
     Module(
         "extract_agilent_files", BasicDataTypes.ExpressionFiles, AgilentFiles,
+        Constraint("filetype",MUST_BE,'agilent'),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         help="extract agilent files from ExpressionFiles"),
@@ -253,6 +266,7 @@ all_modules = [
     # GPRFiles
     Module(
         "extract_gpr_files", BasicDataTypes.ExpressionFiles, GPRFiles,
+        Constraint("filetype",MUST_BE,'gpr'),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
         help="extract gpr files from ExpressionFiles"),

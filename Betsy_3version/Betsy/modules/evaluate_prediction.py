@@ -8,7 +8,7 @@ from Betsy import module_utils, read_label_file
 from Betsy import bie3 
 from Betsy import rulebase
 
-def run(in_nodes,parameters, user_input,network):
+def run(in_nodes,parameters, user_input,network,num_cores):
     data_node,cls_node_test = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     f = file(data_node.identifier,'r')

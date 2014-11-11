@@ -9,7 +9,7 @@ from genomicode import jmath, Matrix, arrayplatformlib, config
 from Betsy import bie3,rulebase
  
 
-def run(data_node,parameters,user_input,network):
+def run(data_node,parameters,user_input,network,num_cores):
     outfile = name_outfile(data_node,user_input)
     DATA = arrayio.read(data_node.identifier)
     chipname = arrayplatformlib.identify_platform_of_matrix(DATA)
