@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 def main():
     import os
     import argparse
@@ -47,7 +48,7 @@ def main():
     if not args.outfile:
         return
     genesets = []  # list of GeneSet objects
-    for i in range(len(all_names)-1):
+    for i in range(len(all_names) - 1):
         for j in range(i, len(all_names)):
             name1 = all_names[i]
             name2 = all_names[j]
@@ -60,7 +61,7 @@ def main():
     if args.outfile.lower().endswith(".gmt"):
         write_fn = genesetlib.write_gmt
     write_fn(args.outfile, genesets)
-            
+
 
 if __name__ == '__main__':
     main()

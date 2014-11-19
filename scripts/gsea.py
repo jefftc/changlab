@@ -26,6 +26,7 @@ platform2gpplatform = {
     "HG_U133A_2" : "HG_U133A_2.chip",
     "HG_U133_Plus_2" : "HG_U133_Plus_2.chip",
     "Entrez_symbol_human" : None,
+    "Entrez_Symbol_human" : None,
     "entrez_ID_symbol_human" : None,
     # Missing entrez_ID_human
     }

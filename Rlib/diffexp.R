@@ -239,6 +239,8 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   GROUP2 <- as.numeric(Y == Y.all[2])
   if(sum(GROUP1 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
   if(sum(GROUP2 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
+  SAMPLE1 <- colnames(X)[Y == Y.all[1]]
+  SAMPLE2 <- colnames(X)[Y == Y.all[2]]
 
   if((length(geneid) == 1) && is.na(geneid)) {
     ndigits <- floor(log(nrow(X), 10)) + 1
@@ -268,7 +270,8 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
     DATA <- matrix(NA, 0, 7+length(Y.all)*2+ncol(X))
     colnames(DATA) <- c("Gene ID", "Gene Name", 
       "NL10P", "NL10 FDR", "NL10 Bonf", 
-      sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
+      sprintf("Num Samples %s", Y.all), sprintf("Samples %s", Y.all),
+      sprintf("Mean %s", Y.all), 
       "Log_2 Fold Change", "Direction", 
       colnames(X))
     DATA <- matrix2dataframe(DATA)
@@ -296,16 +299,19 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   mean.2 <- apply(X.2, 1, mean)
   nsamp.1 <- ncol(X.1)
   nsamp.2 <- ncol(X.2)
+  samp.1 <- paste(SAMPLE1, collapse=";")
+  samp.2 <- paste(SAMPLE2, collapse=";")
 
   direction <- rep(sprintf("Higher in %s", Y.all[1]), nrow(TOP))
   direction[TOP[["logFC"]] > 0] <- sprintf("Higher in %s", Y.all[2])
   DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, 
-    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
+    nsamp.1, nsamp.2, samp.1, samp.2, mean.1, mean.2, 
+    diff, direction, X.1, X.2)
   colnames(DATA) <- c("Gene ID", "Gene Name", 
     "NL10P", "NL10 FDR", "NL10 Bonf", 
-    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
-    "Log_2 Fold Change", "Direction", 
-    colnames(X.1), colnames(X.2))
+    sprintf("Num Samples %s", Y.all), sprintf("Samples %s", Y.all),
+    sprintf("Mean %s", Y.all), 
+    "Log_2 Fold Change", "Direction", colnames(X.1), colnames(X.2))
   DATA <- matrix2dataframe(DATA)
   list(DATA=DATA, fit=fit2, TOP=TOP)
 }
