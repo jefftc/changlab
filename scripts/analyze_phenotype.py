@@ -259,7 +259,7 @@ def plot_boxplot(
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    x = 5*mar_bottom, 5*mar_left, 4*mar_top, 2
+    x = 10*mar_bottom, 5*mar_left, 4*mar_top, 2
     mar = [x+0.1 for x in x]
     R_fn("par", mar=mar, RETVAL="op")
         
@@ -289,7 +289,8 @@ def plot_boxplot(
 
 
 def plot_waterfall(
-    filename, scores, phenotypes, group_names, sample_names, p_value, gene_id):
+    filename, scores, phenotypes, group_names, sample_names, p_value, gene_id,
+    mar_bottom, mar_left, mar_top):
     import os
     from genomicode import jmath
     from genomicode.jmath import R_fn, R_var, R_equals
@@ -315,8 +316,6 @@ def plot_waterfall(
     xlabel_size = 1.0
     height = 1600
     width = 1600
-    mar_bottom = 1.0
-    mar_left = 1.0
 
 
     R = jmath.start_R()
@@ -362,7 +361,7 @@ def plot_waterfall(
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    x = 16*mar_bottom, 6*mar_left, 4, 2
+    x = 10*mar_bottom, 5*mar_left, 4*mar_top, 2
     mar = [x+0.1 for x in x]
     R_fn("par", mar=mar, RETVAL="op")
     
@@ -464,6 +463,16 @@ def main():
     group.add_argument(
         "--box_mar_top", default=1.0, type=float,
         help="Scale margin at top of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--water_mar_left", default=1.0, type=float,
+        help="Scale margin at left of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--water_mar_bottom", default=1.0, type=float,
+        help="Scale margin at bottom of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--water_mar_top", default=1.0, type=float,
+        help="Scale margin at top of plot.  Default 1.0 (no scaling).")
+
     ## group.add_argument(
     ##     '--km_title', default=None, help='Title for the Kaplan-Meier plot.')
     ## group.add_argument(
@@ -508,6 +517,9 @@ def main():
     assert args.box_mar_bottom > 0 and args.box_mar_bottom < 10
     assert args.box_mar_left > 0 and args.box_mar_left < 10
     assert args.box_mar_top > 0 and args.box_mar_top < 10
+    assert args.water_mar_bottom > 0 and args.water_mar_bottom < 10
+    assert args.water_mar_left > 0 and args.water_mar_left < 10
+    assert args.water_mar_top > 0 and args.water_mar_top < 10
     ## assert args.km_title_size > 0 and args.km_title_size < 10
     ## assert args.km_mar_title > 0 and args.km_mar_title < 10
     ## assert args.km_subtitle_size > 0 and args.km_subtitle_size < 10
@@ -659,7 +671,9 @@ def main():
                 "waterfall", "png")
             plot_waterfall(
                 filename, SCORE["scores"], SCORE["phenotypes"],
-                SCORE["group_names"], sample_names, SCORE["p_value"], gene_id)
+                SCORE["group_names"], sample_names, SCORE["p_value"], gene_id,
+                args.water_mar_bottom, args.water_mar_left, args.water_mar_top,
+                )
 
             
 if __name__ == '__main__':
