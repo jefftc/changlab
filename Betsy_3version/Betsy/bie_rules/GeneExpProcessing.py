@@ -5,9 +5,11 @@ import BasicDataTypes
 import Database
 
 
-PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
+PREPROCESS1 = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
               "tcga","rsem"]
-              
+
+PREPROCESS=PREPROCESS1+['any']
+
 ClassLabelFile = DataType(
     "ClassLabelFile",
     AttributeDef(
@@ -21,7 +23,7 @@ IntensityPlot = DataType(
     AttributeDef('contents',Database.CONTENTS,"unspecified","unspecified",help="contents"),
     AttributeDef(
         "preprocess",PREPROCESS,
-        "unknown","unknown",help="preprocess method"),
+        "unknown","any",help="preprocess method"),
     help="Intensity plot file"
     )
 
@@ -31,8 +33,7 @@ _SignalFile_Postprocess = DataType(
     AttributeDef("format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
               "unknown", "tdf",help="file format"),
     # Properties of the data.
-    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS1, "unknown", 'unknown',help="preprocess method"),
     AttributeDef("logged", ["unknown", "no", "yes"], "unknown", "yes",help="logged or not"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("contents", Database.CONTENTS,"unspecified", "unspecified",help="contents"),
@@ -42,8 +43,7 @@ _SignalFile_Postprocess = DataType(
 _SignalFile_Impute = DataType(
     "_SignalFile_Impute",
     # Properties of the data.
-   # AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS1, "unknown", 'unknown',help="preprocess method"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_values", ["unknown", "no", "yes"], "unknown", "no",
                  help="missing values unknown,yes or not"),
@@ -58,10 +58,7 @@ _SignalFile_Impute = DataType(
 _SignalFile_Merge = DataType(
     "_SignalFile_Merge",
     # Properties of the data.
-    #AttributeDef("preprocess",
-    #          PREPROCESS,
-    #          "unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS1, "unknown", 'unknown',help="preprocess method"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
@@ -78,8 +75,7 @@ _SignalFile_Merge = DataType(
 _SignalFile_Normalize = DataType(
     "_SignalFile_Normalize",
     # Properties of the data.
-    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS1, "unknown", 'unknown',help="preprocess method"),
     AttributeDef("predataset", ["no", "yes"], "no", "no",help="predataset or not"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
@@ -106,8 +102,7 @@ _SignalFile_Normalize = DataType(
 _SignalFile_Order = DataType(
     "_SignalFile_Order",
     # Properties of the data.
-    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS1, "unknown", 'unknown',help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
@@ -135,8 +130,7 @@ _SignalFile_Order = DataType(
 _SignalFile_Annotate= DataType( 
     "_SignalFile_Annotate",
     # Properties of the data.
-    #AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS1, "unknown", 'unknown',help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
@@ -167,8 +161,7 @@ _SignalFile_Annotate= DataType(
 _SignalFile_Filter= DataType( 
     "_SignalFile_Filter",
     # Properties of the data.
-    #AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS1, "unknown", 'unknown',help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
@@ -210,8 +203,7 @@ _SignalFile_Filter= DataType(
 SignalFile= DataType( 
     "SignalFile",
     # Properties of the data.
-    #AttributeDef("preprocess",PREPROCESS,"unknown", "unknown",help="preprocess method"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", tuple(PREPROCESS),help="preprocess method"),
+    AttributeDef("preprocess", PREPROCESS, "unknown", 'any',help="preprocess method"),
     AttributeDef("missing_algorithm", ["none", "median_fill", "zero_fill"],
               "zero_fill","zero_fill",help="missing algorithm"),
     AttributeDef("filter", ["no", "yes"], "no", "no",help="filter missing or not"),
@@ -305,7 +297,7 @@ all_modules = [
         _SignalFile_Postprocess, _SignalFile_Impute,
         Constraint("format", MUST_BE,"tdf"),
         Constraint("logged", MUST_BE,"yes"),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Consequence("contents", SAME_AS_CONSTRAINT),
@@ -497,7 +489,7 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", SAME_AS,0,1),
         Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
@@ -518,7 +510,7 @@ all_modules = [
         Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", SAME_AS,0,1),
         Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
@@ -539,7 +531,7 @@ all_modules = [
         Consequence("dwd_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", SAME_AS,0,1),
         Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
@@ -548,7 +540,7 @@ all_modules = [
     Module(
         "convert_merge_normalize",
         _SignalFile_Merge, _SignalFile_Normalize,
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
@@ -625,7 +617,7 @@ all_modules = [
     Module(
         "convert_normalize_order",
         _SignalFile_Normalize, _SignalFile_Order,
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("contents", CAN_BE_ANY_OF, Database.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
@@ -675,7 +667,7 @@ all_modules = [
         Consequence("cn_ttest_or_snr",SET_TO_ONE_OF, ['t_test','snr']),
         Consequence("cn_filter_data",SET_TO_ONE_OF, ['yes','no']),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", SAME_AS,0,1),
         help="rank the genes in SignalFile_Order by class neighbors method"
         ),
@@ -691,7 +683,7 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO_ONE_OF, ["t_test_p", "t_test_fdr"]),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", SAME_AS,0,1),
         help="rank the genes in SignalFile_Order by ttest method"
        ),
@@ -703,7 +695,7 @@ all_modules = [
                                    'class_neighbors', "gene_list"],0),
          Constraint("gene_order", MUST_BE,"no",1),
          Constraint(
-            "preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
+            "preprocess", CAN_BE_ANY_OF, PREPROCESS1, 1),
          Constraint(
             "contents", CAN_BE_ANY_OF, Database.CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),
@@ -724,7 +716,7 @@ all_modules = [
                                'diff_ebayes','diff_fold_change'],0),
          Constraint("gene_order", MUST_BE,"no",1),
          Constraint(
-            "preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
+            "preprocess", CAN_BE_ANY_OF, PREPROCESS1, 1),
          Constraint(
             "contents", CAN_BE_ANY_OF, Database.CONTENTS,0),
          Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,1),
@@ -743,7 +735,7 @@ all_modules = [
     Module(
         "convert_order_annotate",
         _SignalFile_Order, _SignalFile_Annotate,
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("contents", CAN_BE_ANY_OF, Database.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
@@ -815,7 +807,7 @@ all_modules = [
     Module(
         "convert_annotate_filter",
         _SignalFile_Annotate, _SignalFile_Filter,
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("contents", CAN_BE_ANY_OF, Database.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
@@ -938,7 +930,7 @@ all_modules = [
         Consequence("duplicate_probe",SAME_AS_CONSTRAINT,1),
         Consequence("unique_genes",SAME_AS_CONSTRAINT,1),
         Consequence("group_fc",SET_TO,"yes"),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", SAME_AS,0,1),
         Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(1),
@@ -958,11 +950,15 @@ all_modules = [
         Consequence("logged",SET_TO,"no"),
         help="unlog SignalFile_Filter"),
     
-    
+    Module('convert_signalfile_preprocess',
+           SignalFile,SignalFile,
+           Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
+           Consequence("preprocess", SET_TO,'any'),
+           help='convert preprocess from others to any'),
     Module( 
         'transfer',
         _SignalFile_Filter,SignalFile,
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("contents", CAN_BE_ANY_OF, Database.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
@@ -1028,7 +1024,7 @@ all_modules = [
         Constraint("cls_format",MUST_BE,'label',0),
         Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS,0),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,0),
         Constraint("preprocess", SAME_AS,0,1),
         Consequence("preprocess", SAME_AS_CONSTRAINT,0),
         Consequence("contents", SAME_AS_CONSTRAINT,0),

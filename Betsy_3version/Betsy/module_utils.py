@@ -14,6 +14,7 @@ from stat import *
 import userfile
 import bie3
 import gzip
+
 """
 DataObject
 contain some functions that are called by many modules
@@ -248,12 +249,12 @@ def format_convert(X):
     return data
 
 
-def write_Betsy_parameters_file(parameters, data_nodes,user_input,
+def write_Betsy_parameters_file(parameters, data_nodes,outfile,user_input,
                                 pipeline,starttime,user,job_name): 
     f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')
     if isinstance(data_nodes, tuple):
         st = os.stat(data_nodes[0].identifier)
-        modified_time = time.asctime(time.localtime(st[ST_MTIME]))
+        modified_time = strftime(FMT, localtime())
         text = ['Module input:', [(data_node.data.datatype.name,
                                    data_node.identifier)
                                   for data_node in data_nodes],
@@ -263,14 +264,15 @@ def write_Betsy_parameters_file(parameters, data_nodes,user_input,
                 'Start time:',starttime,
                 'Finish time:',modified_time,
                 'User:',user,
-                'Jobname:',job_name]
+                'Jobname:',job_name,
+                'Outfile:',outfile]
     else:
         st = 'None'
         modified_time = 'None'
         identifier = data_nodes.identifier
         if identifier:
             st = os.stat(identifier)
-            modified_time = time.asctime(time.localtime(st[ST_MTIME]))
+            modified_time = strftime(FMT, localtime())
         text = ['Module input:', (data_nodes.data.datatype.name,
                                   identifier),
                 'Module output parameters:', parameters,
@@ -279,7 +281,8 @@ def write_Betsy_parameters_file(parameters, data_nodes,user_input,
                 'Start time:',starttime,
                 'Finish time:',modified_time,
                 'User:',user,
-                'Jobname:',job_name]
+                'Jobname:',job_name,
+                'Outfile:',outfile]
     newtext = json.dumps(text, sort_keys=True, indent=4)
     f.write(newtext)
     f.close()
