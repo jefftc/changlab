@@ -217,7 +217,7 @@ def run_module(network, module_id, pool, user_inputs, pipeline_sequence,user_att
             out_node = module.run(data_node, out_attributes,
                                   sub_user_input, network,num_cores)
             module_utils.write_Betsy_parameters_file(out_node.data.attributes,
-                                                     data_node, sub_user_input,
+                                                     data_node, outfile,sub_user_input,
                                                      pipeline_sequence,
                                                      starttime, user, job_name)
             f = file(os.path.join(temp_dir, 'stdout.txt'), 'w')

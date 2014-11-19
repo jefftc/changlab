@@ -283,7 +283,7 @@ all_modules = [
     Module(
         'plot_actb_line',
         GeneExpProcessing._SignalFile_Impute, ActbPlot,
-        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS1),
         Constraint("missing_values",MUST_BE,'no'),
         Constraint(
             "contents", CAN_BE_ANY_OF,Database.CONTENTS),

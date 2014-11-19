@@ -176,11 +176,10 @@ class AttributeDef:
 
         # Make sure default_in and default_out are valid values.
         assert type(default_in) is type("")
-        # DEFAULT TUPLE here is changed to make the default can be tuple
-        #assert type(default_out) is type("")
+        assert type(default_out) is type("") 
         assert default_in in values
-        # DEFAULT TUPLE here is changed to make the default can be tuple
-        #assert default_out in values
+        assert default_out in values    
+
 
         self.name = name
         self.values = values
@@ -231,13 +230,12 @@ class Attribute:
         assert isinstance(datatype, DataType)
         assert type(name) is type("")
         assert type(value) is type("")
-        # DEFAULT TUPLE here is comment to make the default out can be tuple
-        # XXX WHY DOES THIS NEED TO BE COMMENTED OUT?
+
         # Check if this is a valid attribute name for the datatype.
-        #x = [x for x in datatype.attribute_defs if x.name == name]
-        #assert len(x) == 1, "datatype %r does not have attribute %r." % (
-        #    datatype.name, name)
-        #attr = x[0]
+        x = [x for x in datatype.attribute_defs if x.name == name]
+        assert len(x) == 1, "datatype %r does not have attribute %r." % (
+            datatype.name, name)
+        attr = x[0]
         assert datatype.is_valid_attribute_value(name, value), \
                "Invalid value %r for attribute %r." % (value, name)
 

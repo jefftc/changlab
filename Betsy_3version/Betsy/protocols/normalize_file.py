@@ -7,8 +7,8 @@ NORMALIZE = 'Normalize Parameters'
 OPTIONAL = 'Optional Parameters'
 ILLUMINA = 'Illumina Normalize Parameters'
 CLASS_NEIGHBORS='Class Neighbor Parameters'
-
-CATEGORIES=[COMMON,NORMALIZE,OPTIONAL,CLASS_NEIGHBORS,ILLUMINA]
+RNA = 'RNA Sequence analysis parameters'
+CATEGORIES=[COMMON,NORMALIZE,OPTIONAL,CLASS_NEIGHBORS,ILLUMINA,RNA]
 PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
               "tcga","rsem"]
 CONTENTS = ["train0", "train1","test", "class0,class1,test",
@@ -26,7 +26,11 @@ INPUTS = [
     'CELFiles',
     '_SignalFile_Postprocess',
     'ClassLabelFile',
-    'GeneListFile'
+    'GeneListFile',
+    'RNASeqFile',
+    'SamFolder',
+    'BamFolder',
+    'SampleGroupFile',
     ]
 
 #output datatype
@@ -221,5 +225,10 @@ PARAMETERS=[Parameter('format',pretty_name='File Format',default_value='tdf',
                      description='minimum absolute difference for filtering genes',datatype='UserInput'),
             #PcaAnalysis
             Parameter('pca_gene_num',pretty_name='PCA Gene Number',
-                           category=OPTIONAL,description='gene number in PCA',datatype="PcaAnalysis")]
+                           category=OPTIONAL,description='gene number in PCA',datatype="PcaAnalysis"),
+            #RNA Seq
+            Parameter('ref',pretty_name='reference species',default_value='human',
+                        choices=['human', 'mouse'],category=RNA,
+                      description='reference species for BamFolder',datatype='BamFolder'),
+            ]
 
