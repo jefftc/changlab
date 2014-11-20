@@ -232,7 +232,8 @@ class Attribute:
         assert type(value) is type("")
 
         # Check if this is a valid attribute name for the datatype.
-        x = [x for x in datatype.attribute_defs if x.name == name]
+        x = [x for x in datatype.attribute_defs if x == name]
+        #x = [x for x in datatype.attribute_defs if x.name == name]
         assert len(x) == 1, "datatype %r does not have attribute %r." % (
             datatype.name, name)
         attr = x[0]
