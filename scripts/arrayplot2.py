@@ -60,6 +60,7 @@ _get_array_labels    Return pretty labels for the arrays.
 
 _parse_gene_names
 _parse_color
+_fmt_color_schemes
 
 _exists_nz
 
@@ -641,8 +642,11 @@ def get_color_scheme_fn(name):
         "white" : colorlib.white_shade,
         "red-green" : colorlib.rg_array_colors,
         "blue-yellow" : colorlib.by_array_colors,
+        "red-green-soft" : colorlib.red_green_soft,
+        "red-blue-soft" : colorlib.red_blue_soft,
         "matlab" : colorlib.matlab_colors,
         "bild" : colorlib.bild_colors,
+        "genepattern" : colorlib.broad_colors,
         "genespring" : colorlib.genespring_colors,
         "yahoo" : colorlib.yahoo_weather_colors,
         }
@@ -1750,6 +1754,26 @@ def _parse_color(color_str):
     for i in range(len(x)):
         assert x[i] >= 0 and x[i] < 256, "color should be 0-255"
     return tuple(x)
+
+
+def _fmt_color_schemes(color_schemes, default):
+    # Don't change the original array.
+    color_schemes = color_schemes[:]
+    
+    if len(color_schemes) == 1:
+        return color_schemes[0]
+
+    # Label the default color scheme.
+    assert default in color_schemes
+    i = color_schemes.index(default)
+    color_schemes[i] = "%s (default)" % color_schemes[i]
+
+    # Make it comma separated.
+    x = ", ".join(color_schemes[:-1])
+    if len(color_schemes) > 2:
+        x = "%s," % x
+    x = "%s or %s" % (x, color_schemes[-1])
+    return x
     
 
 def _exists_nz(filename):
@@ -1778,9 +1802,12 @@ def main():
     # XXX need way to save processed matrix to a file
 
     COLOR_SCHEMES = [
-        "red", "white", "red-green", "blue-yellow", "matlab", "bild",
-        "genespring", "yahoo"
+        "red", "white", "red-green", "red-green-soft", "red-blue-soft", 
+        "blue-yellow", "matlab", "bild", "genepattern", "genespring",
+        "yahoo",
         ]
+    DEFAULT_COLOR_SCHEME = "bild"
+    assert DEFAULT_COLOR_SCHEME in COLOR_SCHEMES
 
     group = OptionGroup(parser, "Heatmap")
     parser.add_option_group(group)
@@ -1801,11 +1828,11 @@ def main():
     group.add_option(
         "--no_autoscale", dest="autoscale", action="store_false",
         default=True, help="Disable autoscaling.")
+    x = _fmt_color_schemes(COLOR_SCHEMES, DEFAULT_COLOR_SCHEME)
     group.add_option(
-        "--color", dest="color_scheme", type="choice", default="bild",
-        choices=COLOR_SCHEMES,
-        help="Choose the color scheme to use: red, white, red-green, "
-        "blue-yellow, matlab, bild (default), genespring, or yahoo.")
+        "--color", dest="color_scheme", type="choice",
+        default=DEFAULT_COLOR_SCHEME, choices=COLOR_SCHEMES,
+        help="Choose the color scheme to use: %s." % x)
     group.add_option(
         "--black0", dest="black0", action="store_true", default=False,
         help="Color 0 values black (no matter the color scheme).")
@@ -1862,12 +1889,12 @@ def main():
     group.add_option(
         "--gene_cluster_width", type="int", default=20,
         help="Set the width of the gene cluster boxes.")
+    x = _fmt_color_schemes(COLOR_SCHEMES, DEFAULT_COLOR_SCHEME)
     group.add_option(
         "--gene_cluster_color", action="append", default=[],
-        help="Color scheme for gene clusters: red, white, red-green, "
-        "blue-yellow, matlab, bild (default), genespring, or yahoo.  "
+        help="Color scheme for gene clusters: %s.  "
         "Can have up to 1 for each gene cluster file.  Must be specified in "
-        "the same order.")
+        "the same order." % x)
     
     group = OptionGroup(parser, "Dendrogram")
     parser.add_option_group(group)

@@ -8,7 +8,7 @@ white_shade
 rg_array_colors
 by_array_colors
 red_green_soft
-blue_orange_soft
+red_blue_soft
 rgb_colors          From red, green, blue colorwheel.
 matlab_colors
 bild_colors
@@ -27,6 +27,9 @@ hsl2rgb
 """
 
 def _matrix2color(matrix, pos):
+    # Make sure matrix is sorted from low to high.
+    matrix = sorted(matrix)
+    
     # pos is [0, 1]
     # Return (R, G, B) where R, G, and B are percentages from 0 to 1.
     breaks = [x[0] for x in matrix]
@@ -106,19 +109,21 @@ def red_green_soft(n):
         (0.00,   52, 112,  11),
         (0.25,   95, 173,  93),
         (0.50,  245, 245, 245),
-        (0.75,  229,  89,  95),
-        (1.00,  225,  39,  39),
+        #(0.75,  229,  89,  95),
+        #(1.00,  249,  39,  39),
+        (0.75,  229,  115,  105),
+        (1.00,  128,  52,  29),
         ]
     x = _colors(color_matrix, n)
     return x
 
-def blue_orange_soft(n):
+def red_blue_soft(n):
     color_matrix = [
-        (0.00,   86,  15,  24),
-        (0.25,  213,  96,  76),
+        (1.00,   86,  15,  24),
+        (0.75,  213,  96,  76),
         (0.50,  245, 245, 245),
-        (0.75,   79, 148, 194),
-        (1.00,    8,  34,  79),
+        (0.25,   79, 148, 194),
+        (0.00,    8,  34,  79),
         ]
     x = _colors(color_matrix, n)
     return x
