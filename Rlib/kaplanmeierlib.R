@@ -193,7 +193,9 @@ calc.km.multi <- function(survival, dead, group) {
 }
 
 plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA, 
-  main=NA, sub=NA, xlab="", ylab="") {
+  main=NA, sub=NA, xlab="", ylab="", cex.main=NULL, name1=NA, name2=NA) {
+  if(is.null(cex.main))
+    cex.main <- 2.0
   if(is.na(col1))
     col1 <- "#000000"
   if(is.na(col2))
@@ -204,18 +206,45 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA,
   survival <- c(survival1, survival2)
   dead <- c(dead1, dead2)
   xlim <- c(0, max(survival))
-  ylim <- c(0, 1.00)
+  #ylim <- c(0, 1.00)
+  ylim <- c(0, 100)
 
   km.1 <- .calc.km.curve(survival1, dead1)
   km.2 <- .calc.km.curve(survival2, dead2)
 
-  plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, 
-    main=main, sub=sub, xlab=xlab, ylab=ylab)
-  lines(km.1$surv.x, km.1$surv.y, col=col1, lwd=2)
-  lines(km.2$surv.x, km.2$surv.y, col=col2, lwd=2)
+  lwd <- 2
+  main.line <- NA
+  cex.sub <- 1.5
+  cex.lab <- 2.5
+  sub.line <- NA
+  lwd.line <- 3
+  cex.censor <- 0.8
+  cex.legend <- 2.0
+
+  plot(NA, type="n", axes=FALSE, xlim=xlim, ylim=ylim, xlab="", ylab="")
+  usr <- par("usr")
+  rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF", border=NA)
+  #box(lwd=lwd)
+  axis(1, lwd=lwd, cex.axis=1.5)
+  axis(2, lwd=lwd, cex.axis=1.5)
+  title(main=main, cex.main=cex.main, line=main.line)
+  title(xlab=xlab, ylab=ylab, cex.lab=cex.lab)
+  title(sub=sub, cex.sub=cex.sub, col.sub="#A60400", line=sub.line)
+
+  #plot(NA, type="n", axes=TRUE, xlim=xlim, ylim=ylim, 
+  #  main=main, sub=sub, xlab=xlab, ylab=ylab)
+  lines(km.1$surv.x, km.1$surv.y*100, col=col1, lwd=lwd.line)
+  lines(km.2$surv.x, km.2$surv.y*100, col=col2, lwd=lwd.line)
   # Draw the censor lines.
-  points(km.1$cens.x, km.1$cens.y, pch=15, cex=0.4)
-  points(km.2$cens.x, km.2$cens.y, pch=15, cex=0.4)
+  points(km.1$cens.x, km.1$cens.y*100, pch=15, cex=cex.censor)
+  points(km.2$cens.x, km.2$cens.y*100, pch=15, cex=cex.censor)
+
+  if(!is.na(name1) & !is.na(name2)) {
+    leg <- c(name1, name2)
+    fill <- c(col1, col2)
+    legend("bottomright", legend=leg, fill=fill, bty="n", 
+      box.lwd=1.5, cex=cex.legend, inset=0.05)
+  }
 }
 
 # col is a list of NAME -> color (e.g. "#FF0000")
