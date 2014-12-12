@@ -14,6 +14,9 @@ def main():
     parser.add_argument(
         "-o", dest="outfile", help="Save the intersection to this "
         "(GMX or GMT) file.")
+    #parser.add_argument(
+    #    "--upper_diagonal", action="store_true",
+    #    help="Calculate upper diagonal only.")
 
     args = parser.parse_args()
     assert os.path.exists(args.geneset_file), \
