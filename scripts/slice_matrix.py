@@ -30,7 +30,7 @@
 # relabel_col_ids
 # append_col_ids
 # add_col_ids
-# 
+#
 # reorder_col_indexes
 # reorder_col_cluster
 # reorder_col_alphabetical
@@ -60,6 +60,7 @@
 # select_row_mean_var
 # select_row_missing_values
 # select_row_var
+# select_row_fc
 # dedup_row_by_var
 # reverse_rows
 # reorder_row_indexes
@@ -249,7 +250,7 @@ def transpose_matrix(MATRIX, transpose):
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
     # is_row is a boolean for whether these are row indexes.  Takes
     # 1-based indexes and returns a list of 0-based indexes.
-    # 
+    #
     # Example inputs:
     # 5
     # 1,5,10
@@ -276,7 +277,7 @@ def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
         if i not in nodup:
             nodup.append(i)
     I = nodup
-        
+
     return I
 
 
@@ -399,7 +400,7 @@ def _read_annot_file(filename):
         #    print "Found"
         #    x = [x for x in annots if str(x) == ""]
         #    print "NUM BLANK", len(x)
-        
+
     assert all_headers
     for annots in all_annots[1:]:
         assert len(annots) == len(all_annots[0])
@@ -464,7 +465,7 @@ def select_col_genesets(MATRIX, genesets):
         else:
             i += 1
     return I
-        
+
 
 
 def select_col_annotation(MATRIX, col_annotation):
@@ -617,7 +618,7 @@ def replace_col_ids(MATRIX, replace_list, ignore_missing):
 
     if not replace_list:
         return MATRIX
-    
+
     replace_all = []  # list of (from_str, to_str)
     for replace_str in replace_list:
         x = replace_str.split(",")
@@ -646,7 +647,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
     assert len(genesets) == 1
-    
+
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
@@ -743,7 +744,7 @@ def append_col_ids(MATRIX, geneset, ignore_missing):
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
     assert len(genesets) == 1
-    
+
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
@@ -885,7 +886,7 @@ def add_col_ids(MATRIX, geneset, ignore_missing):
     new_names = [None] * len(I_matrix)
     for i in range(len(I_matrix)):
         new_names[I_matrix[i]] = genes[I_geneset[i]]
-        
+
     assert gs not in MATRIX_new._col_names
     MATRIX_new._col_names[gs] = new_names
     MATRIX_new._col_order.append(gs)
@@ -910,7 +911,7 @@ def reorder_col_cluster(MATRIX, cluster, tree_file,
     from genomicode import cluster30
     from genomicode import clusterio
     from genomicode import matrixlib
-    
+
     if not cluster:
         assert not tree_file
         return MATRIX
@@ -943,7 +944,7 @@ def reorder_col_cluster(MATRIX, cluster, tree_file,
         cdata.matrix._row_names[header] = x
 
     return cdata.matrix
-    
+
     ## R = jmath.start_R()
     ## jmath.R_equals(MATRIX._X, "X")
     ## x = 'dist(t(X), method="%s")' % distance_method
@@ -958,10 +959,10 @@ def reorder_col_cluster(MATRIX, cluster, tree_file,
 def reorder_col_alphabetical(MATRIX, alphabetize):
     import arrayio
     from genomicode import jmath
-    
+
     if not alphabetize:
         return MATRIX
-    
+
     col_names = MATRIX.col_names(arrayio.COL_ID)
     I = jmath.order(col_names)
     MATRIX_new = MATRIX.matrix(None, I)
@@ -970,7 +971,7 @@ def reorder_col_alphabetical(MATRIX, alphabetize):
 
 def reorder_col_byfile(MATRIX, filename, ignore_missing_cols):
     from genomicode import filelib
-    
+
     if not filename:
         return MATRIX
 
@@ -1167,7 +1168,7 @@ def _parse_tcga_barcode(barcode):
     assert len(x) <= 7, "Invalid barcode: %s" % barcode
 
     sample = aliquot = analyte = None
-    
+
     assert x[0] == "TCGA", "Invalid barcode: %s" % barcode
     assert len(x[1]) == 2, "Invalid barcode: %s" % barcode
     assert len(x[2]) == 4, "Invalid barcode: %s" % barcode
@@ -1212,8 +1213,8 @@ def tcga_solid_tumor_only(MATRIX, cancer_only, ignore_non_tcga):
             I.append(i)
     x = MATRIX.matrix(None, I)
     return x
-    
-    
+
+
 def tcga_relabel_patient_barcodes(MATRIX, relabel, ignore_non_tcga):
     import arrayio
     if not relabel:
@@ -1242,9 +1243,9 @@ def tcga_relabel_patient_barcodes(MATRIX, relabel, ignore_non_tcga):
     #x = [_parse_tcga_barcode(x) for x in barcodes]
     #x = [x[0] for x in x]
     MATRIX_new._col_names[name] = barcodes
-    
+
     return MATRIX_new
-    
+
 
 def select_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
@@ -1489,7 +1490,7 @@ def select_row_missing_values(MATRIX, perc_missing):
         if pm < perc_missing:
             I.append(i)
     return I
-            
+
 def select_row_var(MATRIX, select_var):
     from genomicode import pcalib
     if select_var is None:
@@ -1498,6 +1499,23 @@ def select_row_var(MATRIX, select_var):
     assert select_var >= 1 and select_var <= MATRIX.nrow()
     I = pcalib.select_genes_var(MATRIX._X, select_var)
     #print select_var, len(I)
+    return I
+
+
+def select_row_fc(MATRIX, select_fc):
+    import math
+    if select_fc is None:
+        return None
+    select_fc = float(select_fc)
+    assert select_fc > 0 and select_fc < 500
+
+    log_fc = []
+    for x in MATRIX._X:
+        lfc = max(x) - min(x)
+        log_fc.append(lfc)
+
+    lfc_cutoff = math.log(select_fc, 2)
+    I = [i for (i, x) in enumerate(log_fc) if x >= lfc_cutoff]
     return I
 
 
@@ -1589,7 +1607,7 @@ def reorder_row_cluster(
 def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
                     indexes, count_headers):
     from genomicode import jmath
-    
+
     if not correlations:
         return MATRIX
     if not MATRIX.nrow() or not MATRIX.ncol():
@@ -1672,7 +1690,7 @@ def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
 ##         raise NotImplementedError
 ##         pass
 ##     raise NotImplementedError
-    
+
 
 
 def align_rows(MATRIX, align_row_matrix, ignore_missing_rows):
@@ -1916,7 +1934,7 @@ def concat_row_annot(MATRIX, concat_row_annot):
     for header in headers:
         assert header in MATRIX.row_names(), "I could not find header: %s" % \
                header
-    
+
     MATRIX_clean = MATRIX.matrix()
     assert MATRIX_clean._row_order
 
@@ -1926,7 +1944,7 @@ def concat_row_annot(MATRIX, concat_row_annot):
         x = [x[i] for x in old_annots]
         x = concat_char.join(x)
         new_annots.append(x)
-        
+
     MATRIX_clean._row_order.append(new_header)
     MATRIX_clean._row_names[new_header] = new_annots
     return MATRIX_clean
@@ -1995,10 +2013,10 @@ def normalize_genes_var(MATRIX, indexes):
         X_sub = X_i
         if I:
             X_sub = [X_i[j] for j in I]
-        
+
         m = jmath.mean(X_sub)
         s = jmath.stddev(X_sub)
-        
+
         # Subtract the mean.
         X_i = [x - m for x in X_i]
         # Normalize to stddev of 1.
@@ -2032,7 +2050,7 @@ def zero_fill_genes(MATRIX):
 def _loess_normalize(X):
     from genomicode import jmath
     from genomicode.jmath import R_fn, R_var, R_equals
-    
+
     R = jmath.start_R()
     R_fn("library", "affy")
     R_equals(X, "X")
@@ -2338,7 +2356,7 @@ def main():
         "--skip_lines", default=None, type=int,
         help="Skip this number of lines in the file.")
     parser.add_argument(
-        "--remove_comments", 
+        "--remove_comments",
         help="Remove rows that start with this character (e.g. '#')")
     parser.add_argument(
         "--num_header_cols", type=int,
@@ -2347,7 +2365,7 @@ def main():
         "--clean_only", default=False, action="store_true",
         help="Only read_as_csv and remove_comments.")
     parser.add_argument(
-        "--transpose", 
+        "--transpose",
         help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
         "<old row ID> is the header of the column in the original file that "
         "should be used for the headers in the transposed file.  "
@@ -2378,7 +2396,7 @@ def main():
         choices=["mean", "median"],
         help="Center each gene by: mean, median.")
     group.add_argument(
-        "--gc_subset_indexes", 
+        "--gc_subset_indexes",
         help="Will center the genes based on the mean (or median) of"
         "this subset of the samples.  Given as indexes, e.g. 1-5,8 "
         "(1-based, inclusive).")
@@ -2387,7 +2405,7 @@ def main():
         choices=["ss", "var"],
         help="Normalize each gene by: ss (sum of squares), var (variance).")
     group.add_argument(
-        "--gn_subset_indexes", 
+        "--gn_subset_indexes",
         help="Will normalize the genes based on the variance (or sum "
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
@@ -2401,7 +2419,7 @@ def main():
     group.add_argument(
         "--min_value", default=None, type=float,
         help="Set the minimum value for this matrix.  Done before logging.")
-        
+
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
         "--select_col_indexes", default=[], action="append",
@@ -2436,7 +2454,7 @@ def main():
         "--select_col_random", default=None, type=int,
         help="Select this number of columns at random.")
     group.add_argument(
-        "--select_col_numeric_value", 
+        "--select_col_numeric_value",
         help="Include only the cols with a specific numeric value.  "
         "Format: <row_id>,<value>[,<value>,...].  "
         'If <value> starts with a "<", then will only find the rows where '
@@ -2459,7 +2477,7 @@ def main():
         "--remove_unnamed_cols", default=False, action="store_true",
         help="If a column has no name, remove it.")
     group.add_argument(
-        "--reorder_col_indexes", 
+        "--reorder_col_indexes",
         help="Change the order of the data columns.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --col_indexes_include_headers.")
@@ -2477,7 +2495,7 @@ def main():
         "Applies to reorder_col_cluster and reorder_row_cluster.")
     group.add_argument(
         "--distance_method", choices=[
-            "uncent-cor", "pearson", "abs-uncent-cor", 
+            "uncent-cor", "pearson", "abs-uncent-cor",
             "abs-pearson", "spearman", "kendall",
             "euclidean", "city-block"],
         default="euclidean", help="Distance measure for clustering.  "
@@ -2499,10 +2517,10 @@ def main():
         "--reorder_col_alphabetical", default=False, action="store_true",
         help="Sort the columns alphabetically.")
     group.add_argument(
-        "--reorder_col_byfile", 
+        "--reorder_col_byfile",
         help="Reorder based on a file.  One line per sample name.")
     group.add_argument(
-        "--align_col_matrix", 
+        "--align_col_matrix",
         help="Align the cols to this other matrix file.")
     group.add_argument(
         "--ignore_missing_cols", default=False, action="store_true",
@@ -2530,11 +2548,11 @@ def main():
         help="Replace strings within the column IDs.  Format: <from>,<to>.  "
         "Instances of <from> will be replaced with <to>.  (MULTI)")
     group.add_argument(
-        "--relabel_col_ids", 
+        "--relabel_col_ids",
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
-        "--append_col_ids", 
+        "--append_col_ids",
         help="Append this to the end of the column IDs.  "
         "Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
@@ -2547,7 +2565,7 @@ def main():
         "--ignore_missing_labels", default=False, action="store_true",
         help="Any column labels that can't be found will not be relabeled.")
     group.add_argument(
-        "--apply_re_col_ids", 
+        "--apply_re_col_ids",
         help="Apply a regular expression to the column IDs and take group 1.")
     group.add_argument(
         "--add_prefix_col_ids", help="Add a prefix to each column ID.")
@@ -2564,10 +2582,10 @@ def main():
     group.add_argument(
         "--ignore_non_tcga", default=False, action="store_true",
         help="Keep all samples that don't look like a TCGA barcode.")
-    
+
     group = parser.add_argument_group(title="Row filtering")
     group.add_argument(
-        "--select_row_indexes", 
+        "--select_row_indexes",
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive).")
     group.add_argument(
         "--row_indexes_include_headers", default=False, action="store_true",
@@ -2596,7 +2614,7 @@ def main():
     group.add_argument(
         "--select_row_random", help="Select this number of random rows.")
     group.add_argument(
-        "--select_row_annotation", 
+        "--select_row_annotation",
         help="Include only the rows where the annotation contains a "
         "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
     group.add_argument(
@@ -2609,7 +2627,7 @@ def main():
         'The analogous constraint will be applied for ">".  '
         "Accepts the match if any of the <value>s are true.  (MULTI)")
     group.add_argument(
-        "--select_row_nonempty", 
+        "--select_row_nonempty",
         help="Include only the rows that have a non-blank annotation.  "
         "Format: <header>")
     group.add_argument(
@@ -2638,7 +2656,7 @@ def main():
     ##     "--merge_rows_with_dup_values", default=False, action="store_true",
     ##     help="Merge the annotations of the rows whose values are duplicated.")
     group.add_argument(
-        "--dedup_row_by_var", 
+        "--dedup_row_by_var",
         help="If multiple rows have the same annotation, select the one "
         "with the highest variance.  The value of this parameter should "
         "be the header of the column that contains duplicate annotations.")
@@ -2646,10 +2664,14 @@ def main():
         "--select_row_var", default=None, type=int,
         help="Keep this number of rows with the highest variance.")
     group.add_argument(
+        "--select_row_fc", default=None, type=float,
+        help="Keep only the rows with at least this fold change between "
+        "highest and lowest sample (assuming log_2 values).")
+    group.add_argument(
         "--reverse_rows", default=False, action="store_true",
         help="Reverse the order of the rows.")
     group.add_argument(
-        "--reorder_row_indexes", 
+        "--reorder_row_indexes",
         help="Change the order of the data rows.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --row_indexes_include_headers.")
@@ -2657,14 +2679,14 @@ def main():
         "--reorder_row_cluster", default=False, action="store_true",
         help="Cluster the rows.")
     group.add_argument(
-        "--reorder_row_cluster_subset_indexes", 
+        "--reorder_row_cluster_subset_indexes",
         help="Will cluster the rows based on a subset of the samples.")
-    
+
     group.add_argument(
         "--row_tree_file", help="Write out the dendrogram of the row clusters "
         "in gtr format.")
     group.add_argument(
-        "--reorder_row_cor", 
+        "--reorder_row_cor",
         help="Reorder the rows based on a correlation to this vector.  "
         "This should be a comma-separated list of numbers, e.g. "
         "0,0,0,1,1,1")
@@ -2672,11 +2694,11 @@ def main():
         "--reverse_negative_cors", default=False, action="store_true",
         help="UNDOCUMENTED")
     group.add_argument(
-        "--reorder_row_cor_subset_indexes", 
+        "--reorder_row_cor_subset_indexes",
         help="Will reorder rows based on correlation to this subset of "
         "samples.")
     group.add_argument(
-        "--align_row_matrix", 
+        "--align_row_matrix",
         help="Align the rows to this other matrix file.")
     group.add_argument(
         "--ignore_missing_rows", default=False, action="store_true",
@@ -2684,7 +2706,7 @@ def main():
 
     group = parser.add_argument_group(title="Row annotations")
     group.add_argument(
-        "--add_row_id", 
+        "--add_row_id",
         help="Add a unique row ID.  This should be the name of the header.")
     group.add_argument(
         "--add_row_annot", action="append", default=[],
@@ -2711,7 +2733,7 @@ def main():
         "The format should be: <old_index>,<new_index>.  "
         "The indexes are 1-based.  (MULTI)")
     group.add_argument(
-        "--concat_row_annot", 
+        "--concat_row_annot",
         help="Concatenate multiple row annotations.  "
         "The format should be: <new_header>,<concat_char>,<header>,...")
     group.add_argument(
@@ -2760,10 +2782,11 @@ def main():
     I11 = select_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
     I12 = select_row_var(MATRIX, args.select_row_var)
-    I13 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I13 = select_row_fc(MATRIX, args.select_row_fc)
+    I14 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
-        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13)
-    
+        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13, I14)
+
     I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     #I2 = remove_col_indexes(
@@ -2908,7 +2931,7 @@ def main():
     # Cluster the rows and columns.  Do this after normalizing, zero-fill, log.
     MATRIX = reorder_row_cluster(
         MATRIX, args.reorder_row_cluster, args.row_tree_file,
-        args.cluster_method, args.distance_method, 
+        args.cluster_method, args.distance_method,
         args.reorder_row_cor_subset_indexes, args.col_indexes_include_headers)
     MATRIX = reorder_col_cluster(
         MATRIX, args.reorder_col_cluster, args.col_tree_file,

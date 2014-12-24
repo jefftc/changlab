@@ -198,12 +198,14 @@ def find_diffexp_genes(
     name  = "NL10P"
     if algorithm == "sam":
         name = "Score(d)"
+    elif algorithm == "fold_change":
+        name = "Log_2 Fold Change"
     assert name in header, 'I could not find the "%s" column.' % name
     I = header.index(name)
     schwartz = [(-float(x[I]), x) for x in DATA_py]
     schwartz.sort()
     DATA_py = [x[-1] for x in schwartz]
-    
+
 
     ## If no significant genes, then don't produce any output.
     ##if not DATA_py:

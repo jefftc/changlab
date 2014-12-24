@@ -81,7 +81,7 @@ def find_platform_by_name(name):
             return platform
     return None
 
-    
+
 def get_bm_attribute(platform_name):
     platform = find_platform_by_name(platform_name)
     if platform is None:
@@ -120,11 +120,11 @@ def find_header(MATRIX, category):
         "entrez_ID_human" : "Entrez_ID_human",
         "entrez_ID_symbol_human" : "Entrez_Symbol_human",
         }
-    
+
     for x in score_all_platforms_of_matrix(MATRIX):
         header, platform_name, score = x
         platform_name = name_fix.get(platform_name, platform_name)
-        
+
         if score < 0.5:
             continue
         platform = find_platform_by_name(platform_name)
@@ -187,7 +187,7 @@ def chipname2filename_affy(chipname):
         if old_version is None or version > old_version:
             filename = os.path.join(path, f)
             chip2file[chip] = (version, filename)
-            
+
     if chipname not in chip2file:
         return None
     version, filename = chip2file[chipname]
@@ -199,10 +199,10 @@ def _read_annotations_h():
     # case_insensitive. Platforms in case_sensitive need to match the ids
     # in exactly uppercase and lowercase, while platforms in case_insensitive
     # do not care the uppercase and lowercase.
-    
+
     paths = []
     result = []
-    
+
     root = config.psid2platform
     assert os.path.exists(root), "path not exist: %s" % root
     for subfolder in os.listdir(root):
@@ -258,7 +258,7 @@ def _score_platforms_fast(annotations):
 
     annots_clean_cs = _clean_annotations(annotations, True)
     annots_clean_ci = _clean_annotations(annotations, False)
-            
+
     results = []
     for x in ALL_PLATFORMS_CLEAN:
         chipname, case_sensitive, ids = x
@@ -280,7 +280,7 @@ def _score_platforms_fast(annotations):
         results.append((chipname, num_shared_annots, perc_shared))
     results.sort(key=lambda x: (x[2], x[1]),reverse=True)
     return results
-    
+
 
 score_platforms = _score_platforms_fast
 ## def score_platforms(annotations):
@@ -351,7 +351,7 @@ def _parse_matrix_annotations(annots, delim):
     x = [x.strip() for x in x]
     x = [x for x in x if x]
     annots = x
-    
+
     if delim is None:
         return annots
     parsed = []
@@ -399,7 +399,7 @@ def score_platform_of_matrix(DATA, annot_delim=None):
     schwartz = [(-x[2], x) for x in platforms]
     schwartz.sort()
     platforms = [x[-1] for x in schwartz]
-    
+
     out_platform = platforms[0][1]
     out_platform_match = platforms[0][2]
     return out_platform, out_platform_match
@@ -425,7 +425,7 @@ def identify_all_platforms_of_matrix(DATA, annot_delim=None):
             result.append((header, platform))
     return result
 
-    
+
 def identify_platform_of_matrix(DATA, annot_delim=None):
     x = score_platform_of_matrix(DATA, annot_delim=annot_delim)
     platform_name, match = x
@@ -499,26 +499,26 @@ PLATFORMS = [
         'Ensembl_mouse', "ensembl_gene_id", "mmusculus_gene_ensembl",
         PROBE_ID, 29),
     Platform(
-        'UCSC_human_hg19_kg7', None, None, GENE_ID, 30), 
+        'UCSC_human_hg19_kg7', None, None, GENE_ID, 30),
     Platform(
-        'UCSC_human_hg19_kg6', None, None, GENE_ID, 31),  
+        'UCSC_human_hg19_kg6', None, None, GENE_ID, 31),
     Platform(
         'UCSC_human_hg19_kg5', None, None, GENE_ID, 32),
     Platform(
-        'UCSC_human_hg38_kg8', None, None, GENE_ID, 33), 
+        'UCSC_human_hg38_kg8', None, None, GENE_ID, 33),
     Platform(
-        'Agilent_Human1A', None, None, GENE_ID, 34), 
+        'Agilent_Human1A', None, None, GENE_ID, 34),
     Platform(
-        'HumanHT_12_control', None, None, GENE_ID, 35),  
+        'HumanHT_12_control', None, None, GENE_ID, 35),
     Platform(
         'MouseRef_8_control', None, None, GENE_ID, 36),
     Platform(
         'UCSC_human_hg38_kg8', None, None, GENE_ID, 37),
     Platform(
-        'RefSeq_protein_mouse', "refseq_peptide", "mmusculus_gene_ensembl",   
+        'RefSeq_protein_mouse', "refseq_peptide", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 38),
     Platform(
-        'RefSeq_predicted_protein_mouse', "refseq_peptide_predicted", "mmusculus_gene_ensembl",   
+        'RefSeq_predicted_protein_mouse', "refseq_peptide_predicted", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 39),
 
     Platform(
@@ -528,16 +528,16 @@ PLATFORMS = [
         'RefSeq_predicted_protein_human', "refseq_peptide_predicted", "hsapiens_gene_ensembl",
         PROBE_ID, 41),
     Platform(
-        'RefSeq_mRNA_mouse', "refseq_mrna", "mmusculus_gene_ensembl",   
+        'RefSeq_mRNA_mouse', "refseq_mrna", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 42),
     Platform(
-        'RefSeq_predicted_mRNA_mouse', "refseq_mrna_predicted", "mmusculus_gene_ensembl",   
+        'RefSeq_predicted_mRNA_mouse', "refseq_mrna_predicted", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 43),
     Platform(
-        'RefSeq_ncRNA_mouse', "refseq_ncrna", "mmusculus_gene_ensembl",   
+        'RefSeq_ncRNA_mouse', "refseq_ncrna", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 44),
     Platform(
-        'RefSeq_predicted_ncRNA_mouse', "refseq_ncrna_predicted", "mmusculus_gene_ensembl",   
+        'RefSeq_predicted_ncRNA_mouse', "refseq_ncrna_predicted", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 45),
     Platform(
         'RefSeq_mRNA_human', "refseq_mrna", "hsapiens_gene_ensembl",
@@ -605,4 +605,4 @@ platform_to_GSEA_chipname={# corresponds to chipname in genepattern GSEA module
     'HumanWG_6':'ilmn_HumanWG_6_V3_0_R3_11282955_A',
     'HumanHT_12':'ilmn_HumanHT_12_V3_0_R3_11283641_A',
     'MouseRef_8':'ilmn_MouseRef_8_V2_0_R3_11278551_A'
-    } 
+    }

@@ -103,7 +103,7 @@ class PlotLayout:
         self.array_cluster = array_cluster
         self.gene_label = gene_label
         self.array_label = array_label
-        
+
 
 class PlotCoords:
     def __init__(self, hm_x, hm_y, cb_x, cb_y, gd_x, gd_y, ad_x, ad_y,
@@ -116,7 +116,7 @@ class PlotCoords:
         self.ac_x, self.ac_y = ac_x, ac_y
         self.gl_x, self.gl_y = gl_x, gl_y
         self.al_x, self.al_y = al_x, al_y
-        
+
 
 class HeatmapLayout:
     def __init__(
@@ -291,7 +291,7 @@ class DendrogramLayout:
         # across the phylogenetic distance.  color_fn is for the
         # clusters.
         import math
-        
+
         self.num_items = num_items
         self.pixels_per_item = pixels_per_item
         self.tree = tree
@@ -301,7 +301,7 @@ class DendrogramLayout:
         if self.tree_cluster:
             self.max_cluster = max(self.tree_cluster.values())
         self._item_size = num_items * pixels_per_item
-        
+
         # Should be the same height as the heatmap.  The width should
         # be 0.625x the height (perfect ratio).
         RATIO = 1.0 / 1.6 / 2.0
@@ -317,7 +317,7 @@ class DendrogramLayout:
         # percentages indicate how far across the plot to place the
         # node.  0% is the furthest distance, while 100% is the
         # closest.
-        
+
         # These are actually similarity metrics, so put 1.0 at 100%,
         # and the lowest value given in the tree (can be negative) at
         # 0%.
@@ -329,7 +329,7 @@ class DendrogramLayout:
             if highest is None or distance > highest:
                 highest = distance
         assert highest <= 1.0
-        
+
         # Set the closest to always be 1.0.
         highest = 1.0
         # Set a small border at the end for the root.
@@ -381,10 +381,10 @@ class DendrogramLayout:
         perc = (distance - self.lowest) / (self.highest - self.lowest)
         x = int(perc * self.dist_size())
         return x
-        
+
 
 class GeneDendrogramLayout(DendrogramLayout):
-    def __init__(self, nrow, ncol, boxwidth, boxheight, 
+    def __init__(self, nrow, ncol, boxwidth, boxheight,
                  size_scale, thickness_scale, tree, tree_cluster, color_fn):
         DendrogramLayout.__init__(
             self, nrow, ncol, boxheight, boxwidth, size_scale, thickness_scale,
@@ -419,13 +419,13 @@ class GeneDendrogramLayout(DendrogramLayout):
         #
         # Separate out lines 1 and 3 in case they are different
         # colors.
-        # 
+        #
         # Add two left lines, then two right lines.
         line1 = self.vthicken(node_x, node_y, 1, left_y-node_y+1)
         line2 = self.hthicken(node_x, left_y, left_x-node_x+1, 1)
         line3 = self.vthicken(node_x, right_y, 1, node_y-right_y+1)
         line4 = self.hthicken(node_x, right_y, right_x-node_x+1, 1)
-        
+
         # For some reason, left and right are sometimes switched.  If
         # that's the case, then adjust the coordinates so there are no
         # negative heights.
@@ -445,7 +445,7 @@ class GeneDendrogramLayout(DendrogramLayout):
             line2 = x-delta, y, max(width+delta, self.LINEWIDTH), height
             x, y, width, height = line4
             line4 = x-delta, y, max(width+delta, self.LINEWIDTH), height
-            
+
         lines = [line1, line2, line3, line4]
         return lines
     def root(self, node_num, node_dist):
@@ -506,7 +506,7 @@ class ArrayDendrogramLayout(DendrogramLayout):
             line2 = x, y-delta, width, max(height+delta, self.LINEWIDTH)
             x, y, width, height = line4
             line4 = x, y-delta, width, max(height+delta, self.LINEWIDTH)
-            
+
         #print node_x, node_y
         lines = [line1, line2, line3, line4]
         return lines
@@ -521,10 +521,10 @@ class GeneClusterLayout:
     def __init__(self, num_items, item_width, item_height,
                  border_size, grid_size, color_fn):
         array_layout = ArrayClusterLayout(
-            num_items, item_height, item_width, border_size, grid_size)
+            num_items, item_height, item_width, border_size, grid_size,
+            color_fn)
         self.array_layout = array_layout
-        # XXX should integrate this with ArrayClusterLayout.
-        self.color_fn = color_fn
+        self.color_fn = color_fn  # XXX HACK.  Integrate with array_layout
     def width(self):
         return self.size()[0]
     def height(self):
@@ -539,12 +539,14 @@ class GeneClusterLayout:
 
 class ArrayClusterLayout:
     def __init__(
-        self, num_items, item_width, item_height, border_size, grid_size):
+        self, num_items, item_width, item_height, border_size, grid_size,
+        color_fn):
         self.num_items = num_items
         self.item_width = item_width
         self.item_height = item_height
         self.BORDER = border_size
         self.GRID_SIZE = grid_size
+        self.color_fn = color_fn
         #if not grid:
         #    self.GRID_SIZE = 0
         #assert self.GRID_SIZE <= self.BORDER
@@ -627,7 +629,7 @@ class ArrayLabelLayout:
 
 def process_data_set(MATRIX, scale, gain, autoscale):
     assert MATRIX.nrow() > 0, "Matrix has no genes."
-    
+
     x = _pretty_scale_matrix(MATRIX, scale, gain, autoscale)
     MATRIX_scaled, orig_min, orig_max = x
     return MATRIX_scaled, orig_min, orig_max
@@ -636,7 +638,7 @@ def process_data_set(MATRIX, scale, gain, autoscale):
 def get_color_scheme_fn(name):
     # Choose the color scheme.
     from genomicode import colorlib
-    
+
     scheme2fn = {
         "red" : colorlib.red_shade,
         "white" : colorlib.white_shade,
@@ -664,7 +666,8 @@ def make_layout(
     # Label
     label_genes, label_arrays, scale_gene_labels, scale_array_labels,
     # Clusters
-    gene_cluster_width, gene_cluster_colors, 
+    gene_cluster_width, gene_cluster_colors,
+    array_cluster_height, array_cluster_colors,
     # Dendrogram
     gene_tree_scale, gene_tree_thickness,
     array_tree_scale, array_tree_thickness,
@@ -696,7 +699,7 @@ def make_layout(
 
     # Make layouts for the dendrograms.
     gd_layout = ad_layout = None
-    #if(cluster_genes and cluster_data.gene_tree and gene_tree_scale > 0 and 
+    #if(cluster_genes and cluster_data.gene_tree and gene_tree_scale > 0 and
     #   cluster_alg == "hierarchical" and MATRIX.ncol() > 1):
     if(cluster_data.gene_tree and gene_tree_scale > 0 and MATRIX.ncol() > 1):
         # Only add the dendrogram if hierarchical clustering was
@@ -713,7 +716,7 @@ def make_layout(
         height += hm_layout.GRID_SIZE
         gd_layout = GeneDendrogramLayout(
             MATRIX.nrow(), MATRIX.ncol(), width, height,
-            gene_tree_scale, gene_tree_thickness, 
+            gene_tree_scale, gene_tree_thickness,
             cluster_data.gene_tree, cluster_data.gene_tree_cluster,
             colorlib.matlab_colors)
     if(cluster_data.array_tree and array_tree_scale > 0 and MATRIX.nrow() > 1):
@@ -725,8 +728,8 @@ def make_layout(
         height += hm_layout.GRID_SIZE
         ad_layout = ArrayDendrogramLayout(
             MATRIX.nrow(), MATRIX.ncol(), width, height,
-            array_tree_scale, array_tree_thickness, 
-            cluster_data.array_tree, cluster_data.array_tree_cluster, 
+            array_tree_scale, array_tree_thickness,
+            cluster_data.array_tree, cluster_data.array_tree_cluster,
             colorlib.matlab_colors)
 
     # Make layouts for the clusters.
@@ -745,15 +748,27 @@ def make_layout(
         color_fns = [get_color_scheme_fn(x) for x in gene_cluster_colors]
         gc_layouts = [
             GeneClusterLayout(
-                MATRIX.nrow(), gene_cluster_width, gene_cluster_height, 
+                MATRIX.nrow(), gene_cluster_width, gene_cluster_height,
                 hm_layout.BORDER, hm_layout.GRID_SIZE, color_fns[i])
             for i in range(len(cluster_data.gene_clusters))]
     if cluster_data.array_cluster:
         # Make arraycluster_height a user-settable variable.
-        arraycluster_width, arraycluster_height = boxwidth, 20
+        array_cluster_width = boxwidth
+
+        assert len(array_cluster_colors) == 1, "Not implemented"
+        color_fn = get_color_scheme_fn(array_cluster_colors[0])
         ac_layout = ArrayClusterLayout(
-            MATRIX.ncol(), arraycluster_width, arraycluster_height,
-            hm_layout.BORDER, hm_layout.GRID_SIZE)
+            MATRIX.ncol(), array_cluster_width, array_cluster_height,
+            hm_layout.BORDER, hm_layout.GRID_SIZE, color_fn)
+
+        #assert len(array_cluster_colors) == len(cluster_data.array_clusters)
+        #color_fns = [get_color_scheme_fn(x) for x in array_cluster_colors]
+        #ac_layouts = [
+        #    ArrayClusterLayout(
+        #        MATRIX.ncol(), array_cluster_width, array_cluster_height,
+        #        hm_layout.BORDER, hm_layout.GRID_SIZE, color_fns[i])
+        #    for i in range(len(cluster_data.array_clusters))]
+
 
     # Make the layout for the gene or array labels.
     gl_layout = al_layout = None
@@ -781,7 +796,7 @@ def make_layout(
         gl_fontsize = int(gl_fontsize)
     if al_fontsize is not None:
         al_fontsize = int(al_fontsize)
-    
+
     if label_genes and gl_fontsize:
         gene_labels = _get_gene_labels(MATRIX)
         height = boxheight
@@ -822,8 +837,9 @@ def calc_coords_for_layout(layout):
         return layout.size()
 
     # cluster should be spaced a little further
-    gb1, gb2, gb3 = 6, 6, 10
-    ab1, ab2, ab3 = 6, 6, 10
+    w, h = layout.heatmap.boxwidth, layout.heatmap.boxheight
+    gb1, gb2, gb3 = w*3/10, w*3/10, w/2  # 6, 6, 10
+    ab1, ab2, ab3 = h*3/10, h*3/10, h/2
     if not layout.gene_dendrogram:
         gb1 = 0
     if not layout.gene_label:
@@ -849,7 +865,7 @@ def calc_coords_for_layout(layout):
         gc_width += width
         gc_height = height
     ac_width, ac_height = _safe_size(layout.array_cluster)
-    
+
     # Position the heatmap based on the dendrograms.
     hm_x = x + gd_width + gb1 + gl_width + gb2 + gc_width + gb3
     hm_y = y + ad_height + ab1 + al_height + ab2 + ac_height + ab3
@@ -943,7 +959,7 @@ def plot(
 
     plotlib.write(image, open(filename, 'w'))
 
-    
+
 def plot_matrix(
     plotlib, image, MATRIX, MATRIX_p, xoff, yoff, layout, border_color,
     grid_color):
@@ -959,7 +975,7 @@ def plot_matrix(
 
     # Draw the underlying grid.
     plotlib.rectangle(image, xoff, yoff, width, height, grid_color)
-    
+
     # Draw a border around the heatmap.
     # Draw top, right, bottom, and left borders.
     #plotlib.rectangle(image, xoff, yoff, width, height, None, border_color)
@@ -971,7 +987,7 @@ def plot_matrix(
         image, xoff, yoff+height-layout.BORDER, width, layout.BORDER,
         border_color)
     plotlib.rectangle(image, xoff, yoff, layout.BORDER, height, border_color)
-    
+
     # Draw the actual matrix.
     X = MATRIX._X
     for i in range(MATRIX.nrow()):
@@ -1012,7 +1028,7 @@ def plot_matrix(
             height_p = min(width_p*1.4, height_p)
             assert width_p < width
             assert height_p < height
-            
+
             x_p = x + (width-width_p)/2.0
             y_p = y + (height-height_p)/2.0
 
@@ -1056,7 +1072,7 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
         for i in range(cb_width):
             color = layout.color(float(i)/cb_width)
             plotlib.line(image, xoff+i, yoff, 1, cb_height, color)
-            
+
     plotlib.rectangle(
         image, xoff, yoff, cb_width, cb_height, None, outline=OUTLINE_COLOR)
 
@@ -1070,12 +1086,12 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
     fontsize = layout.fontsize()
     if fontsize < MIN_FONTSIZE:
         return
-    
+
     labels = [layout.tick_label(i) for i in range(layout.num_ticks())]
     label_sizes = [layout.label_size(i) for i in range(layout.num_ticks())]
     max_width = max([x[0] for x in label_sizes])
     #max_height = max([x[1] for x in label_sizes])
-                   
+
     for i, label in enumerate(labels):
         x, y = layout.label_coord(i)
         # Right align the vertical colorbar.
@@ -1083,7 +1099,7 @@ def plot_colorbar(plotlib, image, xoff, yoff, layout):
             width, height = label_sizes[i]
             x += max_width - width
         plotlib.text(image, xoff+x, yoff+y, label, fontsize, BLACK)
-        
+
 
 def plot_dendrogram(plotlib, image, MATRIX, xoff, yoff, layout, dim, tree):
     import arrayio
@@ -1179,7 +1195,7 @@ def plot_gene_clusters(
         width, height = layout.size()
         xoff += width
 
-    
+
 def plot_one_gene_cluster(
     plotlib, image, X, xoff, yoff, layout, clusters, border_color, grid_color):
     import arrayio
@@ -1205,12 +1221,12 @@ def plot_one_gene_cluster(
     else:
         raise AssertionError, "I could not find the cluster IDs: %s" % \
               str(X.row_names())
-    
+
     GID = X.row_names(ID_NAME)
     gid2i = {}
     for i, gid in enumerate(GID):
         gid2i[gid] = i
-        
+
     # Draw the underlying grid, and a border around the whole thing.
     width, height = layout.size()
     plotlib.rectangle(image, xoff, yoff, width, height, grid_color)
@@ -1225,8 +1241,6 @@ def plot_one_gene_cluster(
             p = 0.5
             if max_cluster > 0:
                 p = float(n) / max_cluster
-            # Bug: This should be set in the layout.
-            #c = _get_color(p, colorlib.matlab_colors)
             c = _get_color(p, layout.color_fn)
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
@@ -1235,7 +1249,7 @@ def plot_array_clusters(
     plotlib, image, X, xoff, yoff, layout, clusters, border_color, grid_color):
     import arrayio
     from genomicode import colorlib
-    
+
     #assert X.ncol() == len(clusters)
 
     #GRID_COLOR = (75, 75, 75)
@@ -1276,8 +1290,9 @@ def plot_array_clusters(
             p = 0.5
             if max_cluster > 0:
                 p = float(n) / max_cluster
-            # Bug: This should be set in the layout.
-            c = _get_color(p, colorlib.matlab_colors)
+            ## Bug: This should be set in the layout.
+            #c = _get_color(p, colorlib.matlab_colors)
+            c = _get_color(p, layout.color_fn)
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
 
@@ -1366,7 +1381,7 @@ def read_data_set(
         if multiple:
             default = []
         data[name] = default
-        
+
         if not filenames:
             continue
         # filenames could be name of one file, or list of files.
@@ -1485,7 +1500,7 @@ def _pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     assert not math.isnan(defgain) and not math.isnan(defscale)
     ORIG_min = (0.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
     ORIG_max = (1.0*2.0 - 1.0)/(defgain*gain) - (defscale+scale)
-    
+
     return MATRIX, ORIG_min, ORIG_max
 
 
@@ -1519,7 +1534,7 @@ def _calc_colorbar_size(hm_width, hm_height, grid_size, box_width, box_height):
         x4 = max(x2, x3)
         width = max(min(x1, x4), 1)
         height = max(width * BAR_SHORT, 1)
-        
+
     width, height = int(width), int(height)
     return width, height
 
@@ -1611,7 +1626,7 @@ def _choose_gene_id(MATRIX):
     # Given a user-specified matrix, try to pick a good unique ID for
     # the genes.
     import arrayio
-    
+
     headers = MATRIX.row_names()
 
     # Prioritize some potential ones.  Don't use the standard headers,
@@ -1634,7 +1649,7 @@ def _choose_gene_id(MATRIX):
         missing = [x for x in names if not x.strip()]
         if not missing:
             return header
-    
+
     raise AssertionError, "I could not find an ID for the matrix."
 
 
@@ -1672,9 +1687,9 @@ def _get_gene_ids(MATRIX):
     names = MATRIX.row_names()
 
     KNOWN_NAMES = ["GID", "NAME", "GWEIGHT"]
-    
+
     UNKNOWN = [x for x in names if x not in KNOWN_NAMES]
-    
+
     # If only one column other than KNOWN_NAMES, then it must be the
     # one supplied by the user.  Use that as the ID.
     if len(UNKNOWN) == 1:
@@ -1690,7 +1705,7 @@ def _get_gene_ids(MATRIX):
                 return MATRIX.row_names(n)
         x = sorted(UNKNOWN)
         return MATRIX.row_names(x[0])
-    
+
     # If no columns other than KNOWN_NAMES, then select the ones from
     # KNOWN_NAMES.
     for n in KNOWN_NAMES:
@@ -1715,7 +1730,7 @@ def _get_gene_labels(MATRIX):
         j = labels[i].find("///")
         if j >= 0:
             labels[i] = labels[i][:j].strip()
-            
+
     return labels
 
 
@@ -1759,7 +1774,7 @@ def _parse_color(color_str):
 def _fmt_color_schemes(color_schemes, default):
     # Don't change the original array.
     color_schemes = color_schemes[:]
-    
+
     if len(color_schemes) == 1:
         return color_schemes[0]
 
@@ -1774,7 +1789,7 @@ def _fmt_color_schemes(color_schemes, default):
         x = "%s," % x
     x = "%s or %s" % (x, color_schemes[-1])
     return x
-    
+
 
 def _exists_nz(filename):
     import stat
@@ -1784,7 +1799,7 @@ def _exists_nz(filename):
         return filename
     return None
 
-    
+
 def main():
     from optparse import OptionParser, OptionGroup
 
@@ -1802,7 +1817,7 @@ def main():
     # XXX need way to save processed matrix to a file
 
     COLOR_SCHEMES = [
-        "red", "white", "red-green", "red-green-soft", "red-blue-soft", 
+        "red", "white", "red-green", "red-green-soft", "red-blue-soft",
         "blue-yellow", "matlab", "bild", "genepattern", "genespring",
         "yahoo",
         ]
@@ -1863,7 +1878,7 @@ def main():
     group.add_option(
         "--pvalue", type="float", default=0.05,
         help="p value cutoff for significance.")
-    
+
     group = OptionGroup(parser, "Labels")
     parser.add_option_group(group)
     group.add_option(
@@ -1885,7 +1900,6 @@ def main():
     group.add_option(
         "--gene_cluster_file", default=[], action="append",
         help="kgg file (MULTI)")
-    group.add_option("--array_cluster_file", help="kag file")
     group.add_option(
         "--gene_cluster_width", type="int", default=20,
         help="Set the width of the gene cluster boxes.")
@@ -1895,7 +1909,18 @@ def main():
         help="Color scheme for gene clusters: %s.  "
         "Can have up to 1 for each gene cluster file.  Must be specified in "
         "the same order." % x)
-    
+    group.add_option(
+        "--array_cluster_file", default=[], action="append",
+        help="kag file (MULTI)")
+    group.add_option(
+        "--array_cluster_height", type="int", default=20,
+        help="Set the height of the array cluster boxes.")
+    group.add_option(
+        "--array_cluster_color", action="append", default=[],
+        help="Color scheme for array clusters: %s.  "
+        "Can have up to 1 for each array cluster file.  Must be specified in "
+        "the same order." % x)
+
     group = OptionGroup(parser, "Dendrogram")
     parser.add_option_group(group)
     # For trees.
@@ -1939,7 +1964,7 @@ def main():
     infile, outfile = args
     if not os.path.exists(infile):
         parser.error("I could not find file %s." % infile)
-        
+
     if options.libpath:
         sys.path = options.libpath + sys.path
 
@@ -1948,7 +1973,7 @@ def main():
     if options.annotate_pvalue:
         assert os.path.exists(options.annotate_pvalue)
     assert options.pvalue > 0 and options.pvalue <= 1.0
-    
+
     assert options.scale_border > 0 and options.scale_border < 5.0
     border_color = 0, 0, 0
     # (0, 0, 0) is too dark for small box sizes.  100 looks too washed
@@ -1967,7 +1992,17 @@ def main():
         options.gene_cluster_color.append("bild")
     for x in options.gene_cluster_color:
         assert x in COLOR_SCHEMES, "Unknown color scheme: %s" % x
-        
+
+    assert options.array_cluster_height > 0
+    assert len(options.array_cluster_color) <= \
+           len(options.array_cluster_file), \
+           "More array cluster colors than files."
+    while len(options.array_cluster_color) < len(options.array_cluster_file):
+        # Fill with defaults.
+        options.array_cluster_color.append("bild")
+    for x in options.array_cluster_color:
+        assert x in COLOR_SCHEMES, "Unknown color scheme: %s" % x
+
 
     # Choose a plotting library.
     plotlib = __import__(
@@ -1993,6 +2028,7 @@ def main():
         options.scale_gene_labels, options.scale_array_labels,
         # Clusters
         options.gene_cluster_width, options.gene_cluster_color,
+        options.array_cluster_height, options.array_cluster_color,
         # Dendrograms
         options.gene_tree_scale, options.gene_tree_thickness,
         options.array_tree_scale, options.array_tree_thickness,
@@ -2004,7 +2040,7 @@ def main():
     assert megapixels <= MAX_MEGAPIXELS, "%dx%d plot too big [%d:%d]." % (
         layout.heatmap.width(), layout.heatmap.height(),
         options.width, options.height)
-    
+
     coords = calc_coords_for_layout(layout)
     plot(
         outfile, MATRIX, MATRIX_p, cluster_data, plotlib, layout, coords,
