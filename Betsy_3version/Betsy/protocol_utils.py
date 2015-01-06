@@ -25,7 +25,22 @@ class Parameter:
         self.description = description
         self.require=require
         self.datatype=datatype
-        
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [
+            repr(self.name),
+            repr(self.pretty_name),
+            repr(self.default),
+            repr(self.datatype),
+            repr(self.type),
+            repr(self.choices),
+            repr(self.category),
+            repr(self.description),
+            repr(self.require),
+            ]
+        x =  ", ".join(x)
+        return x    
 def get_result_folder(protocol, outfiles, parameters, pipeline, foldername):
     """generate the result folder of a pipeline"""
     OUTPUTPATH = config.OUTPUTPATH

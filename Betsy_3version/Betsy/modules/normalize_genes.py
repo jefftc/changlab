@@ -28,7 +28,7 @@ def run(data_node,parameters, user_input,network,num_cores):
         CLUSTER_BIN = config.cluster
         cluster = module_utils.which(CLUSTER_BIN)
         assert cluster, 'cannot find the %s' % CLUSTER_BIN
-        process = subprocess.Popen([CLUSTER_BIN,'-f',data_node.attributes['filename'],'-ng',
+        process = subprocess.Popen([CLUSTER_BIN,'-f',data_node.identifier,'-ng',
                                     '-u',outfile],shell=False,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)

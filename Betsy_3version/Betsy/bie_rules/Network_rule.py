@@ -101,7 +101,7 @@ all_modules = [
             Constraint('preprocess', MUST_BE, 'illumina',3),
             Constraint('preprocess', MUST_BE, 'loess',4),
             Constraint('preprocess', MUST_BE, 'agilent',5),
-            Constraint('preprocess', MUST_BE, 'tcga',36),
+            Constraint('preprocess', MUST_BE, 'RSEM_exons',36),
             Constraint("contents", MUST_BE, "class0,class1", 0),
             Constraint("contents", MUST_BE, "class0,class1", 1),
             Constraint("contents", MUST_BE, "class0,class1", 2),

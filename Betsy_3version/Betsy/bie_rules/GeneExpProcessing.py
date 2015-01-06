@@ -6,16 +6,17 @@ import Database
 
 
 PREPROCESS1 = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
-              "tcga","rsem"]
-
+              "rsem",'RSEM_genes','RSEM_exons','humanmethylation450','mirnaseq','rppa','clinical']
+PREPROCESS_WOrma=["unknown", "illumina", "agilent", "mas5", "loess",
+              "rsem",'RSEM_genes','RSEM_exons','humanmethylation450','mirnaseq','rppa','clinical']
 PREPROCESS=PREPROCESS1+['any']
 
 ClassLabelFile = DataType(
     "ClassLabelFile",
     AttributeDef(
     "contents",Database.CONTENTS,'unspecified','unspecified',help="contents"),
-    AttributeDef("cls_format",['cls','label','unknown'],"unknown","cls",help="cls format for ClassLabelFile"),
-    AttributeDef("preprocess", PREPROCESS, "unknown", "unknown",help="preprocess method"),
+    AttributeDef("cls_format",['cls','label'],"cls","cls",help="cls format for ClassLabelFile"),
+    #AttributeDef("preprocess", PREPROCESS, "unknown", "any",help="preprocess method"),
     help="The Class label file, can be cls format or label format")     
              
 IntensityPlot = DataType(
@@ -154,7 +155,8 @@ _SignalFile_Annotate= DataType(
        "no", "no",help="gene order method"),
     AttributeDef("annotate", ["no", "yes"], "no", "no",help="annotate file or not"),
     AttributeDef("rename_sample", ["no", "yes"], "no", "no",help="rename sample or not"),
-    AttributeDef("platform", ["yes","no"], "no", "no",help="add platform or not"),
+    AttributeDef("platform", ["yes","no",'u133A'], "no", "no",help="add platform or not"),
+    #AttributeDef("has_u133A", ["yes","no"], "no", "no",help="has hg_u133A platform or not"),
     AttributeDef("contents", Database.CONTENTS,"unspecified", "unspecified",help="contents"),
     help="The SignalFile after SiganlFile_Order, care annotate,rename_sample,platform.")
 
@@ -185,7 +187,8 @@ _SignalFile_Filter= DataType(
        "no", "no",help="gene order method"),
     AttributeDef("annotate", ["no", "yes"], "no", "no",help="annotate file or not"),
     AttributeDef("rename_sample", ["no", "yes"], "no", "no",help="rename sample or not"),
-    AttributeDef("platform", ["yes","no"], "no", "no",help="add platform or not"),
+    AttributeDef("platform", ["yes","no",'u133A'], "no", "no",help="add platform or not"),
+    #AttributeDef("has_u133A", ["yes","no"], "no", "no",help="has hg_u133A platform or not"),
     AttributeDef("num_features", ["yes","no"], "no", "no",help="select a num of features or not"),
     AttributeDef(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
@@ -227,7 +230,8 @@ SignalFile= DataType(
        "no", "no",help="gene order method"),
     AttributeDef("annotate", ["no", "yes"], "no", "no",help="annotate file or not"),
     AttributeDef("rename_sample", ["no", "yes"], "no", "no",help="rename sample or not"),
-    AttributeDef("platform", ["yes","no"], "no", "no",help="add platform or not"),
+    AttributeDef("platform", ["yes","no",'u133A'], "no", "no",help="add platform or not"),
+    #AttributeDef("has_u133A", ["yes","no"], "no", "no",help="has hg_u133A platform or not"),
     AttributeDef("num_features", ["yes","no"], "no", "no",help="select a num of features or not"),
     AttributeDef(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
@@ -246,15 +250,39 @@ SignalFile= DataType(
 all_modules = [
 
     Module('preprocess_tcga',Database.TCGAFile,_SignalFile_Postprocess,
-        Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS,),
+        Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS),
+        Constraint("tumor_only",MUST_BE, 'yes'),
+        Constraint("preprocess",CAN_BE_ANY_OF,['RSEM_genes','RSEM_exons',
+                                          'humanmethylation450','mirnaseq',
+                                          'rppa','clinical','agilent','rma']),
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence('logged',SET_TO,"unknown"),
         Consequence('predataset', SET_TO, "no"),
-        Consequence('preprocess',SET_TO,"tcga"),
+        Consequence('preprocess',SAME_AS_CONSTRAINT),
         Consequence('format',SET_TO,"tdf"),
         help="preprocess tcga file, generate to SignalFile_Postprocess"),
 
-    
+##     Module('preprocess_tcga_rma',Database.TCGAFile,_SignalFile_Postprocess,
+##        Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS),
+##        Constraint("tumor_only",MUST_BE, 'yes'),
+##        Constraint("tcga_datatype",MUST_BE,'rma'),
+##        Consequence("contents",SAME_AS_CONSTRAINT),
+##        Consequence('logged',SET_TO,"unknown"),
+##        Consequence('predataset', SET_TO, "no"),
+##        Consequence('preprocess',SET_TO,"rma"),
+##        Consequence('format',SET_TO,"tdf"),
+##        help="preprocess tcga rma file, generate to SignalFile_Postprocess"),
+##           
+##    Module('preprocess_tcga_agilent',Database.TCGAFile,_SignalFile_Postprocess,
+##        Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS),
+##        Constraint("tumor_only",MUST_BE, 'yes'),
+##        Constraint("tcga_datatype",MUST_BE,'agilent'),
+##        Consequence("contents",SAME_AS_CONSTRAINT),
+##        Consequence('logged',SET_TO,"unknown"),
+##        Consequence('predataset', SET_TO, "no"),
+##        Consequence('preprocess',SET_TO,"agilent"),
+##        Consequence('format',SET_TO,"tdf"),
+##        help="preprocess tcga agilent file, generate to SignalFile_Postprocess"),
     ####postprocess
     Module(
         "convert_signal_to_tdf",
@@ -348,7 +376,7 @@ all_modules = [
     Module(
         "convert_impute_merge",
         _SignalFile_Impute, _SignalFile_Merge,
-        Constraint("preprocess", CAN_BE_ANY_OF, ["unknown", "illumina", "agilent", "mas5", "loess","tcga","rsem"]),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS_WOrma),
         Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter",CAN_BE_ANY_OF,["no", "yes"]),
@@ -418,8 +446,7 @@ all_modules = [
 
     Module(  #did not consider the diff_expr case 
         "merge_two_classes", [_SignalFile_Merge, _SignalFile_Merge], _SignalFile_Merge,
-         Constraint("preprocess",CAN_BE_ANY_OF, ["unknown", "illumina",
-                                                 "agilent", "mas5", "loess","tcga"]),
+         Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS_WOrma),
          Constraint("contents", MUST_BE, "class0", 0),
          Constraint("combat_norm",MUST_BE,'no',0),
          Constraint("quantile_norm",MUST_BE,'no',0), 
@@ -489,9 +516,9 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", SAME_AS,0,1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
+        #Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,1),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with combat method"),
            
@@ -510,9 +537,9 @@ all_modules = [
         Consequence("shiftscale_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", SAME_AS,0,1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
+        #Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,1),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with dwd method"),
 
@@ -531,9 +558,9 @@ all_modules = [
         Consequence("dwd_norm",SAME_AS_CONSTRAINT,1),
         Constraint("contents",SAME_AS,0,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", SAME_AS,0,1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
+        #Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,1),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with shiftscale method"),
     ###normalize
@@ -667,8 +694,8 @@ all_modules = [
         Consequence("cn_ttest_or_snr",SET_TO_ONE_OF, ['t_test','snr']),
         Consequence("cn_filter_data",SET_TO_ONE_OF, ['yes','no']),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", SAME_AS,0,1),
+        #Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,1),
         help="rank the genes in SignalFile_Order by class neighbors method"
         ),
     
@@ -683,8 +710,8 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO_ONE_OF, ["t_test_p", "t_test_fdr"]),
         Consequence("contents",SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", SAME_AS,0,1),
+        #Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,1),
         help="rank the genes in SignalFile_Order by ttest method"
        ),
          
@@ -803,6 +830,12 @@ all_modules = [
          Consequence("platform",SET_TO,"yes"),
          help="add a cross platform to SignalFile_Annotate"),
     
+    Module(
+         'add_U133A_probeid',
+         _SignalFile_Annotate,_SignalFile_Annotate,
+         Constraint("platform", MUST_BE,"no"),
+         Consequence("platform",SET_TO,"u133A"),
+         help="add a hg_u133A platform to SignalFile_Annotate"),
     #Filter
     Module(
         "convert_annotate_filter",
@@ -829,7 +862,7 @@ all_modules = [
                                'diff_ebayes','diff_fold_change']),
         Constraint("annotate",CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("rename_sample",CAN_BE_ANY_OF, ["no", "yes"]),
-        Constraint("platform",CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("platform",CAN_BE_ANY_OF, ["no", "yes",'u133A']),
         Consequence("dwd_norm", SAME_AS_CONSTRAINT),
         Consequence("combat_norm", SAME_AS_CONSTRAINT),
         Consequence("bfrm_norm",SAME_AS_CONSTRAINT),
@@ -894,7 +927,7 @@ all_modules = [
         Consequence("logged", SAME_AS_CONSTRAINT),
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'high_var_probe'),
-        Constraint("platform", MUST_BE,"yes"),
+        Constraint("platform", CAN_BE_ANY_OF,["yes",'u133A']),
         Consequence("platform",SAME_AS_CONSTRAINT),
         help="remove duplciate probes in SignalFile_Filter by high_var_probe method"),
     Module(
@@ -906,7 +939,7 @@ all_modules = [
         Consequence("logged", SAME_AS_CONSTRAINT),
         Constraint("duplicate_probe", MUST_BE,'no'),
         Consequence("duplicate_probe",SET_TO,'closest_probe'),
-        Constraint("platform", MUST_BE,"yes"),
+        Constraint("platform", CAN_BE_ANY_OF,["yes",'u133A']),
         Consequence("platform",SAME_AS_CONSTRAINT),
          help="remove duplciate probes in SignalFile_Filter by closest_probe method"),
     
@@ -930,9 +963,9 @@ all_modules = [
         Consequence("duplicate_probe",SAME_AS_CONSTRAINT,1),
         Consequence("unique_genes",SAME_AS_CONSTRAINT,1),
         Consequence("group_fc",SET_TO,"yes"),
-        Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", SAME_AS,0,1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
+        #Constraint("preprocess",CAN_BE_ANY_OF, PREPROCESS1),
+        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT,1),
         DefaultAttributesFrom(1),
         help="filter genes in SignalFile_Filter by fold change in different classes"),
     Module(   
@@ -980,7 +1013,7 @@ all_modules = [
                                'diff_ebayes','diff_fold_change']),
         Constraint("annotate",CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("rename_sample",CAN_BE_ANY_OF, ["no", "yes"]),
-        Constraint("platform",CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("platform",CAN_BE_ANY_OF, ["no", "yes",'u133A']),
         Constraint("logged",CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("format",CAN_BE_ANY_OF,['tdf','gct']),
         Constraint("num_features",CAN_BE_ANY_OF,['yes',"no"]),
@@ -1024,14 +1057,12 @@ all_modules = [
         Constraint("cls_format",MUST_BE,'label',0),
         Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,0),
-        Constraint("preprocess", SAME_AS,0,1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT,0),
+        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,0),
+        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1,1),
+        #Consequence("preprocess", SAME_AS_CONSTRAINT,1),
         Consequence("contents", SAME_AS_CONSTRAINT,0),
         Consequence("cls_format",SET_TO,'cls'),
-        help="convert ClassLabelFile with label format to cls format"
-        ),                       
-    ]
+        help="convert ClassLabelFile with label format to cls format")]
 
 list_files=[SignalFile,_SignalFile_Postprocess,_SignalFile_Impute, _SignalFile_Merge,
             _SignalFile_Normalize,_SignalFile_Order,_SignalFile_Annotate,_SignalFile_Filter,

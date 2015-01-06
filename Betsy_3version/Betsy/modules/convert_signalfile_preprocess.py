@@ -20,7 +20,8 @@ def run(data_node,parameters, user_input,network,num_cores):
 
 def name_outfile(data_node,user_input):
     original_file = module_utils.get_inputid(data_node.identifier)
-    filename = 'signal_file_' + original_file + '.tdf'
+    format_type = data_node.data.attributes['format']
+    filename = 'signal_file_' + original_file + '.'+format_type
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 

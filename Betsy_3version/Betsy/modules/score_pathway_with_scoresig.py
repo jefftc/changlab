@@ -6,15 +6,12 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(in_nodes, parameters, user_input, network,num_cores):
-    rma_node, mas5_node = in_nodes
-    outfile = name_outfile(in_nodes,user_input)
+def run(data_node, parameters, user_input, network,num_cores):
+    outfile = name_outfile(data_node,user_input)
     scoresig_path = config.scoresig
     scoresig_BIN = module_utils.which(scoresig_path)
     assert scoresig_BIN,'cannot find the %s' %scoresig_path
-    file1,file2 = module_utils.convert_to_same_platform(rma_node.identifier,
-                                                        mas5_node.identifier)
-    command = ['python', scoresig_BIN, '-r', file1, '-m', file2, '-j', '20', '-o', outfile]
+    command = ['python', scoresig_BIN, '-r', data_node.identifier, '-m', data_node.identifier, '-j', '20', '-o', outfile]
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
@@ -28,27 +25,22 @@ def run(in_nodes, parameters, user_input, network,num_cores):
     return out_object
 
 def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
-    rma_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,user_attributes,datatype='SignalFile',
-                                           optional_key='preprocess',optional_value='rma')
-    mas5_node = module_utils.get_identifier(network, module_id, data_nodes,user_attributes,
-                                           datatype='SignalFile',
-                                            optional_key='preprocess',optional_value='mas5')
-    return rma_node, mas5_node
+    data_node = module_utils.get_identifier(network, module_id,
+                                            data_nodes,user_attributes,datatype='SignalFile')
+
+    return data_node
     
 
-def name_outfile(in_nodes,user_input):
-    rma_node,mas5_node = in_nodes
+def name_outfile(data_node,user_input):
     original_file = module_utils.get_inputid(
-        rma_node.identifier)
+        data_node.identifier)
     filename = 'signature_score' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-def get_out_attributes(parameters,in_nodes):
+def get_out_attributes(parameters,data_node):
     return parameters
 
-def make_unique_hash(in_nodes,pipeline,parameters,user_input):
-    rma_node,mas5_node = in_nodes
-    identifier = rma_node.identifier
+def make_unique_hash(data_node,pipeline,parameters,user_input):
+    identifier = data_node.identifier
     return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)

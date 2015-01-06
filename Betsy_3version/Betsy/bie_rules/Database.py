@@ -25,10 +25,12 @@ TCGAID = DataType("TCGAID",
 TCGAFile = DataType("TCGAFile",
                      AttributeDef("contents",CONTENTS,
                                   'unspecified','unspecified',help="contents"),
-                     AttributeDef("data",['RSEM_genes','RSEM_exons',
+                     AttributeDef("preprocess",['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
-                                          'rppa','clinical'],'RSEM_genes',
+                                          'rppa','clinical','agilent','rma'],'RSEM_genes',
                                           'RSEM_genes',help="TCGA data type"),
+                     AttributeDef("tumor_only",['yes','no'],'no','no',
+                                    help="select tumor sample only"),
                      help="TCGA file download from TCGA database")
 
 list_files = [GEOSeries,GEOfamily,TCGAID,TCGAFile,MatrixFile]
@@ -41,10 +43,18 @@ all_modules = [
            OptionDef("date","",help="date for tcga disease"),
            Constraint("contents",CAN_BE_ANY_OF,CONTENTS,),
            Consequence("contents",SAME_AS_CONSTRAINT),
-           Consequence("data",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
+           Consequence("preprocess",SET_TO_ONE_OF,['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
-                                          'rppa','clinical']),
+                                          'rppa','clinical','agilent','rma']),
+           Consequence("tumor_only",SET_TO,'no'),
            help="download data from tcga website according to TCGAID"),
+    
+    Module('select_tumor_only', TCGAFile, TCGAFile,
+           Constraint("contents",CAN_BE_ANY_OF,CONTENTS,),
+           Consequence("contents",SAME_AS_CONSTRAINT),
+           Constraint("tumor_only",MUST_BE,'no'),
+           Consequence("tumor_only",SET_TO,'yes'),
+           help="select the tumor sample only in the TCGAFile"),
     
     Module(
          'download_GEO_family_soft',
@@ -53,6 +63,4 @@ all_modules = [
          Constraint("contents",CAN_BE_ANY_OF, CONTENTS),
          Consequence("contents",SAME_AS_CONSTRAINT),
          help="download geo family soft file"),
-    
-    
     ]

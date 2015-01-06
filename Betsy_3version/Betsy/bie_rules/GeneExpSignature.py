@@ -30,13 +30,20 @@ GenesetFile = DataType('GenesetFile',
 SignatureScore = DataType(
     'SignatureScore',AttributeDef("contents",Database.CONTENTS,
                                   'unspecified','unspecified',help="contents"),
+    AttributeDef("preprocess",GeneExpProcessing.PREPROCESS,
+                                  'unknown','any',help="preprocess"),
     help="Signature score file")
 
 GenesetReportFile = DataType(
     'GenesetReportFile',
     help="Report file for gene set report"
     )
-list_files = [GenesetAnalysis,GenesetPlot,GenesetFile,SignatureScore,GenesetReportFile]
+
+ScoreCompareReportFile = DataType(
+    'ScoreCompareReportFile',
+    help="Report file for score signature comparison report"
+    )
+list_files = [GenesetAnalysis,GenesetPlot,GenesetFile,SignatureScore,GenesetReportFile,ScoreCompareReportFile]
 
 all_modules = [
     Module(
@@ -85,29 +92,61 @@ all_modules = [
         help="plot geneset analysis file to bar plot"
         ),
     Module(
-        'score_pathway_with_scoresig',
+        'score_pathway_with_scoresig_affymetrix',
         [GeneExpProcessing.SignalFile,GeneExpProcessing.SignalFile],SignatureScore,
-        OptionDef('platform_value','HG_U133A',help="platform to add"),
         Constraint("format",MUST_BE,'tdf',0),
         Constraint("preprocess",MUST_BE,'rma',0),
         Constraint("quantile_norm",MUST_BE,'yes',0),
         Constraint("logged",MUST_BE,'yes',0),
-        Constraint("platform",MUST_BE,"yes",0),
+        Constraint("platform",MUST_BE,"u133A",0),
         Constraint("duplicate_probe",MUST_BE,'high_var_probe',0),
         Constraint("format",MUST_BE,'tdf',1),
         Constraint("preprocess",MUST_BE,'mas5',1),
         Constraint("logged",MUST_BE,'yes',1),
-        Constraint("platform",MUST_BE,'yes',1),
+        Constraint("platform",SAME_AS,0,1),
         Constraint("duplicate_probe",MUST_BE,'high_var_probe',1),
         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence('contents',SAME_AS_CONSTRAINT,0),
+        Consequence('preprocess',SET_TO,'rma'),
+        help="score pathway iwth scoresig method for affymetrix"
+        ),
+     Module(
+        'score_pathway_with_scoresig',
+        GeneExpProcessing.SignalFile,SignatureScore,
+        Constraint("format",MUST_BE,'tdf'),
+        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS_WOrma,0),
+        Constraint("quantile_norm",MUST_BE,'yes'),
+        Constraint("logged",MUST_BE,'yes'),
+        Constraint("duplicate_probe",MUST_BE,'high_var_probe'),
+        Constraint("platform",MUST_BE,"u133A",0),
+        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Consequence('contents',SAME_AS_CONSTRAINT),
+        Consequence('preprocess',SAME_AS_CONSTRAINT),
         help="score pathway iwth scoresig method"
         ),
-    
+    Module('convert_SignatureScore_preprocess',
+           SignatureScore,SignatureScore,
+           Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
+           Consequence("preprocess", SET_TO,'any'),
+           help='convert SignatureScore preprocess from others to any'),
+##    Module(
+##        'make_geneset_report',
+##        [GenesetAnalysis,
+##         GenesetPlot],GenesetReportFile,
+##        help="make geneset report"),
     Module(
-        'make_geneset_report',
+        'make_score_signature_report',
         [GenesetAnalysis,
-         GenesetPlot],GenesetReportFile,
-        help="make geneset report"),
+         GenesetPlot,
+         SignatureScore],GenesetReportFile,
+        help="make signature report"),
+    
+    Module('compare_signature_predictions',
+           [SignatureScore,SignatureScore,SignatureScore],ScoreCompareReportFile,
+           Constraint("preprocess", MUST_BE,'RSEM_genes',0),
+           Constraint("preprocess", MUST_BE,'agilent',1),
+           Constraint("preprocess", MUST_BE,'rma',2),
+           
+           help='compare three SignatureScore'),
     ]

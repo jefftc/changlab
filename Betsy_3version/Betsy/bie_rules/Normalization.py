@@ -9,7 +9,7 @@ import Database
 NormalizeReportFile = DataType(
     'NormalizeReportFile',
     AttributeDef(
-        "preprocess",GeneExpProcessing.PREPROCESS,'unknown','unknown',
+        "preprocess",GeneExpProcessing.PREPROCESS,'unknown','any',
         help="preprocess for normalize report file"),
     help="Report file for normalize report"
     )
@@ -33,7 +33,7 @@ all_modules = [
         NormalizeReportFile,
         Constraint(
             'preprocess', CAN_BE_ANY_OF,
-            ['mas5','agilent','loess','unknown','tcga','rsem'],
+            GeneExpProcessing.PREPROCESS_WOrma,
             0),
         Constraint("annotate", MUST_BE, "yes", 0),
         Constraint(
@@ -315,4 +315,9 @@ all_modules = [
         
         help="make batch effect remove report",
         ),
+    Module('convert_normalize_report_preprocess',
+           NormalizeReportFile,NormalizeReportFile,
+           Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
+           Consequence("preprocess", SET_TO,'any'),
+           help='convert preprocess from others to any in NormalizeReportFile'),
     ]

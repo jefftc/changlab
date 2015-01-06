@@ -34,8 +34,8 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO,'diff_ttest'),
         Consequence('contents',SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
-        Constraint("preprocess", SAME_AS,0,1),
+        #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
+        #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with ttest method"),
     
     Module(
@@ -53,8 +53,8 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO,'diff_sam'),
         Consequence('contents',SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
-        Constraint("preprocess", SAME_AS,0,1),
+        #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
+        #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with sam method"),
     
     Module(
@@ -70,8 +70,8 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO,'diff_ebayes'),
         Consequence('contents',SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
-        Constraint("preprocess", SAME_AS,0,1),
+        #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
+        #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with ebayes method"),
     Module(
         'calc_diffexp_with_fold_change',
@@ -86,8 +86,8 @@ all_modules = [
         Constraint("contents",SAME_AS,0,1),
         Consequence("gene_order",SET_TO,'diff_fold_change'),
         Consequence('contents',SAME_AS_CONSTRAINT,0),
-        Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
-        Constraint("preprocess", SAME_AS,0,1),
+        #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
+        #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with fold change method"),
     Module(
         'generate_genelist_from_diffexprfile',

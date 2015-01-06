@@ -98,6 +98,7 @@ def retrieve_all_dates():
         all_dates[resource] = all_date_from_resource
         all_dates_list.extend(all_date_from_resource.keys())
     all_dates_list = list(set(all_dates_list))
+    
     all_dates_list = sorted(all_dates_list)
     return all_dates, all_dates_list
 
@@ -233,7 +234,8 @@ def read_and_extract_urls(page):
 
 
 def extract_files(gzfile,resource):
-    assert gzfile.endswith('tar.gz')
+    if not gzfile.endswith('tar.gz'):
+        return gzfile
     import tarfile
     tfile = tarfile.open(gzfile, 'r:gz')
     gzname = os.path.split(gzfile)[-1]
@@ -631,9 +633,11 @@ def main():
     elif args.download_only:
         assert args.disease, "disease must be given."
         assert args.data, "data must be given."
-        date = sorted(all_dates)[-1]
+        date = sorted(all_dates_list)[-1]
+        print 'all_date',date
         if args.date:
             date = args.date
+        print 'date',date
         download_file(args.disease,date,args.data)
     else:
         assert args.disease, "Please specify a disease to download."

@@ -10,7 +10,7 @@ CLASS_NEIGHBORS='Class Neighbor Parameters'
 RNA = 'RNA Sequence analysis parameters'
 CATEGORIES=[COMMON,NORMALIZE,OPTIONAL,CLASS_NEIGHBORS,ILLUMINA,RNA]
 PREPROCESS = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
-              "tcga","rsem"]
+              "tcga","rsem","any"]
 CONTENTS = ["train0", "train1","test", "class0,class1,test",
              "class0", "class1", "class0,class1","unspecified",
             "diff_class0","diff_class1","diff_class0,diff_class1","diff_unspecified"]
