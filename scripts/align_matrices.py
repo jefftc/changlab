@@ -4,7 +4,7 @@
 # list_all_samples
 # list_common_samples
 # peek_samples_hint
-# 
+#
 # align_matrices        Align a set of matrices.
 # align_matrix          Align either expression or annotation matrices.
 # align_express
@@ -39,7 +39,7 @@ class AnnotationMatrix:
 def list_all_samples(matrix_data, case_insensitive, hash_samples,
                      ignore_nonalnum):
     from genomicode import hashlib
-    
+
     assert matrix_data
 
     # Get the samples that occur in any of the files.  Preserve the
@@ -90,11 +90,11 @@ def list_common_samples(matrix_data, case_insensitive, hash_samples,
         if i == 0:
             first_samples = samples
 
-    # Finally, order the annotations according to the first file given.  
+    # Finally, order the annotations according to the first file given.
     assert first_samples
     samples = intersect_samples(
         first_samples, common, case_insensitive, hash_samples, ignore_nonalnum)
-    
+
     return samples
 
 
@@ -129,7 +129,7 @@ def peek_samples_hint(matrix_data):
 
 def _process_sample(sample, case_insensitive, hash_samples, ignore_nonalnum):
     from genomicode import hashlib
-    
+
     x = sample
     if case_insensitive:
         x = x.upper()
@@ -138,6 +138,43 @@ def _process_sample(sample, case_insensitive, hash_samples, ignore_nonalnum):
     if ignore_nonalnum:
         x = strip_nonalnum(x)
     return x
+
+
+def _left_join_matrices(matrix_samples_cmp, all_samples,
+                        sample2matrix2indexes):
+    # Return matrix2indexes as a list of lists.  The first list
+    # corresponds to each matrix.  The second is a list of indexes
+    # that indicate the index into the matrix.  Any value can be None,
+    # which indicates the value is not in the matrix.
+
+    # all_samples               list of samples
+    # matrix_samples_cmp        list of samples
+    # sample2matrix2indexes     sample_i -> matrix_i -> list of indexes
+    assert matrix_samples_cmp
+    matrix2indexes = [[] for i in range(len(matrix_samples_cmp))]
+    sample2n = {}  # sample_i -> number of times this sample already seen.
+
+    matrix_samples = matrix_samples_cmp[0]
+    for sample in matrix_samples:
+        sample_i = all_samples.index(sample)
+        if sample_i not in sample2n:
+            sample2n[sample_i] = 0
+        for i in range(len(matrix_samples_cmp)):
+            indexes = sample2matrix2indexes[sample_i][i]
+            # For left_join, take all the samples from the first
+            # matrix, and the first matching sample from the
+            # subsequent ones.
+            if i == 0:
+                assert sample2n[sample_i] < len(indexes)
+                index = indexes[sample2n[sample_i]]
+            elif indexes:
+                index = indexes[0]
+            else:
+                index = None
+            matrix2indexes[i].append(index)
+        sample2n[sample_i] += 1
+
+    return matrix2indexes
 
 
 def align_matrices(
@@ -172,6 +209,8 @@ def align_matrices(
             sample2indexes[s].append(i)
         matrix_sample2indexes.append(sample2indexes)
 
+    # Reorganize data structure.  Want to be able to access location
+    # of each sample.
     sample2matrix2indexes = {}  # sample_i -> matrix_i -> list of indexes
     for i, sample in enumerate(align_samples):
         sample2matrix2indexes[i] = {}
@@ -187,56 +226,73 @@ def align_matrices(
                 indexes = sample2indexes.get(sample_cmp, [])
             sample2matrix2indexes[i][j] = indexes
 
+
     # Now align the indexes for each matrix.  Here, len(indexes)
     # should be the same for each matrix.
-    sample2matrix2aligned = {}  # sample_i -> matrix_i -> list of indexes
-    for i in range(len(align_samples)):
-        matrix2indexes = sample2matrix2indexes[i].copy()
-        matrix2aligned = {}
+    if left_join:
+        matrix2indexes = _left_join_matrices(
+            matrix_samples_cmp, align_samples, sample2matrix2indexes)
+    elif outer_join:
+        raise NotImplementedError
+    else:
+        raise NotImplementedError
+        
+    
+    ## sample2matrix2aligned = {}  # sample_i -> matrix_i -> list of indexes
+    ## for i in range(len(align_samples)):
+    ##     matrix2indexes = sample2matrix2indexes[i].copy()
+    ##     matrix2aligned = {}
 
-        if left_join or outer_join:
-            for j in range(len(matrix_data)):
-                matrix2aligned[j] = []
+    ##     if left_join or outer_join:
+    ##         for j in range(len(matrix_data)):
+    ##             matrix2aligned[j] = []
 
-            # list (of len(matrix_data)) of list of indexes
-            all_indexes = []  
-            for j in range(len(matrix_data)):
-                indexes = matrix2indexes[j]
-                if not indexes:
-                    indexes = [None]
-                all_indexes.append(indexes)
+    ##         # list (of len(matrix_data)) of list of indexes
+    ##         all_indexes = []
+    ##         for j in range(len(matrix_data)):
+    ##             indexes = matrix2indexes[j]
+    ##             if not indexes:
+    ##                 indexes = [None]
+    ##             all_indexes.append(indexes)
 
-            # Do a product of all matching indexes across the matrices.
-            for x in itertools.product(*all_indexes):
-                assert len(x) == len(matrix_data)
-                for j in range(len(matrix_data)):
-                    matrix2aligned[j].append(x[j])
-        else:
-            # If this sample is not found in all data sets, then
-            # ignore it.
-            found = True
-            for j in range(len(matrix_data)):
-                if not matrix2indexes[j]:
-                    found = False
-            if not found:
-                for j in range(len(matrix_data)):
-                    matrix2aligned[j] = []
-            else:
-                # Use only the first instance of each sample.
-                for j in range(len(matrix_data)):
-                    indexes = matrix2indexes[j]
-                    matrix2aligned[j] = [indexes[0]]
-            
-        sample2matrix2aligned[i] = matrix2aligned
+    ##         # Do a product of all matching indexes across the matrices.
+    ##         for x in itertools.product(*all_indexes):
+    ##             assert len(x) == len(matrix_data)
+    ##             for j in range(len(matrix_data)):
+    ##                 matrix2aligned[j].append(x[j])
+    ##     else:
+    ##         # If this sample is not found in all data sets, then
+    ##         # ignore it.
+    ##         found = True
+    ##         for j in range(len(matrix_data)):
+    ##             if not matrix2indexes[j]:
+    ##                 found = False
+    ##         if not found:
+    ##             for j in range(len(matrix_data)):
+    ##                 matrix2aligned[j] = []
+    ##         else:
+    ##             # Use only the first instance of each sample.
+    ##             for j in range(len(matrix_data)):
+    ##                 indexes = matrix2indexes[j]
+    ##                 matrix2aligned[j] = [indexes[0]]
 
-    # Make the list of indexes for each matrix.
-    matrix2indexes = {}
-    for j in range(len(matrix_data)):
-        matrix2indexes[j] = []
-    for i in range(len(align_samples)):
-        for j in range(len(matrix_data)):
-            indexes = sample2matrix2aligned[i][j]
-            matrix2indexes[j].extend(indexes)
+    ##     # Make sure len(indexes) same for all matrices.
+    ##     num_indexes = None
+    ##     for x in matrix2aligned.itervalues():
+    ##         if num_indexes is None:
+    ##             num_indexes = len(x)
+    ##         assert len(x) == num_indexes
+
+    ##     sample2matrix2aligned[i] = matrix2aligned
+
+    ## # Make the list of indexes for each matrix.
+    ## matrix2indexes = {}
+    ## for j in range(len(matrix_data)):
+    ##     matrix2indexes[j] = []
+    ## for i in range(len(align_samples)):
+    ##     for j in range(len(matrix_data)):
+    ##         indexes = sample2matrix2aligned[i][j]
+    ##         matrix2indexes[j].extend(indexes)
 
     #for i in range(len(matrix2indexes[0])):
     #    x = [matrix2indexes[j][i] for j in range(len(matrix_data))]
@@ -251,8 +307,8 @@ def align_matrices(
         x = infile, outfile, aligned_matrix, header, samples
         aligned_matrix_data.append(x)
     return aligned_matrix_data
-            
-            
+
+
 def align_matrix(matrix, indexes, null_string):
     if isinstance(matrix, AnnotationMatrix):
         aligned_matrix = align_annot(matrix, indexes, null_string)
@@ -264,8 +320,8 @@ def align_matrix(matrix, indexes, null_string):
 def align_express(matrix, indexes, null_string):
     import arrayio
 
-    # The Matrix class requires actual indexes and not None.  Give it
-    # index 0, and then remove those lines myself later.
+    # The Matrix class requires actual indexes and not None.  For
+    # None, give it index 0, and then remove those lines myself later.
     I_index = []
     for i in indexes:
         if i != None:
@@ -289,7 +345,7 @@ def align_express(matrix, indexes, null_string):
     if header not in matrix._col_names:
         header = matrix._synonyms[header]
     assert header in matrix._col_names, "I can not find the sample names."
-    
+
     # Fix the sample names.
     for name in matrix_aligned._col_names:
         annots = matrix_aligned._col_names[name]
@@ -305,7 +361,7 @@ def align_express(matrix, indexes, null_string):
             else:
                 annots_new.append(null_string)
         matrix_aligned._col_names[name] = annots_new
-    
+
     return matrix_aligned
 
 
@@ -346,10 +402,10 @@ def align_annot(matrix, indexes, null_string):
 ##         if sample_list_cmp[i] == sample_cmp]
 ##     return indexes
 
-    
+
 ## def find_express_samples(matrix, header, sample, case_insensitive):
 ##     import arrayio
-    
+
 ##     name = arrayio.COL_ID
 ##     if name not in matrix._col_names:
 ##         name = matrix._synonyms[name]
@@ -367,7 +423,7 @@ def align_annot(matrix, indexes, null_string):
 ##         if sample_list_cmp[i] == sample_cmp]
 ##     return indexes
 
-    
+
 ## def align_matrices(matrix_data, samples, case_insensitive, null_string):
 ##     new_matrix_data = []
 ##     for x in matrix_data:
@@ -393,7 +449,7 @@ def align_annot(matrix, indexes, null_string):
 
 ## def align_express(matrix, samples, case_insensitive, null_string):
 ##     import arrayio
-    
+
 ##     names = get_express_samples(matrix)
 ##     I = []
 ##     for n in samples:
@@ -428,7 +484,7 @@ def align_annot(matrix, indexes, null_string):
 ##     if header not in matrix._col_names:
 ##         header = matrix._synonyms[header]
 ##     assert header in matrix._col_names, "I can not find the sample names."
-    
+
 ##     # Fix the sample names.
 ##     for name in matrix_aligned._col_names:
 ##         annots = matrix_aligned._col_names[name]
@@ -441,7 +497,7 @@ def align_annot(matrix, indexes, null_string):
 ##             else:
 ##                 annots_new.append(null_string)
 ##         matrix_aligned._col_names[name] = annots_new
-    
+
 ##     return matrix_aligned
 
 
@@ -492,7 +548,7 @@ def align_annot(matrix, indexes, null_string):
 ##             i = 0
 ##         name2inum[n] = i+1
 ##         I.append(indexes[i])
-        
+
 ##     name2annots_new = {}
 ##     for name, annots in matrix.name2annots.iteritems():
 ##         annots_new = []
@@ -522,7 +578,7 @@ def get_samples(
 
 def get_express_samples(matrix):
     import arrayio
-    
+
     name = arrayio.COL_ID
     if name not in matrix._col_names:
         name = matrix._synonyms[name]
@@ -536,7 +592,7 @@ def get_annot_samples(matrix, header_hint, samples_hint,
     if header_hint:
         assert header_hint in matrix.name2annots
         return matrix.name2annots[header_hint]
-    
+
     all_matches = []  # list of (num_matches, name, matches)
     for name, annots in matrix.name2annots.iteritems():
         x = intersect_samples(
@@ -559,7 +615,7 @@ def cmp_sample(x, y,
 
     if ignore_blank and x.strip():
         return False
-    
+
     if case_insensitive:
         x, y = x.upper(), y.upper()
     if hash_samples:
@@ -605,7 +661,7 @@ def find_sample(sample_list, sample, case_insensitive, hash_samples,
     except ValueError, x:
         pass
     return -1
-    
+
 
 def intersect_samples(samples1, samples2, case_insensitive, hash_samples,
                       ignore_nonalnum):
@@ -624,7 +680,7 @@ def intersect_samples(samples1, samples2, case_insensitive, hash_samples,
     ##     if matching:
     ##         in_both.append(x)
     ## return in_both
-    
+
     samples1_cmp = samples1
     samples2_cmp = samples2
     if case_insensitive:
@@ -654,13 +710,13 @@ def uniq_samples(samples, case_insensitive, hash_samples, ignore_nonalnum):
         samples_cmp = [hashlib.hash_var(x) for x in samples_cmp]
     if ignore_nonalnum:
         samples_cmp = [strip_nonalnum(x) for x in samples_cmp]
-        
+
     seen = {}  # dict of sample_cmp -> sample
     for sample, sample_cmp in zip(samples, samples_cmp):
         if sample_cmp in seen:
             continue
         seen[sample_cmp] = sample
-        
+
     # Return a list of the unique samples.
     return seen.values()
 
@@ -712,7 +768,7 @@ def read_annot(filename):
         # na\xc3\xafve-WIBR3.5 hESC
         # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
         annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
-        
+
         name_order.append(name)
         name2annots[name] = annots
     return AnnotationMatrix(name2annots, name_order)
@@ -742,7 +798,7 @@ def main():
         description="Align a set of matrices.  Preserve the order of the "
         "first file given.")
     parser.add_argument("outfile", nargs="+")
-    
+
     parser.add_argument(
         "--express_file", default=[], action="append", help="")
     parser.add_argument(
@@ -771,7 +827,7 @@ def main():
     group.add_argument(
         "--ignore_blank", default=False, action="store_true",
         help="Ignore IDs that are blank (don't align them.")
-    
+
     group = parser.add_argument_group(title="Joins")
     group.add_argument(
         "--strict", default=False, action="store_true",
@@ -790,7 +846,7 @@ def main():
         "--null_string", default="",
         help='For left_join or outer_join, what to give the missing values.')
 
-    
+
     args = parser.parse_args()
     assert len(args.outfile) == len(args.express_file) + len(args.annot_file)
     for x in args.express_file + args.annot_file:
@@ -872,6 +928,7 @@ def main():
 
     if args.left_join:
         assert not args.strict, "Can't do a strict left join."
+        # No duplicates.
         samples = list_all_samples(
             matrix_data[:1], args.case_insensitive, args.hash,
             args.ignore_nonalnum)
@@ -923,7 +980,7 @@ def main():
         if outfile == SKIP_OUTFILE:
             continue
         write_matrix(outfile, matrix)
-    
+
 
 if __name__ == '__main__':
     main()

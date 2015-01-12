@@ -35,8 +35,11 @@ def guess_chip_platform(M):
     # Return the GenePattern chip.platform for this matrix.
     from genomicode import arrayplatformlib
 
-    platform = arrayplatformlib.identify_platform_of_matrix(M)
-    assert platform, "I could not guess the platform for this file."
+    #platform = arrayplatformlib.identify_platform_of_matrix(M)
+    #assert platform, "I could not guess the platform for this file."
+    x = arrayplatformlib.score_platform_of_matrix(M)
+    platform, match = x
+    assert match > 0.95, "I could not guess the platform for this file."
     assert platform in platform2gpplatform, \
         "I don't know how to convert %s to a GenePattern platform." % platform
     chipname = platform2gpplatform.get(platform)
