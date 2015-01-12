@@ -146,7 +146,7 @@ all_modules = [
            [SignatureScore,SignatureScore,SignatureScore],ScoreCompareReportFile,
            Constraint("preprocess", MUST_BE,'RSEM_genes',0),
            Constraint("preprocess", MUST_BE,'agilent',1),
-           Constraint("preprocess", MUST_BE,'rma',2),
+           Constraint("preprocess", MUST_BE,'affymetrix',2),
            
            help='compare three SignatureScore'),
     ]

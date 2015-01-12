@@ -11,8 +11,9 @@ def run(data_node,parameters, user_input,network,num_cores):
     parameters = get_out_attributes(parameters,data_node)
     TCGA_BIN = config.download_tcga
     command = ['python', TCGA_BIN,'--input',data_node.identifier,
-               '--data', data_node.data.attributes['data'],
+               '--data', data_node.data.attributes['preprocess'],
                '--process_only', outfile]
+    print ' '.join(command)
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)

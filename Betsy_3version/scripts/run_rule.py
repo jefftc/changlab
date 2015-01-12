@@ -466,6 +466,7 @@ def main():
     #required_flag = check_possible_inputs(network,user_attributes,input_node_ids)
     #if required_flag:
     network = bie3.select_start_node(network, input_nodes)
+    print len(network.nodes)
     #else:
      #   print_missing_inputs(network,user_attributes,input_node_ids)
      #   return

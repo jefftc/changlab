@@ -17,7 +17,7 @@ def run(data_node,parameters, user_input,network,num_cores):
     else:
         x = []
     command = ['python', TCGA_BIN, '--disease', user_input['disease'],
-               '--data', parameters['data'], '--download_only'] + x
+               '--data', parameters['preprocess'], '--download_only'] + x
     process = subprocess.Popen(command, shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
@@ -53,7 +53,7 @@ def make_unique_hash(data_node,pipeline,parameters,user_input):
     x = ''
     if 'date' in user_input:
         x = '_' + user_input['date']
-    identifier = user_input['disease'] +'_'+ parameters['data'] + x
+    identifier = user_input['disease'] +'_'+ parameters['preprocess'] + x
     return identifier
     
 

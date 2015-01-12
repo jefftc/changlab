@@ -7,7 +7,7 @@ import sys
 import os
 from genomicode import parselib, filelib,arrayannot,arrayplatformlib
 import arrayio
-from genomicode import genefinder,timer,Matrix
+from genomicode import genefinder,timer,Matrix,matrixlib
 
 # retrieve_all_dates
 # retrieve_diseases
@@ -22,7 +22,10 @@ datatype_match = {'RSEM_genes':
                   'clinical':'Merge_Clinical.Level_1',
                   'rppa':'.RPPA_AnnotateWithGene.Level_3',
                   'RSEM_isoforms':'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_isoforms_normalized__data.Level_3',
-                  'cnv_gistic2':'CopyNumber_Gistic2.Level_4'}
+                  'cnv_gistic2':'CopyNumber_Gistic2.Level_4',
+                  'agilent':['Merge_transcriptome__agilentg4502a_07_1__unc_edu__Level_3__unc_lowess_normalization_gene_level__data.Level_3',
+                             'Merge_transcriptome__agilentg4502a_07_2__unc_edu__Level_3__unc_lowess_normalization_gene_level__data.Level_3'],
+                  'affymetrix':'Merge_transcriptome__ht_hg_u133a__broad_mit_edu__Level_3__gene_rma__data.Level_3'}
 
 datatype2resource = {'RSEM_genes':'stddata',
                     'RSEM_exons':'stddata',
@@ -31,7 +34,9 @@ datatype2resource = {'RSEM_genes':'stddata',
                     'clinical':'stddata',
                     'rppa':'stddata',
                     'RSEM_isoforms':'stddata',
-                    'cnv_gistic2':'analyses'}
+                    'cnv_gistic2':'analyses',
+                    'agilent':'stddata',
+                    'affymetrix':'stddata'}
 
 resources = ['stddata','analyses']
 
@@ -147,15 +152,24 @@ def download_file(disease, date, datatype):
     # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
     link = "http://%s/runs/%s__%s/data/%s/%s/" % (
         "gdac.broadinstitute.org", resource, long_date, disease, date)
-        
     newlinks = get_all_datas_on_page(link)
+    if isinstance(datatype_match[datatype],str):
+        match_items = [datatype_match[datatype]]
+    elif isinstance(datatype_match[datatype],list):
+        match_items = datatype_match[datatype]
+    else:
+        raise ValueError('cannot recognize datatype in datatype_match dict')
+    resultlinks=[]
     for newlink in newlinks:
-        if datatype_match[datatype] in newlink and disease+'-FFPE' not in newlink:
-            data = read_url(link+newlink)
-            with open(newlink, "wb") as code:
-                 code.write(data)
-            print 'finished download %s' %newlink
-            return newlink
+        for match_item in match_items:
+            if match_item in newlink and disease+'-FFPE' not in newlink:
+                data = read_url(link+newlink)
+                with open(newlink, "wb") as code:
+                     code.write(data)
+                print 'finished download %s' %newlink
+                resultlinks.append(newlink)
+    if resultlinks:
+        return resultlinks    
     assert ValueError('download fails')
 
 def get_data_type_resource(disease,date,resource):
@@ -232,31 +246,80 @@ def read_and_extract_urls(page):
     x = [x for x in x if x]
     return x
 
-
-def extract_files(gzfile,resource):
-    if not gzfile.endswith('tar.gz'):
-        return gzfile
-    import tarfile
-    tfile = tarfile.open(gzfile, 'r:gz')
-    gzname = os.path.split(gzfile)[-1]
-    newdir = os.path.join(os.getcwd(),gzname[:-7])
-    tfile.extractall(newdir)
-    folder = os.listdir(newdir)
-    directory = os.path.join(newdir,folder[0])
-    assert os.path.exists(directory)
-    files = os.listdir(directory)
-    if resource == 'stddata':
-        for filename in files:
-            if filename.endswith('txt') and filename != 'MANIFEST.txt':
-                return os.path.join(directory,filename)
-    elif resource == 'analyses':
-        for filename in files:
-            if filename =='all_data_by_genes.txt':
-                return os.path.join(directory,filename)
+def merge_files(input_list,outfile):
+    """input two files and merge,write to the outfile"""
+    assert len(input_list)==2
+    A_file = input_list[0]
+    B_file = input_list[1]
+    M_A = arrayio.read(A_file)
+    M_B = arrayio.read(B_file)
+    assert arrayio.tab_delimited_format.is_matrix(M_A)
+    assert arrayio.tab_delimited_format.is_matrix(M_B)
+    [M_A, M_B] = matrixlib.align_rows(M_A, M_B)
+    assert M_A.nrow() > 0, 'there is no common genes between two files'
+    X = []
+    for i in range(M_A.dim()[0]):
+        x = M_A._X[i] + M_B._X[i]
+        X.append(x)
+    row_names = M_A._row_names
+    row_order = M_A._row_order
+    col_names = {}
+    for name in M_A._col_names:
+        if name not in M_B._col_names:
+            continue
+        newsample_list = []
+        for sample in M_B._col_names[name]:
+            if sample in M_A._col_names[name]:
+                newsample = sample + '_2'
+            else:
+                newsample = sample
+            newsample_list.append(newsample)
+        #x = M_A._col_names[name] + M_B._col_names[name]
+        x = M_A._col_names[name] + newsample_list
+        col_names[name] = x
+    M_c = Matrix.InMemoryMatrix(X, row_names, col_names, row_order)
+    handle = file(outfile,'w')
+    arrayio.tab_delimited_format.write(M_c, handle)
+    handle.close()
+    
+def extract_and_merge_files(gzfile_list,resource):
+    result = []
+    for gzfile in gzfile_list:
+        if not gzfile.endswith('tar.gz'):
+            return gzfile
+        import tarfile
+        tfile = tarfile.open(gzfile, 'r:gz')
+        gzname = os.path.split(gzfile)[-1]
+        newdir = os.path.join(os.getcwd(),gzname[:-7])
+        tfile.extractall(newdir)
+        folders = os.listdir(newdir)
+        folder = None
+        for folder in folders:
+            if folder == '._.DS_Store':
+                continue
+        directory = os.path.join(newdir,folder)
+        assert os.path.exists(directory)
+        files = os.listdir(directory)
+        if resource == 'stddata':
+            for filename in files:
+                if filename.endswith('txt') and filename != 'MANIFEST.txt':
+                    result.append(os.path.join(directory,filename))
+        elif resource == 'analyses':
+            for filename in files:
+                if filename =='all_data_by_genes.txt':
+                    result.append(os.path.join(directory,filename))
+        else:
+            raise ValueError('not recoginzed resource %s'%resource)
+    if len(result)==1:
+        return result[0]
+    elif len(result)==2:
+        newname=os.path.split(result[0])[-1].replace(
+            'agilentg4502a_07_1__unc_edu__Level_3__unc_lowess_normalization_gene_level__data',
+            'agilentg4502a_07__unc_edu__Level_3__unc_lowess_normalization_gene_level__data')
+        merge_files(result,newname)
+        return newname
     else:
-        raise ValueError('not recoginzed resource %s'%resource)
-    return None    
-
+        raise ValueError('extract_and_merge_files can only handle two files')
     
 def format_firehose_rsem(filename, output):
     HYB_REF = "Hybridization REF"
@@ -494,6 +557,40 @@ def format_rsem_isoforms(txt_file, outfile):
     arrayio.tab_delimited_format.write(x, f)
     f.close()
 
+def format_affymetrix(filename, output):
+    HYB_REF = "Hybridization REF"
+    DATA = arrayio.read(filename)
+    assert DATA._row_order == [HYB_REF]
+    assert DATA._col_order == ["_SAMPLE_NAME", 'Composite Element REF']
+    genes = DATA.row_names(HYB_REF)
+    f = file(output,'w')
+    header = [ "Gene Symbol"] + DATA.col_names("_SAMPLE_NAME")
+    f.write("\t".join(header)+'\n')
+    for i in range(DATA.nrow()):
+        x = [genes[i]] + DATA._X[i]
+        assert len(x) == len(header)
+        f.write("\t".join(map(str, x))+'\n')
+    f.close()
+
+def format_agilent(filename, output):
+    HYB_REF = "Hybridization REF"
+    DATA = arrayio.read(filename)
+    assert DATA._row_order == [HYB_REF]
+    assert DATA._col_order == ["_SAMPLE_NAME", 'Composite Element REF']
+    genes = DATA.row_names(HYB_REF)
+    f = file(output,'w')
+    header = [ "Gene Symbol"] + DATA.col_names("_SAMPLE_NAME")
+    f.write("\t".join(header)+'\n')
+    for i in range(DATA.nrow()):
+        for j in range(len(DATA._X[i])):
+            if DATA._X[i][j]=='None':
+                DATA._X[i][j]=''
+        x = [genes[i]] + DATA._X[i]
+        assert len(x) == len(header)
+        f.write("\t".join(map(str, x))+'\n')
+    f.close()
+
+    
 def make_matrix_new_ids(DATA,output_ids,header,index):
  # Make a matrix with the new IDs.
     X = DATA._X
@@ -527,6 +624,10 @@ def process_data(data, txt_file, outfile):
         format_firehose_gistic(txt_file, outfile)
     elif data == 'RSEM_isoforms':
         format_rsem_isoforms(txt_file, outfile)
+    elif data == 'agilent':
+        format_agilent(txt_file, outfile)
+    elif data == 'affymetrix':
+        format_affymetrix(txt_file,outfile)
     else:
         raise ValueError("the data type is not matched to our list")
     print 'processing finished '
@@ -570,9 +671,12 @@ def main():
         '--download_only', action='store_true',
         help='Download the raw data file without processing.')
     parser.add_argument(
+        '--download_and_extract', action='store_true',
+        help='Download the raw data file with extracting.')
+    parser.add_argument(
         '--process_only', action='store_true',
-        help='Process a previously downloaded file.  Must be the original '
-        '.tar.gz archive.')
+        help='Process a previously downloaded file.  Can be the original '
+        '.tar.gz archive or unzip folder.')
     parser.add_argument('--input', help='input file for process')
 
     args = parser.parse_args()
@@ -628,17 +732,24 @@ def main():
     if args.process_only:
         assert args.input
         assert os.path.exists(args.input), '%s does not exists' % args.input
-        txt_file = extract_files(args.input,datatype2resource[args.data])
+        #if instance(args.input
+        txt_file = extract_and_merge_files([args.input],datatype2resource[args.data])
         process_data(args.data, txt_file, args.output)
     elif args.download_only:
         assert args.disease, "disease must be given."
         assert args.data, "data must be given."
         date = sorted(all_dates_list)[-1]
-        print 'all_date',date
         if args.date:
             date = args.date
-        print 'date',date
         download_file(args.disease,date,args.data)
+    elif args.download_and_extract:
+        assert args.disease, "disease must be given."
+        assert args.data, "data must be given."
+        date = sorted(all_dates_list)[-1]
+        if args.date:
+            date = args.date
+        filenames = download_file(args.disease,date,args.data)
+        txt_file = extract_and_merge_files(filenames,datatype2resource[args.data])
     else:
         assert args.disease, "Please specify a disease to download."
         assert args.data, "data must be given."
@@ -654,8 +765,8 @@ def main():
 ##        assert args.data in all_data,('%s is not found in %s for %s' %(
 ##            args.data,require_date,args.disease))
         
-        filename = download_file(args.disease, date, args.data)
-        txt_file = extract_files(filename,datatype2resource[args.data])
+        filenames = download_file(args.disease, date, args.data)
+        txt_file = extract_and_merge_files(filenames,datatype2resource[args.data])
         process_data(args.data, txt_file, args.output)
             
 if __name__ == '__main__':

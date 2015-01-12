@@ -6,9 +6,9 @@ import Database
 
 
 PREPROCESS1 = ["unknown", "illumina", "agilent", "mas5", "rma", "loess",
-              "rsem",'RSEM_genes','RSEM_exons','humanmethylation450','mirnaseq','rppa','clinical']
+              "rsem",'RSEM_genes','RSEM_exons','humanmethylation450','mirnaseq','rppa','clinical','affymetrix']
 PREPROCESS_WOrma=["unknown", "illumina", "agilent", "mas5", "loess",
-              "rsem",'RSEM_genes','RSEM_exons','humanmethylation450','mirnaseq','rppa','clinical']
+              "rsem",'RSEM_genes','RSEM_exons','humanmethylation450','mirnaseq','rppa','clinical','affymetrix']
 PREPROCESS=PREPROCESS1+['any']
 
 ClassLabelFile = DataType(
@@ -254,7 +254,7 @@ all_modules = [
         Constraint("tumor_only",MUST_BE, 'yes'),
         Constraint("preprocess",CAN_BE_ANY_OF,['RSEM_genes','RSEM_exons',
                                           'humanmethylation450','mirnaseq',
-                                          'rppa','clinical','agilent','rma']),
+                                          'rppa','clinical','affymetrix','agilent']),
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence('logged',SET_TO,"unknown"),
         Consequence('predataset', SET_TO, "no"),
@@ -262,21 +262,21 @@ all_modules = [
         Consequence('format',SET_TO,"tdf"),
         help="preprocess tcga file, generate to SignalFile_Postprocess"),
 
-##     Module('preprocess_tcga_rma',Database.TCGAFile,_SignalFile_Postprocess,
+##     Module('preprocess_tcga_affymetrix',Database.TCGAFile,_SignalFile_Postprocess,
 ##        Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS),
 ##        Constraint("tumor_only",MUST_BE, 'yes'),
-##        Constraint("tcga_datatype",MUST_BE,'rma'),
+##        Constraint("preprocess",MUST_BE,'affymetrix'),
 ##        Consequence("contents",SAME_AS_CONSTRAINT),
 ##        Consequence('logged',SET_TO,"unknown"),
 ##        Consequence('predataset', SET_TO, "no"),
-##        Consequence('preprocess',SET_TO,"rma"),
+##        Consequence('preprocess',SET_TO,"affymetrix"),
 ##        Consequence('format',SET_TO,"tdf"),
 ##        help="preprocess tcga rma file, generate to SignalFile_Postprocess"),
 ##           
 ##    Module('preprocess_tcga_agilent',Database.TCGAFile,_SignalFile_Postprocess,
 ##        Constraint("contents",CAN_BE_ANY_OF, Database.CONTENTS),
 ##        Constraint("tumor_only",MUST_BE, 'yes'),
-##        Constraint("tcga_datatype",MUST_BE,'agilent'),
+##        Constraint("preprocess",MUST_BE,'agilent'),
 ##        Consequence("contents",SAME_AS_CONSTRAINT),
 ##        Consequence('logged',SET_TO,"unknown"),
 ##        Consequence('predataset', SET_TO, "no"),
