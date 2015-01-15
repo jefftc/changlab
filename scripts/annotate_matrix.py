@@ -93,6 +93,9 @@ def convert_gene_ids(
         output_ids.append(x)
     return output_ids
 
+def clean_genes_for_biomart(gene_ids):
+    gene_ids = [i.replace("'",'') for i in gene_ids] #modify "2'-PDE"
+    return gene_ids
 
 def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
     # Return a dictionary of gene_id -> list of converted_ids, or None
@@ -113,8 +116,8 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
     out_mart = arrayplatformlib.get_bm_organism(out_platform)
 
     R = start_R()
+    gene_ids = clean_genes_for_biomart(gene_ids)
     jmath.R_equals_vector(gene_ids, 'gene.ids')
-
     # Select the BioMart dataset to use.
     R_fn("useMart", "ensembl", in_mart, RETVAL="in.dataset")
     R_fn("useMart", "ensembl", out_mart, RETVAL="out.dataset")
@@ -125,8 +128,8 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
         values=R_var("gene.ids"), mart=R_var("in.dataset"),
         attributesL=out_attribute, martL=R_var("out.dataset"),
         RETVAL="homolog")
-    
-    homolog = R['homolog']
+
+    homolog = R["homolog"]
     # homolog is DataFrame with two parallel rows:
     # <in_ids>
     # <out_ids>
