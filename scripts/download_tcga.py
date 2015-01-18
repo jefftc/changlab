@@ -581,10 +581,7 @@ def format_agilent(filename, output):
     f = file(output,'w')
     header = [ "Gene Symbol"] + DATA.col_names("_SAMPLE_NAME")
     f.write("\t".join(header)+'\n')
-    for i in range(DATA.nrow()):
-        for j in range(len(DATA._X[i])):
-            if DATA._X[i][j]=='None':
-                DATA._X[i][j]=''
+    for i in range(DATA.nrow()): 
         x = [genes[i]] + DATA._X[i]
         assert len(x) == len(header)
         f.write("\t".join(map(str, x))+'\n')

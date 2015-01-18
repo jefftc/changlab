@@ -43,7 +43,14 @@ ScoreCompareReportFile = DataType(
     'ScoreCompareReportFile',
     help="Report file for score signature comparison report"
     )
-list_files = [GenesetAnalysis,GenesetPlot,GenesetFile,SignatureScore,GenesetReportFile,ScoreCompareReportFile]
+
+ScoreComparePlot = DataType(
+    'ScoreComparePlot',
+    help="Plot file for score signature comparison"
+    )
+
+list_files = [GenesetAnalysis,GenesetPlot,GenesetFile,SignatureScore,
+              GenesetReportFile,ScoreCompareReportFile,ScoreComparePlot]
 
 all_modules = [
     Module(
@@ -149,4 +156,8 @@ all_modules = [
            Constraint("preprocess", MUST_BE,'affymetrix',2),
            
            help='compare three SignatureScore'),
+
+    Module('plot_signature_predictions_comparison',
+           ScoreCompareReportFile,ScoreComparePlot,
+           help='plot the SignatureScore comparison'),
     ]
