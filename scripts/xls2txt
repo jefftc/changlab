@@ -2,6 +2,20 @@
 
 import os
 
+def load_workbook(filename):
+    # openpyxl implementation prints stuff to screen.  Really
+    # annoying!  Get rid of the stuff printed to screen.
+    import sys
+    import StringIO
+    from openpyxl import load_workbook
+
+    old_stdout = sys.stdout
+    sys.stdout = StringIO.StringIO()
+    wb = load_workbook(filename)
+    sys.stdout = old_stdout
+    return wb
+    
+
 def cell2str(book, cell):
     import datetime
     import xlrd
@@ -52,8 +66,6 @@ def listws_xls(filename):
         print x
 
 def listws_xlsx(filename):
-    from openpyxl import load_workbook
-
     wb = load_workbook(filename)
     for x in wb.get_sheet_names():
         print x
@@ -78,8 +90,6 @@ def convert_xls(filename, worksheet):
         print "\t".join(x)
 
 def convert_xlsx(filename, worksheet):
-    from openpyxl import load_workbook
-
     wb = load_workbook(filename)
     if worksheet:
         sheet_names = wb.get_sheet_names()

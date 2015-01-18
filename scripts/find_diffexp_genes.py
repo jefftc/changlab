@@ -93,8 +93,8 @@ def find_diffexp_genes(
     R = jmath.start_R()
     de_lib = os.path.join(config.changlab_Rlib, "diffexp.R")
     stat_lib = os.path.join(config.changlab_Rlib, "statlib.R")
-    assert os.path.exists(de_lib)
-    assert os.path.exists(stat_lib)
+    assert os.path.exists(de_lib), "I could not find file: %s" % de_lib
+    assert os.path.exists(stat_lib), "I could not find file: %s" % stat_lib
     R('source("%s")' % de_lib)
     R('source("%s")' % stat_lib)
 
@@ -212,14 +212,17 @@ def find_diffexp_genes(
     ##    return
 
     # Write to the outhandle.
-    outhandle = open(outfile, 'w')
+    outhandle = outfile
+    if type(outhandle) is type(""):
+        outhandle = open(outfile, 'w')
     print >>outhandle, "\t".join(header)
     outhandle.flush()
     for x in DATA_py:
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))
         outhandle.flush()
-    outhandle.close()
+    # Don't close someone else's file handle.
+    #outhandle.close()
 
 
     # Write out the gene sets in GMT format, if requested.
@@ -269,13 +272,71 @@ def find_diffexp_genes(
             x = [x, "na"] + gn
             print >>outhandle, "\t".join(x)
     outhandle.close()
+
+
+def _run_forked(
+        gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
+        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        sam_delta, sam_qq_file, num_procs):
+    import os
+    import sys
+    import tempfile
+
+    outfile = pid = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        # Fork a subprocess, because some R libraries generate garbage
+        # to the screen.
+        r, w = os.pipe()
+        pid = os.fork()
+        if pid:   # Parent
+            os.close(w)
+            r = os.fdopen(r)
+            for line in r:
+                sys.stdout.write(line)   # output from R library
+            os.waitpid(pid, 0)
+
+            assert os.path.exists(outfile), "failed"
+            for line in open(outfile):
+                sys.stdout.write(line)
+        else:     # Child
+            os.close(r)
+            w = os.fdopen(w, 'w')
+            os.dup2(w.fileno(), sys.stdout.fileno())
+            find_diffexp_genes(
+                outfile, gmt_file, algorithm, paired, 
+                MATRIX, geneid_header, genename_header, 
+                name1, name2, classes,
+                fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+                sam_delta, sam_qq_file, num_procs)
+            sys.exit(0)
+    finally:
+        if pid:
+            if outfile and os.path.exists(outfile):
+                os.unlink(outfile)
     
+
+def _run_not_forked(
+        gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
+        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        sam_delta, sam_qq_file, num_procs):
+    import sys
+    outfile = sys.stdout
+
+    find_diffexp_genes(
+        outfile, gmt_file, algorithm, paired, 
+        MATRIX, geneid_header, genename_header, 
+        name1, name2, classes,
+        fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        sam_delta, sam_qq_file, num_procs)
+        
 
 def main():
     import os
-    import sys
     import argparse
-    import tempfile
     from collections import Counter
 
     import arrayio
@@ -426,53 +487,18 @@ def main():
         name1, name2, classes = x
 
 
-    # For paired analysis, make sure each class has the same number of
-    # samples.
-    if args.paired:
-        counts = Counter(classes)
-        assert counts.get(0, 0) == counts.get(1, 0), \
-               "paired analysis requires equal samples"
-
-    # Run the analysis.
-    outfile = pid = None
-    try:
-        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
-        if os.path.exists(outfile):
-            os.unlink(outfile)
-
-        # Fork a subprocess, because some R libraries generate garbage
-        # to the screen.
-        r, w = os.pipe()
-        pid = os.fork()
-        if pid:   # Parent
-            os.close(w)
-            r = os.fdopen(r)
-            for line in r:
-                sys.stdout.write(line)   # output from R library
-            os.waitpid(pid, 0)
-
-            assert os.path.exists(outfile), "failed"
-            for line in open(outfile):
-                sys.stdout.write(line)
-        else:     # Child
-            os.close(r)
-            w = os.fdopen(w, 'w')
-            os.dup2(w.fileno(), sys.stdout.fileno())
-            find_diffexp_genes(
-                outfile, args.gmt_file,
-                args.algorithm, args.paired, 
-                MATRIX, args.geneid_header, args.genename_header, 
-                name1, name2, classes,
-                args.fold_change,
-                args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
-                args.sam_delta, args.sam_qq_file,
-                args.num_procs)
-            sys.exit(0)
-    finally:
-        if pid:
-            if outfile and os.path.exists(outfile):
-                os.unlink(outfile)
+    # Run the analysis
+    args = (
+        args.gmt_file, args.algorithm, args.paired, MATRIX,
+        args.geneid_header, args.genename_header,
+        name1, name2, classes,
+        args.fold_change, args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
+        args.sam_delta, args.sam_qq_file, args.num_procs)
+    #_run_forked(*args)
+    _run_not_forked(*args)  # for debugging
         
+
 
 if __name__ == '__main__':
     main()
+    
