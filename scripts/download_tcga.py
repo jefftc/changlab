@@ -117,7 +117,8 @@ def extract_all_hrefs(html):
 
 def retrieve_disease_resource(date,resource):
     all_dates_from_resource = retieve_dates_from_resource(resource)
-    assert date in all_dates_from_resource, "Unknown date: %s in %s" % (date,resource)
+    if date not in all_dates_from_resource:
+        return None
     url = all_dates_from_resource[date]
     # URL:
     # http://gdac.broadinstitute.org/runs/stddata__2014_07_15/data/ACC/20140715
@@ -138,7 +139,8 @@ def retrieve_diseases(date):
     all_diseases = []
     for resource in resources:
         disease = retrieve_disease_resource(date,resource)
-        all_diseases.extend(disease)
+        if disease:
+            all_diseases.extend(disease)
     all_diseases = list(set(all_diseases))
     assert all_diseases, "could not find diseases"
     return all_diseases
