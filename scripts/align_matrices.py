@@ -177,6 +177,36 @@ def _left_join_matrices(matrix_samples_cmp, all_samples,
     return matrix2indexes
 
 
+def _outer_join_matrices(matrix_samples_cmp, all_samples,
+                         sample2matrix2indexes):
+    # Return matrix2indexes as a list of lists.  The first list
+    # corresponds to each matrix.  The second is a list of indexes
+    # that indicate the index into the matrix.  Any value can be None,
+    # which indicates the value is not in the matrix.
+    import itertools
+
+    # all_samples               list of samples
+    # matrix_samples_cmp        list of list of samples
+    # sample2matrix2indexes     sample_i -> matrix_i -> list of indexes
+    assert matrix_samples_cmp
+    matrix2indexes = [[] for i in range(len(matrix_samples_cmp))]
+    #sample2n = {}  # sample_i -> number of times this sample already seen.
+
+    for sample_i in range(len(all_samples)):
+        # Do a product of all matching indexes across the matrices.
+        all_indexes = []
+        for i in range(len(matrix_samples_cmp)):
+            x = sample2matrix2indexes[sample_i][i]
+            if not x:
+                x = [None]
+            all_indexes.append(x)
+        for indexes in itertools.product(*all_indexes):
+            assert len(indexes) == len(matrix_samples_cmp)
+            for i in range(len(indexes)):
+                matrix2indexes[i].append(indexes[i])
+    return matrix2indexes
+
+
 def align_matrices(
     matrix_data, align_samples, case_insensitive, hash_samples,
     ignore_nonalnum, ignore_blank, left_join, outer_join, null_string):
@@ -233,7 +263,8 @@ def align_matrices(
         matrix2indexes = _left_join_matrices(
             matrix_samples_cmp, align_samples, sample2matrix2indexes)
     elif outer_join:
-        raise NotImplementedError
+        matrix2indexes = _outer_join_matrices(
+            matrix_samples_cmp, align_samples, sample2matrix2indexes)
     else:
         raise NotImplementedError
         

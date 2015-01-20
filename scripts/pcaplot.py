@@ -181,8 +181,8 @@ def main():
         height, width = int(options.width*0.75), options.width
     pcalib.plot_scatter(
         X, Y, outfile, group=cluster, color=color, title=options.title,
-        label=LABEL, scale_label=options.scale_label,
-        height=height, width=width)
+        label=LABEL, xlabel=False, ylabel=False,
+        scale_label=options.scale_label, height=height, width=width)
 
     if options.verbose:
         # Write out the principal components.
