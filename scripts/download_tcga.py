@@ -569,7 +569,8 @@ def format_affymetrix(filename, output):
     header = [ "Gene Symbol"] + DATA.col_names("_SAMPLE_NAME")
     f.write("\t".join(header)+'\n')
     for i in range(DATA.nrow()):
-        x = [genes[i]] + DATA._X[i]
+        row = [j if j is not None else '' for j in DATA._X[i] ] 
+        x = [genes[i]] + row
         assert len(x) == len(header)
         f.write("\t".join(map(str, x))+'\n')
     f.close()
@@ -583,8 +584,9 @@ def format_agilent(filename, output):
     f = file(output,'w')
     header = [ "Gene Symbol"] + DATA.col_names("_SAMPLE_NAME")
     f.write("\t".join(header)+'\n')
-    for i in range(DATA.nrow()): 
-        x = [genes[i]] + DATA._X[i]
+    for i in range(DATA.nrow()):
+        row = [j if j is not None else '' for j in DATA._X[i] ] 
+        x = [genes[i]] + row
         assert len(x) == len(header)
         f.write("\t".join(map(str, x))+'\n')
     f.close()

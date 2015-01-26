@@ -64,10 +64,11 @@ def run(data_node,parameters, user_input,network,num_cores):
         raise ValueError(error_message)
     assert module_utils.exists_nz(tempfile2),(
         'the output file %s for select_tumor_only fails'%tempfile2)
-    process = subprocess.Popen([slice_matrix_BIN,'--remove_duplicate_cols','--zerofill',tempfile2,
+    process = subprocess.Popen([slice_matrix_BIN,'--remove_duplicate_cols',tempfile2,
                                 ],shell=False,
                                 stdout=file(outfile,'w'),
-                                stderr=subprocess.PIPE)  
+                                stderr=subprocess.PIPE)
+
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
