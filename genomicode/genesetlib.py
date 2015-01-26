@@ -576,6 +576,15 @@ def score_geneset_I(X, I_pos, I_neg):
     scores_o = jmath.mean(X_o, byrow=False)
     #scores_delta = [scores_pn[i]-scores_o[i] for i in range(len(scores_pn))]
 
+    # DEBUGGING
+    #scores_X = jmath.mean(X, byrow=False)
+    #for i in range(len(scores_pn)):
+    #    print "SAMP %03d All: %g (%d genes)" % (i, scores_X[i], len(X))
+    #    print "SAMP %03d Geneset: %g (%d genes)" % (
+    #        i, scores_pn[i], len(X_pn))
+    #    print "SAMP %03d Not geneset: %g (%d genes)" % (
+    #        i, scores_o[i], len(X_o))
+
     # Calculate the p-values.
     nc = len(X[0])
     pvalues = [None] * nc

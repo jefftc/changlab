@@ -90,7 +90,6 @@ def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
     return geneset_scores
 
 
-
 def score_gene_set(gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
                    ignore_gene_not_found, lock=None):
     # Return dict of (matrix_name, gs_name, index, sample) ->
@@ -365,8 +364,11 @@ def main():
     # TODO: if there are too many gene sets to score for a file, split
     # it up into multiple batches.  Don't know the tradeoff between
     # reading a file twice and calculating more gene sets.
-    
-    print "Scoring %d jobs." % len(jobs); sys.stdout.flush()
+
+    job_str = "jobs"
+    if len(jobs) == 1:
+        job_str = "job"
+    print "Scoring %d %s." % (len(jobs), job_str); sys.stdout.flush()
     manager = multiprocessing.Manager()
     lock = manager.Lock()
     pool = multiprocessing.Pool(args.num_procs)
