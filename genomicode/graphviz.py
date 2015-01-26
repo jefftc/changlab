@@ -11,7 +11,7 @@ layout
 write
 """
 def generate_graph(nodes, edges, node2attributes=None, edge2attributes=None,
-         prog=None, subgraphs=None, directed=False):
+         prog=None, subgraphs=None, directed=False,rank=False):
     # nodes is a list of the names of the nodes, given as strings.  edges is a list of
     # tuples (<node_a>, <node_b>) that indicate which nodes are
     # connected.  node2attributes is a dictionary where the key is the
@@ -21,7 +21,8 @@ def generate_graph(nodes, edges, node2attributes=None, edge2attributes=None,
     # typically "neato" or "dot".  subgraph is dictionary where the
     # key is the name of the subgraph and value is the list of nodes
     # in that subgraph.
-    #
+    # rank is that is to set nodes in a subgraph to be same level,rank='same'
+    
     # Node attributes:
     # style      filled
     # shape      box, circle, ellipse, point, triangle, diamond, octagon
@@ -50,12 +51,12 @@ def generate_graph(nodes, edges, node2attributes=None, edge2attributes=None,
         attr = edge2attributes.get((i, j), {})
         G.add_edge(i, j, **attr)
     for name in subgraphs:
-        G.add_subgraph(subgraphs[name], name)
+        G.add_subgraph(subgraphs[name], name,rank=rank)
     G.layout(prog=prog)
     return G
 
 def draw(filename, nodes, edges, node2attributes=None, edge2attributes=None,
-         prog=None, subgraphs=None, directed=False):
+         prog=None, subgraphs=None, directed=False,rank=False):
     # filename should be the name of a png file.  nodes is a list of
     # the names of the nodes, given as strings.  edges is a list of
     # tuples (<node_a>, <node_b>) that indicate which nodes are
@@ -66,7 +67,8 @@ def draw(filename, nodes, edges, node2attributes=None, edge2attributes=None,
     # typically "neato" or "dot".  subgraph is dictionary where the
     # key is the name of the subgraph and value is the list of nodes
     # in that subgraph.
-    #
+    # rank is that is to set nodes in a subgraph to be same level,rank='same'
+    
     # Node attributes:
     # style      filled
     # shape      box, circle, ellipse, point, triangle, diamond, octagon
@@ -79,7 +81,7 @@ def draw(filename, nodes, edges, node2attributes=None, edge2attributes=None,
     # len        length
     # arrowhead
     G = generate_graph(nodes, edges, node2attributes=node2attributes, edge2attributes=edge2attributes,
-         prog=prog, subgraphs=subgraphs, directed=directed)
+         prog=prog, subgraphs=subgraphs, directed=directed,rank=rank)
     G.draw(filename)
 
 
@@ -96,7 +98,7 @@ def layout(nodes, edges, prog=None, subgraphs=None):
     return coords
 
 def write(filename, nodes, edges, node2attributes=None, edge2attributes=None,
-         prog=None, subgraphs=None, directed=False):
+         prog=None, subgraphs=None, directed=False,rank=False):
     # filename should be the name of a text file.  nodes is a list of
     # the names of the nodes, given as strings.  edges is a list of
     # tuples (<node_a>, <node_b>) that indicate which nodes are
@@ -107,7 +109,8 @@ def write(filename, nodes, edges, node2attributes=None, edge2attributes=None,
     # typically "neato" or "dot".  subgraph is dictionary where the
     # key is the name of the subgraph and value is the list of nodes
     # in that subgraph.
-    #
+    # rank is that is to set nodes in a subgraph to be same level,rank='same'
+    
     # Node attributes:
     # style      filled
     # shape      box, circle, ellipse, point, triangle, diamond, octagon
@@ -120,5 +123,5 @@ def write(filename, nodes, edges, node2attributes=None, edge2attributes=None,
     # len        length
     # arrowhead
     G = generate_graph(nodes, edges, node2attributes=node2attributes, edge2attributes=edge2attributes,
-         prog=prog, subgraphs=subgraphs, directed=directed)
+         prog=prog, subgraphs=subgraphs, directed=directed,rank=rank)
     G.write(filename)

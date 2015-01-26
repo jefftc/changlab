@@ -45,8 +45,8 @@ def run(in_nodes,parameters, user_input,network,num_cores):
         test_label_data = rule_engine_bie3.DataObject(test_label_node,identifier=test_label)
         new_parameters = parameters.copy()
         x = merge_data,train_label_data
-        out_node = predict_model.run(x,parameters,user_input,network)
-        out_node_label=evaluate_model.run((out_node,test_label_data),new_parameters,user_input,network)
+        out_node = predict_model.run(x,parameters,user_input,network,num_cores)
+        out_node_label=evaluate_model.run((out_node,test_label_data),new_parameters,user_input,network,num_cores)
         f1 = open(out_node_label.identifier,'r')
         lines = f1.readlines()
         f1.close()
