@@ -94,6 +94,9 @@ def main():
         "--xlabel_size", default=1.0, type=float,
         help="Scale the size of the labels on X-axis.  Default 1.0.")
     parser.add_argument(
+        "--xlabel_off", default=False, action="store_true",
+        help="Turn off the X labels.")
+    parser.add_argument(
         "-v", "--verbose", default=False, action="store_true",
         help="")
 
@@ -144,17 +147,21 @@ def main():
     sub = ""
     xlab = ""
     ylab = "Gene Expression"
-    labels = MATRIX.col_names(arrayio.COL_ID)
+    labels = jmath.R_var("FALSE")
+    #labels = MATRIX.col_names(arrayio.COL_ID)
     col = R_var("NULL")
     xlim = [1, MATRIX.ncol()+1]
     y_max = jmath.max(jmath.max(MATRIX._X))
     y_min = jmath.min(jmath.min(MATRIX._X))
     ylim = [y_min-1, y_max+1]
 
+    if not args.xlabel_off:
+        labels = MATRIX.col_names(arrayio.COL_ID)
+
     lwd = 2
     las = 3   # vertical labels
     at = R_var("NULL")
-    if labels:
+    if labels != jmath.R_var("FALSE"):
         at = range(1, len(labels)+1)
     cex_labels = 1*args.xlabel_size
     cex_legend = 1
@@ -177,7 +184,7 @@ def main():
         height=height, width=width, units="px", res=300)
 
     # Set the margins.
-    x = 5*args.mar_bottom, 4*args.mar_left, 4, 2
+    x = 5*1.2*args.mar_bottom, 4*1.2*args.mar_left, 4, 2
     mar = [x+0.1 for x in x]
     R_fn("par", mar=mar, RETVAL="op")
     

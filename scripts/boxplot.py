@@ -40,6 +40,10 @@ def main():
     parser.add_argument(
         "--xlabel_size", default=1.0, type=float,
         help="Scale the size of the labels on X-axis.  Default 1.0.")
+    parser.add_argument(
+        "--xlabel_off", default=False, action="store_true",
+        help="Turn off the X labels.")
+    
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -74,13 +78,16 @@ def main():
     sub = ""
     xlab = ""
     ylab = "Gene Expression"
-    labels = MATRIX.col_names(arrayio.COL_ID)
+    labels = jmath.R_var("FALSE")
     col = jmath.R_var("NULL")
+
+    if not args.xlabel_off:
+        labels = MATRIX.col_names(arrayio.COL_ID)
 
     lwd = 2
     las = 3   # vertical labels
     at = jmath.R_var("NULL")
-    if labels:
+    if labels != jmath.R_var("FALSE"):
         at = range(1, len(labels)+1)
     cex_labels = 1.25*args.xlabel_size
     cex_legend = 1

@@ -190,7 +190,6 @@ def _outer_join_matrices(matrix_samples_cmp, all_samples,
     # sample2matrix2indexes     sample_i -> matrix_i -> list of indexes
     assert matrix_samples_cmp
     matrix2indexes = [[] for i in range(len(matrix_samples_cmp))]
-    #sample2n = {}  # sample_i -> number of times this sample already seen.
 
     for sample_i in range(len(all_samples)):
         # Do a product of all matching indexes across the matrices.
@@ -204,6 +203,28 @@ def _outer_join_matrices(matrix_samples_cmp, all_samples,
             assert len(indexes) == len(matrix_samples_cmp)
             for i in range(len(indexes)):
                 matrix2indexes[i].append(indexes[i])
+    return matrix2indexes
+
+
+def _inner_join_matrices(matrix_samples_cmp, all_samples,
+                         sample2matrix2indexes):
+    # Return matrix2indexes as a list of lists.  The first list
+    # corresponds to each matrix.  The second is a list of indexes
+    # that indicate the index into the matrix.
+    import itertools
+
+    # all_samples               list of samples
+    # matrix_samples_cmp        list of list of samples
+    # sample2matrix2indexes     sample_i -> matrix_i -> list of indexes
+    assert matrix_samples_cmp
+    matrix2indexes = [[] for i in range(len(matrix_samples_cmp))]
+
+    for sample_i in range(len(all_samples)):
+        # Take the first sample that matches.
+        for i in range(len(matrix_samples_cmp)):
+            x = sample2matrix2indexes[sample_i][i]
+            assert x
+            matrix2indexes[i].append(x[0])
     return matrix2indexes
 
 
@@ -266,7 +287,8 @@ def align_matrices(
         matrix2indexes = _outer_join_matrices(
             matrix_samples_cmp, align_samples, sample2matrix2indexes)
     else:
-        raise NotImplementedError
+        matrix2indexes = _inner_join_matrices(
+            matrix_samples_cmp, align_samples, sample2matrix2indexes)
         
     
     ## sample2matrix2aligned = {}  # sample_i -> matrix_i -> list of indexes
@@ -970,7 +992,7 @@ def main():
             matrix_data, args.case_insensitive, args.hash,
             args.ignore_nonalnum)
         assert samples, "No samples."
-    else:
+    else:  # inner join
         samples = list_common_samples(
             matrix_data, args.case_insensitive, args.hash,
             args.ignore_nonalnum)
