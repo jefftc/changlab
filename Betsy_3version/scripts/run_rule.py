@@ -431,6 +431,34 @@ def main():
     network = bie3.optimize_network(network, user_attributes)
     assert network, ('No pipeline has been generated,\
                       please check your command.')
+    if args.output and not in_objects:
+        assert network, 'no network generated'
+        print "No inputs given.  Here are the possibilities."
+        print
+        print_possible_inputs(network, user_attributes)
+        return 
+
+    if not network or len(network.nodes)==1:
+        in_datas = [i.data for i in in_objects]
+        bie3.diagnose_start_node(network, in_datas)
+    input_node_ids = []
+    input_nodes = []
+    for i in in_objects:
+        #print i.data
+        start_node = bie3._find_start_nodes(network,i.data)
+        assert start_node, 'input %s is not matched any node in the network' % i.data.datatype.name
+        if os.path.exists(i.identifier):
+            store_file = userfile.set(getpass.getuser(), i.identifier)
+            i.identifier = store_file
+        input_node_ids.extend(start_node)
+        input_nodes.append(i.data)
+    #required_flag = check_possible_inputs(network,user_attributes,input_node_ids)
+    #if required_flag:
+    network = bie3.select_start_node(network, input_nodes)
+    #else:
+     #   print_missing_inputs(network,user_attributes,input_node_ids)
+     #   return
+   
     if args.png_file:
         bie3.plot_network_gv(args.png_file, network)
 
@@ -442,35 +470,9 @@ def main():
             handle.close()
     if args.json_file:
         bie3.write_network(args.json_file, network)
-    if args.output and not in_objects:
-        assert network, 'no network generated'
-        print "No inputs given.  Here are the possibilities."
-        print
-        print_possible_inputs(network, user_attributes)
-        return 
     if args.dry_run:
-        return
-    if not network or len(network.nodes)==1:
-        in_datas = [i.data for i in in_objects]
-        bie3.diagnose_start_node(network, in_datas)
-    input_node_ids = []
-    input_nodes = []
-    for i in in_objects:
-        start_node = bie3._find_start_nodes(network,i.data)
-        assert start_node, 'input %s is not matched any node in the network' % i.data.datatype.name
-        if os.path.exists(i.identifier):
-            store_file = userfile.set(getpass.getuser(), i.identifier)
-            i.identifier = store_file
-        input_node_ids.extend(start_node)
-        input_nodes.append(i.data)
-    #required_flag = check_possible_inputs(network,user_attributes,input_node_ids)
-    #if required_flag:
-    network = bie3.select_start_node(network, input_nodes)
-    print len(network.nodes)
-    #else:
-     #   print_missing_inputs(network,user_attributes,input_node_ids)
-     #   return
-    #test mattr are given when necessary
+        return   
+    #test mattr are given when necessary    
     network_modules = [i for i in network.nodes
                            if isinstance(i, bie3.Module)]
     necessary_options = get_necessary_option(network_modules)

@@ -55,6 +55,7 @@ all_modules = [
         [GeneExpProcessing.SignalFile,GeneExpProcessing.SignalFile],
         GeneExpProcessing.SignalFile,
         Constraint('contents',MUST_BE,"class0,class1",0),
+        
         Constraint('format',MUST_BE,'gct',0),
         Constraint('logged',MUST_BE,"yes",0),
         Constraint('contents',MUST_BE,"test",1),
@@ -63,6 +64,14 @@ all_modules = [
         Consequence('contents',SET_TO,"class0,class1,test"),
         Consequence('format',SAME_AS_CONSTRAINT,0),
         Consequence('logged',SAME_AS_CONSTRAINT,0),
+        Constraint('gene_order',CAN_BE_ANY_OF,["no", "class_neighbors", "gene_list",
+                                               "t_test_p", "t_test_fdr",'diff_ttest',
+                                               'diff_sam','diff_ebayes','diff_fold_change'],0),
+        Constraint('gene_order',MUST_BE,"no",1),
+        Consequence('gene_order',SAME_AS_CONSTRAINT,0),
+        Constraint('num_features',CAN_BE_ANY_OF,["no", "yes"],0),
+        Constraint('num_features',MUST_BE,"no",1),
+        Consequence('num_features',SAME_AS_CONSTRAINT,0),
         DefaultAttributesFrom(0),
         DefaultAttributesFrom(1),
         help="merge two files for classification"

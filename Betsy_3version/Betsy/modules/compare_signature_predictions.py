@@ -27,12 +27,15 @@ def run(in_nodes,parameters, user_input, network,num_cores):
     f = file(outfile,'w')
     header = ['SigID','NAME']+total_sample
     f.write('\t'.join(header)+'\n')
-    for line in d1:
-        f.write('\t'.join(line)+'\n')
-    for line in d2:
-        f.write('\t'.join(line)+'\n')
-    for line in d3:
-        f.write('\t'.join(line)+'\n')
+    assert len(d1)==len(d2)
+    assert len(d1)==len(d3)
+    for i in range(len(d1)):
+        d1[i][1]='Affy_'+d1[i][1]
+        d2[i][1]='Agilent_'+d2[i][1]
+        d3[i][1]='RSEM_'+d3[i][1]
+        f.write('\t'.join(d1[i])+'\n')
+        f.write('\t'.join(d2[i])+'\n')
+        f.write('\t'.join(d3[i])+'\n')
     f.close()
     assert module_utils.exists_nz(outfile),(
         'the output file %s for compare_signature_predictions fails' %outfile)
