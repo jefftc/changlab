@@ -240,7 +240,8 @@ def plot_boxplot(
 
     #main = R_var("NA")
     main = gene_id
-    sub = ""
+    #sub = ""
+    sub = "%.2g" % p_value
     xlab = ""
     ylab = "Gene Expression"
     labels = group_names
@@ -253,7 +254,9 @@ def plot_boxplot(
         at = range(1, len(labels)+1)
     cex_labels = 1.25*xlabel_size
     #cex_legend = 1
-    cex_lab = 1.5
+    #cex_lab = 1.5
+    cex_xlab = 2.0
+    cex_ylab = 2.0
     cex_sub = 1.5
 
     R_equals(labels, "labels")
@@ -295,7 +298,8 @@ def plot_boxplot(
         "axis", 2, lwd=lwd, **{ "cex.axis" : 1.5 })
     R_fn(
         "title", main=main, sub=sub, xlab=xlab, ylab=ylab,
-        **{ "cex.lab" : cex_lab, "cex.main" : 2.0, "cex.sub" : cex_sub })
+        **{ "cex.lab" : cex_xlab, "cex.main" : 2.0, "cex.sub" : cex_sub,
+            "col.sub" : "#A60400" })
     R("par(op)")
     R_fn("dev.off")
 
