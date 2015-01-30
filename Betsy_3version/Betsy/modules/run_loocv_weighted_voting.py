@@ -14,6 +14,7 @@ def run(in_nodes,parameters, user_input, network,num_cores):
     data_node_train,cls_node_train = in_nodes
     outfile = name_outfile(in_nodes,user_input)
     module_name = 'WeightedVotingXValidation'
+    module_id_version='00028:2'
     gp_parameters = dict()
     file1 = data_node_train.identifier
     result, label_line, class_name = read_label_file.read(
@@ -22,27 +23,27 @@ def run(in_nodes,parameters, user_input, network,num_cores):
     gp_parameters['class.filename'] = cls_node_train.identifier
     if 'wv_num_features' in user_input:
         gp_parameters['num.features'] = str(user_input['wv_num_features'])
-    if 'wv_minstd' in user_input:	
-    	assert module_utils.is_number(
-            user_input['wv_minstd']), 'the sv_minstd should be number'
-        gp_parameters['min.std'] = str(user_input['wv_minstd'])
-        
-    wv_feature_stat = ['wv_snr', 'wv_ttest', 'wv_snr_median',
-                       'wv_ttest_median', 'wv_snr_minstd',
-                       'wv_ttest_minstd', 'wv_snr_median_minstd',
-                       'wv_ttest_median_minstd']
-    
-    assert parameters['wv_feature_stat'] in wv_feature_stat, (
-            'the wv_feature_stat is invalid')
-    gp_parameters['feature.selection.statistic'] = str(
-            wv_feature_stat.index(parameters[
-                'wv_feature_stat']))
+##    if 'wv_minstd' in user_input:	
+##    	assert module_utils.is_number(
+##            user_input['wv_minstd']), 'the sv_minstd should be number'
+##        gp_parameters['min.std'] = str(user_input['wv_minstd'])
+##        
+##    wv_feature_stat = ['wv_snr', 'wv_ttest', 'wv_snr_median',
+##                       'wv_ttest_median', 'wv_snr_minstd',
+##                       'wv_ttest_minstd', 'wv_snr_median_minstd',
+##                       'wv_ttest_median_minstd']
+##    
+##    assert parameters['wv_feature_stat'] in wv_feature_stat, (
+##            'the wv_feature_stat is invalid')
+##    gp_parameters['feature.selection.statistic'] = str(
+##            wv_feature_stat.index(parameters[
+##                'wv_feature_stat']))
     
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module, 'cannot find the %s' % gp_path
     download_directory = os.path.join(os.getcwd(),'wv_result')
-    command = [gp_module, module_name, '-o', download_directory]
+    command = [gp_module, module_name,'--id_and_version',module_id_version, '-o', download_directory]
     for key in gp_parameters.keys():
         a = ['--parameters', key + ':' + gp_parameters[key]]
         command.extend(a)
