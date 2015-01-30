@@ -7,6 +7,7 @@
 # num_missing_values
 # assert_no_missing_values
 # transpose_matrix
+# transpose_nonmatrix
 #
 # parse_indexes
 # parse_names
@@ -245,6 +246,23 @@ def transpose_matrix(MATRIX, transpose):
         X, row_names=row_names, col_names=col_names,
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     return MATRIX_t
+
+
+def transpose_nonmatrix(filename):
+    # Transpose the contents of this tab-delimited file and print the
+    # results.
+    from genomicode import filelib
+    from genomicode import iolib
+    from genomicode import jmath
+    from arrayio import tab_delimited_format as tdf
+
+    assert os.path.exists(filename), "File not found: %s" % filename
+    x = filelib.openfh(filename).read()
+    x = iolib.split_tdf(x, strip=True)
+    data = tdf._clean_tdf(x)
+    data_t = jmath.transpose(data)
+    for x in data_t:
+        print "\t".join(x)
 
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
@@ -2372,6 +2390,11 @@ def main():
         "<new row ID> is what should be the name of the column of the IDs "
         "in the transposed file.")
     parser.add_argument(
+        "--transpose_nonmatrix", action="store_true",
+        help="Just transpose the rows and columns.  ""May not be an "
+        "expression matrix.  Should only have one file.  Ignores all "
+        "other parameters.")
+    parser.add_argument(
         "--output_format", default="tdf", choices=["tdf", "gct"],
         help="Specify the format for the output file.")
     # If the user chooses an outfile, will need to implement it for
@@ -2746,6 +2769,11 @@ def main():
 
     if args.num_header_cols is not None:
         assert args.num_header_cols > 0 and args.num_header_cols < 100
+
+    if args.transpose_nonmatrix:
+        assert len(args.filename) == 1
+        transpose_nonmatrix(args.filename[0])
+        return
 
     x = read_matrices(
         args.filename, args.skip_lines, args.read_as_csv, args.remove_comments,

@@ -73,8 +73,8 @@ def calc_association(phenotypes, scores):
     # phenotypes           n-list of <string>
     # groups               n-list of <int>  [0, length(group_names)-1]
     # group_names          m-list of <string>  (unique list of pheno)
-    # num_samples          dict of <group> : <int>
-    # mean_score           dict of <group> : <float>
+    # num_samples          dict of <group (int)> : <int>
+    # mean_score           dict of <group (int)> : <float>
     # p_value              <float>
     # relationship         <string>
     from genomicode import jmath
@@ -126,10 +126,23 @@ def calc_association(phenotypes, scores):
 
     # Figure out the relationship.
     relationship = ""
-
+    assert len(group_names) >= 2
+    high_score = None
+    for n, score in mean_score.iteritems():
+        if high_score is not None and score <= high_score:
+            continue
+        high_score = score
+        x1 = "Higher"
+        if len(group_names) > 2:
+            x1 = "Highest"
+        relationship = "%s in %s" % (x1, group_names[n])
+    
     SCORE = {}
+    SCORE["n"] = len(scores)
+    SCORE["m"] = len(group_names)
     SCORE["scores"] = scores
     SCORE["phenotypes"] = phenotypes
+    SCORE["groups"] = groups
     SCORE["group_names"] = group_names
     SCORE["num_samples"] = num_samples
     SCORE["mean_score"] = mean_score
@@ -227,7 +240,8 @@ def plot_boxplot(
 
     #main = R_var("NA")
     main = gene_id
-    sub = ""
+    #sub = ""
+    sub = "%.2g" % p_value
     xlab = ""
     ylab = "Gene Expression"
     labels = group_names
@@ -240,7 +254,9 @@ def plot_boxplot(
         at = range(1, len(labels)+1)
     cex_labels = 1.25*xlabel_size
     #cex_legend = 1
-    cex_lab = 1.5
+    #cex_lab = 1.5
+    cex_xlab = 2.0
+    cex_ylab = 2.0
     cex_sub = 1.5
 
     R_equals(labels, "labels")
@@ -282,7 +298,8 @@ def plot_boxplot(
         "axis", 2, lwd=lwd, **{ "cex.axis" : 1.5 })
     R_fn(
         "title", main=main, sub=sub, xlab=xlab, ylab=ylab,
-        **{ "cex.lab" : cex_lab, "cex.main" : 2.0, "cex.sub" : cex_sub })
+        **{ "cex.lab" : cex_xlab, "cex.main" : 2.0, "cex.sub" : cex_sub,
+            "col.sub" : "#A60400" })
     R("par(op)")
     R_fn("dev.off")
 
