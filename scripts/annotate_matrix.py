@@ -408,7 +408,7 @@ def main():
         help="Which platform to add to the matrix.  Options: %s" % x)
 
     parser.add_argument(
-        '--min_match_score', default=0.90, type=float,
+        '--min_match_score', default=0.80, type=float,
         help="When trying to identify the rows of a matrix or geneset, "
         "require at least this portion of the IDs to be recognized.")
     parser.add_argument(
