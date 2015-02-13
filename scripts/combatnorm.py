@@ -115,7 +115,6 @@ def main():
     
     import arrayio
     from Betsy import module_utils
-    #from genomicode import jmath
     from genomicode import config
 
     usage = "combatnorm.py [options] expression_file"
@@ -186,9 +185,7 @@ def main():
         write_SIF_file(MATRIX, SIF_file, batches)
     
         # Run combat.
-        run_combat = config.run_combat
         ComBat_R = config.combat
-        assert os.path.exists(run_combat), 'File not found: %s' % run_combat
         assert os.path.exists(ComBat_R), 'File not found: %s' % ComBat_R
         
         assert os.path.exists(EIF_file)
