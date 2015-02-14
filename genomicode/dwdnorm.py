@@ -46,6 +46,7 @@ def find_dwd(default_path):
         break
     return path
 
+
 def normalize(X, Y, version=None, matlab=None, dwd_path=None):
     # X is a Matrix of the data.  Y is a vector of -1, 1 indicating
     # the class of each sample.  Returns the normalized version of the
@@ -53,6 +54,7 @@ def normalize(X, Y, version=None, matlab=None, dwd_path=None):
     # to handle the normalization.  If version is "bild", then Y can
     # consist of -1, 1, or 2, where -1 and 1 distinguish the two
     # classes of the training set, and 2 indicates the validation set.
+    # Returns the normalized Matrix.
     #import copy
     import subprocess
     import tempfile

@@ -214,9 +214,9 @@ def main():
             assert len(x) == MATRIX_norm.ncol()
         MATRIX_norm._X = norm
     finally:
-        os.chdir(cwd)
         if temp_path is not None and os.path.exists(temp_path):
             shutil.rmtree(temp_path)
+        os.chdir(cwd)
 
     arrayio.tab_delimited_format.write(MATRIX_norm, sys.stdout)
 

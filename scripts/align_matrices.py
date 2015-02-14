@@ -290,69 +290,6 @@ def align_matrices(
         matrix2indexes = _inner_join_matrices(
             matrix_samples_cmp, align_samples, sample2matrix2indexes)
         
-    
-    ## sample2matrix2aligned = {}  # sample_i -> matrix_i -> list of indexes
-    ## for i in range(len(align_samples)):
-    ##     matrix2indexes = sample2matrix2indexes[i].copy()
-    ##     matrix2aligned = {}
-
-    ##     if left_join or outer_join:
-    ##         for j in range(len(matrix_data)):
-    ##             matrix2aligned[j] = []
-
-    ##         # list (of len(matrix_data)) of list of indexes
-    ##         all_indexes = []
-    ##         for j in range(len(matrix_data)):
-    ##             indexes = matrix2indexes[j]
-    ##             if not indexes:
-    ##                 indexes = [None]
-    ##             all_indexes.append(indexes)
-
-    ##         # Do a product of all matching indexes across the matrices.
-    ##         for x in itertools.product(*all_indexes):
-    ##             assert len(x) == len(matrix_data)
-    ##             for j in range(len(matrix_data)):
-    ##                 matrix2aligned[j].append(x[j])
-    ##     else:
-    ##         # If this sample is not found in all data sets, then
-    ##         # ignore it.
-    ##         found = True
-    ##         for j in range(len(matrix_data)):
-    ##             if not matrix2indexes[j]:
-    ##                 found = False
-    ##         if not found:
-    ##             for j in range(len(matrix_data)):
-    ##                 matrix2aligned[j] = []
-    ##         else:
-    ##             # Use only the first instance of each sample.
-    ##             for j in range(len(matrix_data)):
-    ##                 indexes = matrix2indexes[j]
-    ##                 matrix2aligned[j] = [indexes[0]]
-
-    ##     # Make sure len(indexes) same for all matrices.
-    ##     num_indexes = None
-    ##     for x in matrix2aligned.itervalues():
-    ##         if num_indexes is None:
-    ##             num_indexes = len(x)
-    ##         assert len(x) == num_indexes
-
-    ##     sample2matrix2aligned[i] = matrix2aligned
-
-    ## # Make the list of indexes for each matrix.
-    ## matrix2indexes = {}
-    ## for j in range(len(matrix_data)):
-    ##     matrix2indexes[j] = []
-    ## for i in range(len(align_samples)):
-    ##     for j in range(len(matrix_data)):
-    ##         indexes = sample2matrix2aligned[i][j]
-    ##         matrix2indexes[j].extend(indexes)
-
-    #for i in range(len(matrix2indexes[0])):
-    #    x = [matrix2indexes[j][i] for j in range(len(matrix_data))]
-    #    print "\t".join(map(str, x))
-    #print [len(matrix2indexes[i]) for i in range(len(matrix_data))]
-    #import sys; sys.exit(0)
-
     aligned_matrix_data = []
     for j, x in enumerate(matrix_data):
         infile, outfile, matrix, header, samples = x
