@@ -40,9 +40,11 @@ def run_R(script):
         p = subprocess.Popen(
             command, bufsize=0, stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
-        w, r = p.stdin, p.stdout
+        w, r, e = p.stdin, p.stdout, p.stderr
         w.close()
         output = r.read()
+        err = e.read()
+        assert not err.strip(), err
     finally:
         _safe_unlink(script_file)
     return output
@@ -114,7 +116,7 @@ def main():
     import shutil
     
     import arrayio
-    from Betsy import module_utils
+    from genomicode import filelib
     from genomicode import config
 
     usage = "combatnorm.py [options] expression_file"
@@ -200,7 +202,7 @@ def main():
         #R('source("%s")' % ComBat_R)
         #R('ComBat("%s", "%s", write=T)' % (EIF_file, SIF_file))
         outfile = "Adjusted_EIF.dat_.xls"
-        assert module_utils.exists_nz(outfile), "File not found: %s" % outfile
+        assert filelib.exists_nz(outfile), "File not found: %s" % outfile
 
         x = open(outfile).readlines()
         x = [x.rstrip("\r\n") for x in x]
