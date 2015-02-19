@@ -110,8 +110,8 @@ def peek_samples_hint(matrix_data):
     if x:
         # Found an expression file.
         infile, outfile, matrix, header = x[0][:4]
-        assert header is None
-        samples_hint = get_express_samples(matrix)
+        #assert header is None
+        x, samples_hint = get_express_samples(matrix)
     else:
         # No expression files.  Look for an annotation file with given
         # --header.
