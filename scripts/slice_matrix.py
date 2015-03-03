@@ -8,6 +8,7 @@
 # assert_no_missing_values
 # transpose_matrix
 # transpose_nonmatrix
+# correlate_matrix
 #
 # parse_indexes
 # parse_names
@@ -61,7 +62,9 @@
 # select_row_mean_var
 # select_row_missing_values
 # select_row_var
+# select_row_delta
 # select_row_fc
+# select_row_num_samples_fc
 # dedup_row_by_var
 # reverse_rows
 # reorder_row_indexes
@@ -263,6 +266,37 @@ def transpose_nonmatrix(filename):
     data_t = jmath.transpose(data)
     for x in data_t:
         print "\t".join(x)
+
+
+def correlate_matrix(MATRIX, correlate):
+    from genomicode import jmath
+    from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
+
+    if not correlate:
+        return MATRIX
+
+    X_cor = jmath.cor(MATRIX._X, byrow=0)
+    assert len(X_cor) == MATRIX.ncol()
+
+    X = jmath.transpose(MATRIX._X)
+    row_order = [MATRIX.col_names()[0]]
+    col_order = [MATRIX.col_names()[0]]
+    row_names = {
+        row_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    col_names = {
+        col_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_cor = Matrix.InMemoryMatrix(
+        X_cor, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_cor
 
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
@@ -1520,6 +1554,21 @@ def select_row_var(MATRIX, select_var):
     return I
 
 
+def select_row_delta(MATRIX, select_delta):
+    import math
+    if select_delta is None:
+        return None
+    select_delta = float(select_delta)
+    assert select_delta > 0 and select_delta < 100000
+
+    delta = []
+    for x in MATRIX._X:
+        delta.append(max(x) - min(x))
+
+    I = [i for (i, x) in enumerate(delta) if x >= select_delta]
+    return I
+
+
 def select_row_fc(MATRIX, select_fc):
     import math
     if select_fc is None:
@@ -1534,6 +1583,32 @@ def select_row_fc(MATRIX, select_fc):
 
     lfc_cutoff = math.log(select_fc, 2)
     I = [i for (i, x) in enumerate(log_fc) if x >= lfc_cutoff]
+    return I
+
+
+def select_row_num_samples_fc(MATRIX, num_samples):
+    from genomicode import jmath
+
+    if num_samples is None:
+        return None
+    num_samples = int(num_samples)
+    assert num_samples > 0 and num_samples < MATRIX.ncol()
+
+    # Calculate the means.
+    means = jmath.mean(MATRIX._X)
+    assert len(means) == len(MATRIX._X)
+
+    # In each row, count the number of samples that deviate at least
+    # 2-fold (assuming log_2) from the mean.
+    deviants = [None] * len(means)
+    for i, row in enumerate(MATRIX._X):
+        x = [abs(x-means[i]) for x in row]
+        x = [x for x in x if x >= 1]
+        deviants[i] = len(x)
+
+    # Keep only the genes where at least num_samples deviate 2-fold
+    # from the mean.
+    I = [i for (i, x) in enumerate(deviants) if x >= num_samples]
     return I
 
 
@@ -2383,18 +2458,6 @@ def main():
         "--clean_only", default=False, action="store_true",
         help="Only read_as_csv and remove_comments.")
     parser.add_argument(
-        "--transpose",
-        help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
-        "<old row ID> is the header of the column in the original file that "
-        "should be used for the headers in the transposed file.  "
-        "<new row ID> is what should be the name of the column of the IDs "
-        "in the transposed file.")
-    parser.add_argument(
-        "--transpose_nonmatrix", action="store_true",
-        help="Just transpose the rows and columns.  ""May not be an "
-        "expression matrix.  Should only have one file.  Ignores all "
-        "other parameters.")
-    parser.add_argument(
         "--output_format", default="tdf", choices=["tdf", "gct"],
         help="Specify the format for the output file.")
     # If the user chooses an outfile, will need to implement it for
@@ -2402,6 +2465,23 @@ def main():
     #parser.add_argument(
     #    "-o", default=None, metavar="OUTFILE", dest="outfile",
     #    help="Save to this file.  By default, writes output to STDOUT.")
+
+    group = parser.add_argument_group(title="Matrix Manipulation")
+    group.add_argument(
+        "--transpose",
+        help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
+        "<old row ID> is the header of the column in the original file that "
+        "should be used for the headers in the transposed file.  "
+        "<new row ID> is what should be the name of the column of the IDs "
+        "in the transposed file.")
+    group.add_argument(
+        "--transpose_nonmatrix", action="store_true",
+        help="Just transpose the rows and columns.  May not be an "
+        "expression matrix.  Should only have one file.  Ignores all "
+        "other parameters.")
+    group.add_argument(
+        "--correlate", action="store_true",
+        help="Calculate the pairwise correlation of the columns.")
 
     group = parser.add_argument_group(title="Normalization")
     group.add_argument(
@@ -2687,9 +2767,18 @@ def main():
         "--select_row_var", default=None, type=int,
         help="Keep this number of rows with the highest variance.")
     group.add_argument(
+        "--select_row_delta", default=None, type=float,
+        help="Keep only the rows where the difference between the maximum "
+        "and minimum value is at least this.")
+    group.add_argument(
         "--select_row_fc", default=None, type=float,
         help="Keep only the rows with at least this fold change between "
         "highest and lowest sample (assuming log_2 values).")
+    group.add_argument(
+        "--select_row_num_samples_fc", default=None, type=int,
+        help="Keep only the rows where at least this number of samples "
+        "deviate at least 2 fold change from the mean "
+        "(assuming log_2 values).")
     group.add_argument(
         "--reverse_rows", default=False, action="store_true",
         help="Reverse the order of the rows.")
@@ -2789,6 +2878,8 @@ def main():
         return
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
+    MATRIX = correlate_matrix(MATRIX, args.correlate)
+
 
     # Slice to a submatrix.
     I01 = select_row_indexes(
@@ -2810,10 +2901,13 @@ def main():
     I11 = select_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
     I12 = select_row_var(MATRIX, args.select_row_var)
-    I13 = select_row_fc(MATRIX, args.select_row_fc)
-    I14 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I13 = select_row_delta(MATRIX, args.select_row_delta)
+    I14 = select_row_fc(MATRIX, args.select_row_fc)
+    I15 = select_row_num_samples_fc(MATRIX, args.select_row_num_samples_fc)
+    I16 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
-        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13, I14)
+        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13,
+        I14, I15, I16)
 
     I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)

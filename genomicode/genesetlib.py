@@ -199,7 +199,10 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
 
 
 def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
-    # yield name, description (always ""), list of genes
+    # yield name, description (always ""), list of genes.
+    # preserve_spaces determines whether to remove blank annotations.
+    # allow_duplicates determines whether to remove duplicate
+    # annotations.
     import filelib
 
     matrix = [x for x in filelib.read_cols(filename)]

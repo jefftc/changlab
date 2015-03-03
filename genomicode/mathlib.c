@@ -428,6 +428,112 @@ float *cor_byrow_f(float *X, int nrow, int ncol, int safe)
     return cor;
 }
 
+float *cor_bycol_f(float *X, int nrow, int ncol, int safe)
+{
+    int i, j;
+    int j1, j2;
+    float sum, mean, sd, x;
+    float *cor;
+    float *X_j1, *X_j2;
+    float EPS;
+
+    /* Rounding error.  See below. */
+    EPS = 1e-5;
+
+    if(!X || nrow < 1 || ncol < 1)
+	return NULL;
+
+    if(!(X_j1 = (float *)malloc(nrow*sizeof(*cor))))
+	return NULL;
+    if(!(X_j2 = (float *)malloc(nrow*sizeof(*cor)))) {
+        free(X_j1);
+	return NULL;
+    }
+    if(!(cor = (float *)malloc(ncol*ncol*sizeof(*cor)))) {
+        free(X_j1);
+        free(X_j2);
+	return NULL;
+    }
+
+    /* If there's only 1 sample, there will be a divide-by-zero. */ 
+    if(nrow == 1) {
+	if(safe) {
+	    /* Set correlations to default of 0. */
+	    memset(cor, 0, ncol*ncol*sizeof(*cor));
+	    return cor;
+	}
+        free(X_j1);
+        free(X_j2);
+	free(cor);
+	return NULL;
+    }
+
+    /* Covariance = E((X-mean(X))(Y-mean(Y))) */
+    /* Correlation = Cov(X, Y)/(SD(X) * SD(Y)) */
+
+    /* Calculate the means and standard deviations of each col. */
+    for(j=0; j<ncol; j++) {
+	/* Calculate the mean of the column. */
+    	sum = 0;
+	for(i=0; i<nrow; i++)
+	    sum += X[i*ncol+j];
+	mean = sum / nrow;
+
+	/* Calculate the standard deviation of the row. */
+	sum = 0;
+	for(i=0; i<nrow; i++)
+	    sum += (X[i*ncol+j]-mean)*(X[i*ncol+j]-mean);
+	sd = sqrt(sum / (nrow-1));
+
+	if(!sd && !safe) {
+	    /* If the variance is 0, then return an error. */
+            free(X_j1);
+            free(X_j2);
+	    free(cor);
+	    return NULL;
+	}
+
+	/* Normalize each col to N(0, 1) to make the the correlation
+	   coefficient calculation easier. */
+	for(i=0; i<nrow; i++) {
+	    if(sd == 0) {
+		X[i*ncol+j] = 0;
+		continue;
+	    } 
+	    X[i*ncol+j] = (X[i*ncol+j]-mean)/sd;
+	}
+    }
+
+    /* Calculate the correlations. */
+    for(j1=0; j1<ncol; j1++) {
+        for(i=0; i<nrow; i++)
+            X_j1[i] = X[i*ncol+j1];
+    	for(j2=j1; j2<ncol; j2++) {
+            for(i=0; i<nrow; i++)
+                X_j2[i] = X[i*ncol+j2];
+
+	    sum = dot_f(X_j1, X_j2, nrow);
+
+	    /* numpy and R divide by (nrow-1). */
+	    x = sum/(nrow-1);
+	    /* Calculate the correlation.  Could optimize this by
+	       putting the division in the X matrix. */
+
+	    /* Some values might be greater than 1 or -1 due to
+	       rounding error.  Fix this. */
+	    if(x > 1.0 && x < 1.0+EPS)
+		x = 1.0;
+	    else if(x < -1.0 && x > -1.0-EPS)
+		x = -1.0;
+	    cor[j1*ncol+j2] = cor[j2*ncol+j1] = x;
+	}
+    }
+
+    free(X_j1);
+    free(X_j2);
+    return cor;
+}
+
 double fisher_z(double R, int N)
 {
     double W, var_W;
