@@ -8,6 +8,7 @@
 # assert_no_missing_values
 # transpose_matrix
 # transpose_nonmatrix
+# correlate_matrix
 #
 # parse_indexes
 # parse_names
@@ -264,6 +265,37 @@ def transpose_nonmatrix(filename):
     data_t = jmath.transpose(data)
     for x in data_t:
         print "\t".join(x)
+
+
+def correlate_matrix(MATRIX, correlate):
+    from genomicode import jmath
+    from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
+
+    if not correlate:
+        return MATRIX
+
+    X_cor = jmath.cor(MATRIX._X, byrow=0)
+    assert len(X_cor) == MATRIX.ncol()
+
+    X = jmath.transpose(MATRIX._X)
+    row_order = [MATRIX.col_names()[0]]
+    col_order = [MATRIX.col_names()[0]]
+    row_names = {
+        row_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    col_names = {
+        col_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_cor = Matrix.InMemoryMatrix(
+        X_cor, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_cor
 
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
@@ -2410,18 +2442,6 @@ def main():
         "--clean_only", default=False, action="store_true",
         help="Only read_as_csv and remove_comments.")
     parser.add_argument(
-        "--transpose",
-        help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
-        "<old row ID> is the header of the column in the original file that "
-        "should be used for the headers in the transposed file.  "
-        "<new row ID> is what should be the name of the column of the IDs "
-        "in the transposed file.")
-    parser.add_argument(
-        "--transpose_nonmatrix", action="store_true",
-        help="Just transpose the rows and columns.  ""May not be an "
-        "expression matrix.  Should only have one file.  Ignores all "
-        "other parameters.")
-    parser.add_argument(
         "--output_format", default="tdf", choices=["tdf", "gct"],
         help="Specify the format for the output file.")
     # If the user chooses an outfile, will need to implement it for
@@ -2429,6 +2449,23 @@ def main():
     #parser.add_argument(
     #    "-o", default=None, metavar="OUTFILE", dest="outfile",
     #    help="Save to this file.  By default, writes output to STDOUT.")
+
+    group = parser.add_argument_group(title="Matrix Manipulation")
+    group.add_argument(
+        "--transpose",
+        help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
+        "<old row ID> is the header of the column in the original file that "
+        "should be used for the headers in the transposed file.  "
+        "<new row ID> is what should be the name of the column of the IDs "
+        "in the transposed file.")
+    group.add_argument(
+        "--transpose_nonmatrix", action="store_true",
+        help="Just transpose the rows and columns.  May not be an "
+        "expression matrix.  Should only have one file.  Ignores all "
+        "other parameters.")
+    group.add_argument(
+        "--correlation", action="store_true",
+        help="Calculate the pairwise correlation of the columns.")
 
     group = parser.add_argument_group(title="Normalization")
     group.add_argument(
@@ -2821,6 +2858,8 @@ def main():
         return
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
+    MATRIX = correlate_matrix(MATRIX, args.correlation)
+
 
     # Slice to a submatrix.
     I01 = select_row_indexes(

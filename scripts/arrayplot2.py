@@ -672,7 +672,7 @@ def make_layout(
     gene_tree_scale, gene_tree_thickness,
     array_tree_scale, array_tree_thickness,
     # Colorbar
-    colorbar,
+    colorbar, cb_horizontal, cb_scale_height, cb_scale_width,
     ):
     from genomicode import colorlib
 
@@ -688,7 +688,8 @@ def make_layout(
     if colorbar:
         x = _calc_colorbar_size(
             hm_layout.width(), hm_layout.height(), hm_layout.GRID_SIZE,
-            boxwidth, boxheight)
+            boxwidth, boxheight, cb_scale_width, cb_scale_height, 
+            cb_horizontal)
         width, height = x
         x = _calc_colorbar_ticks(
             width, height, signal_0, signal_1, plotlib)
@@ -1504,7 +1505,9 @@ def _pretty_scale_matrix(MATRIX, scale, gain, autoscale):
     return MATRIX, ORIG_min, ORIG_max
 
 
-def _calc_colorbar_size(hm_width, hm_height, grid_size, box_width, box_height):
+def _calc_colorbar_size(
+    hm_width, hm_height, grid_size, box_width, box_height,
+    scale_width, scale_height, horizontal):
     # Calculate the dimensions of the colorbar.  The size of the
     # bar should be calculated based on the size of the heatmap,
     # and also the size of the boxes in the heatmap.
@@ -1515,9 +1518,7 @@ def _calc_colorbar_size(hm_width, hm_height, grid_size, box_width, box_height):
     MAX_BOXES = 50      # Maximum boxes in the long dimension.
     MIN_BOXES = 1       # Minimum boxes in the short dimension.
 
-    vertical = hm_height > hm_width
-
-    if vertical:
+    if not horizontal:
         # x1 is the upper limit.  Do not make bigger than this.
         x1 = hm_height * BAR_LONG
         # These are both lower and upper limits.  Make the bigger one
@@ -1535,6 +1536,7 @@ def _calc_colorbar_size(hm_width, hm_height, grid_size, box_width, box_height):
         width = max(min(x1, x4), 1)
         height = max(width * BAR_SHORT, 1)
 
+    width, height = width*scale_width, height*scale_height
     width, height = int(width), int(height)
     return width, height
 
@@ -1954,8 +1956,18 @@ def main():
     group = OptionGroup(parser, "Colorbar")
     parser.add_option_group(group)
     group.add_option(
-        "--colorbar", dest="colorbar", default=False, action="store_true",
-        help="Add a colorbar to the plot.")
+        "--colorbar", action="store_true", help="Add a colorbar to the plot.")
+    group.add_option(
+        "--cb_horizontal", action="store_true",
+        help="Make the colorbar horizontal.")
+    group.add_option(
+        "--cb_height", type="float", default=1.0, 
+        help="Scale the height of the colorbar by this factor.")
+    group.add_option(
+        "--cb_width", type="float", default=1.0, 
+        help="Scale the width of the colorbar by this factor.")
+    
+    
 
     # Parse the input arguments.
     options, args = parser.parse_args()
@@ -2033,7 +2045,8 @@ def main():
         options.gene_tree_scale, options.gene_tree_thickness,
         options.array_tree_scale, options.array_tree_thickness,
         # Colorbar
-        options.colorbar,
+        options.colorbar, options.cb_horizontal,
+        options.cb_height, options.cb_width,
         )
 
     megapixels = layout.heatmap.width() * layout.heatmap.height() / 1024 / 1024
