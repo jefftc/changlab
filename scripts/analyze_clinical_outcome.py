@@ -16,6 +16,7 @@
 # read_expression_or_geneset_scores
 # read_clinical_annotations
 # align_matrix_with_clinical_data
+# get_gene_id
 # get_gene_name
 #
 # calc_association
@@ -310,7 +311,7 @@ def discretize_scores(
     return group_names, groups
 
 
-def get_gene_name(MATRIX, gene_i):
+def get_gene_id(MATRIX, gene_i):
     # gene_i is index of gene in this MATRIX.
     from genomicode import arrayplatformlib as apl
 
@@ -345,6 +346,19 @@ def get_gene_name(MATRIX, gene_i):
     
     # Just return the index of the gene
     return "Gene %04d" % gene_i
+
+
+def get_gene_name(M, gene_headers, gene_i):
+    from genomicode import hashlib
+    
+    if gene_headers:
+        x = [M.row_names(x)[gene_i] for x in gene_headers]
+        gene_name = "_".join(x)
+    else:
+        x = get_gene_id(M, gene_i)
+        x = hashlib.hash_var(x)
+        gene_name = x
+    return gene_name
 
 
 def calc_association(
@@ -873,13 +887,14 @@ def _make_filename(M, gene_i,
         assert h in M.row_names()
 
     # Figure out the gene_name.
-    if gene_headers:
-        x = [M.row_names(x)[gene_i] for x in gene_headers]
-        gene_name = "_".join(x)
-    else:
-        x = get_gene_name(M, gene_i)
-        x = hashlib.hash_var(x)
-        gene_name = x
+    gene_name = get_gene_name(M, gene_headers, gene_i)
+    #if gene_headers:
+    #    x = [M.row_names(x)[gene_i] for x in gene_headers]
+    #    gene_name = "_".join(x)
+    #else:
+    #    x = get_gene_name(M, gene_i)
+    #    x = hashlib.hash_var(x)
+    #    gene_name = x
 
     parts = [analysis, gene_name, filetype, fileext]
     if filestem:
@@ -1195,7 +1210,8 @@ def main():
         #filename = "%s%s.%s.km.png" % (filestem, time_header, gene_id_h)
         filename = _make_filename(
             M, gene_i, filestem, time_header, args.gene_header, "km", "png")
-        gene_id = get_gene_name(M, gene_i)
+        #gene_id = get_gene_name(M, gene_i)
+        gene_id = get_gene_name(M, args.gene_header, gene_i)
         plot_km(
             filename, SURV["survival"], SURV["dead"], SURV["groups"],
             SURV["p_value"], gene_id, SURV["group_names"], 
