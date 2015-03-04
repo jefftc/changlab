@@ -572,7 +572,7 @@ class ArrayClusterLayout:
 
 
 class GeneLabelLayout:
-    def __init__(self, item_height, item_widths, fontsize):
+    def __init__(self, item_height, item_widths, fontsize, header):
         self._item_height = item_height
         self._item_widths = item_widths
         num_items = len(item_widths)
@@ -580,6 +580,7 @@ class GeneLabelLayout:
         self._height = item_height * num_items
         self._num_items = num_items
         self._fontsize = fontsize
+        self._header = header
     def item_height(self):
         return self._item_height
     def width(self):
@@ -664,7 +665,8 @@ def make_layout(
     boxwidth, boxheight, scale_border, grid, color_scheme, flip_colors,
     signal_0, signal_1, black0, pvalue_cutoff,
     # Label
-    label_genes, label_arrays, scale_gene_labels, scale_array_labels,
+    label_genes, label_arrays, gene_label_header,
+    scale_gene_labels, scale_array_labels,
     # Clusters
     gene_cluster_width, gene_cluster_colors,
     array_cluster_height, array_cluster_colors,
@@ -799,12 +801,13 @@ def make_layout(
         al_fontsize = int(al_fontsize)
 
     if label_genes and gl_fontsize:
-        gene_labels = _get_gene_labels(MATRIX)
+        gene_labels = _get_gene_labels(MATRIX, header=gene_label_header)
         height = boxheight
         height += hm_layout.GRID_SIZE
         widths = [plotlib.get_text_size(x, gl_fontsize)[0]
                   for x in gene_labels]
-        gl_layout = GeneLabelLayout(height, widths, gl_fontsize)
+        gl_layout = GeneLabelLayout(
+            height, widths, gl_fontsize, gene_label_header)
     if label_arrays and al_fontsize:
         array_labels = _get_array_labels(MATRIX)
         width = boxwidth
@@ -942,7 +945,8 @@ def plot(
             border_color, grid_color)
 
     if layout.gene_label:
-        gene_labels = _get_gene_labels(MATRIX)
+        gene_labels = _get_gene_labels(
+            MATRIX, header=layout.gene_label._header)
         plot_gene_labels(
             plotlib, image, MATRIX, coords.gl_x, coords.gl_y,
             layout.gene_label, gene_labels)
@@ -1722,8 +1726,11 @@ def _get_array_ids(MATRIX):
     return MATRIX.col_names(arrayio.COL_ID)
 
 
-def _get_gene_labels(MATRIX):
-    name = _choose_gene_label(MATRIX)
+def _get_gene_labels(MATRIX, header=None):
+    name = header
+    if name is None:
+        name = _choose_gene_label(MATRIX)
+    assert name in MATRIX._row_names, "Unknown header: %s" % header
     labels = MATRIX.row_names(name)[:]
 
     # Gene Symbols can contain "///".  If this exists, then truncate
@@ -1890,6 +1897,9 @@ def main():
         "--al", "--label_arrays", dest="label_arrays", action="store_true",
         default=False, help="Label the arrays on the plot.")
     group.add_option(
+        "--gene_label_header",
+        help="Which column to get the gene labels from.")
+    group.add_option(
         "--scale_gene_labels", type="float", default=1.0,
         help="Scale the size of the gene labels.")
     group.add_option(
@@ -2037,6 +2047,7 @@ def main():
         options.pvalue,
         # Labels
         options.label_genes, options.label_arrays,
+        options.gene_label_header,
         options.scale_gene_labels, options.scale_array_labels,
         # Clusters
         options.gene_cluster_width, options.gene_cluster_color,
