@@ -655,7 +655,7 @@ def main():
 
 
         # Write out plots.
-        gene_id = aco.get_gene_name(M, gene_i)
+        gene_id = aco.get_gene_name(M, None, gene_i)
         #gene_id_h = hashlib.hash_var(gene_id)
         sample_names = M.col_names(arrayio.COL_ID)
         if filestem:

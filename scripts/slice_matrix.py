@@ -1586,7 +1586,8 @@ def select_row_fc(MATRIX, select_fc):
     return I
 
 
-def select_row_num_samples_fc(MATRIX, num_samples):
+def select_row_num_samples_fc(MATRIX, num_samples, use_median=False):
+    # By default, uses mean.  If use_median is true, then uses median.
     from genomicode import jmath
 
     if num_samples is None:
@@ -1595,7 +1596,10 @@ def select_row_num_samples_fc(MATRIX, num_samples):
     assert num_samples > 0 and num_samples < MATRIX.ncol()
 
     # Calculate the means.
-    means = jmath.mean(MATRIX._X)
+    if use_median:
+        means = jmath.median(MATRIX._X)
+    else:
+        means = jmath.mean(MATRIX._X)
     assert len(means) == len(MATRIX._X)
 
     # In each row, count the number of samples that deviate at least
@@ -2775,9 +2779,14 @@ def main():
         help="Keep only the rows with at least this fold change between "
         "highest and lowest sample (assuming log_2 values).")
     group.add_argument(
-        "--select_row_num_samples_fc", default=None, type=int,
+        "--select_row_num_samples_fc_mean", default=None, type=int,
         help="Keep only the rows where at least this number of samples "
         "deviate at least 2 fold change from the mean "
+        "(assuming log_2 values).")
+    group.add_argument(
+        "--select_row_num_samples_fc_median", default=None, type=int,
+        help="Keep only the rows where at least this number of samples "
+        "deviate at least 2 fold change from the median "
         "(assuming log_2 values).")
     group.add_argument(
         "--reverse_rows", default=False, action="store_true",
@@ -2903,11 +2912,14 @@ def main():
     I12 = select_row_var(MATRIX, args.select_row_var)
     I13 = select_row_delta(MATRIX, args.select_row_delta)
     I14 = select_row_fc(MATRIX, args.select_row_fc)
-    I15 = select_row_num_samples_fc(MATRIX, args.select_row_num_samples_fc)
-    I16 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I15 = select_row_num_samples_fc(
+        MATRIX, args.select_row_num_samples_fc_mean, use_median=False)
+    I16 = select_row_num_samples_fc(
+        MATRIX, args.select_row_num_samples_fc_median, use_median=True)
+    I17 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
         I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13,
-        I14, I15, I16)
+        I14, I15, I16, I17)
 
     I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)

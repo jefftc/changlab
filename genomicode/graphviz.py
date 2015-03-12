@@ -9,7 +9,9 @@ generate_graph
 draw
 layout
 write
+
 """
+
 def generate_graph(nodes, edges, node2attributes=None, edge2attributes=None,
          prog=None, subgraphs=None, directed=False,rank=False):
     # nodes is a list of the names of the nodes, given as strings.  edges is a list of
