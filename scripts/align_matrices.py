@@ -705,7 +705,9 @@ def main():
 
 
     args = parser.parse_args()
-    assert len(args.outfile) == len(args.express_file) + len(args.annot_file)
+    ni, no = len(args.express_file)+len(args.annot_file), len(args.outfile)
+    assert ni == no, "Mismatch: %d inputs and %d outputs" % (ni, no)
+        
     for x in args.express_file + args.annot_file:
         assert os.path.exists(x), "I could not find file: %s" % x
     for x in args.outfile:
