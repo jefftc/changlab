@@ -822,7 +822,8 @@ def make_layout(
     return x
 
 
-def calc_coords_for_layout(layout):
+def calc_coords_for_layout(
+    layout, scale_ab1, scale_ab2, scale_ab3, scale_gb1, scale_gb2, scale_gb3):
     # Layout:
     #
     #                           <array dendrogram>
@@ -842,8 +843,10 @@ def calc_coords_for_layout(layout):
 
     # cluster should be spaced a little further
     w, h = layout.heatmap.boxwidth, layout.heatmap.boxheight
-    gb1, gb2, gb3 = w*3/10, w*3/10, w/2  # 6, 6, 10
-    ab1, ab2, ab3 = h*3/10, h*3/10, h/2
+    gb1, gb2, gb3 = w*3.0/10, w*3.0/10, w/2.0  # 6, 6, 10
+    ab1, ab2, ab3 = h*3.0/10, h*3.0/10, h/2.0
+    gb1, gb2, gb3 = gb1*scale_gb1, gb2*scale_gb2, gb3*scale_gb3
+    ab1, ab2, ab3 = ab1*scale_ab1, ab2*scale_ab2, ab3*scale_ab3
     if not layout.gene_dendrogram:
         gb1 = 0
     if not layout.gene_label:
@@ -856,6 +859,8 @@ def calc_coords_for_layout(layout):
         ab2 = 0
     if not layout.array_cluster:
         ab3 = 0
+    gb1, gb2, gb3 = int(gb1), int(gb2), int(gb3)
+    ab1, ab2, ab3 = int(ab1), int(ab2), int(ab3)
 
     hm_width, hm_height = _safe_size(layout.heatmap)
     cb_width, cb_height = _safe_size(layout.colorbar)
@@ -1977,6 +1982,26 @@ def main():
         "--cb_width", type="float", default=1.0, 
         help="Scale the width of the colorbar by this factor.")
     
+    group = OptionGroup(parser, "Layout")
+    parser.add_option_group(group)
+    group.add_option(
+        "--scale_array_buffer1", default=1.0, type="float",
+        help="XXX.")
+    group.add_option(
+        "--scale_array_buffer2", default=1.0, type="float",
+        help="XXX.")
+    group.add_option(
+        "--scale_array_buffer3", default=1.0, type="float",
+        help="XXX.")
+    group.add_option(
+        "--scale_gene_buffer1", default=1.0, type="float",
+        help="XXX.")
+    group.add_option(
+        "--scale_gene_buffer2", default=1.0, type="float",
+        help="XXX.")
+    group.add_option(
+        "--scale_gene_buffer3", default=1.0, type="float",
+        help="XXX.")
     
 
     # Parse the input arguments.
@@ -1996,7 +2021,7 @@ def main():
         assert os.path.exists(options.annotate_pvalue)
     assert options.pvalue > 0 and options.pvalue <= 1.0
 
-    assert options.scale_border > 0 and options.scale_border < 5.0
+    assert options.scale_border > 0 and options.scale_border < 100.0
     border_color = 0, 0, 0
     # (0, 0, 0) is too dark for small box sizes.  100 looks too washed
     # out.  50-75 is about right.
@@ -2065,7 +2090,10 @@ def main():
         layout.heatmap.width(), layout.heatmap.height(),
         options.width, options.height)
 
-    coords = calc_coords_for_layout(layout)
+    coords = calc_coords_for_layout(
+        layout, options.scale_array_buffer1, options.scale_array_buffer2,
+        options.scale_array_buffer3, options.scale_gene_buffer1,
+        options.scale_gene_buffer2, options.scale_gene_buffer3)
     plot(
         outfile, MATRIX, MATRIX_p, cluster_data, plotlib, layout, coords,
         border_color, grid_color)

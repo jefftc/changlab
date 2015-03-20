@@ -360,6 +360,8 @@ def parse_geneset(MATRIX, is_row, geneset):
 
     keywds = {"allow_tdf": True}
     genes = genesetlib.read_genes(filename, *genesets, **keywds)
+    # No blank genes.
+    genes = [x for x in genes if x.strip()]
     params = {"row": genes}
     if not is_row:
         params = {"col": genes}
@@ -1391,6 +1393,7 @@ def select_row_genesets(MATRIX, genesets):
             del I[i]
         else:
             i += 1
+            
     return I
 
 
