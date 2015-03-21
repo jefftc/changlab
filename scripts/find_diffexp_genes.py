@@ -348,11 +348,13 @@ def main():
         description="Find differentially expressed genes.")
     parser.add_argument("expression_file", help="Gene expression file.")
 
-    parser.add_argument(
-        "-l", "--log_the_data", 
-        choices=["yes", "no", "auto"], default="auto",
-        help="Log the data before analyzing.  "
-        "Must be 'yes', 'no', or 'auto' (default).")
+    # DESeq2 should have raw counts data.
+
+    #parser.add_argument(
+    #    "-l", "--log_the_data", 
+    #    choices=["yes", "no", "auto"], default="auto",
+    #    help="Log the data before analyzing.  "
+    #    "Must be 'yes', 'no', or 'auto' (default).")
     #parser.add_argument(
     #    "--show_all_genes", default=False, action="store_true",
     #    help="List all the genes (default shows only p<0.05).")
@@ -380,7 +382,7 @@ def main():
         "paired with sample 6, 2 with 7, etc.")
     group.add_argument(
         "--fold_change", type=float, default=None,
-        help="Minimum change in gene expression.")
+        help="Minimum change in gene expression (without logged).")
     parser.add_argument(
         "--p_cutoff", default=None, type=float,
         help="Only keep genes with p-value less than this value.")
@@ -436,7 +438,11 @@ def main():
         assert args.p_cutoff > 0.0 and args.p_cutoff < 1.0
     if args.bonf_cutoff is not None:
         assert args.bonf_cutoff > 0.0 and args.bonf_cutoff < 1.0
-        
+    if args.algorithm == "fold_change":
+        assert not args.p_cutoff, "Cannot use p-value cutoff for fold change"
+        assert not args.fdr_cutoff, "Cannot use fdr cutoff for fold change"
+        assert not args.bonf_cutoff, \
+               "Cannot use Bonferroni cutoff for fold change"
     
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
@@ -456,16 +462,16 @@ def main():
 
     MATRIX = arrayio.read(args.expression_file)
 
-    log_data = False
-    if args.log_the_data == "yes":
-        log_data = True
-    elif args.log_the_data == "auto":
-        log_data = not binreg.is_logged_array_data(MATRIX)
-    if log_data:
-        MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
-        for i in range(len(MATRIX._X)):
-            for j in range(len(MATRIX._X[i])):
-                MATRIX._X[i][j] = max(MATRIX._X[i][j], 0)
+    #log_data = False
+    #if args.log_the_data == "yes":
+    #    log_data = True
+    #elif args.log_the_data == "auto":
+    #    log_data = not binreg.is_logged_array_data(MATRIX)
+    #if log_data:
+    #    MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+    #    for i in range(len(MATRIX._X)):
+    #        for j in range(len(MATRIX._X[i])):
+    #            MATRIX._X[i][j] = max(MATRIX._X[i][j], 0)
     
 
     # Make a CLS file, if necessary.
