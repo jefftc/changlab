@@ -128,7 +128,7 @@ def find_diffexp_genes(
     if algorithm in ["ttest", "deseq2"]:
         args.append("NPROCS=%d" % num_procs)  # t-test only
     #if show_all_genes and algorithm != "sam":
-    if algorithm != "sam":
+    if algorithm not in ["sam", "fold_change"]:
         args.append("filter.p05=FALSE")
 
 
@@ -177,33 +177,33 @@ def find_diffexp_genes(
         log_2_fc = math.log(fold_change, 2)
         DATA_py = [x for x in DATA_py if abs(x[I]) >= log_2_fc]
     if p_cutoff is not None:
-        name  = "NL10P"
+        name  = "p.value"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        nl10p_cutoff = -math.log(p_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I]) > nl10p_cutoff]
+        DATA_py = [x for x in DATA_py if float(x[I]) < p_cutoff]
     if fdr_cutoff is not None:
-        name  = "NL10 FDR"
+        name  = "FDR"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        nl10fdr_cutoff = -math.log(fdr_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I]) > nl10fdr_cutoff]
+        DATA_py = [x for x in DATA_py if float(x[I]) < fdr_cutoff]
     if bonf_cutoff is not None:
-        name  = "NL10 Bonf"
+        name  = "Bonf"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        nl10bonf_cutoff = -math.log(bonf_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I]) > nl10bonf_cutoff]
+        DATA_py = [x for x in DATA_py if float(x[I]) < bonf_cutoff]
 
-    # Sort by decreasing p-value.
-    name  = "NL10P"
-    if algorithm == "sam":
-        name = "Score(d)"
-    elif algorithm == "fold_change":
+    # Sort by increasing p-value, then decreasing fold change.
+    name  = "p.value"
+    direction = 1
+    #if algorithm == "sam":
+    #    name = "Score(d)"
+    if name not in header:
         name = "Log_2 Fold Change"
+        direction = -1
     assert name in header, 'I could not find the "%s" column.' % name
+    
     I = header.index(name)
-    schwartz = [(-float(x[I]), x) for x in DATA_py]
+    schwartz = [(direction*float(x[I]), x) for x in DATA_py]
     schwartz.sort()
     DATA_py = [x[-1] for x in schwartz]
 
