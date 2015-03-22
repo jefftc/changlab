@@ -47,6 +47,7 @@ def find_diffexp_genes(
         "ttest" : "find.de.genes.ttest",
         "sam" : "find.de.genes.sam",
         "ebayes" : "find.de.genes.ebayes",
+        "deseq2" : "find.de.genes.deseq2",
         }
     algorithm2function_paired = {
         "ebayes" : "find.de.genes.paired.ebayes",
@@ -124,7 +125,7 @@ def find_diffexp_genes(
     # multiple hypothesis correction.
     if fold_change is not None:
         args.append("FOLD.CHANGE=%g" % fold_change)
-    if algorithm == "ttest":
+    if algorithm in ["ttest", "deseq2"]:
         args.append("NPROCS=%d" % num_procs)  # t-test only
     #if show_all_genes and algorithm != "sam":
     if algorithm not in ["sam", "fold_change"]:
@@ -374,8 +375,8 @@ def main():
     group = parser.add_argument_group(title="Algorithm Parameters")
     group.add_argument(
         "--algorithm", 
-        choices=["ttest", "sam", "ebayes", "fold_change"], default="ebayes",
-        help="Which algorithm to use.")
+        choices=["fold_change", "ttest", "sam", "ebayes", "deseq2"],
+        default="ebayes", help="Which algorithm to use.")
     group.add_argument(
         "--paired", action="store_true",
         help="Do a paired analysis.  The same number of samples should be in "
