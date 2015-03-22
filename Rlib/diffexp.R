@@ -1,13 +1,19 @@
-# Functions:
+# Microarray data.
 # find.de.genes.fc
 # find.de.genes.ttest            Need to import statlib.R first.
 # find.de.genes.sam              Only shows significant genes.
 # find.de.genes.ebayes
 # find.de.genes.paired.ebayes
+#
+# Two-color arrays.  Comparing one color to another.
 # find.de.genes.2cnoref.ebayes   Two color, only one type of sample.
+#
+# RNA-Seq
+# find.de.genes.deseq2     Takes raw counts.
 
 # Input parameters:
-# X            Gene x sample matrix of logged expression values.
+# X            Gene x sample matrix of logged expression values, unless
+#              described otherwise.
 # Y            List of classes for each sample.  Can be names.
 #              Typically 2 classes only.  Will filter out NA.
 # geneid       Array of gene names.
@@ -49,7 +55,7 @@ matrix2dataframe <- function(M) {
   x
 }
 
-normalize.inputs <- function(X, Y, geneid, genenames) {
+normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
   # Return a list with members:
   # n            Number of genes.
   # m            Number of samples.
@@ -112,18 +118,31 @@ normalize.inputs <- function(X, Y, geneid, genenames) {
   
   # Calculate the MEAN expression for each group.
   MEAN <- matrix(NA, n, g)
-  for(i in 1:g)
-    MEAN[,i] <- apply(X.i[[i]], 1, mean) # will be NaN if empty matrix
+  for(i in 1:g) {
+    x <- X.i[[i]]
+    MEAN[,i] <- apply(x, 1, mean) # will be NaN if empty matrix
+  }
 
   # Calculate the VARIANCE of expression for each group.
   VAR <- matrix(NA, n, g)
-  for(i in 1:g)
-    VAR[,i] <- apply(X.i[[i]], 1, var) # will be NaN if empty matrix
+  for(i in 1:g) {
+    x <- X.i[[i]]
+    VAR[,i] <- apply(x, 1, var) # will be NaN if empty matrix
+  }
 
   # Fold change between groups 1 and 2.
   lFC.group12 <- NA
-  if(g == 2)
-    lFC.group12 <- abs(MEAN[,2] - MEAN[,1])
+  if(g == 2) {
+    if(X.is.logged) {
+      lFC.group12 <- abs(MEAN[,2] - MEAN[,1])
+    } else {
+      x1 <- log(X.i[[1]]+1E-300, 2)
+      x2 <- log(X.i[[2]]+1E-300, 2)
+      mean1 <- apply(x1, 1, mean)
+      mean2 <- apply(x2, 1, mean)
+      lFC.group12 <- abs(mean2 - mean1)
+    }
+  }
 
   # Figure out the highest group.
   x1 <- "Higher"
@@ -250,7 +269,7 @@ make.output.table <- function(IN, p.values, fdr, bonf, filter.p05) {
 
 
 find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0) {
-  IN <- normalize.inputs(X, Y, geneid, genenames)
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
   if(IN$g != 2) stop("Y should contain exactly 2 classes.")
   # Need at least 1 sample to calculate fold change.
   if(IN$NS[1] <= 1) stop("not enough samples")
@@ -268,10 +287,10 @@ find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0) {
 
 # requires statlib.R
 find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0, NPROCS=1, filter.p05=FALSE) {
+  FOLD.CHANGE=0, filter.p05=FALSE, NPROCS=1) {
   library(parallel)
 
-  IN <- normalize.inputs(X, Y, geneid, genenames)
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
   if(IN$g != 2) stop("Y should contain exactly 2 classes.")
   if(IN$NS[1] < 2) stop("not enough samples")
   if(IN$NS[2] < 2) stop("not enough samples")
@@ -316,7 +335,7 @@ find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA,
   # samr.plot(RESULTS$S, RESULTS$DELTA, min.foldchange=2)
   library("samr")
 
-  IN <- normalize.inputs(X, Y, geneid, genenames)
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
   if(IN$g != 2) stop("Y should contain exactly 2 classes.")
   if(IN$NS[1] < 2) stop("not enough samples")
   if(IN$NS[2] < 2) stop("not enough samples")
@@ -387,7 +406,7 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   # Zero sample variances detected, have been offset 
   library(limma)
 
-  IN <- normalize.inputs(X, Y, geneid, genenames)
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
   if(IN$g != 2) stop("Y should contain exactly 2 classes.")
   if(IN$NS[1] < 2) stop("not enough samples")
   if(IN$NS[2] < 2) stop("not enough samples")
@@ -435,7 +454,7 @@ find.de.genes.paired.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   FOLD.CHANGE=0, filter.p05=FALSE) {
   library(limma)
 
-  IN <- normalize.inputs(X, Y, geneid, genenames)
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
   if(IN$g != 2) stop("Y should contain exactly 2 classes.")
   if(IN$NS[1] < 2) stop("not enough samples")
   if(IN$NS[2] < 2) stop("not enough samples")
@@ -499,7 +518,7 @@ find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA,
   if(length(FOLD.CHANGE) != 1) stop("bad arguments")
 
   Y <- rep(1, ncol(X))  # All samples are the same class.
-  IN <- normalize.inputs(X, Y, geneid, genenames)
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
   if(IN$g != 1) stop("Should be only 1 class.")
 
   fit <- lmFit(IN$X)
@@ -528,3 +547,45 @@ find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA,
 }
 
 
+find.de.genes.deseq2 <- function(X, Y, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0, filter.p05=FALSE, NPROCS=1) {
+  # X should be unnormalized counts per gene
+  # summary(res)
+  # plotMA(res, main="DESeq2", ylim=c(-2,2))
+
+  library(DESeq2)
+  if(NPROCS > 1) {
+    library(BiocParallel)
+    register(MulticoreParam(NPROCS))
+  }
+
+  IN <- normalize.inputs(X, Y, geneid, genenames, FALSE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
+
+  IN <- filter.by.fold.change(IN, FOLD.CHANGE)
+  if(IN$n == 0) {
+    # No genes.  Return an empty matrix.
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA))
+  }
+
+  count.data <- IN$X
+  condition <- IN$group.names[IN$Y]
+  col.data <- data.frame(condition=condition)
+  dds <- DESeqDataSetFromMatrix(
+    countData=count.data, colData=col.data, design=~condition)  
+  dds.2 <- DESeq(dds)
+  res <- results(dds.2)
+  # Describes columns in res
+  # mcols(res)$description
+
+  p.value <- res[["pvalue"]]
+  fdr <- res[["padj"]]
+  bonf <- bonferroni.correct(p.value)
+
+  DATA <- make.output.table(IN, p.value, fdr, bonf, filter.p05)
+  DATA[["Log_2 Fold Change"]] <- abs(res[["log2FoldChange"]])
+  list(DATA=DATA, dds=dds.2, res=res)
+}

@@ -179,16 +179,19 @@ def find_diffexp_genes(
         name  = "p.value"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
+        # XXX NA
         DATA_py = [x for x in DATA_py if float(x[I]) < p_cutoff]
     if fdr_cutoff is not None:
         name  = "FDR"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
+        # XXX NA
         DATA_py = [x for x in DATA_py if float(x[I]) < fdr_cutoff]
     if bonf_cutoff is not None:
         name  = "Bonf"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
+        # XXX NA
         DATA_py = [x for x in DATA_py if float(x[I]) < bonf_cutoff]
 
     # Sort by increasing p-value, then decreasing fold change.
@@ -507,4 +510,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
+
