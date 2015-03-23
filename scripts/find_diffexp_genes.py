@@ -38,6 +38,8 @@ def find_diffexp_genes(
     import math
     import StringIO
     
+    from rpy2 import rinterface
+    
     from genomicode import config
     from genomicode import jmath
     from genomicode import genesetlib
@@ -155,11 +157,14 @@ def find_diffexp_genes(
         jmath.R_fn("samr.plot", jmath.R_var("S"), sam_DELTA)
         jmath.R_fn("dev.off")
 
-    # Convert this DataFrame into a Python object.
+    # Convert this DataFrame into a Python object.  Columns of floats
+    # can be StrVector objects if there are NA embedded within them.
+    # NA are special objects of either type
+    # rpy2.rinterface.NACharacterType or type
+    # rpy2.rinterface.NARealType.
     tDATA_py = []
-    for col_R in DATA_R:  # iterate over columns
-        col_py = [col_R[x] for x in range(len(col_R))]
-        # What if there is NA?
+    for zzz, col_R in enumerate(DATA_R):  # iterate over columns
+        col_py = [col_R[i] for i in range(len(col_R))]
         if col_R.__class__.__name__ == "StrVector":
             pass
         elif col_R.__class__.__name__ == "FloatVector":
@@ -168,7 +173,14 @@ def find_diffexp_genes(
             col_py = [int(x) for x in col_py]
         tDATA_py.append(col_py)
     DATA_py = jmath.transpose(tDATA_py)
-    header = [DATA_R.colnames[x] for x in range(DATA_R.ncol)]
+    header = [DATA_R.colnames[i] for i in range(DATA_R.ncol)]
+
+    # Convert NA to None.
+    for i in range(len(DATA_py)):
+        for j in range(len(DATA_py[i])):
+            if type(DATA_py[i][j]) in [
+                rinterface.NACharacterType, rinterface.NARealType]:
+                DATA_py[i][j] = None
 
     # Filter based on user criteria.
     if fold_change is not None:
@@ -176,22 +188,26 @@ def find_diffexp_genes(
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
         log_2_fc = math.log(fold_change, 2)
-        DATA_py = [x for x in DATA_py if abs(x[I]) >= log_2_fc]
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and abs(x[I]) >= log_2_fc]
     if p_cutoff is not None:
         name  = "p.value"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        DATA_py = [x for x in DATA_py if float(x[I]) < p_cutoff]
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < p_cutoff]
     if fdr_cutoff is not None:
         name  = "FDR"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        DATA_py = [x for x in DATA_py if float(x[I]) < fdr_cutoff]
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < fdr_cutoff]
     if bonf_cutoff is not None:
         name  = "Bonf"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        DATA_py = [x for x in DATA_py if float(x[I]) < bonf_cutoff]
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < bonf_cutoff]
 
     # Sort by increasing p-value, then decreasing fold change.
     name  = "p.value"
@@ -202,12 +218,24 @@ def find_diffexp_genes(
         name = "Log_2 Fold Change"
         direction = -1
     assert name in header, 'I could not find the "%s" column.' % name
-    
+
     I = header.index(name)
-    schwartz = [(direction*float(x[I]), x) for x in DATA_py]
+    #schwartz = [(direction*float(x[I]), x) for x in DATA_py]
+    values = [x[I] for x in DATA_py]
+    for i in range(len(values)):
+        if values[i] is None:
+            values[i] = direction*1E10
+        else:
+            values[i] = direction*float(values[i])
+    schwartz = zip(values, DATA_py)
     schwartz.sort()
     DATA_py = [x[-1] for x in schwartz]
 
+    # Convert None to "".
+    for i in range(len(DATA_py)):
+        for j in range(len(DATA_py[i])):
+            if DATA_py[i][j] is None:
+                DATA_py[i][j] = ""
 
     ## If no significant genes, then don't produce any output.
     ##if not DATA_py:
@@ -441,10 +469,12 @@ def main():
     if args.bonf_cutoff is not None:
         assert args.bonf_cutoff > 0.0 and args.bonf_cutoff < 1.0
     if args.algorithm == "fold_change":
-        assert not args.p_cutoff, "Cannot use p-value cutoff for fold change"
-        assert not args.fdr_cutoff, "Cannot use fdr cutoff for fold change"
+        assert not args.p_cutoff, \
+               "Cannot use p-value cutoff with fold change algorithm."
+        assert not args.fdr_cutoff, \
+               "Cannot use fdr cutoff with fold change algorithm."
         assert not args.bonf_cutoff, \
-               "Cannot use Bonferroni cutoff for fold change"
+               "Cannot use Bonferroni cutoff with fold change algorithm."
     
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
@@ -502,11 +532,11 @@ def main():
         name1, name2, classes,
         args.fold_change, args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
         args.sam_delta, args.sam_qq_file, args.num_procs)
-    #_run_forked(*args)
-    _run_not_forked(*args)  # for debugging
+    _run_forked(*args)
+    #_run_not_forked(*args)  # for debugging
         
 
 
 if __name__ == '__main__':
     main()
-    
+

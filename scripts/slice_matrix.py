@@ -82,6 +82,7 @@
 # move_row_annot
 # concat_row_annot
 #
+# rlog_blind
 # set_min_value
 # center_genes_mean
 # center_genes_median
@@ -2050,6 +2051,85 @@ def concat_row_annot(MATRIX, concat_row_annot):
     return MATRIX_clean
 
 
+def _rlog_blind_h(X, outfile):
+    from genomicode.jmath import start_R, R_fn, R_var, R_equals
+
+    assert len(X), "empty matrix"
+    assert len(X[0]), "empty matrix"
+    ncol = len(X[0])
+    assert ncol >= 2, "need at least 2 columns"
+    
+    R = start_R()
+    R_fn("library", "DESeq2")
+    R_equals(X, "X")
+    # Make up some dummy design data.
+    x = ["1"] + ["2"]*(ncol-1)
+    R_fn("data.frame", condition=x, RETVAL="col.data")
+    R_fn(
+        "DESeqDataSetFromMatrix", countData=R_var("X"),
+        colData=R_var("col.data"), design=R_var("~condition"), RETVAL="dds")
+    R_fn("rlog", R_var("dds"), blind=R_var("TRUE"), RETVAL="x")
+    R_fn("assay", R_var("x"), RETVAL="x")
+    log_X_R = R["x"]
+
+    # Convert this matrix into a Python object.  This matrix is
+    # column-major.
+    log_X_py = [[None]*log_X_R.ncol for i in range(log_X_R.nrow)]
+    zzz = 0
+    for j in range(log_X_R.ncol):
+        for i in range(log_X_R.nrow):
+            log_X_py[i][j] = log_X_R[zzz]
+            zzz += 1
+
+    # Write log_X_py to an outfile.
+    handle = open(outfile, 'w')
+    for x in log_X_py:
+        print >>handle, "\t".join(map(str, x))
+    handle.close()
+
+
+def rlog_blind(X):
+    # Fork a subprocess, because some R libraries generate garbage to
+    # the screen.
+    import os
+    import sys
+    import tempfile
+
+    outfile = pid = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        r, w = os.pipe()
+        pid = os.fork()
+        if pid:   # Parent
+            os.close(w)
+            r = os.fdopen(r)
+            for line in r:
+                pass
+                #sys.stdout.write(line)   # output from R library
+            os.waitpid(pid, 0)
+
+            assert os.path.exists(outfile), "failed"
+            X_rlog = []
+            for line in open(outfile):
+                x = line.rstrip("\r\n").split("\t")
+                x = map(float, x)
+                X_rlog.append(x)
+        else:     # Child
+            os.close(r)
+            w = os.fdopen(w, 'w')
+            os.dup2(w.fileno(), sys.stdout.fileno())
+            _rlog_blind_h(X, outfile)
+            sys.exit(0)
+    finally:
+        if pid:
+            if outfile and os.path.exists(outfile):
+                os.unlink(outfile)
+    return X_rlog
+    
+
 def set_min_value(MATRIX, value):
     MATRIX = [x[:] for x in MATRIX]  # Make a copy.
     for i in range(len(MATRIX)):
@@ -2148,10 +2228,9 @@ def zero_fill_genes(MATRIX):
                 X[i][j] = 0.0
 
 def _loess_normalize(X):
-    from genomicode import jmath
-    from genomicode.jmath import R_fn, R_var, R_equals
+    from genomicode.jmath import start_R, R_fn, R_var, R_equals
 
-    R = jmath.start_R()
+    R = start_R()
     R_fn("library", "affy")
     R_equals(X, "X")
     R_fn(
@@ -2495,6 +2574,11 @@ def main():
         "-l", "--log_transform", dest="log_transform", default=False,
         action="store_true",
         help="Log transform the data.")
+    group.add_argument(
+        "--rlog_blind", action="store_true",
+        help="Do a regularized log transformation (from DESeq2).  "
+        "Use BLIND most genes should not change across not affected across "
+        "data set.")
     group.add_argument(
         "-q", "--quantile", dest="quantile", action="store_true",
         default=False,
@@ -3033,6 +3117,8 @@ def main():
     # expression values (quantile, center, normalize).
     if args.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+    if args.rlog_blind:
+        MATRIX._X = rlog_blind(MATRIX._X)
 
     # Median fill.  Do after logging, but before quantile, centering,
     # and normalizing.
