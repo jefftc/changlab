@@ -36,8 +36,6 @@
 # Other specific to the method.
 
 
-# XXX rename all.genes parameter
-
 
 
 matrix2dataframe <- function(M) {
