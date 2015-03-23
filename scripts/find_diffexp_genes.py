@@ -48,6 +48,7 @@ def find_diffexp_genes(
         "sam" : "find.de.genes.sam",
         "ebayes" : "find.de.genes.ebayes",
         "deseq2" : "find.de.genes.deseq2",
+        "edger" : "find.de.genes.edgeR",
         }
     algorithm2function_paired = {
         "ebayes" : "find.de.genes.paired.ebayes",
@@ -372,7 +373,7 @@ def main():
     group = parser.add_argument_group(title="Algorithm Parameters")
     group.add_argument(
         "--algorithm", 
-        choices=["fold_change", "ttest", "sam", "ebayes", "deseq2"],
+        choices=["fold_change", "ttest", "sam", "ebayes", "deseq2", "edger"],
         default="ebayes", help="Which algorithm to use.")
     group.add_argument(
         "--paired", action="store_true",
