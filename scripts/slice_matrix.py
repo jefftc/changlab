@@ -58,6 +58,7 @@
 # select_row_numeric_annotation
 # select_row_nonempty
 # select_row_maxvalue
+# select_row_mean_value
 # select_row_mean_var
 # select_row_missing_values
 # select_row_var
@@ -1506,6 +1507,23 @@ def select_row_maxvalue(MATRIX, maxvalue):
     return I
 
 
+def select_row_mean_value(MATRIX, mean_value):
+    from genomicode import jmath
+    
+    if mean_value is None:
+        return None
+    mean_value = float(mean_value)
+    assert mean_value >= 0 and mean_value < 10000
+
+    means = jmath.mean(MATRIX._X)
+    assert len(means) == len(MATRIX._X)
+    I = []
+    for i in range(len(means)):
+        if means[i] >= mean_value:
+            I.append(i)
+    return I
+
+
 def select_row_mean_var(MATRIX, filter_mean, filter_var):
     from genomicode import pcalib
     if filter_mean is None and filter_var is None:
@@ -2924,6 +2942,9 @@ def main():
         "with the highest variance.  The value of this parameter should "
         "be the header of the column that contains duplicate annotations.")
     group.add_argument(
+        "--select_row_mean_value", default=None, type=float,
+        help="Keep only the rows where the mean is at least this number.")
+    group.add_argument(
         "--select_row_var", default=None, type=int,
         help="Keep this number of rows with the highest variance.")
     group.add_argument(
@@ -3063,19 +3084,20 @@ def main():
     I08 = _intersect_indexes(*x)
     I09 = select_row_nonempty(MATRIX, args.select_row_nonempty)
     I10 = select_row_maxvalue(MATRIX, args.select_row_maxvalue)
-    I11 = select_row_mean_var(
+    I11 = select_row_mean_value(MATRIX, args.select_row_mean_value)
+    I12 = select_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I12 = select_row_var(MATRIX, args.select_row_var)
-    I13 = select_row_delta(MATRIX, args.select_row_delta)
-    I14 = select_row_fc(MATRIX, args.select_row_fc)
-    I15 = select_row_num_samples_fc(
-        MATRIX, args.select_row_num_samples_fc_mean, use_median=False)
+    I13 = select_row_var(MATRIX, args.select_row_var)
+    I14 = select_row_delta(MATRIX, args.select_row_delta)
+    I15 = select_row_fc(MATRIX, args.select_row_fc)
     I16 = select_row_num_samples_fc(
+        MATRIX, args.select_row_num_samples_fc_mean, use_median=False)
+    I17 = select_row_num_samples_fc(
         MATRIX, args.select_row_num_samples_fc_median, use_median=True)
-    I17 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I18 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
         I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13,
-        I14, I15, I16, I17)
+        I14, I15, I16, I17, I18)
 
     I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
