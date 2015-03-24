@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 # Functions:
-# _clean
 # read_matrices
 # has_missing_values
 # num_missing_values
@@ -83,6 +82,7 @@
 # concat_row_annot
 #
 # rlog_blind
+# calc_cpm
 # set_min_value
 # center_genes_mean
 # center_genes_median
@@ -99,8 +99,10 @@
 # _align_matrix_to_geneset         DEPRECATED
 # _find_col_header                 DEPRECATED
 #
+# _clean
 # _intersect_indexes
 # _dedup_indexes
+# _run_forked
 
 import os
 import sys
@@ -2091,44 +2093,82 @@ def _rlog_blind_h(X, outfile):
 def rlog_blind(X):
     # Fork a subprocess, because some R libraries generate garbage to
     # the screen.
-    import os
-    import sys
     import tempfile
 
-    outfile = pid = None
+    outfile = None
     try:
         x, outfile = tempfile.mkstemp(dir="."); os.close(x)
         if os.path.exists(outfile):
             os.unlink(outfile)
 
-        r, w = os.pipe()
-        pid = os.fork()
-        if pid:   # Parent
-            os.close(w)
-            r = os.fdopen(r)
-            for line in r:
-                pass
-                #sys.stdout.write(line)   # output from R library
-            os.waitpid(pid, 0)
+        _run_forked(_rlog_blind_h, (X, outfile), {})
 
-            assert os.path.exists(outfile), "failed"
-            X_rlog = []
-            for line in open(outfile):
-                x = line.rstrip("\r\n").split("\t")
-                x = map(float, x)
-                X_rlog.append(x)
-        else:     # Child
-            os.close(r)
-            w = os.fdopen(w, 'w')
-            os.dup2(w.fileno(), sys.stdout.fileno())
-            _rlog_blind_h(X, outfile)
-            sys.exit(0)
+        assert os.path.exists(outfile), "failed"
+        X_rlog = []
+        for line in open(outfile):
+            x = line.rstrip("\r\n").split("\t")
+            x = map(float, x)
+            X_rlog.append(x)
     finally:
-        if pid:
-            if outfile and os.path.exists(outfile):
-                os.unlink(outfile)
+        if FORKED_PID and outfile and os.path.exists(outfile):
+            os.unlink(outfile)
     return X_rlog
+
+
+def _calc_cpm_h(X, outfile):
+    from genomicode.jmath import start_R, R_fn, R_var, R_equals
+
+    assert len(X), "empty matrix"
+    assert len(X[0]), "empty matrix"
+
+    R = start_R()
+    R_fn("library", "edgeR")
+    R_equals(X, "X")
+    R_fn("DGEList", counts=R_var("X"), RETVAL="dge")
+    R_fn("cpm", R_var("dge"), RETVAL="x")
+    log_X_R = R["x"]
+
+    # Convert this matrix into a Python object.  This matrix is
+    # column-major.
+    log_X_py = [[None]*log_X_R.ncol for i in range(log_X_R.nrow)]
+    zzz = 0
+    for j in range(log_X_R.ncol):
+        for i in range(log_X_R.nrow):
+            log_X_py[i][j] = log_X_R[zzz]
+            zzz += 1
+            
+    # Write log_X_py to an outfile.
+    handle = open(outfile, 'w')
+    for x in log_X_py:
+        print >>handle, "\t".join(map(str, x))
+    handle.close()
     
+
+def calc_cpm(X):
+    # Fork a subprocess, because some R libraries generate garbage to
+    # the screen.
+    import tempfile
+
+    outfile = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        _run_forked(_calc_cpm_h, (X, outfile), {})
+
+        assert os.path.exists(outfile), "failed (%s)" % outfile
+        X_rlog = []
+        for line in open(outfile):
+            x = line.rstrip("\r\n").split("\t")
+            x = map(float, x)
+            X_rlog.append(x)
+    finally:
+        # Only delete in parent.
+        if FORKED_PID and outfile and os.path.exists(outfile):
+            os.unlink(outfile)
+    return X_rlog
+
 
 def set_min_value(MATRIX, value):
     MATRIX = [x[:] for x in MATRIX]  # Make a copy.
@@ -2518,6 +2558,32 @@ def _dedup_indexes(I):
     return I
 
 
+FORKED_PID = None
+def _run_forked(fn, args, keywds):
+    global FORKED_PID
+    import os
+    import sys
+
+    r, w = os.pipe()
+    pid = os.fork()
+    FORKED_PID = pid
+    if pid:   # Parent
+        os.close(w)
+        r = os.fdopen(r)
+        output = r.read()
+        #for line in r:
+        #    pass
+        #    #sys.stdout.write(line)   # output from R library
+        os.waitpid(pid, 0)
+    else:     # Child
+        os.close(r)
+        w = os.fdopen(w, 'w')
+        os.dup2(w.fileno(), sys.stdout.fileno())
+        fn(*args, **keywds)
+        sys.exit(0)
+    return output
+
+
 def main():
     import argparse
     import arrayio
@@ -2577,12 +2643,15 @@ def main():
     group.add_argument(
         "--rlog_blind", action="store_true",
         help="Do a regularized log transformation (from DESeq2).  "
-        "Use BLIND most genes should not change across not affected across "
+        "Use BLIND: most genes should not change expression across "
         "data set.")
     group.add_argument(
         "-q", "--quantile", dest="quantile", action="store_true",
         default=False,
         help="Quantile normalize the data.")
+    group.add_argument(
+        "--cpm", action="store_true", help="Convert raw counts for NGS data "
+        "into CPM (Uses edgeR package).")
     group.add_argument(
         "--loess", action="store_true", help="Loess normalize the data.")
     group.add_argument(
@@ -3119,6 +3188,9 @@ def main():
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
     if args.rlog_blind:
         MATRIX._X = rlog_blind(MATRIX._X)
+
+    if args.cpm:
+        MATRIX._X = calc_cpm(MATRIX._X)
 
     # Median fill.  Do after logging, but before quantile, centering,
     # and normalizing.

@@ -31,7 +31,7 @@ def find_diffexp_genes(
     outfile, gmt_file, algorithm, paired,
     MATRIX, geneid_header, genename_header, 
     name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff, 
-    sam_DELTA, sam_qq_file, num_procs):
+    sam_DELTA, sam_qq_file, edger_tagwise_dispersion, num_procs):
     # classes must be 0, 1, None.
     import os
     import sys
@@ -133,7 +133,11 @@ def find_diffexp_genes(
     #if show_all_genes and algorithm != "sam":
     if algorithm not in ["sam", "fold_change"]:
         args.append("filter.p05=FALSE")
-
+    if algorithm == "edger":
+        if edger_tagwise_dispersion:
+            args.append("tagwise.dispersion=TRUE")
+        else:
+            args.append("tagwise.dispersion=FALSE")
 
     # Prevent SAM from writing junk to the screen.
     handle = StringIO.StringIO()
@@ -307,7 +311,7 @@ def find_diffexp_genes(
 def _run_forked(
         gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
         name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
-        sam_delta, sam_qq_file, num_procs):
+        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
     import os
     import sys
     import tempfile
@@ -341,7 +345,7 @@ def _run_forked(
                 MATRIX, geneid_header, genename_header, 
                 name1, name2, classes,
                 fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
-                sam_delta, sam_qq_file, num_procs)
+                sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
             sys.exit(0)
     finally:
         if pid:
@@ -352,7 +356,7 @@ def _run_forked(
 def _run_not_forked(
         gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
         name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
-        sam_delta, sam_qq_file, num_procs):
+        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
     import sys
     outfile = sys.stdout
 
@@ -361,7 +365,7 @@ def _run_not_forked(
         MATRIX, geneid_header, genename_header, 
         name1, name2, classes,
         fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
-        sam_delta, sam_qq_file, num_procs)
+        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
         
 
 def main():
@@ -398,40 +402,6 @@ def main():
     parser.add_argument(
         "--gmt_file", help="Save the results in GMT format.")
     
-    group = parser.add_argument_group(title="Algorithm Parameters")
-    group.add_argument(
-        "--algorithm", 
-        choices=["fold_change", "ttest", "sam", "ebayes", "deseq2", "edger"],
-        default="ebayes", help="Which algorithm to use.")
-    group.add_argument(
-        "--paired", action="store_true",
-        help="Do a paired analysis.  The same number of samples should be in "
-        "each group.  Assumes that the samples should be paired in the same "
-        "order that they occur in the file.  For example, if samples 1-5 are "
-        "in group 1 and samples 6-10 are in group 2, then sample 1 will be "
-        "paired with sample 6, 2 with 7, etc.")
-    group.add_argument(
-        "--fold_change", type=float, default=None,
-        help="Minimum change in gene expression (without logged).")
-    parser.add_argument(
-        "--p_cutoff", default=None, type=float,
-        help="Only keep genes with p-value less than this value.")
-    parser.add_argument(
-        "--fdr_cutoff", default=None, type=float,
-        help="Only keep genes with FDR less than this value.")
-    parser.add_argument(
-        "--bonf_cutoff", default=None, type=float,
-        help="Only keep genes with BONFERRONI less than this value.")
-    
-
-    group = parser.add_argument_group(title="Algorithm-specific Parameters")
-    group.add_argument(
-        "--sam_delta", type=float, default=1.0,
-        help="DELTA parameter for SAM analysis.  (Default 1.0).")
-    group.add_argument(
-        "--sam_qq_file", default=None, help="File (PNG) for QQ plot for SAM.")
-    
-
     group = parser.add_argument_group(title="Class Labels")
     group.add_argument(
         "--cls_file", default=None, help="Class label file.")
@@ -450,13 +420,48 @@ def main():
     group.add_argument("--name1", default=None, help="Name for class 1.")
     group.add_argument("--name2", default=None, help="Name for class 2.")
 
+    group = parser.add_argument_group(title="Cutoffs")
+    group.add_argument(
+        "--fold_change", type=float, default=None,
+        help="Minimum change in gene expression (without logged).  ")
+    parser.add_argument(
+        "--p_cutoff", default=None, type=float,
+        help="Only keep genes with p-value less than this value.")
+    parser.add_argument(
+        "--fdr_cutoff", default=None, type=float,
+        help="Only keep genes with FDR less than this value.")
+    parser.add_argument(
+        "--bonf_cutoff", default=None, type=float,
+        help="Only keep genes with BONFERRONI less than this value.")
+    
+    group = parser.add_argument_group(title="Algorithm-specific Parameters")
+    group.add_argument(
+        "--algorithm", 
+        choices=["fold_change", "ttest", "sam", "ebayes", "deseq2", "edger"],
+        default="ebayes", help="Which algorithm to use.")
+    group.add_argument(
+        "--paired", action="store_true",
+        help="Do a paired analysis.  The same number of samples should be in "
+        "each group.  Assumes that the samples should be paired in the same "
+        "order that they occur in the file.  For example, if samples 1-5 are "
+        "in group 1 and samples 6-10 are in group 2, then sample 1 will be "
+        "paired with sample 6, 2 with 7, etc.")
+    group.add_argument(
+        "--sam_delta", type=float, default=1.0,
+        help="DELTA parameter for SAM analysis.  (Default 1.0).")
+    group.add_argument(
+        "--sam_qq_file", help="File (PNG) for QQ plot for SAM.")
+    group.add_argument(
+        "--edger_tagwise_dispersion", action="store_true",
+        help="Use tagwise rather than common dispersion.")
+
+
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
         "File not found: %s" % args.expression_file
     assert args.num_procs >= 1 and args.num_procs < 100
     if args.fold_change is not None:
         assert args.fold_change >= 0 and args.fold_change < 1000
-    assert args.sam_delta > 0 and args.sam_delta < 100
     if args.fdr_cutoff is not None:
         assert args.fdr_cutoff > 0.0 and args.fdr_cutoff < 1.0
         assert args.p_cutoff is None, "Cannot have both FDR and p cutoff."
@@ -476,6 +481,10 @@ def main():
         assert not args.bonf_cutoff, \
                "Cannot use Bonferroni cutoff with fold change algorithm."
     
+    assert args.sam_delta > 0 and args.sam_delta < 100
+    if args.edger_tagwise_dispersion:
+        assert args.algorithm == "edger", "tagwise dispersion only for edgeR"
+
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
         "Must provide either CLS file or indexes.")
@@ -531,7 +540,8 @@ def main():
         args.geneid_header, args.genename_header,
         name1, name2, classes,
         args.fold_change, args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
-        args.sam_delta, args.sam_qq_file, args.num_procs)
+        args.sam_delta, args.sam_qq_file, args.edger_tagwise_dispersion,
+        args.num_procs)
     _run_forked(*args)
     #_run_not_forked(*args)  # for debugging
         

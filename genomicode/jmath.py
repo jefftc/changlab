@@ -77,7 +77,6 @@ apply
 match    Return list of indexes of matches from list1 in list2.
 
 """
-import os, sys
 import math
 
 class _fn:
@@ -1036,11 +1035,31 @@ def shapiro_test(data):
 R = robjects = None
 def start_R():
     global R, robjects
+    import os
+
+    # No.  This doesn't seem to have any effect.
+    # Set the LD_LIBRARY_PATH.  Somehow the R library path doesn't get
+    # set up correctly when using rpy2.
+    #PATHS = [
+    #    "/usr/local/lib64/R/lib",
+    #    "/usr/local/lib64",
+    #    "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.34.x86_64/jre/lib/amd64/server"
+    #    ]
+    #
+    #LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH", "")
+    #paths = LD_LIBRARY_PATH.split(":")
+    #for x in PATHS:
+    #    if x not in paths:
+    #        paths.append(x)
+    #paths = [x for x in paths if x and os.path.exists(x)]
+    #LD_LIBRARY_PATH = ":".join(paths)
+    #os.environ["LD_LIBRARY_PATH"] = LD_LIBRARY_PATH
+    
     if R is None:
         #import rpy
         #R = rpy.r
         import rpy2.robjects as robjects
-        robjects = robjects
+        robjects = robjects   # So pychecker won't complain.
         R = robjects.r
     return R
 
@@ -1431,6 +1450,7 @@ try:
 except ImportError:
     pass
 else:
+    import sys
     this_module = sys.modules[__name__]
     this_dict, cjmath_dict = this_module.__dict__, cjmath.__dict__
     for name in cjmath_dict:

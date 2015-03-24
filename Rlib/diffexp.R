@@ -9,7 +9,8 @@
 # find.de.genes.2cnoref.ebayes   Two color, only one type of sample.
 #
 # RNA-Seq
-# find.de.genes.deseq2     Takes raw counts.
+# find.de.genes.deseq2     Takes raw counts.  FOLD.CHANGE not accurate.
+# find.de.genes.edgeR      Takes raw counts.  FOLD.CHANGE not accurate.
 
 # Input parameters:
 # X            Gene x sample matrix of logged expression values, unless
@@ -437,12 +438,12 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
 
   p.value <- TOP[["P.Value"]]
   fdr <- TOP[["adj.P.Val"]]
-  bonf <- bonferroni.correct(p.value)
+  #bonf <- bonferroni.correct(p.value)
 
   I <- as.numeric(rownames(TOP))
   IN <- slice.by.genes(IN, I)
 
-  DATA <- make.output.table(IN, p.value, fdr, bonf, filter.p05)
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
   list(DATA=DATA, TOP=TOP)
 }
 
@@ -501,9 +502,9 @@ find.de.genes.paired.ebayes <- function(X, Y, geneid=NA, genenames=NA,
 
   p.value <- TOP[["P.Value"]]
   fdr <- TOP[["adj.P.Val"]]
-  bonf <- bonferroni.correct(p.value)
+  #bonf <- bonferroni.correct(p.value)
 
-  DATA <- make.output.table(IN, p.value, fdr, bonf, filter.p05)
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
   list(DATA=DATA, fit=fit2, TOP=TOP)
 }
 
@@ -538,9 +539,9 @@ find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA,
 
   p.value <- TOP[["P.Value"]]
   fdr <- TOP[["adj.P.Val"]]
-  bonf <- bonferroni.correct(p.value)
+  #bonf <- bonferroni.correct(p.value)
 
-  DATA <- make.output.table(IN, p.value, fdr, bonf, filter.p05)
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
   list(DATA=DATA, fit=fit2, TOP=TOP)
 }
 
@@ -581,9 +582,54 @@ find.de.genes.deseq2 <- function(X, Y, geneid=NA, genenames=NA,
 
   p.value <- res[["pvalue"]]
   fdr <- res[["padj"]]
-  bonf <- bonferroni.correct(p.value)
+  #bonf <- bonferroni.correct(p.value)
 
-  DATA <- make.output.table(IN, p.value, fdr, bonf, filter.p05)
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
   DATA[["Log_2 Fold Change"]] <- abs(res[["log2FoldChange"]])
   list(DATA=DATA, dds=dds.2, res=res)
+}
+
+
+find.de.genes.edgeR <- function(X, Y, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0, filter.p05=FALSE, tagwise.dispersion=TRUE) {
+  # X should be unnormalized counts per gene
+  # Use tagwise dispersion if there are enough replicates to estimate
+  # the dispersion for individual genes (or try them both).
+
+  library(edgeR)
+
+  IN <- normalize.inputs(X, Y, geneid, genenames, FALSE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
+
+  IN <- filter.by.fold.change(IN, FOLD.CHANGE)
+  if(IN$n == 0) {
+    # No genes.  Return an empty matrix.
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA))
+  }
+
+  group <- factor(IN$Y)
+  dge <- DGEList(counts=IN$X, group=group)
+  # Normalize by TMM.
+  dge <- calcNormFactors(dge)
+  dge <- estimateCommonDisp(dge)
+  if(tagwise.dispersion)
+    # OPTIONAL: Do tagwise, rather than common dispersion.
+    dge <- estimateTagwiseDisp(dge)
+  et <- exactTest(dge)
+  top <- topTags(et, n=Inf)
+
+  O <- order(as.numeric(rownames(top$table)))
+  top.table <- top$table[O,]
+
+  if(IN$n != nrow(top.table)) stop("unaligned")
+  p.value <- top.table$PValue
+  fdr <- top.table$FDR
+  #bonf <- bonferroni.correct(p.value)
+
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
+  DATA[["Log_2 Fold Change"]] <- abs(top.table$logFC)
+  list(DATA=DATA, dge=dge, top=top)
 }
