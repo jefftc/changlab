@@ -6,6 +6,7 @@
 # ryb.colors            From red, yellow, blue colorwheel.
 # matlab.colors         Default Matlab "jet" colors.
 # matlab.hot.colors
+# broad.colors
 # bild.colors           Andrea's version of the "jet" colors.
 # yahoo.weather.colors  Like Yahoo Weather Map.
 # genespring.colors
@@ -132,6 +133,25 @@ matlab.hot.colors <- function(n) {
     c(0.738, 255, 255,   0),
     c(1.000, 255, 255, 255)),
     4, 5))
+  sapply((0:(n-1))/(n-1), function(x) matrix2rgb(cmatrix, x))
+}
+
+broad.colors <- function(n) {
+  if(n <= 0) stop("n must be greater than 0")
+  cmatrix <- t(matrix(c(
+    c(0.000,  69,   0, 173),
+    c(0.091,  39,   0, 209),
+    c(0.182, 107,  88, 239),
+    c(0.273, 136, 136, 255),
+    c(0.364, 199, 193, 255),
+    c(0.455, 213, 213, 255),
+    c(0.545, 255, 192, 229),
+    c(0.636, 255, 137, 137),
+    c(0.727, 255, 112, 128),
+    c(0.818, 255,  90,  90),
+    c(0.909, 239,  64,  64),
+    c(1.000, 214,  12,   0)),
+    nrow=4))
   sapply((0:(n-1))/(n-1), function(x) matrix2rgb(cmatrix, x))
 }
 

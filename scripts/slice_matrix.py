@@ -45,7 +45,8 @@
 # add_prefix_col_ids
 # add_suffix_col_ids
 #
-# tcga_solid_tumor_only
+# tcga_primary_tumor_only
+# tcga_metastasis_only
 # tcga_relabel_patient_barcodes
 #
 # select_row_indexes
@@ -1245,7 +1246,7 @@ def _parse_tcga_barcode(barcode):
     return patient, sample, aliquot, analyte
 
 
-def tcga_solid_tumor_only(MATRIX, cancer_only, ignore_non_tcga):
+def tcga_primary_tumor_only(MATRIX, cancer_only, ignore_non_tcga):
     from arrayio import tab_delimited_format as tdf
 
     if not cancer_only:
@@ -1268,6 +1269,34 @@ def tcga_solid_tumor_only(MATRIX, cancer_only, ignore_non_tcga):
         sample = int(sample[:2])
         assert sample >= 1
         if sample == 1:
+            I.append(i)
+    x = MATRIX.matrix(None, I)
+    return x
+
+
+def tcga_metastasis_only(MATRIX, cancer_only, ignore_non_tcga):
+    from arrayio import tab_delimited_format as tdf
+
+    if not cancer_only:
+        return MATRIX
+    assert tdf.SAMPLE_NAME in MATRIX.col_names()
+    barcodes = MATRIX.col_names(tdf.SAMPLE_NAME)
+    I = []
+    for i, barcode in enumerate(barcodes):
+        try:
+            x = _parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+                I.append(i)
+                continue
+            raise
+        patient, sample, aliquot, analyte = x
+        assert sample is not None, "sample missing from barcode"
+        assert len(sample) >= 2
+        sample = int(sample[:2])
+        assert sample >= 1
+        if sample == 6:  # also keep 7, additional metastatic?
             I.append(i)
     x = MATRIX.matrix(None, I)
     return x
@@ -2855,8 +2884,11 @@ def main():
 
     group = parser.add_argument_group(title="TCGA barcode operations")
     group.add_argument(
-        "--tcga_solid_tumor_only", default=False, action="store_true",
-        help="Keep only the columns that contain cancer samples.")
+        "--tcga_primary_tumor_only", default=False, action="store_true",
+        help="Keep only the columns that contain primary solid tumor.")
+    group.add_argument(
+        "--tcga_metastasis_only", default=False, action="store_true",
+        help="Keep only the columns that contain metastatic tumor.")
     group.add_argument(
         "--tcga_relabel_patient_barcodes", default=False, action="store_true",
         help="Sample names should be patient barcodes.")
@@ -3177,8 +3209,10 @@ def main():
     MATRIX = hash_col_ids(MATRIX, args.hash_col_ids)
 
     # Filter TCGA columns.
-    MATRIX = tcga_solid_tumor_only(
-        MATRIX, args.tcga_solid_tumor_only, args.ignore_non_tcga)
+    MATRIX = tcga_primary_tumor_only(
+        MATRIX, args.tcga_primary_tumor_only, args.ignore_non_tcga)
+    MATRIX = tcga_metastasis_only(
+        MATRIX, args.tcga_metastasis_only, args.ignore_non_tcga)
     MATRIX = tcga_relabel_patient_barcodes(
         MATRIX, args.tcga_relabel_patient_barcodes, args.ignore_non_tcga)
 
