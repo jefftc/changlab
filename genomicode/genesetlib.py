@@ -360,6 +360,16 @@ def detect_format(filename):
     for i in range(len(matrix)):
         matrix[i] = [x.strip() for x in matrix[i]]
 
+    # If the last column is blank, remove it.
+    last_column_blank = True
+    for x in matrix:
+        if x[-1] != "":
+            last_column_blank = False
+            break
+    if last_column_blank:
+        for i in range(len(matrix)):
+            matrix[i] = matrix[i][:-1]
+
     # Both the GMX or GMT formats may have different number of columns
     # in each row.  Align the rows so they have the same number of
     # columns.
@@ -444,10 +454,10 @@ def detect_format(filename):
         DEBUG = "detect_format spaces in row1 and col1"
         return None
     if not spaces_in_row1 and spaces_in_col1:
-        DEBUG = "detect_format spaces"
+        DEBUG = "detect_format spaces col"
         return GMX
     if not spaces_in_col1 and spaces_in_row1:
-        DEBUG = "detect_format spaces"
+        DEBUG = "detect_format spaces row"
         return GMT
 
     # Most likely, there will be different numbers of genes per gene
