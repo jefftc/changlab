@@ -197,6 +197,33 @@ def read_geneset_scores(filename):
     assert os.path.exists(filename)
     matrix = [x for x in filelib.read_cols(filename)]
     matrix = jmath.transpose(matrix)
+
+    # Only want the scores.  Get rid of the direction, pvalue, and
+    # significance lines.
+    # Columns:
+    # SAMPLE
+    # FILE
+    # [Score ...]
+    # [Direction ...] " direction"
+    # [p value ...] " pvalue"
+    # [significant ...] " significant"
+    assert matrix
+    i = 0
+    while i < len(matrix):
+        assert matrix[i]
+        metadata = False
+        if matrix[i][0].endswith(" direction"):
+            metadata = True
+        elif matrix[i][0].endswith(" pvalue"):
+            metadata = True
+        elif matrix[i][0].endswith(" significant"):
+            metadata = True
+        if not metadata:
+            i += 1
+            continue
+        del matrix[i]
+            
+    
     # BUG: Need more checks on size and format of matrix.
     col_names = {}
     sample_row = 0
