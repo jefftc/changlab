@@ -423,14 +423,14 @@ def main():
     group = parser.add_argument_group(title="Cutoffs")
     group.add_argument(
         "--fold_change", type=float, default=None,
-        help="Minimum change in gene expression (without logged).  ")
-    parser.add_argument(
+        help="Minimum change in gene expression (without log).  ")
+    group.add_argument(
         "--p_cutoff", default=None, type=float,
         help="Only keep genes with p-value less than this value.")
-    parser.add_argument(
+    group.add_argument(
         "--fdr_cutoff", default=None, type=float,
         help="Only keep genes with FDR less than this value.")
-    parser.add_argument(
+    group.add_argument(
         "--bonf_cutoff", default=None, type=float,
         help="Only keep genes with BONFERRONI less than this value.")
     

@@ -57,17 +57,30 @@ DATABASE2GENESET = {
     ## "computational" : "c4.all.v3.0.symbols.gmt",
     ## "gene_ontology" : "c5.all.v3.0.symbols.gmt",
     ## "gene_ontology:process" : "c5.bp.v3.0.symbols.gmt",
-    "positional" : "c1.all.v4.0.symbols.gmt",
-    "curated" : "c2.all.v4.0.symbols.gmt",
-    "curated:canonical" : "c2.cp.v4.0.symbols.gmt",
-    "curated:biocarta" : "c2.cp.biocarta.v4.0.symbols.gmt",
-    "curated:kegg" : "c2.cp.kegg.v4.0.symbols.gmt",
-    "curated:reactome" : "c2.cp.reactome.v4.0.symbols.gmt",
-    "motif" : "c3.all.v4.0.symbols.gmt",
-    "motif:tfactor" : "c3.tft.v4.0.symbols.gmt",
-    "computational" : "c4.all.v4.0.symbols.gmt",
-    "gene_ontology" : "c5.all.v4.0.symbols.gmt",
-    "gene_ontology:process" : "c5.bp.v4.0.symbols.gmt",
+    
+    ## "positional" : "c1.all.v4.0.symbols.gmt",
+    ## "curated" : "c2.all.v5.0.symbols.gmt",
+    ## "curated:canonical" : "c2.cp.v4.0.symbols.gmt",
+    ## "curated:biocarta" : "c2.cp.biocarta.v4.0.symbols.gmt",
+    ## "curated:kegg" : "c2.cp.kegg.v4.0.symbols.gmt",
+    ## "curated:reactome" : "c2.cp.reactome.v4.0.symbols.gmt",
+    ## "motif" : "c3.all.v4.0.symbols.gmt",
+    ## "motif:tfactor" : "c3.tft.v4.0.symbols.gmt",
+    ## "computational" : "c4.all.v4.0.symbols.gmt",
+    ## "gene_ontology" : "c5.all.v4.0.symbols.gmt",
+    ## "gene_ontology:process" : "c5.bp.v4.0.symbols.gmt",
+    
+    "positional" : "c1.all.v5.0.symbols.gmt",
+    "curated" : "c2.all.v5.0.symbols.gmt",
+    "curated:canonical" : "c2.cp.v5.0.symbols.gmt",
+    "curated:biocarta" : "c2.cp.biocarta.v5.0.symbols.gmt",
+    "curated:kegg" : "c2.cp.kegg.v5.0.symbols.gmt",
+    "curated:reactome" : "c2.cp.reactome.v5.0.symbols.gmt",
+    "motif" : "c3.all.v5.0.symbols.gmt",
+    "motif:tfactor" : "c3.tft.v5.0.symbols.gmt",
+    "computational" : "c4.all.v5.0.symbols.gmt",
+    "gene_ontology" : "c5.all.v5.0.symbols.gmt",
+    "gene_ontology:process" : "c5.bp.v5.0.symbols.gmt",
     }
 DEFAULT_DATABASE = "gene_ontology:process"
 
@@ -366,9 +379,11 @@ def main():
         }
     # platform is required, even if collapse.dataset is false.  If no
     # platform is given, then specify a default one.
-    params["chip.platform"] = platform
-    if params["chip.platform"] is None:
-        params["chip.platform"] = "HG_U133A.chip"
+    #CHIP_PLATFORM = "chip.platform"
+    CHIP_PLATFORM = "chip.platform.file"
+    params[CHIP_PLATFORM] = platform
+    if params[CHIP_PLATFORM] is None:
+        params[CHIP_PLATFORM] = "HG_U133A.chip"
     if database_file:
         params["gene.sets.database.file"] = db_file
     # Required, even if gene.sets.database.file is given.

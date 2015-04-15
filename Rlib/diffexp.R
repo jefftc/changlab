@@ -271,8 +271,8 @@ find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0) {
   IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
   if(IN$g != 2) stop("Y should contain exactly 2 classes.")
   # Need at least 1 sample to calculate fold change.
-  if(IN$NS[1] <= 1) stop("not enough samples")
-  if(IN$NS[2] <= 1) stop("not enough samples")
+  if(IN$NS[1] < 1) stop("not enough samples")
+  if(IN$NS[2] < 1) stop("not enough samples")
 
   IN <- filter.by.fold.change(IN, FOLD.CHANGE)
   DATA <- make.output.table(IN, c(), c(), c(), FALSE)

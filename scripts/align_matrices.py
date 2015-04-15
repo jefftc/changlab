@@ -145,8 +145,8 @@ def _process_sample(sample, case_insensitive, hash_samples, ignore_nonalnum):
 
 def _left_join_matrices(matrix_samples_cmp, all_samples,
                         sample2matrix2indexes):
-    # Return matrix2indexes as a list of lists.  The first list
-    # corresponds to each matrix.  The second is a list of indexes
+    # Return matrix2indexes as a list of lists.  The outer list
+    # corresponds to each matrix.  The inner is a list of indexes
     # that indicate the index into the matrix.  Any value can be None,
     # which indicates the value is not in the matrix.
 
@@ -233,7 +233,8 @@ def _inner_join_matrices(matrix_samples_cmp, all_samples,
 
 def align_matrices(
     matrix_data, final_samples, case_insensitive, hash_samples,
-    ignore_nonalnum, ignore_blank, left_join, outer_join, null_string):
+    ignore_nonalnum, ignore_blank, left_join, outer_join, unaligned_only,
+    null_string):
     # final_samples is a list of unique samples to be included in the
     # final matrix.
     import itertools
@@ -292,6 +293,21 @@ def align_matrices(
     else:
         matrix2indexes = _inner_join_matrices(
             matrix_samples_cmp, final_samples, sample2matrix2indexes)
+
+    if unaligned_only:
+        # Make a list of all the indexes that are unaligned.
+        I = []  # unaligned indexes
+        for indexes in matrix2indexes:
+            for i, index in enumerate(indexes):
+                if index is None:
+                    I.append(i)
+        I = sorted({}.fromkeys(I))
+        # Pull out just the indexes that are unaligned.
+        for i in range(len(matrix2indexes)):
+            x = matrix2indexes[i]
+            x = [x[j] for j in I]
+            matrix2indexes[i] = x
+        
 
     aligned_matrix_data = []
     for j, x in enumerate(matrix_data):
@@ -699,9 +715,15 @@ def main():
         help='By default, does an "inner join" and keeps only the '
         'records that are present in all files.  An "outer join" will '
         'also keep records that occur in any file.')
+
+
+    group = parser.add_argument_group(title="Output")
     group.add_argument(
         "--null_string", default="",
         help='For left_join or outer_join, what to give the missing values.')
+    group.add_argument(
+        "--unaligned_only", action="store_true",
+        help="Show only the rows that are not aligned.")
 
 
     args = parser.parse_args()
@@ -831,7 +853,8 @@ def main():
     matrix_data = align_matrices(
         matrix_data, samples, args.case_insensitive, args.hash,
         args.ignore_nonalnum, args.ignore_blank,
-        args.left_join, args.outer_join, args.null_string)
+        args.left_join, args.outer_join, args.unaligned_only,
+        args.null_string)
 
     # Add the missing samples back to the matrix.
     matrix_data = add_missing_samples(matrix_data, args.null_string)
