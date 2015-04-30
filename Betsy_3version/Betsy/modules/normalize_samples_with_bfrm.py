@@ -9,11 +9,12 @@ from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node, parameters, user_input,network,num_cores):
-    outfile = name_outfile(data_node,user_input)
+
+def run(data_node, parameters, user_input, network, num_cores):
+    outfile = name_outfile(data_node, user_input)
     bfrm_path = config.bfrmnorm
     bfrm_BIN = module_utils.which(bfrm_path)
-    assert bfrm_BIN,'cannot find the %s' %bfrm_path
+    assert bfrm_BIN, 'cannot find the %s' % bfrm_path
     num_factor = 1
     #num_factor = 10
     if 'num_factors' in user_input.keys():
@@ -21,51 +22,57 @@ def run(data_node, parameters, user_input,network,num_cores):
         assert num_factor >= 1, 'the num_factor should be >=1'
         M = arrayio.read(single_object.identifier)
         col_num = M.ncol()
-        assert num_factor <= col_num,(
-            'the num_factor should be less than %d'%col_num)
+        assert num_factor <= col_num, (
+            'the num_factor should be less than %d' % col_num
+        )
     tmp = 'tmp_dir'
-    command = ['python', bfrm_BIN,data_node.identifier,'-f',
-               str(num_factor), '-o',tmp]
-    process = subprocess.Popen(command,shell=False,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+    command = ['python', bfrm_BIN, data_node.identifier, '-f', str(num_factor),
+               '-o', tmp]
+    process = subprocess.Popen(command,
+                               shell=False,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-    assert module_utils.exists_nz(tmp),(
-        'the output dir %s for bfrm_normalize fails' %tmp)
-    assert module_utils.exists_nz(os.path.join(tmp,'normalized.gct')),(
-        'the output gct file for bfrm_normalize fails')
-    out = os.path.join(tmp,'normalized.gct')
+    assert module_utils.exists_nz(tmp), (
+        'the output dir %s for bfrm_normalize fails' % tmp
+    )
+    assert module_utils.exists_nz(os.path.join(tmp, 'normalized.gct')), (
+        'the output gct file for bfrm_normalize fails'
+    )
+    out = os.path.join(tmp, 'normalized.gct')
     M = arrayio.read(out)
-    M_new = arrayio.convert(M,to_format = arrayio.pcl_format)
-    f = file(outfile,'w')
-    arrayio.tab_delimited_format.write(M_new,f)
+    M_new = arrayio.convert(M, to_format=arrayio.pcl_format)
+    f = file(outfile, 'w')
+    arrayio.tab_delimited_format.write(M_new, f)
     f.close()
-    out_node = bie3.Data(rulebase._SignalFile_Merge,**parameters)
-    out_object = module_utils.DataObject(out_node,outfile)
+    out_node = bie3.Data(rulebase._SignalFile_Merge, **parameters)
+    out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-    
-
-def name_outfile(data_node,user_input):
-    original_file = module_utils.get_inputid(
-        data_node.identifier)
+def name_outfile(data_node, user_input):
+    original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'signal_bfrm_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
-    data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,user_attributes)
+
+def find_antecedents(network, module_id, data_nodes, parameters,
+                     user_attributes):
+    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+                                            user_attributes)
     return data_node
-    
-def get_out_attributes(parameters,data_node):
+
+
+def get_out_attributes(parameters, data_node):
     new_parameters = data_node.data.attributes.copy()
-    new_parameters['bfrm_norm']='yes'
+    new_parameters['bfrm_norm'] = 'yes'
     return new_parameters
 
-def make_unique_hash(data_node,pipeline,parameters,user_input):
+
+def make_unique_hash(data_node, pipeline, parameters, user_input):
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, parameters,
+                                         user_input)

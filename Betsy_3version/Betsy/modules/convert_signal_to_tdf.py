@@ -2,25 +2,25 @@
 import os
 from Betsy import module_utils, userfile
 import shutil
-import xlrd 
+import xlrd
 import openpyxl
 import arrayio
 import subprocess
 from genomicode import config, arrayplatformlib
 from Betsy import bie3
 from Betsy import rulebase
-        
-def run(data_node,parameters, user_input,network,num_cores):
+
+
+def run(data_node, parameters, user_input, network, num_cores):
     """check an input file is xls or xlsx format"""
-    outfile = name_outfile(data_node,user_input)
+    outfile = name_outfile(data_node, user_input)
     real_name = data_node.identifier
     try:
         x = userfile._unhash_storefile(data_node.identifier)
         real_name = x[1]
     except:
         pass
-    if (data_node.identifier.endswith('.gz') or
-        real_name.endswith('.gz')):
+    if (data_node.identifier.endswith('.gz') or real_name.endswith('.gz')):
         unzip_file = module_utils.gunzip(data_node.identifier)
     else:
         unzip_file = data_node.identifier
@@ -45,7 +45,8 @@ def run(data_node,parameters, user_input,network,num_cores):
         assert xls2txt_BIN, 'cannot find the %s' % xls2txt_path
         f = file('tmp1.txt', 'w')
         command = ['python', xls2txt_BIN, xls_file]
-        process = subprocess.Popen(command, shell=False,
+        process = subprocess.Popen(command,
+                                   shell=False,
                                    stdout=f,
                                    stderr=subprocess.PIPE)
         error_message = process.communicate()[1]
@@ -60,35 +61,36 @@ def run(data_node,parameters, user_input,network,num_cores):
     arrayio.tab_delimited_format.write(M_c, f)
     f.close()
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for convert_signal_to_tdf does not exists'
-        % outfile)
-    out_node = bie3.Data(rulebase._SignalFile_Postprocess,**parameters)
-    out_object = module_utils.DataObject(out_node,outfile)
+        'the output file %s for convert_signal_to_tdf does not exists' % outfile
+    )
+    out_node = bie3.Data(rulebase._SignalFile_Postprocess, **parameters)
+    out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-
-
-def name_outfile(data_object,user_input):
+def name_outfile(data_object, user_input):
     original_file = module_utils.get_inputid(data_object.identifier)
     filename = 'signal_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def make_unique_hash(data_node,pipeline,parameters,user_input):
+def make_unique_hash(data_node, pipeline, parameters, user_input):
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,
-                                         parameters,user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, parameters,
+                                         user_input)
 
-def get_out_attributes(parameters,data_object):
+
+def get_out_attributes(parameters, data_object):
     return parameters
 
-def find_antecedents(network, module_id,pool,parameters,user_attributes):
-    data_node = module_utils.get_identifier(network, module_id,
-                                            pool,user_attributes)
+
+def find_antecedents(network, module_id, pool, parameters, user_attributes):
+    data_node = module_utils.get_identifier(network, module_id, pool,
+                                            user_attributes)
 
     return data_node
+
 
 def guess_and_change_gct_header(filename):
     M_name = arrayio.choose_format(filename)
@@ -106,33 +108,34 @@ def guess_and_change_gct_header(filename):
     return M
 
 
-
-platform2header = {'Agilent_Human1A':'Probe ID',
-                   'HG_U133A_2':'Probe ID',
-                   'HG_U133A':'Probe ID',
-                   'HG_U133B':'Probe ID',
-                   'HG_U133_Plus_2':'Probe ID',
-                   'HG_U95A':'Probe ID',
-                   'HG_U95Av2':'Probe ID',
-                   'Hu35KsubA':'Probe ID',
-                   'Hu35KsubB':'Probe ID',
-                   'Hu35KsubC':'Probe ID',
-                   'Hu35KsubD':'Probe ID',
-                   'Hu6800':'Probe ID',
-                   'HumanHT_12_control':'Probe ID',
-                   'HumanHT_12':'Probe ID',
-                   'MG_U74Av2':'Probe ID',
-                   'MG_U74Bv2':'Probe ID',
-                   'MG_U74Cv2':'Probe ID',
-                   'Mouse430_2':'Probe ID',
-                   'Mouse430A_2':'Probe ID',
-                   'MouseRef_8_control':'Probe ID',
-                   'MouseRef_8':'Probe ID',
-                   'Mu11KsubA':'Probe ID',
-                   'Mu11KsubB':'Probe ID',
-                   'RAE230A':'Probe ID',
-                   'RG_U34A':'Probe ID',
-                   'Entrez_ID_human':'Gene ID',
-                   'Entrez_ID_mouse':'Gene ID',
-                   'Entrez_symbol_human':'Gene symbol',
-                   'Entrez_symbol_mouse':'Gene symbol'}
+platform2header = {
+    'Agilent_Human1A': 'Probe ID',
+    'HG_U133A_2': 'Probe ID',
+    'HG_U133A': 'Probe ID',
+    'HG_U133B': 'Probe ID',
+    'HG_U133_Plus_2': 'Probe ID',
+    'HG_U95A': 'Probe ID',
+    'HG_U95Av2': 'Probe ID',
+    'Hu35KsubA': 'Probe ID',
+    'Hu35KsubB': 'Probe ID',
+    'Hu35KsubC': 'Probe ID',
+    'Hu35KsubD': 'Probe ID',
+    'Hu6800': 'Probe ID',
+    'HumanHT_12_control': 'Probe ID',
+    'HumanHT_12': 'Probe ID',
+    'MG_U74Av2': 'Probe ID',
+    'MG_U74Bv2': 'Probe ID',
+    'MG_U74Cv2': 'Probe ID',
+    'Mouse430_2': 'Probe ID',
+    'Mouse430A_2': 'Probe ID',
+    'MouseRef_8_control': 'Probe ID',
+    'MouseRef_8': 'Probe ID',
+    'Mu11KsubA': 'Probe ID',
+    'Mu11KsubB': 'Probe ID',
+    'RAE230A': 'Probe ID',
+    'RG_U34A': 'Probe ID',
+    'Entrez_ID_human': 'Gene ID',
+    'Entrez_ID_mouse': 'Gene ID',
+    'Entrez_symbol_human': 'Gene symbol',
+    'Entrez_symbol_mouse': 'Gene symbol'
+}

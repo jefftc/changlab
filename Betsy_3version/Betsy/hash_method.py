@@ -30,7 +30,7 @@ def get_file_checksum(identifier):
     byte_size = str(byte_size)
     md5_checksum = file_md5_checksum.hexdigest()
     sha1_checksum = file_sha1_checksum.hexdigest()
-    return  byte_size, md5_checksum, sha1_checksum
+    return byte_size, md5_checksum, sha1_checksum
 
 
 def get_input_checksum(identifier):
@@ -41,7 +41,7 @@ def get_input_checksum(identifier):
         files = os.listdir(identifier)
         byte_size = 0
         for filename in files:
-            if os.path.isdir(os.path.join(identifier,filename)):
+            if os.path.isdir(os.path.join(identifier, filename)):
                 continue
             with open(os.path.join(identifier, filename), "rb") as f:
                 byte = f.read(chunk_size)

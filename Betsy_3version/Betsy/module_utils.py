@@ -1,20 +1,4 @@
 #module_utils.py
-import hash_method
-import arrayio
-from genomicode import binreg, Matrix, jmath, matrixlib, mplgraph,arrayplatformlib
-import os
-import read_label_file
-import json
-import math
-from xml.dom.minidom import parseString
-import zipfile
-import time
-from time import strftime,localtime
-from stat import *
-import userfile
-import bie3
-import gzip
-
 """
 DataObject
 contain some functions that are called by many modules
@@ -47,26 +31,52 @@ unzip_if_zip
 replace_matrix_header
 """
 
+## import hash_method
+## import arrayio
+## from genomicode import binreg, Matrix, jmath, matrixlib, mplgraph,arrayplatformlib
+## import os
+## import read_label_file
+## import json
+## import math
+## from xml.dom.minidom import parseString
+## import zipfile
+## import time
+## from time import strftime,localtime
+## from stat import *
+## import userfile
+## import bie3
+## import gzip
+
 FMT = "%a %b %d %H:%M:%S %Y"
+
 
 class DataObject:
     def __init__(self, data, identifier=""):
         self.data = data
         self.identifier = identifier
+
     def __repr__(self):
         x = str(self.data) + ' identifier:' + self.identifier
         return x
 
-    
-def get_identifier(network, module_id, pool,user_attributes,
-                   datatype=None, contents=None,optional_key=None,
-                   optional_value=None,second_key=None,second_value=None,**param):
+
+def get_identifier(network, module_id, pool, user_attributes,
+                   datatype=None,
+                   contents=None,
+                   optional_key=None,
+                   optional_value=None,
+                   second_key=None,
+                   second_value=None, **param):
+    import os
+    import bie3
+
     require_id = []
     for key in network.transitions:
         if module_id in network.transitions[key]:
             require_id.append(key)
-    combine_ids = bie3._get_valid_input_combinations(
-        network, module_id, require_id, user_attributes)
+    combine_ids = bie3._get_valid_input_combinations(network, module_id,
+                                                     require_id,
+                                                     user_attributes)
     for combine_id in combine_ids:
         flag = True
         for i in combine_id:
@@ -76,7 +86,7 @@ def get_identifier(network, module_id, pool,user_attributes,
             for i in combine_id:
                 node = network.nodes[i]
                 if datatype:
-                   if not node.datatype.name == datatype:
+                    if not node.datatype.name == datatype:
                         continue
                 if contents:
                     if 'contents' not in node.attributes:
@@ -100,97 +110,111 @@ def get_identifier(network, module_id, pool,user_attributes,
                             flag1 = False
                         elif not node.attributes[key] == param[key]:
                             flag1 = False
-                if flag1 == False:
+                if not flag1:
                     continue
                 if pool[i].identifier:
                     assert os.path.exists(pool[i].identifier), (
-                'the input file %s for %s does not exist'
-                % (pool[i].identifier,network.nodes[module_id].name))
+                        'the input file %s for %s does not exist' %
+                        (pool[i].identifier, network.nodes[module_id].name))
                 return pool[i]
-    raise ValueError('cannot find node that match for %s' %network.nodes[module_id].name)
-                
+    raise ValueError(
+        'cannot find node that match for %s' % network.nodes[module_id].name)
 
 
 def get_inputid(identifier):
+    import os
+
     old_filename = os.path.split(identifier)[-1]
     old_filename_no_ext = os.path.splitext(old_filename)[-2]
     inputid = old_filename_no_ext.split('_')[-1]
     return inputid
 
 
-def make_unique_hash(identifier, pipeline, parameters,user_input):
+def make_unique_hash(identifier, pipeline, parameters, user_input):
+    import os
+    import hash_method
+
     input_file = os.path.split(identifier)[-1]
     new_parameters = parameters.copy()
     new_parameters['filesize'] = os.path.getsize(identifier)
     new_parameters['checksum'] = hash_method.get_input_checksum(identifier)
     for key in user_input:
-        new_parameters[key]=user_input[key]
-    hash_result = hash_method.hash_parameters(
-        input_file, pipeline, **new_parameters)
+        new_parameters[key] = user_input[key]
+    hash_result = hash_method.hash_parameters(input_file, pipeline,
+                                              **new_parameters)
     return hash_result
 
 
-def find_pcaplots(network,pool,module_id,rma=False):
+def find_pcaplots(network, pool, module_id, rma=False):
+    import os
+
     before_pcaplot = None
     after_pcaplot = None
     for x in pool:
-        node, node_id = pool[x],x
+        node, node_id = pool[x], x
         if not node.data.datatype.name == 'PcaPlot':
             continue
         if module_id in network.transitions[node_id]:
-            
+
             assert os.path.exists(node.identifier), (
-            'the input file %s for %s does not exist'
-            % (node.identifier,network.nodes[module_id].name))
+                'the input file %s for %s does not exist' %
+                (node.identifier, network.nodes[module_id].name))
             if not rma:
-                if (node.data.attributes['quantile_norm']=='no' and
-                    node.data.attributes['combat_norm']=='no'and
-                    node.data.attributes['shiftscale_norm']=='no'and
-                    node.data.attributes['bfrm_norm']=='no'and
-                    node.data.attributes['dwd_norm']=='no'and
-                    node.data.attributes['gene_center']=='no'and
-                    node.data.attributes['gene_normalize']=='no'and
-                    node.data.attributes['unique_genes']=='no'and
-                    node.data.attributes['platform']=='no'and
-                    node.data.attributes['duplicate_probe']=='no'and
-                    node.data.attributes['group_fc']=='no'):
+                if (node.data.attributes['quantile_norm'] == 'no' and
+                    node.data.attributes['combat_norm'] == 'no' and
+                    node.data.attributes['shiftscale_norm'] == 'no' and
+                    node.data.attributes['bfrm_norm'] == 'no' and
+                    node.data.attributes['dwd_norm'] == 'no' and
+                    node.data.attributes['gene_center'] == 'no' and
+                    node.data.attributes['gene_normalize'] == 'no' and
+                    node.data.attributes['unique_genes'] == 'no' and
+                    node.data.attributes['platform'] == 'no' and
+                    node.data.attributes['duplicate_probe'] == 'no' and
+                    node.data.attributes['group_fc'] == 'no'):
                     before_pcaplot = node
                 else:
                     after_pcaplot = node
             else:
-                if (node.data.attributes['quantile_norm']=='yes' and
-                    node.data.attributes['combat_norm']=='no'and
-                    node.data.attributes['shiftscale_norm']=='no'and
-                    node.data.attributes['bfrm_norm']=='no'and
-                    node.data.attributes['dwd_norm']=='no'and
-                    node.data.attributes['gene_center']=='no'and
-                    node.data.attributes['gene_normalize']=='no'and
-                    node.data.attributes['unique_genes']=='no'and
-                    node.data.attributes['platform']=='no'and
-                    node.data.attributes['duplicate_probe']=='no'and
-                    node.data.attributes['group_fc']=='no'):
+                if (node.data.attributes['quantile_norm'] == 'yes' and
+                    node.data.attributes['combat_norm'] == 'no' and
+                    node.data.attributes['shiftscale_norm'] == 'no' and
+                    node.data.attributes['bfrm_norm'] == 'no' and
+                    node.data.attributes['dwd_norm'] == 'no' and
+                    node.data.attributes['gene_center'] == 'no' and
+                    node.data.attributes['gene_normalize'] == 'no' and
+                    node.data.attributes['unique_genes'] == 'no' and
+                    node.data.attributes['platform'] == 'no' and
+                    node.data.attributes['duplicate_probe'] == 'no' and
+                    node.data.attributes['group_fc'] == 'no'):
                     before_pcaplot = node
                 else:
                     after_pcaplot = node
         if not after_pcaplot:
             after_pcaplot = before_pcaplot
-    return before_pcaplot,after_pcaplot
+    return before_pcaplot, after_pcaplot
+
 
 def is_missing(identifier):
     import arrayio
+
     M = arrayio.read(identifier)
     has_missing = False
     for i in range(M.dim()[0]):
-       for j in range(M.dim()[1]):
-           if M._X[i][j] is None:
-               has_missing = True
-               break
-       if has_missing:
+        for j in range(M.dim()[1]):
+            if M._X[i][j] is None:
+                has_missing = True
+                break
+        if has_missing:
             break
     return has_missing
 
+
 def merge_two_files(A_file, B_file, handle):
     """input two files and merge,write the output to handle"""
+    import arrayio
+    from genomicode import Matrix
+    from genomicode import matrixlib
+
     M_A = arrayio.read(A_file)
     M_B = arrayio.read(B_file)
     assert arrayio.tab_delimited_format.is_matrix(M_A)
@@ -222,6 +246,8 @@ def merge_two_files(A_file, B_file, handle):
 
 
 def which(program):
+    import os
+
     def is_exe(fpath):
         return os.path.exists(fpath) and os.access(fpath, os.X_OK)
 
@@ -229,6 +255,7 @@ def which(program):
         yield fpath
         for ext in os.environ.get("PATHEXT", "").split(os.pathsep):
             yield fpath + ext
+
     fpath, fname = os.path.split(program)
     if fpath:
         if is_exe(program):
@@ -249,68 +276,66 @@ def format_convert(X):
     return data
 
 
-def write_Betsy_parameters_file(parameters, data_nodes,outfile,user_input,
-                                pipeline,starttime,user,job_name): 
+def write_Betsy_parameters_file(parameters, data_nodes, outfile, user_input,
+                                pipeline, starttime, user, job_name):
+    import os
+    import json
+    import time
+
     f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')
     if isinstance(data_nodes, tuple):
-        st = os.stat(data_nodes[0].identifier)
-        modified_time = strftime(FMT, localtime())
+        # BUG: Why is st not used?
+        #st = os.stat(data_nodes[0].identifier)
+        modified_time = time.strftime(FMT, time.localtime())
         text = ['Module input:', [(data_node.data.datatype.name,
                                    data_node.identifier)
-                                  for data_node in data_nodes],
-                'Module output parameters:', parameters,
-                'Pipeline module sequence:', pipeline,
-                'User_input:',user_input,
-                'Start time:',starttime,
-                'Finish time:',modified_time,
-                'User:',user,
-                'Jobname:',job_name,
-                'Outfile:',outfile]
+                                  for data_node in data_nodes
+                                 ], 'Module output parameters:', parameters,
+                'Pipeline module sequence:', pipeline, 'User_input:',
+                user_input, 'Start time:', starttime, 'Finish time:',
+                modified_time, 'User:', user, 'Jobname:', job_name, 'Outfile:',
+                outfile]
     else:
-        st = 'None'
+        #st = 'None'
         modified_time = 'None'
         identifier = data_nodes.identifier
         if identifier:
-            st = os.stat(identifier)
-            modified_time = strftime(FMT, localtime())
+            #st = os.stat(identifier)
+            modified_time = time.strftime(FMT, time.localtime())
         text = ['Module input:', (data_nodes.data.datatype.name,
-                                  identifier),
-                'Module output parameters:', parameters,
-                'Pipeline module sequence:', pipeline,
-                'User_input:',user_input,
-                'Start time:',starttime,
-                'Finish time:',modified_time,
-                'User:',user,
-                'Jobname:',job_name,
-                'Outfile:',outfile]
+                                  identifier), 'Module output parameters:',
+                parameters, 'Pipeline module sequence:', pipeline,
+                'User_input:', user_input, 'Start time:', starttime,
+                'Finish time:', modified_time, 'User:', user, 'Jobname:',
+                job_name, 'Outfile:', outfile]
     newtext = json.dumps(text, sort_keys=True, indent=4)
     f.write(newtext)
     f.close()
 
 
-def write_Betsy_report_parameters_file(inputs,outfile,starttime,user,job_name):
+def write_Betsy_report_parameters_file(inputs, outfile, starttime, user,
+                                       job_name):
+    import os
+    import json
+    import time
+    #from stat import *
+
     st = os.stat(outfile)
-    modified_time = time.asctime(time.localtime(st[ST_MTIME]))
+    modified_time = time.asctime(time.localtime(st[time.ST_MTIME]))
     f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')
     if isinstance(inputs, list):
-        text = ['Module input:', [('', i)
-                                  for i in inputs],
-                'Module output:', os.path.split(outfile)[-1],
-                'Module output parameters:', '',
-                'Pipeline module sequence:', '',
-                'Start time:',starttime,
-                'Finish time:',modified_time,
-                'User:',user,
-                'Jobname:',job_name]
+        text = ['Module input:', [
+            ('', i) for i in inputs
+        ], 'Module output:', os.path.split(outfile)[-1],
+                'Module output parameters:', '', 'Pipeline module sequence:',
+                '', 'Start time:', starttime, 'Finish time:', modified_time,
+                'User:', user, 'Jobname:', job_name]
     else:
-        text = ['Module input:', ('', inputs),
-                'Module output:',os.path.split(outfile)[-1],
-                'Module output parameters:', '',
-                'Pipeline module sequence:', '',
-                'Start time:',starttime,
-                'Finish time:',modified_time,
-                'User:',user,
-                'Jobname:',job_name]
+        text = ['Module input:', ('', inputs), 'Module output:',
+                os.path.split(outfile)[-1], 'Module output parameters:', '',
+                'Pipeline module sequence:', '', 'Start time:', starttime,
+                'Finish time:', modified_time, 'User:', user, 'Jobname:',
+                job_name]
     newtext = json.dumps(text, sort_keys=True, indent=4)
     f.write(newtext)
     f.close()
@@ -318,20 +343,24 @@ def write_Betsy_report_parameters_file(inputs,outfile,starttime,user,job_name):
 
 def exists_nz(filename):
     """check if the filename exists and not empty"""
-    if not os.path.exists(filename): # does not exist
+    import os
+
+    if not os.path.exists(filename):  # does not exist
         return False
     if os.path.isdir(filename):  # is directory and not empty
         if os.listdir(filename):
             return True
         return False
-    size = os.path.getsize(filename) #is file and not empty
+    size = os.path.getsize(filename)  #is file and not empty
     if size > 0:
-       return True   
+        return True
     return False
 
 
-
 def plot_line_keywds(filename, keywords, outfile):
+    import arrayio
+    from genomicode import mplgraph
+
     M = arrayio.read(filename)
     header = M.row_names()
     label = M._col_names['_SAMPLE_NAME']
@@ -350,8 +379,12 @@ def plot_line_keywds(filename, keywords, outfile):
         for i in range(len(data)):
             line = [(j, data[i][j]) for j in range(len(data[i]))]
             lines.append(line)
-        fig = mplgraph.lineplot(*lines, box_label=label, legend=legend_name,
-                                ylim_min=0, ylabel=keyword, left=0.1)
+        fig = mplgraph.lineplot(*lines,
+                                box_label=label,
+                                legend=legend_name,
+                                ylim_min=0,
+                                ylabel=keyword,
+                                left=0.1)
         fig.savefig(out)
         outfiles.append(out)
     import Image
@@ -378,7 +411,11 @@ def plot_line_keywds(filename, keywords, outfile):
     background.save(outfile)
     assert exists_nz(outfile), 'the plot_line_keywds fails'
 
+
 def plot_line_keywd(filename, keyword, outfile):
+    import arrayio
+    from genomicode import mplgraph
+
     M = arrayio.read(filename)
     header = M.row_names()
     label = M._col_names['_SAMPLE_NAME']
@@ -389,17 +426,22 @@ def plot_line_keywd(filename, keyword, outfile):
         if M.row_names(header[1])[i] == keyword:
             data.append(M.slice()[i])
             legend_name.append(keyword + '(' + M.row_names(header[0])[i] + ')')
+    # Bug: keywords?
     assert len(data) > 0, 'cannot find the keyword %s in the file %s' % (
         keywords, filename)
     for i in range(len(data)):
         line = [(j, data[i][j]) for j in range(len(data[i]))]
         lines.append(line)
-    fig = mplgraph.lineplot(*lines, box_label=label, legend=legend_name,
-                            ylim_min=0, ylabel='Signal', left=0.1)
+    fig = mplgraph.lineplot(*lines,
+                            box_label=label,
+                            legend=legend_name,
+                            ylim_min=0,
+                            ylabel='Signal',
+                            left=0.1)
     fig.savefig(outfile)
     assert exists_nz(outfile), 'the plot_line_keywd fails'
 
-    
+
 def renew_parameters(parameters, key_list):
     newparameters = parameters.copy()
     for key in key_list:
@@ -423,18 +465,18 @@ def download_ftp(host, path, filename):
     try:
         ftp = FTP(host)
     except (socket.error, socket.gaierror), e:
-        raise AssertionError('Error:cannot reach %s' % host)
+        raise AssertionError('Error [%s]: cannot reach %s' % (str(e), host))
     try:
         ftp.login()
     except ftplib.error_perm, e:
         ftp.quit()
-        raise AssertionError('Error:cannot login anonymously')
+        raise AssertionError('Error [%s] :cannot login anonymously' % str(e))
     try:
         ftp.cwd(path)
     except ftplib.error_perm, x:
         if str(x).find('No such file') >= 0:
             raise AssertionError('cannot find the %s' % path)
-    filelist = []   # to store all files
+    filelist = []  # to store all files
     ftp.retrlines('NLST', filelist.append)
     if filename in filelist:
         f = open(filename, 'wb')
@@ -447,7 +489,9 @@ def download_ftp(host, path, filename):
 
 
 def download_dataset(GSEID):
+    import os
     import tarfile
+
     #download the tar folder from geo
     host = 'ftp.ncbi.nih.gov'
     GSE_directory = 'pub/geo/DATA/supplementary/series/' + GSEID
@@ -469,10 +513,13 @@ def download_dataset(GSEID):
 
 
 def gunzip(filename):
+    import os
     import gzip
+    import userfile
+
     x = userfile._unhash_storefile(filename)
     real_name = x
-    if isinstance(x,tuple):
+    if isinstance(x, tuple):
         real_name = x[1]
     if filename.endswith('.gz') or real_name.endswith('.gz'):
         newfilename = os.path.join(
@@ -488,12 +535,16 @@ def gunzip(filename):
         fileObj.close()
         fileObjOut.close()
         assert os.path.exists(newfilename), (
-            'unzip the file %s fails' % filename)
+            'unzip the file %s fails' % filename
+        )
         return newfilename
     else:
         return None
 
+
 def high_light_path(network_file, pipeline, out_file):
+    from xml.dom.minidom import parseString
+
     pipeline1 = ['start']
     pipeline1.extend(pipeline)
     f = open(network_file, 'r')
@@ -519,9 +570,13 @@ def high_light_path(network_file, pipeline, out_file):
 
 
 def convert_gene_list_platform(genes, platform):
+    from genomicode import jmath
+    from genomicode import arrayplatformlib
+
     platform_list = [i.name for i in arrayplatformlib.platforms]
     assert platform in platform_list, (
-        'we cannot convert to the platform %s' % platform)
+        'we cannot convert to the platform %s' % platform
+    )
     chip = arrayplatformlib.guess_chip_from_probesets(genes)
     assert chip, 'we cannot guess the platform for the input file'
     in_attribute = arrayplatformlib.get_bm_attribute(chip)
@@ -542,12 +597,15 @@ def convert_gene_list_platform(genes, platform):
       str('filters=filters,values=gene_id,mart=old,') +
       str('attributesL=out_attribute,martL=new)'))
     homolog = R['homolog']
-    old_id = [str(i) for i in homolog[0]]
+    #old_id = [str(i) for i in homolog[0]]
     human_id = [str(i) for i in homolog[1]]
     return human_id
 
 
 def convert_to_same_platform(filename1, filename2, platform=None):
+    import arrayio
+    from genomicode import arrayplatformlib
+
     M1 = arrayio.read(filename1)
     platform1 = arrayplatformlib.identify_platform_of_matrix(M1)
     M2 = arrayio.read(filename2)
@@ -569,22 +627,25 @@ def convert_to_same_platform(filename1, filename2, platform=None):
             newfilename1 = 'tmp'
             newfilename2 = filename2
         if platform:
-            command = ['python', Annot_BIN, '-f', filename,
-                       '-o', 'tmp', "--platform", platform]
-            process = subprocess.Popen(command, shell=False,
+            command = ['python', Annot_BIN, '-f', filename, '-o', 'tmp',
+                       "--platform", platform]
+            process = subprocess.Popen(command,
+                                       shell=False,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             error_message = process.communicate()[1]
             if error_message:
                 raise ValueError(error_message)
-            assert module_utils.exists_nz('tmp'), (
-                'the platform conversion fails')
+            #assert module_utils.exists_nz('tmp'), (
+            #    'the platform conversion fails')
+            assert exists_nz('tmp'), 'the platform conversion fails'
     return newfilename1, newfilename2
 
 
 def plot_pca(filename, result_fig, opts='b', legend=None):
     from genomicode import jmath, mplgraph
     import arrayio
+
     R = jmath.start_R()
     jmath.R_equals(filename, 'filename')
     M = arrayio.read(filename)
@@ -600,40 +661,48 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
     x1 = R['x'][0:M.ncol()]
     x2 = R['x'][M.ncol():]
     if len(opts) > 1:
-        fig = mplgraph.scatter(x1, x2, xlabel='Principal Component 1',
+        fig = mplgraph.scatter(x1, x2,
+                               xlabel='Principal Component 1',
                                ylabel='Principal Component 2',
-                               color=opts, legend=legend)
+                               color=opts,
+                               legend=legend)
     else:
-        fig = mplgraph.scatter(
-            x1, x2, label=labels, xlabel='Principal Component 1',
-            ylabel='Principal Component 2', color=opts)
+        fig = mplgraph.scatter(x1, x2,
+                               label=labels,
+                               xlabel='Principal Component 1',
+                               ylabel='Principal Component 2',
+                               color=opts)
     fig.savefig(result_fig)
     assert exists_nz(result_fig), 'the plot_pca.py fails'
 
-    
-##def extract_from_zip(zipName):
-##    z = zipfile.ZipFile(zipName)
-##    for f in z.namelist():
-##        if f.endswith('/'):
-##            os.makedirs(f)
-##        else:
-##            z.extract(f)
+    ##def extract_from_zip(zipName):
+    ##    z = zipfile.ZipFile(zipName)
+    ##    for f in z.namelist():
+    ##        if f.endswith('/'):
+    ##            os.makedirs(f)
+    ##        else:
+    ##            z.extract(f)
 
-    
-def extract_from_zip(zipName,outdir):
-    zip = zipfile.ZipFile(zipName)
-    zip.extractall(path=outdir)
+
+def extract_from_zip(zipName, outdir):
+    import zipfile
+
+    x = zipfile.ZipFile(zipName)
+    x.extractall(path=outdir)
 
 
 def unzip_if_zip(input_name):
+    import os
+    import zipfile
+
     if zipfile.is_zipfile(input_name):
         directory = os.path.split(input_name)[-1]
         directory = os.path.splitext(directory)[0]
         directory = os.path.join(os.getcwd(), directory)
-        extract_from_zip(input_name,directory)
+        extract_from_zip(input_name, directory)
         for dirname in os.listdir(directory):
             if not dirname == '__MACOSX':
-                directory = os.path.join(directory,dirname)
+                directory = os.path.join(directory, dirname)
     else:
         directory = input_name
     return directory
@@ -645,8 +714,8 @@ def replace_matrix_header(M, old_header, new_header):
     M._row_names[new_header] = M._row_names[old_header]
     del M._row_names[old_header]
     ids = M._row_order
-    ids = [x.replace(old_header, new_header)
-           if x == old_header else x for x in ids]
+    ids = [x.replace(old_header, new_header) if x == old_header else x
+           for x in ids]
     M._row_order = ids
     return M
 
@@ -654,24 +723,24 @@ def replace_matrix_header(M, old_header, new_header):
 def process_group_info(group_file):
     """return a dict with <sample_name:[[left_sample_list],
                                         [right_sample_list]]"""
-    f = file(group_file,'r')
+    f = file(group_file, 'r')
     text = f.readlines()
     f.close()
     group_dict = {}
     text = [line.strip() for line in text if line.strip()]
     for line in text:
         words = line.split('\t')
-        if len(words)==3:
+        if len(words) == 3:
             if words[0] not in group_dict:
-        	group_dict[words[0]] = [words[2]]
+                group_dict[words[0]] = [words[2]]
             else:
-        	group_dict[words[0]].append(words[2])
-        elif len(words)==4:
+                group_dict[words[0]].append(words[2])
+        elif len(words) == 4:
             if words[0] not in group_dict:
-        	group_dict[words[0]] = [[words[2]],[words[3]]]
+                group_dict[words[0]] = [[words[2]], [words[3]]]
             else:
-        	group_dict[words[0]][0].append(words[2])
-        	group_dict[words[0]][1].append(words[3])
+                group_dict[words[0]][0].append(words[2])
+                group_dict[words[0]][1].append(words[3])
         else:
             raise ValueError('group file is invalid')
     return group_dict

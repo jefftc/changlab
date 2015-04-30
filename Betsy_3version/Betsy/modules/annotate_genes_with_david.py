@@ -1,14 +1,15 @@
 ##annotate_genes_with_david.py
 import os
 from genomicode import arrayplatformlib
-from time import strftime,localtime
+from time import strftime, localtime
 from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node,parameters,user_input, network,num_cores):
+
+def run(data_node, parameters, user_input, network, num_cores):
     """run David"""
-    outfile = name_outfile(data_node,user_input)
+    outfile = name_outfile(data_node, user_input)
     f = file(data_node.identifier, 'r')
     text = f.read()
     f.close()
@@ -16,40 +17,51 @@ def run(data_node,parameters,user_input, network,num_cores):
     # guess the idType
     chipname = arrayplatformlib.identify_platform_of_annotations(in_list)
     assert chipname in platform2idtype, 'David does not handle %s' % chipname
-    idType = platform2idtype[chipname]    # convert the platform to idtype
+    idType = platform2idtype[chipname]  # convert the platform to idtype
     DAVIDenrich(in_list, idType, outfile)
     assert module_utils.exists_nz(outfile), (
-        'the outfile for run_david %s does not exist' % outfile)
-    out_node = bie3.Data(rulebase.DavidFile,**parameters)
-    out_object = module_utils.DataObject(out_node,outfile)
+        'the outfile for run_david %s does not exist' % outfile
+    )
+    out_node = bie3.Data(rulebase.DavidFile, **parameters)
+    out_object = module_utils.DataObject(out_node, outfile)
     return out_object
-    
-def name_outfile(data_node,user_input):
+
+
+def name_outfile(data_node, user_input):
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'david_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters,data_node):
+def get_out_attributes(parameters, data_node):
     return parameters
-    
 
-def make_unique_hash(data_node,pipeline,parameters,user_input):
+
+def make_unique_hash(data_node, pipeline, parameters, user_input):
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, parameters,
+                                         user_input)
 
-def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
-    data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,user_attributes)
+
+def find_antecedents(network, module_id, data_nodes, parameters,
+                     user_attributes):
+    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+                                            user_attributes)
     return data_node
 
 
-def DAVIDenrich(in_list, idType, outfile, bg_list=[], bgName='Background1',
-                listName='List1', category='', thd=0.1, ct=2):
+def DAVIDenrich(in_list, idType, outfile,
+                bg_list=[],
+                bgName='Background1',
+                listName='List1',
+                category='',
+                thd=0.1,
+                ct=2):
     from suds.client import Client
     assert len(in_list) < 3000, (
-        'the number of genes to David cannot exceed 3000')
+        'the number of genes to David cannot exceed 3000'
+    )
     if len(in_list) > 0:
         inputListIds = ','.join(in_list)
     else:
@@ -89,38 +101,40 @@ def DAVIDenrich(in_list, idType, outfile, bg_list=[], bgName='Background1',
             bonferroni = str(rowDict['bonferroni'])
             benjamini = str(rowDict['benjamini'])
             FDR = str(rowDict['afdr'])
-            rowList = [categoryName, termName, listHits, percent,
-                       ease, Genes, listTotals, popHits, popTotals,
-                       foldEnrichment, bonferroni, benjamini, FDR]
+            rowList = [categoryName, termName, listHits, percent, ease, Genes,
+                       listTotals, popHits, popTotals, foldEnrichment,
+                       bonferroni, benjamini, FDR]
             fOut.write('\t'.join(rowList) + '\n')
 
 
-platform2idtype = {'MG_U74Av2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'HG_U133_Plus_2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Mu11KsubA': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Mu11KsubB': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Hu6800': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'HG_U133B': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Mouse430_2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'RG_U34A': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Mouse430A_2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'HG_U95A': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'HG_U133A': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'RAE230A': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Hu35KsubC': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Hu35KsubB': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'MG_U74Cv2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'HG_U133A_2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Hu35KsubA': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'Hu35KsubD': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'MG_U74Bv2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'HG_U95Av2': 'AFFYMETRIX_3PRIME_IVT_ID',
-                   'HumanHT_12': 'ILLUMINA_ID',
-                   'HumanWG_6': 'ILLUMINA_ID',
-                   'MouseRef_8': 'ILLUMINA_ID',
-                   'HumanHT_12_control': 'ILLUMINA_ID',
-                   'MouseRef_8_control': 'ILLUMINA_ID',
-                   'Entrez_ID_human': 'ENTREZ_GENE_ID',
-                   'Entrez_ID_mouse': 'ENTREZ_GENE_ID',
-                   'Entrez_symbol_human': 'GENE_SYMBOL',
-                   'Entrez_symbol_mouse': 'GENE_SYMBOL'}
+platform2idtype = {
+    'MG_U74Av2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'HG_U133_Plus_2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Mu11KsubA': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Mu11KsubB': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Hu6800': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'HG_U133B': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Mouse430_2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'RG_U34A': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Mouse430A_2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'HG_U95A': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'HG_U133A': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'RAE230A': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Hu35KsubC': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Hu35KsubB': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'MG_U74Cv2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'HG_U133A_2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Hu35KsubA': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'Hu35KsubD': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'MG_U74Bv2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'HG_U95Av2': 'AFFYMETRIX_3PRIME_IVT_ID',
+    'HumanHT_12': 'ILLUMINA_ID',
+    'HumanWG_6': 'ILLUMINA_ID',
+    'MouseRef_8': 'ILLUMINA_ID',
+    'HumanHT_12_control': 'ILLUMINA_ID',
+    'MouseRef_8_control': 'ILLUMINA_ID',
+    'Entrez_ID_human': 'ENTREZ_GENE_ID',
+    'Entrez_ID_mouse': 'ENTREZ_GENE_ID',
+    'Entrez_symbol_human': 'GENE_SYMBOL',
+    'Entrez_symbol_mouse': 'GENE_SYMBOL'
+}

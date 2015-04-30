@@ -20,12 +20,12 @@ def check_gpr(fileloc):
     text = fileObj.readlines()
     fileObj.close()
     text = [i.replace('\"', '') for i in text]
-    text = [i for i in text if not i == '']   # remove the empty line
+    text = [i for i in text if not i == '']  # remove the empty line
     if not text[0].startswith('ATF'):  # 'the gpr requires a ATF number'
         return False
     a = text[1].split()
     # 'should be interger'
-    if not(len(a) == 2 and a[0].isdigit() and a[1].isdigit()):
+    if not (len(a) == 2 and a[0].isdigit() and a[1].isdigit()):
         return False
     i = -1
     startline = -1
@@ -35,9 +35,9 @@ def check_gpr(fileloc):
         if len(a) > 2:
             startline = i
             break
-    for line in text[2: startline]:
+    for line in text[2:startline]:
         line = line.split('=')
-        if line[0] not in entry:   # '%s is not in gpr entry'%line[0]
+        if line[0] not in entry:  # '%s is not in gpr entry'%line[0]
             return False
     column_name = text[startline].split('\t')
     column_need = ['Name', 'ID', 'Block', 'Column', 'Row',
@@ -91,7 +91,8 @@ def extract_gpr(fileloc, keep):
             keep.append([g[b], g[a], g[c], g[d], g[k]])
         else:
             assert [g[b], g[a], g[c], g[d], g[k]] == keep[i - startline], (
-                'row not match')
+                'row not match'
+            )
         logratio.append(x)
     # replace the samplename to the "Log Ratio (635/532)"
     logratio[0] = samplename
@@ -140,7 +141,8 @@ def extract_multiple(fileloc, keep):
             keep.append([g[b], g[a], g[c], g[d], g[k]])
         else:
             assert [g[b], g[a], g[c], g[d], g[k]] == keep[i - startline], (
-                'row not match')
+                'row not match'
+            )
         red_signal.append(g[g1])
         green_signal.append(g[g2])
         red_back.append(g[g3])

@@ -2,7 +2,7 @@
 import arrayio
 import os
 import svmutil
-from Betsy import bie3,rule_engine_bie3
+from Betsy import bie3, rule_engine_bie3
 from Betsy import rulebase
 from Betsy import read_label_file
 from Betsy import module_utils
@@ -10,11 +10,11 @@ from genomicode import config
 import subprocess
 
 
-def run(in_nodes,parameters, user_input, network,num_cores):
-    data_node_train,cls_node_train = in_nodes
-    outfile = name_outfile(in_nodes,user_input)
+def run(in_nodes, parameters, user_input, network, num_cores):
+    data_node_train, cls_node_train = in_nodes
+    outfile = name_outfile(in_nodes, user_input)
     module_name = 'WeightedVotingXValidation'
-    module_id_version='00028:2'
+    module_id_version = '00028:2'
     gp_parameters = dict()
     file1 = data_node_train.identifier
     result, label_line, class_name = read_label_file.read(
@@ -38,16 +38,18 @@ def run(in_nodes,parameters, user_input, network,num_cores):
 ##    gp_parameters['feature.selection.statistic'] = str(
 ##            wv_feature_stat.index(parameters[
 ##                'wv_feature_stat']))
-    
+
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module, 'cannot find the %s' % gp_path
-    download_directory = os.path.join(os.getcwd(),'wv_result')
-    command = [gp_module, module_name,'--id_and_version',module_id_version, '-o', download_directory]
+    download_directory = os.path.join(os.getcwd(), 'wv_result')
+    command = [gp_module, module_name, '--id_and_version', module_id_version,
+               '-o', download_directory]
     for key in gp_parameters.keys():
         a = ['--parameters', key + ':' + gp_parameters[key]]
         command.extend(a)
-    process = subprocess.Popen(command, shell=False,
+    process = subprocess.Popen(command,
+                               shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
     process.wait()
@@ -55,7 +57,8 @@ def run(in_nodes,parameters, user_input, network,num_cores):
     if error_message:
         raise ValueError(error_message)
     assert os.path.exists(download_directory), (
-        'there is no output directory for weightedVotingXValidation')
+        'there is no output directory for weightedVotingXValidation'
+    )
     result_files = os.listdir(download_directory)
     assert 'stderr.txt' not in result_files, 'gene_pattern get error'
     gp_files = os.listdir(download_directory)
@@ -67,14 +70,15 @@ def run(in_nodes,parameters, user_input, network,num_cores):
             f.close()
             os.rename(os.path.join(download_directory, gp_file),
                       os.path.join(download_directory, 'prediction.odf'))
-            assert text[1][0: 12] == 'HeaderLines='
-            start = int(text[1][12: -1])
-            newresult = [['Sample_name', 'Predicted_class', 'Confidence', 'Actual_class', 'Correct?']]
+            assert text[1][0:12] == 'HeaderLines='
+            start = int(text[1][12:-1])
+            newresult = [['Sample_name', 'Predicted_class', 'Confidence',
+                          'Actual_class', 'Correct?']]
             for i in text[start + 2:]:
                 line = i.split()
                 n = len(line)
-                newline = [' '.join(line[0: n - 4]), line[n - 3],
-                               line[n - 2],line[n-4],line[n-1]]
+                newline = [' '.join(line[0:n - 4]), line[n - 3], line[n - 2],
+                           line[n - 4], line[n - 1]]
                 newresult.append(newline)
             f = file(outfile, 'w')
             for i in newresult:
@@ -82,15 +86,17 @@ def run(in_nodes,parameters, user_input, network,num_cores):
                 f.write('\n')
             f.close()
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for run_loocv_weighted_voting fails' % outfile)
-    out_node = bie3.Data(rulebase.ClassifyFile,**parameters)
-    out_object = module_utils.DataObject(out_node,outfile)
+        'the output file %s for run_loocv_weighted_voting fails' % outfile
+    )
+    out_node = bie3.Data(rulebase.ClassifyFile, **parameters)
+    out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
-    data_node = module_utils.get_identifier(network, module_id,
-                                            data_nodes,user_attributes,
+def find_antecedents(network, module_id, data_nodes, parameters,
+                     user_attributes):
+    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+                                            user_attributes,
                                             datatype='SignalFile',
                                             contents='class0,class1')
     cls_node = module_utils.get_identifier(network, module_id, data_nodes,
@@ -99,19 +105,21 @@ def find_antecedents(network, module_id,data_nodes,parameters,user_attributes):
                                            contents='class0,class1')
     return data_node, cls_node
 
-def name_outfile(in_nodes,user_input):
-    data_node,cls_node = in_nodes
-    original_file = module_utils.get_inputid(
-        data_node.identifier)
+
+def name_outfile(in_nodes, user_input):
+    data_node, cls_node = in_nodes
+    original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'predication_loocv_wv' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-    
-def get_out_attributes(parameters,in_nodes):
+
+def get_out_attributes(parameters, in_nodes):
     return parameters
 
-def make_unique_hash(in_nodes,pipeline,parameters,user_input):
-    data_node,cls_node = in_nodes
+
+def make_unique_hash(in_nodes, pipeline, parameters, user_input):
+    data_node, cls_node = in_nodes
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, parameters,
+                                         user_input)

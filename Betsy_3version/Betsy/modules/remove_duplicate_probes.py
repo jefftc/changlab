@@ -1,59 +1,63 @@
 #remove_duplicate_probes.py
 import os
 import arrayio
-from genomicode import jmath,arrayplatformlib
+from genomicode import jmath, arrayplatformlib
 from Betsy import bie3
 from Betsy import rulebase
 from Betsy import module_utils
 
-def run(data_node,parameters, user_input, network,num_cores):
-    outfile = name_outfile(data_node,user_input)
+
+def run(data_node, parameters, user_input, network, num_cores):
+    outfile = name_outfile(data_node, user_input)
     M = arrayio.read(data_node.identifier)
     M_new = remove_duplicate_probes_var(M)
-    f = file(outfile,'w')
-    arrayio.tab_delimited_format.write(M_new,f)
+    f = file(outfile, 'w')
+    arrayio.tab_delimited_format.write(M_new, f)
     f.close()
-    assert module_utils.exists_nz(outfile),(
-        'the output file %s for remove_duplicate_probes fails'%outfile)
-    out_node = bie3.Data(rulebase._SignalFile_Filter,**parameters)
-    out_object = module_utils.DataObject(out_node,outfile)
+    assert module_utils.exists_nz(outfile), (
+        'the output file %s for remove_duplicate_probes fails' % outfile
+    )
+    out_node = bie3.Data(rulebase._SignalFile_Filter, **parameters)
+    out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
-def find_antecedents(network, module_id,pool,parameters,user_attributes):
-    data_node = module_utils.get_identifier(network, module_id,
-                                            pool,user_attributes)
+
+def find_antecedents(network, module_id, pool, parameters, user_attributes):
+    data_node = module_utils.get_identifier(network, module_id, pool,
+                                            user_attributes)
     return data_node
 
-def name_outfile(data_node,user_input):
-    original_file = module_utils.get_inputid(
-        data_node.identifier)
+
+def name_outfile(data_node, user_input):
+    original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'signal_select_probe_var_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-    
-def get_out_attributes(parameters,data_node):
+
+def get_out_attributes(parameters, data_node):
     return parameters
 
-def make_unique_hash(data_node,pipeline,parameters,user_input):
+
+def make_unique_hash(data_node, pipeline, parameters, user_input):
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier,pipeline,parameters,user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, parameters,
+                                         user_input)
 
 
- 
-def get_high_variance(M,name2indexes,empty_item):
+def get_high_variance(M, name2indexes, empty_item):
     for key in name2indexes.keys():
-        if len(name2indexes[key])>1:
-            a=[(jmath.var(M._X[i]),i) for i in name2indexes[key]]
+        if len(name2indexes[key]) > 1:
+            a = [(jmath.var(M._X[i]), i) for i in name2indexes[key]]
             a.sort()
             index = a[-1][1]
-            name2indexes[key]=[index]
+            name2indexes[key] = [index]
     all_index = name2indexes.values()
     all_index.sort()
-    all_index = [i[0] for i in all_index if len(i)==1]
+    all_index = [i[0] for i in all_index if len(i) == 1]
     all_index.extend(empty_item)
     all_index.sort()
-    M_new = M.matrix(all_index,None)
+    M_new = M.matrix(all_index, None)
     return M_new
 
 

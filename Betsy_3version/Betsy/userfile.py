@@ -5,8 +5,6 @@ import os
 import shutil
 import config
 import hash_method
-
-
 """
 Functions:
 set(username,filename)
@@ -19,7 +17,6 @@ _unhash_storefile(storefilename)
 """
 
 
-
 def _make_user_path(username):
     output_path = os.path.join(config.OUTPUTPATH, 'userfile')
     if not os.path.exists(output_path):
@@ -30,26 +27,27 @@ def _make_user_path(username):
     return user_path
 
 
-def _hash_storefile(username,filename, checksum,file_length):
+def _hash_storefile(username, filename, checksum, file_length):
     assert '___' not in username
     assert '___' not in filename
     assert '__' not in filename
     newfilename = filename.replace('/', '__')
-    store_name = str(username + '___' + newfilename + '___' +
-                   str(checksum) + '___' + str(file_length))
+    store_name = str(username + '___' + newfilename + '___' + str(checksum) +
+                     '___' + str(file_length))
     return store_name
+
 
 def _unhash_storefile(storefilename):
     if '___' not in storefilename:
         return storefilename
     x = storefilename.split('___')
     username, filename, checksum, file_length = x
-    real_filename = filename.replace('__','/')
+    real_filename = filename.replace('__', '/')
     return username, real_filename, checksum, file_length
 
 
 def set(username, filename):
-    assert os.path.exists(filename),'%s does not exists'%filename
+    assert os.path.exists(filename), '%s does not exists' % filename
     user_path = _make_user_path(username)
     size = os.path.getsize(filename)
     checksum = hash_method.get_input_checksum(filename)
@@ -73,7 +71,7 @@ def get(username, filename, file_length=None):
         if in_filename == filename:
             if file_length and in_file_length != file_length:
                 continue
-            return os.path.join(user_path, storefile) 
+            return os.path.join(user_path, storefile)
     raise ValueError('cannot find the file %s' % filename)
 
 
@@ -85,8 +83,9 @@ def get_by_checksum(username, checksum, file_length):
         username, in_filename, in_checksum, in_file_length = x
         if in_checksum == checksum and in_file_length == file_length:
             return os.path.join(user_path, storefile)
-    raise ValueError('cannot find the file with checksum %s and file_length %s'
-                     % (checksum, file_length))
+    raise ValueError(
+        'cannot find the file with checksum %s and file_length %s' %
+        (checksum, file_length))
 
 
 def dir(username):
@@ -98,5 +97,3 @@ def dir(username):
         x = _unhash_storefile(storefile)
         result.append(list(x))
     return result
-
-

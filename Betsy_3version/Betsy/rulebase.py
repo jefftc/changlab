@@ -5,7 +5,7 @@ def import_rules():
     import os
 
     RULE_PATH = "bie_rules"
-    module_path = os.path.join(os.path.dirname( __file__ ), RULE_PATH)
+    module_path = os.path.join(os.path.dirname(__file__), RULE_PATH)
     assert os.path.exists(module_path), "I could not find the rules: %s" % \
            module_path
     filenames = os.listdir(module_path)
@@ -20,8 +20,8 @@ def import_rules():
     # ClassifyFile_rule
     # GseaFile_rule
     x = [os.path.splitext(x)[0] for x in filenames]  # No extensions.
-    x = {}.fromkeys(x)                               # No duplicates
-   
+    x = {}.fromkeys(x)  # No duplicates
+
     x = [x for x in x if not x.startswith('._')]
     x = [x for x in x if not x.startswith('__init__')]
     x = [x for x in x if not x.startswith('.DS_Store')]
@@ -49,6 +49,6 @@ def import_rules():
     #        for i in module.list_files:
     #            vars()[i.name] = i
     return all_modules
-                
+
 
 all_modules = import_rules()
