@@ -4,7 +4,7 @@
 def import_rules():
     import os
 
-    RULE_PATH = "bie_rules"
+    RULE_PATH = "rules"
     module_path = os.path.join(os.path.dirname(__file__), RULE_PATH)
     assert os.path.exists(module_path), "I could not find the rules: %s" % \
            module_path
@@ -31,7 +31,7 @@ def import_rules():
     # Load each module.
     all_modules = []
     for name in module_names:
-        import_name = "bie_rules.%s" % name
+        import_name = "rules.%s" % name
         module = __import__(import_name, globals(), locals(), [name], -1)
         all_modules.extend(module.all_modules)
         assert hasattr(module, "list_files"), "Missing list_files var in %s" \

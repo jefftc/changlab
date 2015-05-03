@@ -1,4 +1,3 @@
-#module_utils.py
 """
 DataObject
 contain some functions that are called by many modules
@@ -29,27 +28,14 @@ plot_pca
 extract_from_zip
 unzip_if_zip
 replace_matrix_header
+
 """
 
-## import hash_method
-## import arrayio
-## from genomicode import binreg, Matrix, jmath, matrixlib, mplgraph,arrayplatformlib
-## import os
-## import read_label_file
-## import json
-## import math
-## from xml.dom.minidom import parseString
-## import zipfile
-## import time
-## from time import strftime,localtime
-## from stat import *
-## import userfile
-## import bie3
-## import gzip
 
 FMT = "%a %b %d %H:%M:%S %Y"
 
-
+# Data + identifier.
+# Maybe should call IdentifiedData
 class DataObject:
     def __init__(self, data, identifier=""):
         self.data = data
@@ -74,9 +60,9 @@ def get_identifier(network, module_id, pool, user_attributes,
     for key in network.transitions:
         if module_id in network.transitions[key]:
             require_id.append(key)
-    combine_ids = bie3._get_valid_input_combinations(network, module_id,
-                                                     require_id,
-                                                     user_attributes)
+    combine_ids = bie3._get_valid_input_combinations(
+        network, module_id, require_id, user_attributes)
+    
     for combine_id in combine_ids:
         flag = True
         for i in combine_id:
@@ -121,13 +107,20 @@ def get_identifier(network, module_id, pool, user_attributes,
         'cannot find node that match for %s' % network.nodes[module_id].name)
 
 
+# Not sure exactly what this does.  Looks like it takes some sort of
+# file identifier, and returns some sort of cleaned up id.
 def get_inputid(identifier):
     import os
 
-    old_filename = os.path.split(identifier)[-1]
-    old_filename_no_ext = os.path.splitext(old_filename)[-2]
-    inputid = old_filename_no_ext.split('_')[-1]
-    return inputid
+    x = identifier
+    x = os.path.split(x)[-1]     # get file (no path)
+    x = os.path.splitext(x)[-2]  # get base name (no extension)
+    x = x.split("_")[-1]         # ???
+    return x
+    #old_filename = os.path.split(identifier)[-1]
+    #old_filename_no_ext = os.path.splitext(old_filename)[-2]
+    #inputid = old_filename_no_ext.split('_')[-1]
+    #return inputid
 
 
 def make_unique_hash(identifier, pipeline, parameters, user_input):

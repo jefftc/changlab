@@ -54,12 +54,12 @@ def make_unique_hash(in_nodes, pipeline, parameters, user_input):
 
 def find_antecedents(network, module_id, data_nodes, parameters,
                      user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
-                                            user_attributes,
-                                            datatype='ExpressionFiles')
-    matrix_node = module_utils.get_identifier(network, module_id, data_nodes,
-                                              user_attributes,
-                                              datatype='GeoSeriesMatrixFile')
+    data_node = module_utils.get_identifier(
+        network, module_id, data_nodes, user_attributes,
+        datatype='ExpressionFiles')
+    matrix_node = module_utils.get_identifier(
+        network, module_id, data_nodes, user_attributes,
+        datatype='GeoSeriesMatrixFile')
     return data_node, matrix_node
 
 

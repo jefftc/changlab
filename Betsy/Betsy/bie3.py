@@ -228,7 +228,7 @@ class Attribute:
         #x = [x for x in datatype.attribute_defs if x.name == name]
         assert len(x) == 1, "datatype %r does not have attribute %r." % (
             datatype.name, name)
-        attr = x[0]
+        #attr = x[0]
         assert datatype.is_valid_attribute_value(name, value), \
                "Invalid value %r for attribute %r." % (value, name)
 
@@ -454,7 +454,7 @@ class DefaultAttributesFrom:
 class DataType:
     def __init__(self, name, *attribute_defs, **keywds):
         for x in attribute_defs:
-            assert isinstance(x, AttributeDef)
+            assert isinstance(x, AttributeDef), repr(x)
         for x in keywds:
             assert x in ["help"]
 
@@ -521,7 +521,7 @@ class DataType:
             if name not in self.attribute_defs:
                 raise KeyError, "DataType %s has no attribute %s." % (
                     repr(self.name), repr(name))
-            attr = self.attribute_defs[name]
+            #attr = self.attribute_defs[name]
             # Optimization for:
             #assert attr.is_valid_value(value), \
             #       "In a %s, '%s' is not a valid value for '%s'." % (

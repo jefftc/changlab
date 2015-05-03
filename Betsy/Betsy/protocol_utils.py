@@ -1,12 +1,14 @@
 #protocol_utils.py
-import os
-import shutil
-import config
-import hash_method
-import time
-import imghdr
-import module_utils
+#import os
+#import shutil
+#import config
+#import hash_method
+#import time
+#import imghdr
+#import module_utils
 
+
+# What are these for?
 COMMON = 'Common Parameters'
 NORMALIZE = 'Normalize Parameters'
 OPTIONAL = 'Optional Parameters'
@@ -53,6 +55,13 @@ class Parameter:
 
 def get_result_folder(protocol, outfiles, parameters, pipeline, foldername):
     """generate the result folder of a pipeline"""
+    import os
+    import shutil
+    
+    import config
+    import hash_method
+    import module_utils
+    
     OUTPUTPATH = config.OUTPUTPATH
     inputid = module_utils.get_inputid(outfiles[0][0])
     folder_string = hash_method.hash_parameters(inputid, pipeline[0][0],
@@ -63,7 +72,7 @@ def get_result_folder(protocol, outfiles, parameters, pipeline, foldername):
         os.mkdir(result_folder)
     final_outfiles = []
     for i in range(len(outfiles)):
-        result_files = []
+        #result_files = []
         new_outfiles = []
         for j in range(len(outfiles[i])):
             final_output = os.path.split(outfiles[i][j])[-1]
@@ -78,6 +87,7 @@ def get_result_folder(protocol, outfiles, parameters, pipeline, foldername):
                 else:
                     shutil.copyfile(outfiles[i][j], result_file)
         final_outfiles.append(new_outfiles)
+    # XXX summarize_report?
     summarize_report(protocol, final_outfiles, result_folder, parameters,
                      pipeline)
     print 'Report:' + os.path.join(result_folder, 'report.html')
@@ -99,6 +109,7 @@ def import_protocol(protocol):
 
 def pretty_hostname():
     import subprocess
+    
     cmd = "hostname"
     p = subprocess.Popen(cmd,
                          shell=True,
@@ -123,27 +134,32 @@ def check_parameters(PARAMETERS):
 
 
 def check_default(PARAMETERS):
+    import module_utils
+    
     for parameter in PARAMETERS:
-        if parameter.default:
-            if parameter.type:
-                if parameter.type == 'float':
-                    assert module_utils.is_number(parameter.default), (
-                        '%s is not a float number for %s' %
-                        (parameter.default, parameter.name))
-                elif parameter.type == 'string':
-                    assert isinstance(parameter.default, str), (
-                        '%s is not a string for %s' %
-                        (parameter.default, parameter.name))
-                elif parameter.type == 'integer':
-                    assert parameter.default.isdigit(), (
-                        '%s is not a digit for %s' %
-                        (parameter.default, parameter.name))
-                elif parameter.type == 'list':
-                    assert isinstance(parameter.default, str), (
-                        '%s is not a string which will convert to a list for %s' %
-                        (parameter.default, parameter.name))
-            else:
-                assert parameter.default in parameter.choices, (
-                    '%s is not correct value for %s' %
-                    (parameter.default, parameter.name))
+        if not parameter.default:
+            continue
+        if not parameter.type:
+            assert parameter.default in parameter.choices, (
+                '%s is not correct value for %s' %
+                (parameter.default, parameter.name))
+            continue
+        if parameter.type == 'float':
+            assert module_utils.is_number(parameter.default), (
+                '%s is not a float number for %s' %
+                (parameter.default, parameter.name))
+        elif parameter.type == 'string':
+            assert isinstance(parameter.default, str), (
+                '%s is not a string for %s' %
+                (parameter.default, parameter.name))
+        elif parameter.type == 'integer':
+            assert parameter.default.isdigit(), (
+                '%s is not a digit for %s' %
+                (parameter.default, parameter.name))
+        elif parameter.type == 'list':
+            assert isinstance(parameter.default, str), (
+                '%s is not a string which will convert to a list for %s' %
+                (parameter.default, parameter.name))
+        else:
+            raise AssertionError, "Unknown: %s" % parameter.type
     return True

@@ -4,6 +4,8 @@ Objects:
 FileFactory
 
 Functions:
+download_seriesmatrix_file
+
 align
 filter_mv
 
@@ -140,6 +142,59 @@ FileFactory = FileFactory()
 ##     signal_data = filter_mv(
 ##         signal_data, rank_data, percent_filter_by_mean, percent_filter_by_var)
 ##     return signal_data
+
+
+def download_seriesmatrix_file(outhandle, GSEID, GPLID=None):
+    import tempfile
+    import gzip
+    from ftplib import FTP
+    
+    assert GSEID.startswith('GSE'), "Bad GSEID: %s" % GSEID
+    assert not GPLID or GPLID.startswith('GPL'), "Bad GPLID: %s" % GPLID
+
+    # SeriesMatrix files stored in:
+    # ftp.ncbi.nih.gov/pub/geo/DATA/SeriesMatrix/<GSEID>/
+    #   <GSEID>_series_matrix.txt.gz
+    #   <GSEID>-<GPLID>_series_matrix.txt.gz  (if multiple GPLID)
+
+    # Example GSEID
+    # GSE9691  Only 1 GPLID
+    # GSE6532  Multiple GPLID
+    
+    ftp = FTP('ftp.ncbi.nih.gov')
+    ftp.login()
+    ftp.cwd('pub/geo/DATA/SeriesMatrix/' + GSEID)
+
+    # Look for the file in the series matrix path.
+    files = []
+    ftp.retrlines('NLST', files.append)
+
+    desired_filename = "%s_series_matrix.txt.gz" % GSEID
+    if GPLID:
+        desired_filename = "%s-%s_series_matrix.txt.gz" % (GSEID, GPLID)
+    assert desired_filename in files, (
+        "I could not find the series matrix file for %s.  "
+        "Possibilities are:\n%s." % (GSEID, "\n".join(files)))
+
+    # Download the gzip'd file.
+    gzipped_file = None
+    try:
+        x, gzipped_file = tempfile.mkstemp(dir=".", suffix=".gz"); os.close(x)
+        handle = open(gzipped_file, 'wb')
+        ftp.retrbinary('RETR ' + desired_filename, handle.write)
+        handle.close()
+
+        # Un-gzip the file.
+        handle = gzip.GzipFile(gzipped_file, 'rb')
+        while True:
+            line = handle.readline()
+            if not line:
+                break
+            outhandle.write(line)
+    finally:
+        if gzipped_file and os.path.exists(gzipped_file):
+            os.unlink(gzipped_file)
+
 
 def align(signal_data, other_data):
     # Align by the IDs in the first column.

@@ -1,9 +1,5 @@
-#hash_method.py
-import os
-
-
 def hash_parameters(inputid, pipeline, **parameters):
-    """given a file parameters,generate a hash string"""
+    """given a file parameters, generate a hash string"""
     from hashlib import md5
     hashstring = inputid + ' '.join(pipeline)
     for key in sorted(parameters):
@@ -16,6 +12,7 @@ def hash_parameters(inputid, pipeline, **parameters):
 
 def get_file_checksum(identifier):
     from hashlib import md5, sha1
+    
     chunk_size = 1048576  # 1024 B * 1024 B = 1048576 B = 1 MB
     file_md5_checksum = md5()
     file_sha1_checksum = sha1()
@@ -34,7 +31,9 @@ def get_file_checksum(identifier):
 
 
 def get_input_checksum(identifier):
+    import os
     from hashlib import md5
+    
     chunk_size = 1048576  # 1024 B * 1024 B = 1048576 B = 1 MB
     file_md5_checksum = md5()
     if os.path.isdir(identifier):
