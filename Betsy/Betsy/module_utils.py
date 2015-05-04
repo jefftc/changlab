@@ -40,69 +40,72 @@ class DataObject:
     def __init__(self, data, identifier=""):
         self.data = data
         self.identifier = identifier
-
     def __repr__(self):
         x = str(self.data) + ' identifier:' + self.identifier
         return x
 
 
-def get_identifier(network, module_id, pool, user_attributes,
-                   datatype=None,
-                   contents=None,
-                   optional_key=None,
-                   optional_value=None,
-                   second_key=None,
-                   second_value=None, **param):
+# Why is "contents" hard coded here?
+def get_identifier(
+    network, module_id, pool, user_attributes, datatype=None, contents=None,
+    optional_key=None, optional_value=None, second_key=None, second_value=None,
+    **param):
+    # Returns a single DataObject that goes into this module.  What is
+    # this used for?
     import os
     import bie3
 
-    require_id = []
-    for key in network.transitions:
-        if module_id in network.transitions[key]:
-            require_id.append(key)
-    combine_ids = bie3._get_valid_input_combinations(
-        network, module_id, require_id, user_attributes)
+    # Make a list of every possible combination of inputs that goes
+    # into this module.
+    prev_ids = []
+    for id_ in network.transitions:
+        if module_id in network.transitions[id_]:
+            prev_ids.append(id_)
+    all_input_ids = bie3._get_valid_input_combinations(
+        network, module_id, prev_ids, user_attributes)
     
-    for combine_id in combine_ids:
-        flag = True
-        for i in combine_id:
-            if i not in pool:
-                flag = False
-        if flag:
-            for i in combine_id:
-                node = network.nodes[i]
-                if datatype:
-                    if not node.datatype.name == datatype:
-                        continue
-                if contents:
-                    if 'contents' not in node.attributes:
-                        continue
-                    if not node.attributes['contents'] == contents:
-                        continue
-                if optional_key and optional_value:
-                    if optional_key not in node.attributes:
-                        continue
-                    elif not node.attributes[optional_key] == optional_value:
-                        continue
-                if second_key and second_value:
-                    if second_key not in node.attributes:
-                        continue
-                    elif not node.attributes[second_key] == second_value:
-                        continue
-                flag1 = True
-                if param:
-                    for key in param:
-                        if key not in node.attributes:
-                            flag1 = False
-                        elif not node.attributes[key] == param[key]:
-                            flag1 = False
-                if not flag1:
+    for input_ids in all_input_ids:
+        # If not all the input nodes have been run, then ignore this
+        # combination.
+        x = [x for x in input_ids if x in pool]
+        if len(x) != len(input_ids):
+            continue
+        
+        for i in input_ids:
+            node = network.nodes[i]
+            if datatype:
+                if not node.datatype.name == datatype:
                     continue
-                if pool[i].identifier:
-                    assert os.path.exists(pool[i].identifier), (
-                        'the input file %s for %s does not exist' %
-                        (pool[i].identifier, network.nodes[module_id].name))
-                return pool[i]
+            if contents:
+                if 'contents' not in node.attributes:
+                    continue
+                if not node.attributes['contents'] == contents:
+                    continue
+            if optional_key and optional_value:
+                if optional_key not in node.attributes:
+                    continue
+                elif not node.attributes[optional_key] == optional_value:
+                    continue
+            if second_key and second_value:
+                if second_key not in node.attributes:
+                    continue
+                elif not node.attributes[second_key] == second_value:
+                    continue
+                
+            flag1 = True
+            if param:
+                for key in param:
+                    if key not in node.attributes:
+                        flag1 = False
+                    elif not node.attributes[key] == param[key]:
+                        flag1 = False
+            if not flag1:
+                continue
+            if pool[i].identifier:
+                assert os.path.exists(pool[i].identifier), (
+                    'the input file %s for %s does not exist' %
+                    (pool[i].identifier, network.nodes[module_id].name))
+            return pool[i]
     raise ValueError(
         'cannot find node that match for %s' % network.nodes[module_id].name)
 
@@ -123,7 +126,8 @@ def get_inputid(identifier):
     #return inputid
 
 
-def make_unique_hash(identifier, pipeline, parameters, user_input):
+# Rename to hash something.
+def make_unique_hash(identifier, pipeline, parameters, user_options):
     import os
     import hash_method
 
@@ -131,13 +135,14 @@ def make_unique_hash(identifier, pipeline, parameters, user_input):
     new_parameters = parameters.copy()
     new_parameters['filesize'] = os.path.getsize(identifier)
     new_parameters['checksum'] = hash_method.get_input_checksum(identifier)
-    for key in user_input:
-        new_parameters[key] = user_input[key]
-    hash_result = hash_method.hash_parameters(input_file, pipeline,
-                                              **new_parameters)
+    for key in user_options:
+        new_parameters[key] = user_options[key]
+    hash_result = hash_method.hash_parameters(
+        input_file, pipeline, **new_parameters)
     return hash_result
 
 
+# Why is this here?  And why is rma hard coded?
 def find_pcaplots(network, pool, module_id, rma=False):
     import os
 
@@ -187,6 +192,7 @@ def find_pcaplots(network, pool, module_id, rma=False):
     return before_pcaplot, after_pcaplot
 
 
+# Why is this here?  Should also be named has_missing_values?
 def is_missing(identifier):
     import arrayio
 
@@ -269,8 +275,9 @@ def format_convert(X):
     return data
 
 
-def write_Betsy_parameters_file(parameters, data_nodes, outfile, user_input,
-                                pipeline, starttime, user, job_name):
+def write_Betsy_parameters_file(
+    parameters, data_nodes, outfile, user_input, pipeline, starttime, user,
+    job_name):
     import os
     import json
     import time

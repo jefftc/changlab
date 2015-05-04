@@ -1,9 +1,9 @@
 from Betsy.bie3 import *
-import Database
-import BasicDataTypes
+import BasicDataTypes as BDT
 import GeneExpProcessing
+
 ConsensusClusteringFolder = DataType('ConsensusClusteringFolder',
-                    AttributeDef("contents",Database.CONTENTS,
+                    AttributeDef("contents",BDT.CONTENTS,
                                'unspecified','unspecified',help="contents"),
                     AttributeDef("Consensus_algorithm",["Hierarchical", "SOM","NMF","KMeans"],
                                  "Hierarchical","Hierarchical",help="clustering algorithm in ConsensusClustering"),
@@ -31,7 +31,7 @@ all_modules=[
          OptionDef('cc_decent_iter','2000',help="Number of SOM/NMF iterations"),
          OptionDef('cc_norm_iter','0',help="Number of row/column normalization iterations (supercedes normalize.type)"),
          OptionDef('cc_heatmap_size','2',help="point size of a consensus matrix's heat map (between 1 and 20)"),
-         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
          Constraint("format",MUST_BE,'gct'),
          Consequence("contents",SAME_AS_CONSTRAINT),
          help="consensus clustering")]

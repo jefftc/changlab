@@ -4,7 +4,6 @@ from Betsy import module_utils, bie3, rulebase
 import subprocess
 from genomicode import config
 import tempfile
-import shutil
 
 ##def guess_version(chromosomes):
 ##    ref_path = config.chrom2genome
@@ -127,45 +126,45 @@ def process_group_info(group_file):
     return group_dict
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node, group_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, group_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     group_dict = process_group_info(group_node.identifier)
     preprocess_multiple_sample(data_node.identifier, group_dict, outfile,
                                data_node.data.attributes['ref'])
     assert module_utils.exists_nz(outfile), (
         'the output file %s for normalize_with_rsem_sam does not exist' % outfile
     )
-    out_node = bie3.Data(rulebase.SignalFile_Postprocess, **parameters)
+    out_node = bie3.Data(rulebase.SignalFile_Postprocess, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, group_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, group_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, group_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, group_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='SamFolder')
-    group_node = module_utils.get_identifier(network, module_id, data_nodes,
+    group_node = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SampleGroupFile')
 

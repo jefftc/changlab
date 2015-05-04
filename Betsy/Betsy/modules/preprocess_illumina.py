@@ -1,6 +1,5 @@
 #preprocess_illumina.py
 
-import shutil
 import os
 import zipfile
 import subprocess
@@ -23,16 +22,18 @@ def zip_directory(dir, zip_file):
     zip.close()
 
 
-def run(data_node, parameters, user_input, network, num_cores):
-    outfile = name_outfile(data_node, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
     module_name = 'IlluminaExpressionFileCreator'
     gp_parameters = dict()
-    if zipfile.is_zipfile(data_node.identifier):
-        gp_parameters['idat.zip'] = data_node.identifier
+    if zipfile.is_zipfile(in_data.identifier):
+        gp_parameters['idat.zip'] = in_data.identifier
     else:
-        zipfile_name = os.path.split(data_node.identifier)[-1] + '.zip'
-        zip_directory(data_node.identifier, zipfile_name)
+        zipfile_name = os.path.split(in_data.identifier)[-1] + '.zip'
+        zip_directory(in_data.identifier, zipfile_name)
         gp_parameters['idat.zip'] = os.path.join(os.getcwd(), zipfile_name)
+    
     gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
     gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
     manifiest = [
@@ -64,36 +65,43 @@ def run(data_node, parameters, user_input, network, num_cores):
             'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
             'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
             'ilmn_RatRef_12_V1_0_R5_11222119_A.chip']
-    if 'illu_bg_mode' in parameters.keys():
-        assert parameters['illu_bg_mode'] in [
+    if 'illu_bg_mode' in out_attributes.keys():
+        assert out_attributes['illu_bg_mode'] in [
             'true', 'false'
         ], 'illu_bg_mode should be ill_yes or ill_no'
-        gp_parameters['background.subtraction.mode'] = parameters['illu_bg_mode']
+        gp_parameters['background.subtraction.mode'] = out_attributes['illu_bg_mode']
 
-    if 'illu_chip' in parameters.keys():
-        assert parameters['illu_chip'] in chip, 'illu_chip is not correct'
-        gp_parameters['chip'] = str(parameters['illu_chip'])
+    
+    if 'illu_chip' in out_attributes.keys():
+        assert out_attributes['illu_chip'] in chip, 'illu_chip is not correct'
+        gp_parameters['chip'] = str(out_attributes['illu_chip'])
 
-    if 'illu_manifest' in parameters.keys():
-        assert parameters['illu_manifest'
+    
+    if 'illu_manifest' in out_attributes.keys():
+        assert out_attributes['illu_manifest'
                           ] in manifiest, 'illu_manifest is not correct'
-        gp_parameters['manifest'] = str(parameters['illu_manifest'])
+        gp_parameters['manifest'] = str(out_attributes['illu_manifest'])
 
-    if 'illu_coll_mode' in parameters.keys():
-        assert parameters['illu_coll_mode'] in [
+    
+    if 'illu_coll_mode' in out_attributes.keys():
+        assert out_attributes['illu_coll_mode'] in [
             'none', 'max', 'median'
         ], 'ill_coll_mode is not correct'
-        gp_parameters['collapse.mode'] = str(parameters['illu_coll_mode'])
+        gp_parameters['collapse.mode'] = str(out_attributes['illu_coll_mode'])
 
-    if 'illu_clm' in user_input.keys():
-        gp_parameters['clm'] = str(parameters['illu_clm'])
+    
+    if 'illu_clm' in user_options.keys():
+        gp_parameters['clm'] = str(out_attributes['illu_clm'])
 
-    if 'illu_custom_chip' in user_input.keys():
-        gp_parameters['chip'] = str(parameters['illu_custom_chip'])
+    
+    if 'illu_custom_chip' in user_options.keys():
+        gp_parameters['chip'] = str(out_attributes['illu_custom_chip'])
 
-    if 'illu_custom_manifest' in user_input.keys():
+    
+    if 'illu_custom_manifest' in user_options.keys():
         gp_parameters['custom.manifest'] = str(
-            parameters['illu_custom_manifest'])
+            out_attributes['illu_custom_manifest'])
+    
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module, 'cannot find the %s' % gp_path
@@ -102,6 +110,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     for key in gp_parameters.keys():
         a = ['--parameters', key + ':' + gp_parameters[key]]
         command.extend(a)
+    
     process = subprocess.Popen(command,
                                shell=False,
                                stdout=subprocess.PIPE,
@@ -110,6 +119,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
+    
     goal_file = None
     assert os.path.exists(download_directory), (
         'there is no output directory for illumina'
@@ -120,6 +130,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     #        file(os.path.join(download_directory,'stderr.txt')).read())
     if not os.path.exists(outfile):
         os.mkdir(outfile)
+    
     for result_file in result_files:
         if result_file == 'System.out':
             continue
@@ -134,33 +145,34 @@ def run(data_node, parameters, user_input, network, num_cores):
         f = file(result_path, 'w')
         arrayio.gct_format.write(M_new, f)
         f.close()
+    
     assert module_utils.exists_nz(outfile), (
         'the output file %s for illumina fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ILLUFolder, **parameters)
+    out_node = bie3.Data(rulebase.ILLUFolder, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'IlluFolder_' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, data_node):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
     return data_node

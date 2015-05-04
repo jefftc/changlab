@@ -1,43 +1,19 @@
 from Betsy.bie3 import *
-
-CONTENTS = [
-    "train0", "train1","test", "class0,class1,test",
-    "class0", "class1", "class0,class1","unspecified",
-    "diff_class0", "diff_class1", "diff_class0,diff_class1",
-    "diff_unspecified",
-    ]
-
-GEOSeries = DataType(
-    "GEOSeries",
-    AttributeDef(
-        "contents", CONTENTS,
-        'unspecified', 'unspecified', help="contents"),
-    help="GEOID to download from the GEO database")
-
-GEOFamilySoftFile = DataType(
-    "GEOFamilySoftFile",
-    AttributeDef(
-        "contents", CONTENTS,
-        'unspecified', 'unspecified',help="contents"),
-    help="GEO fmaily soft file download from the GEO database")
-
-GEOSeriesMatrixFile = DataType(
-    "GEOSeriesMatrixFile",
-    AttributeDef(
-        "contents", CONTENTS, 'unspecified', 'unspecified',
-        help="contents"),
-    help="GEO matrix series file download from the GEO database")
+import BasicDataTypes as BDT
+import GeneExpProcessing as GEP
 
 TCGAID = DataType(
     "TCGAID",
     AttributeDef(
-        "contents", CONTENTS, 'unspecified', 'unspecified', help="contents"),
+        "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
+        help="contents"),
     help="TCGA ID to download from TCGA database")
 
 TCGAFile = DataType(
     "TCGAFile",
     AttributeDef(
-        "contents", CONTENTS, 'unspecified', 'unspecified', help="contents"),
+        "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
+        help="contents"),
     AttributeDef(
         "preprocess", ['RSEM_genes', 'RSEM_exons',
                        'humanmethylation450', 'mirnaseq',
@@ -51,18 +27,14 @@ TCGAFile = DataType(
 list_files = [
     TCGAID,
     TCGAFile,
-    GEOSeries,
-    GEOFamilySoftFile,
-    GEOSeriesMatrixFile,
     ]
 
 all_modules = [
-    #TCGA Files
     Module(
         'download_tcga', TCGAID, TCGAFile,
         OptionDef("disease", help="tcga disease type"),
         OptionDef("date", "", help="date for tcga disease"),
-        Constraint("contents", CAN_BE_ANY_OF,CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence(
             "preprocess", SET_TO_ONE_OF,
@@ -75,7 +47,7 @@ all_modules = [
         'download_tcga_agilent', TCGAID, TCGAFile,
         OptionDef("disease", help="tcga disease type"),
         OptionDef("date", "", help="date for tcga disease"),
-        Constraint("contents", CAN_BE_ANY_OF,CONTENTS,),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SET_TO, 'agilent'),
         Consequence("tumor_only", SET_TO, 'no'),
@@ -85,7 +57,7 @@ all_modules = [
         'download_tcga_affymetrix', TCGAID, TCGAFile,
         OptionDef("disease", help="tcga disease type"),
         OptionDef("date", "", help="date for tcga disease"),
-        Constraint("contents", CAN_BE_ANY_OF,CONTENTS,),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SET_TO, 'affymetrix'),
         Consequence("tumor_only", SET_TO, 'no'),
@@ -93,17 +65,24 @@ all_modules = [
 
     Module(
         'select_tumor_only', TCGAFile, TCGAFile,
-        Constraint("contents", CAN_BE_ANY_OF,CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("tumor_only", MUST_BE, 'no'),
         Consequence("tumor_only", SET_TO, 'yes'),
         help="select the tumor sample only in the TCGAFile"),
     
     Module(
-        'download_GEO_family_soft',
-        GEOSeries, GEOFamilySoftFile,
-        OptionDef("GSEID", help='GSEID for download family_soft file'),
-        Constraint("contents", CAN_BE_ANY_OF, CONTENTS),
+        'preprocess_tcga', TCGAFile, GEP._SignalFile_Postprocess,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Constraint("tumor_only", MUST_BE, 'yes'),
+        Constraint(
+            "preprocess", CAN_BE_ANY_OF,
+            ['RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
+             'rppa', 'clinical', 'affymetrix', 'agilent']),
         Consequence("contents", SAME_AS_CONSTRAINT),
-        help="download geo family soft file"),
+        Consequence('logged', SET_TO, "unknown"),
+        Consequence('predataset', SET_TO, "no"),
+        Consequence('preprocess', SAME_AS_CONSTRAINT),
+        Consequence('format', SET_TO, "tdf"),
+        help="preprocess tcga file, generate to SignalFile_Postprocess"),
     ]

@@ -1,9 +1,8 @@
 #Clustering
 from Betsy.bie3 import *
 import GeneExpProcessing
-import Database
 import Heatmap
-import BasicDataTypes
+import BasicDataTypes as BDT
 
 ClusterFile = DataType(
     "ClusterFile",
@@ -11,7 +10,7 @@ ClusterFile = DataType(
                  help="cluster algorithm"),
     AttributeDef("distance",['correlation','euclidean'],'correlation','correlation',
                  help="distance for cluster algorithm"),
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                                'unspecified','unspecified',help='contents'),
     help="Cluster file")
 
@@ -28,7 +27,7 @@ all_modules = [
         GeneExpProcessing.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'som'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean']),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="cluster genes by som method"
         ),
@@ -37,7 +36,7 @@ all_modules = [
         GeneExpProcessing.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'pca'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean']),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="cluster genes by pca method"),
     Module(
@@ -46,7 +45,7 @@ all_modules = [
         OptionDef("k_value",5,help='k value for k means'),
         Consequence("cluster_alg",SET_TO,'kmeans'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean']),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="cluster genes by kmeans method"),
     Module(
@@ -54,7 +53,7 @@ all_modules = [
         GeneExpProcessing.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'hierarchical'),
         Consequence("distance",SET_TO_ONE_OF,['correlation','euclidean']),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="cluster genes by hierarchical method"
         ),
@@ -66,7 +65,7 @@ all_modules = [
         OptionDef('hm_height',20,help="heigth in heatmap plot"),
         Constraint("cluster_alg",CAN_BE_ANY_OF,['hierarchical','pca','som','kmeans']),
         Constraint("distance",CAN_BE_ANY_OF,['correlation','euclidean']),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("cluster_alg",SAME_AS_CONSTRAINT),
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence("distance",SAME_AS_CONSTRAINT),

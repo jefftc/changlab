@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import imghdr
 import time
 from Betsy import bie3
 from Betsy import rulebase
@@ -11,18 +10,21 @@ from Betsy import module_utils
 from Betsy import hash_method
 
 
-def run(data_node, parameters, user_input, network, num_cores):
-    outfile_folder = name_outfile(data_node, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    in_data = antecedents
+    outfile_folder = name_outfile(in_data, user_options)
     outfile = os.path.join(outfile_folder, 'report.html')
     if not os.path.exists(outfile_folder):
         os.mkdir(outfile_folder)
+    
     result_files = []
-    filename = data_node.identifier
+    filename = in_data.identifier
     new_name = os.path.join(outfile_folder, os.path.split(filename)[-1])
     if os.path.isdir(filename):
         shutil.copytree(filename, new_name)
     else:
         shutil.copyfile(filename, new_name)
+    
     result_files.append(os.path.split(new_name)[-1])
     #write the report.html
     from genomicode import parselib
@@ -31,9 +33,11 @@ def run(data_node, parameters, user_input, network, num_cores):
     def highlight(s):
         return htmllib.SPAN(s, style="background-color:yellow")
 
+    
     def smaller(s):
         return htmllib.FONT(s, size=-1)
 
+    
     try:
         lines = []
         w = lines.append
@@ -74,10 +78,10 @@ def run(data_node, parameters, user_input, network, num_cores):
                                                              align="LEFT"))
         rows.append(x)
 
-        for key in data_node.data.attributes.keys():
+        for key in in_data.data.attributes.keys():
             x = htmllib.TR(htmllib.TD(key,
                                       align="LEFT") +
-                           htmllib.TD(data_node.data.attributes[key],
+                           htmllib.TD(in_data.data.attributes[key],
                                       align="LEFT"))
             rows.append(x)
         w(htmllib.TABLE("\n".join(rows),
@@ -99,29 +103,30 @@ def run(data_node, parameters, user_input, network, num_cores):
         open(outfile, 'w').write(x)
     except:
         raise
-    out_node = bie3.Data(rulebase.ReportFile, **parameters)
+    
+    out_node = bie3.Data(rulebase.ReportFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(data_node, user_input):
+def name_outfile(antecedents, user_options):
     filename = 'report'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
     return data_node

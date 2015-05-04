@@ -10,12 +10,7 @@ find_antecedents
 """
 
 
-# data_node   Data object.
-# parameters  For making a Data object.
-# user_input  dictionary of parameters given by the user.
-
 def run(network, antecedents, out_attributes, user_options, num_cores):
-    """given a database ID and GPLID, get the series matrix file"""
     import os
     import shutil
     in_data = antecedents

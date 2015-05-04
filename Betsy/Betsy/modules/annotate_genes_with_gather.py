@@ -6,9 +6,10 @@ import urllib2
 from Betsy import bie3, rulebase
 
 
-def run(data_node, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """run GATHER"""
-    outfile = name_outfile(data_node, user_input)
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
     kwargs = {
         'cmd': "report",
         'tax_id': '9606',
@@ -17,14 +18,15 @@ def run(data_node, parameters, user_input, network, num_cores):
         'annot_type': 'gene_ontology'
     }
     code_dict = {'yes': 1, 'no': 0}
-    kwargs['network'] = code_dict[parameters['network']]
-    kwargs['homologs'] = code_dict[parameters['homologs']]
-    kwargs['annot_type'] = parameters['annot_type']
-    f = file(data_node.identifier, 'r')
+    kwargs['network'] = code_dict[out_attributes['network']]
+    kwargs['homologs'] = code_dict[out_attributes['homologs']]
+    kwargs['annot_type'] = out_attributes['annot_type']
+    f = file(in_data.identifier, 'r')
     text = f.read()
     f.close()
     if ',' in text:
         raise ValueError('the gene list file cannot contain ","')
+    
     words = text.split()
     kwargs['gene_box'] = ','.join(words)
     url = 'http://gather.genome.duke.edu/'
@@ -38,30 +40,30 @@ def run(data_node, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the outfile for run_gather %s does not exist' % outfile
     )
-    out_node = bie3.Data(rulebase.GatherFile, **parameters)
+    out_node = bie3.Data(rulebase.GatherFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
     return data_node
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'gather_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, data_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

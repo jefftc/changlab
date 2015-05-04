@@ -7,9 +7,9 @@ from Betsy import module_utils, bie3, rulebase
 import os
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node_train, cls_node_train = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node_train, cls_node_train = antecedents
+    outfile = name_outfile(antecedents, user_options)
     a, training_label, second_line = read_label_file.read(
         cls_node_train.identifier)
     training = arrayio.read(data_node_train.identifier)
@@ -20,7 +20,7 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     svm_kernel = ['linear', 'polynomial', 'RBF', 'sigmoid',
                   'precomputed_kernel']
     #if 'svm_kernel' in parameters.keys():
-    kernel_type = svm_kernel.index(parameters['svm_kernel'])
+    kernel_type = svm_kernel.index(out_attributes['svm_kernel'])
     command = '-t ' + str(kernel_type)
     # else:
     #    command = '-t 0'
@@ -31,38 +31,38 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for train_svm_model fails' % outfile
     )
-    out_node = bie3.Data(rulebase.SvmModel, **parameters)
+    out_node = bie3.Data(rulebase.SvmModel, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
-    data_node_train, cls_node_train = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node_train, cls_node_train = antecedents
     original_file = module_utils.get_inputid(data_node_train.identifier)
     filename = 'svm_model_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node_train, cls_node_train = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node_train, cls_node_train = antecedents
     identifier = data_node_train.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
     data_node_train = module_utils.get_identifier(
-        network, module_id, data_nodes, user_attributes,
+        network, module_id, pool, user_attributes,
         contents='class0,class1,test',
         datatype='SignalFile')
     cls_node_train = module_utils.get_identifier(network, module_id,
-                                                 data_nodes, user_attributes,
+                                                 pool, user_attributes,
                                                  contents='class0,class1',
                                                  datatype='ClassLabelFile')
     return data_node_train, cls_node_train

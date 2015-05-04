@@ -2,23 +2,24 @@
 import os
 from Betsy import module_utils, bie3, rulebase
 import shutil
-import gzip
 
 
-def run(data_node, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """check is fastq folder"""
-    outfile = name_outfile(data_node, user_input)
-    directory = module_utils.unzip_if_zip(data_node.identifier)
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    directory = module_utils.unzip_if_zip(in_data.identifier)
     filenames = os.listdir(directory)
     assert filenames, 'The input folder or zip file is empty.'
     if not os.path.exists(outfile):
         os.mkdir(outfile)
+    
     format_types = ['fa', 'fastq']
     for format_type in format_types:
         for filename in filenames:
             if filename == '.DS_Store':
                 continue
-            fileloc = os.path.join(data_node.identifier, filename)
+            fileloc = os.path.join(in_data.identifier, filename)
             new_file = ''
             newfname = ''
             if fileloc.endswith(format_type + '.gz'):
@@ -29,31 +30,32 @@ def run(data_node, parameters, user_input, network, num_cores):
                 newfname = filename
             if new_file and newfname:
                 shutil.copyfile(new_file, os.path.join(outfile, newfname))
+    
     assert module_utils.exists_nz(outfile), (
         'the output file %s for is_fastq_folder fails' % outfile
     )
-    out_node = bie3.Data(rulebase.RNASeqFile, **parameters)
+    out_node = bie3.Data(rulebase.RNASeqFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'fastq_files_' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, data_node):
-    directory = module_utils.unzip_if_zip(data_node.identifier)
+def get_out_attributes(antecedents, out_attributes):
+    directory = module_utils.unzip_if_zip(antecedents.identifier)
     filenames = os.listdir(directory)
-    if directory != data_node.identifier:
+    if directory != antecedents.identifier:
         shutil.rmtree(directory)
     assert filenames, 'The input folder or zip file is empty.'
     format_types = ['fa', 'fastq']
@@ -69,15 +71,15 @@ def get_out_attributes(parameters, data_node):
             else:
                 flag.append(False)
     if True in flag:
-        parameters['format_type'] = 'fastqfolder'
-        return parameters
-    parameters['format_type'] = 'not_fastqfolder'
-    return parameters
+        out_attributes['format_type'] = 'fastqfolder'
+        return out_attributes
+    out_attributes['format_type'] = 'not_fastqfolder'
+    return out_attributes
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='RNASeqFile')
     return data_node

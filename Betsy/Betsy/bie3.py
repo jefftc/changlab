@@ -213,7 +213,10 @@ class AttributeDef:
 
     @staticmethod
     def __init_from_dict(args):
-        inst = AttributeDef(**args)
+        #inst = AttributeDef(**args)
+        inst = AttributeDef(
+            args["name"], args["values"], args["default_in"],
+            args["default_out"], help=args.get("help"))
         return inst
 
 
@@ -280,9 +283,8 @@ class OptionDef:
         assert 'name' in args
         assert 'default' in args
         assert 'help' in args
-        inst = OptionDef(args['name'],
-                         default=args['default'],
-                         help=args['help'])
+        inst = OptionDef(
+            args['name'], default=args['default'], help=args['help'])
         return inst
 
 
@@ -355,9 +357,9 @@ class Constraint:
         assert 'behavior' in args
         assert 'arg1' in args
         assert 'input_index' in args
-        inst = Constraint(args['name'], args['behavior'],
-                          arg1=args['arg1'],
-                          input_index=args['input_index'])
+        inst = Constraint(
+            args['name'], args['behavior'], arg1=args['arg1'],
+            input_index=args['input_index'])
         return inst
 
 
@@ -417,10 +419,11 @@ class Consequence:
         assert 'arg1' in args
         assert 'arg2' in args
         assert 'side_effect' in args
-        inst = Consequence(args['name'], args['behavior'],
-                           arg1=args['arg1'],
-                           arg2=args['arg2'],
-                           side_effect=args['side_effect'])
+        inst = Consequence(
+            args['name'], args['behavior'],
+            arg1=args['arg1'],
+            arg2=args['arg2'],
+            side_effect=args['side_effect'])
         return inst
 
 
@@ -1268,9 +1271,9 @@ def complete_network(network, user_attributes):
 
         # Find combinations of inputs that are compatible with the
         # network.
-        combos = _get_valid_input_combinations(network, module_id,
-                                               combined_ids, user_attributes,
-                                               node2previds=node2previds)
+        combos = _get_valid_input_combinations(
+            network, module_id, combined_ids, user_attributes,
+            node2previds=node2previds)
 
         # Add the new transitions.
         for id_ in itertools.chain.from_iterable(combos):
@@ -1600,8 +1603,8 @@ class _OptimizeNoDanglingNodes:
         node = network.nodes[node_id]
         if isinstance(node, Module):
             prev_ids = _backchain_to_ids(network, node_id)
-            x = _get_valid_input_combinations(network, node_id, prev_ids,
-                                              user_attributes)
+            x = _get_valid_input_combinations(
+                network, node_id, prev_ids, user_attributes)
             if not x:
                 return True
         # Case 2.
@@ -2089,9 +2092,9 @@ def _get_inputs_h(network, node_id, nodeid2previds, user_attributes):
         # Find all potential sets of Data notes that can feed into me.
         assert node_id in nodeid2previds
         previds = nodeid2previds[node_id]
-        combos = _get_valid_input_combinations(network, node_id, previds,
-                                               user_attributes,
-                                               node2previds=nodeid2previds)
+        combos = _get_valid_input_combinations(
+            network, node_id, previds, user_attributes,
+            node2previds=nodeid2previds)
 
         # Get the inputs from each of the combinations.
         for combo in combos:
@@ -3164,9 +3167,8 @@ def _can_module_produce_data(module, data):
     return False
 
 
-def _get_valid_input_combinations(network, module_id, all_input_ids,
-                                  user_attributes,
-                                  node2previds=None):
+def _get_valid_input_combinations(
+    network, module_id, all_input_ids, user_attributes, node2previds=None):
     # Given a list of all input IDs that point to a module, yield
     # tuples of input_ids that can match the input datatypes of the
     # module.  Only checks the datatypes, and does not do any other
@@ -3221,8 +3223,8 @@ def _get_valid_input_combinations(network, module_id, all_input_ids,
 
         # Make sure the inputs are compatible with the module.
         input_datas = [network.nodes[x] for x in input_ids]
-        if not _can_module_in_network_take_data(network, module_id,
-                                                input_datas, user_attributes):
+        if not _can_module_in_network_take_data(
+            network, module_id, input_datas, user_attributes):
             continue
 
         # Make sure the outputs are compatible with the module.

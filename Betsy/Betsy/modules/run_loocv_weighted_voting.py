@@ -10,9 +10,9 @@ from genomicode import config
 import subprocess
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node_train, cls_node_train = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node_train, cls_node_train = antecedents
+    outfile = name_outfile(antecedents, user_options)
     module_name = 'WeightedVotingXValidation'
     module_id_version = '00028:2'
     gp_parameters = dict()
@@ -21,8 +21,8 @@ def run(in_nodes, parameters, user_input, network, num_cores):
         cls_node_train.identifier)
     gp_parameters['data.filename'] = file1
     gp_parameters['class.filename'] = cls_node_train.identifier
-    if 'wv_num_features' in user_input:
-        gp_parameters['num.features'] = str(user_input['wv_num_features'])
+    if 'wv_num_features' in user_options:
+        gp_parameters['num.features'] = str(user_options['wv_num_features'])
 ##    if 'wv_minstd' in user_input:	
 ##    	assert module_utils.is_number(
 ##            user_input['wv_minstd']), 'the sv_minstd should be number'
@@ -88,38 +88,38 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for run_loocv_weighted_voting fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ClassifyFile, **parameters)
+    out_node = bie3.Data(rulebase.ClassifyFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='SignalFile',
                                             contents='class0,class1')
-    cls_node = module_utils.get_identifier(network, module_id, data_nodes,
+    cls_node = module_utils.get_identifier(network, module_id, pool,
                                            user_attributes,
                                            datatype='ClassLabelFile',
                                            contents='class0,class1')
     return data_node, cls_node
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, cls_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, cls_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'predication_loocv_wv' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, cls_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, cls_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

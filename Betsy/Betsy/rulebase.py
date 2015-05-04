@@ -6,8 +6,8 @@ def import_rules():
 
     RULE_PATH = "rules"
     module_path = os.path.join(os.path.dirname(__file__), RULE_PATH)
-    assert os.path.exists(module_path), "I could not find the rules: %s" % \
-           module_path
+    assert os.path.exists(module_path), \
+           "I could not find the rules: %s" % module_path
     filenames = os.listdir(module_path)
     # filenames is a list of:
     # __init__.py
@@ -32,10 +32,11 @@ def import_rules():
     all_modules = []
     for name in module_names:
         import_name = "rules.%s" % name
+        #print "IMPORTING %s" % import_name
         module = __import__(import_name, globals(), locals(), [name], -1)
         all_modules.extend(module.all_modules)
-        assert hasattr(module, "list_files"), "Missing list_files var in %s" \
-               % repr(module)
+        assert hasattr(module, "list_files"), \
+               "Missing list_files var in %s" % repr(module)
         for mod in module.list_files:
             globals()[mod.name] = mod
 

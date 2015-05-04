@@ -8,28 +8,32 @@ from Betsy import rulebase
 from Betsy import module_utils
 
 
-def run(data_node, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """generate a heatmap of input file"""
-    outfile = name_outfile(data_node, user_input)
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
     Heatmap_path = config.arrayplot
     Heatmap_BIN = module_utils.which(Heatmap_path)
     assert Heatmap_BIN, 'cannot find the %s' % Heatmap_path
 
-    command = ['python', Heatmap_BIN, data_node.identifier, '-o', outfile,
+    command = ['python', Heatmap_BIN, in_data.identifier, '-o', outfile,
                "--label_arrays", "--label_genes"]
-    if 'color' in parameters.keys():
-        color = ['--color', parameters['color'].replace('_', '-')]
+    if 'color' in out_attributes.keys():
+        color = ['--color', out_attributes['color'].replace('_', '-')]
         command.extend(color)
-    M = arrayio.read(data_node.identifier)
+    
+    M = arrayio.read(in_data.identifier)
     nrow = M.nrow()
     ncol = M.ncol()
     ratio = float(nrow) / ncol
     max_box_height = 20
     max_box_width = 60
-    if 'hm_width' in user_input:
-        max_box_width = user_input['hm_width']
-    if 'hm_height' in user_input:
-        max_box_height = user_input['hm_height']
+    if 'hm_width' in user_options:
+        max_box_width = user_options['hm_width']
+    
+    if 'hm_height' in user_options:
+        max_box_height = user_options['hm_height']
+    
     if ratio >= 4:
         x, y = graphlib.find_tall_heatmap_size(nrow, ncol,
                                                max_box_height=max_box_height,
@@ -44,6 +48,7 @@ def run(data_node, parameters, user_input, network, num_cores):
                                                min_box_height=20,
                                                min_box_width=20,
                                                max_megapixels=128)
+    
     command.extend(['-x', str(x), '-y', str(y)])
     process = subprocess.Popen(command,
                                shell=False,
@@ -52,33 +57,34 @@ def run(data_node, parameters, user_input, network, num_cores):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
+    
     assert module_utils.exists_nz(outfile), (
         'the output file %s for plot_signature_prediction_comparison fails' %
         outfile)
-    out_node = bie3.Data(rulebase.ScoreComparePlot, **parameters)
+    out_node = bie3.Data(rulebase.ScoreComparePlot, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'heatmap_' + original_file + '.png'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, data_node):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
     return data_node

@@ -6,10 +6,10 @@ from Betsy import rulebase
 from Betsy import module_utils
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """compare signature predictions"""
-    outfile = name_outfile(in_nodes, user_input)
-    data_node1, data_node2, data_node3 = in_nodes
+    outfile = name_outfile(antecedents, user_options)
+    data_node1, data_node2, data_node3 = antecedents
     assert 'probabilities.pcl' in os.listdir(data_node1.identifier)
     assert 'probabilities.pcl' in os.listdir(data_node2.identifier)
     assert 'probabilities.pcl' in os.listdir(data_node3.identifier)
@@ -40,43 +40,43 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for compare_signature_predictions fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ScoreCompareReportFile, **parameters)
+    out_node = bie3.Data(rulebase.ScoreCompareReportFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
-    data_node1, data_node2, data_node3 = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node1, data_node2, data_node3 = antecedents
     original_file = module_utils.get_inputid(data_node1.identifier)
     filename = 'compare_three_signature_predictions_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node1, data_node2, data_node3 = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node1, data_node2, data_node3 = antecedents
     identifier = data_node1.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node1 = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node1 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignatureScore',
                                              optional_key='preprocess',
                                              optional_value='affymetrix')
-    data_node2 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node2 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignatureScore',
                                              optional_key='preprocess',
                                              optional_value='agilent')
-    data_node3 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node3 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignatureScore',
                                              optional_key='preprocess',

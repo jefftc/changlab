@@ -24,12 +24,14 @@ def extract_files(gzfile):
     return None
 
 
-def run(data_node, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """select tumor sample only """
-    outfile = name_outfile(data_node, user_input)
-    infile = data_node.identifier
-    if data_node.identifier.endswith('tar.gz'):
-        infile = extract_files(data_node.identifier)
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    infile = in_data.identifier
+    if in_data.identifier.endswith('tar.gz'):
+        infile = extract_files(in_data.identifier)
+    
     slice_matrix_BIN = config.slice_matrix
     slice_matrix = module_utils.which(slice_matrix_BIN)
     assert slice_matrix, 'cannot find the %s' % slice_matrix_BIN
@@ -44,6 +46,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
+    
     assert module_utils.exists_nz(tempfile), (
         'the temp file %s for select_tumor_only fails' % tempfile
     )
@@ -57,6 +60,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
+    
     assert module_utils.exists_nz(tempfile1), (
         'the temp file %s for select_tumor_only fails' % tempfile1
     )
@@ -70,6 +74,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
+    
     assert module_utils.exists_nz(tempfile2), (
         'the output file %s for select_tumor_only fails' % tempfile2
     )
@@ -84,6 +89,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     if error_message:
         raise ValueError(error_message)
 
+    
     assert module_utils.exists_nz(outfile), (
         'the output file %s for select_tumor_only fails' % outfile
     )
@@ -92,31 +98,31 @@ def run(data_node, parameters, user_input, network, num_cores):
     os.remove(tempfile1)
     os.remove(tempfile2)
 
-    out_node = bie3.Data(rulebase.TCGAFile, **parameters)
+    out_node = bie3.Data(rulebase.TCGAFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     original_file = original_file.replace('.rar', '')
     filename = 'TCGAFile_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, data_node):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
     return data_node

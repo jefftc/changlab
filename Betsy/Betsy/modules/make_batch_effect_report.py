@@ -1,7 +1,6 @@
 #make_batch_effect_report.py
 import os
 import shutil
-import imghdr
 import time
 from genomicode import parselib, htmllib
 from Betsy import bie3
@@ -10,13 +9,13 @@ from Betsy import module_utils
 from Betsy import hash_method
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    outfile_folder = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    outfile_folder = name_outfile(antecedents, user_options)
     outfile = os.path.join(outfile_folder, 'report.html')
     if not os.path.exists(outfile_folder):
         os.mkdir(outfile_folder)
     result_files = []
-    for data_node in in_nodes:
+    for data_node in antecedents:
         filename = data_node.identifier
         folder = os.path.split(os.path.split(filename)[0])[-1]
         new_name = os.path.join(outfile_folder,
@@ -28,7 +27,7 @@ def run(in_nodes, parameters, user_input, network, num_cores):
         result_files.append(os.path.split(new_name)[-1])
     (data_node1, data_node2, data_node3, data_node4, data_node5, data_node6,
      data_node7, data_node8, data_node9, data_node10, data_node11,
-     date_node12) = in_nodes
+     date_node12) = antecedents
 
     #write the report.html
 
@@ -226,107 +225,107 @@ def run(in_nodes, parameters, user_input, network, num_cores):
         open(outfile, 'w').write(x)
     except:
         raise
-    out_node = bie3.Data(rulebase.BatchEffectReportFile, **parameters)
+    out_node = bie3.Data(rulebase.BatchEffectReportFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
+def name_outfile(antecedents, user_options):
     filename = 'report'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
     (data_node1, data_node2, data_node3, data_node4, data_node5, data_node6,
      data_node7, data_node8, data_node9, data_node10, data_node11,
-     data_node12) = in_nodes
+     data_node12) = antecedents
     identifier = data_node1.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node1 = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node1 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignalFile',
                                              optional_key='quantile_norm',
                                              optional_value='no')
-    data_node2 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node2 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='PcaPlot',
                                              optional_key='quantile_norm',
                                              optional_value='no')
     param = {'shiftscale_norm': 'no', 'dwd_norm': 'no', 'combat_norm': 'no'}
-    data_node3 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node3 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignalFile',
                                              optional_key='quantile_norm',
                                              optional_value='yes',
                                              second_key='bfrm_norm',
                                              second_value='no', **param)
-    data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node4 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='PcaPlot',
                                              optional_key='quantile_norm',
                                              optional_value='yes',
                                              second_key='bfrm_norm',
                                              second_value='no', **param)
-    data_node5 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node5 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignalFile',
                                              optional_key='quantile_norm',
                                              optional_value='yes',
                                              second_key='bfrm_norm',
                                              second_value='yes')
-    data_node6 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node6 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='PcaPlot',
                                              optional_key='quantile_norm',
                                              optional_value='yes',
                                              second_key='bfrm_norm',
                                              second_value='yes')
-    data_node7 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node7 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignalFile',
                                              optional_key='quantile_norm',
                                              optional_value='yes',
                                              second_key='combat_norm',
                                              second_value='yes')
-    data_node8 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node8 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='PcaPlot',
                                              optional_key='quantile_norm',
                                              optional_value='yes',
                                              second_key='combat_norm',
                                              second_value='yes')
-    data_node9 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node9 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignalFile',
                                              optional_key='quantile_norm',
                                              optional_value='yes',
                                              second_key='dwd_norm',
                                              second_value='yes')
-    data_node10 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node10 = module_utils.get_identifier(network, module_id, pool,
                                               user_attributes,
                                               datatype='PcaPlot',
                                               optional_key='quantile_norm',
                                               optional_value='yes',
                                               second_key='dwd_norm',
                                               second_value='yes')
-    data_node11 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node11 = module_utils.get_identifier(network, module_id, pool,
                                               user_attributes,
                                               datatype='SignalFile',
                                               optional_key='quantile_norm',
                                               optional_value='yes',
                                               second_key='shiftscale_norm',
                                               second_value='yes')
-    data_node12 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node12 = module_utils.get_identifier(network, module_id, pool,
                                               user_attributes,
                                               datatype='PcaPlot',
                                               optional_key='quantile_norm',

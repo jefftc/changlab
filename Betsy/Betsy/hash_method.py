@@ -1,3 +1,8 @@
+# Functions:
+# hash_parameters
+# get_file_checksum
+# get_input_checksum
+
 def hash_parameters(inputid, pipeline, **parameters):
     """given a file parameters, generate a hash string"""
     from hashlib import md5

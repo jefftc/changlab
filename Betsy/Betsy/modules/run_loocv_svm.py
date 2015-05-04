@@ -8,9 +8,9 @@ from Betsy import read_label_file
 from Betsy import module_utils
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node, cls_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, cls_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     M = arrayio.read(data_node.identifier)
     a, training_label, second_line = read_label_file.read(cls_node.identifier)
     full_index = range(M.ncol())
@@ -52,16 +52,16 @@ def run(in_nodes, parameters, user_input, network, num_cores):
         test_label_node = rulebase.ClassLabelFile.output(contents='test')
         test_label_data = rule_engine_bie3.DataObject(test_label_node,
                                                       identifier=test_label)
-        new_parameters = parameters.copy()
+        new_parameters = out_attributes.copy()
         del new_parameters['loocv']
         del new_parameters['actual_label']
         del new_parameters['wv_feature_stat']
         x1 = merge_data, train_label_data
-        svm_model = train_model.run(x1, new_parameters, user_input, network)
+        svm_model = train_model.run(x1, new_parameters, user_options, network)
         x = svm_model, merge_data, train_label_data
-        out_node = predict_model.run(x, parameters, user_input, network)
+        out_node = predict_model.run(x, out_attributes, user_options, network)
         out_node_label = evaluate_model.run(
-            (out_node, test_label_data), parameters, user_input, network)
+            (out_node, test_label_data), out_attributes, user_options, network)
         f1 = open(out_node_label.identifier, 'r')
         lines = f1.readlines()
         f1.close()
@@ -76,38 +76,38 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for loocv fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ClassifyFile, **parameters)
+    out_node = bie3.Data(rulebase.ClassifyFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='SignalFile',
                                             contents='class0,class1')
-    cls_node = module_utils.get_identifier(network, module_id, data_nodes,
+    cls_node = module_utils.get_identifier(network, module_id, pool,
                                            user_attributes,
                                            datatype='ClassLabelFile',
                                            contents='class0,class1')
     return data_node, cls_node
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, cls_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, cls_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'predication_loocv_svm' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, cls_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, cls_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

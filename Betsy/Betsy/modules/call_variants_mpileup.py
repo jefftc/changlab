@@ -5,9 +5,10 @@ import subprocess
 from genomicode import config
 
 
-def run(data_node, parameters, user_input, network, num_cores):
-    outfile = name_outfile(data_node, user_input)
-    species = parameters['ref']
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    species = out_attributes['ref']
     if species == 'hg18':
         ref_file = config.hg18_ref
     elif species == 'hg19':
@@ -16,13 +17,14 @@ def run(data_node, parameters, user_input, network, num_cores):
         ref_file = config.dm3_ref
     elif species == 'mm9':
         ref_file = config.mm9_ref
+    
     assert os.path.exists(ref_file), 'the ref file %s does not exsits' % ref_file
     #command = ['samtools','mpileup','-uf',ref,single_object.identifier,'|',
     #           'bcftools','view', '-bvcg','-','>',outfile]
     samtools_BIN = config.samtools
     samtools_module = module_utils.which(samtools_BIN)
     assert os.path.exists(samtools_module), 'cannot find the %s' % samtools_BIN
-    command = [samtools_BIN, 'mpileup', '-uf', ref_file, data_node.identifier]
+    command = [samtools_BIN, 'mpileup', '-uf', ref_file, in_data.identifier]
     f = file(outfile, 'w')
     try:
         process = subprocess.Popen(command,
@@ -31,37 +33,39 @@ def run(data_node, parameters, user_input, network, num_cores):
                                    stderr=subprocess.PIPE)
     finally:
         f.close()
+    
     error_message = process.communicate()[1]
     if 'error' in error_message:
         raise ValueError(error_message)
+    
     assert module_utils.exists_nz(outfile), (
         'the output file %s for call_variants_mpileup does not exist' % outfile
     )
-    out_node = bie3.Data(rulebase.VcfFile, **parameters)
+    out_node = bie3.Data(rulebase.VcfFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def get_out_attributes(parameters, data_object):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'mpileup_' + original_file + '.bcf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='BamFile')
 

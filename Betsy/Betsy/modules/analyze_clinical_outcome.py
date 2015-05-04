@@ -6,20 +6,20 @@ import subprocess
 import shutil
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node, clinical_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, clinical_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     analyze_path = config.analyze_clinical
     analyze_BIN = module_utils.which(analyze_path)
     assert analyze_BIN, 'cannot find the %s' % analyze_path
     x = []
-    if 'rank_cutoff' in user_input:
-        x.extend(['--rank_cutoff', user_input['rank_cutoff']])
-    if 'zscore_cutoff' in user_input:
-        x.extend(['--zscore_cutoff', user_input['zscore_cutoff']])
+    if 'rank_cutoff' in user_options:
+        x.extend(['--rank_cutoff', user_options['rank_cutoff']])
+    if 'zscore_cutoff' in user_options:
+        x.extend(['--zscore_cutoff', user_options['zscore_cutoff']])
     command = ['python', analyze_BIN, data_node.identifier,
-               clinical_node.identifier, '--outcome', user_input['outcome'] +
-               ',' + user_input['dead'], '--gene', user_input['genename'],
+               clinical_node.identifier, '--outcome', user_options['outcome'] +
+               ',' + user_options['dead'], '--gene', user_options['genename'],
                '-o', 'clin'] + x
     process = subprocess.Popen(command,
                                shell=False,
@@ -35,36 +35,36 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for analyze_clinical_outcome fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ClinicalAnalysis, **parameters)
+    out_node = bie3.Data(rulebase.ClinicalAnalysis, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, clinical_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, clinical_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, clinical_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, clinical_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'survial_analysis_' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, data_node):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='SignalFile')
-    clinical_node = module_utils.get_identifier(network, module_id, data_nodes,
+    clinical_node = module_utils.get_identifier(network, module_id, pool,
                                                 user_attributes,
                                                 datatype='ClinicalFile')
     return data_node, clinical_node

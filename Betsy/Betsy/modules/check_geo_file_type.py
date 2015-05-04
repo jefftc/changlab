@@ -2,14 +2,13 @@
 import os
 import shutil
 from Betsy import module_utils, bie3, rulebase
-import gzip
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """check the data type from the expression file"""
-    from genomicode import affyio
-    data_node, matrix_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+    #from genomicode import affyio
+    data_node, matrix_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     directory = module_utils.unzip_if_zip(data_node.identifier)
@@ -23,42 +22,42 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for check_geo_file_type fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ExpressionFiles, **parameters)
+    out_node = bie3.Data(rulebase.ExpressionFiles, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, matrix_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, matrix_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'expression_' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    data_node, matrix_node = in_nodes
-    new_parameters = parameters.copy()
+def get_out_attributes(antecedents, out_attributes):
+    data_node, matrix_node = antecedents
+    new_parameters = out_attributes.copy()
     datatype, filenames = guess_datatype(data_node.identifier,
                                          matrix_node.identifier)
     new_parameters['filetype'] = datatype
     return new_parameters
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, matrix_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, matrix_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
     data_node = module_utils.get_identifier(
-        network, module_id, data_nodes, user_attributes,
+        network, module_id, pool, user_attributes,
         datatype='ExpressionFiles')
     matrix_node = module_utils.get_identifier(
-        network, module_id, data_nodes, user_attributes,
+        network, module_id, pool, user_attributes,
         datatype='GeoSeriesMatrixFile')
     return data_node, matrix_node
 

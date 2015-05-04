@@ -1,14 +1,15 @@
 #Calling_variants_rule
 from Betsy.bie3 import *
+import BasicDataTypes as BDT
 import BasicDataTypesNGS
-import Database
+
 all_modules = [
     Module(
         'align_sequence',
          BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.SaiFile,
          Constraint("read",CAN_BE_ANY_OF,['single','pair1','pair2']),
          Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19','mm9','dm3']),
-         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
          Consequence("read",SAME_AS_CONSTRAINT),
          Consequence("ref",SAME_AS_CONSTRAINT),
          Consequence("contents",SAME_AS_CONSTRAINT),
@@ -17,7 +18,7 @@ all_modules = [
     Module(
         'generate_alignment_sam',
          [BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.SaiFile], BasicDataTypesNGS.SamFile,
-         Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
          Constraint("read", MUST_BE,'single'),
          Constraint("ref", CAN_BE_ANY_OF,['hg18','hg19','mm9','dm3']),
          Consequence("read",SAME_AS_CONSTRAINT),
@@ -46,7 +47,7 @@ all_modules = [
          Constraint("ref", SAME_AS,0,3),
          Consequence("ref", SAME_AS_CONSTRAINT,0),
 
-         Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS,0),
+         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS,0),
          Constraint("contents", SAME_AS,0,1),
          Constraint("contents", SAME_AS,0,2),
          Constraint("contents", SAME_AS,0,3),
@@ -61,7 +62,7 @@ all_modules = [
     Module(
         'sort_sam_file',
         BasicDataTypesNGS.SamFile,BasicDataTypesNGS.BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("duplicates_marked",MUST_BE,'no'),
         Constraint("recalibration",MUST_BE,'no'),
         Constraint("has_header",MUST_BE,'no'),
@@ -76,7 +77,7 @@ all_modules = [
      Module(
         'mark_duplicates',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("duplicates_marked",MUST_BE,'no'),
         Constraint("recalibration",MUST_BE,'no'),
         Constraint("has_header",MUST_BE,'no'),
@@ -91,7 +92,7 @@ all_modules = [
     Module(
         'fix_header_GATK',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("recalibration",MUST_BE,'no'),
         Constraint("has_header",MUST_BE,'no'),
@@ -106,7 +107,7 @@ all_modules = [
     Module(
         'recalibrate_base_quality_score',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("recalibration",MUST_BE,'no'),
@@ -123,7 +124,7 @@ all_modules = [
     Module(
         'call_variants_mpileup',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("sorted", MUST_BE,'yes'),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("has_header",MUST_BE,'yes'),
@@ -137,7 +138,7 @@ all_modules = [
     Module(
         'filter_vcf_file',
         BasicDataTypesNGS.VcfFile,BasicDataTypesNGS.VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("recalibration",CAN_BE_ANY_OF,['yes','no']),
         Constraint("vcf_annotate",MUST_BE,'no'),
         Constraint("vcf_filter",MUST_BE,'no'),
@@ -151,7 +152,7 @@ all_modules = [
     Module(
         'call_variants_GATK',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("sorted", MUST_BE,'yes'),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("has_header",MUST_BE,'yes'),
@@ -165,7 +166,7 @@ all_modules = [
     Module(
         'annotate_vcf_file',
         BasicDataTypesNGS.VcfFile,BasicDataTypesNGS.VcfFile,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("recalibration",CAN_BE_ANY_OF,['yes','no']),
         Constraint("vcf_annotate",MUST_BE,'no'),
         Constraint("vcf_filter",MUST_BE,'yes'),
@@ -179,7 +180,7 @@ all_modules = [
     
     Module('is_Bam_folder_sorted',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
         Constraint("duplicates_marked",MUST_BE,'no'),
         Constraint("indexed",MUST_BE,'no'),
@@ -195,7 +196,7 @@ all_modules = [
         ),
     Module('sort_bam_folder',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
         Constraint("duplicates_marked",MUST_BE,'no'),
         Constraint("indexed",MUST_BE,'no'),
@@ -211,7 +212,7 @@ all_modules = [
     
     Module('flag_dups_in_bam_folder',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
         Constraint("duplicates_marked",MUST_BE,'no'),
         Constraint("indexed",MUST_BE,'no'),
@@ -228,7 +229,7 @@ all_modules = [
     
     Module('index_bam_folder',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("indexed",MUST_BE,'no'),
@@ -248,7 +249,7 @@ all_modules = [
                      help="ref file for RNA_SeQC"),
         OptionDef("RNA_gtf",
                      help="gtf file for RNA_SeQC"),
-        Constraint("contents", CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
         Constraint("duplicates_marked",MUST_BE,'yes'),
         Constraint("indexed",MUST_BE,'yes'),

@@ -8,9 +8,9 @@ from Betsy import bie3
 from Betsy import rulebase
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    svm_model, data_node_test, cls_node_train = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    svm_model, data_node_test, cls_node_train = antecedents
+    outfile = name_outfile(antecedents, user_options)
     a, train_label, second_line = read_label_file.read(
         cls_node_train.identifier)
     M = arrayio.read(data_node_test.identifier)
@@ -37,41 +37,41 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for classify_with_svm fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ClassifyFile, **parameters)
+    out_node = bie3.Data(rulebase.ClassifyFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
-    svm_model, data_node_test, cls_node_train = in_nodes
+def name_outfile(antecedents, user_options):
+    svm_model, data_node_test, cls_node_train = antecedents
     original_file = module_utils.get_inputid(svm_model.identifier)
     filename = 'svm_result' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    svm_model, data_node_test, cls_node_train = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    svm_model, data_node_test, cls_node_train = antecedents
     identifier = svm_model.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
     svm_model_node = module_utils.get_identifier(network, module_id,
-                                                 data_nodes, user_attributes,
+                                                 pool, user_attributes,
                                                  datatype='SvmModel')
     data_node_test = module_utils.get_identifier(network, module_id,
-                                                 data_nodes, user_attributes,
+                                                 pool, user_attributes,
                                                  contents='class0,class1,test',
                                                  datatype='SignalFile')
     cls_node_train = module_utils.get_identifier(network, module_id,
-                                                 data_nodes, user_attributes,
+                                                 pool, user_attributes,
                                                  contents='class0,class1',
                                                  datatype='ClassLabelFile')
     return svm_model_node, data_node_test, cls_node_train

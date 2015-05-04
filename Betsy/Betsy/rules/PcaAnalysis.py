@@ -1,11 +1,11 @@
 #PcaAnalysis
 from Betsy.bie3 import *
-import Database
+import BasicDataTypes as BDT
 import GeneExpProcessing
 
 PcaAnalysis = DataType(
     'PcaAnalysis',
-    AttributeDef('contents',Database.CONTENTS,"unspecified","unspecified",help="contents"),
+    AttributeDef('contents',BDT.CONTENTS,"unspecified","unspecified",help="contents"),
     AttributeDef(
         "preprocess",GeneExpProcessing.PREPROCESS,
         "unknown","unknown",help="preprocess method"),
@@ -52,7 +52,7 @@ PcaAnalysis = DataType(
 
 PcaPlot = DataType(
     'PcaPlot',
-    AttributeDef("contents",Database.CONTENTS,"unspecified","unspecified",help="contents"),
+    AttributeDef("contents",BDT.CONTENTS,"unspecified","unspecified",help="contents"),
     # Properties of the data.
     AttributeDef("preprocess",GeneExpProcessing.PREPROCESS,
         "unknown","unknown",help="preprocess method"),

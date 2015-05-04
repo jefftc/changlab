@@ -7,49 +7,56 @@ from genomicode import config
 import subprocess
 
 
-def run(data_node, parameters, user_input, network, num_cores):
-    outfile = name_outfile(data_node, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
     module_name = 'ConsensusClustering'
     gp_parameters = dict()
-    file1 = data_node.identifier
+    file1 = in_data.identifier
 
     gp_parameters['input.filename'] = file1
 
-    if 'cc_kmax' in user_input:
+    if 'cc_kmax' in user_options:
         assert module_utils.is_number(
-            user_input['cc_kmax']), 'the cc_kmax should be number'
-        gp_parameters['cc_kmax'] = str(user_input['cc_kmax'])
-    if 'cc_resampling_iter' in user_input:
-        assert module_utils.is_number(user_input['cc_resampling_iter'
+            user_options['cc_kmax']), 'the cc_kmax should be number'
+        gp_parameters['cc_kmax'] = str(user_options['cc_kmax'])
+    
+    if 'cc_resampling_iter' in user_options:
+        assert module_utils.is_number(user_options['cc_resampling_iter'
                       ]), 'the cc_resampling_iter should be number'
         gp_parameters['resampling.iterations'] = str(
-            user_input['cc_resampling_iter'])
-    if 'cc_seed_value' in user_input:
+            user_options['cc_resampling_iter'])
+    
+    if 'cc_seed_value' in user_options:
         assert module_utils.is_number(
-            user_input['cc_seed_value']), 'the cc_seed_value should be number'
-        gp_parameters['seed.value'] = str(user_input['cc_seed_value'])
-    if 'cc_decent_iter' in user_input:
+            user_options['cc_seed_value']), 'the cc_seed_value should be number'
+        gp_parameters['seed.value'] = str(user_options['cc_seed_value'])
+    
+    if 'cc_decent_iter' in user_options:
         assert module_utils.is_number(
-            user_input['cc_decent_iter']), 'the cc_decent_iter should be number'
-        gp_parameters['descent.iterations'] = str(user_input['cc_decent_iter'])
-    if 'cc_norm_iter' in user_input:
+            user_options['cc_decent_iter']), 'the cc_decent_iter should be number'
+        gp_parameters['descent.iterations'] = str(user_options['cc_decent_iter'])
+    
+    if 'cc_norm_iter' in user_options:
         assert module_utils.is_number(
-            user_input['cc_norm_iter']), 'the cc_norm_iter should be number'
+            user_options['cc_norm_iter']), 'the cc_norm_iter should be number'
         gp_parameters['normalization.iterations'] = str(
-            user_input['cc_norm_iter'])
-    if 'cc_heatmap_size' in user_input:
+            user_options['cc_norm_iter'])
+    
+    if 'cc_heatmap_size' in user_options:
         assert module_utils.is_number(
-            user_input['cc_heatmap_size']), 'the cc_heatmap_size should be number'
-        gp_parameters['heat.map.size'] = str(user_input['cc_heatmap_size'])
+            user_options['cc_heatmap_size']), 'the cc_heatmap_size should be number'
+        gp_parameters['heat.map.size'] = str(user_options['cc_heatmap_size'])
 
+    
     gp_parameters['clustering.algorithm'
-                 ] = parameters['Consensus_algorithm'].upper()
-    gp_parameters['distance.measure'] = parameters['cc_distance'].upper()
-    gp_parameters['merge.type'] = parameters['merge_type']
-    gp_parameters['create.heat.map'] = parameters['create_heatmap']
-    gp_parameters['normalize.type'] = parameters['normalize_type']
-    gp_parameters['cluster.by'] = parameters['clusterby']
-    gp_parameters['resample'] = parameters['cc_resample']
+                 ] = out_attributes['Consensus_algorithm'].upper()
+    gp_parameters['distance.measure'] = out_attributes['cc_distance'].upper()
+    gp_parameters['merge.type'] = out_attributes['merge_type']
+    gp_parameters['create.heat.map'] = out_attributes['create_heatmap']
+    gp_parameters['normalize.type'] = out_attributes['normalize_type']
+    gp_parameters['cluster.by'] = out_attributes['clusterby']
+    gp_parameters['resample'] = out_attributes['cc_resample']
 
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
@@ -59,6 +66,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     for key in gp_parameters.keys():
         a = ['--parameters', key + ':' + gp_parameters[key]]
         command.extend(a)
+    
     process = subprocess.Popen(command,
                                shell=False,
                                stdout=subprocess.PIPE,
@@ -67,6 +75,7 @@ def run(data_node, parameters, user_input, network, num_cores):
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
+    
     assert os.path.exists(download_directory), (
         'there is no output directory for consensusClustering'
     )
@@ -75,31 +84,31 @@ def run(data_node, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for consensusClustering fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ConsensusClusteringFolder, **parameters)
+    out_node = bie3.Data(rulebase.ConsensusClusteringFolder, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
 
     return data_node
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'ConsensusClusteringFolder' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, data_node):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

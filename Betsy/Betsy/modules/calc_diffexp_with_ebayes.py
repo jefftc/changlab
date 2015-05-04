@@ -6,15 +6,15 @@ from genomicode import config
 import subprocess
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node, cls_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, cls_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     diffexp_bin = config.find_diffexp_genes
     assert os.path.exists(diffexp_bin)
     cmd = ['python', diffexp_bin, data_node.identifier, '--cls_file',
            cls_node.identifier, '--algorithm', 'ebayes']
-    if 'diffexp_foldchange_value' in user_input:
-        foldchange = float(user_input['diffexp_foldchange_value'])
+    if 'diffexp_foldchange_value' in user_options:
+        foldchange = float(user_options['diffexp_foldchange_value'])
         cmd = cmd + ['--fold_change', str(foldchange)]
     handle = open(outfile, 'w')
     try:
@@ -31,36 +31,36 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for calc_diffexp_with_ebayes fails' % outfile
     )
-    out_node = bie3.Data(rulebase.DiffExprFile, **parameters)
+    out_node = bie3.Data(rulebase.DiffExprFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='SignalFile')
-    cls_node = module_utils.get_identifier(network, module_id, data_nodes,
+    cls_node = module_utils.get_identifier(network, module_id, pool,
                                            user_attributes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, cls_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, cls_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'ebayes_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, cls_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, cls_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

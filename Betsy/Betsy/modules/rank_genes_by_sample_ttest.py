@@ -1,7 +1,6 @@
 #rank_genes_by_sample_ttest.py
 from Betsy import gene_ranking
 from Betsy import module_utils
-import shutil
 import os
 from genomicode import jmath
 import arrayio
@@ -9,9 +8,9 @@ import numpy
 from Betsy import read_label_file, bie3, rulebase
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node, cls_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, cls_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     label, label_line, second_line = read_label_file.read(cls_node.identifier)
     M = arrayio.read(data_node.identifier)
     assert len(label) == 2, (
@@ -31,13 +30,13 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     gene_list = []
     key = M._row_order[0]
     threshold = 0.05
-    if 'gene_select_threshold' in user_input:
-        threshold = float(user_input['gene_select_threshold'])
-    if parameters['gene_order'] == 't_test_p':
+    if 'gene_select_threshold' in user_options:
+        threshold = float(user_options['gene_select_threshold'])
+    if out_attributes['gene_order'] == 't_test_p':
         for i in range(len(sort_p)):
             if float(sort_p[i][0]) < threshold:
                 gene_list.append(M._row_names[key][sort_p[i][1]])
-    elif parameters['gene_order'] == 't_test_fdr':
+    elif out_attributes['gene_order'] == 't_test_fdr':
         for i in range(len(p)):
             if p[i] == 10:
                 p[i] = ''
@@ -57,36 +56,36 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for rank_genes_by_sample_ttest fails' % outfile
     )
-    out_node = bie3.Data(rulebase.GeneListFile, **parameters)
+    out_node = bie3.Data(rulebase.GeneListFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='_SignalFile_Order')
-    cls_node = module_utils.get_identifier(network, module_id, data_nodes,
+    cls_node = module_utils.get_identifier(network, module_id, pool,
                                            user_attributes,
                                            datatype='ClassLabelFile')
     return data_node, cls_node
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, cls_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, cls_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'gene_list' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, cls_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, cls_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

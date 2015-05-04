@@ -1,13 +1,15 @@
 #BasicDataTypesNGS
 from Betsy.bie3 import *
-import Database
+import BasicDataTypes as BDT
+
+
 FastqFile=DataType(
     'FastqFile',
     AttributeDef("read",['single','pair','pair1','pair2'],
                  "single","single",help='single or pair read'),
     AttributeDef("ref",['hg18','hg19','mm9','dm3'], "hg19","hg19",
                  help='ref species'),
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     help="Fastq file"
     )
@@ -17,14 +19,14 @@ SaiFile=DataType(
                  "single","single",help='single or pair read'),
     AttributeDef("ref",['hg18','hg19','mm9','dm3'],
                  "hg19","hg19",help='ref species'),
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     help="Sai file"
     )
 
 SamFile=DataType(
     'SamFile',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',
                  help="contents"),
     AttributeDef("sorted",["yes","no"],"no","no",
@@ -45,7 +47,7 @@ SamFile=DataType(
     )
 BamFile=DataType(
     'BamFile',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',
                  help="contents"),
     AttributeDef("sorted",["yes","no"],"no","no",
@@ -66,7 +68,7 @@ BamFile=DataType(
     )
 VcfFile=DataType(
     'VcfFile',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',
                  help="contents"),
     AttributeDef("recalibration",["yes","no"],"no","no",
@@ -88,7 +90,7 @@ VcfFile=DataType(
     )
 RNASeqFile=DataType(
     'RNASeqFile',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     AttributeDef("format_type",['unknown','not_fastqfolder','not_samfolder','not_bamfolder',
                                 'samfolder','bamfolder','fastqfolder'],
@@ -97,7 +99,7 @@ RNASeqFile=DataType(
     )
 FastqFolder=DataType(
     'FastqFolder',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     help="RNA seq Fastq folder"
     )
@@ -105,7 +107,7 @@ SamFolder=DataType(
     'SamFolder',
     AttributeDef("ref",['human','mouse','hg18','hg19'], "human","human",
                  help='ref species'),
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     AttributeDef("sample_type",['RNA','DNA'],
                  'RNA','RNA',help="RNA or DNA type"),
@@ -116,7 +118,7 @@ BamFolder=DataType(
     'BamFolder',
     AttributeDef("ref",['human','mouse','hg18','hg19'], "human","human",
                  help='ref species'),
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     AttributeDef("sample_type",['RNA','DNA'],
                  'RNA','RNA',help="RNA or DNA type"),
@@ -130,13 +132,13 @@ BamFolder=DataType(
     )
 SampleGroupFile=DataType(
     'SampleGroupFile',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     help="File contains sample group infomation"
     )
 RNASeQCFile=DataType(
     'RNASeQCFile',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                  'unspecified','unspecified',help="contents"),
     help="File contains sample group infomation"
     )

@@ -24,6 +24,13 @@ read_and_unpack_str
 pack_and_write_str
 
 """
+# Internal Functions:
+# _extract_sm_sample_meta
+# _clean_sm_sample_meta
+# _prettify_sm_sample_meta
+# 
+# _remove_quotes
+
 import os, sys
 
 class FileFactory:
@@ -196,6 +203,269 @@ def download_seriesmatrix_file(outhandle, GSEID, GPLID=None):
             os.unlink(gzipped_file)
 
 
+def _remove_quotes(s):
+    if s and s[0] == '"' and s[-1] == '"':
+        s = s[1:-1]
+    return s
+
+
+def _extract_sm_sample_meta(file_or_handle):
+    # Return a tab-delimited matrix of the results.
+    import gzip
+    import shlex
+    import filelib
+
+    # Sometimes there are \r embedded within quotes.  Split lines
+    # based on \n.
+    if type(file_or_handle) is type(""):
+        filename = file_or_handle
+        if filename.endswith(".gz"):
+            handle = gzip.open(filename, 'rb')
+        elif filename.endswith(".bz2"):
+            cmd = "bzcat '%s'" % filename
+            w, r, e = filelib._my_popen(cmd)
+            w.close()
+            e.close()
+            handle = r
+        else:
+            # Assume text file.
+            handle = open(filename)
+    else:
+        handle = file_or_handle
+    lines = handle.read().split("\n")
+
+    # Sometimes if a line is too long, it will be continued on the
+    # next line, e.g.
+    # !Sample_extract_protocol_ch1  <TEXT>  <TEXT>  <TEXT>
+    # !Sample_extract_protocol_ch1  <CONT>  <CONT>  <CONT>
+    # !Sample_extract_protocol_ch1          <CONT>  <CONT>
+    # !Sample_extract_protocol_ch1          <CONT>  <CONT>
+    #
+    # Notes:
+    # o It seems like the !Sample_<name> is consistent.
+    # o Some of the columns can be blank if there is no continuation.
+    # o Sometimes the close quotes are missing from <TEXT> or <CONT>.
+    matrix = []
+    num_cols = None
+    for line in lines:
+        line = line.rstrip("\n")
+
+        if not line.startswith("!Sample"):
+            continue
+
+        # Split by \t.
+        # Use shlex because sometimes there are tabs within the
+        # quotes.  However, this will fail if the close quote is
+        # missing.  If this is the case, parse without shlex and hope
+        # there aren't any internal tabs.
+        if not line.endswith('"'):
+            cols = line.split("\t")
+        else:
+            x = shlex.shlex(line)
+            x.whitespace = "\t"
+            x.whitespace_split = True
+            cols = [x for x in x]
+        # Sometimes shlex will mess up if there are quotes within
+        # strings.  If this happens, fall back on just splitting on
+        # tabs.
+        if num_cols and len(cols) != num_cols:
+            cols = line.split("\t")
+        if line.startswith("!Sample_title"):
+            num_cols = None
+        if num_cols is None:
+            num_cols = len(cols)
+        assert len(cols) == num_cols, "%s: has %d expect %d" % (
+            cols[0], len(cols), num_cols)
+        cols = [_remove_quotes(x) for x in cols]
+        cols = [x.replace("\t", " ").strip() for x in cols]
+        cols = [x.replace("\r", " ").strip() for x in cols]
+        matrix.append(cols)
+    return matrix
+
+
+SAMPLE_CHARACTERISTICS = "!Sample_characteristics_ch1"
+def _clean_sm_sample_meta(matrix):
+    # Return a cleaned up matrix.  Does two things:
+    # 1.  Merge into one table where each column is a single sample.
+    #     Sometimes wide matrices (too many columns) get split up.
+    #     Merge them back together.
+    # 2.  Sample_characteristics_ch1 are not guaranteed to be aligned.
+    #     Align them.
+    
+
+    # Examples:
+    # GSE25066   Alignment messed up.
+
+    #IGNORE = [
+    #    "Sample_supplementary_file",
+    #    "Sample_description",
+    #    "Sample_extract_protocol_ch1",
+    #    "Sample_growth_protocol_ch1",
+    #    "Sample_status",
+    #    "Sample_submission_date",
+    #    "Sample_last_update_date",
+    #    "Sample_treatment_protocol_ch1",
+    #    "Sample_data_row_count",
+    #    "Sample_scan_protocol",
+    #    ]
+
+    # Remove quotes around elements.
+    #for i in range(len(matrix)):
+    #    for j in range(len(matrix[i])):
+    #        x = matrix[i][j]
+    #        if x.startswith('"') and x.endswith('"'):
+    #            x = x[1:-1]
+    #            matrix[i][j] = x
+
+    # In this sample matrix, each row can only have 256 columns.  If
+    # it is longer, it will be broken up across the file.  Fix this.
+    while True:
+        assert matrix
+        assert matrix[0][0] == "!Sample_title", matrix[0][0]
+        i_next = None
+        for i in range(1, len(matrix)):
+            #print i, matrix[i][0]
+            if matrix[i][0] == "!Sample_title":
+                i_next = i
+                break
+        if not i_next:  # no more matrices
+            break
+        
+        # Merge this with the previous matrix.
+        num_rows = i_next
+        for i in range(num_rows):
+            # Make sure the header is the same.
+            j = i+num_rows
+            #print len(matrix), i_next, num_rows, i, j
+            assert matrix[i][0] == matrix[j][0]
+            x = matrix[i] + matrix[j][1:]
+            matrix[i] = x
+        # Delete the rows I just merged.
+        for i in range(num_rows):
+            del matrix[i_next]
+
+    # The !Sample_characteristics_ch1 lines sometimes get unaligned:
+    # !Sample_characteristics_ch1  subtype: type VI  time_to_metastasis: 1.6
+    # !Sample_characteristics_ch1                    subtype: type IV
+    # If this happens, fix the alignment.
+
+    # First, make a list of all the Sample_characteristics_ch1 lines.
+    I_char = []
+    for i in range(len(matrix)):
+        if matrix[i][0] == SAMPLE_CHARACTERISTICS:
+            I_char.append(i)
+            
+    # For each sample, parse out all the sample characteristics.
+    # Also, make an in-order list of all the possible
+    # sample_characteristics.
+    sample2chars = {}  # index -> dict of characteristics
+    all_chars = []
+    for j in range(1, len(matrix[0])):
+        chars = {}
+        for i in I_char:
+            # Sample_characteristics_ch1 have the format:
+            # <name>: <value>
+            x = matrix[i][j]
+            if not x:
+                continue
+            assert ":" in x, x
+            (name, value) = x.split(":", 1)
+            name, value = name.strip(), value.strip()
+            chars[name] = value
+            if name not in all_chars:
+                all_chars.append(name)
+        sample2chars[j] = chars
+
+    # Now create the aligned Sample_characteristics lines.
+    cmatrix = []
+    for i in range(len(all_chars)):
+        x = [SAMPLE_CHARACTERISTICS] + [""] * len(sample2chars)
+        cmatrix.append(x)
+    for j in range(1, len(matrix[0])):
+        for i, name in enumerate(all_chars):
+            value = sample2chars[j].get(name)
+            x = ""
+            if value is not None:
+                x = "%s: %s" % (name, value)
+            cmatrix[i][j] = x
+    assert len(cmatrix[0]) == len(matrix[0])
+
+    # Now remove the SAMPLE_CHARACTERISTICS lines from the original
+    # matrix.
+    omatrix = [x for x in matrix if x[0] != SAMPLE_CHARACTERISTICS]
+    assert len(omatrix) >= min(I_char)
+    m1 = omatrix[:min(I_char)]
+    m2 = omatrix[min(I_char):]
+    matrix = m1 + cmatrix + m2
+
+    return matrix
+
+
+def _prettify_sm_sample_meta(matrix):
+    # Return a pretty version of the matrix.
+    # 1.  Remove "!Sample_" from the header names.
+    #     !Sample_geo_accession -> geo_accession
+    # 2.  If only "_ch1" and no "_ch2" suffixes, remove "_ch1".
+    # 3.  Rename Sample_characteristics_ch1 to the name given by the
+    #     depositor.
+
+    # Do some basic checking on the format.
+    assert matrix
+    assert matrix[0]
+    for i in range(len(matrix)):
+        assert matrix[i][0].startswith("!Sample_")
+
+    # Make a copy of the matrix.
+    matrix = [x[:] for x in matrix]
+
+    # Remove !Sample_ prefix.
+    for i in range(len(matrix)):
+        x = matrix[i][0]
+        if x == SAMPLE_CHARACTERISTICS:
+            continue
+        assert x.startswith("!Sample_")
+        x = x[len("!Sample_"):]
+        assert x
+        matrix[i][0] = x
+
+    # Remove _ch1, if there are no _ch2.
+    has_ch2 = False
+    for i in range(len(matrix)):
+        x = matrix[i][0]
+        if x.endswith("_ch2"):
+            has_ch2 = True
+    for i in range(len(matrix)):
+        x = matrix[i][0]
+        if x == SAMPLE_CHARACTERISTICS:
+            continue
+        if x.endswith("_ch1") and not has_ch2:
+            x = x[:-4]
+            assert x
+            matrix[i][0] = x
+
+    # Rename SAMPLE_CHARACTERISTICS.
+    for i in range(len(matrix)):
+        x = matrix[i][0]
+        if x != SAMPLE_CHARACTERISTICS:
+            continue
+        # Figure out the name of this sample characteristic.
+        header = None
+        for j in range(1, len(matrix[i])):
+            x = matrix[i][j]
+            if not x:
+                continue
+            (name, value) = x.split(":", 1)
+            name, value = name.strip(), value.strip()
+            if header is None:
+                header = name
+            assert header == name, "unaligned %s line" % SAMPLE_CHARACTERISTICS
+            matrix[i][j] = value
+        assert header
+        matrix[i][0] = header
+    
+    return matrix
+            
+        
 def align(signal_data, other_data):
     # Align by the IDs in the first column.
     from genomicode import jmath

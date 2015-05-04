@@ -5,10 +5,10 @@ import subprocess
 from genomicode import config
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    fastq1_node, sai1_node, fastq2_node, sai2_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
-    species = parameters['ref']
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    fastq1_node, sai1_node, fastq2_node, sai2_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
+    species = out_attributes['ref']
     if species == 'hg18':
         ref_file = config.hg18_ref
     elif species == 'hg19':
@@ -40,46 +40,46 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for generate_alignment_sam_pair does not exist' %
         outfile)
-    out_node = bie3.Data(rulebase.SamFile, **parameters)
+    out_node = bie3.Data(rulebase.SamFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def get_out_attributes(parameters, data_object):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(data_node.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'generate_alignment_sam' + original_file + '.sam'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    fastq1_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    fastq1_node = module_utils.get_identifier(network, module_id, pool,
                                               user_attributes,
                                               datatype='FastqFile',
                                               optional_key='read',
                                               optional_value='pair1')
-    sai1_node = module_utils.get_identifier(network, module_id, data_nodes,
+    sai1_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='SaiFile',
                                             optional_key='read',
                                             optional_value='pair1')
-    fastq2_node = module_utils.get_identifier(network, module_id, data_nodes,
+    fastq2_node = module_utils.get_identifier(network, module_id, pool,
                                               user_attributes,
                                               datatype='FastqFile',
                                               optional_key='read',
                                               optional_value='pair2')
-    sai2_node = module_utils.get_identifier(network, module_id, data_nodes,
+    sai2_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='SaiFile',
                                             optional_key='read',

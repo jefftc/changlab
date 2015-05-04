@@ -11,19 +11,22 @@ from Betsy import bie3
 from Betsy import rulebase
 
 
-def run(data_node, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """check an input file is xls or xlsx format"""
-    outfile = name_outfile(data_node, user_input)
-    real_name = data_node.identifier
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    real_name = in_data.identifier
     try:
-        x = userfile._unhash_storefile(data_node.identifier)
+        x = userfile._unhash_storefile(in_data.identifier)
         real_name = x[1]
     except:
         pass
-    if (data_node.identifier.endswith('.gz') or real_name.endswith('.gz')):
-        unzip_file = module_utils.gunzip(data_node.identifier)
+    
+    if (in_data.identifier.endswith('.gz') or real_name.endswith('.gz')):
+        unzip_file = module_utils.gunzip(in_data.identifier)
     else:
-        unzip_file = data_node.identifier
+        unzip_file = in_data.identifier
+    
     M = None
     xls_file = None
     txt_file = unzip_file
@@ -38,6 +41,7 @@ def run(data_node, parameters, user_input, network, num_cores):
             xls_file = None
         except (SystemError, MemoryError, KeyError), x:
             raise
+    
     if xls_file:
         shutil.copyfile(unzip_file, xls_file)
         xls2txt_path = config.xls2txt
@@ -55,6 +59,7 @@ def run(data_node, parameters, user_input, network, num_cores):
         os.remove(xls_file)
         f.close()
         txt_file = 'tmp1.txt'
+    
     M = guess_and_change_gct_header(txt_file)
     M_c = arrayio.convert(M, to_format=arrayio.tab_delimited_format)
     f = file(outfile, 'w')
@@ -63,29 +68,29 @@ def run(data_node, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for convert_signal_to_tdf does not exists' % outfile
     )
-    out_node = bie3.Data(rulebase._SignalFile_Postprocess, **parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Postprocess, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(data_object, user_input):
-    original_file = module_utils.get_inputid(data_object.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'signal_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def get_out_attributes(parameters, data_object):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def find_antecedents(network, module_id, pool, parameters, user_attributes):
+def find_antecedents(network, module_id, out_attributes, user_attributes, pool):
     data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
 

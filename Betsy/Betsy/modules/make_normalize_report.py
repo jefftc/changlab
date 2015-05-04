@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import imghdr
 import time
 from Betsy import bie3
 from Betsy import rulebase
@@ -11,13 +10,13 @@ from Betsy import module_utils
 from Betsy import hash_method
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    outfile_folder = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    outfile_folder = name_outfile(antecedents, user_options)
     outfile = os.path.join(outfile_folder, 'report.html')
     if not os.path.exists(outfile_folder):
         os.mkdir(outfile_folder)
     result_files = []
-    for index, data_node in enumerate(in_nodes):
+    for index, data_node in enumerate(antecedents):
         filename = data_node.identifier
         new_name = os.path.join(outfile_folder, os.path.split(filename)[-1])
         #rename one of the pcaplot filename
@@ -29,7 +28,7 @@ def run(in_nodes, parameters, user_input, network, num_cores):
         else:
             shutil.copyfile(filename, new_name)
         result_files.append(os.path.split(new_name)[-1])
-    data_node1, data_node2, data_node3, data_node4, data_node5, data_node6 = in_nodes
+    data_node1, data_node2, data_node3, data_node4, data_node5, data_node6 = antecedents
     #write the report.html
     from genomicode import parselib
     from genomicode import htmllib
@@ -157,42 +156,42 @@ def run(in_nodes, parameters, user_input, network, num_cores):
         open(outfile, 'w').write(x)
     except:
         raise
-    out_node = bie3.Data(rulebase.NormalizeReportFile, **parameters)
+    out_node = bie3.Data(rulebase.NormalizeReportFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
+def name_outfile(antecedents, user_options):
     filename = 'report'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node1, data_node2, data_node3, data_node4, data_node5, data_node6 = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node1, data_node2, data_node3, data_node4, data_node5, data_node6 = antecedents
     identifier = data_node1.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node1 = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node1 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='SignalFile')
-    data_node2, data_node3 = module_utils.find_pcaplots(network, data_nodes,
+    data_node2, data_node3 = module_utils.find_pcaplots(network, pool,
                                                         module_id)
-    data_node4 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node4 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='IntensityPlot')
-    data_node5 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node5 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='ActbPlot')
-    data_node6 = module_utils.get_identifier(network, module_id, data_nodes,
+    data_node6 = module_utils.get_identifier(network, module_id, pool,
                                              user_attributes,
                                              datatype='ControlPlot')
     return data_node1, data_node2, data_node3, data_node4, data_node5, data_node6

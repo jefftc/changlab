@@ -277,7 +277,7 @@ def print_possible_inputs(network, user_attributes):
             print
         print
         
-def check_possible_inputs(network,user_attributes,input_nodes):
+def check_possible_inputs(network, user_attributes, input_nodes):
     """check if the input_nodes can generate a sub network"""
     input_nodes.sort()
     inputs = bie3.get_inputs(network, user_attributes)
@@ -290,7 +290,7 @@ def check_possible_inputs(network,user_attributes,input_nodes):
                 return True
     return False
 
-def print_missing_inputs(network,user_attributes,input_nodes):
+def print_missing_inputs(network, user_attributes, input_nodes):
     """print the missing inputs which is required to generate a sub network"""
     input_nodes.sort()
     inputs = bie3.get_inputs(network, user_attributes)
@@ -314,93 +314,93 @@ def print_missing_inputs(network,user_attributes,input_nodes):
                 for name in sorted(node.attributes):
                     print "%s%s=%s" % (" "*5, name, node.attributes[name])
             print     
+
+
 def main():
+    from Betsy import module_utils
+    
     parser = argparse.ArgumentParser(description='Run the engine')
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
-        '--input',  default=None, action='append',
-        type=str, help='DataType of the input')
+        '--input',  action='append', help='DataType of the input')
     group.add_argument(
-        '--input_file', default=None, action='append',
-        type=str, help='input data path')
+        '--input_file', action='append',
+        help='File corresponding to the previous --input.')
     group.add_argument(
-        '--mattr',  default=[], action='append',
-        type=str, help='Set the option for a module.  Format should be: '
+        '--mattr', default=[], action='append',
+        help='Set the option for a module.  Format should be: '
         '<key>=<value>.')
     
     group.add_argument(
-        '--output',  default=None, type=str,
-        help='Desired DataType for the output.')
+        '--output',  help='Desired DataType for the output.')
     group.add_argument(
-        '--dattr', default=[], type=str, action='append',
-        help='Attribute for a Datatype. Each --dattr should be given following \
-        its related Datatype immediately. For input datatype, attribute '
-        'should be given as: <key>=<value>.  For output '
+        '--dattr', default=[], action='append',
+        help='Attribute for a Datatype. Each --dattr should be given '
+        'following its related Datatype immediately. For input datatype, '
+        'attribute should be given as: <key>=<value>.  For output '
         'datatype, the format is: <datatype>,<key>=<value>.')
     group.add_argument(
-        '--output_file', type=str, default=None,
-        help='file or folder of output result')
+        '--output_file', help='file or folder of output result')
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
-        '--png_file',  type=str, default=None,
-        help='generate the output network png file')
+        '--png_file', help='generate the output network png file')
     group.add_argument(
-        '--text_file', type=str, default=None,
-        help='generate the output network text file')
+        '--text_file', help='generate the output network text file')
     group.add_argument(
-        '--json_file', type=str, default=None,
-        help='generate the output network json file')
+        '--json_file', help='generate the output network json file')
     parser.add_argument(
-        '--clobber', action='store_const',
-        const=True, default=False,
+        '--clobber', action='store_const', const=True, default=False,
         help='overwrite the output_data if it already exists')
     parser.add_argument(
-        '--dry_run',  action='store_const',
-        const=True, default=False,
+        '--dry_run',  action='store_const', const=True, default=False,
         help='generate the network, do not run the network')
-    parser.add_argument('--user',
-                        dest='user', default=getpass.getuser(),
-                        type=str,
-                        help='the username who run the command')
-    parser.add_argument('--job_name',
-                        dest='job_name', default='',
-                        type=str,
-                        help='the name of this job')
-    parser.add_argument('--num_cores',
-                        dest='num_cores', default=8,
-                        type=str,
-                        help='number of cores used in the processing')
-    # parse
+    parser.add_argument(
+        '--user', default=getpass.getuser(),
+        help='the username who run the command')
+    parser.add_argument(
+        '--job_name', default='', help='the name of this job')
+    parser.add_argument(
+        '--num_cores', default=8, type=int,
+        help='number of cores used in the processing')
+    
+    # Parse the arguments.
     args = parser.parse_args()
-    input_list, output = assign_args(sys.argv)
-    outtype, out_identifier, out_attributes = output
-    # test
+    input_list, x = assign_args(sys.argv)
+    outtype, out_identifier, out_attributes = x
+    
+    # Make sure input files exist.
     for x in input_list:
         intype, identifier, attributes = x
         if identifier:
-            assert os.path.exists(identifier),'input_file %s does not exists' %identifier
+            assert os.path.exists(identifier),\
+                   'input_file %s does not exists' % identifier
+            
     # test outtype and build the list of user_attributes.
     if outtype:
-        goal_datatype = getattr(rulebase, outtype)
+        # TODO: what happens if outtype doesn't exist?  out_datatype
+        # used below.
+        out_datatype = getattr(rulebase, outtype)
+        # TODO: what if there is no outtype?  user_attributes would
+        # not be defined and is used below.
         user_attributes = []
         for x in out_attributes:
             subtype, key, value = x
             fn = getattr(rulebase, subtype)
             user_attributes.append(bie3.Attribute(fn, key, value))
+            
     # test intype attributes and build objects
     in_objects = []
     for x in input_list:
          intype, identifier, attributes = x
          fn = getattr(rulebase, intype)
-         in_data = fn.input()
-         if attributes:
-             parameters = {}
-             for i in attributes:
-                 key, value = i
-                 parameters[key] = value
-                 in_data = fn.input(**parameters)
-         in_object = rule_engine_bie3.DataObject(in_data,identifier)
-         in_objects.append(in_object)
+         params = {}
+         for x in attributes:
+             key, value = x
+             params[key] = value
+         in_data = fn.input(**params)
+         x = module_utils.DataObject(in_data, identifier)
+         in_objects.append(x)
+         
     # test mattr are valid
     all_inputs = get_all_options()
     options = {}
@@ -426,7 +426,7 @@ def main():
         assert args.num_cores>0,'num_cores should be bigger than 0'
     print 'Generating network...'
     network = bie3.backchain(
-        rulebase.all_modules, goal_datatype, user_attributes)
+        rulebase.all_modules, out_datatype, user_attributes)
     network = bie3.complete_network(network, user_attributes)
     network = bie3.optimize_network(network, user_attributes)
     assert network, ('No pipeline has been generated,\
@@ -445,8 +445,10 @@ def main():
     input_nodes = []
     for i in in_objects:
         #print i.data
-        start_node = bie3._find_start_nodes(network,i.data)
-        assert start_node, 'input %s is not matched any node in the network' % i.data.datatype.name
+        start_node = bie3._find_start_nodes(network, i.data)
+        assert start_node, \
+               'input %s is not matched any node in the network' % \
+               i.data.datatype.name
         if os.path.exists(i.identifier):
             store_file = userfile.set(getpass.getuser(), i.identifier)
             i.identifier = store_file
@@ -473,8 +475,8 @@ def main():
     if args.dry_run:
         return   
     #test mattr are given when necessary    
-    network_modules = [i for i in network.nodes
-                           if isinstance(i, bie3.Module)]
+    network_modules = [
+        i for i in network.nodes if isinstance(i, bie3.Module)]
     necessary_options = get_necessary_option(network_modules)
     break_flag = True
     for necessary_option in necessary_options:
@@ -482,13 +484,15 @@ def main():
         module_name = necessary_option[1]
         if neccessary_option_name not in options:
             break_flag = False
-            print 'Please set option %s for module %s' % (neccessary_option_name, module_name)
+            print 'Please set option %s for module %s' % (
+                neccessary_option_name, module_name)
     if not break_flag:
          return
     print "Running the pipeline."
     
     output_file = rule_engine_bie3.run_pipeline(
-        network, in_objects,  user_attributes, options,args.user,args.job_name,args.num_cores)
+        network, in_objects, user_attributes, options, args.user,
+        args.job_name, args.num_cores)
     
     if args.output_file:
         if os.path.exists(args.output_file) and args.clobber:

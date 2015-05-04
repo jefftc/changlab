@@ -1,13 +1,12 @@
 #GeneExpSignature
 from Betsy.bie3 import *
-import Database
 import GeneExpProcessing
 import PcaAnalysis
-import BasicDataTypes
+import BasicDataTypes as BDT
 
 GenesetAnalysis=DataType(
     'GenesetAnalysis',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                                'unspecified','unspecified',help="contents"),
     AttributeDef("allgenes",['yes','no'], "no","no",help="analyze all geneset"),
     AttributeDef("automatch",['yes','no'], "no","no",help="automatch in geneset analysis"),
@@ -16,7 +15,7 @@ GenesetAnalysis=DataType(
     )
 GenesetPlot=DataType(
     'GenesetPlot',
-    AttributeDef("contents",Database.CONTENTS,
+    AttributeDef("contents",BDT.CONTENTS,
                                'unspecified','unspecified',help="contents"),
     AttributeDef("allgenes",['yes','no'], "no","no",help="analyze all geneset"),
     AttributeDef("automatch",['yes','no'], "no","no",help="automatch in geneset analysis"),
@@ -24,11 +23,11 @@ GenesetPlot=DataType(
     )
 
 GenesetFile = DataType('GenesetFile',
-                       AttributeDef("contents",Database.CONTENTS,
+                       AttributeDef("contents",BDT.CONTENTS,
                                'unspecified','unspecified',help="contents"),)
 
 SignatureScore = DataType(
-    'SignatureScore',AttributeDef("contents",Database.CONTENTS,
+    'SignatureScore',AttributeDef("contents",BDT.CONTENTS,
                                   'unspecified','unspecified',help="contents"),
     AttributeDef("preprocess",GeneExpProcessing.PREPROCESS,
                                   'unknown','any',help="preprocess"),
@@ -65,7 +64,7 @@ all_modules = [
          Constraint("unique_genes",MUST_BE,'high_var',1),
          Consequence("allgenes",SET_TO,'no'),
          Consequence("automatch",SET_TO_ONE_OF,['yes','no']),
-         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
+         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),
          Consequence("contents",SAME_AS_CONSTRAINT,0),
          help="score pathway with geneset"
@@ -81,7 +80,7 @@ all_modules = [
          Constraint("unique_genes",MUST_BE,'high_var',1),
          Consequence("allgenes",SET_TO,'yes'),
          Consequence("automatch",SET_TO_ONE_OF,['yes','no']),
-         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
+         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),
          Consequence("contents",SAME_AS_CONSTRAINT,0),
          help="score pathway with all the geneset"
@@ -94,7 +93,7 @@ all_modules = [
         Constraint("automatch",CAN_BE_ANY_OF,['yes','no']),
         Consequence("allgenes",SAME_AS_CONSTRAINT),
         Consequence("automatch",SAME_AS_CONSTRAINT),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="plot geneset analysis file to bar plot"
         ),
@@ -112,7 +111,7 @@ all_modules = [
         Constraint("logged",MUST_BE,'yes',1),
         Constraint("platform",SAME_AS,0,1),
         Constraint("duplicate_probe",MUST_BE,'high_var_probe',1),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
         Constraint("contents",SAME_AS,0,1),
         Consequence('contents',SAME_AS_CONSTRAINT,0),
         Consequence('preprocess',SET_TO,'rma'),
@@ -127,7 +126,7 @@ all_modules = [
         Constraint("logged",MUST_BE,'yes'),
         Constraint("duplicate_probe",MUST_BE,'high_var_probe'),
         Constraint("platform",MUST_BE,"u133A",0),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence('contents',SAME_AS_CONSTRAINT),
         Consequence('preprocess',SAME_AS_CONSTRAINT),
         help="score pathway iwth scoresig method"

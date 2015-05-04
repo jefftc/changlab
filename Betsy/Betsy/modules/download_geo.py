@@ -5,52 +5,54 @@ from genomicode import affyio
 from ftplib import FTP
 from Betsy import module_utils, bie3, rulebase
 import string
-import gzip
 
 
-def run(data_node, parameters, user_input, network, num_cores):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """given a database ID and GPLID, get the files"""
-    outfile = name_outfile(data_node, user_input)
-    GSEID = user_input['GSEID']
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    GSEID = user_options['GSEID']
     GPLID = None
-    if 'GPLID' in user_input:
-        GPLID = user_input['GPLID']
+    if 'GPLID' in user_options:
+        GPLID = user_options['GPLID']
+    
     assert GSEID.startswith('GSE'), 'GSEID %s is not correct' % GSEID
     if not GPLID:
         download_geo_with_GSEID(GSEID, outfile)
     else:
         assert GPLID.startswith('GPL'), 'GPLID %s is not correct' % GPLID
         download_geo_with_GPLID(GSEID, GPLID, outfile)
+    
     assert module_utils.exists_nz(outfile), (
         'the output file %s for download_geo_dataset_GPL fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ExpressionFiles, **parameters)
+    out_node = bie3.Data(rulebase.ExpressionFiles, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(data_node, user_input):
-    original_file = module_utils.get_inputid(user_input['GSEID'])
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(user_options['GSEID'])
     filename = 'expression_files_' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def make_unique_hash(data_node, pipeline, parameters, user_input):
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
     GPLID = ''
-    if 'GPLID' in user_input:
-        GPLID = user_input['GPLID']
-    identifier = user_input['GSEID'] + GPLID
+    if 'GPLID' in user_options:
+        GPLID = user_options['GPLID']
+    identifier = user_options['GSEID'] + GPLID
     return identifier
 
 
-def get_out_attributes(parameters, data_node):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes)
     return data_node
 
@@ -81,6 +83,7 @@ def clean_cel_filename(cel_file):
 
 
 def download_geo_with_GSEID(GSEID, outfile):
+    import gzip
     #file_folder = os.path.join(os.getcwd(), GSEID)
 
     file_folder = module_utils.download_dataset(GSEID)
@@ -140,7 +143,7 @@ def download_geo_with_GSEID(GSEID, outfile):
         #only one folder is maximum size
         if maxsize > max(new_size_list):
             out_chip_name = chip_name_list[size_list.index(maxsize)]
-            out_filenanme = os.path.join(os.getcwd(), out_chip_name)
+            #out_filename = os.path.join(os.getcwd(), out_chip_name)
         #multiple has same maximum size
         elif maxsize == max(new_size_list):
             start = -1
@@ -274,16 +277,20 @@ def get_seriesmatrix_file(GSEID, GPLID):
 
 def get_seriesmatrix_file(GSEID):
     'download series matrix and unzip'
+    import gzip
+    
     try:
         ftp = FTP('ftp.ncbi.nih.gov')
         ftp.login()
     except Exception, e:
         raise ValueError(e)
-    try:
-        ftp.cwd('pub/geo/DATA/SeriesMatrix/' + GSEID)
-    except FTP.error_perm, x:
-        if str(x).find('No such file') >= 0:
-            raise AssertionError('cannot find the %s' % path)
+    ftp.cwd('pub/geo/DATA/SeriesMatrix/' + GSEID)
+    #try:
+    #    ftp.cwd('pub/geo/DATA/SeriesMatrix/' + GSEID)
+    #except FTP.error_perm, x:
+    #    raise
+    #    #if str(x).find('No such file') >= 0:
+    #    #    raise AssertionError('cannot find the %s' % path)
     entry = []
     ftp.retrlines('NLST', entry.append)
     platform_txtfiles = []
@@ -296,7 +303,6 @@ def get_seriesmatrix_file(GSEID):
             'the seriesmatrix file %s already exists' % platform_txtfile
         )
         #unzip the gz data
-        import gzip
         fileObj = gzip.GzipFile(platform_filename, 'rb')
         fileObjOut = file(platform_txtfile, 'wb')
         while 1:

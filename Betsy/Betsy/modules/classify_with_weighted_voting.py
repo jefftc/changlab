@@ -1,5 +1,4 @@
 #classify_with_weighted_voting.py
-import shutil
 import os
 import subprocess
 import arrayio
@@ -9,9 +8,9 @@ from Betsy import rulebase
 from Betsy import module_utils, read_label_file
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node_train, data_node_test, cls_node_train = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node_train, data_node_test, cls_node_train = antecedents
+    outfile = name_outfile(antecedents, user_options)
     module_name = 'WeightedVoting'
     gp_parameters = dict()
     file1, file2 = module_utils.convert_to_same_platform(
@@ -25,22 +24,22 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     gp_parameters['train.class.filename'] = cls_node_train.identifier
     gp_parameters['test.filename'] = file2
     gp_parameters['test.class.filename'] = 'temp_test.cls'
-    if 'wv_num_features' in user_input:
-        gp_parameters['num.features'] = str(user_input['wv_num_features'])
-    if 'wv_minstd' in user_input:
+    if 'wv_num_features' in user_options:
+        gp_parameters['num.features'] = str(user_options['wv_num_features'])
+    if 'wv_minstd' in user_options:
         assert module_utils.is_number(
-            user_input['wv_minstd']), 'the sv_minstd should be number'
-        gp_parameters['min.std'] = str(user_input['wv_minstd'])
+            user_options['wv_minstd']), 'the sv_minstd should be number'
+        gp_parameters['min.std'] = str(user_options['wv_minstd'])
 
     wv_feature_stat = ['wv_snr', 'wv_ttest', 'wv_snr_median',
                        'wv_ttest_median', 'wv_snr_minstd', 'wv_ttest_minstd',
                        'wv_snr_median_minstd', 'wv_ttest_median_minstd']
 
-    assert parameters['wv_feature_stat'] in wv_feature_stat, (
+    assert out_attributes['wv_feature_stat'] in wv_feature_stat, (
         'the wv_feature_stat is invalid'
     )
     gp_parameters['feature.selection.statistic'] = str(
-        wv_feature_stat.index(parameters['wv_feature_stat']))
+        wv_feature_stat.index(out_attributes['wv_feature_stat']))
     gp_path = config.genepattern
     gp_module = module_utils.which(gp_path)
     assert gp_module, 'cannot find the %s' % gp_path
@@ -87,42 +86,42 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for classify_with_weighted_voting fails' % outfile
     )
-    out_node = bie3.Data(rulebase.ClassifyFile, **parameters)
+    out_node = bie3.Data(rulebase.ClassifyFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
-    data_node_train, data_node_test, cls_node_train = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node_train, data_node_test, cls_node_train = antecedents
     original_file = module_utils.get_inputid(data_node_train.identifier)
     filename = 'weighted_voting_' + original_file + '.cdt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node_train, data_node_test, cls_node_train = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node_train, data_node_test, cls_node_train = antecedents
     identifier = data_node_train.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
     data_node_train = module_utils.get_identifier(network, module_id,
-                                                  data_nodes, user_attributes,
+                                                  pool, user_attributes,
                                                   contents='class0,class1',
                                                   datatype='SignalFile')
     data_node_test = module_utils.get_identifier(network, module_id,
-                                                 data_nodes, user_attributes,
+                                                 pool, user_attributes,
                                                  contents='test',
                                                  datatype='SignalFile')
     cls_node_train = module_utils.get_identifier(network, module_id,
-                                                 data_nodes, user_attributes,
+                                                 pool, user_attributes,
                                                  contents='class0,class1',
                                                  datatype='ClassLabelFile')
     return data_node_train, data_node_test, cls_node_train

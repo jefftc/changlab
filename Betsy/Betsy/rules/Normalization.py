@@ -2,9 +2,8 @@
 from Betsy.bie3 import *
 import PcaAnalysis
 import GeneExpProcessing
-import BasicDataTypes
+import BasicDataTypes as BDT
 import ArrayPlatforms
-import Database
 
 NormalizeReportFile = DataType(
     'NormalizeReportFile',
@@ -37,7 +36,7 @@ all_modules = [
             0),
         Constraint("annotate", MUST_BE, "yes", 0),
         Constraint(
-            "contents", CAN_BE_ANY_OF, Database.CONTENTS,
+            "contents", CAN_BE_ANY_OF, BDT.CONTENTS,
             0),
 
         #SignalFile
@@ -116,7 +115,7 @@ all_modules = [
         
         Constraint('preprocess',MUST_BE,'rma',0),
         Constraint("annotate",MUST_BE,"yes",0),
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
         
         #SignalFile
         Constraint('quantile_norm', MUST_BE, 'yes', 0),
@@ -194,7 +193,7 @@ all_modules = [
             ArrayPlatforms.ControlFile
             ],
         NormalizeReportFile,
-        Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
+        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
         Constraint('preprocess',MUST_BE,'illumina',0),
         Constraint('annotate',MUST_BE,'yes',0),
 

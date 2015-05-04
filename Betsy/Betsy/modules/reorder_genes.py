@@ -9,9 +9,9 @@ from Betsy import gene_ranking
 from Betsy import module_utils
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node, gene_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, gene_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     #read the gene order list
     gene_list = open(gene_node.identifier, 'r').read().split()
     M = arrayio.read(data_node.identifier)
@@ -27,16 +27,23 @@ def run(in_nodes, parameters, user_input, network, num_cores):
             tmpfile = data_node.identifier
         else:
             platform_name = 'unknown_platform'
-            if 'platform_name' in user_input:
-                platform_name = user_input['platform_name']
+            if 'platform_name' in user_options:
+                platform_name = user_options['platform_name']
             if platform_name in chip:  #, 'unknown_platform':
                 import subprocess
                 Annot_path = config.annotate_matrix
                 Annot_BIN = module_utils.which(Annot_path)
                 assert Annot_BIN, 'cannot find the %s' % Annot_path
                 signal_file = 'tmp'
-                command = ['python', Annot_BIN, '-f', single_object.identifier,
-                           '-o', signal_file, "--platform", chip]
+                command = [
+                    'python',
+                    Annot_BIN,
+                    # What is single_object?  Bug?
+                    #'-f', single_object.identifier,
+                    '-f', data_node.identifier,
+                    '-o', signal_file,
+                    "--platform", chip,
+                    ]
                 process = subprocess.Popen(command,
                                            shell=False,
                                            stdout=subprocess.PIPE,
@@ -46,10 +53,12 @@ def run(in_nodes, parameters, user_input, network, num_cores):
                     raise ValueError(error_message)
                 assert module_utils.exists_nz(
                     signal_file), 'the platform conversion fails'
-                id = parameters['platform']
+                id = out_attributes['platform']
                 M = arrayio.read(signal_file)
             elif platform_name == platform:
-                infile = gene_list_file.identifier
+                # Needs to be tested.
+                #infile = gene_list_file.identifier
+                infile = gene_node.identifier
                 f = file(infile, 'rU')
                 genes = f.readlines()
                 f.close()
@@ -69,38 +78,38 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for reorder_genes fails' % outfile
     )
-    out_node = bie3.Data(rulebase._SignalFile_Order, **parameters)
+    out_node = bie3.Data(rulebase._SignalFile_Order, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='_SignalFile_Order')
-    cls_node = module_utils.get_identifier(network, module_id, data_nodes,
+    cls_node = module_utils.get_identifier(network, module_id, pool,
                                            user_attributes,
                                            datatype='GeneListFile')
     return data_node, cls_node
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, cls_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, cls_node = antecedents
     original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'gene_reorder' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, cls_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, cls_node = antecedents
     identifier = data_node.identifier
-    newparameters = parameters.copy()
+    newparameters = out_attributes.copy()
     newparameters['genelistfile'] = cls_node.identifier
     return module_utils.make_unique_hash(identifier, pipeline, newparameters,
-                                         user_input)
+                                         user_options)

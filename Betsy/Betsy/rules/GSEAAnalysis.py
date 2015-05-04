@@ -1,9 +1,9 @@
 from Betsy.bie3 import *
-import Database
-import BasicDataTypes
+import BasicDataTypes as BDT
 import GeneExpProcessing
+
 GseaFile = DataType('GseaFile',
-                    AttributeDef("contents",Database.CONTENTS,
+                    AttributeDef("contents",BDT.CONTENTS,
                                'unspecified','unspecified',help="contents"),
                     AttributeDef("permutation_type",["phenotype", "gene_set"],
                                  "phenotype","phenotype",help="permutation type"),
@@ -19,7 +19,7 @@ all_modules=[
         'annotate_genes_with_gsea',
         [GeneExpProcessing.ClassLabelFile,GeneExpProcessing.SignalFile],GseaFile,
          Constraint("cls_format",MUST_BE,'cls',0),
-         Constraint("contents",CAN_BE_ANY_OF,Database.CONTENTS,0),
+         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
          Constraint("format",MUST_BE,'gct',1),
          Constraint("logged",MUST_BE,'yes',1),
          Constraint("contents",SAME_AS,0,1),

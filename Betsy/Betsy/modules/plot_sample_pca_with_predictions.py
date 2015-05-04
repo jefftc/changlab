@@ -1,16 +1,14 @@
 #plot_sample_pca_with_predictions_wv.py
 import os
 from Betsy import module_utils
-import shutil
 from Betsy import read_label_file
 from genomicode import pcalib, genesetlib
-import arrayio
 from Betsy import bie3, rulebase
 
 
-def run(in_nodes, parameters, user_input, network, num_cores):
-    data_node, classify_node = in_nodes
-    outfile = name_outfile(in_nodes, user_input)
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, classify_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     result_data = genesetlib.read_tdf(classify_node.identifier,
                                       preserve_spaces=True,
                                       allow_duplicates=True)
@@ -33,13 +31,13 @@ def run(in_nodes, parameters, user_input, network, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for plot_sample_pca_with_predictions fails' % outfile
     )
-    out_node = bie3.Data(rulebase.PredictionPCAPlot, **parameters)
+    out_node = bie3.Data(rulebase.PredictionPCAPlot, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
 
-def name_outfile(in_nodes, user_input):
-    data_node, classify_node = in_nodes
+def name_outfile(antecedents, user_options):
+    data_node, classify_node = antecedents
     original_file = module_utils.get_inputid(classify_node.identifier)
     loocv = ''
     if classify_node.data.attributes['loocv'] == 'yes':
@@ -50,25 +48,25 @@ def name_outfile(in_nodes, user_input):
     return outfile
 
 
-def get_out_attributes(parameters, in_nodes):
-    return parameters
+def get_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def make_unique_hash(in_nodes, pipeline, parameters, user_input):
-    data_node, classify_node = in_nodes
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, classify_node = antecedents
     identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, parameters,
-                                         user_input)
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def find_antecedents(network, module_id, data_nodes, parameters,
-                     user_attributes):
-    data_node = module_utils.get_identifier(network, module_id, data_nodes,
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.get_identifier(network, module_id, pool,
                                             user_attributes,
                                             datatype='PcaAnalysis')
     classify_node = module_utils.get_identifier(
-        network, module_id, data_nodes, user_attributes,
+        network, module_id, pool, user_attributes,
         datatype='ClassifyFile',
         optional_key='classify_alg',
-        optional_value=parameters['classify_alg'])
+        optional_value=out_attributes['classify_alg'])
     return data_node, classify_node
