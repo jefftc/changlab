@@ -28,7 +28,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     new_parameters = out_attributes.copy()
     M = arrayio.read(antecedents.identifier)
     if is_gene_normalize_varaince(M):
@@ -48,8 +48,8 @@ def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node = module_utils.get_identifier(network, module_id, pool,
-                                            user_attributes)
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
     return data_node
 
 

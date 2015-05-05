@@ -53,7 +53,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     return out_attributes
 
 
@@ -66,23 +66,15 @@ def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node1 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignatureScore',
-                                             optional_key='preprocess',
-                                             optional_value='affymetrix')
-    data_node2 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignatureScore',
-                                             optional_key='preprocess',
-                                             optional_value='agilent')
-    data_node3 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignatureScore',
-                                             optional_key='preprocess',
-                                             optional_value='RSEM_genes')
-
-    return data_node1, data_node2, data_node3
+    filter1 = module_utils.AntecedentFilter(
+        datatype_name='SignatureScore', preprocess="affymetrix")
+    filter2 = module_utils.AntecedentFilter(
+        datatype_name='SignatureScore', preprocess="agilent")
+    filter3 = module_utils.AntecedentFilter(
+        datatype_name='SignatureScore', preprocess="RSEM_genes")
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2, filter3)
+    return x
 
 
 def get_new_matrix(total_sample, filename):

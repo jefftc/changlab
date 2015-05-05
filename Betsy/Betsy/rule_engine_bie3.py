@@ -4,28 +4,29 @@ Functions:
 run_pipeline
 run_module
 
-choose_next_module
+have_input_data
+
 make_module_wd_name
-copy_result_folder
-compare_two_dict
 get_out_node
 create_out_attributes
-test_require_data
 
-TODO: rename DataObject
+compare_two_dict
+copy_result_folder
+
+TODO: does module.find_antecedents need out_attributes?
+TODO: Rename DataObject.  Figure out better way to handle this.
 TODO: when running pipeline, should show all possible options
 
 
 
 user_input  something from the user that is passed to the module.  OptionDef
+Should be renamed user_options
 
 user_attributes  from --dattr  AttributeDef(?)
-user_inputs      from --mattr  OptionDef(?)
+user_options     from --mattr  OptionDef(?)
 
 
 Functions in each module:
-
-TODO: make sure each of these functions are called correctly.
 
 run(network, antecedents, out_attributes, user_options, num_cores)
   network         Network object
@@ -34,17 +35,17 @@ run(network, antecedents, out_attributes, user_options, num_cores)
   user_options    Options for the module provided by the user.
   num_cores
   Returns a DataObject.
-TODO: Rename DataObject.  Figure out better way to handle this.
 
 find_antecedents(network, module_id, out_attributes, user_attributes, pool)
   Gets from the pool.
   Returns a Data Object, or a sequence of DataObjects.
 TODO: check module_utils.get_identifier, when you need multiple antecedents
 
-get_out_attributes(antecedents, out_attributes)
-Takes the attributes (as a dictionary) of the default output node, and
-refines it somehow.
-TODO: See when this is really used.
+set_out_attributes(antecedents, out_attributes)
+Takes the default attributes (as a dictionary) of the output node, and
+sets it based on the input data.  This is for modules that can
+determine the output based on the input data, e.g. a module that
+checks if a user's input file is logged.
 
 name_outfile(antecedents, user_options)
 Come up with a human readable name for the output file.
@@ -59,13 +60,13 @@ TODO: rename data_node to antecedents?
 
 def make_module_wd_name(
     network, module_file, module_id, user_options, pipeline, pool,
-    current_attributes, user_attributes):
+    out_attributes, user_attributes):
     # what's the difference between current_attributes and user_attributes?
     
     antecedents = module_file.find_antecedents(
-        network, module_id, current_attributes, user_attributes, pool)
+        network, module_id, out_attributes, user_attributes, pool)
     uhash = module_file.make_unique_hash(
-        pipeline, antecedents, current_attributes, user_options)
+        pipeline, antecedents, out_attributes, user_options)
     
     module_name = network.nodes[module_id].name
     working_dir = module_name + '_BETSYHASH1_' + uhash
@@ -143,33 +144,39 @@ def get_out_node(
     import rulebase
     from module_utils import DataObject    
 
-    # Why do we need to change to this directory?
+    # Need to change directory because find_antecedents checks for the
+    # existence of the file.  Assumes the files are in the current
+    # directory.  Should fix this by making the identifiers for
+    # DataObject the full path name.
+    # TODO: make identifiers for DataObject the full path name.
+    # TODO: don't change directory
     current_dir = os.getcwd()
     try:
         os.chdir(working_dir)
         data_node = module_file.find_antecedents(
             network, module_id, parameters, user_attributes, pool)
         outfile = module_file.name_outfile(data_node, user_input)
-        next_possible_ids = network.transitions[module_id]
-        fn = getattr(
-            rulebase, network.nodes[next_possible_ids[0]].datatype.name)
-        out_node = bie3.Data(fn, **parameters)
-        out_object = DataObject(out_node, outfile)
-        out_id = None
-        result = []
-        for next_id in next_possible_ids:
-            if compare_two_dict(parameters, network.nodes[next_id].attributes):
-                out_id = next_id
-                result.append((out_object, out_id))
-                #result.append((out_node, out_id, outfile))
-        return result
     finally:
         os.chdir(current_dir)
+    next_possible_ids = network.transitions[module_id]
+    fn = getattr(
+        rulebase, network.nodes[next_possible_ids[0]].datatype.name)
+    out_node = bie3.Data(fn, **parameters)
+    out_object = DataObject(out_node, outfile)
+    out_id = None
+    result = []
+    for next_id in next_possible_ids:
+        if compare_two_dict(parameters, network.nodes[next_id].attributes):
+            out_id = next_id
+            result.append((out_object, out_id))
+            #result.append((out_node, out_id, outfile))
+    return result
 
 
 def create_out_attributes(
     network, module_id, module_file, pool, user_attributes):
     # return out_attributes, if the output already generated, return None
+    # Does this for the next Data node that hasn't been calculated.
     next_ids = network.transitions[module_id]
     for next_id in next_ids:
         if next_id in pool:
@@ -177,41 +184,38 @@ def create_out_attributes(
         out_attributes = network.nodes[next_id].attributes
         data_node = module_file.find_antecedents(
             network, module_id, out_attributes, user_attributes, pool)
-        parameters = module_file.get_out_attributes(data_node, out_attributes)
+        parameters = module_file.set_out_attributes(data_node, out_attributes)
         return parameters
     return None
 
 
-def choose_next_module(network, node_id, pool, user_attributes):
-    # choose the next module and return a list of (module, id)
-    import bie3
+## def choose_next_module(network, node_id, pool, user_attributes):
+##     # choose the next module and return a list of (module, id)
+##     import bie3
 
-    assert node_id in network.transitions
-    #if node_id not in network.transitions:
-    #    return False
-    result = []
-    for next_id in network.transitions[node_id]:
-        next_node = network.nodes[next_id]
-        assert isinstance(next_node, bie3.Module), \
-               'next node supposed to be a module'
-        # Why does this have to be here?
-        #if have_input_data(network, next_node_id, pool, user_attributes):
-        #    result.append((next_node, next_node_id))
-        result.append((next_node, next_id))
-    #result.sort(key=lambda x: x[1], reverse=False)
-    return result
+##     assert node_id in network.transitions
+##     #if node_id not in network.transitions:
+##     #    return False
+##     result = []
+##     for next_id in network.transitions[node_id]:
+##         next_node = network.nodes[next_id]
+##         assert isinstance(next_node, bie3.Module), \
+##                'next node supposed to be a module'
+##         # Why does this have to be here?
+##         #if have_input_data(network, next_node_id, pool, user_attributes):
+##         #    result.append((next_node, next_node_id))
+##         result.append((next_node, next_id))
+##     #result.sort(key=lambda x: x[1], reverse=False)
+##     return result
 
 
-def have_input_data(network, module_id, pool, user_attributes):
+def have_input_data(network, module_id, user_attributes, pool):
     # Return a boolean if the data exists for the module to be run.
     import bie3
 
     # Make a list of every possible combination of inputs that goes
     # into this module.
-    prev_ids = []
-    for id_ in network.transitions:
-        if module_id in network.transitions[id_]:
-            prev_ids.append(id_)
+    prev_ids = network.points_to(module_id)
     all_input_ids = bie3._get_valid_input_combinations(
         network, module_id, prev_ids, user_attributes)
 
@@ -224,8 +228,8 @@ def have_input_data(network, module_id, pool, user_attributes):
 
 
 def run_module(
-    network, module_id, pool, user_inputs, pipeline_sequence, user_attributes,
-    user=None, job_name='', clean_up=True, num_cores=8):
+    network, pipeline_sequence, module_id, user_attributes, user_options, pool,
+    user, job_name='', clean_up=True, num_cores=8):
     # return out_nodes, if module fails, the module itself will raise a break,
     # if cannot find a outnode inside the network, will return a empty list
     import os
@@ -238,28 +242,31 @@ def run_module(
     import config
     import module_utils
 
-    user = user or getpass.getuser()
+    assert user
     output_path = config.OUTPUTPATH
     assert os.path.exists(output_path), \
            'the output_path %s does not exist' % output_path
+    assert network.transitions[module_id]
 
     module_node = network.nodes[module_id]
+    module_name = module_node.name
+    module = __import__(
+        'modules.'+module_name, globals(), locals(), [module_name], -1)
 
     # Pull out the user inputs that are used for this module.
     sub_user_input = {}
     for option in module_node.option_defs:
         if option.default is None:
-            assert option.name in user_inputs, \
+            assert option.name in user_options, \
                    'Missing input: %s' % option.name
-        if option.name in user_inputs:
-            sub_user_input[option.name] = user_inputs[option.name]
+        if option.name in user_options:
+            sub_user_input[option.name] = user_options[option.name]
             
-    module_name = module_node.name
-    module = __import__(
-        'modules.'+module_name, globals(), locals(), [module_name], -1)
     out_attributes = create_out_attributes(
         network, module_id, module, pool, user_attributes)
     if out_attributes is None:
+        # When does this happen?  When this module doesn't point to
+        # anything.
         return []
     
     print "[%s].  %s" % (time.strftime('%l:%M%p'), module_name)
@@ -275,6 +282,10 @@ def run_module(
     outfile = os.path.split(module.name_outfile(data_node, sub_user_input))[-1]
     temp_dir = ''
     #temp_outfile = ''
+
+    # If this has already been generated, then
+    # XXX
+    
     if not os.path.exists(os.path.join(working_dir, 'stdout.txt')):
         #if no result has been generated, create temp folder and run analysis
         cwd = os.getcwd()
@@ -376,15 +387,20 @@ def run_pipeline(
             if node_id == 0:
                 # When does this occur?  Failed?
                 return None
-            x = choose_next_module(network, node_id, pool, user_attributes)
-            stack.extend(x)
+            # Add the next modules into the stack.
+            for next_id in network.transitions[node_id]:
+                next_node = network.nodes[next_id]
+                assert isinstance(next_node, bie3.Module)
+                stack.append((next_node, next_id))
+            #x = choose_next_module(network, node_id, pool, user_attributes)
+            #stack.extend(x)
         elif isinstance(data_object, bie3.Module):
             # Should rename data_object data_or_module.
             module_id = node_id
 
             # If the input data for this module doesn't exist, then
             # just try it again later.
-            if not have_input_data(network, module_id, pool, user_attributes):
+            if not have_input_data(network, module_id, user_attributes, pool):
                 # Put back to the back of the stack.
                 stack.insert(0, (data_object, node_id))
                 num_failures += 1
@@ -394,8 +410,8 @@ def run_pipeline(
             pipeline.append(data_object.name)
             #print module_id
             out_nodes = run_module(
-                network, module_id, pool, user_inputs, pipeline,
-                user_attributes, user, job_name, num_cores=num_cores)
+                network, pipeline, module_id, user_attributes, user_inputs, 
+                pool, user, job_name, num_cores=num_cores)
             
             flag = False
             if not out_nodes:

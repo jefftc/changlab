@@ -189,7 +189,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     return out_attributes
 
 
@@ -203,28 +203,23 @@ def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node1 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignalFile')
-    data_node2, data_node3 = module_utils.find_pcaplots(network, pool,
-                                                        module_id)
-    data_node4 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='IntensityPlot')
-    data_node5 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='ActbPlot')
-    data_node6 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='BiotinPlot')
-    data_node7 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='HousekeepingPlot')
-    data_node8 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='Hyb_barPlot')
-    data_node9 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='ControlFile')
+    filter1 = module_utils.AntecedentFilter(datatype_name='SignalFile')
+    filter2 = module_utils.AntecedentFilter(datatype_name='IntensityPlot')
+    filter3 = module_utils.AntecedentFilter(datatype_name='ActbPlot')
+    filter4 = module_utils.AntecedentFilter(datatype_name='BiotinPlot')
+    filter5 = module_utils.AntecedentFilter(datatype_name='HousekeepingPlot')
+    filter6 = module_utils.AntecedentFilter(datatype_name='Hyb_barPlot')
+    filter7 = module_utils.AntecedentFilter(datatype_name='ControlPlot')
+
+    x1 = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2,
+        filter3, filter4, filter5, filter6, filter7)
+    data_node1, data_node4, data_node5, data_node6, data_node7, \
+                data_node8, data_node9 = x1
+    
+    # TODO: get rid of this.
+    x2 = module_utils.find_pcaplots(network, pool, module_id)
+    data_node2, data_node3 = x2
+
     return (data_node1, data_node2, data_node3, data_node4, data_node5,
             data_node6, data_node7, data_node8, data_node9)

@@ -1,33 +1,42 @@
 """
+Objects:
 DataObject
-contain some functions that are called by many modules
 
 Functions:
 get_identifier
 get_inputid
 make_unique_hash
-find_pcaplots
-is_missing
-merge_two_files
-which
-format_convert
+
 write_Betsy_parameters_file
 write_Betsy_report_parameters_file
+
+which
 exists_nz
-plot_line_keywds
-plot_line_keywd
-renew_parameters
 is_number
-download_ftp
-download_dataset
-gunzip
-high_light_path
+
 convert_gene_list_platform
 convert_to_same_platform
+
+replace_matrix_header
+format_convert
+is_missing
+
+plot_line_keywds
+plot_line_keywd
 plot_pca
+find_pcaplots
+
+download_ftp
+download_dataset
+
+gunzip
 extract_from_zip
 unzip_if_zip
-replace_matrix_header
+
+merge_two_files
+renew_parameters
+high_light_path
+process_group_info
 
 """
 
@@ -45,13 +54,46 @@ class DataObject:
         return x
 
 
-# Why is "contents" hard coded here?
-def get_identifier(
-    network, module_id, pool, user_attributes, datatype=None, contents=None,
-    optional_key=None, optional_value=None, second_key=None, second_value=None,
-    **param):
-    # Returns a single DataObject that goes into this module.  What is
-    # this used for?
+# TODO: don't make contents hard coded.
+class AntecedentFilter:
+    def __init__(self, datatype_name=None, contents=None, **attributes):
+        self.datatype_name = datatype_name
+        self.contents = contents
+        self.attributes = attributes
+    def matches_node(self, node):
+        if self.datatype_name and self.datatype_name != node.datatype.name:
+            return False
+        if self.contents and node.attributes.get("contents") != contents:
+            return False
+        for (key, value) in self.attributes.iteritems():
+            if node.attributes.get(key) != value:
+                return False
+        return True
+
+
+def _find_ids_that_pass_filters(network, node_ids, filters):
+    # For each of the filters, pick out one of the nodes.  Return a
+    # list of nodes parallel to filters, or None if not found
+
+    matches = []
+    for f in filters:
+        for id_ in node_ids:
+            if id_ in matches:  # don't reuse nodes
+                continue
+            if f.matches_node(network.nodes[id_]):
+                matches.append(id_)
+                break
+        else:
+            return None
+    assert len(matches) == len(filters)
+    return matches
+
+
+def find_antecedents(network, module_id, user_attributes, pool, *filters):
+    # filters should be AntecedentFilter objects.  Return either a
+    # DataObject (if 0 or 1 filters), or a list of DataObjects
+    # parallel to filters.  Raises an exception if no antecedents
+    # could be found.
     import os
     import bie3
 
@@ -63,51 +105,114 @@ def get_identifier(
             prev_ids.append(id_)
     all_input_ids = bie3._get_valid_input_combinations(
         network, module_id, prev_ids, user_attributes)
-    
+
+    # Filter for just the combinations in which all input nodes have
+    # been run.
+    filtered = []
     for input_ids in all_input_ids:
         # If not all the input nodes have been run, then ignore this
         # combination.
         x = [x for x in input_ids if x in pool]
         if len(x) != len(input_ids):
             continue
-        
-        for i in input_ids:
-            node = network.nodes[i]
-            if datatype:
-                if not node.datatype.name == datatype:
-                    continue
-            if contents:
-                if 'contents' not in node.attributes:
-                    continue
-                if not node.attributes['contents'] == contents:
-                    continue
-            if optional_key and optional_value:
-                if optional_key not in node.attributes:
-                    continue
-                elif not node.attributes[optional_key] == optional_value:
-                    continue
-            if second_key and second_value:
-                if second_key not in node.attributes:
-                    continue
-                elif not node.attributes[second_key] == second_value:
-                    continue
-                
-            flag1 = True
-            if param:
-                for key in param:
-                    if key not in node.attributes:
-                        flag1 = False
-                    elif not node.attributes[key] == param[key]:
-                        flag1 = False
-            if not flag1:
-                continue
-            if pool[i].identifier:
-                assert os.path.exists(pool[i].identifier), (
-                    'the input file %s for %s does not exist' %
-                    (pool[i].identifier, network.nodes[module_id].name))
-            return pool[i]
-    raise ValueError(
-        'cannot find node that match for %s' % network.nodes[module_id].name)
+        filtered.append(x)
+    all_input_ids = filtered
+
+    # Filter based on the user criteria.
+    ids = None
+    if not filters:
+        # If no filters given, then just return the first id found.
+        assert all_input_ids
+        assert all_input_ids[0]
+        ids = [all_input_ids[0][0]]
+    else:
+        for input_ids in all_input_ids:
+            ids = _find_ids_that_pass_filters(network, input_ids, filters)
+            if ids is not None:
+                break
+    assert ids, 'cannot find node that match for %s' % \
+               network.nodes[module_id].name
+    for id_ in ids:
+        if not pool[id_].identifier:
+            continue
+        assert os.path.exists(pool[id_].identifier), (
+            'the input file %s for %s does not exist' %
+            (pool[id_].identifier, network.nodes[module_id].name))
+    objs = [pool[x] for x in ids]
+    assert not filters or len(objs) == len(filters)
+    if len(objs) <= 1:  # Return a single DataObject if 0 or 1 filters given.
+        objs = objs[0]
+    return objs
+
+## def get_identifier(
+##     network, module_id, pool, user_attributes, datatype=None, contents=None,
+##     optional_key=None, optional_value=None, second_key=None, second_value=None,
+##     **param):
+##     # Returns a single DataObject that goes into this module.  What is
+##     # this used for?
+##     import os
+##     import bie3
+
+##     assert not (optional_key and not optional_value)
+##     assert not (optional_value and not optional_key)
+##     assert not (second_key and not second_value)
+##     assert not (second_value and not second_key)
+
+##     # Make a list of every possible combination of inputs that goes
+##     # into this module.
+##     prev_ids = []
+##     for id_ in network.transitions:
+##         if module_id in network.transitions[id_]:
+##             prev_ids.append(id_)
+##     all_input_ids = bie3._get_valid_input_combinations(
+##         network, module_id, prev_ids, user_attributes)
+
+##     # Filter for just the all_input_ids in which all input nodes have
+##     # been run.
+##     filtered = []
+##     for input_ids in all_input_ids:
+##         # If not all the input nodes have been run, then ignore this
+##         # combination.
+##         x = [x for x in input_ids if x in pool]
+##         if len(x) != len(input_ids):
+##             continue
+##         filtered.append(x)
+##     all_input_ids = filtered
+
+##     # Filter based on the user criteria.
+##     ids = []
+##     for input_ids in all_input_ids:
+##         for id_ in input_ids:
+##             if id_ in ids:
+##                 continue
+##             node = network.nodes[id_]
+##             if datatype and node.datatype.name != datatype:
+##                 continue
+##             if contents and node.attributes.get("contents") != contents:
+##                 continue
+##             if optional_key and \
+##                    node.attributes.get(optional_key) != optional_value:
+##                 continue
+##             if second_key and \
+##                    node.attributes.get(second_key) != second_value:
+##                 continue
+##             all_found = True
+##             for key in param:
+##                 if node.attributes.get(key) != param[key]:
+##                     all_found = False
+##             if not all_found:
+##                 continue
+##             ids.append(id_)
+
+##     assert ids, 'cannot find node that match for %s' % \
+##                network.nodes[module_id].name)
+##     for id_ in ids:
+##         if pool[i].identifier:
+##             assert os.path.exists(pool[i].identifier), (
+##                 'the input file %s for %s does not exist' %
+##                 (pool[i].identifier, network.nodes[module_id].name))
+##     id_ = ids[0]
+##     return pool[id_]
 
 
 # Not sure exactly what this does.  Looks like it takes some sort of

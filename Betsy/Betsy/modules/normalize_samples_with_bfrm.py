@@ -64,12 +64,12 @@ def name_outfile(antecedents, user_options):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node = module_utils.get_identifier(network, module_id, pool,
-                                            user_attributes)
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
     return data_node
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     new_parameters = antecedents.data.attributes.copy()
     new_parameters['bfrm_norm'] = 'yes'
     return new_parameters

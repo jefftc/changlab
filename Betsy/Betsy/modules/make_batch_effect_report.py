@@ -236,7 +236,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     return out_attributes
 
 
@@ -251,87 +251,40 @@ def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node1 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignalFile',
-                                             optional_key='quantile_norm',
-                                             optional_value='no')
-    data_node2 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PcaPlot',
-                                             optional_key='quantile_norm',
-                                             optional_value='no')
-    param = {'shiftscale_norm': 'no', 'dwd_norm': 'no', 'combat_norm': 'no'}
-    data_node3 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignalFile',
-                                             optional_key='quantile_norm',
-                                             optional_value='yes',
-                                             second_key='bfrm_norm',
-                                             second_value='no', **param)
-    data_node4 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PcaPlot',
-                                             optional_key='quantile_norm',
-                                             optional_value='yes',
-                                             second_key='bfrm_norm',
-                                             second_value='no', **param)
-    data_node5 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignalFile',
-                                             optional_key='quantile_norm',
-                                             optional_value='yes',
-                                             second_key='bfrm_norm',
-                                             second_value='yes')
-    data_node6 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PcaPlot',
-                                             optional_key='quantile_norm',
-                                             optional_value='yes',
-                                             second_key='bfrm_norm',
-                                             second_value='yes')
-    data_node7 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignalFile',
-                                             optional_key='quantile_norm',
-                                             optional_value='yes',
-                                             second_key='combat_norm',
-                                             second_value='yes')
-    data_node8 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PcaPlot',
-                                             optional_key='quantile_norm',
-                                             optional_value='yes',
-                                             second_key='combat_norm',
-                                             second_value='yes')
-    data_node9 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignalFile',
-                                             optional_key='quantile_norm',
-                                             optional_value='yes',
-                                             second_key='dwd_norm',
-                                             second_value='yes')
-    data_node10 = module_utils.get_identifier(network, module_id, pool,
-                                              user_attributes,
-                                              datatype='PcaPlot',
-                                              optional_key='quantile_norm',
-                                              optional_value='yes',
-                                              second_key='dwd_norm',
-                                              second_value='yes')
-    data_node11 = module_utils.get_identifier(network, module_id, pool,
-                                              user_attributes,
-                                              datatype='SignalFile',
-                                              optional_key='quantile_norm',
-                                              optional_value='yes',
-                                              second_key='shiftscale_norm',
-                                              second_value='yes')
-    data_node12 = module_utils.get_identifier(network, module_id, pool,
-                                              user_attributes,
-                                              datatype='PcaPlot',
-                                              optional_key='quantile_norm',
-                                              optional_value='yes',
-                                              second_key='shiftscale_norm',
-                                              second_value='yes')
-    return (data_node1, data_node2, data_node3, data_node4, data_node5,
-            data_node6, data_node7, data_node8, data_node9, data_node10,
-            data_node11, data_node12)
+    filter1 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', quantile_norm="no")
+    filter2 = module_utils.AntecedentFilter(
+        datatype_name='PcaPlot', quantile_norm="no")
+    
+    filter3 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', quantile_norm="yes", bfrm_norm="no",
+        shiftscale_norm="no", dwd_norm="no", combat_norm="no")
+    filter4 = module_utils.AntecedentFilter(
+        datatype_name='PcaPlot', quantile_norm="yes", bfrm_norm="no",
+        shiftscale_norm="no", dwd_norm="no", combat_norm="no")
+    
+    filter5 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', quantile_norm="yes", bfrm_norm="yes")
+    filter6 = module_utils.AntecedentFilter(
+        datatype_name='PcaPlot', quantile_norm="yes", bfrm_norm="yes")
+    
+    filter7 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', quantile_norm="yes", combat_norm="yes")
+    filter8 = module_utils.AntecedentFilter(
+        datatype_name='PcaPlot', quantile_norm="yes", combat_norm="yes")
+    
+    filter9 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', quantile_norm="yes", dwd_norm="yes")
+    filter10 = module_utils.AntecedentFilter(
+        datatype_name='PcaPlot', quantile_norm="yes", dwd_norm="yes")
+    
+    filter11 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', quantile_norm="yes", shiftscale_norm="yes")
+    filter12 = module_utils.AntecedentFilter(
+        datatype_name='PcaPlot', quantile_norm="yes", shiftscale_norm="yes")
+
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2,
+        filter3, filter4, filter5, filter6, filter7, filter8,
+        filter9, filter10, filter11, filter12)
+    return x

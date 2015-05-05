@@ -260,7 +260,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     return out_attributes
 
 
@@ -274,76 +274,38 @@ def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node1 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='SignalFile')
-    data_node2 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='ClassifyFile',
-                                             optional_key='classify_alg',
-                                             optional_value='svm',
-                                             second_key='loocv',
-                                             second_value='no')
-    data_node3 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PredictionPlot',
-                                             optional_key='classify_alg',
-                                             optional_value='svm',
-                                             second_key='loocv',
-                                             second_value='no')
-    data_node4 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='ClassifyFile',
-                                             optional_key='classify_alg',
-                                             optional_value='svm',
-                                             second_key='loocv',
-                                             second_value='yes')
-    data_node5 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PredictionPlot',
-                                             optional_key='classify_alg',
-                                             optional_value='svm',
-                                             second_key='loocv',
-                                             second_value='yes')
-    data_node6 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PredictionPCAPlot',
-                                             optional_key='classify_alg',
-                                             optional_value='svm')
-    data_node7 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='ClassifyFile',
-                                             optional_key='classify_alg',
-                                             optional_value='weighted_voting',
-                                             second_key='loocv',
-                                             second_value='no')
-    data_node8 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='PredictionPlot',
-                                             optional_key='classify_alg',
-                                             optional_value='weighted_voting',
-                                             second_key='loocv',
-                                             second_value='no')
-    data_node9 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='ClassifyFile',
-                                             optional_key='classify_alg',
-                                             optional_value='weighted_voting',
-                                             second_key='loocv',
-                                             second_value='yes')
-    data_node10 = module_utils.get_identifier(network, module_id, pool,
-                                              user_attributes,
-                                              datatype='PredictionPlot',
-                                              optional_key='classify_alg',
-                                              optional_value='weighted_voting',
-                                              second_key='loocv',
-                                              second_value='yes')
-    data_node11 = module_utils.get_identifier(network, module_id, pool,
-                                              user_attributes,
-                                              datatype='PredictionPCAPlot',
-                                              optional_key='classify_alg',
-                                              optional_value='weighted_voting')
+    filter1 = module_utils.AntecedentFilter(datatype_name='SignalFile')
+    
+    filter2 = module_utils.AntecedentFilter(
+        datatype_name='ClassifyFile', classify_alg="svm", loocv="no")
+    filter3 = module_utils.AntecedentFilter(
+        datatype_name='PredictionPlot', classify_alg="svm", loocv="no")
+    
+    filter4 = module_utils.AntecedentFilter(
+        datatype_name='ClassifyFile', classify_alg="svm", loocv="yes")
+    filter5 = module_utils.AntecedentFilter(
+        datatype_name='PredictionPlot', classify_alg="svm", loocv="yes")
+    filter6 = module_utils.AntecedentFilter(
+        datatype_name='PredictionPCAPlot', classify_alg="svm")
+    
+    filter7 = module_utils.AntecedentFilter(
+        datatype_name='ClassifyFile', classify_alg="weighted_voting",
+        loocv="no")
+    filter8 = module_utils.AntecedentFilter(
+        datatype_name='PredictionPlot', classify_alg="weighted_voting",
+        loocv="no")
 
-    return (data_node1, data_node2, data_node3, data_node4, data_node5,
-            data_node6, data_node7, data_node8, data_node9, data_node10,
-            data_node11)
+    filter9 = module_utils.AntecedentFilter(
+        datatype_name='ClassifyFile', classify_alg="weighted_voting",
+        loocv="yes")
+    filter10 = module_utils.AntecedentFilter(
+        datatype_name='PredictionPlot', classify_alg="weighted_voting",
+        loocv="yes")
+    filter11 = module_utils.AntecedentFilter(
+        datatype_name='PredictionPCAPlot', classify_alg="weighted_voting")
+    
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2,
+        filter3, filter4, filter5, filter6, filter7, filter8,
+        filter9, filter10, filter11)
+    return x

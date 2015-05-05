@@ -414,7 +414,7 @@ def main():
         realpath = os.path.realpath(args.output_file)
         if os.path.exists(args.output_file):
             if not args.clobber:
-                raise ValueError('the output path %s is already exisit,\
+                raise ValueError('the output path %s is already exists,\
                                  please use --clobber option to overwrite'
                                  % args.output_file)
     if not args.output and not args.input:

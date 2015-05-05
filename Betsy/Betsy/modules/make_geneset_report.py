@@ -114,7 +114,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     return out_attributes
 
 
@@ -127,10 +127,8 @@ def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node1 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='GenesetAnalysis')
-    data_node2 = module_utils.get_identifier(network, module_id, pool,
-                                             user_attributes,
-                                             datatype='GenesetPlot')
-    return data_node1, data_node2
+    filter1 = module_utils.AntecedentFilter(datatype_name='GenesetAnalysis')
+    filter2 = module_utils.AntecedentFilter(datatype_name='GenesetPlot')
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2)
+    return x

@@ -41,13 +41,11 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node = module_utils.get_identifier(network, module_id, pool,
-                                            user_attributes,
-                                            datatype='SignalFile')
-    geneset_node = module_utils.get_identifier(network, module_id, pool,
-                                               user_attributes,
-                                               datatype='GenesetFile')
-    return data_node, geneset_node
+    filter1 = module_utils.AntecedentFilter(datatype_name='SignalFile')
+    filter2 = module_utils.AntecedentFilter(datatype_name='GenesetFile')
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2)
+    return x
 
 
 def name_outfile(antecedents, user_options):
@@ -58,7 +56,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     return out_attributes
 
 

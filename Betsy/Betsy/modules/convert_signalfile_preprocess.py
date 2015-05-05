@@ -25,6 +25,7 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
     return out_object
 
 
+# TODO: Should be local path, not full path.
 def name_outfile(antecedents, user_options):
     original_file = module_utils.get_inputid(antecedents.identifier)
     format_type = antecedents.data.attributes['format']
@@ -33,7 +34,7 @@ def name_outfile(antecedents, user_options):
     return outfile
 
 
-def get_out_attributes(antecedents, out_attributes):
+def set_out_attributes(antecedents, out_attributes):
     return out_attributes
 
 
@@ -44,6 +45,6 @@ def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
 
 
 def find_antecedents(network, module_id, out_attributes, user_attributes, pool):
-    data_node = module_utils.get_identifier(network, module_id, pool,
-                                            user_attributes)
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
     return data_node

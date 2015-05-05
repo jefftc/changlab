@@ -990,6 +990,14 @@ class Network:
         self.nodes = nodes[:]
         self.transitions = transitions.copy()
 
+    def points_to(self, node_id):
+        # Return a list of all the ids that point to this node.
+        prev_ids = []
+        for id_ in self.transitions:
+            if node_id in self.transitions[id_]:
+                prev_ids.append(id_)
+        return prev_ids
+
     def iterate(self, node_class=None):
         # Yield tuple of (node_id, next_node_ids).  node_class is the
         # class of the node of the network (either Data or Module).  If
