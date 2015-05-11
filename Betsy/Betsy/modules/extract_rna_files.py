@@ -34,7 +34,7 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for extract_rna_files fails' % outfile
     )
-    out_node = bie3.Data(rulebase.RNA_SeqFile, **out_attributes)
+    out_node = bie3.Data(rulebase.RNASeqFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 
@@ -59,7 +59,7 @@ def set_out_attributes(antecedents, out_attributes):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    filter1 = module_utils.AntecedentFilter(datatype_name='RNA_SeqFile')
+    filter1 = module_utils.AntecedentFilter(datatype_name='RNASeqFile')
     data_node = module_utils.find_antecedents(
         network, module_id, user_attributes, pool, filter1)
     return data_node

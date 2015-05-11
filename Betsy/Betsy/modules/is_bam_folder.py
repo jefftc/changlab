@@ -32,7 +32,7 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
     assert module_utils.exists_nz(outfile), (
         'the output file %s for is_bam_folder fails' % outfile
     )
-    out_node = bie3.Data(rulebase.RNA_SeqFile, **out_attributes)
+    out_node = bie3.Data(rulebase.RNASeqFile, **out_attributes)
     out_object = module_utils.DataObject(out_node, outfile)
     return out_object
 

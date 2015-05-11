@@ -65,6 +65,7 @@ def name_outfile(antecedents, user_options):
 
 
 def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    # TODO: Is this correct?
     GSEID = user_options["GSEID"]
     GPLID = user_options.get("GPLID", "")
     return "%s_%s" % (GSEID, GPLID)

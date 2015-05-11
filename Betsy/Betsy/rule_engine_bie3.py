@@ -17,6 +17,8 @@ TODO: does module.find_antecedents need out_attributes?
 TODO: Rename DataObject.  Figure out better way to handle this.
 TODO: when running pipeline, should show all possible options
 
+TODO: run_pipeline should not print to screen.
+
 
 
 user_input  something from the user that is passed to the module.  OptionDef
@@ -54,6 +56,8 @@ TODO: Should return just file, rather than the full path.
 make_unique_hash(pipeline, antecedents, out_attributes, user_options)
 TODO: Rename to hash_module???
 TODO: rename data_node to antecedents?
+
+TODO: why can't get_antecedents be done automatically based on the rules?
 
 
 """
@@ -269,7 +273,7 @@ def run_module(
         # anything.
         return []
     
-    print "[%s].  %s" % (time.strftime('%l:%M%p'), module_name)
+    print "[%s]  %s" % (time.strftime('%I:%M %p'), module_name)
     #print '[' + time.strftime('%l:%M%p') + '].' + module_name
 
     x = make_module_wd_name(
@@ -429,7 +433,7 @@ def run_pipeline(
             
     if flag and next_node and module_utils.exists_nz(next_node.identifier):
         msg = "Completed successfully and generated a file:"
-        print "[%s].  %s" % (time.strftime('%l:%M%p'), msg)
+        print "[%s]  %s" % (time.strftime('%I:%M %p'), msg)
         print next_node.identifier
         sys.stdout.flush()
         return next_node.identifier

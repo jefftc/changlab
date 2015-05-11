@@ -13,7 +13,7 @@ GEOFamilySoftFile = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS,
         'unspecified', 'unspecified',help="contents"),
-    help="GEO fmaily soft file download from the GEO database")
+    help="Family soft file from the GEO database.")
 
 GEOSeriesMatrixFile = DataType(
     "GEOSeriesMatrixFile",
@@ -65,6 +65,7 @@ all_modules = [
         ),
     Module(
         "get_geo_sample_metadata", GEOSeriesMatrixFile, GEOSampleMetadata,
+        OptionDef("set_NA_to", "NA", help='Convert "NA" to another value.'),
         help="Get the metadata for the samples for a GEO data set.",
         ),
 

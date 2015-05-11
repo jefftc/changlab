@@ -58,7 +58,7 @@ def set_out_attributes(antecedents, out_attributes):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    filter1 = module_utils.AntecedentFilter(datatype_name='RNA_SeqFile')
+    filter1 = module_utils.AntecedentFilter(datatype_name='RNASeqFile')
     data_node = module_utils.find_antecedents(
         network, module_id, user_attributes, pool, filter1)
     return data_node
