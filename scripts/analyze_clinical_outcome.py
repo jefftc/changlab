@@ -662,7 +662,8 @@ def make_zscore_names(cutoffs, expression_or_score):
 def plot_km(
     filename, survival, dead, group_indexes, p_value, gene_id, group_names,
     mar_bottom, mar_left, mar_top, title, title_size, mar_title,
-    subtitle_size, mar_subtitle, xlab, ylab, legend_size):
+    subtitle_size, mar_subtitle, xlab, ylab, legend_size, x_legend=None,
+    colors=None):
     from genomicode import colorlib
     from genomicode.jmath import R_equals, R_fn, R_var
     
@@ -670,11 +671,13 @@ def plot_km(
     
     # Set the colors.
     assert len(group_names) >= 2
-    colors = ['#1533AD', '#FFB300']
-    if len(group_names) > 2:
-        x = colorlib.bild_colors(len(group_names))
-        x = [colortuple2hex(*x) for x in x]
-        colors = x
+    if not colors:
+        colors = ['#1533AD', '#FFB300']
+        if len(group_names) > 2:
+            x = colorlib.bild_colors(len(group_names))
+            x = [colortuple2hex(*x) for x in x]
+            colors = x
+    assert len(colors) == len(group_names)
     # R command:
     # col <- list("<name>"="<color>", ...)
     cmd = []
@@ -714,7 +717,9 @@ def plot_km(
 
     xlab = xlab or ""
     ylab = ylab or ""
-    sub = "p=%.2g" % p_value
+    sub = ""
+    if p_value is not None:
+        sub = "p=%.2g" % p_value
     title = title or gene_id
     cex_main = 2.0 * title_size
     cex_sub = 1.5 * subtitle_size
@@ -730,14 +735,21 @@ def plot_km(
     R_fn("par", mar=mar, RETVAL="op")
     
     # Suppress warning message.  See calc_km.
+    params = {
+        'cex.main' : cex_main,
+        'main.line' : main_line,
+        'cex.sub' : cex_sub,
+        'sub.line' : sub_line,
+        'cex.legend' : cex_legend,
+        }
+    if x_legend:
+        params["x.legend"] = x_legend
+    
     R_fn('options', "warn", RETVAL='ow')
     R_fn('options', warn=-1)
     R_fn(
         'plot.km.multi', survival, dead, group, col=R_var('col'),
-        main=title, sub=sub, xlab=xlab, ylab=ylab,
-        **{ 'cex.main' : cex_main, 'main.line' : main_line,
-            'cex.sub' : cex_sub, 'sub.line' : sub_line,
-            'cex.legend' : cex_legend })
+        main=title, sub=sub, xlab=xlab, ylab=ylab, **params)
     R_fn('options', R_var('ow'))
     R_fn("par", R_var('op'))
     R_fn('dev.off')

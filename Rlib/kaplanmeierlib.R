@@ -250,19 +250,22 @@ plot.km <- function(survival1, dead1, survival2, dead2, col1=NA, col2=NA,
 # col is a list of NAME -> color (e.g. "#FF0000")
 plot.km.multi <- function(survival, dead, group, col=NA, 
   main="", cex.main=NULL, main.line=NA, xlab="", ylab="", sub="", 
-  cex.sub=NULL, sub.line=NA, cex.legend=NULL) {
+  cex.sub=NULL, sub.line=NA, cex.legend=NULL, x.legend=NULL) {
   if(is.null(cex.main))
     cex.main <- 2.0
   if(is.null(cex.sub))
     cex.sub <- 1.5
   if(is.null(cex.legend))
     cex.legend <- 1.5
+  if(is.null(x.legend))
+    x.legend <- "bottomleft"
   if(all(is.na(col)))
     col <- list()
   if(length(survival) != length(dead)) stop("unaligned")
   if(length(survival) != length(group)) stop("unaligned")
 
-  km <- calc.km.multi(survival, dead, group)
+  # What is this for?
+  #km <- calc.km.multi(survival, dead, group)
 
   xlim <- c(0, max(survival))
   ylim <- c(0, 100)
@@ -293,10 +296,10 @@ plot.km.multi <- function(survival, dead, group, col=NA,
     leg <- names(col)
     fill <- sapply(leg, function(x) col[[x]])
     # Only label the lines if it exists on the plot.
-    I <- !is.na(match(leg, group))
-    leg <- leg[I]
-    fill <- fill[I]
-    legend("bottomleft", legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend, 
+    #I <- !is.na(match(leg, group))
+    #leg <- leg[I]
+    #fill <- fill[I]
+    legend(x=x.legend, legend=leg, fill=fill, box.lwd=1.5, cex=cex.legend, 
       inset=0.05)
   }
 }
