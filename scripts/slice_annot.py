@@ -1,0 +1,454 @@
+#!/usr/bin/env python
+
+# Functions:
+# read_annot
+# write_annot
+#
+# parse_indexes
+
+import os
+import sys
+
+
+# TODO: merge with aligh_matrices
+class AnnotationMatrix:
+    def __init__(self, headers, headers_h, header2annots):
+        # headers is a list of the original headers.
+        # headers_h are the headers, hashed to ensure uniqueness.
+        # headers2annots is a dictionary of hashed headers to the list
+        # of annotations.
+        assert headers
+        assert headers_h
+        assert len(headers) == len(headers_h)
+        assert sorted(headers_h) == sorted(header2annots)
+        for x in headers_h[1:]:
+            assert len(header2annots[x]) == len(header2annots[headers_h[0]])
+        self.headers = headers[:]
+        self.headers_h = headers_h[:]
+        self.header2annots = header2annots.copy()
+    def copy(self):
+        return AnnotationMatrix(
+            self.headers, self.headers_h, self.header2annots)
+
+
+def _hash_headers_unique(headers):
+    # Make sure the headers in all_headers is unique.
+    header2I = {}  # header -> list of indexes
+    for i, header in enumerate(headers):
+        if header not in header2I:
+            header2I[header] = []
+        header2I[header].append(i)
+
+    nodup = headers[:]
+    for (header, I) in header2I.iteritems():
+        if len(I) < 2:
+            continue
+        for i in range(len(I)):
+            nodup[I[i]] = "%s_%d" % (header, i+1)
+    return nodup
+
+
+def read_annot(filename):
+    # Everything are strings.  No numeric conversion.
+    import re
+    from genomicode import genesetlib
+
+    all_headers, all_annots = [], []
+    for x in genesetlib.read_tdf(
+        filename, preserve_spaces=True, allow_duplicates=True):
+        name, description, annots = x
+
+        # Hack: Some files contain special characters, which mess up
+        # alignment. Fix this here.
+        # na\xc3\xafve-WIBR3.5 hESC
+        # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
+        annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
+
+        all_headers.append(name)
+        all_annots.append(annots)
+
+    headers_h = _hash_headers_unique(all_headers)
+    header2annots = {}
+    for (header_h, annots) in zip(headers_h, all_annots):
+        header2annots[header_h] = annots
+    return AnnotationMatrix(all_headers, headers_h, header2annots)
+
+
+def write_annot(handle_or_file, annot_matrix):
+    from genomicode import jmath
+    matrix = []
+    for i, header_h in enumerate(annot_matrix.headers_h):
+        header = annot_matrix.headers[i]
+        annots = annot_matrix.header2annots[header_h]
+        x = [header] + annots
+        matrix.append(x)
+    # Transpose the matrix.
+    matrix = jmath.transpose(matrix)
+
+    handle = handle_or_file
+    if type(handle) is type(""):
+        handle = open(handle, 'w')
+    for x in matrix:
+        print >>handle, "\t".join(map(str, x))
+
+
+def parse_indexes(MATRIX, indexes_str):
+    # Takes 1-based indexes and returns a list of 0-based indexes.
+    # 
+    # Example inputs:
+    # 5
+    # 1,5,10
+    # 1-99,215-300
+    from genomicode import parselib
+
+    max_index = len(MATRIX.headers)
+
+    I = []
+    for s, e in parselib.parse_ranges(indexes_str):
+        assert s >= 1
+        s, e = s - 1, min(e, max_index)
+        I.extend(range(s, e))
+
+    # Remove duplicated indexes.  Need to preserve order.
+    nodup = []
+    for i in I:
+        if i not in nodup:
+            nodup.append(i)
+    I = nodup
+
+    return I
+
+
+def indexes_matrix(MATRIX, indexes):
+    if not indexes:
+        return MATRIX
+    I = parse_indexes(MATRIX, indexes)
+
+    for i in I:
+        assert i >= 0 and i < len(MATRIX.headers_h)
+    headers = [MATRIX.headers[i] for i in I]
+    headers_h = [MATRIX.headers_h[i] for i in I]
+    header2annots = {}
+    for header_h in headers_h:
+        header2annots[header_h] = MATRIX.header2annots[header_h]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+
+
+def flip01_matrix(MATRIX, indexes):
+    if not indexes:
+        return MATRIX
+    I = parse_indexes(MATRIX, indexes)
+
+    MATRIX = MATRIX.copy()
+    for i in I:
+        assert i >= 0 and i < len(MATRIX.headers_h)
+        header_h = MATRIX.headers_h[i]
+        annots = MATRIX.header2annots[header_h]
+        for j in range(len(annots)):
+            if annots[j].strip() == "0":
+                annots[j] = "1"
+            elif annots[j].strip() == "1":
+                annots[j] = "0"
+        MATRIX.header2annots[header_h] = annots
+    return MATRIX
+
+
+def rename_header(MATRIX, rename_list):
+    # rename_list is list of strings in format of: <from>,<to>.
+    if not rename_list:
+        return MATRIX
+
+    rename_all = []  # list of (from_str, to_str)
+    for rename_str in rename_list:
+        x = rename_str.split(",")
+        assert len(x) == 2, "format should be: <from>,<to>"
+        from_str, to_str = x
+        rename_all.append((from_str, to_str))
+
+    for from_str, to_str in rename_all:
+        assert from_str in MATRIX.headers, "%s not a header" % from_str
+        assert from_str in MATRIX.header2annots, "%s not a unique header" % \
+               from_str
+
+    convert = {}
+    for from_str, to_str in rename_all:
+        assert from_str not in convert, "dup: %s" % from_str
+        convert[from_str] = to_str
+
+    # Convert to the new names.
+    headers = [convert.get(x, x) for x in MATRIX.headers]
+    headers_h = _hash_headers_unique(headers)
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+        
+
+def rename_header_i(MATRIX, rename_list):
+    # rename_list is list of strings in format of: <index>,<to>.
+    if not rename_list:
+        return MATRIX
+
+    rename_all = []  # list of (0-based index, to_str)
+    for rename_str in rename_list:
+        x = rename_str.split(",")
+        assert len(x) == 2, "format should be: <from>,<to>"
+        index, to_str = x
+        index = int(index)
+        assert index >= 1 and index <= len(MATRIX.headers)
+        index -= 1
+        rename_all.append((index, to_str))
+
+    # Convert to the new names.
+    headers = MATRIX.headers[:]
+    for index, to_str in rename_all:
+        headers[index] = to_str
+    headers_h = _hash_headers_unique(headers)
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+
+
+def prepend_to_headers(MATRIX, prepend_to_headers):
+    # prepend_to_headers is list of strings in format of: <prefix>,<indexes>.
+    if not prepend_to_headers:
+        return MATRIX
+
+    prepend_all = []  # list of (prefix, list of 0-based indexes)
+    for x in prepend_to_headers:
+        x = x.split(",", 1)
+        assert len(x) == 2
+        prefix, indexes_str = x
+        indexes = parse_indexes(MATRIX, indexes_str)
+        for i in indexes:
+            assert i >= 0 and i < len(MATRIX.headers)
+        prepend_all.append((prefix, indexes))
+
+    headers = MATRIX.headers[:]
+    for prefix, indexes in prepend_all:
+        for i in indexes:
+            headers[i] = "%s%s" % (prefix, headers[i])
+    headers_h = _hash_headers_unique(headers)
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+    
+
+def add_column(MATRIX, add_column):
+    # add_column is list of strings in format of: <index>,<header>,<default>.
+    if not add_column:
+        return MATRIX
+
+    num_annots = None
+    for annots in MATRIX.header2annots.itervalues():
+        if num_annots is None:
+            num_annots = len(annots)
+        assert num_annots == len(annots)
+
+    add_all = []  # list of (0-based index, header, default_value)
+    for x in add_column:
+        x = x.split(",", 2)
+        assert len(x) == 3
+        index, header, default_value = x
+        index = int(index) - 1
+        add_all.append((index, header, default_value))
+
+    # Since the hashed header names might change, keep track of the
+    # indexes for each header.
+    h_indexes = [("OLD", i) for i in range(len(MATRIX.headers))]
+    for i, x in enumerate(add_all):
+        index, header, default_value = x
+        assert index >= 0 and index <= len(h_indexes)
+        h_indexes.insert(index, ("NEW", i))
+
+    headers = []
+    for (which_one, i) in h_indexes:
+        if which_one == "OLD":
+            headers.append(MATRIX.headers[i])
+        elif which_one == "NEW":
+            index, header, default_value = add_all[i]
+            headers.append(header)
+        else:
+            raise AssertionError
+    headers_h = _hash_headers_unique(headers)
+
+    header2annots = {}
+    for i_new, (which_one, i_old) in enumerate(h_indexes):
+        if which_one == "OLD":
+            old_header_h = MATRIX.headers_h[i_old]
+            new_header_h = headers_h[i_new]
+            header2annots[new_header_h] = MATRIX.header2annots[old_header_h]
+        elif which_one == "NEW":
+            index, header, default_value = add_all[i_old]
+            annots = [default_value] * num_annots
+            new_header_h = headers_h[i_new]
+            header2annots[new_header_h] = annots
+        else:
+            raise AssertionError
+
+    return AnnotationMatrix(headers, headers_h, header2annots)
+
+
+def copy_value_if_empty(MATRIX, copy_values):
+    # copy_values is list of strings in format of: <dst>,<src 1>[,<src
+    # 2>...].
+    if not copy_values:
+        return MATRIX
+
+    copy_indexes = []   # list of (dst, src1 [, src 2...]).  0-based
+    for copy_value in copy_values:
+        x = copy_value.split(",")
+        assert len(x) >= 2, "format should be: <dst>,<src 1>[, <src 2>...]"
+        x = [int(x) for x in x]
+        for i in range(len(x)):
+            # Should be 1-based indexes.
+            assert x[i] >= 1 and x[i] <= len(MATRIX.headers)
+        # Convert to 0-based indexes.
+        x = [x-1 for x in x]
+        copy_indexes.append(tuple(x))
+
+    MATRIX = MATRIX.copy()
+    for indexes in copy_indexes:
+        i_dst = indexes[0]
+        header_dst = MATRIX.headers_h[i_dst]
+        for i_src in indexes[1:]:
+            header_src = MATRIX.headers_h[i_src]
+
+            # Change the annotations in place.
+            annots_dst = MATRIX.header2annots[header_dst]
+            annots_src = MATRIX.header2annots[header_src]
+            for i in range(len(annots_dst)):
+                if not annots_dst[i].strip():
+                    annots_dst[i] = annots_src[i]
+    return MATRIX
+
+
+def strip_all_annots(MATRIX, strip):
+    if not strip:
+        return MATRIX
+    header2annots = {}
+    for header_h, annots in MATRIX.header2annots.iteritems():
+        annots = [x.strip() for x in annots]
+        header2annots[header_h] = annots
+    return AnnotationMatrix(MATRIX.headers, MATRIX.headers_h, header2annots)
+
+
+def replace_annot(MATRIX, replace_annot):
+    # list of strings in format of: <col 1-based>,<src>,<dst>
+    if not replace_annot:
+        return MATRIX
+
+    replace_all = []   # list of (index 0-based, src, dst)
+    for replace in replace_annot:
+        x = replace.split(",")
+        assert len(x) == 3, "format should be: <col>,<src>,<dst>"
+        index, src, dst = x
+        index = int(index)
+        # Should be 1-based.
+        assert index >= 1 and index <= len(MATRIX.headers)
+        # Convert to 0-based.
+        index -= 1
+        replace_all.append((index, src, dst))
+
+    MATRIX = MATRIX.copy()
+    for x in replace_all:
+        index, src, dst = x
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+        for i in range(len(annots)):
+            # Change the annotations in place.
+            if annots[i] == src:
+                annots[i] = dst
+    return MATRIX
+
+
+def main():
+    import argparse
+    import arrayio
+
+    parser = argparse.ArgumentParser(
+        description="Perform operations on an annotation file.")
+    parser.add_argument("filename", nargs=1, help="Annotation file.")
+    parser.add_argument(
+        "--read_as_csv", default=False, action="store_true",
+        help="Read as a CSV file.")
+
+    parser.add_argument(
+        "--indexes",
+        help="Select only these indexes from the file e.g. 1-5,8 "
+        "(1-based, inclusive).")
+    
+    parser.add_argument(
+        "--rename_header", default=[], action="append",
+        help="Rename a header.  Format: <from>,<to>.  "
+        "<from> will be replaced with <to>.  (MULTI)")
+    parser.add_argument(
+        "--rename_header_i", default=[], action="append",
+        help="Rename a header.  Format: <index>,<to>.  "
+        "<index> is a 1-based column index.  (MULTI)")
+    parser.add_argument(
+        "--prepend_to_headers", default=[], action="append",
+        help="Prepend text to one or more headers.  "
+        "Format: <text_to_prepend>,<indexes>.  (MULTI)")
+    parser.add_argument(
+        "--add_column", default=[], action="append",
+        help="Add one or more columns.  "
+        "Format: <index>,<header>,<default value>.  The column will be "
+        "added before <index> (1-based).  If <index> is 1, this will be "
+        "the new first column.  (MULTI)")
+
+    parser.add_argument(
+        "--flip01",
+        help="Flip 0's to 1's and 1's to 0's.  "
+        "Format: indexes of columns to flip.")
+    parser.add_argument(
+        "--copy_value_if_empty", default=[], action="append",
+        help="If this column is empty, copy the value from another column.  "
+        "Format: <dest col>,<src col 1>[, <src col 2>...].  Columns "
+        "are given as 1-based indexes.  (MULTI)")
+    parser.add_argument(
+        "--strip_all_annots", action="store_true",
+        help="Get rid of spaces around each of the annotations.")
+    parser.add_argument(
+        "--replace_annot", default=[], action="append",
+        help="Replace one annotation with another.  "
+        "Format: <col>,<src>,<dst>.  (MULTI)")
+
+    args = parser.parse_args()
+    assert len(args.filename) == 1
+
+    # Read the matrix.
+    MATRIX = read_annot(args.filename[0])
+
+    # Perform operations.
+    MATRIX = indexes_matrix(MATRIX, args.indexes)
+
+    # Changing the headers.
+    MATRIX = rename_header(MATRIX, args.rename_header)
+    MATRIX = rename_header_i(MATRIX, args.rename_header_i)
+    MATRIX = prepend_to_headers(MATRIX, args.prepend_to_headers)
+    MATRIX = add_column(MATRIX, args.add_column)
+
+    # Changing the values.
+    MATRIX = flip01_matrix(MATRIX, args.flip01)
+    MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
+    MATRIX = strip_all_annots(MATRIX, args.strip_all_annots)
+    MATRIX = replace_annot(MATRIX, args.replace_annot)
+
+    # Write the matrix back out.
+    write_annot(sys.stdout, MATRIX)
+
+
+if __name__ == '__main__':
+    main()

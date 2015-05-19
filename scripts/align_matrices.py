@@ -413,7 +413,7 @@ def add_missing_samples(matrix_data, null_string):
         for i in range(len(complete_samples)):
             if complete_samples[i] == null_string:
                 complete_samples[i] = samples[i]
-    
+
     # Now fix each of the matrices.
     new_matrix_data = []
     for x in matrix_data:
@@ -441,7 +441,8 @@ def get_samples(
     ignore_nonalnum):
     # Return (header, samples) from the matrix.  Since in principle
     # anything in the annotation file can be a sample, need to give it
-    # a hint of what the samples look like.
+    # a hint of what the samples look like.  Returns None if I could
+    # not find the samples.
     if isinstance(matrix, AnnotationMatrix):
         return get_annot_samples(
             matrix, header_hint, samples_hint, case_insensitive, hash_samples,
@@ -478,7 +479,9 @@ def get_annot_samples(matrix, header_hint, samples_hint,
     assert all_matches
     all_matches = sorted(all_matches)
     x = all_matches[-1]
-    x, name, x = x
+    num_matches, name, x = x
+    if not num_matches:
+        return None
     return name, matrix.name2annots[name]
 
 
@@ -800,9 +803,11 @@ def main():
     samples_hint = peek_samples_hint(matrix_data)
     for x in matrix_data:
         infile, outfile, matrix, header = x
-        header, samples = get_samples(
+        x = get_samples(
             matrix, header, samples_hint, args.case_insensitive, args.hash,
             args.ignore_nonalnum)
+        assert x, "I could not find the samples for %s" % infile
+        header, samples = x
         x = infile, outfile, matrix, header, samples
         new_matrix_data.append(x)
     matrix_data = new_matrix_data
