@@ -243,7 +243,7 @@ class Attribute:
         return self.__repr__()
 
     def __repr__(self):
-        x = [self.datatype.name, repr(self.name), repr(self.value), ]
+        x = [self.datatype.name, repr(self.name), repr(self.value)]
         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
         return x
 

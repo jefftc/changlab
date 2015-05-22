@@ -8,7 +8,7 @@ from genomicode import config
 def run(network, antecedents, out_attributes, user_options, num_cores):
     in_data = antecedents
     outfile = name_outfile(in_data, user_options)
-    out_attributes = get_out_attributes(out_attributes, in_data)
+    out_attributes = set_out_attributes(in_data, out_attributes)
     species = out_attributes['ref']
     if species == 'hg18':
         ref_file = config.hg18_ref

@@ -1,8 +1,8 @@
-#check_geo_file_type
 import os
 import shutil
 from Betsy import module_utils, bie3, rulebase
 
+# TODO: rename all check_ modules.
 
 def run(network, antecedents, out_attributes, user_options, num_cores):
     """check the data type from the expression file"""
@@ -55,7 +55,7 @@ def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
     filter1 = module_utils.AntecedentFilter(datatype_name='ExpressionFiles')
     filter2 = module_utils.AntecedentFilter(
-        datatype_name='GeoSeriesMatrixFile')
+        datatype_name='GEOSeriesMatrixFile')
     x = module_utils.find_antecedents(
         network, module_id, user_attributes, pool, filter1, filter2)
     return x
@@ -77,7 +77,7 @@ def guess_datatype(folder, matrix_folder):
             if 'idat' not in result_files:
                 result_files['idat'] = []
             result_files['idat'].append(filename)
-        elif detect_agilent(os.path.join(folder, filename)):
+        elif is_agilent_file(os.path.join(folder, filename)):
             if 'agilent' or 'AGILENT' not in result_files:
                 result_files['agilent'] = []
             result_files['agilent'].append(filename)
@@ -107,12 +107,13 @@ def guess_datatype(folder, matrix_folder):
         return None
 
 
-def detect_agilent(filename):
+def is_agilent_file(filename):
     "test a file is a agilent or not"
     postag = []
     fline = []
     f = open(filename, 'r')
     for i in range(10):
+        # Bug: What if nothing found in first 10 lines?
         line = f.readline()
         words = line.split()
         if len(words) > 0:

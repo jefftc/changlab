@@ -8,6 +8,7 @@
 # transpose_matrix
 # transpose_nonmatrix
 # correlate_matrix
+# group_expression_by_samplename
 #
 # parse_indexes
 # parse_names
@@ -106,8 +107,6 @@
 # _dedup_indexes
 # _run_forked
 
-import os
-import sys
 
 
 def _clean(s):
@@ -120,6 +119,8 @@ def _clean(s):
 
 def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
                   clean_only, num_header_cols):
+    import os
+    import sys
     import csv
     import tempfile
     import arrayio
@@ -259,6 +260,7 @@ def transpose_matrix(MATRIX, transpose):
 def transpose_nonmatrix(filename):
     # Transpose the contents of this tab-delimited file and print the
     # results.
+    import os
     from genomicode import filelib
     from genomicode import iolib
     from genomicode import jmath
@@ -277,7 +279,6 @@ def correlate_matrix(MATRIX, correlate):
     from genomicode import jmath
     from genomicode import Matrix
     from arrayio import const
-    from arrayio import tab_delimited_format as tdf
 
     if not correlate:
         return MATRIX
@@ -285,7 +286,6 @@ def correlate_matrix(MATRIX, correlate):
     X_cor = jmath.cor(MATRIX._X, byrow=0)
     assert len(X_cor) == MATRIX.ncol()
 
-    X = jmath.transpose(MATRIX._X)
     row_order = [MATRIX.col_names()[0]]
     col_order = [MATRIX.col_names()[0]]
     row_names = {
@@ -302,6 +302,59 @@ def correlate_matrix(MATRIX, correlate):
         X_cor, row_names=row_names, col_names=col_names,
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     return MATRIX_cor
+
+
+def group_expression_by_samplename(MATRIX, group):
+    from genomicode import jmath
+    from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
+
+    if not group:
+        return MATRIX
+
+    # Pull out the expression values and sample names.
+    I = parse_names(MATRIX, True, group)
+    assert I, "I could not find the row: %s" % group
+    assert len(I) <= 1, "Multiple row matches: %s" % group
+    values = MATRIX.value(I[0], None)
+
+    assert tdf.SAMPLE_NAME in MATRIX.col_names(), "Missing sample names"
+    sample_names = MATRIX.col_names(tdf.SAMPLE_NAME)
+
+    # Find the groups and assign the expression values to each group.
+    groups = sorted({}.fromkeys(sample_names))
+    assert len(groups) <= len(sample_names), "No common sample names."
+    group2values = {}
+    for name, value in zip(sample_names, values):
+        if name not in group2values:
+            group2values[name] = []
+        group2values[name].append(value)
+    x = [len(x) for x in group2values.itervalues()]
+    max_group_len = max(x)
+
+    # Make the matrix.
+    X = [[None]*len(groups) for i in range(max_group_len)]
+    for i in range(len(groups)):
+        values = group2values[groups[i]]
+        for j in range(len(values)):
+            X[j][i] = values[j]
+
+    row_order = []
+    col_order = [tdf.SAMPLE_NAME]
+    row_names = {
+        }
+    col_names = {
+        col_order[0] : groups,
+        }
+    synonyms = {
+        const.COL_ID : col_order[0],
+        }
+
+    MATRIX_g = Matrix.InMemoryMatrix(
+        X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_g
 
 
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
@@ -442,6 +495,7 @@ def _parse_file_annot(annotation):
 
 def _read_annot_file(filename):
     # Return (header2annots, all_headers, all_annots).
+    import os
     from genomicode import genesetlib
 
     assert os.path.exists(filename), "I could not find annotation file: %s" % \
@@ -699,6 +753,8 @@ def replace_col_ids(MATRIX, replace_list, ignore_missing):
 
 
 def relabel_col_ids(MATRIX, geneset, ignore_missing):
+    import os
+    import sys
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
@@ -725,9 +781,9 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     else:
         fmt = genesetlib.detect_format(filename)
         if fmt == "GMX":
-            read_fn = read_gmx
+            read_fn = genesetlib.read_gmx
         elif fmt == "GMT":
-            read_fn = read_gmt
+            read_fn = genesetlib.read_gmt
         elif fmt:
             raise AssertionError, "Unknown format: %s" % fmt
         raise AssertionError, \
@@ -795,6 +851,8 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
 
 
 def append_col_ids(MATRIX, geneset, ignore_missing):
+    import os
+    import sys
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
@@ -874,6 +932,8 @@ def append_col_ids(MATRIX, geneset, ignore_missing):
 
 
 def add_col_ids(MATRIX, geneset, ignore_missing):
+    import os
+    import sys
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
@@ -965,8 +1025,6 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
 
 def reorder_col_cluster(MATRIX, cluster, tree_file,
                         cluster_method, distance_method):
-    import arrayio
-    #from genomicode import jmath
     from genomicode import cluster30
     from genomicode import clusterio
     from genomicode import matrixlib
@@ -1608,7 +1666,6 @@ def select_row_var(MATRIX, select_var):
 
 
 def select_row_delta(MATRIX, select_delta):
-    import math
     if select_delta is None:
         return None
     select_delta = float(select_delta)
@@ -1844,6 +1901,7 @@ def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
 
 
 def align_rows(MATRIX, align_row_matrix, ignore_missing_rows):
+    import os
     import arrayio
 
     if not align_row_matrix:
@@ -1887,6 +1945,7 @@ def align_rows(MATRIX, align_row_matrix, ignore_missing_rows):
 
 
 def align_cols(MATRIX, align_col_matrix, ignore_missing_cols):
+    import os
     import arrayio
 
     if not align_col_matrix:
@@ -2140,6 +2199,7 @@ def _rlog_blind_h(X, outfile):
 def rlog_blind(X):
     # Fork a subprocess, because some R libraries generate garbage to
     # the screen.
+    import os
     import tempfile
 
     outfile = None
@@ -2194,6 +2254,7 @@ def _calc_cpm_h(X, outfile):
 def calc_cpm(X):
     # Fork a subprocess, because some R libraries generate garbage to
     # the screen.
+    import os
     import tempfile
 
     outfile = None
@@ -2632,6 +2693,7 @@ def _run_forked(fn, args, keywds):
 
 
 def main():
+    import sys
     import argparse
     import arrayio
     from genomicode import jmath
@@ -2681,7 +2743,12 @@ def main():
     group.add_argument(
         "--correlate", action="store_true",
         help="Calculate the pairwise correlation of the columns.")
-
+    group.add_argument(
+        "--group_expression_by_samplename",
+        help="Make a Prism formatted column table by grouping together "
+        "the expression values.  All samples that share the same name "
+        "will form a single group.  Format:<row ID to group>.")
+        
     group = parser.add_argument_group(title="Normalization")
     group.add_argument(
         "-l", "--log_transform", dest="log_transform", default=False,
@@ -3097,6 +3164,8 @@ def main():
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
     MATRIX = correlate_matrix(MATRIX, args.correlate)
+    MATRIX = group_expression_by_samplename(
+        MATRIX, args.group_expression_by_samplename)
 
 
     # Slice to a submatrix.

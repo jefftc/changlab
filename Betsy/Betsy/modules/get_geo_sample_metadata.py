@@ -4,7 +4,7 @@ Methods:
 run
 name_outfile
 make_unique_hash
-get_out_attributes
+set_out_attributes
 find_antecedents
 
 """

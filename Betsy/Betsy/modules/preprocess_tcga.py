@@ -9,7 +9,7 @@ from genomicode import config
 def run(network, antecedents, out_attributes, user_options, num_cores):
     in_data = antecedents
     outfile = name_outfile(in_data, user_options)
-    out_attributes = get_out_attributes(out_attributes, in_data)
+    out_attributes = set_out_attributes(in_data, out_attributes)
     TCGA_BIN = config.download_tcga
     command = ['python', TCGA_BIN, '--input', in_data.identifier, '--data',
                in_data.data.attributes['preprocess'], '--process_only',

@@ -9,7 +9,7 @@ from genomicode import config
 def run(network, antecedents, out_attributes, user_options, num_cores):
     data_node, cel_node = antecedents
     outfile = name_outfile(antecedents, user_options)
-    out_attributes = get_out_attributes(out_attributes, data_node)
+    out_attributes = set_out_attributes(data_node, out_attributes)
     phenotype_BIN = config.analyze_phenotype
     assert os.path.exists(phenotype_BIN)
     assert "geneset_value" in user_options, 'no geneset are provided'

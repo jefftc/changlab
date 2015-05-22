@@ -10,7 +10,7 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
     """convert the cel file with ccl or v3_4 to v3_4"""
     in_data = antecedents
     outfile = name_outfile(in_data, user_options)
-    new_parameters = get_out_attributes(out_attributes, in_data)
+    new_parameters = set_out_attributes(in_data, out_attributes)
     shutil.copytree(in_data.identifier, outfile)
     assert module_utils.exists_nz(outfile), (
         'the output file %s for detect_CEL_version' % outfile

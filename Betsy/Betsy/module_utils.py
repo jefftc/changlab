@@ -60,15 +60,29 @@ class AntecedentFilter:
         self.datatype_name = datatype_name
         self.contents = contents
         self.attributes = attributes
+        self.mismatch_reason = None
     def matches_node(self, node):
         if self.datatype_name and self.datatype_name != node.datatype.name:
+            self.mismatch_reason = "datatype_name"
             return False
         if self.contents and node.attributes.get("contents") != contents:
+            self.mismatch_reason = "contents"
             return False
         for (key, value) in self.attributes.iteritems():
             if node.attributes.get(key) != value:
+                self.mismatch_reason = "attributes: %s" % key
                 return False
+        self.mismatch_reason = None
         return True
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [self.datatype_name, repr(self.contents)]
+        for name, value in self.attributes.iteritems():
+            # Bug: strings should be hashed.
+            x.append("%s=%s" % (name, value))
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
 
 
 def _find_ids_that_pass_filters(network, node_ids, filters):
@@ -96,6 +110,8 @@ def find_antecedents(network, module_id, user_attributes, pool, *filters):
     # could be found.
     import os
     import bie3
+
+    module_name = network.nodes[module_id].name
 
     # Make a list of every possible combination of inputs that goes
     # into this module.
@@ -130,14 +146,13 @@ def find_antecedents(network, module_id, user_attributes, pool, *filters):
             ids = _find_ids_that_pass_filters(network, input_ids, filters)
             if ids is not None:
                 break
-    assert ids, 'cannot find node that match for %s' % \
-               network.nodes[module_id].name
+    assert ids, "%s: antecedents not found" % module_name
     for id_ in ids:
         if not pool[id_].identifier:
             continue
         assert os.path.exists(pool[id_].identifier), (
             'the input file %s for %s does not exist' %
-            (pool[id_].identifier, network.nodes[module_id].name))
+            (pool[id_].identifier, module_name))
     objs = [pool[x] for x in ids]
     assert not filters or len(objs) == len(filters)
     if len(objs) <= 1:  # Return a single DataObject if 0 or 1 filters given.
@@ -386,9 +401,10 @@ def write_Betsy_parameters_file(
     import os
     import json
     import time
+    import operator
 
     f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')
-    if isinstance(data_nodes, tuple):
+    if operator.isSequenceType(data_nodes):
         # BUG: Why is st not used?
         #st = os.stat(data_nodes[0].identifier)
         modified_time = time.strftime(FMT, time.localtime())

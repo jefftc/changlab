@@ -7,7 +7,7 @@ from Betsy import gpr_module, bie3, rulebase
 
 def run(network, antecedents, out_attributes, user_options, num_cores):
     in_data = antecedents
-    out_attributes = get_out_attributes(out_attributes, in_data)
+    out_attributes = set_out_attributes(in_data, out_attributes)
     filenames = os.listdir(in_data.identifier)
     outfile = name_outfile(in_data, user_options)
     keep = []

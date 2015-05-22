@@ -10,7 +10,7 @@ from Betsy import rulebase
 def run(network, antecedents, out_attributes, user_options, num_cores):
     """log the input file"""
     in_data = antecedents
-    out_attributes = get_out_attributes(out_attributes, in_data)
+    out_attributes = set_out_attributes(in_data, out_attributes)
     outfile = name_outfile(in_data, user_options)
     shutil.copyfile(in_data.identifier, outfile)
     assert module_utils.exists_nz(outfile), (

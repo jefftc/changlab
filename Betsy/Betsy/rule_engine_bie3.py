@@ -237,6 +237,7 @@ def run_module(
     # return out_nodes, if module fails, the module itself will raise a break,
     # if cannot find a outnode inside the network, will return a empty list
     import os
+    import sys
     import getpass
     import time
     import tempfile
@@ -275,6 +276,7 @@ def run_module(
     
     print "[%s]  %s" % (time.strftime('%I:%M %p'), module_name)
     #print '[' + time.strftime('%l:%M%p') + '].' + module_name
+    sys.stdout.flush()
 
     x = make_module_wd_name(
         network, module, module_id, sub_user_input, pipeline_sequence, pool,

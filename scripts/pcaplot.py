@@ -97,7 +97,7 @@ def main():
         "-c", "--cluster", default=[], action="append",
         help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
     parser.add_option(
-        "--indexes_include_headers", default=False, action="store_true",
+        "--indexes_include_headers", "--iih", action="store_true",
         help="If not given (default), then index 1 is the first column "
         "with data.  If given, then index 1 is the very first column "
         "in the file, including the headers.")

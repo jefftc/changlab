@@ -331,19 +331,31 @@ def write(X, handle):
 
     # Print out the header row if there are row headers or sample
     # names.
+    header = []
+    if SAMPLE_NAME in col_names:
+        header = X.col_names(SAMPLE_NAME)
     if row_names:
-        header = row_names
-        if SAMPLE_NAME in col_names:
-            header = header + X.col_names(SAMPLE_NAME)
+        header = row_names + header
+    if header:
         M_out.append(header)
-        #header = _clean_many(header)
-        #print >>handle, "\t".join(header)
+    #if row_names:
+    #    header = row_names
+    #    if SAMPLE_NAME in col_names:
+    #        header = header + X.col_names(SAMPLE_NAME)
+    #    M_out.append(header)
+    #    #header = _clean_many(header)
+    #    #print >>handle, "\t".join(header)
 
     # Print out the column annotations.
     for header in col_names:
         if header == SAMPLE_NAME:
             continue
-        x = [header] + [""] * (len(row_names) - 1) + X.col_names(header)
+
+        # If there are no row_names, then there is no room for column
+        # names.  Skip it.
+        x = X.col_names(header)
+        if row_names:
+            x = [header] + [""] * (len(row_names) - 1) + x
         M_out.append(x)
         #x = _clean_many(map(str, x))
         #print >>handle, "\t".join(x)
