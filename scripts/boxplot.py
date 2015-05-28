@@ -97,11 +97,12 @@ def main():
     try:
         jmath.R_equals(MATRIX._X, "X")
     except ValueError, x:
-        # Look for missing values.
-        for i in range(len(MATRIX._X)):
-            assert None not in MATRIX._X[i], \
-                   "Missing values in row %d (0-based)." % i
-        # Cannot diagnose error.  Raise the original exception.
+        # Not needed anymore.  Missing values are now implemented in jmath.
+        ## Look for missing values.
+        #for i in range(len(MATRIX._X)):
+        #    assert None not in MATRIX._X[i], \
+        #           "Missing values in row %d (0-based)." % i
+        ## Cannot diagnose error.  Raise the original exception.
         raise
     
     jmath.R_equals(labels, "labels")

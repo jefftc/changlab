@@ -90,8 +90,10 @@
 # center_genes_mean
 # center_genes_median
 # normalize_genes_var
+# count_missing_values
 # median_fill_genes
 # zero_fill_genes
+# impute_missing_values_knn
 # loess_normalize
 #
 # _match_rownames_to_geneset       DEPRECATED
@@ -839,6 +841,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     assert name in MATRIX_new._col_names, "I can not find the sample names."
     names = MATRIX_new.col_names(name)
     gs = genesets[0]
+    assert gs in geneset2genes, "Unknown header: %s" % gs
     genes = geneset2genes[gs]
     assert len(I_matrix) == len(I_geneset)
     assert max(I_geneset) < len(genes)
@@ -2354,6 +2357,29 @@ def normalize_genes_var(MATRIX, indexes):
         X_i = [x + m for x in X_i]
         X[i] = X_i
 
+
+def count_missing_values(MATRIX, header):
+    from genomicode import jmath
+
+    if not header:
+        return MATRIX
+
+    # Count the number of missing values in each row.
+    X = MATRIX._X
+    missing_values = [None] * len(X)
+    for i in range(len(X)):
+        x = [x for x in X[i] if x is None]
+        missing_values[i] = len(x)
+    
+    # Add the new annotations to the MATRIX.
+    MATRIX_new = MATRIX.matrix()
+    assert header not in MATRIX_new._row_names, "Duplicate header: %s" % header
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = missing_values
+
+    return MATRIX_new
+
+
 def median_fill_genes(MATRIX):
     from genomicode import jmath
 
@@ -2374,6 +2400,25 @@ def zero_fill_genes(MATRIX):
         for j in range(len(X[i])):
             if X[i][j] is None:
                 X[i][j] = 0.0
+
+
+def impute_missing_values_knn(MATRIX, K):
+    from genomicode import jmath
+    if K is None:
+        return MATRIX
+    K = int(K)
+    assert K >= 1 and K < 100
+
+    X = MATRIX._X
+    jmath.start_R()
+    jmath.R("library(impute)")
+    jmath.R_equals(MATRIX._X, "X")
+    jmath.R("obj <- impute.knn(X, k=%d)" % K)
+    X_impute = jmath.R2py_matrix(jmath.R("obj$data"))
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._X = X_impute
+    return MATRIX_new
+                
 
 def _loess_normalize(X):
     from genomicode.jmath import start_R, R_fn, R_var, R_equals
@@ -2748,12 +2793,11 @@ def main():
         help="Make a Prism formatted column table by grouping together "
         "the expression values.  All samples that share the same name "
         "will form a single group.  Format:<row ID to group>.")
-        
+
     group = parser.add_argument_group(title="Normalization")
     group.add_argument(
-        "-l", "--log_transform", dest="log_transform", default=False,
-        action="store_true",
-        help="Log transform the data.")
+        "-l", "--log_transform", dest="log_transform", 
+        action="store_true", help="Log transform the data.")
     group.add_argument(
         "--rlog_blind", action="store_true",
         help="Do a regularized log transformation (from DESeq2).  "
@@ -2761,7 +2805,6 @@ def main():
         "data set.")
     group.add_argument(
         "-q", "--quantile", dest="quantile", action="store_true",
-        default=False,
         help="Quantile normalize the data.")
     group.add_argument(
         "--cpm", action="store_true", help="Convert raw counts for NGS data "
@@ -2769,9 +2812,8 @@ def main():
     group.add_argument(
         "--loess", action="store_true", help="Loess normalize the data.")
     group.add_argument(
-        "--gc", "--gene_center", dest="gene_center", default=None,
-        choices=["mean", "median"],
-        help="Center each gene by: mean, median.")
+        "--gc", "--gene_center", dest="gene_center",
+        choices=["mean", "median"], help="Center each gene by: mean, median.")
     group.add_argument(
         "--gc_subset_indexes",
         help="Will center the genes based on the mean (or median) of"
@@ -2787,15 +2829,22 @@ def main():
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
-        "--zerofill", default=False, action="store_true",
-        help="Fill missing values with 0.")
+        "--zerofill", action="store_true", help="Fill missing values with 0.")
     group.add_argument(
-        "--fill_missing_values_median", default=False, action="store_true",
+        "--count_missing_values",
+        help="Count the number of missing values in each row and store in "
+        "a new column.  The argument is the header for this column.")
+    group.add_argument(
+        "--fill_missing_values_median", action="store_true",
         help="Fill missing values with the median of the row.  Performed "
         "after logging, but before centering and normalizing.")
     group.add_argument(
-        "--min_value", default=None, type=float,
+        "--min_value", type=float,
         help="Set the minimum value for this matrix.  Done before logging.")
+    group.add_argument(
+        "--impute_missing_values_knn",
+        help="Fill missing values using KNN.  Specify K, the number of "
+        "neighbors to use (usually 10).")
 
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
@@ -3319,10 +3368,13 @@ def main():
 
     # Median fill.  Do after logging, but before quantile, centering,
     # and normalizing.
+    MATRIX = count_missing_values(MATRIX, args.count_missing_values)
     if args.zerofill:
         zero_fill_genes(MATRIX)
     if args.fill_missing_values_median:
         median_fill_genes(MATRIX)
+    MATRIX = impute_missing_values_knn(MATRIX, args.impute_missing_values_knn)
+        
 
     # Quantile normalize, if requested.  After log.
     if args.quantile:

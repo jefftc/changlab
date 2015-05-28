@@ -131,8 +131,13 @@ def _clean_tdf(matrix):
     non_empty = [x for x in last_col if x]
     value = None
     if len(non_empty) == 1:
-        value = jmath.safe_float(non_empty[0])
-    if value is not None and abs(value - 1.00) < 1E-10:
+        value = non_empty[0]
+        try:
+            value = float(value)
+        except ValueError, x:
+            pass
+    if value is not None and \
+           type(value) is type(0.0) and abs(value - 1.00) < 1E-10:
         for i in range(len(matrix)):
             matrix[i][-1] = ""
 

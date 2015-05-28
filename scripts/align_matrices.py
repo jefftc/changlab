@@ -344,7 +344,10 @@ def align_express(matrix, indexes, null_string):
 
     # Fix the None indexes in the matrix.
     X = matrix_aligned._X
-    assert len(indexes) == len(X[0])
+    if indexes:
+        assert len(indexes) == len(X[0])
+    else:
+        assert not X
     for i_new, i_old in enumerate(indexes):
         if i_old != None:
             continue

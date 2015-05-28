@@ -1094,7 +1094,15 @@ def R_equals_matrix(M, varname, by_row=True):
     temp_varname = "JMATH.R.TMP"
     R = start_R()
     x = flatten(M)
+    # Figure out which values are missing, and substitute them with
+    # 0.0 so FloatVector doesn't complain.
+    I = [i for i in range(len(x)) if x[i] == None]
+    for i in I:
+        x[i] = 0.0
     x = robjects.FloatVector(x)
+    # Fill in the missing values.
+    for i in I:
+        x[i] = robjects.NA_Real
     x = robjects.r["matrix"](x, nrow=nrow(M), ncol=ncol(M), byrow=by_row)
 
     # Set to a temporary variable first.  varname may not be a
@@ -1139,8 +1147,12 @@ def R2py_matrix(m):
     # Fastest implementation (1.2s for 37,632x2 matrix)
     pym = [[None]*m.ncol for i in range(m.nrow)]
     z = 0
-    for i in range(m.nrow):
-        for j in range(m.ncol):
+    #for i in range(m.nrow):
+    #    for j in range(m.ncol):
+    #        pym[i][j] = m[z]
+    #        z += 1
+    for j in range(m.ncol):
+        for i in range(m.nrow):
             pym[i][j] = m[z]
             z += 1
     # This implementation is slow (5.0s).
