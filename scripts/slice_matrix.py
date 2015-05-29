@@ -94,6 +94,7 @@
 # median_fill_genes
 # zero_fill_genes
 # impute_missing_values_knn
+# add_missing_values
 # loess_normalize
 #
 # _match_rownames_to_geneset       DEPRECATED
@@ -2420,6 +2421,26 @@ def impute_missing_values_knn(MATRIX, K):
     return MATRIX_new
                 
 
+def add_missing_values(MATRIX, matrix_file):
+    import os
+    import arrayio
+    
+    if not matrix_file:
+        return MATRIX
+    assert os.path.exists(matrix_file)
+    MATRIX_missing = arrayio.read(matrix_file)
+    assert MATRIX.dim() == MATRIX_missing.dim()
+
+    # Change MATRIX_new in place.
+    MATRIX_new = MATRIX.matrix()
+    X = MATRIX_new._X
+    for i in range(len(X)):
+        for j in range(len(X[i])):
+            if MATRIX_missing._X[i][j] is None:
+                X[i][j] = None
+    return MATRIX_new
+                
+
 def _loess_normalize(X):
     from genomicode.jmath import start_R, R_fn, R_var, R_equals
 
@@ -2845,6 +2866,11 @@ def main():
         "--impute_missing_values_knn",
         help="Fill missing values using KNN.  Specify K, the number of "
         "neighbors to use (usually 10).")
+    group.add_argument(
+        "--add_missing_values",
+        help="Put missing values back into a matrix.  The argument should "
+        "be a filename that contains a matrix of the same dimensions with "
+        "missing values.  I will add missing values to the same place.")
 
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
@@ -3374,6 +3400,7 @@ def main():
     if args.fill_missing_values_median:
         median_fill_genes(MATRIX)
     MATRIX = impute_missing_values_knn(MATRIX, args.impute_missing_values_knn)
+    MATRIX = add_missing_values(MATRIX, args.add_missing_values)
         
 
     # Quantile normalize, if requested.  After log.
