@@ -50,14 +50,19 @@ def _hash_headers_unique(headers):
     return nodup
 
 
-def read_annot(filename):
+def read_annot(filename, is_csv):
     # Everything are strings.  No numeric conversion.
     import re
     from genomicode import genesetlib
 
+    delimiter = "\t"
+    if is_csv:
+        delimiter = ","
+
     all_headers, all_annots = [], []
     for x in genesetlib.read_tdf(
-        filename, preserve_spaces=True, allow_duplicates=True):
+        filename, preserve_spaces=True, allow_duplicates=True,
+        delimiter=delimiter):
         name, description, annots = x
 
         # Hack: Some files contain special characters, which mess up
@@ -217,6 +222,36 @@ def rename_header_i(MATRIX, rename_list):
         header2annots[header_new] = MATRIX.header2annots[header_old]
     return AnnotationMatrix(headers, headers_h, header2annots)
 
+
+def replace_header(MATRIX, replace_list):
+    # replace_list is list of strings in format of: <from>,<to>.
+    if not replace_list:
+        return MATRIX
+
+    replace_all = []  # list of (from_str, to_str)
+    for replace_str in replace_list:
+        x = replace_str.split(",")
+        assert len(x) == 2, "format should be: <from>,<to>"
+        from_str, to_str = x
+        replace_all.append((from_str, to_str))
+
+    # Convert to the new names.
+    headers = MATRIX.headers[:]
+    for from_str, to_str in replace_all:
+        for i in range(len(headers)):
+            x = headers[i]
+            x.replace(from_str, to_str)
+            headers[i] = x
+    headers_h = _hash_headers_unique(headers)
+    
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+        
 
 def prepend_to_headers(MATRIX, prepend_to_headers):
     # prepend_to_headers is list of strings in format of: <indexes>;<prefix>.
@@ -538,7 +573,7 @@ def main():
         description="Perform operations on an annotation file.")
     parser.add_argument("filename", nargs=1, help="Annotation file.")
     parser.add_argument(
-        "--read_as_csv", default=False, action="store_true",
+        "--read_as_csv", action="store_true",
         help="Read as a CSV file.")
 
     group = parser.add_argument_group(title="Matrix operations")
@@ -569,6 +604,10 @@ def main():
         "--prepend_to_headers", default=[], action="append",
         help="Prepend text to one or more headers.  "
         "Format: <indexes>;<text_to_prepend>.  (MULTI)")
+    group.add_argument(
+        "--replace_header", default=[], action="append",
+        help="Replace a string with another in all headers.  "
+        "Format: <from>,<to>.  <from> will be replaced with <to>.  (MULTI)")
     
     group = parser.add_argument_group(title="Changing Annotations")
     group.add_argument(
@@ -590,12 +629,12 @@ def main():
         "Format: <dest col>,<src col 1>[, <src col 2>...].  Columns "
         "are given as 1-based indexes.  (MULTI)")
     group.add_argument(
-        "--replace_annot", default=[], action="append",
-        help="Replace a substring of an annotation with another substring.  "
+        "--rename_annot", default=[], action="append",
+        help="Replace one whole annotation (not a substring) with another.  "
         "Format: <indexes>;<src>;<dst>.  (MULTI)")
     group.add_argument(
-        "--replace_whole_annot", default=[], action="append",
-        help="Replace one whole annotation (not a substring) with another.  "
+        "--replace_annot", default=[], action="append",
+        help="Replace a substring of an annotation with another substring.  "
         "Format: <indexes>;<src>;<dst>.  (MULTI)")
     group.add_argument(
         "--prepend_to_annots", default=[], action="append",
@@ -610,7 +649,7 @@ def main():
     assert len(args.filename) == 1
 
     # Read the matrix.
-    MATRIX = read_annot(args.filename[0])
+    MATRIX = read_annot(args.filename[0], args.read_as_csv)
 
     # Perform operations.
     MATRIX = indexes_matrix(MATRIX, args.indexes)
@@ -620,6 +659,7 @@ def main():
     # Changing the headers.
     MATRIX = rename_header(MATRIX, args.rename_header)
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)
+    MATRIX = replace_header(MATRIX, args.replace_header)
     MATRIX = prepend_to_headers(MATRIX, args.prepend_to_headers)
 
     # Changing the values.
@@ -629,7 +669,7 @@ def main():
     MATRIX = flip01_matrix(MATRIX, args.flip01)
     MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
     MATRIX = replace_annot(MATRIX, args.replace_annot)
-    MATRIX = replace_whole_annot(MATRIX, args.replace_whole_annot)
+    MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
 

@@ -253,13 +253,25 @@ def _make_convert_fns(format, obj_convert_fns, fmt2fn_fn):
 # Bug: if the file is gzip'd, will leave gunzip -c processes lying
 # around.
 def read_cols(file_or_handle, delimiter="\t", skip=0):
+    import csv
+
+    # Allow up to 32Mb fields (Python 2.5 and above).
+    if hasattr(csv, "field_size_limit"):
+        csv.field_size_limit(32*1024*1024)
+
+    # Skip the first lines.
     handle = openfh(file_or_handle)
     for i in range(skip):
         handle.readline()
-    for line in handle:
-        cols = line.rstrip("\r\n").split(delimiter)
-        yield cols
-    handle.close()
+
+    # Read each line.
+    handle = csv.reader(handle, delimiter=delimiter)
+    for row in handle:
+        yield row
+    #for line in handle:
+    #    cols = line.rstrip("\r\n").split(delimiter)
+    #    yield cols
+    #handle.close()
 
 def _make_format_from_header(names):
     import math

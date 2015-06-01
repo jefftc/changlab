@@ -6,7 +6,7 @@ def find_annotation_file(chipname):
     from genomicode import arrayplatformlib
     chipname = chipname.replace('-','_')
     filename = arrayplatformlib.chipname2filename(chipname)
-    assert filename, "I could not find a file for chip: %s." % chipname
+    assert filename, "I could not find a file for chip: %s" % chipname
     assert os.path.exists(filename), "I could not find annotation file %s." % \
            filename
     filename = os.path.realpath(filename)
@@ -33,14 +33,13 @@ def main():
     parser = OptionParser(usage=usage, version="%prog 01")
 
     parser.add_option(
-        "--platform", dest="platform", type="string", default=None,
+        "--platform", 
         help="Normalize only arrays from this platform.")
     parser.add_option(
-        "-s", "--filestem", dest="filestem", type="string", default=None,
+        "-s", "--filestem", dest="filestem", 
         help="Use this as the filestem for the normalized matrix.")
     parser.add_option(
-        "-n", "--noclobber", action="store_true", dest="noclobber",
-        default=False)
+        "-n", "--noclobber", action="store_true", dest="noclobber")
 
     options, args = parser.parse_args()
     if len(args) != 2:
@@ -70,12 +69,13 @@ def main():
         print "Outfile %s exists.  Will not overwrite." % outfile
         return
 
-    if algorithm == "MAS5":
-        log_signal, filter_25, filter_50 = 0, 0, 0
-    elif algorithm == "RMA":
-        log_signal, filter_25, filter_50 = 0, 0, 0
-    else:
-        raise AssertionError, "Unknown algorithm: %s" % algorithm
+    #if algorithm == "MAS5":
+    #    log_signal, filter_25, filter_50 = 0, 0, 0
+    #elif algorithm == "RMA":
+    #    log_signal, filter_25, filter_50 = 0, 0, 0
+    #else:
+    #    raise AssertionError, "Unknown algorithm: %s" % algorithm
+    assert algorithm in ["RMA", "MAS5"]
 
     # Figure out the chip for each CEL file.
     file2chipname = {}
@@ -112,6 +112,15 @@ def main():
     assert annotfile, "I don't know the annotation file for %s" % chipname
     assert os.path.exists(annotfile), "Missing %s [%s]" % (annotfile, chipname)
 
+    oligo = 0
+    # Hack.
+    IS_OLIGO = ["HTA-2_0"]
+    if chipname in IS_OLIGO:
+        oligo = 1
+
+    if oligo:
+        raise NotImplementedError, "Can't handle oligo arrays yet."
+
     temppath = None
     try:
         # Make a directory with only the CEL files with this type of annotation
@@ -127,8 +136,7 @@ def main():
 
         # Format the arguments and call the normalize script.
         normscript = find_normscript()
-        x = (temppath, annotfile, filestem, algorithm,
-             log_signal, filter_25, filter_50)
+        x = temppath, annotfile, filestem, algorithm, oligo
         x = " ".join(map(str, x))
         cmd = "cat %s | R --vanilla %s" % (normscript, x)
         print "NORM: %s\n" % cmd

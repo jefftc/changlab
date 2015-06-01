@@ -198,14 +198,15 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
         yield name, description, genes
 
 
-def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
+def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
+             delimiter="\t"):
     # yield name, description (always ""), list of genes.
     # preserve_spaces determines whether to remove blank annotations.
     # allow_duplicates determines whether to remove duplicate
     # annotations.
     import filelib
 
-    matrix = [x for x in filelib.read_cols(filename)]
+    matrix = [x for x in filelib.read_cols(filename, delimiter=delimiter)]
     t_matrix = _transpose_gmx(matrix)
     if not matrix:
         return

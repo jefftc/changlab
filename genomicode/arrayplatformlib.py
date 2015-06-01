@@ -141,7 +141,7 @@ def _hash_chipname(filename):
     # MoEx_1_0_st_v1.1.mm9.probeset  MoEx_1_0_st_v1
     REMOVE = [
         ".gz", ".csv", ".annot", "_annot",
-        ".mm9", ".probeset", ".1",
+        ".mm9", ".probeset", ".1", ".hg19",
         ]
     x = os.path.split(filename)[1]
     for r in REMOVE:
