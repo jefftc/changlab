@@ -2793,7 +2793,8 @@ def main():
     #    "-o", default=None, metavar="OUTFILE", dest="outfile",
     #    help="Save to this file.  By default, writes output to STDOUT.")
 
-    group = parser.add_argument_group(title="Matrix Manipulation")
+    group = parser.add_argument_group(
+        title="Matrix Manipulation and Computations")
     group.add_argument(
         "--transpose",
         help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "

@@ -730,6 +730,10 @@ def main():
     group.add_argument(
         "--unaligned_only", action="store_true",
         help="Show only the rows that are not aligned.")
+    group.add_argument(
+        "--dont_add_missing_samples", action="store_true",
+        help="If a matrix does not have a sample, don't fill in the value "
+        "from another matrix.")
 
 
     args = parser.parse_args()
@@ -865,7 +869,8 @@ def main():
         args.null_string)
 
     # Add the missing samples back to the matrix.
-    matrix_data = add_missing_samples(matrix_data, args.null_string)
+    if not args.dont_add_missing_samples:
+        matrix_data = add_missing_samples(matrix_data, args.null_string)
 
     # Write out each of the matrices.
     for x in matrix_data:
