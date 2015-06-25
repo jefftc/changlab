@@ -635,6 +635,47 @@ def apply_re_to_annots(MATRIX, apply_annots):
     return MATRIX
 
 
+def divide_two_annots(MATRIX, divide_annots):
+    # Format: <numerator>,<denominator>,<dest>.  Each are 1-based
+    # indexes.
+    
+    if not divide_annots:
+        return MATRIX
+
+    x = divide_annots.split(",")
+    assert len(x) == 3, "format should be: <num>,<den>,<dest>"
+    i_num, i_den, i_dest = x
+    i_num, i_den, i_dest = int(i_num), int(i_den), int(i_dest)
+    # Convert to 0-based index.
+    i_num, i_den, i_dest = i_num-1, i_den-1, i_dest-1
+    assert i_num >= 0 and i_num < len(MATRIX.headers)
+    assert i_den >= 0 and i_den < len(MATRIX.headers)
+    assert i_dest >= 0 and i_dest < len(MATRIX.headers)
+
+    MATRIX = MATRIX.copy()
+    h_num = MATRIX.headers_h[i_num]
+    h_den = MATRIX.headers_h[i_den]
+    h_dest = MATRIX.headers_h[i_dest]
+    annots_num = MATRIX.header2annots[h_num]
+    annots_den = MATRIX.header2annots[h_den]
+    assert len(annots_num) == len(annots_den)
+    annots_dest = [""] * len(annots_num)
+    for i in range(len(annots_num)):
+        num = annots_num[i]
+        den = annots_den[i]
+        if not num.strip() or not den.strip():
+            continue
+        num = float(num)
+        den = float(den)
+        # No divide by 0.
+        if abs(den) < 1E-50:
+            continue
+        annots_dest[i] = num / den
+    MATRIX.header2annots[h_dest] = annots_dest
+    
+    return MATRIX
+
+
 def main():
     import argparse
     import arrayio
@@ -724,6 +765,11 @@ def main():
         "--apply_re_to_annots", default=[], action="append",
         help="Apply a regular expression to annots.  "
         "Format: <indexes>;<regular expression>.  (MULTI)")
+    group.add_argument(
+        "--divide_two_annots", 
+        help="Divide one column by another and save to a third column.  "
+        "Format: <index numerator>,<index denominator>,<index dest>.  "
+        "All indexes should be 1-based.")
 
     args = parser.parse_args()
     assert len(args.filename) == 1
@@ -755,6 +801,7 @@ def main():
     MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
+    MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
 
     # Write the matrix back out.
     write_annot(sys.stdout, MATRIX)
