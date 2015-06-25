@@ -648,6 +648,8 @@ def read_annot(filename):
         # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
         annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
 
+        # TODO: allow duplicate header names.
+        assert name not in name2annots, "Duplicate header."
         name_order.append(name)
         name2annots[name] = annots
     return AnnotationMatrix(name2annots, name_order)

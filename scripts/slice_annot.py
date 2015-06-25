@@ -126,10 +126,14 @@ def parse_indexes(MATRIX, indexes_str):
     return I
 
 
-def indexes_matrix(MATRIX, indexes):
-    if not indexes:
+def indexes_matrix(MATRIX, indexes_list):
+    # indexes is a list of strings indicating indexes.
+    if not indexes_list:
         return MATRIX
-    I = parse_indexes(MATRIX, indexes)
+    I = []
+    for indexes in indexes_list:
+        x = parse_indexes(MATRIX, indexes)
+        I.extend(x)
 
     for i in I:
         assert i >= 0 and i < len(MATRIX.headers_h)
@@ -240,7 +244,7 @@ def replace_header(MATRIX, replace_list):
     for from_str, to_str in replace_all:
         for i in range(len(headers)):
             x = headers[i]
-            x.replace(from_str, to_str)
+            x = x.replace(from_str, to_str)
             headers[i] = x
     headers_h = _hash_headers_unique(headers)
     
@@ -252,6 +256,40 @@ def replace_header(MATRIX, replace_list):
         header2annots[header_new] = MATRIX.header2annots[header_old]
     return AnnotationMatrix(headers, headers_h, header2annots)
         
+
+def replace_header_re(MATRIX, replace_list):
+    # replace_list is list of strings in format of: <from re>,<to>.
+    import re
+
+    if not replace_list:
+        return MATRIX
+
+    replace_all = []  # list of (from_re_str, to_str)
+    for replace_str in replace_list:
+        x = replace_str.split(",")
+        assert len(x) == 2, "format should be: <from>,<to>"
+        from_str, to_str = x
+        replace_all.append((from_str, to_str))
+
+    # Convert to the new names.
+    headers = MATRIX.headers[:]
+    for from_str, to_str in replace_all:
+        for i in range(len(headers)):
+            x = headers[i]
+            m = re.search(from_str, x)
+            if m:
+                x = x.replace(m.group(0), to_str)
+            headers[i] = x
+    headers_h = _hash_headers_unique(headers)
+    
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+
 
 def prepend_to_headers(MATRIX, prepend_to_headers):
     # prepend_to_headers is list of strings in format of: <indexes>;<prefix>.
@@ -610,9 +648,9 @@ def main():
 
     group = parser.add_argument_group(title="Matrix operations")
     group.add_argument(
-        "--indexes", "--cut",
+        "--indexes", "--cut", dest="indexes", default=[], action="append",
         help="Select only these indexes from the file e.g. 1-5,8 "
-        "(1-based, inclusive).")
+        "(1-based, inclusive).  (MULTI)")
     group.add_argument(
         "--add_column", default=[], action="append",
         help="Add one or more columns.  "
@@ -638,7 +676,11 @@ def main():
         "Format: <indexes>;<text_to_prepend>.  (MULTI)")
     group.add_argument(
         "--replace_header", default=[], action="append",
-        help="Replace a string with another in all headers.  "
+        help="Replace a (sub)string with another in all headers.  "
+        "Format: <from>,<to>.  <from> will be replaced with <to>.  (MULTI)")
+    group.add_argument(
+        "--replace_header_re", default=[], action="append",
+        help="Like replace_header, but <from> can be a regular expression.  "
         "Format: <from>,<to>.  <from> will be replaced with <to>.  (MULTI)")
     
     group = parser.add_argument_group(title="Changing Annotations")
@@ -698,6 +740,7 @@ def main():
     MATRIX = rename_header(MATRIX, args.rename_header)
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)
     MATRIX = replace_header(MATRIX, args.replace_header)
+    MATRIX = replace_header_re(MATRIX, args.replace_header_re)
     MATRIX = prepend_to_headers(MATRIX, args.prepend_to_headers)
 
     # Changing the values.
