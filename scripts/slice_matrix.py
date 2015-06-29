@@ -8,6 +8,8 @@
 # transpose_matrix
 # transpose_nonmatrix
 # correlate_matrix
+# calc_sd
+# calc_range
 # group_expression_by_samplename
 #
 # parse_indexes
@@ -305,6 +307,56 @@ def correlate_matrix(MATRIX, correlate):
         X_cor, row_names=row_names, col_names=col_names,
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     return MATRIX_cor
+
+
+def calc_sd(MATRIX, calc_sd):
+    from genomicode import jmath
+    
+    if not calc_sd:
+        return MATRIX
+
+    sd = [None] * len(MATRIX._X)
+    # Calculate the standard deviation of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        sd[i] = jmath.stddev(x)
+    assert len(sd) == len(MATRIX._X)
+
+    header = "Standard Deviation"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Standard Deviation %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = sd
+    return MATRIX_new
+
+
+def calc_range(MATRIX, calc_range):
+    from genomicode import jmath
+    
+    if not calc_range:
+        return MATRIX
+
+    delta = [None] * len(MATRIX._X)
+    # Calculate the standard deviation of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        delta[i] = max(x) - min(x)
+    assert len(delta) == len(MATRIX._X)
+
+    header = "Range"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Range %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = delta
+    return MATRIX_new
 
 
 def group_expression_by_samplename(MATRIX, group):
@@ -2811,10 +2863,17 @@ def main():
         "--correlate", action="store_true",
         help="Calculate the pairwise correlation of the columns.")
     group.add_argument(
+        "--calc_sd", action="store_true",
+        help="Calculate the standard deviation of each row.")
+    group.add_argument(
+        "--calc_range", action="store_true",
+        help="Calculate the range (max - min) of each row.")
+    group.add_argument(
         "--group_expression_by_samplename",
         help="Make a Prism formatted column table by grouping together "
         "the expression values.  All samples that share the same name "
         "will form a single group.  Format:<row ID to group>.")
+    
 
     group = parser.add_argument_group(title="Normalization")
     group.add_argument(
@@ -3240,6 +3299,8 @@ def main():
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
     MATRIX = correlate_matrix(MATRIX, args.correlate)
+    MATRIX = calc_sd(MATRIX, args.calc_sd)
+    MATRIX = calc_range(MATRIX, args.calc_range)
     MATRIX = group_expression_by_samplename(
         MATRIX, args.group_expression_by_samplename)
 

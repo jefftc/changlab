@@ -6,7 +6,28 @@
 #
 # parse_indexes
 #
-# XXX DOCUMENT
+# indexes_matrix
+# flip01_matrix
+# 
+# rename_header
+# rename_header_i
+# replace_header
+# replace_header_re
+# prepend_to_headers
+#
+# add_column
+# copy_column
+# 
+# copy_value_if_empty
+# copy_value_if_empty_header
+# strip_all_annots
+# upper_annots
+# lower_annots
+# replace_annots
+# replace_whole_annot
+# prepend_to_annots
+# apply_re_to_annots
+# divide_two_annots
 
 import os
 import sys
