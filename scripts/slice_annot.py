@@ -28,6 +28,8 @@
 # replace_whole_annot
 # prepend_to_annots
 # apply_re_to_annots
+# add_two_annots
+# subtract_two_annots
 # divide_two_annots
 
 import os
@@ -685,82 +687,76 @@ def apply_re_to_annots(MATRIX, apply_annots):
     return MATRIX
 
 
-def subtract_two_annots(MATRIX, subtract_annots):
-    # Format: <annot 1>,<annot 2>,<dest>.  Each are 1-based
-    # indexes.  dest is annot1 - annot2.
-    
-    if not subtract_annots:
+def _add_annots(a1, a2):
+    return a1 + a2
+
+def _subtract_annots(a1, a2):
+    return a1 - a2
+
+def _divide_annots(a1, a2):
+    num, den = a1, a2
+    if abs(den) < 1E-50:
+        return ""
+    return num / den
+
+
+def _calc_two_annots(MATRIX, calc_annots, calc_fn):
+    # calc_annots is a list of <annot 1>,<annot 2>,<dest>.  Each are
+    # 1-based indexes.  Returns a Matrix with the calculation applied.
+    if not calc_annots:
         return MATRIX
 
-    x = subtract_annots.split(",")
-    assert len(x) == 3, "format should be: <annot1>,<annot2>,<dest>"
-    i_1, i_2, i_dest = x
-    i_1, i_2, i_dest = int(i_1), int(i_2), int(i_dest)
-    # Convert to 0-based index.
-    i_1, i_2, i_dest = i_1-1, i_2-1, i_dest-1
-    assert i_1 >= 0 and i_1 < len(MATRIX.headers)
-    assert i_2 >= 0 and i_2 < len(MATRIX.headers)
-    assert i_dest >= 0 and i_dest < len(MATRIX.headers)
+    to_calc = []  # list of (i1, i2, i_dest); 0-based
+    for ca in calc_annots:
+        x = ca.split(",")
+        assert len(x) == 3, "format should be: <annot1>,<annot2>,<dest>"
+        i_1, i_2, i_dest = x
+        i_1, i_2, i_dest = int(i_1), int(i_2), int(i_dest)
+        # Convert to 0-based index.
+        i_1, i_2, i_dest = i_1-1, i_2-1, i_dest-1
+        assert i_1 >= 0 and i_1 < len(MATRIX.headers)
+        assert i_2 >= 0 and i_2 < len(MATRIX.headers)
+        assert i_dest >= 0 and i_dest < len(MATRIX.headers)
+        x = i_1, i_2, i_dest
+        to_calc.append(x)
 
     MATRIX = MATRIX.copy()
-    h_1 = MATRIX.headers_h[i_1]
-    h_2 = MATRIX.headers_h[i_2]
-    h_dest = MATRIX.headers_h[i_dest]
-    annots_1 = MATRIX.header2annots[h_1]
-    annots_2 = MATRIX.header2annots[h_2]
-    assert len(annots_1) == len(annots_2)
-    annots_dest = [""] * len(annots_1)
-    for i in range(len(annots_1)):
-        a1 = annots_1[i]
-        a2 = annots_2[i]
-        if not a1.strip() or not a2.strip():
-            continue
-        a1, a2 = float(a1), float(a2)
-        annots_dest[i] = a1 - a2
-    MATRIX.header2annots[h_dest] = annots_dest
+    for (i_1, i_2, i_dest) in to_calc:
+        h_1 = MATRIX.headers_h[i_1]
+        h_2 = MATRIX.headers_h[i_2]
+        h_dest = MATRIX.headers_h[i_dest]
+        annots_1 = MATRIX.header2annots[h_1]
+        annots_2 = MATRIX.header2annots[h_2]
+        assert len(annots_1) == len(annots_2)
+        annots_dest = [""] * len(annots_1)
+        for i in range(len(annots_1)):
+            a1 = annots_1[i]
+            a2 = annots_2[i]
+            if not a1.strip() or not a2.strip():
+                continue
+            a1, a2 = float(a1), float(a2)
+            annots_dest[i] = calc_fn(a1, a2)
+        MATRIX.header2annots[h_dest] = annots_dest
     
     return MATRIX
+
+
+def add_two_annots(MATRIX, add_annots):
+    # Format: list of <annot 1>,<annot 2>,<dest>.  Each are 1-based
+    # indexes.  dest is annot1 - annot2.
+    return _calc_two_annots(MATRIX, add_annots, _add_annots)
+    
+
+def subtract_two_annots(MATRIX, subtract_annots):
+    # Format: list of <annot 1>,<annot 2>,<dest>.  Each are 1-based
+    # indexes.  dest is annot1 - annot2.
+    return _calc_two_annots(MATRIX, subtract_annots, _subtract_annots)
 
 
 def divide_two_annots(MATRIX, divide_annots):
-    # Format: <numerator>,<denominator>,<dest>.  Each are 1-based
+    # Format: list of <numerator>,<denominator>,<dest>.  Each are 1-based
     # indexes.
-    
-    if not divide_annots:
-        return MATRIX
-
-    x = divide_annots.split(",")
-    assert len(x) == 3, "format should be: <num>,<den>,<dest>"
-    i_num, i_den, i_dest = x
-    i_num, i_den, i_dest = int(i_num), int(i_den), int(i_dest)
-    # Convert to 0-based index.
-    i_num, i_den, i_dest = i_num-1, i_den-1, i_dest-1
-    assert i_num >= 0 and i_num < len(MATRIX.headers)
-    assert i_den >= 0 and i_den < len(MATRIX.headers)
-    assert i_dest >= 0 and i_dest < len(MATRIX.headers)
-
-    MATRIX = MATRIX.copy()
-    h_num = MATRIX.headers_h[i_num]
-    h_den = MATRIX.headers_h[i_den]
-    h_dest = MATRIX.headers_h[i_dest]
-    annots_num = MATRIX.header2annots[h_num]
-    annots_den = MATRIX.header2annots[h_den]
-    assert len(annots_num) == len(annots_den)
-    annots_dest = [""] * len(annots_num)
-    for i in range(len(annots_num)):
-        num = annots_num[i]
-        den = annots_den[i]
-        if not num.strip() or not den.strip():
-            continue
-        num = float(num)
-        den = float(den)
-        # No divide by 0.
-        if abs(den) < 1E-50:
-            continue
-        annots_dest[i] = num / den
-    MATRIX.header2annots[h_dest] = annots_dest
-    
-    return MATRIX
+    return _calc_two_annots(MATRIX, divide_annots, _divide_annots)
 
 
 def main():
@@ -856,15 +852,20 @@ def main():
         help="Apply a regular expression to annots.  "
         "Format: <indexes>;<regular expression>.  (MULTI)")
     group.add_argument(
-        "--subtract_two_annots", 
+        "--add_two_annots", default=[], action="append",
+        help="Add column 1 to column 2 and save to a third column.  "
+        "Format: <index 1>,<index 2>,<index dest>.  "
+        "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
+        "--subtract_two_annots", default=[], action="append",
         help="Subtract column 2 from column 1 and save to a third column.  "
         "Format: <index 1>,<index 2>,<index dest>.  "
-        "All indexes should be 1-based.")
+        "All indexes should be 1-based.  (MULTI)")
     group.add_argument(
-        "--divide_two_annots", 
+        "--divide_two_annots", default=[], action="append",
         help="Divide one column by another and save to a third column.  "
         "Format: <index numerator>,<index denominator>,<index dest>.  "
-        "All indexes should be 1-based.")
+        "All indexes should be 1-based.  (MULTI)")
 
     args = parser.parse_args()
     assert len(args.filename) == 1
@@ -897,8 +898,10 @@ def main():
     MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
-    MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
+    
+    MATRIX = add_two_annots(MATRIX, args.add_two_annots)
     MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)
+    MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
 
     # Write the matrix back out.
     write_annot(sys.stdout, MATRIX)
