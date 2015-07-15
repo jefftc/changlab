@@ -649,7 +649,7 @@ def read_annot(filename):
         annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
 
         # TODO: allow duplicate header names.
-        assert name not in name2annots, "Duplicate header."
+        assert name not in name2annots, "Duplicate header: %s" % name
         name_order.append(name)
         name2annots[name] = annots
     return AnnotationMatrix(name2annots, name_order)

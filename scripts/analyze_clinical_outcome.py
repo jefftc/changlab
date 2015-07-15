@@ -5,6 +5,7 @@
 # parse_genes
 # parse_genes_from_geneset
 # parse_gene_sets
+# list_all_genes
 # list_all_gene_sets
 # parse_rank_cutoffs
 # parse_zscore_cutoffs
@@ -77,6 +78,16 @@ def _parse_file_gs(geneset):
 def parse_gene_sets(geneset):
     # geneset is a list of gene sets.  Return it unchanged.
     return geneset
+
+
+def list_all_genes(filename):
+    import arrayio
+    M = read_gene_expression(filename)
+    genes = M.row_names(arrayio.ROW_ID)
+    # Make sure genes are unique.
+    x = sorted({}.fromkeys(genes))
+    assert len(genes) == len(x), "Not all genes are unique."
+    return genes
 
 
 def list_all_gene_sets(filename):
@@ -242,7 +253,6 @@ def read_geneset_scores(filename):
     M = Matrix.InMemoryMatrix(
         data, row_names=row_names, col_names=col_names, synonyms=synonyms)
     return M
-
 
 def read_expression_or_geneset_scores(genes, gene_sets, filename):
     assert not (genes and gene_sets)
@@ -980,7 +990,10 @@ def main():
         'To specify multiple gene sets, use this parameter multiple times.')
     
     group.add_argument(
-        '--all_genesets', default=False, action='store_true',
+        '--all_genes', action='store_true',
+        help='Use all genes in the expression file.')
+    group.add_argument(
+        '--all_genesets', action='store_true',
         help='Use all gene sets in the geneset file.')
     group.add_argument(
         '--ignore_unscored_genesets', default=False, action='store_true',
@@ -1071,16 +1084,20 @@ def main():
            args.outcome_file
     
     assert args.outcome, 'Please specify the clinical outcomes to analyze.'
-    assert args.gene or args.geneset or args.all_genesets or \
-           args.genes_from_geneset, \
+    assert args.gene or args.all_genes or \
+           args.geneset or args.all_genesets or args.genes_from_geneset, \
            'Please specify a gene or gene set.'
+    assert not (args.gene and args.all_genes), (
+        'Please specify either a gene or all genes, not both.')
     assert not (args.gene and args.geneset), (
-        'Please specify either a gene or a gene set score, not both.')
-    assert not (args.genes_from_geneset and args.geneset), (
         'Please specify either a gene or a gene set score, not both.')
     assert not (args.gene and args.all_genesets), (
         'Please specify either a gene or a gene set score, not both.')
-    assert not (args.genes_from_geneset and args.all_genesets), (
+    assert not (args.all_genes and args.all_genesets), (
+        'Please specify either all genes or all genesets, not both.')
+    assert not (args.geneset and args.genes_from_geneset), (
+        'Please specify either a gene or a gene set score, not both.')
+    assert not (args.all_genesets and args.genes_from_geneset), (
         'Please specify either a gene or a gene set score, not both.')
 
     if args.rank_cutoff:
@@ -1101,6 +1118,8 @@ def main():
     genes1 = parse_genes(args.gene)
     genes2 = parse_genes_from_geneset(args.genes_from_geneset)
     genes = genes1 + genes2
+    if args.all_genes:
+        genes = list_all_genes(args.expression_file)
     gene_sets = parse_gene_sets(args.geneset)
     if args.all_genesets:
         gene_sets = list_all_gene_sets(args.expression_file)

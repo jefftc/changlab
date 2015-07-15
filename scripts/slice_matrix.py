@@ -8,6 +8,7 @@
 # transpose_matrix
 # transpose_nonmatrix
 # correlate_matrix
+# calc_mean
 # calc_sd
 # calc_range
 # group_expression_by_samplename
@@ -307,6 +308,31 @@ def correlate_matrix(MATRIX, correlate):
         X_cor, row_names=row_names, col_names=col_names,
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     return MATRIX_cor
+
+
+def calc_mean(MATRIX, calc_mean):
+    from genomicode import jmath
+    
+    if not calc_mean:
+        return MATRIX
+
+    mean = [None] * len(MATRIX._X)
+    # Calculate the mean of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        mean[i] = jmath.mean(x)
+    assert len(mean) == len(MATRIX._X)
+
+    header = "Mean"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Mean %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = mean
+    return MATRIX_new
 
 
 def calc_sd(MATRIX, calc_sd):
@@ -1684,11 +1710,12 @@ def select_row_mean_var(MATRIX, filter_mean, filter_var):
     num_genes_mean = num_genes_var = None
     if filter_mean is not None:
         # Calculate the number of genes to keep.
-        num_genes_mean = int((1.0 - filter_mean) * nrow)
+        num_genes_mean = int(round((1.0 - filter_mean) * nrow))
     if filter_var is not None:
         # Calculate the number of genes to keep.
-        num_genes_var = int((1.0 - filter_var) * nrow)
-    I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+        num_genes_var = int(round((1.0 - filter_var) * nrow))
+    I = pcalib.select_genes_mv(
+        MATRIX._X, num_genes_mean, num_genes_var, test_for_missing_values=True)
     return I
 
 
@@ -2863,6 +2890,9 @@ def main():
         "--correlate", action="store_true",
         help="Calculate the pairwise correlation of the columns.")
     group.add_argument(
+        "--calc_mean", action="store_true",
+        help="Calculate the mean of each row.")
+    group.add_argument(
         "--calc_sd", action="store_true",
         help="Calculate the standard deviation of each row.")
     group.add_argument(
@@ -3299,6 +3329,7 @@ def main():
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
     MATRIX = correlate_matrix(MATRIX, args.correlate)
+    MATRIX = calc_mean(MATRIX, args.calc_mean)
     MATRIX = calc_sd(MATRIX, args.calc_sd)
     MATRIX = calc_range(MATRIX, args.calc_range)
     MATRIX = group_expression_by_samplename(

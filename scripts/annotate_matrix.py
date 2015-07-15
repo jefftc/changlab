@@ -4,6 +4,8 @@
 # convert_gene_ids
 # _convert_gene_ids_biomart
 # _convert_gene_ids_local
+# _convert_entrez_symbol_to_entrez
+
 # convert_geneset
 # convert_matrix
 #
@@ -71,7 +73,12 @@ def convert_gene_ids(
     x = {}.fromkeys(x).keys()
     gene_ids_c = x
 
-    in2out = _convert_gene_ids_local(in_platform, out_platform)
+
+    if in_platform == "Entrez_Symbol_human" and \
+       out_platform in ("Entrez_Symbol_human", "Entrez_ID_human"):
+        in2out = _convert_entrez_symbol_to_entrez(gene_ids_c, out_platform)
+    if in2out is None:
+        in2out = _convert_gene_ids_local(in_platform, out_platform)
     if in2out is None:
         in2out = _convert_gene_ids_biomart(
             gene_ids_c, in_platform, out_platform, no_na)
@@ -178,6 +185,73 @@ def _convert_gene_ids_local(in_platform, out_platform):
         in2out[in_id] = out_ids
     return in2out
         
+
+FOUND_ID2ENTREZ = {}
+
+def _convert_entrez_symbol_to_entrez(gene_ids, out_platform):
+    # Return a dictionary of gene_id -> list of converted_ids.
+    global FOUND_ID2ENTREZ
+
+    FOUND = FOUND_ID2ENTREZ
+
+    db_tax_id = "9606"
+    #db_tax_id = "10090"
+
+    in2out = {}
+
+    for in_id in gene_ids:
+        gene_id = gene_symbol = None
+
+        # Try to find the gene ID from the symbol.
+        # First, look to see if it's already been found.
+        if in_id in FOUND:
+            gene_id, gene_symbol = found[in_id]
+        if not gene_id:
+            x = _find_entrez_gene(in_id, db_tax_id)
+            if x:
+                gene_id, gene_symbol = x
+
+        if out_platform == "Entrez_ID_human" and gene_id:
+            in2out[in_id] = [str(gene_id)]
+        elif out_platform == "Entrez_Symbol_human" and gene_symbol:
+            in2out[in_id] = [gene_symbol]
+    return in2out
+
+FIND_GENE_ERROR = None
+def _find_entrez_gene(gene_symbol, tax_id):
+    # Return tuple of (gene_id, gene_symbol) or None.
+    global FIND_GENE_ERROR
+    from genomicode import genefinder
+
+    FIND_GENE_ERROR = None
+
+    # Try to find the gene.
+    try:
+        x = genefinder.find_gene(gene_symbol, tax_id=tax_id)
+    except AssertionError, x:
+        FIND_GENE_ERROR = str(x)
+        return None
+    if x:
+        gene_id = x[0]
+        gene_symbol = x[1]
+        return gene_id, gene_symbol
+
+    # Could not find gene.  Look for a discontinued gene.
+    try:
+        x = genefinder.find_discontinued(gene_symbol, tax_id=tax_id)
+        if x:
+            x = genefinder.find_gene(x, tax_id=tax_id)
+    except AssertionError, x:
+        FIND_GENE_ERROR = str(x)
+        return None
+    if x:
+        gene_id = x[0]
+        gene_symbol = x[1]
+        return gene_id, gene_symbol
+
+    return None
+    
+
 
 ## def convert_gene_ids(
 ##     gene_ids, in_platform, out_platform, in_delim, out_delim,

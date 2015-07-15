@@ -82,7 +82,7 @@ def calc_association(phenotypes, scores):
     
     # Select only the samples with phenotype and score information.
     I1 = [i for (i, x) in enumerate(phenotypes) if x]
-    I2 = [i for (i, x) in enumerate(scores) if x]
+    I2 = [i for (i, x) in enumerate(scores) if x != ""]
     I = sorted(set.intersection(set(I1), set(I2)))
     assert I, "No valid samples."
 
@@ -92,7 +92,8 @@ def calc_association(phenotypes, scores):
     # Figure out the groupings.
     #group_names = sorted({}.fromkeys(phenotypes))
     group_names = sortlib.sort_natural({}.fromkeys(phenotypes))
-    assert len(group_names) >= 2, "Need at least 2 groups."
+    assert len(group_names) >= 2, "Need at least 2 groups (%s)." % \
+           str(group_names)
     groups = [None] * len(phenotypes)
     for i in range(len(phenotypes)):
         x = group_names.index(phenotypes[i])

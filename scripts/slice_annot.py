@@ -8,7 +8,8 @@
 #
 # indexes_matrix
 # flip01_matrix
-# 
+#
+# rename_duplicate_headers
 # rename_header
 # rename_header_i
 # replace_header
@@ -184,6 +185,34 @@ def flip01_matrix(MATRIX, indexes):
         MATRIX.header2annots[header_h] = annots
     return MATRIX
 
+
+def rename_duplicate_headers(MATRIX, rename_dups):
+    if not rename_dups:
+        return MATRIX
+
+    name2I = {}  # name -> list of indexes
+    for i, name in enumerate(MATRIX.headers):
+        if name not in name2I:
+            name2I[name] = []
+        name2I[name].append(i)
+
+    nodup = MATRIX.headers[:]
+    for (name, I) in name2I.iteritems():
+        if len(I) < 2:
+            continue
+        for i in range(len(I)):
+            nodup[I[i]] = "%s (%d)" % (name, i+1)
+
+    headers = nodup
+    headers_h = _hash_headers_unique(headers)
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+    
 
 def rename_header(MATRIX, rename_list):
     # rename_list is list of strings in format of: <from>,<to>.
@@ -656,6 +685,43 @@ def apply_re_to_annots(MATRIX, apply_annots):
     return MATRIX
 
 
+def subtract_two_annots(MATRIX, subtract_annots):
+    # Format: <annot 1>,<annot 2>,<dest>.  Each are 1-based
+    # indexes.  dest is annot1 - annot2.
+    
+    if not subtract_annots:
+        return MATRIX
+
+    x = subtract_annots.split(",")
+    assert len(x) == 3, "format should be: <annot1>,<annot2>,<dest>"
+    i_1, i_2, i_dest = x
+    i_1, i_2, i_dest = int(i_1), int(i_2), int(i_dest)
+    # Convert to 0-based index.
+    i_1, i_2, i_dest = i_1-1, i_2-1, i_dest-1
+    assert i_1 >= 0 and i_1 < len(MATRIX.headers)
+    assert i_2 >= 0 and i_2 < len(MATRIX.headers)
+    assert i_dest >= 0 and i_dest < len(MATRIX.headers)
+
+    MATRIX = MATRIX.copy()
+    h_1 = MATRIX.headers_h[i_1]
+    h_2 = MATRIX.headers_h[i_2]
+    h_dest = MATRIX.headers_h[i_dest]
+    annots_1 = MATRIX.header2annots[h_1]
+    annots_2 = MATRIX.header2annots[h_2]
+    assert len(annots_1) == len(annots_2)
+    annots_dest = [""] * len(annots_1)
+    for i in range(len(annots_1)):
+        a1 = annots_1[i]
+        a2 = annots_2[i]
+        if not a1.strip() or not a2.strip():
+            continue
+        a1, a2 = float(a1), float(a2)
+        annots_dest[i] = a1 - a2
+    MATRIX.header2annots[h_dest] = annots_dest
+    
+    return MATRIX
+
+
 def divide_two_annots(MATRIX, divide_annots):
     # Format: <numerator>,<denominator>,<dest>.  Each are 1-based
     # indexes.
@@ -725,6 +791,9 @@ def main():
     
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
+        "--rename_duplicate_headers", action="store_true",
+        help="Make all the headers unique.")
+    group.add_argument(
         "--rename_header", default=[], action="append",
         help="Rename a header.  Format: <from>,<to>.  "
         "<from> will be replaced with <to>.  (MULTI)")
@@ -787,6 +856,11 @@ def main():
         help="Apply a regular expression to annots.  "
         "Format: <indexes>;<regular expression>.  (MULTI)")
     group.add_argument(
+        "--subtract_two_annots", 
+        help="Subtract column 2 from column 1 and save to a third column.  "
+        "Format: <index 1>,<index 2>,<index dest>.  "
+        "All indexes should be 1-based.")
+    group.add_argument(
         "--divide_two_annots", 
         help="Divide one column by another and save to a third column.  "
         "Format: <index numerator>,<index denominator>,<index dest>.  "
@@ -804,6 +878,7 @@ def main():
     MATRIX = copy_column(MATRIX, args.copy_column)
 
     # Changing the headers.
+    MATRIX = rename_duplicate_headers(MATRIX, args.rename_duplicate_headers)
     MATRIX = rename_header(MATRIX, args.rename_header)
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)
     MATRIX = replace_header(MATRIX, args.replace_header)
@@ -823,6 +898,7 @@ def main():
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
+    MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)
 
     # Write the matrix back out.
     write_annot(sys.stdout, MATRIX)
