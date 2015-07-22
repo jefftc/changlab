@@ -178,7 +178,7 @@ def _read_annotations_h():
     paths = []
     result = []
     root = config.psid2platform
-    assert os.path.exists(root), "path %s not exist: %s" % root
+    assert os.path.exists(root), "path %s not exist" % root
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
             continue
