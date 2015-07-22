@@ -1,30 +1,32 @@
 #annotate_probes.py
-from genomicode import arrayannot,arrayplatformlib
+from genomicode import arrayannot, arrayplatformlib
 import arrayio
-from Betsy import module_utils
 import os
-from time import strftime,localtime
+from Betsy import bie3
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(parameters, objects, pipeline,user,jobname):
-    starttime = strftime(module_utils.FMT, localtime())
-    single_object = get_identifier(parameters, objects)
-    outfile = get_outfile(parameters, objects, pipeline)
-    M = arrayio.read(single_object.identifier)
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    M = arrayio.read(in_data.identifier)
     all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
     if not all_platforms:
         raise ValueError('we cannot guess the platform and annotate the file')
+    
     ids = M._row_order
     probe_header = all_platforms[0][0]
     probe_id = M._row_names[probe_header]
     new_ids = ids[:]
     new_ids.remove(probe_header)
-    annotate_type = parameters['annotate_type']
-    if annotate_type == 'all':
-        annotate_header = arrayplatformlib.annotate_header
-    elif annotate_type == 'gene_id':
-        annotate_header = ['Gene ID']
+    #annotate_type = parameters['annotate_type']
+    #if annotate_type == 'all':
+    annotate_header = arrayplatformlib.annotate_header
+    #elif annotate_type == 'gene_id':
+    #    annotate_header = ['Gene ID']
     dictionary = arrayannot.annotate_probes_multiple(probe_id, annotate_header)
-    column=[]
+    column = []
     for id in new_ids:
         flag = True
         for key in dictionary.keys():
@@ -36,7 +38,8 @@ def run(parameters, objects, pipeline,user,jobname):
                     flag = False
                     break
             if flag:
-                column.append((key,id))
+                column.append((key, id))
+    
     header = [i[0] for i in column]
     miss_header = list(set(annotate_header).difference(set(header)))
     original_ids = ids[:]
@@ -45,46 +48,42 @@ def run(parameters, objects, pipeline,user,jobname):
         if col in original_ids:
             col_1 = col + '_1'
             col_2 = col + '_2'
-            M = module_utils.replace_matrix_header(M,col,col_1)
+            M = module_utils.replace_matrix_header(M, col, col_1)
             ids = M._row_order
         ids.append(col_2)
         M._row_order = ids
         M._row_names[col_2] = dictionary[col]
+    
     f = file(outfile, 'w')
     arrayio.tab_delimited_format.write(M, f)
     f.close()
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for annot_probes fails' % outfile)
-    new_objects = get_newobjects(parameters, objects, pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile,starttime,user,jobname)
-    return new_objects
+        'the output file %s for annot_probes fails' % outfile
+    )
+    out_node = bie3.Data(rulebase._SignalFile_Annotate, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(identifier, pipeline, parameters)
-
-
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
-    filename = parameters['filetype'] + '_annot_' + original_file + '.txt'
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
+    filename = 'signal_annot_' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, parameters['filetype'], 'contents,preprocess')
-    assert os.path.exists(single_object.identifier), (
-        'the input file %s for annot_probes does not exist'
-        % single_object.identifier)
-    return single_object
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    single_object = get_identifier(parameters, objects)
-    new_objects = module_utils.get_newobjects(
-        outfile, parameters['filetype'], parameters, objects, single_object)
-    return new_objects
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
+    return data_node

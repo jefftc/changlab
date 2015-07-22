@@ -1,9 +1,37 @@
 #arrayannot.py
+
+"""
+Functions:
+create_annot_file_affymetrix       Return a list of column in affymetrix annotation file
+
+annotate_probe_affymetrix_file     Return a list of annotation for affymetrix probes
+
+annotate_probe_illumina_file       Return a list of annotation for illumina probes
+
+annotate_probe_biomart             Return a list of annotation via biomart
+
+annotate_probes_multiple           Return a dict of multiple annotation in
+                                    <annotation_name: list of annotation probes>
+                                    
+annotate_probes                    Return a list of annotation probes without knowing the input platform
+
+read_mapping_file                  Return a dict of mapping probes <in_probe: a list of out_probe>
+
+map_probes                         Return a list of mapping probes
+
+convert_probe_ids                  Return a list of mapping probes using local mapping file or biomart
+
+_convert_probe_ids_local           Return a list of mapping probes using local mapping file
+"""
+
+
 import os
 import subprocess
 import tempfile
 import arrayio
 from genomicode import jmath, config, filelib, arrayplatformlib
+import re
+
 
 def create_annot_file_affymetrix(filename):
     slice_BIN = config.slice_matrix
@@ -138,3 +166,55 @@ def annotate_probes(probe_ids, annotation):
             result = annotate_probe_biomart(probe_ids,annotation)
     return result
 
+def read_mapping_file(mapping_file):
+    """read the platform file and return a mapping 
+        dictionary<probe_id: a list of new_probe_id>"""
+    probe_map = {}
+    f = file(mapping_file,'r')
+    text = f.read()
+    line1 = re.split('\r|\n',text)
+    f.close()
+    probes = []
+    new_probes = []
+    for line in line1[1:]:
+        words = line.split('\t')
+        if len(words)==1:
+            words.append('')
+        if words[0] not in probe_map:
+            probe_map[words[0]]=[words[1]]
+        else:
+            probe_map[words[0]]=probe_map[words[0]].append(words[1])
+    return probe_map
+    
+def map_probes(probe_ids, mapping_file,in_delim='///',out_delim='///'):
+    """given a list of probe_ids and the platform_file for 
+    mapping, return a list of probe_ids in new platform"""
+    probe_map = read_mapping_file(mapping_file)
+    new_probes = []
+    for probe_id in probe_ids:
+        multiple_in_ids = probe_id.split(in_delim)
+        multiple_out_ids = [probe_map.get(x) for x in multiple_in_ids]
+        multiple_out_ids = [x for x in multiple_out_ids if x]
+        multiple_out_ids = sum(multiple_out_ids,[])
+        multiple_out_ids = sorted({}.fromkeys(multiple_out_ids))
+        newid = out_delim.join(multiple_out_ids)
+        new_probes.append(newid)
+    return new_probes
+
+
+def convert_probe_ids(probe_ids, platform_name):
+    new_probes = _convert_probe_ids_local(probe_ids, platform_name)
+    if not new_probes:
+       new_probes = annotate_probe_biomart(probe_ids, platform_name)
+    return new_probes
+
+
+def _convert_probe_ids_local(probe_ids, platform_name):
+    platform_path = config.convert_platform
+    assert os.path.exists(platform_path)
+    old_platform = arrayplatformlib.identify_platform_of_annotations(probe_ids)
+    filename = old_platform + '___' + platform_name + '.txt'
+    if not os.path.exists(os.path.join(platform_path,filename)):
+        return None
+    new_probes = map_probes(probe_ids,os.path.join(platform_path,filename))
+    return new_probes

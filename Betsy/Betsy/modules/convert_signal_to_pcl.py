@@ -2,57 +2,53 @@
 import os
 from Betsy import module_utils
 import shutil
-from time import strftime,localtime
+from Betsy import bie3, rulebase
 
-def run(parameters, objects, pipeline,user,jobname):
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """convert signal file to pcl format"""
-    starttime = strftime(module_utils.FMT, localtime())
     import arrayio
-    single_object = get_identifier(parameters, objects)
-    outfile = get_outfile(parameters, objects, pipeline)
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
     f = file(outfile, 'w')
-    M = arrayio.choose_format(single_object.identifier)
-    if M.__name__[8: -7] == 'pcl':
-        shutil.copyfile(single_object.identifier, outfile)
+    M = arrayio.choose_format(in_data.identifier)
+    if M.__name__[8:-7] == 'pcl':
+        shutil.copyfile(in_data.identifier, outfile)
         f.close()
     else:
-        M = arrayio.read(single_object.identifier)
+        M = arrayio.read(in_data.identifier)
         M_c = arrayio.convert(M, to_format=arrayio.pcl_format)
         arrayio.pcl_format.write(M_c, f)
         f.close()
+    
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for convert_signal_to_pcl fails' % outfile)
-    new_objects = get_newobjects(parameters, objects, pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile,starttime,user,jobname)
-    return new_objects
+        'the output file %s for convert_signal_to_pcl fails' % outfile
+    )
+    out_node = bie3.Data(rulebase._SignalFile_Normalize, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(
-        identifier, pipeline, parameters)
-
-
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'signal_' + original_file + '.pcl'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, 'signal_file', 'contents,preprocess')
-    assert os.path.exists(single_object.identifier), (
-        'the input file %s for convert_signal_to_pcl does not exist'
-        % single_object.identifier)
-    return single_object
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    single_object = get_identifier(parameters, objects)
-    new_objects = module_utils.get_newobjects(
-        outfile, 'signal_file', parameters, objects, single_object)
-    return new_objects
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
+
+    return data_node

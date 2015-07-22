@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 #queue.py
 
 import queue_engine 
@@ -18,7 +17,6 @@ def main():
     parser.add_argument('--user',dest='user', type=str,
                         default=getpass.getuser(),
                         help='name of the user who submit the job')
-    
     parser.add_argument('--list', '-l',dest='status',
                         action='store_true', default=False,
                         help='show the job status')

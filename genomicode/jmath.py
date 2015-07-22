@@ -77,7 +77,6 @@ apply
 match    Return list of indexes of matches from list1 in list2.
 
 """
-import os, sys
 import math
 
 class _fn:
@@ -116,7 +115,7 @@ def safe_int(x):
 def safe_float(x):
     if x is None:
         return None
-    if type(x) is type("") and x.lower() in ["", "na", "null"]:
+    if type(x) is type("") and x.lower() in ["", "na", "null", "-"]:
         return None
     if type(x) is type("") and x.lower() == "nan":
         return float('nan')
@@ -1036,11 +1035,31 @@ def shapiro_test(data):
 R = robjects = None
 def start_R():
     global R, robjects
+    import os
+
+    # No.  This doesn't seem to have any effect.
+    # Set the LD_LIBRARY_PATH.  Somehow the R library path doesn't get
+    # set up correctly when using rpy2.
+    #PATHS = [
+    #    "/usr/local/lib64/R/lib",
+    #    "/usr/local/lib64",
+    #    "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.34.x86_64/jre/lib/amd64/server"
+    #    ]
+    #
+    #LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH", "")
+    #paths = LD_LIBRARY_PATH.split(":")
+    #for x in PATHS:
+    #    if x not in paths:
+    #        paths.append(x)
+    #paths = [x for x in paths if x and os.path.exists(x)]
+    #LD_LIBRARY_PATH = ":".join(paths)
+    #os.environ["LD_LIBRARY_PATH"] = LD_LIBRARY_PATH
+    
     if R is None:
         #import rpy
         #R = rpy.r
         import rpy2.robjects as robjects
-        robjects = robjects
+        robjects = robjects   # So pychecker won't complain.
         R = robjects.r
     return R
 
@@ -1049,6 +1068,8 @@ def _fmt_R_var(var):
         if var.startswith("RVAR:"):
             var = var[5:]
         else:
+            # Escape the quotes.
+            var = var.replace('"', '\\"')
             var = '"%s"' % var
     elif type(var) in [type([]), type(())]:
         x = [_fmt_R_var(x) for x in var]
@@ -1073,7 +1094,15 @@ def R_equals_matrix(M, varname, by_row=True):
     temp_varname = "JMATH.R.TMP"
     R = start_R()
     x = flatten(M)
+    # Figure out which values are missing, and substitute them with
+    # 0.0 so FloatVector doesn't complain.
+    I = [i for i in range(len(x)) if x[i] == None]
+    for i in I:
+        x[i] = 0.0
     x = robjects.FloatVector(x)
+    # Fill in the missing values.
+    for i in I:
+        x[i] = robjects.NA_Real
     x = robjects.r["matrix"](x, nrow=nrow(M), ncol=ncol(M), byrow=by_row)
 
     # Set to a temporary variable first.  varname may not be a
@@ -1118,8 +1147,12 @@ def R2py_matrix(m):
     # Fastest implementation (1.2s for 37,632x2 matrix)
     pym = [[None]*m.ncol for i in range(m.nrow)]
     z = 0
-    for i in range(m.nrow):
-        for j in range(m.ncol):
+    #for i in range(m.nrow):
+    #    for j in range(m.ncol):
+    #        pym[i][j] = m[z]
+    #        z += 1
+    for j in range(m.ncol):
+        for i in range(m.nrow):
             pym[i][j] = m[z]
             z += 1
     # This implementation is slow (5.0s).
@@ -1429,6 +1462,7 @@ try:
 except ImportError:
     pass
 else:
+    import sys
     this_module = sys.modules[__name__]
     this_dict, cjmath_dict = this_module.__dict__, cjmath.__dict__
     for name in cjmath_dict:

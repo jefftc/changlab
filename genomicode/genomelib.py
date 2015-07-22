@@ -46,6 +46,7 @@ def _get_default_ra_chrom():
     return config.RA_CHROM_HG19
 
 def _get_default_knowngene():
+    # knowngene file, e.g. tss/data/hg38.knownGene.141007.txt
     import config
     return config.knowngene_hg19
 

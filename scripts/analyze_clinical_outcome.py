@@ -3,7 +3,10 @@
 
 # Functions:
 # parse_genes
+# parse_genes_from_geneset
 # parse_gene_sets
+# list_all_genes
+# list_all_gene_sets
 # parse_rank_cutoffs
 # parse_zscore_cutoffs
 # parse_outcomes
@@ -14,6 +17,7 @@
 # read_expression_or_geneset_scores
 # read_clinical_annotations
 # align_matrix_with_clinical_data
+# get_gene_id
 # get_gene_name
 #
 # calc_association
@@ -44,9 +48,52 @@ def parse_genes(genes):
     return clean
 
 
+def parse_genes_from_geneset(genes_from_geneset):
+    # genes_from_geneset is a list of genesets.
+    from genomicode import genesetlib
+
+    if not genes_from_geneset:
+        return []
+    all_genes = []
+    for file_geneset in genes_from_geneset:
+        filename, genesets = _parse_file_gs(file_geneset)
+
+        keywds = {"allow_tdf": True}
+        genes = genesetlib.read_genes(filename, *genesets, **keywds)
+        all_genes.extend(genes)
+    return all_genes
+
+
+def _parse_file_gs(geneset):
+    # Parse a geneset specified by the user.  geneset is in the format
+    # of <filename>[,<geneset>,<geneset>,...].  Return a tuple of
+    # <filename>, list of <geneset> (or empty list).
+    # XXX what happens if this is an empty list?
+    x = geneset.split(",")
+    assert len(x) >= 1
+    filename, genesets = x[0], x[1:]
+    return filename, genesets
+
+
 def parse_gene_sets(geneset):
     # geneset is a list of gene sets.  Return it unchanged.
     return geneset
+
+
+def list_all_genes(filename):
+    import arrayio
+    M = read_gene_expression(filename)
+    genes = M.row_names(arrayio.ROW_ID)
+    # Make sure genes are unique.
+    x = sorted({}.fromkeys(genes))
+    assert len(genes) == len(x), "Not all genes are unique."
+    return genes
+
+
+def list_all_gene_sets(filename):
+    M = read_geneset_scores(filename)
+    gene_sets = M.row_names("geneset")
+    return gene_sets
 
 
 def parse_rank_cutoffs(cutoffs):
@@ -129,11 +176,13 @@ def parse_outcomes(outcomes):
 
 
 def parse_filestem(filestem):
-    # Return an empty string, or a filestem with a '.' at the end.
+    # Return an empty string, or a filestem without a '.' at the end.
     if filestem is None:
         filestem = ""
-    elif not filestem.endswith("."):
-        filestem += "."
+    if filestem.endswith("."):
+        filestem = filestem[:-1]
+    #elif not filestem.endswith("."):
+    #    filestem += "."
     return filestem
 
 
@@ -153,23 +202,57 @@ def read_geneset_scores(filename):
     from genomicode import jmath
     from genomicode import filelib
     from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
     
     assert os.path.exists(filename)
     matrix = [x for x in filelib.read_cols(filename)]
     matrix = jmath.transpose(matrix)
+
+    # Only want the scores.  Get rid of the direction, pvalue, and
+    # significance lines.
+    # Columns:
+    # SAMPLE
+    # FILE
+    # [Score ...]
+    # [Direction ...] " direction"
+    # [p value ...] " pvalue"
+    # [significant ...] " significant"
+    assert matrix
+    i = 0
+    while i < len(matrix):
+        assert matrix[i]
+        metadata = False
+        if matrix[i][0].endswith(" direction"):
+            metadata = True
+        elif matrix[i][0].endswith(" pvalue"):
+            metadata = True
+        elif matrix[i][0].endswith(" significant"):
+            metadata = True
+        if not metadata:
+            i += 1
+            continue
+        del matrix[i]
+            
+    
     # BUG: Need more checks on size and format of matrix.
     col_names = {}
-    col_names['_SAMPLE_NAME'] = matrix[1][1:]
+    sample_row = 0
+    if matrix[1][0].upper() == "SAMPLE":
+        sample_row = 1
+    col_names[tdf.SAMPLE_NAME] = matrix[sample_row][1:]
     row_names = {}
     row_names['geneset'] = []
+    synonyms = {}
+    synonyms[const.COL_ID] = tdf.SAMPLE_NAME
     data = []
     for line in matrix[2:]:
         single_data = [jmath.safe_float(i) for i in line[1:]]
         data.append(single_data)
         row_names['geneset'].append(line[0])
-    M = Matrix.InMemoryMatrix(data, row_names=row_names, col_names=col_names)
+    M = Matrix.InMemoryMatrix(
+        data, row_names=row_names, col_names=col_names, synonyms=synonyms)
     return M
-
 
 def read_expression_or_geneset_scores(genes, gene_sets, filename):
     assert not (genes and gene_sets)
@@ -185,7 +268,10 @@ def read_expression_or_geneset_scores(genes, gene_sets, filename):
 
 
 def read_clinical_annotations(M, filename):
-    # Read the clinical annotations.
+    # Return a tuple of (Matrix, clinical annotations).  The
+    # annotations are a dictionary of name -> list of values.  They
+    # are aligned with the matrix.
+    
     from genomicode import genesetlib
     
     clinical_annots = {}
@@ -262,7 +348,8 @@ def discretize_scores(
     return group_names, groups
 
 
-def get_gene_name(MATRIX, gene_i):
+def get_gene_id(MATRIX, gene_i):
+    # gene_i is index of gene in this MATRIX.
     from genomicode import arrayplatformlib as apl
 
     probe_id = gene_id = gene_symbol = None
@@ -277,7 +364,7 @@ def get_gene_name(MATRIX, gene_i):
     if header is not None:
         gene_id = MATRIX.row_names(header)[gene_i]
 
-    # Just us a probe ID.
+    # Just use a probe ID.
     header = apl.find_header(MATRIX, apl.PROBE_ID)
     if header is not None:
         probe_id = MATRIX.row_names(header)[gene_i]
@@ -298,8 +385,22 @@ def get_gene_name(MATRIX, gene_i):
     return "Gene %04d" % gene_i
 
 
+def get_gene_name(M, gene_headers, gene_i):
+    from genomicode import hashlib
+    
+    if gene_headers:
+        x = [M.row_names(x)[gene_i] for x in gene_headers]
+        gene_name = "_".join(x)
+    else:
+        x = get_gene_id(M, gene_i)
+        x = hashlib.hash_var(x)
+        gene_name = x
+    return gene_name
+
+
 def calc_association(
-    survival, dead, scores, rank_cutoffs, zscore_cutoffs, expression_or_score):
+    survival, dead, scores, rank_cutoffs, zscore_cutoffs, expression_or_score,
+    ignore_unscored_genesets):
     # Return a dictionary with keys:
     # survival             list of <float>
     # dead                 list of <int>
@@ -324,6 +425,8 @@ def calc_association(
     I2 = [i for (i, x) in enumerate(dead) if x]
     I3 = [i for (i, x) in enumerate(scores) if x]
     I = sorted(set.intersection(set(I1), set(I2), set(I3)))
+    if ignore_unscored_genesets and not I:
+        return None
     assert I, "No valid samples."
 
     survival = [float(survival[i]) for i in I]
@@ -428,6 +531,13 @@ def calc_km(survival, dead, group):
 
     assert len(survival) == len(dead)
     assert len(survival) == len(group)
+
+    # At least two samples must be dead.
+    x0 = [x for x in dead if x == 0]
+    x1 = [x for x in dead if x == 1]
+    # It is OK if no samples are alive.
+    #assert len(x0) >= 2, "At least two samples must have dead=0."
+    assert len(x1) >= 2, "At least two samples must have dead=1."
     
     R = start_and_init_R()
 
@@ -562,7 +672,8 @@ def make_zscore_names(cutoffs, expression_or_score):
 def plot_km(
     filename, survival, dead, group_indexes, p_value, gene_id, group_names,
     mar_bottom, mar_left, mar_top, title, title_size, mar_title,
-    subtitle_size, mar_subtitle, xlab, ylab, legend_size):
+    subtitle_size, mar_subtitle, xlab, ylab, legend_size, x_legend=None,
+    colors=None):
     from genomicode import colorlib
     from genomicode.jmath import R_equals, R_fn, R_var
     
@@ -570,11 +681,13 @@ def plot_km(
     
     # Set the colors.
     assert len(group_names) >= 2
-    colors = ['#1533AD', '#FFB300']
-    if len(group_names) > 2:
-        x = colorlib.bild_colors(len(group_names))
-        x = [colortuple2hex(*x) for x in x]
-        colors = x
+    if not colors:
+        colors = ['#1533AD', '#FFB300']
+        if len(group_names) > 2:
+            x = colorlib.bild_colors(len(group_names))
+            x = [colortuple2hex(*x) for x in x]
+            colors = x
+    assert len(colors) == len(group_names)
     # R command:
     # col <- list("<name>"="<color>", ...)
     cmd = []
@@ -614,7 +727,9 @@ def plot_km(
 
     xlab = xlab or ""
     ylab = ylab or ""
-    sub = "p=%.2g" % p_value
+    sub = ""
+    if p_value is not None:
+        sub = "p=%.2g" % p_value
     title = title or gene_id
     cex_main = 2.0 * title_size
     cex_sub = 1.5 * subtitle_size
@@ -630,14 +745,21 @@ def plot_km(
     R_fn("par", mar=mar, RETVAL="op")
     
     # Suppress warning message.  See calc_km.
+    params = {
+        'cex.main' : cex_main,
+        'main.line' : main_line,
+        'cex.sub' : cex_sub,
+        'sub.line' : sub_line,
+        'cex.legend' : cex_legend,
+        }
+    if x_legend:
+        params["x.legend"] = x_legend
+    
     R_fn('options', "warn", RETVAL='ow')
     R_fn('options', warn=-1)
     R_fn(
         'plot.km.multi', survival, dead, group, col=R_var('col'),
-        main=title, sub=sub, xlab=xlab, ylab=ylab,
-        **{ 'cex.main' : cex_main, 'main.line' : main_line,
-            'cex.sub' : cex_sub, 'sub.line' : sub_line,
-            'cex.legend' : cex_legend })
+        main=title, sub=sub, xlab=xlab, ylab=ylab, **params)
     R_fn('options', R_var('ow'))
     R_fn("par", R_var('op'))
     R_fn('dev.off')
@@ -790,6 +912,46 @@ def _format_list(x):
     return ";".join(x)
 
 
+def _make_filename(M, gene_i,
+                   filestem, analysis, gene_headers, filetype, fileext):
+    # gene_i is the index of the gene in the matrix.
+    # If filestem is None, will not use a filestem.
+    # gene_headers is a list of headers from Matrix.  If empty, will
+    # try to provide one.
+    
+    # Format:
+    # <filestem>.<analysis>.<gene_name>.<filetype>.<fileext>
+    #
+    # <filestem>    BRCA  (has no "." at end)
+    # <analysis>    SUBTYPE,ER,OS
+    # <gene_name>   GAPDH
+    # <filetype>    boxplot, prism, waterfall
+    # <fileext>     txt, png
+    from genomicode import hashlib
+
+    assert type(analysis) is type("") and analysis
+    assert type(filetype) is type("") and filetype
+    assert type(fileext) is type("") and fileext
+    for h in gene_headers:
+        assert h in M.row_names()
+
+    # Figure out the gene_name.
+    gene_name = get_gene_name(M, gene_headers, gene_i)
+    #if gene_headers:
+    #    x = [M.row_names(x)[gene_i] for x in gene_headers]
+    #    gene_name = "_".join(x)
+    #else:
+    #    x = get_gene_name(M, gene_i)
+    #    x = hashlib.hash_var(x)
+    #    gene_name = x
+
+    parts = [analysis, gene_name, filetype, fileext]
+    if filestem:
+        parts.insert(0, filestem)
+    filename = ".".join(parts)
+    return filename
+    
+
 def main():
     import os
     import sys
@@ -819,9 +981,23 @@ def main():
         'expression_file.  '
         'You can use this parameter multiple times to search more genes.')
     group.add_argument(
+        '--genes_from_geneset', default=[], action='append',
+        help="Include the genes from this geneset.  "
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
+    group.add_argument(
         '--geneset', default=[], action='append',
-        help='Name of the geneset to analyze. To specify multiple gene sets, '
-        'use this parameter multiple times.')
+        help='Name of the geneset (from the gene set score file) to analyze. '
+        'To specify multiple gene sets, use this parameter multiple times.')
+    
+    group.add_argument(
+        '--all_genes', action='store_true',
+        help='Use all genes in the expression file.')
+    group.add_argument(
+        '--all_genesets', action='store_true',
+        help='Use all gene sets in the geneset file.')
+    group.add_argument(
+        '--ignore_unscored_genesets', default=False, action='store_true',
+        help="If a gene set is not scored on this data set, then ignore it.")
     
     group = parser.add_argument_group(
         title='Discretization', description='We can discretize the '
@@ -840,15 +1016,20 @@ def main():
         '--rank_cutoff', default=None,
         help='Comma-separated list of breakpoints (between 0 and 1), '
         'e.g. 0.25,0.50,0.75.  Default is to use cutoff of 0.50.  '
-        'I will use this strategy unless a --zscore is given.')
+        'I will use this strategy unless a --zscore_cutoff is given.')
     group.add_argument(
         '--zscore_cutoff', default=None, 
-        help='Comma-separated list of breakpoints, e.g. -1,0.1.')
+        help='Comma-separated list of breakpoints, e.g. n1,1 '
+        '(can use n for negative sign).')
 
     group = parser.add_argument_group(title='Output')
     group.add_argument(
-        '-o', dest='filestem', default=None,
+        '-o', dest='filestem',
         help='Prefix used to name files.  e.g. "myanalysis".')
+    group.add_argument(
+        "--gene_header", action="append", default=[],
+        help="Header of gene name to include in the name of the output file "
+        "(MULTI).  By default, will try to find the gene symbol.")
     group.add_argument(
         '--no_plots', action='store_true', default=False,
         help="Don't produce any plots or Prism files.")
@@ -903,9 +1084,21 @@ def main():
            args.outcome_file
     
     assert args.outcome, 'Please specify the clinical outcomes to analyze.'
-    assert args.gene or args.geneset, 'Please specify a gene or gene set.'
+    assert args.gene or args.all_genes or \
+           args.geneset or args.all_genesets or args.genes_from_geneset, \
+           'Please specify a gene or gene set.'
+    assert not (args.gene and args.all_genes), (
+        'Please specify either a gene or all genes, not both.')
     assert not (args.gene and args.geneset), (
-        'Please specify either a gene or a gene set, not both.')
+        'Please specify either a gene or a gene set score, not both.')
+    assert not (args.gene and args.all_genesets), (
+        'Please specify either a gene or a gene set score, not both.')
+    assert not (args.all_genes and args.all_genesets), (
+        'Please specify either all genes or all genesets, not both.')
+    assert not (args.geneset and args.genes_from_geneset), (
+        'Please specify either a gene or a gene set score, not both.')
+    assert not (args.all_genesets and args.genes_from_geneset), (
+        'Please specify either a gene or a gene set score, not both.')
 
     if args.rank_cutoff:
         assert not args.zscore_cutoff
@@ -922,8 +1115,14 @@ def main():
     assert args.km_legend_size > 0 and args.km_legend_size < 10
     
     # Clean up the input.
-    genes = parse_genes(args.gene)
+    genes1 = parse_genes(args.gene)
+    genes2 = parse_genes_from_geneset(args.genes_from_geneset)
+    genes = genes1 + genes2
+    if args.all_genes:
+        genes = list_all_genes(args.expression_file)
     gene_sets = parse_gene_sets(args.geneset)
+    if args.all_genesets:
+        gene_sets = list_all_gene_sets(args.expression_file)
     rank_cutoffs = zscore_cutoffs = None
     if args.rank_cutoff:
         rank_cutoffs = parse_rank_cutoffs(args.rank_cutoff)
@@ -974,12 +1173,24 @@ def main():
         dead = clinical_annots[dead_header]
         scores = M.value(i, None)
 
-        x = calc_association(
-            survival, dead, scores, rank_cutoffs, zscore_cutoffs,
-            expression_or_score)
+        try:
+            x = calc_association(
+                survival, dead, scores, rank_cutoffs, zscore_cutoffs,
+                expression_or_score, args.ignore_unscored_genesets)
+        except AssertionError, x:
+            # Provide a better error message.
+            type, value, tb = sys.exc_info()
+            x = str(x)
+            if filestem:
+                fs = filestem
+                if fs.endswith("."):
+                    fs = fs[:-1]
+                x = x + " (%s)" % fs
+            raise AssertionError, x, tb
         if x is None:
             continue
         gene_outcome_scores[(time_header, dead_header, i)] = x
+
 
     # Files generated:
     # <filestem>.stats.txt      Or to STDOUT if no <filestem> given.
@@ -1001,7 +1212,7 @@ def main():
 
     outhandle = sys.stdout
     if filestem:
-        outhandle = open("%sstats.txt" % filestem, 'w')
+        outhandle = open("%s.stats.txt" % filestem, 'w')
 
     # Figure out the header for the table.
     header = M.row_names() + [
@@ -1048,12 +1259,17 @@ def main():
             continue
 
         # Write out Prism, Kaplan-Meier curves, etc.
-        # Better way to pick gene ID.
-        gene_id = get_gene_name(M, gene_i)
-        gene_id_h = hashlib.hash_var(gene_id)
+        
+        ### Better way to pick gene ID.
+        ##gene_id = get_gene_name(M, gene_i)
+        ##gene_id_h = hashlib.hash_var(gene_id)
 
         # Make the Kaplan-Meier plot.
-        filename = "%s%s.%s.km.png" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.km.png" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header, "km", "png")
+        #gene_id = get_gene_name(M, gene_i)
+        gene_id = get_gene_name(M, args.gene_header, gene_i)
         plot_km(
             filename, SURV["survival"], SURV["dead"], SURV["groups"],
             SURV["p_value"], gene_id, SURV["group_names"], 
@@ -1063,19 +1279,27 @@ def main():
             args.km_xlab, args.km_ylab, args.km_legend_size)
         
         # Write out a Prism file for the Kaplan-Meier plot.
-        filename = "%s%s.%s.km.txt" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.km.txt" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header, "km", "txt")
         write_km_prism_file(
             filename, SURV["survival"], SURV["dead"], SURV["groups"],
             SURV["group_names"])
 
         # Make the group plot.
-        filename = "%s%s.%s.groups.png" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.groups.png" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header,
+            "groups", "png")
         plot_groups(
             filename, SURV["scores"], SURV["group_names"], SURV["groups"],
             args.unlog_group_plot)
 
         # Write out a Prism file for the group plot.
-        filename = "%s%s.%s.groups.txt" % (filestem, time_header, gene_id_h)
+        #filename = "%s%s.%s.groups.txt" % (filestem, time_header, gene_id_h)
+        filename = _make_filename(
+            M, gene_i, filestem, time_header, args.gene_header,
+            "groups", "txt")
         write_km_group_file(
             filename, SURV["scores"], SURV["group_names"], SURV["groups"],
             args.unlog_group_plot)

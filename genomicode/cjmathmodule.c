@@ -67,6 +67,7 @@ static PyObject *cjmath_safe_float(PyObject *self, PyObject *args)
 	    return NULL;
 	if(length == 0 || 
            strcasecmp(buffer, "na") == 0 ||
+           strcasecmp(buffer, "-") == 0 ||
            strcasecmp(buffer, "null") == 0) {
 	    Py_INCREF(Py_None);
 	    return Py_None;
@@ -175,6 +176,7 @@ static PyObject *cjmath_cor_matrix(PyObject *self, PyObject *args,
     //double *X, *cor;
     int i, j;
     int nrow, ncol;
+    int cor_size;
     int byrow = 1;
     int safe = 0;
     int abs_ = 0;
@@ -190,24 +192,29 @@ static PyObject *cjmath_cor_matrix(PyObject *self, PyObject *args,
     /* Convert X to a C matrix. */
     if(!py2c_fmatrix(py_X, &X, &nrow, &ncol))
 	goto _cor_matrix_cleanup;
-    if(!byrow) {
-	PyErr_SetString(PyExc_NotImplementedError, "col cor not implemented");
-	goto _cor_matrix_cleanup;
-    } 
 
-    if(!(cor = cor_byrow_f(X, nrow, ncol, safe))) {
-	PyErr_SetString(PyExc_AssertionError, "cor error");
-	goto _cor_matrix_cleanup;
+    if(byrow) {
+        if(!(cor = cor_byrow_f(X, nrow, ncol, safe))) {
+            PyErr_SetString(PyExc_AssertionError, "cor error");
+            goto _cor_matrix_cleanup;
+        }
+        cor_size = nrow;
+    } else {
+        if(!(cor = cor_bycol_f(X, nrow, ncol, safe))) {
+            PyErr_SetString(PyExc_AssertionError, "cor error");
+            goto _cor_matrix_cleanup;
+        }
+        cor_size = ncol;
     }
     if(abs_) {
-	for(i=0; i<nrow; i++) {
-	    for(j=i+1; j<nrow; j++) {
-		cor[i*nrow+j] = fabs(cor[i*nrow+j]);
-	    }
-	}
+        for(i=0; i<cor_size; i++) {
+            for(j=i+1; j<cor_size; j++) {
+                cor[i*cor_size+j] = fabs(cor[i*cor_size+j]);
+            }
+        }
     }
 
-    py_cor = c2py_fmatrix(cor, nrow, nrow);
+    py_cor = c2py_fmatrix(cor, cor_size, cor_size);
     //py_cor = c2py_dmatrix(cor, nrow, nrow);
 
  _cor_matrix_cleanup:

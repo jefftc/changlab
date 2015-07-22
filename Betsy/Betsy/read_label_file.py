@@ -30,15 +30,16 @@ def read(filename):
     assert second_line.startswith('#'), 'file is not cls format'
     second_line = second_line.split()  # ['#', 'ALL', 'AML']
     assert len(second_line) - 1 == class_num, (
-        'number of class is not consistent')
+        'number of class is not consistent'
+    )
     label_line = content[2].strip().split()
-    assert len(label_line) == sample_num, (
-        'number of sample is not consistent')
+    assert len(label_line) == sample_num, ('number of sample is not consistent'
+                                          )
     label_dict = dict()
     for i in label_line:
         label_dict[i] = label_dict.get(i, 0) + 1
     result = []
-    for i in range(class_num):
+    for i in range(min(class_num, len(label_line))):
         single_class = find_index_list(label_line, label_dict.keys()[i])
         result.append((single_class, label_dict.keys()[i]))
     return result, label_line, second_line[1:]

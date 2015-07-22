@@ -28,39 +28,56 @@ def choose_gene_names(MATRIX):
     
     
 def find_diffexp_genes(
-    outfile, gmt_file, gmt_p_cutoff, gmt_fdr_cutoff,
-    algorithm, MATRIX, name1, name2, classes, fold_change, 
-    sam_DELTA, sam_qq_file, show_all_genes, num_procs):
+    outfile, gmt_file, algorithm, paired,
+    MATRIX, geneid_header, genename_header, 
+    name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff, 
+    sam_DELTA, sam_qq_file, edger_tagwise_dispersion, num_procs):
     # classes must be 0, 1, None.
     import os
     import sys
     import math
     import StringIO
     
+    from rpy2 import rinterface
+    
     from genomicode import config
     from genomicode import jmath
     from genomicode import genesetlib
 
-    algorithm2function = {
+    algorithm2function_unpaired = {
+        "fold_change" : "find.de.genes.fc",
         "ttest" : "find.de.genes.ttest",
         "sam" : "find.de.genes.sam",
         "ebayes" : "find.de.genes.ebayes",
+        "deseq2" : "find.de.genes.deseq2",
+        "edger" : "find.de.genes.edgeR",
         }
+    algorithm2function_paired = {
+        "ebayes" : "find.de.genes.paired.ebayes",
+        }
+    algorithm2function = algorithm2function_unpaired
+    if paired:
+        algorithm2function = algorithm2function_paired
+        assert algorithm in algorithm2function_paired, \
+               "No paired version of %s" % algorithm
     assert algorithm in algorithm2function, "Unknown algorithm: %s" % algorithm
 
+    
     # Select the relevant columns from MATRIX.
     I = [i for (i, x) in enumerate(classes) if x in [0, 1]]
     assert len(I)
     MATRIX = MATRIX.matrix(None, I)
     classes = [classes[i] for i in I]
-    
-    # Make sure at least 2 of each class.
+
+    # All algorithms except "fold_change" need at least 2 samples of
+    # each class.
     counts = {}
     for x in classes:
         counts[x] = counts.get(x, 0) + 1
     assert sorted(counts) == [0, 1], "Only one class represented."
-    assert counts[0] >= 2, "There must be at least 2 of each class."
-    assert counts[1] >= 2, "There must be at least 2 of each class."
+    if algorithm != "fold_change":
+        assert counts[0] >= 2, "There must be at least 2 of each class."
+        assert counts[1] >= 2, "There must be at least 2 of each class."
 
     names = [name1, name2]
     X = MATRIX._X
@@ -70,13 +87,18 @@ def find_diffexp_genes(
         sample_name = MATRIX.col_names(MATRIX.col_names()[0])
 
     x = choose_gene_names(MATRIX)
-    geneid_header, genename_header = x
+    if not geneid_header:
+        geneid_header = x[0]
+    if not genename_header:
+        genename_header = x[1]
+    assert not geneid_header or geneid_header in MATRIX.row_names()
+    assert not genename_header or genename_header in MATRIX.row_names()
 
     R = jmath.start_R()
     de_lib = os.path.join(config.changlab_Rlib, "diffexp.R")
     stat_lib = os.path.join(config.changlab_Rlib, "statlib.R")
-    assert os.path.exists(de_lib)
-    assert os.path.exists(stat_lib)
+    assert os.path.exists(de_lib), "I could not find file: %s" % de_lib
+    assert os.path.exists(stat_lib), "I could not find file: %s" % stat_lib
     R('source("%s")' % de_lib)
     R('source("%s")' % stat_lib)
 
@@ -102,19 +124,26 @@ def find_diffexp_genes(
         args.append("geneid=geneid")
     if genenames:
         args.append("genenames=genenames")
+    # Pass the fold change to the algorithm, because it can affect the
+    # multiple hypothesis correction.
     if fold_change is not None:
         args.append("FOLD.CHANGE=%g" % fold_change)
-    if algorithm == "ttest":
+    if algorithm in ["ttest", "deseq2"]:
         args.append("NPROCS=%d" % num_procs)  # t-test only
-    if show_all_genes and algorithm != "sam":
-        args.append("all.genes=TRUE")
-
+    #if show_all_genes and algorithm != "sam":
+    if algorithm not in ["sam", "fold_change"]:
+        args.append("filter.p05=FALSE")
+    if algorithm == "edger":
+        if edger_tagwise_dispersion:
+            args.append("tagwise.dispersion=TRUE")
+        else:
+            args.append("tagwise.dispersion=FALSE")
 
     # Prevent SAM from writing junk to the screen.
     handle = StringIO.StringIO()
     old_stdout = sys.stdout
     sys.stdout = handle
-    
+
     fn = algorithm2function[algorithm]
     x = ", ".join(args)
     R("x <- %s(%s)" % (fn, x))
@@ -132,11 +161,14 @@ def find_diffexp_genes(
         jmath.R_fn("samr.plot", jmath.R_var("S"), sam_DELTA)
         jmath.R_fn("dev.off")
 
-    # Convert this DataFrame into a Python object.
+    # Convert this DataFrame into a Python object.  Columns of floats
+    # can be StrVector objects if there are NA embedded within them.
+    # NA are special objects of either type
+    # rpy2.rinterface.NACharacterType or type
+    # rpy2.rinterface.NARealType.
     tDATA_py = []
-    for col_R in DATA_R:  # iterate over columns
-        col_py = [col_R[x] for x in range(len(col_R))]
-        # What if there is NA?
+    for zzz, col_R in enumerate(DATA_R):  # iterate over columns
+        col_py = [col_R[i] for i in range(len(col_R))]
         if col_R.__class__.__name__ == "StrVector":
             pass
         elif col_R.__class__.__name__ == "FloatVector":
@@ -145,17 +177,87 @@ def find_diffexp_genes(
             col_py = [int(x) for x in col_py]
         tDATA_py.append(col_py)
     DATA_py = jmath.transpose(tDATA_py)
-    header = [DATA_R.colnames[x] for x in range(DATA_R.ncol)]
+    header = [DATA_R.colnames[i] for i in range(DATA_R.ncol)]
+
+    # Convert NA to None.
+    for i in range(len(DATA_py)):
+        for j in range(len(DATA_py[i])):
+            if type(DATA_py[i][j]) in [
+                rinterface.NACharacterType, rinterface.NARealType]:
+                DATA_py[i][j] = None
+
+    # Filter based on user criteria.
+    if fold_change is not None:
+        name = "Log_2 Fold Change"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        log_2_fc = math.log(fold_change, 2)
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and abs(x[I]) >= log_2_fc]
+    if p_cutoff is not None:
+        name  = "p.value"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < p_cutoff]
+    if fdr_cutoff is not None:
+        name  = "FDR"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < fdr_cutoff]
+    if bonf_cutoff is not None:
+        name  = "Bonf"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < bonf_cutoff]
+
+    # Sort by increasing p-value, then decreasing fold change.
+    name  = "p.value"
+    direction = 1
+    #if algorithm == "sam":
+    #    name = "Score(d)"
+    if name not in header:
+        name = "Log_2 Fold Change"
+        direction = -1
+    assert name in header, 'I could not find the "%s" column.' % name
+
+    I = header.index(name)
+    #schwartz = [(direction*float(x[I]), x) for x in DATA_py]
+    values = [x[I] for x in DATA_py]
+    for i in range(len(values)):
+        if values[i] is None:
+            values[i] = direction*1E10
+        else:
+            values[i] = direction*float(values[i])
+    schwartz = zip(values, DATA_py)
+    schwartz.sort()
+    DATA_py = [x[-1] for x in schwartz]
+
+    # Convert None to "".
+    for i in range(len(DATA_py)):
+        for j in range(len(DATA_py[i])):
+            if DATA_py[i][j] is None:
+                DATA_py[i][j] = ""
+
+    ## If no significant genes, then don't produce any output.
+    ##if not DATA_py:
+    ##    return
 
     # Write to the outhandle.
-    outhandle = open(outfile, 'w')
+    outhandle = outfile
+    if type(outhandle) is type(""):
+        outhandle = open(outfile, 'w')
     print >>outhandle, "\t".join(header)
     outhandle.flush()
     for x in DATA_py:
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))
         outhandle.flush()
-    outhandle.close()
+    # Don't close someone else's file handle.
+    #outhandle.close()
+
 
     # Write out the gene sets in GMT format, if requested.
     if not gmt_file:
@@ -166,16 +268,6 @@ def find_diffexp_genes(
     I_direction = header.index("Direction")
     I_geneid = header.index("Gene ID")
     I_genename = header.index("Gene Name")
-    I_NL10P = header.index("NL10P")
-    I_NL10FDR = header.index("NL10 FDR")
-
-    assert not (gmt_p_cutoff and gmt_fdr_cutoff)
-    if gmt_p_cutoff:
-        nl10p_cutoff = -math.log(gmt_p_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I_NL10P]) > nl10p_cutoff]
-    elif gmt_fdr_cutoff:
-        nl10fdr_cutoff = -math.log(gmt_fdr_cutoff, 10)
-        DATA_py = [x for x in DATA_py if float(x[I_NL10FDR]) > nl10fdr_cutoff]
 
     # "Higher in <name1>"
     # "Higher in <name2>"
@@ -214,13 +306,72 @@ def find_diffexp_genes(
             x = [x, "na"] + gn
             print >>outhandle, "\t".join(x)
     outhandle.close()
+
+
+def _run_forked(
+        gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
+        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
+    import os
+    import sys
+    import tempfile
+
+    outfile = pid = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        # Fork a subprocess, because some R libraries generate garbage
+        # to the screen.
+        r, w = os.pipe()
+        pid = os.fork()
+        if pid:   # Parent
+            os.close(w)
+            r = os.fdopen(r)
+            for line in r:
+                sys.stdout.write(line)   # output from R library
+            os.waitpid(pid, 0)
+
+            assert os.path.exists(outfile), "failed"
+            for line in open(outfile):
+                sys.stdout.write(line)
+        else:     # Child
+            os.close(r)
+            w = os.fdopen(w, 'w')
+            os.dup2(w.fileno(), sys.stdout.fileno())
+            find_diffexp_genes(
+                outfile, gmt_file, algorithm, paired, 
+                MATRIX, geneid_header, genename_header, 
+                name1, name2, classes,
+                fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+                sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
+            sys.exit(0)
+    finally:
+        if pid:
+            if outfile and os.path.exists(outfile):
+                os.unlink(outfile)
     
+
+def _run_not_forked(
+        gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
+        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
+    import sys
+    outfile = sys.stdout
+
+    find_diffexp_genes(
+        outfile, gmt_file, algorithm, paired, 
+        MATRIX, geneid_header, genename_header, 
+        name1, name2, classes,
+        fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
+        
 
 def main():
     import os
-    import sys
     import argparse
-    import tempfile
+    from collections import Counter
 
     import arrayio
     from genomicode import arraysetlib
@@ -231,60 +382,80 @@ def main():
         description="Find differentially expressed genes.")
     parser.add_argument("expression_file", help="Gene expression file.")
 
-    parser.add_argument(
-        "-l", "--log_the_data", 
-        choices=["yes", "no", "auto"], default="auto",
-        help="Log the data before analyzing.  "
-        "Must be 'yes', 'no', or 'auto' (default).")
-    parser.add_argument(
-        "--show_all_genes", default=False, action="store_true",
-        help="List all the genes (default shows only p<0.05).")
+    # DESeq2 should have raw counts data.
+
+    #parser.add_argument(
+    #    "-l", "--log_the_data", 
+    #    choices=["yes", "no", "auto"], default="auto",
+    #    help="Log the data before analyzing.  "
+    #    "Must be 'yes', 'no', or 'auto' (default).")
+    #parser.add_argument(
+    #    "--show_all_genes", default=False, action="store_true",
+    #    help="List all the genes (default shows only p<0.05).")
     parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,
         help="Number of processors to use.")
     parser.add_argument(
+        "--geneid_header", help="The column header of the gene IDs.")
+    parser.add_argument(
+        "--genename_header", help="The column header of the gene names.")
+    parser.add_argument(
         "--gmt_file", help="Save the results in GMT format.")
-    parser.add_argument(
-        "--gmt_p_cutoff", default=None, type=float,
-        help="Put genes with p-value less than this value into GMT file.")
-    parser.add_argument(
-        "--gmt_fdr_cutoff", default=None, type=float,
-        help="Put genes with FDR less than this value into GMT file.")
     
-    group = parser.add_argument_group(title="Algorithm Parameters")
-    group.add_argument(
-        "--algorithm", dest="algorithm", 
-        choices=["ttest", "sam", "ebayes"], default="ebayes",
-        help="Which algorithm to use.")
-    group.add_argument(
-        "--fold_change", type=float, default=None,
-        help="Minimum change in gene expression.")
-
-    group = parser.add_argument_group(title="Algorithm-specific Parameters")
-    group.add_argument(
-        "--sam_delta", type=float, default=1.0,
-        help="DELTA parameter for SAM analysis.  (Default 1.0).")
-    group.add_argument(
-        "--sam_qq_file", default=None, help="File (PNG) for QQ plot for SAM.")
-    
-
     group = parser.add_argument_group(title="Class Labels")
     group.add_argument(
         "--cls_file", default=None, help="Class label file.")
     group.add_argument(
         "--indexes1", default=None,
-        help="Which columns in class 1, E.g. 1-5,8 (1-based, inclusive).")
+        help="Which columns in class 1, e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
         "--indexes2", default=None,
-        help="Which columns in class 2, E.g. 1-5,8 (1-based, inclusive).  "
+        help="Which columns in class 2, e.g. 1-5,8 (1-based, inclusive).  "
         "If not given, then will use all samples not in indexes1.")
     group.add_argument(
-        "--indexes_include_headers", default=False, action="store_true",
+        "--indexes_include_headers", "--iih",
+        default=False, action="store_true",
         help="If not given (default), then column 1 is the first column "
         "with data.  If given, then column 1 is the very first column in "
         "the file, including the headers.")
     group.add_argument("--name1", default=None, help="Name for class 1.")
     group.add_argument("--name2", default=None, help="Name for class 2.")
+
+    group = parser.add_argument_group(title="Cutoffs")
+    group.add_argument(
+        "--fold_change", type=float, default=None,
+        help="Minimum change in gene expression (without log).  ")
+    group.add_argument(
+        "--p_cutoff", default=None, type=float,
+        help="Only keep genes with p-value less than this value.")
+    group.add_argument(
+        "--fdr_cutoff", default=None, type=float,
+        help="Only keep genes with FDR less than this value.")
+    group.add_argument(
+        "--bonf_cutoff", default=None, type=float,
+        help="Only keep genes with BONFERRONI less than this value.")
+    
+    group = parser.add_argument_group(title="Algorithm-specific Parameters")
+    group.add_argument(
+        "--algorithm", 
+        choices=["fold_change", "ttest", "sam", "ebayes", "deseq2", "edger"],
+        default="ebayes", help="Which algorithm to use.")
+    group.add_argument(
+        "--paired", action="store_true",
+        help="Do a paired analysis.  The same number of samples should be in "
+        "each group.  Assumes that the samples should be paired in the same "
+        "order that they occur in the file.  For example, if samples 1-5 are "
+        "in group 1 and samples 6-10 are in group 2, then sample 1 will be "
+        "paired with sample 6, 2 with 7, etc.")
+    group.add_argument(
+        "--sam_delta", type=float, default=1.0,
+        help="DELTA parameter for SAM analysis.  (Default 1.0).")
+    group.add_argument(
+        "--sam_qq_file", help="File (PNG) for QQ plot for SAM.")
+    group.add_argument(
+        "--edger_tagwise_dispersion", action="store_true",
+        help="Use tagwise rather than common dispersion.")
+
 
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
@@ -292,15 +463,29 @@ def main():
     assert args.num_procs >= 1 and args.num_procs < 100
     if args.fold_change is not None:
         assert args.fold_change >= 0 and args.fold_change < 1000
-    assert args.sam_delta > 0 and args.sam_delta < 100
-    if args.gmt_fdr_cutoff is not None:
-        assert args.gmt_file, "Found --gmt_fdr_cutoff but no --gmt_cutoff."
-        assert args.gmt_fdr_cutoff > 0.0 and args.gmt_fdr_cutoff < 1.0
-        assert args.gmt_p_cutoff is None, "Cannot have both FDR and p cutoff."
-    if args.gmt_p_cutoff is not None:
-        assert args.gmt_file, "Found --gmt_p_cutoff but no --gmt_cutoff."
-        assert args.gmt_p_cutoff > 0.0 and args.gmt_p_cutoff < 1.0
+    if args.fdr_cutoff is not None:
+        assert args.fdr_cutoff > 0.0 and args.fdr_cutoff < 1.0
+        assert args.p_cutoff is None, "Cannot have both FDR and p cutoff."
+        assert args.bonf_cutoff is None, \
+               "Cannot have both FDR and bonferroni cutoff."
+    if args.p_cutoff is not None:
+        assert args.bonf_cutoff is None, \
+               "Cannot have both p and bonferroni cutoff."
+        assert args.p_cutoff > 0.0 and args.p_cutoff < 1.0
+    if args.bonf_cutoff is not None:
+        assert args.bonf_cutoff > 0.0 and args.bonf_cutoff < 1.0
+    if args.algorithm == "fold_change":
+        assert not args.p_cutoff, \
+               "Cannot use p-value cutoff with fold change algorithm."
+        assert not args.fdr_cutoff, \
+               "Cannot use fdr cutoff with fold change algorithm."
+        assert not args.bonf_cutoff, \
+               "Cannot use Bonferroni cutoff with fold change algorithm."
     
+    assert args.sam_delta > 0 and args.sam_delta < 100
+    if args.edger_tagwise_dispersion:
+        assert args.algorithm == "edger", "tagwise dispersion only for edgeR"
+
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
         "Must provide either CLS file or indexes.")
@@ -309,23 +494,26 @@ def main():
                "File not found: %s" % args.cls_file
         assert not args.indexes1 and not args.indexes2
         assert not args.name1 and not args.name2
-    if args.indexes1:
-        assert args.name1 and args.name2
+    # Don't need to check.  If name1 is missing, then a default will
+    # be provided.
+    #if args.indexes1:
+    #    assert args.name1, "--name1 missing"
+    #    assert args.name2, "--name2 missing"
     if args.indexes2:
         assert args.indexes1
 
     MATRIX = arrayio.read(args.expression_file)
 
-    log_data = False
-    if args.log_the_data == "yes":
-        log_data = True
-    elif args.log_the_data == "auto":
-        log_data = not binreg.is_logged_array_data(MATRIX)
-    if log_data:
-        MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
-        for i in range(len(MATRIX._X)):
-            for j in range(len(MATRIX._X[i])):
-                MATRIX._X[i][j] = max(MATRIX._X[i][j], 0)
+    #log_data = False
+    #if args.log_the_data == "yes":
+    #    log_data = True
+    #elif args.log_the_data == "auto":
+    #    log_data = not binreg.is_logged_array_data(MATRIX)
+    #if log_data:
+    #    MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+    #    for i in range(len(MATRIX._X)):
+    #        for j in range(len(MATRIX._X[i])):
+    #            MATRIX._X[i][j] = max(MATRIX._X[i][j], 0)
     
 
     # Make a CLS file, if necessary.
@@ -346,41 +534,20 @@ def main():
             args.name1, args.name2)
         name1, name2, classes = x
 
-    # Run the analysis.
-    outfile = None
-    try:
-        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
 
-        # Fork a subprocess, because some R libraries generate garbage
-        # to the screen.
-        r, w = os.pipe()
-        pid = os.fork()
-        if pid:   # Parent
-            os.close(w)
-            r = os.fdopen(r)
-            for line in r:
-                sys.stdout.write(line)   # output from R library
-                pass
-            os.waitpid(pid, 0)
-
-            assert os.path.exists(outfile), "failed"
-            for line in open(outfile):
-                sys.stdout.write(line)
-        else:     # Child
-            os.close(r)
-            w = os.fdopen(w, 'w')
-            os.dup2(w.fileno(), sys.stdout.fileno())
-            find_diffexp_genes(
-                outfile, args.gmt_file, args.gmt_p_cutoff, args.gmt_fdr_cutoff,
-                args.algorithm, MATRIX, name1, name2, classes,
-                args.fold_change, args.sam_delta, args.sam_qq_file,
-                args.show_all_genes, args.num_procs)
-            sys.exit(0)
-    finally:
-        if pid:
-            if outfile and os.path.exists(outfile):
-                os.unlink(outfile)
+    # Run the analysis
+    args = (
+        args.gmt_file, args.algorithm, args.paired, MATRIX,
+        args.geneid_header, args.genename_header,
+        name1, name2, classes,
+        args.fold_change, args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
+        args.sam_delta, args.sam_qq_file, args.edger_tagwise_dispersion,
+        args.num_procs)
+    _run_forked(*args)
+    #_run_not_forked(*args)  # for debugging
         
+
 
 if __name__ == '__main__':
     main()
+

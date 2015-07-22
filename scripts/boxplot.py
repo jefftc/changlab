@@ -40,6 +40,10 @@ def main():
     parser.add_argument(
         "--xlabel_size", default=1.0, type=float,
         help="Scale the size of the labels on X-axis.  Default 1.0.")
+    parser.add_argument(
+        "--xlabel_off", default=False, action="store_true",
+        help="Turn off the X labels.")
+    
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -74,20 +78,33 @@ def main():
     sub = ""
     xlab = ""
     ylab = "Gene Expression"
-    labels = MATRIX.col_names(arrayio.COL_ID)
+    labels = jmath.R_var("FALSE")
     col = jmath.R_var("NULL")
+
+    if not args.xlabel_off:
+        labels = MATRIX.col_names(arrayio.COL_ID)
 
     lwd = 2
     las = 3   # vertical labels
     at = jmath.R_var("NULL")
-    if labels:
+    if labels != jmath.R_var("FALSE"):
         at = range(1, len(labels)+1)
     cex_labels = 1.25*args.xlabel_size
     cex_legend = 1
     cex_lab = 1.5
     cex_sub = 1.5
 
-    jmath.R_equals(MATRIX._X, "X")
+    try:
+        jmath.R_equals(MATRIX._X, "X")
+    except ValueError, x:
+        # Not needed anymore.  Missing values are now implemented in jmath.
+        ## Look for missing values.
+        #for i in range(len(MATRIX._X)):
+        #    assert None not in MATRIX._X[i], \
+        #           "Missing values in row %d (0-based)." % i
+        ## Cannot diagnose error.  Raise the original exception.
+        raise
+    
     jmath.R_equals(labels, "labels")
     jmath.R_equals(at, "at")
 
@@ -99,7 +116,7 @@ def main():
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    x = 5*args.mar_bottom, 4*args.mar_left, 4, 2
+    x = 5*1.2*args.mar_bottom, 4*1.2*args.mar_left, 4, 2
     mar = [x+0.1 for x in x]
     jmath.R_fn("par", mar=mar, RETVAL="op")
         

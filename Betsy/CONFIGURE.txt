@@ -2,7 +2,7 @@ Configuration.
 
 ~/.bashrc
 ~/.genomicoderc
-gitpath/Betsy/Betsy.cfg
+gitpath/Betsy_3version/dot_betsyrc
 ~/.betsyrc
 
 gitpath is the path where you have your git folder.
@@ -13,90 +13,118 @@ You have to change it to your own path in the follow command that have "gitpath"
 In ~/.bashrc ,add these two lines.
 
 export PYTHONPATH="gitpath"
-export PYTHONPATH="gitpath/Betsy:${PYTHONPATH}"
+export PYTHONPATH="gitpath/Betsy_3version:${PYTHONPATH}"
 
 --------------------------------------------------------------
-2.Under your home directory, have a ~/.genomicoderc file. change the "gitpath" to your own path,there are four lines need to be changed.
+2.Under your home directory, have a ~/.genomicoderc file. change the "gitpath" to your own path,the lines in [CHANG LAB] need to be changed.
 
 The content is:
-[GENERAL]
+[GENERAL APPLICATIONS]
 python=/usr/local/bin/python
 matlab=/usr/local/bin/matlab
 povray=/usr/local/bin/povray
+
+
+[BIOINFORMATICS SOFTWARE]
+primer3=/usr/local/bin/primer3_core
+patser=/usr/local/bin/patser-v3b
 cluster=/usr/local/bin/cluster
-bfrm=/home/jchang/projects/bfrm/data/bfrm_20_4/bfrm64
+BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
 
-binreg20_path=/home/changlab/SIGNATURE/BinReg2.0
-bfrm_normalize_path=/home/changlab/SIGNATURE/BFRM_normalize
-bfrm_project_path=/home/changlab/SIGNATURE/BFRM_project
-dwd_path=/home/changlab/SIGNATURE/BatchAdjust
-sigdb_path=/home/changlab/SIGNATURE/sigdb
-
-annot_data_affy=/home/changlab/data/normalize/affymetrix
-annot_data_illu=/home/changlab/data/normalize/illumina
-psid2platform=/home/changlab/data/psid2platform
-gp_user = xiaolingchen
-gp_passwd = baby2008
-gp_server = http://genepattern.broadinstitute.org/gp/pages/index.jsf
-
-pybinreg=gitpath/scripts/pybinreg.py
-arrayplot=gitpath/scripts/arrayplot.py
-run_combat=gitpath/scripts/run_combat.R
-kaplanmeierlib=gitpath/Rlib/kaplanmeierlib.R
-
-[NORMALIZE_PY]
-normalize_AFFYMETRIX=/home/changlab/data/normalize/affymetrix
-normalize_RLIB=/home/changlab/changlab/Rlib
-
-[PATSER]
-patser_PATSER_BIN=/home/jchang/projects/motifsearch/patser/patser-v3b
-patser_ALPHABET_FILE=/home/jchang/projects/motifsearch/alphabet.prom_500_100
-
-motiflib_JASPAR_DB=/home/jchang/projects/motifsearch/data/JASPAR_CORE_2008
-motiflib_TRANSFAC_DB=/home/jchang/projects/motifsearch/data/transfac.12_1.pfm
-motiflib_JASPAR_INFO=/home/jchang/projects/motifsearch/jasparid2info
-motiflib_TRANSFAC_INFO=/home/jchang/projects/motifsearch/matid2info
-motiflib_MATID2LENGTH=/home/jchang/projects/motifsearch/matid2length
+Gatk=/usr/local/bin/GenomeAnalysisTK-2.4-9/GenomeAnalysisTK.jar
+Mark_duplicates=/usr/local/bin/picard-tools-1.87/MarkDuplicates.jar
+AddOrReplaceReadGroups=/usr/local/bin/picard-tools-1.87/AddOrReplaceReadGroups.jar
 
 
-[GENOMELIB]
-genomelib_RA_CHROM_HG18=/home/jchang/projects/scgenome/data/data.hg18/ra_chrom
-genomelib_RA_CHROM_MM9=/home/jchang/projects/scgenome/data/data.mm9/ra_chrom
+[BINREG]
+bfrm=/data/genomidata/bfrm64
+sigdb_path=/data/genomidata/SIGDB/sigdb
+binreg20_path=/data/genomidata/SIGNATURE/BinReg2.0
+bfrm_normalize_path=/data/genomidata/SIGNATURE/BFRM_normalize
+bfrm_project_path=/data/genomidata/SIGNATURE/BFRM_project
+selap_path=/data/genomidata/SIGANTURE/SELAPver3
 
 
-[TSS]
-gene_HG18=/home/jchang/projects/tss/data/hg18.knownGene.110312.txt
+[CHANG LAB]
+pybinreg=<gitpath>/scripts/pybinreg.py
+arrayplot=<gitpath>/scripts/arrayplot.py
+preprocess = <gitpath>/scripts/preprocess.py
+xls2txt = <gitpath>/scripts/xls2txt
+genepattern=<gitpath>/scripts/run_genepattern.py
+bfrmnorm=<gitpath>/scripts/bfrmnorm.py
+combatnorm=<gitpath>/scripts/combatnorm.py
+run_combat=<gitpath>/scripts/run_combat.R
+scoresig=<gitpath>/scripts/scoresig.py
+slice_matrix=<gitpath>/scripts/slice_matrix.py
+annotate_matrix=<gitpath>/scripts/annotate_matrix.py
+score_geneset=<gitpath>/scripts/score_geneset.py
+gsea=<gitpath>/scripts/gsea.py
+combat = <gitpath>/scripts/ComBat.R
+
+changlab_Rlib=<gitpath>/Rlib
+kaplanmeierlib=<gitpath>/Rlib/kaplanmeierlib.R
 
 
-[PRIMER3]
-primer3_PRIMER3_BIN=primer3_core
+[GENOME SEQUENCE DATA]
+RA_CHROM_HG18=/data/genomidata/ra_chrom_hg18
+RA_CHROM_HG19=/data/genomidata/ra_chrom_hg19
+RA_CHROM_MM10=/data/genomidata/ra_chrom_mm10
+knowngene_hg18=/data/genomidata/hg18.knownGene.110312.txt
+knowngene_hg19=/data/genomidata/hg19.knownGene.130104.txt
+knowngene_mm10=/data/genomidata/mm10.knownGene.130207.txt
+
+dm3_ref=/data/biocore/reference_genome/Drosophila_melanogaster/NCBI/build5.3/Sequence/BWAIndex/genome.fa
+hg18_ref=/data/biocore/genomes/Broad/Homo_sapiens_assembly18.fasta
+hg19_ref=/data/biocore/genomes/Broad/ucsc.hg19.fasta
+mm9_ref=É
+hg19_dbsnp=/data/biocore/GATK/hg19/dbsnp_137.hg19.vcf
+hg19_indels=/data/biocore/GATK/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf
+hg18_dbsnp=/data/biocore/GATK/hg18/dbsnp_137.hg18.vcf
+hg18_indels=/data/biocore/GATK/hg18/Mills_and_1000G_gold_standard.indels.hg18.vcf
+rna_hum =/home/xchen/try_RSEM/ref/human
+rna_mouse=/home/xchen/try_RSEM/ref/mouse
+annotate_vcf=/home/xchen/chencode/scripts/annovar/annotate_vcf.py
+chrom2genome=/data/genomidata/chrom2genome
+genomes=/data/genomidata/genomes
+
+[MICROARRAY DATA]
+annot_data_affy=/data/genomidata/affymetrix/annotation
+annot_data_illu=/data/genomidata/illumina/annotation
+psid2platform=/data/genomidata/psid2platform
+HumanHT_12_to_HG_u133_Plus_2=/home/changlab/data/mapping/HumanHT-12_to_HG-U133_Plus_2.txt
+illumina_HUMANHT12_CONTROL=/data/genomidata/illumina/HumanHT-12.control.txt
 
 
-[ILLUMINA]
-illumina_HUMANHT12_CONTROL=/home/jchang/projects/illumina/data/HumanHT-12.control.txt
+
+[TRANSCRIPTION FACTOR DATA]
+patser_alphabet=/data/genomidata/alphabet.prom_500_100
+JASPAR_DB=/data/genomidata/JASPAR_CORE_2008
+TRANSFAC_DB=/data/genomidata/transfac.12_1.pfm
+JASPAR_info=/data/genomidata/jasparid2info
+TRANSFAC_info=/data/genomidata/matid2info
+matid2length=/data/genomidata/matid2length
+
+
+
+[GENE PATTERN]
+gp_user=xiaolingchen
+gp_passwd=baby2008
+gp_server=http://genepattern.broadinstitute.org/gp/pages/index.jsf
+
+
+[GENE MAP]
+gm_user=genemap
+gm_passwd=g33m4p
+gm_db=genemap
+gm_host=localhost
+gm_port=3306
+--------------------------------------------------------------------
+3. In gitpath/Betsy_3version/dot_betsyrc,
+set up the outpath for where you want to put your results. The folder of the output path should exist.
+
 
 --------------------------------------------------------------------
-3. In gitpath/Betsy/Betsy.cfg, change the gitpath to your own path.
-Also set up the outpath for where you want to put your results. The folder of the output path should exist.
-
-The content is:
-
-[Section1]
-preprocess = gitpath/scripts/preprocess.py
-arrayplot = gitpath/scripts/arrayplot.py
-xls2txt = gitpath/scripts/xls2txt
-genepattern=gitpath/scripts/run_genepattern.py
-bfrmnorm=gitpath/scripts/bfrmnorm.py
-combatnorm=gitpath/scripts/combatnorm.py
-scoresig=gitpath/scripts/scoresig.py
-rename=gitpath/scripts/slice_matrix.py
-mapping=/home/changlab/data/mapping/HumanHT-12_to_HG-U133_Plus_2.txt
-networkfile=gitpath/Betsy/betsy.xgmml
-annotate_matrix=gitpath/scripts/annotate_matrix.py
-outputpath= <write your own output path here>
-
---------------------------------------------------------------------
-4.symlink the gitpath/Betsy/Betsy.cfg to ~/.betsyrc 
+4.symlink the gitpath/Betsy_3version/dot_betsyrc to ~/.betsyrc 
 using the command in linux:
-ln -s gitpath/Betsy/Betsy.cfg ~/.betsyrc
+ln -s gitpath/Betsy_3version/dot_betsyrc ~/.betsyrc
 

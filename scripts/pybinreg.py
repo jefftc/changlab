@@ -205,10 +205,11 @@ def init_params():
 
     group = OptionGroup(parser, "Signature")
     group.add_option(
-        "-g", "--genes", dest="genes", default=None,
+        "-g", "--genes", dest="genes", default=str(default_params.genes),
         help="Number of genes to use (default %s)." % default_params.genes)
     group.add_option(
-        "-m", "--metagenes", dest="metagenes", default=None,
+        "-m", "--metagenes", dest="metagenes",
+        default=str(default_params.metagenes),
         help="Number of metagenes to use (default %s)." %
         default_params.metagenes)
     parser.add_option_group(group)
@@ -1845,6 +1846,7 @@ def main():
     options, param_list = init_params()
     analyses = make_analyses(param_list)
     assert analyses
+    assert len(analyses) == len(param_list)
 
     # To DEBUG report.
     #if len(analyses) > 1:
@@ -1888,6 +1890,14 @@ def main():
         print "normalization reference file has %s genes and %s samples." % (
             tuple(map(parselib.pretty_int, nr.dim())))
     print "Merged file has %s genes." % (parselib.pretty_int(train0.nrow()))
+
+    # Make sure there are enough genes to analyze.
+    num_genes = train0.nrow()
+    for params in param_list:
+        assert params.genes < num_genes, "I cannot analyze with %d genes." % (
+            params.genes)
+
+    # Write out the data sets.
     train0 = arrayio.convert(train0, to_format=arrayio.gct_format)
     train1 = arrayio.convert(train1, to_format=arrayio.gct_format)
     if test:
@@ -1924,13 +1934,13 @@ def main():
     if params.dwd:
         dwd_normalize_matrices(
             train0, train1, test, matlab=options.matlab,
-            dwd_path=options.BatchAdjust)
+            dwd_path=options.dwd_path)
         write_dataset(file_layout.DS_DWD, train0, train1, test)
 
     if params.dwd_bild:
         dwd_normalize_matrices(
             train0, train1, test, version="bild", matlab=options.matlab,
-            dwd_path=options.BatchAdjust)
+            dwd_path=options.dwd_path)
         write_dataset(file_layout.DS_DWD_BILD, train0, train1, test)
 
     if params.shiftscale:

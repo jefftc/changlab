@@ -2,10 +2,24 @@
 
 import os
 
+def load_workbook(filename):
+    # openpyxl implementation prints stuff to screen.  Really
+    # annoying!  Get rid of the stuff printed to screen.
+    import sys
+    import StringIO
+    from openpyxl import load_workbook
+
+    old_stdout = sys.stdout
+    sys.stdout = StringIO.StringIO()
+    wb = load_workbook(filename)
+    sys.stdout = old_stdout
+    return wb
+    
+
 def cell2str(book, cell):
     import datetime
     import xlrd
-    
+
     (XL_CELL_EMPTY, XL_CELL_TEXT, XL_CELL_NUMBER, XL_CELL_DATE,
      XL_CELL_BOOLEAN, XL_CELL_ERROR, XL_CELL_BLANK) = range(7)
     if cell.ctype in [XL_CELL_EMPTY, XL_CELL_BLANK]:
@@ -35,7 +49,7 @@ def cell2str(book, cell):
                 dt2 = datetime.datetime(dt1.year, month, day, 0, 0, 0)
                 delta = dt2 - dt1
                 hour += delta.days * 24
-            
+
             x = "%d:%02d:%02d" % (hour, minute, second)
         return x
     elif cell.ctype == XL_CELL_ERROR:
@@ -44,15 +58,14 @@ def cell2str(book, cell):
         raise AssertionError, "Unknown cell type: %s" % cell.ctype
 
 def listws_xls(filename):
+    import StringIO
     import xlrd
-    
+
     book = xlrd.open_workbook(filename, logfile=StringIO.StringIO())
     for x in book.sheet_names():
         print x
 
 def listws_xlsx(filename):
-    from openpyxl import load_workbook
-    
     wb = load_workbook(filename)
     for x in wb.get_sheet_names():
         print x
@@ -60,7 +73,7 @@ def listws_xlsx(filename):
 def convert_xls(filename, worksheet):
     import StringIO
     import xlrd
-    
+
     book = xlrd.open_workbook(filename, logfile=StringIO.StringIO())
     assert book.nsheets, "Empty workbook"
 
@@ -77,8 +90,6 @@ def convert_xls(filename, worksheet):
         print "\t".join(x)
 
 def convert_xlsx(filename, worksheet):
-    from openpyxl import load_workbook
-
     wb = load_workbook(filename)
     if worksheet:
         sheet_names = wb.get_sheet_names()
@@ -101,6 +112,20 @@ def safe_encode(x):
     x = unicode(x).encode("utf-8")
     x = x.replace("\n", " ")
     x = x.replace("  ", " ")
+    float_x = int_x = None
+    # Make the number an integer if possible.
+    try:
+        float_x = float(x)
+        int_x = int(float_x)
+    except ValueError, y:
+        pass
+    except OverflowError, y:
+        # cannot convert float infinity to integer
+        pass
+    if float_x is not None and int_x is not None:
+        if abs(float_x - int_x) < 1E-10:
+            x = int_x
+    x = str(x)
     return x
 
 def main():

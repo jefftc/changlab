@@ -26,6 +26,7 @@ platform2gpplatform = {
     "HG_U133A_2" : "HG_U133A_2.chip",
     "HG_U133_Plus_2" : "HG_U133_Plus_2.chip",
     "Entrez_symbol_human" : None,
+    "Entrez_Symbol_human" : None,
     "entrez_ID_symbol_human" : None,
     # Missing entrez_ID_human
     }
@@ -34,8 +35,11 @@ def guess_chip_platform(M):
     # Return the GenePattern chip.platform for this matrix.
     from genomicode import arrayplatformlib
 
-    platform = arrayplatformlib.identify_platform_of_matrix(M)
-    assert platform, "I could not guess the platform for this file."
+    #platform = arrayplatformlib.identify_platform_of_matrix(M)
+    #assert platform, "I could not guess the platform for this file."
+    x = arrayplatformlib.score_platform_of_matrix(M)
+    platform, match = x
+    assert match > 0.95, "I could not guess the platform for this file."
     assert platform in platform2gpplatform, \
         "I don't know how to convert %s to a GenePattern platform." % platform
     chipname = platform2gpplatform.get(platform)
@@ -53,17 +57,30 @@ DATABASE2GENESET = {
     ## "computational" : "c4.all.v3.0.symbols.gmt",
     ## "gene_ontology" : "c5.all.v3.0.symbols.gmt",
     ## "gene_ontology:process" : "c5.bp.v3.0.symbols.gmt",
-    "positional" : "c1.all.v4.0.symbols.gmt",
-    "curated" : "c2.all.v4.0.symbols.gmt",
-    "curated:canonical" : "c2.cp.v4.0.symbols.gmt",
-    "curated:biocarta" : "c2.cp.biocarta.v4.0.symbols.gmt",
-    "curated:kegg" : "c2.cp.kegg.v4.0.symbols.gmt",
-    "curated:reactome" : "c2.cp.reactome.v4.0.symbols.gmt",
-    "motif" : "c3.all.v4.0.symbols.gmt",
-    "motif:tfactor" : "c3.tft.v4.0.symbols.gmt",
-    "computational" : "c4.all.v4.0.symbols.gmt",
-    "gene_ontology" : "c5.all.v4.0.symbols.gmt",
-    "gene_ontology:process" : "c5.bp.v4.0.symbols.gmt",
+    
+    ## "positional" : "c1.all.v4.0.symbols.gmt",
+    ## "curated" : "c2.all.v5.0.symbols.gmt",
+    ## "curated:canonical" : "c2.cp.v4.0.symbols.gmt",
+    ## "curated:biocarta" : "c2.cp.biocarta.v4.0.symbols.gmt",
+    ## "curated:kegg" : "c2.cp.kegg.v4.0.symbols.gmt",
+    ## "curated:reactome" : "c2.cp.reactome.v4.0.symbols.gmt",
+    ## "motif" : "c3.all.v4.0.symbols.gmt",
+    ## "motif:tfactor" : "c3.tft.v4.0.symbols.gmt",
+    ## "computational" : "c4.all.v4.0.symbols.gmt",
+    ## "gene_ontology" : "c5.all.v4.0.symbols.gmt",
+    ## "gene_ontology:process" : "c5.bp.v4.0.symbols.gmt",
+    
+    "positional" : "c1.all.v5.0.symbols.gmt",
+    "curated" : "c2.all.v5.0.symbols.gmt",
+    "curated:canonical" : "c2.cp.v5.0.symbols.gmt",
+    "curated:biocarta" : "c2.cp.biocarta.v5.0.symbols.gmt",
+    "curated:kegg" : "c2.cp.kegg.v5.0.symbols.gmt",
+    "curated:reactome" : "c2.cp.reactome.v5.0.symbols.gmt",
+    "motif" : "c3.all.v5.0.symbols.gmt",
+    "motif:tfactor" : "c3.tft.v5.0.symbols.gmt",
+    "computational" : "c4.all.v5.0.symbols.gmt",
+    "gene_ontology" : "c5.all.v5.0.symbols.gmt",
+    "gene_ontology:process" : "c5.bp.v5.0.symbols.gmt",
     }
 DEFAULT_DATABASE = "gene_ontology:process"
 
@@ -131,11 +148,13 @@ def fix_class_order(MATRIX, name1, name2, classes):
 def check_matrix(X):
     import re
     import arrayio
+    from genomicode import hashlib
 
     assert arrayio.gct_format.is_matrix(X)
 
     # Make sure gene IDs (NAME) is unique and non-empty.
-    assert X.row_names()[0].upper() == "NAME"
+    assert X.row_names()[0].upper() == "NAME", \
+           "Header of first column should be: NAME"
     seen = {}
     for i, name in enumerate(X.row_names("NAME")):
         assert name.strip(), "Empty gene ID in row %d." % (i+1)
@@ -144,9 +163,46 @@ def check_matrix(X):
 
     # Make sure sample names don't contain spaces or other
     # punctuation.  GSEA seems to be sensitive to these things.
-    for i, name in enumerate(X.col_names(arrayio.tdf.SAMPLE_NAME)):
-        assert not re.search("[^a-zA-Z0-9_-]", name), \
-               "Bad sample name: %s" % name
+    sample_names = X.col_names(arrayio.tdf.SAMPLE_NAME)
+    bad_names = []
+    for i, name in enumerate(sample_names):
+        if not name:
+            bad_names.append("<blank>")
+        elif re.search("[^a-zA-Z0-9_-]", name):
+            bad_names.append(name)
+            
+    # If there are bad names, try to fix them.
+    #if bad_names:
+    #    sample_names_h = [hashlib.hash_var(x) for x in sample_names]
+    #    # If there are no duplicates, use these sample names.
+    #    raise NotImplementedError
+    assert not bad_names, "Bad sample name: %s" % ", ".join(bad_names)
+
+    # Make sure sample names are unique.
+    seen = {}
+    for i, name in enumerate(sample_names):
+        assert name not in seen, "Duplicate sample name: %s" % name
+        seen[name] = 1
+
+
+def check_classes(classes, permutation_type):
+    assert classes
+
+    class2count = {}
+    for x in classes:
+        if x not in class2count:
+            class2count[x] = 0
+        class2count[x] += 1
+    
+    # Make sure there are exactly 2 classes.
+    assert len(class2count) != 1, "Only 1 class given."
+    assert len(class2count) == 2, "Cannot have more than 2 classes."
+
+    # If permutation_type=phenotype, need at least 3 samples per class.
+    if permutation_type == "phenotype":
+        counts = class2count.values()
+        assert min(counts) >= 3, \
+               "Need at least 3 samples for phenotype permutations."
         
 
 def main():
@@ -207,6 +263,12 @@ def main():
         "already unique gene symbols.  Also, can use this if you "
         "provide the database_file and the gene IDs match the ones "
         "in our gene expression file.")
+
+    # phenotype is more accurate.  But if only 2 samples, need to be
+    # gene_set.  (Not sure about 3 samples?  Where is the limit?)
+    group.add_argument(
+        "--permutation_type", default="phenotype",
+        choices=["phenotype", "gene_set"])
     
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
@@ -273,9 +335,16 @@ def main():
         if platform is None:  # Gene Symbol
             args.no_collapse_dataset = True
 
+    # Do some sanity checking to make sure imputs are reasonable.
+    check_matrix(MATRIX)
+    check_classes(classes, args.permutation_type)
+    
     # Set up file names.
     opj = os.path.join
-    x = os.path.splitext(os.path.split(args.expression_file)[1])[0]
+    x = os.path.split(args.expression_file)[1]
+    if x.lower().endswith(".gz"):
+        x = x[:-3]
+    x = os.path.splitext(x)[0]
     x = x.replace(" ", "_")  # GenePattern cannot work with spaces.
     assert x, "empty file name"
     gct_file = "%s.gct" % x
@@ -292,7 +361,6 @@ def main():
     # is better to have local copies of the files.  It is unclear how
     # to upload files to GenePattern if the file names have spaces in
     # them.  Get around this by making all the files local.
-    check_matrix(MATRIX)
     arrayio.gct_format.write(MATRIX, open(gct_full, 'w'))
     open(cls_full, 'w').write(cls_data)
     if database_file:
@@ -307,12 +375,15 @@ def main():
         "expression.dataset" : gct_file,
         "phenotype.labels" : cls_file,
         "collapse.dataset" : collapse_dataset,
+        "permutation.type" : args.permutation_type,
         }
     # platform is required, even if collapse.dataset is false.  If no
     # platform is given, then specify a default one.
-    params["chip.platform"] = platform
-    if params["chip.platform"] is None:
-        params["chip.platform"] = "HG_U133A.chip"
+    #CHIP_PLATFORM = "chip.platform"
+    CHIP_PLATFORM = "chip.platform.file"
+    params[CHIP_PLATFORM] = platform
+    if params[CHIP_PLATFORM] is None:
+        params[CHIP_PLATFORM] = "HG_U133A.chip"
     if database_file:
         params["gene.sets.database.file"] = db_file
     # Required, even if gene.sets.database.file is given.
@@ -349,7 +420,7 @@ def main():
         p.wait()
     finally:
         os.chdir(cwd)
-    assert not data.strip(), data
+    assert not data.strip(), "%s\n%s" % (cmd, data)
 
 
     error_file = os.path.join(args.outpath, "stderr.txt")

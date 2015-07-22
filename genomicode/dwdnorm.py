@@ -46,6 +46,7 @@ def find_dwd(default_path):
         break
     return path
 
+
 def normalize(X, Y, version=None, matlab=None, dwd_path=None):
     # X is a Matrix of the data.  Y is a vector of -1, 1 indicating
     # the class of each sample.  Returns the normalized version of the
@@ -53,6 +54,7 @@ def normalize(X, Y, version=None, matlab=None, dwd_path=None):
     # to handle the normalization.  If version is "bild", then Y can
     # consist of -1, 1, or 2, where -1 and 1 distinguish the two
     # classes of the training set, and 2 indicates the validation set.
+    # Returns the normalized Matrix.
     #import copy
     import subprocess
     import tempfile
@@ -90,6 +92,7 @@ def normalize(X, Y, version=None, matlab=None, dwd_path=None):
     finally:
         _safe_unlink(X_file)
 
+    #open("dwd_norm.m", 'w').write(script)
     X_norm = _parse_normalized_matrix(lines)
     assert len(X_norm) == X.nrow()
     if X_norm:
@@ -154,7 +157,8 @@ def _format_exec_file(X_file, Y, version, dwd_path):
     #w("save('%s', 'Xout', '-ASCII', '-TABS');\n" % outfile)
     w("quit;\n")
     handle.seek(0)
-    return handle.read()
+    x = handle.read()
+    return x
 
 def _safe_unlink(filename):
     if filename and os.path.exists(filename):
@@ -180,7 +184,7 @@ def _parse_normalized_matrix(lines):
     else:
         raise AssertionError, "I could not find the normalized output."
     lines = lines[i+1:]
-    
+
     # Parse out the matrix.
     X_norm = []
     for line in lines:

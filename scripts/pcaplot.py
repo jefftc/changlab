@@ -81,40 +81,47 @@ def main():
     from genomicode import jmath
     from genomicode import pcalib
     from genomicode import colorlib
+    from genomicode import prismlib
 
     usage = "usage: %prog [options] filename outfile.png"
     parser = OptionParser(usage=usage, version="%prog 01")
 
     parser.add_option(
-        "-l", "--log_transform", dest="log_transform", default=False,
+        "-l", "--log_transform", default=False,
         action="store_true",
         help="Log transform the data first.")
     parser.add_option(
-        "-g", "--genes", dest="genes", default=None, type="int",
+        "-g", "--genes", default=None, type="int",
         help="Number of genes to use.")
     parser.add_option(
-        "-c", "--cluster", dest="cluster", default=[], action="append",
+        "-c", "--cluster", default=[], action="append",
         help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
     parser.add_option(
-        "--indexes_include_headers", default=False, action="store_true",
+        "--indexes_include_headers", "--iih", action="store_true",
         help="If not given (default), then index 1 is the first column "
         "with data.  If given, then index 1 is the very first column "
         "in the file, including the headers.")
     parser.add_option(
-        "", "--cluster_file", dest="cluster_file", default=None, 
+        "--cluster_file", 
         help="A KGG format file of the clusters for the samples.  "
         "Clusters in this file can be 0-based or 1-based.")
     parser.add_option(
-        "", "--label", dest="label", default=False, action="store_true",
+        "--prism_file", 
+        help="A KGG format file of the clusters for the samples.  "
+        "Clusters in this file can be 0-based or 1-based.")
+    parser.add_option(
+        "--label", default=False, action="store_true",
         help="Label the samples.")
     parser.add_option(
-        "", "--title", dest="title", default=None, type="str",
-        help="Put a title on the plot.")
+        "--scale_label", type=float, default=1.0, 
+        help="Scale the size of the labels.")
     parser.add_option(
-        "", "--width", dest="width", default=None, type="int",
+        "--title", help="Put a title on the plot.")
+    parser.add_option(
+        "--width", default=None, type="int",
         help="Width (in pixels) of the plot.")
     parser.add_option(
-        "-v", "--verbose", dest="verbose", default=False, action="store_true",
+        "-v", "--verbose", default=False, action="store_true",
         help="")
     
     # Parse the input arguments.
@@ -129,6 +136,7 @@ def main():
     if options.width is not None:
         assert options.width > 10, "too small"
         assert options.width < 4096*16, "width too big"
+    assert options.scale_label > 0.01 and options.scale_label < 100
 
     num_genes = options.genes
     #K = 10  # number of dimensions
@@ -173,7 +181,8 @@ def main():
         height, width = int(options.width*0.75), options.width
     pcalib.plot_scatter(
         X, Y, outfile, group=cluster, color=color, title=options.title,
-        label=LABEL, height=height, width=width)
+        label=LABEL, xlabel=False, ylabel=False,
+        scale_label=options.scale_label, height=height, width=width)
 
     if options.verbose:
         # Write out the principal components.
@@ -192,6 +201,30 @@ def main():
             x = [i+1, x, clust, c] + principal_components[i]
             assert len(x) == len(header)
             print "\t".join(map(str, x))
+
+    if options.prism_file:
+        # Write out as prism format.
+        num_series = 1
+        if cluster:
+            num_series = max(cluster) + 1
+        names = ["CLUSTER-%d" % (i+1) for i in range(num_series)]
+        DATA = {}
+        rownames = {}
+        for i in range(num_series):
+            xy = []
+            n = []
+            for j in range(len(principal_components)):
+                if cluster and cluster[j] != i:
+                    continue
+                x = principal_components[j][0]
+                y = principal_components[j][1]
+                xy.append([x, y])
+                n.append(MATRIX.col_names(arrayio.COL_ID)[j])
+            if xy:
+                DATA[names[i]] = xy
+                rownames[names[i]] = n
+
+        prismlib.write_scatterplot(options.prism_file, DATA, rownames)
 
 
 if __name__ == '__main__':

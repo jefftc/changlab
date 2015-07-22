@@ -426,11 +426,14 @@ def summarize_report(
 
     w(htmllib.H3("I.  Overview"))
     files = [os.path.split(x)[1] for x in filenames]
-    l = []
-    x = "I normalized the following data sets using %d factors." % num_factors
-    if num_factors == 1:
-        x = "I normalized one data set using %d factors." % num_factors
-    l.append(x)
+    x1 = "one data set"
+    if len(files) > 1:
+        x1 = "the following data sets"
+    x2 = "factor"
+    if num_factors > 1:
+        x2 = "factors"
+    x = "I normalized %s using %d %s." % (x1, num_factors, x2)
+    l = [x]
     for i in range(len(files)):
         name = files[i]
         num_samples = matrices[i].ncol()

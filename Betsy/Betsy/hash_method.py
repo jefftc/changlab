@@ -1,9 +1,10 @@
-#hash_method.py
-import os
-
+# Functions:
+# hash_parameters
+# get_file_checksum
+# get_input_checksum
 
 def hash_parameters(inputid, pipeline, **parameters):
-    """given a file parameters,generate a hash string"""
+    """given a file parameters, generate a hash string"""
     from hashlib import md5
     hashstring = inputid + ' '.join(pipeline)
     for key in sorted(parameters):
@@ -16,6 +17,7 @@ def hash_parameters(inputid, pipeline, **parameters):
 
 def get_file_checksum(identifier):
     from hashlib import md5, sha1
+    
     chunk_size = 1048576  # 1024 B * 1024 B = 1048576 B = 1 MB
     file_md5_checksum = md5()
     file_sha1_checksum = sha1()
@@ -30,18 +32,20 @@ def get_file_checksum(identifier):
     byte_size = str(byte_size)
     md5_checksum = file_md5_checksum.hexdigest()
     sha1_checksum = file_sha1_checksum.hexdigest()
-    return  byte_size, md5_checksum, sha1_checksum
+    return byte_size, md5_checksum, sha1_checksum
 
 
 def get_input_checksum(identifier):
+    import os
     from hashlib import md5
+    
     chunk_size = 1048576  # 1024 B * 1024 B = 1048576 B = 1 MB
     file_md5_checksum = md5()
     if os.path.isdir(identifier):
         files = os.listdir(identifier)
         byte_size = 0
         for filename in files:
-            if os.path.isdir(os.path.join(identifier,filename)):
+            if os.path.isdir(os.path.join(identifier, filename)):
                 continue
             with open(os.path.join(identifier, filename), "rb") as f:
                 byte = f.read(chunk_size)

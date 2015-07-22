@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import os
 
 def find_gene_names(MATRIX, gene_names):
@@ -36,12 +37,18 @@ def get_pretty_gene_name(MATRIX, gene_i):
         if gene_name:
             return "GeneID %s" % gene_name
 
-    # Just us a probe ID.
+    # Just use a probe ID.
     header = apl.find_header(MATRIX, apl.PROBE_ID)
     if header is not None:
         gene_name = MATRIX.row_names(header)[gene_i]
         if gene_name:
             return "ProbeID %s" % gene_name
+
+    # Use whatever's in the first column.
+    if MATRIX.row_names():
+        gene_name = MATRIX.row_names(MATRIX.row_names()[0])[gene_i]
+        if gene_name:
+            return gene_name
 
     # Just return the index of the gene
     return "Gene %04d" % gene_i
@@ -69,6 +76,9 @@ def main():
         help="Comma-separated list of IDs (e.g. probes, gene names) "
         "to include.")
     parser.add_argument(
+        "--all_genes", default=False, action="store_true",
+        help="Plot all genes in the file.")
+    parser.add_argument(
         "--height", default=None, type=int,
         help="Height (in pixels) of the plot.")
     parser.add_argument(
@@ -80,6 +90,12 @@ def main():
     parser.add_argument(
         "--mar_bottom", default=1.0, type=float,
         help="Scale margin at bottom of plot.  Default 1.0 (no scaling).")
+    parser.add_argument(
+        "--xlabel_size", default=1.0, type=float,
+        help="Scale the size of the labels on X-axis.  Default 1.0.")
+    parser.add_argument(
+        "--xlabel_off", default=False, action="store_true",
+        help="Turn off the X labels.")
     parser.add_argument(
         "-v", "--verbose", default=False, action="store_true",
         help="")
@@ -94,9 +110,11 @@ def main():
     if args.height is not None:
         assert args.height > 10, "too small"
         assert args.height < 4096*16, "height too big"
-    assert args.gene_names, "Please specify some genes to plot."
+    assert args.gene_names or args.all_genes, \
+           "Please specify some genes to plot."
     assert args.mar_bottom > 0 and args.mar_bottom < 10
     assert args.mar_left > 0 and args.mar_left < 10
+    assert args.xlabel_size > 0 and args.xlabel_size < 10
 
     height = args.height or 1600
     width = args.width or 1600
@@ -104,8 +122,13 @@ def main():
     MATRIX = arrayio.read(args.expression_file)
     assert MATRIX.nrow() and MATRIX.ncol(), "Empty matrix."
 
-    I = find_gene_names(MATRIX, args.gene_names)
+    I = None
+    if args.gene_names:
+        I = find_gene_names(MATRIX, args.gene_names)
+    elif args.all_genes:
+        I = range(MATRIX.nrow())
     assert I, "No genes found."
+    assert len(I) < 50, "Too many genes."
     MATRIX = MATRIX.matrix(I, None)
 
     gene_names = [get_pretty_gene_name(MATRIX, i)
@@ -124,19 +147,23 @@ def main():
     sub = ""
     xlab = ""
     ylab = "Gene Expression"
-    labels = MATRIX.col_names(arrayio.COL_ID)
+    labels = jmath.R_var("FALSE")
+    #labels = MATRIX.col_names(arrayio.COL_ID)
     col = R_var("NULL")
     xlim = [1, MATRIX.ncol()+1]
     y_max = jmath.max(jmath.max(MATRIX._X))
     y_min = jmath.min(jmath.min(MATRIX._X))
     ylim = [y_min-1, y_max+1]
 
+    if not args.xlabel_off:
+        labels = MATRIX.col_names(arrayio.COL_ID)
+
     lwd = 2
     las = 3   # vertical labels
     at = R_var("NULL")
-    if labels:
+    if labels != jmath.R_var("FALSE"):
         at = range(1, len(labels)+1)
-    cex_labels = 1
+    cex_labels = 1*args.xlabel_size
     cex_legend = 1
     cex_lab = 1.5
     cex_sub = 1.5
@@ -157,7 +184,7 @@ def main():
         height=height, width=width, units="px", res=300)
 
     # Set the margins.
-    x = 5*args.mar_bottom, 4*args.mar_left, 4, 2
+    x = 5*1.2*args.mar_bottom, 4*1.2*args.mar_left, 4, 2
     mar = [x+0.1 for x in x]
     R_fn("par", mar=mar, RETVAL="op")
     

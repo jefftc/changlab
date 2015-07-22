@@ -1,11 +1,43 @@
-# find.de.genes.sam    Use SAM to find differentially expressed genes.
-# find.de.genes.ttest
+# Microarray data.
+# find.de.genes.fc
+# find.de.genes.ttest            Need to import statlib.R first.
+# find.de.genes.sam              Only shows significant genes.
 # find.de.genes.ebayes
-# find.de.genes.2cnoref.ebayes
+# find.de.genes.paired.ebayes
+#
+# Two-color arrays.  Comparing one color to another.
+# find.de.genes.2cnoref.ebayes   Two color, only one type of sample.
+#
+# RNA-Seq
+# find.de.genes.deseq2     Takes raw counts.  FOLD.CHANGE not accurate.
+# find.de.genes.edgeR      Takes raw counts.  FOLD.CHANGE not accurate.
 
-# TODO: 
-# - ttest  Add mean expression, num samples for each class.
-# - sam    Add mean expression, num samples for each class.
+# Input parameters:
+# X            Gene x sample matrix of logged expression values, unless
+#              described otherwise.
+# Y            List of classes for each sample.  Can be names.
+#              Typically 2 classes only.  Will filter out NA.
+# geneid       Array of gene names.
+# genenames    Array of gene IDs.
+# fold.change  Filter by fold change first.  This should not be logged.
+#
+# Each function returns a list with members:
+# DATA  Table with columns:
+#       Gene ID
+#       Gene Name
+#       p.value                 OPTIONAL
+#       FDR                     OPTIONAL
+#       Bonf                    OPTIONAL
+#       Num Samples <Class>
+#       Mean <Class>
+#       Log_2 Fold Change
+#       Direction
+#       <Signal for Class 1>
+#       <Signal for Class 2>
+# Other specific to the method.
+
+
+
 
 matrix2dataframe <- function(M) {
   x <- matrix(unlist(M), nrow(M), ncol(M))
@@ -22,334 +54,619 @@ matrix2dataframe <- function(M) {
   x
 }
 
-find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0) {
-  # X must be logged.
-  # Y should be the labels for two classes.  NA will be filtered out.
-  # FOLD.CHANGE should not be logged.
-  # 
-  # samr.plot(RESULTS$S, RESULTS$DELTA, min.foldchange=2)
-  library("samr")
+normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
+  # Return a list with members:
+  # n               Number of genes.
+  # m               Number of samples.
+  # g               Number of groups.
+  # X               nxm matrix of expression values.
+  # Y               m vector of 1...g
+  # geneid          n vector of gene IDs.
+  # genenames       n vector of gene names.
+  # group.names     g vector of group names.
+  # NS              g vector of num samples per group.
+  # NS.not.missing  g list of n-vector of num samples for each gene.
+  # X.i             g list of nxNS matrices (samples in each group)
+  # MEAN            nxg matrix of the mean expression of each gene.         
+  # VAR             nxg matrix of the variance of each gene.
+  # lFC.group12     Fold change comparing group 1 to group 2.
+  #                 NA if there are not exactly 2 groups.
+  # highest         Text description of group with highest average expression.
+  #                 NA if there is only 1 group.
+  if(ncol(X) != length(Y)) stop("X and Y not aligned")
 
+  # Filter out NA.
   I <- which(!is.na(Y))
   X <- X[,I]
   Y <- Y[I]
 
   Y.orig <- Y
-  Y.all <- sort(unique(Y.orig))
-  if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
+  group.names <- sort(unique(Y.orig))
   Y <- rep(NA, length(Y.orig))
-  Y[Y.orig == Y.all[1]] <- 1
-  Y[Y.orig == Y.all[2]] <- 2
-  if(any(is.na(Y))) stop("bad")
+  for(i in 1:length(group.names))
+    Y[Y.orig == group.names[i]] <- i
+  if(any(is.na(Y))) stop("missing values in Y")
+
+  n <- nrow(X)
+  m <- ncol(X)
+  g <- length(group.names)
+  #if(g < 2) stop("not enough groups")
 
   if((length(geneid) == 1)  && is.na(geneid)) {
-    ndigits <- floor(log(nrow(X), 10)) + 1
-    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
+    ndigits <- floor(log(n, 10)) + 1
+    geneid <- sprintf("GENE%0*d", ndigits, 1:n)
   }
   if((length(genenames) == 1) && is.na(genenames)) {
     genenames <- geneid
   }
 
-  if(ncol(X) != length(Y)) stop("unaligned")
-  if(nrow(X) != length(geneid)) stop("unaligned")
-  if(nrow(X) != length(genenames)) stop("unaligned")
-
-  D <- list(x=X, y=Y, logged2=TRUE, geneid=geneid, genenames=genenames)
-  S <- samr(D, resp.type="Two class unpaired", nperms=100)
-  DTAB <- samr.compute.delta.table(S, min.foldchange=FOLD.CHANGE)
-  SIG <- samr.compute.siggenes.table(
-    S, DELTA, D, DTAB, min.foldchange=FOLD.CHANGE)
-
-  DATA <- NULL
-  if((SIG$ngenes.up > 0) | (SIG$ngenes.lo > 0)) {
-    SCORE <- matrix2dataframe(rbind(SIG$genes.up, SIG$genes.lo))
-    # SAM messes up a few things.  Fix them.
-    # The geneid and genenames are reversed.
-    x <- SCORE[["Gene ID"]]
-    SCORE[["Gene ID"]] <- SCORE[["Gene Name"]]
-    SCORE[["Gene Name"]] <- x
-    if(nrow(SCORE) >= 1) {
-      # The Row is off-by-1.
-      SCORE[["Row"]] <- SCORE[["Row"]]-1
-    }
-
-    x1 <- sprintf("Higher in %s", Y.all[1])
-    x2 <- sprintf("Higher in %s", Y.all[2])
-    Direction <- c(rep(x2, SIG$ngenes.up), rep(x1, SIG$ngenes.lo))
-    x <- matrix(X[SCORE[["Row"]],], ncol=ncol(X))
-    DATA <- matrix2dataframe(cbind(as.matrix(SCORE), Direction, x))
-    names(DATA) <- c(names(SCORE), "Direction", Y.orig)
-
-    # Calculate NL10 FDR.
-    I <- which(names(DATA) == "q-value(%)")
-    if(length(I) != 1) stop("missing q-value(%)")
-    nlfdr <- -log(DATA[,I]/100+1E-25, 10)
-    DATA <- cbind(DATA[,1:3], nlfdr, DATA[,4:ncol(DATA)])
-    names(DATA)[4] <- "NL10 FDR"
-
-    # Convert "Fold Change" to log_2.
-    I <- which(names(DATA) == "Fold Change")
-    if(length(I) != 1) stop("missing Fold Change")
-    lfc <- abs(log(DATA[,I], 2))
-    DATA[,I] <- lfc
-    names(DATA)[I] <- "Log_2 Fold Change"
-
-    if(!all(geneid[DATA[["Row"]]] == DATA[["Gene ID"]])) stop("unaligned")
+  # Pull out a submatrix for each class.
+  cn <- colnames(X)
+  if(is.null(cn))
+    cn <- sprintf("SAMP%03d", 1:ncol(X))
+  X.i <- list()
+  for(i in 1:g) {
+    x <- matrix(X[,Y==i], nrow=nrow(X))
+    colnames(x) <- cn[Y==i]
+    X.i[[i]] <- x
+  }
+  
+  # Count the number of samples per group.
+  NS <- rep(NA, g)
+  for(i in 1:g)
+    NS[i] <- sum(Y==i)
+  NS.not.missing <- list()
+  for(i in 1:g) {
+    x <- X.i[[i]]
+    num.not.missing <- apply(x, 1, function(row) sum(!is.na(row)))
+    NS.not.missing[[i]] <- num.not.missing
   }
 
-  list(S=S, DELTA.TAB=DTAB, SIG.TAB=SIG, DATA=DATA, DELTA=DELTA)
+  # BUG: MEAN and VAR calculations will fail is all values are
+  # missing.
+  # Calculate the MEAN expression for each group.
+  MEAN <- matrix(NA, n, g)
+  for(i in 1:g) {
+    x <- X.i[[i]]
+    # will be NaN if empty matrix
+    MEAN[,i] <- apply(x, 1, function(xi) mean(xi, na.rm=TRUE))
+  }
+
+  # Calculate the VARIANCE of expression for each group.
+  VAR <- matrix(NA, n, g)
+  for(i in 1:g) {
+    x <- X.i[[i]]
+    # will be NaN if empty matrix
+    VAR[,i] <- apply(x, 1, function(xi) var(xi, na.rm=TRUE))
+  }
+
+  # Fold change between groups 1 and 2.
+  lFC.group12 <- NA
+  if(g == 2) {
+    if(X.is.logged) {
+      lFC.group12 <- abs(MEAN[,2] - MEAN[,1])
+    } else {
+      x1 <- log(X.i[[1]]+1E-300, 2)
+      x2 <- log(X.i[[2]]+1E-300, 2)
+      mean1 <- apply(x1, 1, mean)
+      mean2 <- apply(x2, 1, mean)
+      lFC.group12 <- abs(mean2 - mean1)
+    }
+  }
+
+  # Figure out the highest group.
+  x1 <- "Higher"
+  if(g > 2)
+    x1 <- "Highest"
+  x2 <- rep(NA, n)
+  max.i <- apply(MEAN, 1, which.max)
+  for(i in 1:g)
+    x2[max.i==i] <- group.names[i]
+  if(any(is.na(x2))) stop("missing max values")
+  highest <- NA
+  if(g > 1)
+    highest <- sprintf("%s in %s", x1, x2)
+  # If the number is the same everywhere, then say it's SAME.
+  mean.min <- apply(MEAN, 1, min)
+  mean.max <- apply(MEAN, 1, max)
+  highest[mean.min == mean.max] <- "SAME"
+
+  if(nrow(X) != n) stop("unaligned 1")
+  if(ncol(X) != m) stop("unaligned 2")
+  if(length(Y) != m) stop("unaligned 3")
+  if(length(geneid) != n) stop("unaligned 4")
+  if(length(genenames) != n) stop("unaligned 5")
+  if(length(group.names) != g) stop("unaligned 6")
+  if(length(NS) != g) stop("unaligned 7")
+  if(length(NS.not.missing) != g) stop("unaligned 8")
+  for(i in 1:g)
+    if(length(NS.not.missing[[i]]) != n) stop("unaligned 9")
+  if(length(X.i) != g) stop("unaligned 10")
+  if(nrow(MEAN) != n) stop("unaligned 11")
+  if(ncol(MEAN) != g) stop("unaligned 12")
+  if((g == 2) && (length(lFC.group12) != n)) stop("unaligned 13")
+  if((g > 1) && (length(highest) != n)) stop("unaligned 14")
+
+  list(n=n, m=m, g=g, X=X, Y=Y, geneid=geneid, genenames=genenames, 
+    group.names=group.names, NS=NS, NS.not.missing=NS.not.missing, X.i=X.i, 
+    MEAN=MEAN, VAR=VAR, lFC.group12=lFC.group12, highest=highest)
+}
+
+slice.by.genes <- function(IN, I) {
+  # I is a list of indexes.
+  X <- matrix(IN$X[I,], ncol=ncol(IN$X), dimnames=list(NULL, colnames(IN$X)))
+  geneid <- IN$geneid[I]
+  genenames <- IN$genenames[I]
+  NS.not.missing <- list()
+  for(i in 1:length(IN$NS.not.missing)) {
+    x <- IN$NS.not.missing[[i]][I]
+    NS.not.missing[[i]] <- x
+  }
+  X.i <- list()
+  for(i in 1:length(IN$X.i)) {
+    x <- matrix(IN$X.i[[i]][I,], ncol=ncol(IN$X.i[[i]]))
+    colnames(x) <- colnames(IN$X.i[[i]])
+    X.i[[i]] <- x
+  }
+  MEAN <- IN$MEAN[I,]
+  VAR <- IN$VAR[I,]
+  lFC.group12 <- NA
+  if(IN$g == 2)
+    lFC.group12 <- IN$lFC.group12[I]
+  highest <- NA
+  if(IN$g > 1)
+    highest <- IN$highest[I]
+
+  list(n=nrow(X), m=IN$m, g=IN$g, X=X, Y=IN$Y, 
+    geneid=geneid, genenames=genenames, group.names=IN$group.names,
+    NS=IN$NS, NS.not.missing=NS.not.missing,
+    X.i=X.i, MEAN=MEAN, VAR=VAR, lFC.group12=lFC.group12,
+    highest=highest)
+}
+
+filter.by.fold.change <- function(IN, fold.change) {
+  if(fold.change < 1E-10)
+    return(IN)
+  I <- which(IN$lFC.group12 >= log(fold.change, 2))
+  slice.by.genes(IN, I)
+}
+
+make.output.table <- function(IN, p.values, fdr, bonf, filter.p05) {
+  # p.values, fdr, or bonf can be empty if not calculated by the
+  # method.
+  if(length(p.values))
+    if(length(p.values) != IN$n) stop("bad")
+  if(length(fdr))
+    if(length(fdr) != IN$n) stop("bad")
+  if(length(bonf))
+    if(length(bonf) != IN$n) stop("bad")
+
+  x1 <- cbind(IN$geneid, IN$genenames)
+  if(length(p.values))
+    x1 <- cbind(x1, p.values)
+  if(length(fdr))
+    x1 <- cbind(x1, fdr)
+  if(length(bonf))
+    x1 <- cbind(x1, bonf)
+  # BUG: Should use NS.not.missing.
+  x2 <- c()
+  if(length(IN$NS.not.missing) != IN$g) stop("unaligned: NS.not.missing")
+  for(i in 1:length(IN$NS.not.missing))
+    x2 <- cbind(x2, IN$NS.not.missing[[i]])
+  x3 <- cbind(IN$MEAN, IN$lFC.group12, IN$highest)
+  x4 <- IN$X.i[[1]]
+  if(IN$g >= 2) {
+    for(i in 2:IN$g)
+      x4 <- cbind(x4, IN$X.i[[i]])
+  }
+  DATA <- cbind(x1, x2, x3, x4)
+  x1 <- c("Gene ID", "Gene Name")
+  if(length(p.values))
+    x1 <- c(x1, "p.value")
+  if(length(fdr))
+    x1 <- c(x1, "FDR")
+  if(length(bonf))
+    x1 <- c(x1, "Bonf")
+  x2 <- c(sprintf("Num Samples %s", IN$group.names), 
+    sprintf("Mean %s", IN$group.names), 
+    "Log_2 Fold Change", "Direction")
+  x3 <- c()
+  for(i in 1:IN$g)
+    x3 <- c(x3, colnames(IN$X.i[[i]]))
+  x <- c(x1, x2, x3)
+  colnames(DATA) <- x
+  DATA <- matrix2dataframe(DATA)
+
+  if(filter.p05 && length(p.values)) {
+    I <- which(p.values < 0.05)
+    DATA <- DATA[I,]
+  }
+
+  DATA
+}
+
+
+
+find.de.genes.fc <- function(X, Y, geneid=NA, genenames=NA, FOLD.CHANGE=0) {
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  # Need at least 1 sample to calculate fold change.
+  if(IN$NS[1] < 1) stop("not enough samples")
+  if(IN$NS[2] < 1) stop("not enough samples")
+
+  IN <- filter.by.fold.change(IN, FOLD.CHANGE)
+  DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+  return(list(DATA=DATA))
+
+  # Sort by decreasing fold change.
+  #O <- order(as.numeric(DATA[,2+length(Y.all)*2+1]), decreasing=TRUE)
+  #DATA <- DATA[O,]
 }
 
 
 # requires statlib.R
 find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0, NPROCS=1, all.genes=FALSE) {
-  library(multicore)
-  # X must be logged.
-  # Y should be the labels for two classes.  NA will be filtered out.
-  # FOLD.CHANGE should not be logged.
+  FOLD.CHANGE=0, filter.p05=FALSE, NPROCS=1) {
+  library(parallel)
 
-  if(ncol(X) != length(Y)) stop("X and Y not aligned")
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
 
-  I <- which(!is.na(Y))
-  X <- X[,I]
-  Y <- Y[I]
-
-  Y.orig <- Y
-  Y.all <- sort(unique(Y.orig))
-  if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
-  Y <- rep(NA, length(Y.orig))
-  Y[Y.orig == Y.all[1]] <- 1
-  Y[Y.orig == Y.all[2]] <- 2
-  if(any(is.na(Y))) stop("bad")
-  if(sum(Y == 1, na.rm=TRUE) <= 1) stop("not enough samples")
-  if(sum(Y == 2, na.rm=TRUE) <= 1) stop("not enough samples")
-
-  if((length(geneid) == 1) && is.na(geneid)) {
-    ndigits <- floor(log(nrow(X), 10)) + 1
-    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
-  }
-  if((length(genenames) == 1) && is.na(genenames)) {
-    genenames <- geneid
-  }
-  
-  if(ncol(X) != length(Y)) stop("unaligned")
-  if(nrow(X) != length(geneid)) stop("unaligned")
-  if(nrow(X) != length(genenames)) stop("unaligned")
-
-  X.1 <- X[,Y == 1]
-  X.2 <- X[,Y == 2]
-  if(is.null(colnames(X.1)))
-    colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
-  if(is.null(colnames(X.2)))
-    colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
-
-
-  # Find the genes that match the fold change criteria.
-  med.1 <- apply(X.1, 1, mean)
-  med.2 <- apply(X.2, 1, mean)
-  diff <- abs(med.2 - med.1)
-  I <- diff >= log(FOLD.CHANGE, 2)
-  X <- matrix(X[I,], ncol=ncol(X), dimnames=list(NULL, colnames(X)))
-  X.1 <- matrix(X.1[I,], ncol=ncol(X.1), dimnames=list(NULL, colnames(X.1)))
-  X.2 <- matrix(X.2[I,], ncol=ncol(X.2), dimnames=list(NULL, colnames(X.2)))
-  geneid <- geneid[I]
-  genenames <- genenames[I]
-  med.1 <- med.1[I]
-  med.2 <- med.2[I]
-  diff <- diff[I]
-
-  # BUG: will break if p-value is NA.
-  p.values <- c()
-  nl10p <- c()
-  if(nrow(X.1) >= 1) {
-    #x <- lapply(1:nrow(X.1), function(i) t.test(X.1[i,], X.2[i,]))
-    x <- mclapply(1:nrow(X.1), mc.cores=NPROCS, FUN=function(i) 
-      t.test(X.1[i,], X.2[i,]))
-    p.values <- unlist(lapply(x, function(x) x$p.value))
-  }
-  p.values[is.na(p.values)] <- 1
-  fdr <- fdr.correct.bh(p.values)
-  bonf <- bonferroni.correct(p.values)
-
-  if(!all.genes) {
-    I <- which(p.values < 0.05)
-    X <- matrix(X[I,], ncol=ncol(X), dimnames=list(NULL, colnames(X)))
-    X.1 <- matrix(X.1[I,], ncol=ncol(X.1), dimnames=list(NULL, colnames(X.1)))
-    X.2 <- matrix(X.2[I,], ncol=ncol(X.2), dimnames=list(NULL, colnames(X.2)))
-    geneid <- geneid[I]
-    genenames <- genenames[I]
-    med.1 <- med.1[I]
-    med.2 <- med.2[I]
-    diff <- diff[I]
-    p.values <- p.values[I]
-    fdr <- fdr[I]
-    bonf <- bonf[I]
+  IN <- filter.by.fold.change(IN, FOLD.CHANGE)
+  if(IN$n == 0) {
+    # No genes.  Return an empty matrix.
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA))
   }
 
-  mean.1 <- apply(X.1, 1, mean)
-  mean.2 <- apply(X.2, 1, mean)
-  nsamp.1 <- ncol(X.1)
-  nsamp.2 <- ncol(X.2)
+  # Calculate the p-values using a t-test.
+  p.values <- rep(NA, IN$n)
+  # If the variance of X.1 and X.2 are both 0, then t.test will
+  # generate an error:
+  # data are essentially constant.
+  # If there's no variance in any of the groups, then p-value is 0.
+  sumvar <- apply(IN$VAR, 1, sum)
+  p.values[sumvar == 0] <- 0
+  # If there's no fold change, then p-value is 1.
+  p.values[IN$lFC.group12 < 1E-10] <- 1
 
-  nl10p <- c()
-  nl10fdr <- c()
-  nl10bonf <- c()
-  if(length(p.values)) {
-    nl10p <- -log(p.values, 10)
-    nl10fdr <- -log(fdr, 10)  
-    nl10bonf <- -log(bonf, 10)
+  I <- which(is.na(p.values))
+  X.1 <- IN$X.i[[1]]
+  X.2 <- IN$X.i[[2]]
+  # Need to filter out missing values.
+  x <- mclapply(I, mc.cores=NPROCS, FUN=function(i) {
+    x1 <- X.1[i,]
+    x2 <- X.2[i,]
+    x1 <- x1[!is.na(x1)]
+    x2 <- x2[!is.na(x2)]
+    # t-test requires at least 2 values in x1 and 2 in x2.
+    if((length(x1) < 2) | (length(x2) < 2)) return(NA)
+    t.test(x1, x2)
+    })
+  #x <- lapply(I, function(i) t.test(X.1[i,], X.2[i,]))
+  for(i in 1:length(x)) {
+    if(is.na(x[[i]])) next
+    p.values[I[i]] <- x[[i]]$p.value
   }
+  #p.values[I] <- unlist(lapply(x, function(x) x$p.value))
 
-  direction <- rep(sprintf("Higher in %s", Y.all[1]), length(med.1))
-  direction[med.2 > med.1] <- sprintf("Higher in %s", Y.all[2])
-  DATA <- cbind(geneid, genenames, nl10p, nl10fdr, nl10bonf, 
-    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
-  colnames(DATA) <- c("Gene ID", "Gene Name", 
-    "NL10P", "NL10 FDR", "NL10 Bonf", 
-    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
-    "Log_2 Fold Change", "Direction", 
-    colnames(X.1), colnames(X.2))
-  DATA <- matrix2dataframe(DATA)
+  # Ignore NA.  Might be due to missing values.
+  fdr <- rep(NA, length(p.values))
+  bonf <- rep(NA, length(p.values))
+  #if(any(is.na(p.values))) stop("bad p.value")
+  I <- !is.na(p.values)
+  fdr[I] <- fdr.correct.bh(p.values[I])
+  bonf[I] <- bonferroni.correct(p.values[I])
+
+  DATA <- make.output.table(IN, p.values, fdr, bonf, filter.p05)
   list(DATA=DATA)
 }
 
+find.de.genes.sam <- function(X, Y, DELTA, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0) {
+  # DELTA
+  # samr.plot(RESULTS$S, RESULTS$DELTA, min.foldchange=2)
+  library("samr")
+
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
+
+  D <- list(x=IN$X, y=IN$Y, logged2=TRUE, 
+    geneid=IN$geneid, genenames=IN$genenames)
+  S <- samr(D, resp.type="Two class unpaired", nperms=100)
+  DTAB <- samr.compute.delta.table(S, min.foldchange=FOLD.CHANGE)
+  SIG <- samr.compute.siggenes.table(
+    S, DELTA, D, DTAB, min.foldchange=FOLD.CHANGE)
+
+  # If there are no significant genes, return an empty matrix.
+  if((SIG$ngenes.up == 0) & (SIG$ngenes.lo == 0)) {
+    # No genes.  Return an empty matrix.
+    IN <- slice.by.genes(IN, c())
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA, S=S, DELTA.TAB=DTAB, SIG.TAB=SIG, DELTA=DELTA))
+  }
+
+  SCORE <- matrix2dataframe(rbind(SIG$genes.up, SIG$genes.lo))
+  # SAM messes up a few things.  Fix them.
+  # The geneid and genenames are reversed.
+  x <- SCORE[["Gene ID"]]
+  SCORE[["Gene ID"]] <- SCORE[["Gene Name"]]
+  SCORE[["Gene Name"]] <- x
+  # The Row is off-by-1.
+  if(nrow(SCORE) >= 1) {
+    SCORE[["Row"]] <- SCORE[["Row"]]-1
+  }
+
+  I <- SCORE[["Row"]]
+  IN <- slice.by.genes(IN, I)
+
+  #x1 <- sprintf("Higher in %s", Y.all[1])
+  #x2 <- sprintf("Higher in %s", Y.all[2])
+  #Direction <- c(rep(x2, SIG$ngenes.up), rep(x1, SIG$ngenes.lo))
+  #x <- matrix(X[SCORE[["Row"]],], ncol=ncol(X))
+  #DATA <- matrix2dataframe(cbind(as.matrix(SCORE), Direction, x))
+  #names(DATA) <- c(names(SCORE), "Direction", Y.orig)
+
+  # Get the FDR values.
+  I <- which(names(SCORE) == "q-value(%)")
+  if(length(I) != 1) stop("missing q-value(%)")
+  fdr <- SCORE[,I]/100
+  #nlfdr <- -log(DATA[,I]/100+1E-25, 10)
+  #DATA <- cbind(DATA[,1:3], nlfdr, DATA[,4:ncol(DATA)])
+  #names(DATA)[4] <- "NL10 FDR"
+
+  # Convert "Fold Change" to log_2.
+  #I <- which(names(DATA) == "Fold Change")
+  #if(length(I) != 1) stop("missing Fold Change")
+  #lfc <- abs(log(DATA[,I], 2))
+  #DATA[,I] <- lfc
+  #names(DATA)[I] <- "Log_2 Fold Change"
+
+  #if(!all(geneid[DATA[["Row"]]] == DATA[["Gene ID"]])) stop("unaligned")
+
+  #list(DATA=DATA, S=S, DELTA.TAB=DTAB, SIG.TAB=SIG, DELTA=DELTA)
+
+  DATA <- make.output.table(IN, c(), fdr, c(), FALSE)
+  list(DATA=DATA, S=S, DELTA.TAB=DTAB, SIG.TAB=SIG, DELTA=DELTA, SCORE=SCORE)
+}
+
+
 find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0, all.genes=FALSE) {
+  FOLD.CHANGE=0, filter.p05=FALSE) {
+  # Can generate Warning message:
+  # Zero sample variances detected, have been offset 
   library(limma)
-  # X must be logged.
-  # Y should be the labels for two classes.  NA will be filtered out.
 
-  if(ncol(X) != length(Y)) stop("X and Y not aligned")
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
 
-  I <- which(!is.na(Y))
-  X <- X[,I]
-  Y <- Y[I]
-
-  Y.all <- sort(unique(Y))
-  if(length(Y.all) != 2) stop("Y should contain exactly 2 classes.")
-
-  GROUP1 <- as.numeric(Y == Y.all[1])
-  GROUP2 <- as.numeric(Y == Y.all[2])
-  if(sum(GROUP1 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
-  if(sum(GROUP2 == 1, na.rm=TRUE) <= 1) stop("not enough samples")
-
-  if((length(geneid) == 1) && is.na(geneid)) {
-    ndigits <- floor(log(nrow(X), 10)) + 1
-    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
-  }
-  if((length(genenames) == 1) && is.na(genenames)) {
-    genenames <- geneid
-  }
-  if(ncol(X) != length(Y)) stop("unaligned")
-  if(nrow(X) != length(geneid)) stop("unaligned")
-  if(nrow(X) != length(genenames)) stop("unaligned")
-
+  # Use limma to calculate statistics.
+  GROUP1 <- as.numeric(IN$Y == 1)
+  GROUP2 <- as.numeric(IN$Y == 2)
   design <- cbind(GROUP1=GROUP1, GROUP2=GROUP2)
-  fit <- lmFit(X, design=design)
+  # allows for missing values!
+  fit <- lmFit(IN$X, design=design)
   fit2 <- contrasts.fit(fit, c(-1, 1))
   fit2 <- eBayes(fit2)
+  lfc <- 0
+  if(FOLD.CHANGE > 0)
+    lfc <- log(FOLD.CHANGE, 2)
   # p.value cutoff is for adjusted p-values.  We want non-adjusted p-values.
   #TOP <- topTable(fit2, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
   #  number=nrow(fit2))
-  TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), 
-    lfc=log(FOLD.CHANGE, 2))
-  write.table(TOP, "out.dat", col.names=TRUE, sep="\t", quote=FALSE)
-  if(!all.genes) {
-    TOP <- TOP[TOP[["P.Value"]] < 0.05,]
-  }
+  TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), lfc=lfc)
+  #write.table(TOP, "out.dat", col.names=TRUE, sep="\t", quote=FALSE)
+  #if(!all.genes) {
+  #  TOP <- TOP[TOP[["P.Value"]] < 0.05,]
+  #}
+
   if(!nrow(TOP)) {
-    DATA <- matrix(NA, 0, 7+length(Y.all)*2+ncol(X))
-    colnames(DATA) <- c("Gene ID", "Gene Name", 
-      "NL10P", "NL10 FDR", "NL10 Bonf", 
-      sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
-      "Log_2 Fold Change", "Direction", 
-      colnames(X))
-    DATA <- matrix2dataframe(DATA)
-    return(list(DATA=DATA, fit=fit2, TOP=TOP))
+    # No genes.  Return an empty matrix.
+    IN <- slice.by.genes(IN, c())
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA))
   }
 
-  nl10p <- -log(TOP[["P.Value"]], 10)
-  nl10fdr <- -log(TOP[["adj.P.Val"]], 10)
-  bonf <- bonferroni.correct(TOP[["P.Value"]])
-  nl10bonf <- -log(bonf, 10)
-  diff <- abs(TOP[["logFC"]])
+  p.value <- TOP[["P.Value"]]
+  fdr <- TOP[["adj.P.Val"]]
+  #bonf <- bonferroni.correct(p.value)
+
   I <- as.numeric(rownames(TOP))
-  X.1 <- matrix(X[I, Y == Y.all[1]], nrow=length(I))
-  X.2 <- matrix(X[I, Y == Y.all[2]], nrow=length(I))
-  if(length(colnames(X)) > 1) {
-    colnames(X.1) <- colnames(X)[Y == Y.all[1]]
-    colnames(X.2) <- colnames(X)[Y == Y.all[2]]
+  IN <- slice.by.genes(IN, I)
+
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
+  list(DATA=DATA, TOP=TOP)
+}
+
+
+# Assume that the pairing is in order.
+find.de.genes.paired.ebayes <- function(X, Y, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0, filter.p05=FALSE) {
+  library(limma)
+
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
+
+  # Use limma to calculate statistics.
+  GROUP1 <- as.numeric(IN$Y == 1)
+  GROUP2 <- as.numeric(IN$Y == 2)
+
+  # For paired analysis, number of samples in the classes should be
+  # the same.
+  if(sum(GROUP1 == 1) != sum(GROUP2 == 1)) stop("unequal number of samples")
+
+  # Assume samples are in paired order.
+  num.pairs <- sum(GROUP1)
+  PAIRS <- rep(0, length(GROUP1))
+  PAIRS[GROUP1 == 1] <- 1:num.pairs
+  PAIRS[GROUP2 == 1] <- 1:num.pairs
+  if(any(PAIRS == 0)) stop("bad")
+  PAIRS <- factor(PAIRS)
+  Y.fact <- factor(IN$group.names[IN$Y], levels=IN$group.names)
+  design <- model.matrix(~PAIRS+Y.fact)
+  # Get message:
+  # Removing intercept from test coefficients
+  fit <- lmFit(X, design=design)
+  fit2 <- eBayes(fit)
+  lfc <- 0
+  if(FOLD.CHANGE > 0)
+    lfc <- log(FOLD.CHANGE, 2)
+  # p.value cutoff is for adjusted p-values.  We want non-adjusted p-values.
+  #TOP <- topTable(fit2, adjust="fdr", lfc=log(FOLD.CHANGE, 2), p.value=0.05,
+  #  number=nrow(fit2))
+  TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), lfc=lfc)
+  #write.table(TOP, "out.dat", col.names=TRUE, sep="\t", quote=FALSE)
+  #if(!all.genes) {
+  #  TOP <- TOP[TOP[["P.Value"]] < 0.05,]
+  #}
+  if(!nrow(TOP)) {
+    # No genes.  Return an empty matrix.
+    IN <- slice.by.genes(IN, c())
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA))
   }
-  if(is.null(colnames(X.1)))
-    colnames(X.1) <- sprintf("S1_%03d", 1:ncol(X.1))
-  if(is.null(colnames(X.2)))
-    colnames(X.2) <- sprintf("S2_%03d", 1:ncol(X.2))
 
-  mean.1 <- apply(X.1, 1, mean)
-  mean.2 <- apply(X.2, 1, mean)
-  nsamp.1 <- ncol(X.1)
-  nsamp.2 <- ncol(X.2)
+  I <- as.numeric(rownames(TOP))
+  IN <- slice.by.genes(IN, I)
 
-  direction <- rep(sprintf("Higher in %s", Y.all[1]), nrow(TOP))
-  direction[TOP[["logFC"]] > 0] <- sprintf("Higher in %s", Y.all[2])
-  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, 
-    nsamp.1, nsamp.2, mean.1, mean.2, diff, direction, X.1, X.2)
-  colnames(DATA) <- c("Gene ID", "Gene Name", 
-    "NL10P", "NL10 FDR", "NL10 Bonf", 
-    sprintf("Num Samples %s", Y.all), sprintf("Mean %s", Y.all), 
-    "Log_2 Fold Change", "Direction", 
-    colnames(X.1), colnames(X.2))
-  DATA <- matrix2dataframe(DATA)
+  p.value <- TOP[["P.Value"]]
+  fdr <- TOP[["adj.P.Val"]]
+  #bonf <- bonferroni.correct(p.value)
+
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
   list(DATA=DATA, fit=fit2, TOP=TOP)
 }
 
 
-
 # 2-color no reference
 find.de.genes.2cnoref.ebayes <- function(X, geneid=NA, genenames=NA, 
-  FOLD.CHANGE=0) {
+  FOLD.CHANGE=0, filter.p05=FALSE) {
   library(limma)
-  # X must be logged.
 
-  if((length(geneid) == 1)  && is.na(geneid)) {
-    ndigits <- floor(log(nrow(X), 10)) + 1
-    geneid <- sprintf("GENE%0*d", ndigits, 1:nrow(X))
-  }
-  if((length(genenames) == 1) && is.na(genenames)) {
-    genenames <- geneid
-  }
-  if(nrow(X) != length(geneid)) stop("unaligned")
-  if(nrow(X) != length(genenames)) stop("unaligned")
+  if(length(FOLD.CHANGE) != 1) stop("bad arguments")
 
-  fit <- lmFit(X)
-  fit <- eBayes(fit)
-  TOP <- topTable(fit, adjust="fdr", lfc=log(FOLD.CHANGE, 2), number=nrow(fit))
-  TOP <- TOP[TOP[["P.Value"]] < 0.05,]
+  Y <- rep(1, ncol(X))  # All samples are the same class.
+  IN <- normalize.inputs(X, Y, geneid, genenames, TRUE)
+  if(IN$g != 1) stop("Should be only 1 class.")
+
+  fit <- lmFit(IN$X)
+  fit2 <- eBayes(fit)
+  lfc <- 0
+  if(FOLD.CHANGE > 0)
+    lfc <- log(FOLD.CHANGE, 2)
+  TOP <- topTable(fit2, adjust="fdr", number=nrow(fit2), lfc=lfc)
+
   if(!nrow(TOP)) {
-    DATA <- matrix(NA, 0, 7+ncol(X))
-    colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-      "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
-      colnames(X))
-    DATA <- matrix2dataframe(DATA)
-    return(list(DATA=DATA, fit=fit, TOP=TOP))
+    # No genes.  Return an empty matrix.
+    IN <- slice.by.genes(IN, c())
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA, fit=fit2, TOP=TOP))
   }
-
-  nl10p <- -log(TOP[["P.Value"]], 10)
-  nl10fdr <- -log(TOP[["adj.P.Val"]], 10)
-  bonf <- bonferroni.correct(TOP[["P.Value"]])
-  nl10bonf <- -log(bonf, 10)
-  diff <- abs(TOP[["logFC"]])
-  direction <- rep("High Expression", nrow(TOP))
-  direction[TOP[["logFC"]] < 0] <- "Low Expression"
 
   I <- as.numeric(rownames(TOP))
-  DATA <- cbind(geneid[I], genenames[I], nl10p, nl10fdr, nl10bonf, diff, 
-    direction, X[I,])
-  colnames(DATA) <- c("Gene ID", "Gene Name", "NL10P", 
-    "NL10 FDR", "NL10 Bonf", "Log_2 Fold Change", "Direction", 
-    colnames(X))
-  DATA <- matrix2dataframe(DATA)
-  list(DATA=DATA, fit=fit, TOP=TOP)
+  IN <- slice.by.genes(IN, I)
+
+  p.value <- TOP[["P.Value"]]
+  fdr <- TOP[["adj.P.Val"]]
+  #bonf <- bonferroni.correct(p.value)
+
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
+  list(DATA=DATA, fit=fit2, TOP=TOP)
+}
+
+
+find.de.genes.deseq2 <- function(X, Y, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0, filter.p05=FALSE, NPROCS=1) {
+  # X should be unnormalized counts per gene
+  # summary(res)
+  # plotMA(res, main="DESeq2", ylim=c(-2,2))
+
+  library(DESeq2)
+  if(NPROCS > 1) {
+    library(BiocParallel)
+    register(MulticoreParam(NPROCS))
+  }
+
+  IN <- normalize.inputs(X, Y, geneid, genenames, FALSE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
+
+  IN <- filter.by.fold.change(IN, FOLD.CHANGE)
+  if(IN$n == 0) {
+    # No genes.  Return an empty matrix.
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA))
+  }
+
+  count.data <- IN$X
+  condition <- IN$group.names[IN$Y]
+  col.data <- data.frame(condition=condition)
+  dds <- DESeqDataSetFromMatrix(
+    countData=count.data, colData=col.data, design=~condition)  
+  dds.2 <- DESeq(dds)
+  res <- results(dds.2)
+  # Describes columns in res
+  # mcols(res)$description
+
+  p.value <- res[["pvalue"]]
+  fdr <- res[["padj"]]
+  #bonf <- bonferroni.correct(p.value)
+
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
+  DATA[["Log_2 Fold Change"]] <- abs(res[["log2FoldChange"]])
+  list(DATA=DATA, dds=dds.2, res=res)
+}
+
+
+find.de.genes.edgeR <- function(X, Y, geneid=NA, genenames=NA, 
+  FOLD.CHANGE=0, filter.p05=FALSE, tagwise.dispersion=TRUE) {
+  # X should be unnormalized counts per gene
+  # Use tagwise dispersion if there are enough replicates to estimate
+  # the dispersion for individual genes (or try them both).
+
+  library(edgeR)
+
+  IN <- normalize.inputs(X, Y, geneid, genenames, FALSE)
+  if(IN$g != 2) stop("Y should contain exactly 2 classes.")
+  if(IN$NS[1] < 2) stop("not enough samples")
+  if(IN$NS[2] < 2) stop("not enough samples")
+
+  IN <- filter.by.fold.change(IN, FOLD.CHANGE)
+  if(IN$n == 0) {
+    # No genes.  Return an empty matrix.
+    DATA <- make.output.table(IN, c(), c(), c(), FALSE)
+    return(list(DATA=DATA))
+  }
+
+  group <- factor(IN$Y)
+  dge <- DGEList(counts=IN$X, group=group)
+  # Normalize by TMM.
+  dge <- calcNormFactors(dge)
+  dge <- estimateCommonDisp(dge)
+  if(tagwise.dispersion)
+    # OPTIONAL: Do tagwise, rather than common dispersion.
+    dge <- estimateTagwiseDisp(dge)
+  et <- exactTest(dge)
+  top <- topTags(et, n=Inf)
+
+  O <- order(as.numeric(rownames(top$table)))
+  top.table <- top$table[O,]
+
+  if(IN$n != nrow(top.table)) stop("unaligned")
+  p.value <- top.table$PValue
+  fdr <- top.table$FDR
+  #bonf <- bonferroni.correct(p.value)
+
+  DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
+  DATA[["Log_2 Fold Change"]] <- abs(top.table$logFC)
+  list(DATA=DATA, dge=dge, top=top)
 }

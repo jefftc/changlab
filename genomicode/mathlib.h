@@ -3,6 +3,7 @@ float var(float *X, int length);
 float *cov_byrow(float *X, int nrow, int ncol);
 double *cor_byrow_d(double *X, int nrow, int ncol, int safe);
 float *cor_byrow_f(float *X, int nrow, int ncol, int safe);
+float *cor_bycol_f(float *X, int nrow, int ncol, int safe);
 
 double fisher_z(double R, int N);
 

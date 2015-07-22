@@ -18,18 +18,15 @@ import ConfigParser
 ##with open('Betsy.cfg','wb') as configfile:
 ##    config.write(configfile)
 
-DEFAULTS = {'OUTPUTPATH': '.',
-            'NETWORKFILE': 'betsy.xgmml',
-            'ANNOTATE_MATRIX': 'annotate_matrix.py',
-            'SCORE_GENE': 'score_geneset.py'
-            }
-SEARCH_PATH = ['/home/xchen/chencode/scripts',
-               "/usr/local/bin",
-               "/usr/bin",
-               '/opt/local/bin',
-               os.environ['HOME'] + '/bin',
-               '/home/changlab/changlab/scripts'
-               ]
+DEFAULTS = {
+    'OUTPUTPATH': '.',
+    'NETWORKFILE': 'betsy.xgmml',
+    'ANNOTATE_MATRIX': 'annotate_matrix.py',
+    'SCORE_GENE': 'score_geneset.py'
+}
+SEARCH_PATH = ['/home/xchen/chencode/scripts', "/usr/local/bin", "/usr/bin",
+               '/opt/local/bin', os.environ['HOME'] + '/bin',
+               '/home/changlab/changlab/scripts']
 
 
 def read_config():

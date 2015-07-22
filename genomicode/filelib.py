@@ -149,6 +149,10 @@ def openfh(file_or_handle, mode='rU'):
             raise NotImplementedError
     elif file_or_handle.lower().endswith(".xls") or \
         file_or_handle.lower().endswith(".xlsx"):
+        assert os.path.exists(file_or_handle), "File not found: %s" % \
+               file_or_handle
+        # BUG: If this isn't actually an excel file (e.g. a text file
+        # with .xls extension), will return an empty file.
         cmd = "xls2txt '%s'" % file_or_handle
         w, r, e = _my_popen(cmd)
         # This may block.  Just ignore this until we can figure out
@@ -249,13 +253,25 @@ def _make_convert_fns(format, obj_convert_fns, fmt2fn_fn):
 # Bug: if the file is gzip'd, will leave gunzip -c processes lying
 # around.
 def read_cols(file_or_handle, delimiter="\t", skip=0):
+    import csv
+
+    # Allow up to 32Mb fields (Python 2.5 and above).
+    if hasattr(csv, "field_size_limit"):
+        csv.field_size_limit(32*1024*1024)
+
+    # Skip the first lines.
     handle = openfh(file_or_handle)
     for i in range(skip):
         handle.readline()
-    for line in handle:
-        cols = line.rstrip("\r\n").split(delimiter)
-        yield cols
-    handle.close()
+
+    # Read each line.
+    handle = csv.reader(handle, delimiter=delimiter)
+    for row in handle:
+        yield row
+    #for line in handle:
+    #    cols = line.rstrip("\r\n").split(delimiter)
+    #    yield cols
+    #handle.close()
 
 def _make_format_from_header(names):
     import math
@@ -304,7 +320,7 @@ class RowIterator:
 
         names = None
         if header:
-            # If the file is empty, this will raise a StopIteratio
+            # If the file is empty, this will raise a StopIteration
             # exception.
             try:
                 line, names = reader.next()

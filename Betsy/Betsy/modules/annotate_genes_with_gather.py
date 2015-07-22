@@ -3,31 +3,30 @@ import os
 from Betsy import module_utils
 import urllib
 import urllib2
-from time import strftime,localtime
+from Betsy import bie3, rulebase
 
-def run(parameters, objects, pipeline,user,jobname):
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """run GATHER"""
-    starttime = strftime(module_utils.FMT, localtime())
-    single_object = get_identifier(parameters, objects)
-    outfile = get_outfile(parameters, objects, pipeline)
-    kwargs = {'cmd': "report",
-              'tax_id': '9606',
-              'network': 0,
-              'homologs': 0,
-              'annot_type': 'gene_ontology'}
-    network = {'yes_network': 1, 'no_network': 0}
-    homologs = {'yes_homologs': 1, 'no_homologs': 0}
-    if 'network' in parameters.keys():
-        kwargs['network'] = network[parameters['network']]
-    if 'homologs' in parameters.keys():
-        kwargs['homologs'] = homologs[parameters['homologs']]
-    if  'annot_type' in parameters.keys():
-        kwargs['annot_type'] = parameters['annot_type']
-    f = file(single_object.identifier, 'r')
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    kwargs = {
+        'cmd': "report",
+        'tax_id': '9606',
+        'network': 0,
+        'homologs': 0,
+        'annot_type': 'gene_ontology'
+    }
+    code_dict = {'yes': 1, 'no': 0}
+    kwargs['network'] = code_dict[out_attributes['network']]
+    kwargs['homologs'] = code_dict[out_attributes['homologs']]
+    kwargs['annot_type'] = out_attributes['annot_type']
+    f = file(in_data.identifier, 'r')
     text = f.read()
     f.close()
     if ',' in text:
         raise ValueError('the gene list file cannot contain ","')
+    
     words = text.split()
     kwargs['gene_box'] = ','.join(words)
     url = 'http://gather.genome.duke.edu/'
@@ -39,39 +38,32 @@ def run(parameters, objects, pipeline,user,jobname):
     fout.write(result_text)
     fout.close()
     assert module_utils.exists_nz(outfile), (
-        'the outfile for run_gather %s does not exist' % outfile)
-    new_objects = get_newobjects(parameters, objects, pipeline)
-    module_utils.write_Betsy_parameters_file(parameters,
-                                             single_object, pipeline,
-                                             outfile,starttime,user,jobname)
-    return new_objects
+        'the outfile for run_gather %s does not exist' % outfile
+    )
+    out_node = bie3.Data(rulebase.GatherFile, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(
-        identifier, pipeline, parameters)
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
+    return data_node
 
 
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'gather_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, 'gene_list_file', 'contents')
-    assert os.path.exists(single_object.identifier), (
-        'the input file %s for run_gather does not exist'
-        % single_object.identifier)
-    return single_object
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    single_object = get_identifier(parameters, objects)
-    new_objects = module_utils.get_newobjects(
-        outfile, 'gather_file', parameters, objects, single_object)
-    return new_objects
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

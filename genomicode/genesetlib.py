@@ -19,6 +19,9 @@ clean_genes
 """
 # Optimization: call _is_known_desc less.
 
+
+DEBUG = None
+
 class GeneSet:
     def __init__(self, name, description, genes):
         assert type(name) is type("")
@@ -97,6 +100,11 @@ def _transpose_gmx(matrix):
     # <gene>           ...
     #
     # Each column is a gene set.
+
+    if not matrix:
+        return []
+    assert matrix[0]
+    
     t_matrix = []
     # Iterate over each of the columns (gene sets).
     for j in range(len(matrix[0])):
@@ -190,12 +198,18 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
         yield name, description, genes
 
 
-def read_tdf(filename, preserve_spaces=False, allow_duplicates=False):
-    # yield name, description (always ""), list of genes
+def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
+             delimiter="\t"):
+    # yield name, description (always ""), list of genes.
+    # preserve_spaces determines whether to remove blank annotations.
+    # allow_duplicates determines whether to remove duplicate
+    # annotations.
     import filelib
 
-    matrix = [x for x in filelib.read_cols(filename)]
+    matrix = [x for x in filelib.read_cols(filename, delimiter=delimiter)]
     t_matrix = _transpose_gmx(matrix)
+    if not matrix:
+        return
 
     # For the TDF file, each of the rows should be exactly the same
     # length.  Make sure they are the same length.
@@ -322,6 +336,7 @@ def _is_known_desc(desc):
 
 def detect_format(filename):
     # Return "GMX", "GMT", or None.
+    global DEBUG
     import filelib
     import iolib
 
@@ -345,6 +360,16 @@ def detect_format(filename):
     # Clean up each of the cells of the matrix.
     for i in range(len(matrix)):
         matrix[i] = [x.strip() for x in matrix[i]]
+
+    # If the last column is blank, remove it.
+    last_column_blank = True
+    for x in matrix:
+        if x[-1] != "":
+            last_column_blank = False
+            break
+    if last_column_blank:
+        for i in range(len(matrix)):
+            matrix[i] = matrix[i][:-1]
 
     # Both the GMX or GMT formats may have different number of columns
     # in each row.  Align the rows so they have the same number of
@@ -370,22 +395,32 @@ def detect_format(filename):
 
     # Case 1.
     if not matrix:
+        DEBUG = "detect_format case 1"
         return None
     # Case 2.
     if not matrix[0]:
+        DEBUG = "detect_format case 2"
         return None
     nrow, ncol = len(matrix), len(matrix[0])
     # Case 3.
     if nrow == 1 and ncol == 1:
+        DEBUG = "detect_format case 3"
         return None
     # Case 4.
     if nrow >= 2 and ncol == 1:
-        return GMX
+        DEBUG = "detect_format case 4"
+        if _is_known_desc(matrix[1][0]):
+            return GMX
+        return None
     # Case 5.
     if nrow == 1 and ncol >= 2:
-        return GMT
+        DEBUG = "detect_format case 5"
+        if _is_known_desc(matrix[0][1]):
+            return GMT
+        return None
     # Case 6.
     if nrow == 2 and ncol == 2:
+        DEBUG = "detect_format case 6"
         desc01 = _is_known_desc(matrix[0][1])
         desc10 = _is_known_desc(matrix[1][0])
         if desc10 and not desc01:
@@ -394,14 +429,17 @@ def detect_format(filename):
             return GMT
         return None
     # Case 7.
+    DEBUG = "detect_format case 7"
     assert nrow >= 2 and ncol >= 2, "%d %d" % (nrow, ncol)
 
     # Check the extension of the file.
     if type(filename) is type(""):
         lfilename = filename.lower()
         if lfilename.endswith(".gmt"):
+            DEBUG = "detect_format filename"
             return GMT
         if lfilename.endswith(".gmx"):
+            DEBUG = "detect_format filename"
             return GMX
 
     # Check if there are any spaces in the first row or column.  If
@@ -414,16 +452,22 @@ def detect_format(filename):
     x = [x for x in col1[2:] if x == ""]
     spaces_in_col1 = (len(x) > 0)
     if spaces_in_row1 and spaces_in_col1:
+        DEBUG = "detect_format spaces in row1 and col1"
         return None
     if not spaces_in_row1 and spaces_in_col1:
+        DEBUG = "detect_format spaces col"
         return GMX
     if not spaces_in_col1 and spaces_in_row1:
+        DEBUG = "detect_format spaces row"
         return GMT
 
     # Most likely, there will be different numbers of genes per gene
     # set.  This will lead to there being empty strings.  Check for a
     # pattern of empty strings and filled strings to distinguish GMX
     # or GMT.
+    
+    # if there are spaces in the middle of the row.  E.g. gene <space>
+    # gene.
     genes_left_aligned = True
     for i in range(nrow):
         is_left_aligned = True
@@ -449,10 +493,13 @@ def detect_format(filename):
         if not is_top_aligned:
             genes_top_aligned = False
     if not genes_top_aligned and not genes_left_aligned:
+        DEBUG = "detect_format alignment"
         return None
     if genes_top_aligned and not genes_left_aligned:
+        DEBUG = "detect_format alignment (top)"
         return GMT
     if genes_left_aligned and not genes_top_aligned:
+        DEBUG = "detect_format alignment (top left)"
         return GMX
 
     # Check the descriptions to see if they match up.
@@ -467,15 +514,20 @@ def detect_format(filename):
         if not _is_known_desc(x):
             desc_col = False
     if desc_row and not desc_col:
+        DEBUG = "detect_format descriptions"
         return GMX
     if desc_col and not desc_row:
+        DEBUG = "detect_format descriptions"
         return GMT
     
+    DEBUG = "detect_format default"
     return None
 
 
 def score_geneset(MATRIX, pos_genes, neg_genes):
-    # Return MATRIX_p, MATRIX_n, num_matches, list of scores
+    # Return MATRIX_p, MATRIX_n, num_matches, list of scores (one for
+    # each column), list of p-values.
+    
     import matrixlib
 
     all_genes = pos_genes + neg_genes
@@ -489,26 +541,75 @@ def score_geneset(MATRIX, pos_genes, neg_genes):
     MATRIX_n = MATRIX.matrix(neg_I, None)
 
     x = score_geneset_I(MATRIX._X, pos_I, neg_I)
-    x, x, num_rows, scores = x
-    return MATRIX_p, MATRIX_n, num_rows, scores
+    x, x, num_rows, scores, scores_o, pvalues = x
+    return MATRIX_p, MATRIX_n, num_rows, scores, scores_o, pvalues
 
 
-def score_geneset_I(X, pos_I, neg_I):
+def wilcox_test(x, y):
+    import jmath
+    from jmath import R_fn, R_equals, R_var
+
+    R = jmath.start_R()
+    R_equals(x, "x")
+    R_equals(y, "y")
+    wt = R_fn("wilcox.test", R_var("x"), R_var("y"), RETVAL="wt")
+    p_value = R("wt$p.value")[0]
+    return p_value
+
+
+def score_geneset_I(X, I_pos, I_neg):
     # Return X_p, X_n, num_matches, list of scores
     import jmath
-    
-    X_p = [X[i] for i in pos_I]
-    X_n_orig = [X[i] for i in neg_I]
+
+    assert len(X)
+    for i in range(len(X)):
+        assert len(X[i]) == len(X[0])
+
+    # Make a matrix with the positive genes.
+    X_p = [X[i] for i in I_pos]
+
+    # Make a matrix with the negative genes.
+    X_n_orig = [X[i] for i in I_neg]
     X_n = []
     for x in X_n_orig:
         x = [-x for x in x]
         X_n.append(x)
+
+    # Make a matrix with all other genes.
+    I_other = [i for i in range(len(X)) if i not in I_pos and i not in I_neg]
+    X_o = [X[i] for i in I_other]
+
+    # Combine the positive and negative genes.
     X_pn = X_p + X_n
-    
+
+    # Calculate the scores.
+    assert X_pn, "No genes in gene set"
+    assert X_o, "No genes not in gene set"
     num_rows = len(X_pn)
-    scores = jmath.mean(X_pn, byrow=False)
+    scores_pn = jmath.mean(X_pn, byrow=False)
+    scores_o = jmath.mean(X_o, byrow=False)
+    #scores_delta = [scores_pn[i]-scores_o[i] for i in range(len(scores_pn))]
+
+    # DEBUGGING
+    #scores_X = jmath.mean(X, byrow=False)
+    #for i in range(len(scores_pn)):
+    #    print "SAMP %03d All: %g (%d genes)" % (i, scores_X[i], len(X))
+    #    print "SAMP %03d Geneset: %g (%d genes)" % (
+    #        i, scores_pn[i], len(X_pn))
+    #    print "SAMP %03d Not geneset: %g (%d genes)" % (
+    #        i, scores_o[i], len(X_o))
+
+    # Calculate the p-values.
+    nc = len(X[0])
+    pvalues = [None] * nc
+    for j in range(nc):
+        col_pn = [x[j] for x in X_pn]
+        col_o = [x[j] for x in X_o]
+        # Compare col_pn and col_o with wilcoxon test.
+        p = wilcox_test(col_o, col_pn)
+        pvalues[j] = p
     
-    return X_p, X_n_orig, num_rows, scores
+    return X_p, X_n_orig, num_rows, scores_pn, scores_o, pvalues
 
 
 def int_if_possible(x):

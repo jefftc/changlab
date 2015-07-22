@@ -2,63 +2,65 @@
 import os
 import subprocess
 from Betsy import module_utils
-from time import strftime,localtime
+from Betsy import bie3, rulebase
+from genomicode import config
 
-def run(parameters, objects, pipeline,user,jobname):
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """clustering the input file"""
-    starttime = strftime(module_utils.FMT, localtime())
-    CLUSTER_BIN = 'cluster'
+    in_data = antecedents
+    CLUSTER_BIN = config.cluster
+    cluster_module = module_utils.which(CLUSTER_BIN)
+    assert cluster_module, 'cannot find the %s' % CLUSTER_BIN
     distance_para = {'correlation': '1', 'euclidean': '7'}
-    dist = distance_para[parameters['distance']]  
+    dist = distance_para[out_attributes['distance']]
     com_parameter = ['-m', 's', '-e', '1', '-g', dist]
-    single_object = get_identifier(parameters, objects)
-    outfile = get_outfile(parameters, objects, pipeline)
-    command = [CLUSTER_BIN, '-f', single_object.identifier, '-u', outfile]
+    outfile = name_outfile(in_data, user_options)
+    command = [CLUSTER_BIN, '-f', in_data.identifier, '-u', outfile]
     for i in com_parameter:
         command.append(i)
-    process = subprocess.Popen(command, shell=False,
+    
+    process = subprocess.Popen(command,
+                               shell=False,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
+    
     result_files = os.listdir(os.getcwd())
     result_format = 'cdt'
     for result_file in result_files:
         if result_file.endswith(result_format):
             os.rename(result_file, outfile)
+    
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for cluster_genes_by_hierarchical fails' % outfile)
-    new_objects = get_newobjects(parameters, objects, pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline, outfile,starttime,user,jobname)
-    return new_objects
+        'the output file %s for cluster_genes_by_hierarchical fails' % outfile
+    )
+    out_node = bie3.Data(rulebase.ClusterFile, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(identifier, pipeline, parameters)
-
-
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'cluster_file_' + original_file + '.cdt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, 'signal_file', 'contents')
-    assert os.path.exists(single_object.identifier), (
-        'the input file %s for cluster_genes_by_hierarchical does not exist'
-        % single_object.identifier)
-    return single_object
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    single_object = get_identifier(parameters, objects)
-    new_objects = module_utils.get_newobjects(
-        outfile, 'cluster_file', parameters, objects, single_object)
-    return new_objects
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
+    return data_node

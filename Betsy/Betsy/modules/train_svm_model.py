@@ -3,66 +3,64 @@ import svmutil
 import sys
 import arrayio
 from Betsy import read_label_file
-from Betsy import module_utils
+from Betsy import module_utils, bie3, rulebase
 import os
-from time import strftime,localtime
 
-def run(parameters,objects,pipeline,user,jobname):
-    starttime = strftime(module_utils.FMT, localtime())
-    single_object = get_identifier(parameters,objects)
-    outfile = get_outfile(parameters,objects,pipeline)
-    training = arrayio.read(single_object.identifier)
-    x_training = module_utils.format_convert(training)#convert to the format libsvm accept
-    training_label_file = module_utils.find_object(parameters,
-                                    objects,'class_label_file','contents')
-    assert os.path.exists(training_label_file.identifier),(
-        'the training label file %s does not exist'
-        %training_label_file.identifier)
-    a,training_label,second_line = read_label_file.read(training_label_file.identifier)
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node_train, cls_node_train = antecedents
+    outfile = name_outfile(antecedents, user_options)
+    a, training_label, second_line = read_label_file.read(
+        cls_node_train.identifier)
+    training = arrayio.read(data_node_train.identifier)
+    x_training = module_utils.format_convert(
+        training.matrix(None, range(0, len(training_label)))
+    )  #convert to the format libsvm accept
     y_training = [int(x) for x in training_label]
-    svm_kernel = ['linear','polynomial','RBF','sigmoid','precomputed_kernel']
-    if 'svm_kernel' in parameters.keys():
-        kernel_type = svm_kernel.index(parameters['svm_kernel'])
-        command = '-t '+ str(kernel_type)
-    else:
-        command = '-t 0'
+    svm_kernel = ['linear', 'polynomial', 'RBF', 'sigmoid',
+                  'precomputed_kernel']
+    #if 'svm_kernel' in parameters.keys():
+    kernel_type = svm_kernel.index(out_attributes['svm_kernel'])
+    command = '-t ' + str(kernel_type)
+    # else:
+    #    command = '-t 0'
     param = svmutil.svm_parameter(command)
-    prob  = svmutil.svm_problem(y_training, x_training)
-    model = svmutil.svm_train(prob,param)
-    svmutil.svm_save_model(outfile,model)
-    assert module_utils.exists_nz(outfile),(
-        'the output file %s for train_svm_model fails'%outfile)
-    new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters,[single_object,training_label_file],pipeline,
-        outfile,starttime,user,jobname)
-    return new_objects
-    
-def make_unique_hash(identifier,pipeline,parameters):
-    return module_utils.make_unique_hash(
-        identifier,pipeline,parameters)
-    
-def get_outfile(parameters,objects,pipeline):
-    single_object = get_identifier(parameters,objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+    prob = svmutil.svm_problem(y_training, x_training)
+    model = svmutil.svm_train(prob, param)
+    svmutil.svm_save_model(outfile, model)
+    assert module_utils.exists_nz(outfile), (
+        'the output file %s for train_svm_model fails' % outfile
+    )
+    out_node = bie3.Data(rulebase.SvmModel, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
+
+
+def name_outfile(antecedents, user_options):
+    data_node_train, cls_node_train = antecedents
+    original_file = module_utils.get_inputid(data_node_train.identifier)
     filename = 'svm_model_' + original_file + '.txt'
-    outfile = os.path.join(os.getcwd(),filename)
+    outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
-def get_identifier(parameters,objects):
-    single_object = module_utils.find_object(
-                           parameters,objects,'signal_file','contents')
-    assert os.path.exists(single_object.identifier),(
-        'the input file %s for train_svm_model does not exist'
-        %single_object.identifier)
-    return single_object
+
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def get_newobjects(parameters,objects,pipeline):
-    outfile = get_outfile(parameters,objects,pipeline)
-    parameters = module_utils.renew_parameters(parameters,['status'])
-    attributes = parameters.values()
-    new_object = module_utils.DataObject('svm_model',attributes,outfile)
-    new_objects = objects[:]
-    new_objects.append(new_object)
-    return new_objects
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node_train, cls_node_train = antecedents
+    identifier = data_node_train.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    filter1 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', contents="class0,class1,test")
+    filter2 = module_utils.AntecedentFilter(
+        datatype_name='ClassLabelFile', contents="class0,class1")
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2)
+    return x

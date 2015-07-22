@@ -1,64 +1,57 @@
 #log_signal.py
 import os
-import shutil
 from Betsy import module_utils
 from genomicode import binreg
-from time import strftime,localtime
+from Betsy import bie3
+from Betsy import rulebase
 
 
-def run(parameters,objects,pipeline,user,jobname):
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """log the input file"""
-    starttime = strftime(module_utils.FMT, localtime())
     import arrayio
     import math
-    single_object = get_identifier(parameters,objects)
-    outfile = get_outfile(parameters,objects,pipeline)
-    M = arrayio.read(single_object.identifier)
-    if binreg.is_logged_array_data(M):
-        shutil.copyfile(single_object.identifier,outfile)
-    else:
-        for i in range(len(M._X)):
-            for j in range(len(M._X[i])):
-                if M._X[i][j] is not None :
-                    if float(M._X[i][j])<1:
-                        M._X[i][j] = 1
-                    M._X[i][j]=math.log(float(M._X[i][j]),2)
-        f = file(outfile,'w')
-        M_c = arrayio.convert(M,to_format=arrayio.tab_delimited_format)
-        arrayio.tab_delimited_format.write(M_c,f)
-        f.close()
-    assert module_utils.exists_nz(outfile),(
-        'the output file %s for log_signal fails'%outfile)
-
-    new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters,single_object,pipeline,outfile,starttime,user,jobname)
-    return new_objects
-
-
-def make_unique_hash(identifier,pipeline,parameters):
-    return module_utils.make_unique_hash(
-        identifier,pipeline,parameters)
-
-def get_outfile(parameters,objects,pipeline):
-    single_object = get_identifier(parameters,objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 'signal_log_'+original_file+'.tdf'
-    outfile = os.path.join(os.getcwd(),filename)
-    return outfile
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    M = arrayio.read(in_data.identifier)
+    assert not binreg.is_logged_array_data(M), 'the file is logged'
+    for i in range(len(M._X)):
+        for j in range(len(M._X[i])):
+            if M._X[i][j] is not None:
+                if float(M._X[i][j]) < 1:
+                    M._X[i][j] = 1
+                M._X[i][j] = math.log(float(M._X[i][j]), 2)
     
-def get_identifier(parameters,objects):
-    single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),(
-        'the input file %s for log_if_not_log does not exist'
-        %single_object.identifier)
-    return single_object
+    f = file(outfile, 'w')
+    M_c = arrayio.convert(M, to_format=arrayio.tab_delimited_format)
+    arrayio.tab_delimited_format.write(M_c, f)
+    f.close()
+    assert module_utils.exists_nz(outfile), (
+        'the output file %s for log_signal fails' % outfile
+    )
+    out_node = bie3.Data(rulebase._SignalFile_Postprocess, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
-def get_newobjects(parameters,objects,pipeline):
-    outfile = get_outfile(parameters,objects,pipeline)
-    single_object = get_identifier(parameters,objects)
-    new_objects = module_utils.get_newobjects(
-        outfile,'signal_file',parameters,objects,single_object)
-    return new_objects
 
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
+    filename = 'signal_log_' + original_file + '.tdf'
+    outfile = os.path.join(os.getcwd(), filename)
+    return outfile
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
+    return data_node
+
+
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
+
+
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

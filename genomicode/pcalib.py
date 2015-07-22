@@ -61,7 +61,8 @@ def choose_colors(group):
 
 def plot_scatter(
     X, Y, out_file, group=None, color=None, height=None, width=None,
-    label=None, title=None, pov_file=None, povray=None):
+    label=None, xlabel=True, ylabel=True,
+    scale_label=None, title=None, pov_file=None, povray=None):
     # group should be a list of 0-N indicating the groupings of the
     # data points.  It should be the same length of X and Y.
     # Returns the output from povray.
@@ -73,6 +74,8 @@ def plot_scatter(
         width, height = 1024, 768
     assert width >= 16 and width < 4096*16
     assert height >= 16 and height < 4096*16
+    if scale_label is None:
+        scale_label = 1.0
 
     if not len(X):
         return None
@@ -100,10 +103,10 @@ def plot_scatter(
         points = zip(X, Y)
         graph = graphlib.scatter(
             points, color=color,
-            xtick=True, xtick_label=True, ytick=True, ytick_label=True,
-            overpoint_label=label,
+            xtick=True, xtick_label=xlabel, ytick=True, ytick_label=ylabel,
+            overpoint_label=label, overpoint_label_size=1.5*scale_label,
             xlabel="Principal Component 1", ylabel="Principal Component 2",
-            label_size=1,
+            label_size=1, 
             title=title,
             width=plot_width, height=plot_height)
         output = graph.write(out_file, povray_bin=povray)
@@ -121,7 +124,8 @@ def plot_scatter(
         output)
     return output
 
-def select_genes_mv(X, num_genes_mean=None, num_genes_var=None):
+def select_genes_mv(X, num_genes_mean=None, num_genes_var=None,
+                    test_for_missing_values=False):
     # Return the indexes of the genes that pass both the mean and
     # variance threshold.  num_genes_mean and num_genes_var is the
     # number of genes to keep.
@@ -148,13 +152,25 @@ def select_genes_mv(X, num_genes_mean=None, num_genes_var=None):
     I_mean = range(len(X))
     I_var = range(len(X))
     if num_genes_mean:
-        means = jmath.mean(X)
+        if not test_for_missing_values:
+            means = jmath.mean(X)
+        else:
+            means = []
+            for x in X:
+                x = [x for x in x if x is not None]
+                m = None  # If all missing values, then mean is None.
+                if x:
+                    m = jmath.mean(x)
+                means.append(m)
         I_mean = jmath.order(means, decreasing=1)[:num_genes_mean]
     if num_genes_var:
+        if test_for_missing_values:
+            raise NotImplementedError
         vars = jmath.var(X)
         I_var = jmath.order(vars, decreasing=1)[:num_genes_var]
     I_mean = {}.fromkeys(I_mean)
     I_var = {}.fromkeys(I_var)
+    # Bug: I_mean and I_var can contain None.  Should handle this case.
     I = [i for i in range(len(X)) if i in I_mean and i in I_var]
     #for i in range(len(X)):
     #    x = i, vars[i], int(i in I)

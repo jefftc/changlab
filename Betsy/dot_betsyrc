@@ -1,4 +1,6 @@
 [Section1]
 outputpath= /home/xchen/chencode/examples/sample_analysis
-networkfile=/home/xchen/chencode/Betsy/betsy.xgmml
+TESTPATH = /home/xchen/chencode/Betsy_3version/tests/
 module_timeout=60
+run_module_path = /home/xchen/chencode/Betsy_3version/Betsy/run_module.py
+queue_path = /home/xchen/chencode/queue/queue.py

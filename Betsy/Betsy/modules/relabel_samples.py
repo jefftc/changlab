@@ -1,63 +1,65 @@
 #relabel_samples.py
 import os
-import shutil
-from Betsy import module_utils
-import arrayio
 import subprocess
 from genomicode import config
-from time import strftime,localtime
+from Betsy import bie3
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(parameters,objects,pipeline,user,jobname):
-    starttime = strftime(module_utils.FMT, localtime())
-    single_object = get_identifier(parameters,objects)
-    rename_file = module_utils.find_object(parameters,objects,
-                                          'rename_list_file','contents')
-    outfile = get_outfile(parameters,objects,pipeline)
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, rename_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
     rename_path = config.slice_matrix
     rename_BIN = module_utils.which(rename_path)
-    assert rename_BIN,'cannot find the %s' %rename_path
-    command=['python',rename_BIN,single_object.identifier,'--relabel_col_ids',
-             rename_file.identifier+',NewName']
-    f=file(outfile,'w')
-    process = subprocess.Popen(command,shell=False,
-                                stdout=f,
-                                stderr=subprocess.PIPE)
+    assert rename_BIN, 'cannot find the %s' % rename_path
+    command = ['python', rename_BIN, data_node.identifier, '--relabel_col_ids',
+               rename_node.identifier + ',NewName']
+    f = file(outfile, 'w')
+    process = subprocess.Popen(command,
+                               shell=False,
+                               stdout=f,
+                               stderr=subprocess.PIPE)
     f.close()
     error_message = process.communicate()[1]
     if error_message:
         raise ValueError(error_message)
-     
-    assert module_utils.exists_nz(outfile),(
-        'the output file %s for relabel_samples does not exist'%outfile)
-    new_objects = get_newobjects(parameters,objects,pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters,[single_object,rename_file],pipeline,outfile,starttime,user,jobname)
-    return new_objects
-    
-def make_unique_hash(identifier,pipeline,parameters):
-    return module_utils.make_unique_hash(
-        identifier,pipeline,parameters)
 
-def get_outfile(parameters,objects,pipeline):
-    single_object = get_identifier(parameters,objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+    assert module_utils.exists_nz(outfile), (
+        'the output file %s for relabel_samples does not exist' % outfile
+    )
+    out_node = bie3.Data(rulebase._SignalFile_Annotate, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    filter1 = module_utils.AntecedentFilter(
+        datatype_name='_SignalFile_Annotate')
+    filter2 = module_utils.AntecedentFilter(datatype_name='RenameFile')
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2)
+    return x
+
+
+def name_outfile(antecedents, user_options):
+    data_node, rename_node = antecedents
+    original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'signal_rename_' + original_file + '.tdf'
-    outfile = os.path.join(os.getcwd(),filename)
+    outfile = os.path.join(os.getcwd(), filename)
     return outfile
-    
-def get_identifier(parameters,objects):
-    single_object = module_utils.find_object(
-        parameters,objects,'signal_file','contents,preprocess')
-    assert os.path.exists(single_object.identifier),(
-        'the input file %s for relabel_samples does not exist'
-        %single_object.identifier)
-    return single_object
-
-def get_newobjects(parameters,objects,pipeline):
-    outfile = get_outfile(parameters,objects,pipeline)
-    single_object = get_identifier(parameters,objects)
-    new_objects = module_utils.get_newobjects(
-        outfile,'signal_file',parameters,objects,single_object)
-    return new_objects 
 
 
+def set_out_attributes(antecedents, out_attributes):
+    data_node, rename_node = antecedents
+    new_parameters = data_node.data.attributes.copy()
+    new_parameters['rename_sample'] = 'yes'
+    return new_parameters
+
+
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, rename_node = antecedents
+    identifier = data_node.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

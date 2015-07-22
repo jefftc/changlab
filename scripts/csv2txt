@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+
+import os
+
+
+def csv2txt(filename, strict):
+    import csv
+
+    num_cols = None
+    reader = csv.reader(open(filename))
+    for i, row in enumerate(reader):
+        if strict:
+            if num_cols is None:
+                num_cols = len(row)
+            assert num_cols == len(row)
+        print "\t".join(row)
+
+
+def main():
+    import argparse
+
+    usage = "usage: %prog [options] <csv_file>"
+    parser = argparse.ArgumentParser(usage=usage, version="%prog 01")
+    
+    parser.add_argument('csv_file', nargs=1)
+    parser.add_argument(
+        '--strict', default=False, action="store_true",
+        help="Do extra checking on the file.")
+
+    args = parser.parse_args()
+
+    csv_file = args.csv_file[0]
+    assert os.path.exists(csv_file), \
+           "File not found: %s" % args.csv_file
+    
+    csv2txt(csv_file, args.strict)
+
+if __name__ == '__main__':
+    main()

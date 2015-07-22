@@ -1,14 +1,22 @@
 #!/usr/bin/env python
 
 # Functions:
-# _clean
 # read_matrices
 # has_missing_values
+# num_missing_values
+# assert_no_missing_values
 # transpose_matrix
+# transpose_nonmatrix
+# correlate_matrix
+# calc_mean
+# calc_sd
+# calc_range
+# group_expression_by_samplename
 #
 # parse_indexes
 # parse_names
 # parse_geneset
+# parse_correlations
 # _parse_file_gs
 # _parse_file_string
 # _parse_file_num
@@ -20,21 +28,29 @@
 # select_col_ids
 # select_col_genesets
 # select_col_annotation
-# select_col_re
+# select_col_regex
+# select_col_random
+# rename_col_id
 # replace_col_ids
 # relabel_col_ids
 # append_col_ids
+# add_col_ids
+#
 # reorder_col_indexes
+# reorder_col_cluster
 # reorder_col_alphabetical
+# reorder_col_byfile
 # remove_duplicate_cols
 # remove_unnamed_cols
 # rename_duplicate_cols
 # toupper_col_ids
 # hash_col_ids
 # apply_re_col_ids
+# add_prefix_col_ids
 # add_suffix_col_ids
 #
-# tcga_solid_tumor_only
+# tcga_primary_tumor_only
+# tcga_metastasis_only
 # tcga_relabel_patient_barcodes
 #
 # select_row_indexes
@@ -45,13 +61,20 @@
 # select_row_genesets
 # select_row_annotation
 # select_row_numeric_annotation
+# select_row_nonempty
+# select_row_maxvalue
+# select_row_mean_value
 # select_row_mean_var
 # select_row_missing_values
 # select_row_var
+# select_row_delta
+# select_row_fc
+# select_row_num_samples_fc
 # dedup_row_by_var
 # reverse_rows
 # reorder_row_indexes
 # reorder_row_cluster
+# reorder_row_cor
 # rename_duplicate_rows
 #
 # align_rows
@@ -62,12 +85,20 @@
 # remove_row_annot
 # rename_row_annot
 # move_row_annot
+# concat_row_annot
 #
+# rlog_blind
+# calc_cpm
 # set_min_value
 # center_genes_mean
 # center_genes_median
 # normalize_genes_var
+# count_missing_values
 # median_fill_genes
+# zero_fill_genes
+# impute_missing_values_knn
+# add_missing_values
+# loess_normalize
 #
 # _match_rownames_to_geneset       DEPRECATED
 # _match_colnames_to_geneset       DEPRECATED
@@ -77,11 +108,11 @@
 # _align_matrix_to_geneset         DEPRECATED
 # _find_col_header                 DEPRECATED
 #
+# _clean
 # _intersect_indexes
 # _dedup_indexes
+# _run_forked
 
-import os
-import sys
 
 
 def _clean(s):
@@ -93,7 +124,9 @@ def _clean(s):
 
 
 def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
-                  clean_only):
+                  clean_only, num_header_cols):
+    import os
+    import sys
     import csv
     import tempfile
     import arrayio
@@ -157,7 +190,7 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
             fmt_module = arrayio.choose_format(filename)
             assert fmt_module, \
                 "I could not figure out the format of file: %s" % filename
-            x = fmt_module.read(filename)
+            x = fmt_module.read(filename, hcols=num_header_cols)
             matrices.append(x)
     finally:
         for f in temp_files:
@@ -167,11 +200,25 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
     return fmt_module, matrices
 
 
+def num_missing_values(MATRIX):
+    num_missing = 0
+    for x in MATRIX._X:
+        for y in x:
+            if y is None:
+                num_missing += 1
+    return num_missing
+
+
 def has_missing_values(MATRIX):
     for x in MATRIX._X:
         if None in x:
             return True
     return False
+
+
+def assert_no_missing_values(MATRIX):
+    num = num_missing_values(MATRIX)
+    assert num == 0, "Matrix has %d missing values." % num
 
 
 def transpose_matrix(MATRIX, transpose):
@@ -193,15 +240,19 @@ def transpose_matrix(MATRIX, transpose):
     #print MATRIX.row_names()
     #import sys; sys.exit(0)
 
+    rnames = [x for x in MATRIX.row_names() if x != old_row_id]
+
     X = jmath.transpose(MATRIX._X)
     row_order = [new_row_id]
-    col_order = [tdf.SAMPLE_NAME]
+    col_order = [tdf.SAMPLE_NAME] + rnames
     row_names = {
         row_order[0] : MATRIX.col_names(const.COL_ID),
         }
     col_names = {
         col_order[0] : MATRIX.row_names(old_row_id),
         }
+    for rn in rnames:
+        col_names[rn] = MATRIX.row_names(rn)
     synonyms = {
         const.ROW_ID : row_order[0],
         const.COL_ID : col_order[0],
@@ -212,10 +263,185 @@ def transpose_matrix(MATRIX, transpose):
     return MATRIX_t
 
 
+def transpose_nonmatrix(filename):
+    # Transpose the contents of this tab-delimited file and print the
+    # results.
+    import os
+    from genomicode import filelib
+    from genomicode import iolib
+    from genomicode import jmath
+    from arrayio import tab_delimited_format as tdf
+
+    assert os.path.exists(filename), "File not found: %s" % filename
+    x = filelib.openfh(filename).read()
+    x = iolib.split_tdf(x, strip=True)
+    data = tdf._clean_tdf(x)
+    data_t = jmath.transpose(data)
+    for x in data_t:
+        print "\t".join(x)
+
+
+def correlate_matrix(MATRIX, correlate):
+    from genomicode import jmath
+    from genomicode import Matrix
+    from arrayio import const
+
+    if not correlate:
+        return MATRIX
+
+    X_cor = jmath.cor(MATRIX._X, byrow=0)
+    assert len(X_cor) == MATRIX.ncol()
+
+    row_order = [MATRIX.col_names()[0]]
+    col_order = [MATRIX.col_names()[0]]
+    row_names = {
+        row_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    col_names = {
+        col_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_cor = Matrix.InMemoryMatrix(
+        X_cor, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_cor
+
+
+def calc_mean(MATRIX, calc_mean):
+    from genomicode import jmath
+    
+    if not calc_mean:
+        return MATRIX
+
+    mean = [None] * len(MATRIX._X)
+    # Calculate the mean of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        mean[i] = jmath.mean(x)
+    assert len(mean) == len(MATRIX._X)
+
+    header = "Mean"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Mean %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = mean
+    return MATRIX_new
+
+
+def calc_sd(MATRIX, calc_sd):
+    from genomicode import jmath
+    
+    if not calc_sd:
+        return MATRIX
+
+    sd = [None] * len(MATRIX._X)
+    # Calculate the standard deviation of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        sd[i] = jmath.stddev(x)
+    assert len(sd) == len(MATRIX._X)
+
+    header = "Standard Deviation"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Standard Deviation %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = sd
+    return MATRIX_new
+
+
+def calc_range(MATRIX, calc_range):
+    from genomicode import jmath
+    
+    if not calc_range:
+        return MATRIX
+
+    delta = [None] * len(MATRIX._X)
+    # Calculate the standard deviation of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        delta[i] = max(x) - min(x)
+    assert len(delta) == len(MATRIX._X)
+
+    header = "Range"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Range %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = delta
+    return MATRIX_new
+
+
+def group_expression_by_samplename(MATRIX, group):
+    from genomicode import jmath
+    from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
+
+    if not group:
+        return MATRIX
+
+    # Pull out the expression values and sample names.
+    I = parse_names(MATRIX, True, group)
+    assert I, "I could not find the row: %s" % group
+    assert len(I) <= 1, "Multiple row matches: %s" % group
+    values = MATRIX.value(I[0], None)
+
+    assert tdf.SAMPLE_NAME in MATRIX.col_names(), "Missing sample names"
+    sample_names = MATRIX.col_names(tdf.SAMPLE_NAME)
+
+    # Find the groups and assign the expression values to each group.
+    groups = sorted({}.fromkeys(sample_names))
+    assert len(groups) <= len(sample_names), "No common sample names."
+    group2values = {}
+    for name, value in zip(sample_names, values):
+        if name not in group2values:
+            group2values[name] = []
+        group2values[name].append(value)
+    x = [len(x) for x in group2values.itervalues()]
+    max_group_len = max(x)
+
+    # Make the matrix.
+    X = [[None]*len(groups) for i in range(max_group_len)]
+    for i in range(len(groups)):
+        values = group2values[groups[i]]
+        for j in range(len(values)):
+            X[j][i] = values[j]
+
+    row_order = []
+    col_order = [tdf.SAMPLE_NAME]
+    row_names = {
+        }
+    col_names = {
+        col_order[0] : groups,
+        }
+    synonyms = {
+        const.COL_ID : col_order[0],
+        }
+
+    MATRIX_g = Matrix.InMemoryMatrix(
+        X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_g
+
+
 def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
     # is_row is a boolean for whether these are row indexes.  Takes
     # 1-based indexes and returns a list of 0-based indexes.
-    # 
+    #
     # Example inputs:
     # 5
     # 1,5,10
@@ -242,7 +468,7 @@ def parse_indexes(MATRIX, is_row, indexes_str, count_headers):
         if i not in nodup:
             nodup.append(i)
     I = nodup
-        
+
     return I
 
 
@@ -268,10 +494,13 @@ def parse_geneset(MATRIX, is_row, geneset):
     if not geneset:
         return []
     filename, genesets = _parse_file_gs(geneset)
-    assert len(genesets) >= 1
+    assert len(genesets) >= 1, "I could not parse a gene set from: %s" % \
+           geneset
 
     keywds = {"allow_tdf": True}
     genes = genesetlib.read_genes(filename, *genesets, **keywds)
+    # No blank genes.
+    genes = [x for x in genes if x.strip()]
     params = {"row": genes}
     if not is_row:
         params = {"col": genes}
@@ -280,6 +509,14 @@ def parse_geneset(MATRIX, is_row, geneset):
     if not is_row:
         I = I_col
     return I
+
+
+def parse_correlations(correlations):
+    # correlations is a comma-separated list of numbers.  Return a
+    # list of numbers.
+    x = correlations.split(",")
+    x = [float(x) for x in x]
+    return x
 
 
 def _parse_file_gs(geneset):
@@ -339,6 +576,7 @@ def _parse_file_annot(annotation):
 
 def _read_annot_file(filename):
     # Return (header2annots, all_headers, all_annots).
+    import os
     from genomicode import genesetlib
 
     assert os.path.exists(filename), "I could not find annotation file: %s" % \
@@ -356,7 +594,7 @@ def _read_annot_file(filename):
         #    print "Found"
         #    x = [x for x in annots if str(x) == ""]
         #    print "NUM BLANK", len(x)
-        
+
     assert all_headers
     for annots in all_annots[1:]:
         assert len(annots) == len(all_annots[0])
@@ -387,10 +625,14 @@ def _parse_file_num_annot(annotation):
     return filename, header, values
 
 
-def select_col_indexes(MATRIX, indexes, count_headers):
-    if not indexes:
+def select_col_indexes(MATRIX, indexes_list, count_headers):
+    if not indexes_list:
         return None
-    return parse_indexes(MATRIX, False, indexes, count_headers)
+    indexes = []
+    for x in indexes_list:
+        x = parse_indexes(MATRIX, False, x, count_headers)
+        indexes.extend(x)
+    return indexes
 
 
 def select_col_ids(MATRIX, ids):
@@ -405,7 +647,19 @@ def select_col_ids(MATRIX, ids):
 def select_col_genesets(MATRIX, genesets):
     if not genesets:
         return None
-    return parse_geneset(MATRIX, False, genesets)
+    I = []
+    for geneset in genesets:
+        x = parse_geneset(MATRIX, False, geneset)
+        I.extend(x)
+    # No duplicates.  Keep current order.
+    i = 0
+    while i < len(I):
+        if I[i] in I[:i]:
+            del I[i]
+        else:
+            i += 1
+    return I
+
 
 
 def select_col_annotation(MATRIX, col_annotation):
@@ -462,15 +716,103 @@ def select_col_regex(MATRIX, col_regex):
     return I
 
 
+def select_col_random(MATRIX, col_random):
+    import random
+    if col_random is None:
+        return None
+    assert col_random >= 1 and col_random < MATRIX.ncol()
+
+    I = range(MATRIX.ncol())
+    random.shuffle(I)
+    I = sorted(I[:col_random])
+    return I
+
+
+def select_col_numeric_value(MATRIX, col_numeric):
+    # Format: <row_id>,<value>[,<value,...]
+    if not col_numeric:
+        return None
+
+    x = _parse_file_num(col_numeric)
+    row_id, values = x
+
+    I = parse_names(MATRIX, True, row_id)
+    assert I, "I could not find row_id: %s" % row_id
+    assert len(I) == 1, "Multiple matches for %s" % row_id
+
+    signal = MATRIX._X[I[0]]
+    I = []
+    for i in range(len(signal)):
+        x = float(signal[i])
+        match = True
+        for (modifier, value) in values:
+            if modifier == "=":
+                match = abs(x-value) < 1E-10
+            elif modifier == "<":
+                match = (x < value)
+            elif modifier == ">":
+                match = (x > value)
+            elif modifier == "<=":
+                match = (x <= value)
+            elif modifier == ">=":
+                match = (x >= value)
+            else:
+                raise AssertionError("Unknown modifier: %s" % modifier)
+        # Accepts matches for any of the values.
+        if match:
+            I.append(i)
+    return I
+
+
+def rename_col_id(MATRIX, rename_list, ignore_missing):
+    # rename_list is list of strings in format of: <from>,<to>.
+    import arrayio
+
+    if not rename_list:
+        return MATRIX
+
+    rename_all = []  # list of (from_str, to_str)
+    for rename_str in rename_list:
+        x = rename_str.split(",")
+        assert len(x) == 2, "format should be: <from>,<to>"
+        from_str, to_str = x
+        rename_all.append((from_str, to_str))
+
+    name = arrayio.COL_ID
+    if name not in MATRIX._col_names:
+        name = MATRIX._synonyms[name]
+    assert name in MATRIX._col_names, "I can not find the sample names."
+    names = MATRIX.col_names(name)
+
+    if not ignore_missing:
+        missing = []
+        for (from_str, to_str) in rename_all:
+            if from_str not in names:
+                missing.append(from_str)
+        x1 = ", ".join(missing)
+        x2 = names
+        if len(x2) > 5:
+            x2 = x2[:5] + ["..."]
+        x2 = ", ".join(x2)
+        assert not missing, "Can't find col ids (%s) in %s" % (x1, x2)
+
+    MATRIX_new = MATRIX.matrix()
+    for i in range(len(names)):
+        for (from_str, to_str) in rename_all:
+            if names[i] == from_str:
+                names[i] = to_str
+    MATRIX_new._col_names[name] = names
+
+    return MATRIX_new
+
+
 def replace_col_ids(MATRIX, replace_list, ignore_missing):
     # replace_list is list of strings in format of: <from>,<to>.
     import arrayio
-    from genomicode import genesetlib
-    from genomicode import matrixlib
 
     if not replace_list:
         return MATRIX
-    
+
     replace_all = []  # list of (from_str, to_str)
     for replace_str in replace_list:
         x = replace_str.split(",")
@@ -492,6 +834,8 @@ def replace_col_ids(MATRIX, replace_list, ignore_missing):
 
 
 def relabel_col_ids(MATRIX, geneset, ignore_missing):
+    import os
+    import sys
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
@@ -499,24 +843,37 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
     assert len(genesets) == 1
-    
+
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
     all_genes = []
     ext = os.path.splitext(filename)[1].lower()
-    for x in genesetlib.read_genesets(
-        filename, allow_tdf=True, allow_duplicates=True, preserve_spaces=True):
-        geneset, description, genes = x
 
-        # Bug: sometimes will mis-identify TDF files as GMX.  The
-        # first row will be interpreted as a description instead of a
-        # gene (or annotation).  If the extension of the file isn't
-        # gmx or gmt, then assume it's some sort of tdf file.
-        #if not genesetlib._is_known_desc(description) and \
-        #       ext not in [".gmx", ".gmt"]:
-        if ext not in [".gmx", ".gmt"]:
-            genes = [description] + genes
+    # Bug: sometimes will mis-identify TDF files as GMX.  The first
+    # row will be interpreted as a description instead of a gene (or
+    # annotation).  If the extension of the file isn't gmx or gmt,
+    # then assume it's some sort of tdf file.  Also may mis-identify
+    # as GMT (via detect_format alignment (top)).
+    #if not genesetlib._is_known_desc(description) and \
+    #       ext not in [".gmx", ".gmt"]:
+    if ext not in [".gmx", ".gmt"]:
+        read_fn = genesetlib.read_tdf
+    else:
+        fmt = genesetlib.detect_format(filename)
+        if fmt == "GMX":
+            read_fn = genesetlib.read_gmx
+        elif fmt == "GMT":
+            read_fn = genesetlib.read_gmt
+        elif fmt:
+            raise AssertionError, "Unknown format: %s" % fmt
+        raise AssertionError, \
+              "I could not figure out the format of geneset file: %s" % \
+           filename
+
+    for x in read_fn(
+        filename, allow_duplicates=True, preserve_spaces=True):
+        geneset, description, genes = x
 
         geneset2genes[geneset] = genes
         all_genesets.append(geneset)
@@ -563,6 +920,7 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
     assert name in MATRIX_new._col_names, "I can not find the sample names."
     names = MATRIX_new.col_names(name)
     gs = genesets[0]
+    assert gs in geneset2genes, "Unknown header: %s" % gs
     genes = geneset2genes[gs]
     assert len(I_matrix) == len(I_geneset)
     assert max(I_geneset) < len(genes)
@@ -575,6 +933,8 @@ def relabel_col_ids(MATRIX, geneset, ignore_missing):
 
 
 def append_col_ids(MATRIX, geneset, ignore_missing):
+    import os
+    import sys
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
@@ -583,7 +943,7 @@ def append_col_ids(MATRIX, geneset, ignore_missing):
         return MATRIX
     filename, genesets = _parse_file_gs(geneset)
     assert len(genesets) == 1
-    
+
     # Read all genesets out of the geneset file.
     geneset2genes = {}
     all_genesets = []  # preserve the order of the genesets
@@ -596,10 +956,12 @@ def append_col_ids(MATRIX, geneset, ignore_missing):
         # Bug: sometimes will mis-identify TDF files as GMX.  The
         # first row will be interpreted as a description instead of a
         # gene (or annotation).  If the extension of the file isn't
-        # gmx or gmt, then assume it's some sort of tdf file.
+        # gmx or gmt, and the description looks like a gene name, then
+        # assume it's some sort of tdf file that has been
+        # misidentified.
         #if not genesetlib._is_known_desc(description) and \
         #       ext not in [".gmx", ".gmt"]:
-        if ext not in [".gmx", ".gmt"]:
+        if description and ext not in [".gmx", ".gmt"]:
             genes = [description] + genes
 
         geneset2genes[geneset] = genes
@@ -651,6 +1013,87 @@ def append_col_ids(MATRIX, geneset, ignore_missing):
     return MATRIX_new
 
 
+def add_col_ids(MATRIX, geneset, ignore_missing):
+    import os
+    import sys
+    import arrayio
+    from genomicode import genesetlib
+    from genomicode import matrixlib
+
+    if not geneset:
+        return MATRIX
+    filename, genesets = _parse_file_gs(geneset)
+    assert len(genesets) == 1
+
+    # BUG: Should merge this code with append_col_ids.  Duplicated!
+    # Read all genesets out of the geneset file.
+    geneset2genes = {}
+    all_genesets = []  # preserve the order of the genesets
+    all_genes = []
+    ext = os.path.splitext(filename)[1].lower()
+    for x in genesetlib.read_genesets(
+            filename, allow_tdf=True, allow_duplicates=True):
+        geneset, description, genes = x
+
+        # Bug: sometimes will mis-identify TDF files as GMX.  The
+        # first row will be interpreted as a description instead of a
+        # gene (or annotation).  If the extension of the file isn't
+        # gmx or gmt, and the description looks like a gene name, then
+        # assume it's some sort of tdf file that has been
+        # misidentified.
+        #if not genesetlib._is_known_desc(description) and \
+        #       ext not in [".gmx", ".gmt"]:
+        if description and ext not in [".gmx", ".gmt"]:
+            genes = [description] + genes
+
+        geneset2genes[geneset] = genes
+        all_genesets.append(geneset)
+        all_genes.append(genes)
+
+    # Find an alignment between the sample names and the genesets.
+    x = matrixlib.align_cols_to_many_annots(
+        MATRIX, all_genes, hash=True, get_indexes=True)
+    I_matrix, I_geneset, index = x
+    if len(I_matrix) == 0:
+        raise AssertionError("Matrixes doesn't match any gene sets.")
+    elif len(I_matrix) != MATRIX.ncol() and not ignore_missing:
+        # No matches.  Try to diagnose.
+        gs = all_genesets[index]
+        nm = len(I_matrix)
+        missing = []
+        col_names = MATRIX.col_names(arrayio.COL_ID)
+        missing = [col_names[i] for i in range(len(col_names))
+                   if i not in I_matrix]
+        print >>sys.stderr, \
+            "Matrix best matches column '%s' [%d:%d]." % (
+            gs, nm, MATRIX.ncol())
+        MAX_TO_SHOW = 5
+        if len(missing) > MAX_TO_SHOW:
+            print >>sys.stderr, \
+                "Missing (showing %d of %d):" % (MAX_TO_SHOW, len(missing))
+        else:
+            print >>sys.stderr, "Missing from annotation:"
+        for x_ in missing[:MAX_TO_SHOW]:
+            print >>sys.stderr, x_
+        raise AssertionError("I could not match the matrix to a geneset.")
+    # END DUPLICATED SECTION.
+
+    # Add the new column names to the MATRIX.
+    MATRIX_new = MATRIX.matrix()
+
+    gs = genesets[0]
+    genes = geneset2genes[gs]
+    assert len(I_matrix) == len(I_geneset)
+    new_names = [None] * len(I_matrix)
+    for i in range(len(I_matrix)):
+        new_names[I_matrix[i]] = genes[I_geneset[i]]
+
+    assert gs not in MATRIX_new._col_names
+    MATRIX_new._col_names[gs] = new_names
+    MATRIX_new._col_order.append(gs)
+    return MATRIX_new
+
+
 def reorder_col_indexes(MATRIX, indexes, count_headers):
     if not indexes:
         return MATRIX
@@ -662,16 +1105,82 @@ def reorder_col_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
+def reorder_col_cluster(MATRIX, cluster, tree_file,
+                        cluster_method, distance_method):
+    from genomicode import cluster30
+    from genomicode import clusterio
+    from genomicode import matrixlib
+
+    if not cluster:
+        assert not tree_file
+        return MATRIX
+    if not MATRIX.nrow() or not MATRIX.ncol():
+        return MATRIX
+
+    cdata = cluster30.cluster_hierarchical(
+        MATRIX, False, True, distance=distance_method, method=cluster_method)
+    if tree_file:
+        clusterio.write_atr_file(cdata.array_tree, open(tree_file, 'w'))
+
+    # cluster30 will convert the MATRIX to PCL format, losing row
+    # annotations.  Put missing row annotations back.
+    all_annots = []
+    for x in MATRIX.row_names():
+        x = MATRIX.row_names(x)
+        all_annots.append(x)
+    x = matrixlib.align_rows_to_many_annots(
+        cdata.matrix, all_annots, get_indexes=True)
+    I_MATRIX, I_row_names, index = x
+    assert I_MATRIX and I_row_names
+    assert I_MATRIX == range(cdata.matrix.nrow())
+
+    for header in MATRIX.row_names():
+        if header in cdata.matrix.row_names():
+            continue
+        x = MATRIX.row_names(header)
+        x = [x[i] for i in I_row_names]
+        cdata.matrix._row_order.append(header)
+        cdata.matrix._row_names[header] = x
+
+    return cdata.matrix
+
+    ## R = jmath.start_R()
+    ## jmath.R_equals(MATRIX._X, "X")
+    ## x = 'dist(t(X), method="%s")' % distance_method
+    ## x = 'hclust(%s, method="%s")' % (x, cluster_method)
+    ## I = list(R("%s$order" % x))   # 1-based indexes
+    ## #I = list(R("hclust(dist(t(X)))$order"))   # 1-based indexes
+    ## I = [x-1 for x in I]
+    ## MATRIX_new = MATRIX.matrix(None, I)
+    ## return MATRIX_new
+
+
 def reorder_col_alphabetical(MATRIX, alphabetize):
     import arrayio
     from genomicode import jmath
-    
+
     if not alphabetize:
         return MATRIX
-    
+
     col_names = MATRIX.col_names(arrayio.COL_ID)
     I = jmath.order(col_names)
     MATRIX_new = MATRIX.matrix(None, I)
+    return MATRIX_new
+
+
+def reorder_col_byfile(MATRIX, filename, ignore_missing_cols):
+    from genomicode import filelib
+
+    if not filename:
+        return MATRIX
+
+    # File should be one line per sample name.
+    samples = [x.strip() for x in filelib.openfh(filename)]
+    I_row, I_col = MATRIX._index(col=samples)
+    assert I_col, "I could not find any samples from %s." % filename
+    if not ignore_missing_cols:
+        assert len(I_col) == len(samples), "I could not find some samples."
+    MATRIX_new = MATRIX.matrix(None, I_col)
     return MATRIX_new
 
 
@@ -808,9 +1317,23 @@ def apply_re_col_ids(MATRIX, apply_re_col_ids):
     MATRIX = MATRIX.matrix()
     names = MATRIX.col_names(tdf.SAMPLE_NAME)
     for i in range(len(names)):
-        m = re.match(apply_re_col_ids, names[i])
+        m = re.search(apply_re_col_ids, names[i])
         if m:
             names[i] = m.group(1)
+    MATRIX._col_names[tdf.SAMPLE_NAME] = names
+    return MATRIX
+
+
+def add_prefix_col_ids(MATRIX, prefix):
+    from arrayio import tab_delimited_format as tdf
+
+    if not prefix:
+        return MATRIX
+    if tdf.SAMPLE_NAME not in MATRIX.col_names():
+        return MATRIX
+    MATRIX = MATRIX.matrix()
+    names = MATRIX.col_names(tdf.SAMPLE_NAME)
+    names = [prefix+x for x in names]
     MATRIX._col_names[tdf.SAMPLE_NAME] = names
     return MATRIX
 
@@ -844,7 +1367,7 @@ def _parse_tcga_barcode(barcode):
     assert len(x) <= 7, "Invalid barcode: %s" % barcode
 
     sample = aliquot = analyte = None
-    
+
     assert x[0] == "TCGA", "Invalid barcode: %s" % barcode
     assert len(x[1]) == 2, "Invalid barcode: %s" % barcode
     assert len(x[2]) == 4, "Invalid barcode: %s" % barcode
@@ -863,7 +1386,7 @@ def _parse_tcga_barcode(barcode):
     return patient, sample, aliquot, analyte
 
 
-def tcga_solid_tumor_only(MATRIX, cancer_only):
+def tcga_primary_tumor_only(MATRIX, cancer_only, ignore_non_tcga):
     from arrayio import tab_delimited_format as tdf
 
     if not cancer_only:
@@ -872,7 +1395,14 @@ def tcga_solid_tumor_only(MATRIX, cancer_only):
     barcodes = MATRIX.col_names(tdf.SAMPLE_NAME)
     I = []
     for i, barcode in enumerate(barcodes):
-        x = _parse_tcga_barcode(barcode)
+        try:
+            x = _parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+                I.append(i)
+                continue
+            raise
         patient, sample, aliquot, analyte = x
         assert sample is not None, "sample missing from barcode"
         assert len(sample) >= 2
@@ -882,9 +1412,37 @@ def tcga_solid_tumor_only(MATRIX, cancer_only):
             I.append(i)
     x = MATRIX.matrix(None, I)
     return x
-    
-    
-def tcga_relabel_patient_barcodes(MATRIX, relabel):
+
+
+def tcga_metastasis_only(MATRIX, cancer_only, ignore_non_tcga):
+    from arrayio import tab_delimited_format as tdf
+
+    if not cancer_only:
+        return MATRIX
+    assert tdf.SAMPLE_NAME in MATRIX.col_names()
+    barcodes = MATRIX.col_names(tdf.SAMPLE_NAME)
+    I = []
+    for i, barcode in enumerate(barcodes):
+        try:
+            x = _parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+                I.append(i)
+                continue
+            raise
+        patient, sample, aliquot, analyte = x
+        assert sample is not None, "sample missing from barcode"
+        assert len(sample) >= 2
+        sample = int(sample[:2])
+        assert sample >= 1
+        if sample == 6:  # also keep 7, additional metastatic?
+            I.append(i)
+    x = MATRIX.matrix(None, I)
+    return x
+
+
+def tcga_relabel_patient_barcodes(MATRIX, relabel, ignore_non_tcga):
     import arrayio
     if not relabel:
         return MATRIX
@@ -896,12 +1454,25 @@ def tcga_relabel_patient_barcodes(MATRIX, relabel):
 
     MATRIX_new = MATRIX.matrix()
     barcodes = MATRIX.col_names(name)
-    x = [_parse_tcga_barcode(x) for x in barcodes]
-    x = [x[0] for x in x]
-    MATRIX_new._col_names[name] = x
-    
+    for i in range(len(barcodes)):
+        barcode = barcodes[i]
+        try:
+            x = _parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+                pass
+            else:
+                raise
+        else:
+            barcode = x[0]
+        barcodes[i] = barcode
+    #x = [_parse_tcga_barcode(x) for x in barcodes]
+    #x = [x[0] for x in x]
+    MATRIX_new._col_names[name] = barcodes
+
     return MATRIX_new
-    
+
 
 def select_row_indexes(MATRIX, indexes, count_headers):
     if not indexes:
@@ -920,8 +1491,6 @@ def select_row_ids(MATRIX, ids):
 
 def select_row_string(MATRIX, row_annotation):
     # Format: <header>,<value>[,<value,...]
-    from genomicode import matrixlib
-
     if not row_annotation:
         return None
 
@@ -940,8 +1509,6 @@ def select_row_string(MATRIX, row_annotation):
 
 def select_row_numeric(MATRIX, row_annotation):
     # Format: <header>,<value>[,<value,...]
-    from genomicode import matrixlib
-
     if not row_annotation:
         return None
 
@@ -988,7 +1555,19 @@ def select_row_random(MATRIX, num_rows):
 def select_row_genesets(MATRIX, genesets):
     if not genesets:
         return None
-    return parse_geneset(MATRIX, True, genesets)
+    I = []
+    for geneset in genesets:
+        x = parse_geneset(MATRIX, True, geneset)
+        I.extend(x)
+    # No duplicates.  Keep current order.
+    i = 0
+    while i < len(I):
+        if I[i] in I[:i]:
+            del I[i]
+        else:
+            i += 1
+            
+    return I
 
 
 def select_row_annotation(MATRIX, row_annotation):
@@ -1068,6 +1647,52 @@ def select_row_numeric_annotation(MATRIX, row_annotation):
     return I
 
 
+def select_row_nonempty(MATRIX, row_nonempty):
+    # Format: <header>
+    if not row_nonempty:
+        return None
+
+    header = row_nonempty
+    assert header in MATRIX.row_names(), "Missing header: %s" % header
+    annots = MATRIX.row_names(header)
+    I = []
+    for i, annot in enumerate(annots):
+        if annot != "":
+            I.append(i)
+    return I
+
+
+def select_row_maxvalue(MATRIX, maxvalue):
+    if maxvalue is None:
+        return None
+    maxvalue = float(maxvalue)
+    assert maxvalue >= 0 and maxvalue < 10000
+
+    I = []  # indexes to keep.
+    for i in range(len(MATRIX._X)):
+        x = [x for x in MATRIX._X[i] if x is not None]
+        if max(x) >= maxvalue:
+            I.append(i)
+    return I
+
+
+def select_row_mean_value(MATRIX, mean_value):
+    from genomicode import jmath
+    
+    if mean_value is None:
+        return None
+    mean_value = float(mean_value)
+    assert mean_value >= 0 and mean_value < 10000
+
+    means = jmath.mean(MATRIX._X)
+    assert len(means) == len(MATRIX._X)
+    I = []
+    for i in range(len(means)):
+        if means[i] >= mean_value:
+            I.append(i)
+    return I
+
+
 def select_row_mean_var(MATRIX, filter_mean, filter_var):
     from genomicode import pcalib
     if filter_mean is None and filter_var is None:
@@ -1085,11 +1710,12 @@ def select_row_mean_var(MATRIX, filter_mean, filter_var):
     num_genes_mean = num_genes_var = None
     if filter_mean is not None:
         # Calculate the number of genes to keep.
-        num_genes_mean = int((1.0 - filter_mean) * nrow)
+        num_genes_mean = int(round((1.0 - filter_mean) * nrow))
     if filter_var is not None:
         # Calculate the number of genes to keep.
-        num_genes_var = int((1.0 - filter_var) * nrow)
-    I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+        num_genes_var = int(round((1.0 - filter_var) * nrow))
+    I = pcalib.select_genes_mv(
+        MATRIX._X, num_genes_mean, num_genes_var, test_for_missing_values=True)
     return I
 
 
@@ -1110,7 +1736,6 @@ def select_row_missing_values(MATRIX, perc_missing):
         if pm < perc_missing:
             I.append(i)
     return I
-            
 
 def select_row_var(MATRIX, select_var):
     from genomicode import pcalib
@@ -1120,6 +1745,67 @@ def select_row_var(MATRIX, select_var):
     assert select_var >= 1 and select_var <= MATRIX.nrow()
     I = pcalib.select_genes_var(MATRIX._X, select_var)
     #print select_var, len(I)
+    return I
+
+
+def select_row_delta(MATRIX, select_delta):
+    if select_delta is None:
+        return None
+    select_delta = float(select_delta)
+    assert select_delta > 0 and select_delta < 100000
+
+    delta = []
+    for x in MATRIX._X:
+        delta.append(max(x) - min(x))
+
+    I = [i for (i, x) in enumerate(delta) if x >= select_delta]
+    return I
+
+
+def select_row_fc(MATRIX, select_fc):
+    import math
+    if select_fc is None:
+        return None
+    select_fc = float(select_fc)
+    assert select_fc > 0 and select_fc < 500
+
+    log_fc = []
+    for x in MATRIX._X:
+        lfc = max(x) - min(x)
+        log_fc.append(lfc)
+
+    lfc_cutoff = math.log(select_fc, 2)
+    I = [i for (i, x) in enumerate(log_fc) if x >= lfc_cutoff]
+    return I
+
+
+def select_row_num_samples_fc(MATRIX, num_samples, use_median=False):
+    # By default, uses mean.  If use_median is true, then uses median.
+    from genomicode import jmath
+
+    if num_samples is None:
+        return None
+    num_samples = int(num_samples)
+    assert num_samples > 0 and num_samples < MATRIX.ncol()
+
+    # Calculate the means.
+    if use_median:
+        means = jmath.median(MATRIX._X)
+    else:
+        means = jmath.mean(MATRIX._X)
+    assert len(means) == len(MATRIX._X)
+
+    # In each row, count the number of samples that deviate at least
+    # 2-fold (assuming log_2) from the mean.
+    deviants = [None] * len(means)
+    for i, row in enumerate(MATRIX._X):
+        x = [abs(x-means[i]) for x in row]
+        x = [x for x in x if x >= 1]
+        deviants[i] = len(x)
+
+    # Keep only the genes where at least num_samples deviate 2-fold
+    # from the mean.
+    I = [i for (i, x) in enumerate(deviants) if x >= num_samples]
     return I
 
 
@@ -1137,7 +1823,7 @@ def dedup_row_by_var(MATRIX, header):
             annot2i[annot] = []
         annot2i[annot].append(i)
 
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     variances = jmath.var(MATRIX._X)
 
     I = []
@@ -1175,19 +1861,69 @@ def reorder_row_indexes(MATRIX, indexes, count_headers):
     return MATRIX_new
 
 
-def reorder_row_cluster(MATRIX, cluster):
-    from genomicode import jmath
-    
+def reorder_row_cluster(
+    MATRIX, cluster, tree_file, cluster_method, distance_method,
+    indexes, count_headers):
+    from genomicode import cluster30
+    from genomicode import clusterio
+
     if not cluster:
+        assert not tree_file
         return MATRIX
     if not MATRIX.nrow() or not MATRIX.ncol():
         return MATRIX
 
-    R = jmath.start_R()
-    jmath.R_equals(MATRIX._X, "X")
-    I = list(R("hclust(dist(X))$order"))   # 1-based indexes
-    I = [x-1 for x in I]
-    MATRIX_new = MATRIX.matrix(I, None)
+    # Parse the indexes.
+    if indexes:
+        raise NotImplementedError
+
+    cdata = cluster30.cluster_hierarchical(
+        MATRIX, True, False, distance=distance_method,
+        method=cluster_method)
+    if tree_file:
+        clusterio.write_gtr_file(cdata.gene_tree, open(tree_file, 'w'))
+    return cdata.matrix
+
+    ## R = jmath.start_R()
+    ## jmath.R_equals(MATRIX._X, "X")
+    ## x = 'dist(X, method="%s")' % distance_method
+    ## x = 'hclust(%s, method="%s")' % (x, cluster_method)
+    ## I = list(R("%s$order" % x))   # 1-based indexes
+    ## I = [x-1 for x in I]
+    ## MATRIX_new = MATRIX.matrix(I, None)
+    ## return MATRIX_new
+
+
+def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
+                    indexes, count_headers):
+    from genomicode import jmath
+
+    if not correlations:
+        return MATRIX
+    if not MATRIX.nrow() or not MATRIX.ncol():
+        return MATRIX
+
+    # Parse the correlation.
+    vec = parse_correlations(correlations)
+
+    # Parse the indexes.
+    I = None
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, count_headers)
+    X = MATRIX.slice(None, I)
+
+    nrow, ncol = len(X), len(X[0])
+    assert len(vec) == ncol, "vector %d indexes %d" % (len(vec), ncol)
+
+    jmath.start_R()
+    jmath.R_equals(X, "X")
+    jmath.R_equals(vec, "vec")
+    jmath.R("cors <- cor(vec, t(X))")
+    if reverse_negative_cors:
+        jmath.R("cors[cors < 0] <- -1 - cors[cors < 0]")
+    O = list(jmath.R("order(cors, decreasing=TRUE)"))
+    O = [x-1 for x in O]  # convert 1-based to 0-based indexes
+    MATRIX_new = MATRIX.matrix(O, None)
     return MATRIX_new
 
 
@@ -1217,15 +1953,46 @@ def rename_duplicate_rows(MATRIX, rename_duplicate_rows):
     return MATRIX
 
 
-def align_rows(MATRIX, align_row_file, ignore_missing_rows):
+## def merge_rows_with_dup_values(MATRIX, merge_rows_with_dup_values):
+##     if not merge_rows_with_dup_values:
+##         return MATRIX
+
+##     # While there are duplicate rows, merge them.
+##     X = MATRIX._X
+##     i = 0
+##     while i < len(X):
+##         dup = None
+##         for j in range(i+1, len(X)):
+##             delta = 0.0
+##             for k in range(len(X[i])):
+##                 delta += abs(X[i][k] - X[j][k])
+##             if delta < 1E-5:
+##                 dup = j
+##                 break
+##         if dup is None:
+##             i += 1
+##             continue
+##         # Merge row i with row dup.
+##         print "Dup", i, dup
+##         print MATRIX.row_names("Ensembl Gene ID")[i]
+##         print MATRIX.row_names("Ensembl Gene ID")[dup]
+##         #_merge_rows(
+##         raise NotImplementedError
+##         pass
+##     raise NotImplementedError
+
+
+
+def align_rows(MATRIX, align_row_matrix, ignore_missing_rows):
+    import os
     import arrayio
 
-    if not align_row_file:
+    if not align_row_matrix:
         return None
-    assert os.path.exists(align_row_file), \
-        "File not found: %s" % align_row_file
+    assert os.path.exists(align_row_matrix), \
+        "File not found: %s" % align_row_matrix
 
-    ALIGN = arrayio.read(align_row_file)
+    ALIGN = arrayio.read(align_row_matrix)
     # Try all the headers and see if we can find a hit.
     # BUG: what if there's no header?
     best_I = []
@@ -1260,16 +2027,17 @@ def align_rows(MATRIX, align_row_file, ignore_missing_rows):
     return I
 
 
-def align_cols(MATRIX, align_col_file, ignore_missing_cols):
+def align_cols(MATRIX, align_col_matrix, ignore_missing_cols):
+    import os
     import arrayio
 
-    if not align_col_file:
+    if not align_col_matrix:
         return None
-    assert os.path.exists(align_col_file), \
-        "File not found: %s" % align_col_file
+    assert os.path.exists(align_col_matrix), \
+        "File not found: %s" % align_col_matrix
 
     headers = MATRIX.col_names(arrayio.COL_ID)
-    ALIGN = arrayio.read(align_col_file)
+    ALIGN = arrayio.read(align_col_matrix)
     # Try all the headers and see if we can find a hit.
     # Bug: what if there are duplicates in MATRIX or ALIGN?
     best_matches, best_I, best_header = None, [], ""
@@ -1395,6 +2163,7 @@ def rename_row_annot(MATRIX, row_annot):
     assert "," in row_annot
     x = row_annot.split(",", 1)
     old_name, new_name = x
+    #print MATRIX.row_names()
     assert old_name in MATRIX.row_names(), \
         "I could not find name: %s" % old_name
     assert new_name not in MATRIX.row_names(), \
@@ -1442,6 +2211,156 @@ def move_row_annot(MATRIX, move_row_annot):
     return MATRIX_clean
 
 
+def concat_row_annot(MATRIX, concat_row_annot):
+    if concat_row_annot is None:
+        return MATRIX
+
+    # concat_row_annot is in format:
+    # <new_header>,<concat_char>,<header1>,<header2>,...
+    x = concat_row_annot.split(",")
+    assert len(x) >= 4
+    new_header, concat_char = x[:2]
+    headers = x[2:]
+
+    assert new_header not in MATRIX.row_names()
+    for header in headers:
+        assert header in MATRIX.row_names(), "I could not find header: %s" % \
+               header
+
+    MATRIX_clean = MATRIX.matrix()
+    assert MATRIX_clean._row_order
+
+    old_annots = [MATRIX.row_names(x) for x in headers]
+    new_annots = []
+    for i in range(len(old_annots[0])):
+        x = [x[i] for x in old_annots]
+        x = concat_char.join(x)
+        new_annots.append(x)
+
+    MATRIX_clean._row_order.append(new_header)
+    MATRIX_clean._row_names[new_header] = new_annots
+    return MATRIX_clean
+
+
+def _rlog_blind_h(X, outfile):
+    from genomicode.jmath import start_R, R_fn, R_var, R_equals
+
+    assert len(X), "empty matrix"
+    assert len(X[0]), "empty matrix"
+    ncol = len(X[0])
+    assert ncol >= 2, "need at least 2 columns"
+    
+    R = start_R()
+    R_fn("library", "DESeq2")
+    R_equals(X, "X")
+    # Make up some dummy design data.
+    x = ["1"] + ["2"]*(ncol-1)
+    R_fn("data.frame", condition=x, RETVAL="col.data")
+    R_fn(
+        "DESeqDataSetFromMatrix", countData=R_var("X"),
+        colData=R_var("col.data"), design=R_var("~condition"), RETVAL="dds")
+    R_fn("rlog", R_var("dds"), blind=R_var("TRUE"), RETVAL="x")
+    R_fn("assay", R_var("x"), RETVAL="x")
+    log_X_R = R["x"]
+
+    # Convert this matrix into a Python object.  This matrix is
+    # column-major.
+    log_X_py = [[None]*log_X_R.ncol for i in range(log_X_R.nrow)]
+    zzz = 0
+    for j in range(log_X_R.ncol):
+        for i in range(log_X_R.nrow):
+            log_X_py[i][j] = log_X_R[zzz]
+            zzz += 1
+
+    # Write log_X_py to an outfile.
+    handle = open(outfile, 'w')
+    for x in log_X_py:
+        print >>handle, "\t".join(map(str, x))
+    handle.close()
+
+
+def rlog_blind(X):
+    # Fork a subprocess, because some R libraries generate garbage to
+    # the screen.
+    import os
+    import tempfile
+
+    outfile = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        _run_forked(_rlog_blind_h, (X, outfile), {})
+
+        assert os.path.exists(outfile), "failed"
+        X_rlog = []
+        for line in open(outfile):
+            x = line.rstrip("\r\n").split("\t")
+            x = map(float, x)
+            X_rlog.append(x)
+    finally:
+        if FORKED_PID and outfile and os.path.exists(outfile):
+            os.unlink(outfile)
+    return X_rlog
+
+
+def _calc_cpm_h(X, outfile):
+    from genomicode.jmath import start_R, R_fn, R_var, R_equals
+
+    assert len(X), "empty matrix"
+    assert len(X[0]), "empty matrix"
+
+    R = start_R()
+    R_fn("library", "edgeR")
+    R_equals(X, "X")
+    R_fn("DGEList", counts=R_var("X"), RETVAL="dge")
+    R_fn("cpm", R_var("dge"), RETVAL="x")
+    log_X_R = R["x"]
+
+    # Convert this matrix into a Python object.  This matrix is
+    # column-major.
+    log_X_py = [[None]*log_X_R.ncol for i in range(log_X_R.nrow)]
+    zzz = 0
+    for j in range(log_X_R.ncol):
+        for i in range(log_X_R.nrow):
+            log_X_py[i][j] = log_X_R[zzz]
+            zzz += 1
+            
+    # Write log_X_py to an outfile.
+    handle = open(outfile, 'w')
+    for x in log_X_py:
+        print >>handle, "\t".join(map(str, x))
+    handle.close()
+    
+
+def calc_cpm(X):
+    # Fork a subprocess, because some R libraries generate garbage to
+    # the screen.
+    import os
+    import tempfile
+
+    outfile = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        _run_forked(_calc_cpm_h, (X, outfile), {})
+
+        assert os.path.exists(outfile), "failed (%s)" % outfile
+        X_rlog = []
+        for line in open(outfile):
+            x = line.rstrip("\r\n").split("\t")
+            x = map(float, x)
+            X_rlog.append(x)
+    finally:
+        # Only delete in parent.
+        if FORKED_PID and outfile and os.path.exists(outfile):
+            os.unlink(outfile)
+    return X_rlog
+
+
 def set_min_value(MATRIX, value):
     MATRIX = [x[:] for x in MATRIX]  # Make a copy.
     for i in range(len(MATRIX)):
@@ -1458,7 +2377,7 @@ def center_genes_mean(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the mean.
@@ -1478,7 +2397,7 @@ def center_genes_median(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Center the genes in place.
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     X = MATRIX._X
     for i in range(len(X)):
         # Subtract the median.
@@ -1498,17 +2417,17 @@ def normalize_genes_var(MATRIX, indexes):
         I = parse_indexes(MATRIX, False, indexes, False)
 
     # Normalize the genes in place.
-    assert not has_missing_values(MATRIX), "Matrix has missing values."
+    assert_no_missing_values(MATRIX)
     X = MATRIX._X
     for i in range(len(X)):
         X_i = X[i]
         X_sub = X_i
         if I:
             X_sub = [X_i[j] for j in I]
-        
+
         m = jmath.mean(X_sub)
         s = jmath.stddev(X_sub)
-        
+
         # Subtract the mean.
         X_i = [x - m for x in X_i]
         # Normalize to stddev of 1.
@@ -1517,6 +2436,29 @@ def normalize_genes_var(MATRIX, indexes):
         # Add the mean back.
         X_i = [x + m for x in X_i]
         X[i] = X_i
+
+
+def count_missing_values(MATRIX, header):
+    from genomicode import jmath
+
+    if not header:
+        return MATRIX
+
+    # Count the number of missing values in each row.
+    X = MATRIX._X
+    missing_values = [None] * len(X)
+    for i in range(len(X)):
+        x = [x for x in X[i] if x is None]
+        missing_values[i] = len(x)
+    
+    # Add the new annotations to the MATRIX.
+    MATRIX_new = MATRIX.matrix()
+    assert header not in MATRIX_new._row_names, "Duplicate header: %s" % header
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = missing_values
+
+    return MATRIX_new
+
 
 def median_fill_genes(MATRIX):
     from genomicode import jmath
@@ -1529,6 +2471,124 @@ def median_fill_genes(MATRIX):
             if X[i][j] is None:
                 #print "FILLING", i, j
                 X[i][j] = m
+
+
+def zero_fill_genes(MATRIX):
+    # Zero-fill the genes in place.
+    X = MATRIX._X
+    for i in range(len(X)):
+        for j in range(len(X[i])):
+            if X[i][j] is None:
+                X[i][j] = 0.0
+
+
+def impute_missing_values_knn(MATRIX, K):
+    from genomicode import jmath
+    if K is None:
+        return MATRIX
+    K = int(K)
+    assert K >= 1 and K < 100
+
+    X = MATRIX._X
+    jmath.start_R()
+    jmath.R("library(impute)")
+    jmath.R_equals(MATRIX._X, "X")
+    jmath.R("obj <- impute.knn(X, k=%d)" % K)
+    X_impute = jmath.R2py_matrix(jmath.R("obj$data"))
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._X = X_impute
+    return MATRIX_new
+                
+
+def add_missing_values(MATRIX, matrix_file):
+    import os
+    import arrayio
+    
+    if not matrix_file:
+        return MATRIX
+    assert os.path.exists(matrix_file)
+    MATRIX_missing = arrayio.read(matrix_file)
+    assert MATRIX.dim() == MATRIX_missing.dim()
+
+    # Change MATRIX_new in place.
+    MATRIX_new = MATRIX.matrix()
+    X = MATRIX_new._X
+    for i in range(len(X)):
+        for j in range(len(X[i])):
+            if MATRIX_missing._X[i][j] is None:
+                X[i][j] = None
+    return MATRIX_new
+                
+
+def _loess_normalize(X):
+    from genomicode.jmath import start_R, R_fn, R_var, R_equals
+
+    R = start_R()
+    R_fn("library", "affy")
+    R_equals(X, "X")
+    R_fn(
+        "normalize.loess", R_var("X"), RETVAL="X_norm",
+        **{"log.it":R_var("FALSE")})
+    X_norm_R = R["X_norm"]
+
+    # Convert this matrix into a Python object.  This matrix is
+    # column-major.
+    X_norm_py = [[None]*X_norm_R.ncol for i in range(X_norm_R.nrow)]
+    zzz = 0
+    for j in range(X_norm_R.ncol):
+        for i in range(X_norm_R.nrow):
+            X_norm_py[i][j] = X_norm_R[zzz]
+            zzz += 1
+    return X_norm_py
+
+def loess_normalize(MATRIX):
+    import os
+    import sys
+    import tempfile
+
+    outfile = pid = None
+    try:
+        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        # Fork a subprocess or R will generate garbage to the screen.
+        r, w = os.pipe()
+        pid = os.fork()
+
+        if not pid:   # child
+            os.close(r)
+            w = os.fdopen(w, 'w')
+            os.dup2(w.fileno(), sys.stdout.fileno())
+            X_norm = _loess_normalize(MATRIX._X)
+            handle = open(outfile, 'w')
+            for x in X_norm:
+                print >>handle, "\t".join(map(str, x))
+            sys.exit(0)
+        else:  # parent
+            os.close(w)
+            r = os.fdopen(r)
+            r_output = r.read()  # output from R library
+            os.waitpid(pid, 0)
+            if not os.path.exists(outfile):
+                assert os.path.exists(outfile), "%s\nR normalization failed" %\
+                       r_output
+            X_norm = []
+            for line in open(outfile):
+                cols = line.rstrip("\r\n").split("\t")
+                cols = map(float, cols)
+                X_norm.append(cols)
+    finally:
+        if pid:
+            if outfile and os.path.exists(outfile):
+                os.unlink(outfile)
+
+    MATRIX_new = MATRIX.matrix()
+    assert len(X_norm) == MATRIX.nrow()
+    for x in X_norm:
+        assert len(x) == MATRIX.ncol()
+    MATRIX_new._X = X_norm
+    return MATRIX_new
 
 
 ## def _match_rownames_to_geneset(MATRIX, all_genesets, geneset2genes):
@@ -1723,6 +2783,18 @@ def _intersect_indexes(*indexes):
     return I
 
 
+## def _union_indexes(*indexes):
+##     # Ignore None.  Does not preserve order.
+##     indexes = [x for x in indexes if x is not None]
+
+##     # Want indexes that occur in any of them.
+##     I = []
+##     for x in indexes:
+##         I.extend(x)
+##     I = sorted({}.fromkeys(I))
+##     return I
+
+
 def _dedup_indexes(I):
     # Get rid of duplicate indexes, preserving the original order of
     # the indexes.
@@ -1739,7 +2811,34 @@ def _dedup_indexes(I):
     return I
 
 
+FORKED_PID = None
+def _run_forked(fn, args, keywds):
+    global FORKED_PID
+    import os
+    import sys
+
+    r, w = os.pipe()
+    pid = os.fork()
+    FORKED_PID = pid
+    if pid:   # Parent
+        os.close(w)
+        r = os.fdopen(r)
+        output = r.read()
+        #for line in r:
+        #    pass
+        #    #sys.stdout.write(line)   # output from R library
+        os.waitpid(pid, 0)
+    else:     # Child
+        os.close(r)
+        w = os.fdopen(w, 'w')
+        os.dup2(w.fileno(), sys.stdout.fileno())
+        fn(*args, **keywds)
+        sys.exit(0)
+    return output
+
+
 def main():
+    import sys
     import argparse
     import arrayio
     from genomicode import jmath
@@ -1753,42 +2852,81 @@ def main():
         "--read_as_csv", default=False, action="store_true",
         help="Read as a CSV file.")
     parser.add_argument(
-        "--skip_lines", default=None,
+        "--skip_lines", default=None, type=int,
         help="Skip this number of lines in the file.")
     parser.add_argument(
-        "--remove_comments", default=None,
+        "--remove_comments",
         help="Remove rows that start with this character (e.g. '#')")
+    parser.add_argument(
+        "--num_header_cols", type=int,
+        help="This number of columns are headers.  If not given, will guess.")
     parser.add_argument(
         "--clean_only", default=False, action="store_true",
         help="Only read_as_csv and remove_comments.")
     parser.add_argument(
-        "--transpose", default=None, 
-        help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
-        "<old row ID> is the header of the column in the original file that "
-        "should be used for the headers in the transposed file.  "
-        "<new row ID> is what should be the name of the column of the IDs "
-        "in the transposed file.")
+        "--output_format", default="tdf", choices=["tdf", "gct"],
+        help="Specify the format for the output file.")
     # If the user chooses an outfile, will need to implement it for
     # clean_only as well.
     #parser.add_argument(
     #    "-o", default=None, metavar="OUTFILE", dest="outfile",
     #    help="Save to this file.  By default, writes output to STDOUT.")
 
+    group = parser.add_argument_group(
+        title="Matrix Manipulation and Computations")
+    group.add_argument(
+        "--transpose",
+        help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
+        "<old row ID> is the header of the column in the original file that "
+        "should be used for the headers in the transposed file.  "
+        "<new row ID> is what should be the name of the column of the IDs "
+        "in the transposed file.")
+    group.add_argument(
+        "--transpose_nonmatrix", action="store_true",
+        help="Just transpose the rows and columns.  May not be an "
+        "expression matrix.  Should only have one file.  Ignores all "
+        "other parameters.")
+    group.add_argument(
+        "--correlate", action="store_true",
+        help="Calculate the pairwise correlation of the columns.")
+    group.add_argument(
+        "--calc_mean", action="store_true",
+        help="Calculate the mean of each row.")
+    group.add_argument(
+        "--calc_sd", action="store_true",
+        help="Calculate the standard deviation of each row.")
+    group.add_argument(
+        "--calc_range", action="store_true",
+        help="Calculate the range (max - min) of each row.")
+    group.add_argument(
+        "--group_expression_by_samplename",
+        help="Make a Prism formatted column table by grouping together "
+        "the expression values.  All samples that share the same name "
+        "will form a single group.  Format:<row ID to group>.")
+    
+
     group = parser.add_argument_group(title="Normalization")
     group.add_argument(
-        "-l", "--log_transform", dest="log_transform", default=False,
-        action="store_true",
-        help="Log transform the data.")
+        "-l", "--log_transform", dest="log_transform", 
+        action="store_true", help="Log transform the data.")
+    group.add_argument(
+        "--rlog_blind", action="store_true",
+        help="Do a regularized log transformation (from DESeq2).  "
+        "Use BLIND: most genes should not change expression across "
+        "data set.")
     group.add_argument(
         "-q", "--quantile", dest="quantile", action="store_true",
-        default=False,
         help="Quantile normalize the data.")
     group.add_argument(
-        "--gc", "--gene_center", dest="gene_center", default=None,
-        choices=["mean", "median"],
-        help="Center each gene by: mean, median.")
+        "--cpm", action="store_true", help="Convert raw counts for NGS data "
+        "into CPM (Uses edgeR package).")
     group.add_argument(
-        "--gc_subset_indexes", dest="gc_subset_indexes", default=None,
+        "--loess", action="store_true", help="Loess normalize the data.")
+    group.add_argument(
+        "--gc", "--gene_center", dest="gene_center",
+        choices=["mean", "median"], help="Center each gene by: mean, median.")
+    group.add_argument(
+        "--gc_subset_indexes",
         help="Will center the genes based on the mean (or median) of"
         "this subset of the samples.  Given as indexes, e.g. 1-5,8 "
         "(1-based, inclusive).")
@@ -1797,30 +2935,48 @@ def main():
         choices=["ss", "var"],
         help="Normalize each gene by: ss (sum of squares), var (variance).")
     group.add_argument(
-        "--gn_subset_indexes", dest="gn_subset_indexes", default=None,
+        "--gn_subset_indexes",
         help="Will normalize the genes based on the variance (or sum "
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
-        "--fill_missing_values_median", default=False, action="store_true",
+        "--zerofill", action="store_true", help="Fill missing values with 0.")
+    group.add_argument(
+        "--count_missing_values",
+        help="Count the number of missing values in each row and store in "
+        "a new column.  The argument is the header for this column.")
+    group.add_argument(
+        "--fill_missing_values_median", action="store_true",
         help="Fill missing values with the median of the row.  Performed "
         "after logging, but before centering and normalizing.")
     group.add_argument(
-        "--min_value", default=None, type=float,
+        "--min_value", type=float,
         help="Set the minimum value for this matrix.  Done before logging.")
-        
+    group.add_argument(
+        "--impute_missing_values_knn",
+        help="Fill missing values using KNN.  Specify K, the number of "
+        "neighbors to use (usually 10).")
+    group.add_argument(
+        "--add_missing_values",
+        help="Put missing values back into a matrix.  The argument should "
+        "be a filename that contains a matrix of the same dimensions with "
+        "missing values.  I will add missing values to the same place.")
+
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
-        "--select_col_indexes", default=None,
-        help="Which columns to include e.g. 1-5,8 (1-based, inclusive).")
+        "--select_col_indexes", default=[], action="append",
+        help="Which columns to include e.g. 1-5,8 (1-based, inclusive).  "
+        "(MULTI)")
     group.add_argument(
         "--col_indexes_include_headers", default=False, action="store_true",
         help="If not given (default), then column 1 is the first column "
         "with data.  If given, then column 1 is the very first column in "
-        "the file, including the headers.")
+        "the file, including the headers.  "
+        "Applies to: select_col_indexes, reorder_col_indexes, "
+        "reorder_row_cluster_subset_indexes, reorder_row_cor_subset_indexes")
     group.add_argument(
         "--select_col_ids", default=[], action="append",
-        help="Comma-separate list of IDs to include.")
+        help="Comma-separate list of IDs to include.  (MULTI)")
     group.add_argument(
         "--select_col_annotation", default=[], action="append",
         help="Include only the cols where the annotation contains a "
@@ -1828,14 +2984,25 @@ def main():
         "the annotations that match any value (OR).  If this option is "
         "given multiple times, selects only the cols that match all the "
         "annotations (AND).  "
-        "Format: <txt_file>,<header>,<value>[,<value,...]")
+        "Format: <txt_file>,<header>,<value>[,<value,...].  (MULTI)")
     group.add_argument(
-        "--select_col_genesets", default=None,
+        "--select_col_genesets", default=[], action="append",
         help="Include only the samples from this geneset.  "
-        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...].  (MULTI)")
     group.add_argument(
-        "--select_col_regex", default=None,
-        help="Include columns that match this regular expression.")
+        "--select_col_regex", default=[], action="append",
+        help="Include columns that match this regular expression.  (MULTI)")
+    group.add_argument(
+        "--select_col_random", default=None, type=int,
+        help="Select this number of columns at random.")
+    group.add_argument(
+        "--select_col_numeric_value",
+        help="Include only the cols with a specific numeric value.  "
+        "Format: <row_id>,<value>[,<value>,...].  "
+        'If <value> starts with a "<", then will only find the rows where '
+        "the annotation is less than <value>.  "
+        'The analogous constraint will be applied for ">".  '
+        "Accepts the match if any of the <value>s are true.")
     group.add_argument(
         "--reverse_col_selection", default=False, action="store_true",
         help="Remove the selected columns instead of keeping them.")
@@ -1852,19 +3019,55 @@ def main():
         "--remove_unnamed_cols", default=False, action="store_true",
         help="If a column has no name, remove it.")
     group.add_argument(
-        "--reorder_col_indexes", default=None,
+        "--reorder_col_indexes",
         help="Change the order of the data columns.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --col_indexes_include_headers.")
     group.add_argument(
+        "--reorder_col_cluster", default=False, action="store_true",
+        help="Cluster the cols.")
+    group.add_argument(
+        "--col_tree_file", help="Write out the dendrogram of the col clusters "
+        "in atr format.")
+    # Cluster 3.0 implementation of clustering.
+    group.add_argument(
+        "--cluster_method", choices=[
+            "complete", "single", "average", "centroid"],
+        default="complete", help="Agglomeration method.  "
+        "Applies to reorder_col_cluster and reorder_row_cluster.")
+    group.add_argument(
+        "--distance_method", choices=[
+            "uncent-cor", "pearson", "abs-uncent-cor",
+            "abs-pearson", "spearman", "kendall",
+            "euclidean", "city-block"],
+        default="euclidean", help="Distance measure for clustering.  "
+        "Applies to reorder_col_cluster and reorder_row_cluster.")
+    # For R implementation of clustering.
+    #group.add_argument(
+    #    "--cluster_method", choices=[
+    #        "complete", "ward", "single", "average", "mcquitty",
+    #        "median", "centroid"],
+    #    default="complete", help="Agglomeration method.  "
+    #    "Applies to reorder_col_cluster and reorder_row_cluster.")
+    #group.add_argument(
+    #    "--distance_method", choices=[
+    #        "euclidean", "maximum", "manhattan", "canberra", "binary",
+    #        "minkowski"],
+    #    default="euclidean", help="Distance measure for clustering.  "
+    #    "Applies to reorder_col_cluster and reorder_row_cluster.")
+    group.add_argument(
         "--reorder_col_alphabetical", default=False, action="store_true",
         help="Sort the columns alphabetically.")
     group.add_argument(
-        "--align_col_file", default=None,
+        "--reorder_col_byfile",
+        help="Reorder based on a file.  One line per sample name.")
+    group.add_argument(
+        "--align_col_matrix",
         help="Align the cols to this other matrix file.")
     group.add_argument(
         "--ignore_missing_cols", default=False, action="store_true",
-        help="Ignore any cols that can't be found in the align_col_file.")
+        help="Ignore any cols that can't be found in the align_col_matrix "
+        "or reorder_col_byfile.")
 
     group = parser.add_argument_group(title="Column annotations")
     group.add_argument(
@@ -1879,39 +3082,55 @@ def main():
         help="If multiple columns have the same header, make their names "
         "unique.")
     group.add_argument(
+        "--rename_col_id", default=[], action="append",
+        help="Rename a column ID.  Format: <from>,<to>.  "
+        "<from> will be replaced with <to>.  (MULTI)")
+    group.add_argument(
         "--replace_col_ids", default=[], action="append",
         help="Replace strings within the column IDs.  Format: <from>,<to>.  "
-        "Instances of <from> will be replaced with <to>.")
+        "Instances of <from> will be replaced with <to>.  (MULTI)")
     group.add_argument(
-        "--relabel_col_ids", default=None,
+        "--relabel_col_ids",
         help="Relabel the column IDs.  Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
-        "--append_col_ids", default=None,
-        help="Append this to the column IDs.  "
+        "--append_col_ids",
+        help="Append this to the end of the column IDs.  "
+        "Format: <txt/gmx/gmt_file>,<geneset>.  "
+        "One of the genesets in the file must match the current column IDs.")
+    group.add_argument(
+        "--add_col_ids", default=[], action="append",
+        help="Add a new set of column IDs (MULTI).  "
         "Format: <txt/gmx/gmt_file>,<geneset>.  "
         "One of the genesets in the file must match the current column IDs.")
     group.add_argument(
         "--ignore_missing_labels", default=False, action="store_true",
         help="Any column labels that can't be found will not be relabeled.")
     group.add_argument(
-        "--apply_re_col_ids", default=None,
+        "--apply_re_col_ids",
         help="Apply a regular expression to the column IDs and take group 1.")
     group.add_argument(
-        "--add_suffix_col_ids", default=None,
-        help="Add a suffix to each column ID.")
+        "--add_prefix_col_ids", help="Add a prefix to each column ID.")
+    group.add_argument(
+        "--add_suffix_col_ids", help="Add a suffix to each column ID.")
 
     group = parser.add_argument_group(title="TCGA barcode operations")
     group.add_argument(
-        "--tcga_solid_tumor_only", default=False, action="store_true",
-        help="Keep only the columns that contain cancer samples.")
+        "--tcga_primary_tumor_only", default=False, action="store_true",
+        help="Keep only the columns that contain primary solid tumor.")
+    group.add_argument(
+        "--tcga_metastasis_only", default=False, action="store_true",
+        help="Keep only the columns that contain metastatic tumor.")
     group.add_argument(
         "--tcga_relabel_patient_barcodes", default=False, action="store_true",
         help="Sample names should be patient barcodes.")
-    
+    group.add_argument(
+        "--ignore_non_tcga", default=False, action="store_true",
+        help="Keep all samples that don't look like a TCGA barcode.")
+
     group = parser.add_argument_group(title="Row filtering")
     group.add_argument(
-        "--select_row_indexes", default=None,
+        "--select_row_indexes",
         help="Which rows to include e.g. 1-50,75 (1-based, inclusive).")
     group.add_argument(
         "--row_indexes_include_headers", default=False, action="store_true",
@@ -1921,13 +3140,13 @@ def main():
     group.add_argument(
         "--select_row_ids", default=[], action="append",
         help="Comma-separated list of IDs (e.g. probes, gene names) "
-        "to include.")
+        "to include.  (MULTI)")
     group.add_argument(
         "--select_row_string", default=[], action="append",
         help="Include only the rows where the columns contains a "
         "specific string value.  "
         "Format: <header>,<value>[,<value>,...].  "
-        "Accepts the row if any of the <value>s match.")
+        "Accepts the row if any of the <value>s match.  (MULTI)")
     group.add_argument(
         "--select_row_numeric", default=[], action="append",
         help="Include only the rows where the columns contains a "
@@ -1936,12 +3155,11 @@ def main():
         'If <value> starts with a "<", then will only find the rows where '
         "the annotation is less than <value>.  "
         'The analogous constraint will be applied for ">".  '
-        "Accepts the match if any of the <value>s are true.")
+        "Accepts the match if any of the <value>s are true.  (MULTI)")
     group.add_argument(
-        "--select_row_random", default=None,
-        help="Select this number of random rows.")
+        "--select_row_random", help="Select this number of random rows.")
     group.add_argument(
-        "--select_row_annotation", default=None,
+        "--select_row_annotation",
         help="Include only the rows where the annotation contains a "
         "specific value.  Format: <txt_file>,<header>,<value>[,<value,...]")
     group.add_argument(
@@ -1952,11 +3170,20 @@ def main():
         'If <value> starts with a "<", then will only find the rows where '
         "the annotation is less than <value>.  "
         'The analogous constraint will be applied for ">".  '
-        "Accepts the match if any of the <value>s are true.")
+        "Accepts the match if any of the <value>s are true.  (MULTI)")
     group.add_argument(
-        "--select_row_genesets", default=None,
+        "--select_row_nonempty",
+        help="Include only the rows that have a non-blank annotation.  "
+        "Format: <header>")
+    group.add_argument(
+        "--select_row_maxvalue", default=None, type=float,
+        help="Include the rows whose maximum value exceeds this.  "
+        "E.g. if '5.0' is given, then keep the rows with at least one value "
+        "greater than 5.")
+    group.add_argument(
+        "--select_row_genesets", default=[], action="append",
         help="Include only the IDs from this geneset.  "
-        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...]")
+        "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...].  (MULTI)")
     group.add_argument(
         "--filter_row_by_mean", default=None, type=float,
         help="Remove this percentage of rows that have the lowest mean.  "
@@ -1970,19 +3197,43 @@ def main():
         help="Remove the rows that has at least this percent of missing "
         "bvalues.  e.g. 0.25 means remove all rows with 25%% or more missing "
         "values.")
+    ## group.add_argument(
+    ##     "--merge_rows_with_dup_values", default=False, action="store_true",
+    ##     help="Merge the annotations of the rows whose values are duplicated.")
     group.add_argument(
-        "--dedup_row_by_var", default=None,
+        "--dedup_row_by_var",
         help="If multiple rows have the same annotation, select the one "
         "with the highest variance.  The value of this parameter should "
         "be the header of the column that contains duplicate annotations.")
     group.add_argument(
+        "--select_row_mean_value", default=None, type=float,
+        help="Keep only the rows where the mean is at least this number.")
+    group.add_argument(
         "--select_row_var", default=None, type=int,
         help="Keep this number of rows with the highest variance.")
+    group.add_argument(
+        "--select_row_delta", default=None, type=float,
+        help="Keep only the rows where the difference between the maximum "
+        "and minimum value is at least this.")
+    group.add_argument(
+        "--select_row_fc", default=None, type=float,
+        help="Keep only the rows with at least this fold change between "
+        "highest and lowest sample (assuming log_2 values).")
+    group.add_argument(
+        "--select_row_num_samples_fc_mean", default=None, type=int,
+        help="Keep only the rows where at least this number of samples "
+        "deviate at least 2 fold change from the mean "
+        "(assuming log_2 values).")
+    group.add_argument(
+        "--select_row_num_samples_fc_median", default=None, type=int,
+        help="Keep only the rows where at least this number of samples "
+        "deviate at least 2 fold change from the median "
+        "(assuming log_2 values).")
     group.add_argument(
         "--reverse_rows", default=False, action="store_true",
         help="Reverse the order of the rows.")
     group.add_argument(
-        "--reorder_row_indexes", default=None,
+        "--reorder_row_indexes",
         help="Change the order of the data rows.  Give the indexes "
         "in the order that they should occur in the file, e.g. 1-5,8 "
         "(1-based, inclusive).  Can use --row_indexes_include_headers.")
@@ -1990,15 +3241,34 @@ def main():
         "--reorder_row_cluster", default=False, action="store_true",
         help="Cluster the rows.")
     group.add_argument(
-        "--align_row_file", default=None,
+        "--reorder_row_cluster_subset_indexes",
+        help="Will cluster the rows based on a subset of the samples.")
+
+    group.add_argument(
+        "--row_tree_file", help="Write out the dendrogram of the row clusters "
+        "in gtr format.")
+    group.add_argument(
+        "--reorder_row_cor",
+        help="Reorder the rows based on a correlation to this vector.  "
+        "This should be a comma-separated list of numbers, e.g. "
+        "0,0,0,1,1,1")
+    group.add_argument(
+        "--reverse_negative_cors", default=False, action="store_true",
+        help="UNDOCUMENTED")
+    group.add_argument(
+        "--reorder_row_cor_subset_indexes",
+        help="Will reorder rows based on correlation to this subset of "
+        "samples.")
+    group.add_argument(
+        "--align_row_matrix",
         help="Align the rows to this other matrix file.")
     group.add_argument(
         "--ignore_missing_rows", default=False, action="store_true",
-        help="Ignore any rows that can't be found in the align_row_file.")
+        help="Ignore any rows that can't be found in the align_row_matrix.")
 
     group = parser.add_argument_group(title="Row annotations")
     group.add_argument(
-        "--add_row_id", default=None,
+        "--add_row_id",
         help="Add a unique row ID.  This should be the name of the header.")
     group.add_argument(
         "--add_row_annot", action="append", default=[],
@@ -2006,7 +3276,7 @@ def main():
         "The format should be: <txt/gmx/gmt_file>,<geneset>[,<geneset>].  "
         "Each geneset in the file should contain the same number of "
         "genes as the matrix.  One of the genesets should be align-able "
-        "to the IDs of this matrix.")
+        "to the IDs of this matrix.  (MULTI)")
     group.add_argument(
         "--allow_unaligned_row_annot", default=False, action="store_true",
         help="If the matrix contains rows not in the annotation file, "
@@ -2014,16 +3284,20 @@ def main():
         "row).")
     group.add_argument(
         "--remove_row_annot", action="append", default=[],
-        help="Remove this annotations from the matrix.")
+        help="Remove this annotations from the matrix.  (MULTI)")
     group.add_argument(
         "--rename_row_annot", action="append", default=[],
         help="Rename this header.  "
-        "The format should be: <old_name>,<new_name>.")
+        "The format should be: <old_name>,<new_name>.  (MULTI)")
     group.add_argument(
         "--move_row_annot", action="append", default=[],
         help="Move this header.  "
-        "The format should be: <header>,<old_index>,<new_index>.  "
-        "The indexes are 1-based.")
+        "The format should be: <old_index>,<new_index>.  "
+        "The indexes are 1-based.  (MULTI)")
+    group.add_argument(
+        "--concat_row_annot",
+        help="Concatenate multiple row annotations.  "
+        "The format should be: <new_header>,<concat_char>,<header>,...")
     group.add_argument(
         "--rename_duplicate_rows", default=False, action="store_true",
         help="If multiple rows have the same ID, make their names "
@@ -2032,9 +3306,17 @@ def main():
     args = parser.parse_args()
     assert len(args.filename) >= 1
 
+    if args.num_header_cols is not None:
+        assert args.num_header_cols > 0 and args.num_header_cols < 100
+
+    if args.transpose_nonmatrix:
+        assert len(args.filename) == 1
+        transpose_nonmatrix(args.filename[0])
+        return
+
     x = read_matrices(
         args.filename, args.skip_lines, args.read_as_csv, args.remove_comments,
-        args.clean_only)
+        args.clean_only, args.num_header_cols)
     fmt_module, matrices = x
     if len(matrices) == 1:
         MATRIX = matrices[0]
@@ -2046,6 +3328,13 @@ def main():
         return
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
+    MATRIX = correlate_matrix(MATRIX, args.correlate)
+    MATRIX = calc_mean(MATRIX, args.calc_mean)
+    MATRIX = calc_sd(MATRIX, args.calc_sd)
+    MATRIX = calc_range(MATRIX, args.calc_range)
+    MATRIX = group_expression_by_samplename(
+        MATRIX, args.group_expression_by_samplename)
+
 
     # Slice to a submatrix.
     I01 = select_row_indexes(
@@ -2062,21 +3351,39 @@ def main():
     x = [select_row_numeric_annotation(MATRIX, annot)
          for annot in args.select_row_numeric_annotation]
     I08 = _intersect_indexes(*x)
-    I09 = select_row_mean_var(
+    I09 = select_row_nonempty(MATRIX, args.select_row_nonempty)
+    I10 = select_row_maxvalue(MATRIX, args.select_row_maxvalue)
+    I11 = select_row_mean_value(MATRIX, args.select_row_mean_value)
+    I12 = select_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I10 = select_row_var(MATRIX, args.select_row_var)
-    I11 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I13 = select_row_var(MATRIX, args.select_row_var)
+    I14 = select_row_delta(MATRIX, args.select_row_delta)
+    I15 = select_row_fc(MATRIX, args.select_row_fc)
+    I16 = select_row_num_samples_fc(
+        MATRIX, args.select_row_num_samples_fc_mean, use_median=False)
+    I17 = select_row_num_samples_fc(
+        MATRIX, args.select_row_num_samples_fc_median, use_median=True)
+    I18 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
-        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11)
-    I1 = select_col_indexes(
+        I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13,
+        I14, I15, I16, I17, I18)
+
+    I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
     #I2 = remove_col_indexes(
     #    MATRIX, args.remove_col_indexes, args.col_indexes_include_headers)
-    I3 = select_col_ids(MATRIX, args.select_col_ids)
-    I4 = select_col_genesets(MATRIX, args.select_col_genesets)
-    I5 = select_col_annotation(MATRIX, args.select_col_annotation)
-    I6 = select_col_regex(MATRIX, args.select_col_regex)
-    I_col = _intersect_indexes(I1, I3, I4, I5, I6)
+    I03 = select_col_ids(MATRIX, args.select_col_ids)
+    I04 = select_col_genesets(MATRIX, args.select_col_genesets)
+    I05 = select_col_annotation(MATRIX, args.select_col_annotation)
+    I06 = []
+    for regex in args.select_col_regex:
+        I06.extend(select_col_regex(MATRIX, regex))
+    I06 = sorted({}.fromkeys(I06))
+    if not args.select_col_regex:
+        I06 = None   # if not given, use all columns.
+    I07 = select_col_random(MATRIX, args.select_col_random)
+    I08 = select_col_numeric_value(MATRIX, args.select_col_numeric_value)
+    I_col = _intersect_indexes(I01, I03, I04, I05, I06, I07, I08)
     if args.reverse_col_selection:
         I_col = [i for i in range(MATRIX.ncol()) if i not in I_col]
     MATRIX = MATRIX.matrix(I_row, I_col)
@@ -2089,6 +3396,10 @@ def main():
     MATRIX = reorder_col_indexes(
         MATRIX, args.reorder_col_indexes, args.col_indexes_include_headers)
     MATRIX = reorder_col_alphabetical(MATRIX, args.reorder_col_alphabetical)
+
+    ## # Merge the rows with duplicated values.
+    ## MATRIX = merge_rows_with_dup_values(
+    ##     MATRIX, args.merge_rows_with_dup_values)
 
     # Remove row annotations.
     for name in args.remove_row_annot:
@@ -2109,13 +3420,19 @@ def main():
     for x in args.move_row_annot:
         MATRIX = move_row_annot(MATRIX, x)
 
+    MATRIX = concat_row_annot(MATRIX, args.concat_row_annot)
+
     # Relabel the column IDs.
+    MATRIX = rename_col_id(
+        MATRIX, args.rename_col_id, args.ignore_missing_labels)
     MATRIX = replace_col_ids(
         MATRIX, args.replace_col_ids, args.ignore_missing_labels)
     MATRIX = relabel_col_ids(
         MATRIX, args.relabel_col_ids, args.ignore_missing_labels)
     MATRIX = append_col_ids(
         MATRIX, args.append_col_ids, args.ignore_missing_labels)
+    for col_ids in args.add_col_ids:
+        MATRIX = add_col_ids(MATRIX, col_ids, args.ignore_missing_labels)
 
     # Remove col IDs.  Do this after relabeling.
     #MATRIX = remove_col_ids(MATRIX, args.remove_col_ids)
@@ -2124,13 +3441,17 @@ def main():
     # removing, but before filtering duplicates.
     MATRIX = toupper_col_ids(MATRIX, args.toupper_col_ids)
     MATRIX = apply_re_col_ids(MATRIX, args.apply_re_col_ids)
+    MATRIX = add_prefix_col_ids(MATRIX, args.add_prefix_col_ids)
     MATRIX = add_suffix_col_ids(MATRIX, args.add_suffix_col_ids)
     MATRIX = hash_col_ids(MATRIX, args.hash_col_ids)
 
     # Filter TCGA columns.
-    MATRIX = tcga_solid_tumor_only(MATRIX, args.tcga_solid_tumor_only)
+    MATRIX = tcga_primary_tumor_only(
+        MATRIX, args.tcga_primary_tumor_only, args.ignore_non_tcga)
+    MATRIX = tcga_metastasis_only(
+        MATRIX, args.tcga_metastasis_only, args.ignore_non_tcga)
     MATRIX = tcga_relabel_patient_barcodes(
-        MATRIX, args.tcga_relabel_patient_barcodes)
+        MATRIX, args.tcga_relabel_patient_barcodes, args.ignore_non_tcga)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
@@ -2140,11 +3461,15 @@ def main():
     MATRIX = rename_duplicate_rows(MATRIX, args.rename_duplicate_rows)
     MATRIX = rename_duplicate_cols(MATRIX, args.rename_duplicate_cols)
 
+    # Reorder based on a file.
+    MATRIX = reorder_col_byfile(
+        MATRIX, args.reorder_col_byfile, args.ignore_missing_cols)
+
     # Align to the align_file.  Do this as close to the end as
     # possible, after everything else removed and added.
-    I_row = align_rows(MATRIX, args.align_row_file, args.ignore_missing_rows)
+    I_row = align_rows(MATRIX, args.align_row_matrix, args.ignore_missing_rows)
     MATRIX = MATRIX.matrix(I_row, None)
-    I_col = align_cols(MATRIX, args.align_col_file, args.ignore_missing_cols)
+    I_col = align_cols(MATRIX, args.align_col_matrix, args.ignore_missing_cols)
     MATRIX = MATRIX.matrix(None, I_col)
 
     if args.min_value is not None:
@@ -2154,15 +3479,30 @@ def main():
     # expression values (quantile, center, normalize).
     if args.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+    if args.rlog_blind:
+        MATRIX._X = rlog_blind(MATRIX._X)
+
+    if args.cpm:
+        MATRIX._X = calc_cpm(MATRIX._X)
 
     # Median fill.  Do after logging, but before quantile, centering,
     # and normalizing.
+    MATRIX = count_missing_values(MATRIX, args.count_missing_values)
+    if args.zerofill:
+        zero_fill_genes(MATRIX)
     if args.fill_missing_values_median:
         median_fill_genes(MATRIX)
+    MATRIX = impute_missing_values_knn(MATRIX, args.impute_missing_values_knn)
+    MATRIX = add_missing_values(MATRIX, args.add_missing_values)
+        
 
     # Quantile normalize, if requested.  After log.
     if args.quantile:
         MATRIX = quantnorm.normalize(MATRIX)
+
+    # Loess normalize, if requested.  After log.
+    if args.loess:
+        MATRIX = loess_normalize(MATRIX)
 
     # This has to happen before any normalization by variance, but
     # after logging and quantile normalization.
@@ -2180,8 +3520,19 @@ def main():
     elif args.gene_normalize == "var":
         normalize_genes_var(MATRIX, args.gn_subset_indexes)
 
-    # Cluster the rows.  Do this after normalizing, zero-fill, log.
-    MATRIX = reorder_row_cluster(MATRIX, args.reorder_row_cluster)
+    # Cluster the rows and columns.  Do this after normalizing, zero-fill, log.
+    MATRIX = reorder_row_cluster(
+        MATRIX, args.reorder_row_cluster, args.row_tree_file,
+        args.cluster_method, args.distance_method,
+        args.reorder_row_cor_subset_indexes, args.col_indexes_include_headers)
+    MATRIX = reorder_col_cluster(
+        MATRIX, args.reorder_col_cluster, args.col_tree_file,
+        args.cluster_method, args.distance_method)
+
+    # Reorder the rows based on correlation.
+    MATRIX = reorder_row_cor(
+        MATRIX, args.reorder_row_cor, args.reverse_negative_cors,
+        args.reorder_row_cor_subset_indexes, args.col_indexes_include_headers)
 
     # Reverse the rows.  Do after all the selection.  Do after
     # aligning to a file.
@@ -2194,9 +3545,13 @@ def main():
 
     # Cannot always write in the same format.  For example, if you add
     # annotations that aren't handled by that format.  To be safe,
-    # convert to a TDF and write that out.
-    MATRIX = arrayio.convert(MATRIX, to_format=arrayio.tdf)
-    arrayio.tdf.write(MATRIX, handle)
+    # convert to a TDF (by default) and write that out.
+    assert args.output_format in ["tdf", "gct"]
+    to_format = arrayio.tdf
+    if args.output_format == "gct":
+        to_format = arrayio.gct_format
+    MATRIX = arrayio.convert(MATRIX, to_format=to_format)
+    to_format.write(MATRIX, handle)
 
 
 if __name__ == '__main__':

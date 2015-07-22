@@ -1,4 +1,0 @@
-usage: run_protocol.py [-h] [--protocol PROTOCOL] [--input INPUT]
-                       [--parameters PARAMETERS] [--dry_run]
-                       [--describe_protocol] [--dont_cleanup]
-run_protocol.py: error: unrecognized arguments: ill_coll_mode ill_none gene_center no_gene_center num_features 0 gene_order no_order duplicate_probe yes_duplicate_probe gene_normalize no_gene_normalize cn_ttest_or_snr cn_test quantile no_quantile has_annotation_gene_id yes_gene_id predataset no_predataset duplicate_data yes_duplicate_data platform unknown_platform dwd no_dwd preprocess unknown_preprocess unique_genes no_unique_genes filter 0 has_missing_value zero_fill combat no_combat format tdf rename_sample no_rename cn_mean_or_median cn_mean ill_bg_mode ill_yes shiftscale no_shiftscale is_logged logged cn_filter_data cn_yes bfrm no_bfrm

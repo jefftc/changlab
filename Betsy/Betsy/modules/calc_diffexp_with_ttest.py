@@ -1,112 +1,64 @@
 #calc_diffexp_with_ttest.py
-import shutil
+
 import os
-import arrayio
-import numpy
-from genomicode import jmath
-from Betsy import gene_ranking, module_utils, read_label_file
-from time import strftime,localtime
+from Betsy import module_utils, bie3, rulebase
+from genomicode import config
+import subprocess
 
-def run(parameters, objects, pipeline,user,jobname):
-    starttime = strftime(module_utils.FMT, localtime())
-    single_object = get_identifier(parameters, objects)
-    outfile = get_outfile(parameters, objects, pipeline)
-    label_file = module_utils.find_object(
-        parameters, objects, 'class_label_file', 'contents')
-    assert os.path.exists(label_file.identifier), (
-        'cannot find label_file %s' % label_file.identifier)
-    label, label_line, second_line = read_label_file.read(
-        label_file.identifier)
-    M = arrayio.read(single_object.identifier)
-    assert len(label) == 2, (
-        'the length of label in %s should be 2' % label_file.identifier)
-    assert len(label[0]) == 2
-    assert len(label[1]) == 2
-    first = M.slice(None, label[0][0])
-    second = M.slice(None, label[1][0])
-    t, p = gene_ranking.t_test(first, second)
-    higher_group = get_higherexpression(M, label, second_line)
-    bonf = jmath.cmh_bonferroni(p)
-    fdr = jmath.cmh_fdr_bh(p)
-    p_copy = p[:]
-    for i in range(len(p_copy)):
-        if not p_copy[i]:
-            p_copy[i] = 10
-    sort_p = [(p_copy[index], index) for index in range(len(p_copy))]
-    sort_p.sort()
-    f = file(outfile, 'w')
-    header = ['#']
-    header.extend(M._row_order[:])
-    header.extend(['p_value', 'cmh_bonferroni',
-                   'cmh_fdr', 'higher_expression'])
-    f.write('\t'.join(header))
-    f.write('\n')
-    p = [' ' if not x else x for x in p]
-    bonf = [' ' if not x else x for x in bonf]
-    fdr = [' ' if not x else x for x in fdr]
-    for i in range(len(p_copy)):
-        f.write(str(i + 1) + '\t')
-        for key in M._row_order:
-            f.write(M._row_names[key][sort_p[i][1]])
-            f.write('\t')
-        f.write(str(p[sort_p[i][1]]) + '\t')
-        f.write(str(bonf[sort_p[i][1]]) + '\t')
-        f.write(str(fdr[sort_p[i][1]]) + '\t')
-        f.write(str(higher_group[sort_p[i][1]]) + '\n')
-    f.close()
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, cls_node = antecedents
+    outfile = name_outfile(antecedents, user_options)
+    diffexp_bin = config.find_diffexp_genes
+    assert os.path.exists(diffexp_bin)
+    cmd = ['python', diffexp_bin, data_node.identifier, '--cls_file',
+           cls_node.identifier, '--algorithm', 'ttest']
+    if 'diffexp_foldchange_value' in user_options:
+        foldchange = float(user_options['diffexp_foldchange_value'])
+        cmd = cmd + ['--fold_change', str(foldchange)]
+    handle = open(outfile, 'w')
+    try:
+        process = subprocess.Popen(cmd,
+                                   shell=False,
+                                   stdout=handle,
+                                   stderr=subprocess.PIPE)
+        process.wait()
+        error_message = process.communicate()[1]
+        if error_message:
+            raise ValueError(error_message)
+    finally:
+        handle.close()
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for t_test fails' % outfile)
-    new_objects = get_newobjects(parameters, objects, pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters, [single_object,label_file], pipeline, outfile,
-        starttime,user,jobname)
-    return new_objects
+        'the output file %s for calc_diffexp_with_ttest fails' % outfile
+    )
+    out_node = bie3.Data(rulebase.DiffExprFile, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(
-        identifier, pipeline, parameters)
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    filter1 = module_utils.AntecedentFilter(datatype_name='SignalFile')
+    filter2 = module_utils.AntecedentFilter(datatype_name='ClassLabelFile')
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2)
+    return x
 
 
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
-    filename = 't_test' + original_file + '.txt'
+def name_outfile(antecedents, user_options):
+    data_node, cls_node = antecedents
+    original_file = module_utils.get_inputid(data_node.identifier)
+    filename = 't_test_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, 'signal_file', 'contents')
-    assert os.path.exists(single_object.identifier), (
-        'the input file %s for t_test does not exist'
-        % single_object.identifier)
-    return single_object
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    parameters = module_utils.renew_parameters(parameters, ['status'])
-    new_object = module_utils.DataObject(
-        'differential_expressed_genes', [parameters['contents']], outfile)
-    new_objects = objects[:]
-    new_objects.append(new_object)
-    return new_objects
-
-
-def get_higherexpression(M, label, second_line):
-    higher_group = []
-    assert len(label) == 2, 'the length of label should be 2'
-    assert len(label[0]) == 2
-    assert len(label[1]) == 2
-    first = M.slice(None, label[0][0])
-    second = M.slice(None, label[1][0])
-    for i in range(M.nrow()):
-        group1 = sum(first[i]) / float(len(first[i]))
-        group2 = sum(second[i]) / float(len(second[i]))
-        if group1 >= group2:
-            higher_group.append(second_line[int(label[0][1])])
-        else:
-            higher_group.append(second_line[int(label[1][1])])
-    return higher_group
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, cls_node = antecedents
+    identifier = data_node.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

@@ -5,6 +5,7 @@
 # calc.specificity
 # calc.recall
 # calc.precision
+# make.roc.curve
 #
 # logadd
 # logsum
@@ -16,18 +17,8 @@
 # assign.groups
 
 
-fdr.correct.bh <- function(p.values, mc.cores=NA) {
-  library(multicore)
-  if(!length(p.values))
-    return(NULL)
-  if(any(is.na(p.values))) stop("NA in p.values")
+.fdr.correct.bh.h <- function(p.values, mc.cores) {
   m <- length(p.values)
-
-  # Sort p.values in increasing order.
-  O <- order(p.values)
-  O.rev <- order((1:m)[O])
-  p.values <- p.values[O]
-
   k <- 1:m
   x <- m/k * p.values
   x <- sapply(x, function(x) min(x, 1) )
@@ -35,7 +26,38 @@ fdr.correct.bh <- function(p.values, mc.cores=NA) {
     x <- sapply(1:m, function(i) min(x[i:m]) )
   else
     x <- unlist(mclapply(1:m, mc.cores=mc.cores, FUN=function(i) min(x[i:m])))
-  x[O.rev]   # Return FDR is original order of p.values
+  x
+}
+
+fdr.correct.bh <- function(p.values, na.rm=FALSE, mc.cores=NA) {
+  if(!is.na(mc.cores))
+    #library(multicore)
+    library(parallel)
+
+  if(na.rm) {
+    I.not.na <- !is.na(p.values)
+    p.values <- p.values[I.not.na]
+  }
+  if(any(is.na(p.values))) stop("NA in p.values")
+  if(!length(p.values))
+    return(NULL)
+
+  # Sort p.values in increasing order.
+  m <- length(p.values)
+  O <- order(p.values)
+  O.rev <- order((1:m)[O])
+  p.values <- p.values[O]
+  # Calculate the FDR.
+  fdr <- .fdr.correct.bh.h(p.values, mc.cores)
+  # Return FDR in original order of p.values
+  fdr <- fdr[O.rev]   
+
+  if(na.rm) {
+    fdr.orig <- rep(NA, length(I.not.na))
+    fdr.orig[I.not.na] <- fdr
+    fdr <- fdr.orig
+  }
+  fdr
 }
 
 bonferroni.correct <- function(p.values) {
@@ -66,6 +88,24 @@ calc.precision <- function(results, interpolate=FALSE) {
       x[i] <- max(x[i], x[i+1])
   }
   x
+}
+
+make.roc.curve <- function(results) {
+  # X-axis: false positive rate  1-specificity
+  # Y-axis: true positive rate   sensitivity
+  sens <- calc.sensitivity(results)
+  spec <- calc.specificity(results)
+  fpr <- (1-spec)*100
+  tpr <- sens*100
+  auc <- 0
+  for(i in 1:(length(fpr)-1)) {
+    x1 <- fpr[i]
+    x2 <- fpr[i+1]
+    y <- tpr[i+1]
+    auc <- auc + (x2-x1)*y
+  }
+  auc <- auc / 100 / 100  # compensate for scaling fpr and tpr above
+  list(fpr=fpr, tpr=tpr, auc=auc)
 }
 
 logadd <- function(logx, logy) {

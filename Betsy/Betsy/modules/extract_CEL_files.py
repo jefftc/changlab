@@ -1,21 +1,23 @@
 #extract_CEL_files.py
 import os
-from Betsy import module_utils
 import shutil
-from time import strftime,localtime
+from Betsy import bie3
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(parameters, objects, pipeline,user,jobname):
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """extract the cel files with cc or v3_4"""
-    starttime = strftime(module_utils.FMT, localtime())
     from genomicode import affyio
-    single_object = get_identifier(parameters, objects)
-    outfile = get_outfile(parameters, objects, pipeline)
-    directory = module_utils.unzip_if_zip(single_object.identifier)
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    directory = module_utils.unzip_if_zip(in_data.identifier)
     filenames = os.listdir(directory)
-    assert filenames,'The input folder or zip file is empty.'
+    assert filenames, 'The input folder or zip file is empty.'
     ver_list = []
     if not os.path.exists(outfile):
         os.mkdir(outfile)
+    
     for filename in filenames:
         if filename == '.DS_Store':
             pass
@@ -27,43 +29,39 @@ def run(parameters, objects, pipeline,user,jobname):
                 ver_list.append(True)
             else:
                 ver_list.append(False)
-   
+
+    
     if True in ver_list:
         assert module_utils.exists_nz(outfile), (
-            'the output file %s for extract_CEL_files fails' % outfile)
-        new_objects = get_newobjects(parameters, objects, pipeline)
-        module_utils.write_Betsy_parameters_file(
-            parameters, single_object, pipeline, outfile,starttime,user,jobname)
-        return new_objects
+            'the output file %s for extract_CEL_files fails' % outfile
+        )
+        out_node = bie3.Data(rulebase.CELFiles, **out_attributes)
+        out_object = module_utils.DataObject(out_node, outfile)
+        return out_object
     else:
-        print 'There is no cel file in the input.'
-        return None
+        assert ValueError('There is no cel file in the input.')
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(identifier, pipeline, parameters)
 
-
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'cel_files_' + original_file
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    single_object = get_identifier(parameters, objects)
-    new_objects = module_utils.get_newobjects(
-        outfile, 'cel_files', parameters, objects, single_object)
-    return new_objects
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, 'cel_files', 'contents')
-    assert os.path.exists(single_object.identifier), (
-        'input %s for extract_CEL_files does not exist.'
-        % single_object.identifier)
-    return single_object
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
+    return data_node

@@ -1,60 +1,57 @@
 #unlog_signal.py
 import os
-import shutil
-from Betsy import module_utils
 from genomicode import binreg
-from time import strftime,localtime
+from Betsy import bie3
+from Betsy import rulebase
+from Betsy import module_utils
 
-def run(parameters,objects,pipeline,user,jobname):
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
     """unlog the pcl file"""
-    starttime = strftime(module_utils.FMT, localtime())
     import arrayio
     import math
-    single_object = get_identifier(parameters,objects)
-    outfile = get_outfile(parameters,objects,pipeline)
-    M = arrayio.read(single_object.identifier)
-    assert binreg.is_logged_array_data(M),(
-        'the input file %s should be logged'%identifier)
+    in_data = antecedents
+    outfile = name_outfile(in_data, user_options)
+    M = arrayio.read(in_data.identifier)
+    assert binreg.is_logged_array_data(M), (
+        'the input file %s should be logged' % in_data.identitifer
+    )
     for i in range(len(M._X)):
         for j in range(len(M._X[i])):
-            if M._X[i][j] is not None :
-                M._X[i][j] = 2**float(M._X[i][j])
+            if M._X[i][j] is not None:
+                M._X[i][j] = 2 ** float(M._X[i][j])
+    
     f = file(outfile, 'w')
     arrayio.tab_delimited_format.write(M, f)
     f.close()
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for unlog_signal_file fails' % outfile)
-    new_objects = get_newobjects(parameters, objects, pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters, single_object, pipeline,outfile,starttime,user,jobname)
-    return new_objects
+        'the output file %s for unlog_signal_file fails' % outfile
+    )
+    out_node = bie3.Data(rulebase._SignalFile_Filter, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(
-        identifier, pipeline, parameters)
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
+                                            pool)
+    return data_node
 
 
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+def name_outfile(antecedents, user_options):
+    original_file = module_utils.get_inputid(antecedents.identifier)
     filename = 'signal_unlog' + original_file + '.tdf'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
-    
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, 'signal_file', 'contents,preprocess')
-    assert os.path.exists(single_object.identifier), (
-        'the input file %s for unlog_signal_file does not exist'
-        % single_object.identifier)
-    return single_object
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    single_object = get_identifier(parameters, objects)
-    new_objects = module_utils.get_newobjects(
-        outfile, 'signal_file', parameters, objects, single_object)
-    return new_objects
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
+
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+
+    identifier = antecedents.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)

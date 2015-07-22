@@ -4,7 +4,7 @@ import os
 import json
 from stat import * 
 import time
-from Betsy import config,rule_engine,module_utils
+from Betsy import config,module_utils
 import argparse
 import shutil
 from datetime import datetime
@@ -15,10 +15,20 @@ output_path = config.OUTPUTPATH
 depends_on_dict = dict()
 generates_dict = dict()
 
+def convert_unicode_str(text):
+    """convert a unicode string to string(u'DatasetId' to 'DatasetId')"""
+    if isinstance(text, list):
+        final = []
+        for subtext in text:
+            final.append(convert_unicode_str(subtext))
+    else:
+        final = str(text)
+    return final
+
 def get_hash_key(filename):
     if '_BETSYHASH1_' not in filename:
         return filename
-    filename = rule_engine.convert_unicode_str(filename)
+    filename = convert_unicode_str(filename)
     folder_name = os.path.split(os.path.split(filename)[-2])[-1]
     hash_string = folder_name.split('_')[-1]
     return hash_string
@@ -121,29 +131,29 @@ def main():
     modified_times= []
     #generate depends_on_dict and generates_dict,all_modules,final_modules
     for result_folder in result_folders:
-        if result_folder in ['.DS_Store','traceback.txt']:
+        if result_folder in ['._.DS_Store','.DS_Store','traceback.txt','userfile']:
             continue
         folder_path = os.path.join(output_path,result_folder)
         hash_string = result_folder.split('_')[-1]
         all_modules.append(hash_string)
         filenames = os.listdir(folder_path)
-        assert 'Betsy_parameters.txt' in filenames,'no parameters file found'
+        assert 'Betsy_parameters.txt' in filenames,'no parameters file found in %s'%folder_path
         f = file(os.path.join(folder_path,'Betsy_parameters.txt'),'r')
         newline = f.read()
         f.close()
         jline = json.loads(newline)
         input_file = []
-        starttimes.append(rule_engine.convert_unicode_str(jline[9]))
-        modified_times.append(rule_engine.convert_unicode_str(jline[11]))
-        users.append(rule_engine.convert_unicode_str(jline[13]))
-        jobnames.append(rule_engine.convert_unicode_str(jline[15]))
+        starttimes.append(convert_unicode_str(jline[9]))
+        modified_times.append(convert_unicode_str(jline[11]))
+        users.append(convert_unicode_str(jline[13]))
+        jobnames.append(convert_unicode_str(jline[15]))
         for j in jline[1]:
             if isinstance(j,list):
                 input_file.extend([j[i*2+1] for i in range(len(j)/2)])
             else:
                 input_file.extend([jline[1][i*2+1] for i in range(len(jline[1])/2)])
                 break
-        output_file = os.path.join(folder_path,os.path.split(jline[3])[-1])
+        output_file = os.path.join(folder_path,jline[-1])
         if os.path.exists(output_file):
             key = get_hash_key(output_file)
             value = [get_hash_key(i) for i in input_file if os.path.exists(i)]
@@ -167,9 +177,11 @@ def main():
         modified_time=modified_times[i]
         if args.user:
             if user == args.user:
-                result.append(get_status(module,depends_on_dict,generates_dict,starttime,modified_time,user,jobname))
+                result.append(get_status(module,depends_on_dict,
+                                         generates_dict,starttime,modified_time,user,jobname))
         else:
-            result.append(get_status(module,depends_on_dict,generates_dict,starttime,modified_time,user,jobname))
+            result.append(get_status(module,depends_on_dict,
+                                     generates_dict,starttime,modified_time,user,jobname))
     if args.list_all:
         column_name = ['Module name','Hash key','Start time','Finish time','Completion time',
                        'Space disk','Dependence key','Generates key','User','Job name']

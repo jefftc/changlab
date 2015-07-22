@@ -243,9 +243,12 @@ class AbstractMatrix:
         # their indexes.  The indexes will be in the same order as the
         # names, but they will not necessarily be parallel due to
         # missing or duplicated names.
+        #
+        # Currently, a blank name will match anything.  Is this really
+        # the desired behavior?
         header2name2indexes = [
             get_name2indexes_fn(header) for header in headers]
-        
+
         indexes = [None] * max(self.nrow(), self.ncol())
         num = 0
         seen = {}
@@ -524,6 +527,10 @@ class InMemoryMatrix(AbstractMatrix):
         if header is None:
             return self._row_order
         header = self._resolve_synonym(header, self.row_names, self._synonyms)
+        if header not in self._row_names:
+            x = sorted(self._row_names)
+            x = ", ".join(x)
+            raise KeyError, "%s: headers %s" % (header, x)
         return self._row_names[header]
     def col_names(self, header=None):
         if header is None:

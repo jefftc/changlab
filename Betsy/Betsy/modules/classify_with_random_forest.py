@@ -1,44 +1,25 @@
 #classify_with_random_forest.py
 
-import sys
 import arrayio
 import os
 from Betsy import read_label_file, module_utils
 from genomicode import jmath
-from time import strftime,localtime
+from Betsy import bie3, rulebase
 
-def run(parameters, objects, pipeline,user,jobname):
-    starttime = strftime(module_utils.FMT, localtime())
-    train_file = get_identifier(parameters, objects)
-    outfile = get_outfile(parameters, objects, pipeline)
-    train_label_file = module_utils.find_object(
-        parameters, objects, 'class_label_file', 'traincontents')
-    test_label_file = module_utils.find_object(
-        parameters, objects, 'class_label_file', 'testcontents')
-    test_file = module_utils.find_object(
-        parameters, objects, 'signal_file', 'testcontents')
-    assert os.path.exists(train_label_file.identifier), (
-        'cannot find train_label_file %s for classify_with_random_forest'
-        % train_label_file.identifier)
-    assert os.path.exists(test_file.identifier), (
-        'the test file %s for classify_with_random_forest does not exist'
-        % test_file.identifier)
+
+def run(network, antecedents, out_attributes, user_options, num_cores):
+    data_node, cls_node_train = antecedents
+    outfile = name_outfile(antecedents, user_options)
     result, label_line, second_line = read_label_file.read(
-        train_label_file.identifier)
-    y = ['"' + second_line[int(i)] + '"' for i in label_line]
-    if test_label_file:
-        assert os.path.exists(test_label_file.identifier), (
-            'test_label_file %s for classify_with_random_forest does not exist'
-            % test_label_file.identifier)
-        a, test_label, second_line = read_label_file.read(
-            test_label_file.identifier)
-        actual_label = [second_line[int(i)] for i in test_label]
+        cls_node_train.identifier)
+    y = [second_line[int(i)] for i in label_line]
     R = jmath.start_R()
-    M_train = arrayio.read(train_file.identifier)
+    M = arrayio.read(data_node.identifier)
+    M_train = M.matrix(None, range(0, len(label_line)))
+    M_test = M.matrix(None, range(len(label_line), M.dim()[1]))
     M1 = M_train.slice()
     M_train = jmath.transpose(M1)
     jmath.R_equals_matrix(M_train, 'data')
-    M_test = arrayio.read(test_file.identifier)
     M2 = M_test.slice()
     M2 = jmath.transpose(M2)
     jmath.R_equals_matrix(M2, 'test')
@@ -54,64 +35,47 @@ def run(parameters, objects, pipeline,user,jobname):
     predict_labels = [levels[i - 1] for i in predict_labels]
     name = M_test._col_names.keys()[0]
     sample_name = M_test._col_names[name]
-    if test_label_file:
-        result = [['Sample_name', 'Predicted_class',
-                   'Confidence', 'Actual_class', 'Correct?']]
-        for i in range(len(sample_name)):
-            if predict_labels[i] == actual_label[i]:
-                correct = 'yes'
-            else:
-                correct = 'no'
-            result.append(
-                [sample_name[i], predict_labels[i], '',
-                 actual_label[i], correct])
-    else:
-        result = [['Sample_name', 'Predicted_class', 'Confidence']]
-        for i in range(len(sample_name)):
-            result.append(
-                [sample_name[i], predict_labels[i], ''])
+    result = [['Sample_name', 'Predicted_class', 'Confidence']]
+    for i in range(len(sample_name)):
+        result.append([str(sample_name[i]), predict_labels[i], ''])
     f = file(outfile, 'w')
     for i in result:
         f.write('\t'.join(i))
         f.write('\n')
     f.close()
     assert module_utils.exists_nz(outfile), (
-        'the output file %s for classify_with_random_forest fails' % outfile)
-    new_objects = get_newobjects(parameters, objects, pipeline)
-    module_utils.write_Betsy_parameters_file(
-        parameters, [train_file,test_file,train_label_file,test_label_file] ,
-        pipeline, outfile,starttime,user,jobname)
-    return new_objects
+        'the output file %s for classify_with_random_forest fails' % outfile
+    )
+    out_node = bie3.Data(rulebase.ClassifyFile, **out_attributes)
+    out_object = module_utils.DataObject(out_node, outfile)
+    return out_object
 
 
-def make_unique_hash(identifier, pipeline, parameters):
-    return module_utils.make_unique_hash(identifier, pipeline, parameters)
-
-
-def get_outfile(parameters, objects, pipeline):
-    single_object = get_identifier(parameters, objects)
-    original_file = module_utils.get_inputid(single_object.identifier)
+def name_outfile(antecedents, user_options):
+    data_node, cls_node_train = antecedents
+    original_file = module_utils.get_inputid(data_node.identifier)
     filename = 'random_forest_' + original_file + '.txt'
     outfile = os.path.join(os.getcwd(), filename)
     return outfile
 
 
-def get_identifier(parameters, objects):
-    single_object = module_utils.find_object(
-        parameters, objects, 'signal_file', 'traincontents')
-    assert os.path.exists(single_object.identifier), (
-        'the test file %s for classify_with_random_forest does not exist'
-        % single_object.identifier)
-    return single_object
+def set_out_attributes(antecedents, out_attributes):
+    return out_attributes
 
 
-def get_newobjects(parameters, objects, pipeline):
-    outfile = get_outfile(parameters, objects, pipeline)
-    single_object = get_identifier(parameters, objects)
-    parameters = module_utils.renew_parameters(parameters, ['status'])
-    attributes = parameters.values()
-    new_object = module_utils.DataObject(
-        'classification_file', attributes, outfile)
-    new_objects = objects[:]
-    new_objects.append(new_object)
-    return new_objects
+def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
+    data_node, cls_node_train = antecedents
+    identifier = data_node.identifier
+    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
+                                         user_options)
+
+
+def find_antecedents(network, module_id, out_attributes, user_attributes,
+                     pool):
+    filter1 = module_utils.AntecedentFilter(
+        datatype_name='SignalFile', contents="class0,class1,test")
+    filter2 = module_utils.AntecedentFilter(
+        datatype_name='ClassLabelFile', contents="class0,class1")
+    x = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool, filter1, filter2)
+    return x

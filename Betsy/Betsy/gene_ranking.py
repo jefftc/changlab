@@ -19,6 +19,7 @@ import numpy
 ##        p_value.append(list(result.rx2("p.value"))[0])
 ##    return t_value, p_value
 
+
 def t_test(X, Y, exact=True):
     """X,Y is a matrix slice"""
     R = jmath.start_R()
@@ -28,8 +29,8 @@ def t_test(X, Y, exact=True):
     for i in range(len(X)):
         X[i] = [jmath.R_var('NA') if numpy.isnan(x) else x for x in X[i]]
         Y[i] = [jmath.R_var('NA') if numpy.isnan(x) else x for x in Y[i]]
-        jmath.R_equals(X[i],'x')
-        jmath.R_equals(Y[i],'y')
+        jmath.R_equals(X[i], 'x')
+        jmath.R_equals(Y[i], 'y')
         R('a<-try(t.test(x,y,exact=exact), silent=TRUE)')
         R('if (is(a, "try-error")) p=NA else p=a$p.value')
         R('if (is(a,"try-error")) t=NA else t=a$t')
@@ -61,16 +62,19 @@ def correlation(M, Y):
 
 
 def find_sorted_index(inputlist, gene_list):
-    """get a list of index for mapping aftersort to inputlist"""
+    """get a list of index for mapping aftersort to inputlist
+        for multiple genes with the same name,just add the last one"""
     indexlist = []
     for key in gene_list:
         if key not in inputlist:
             continue
         index = inputlist.index(key)
-        try:
-            inputlist.index(key, index + 1)
-        except ValueError:
-            indexlist.append(index)
+        while True:
+            try:
+                index = inputlist.index(key, index + 1)
+            except ValueError:
+                indexlist.append(index)
+                break
     return indexlist
 
 
@@ -89,16 +93,16 @@ def correlation_for_file(data_file, label_file, gene_num=True):
     # obtain the gene name in the data_file
     f = open(data_file)
     a = f.read().split('\n')
-    index = 0       # for pcl file
-    startrows = 2   # for pcl file
+    index = 0  # for pcl file
+    startrows = 2  # for pcl file
     genelist = []
     for i in range(startrows, len(a)):
         genelist.append(a[i].split('\t')[index])
     # get a list of selected gene name
     if gene_num is not True:
-        select_genelist = [genelist[i]for i in sortlist[0:gene_num]]
+        select_genelist = [genelist[i] for i in sortlist[0:gene_num]]
     else:
-        select_genelist = [genelist[i]for i in sortlist]
+        select_genelist = [genelist[i] for i in sortlist]
     return select_genelist
 
 
@@ -120,14 +124,14 @@ def t_test_for_file(data_file, label_file, gene_num=True):
     # obtain the gene name in the data_file
     f = open(data_file)
     a = f.read().split('\n')
-    index = 0      # for pcl file
+    index = 0  # for pcl file
     startrows = 2  # for pcl file
     genelist = []
     for i in range(startrows, len(a)):
         genelist.append(a[i].split('\t')[index])
     #get a list of selected gene name
     if gene_num is not True:
-        select_genelist = [genelist[i]for i in sortlist[0:gene_num]]
+        select_genelist = [genelist[i] for i in sortlist[0:gene_num]]
     else:
-        select_genelist = [genelist[i]for i in sortlist]
+        select_genelist = [genelist[i] for i in sortlist]
     return select_genelist

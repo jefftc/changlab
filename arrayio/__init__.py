@@ -96,7 +96,9 @@ def _diagnose_format_problem(filename):
 
 def read(locator, hrows=None, hcols=None, datatype=float, format=None):
     # Bug: this function fails if passed a file handle.
+    import stat
     from genomicode import filelib
+    
     format = format or choose_format(locator, hrows=hrows, hcols=hcols)
     if format is None:
         msg = []
@@ -106,8 +108,12 @@ def read(locator, hrows=None, hcols=None, datatype=float, format=None):
             x = "It does not appear to be a file." % msg
             msg.append(x)
         else:
-            x = _diagnose_format_problem(locator)
-            msg.append(x)
+            size = os.stat(locator)[stat.ST_SIZE]
+            if size == 0:
+                msg.append("It has no data.")
+            else:
+                x = _diagnose_format_problem(locator)
+                msg.append(x)
         msg = [x for x in msg if x]
         msg = "\n".join(msg)
         raise AssertionError, msg

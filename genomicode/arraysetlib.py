@@ -94,7 +94,7 @@ def write_cls_file(outhandle, name0, name1, classes):
 
 
 def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):
-    # indexes1 is a string.  indexes is a string or None.
+    # indexes1 is a string.  indexes2 is a string or None.
     # Return name1, name2, classes.  classes is 0, 1, or None.
     from genomicode import parselib
     
@@ -103,15 +103,9 @@ def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):
     assert max_index, "empty matrix"
     
     assert indexes1 and type(indexes1) is type("")
-    name1 = name1 or "group1"
-    name2 = name2 or "group2"
-    if name1 == name2:
-        name1 = "%s-1" % name1
-        name2 = "%s-2" % name2
 
     I1 = []
     for s, e in parselib.parse_ranges(indexes1):
-        #print s, e, num_headers
         if count_headers:
             s, e = s - num_headers, e - num_headers
         assert s >= 1, "Index out of range: %s" % s
@@ -136,6 +130,23 @@ def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):
     # Make sure no overlap between I1 and I2.
     for i in I1:
         assert i not in I2, "Overlap in classes."
+
+    # Provide default group names.
+    # If there is only 1 index, then use the sample name from the
+    # matrix.
+    col_header = None
+    if MATRIX.col_names():
+        col_header = MATRIX.col_names()[0]
+    if not name1 and col_header and len(I1) == 1:
+        name1 = MATRIX.col_names(col_header)[I1[0]]
+    if not name2 and col_header and len(I2) == 1:
+        name2 = MATRIX.col_names(col_header)[I2[0]]
+    
+    name1 = name1 or "group1"
+    name2 = name2 or "group2"
+    if name1 == name2:
+        name1 = "%s-1" % name1
+        name2 = "%s-2" % name2
 
     classes = [None]*MATRIX.ncol()
     for i in I1:

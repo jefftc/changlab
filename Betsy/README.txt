@@ -1,4 +1,3 @@
-
 Preprocess Usage
 
 1)Betsy can preprocess with rma or mas5 for Affymetrix cel data. 
@@ -7,219 +6,334 @@ Preprocess Usage
 	A. When given a GSE ID from the geo, and want to do rma preprocess, 
 	   the command is
 
-	run_protocol.py  
-      --protocol 'normalize_file' 
-      --input 'gse_id:<GSE21947>'  
-      --parameters 'preprocess:rma' 
-     	------------------------------------------------------------
-	B. When given a GSE ID and GPL platform number from the geo, 
+	python run_rule.py  \
+      --input 'GEOSeries' \
+      --mattr 'GSEID=GSE8286' \
+      --output 'SignalFile' \
+      --dattr 'SignalFile,preprocess=rma' \
+      --dattr 'SignalFile,quantile_norm=yes' \
+      --png_file 'out.png'
+      ----------------------------------------------------------------
+      B. When given a GSE ID and GPL platform number from the geo, 
 	   and want to do rma preprocess, 
-	   the command is
-
-	run_protocol.py  
-      --protocol 'normalize_file' 
-      --input 'gse_id_and_platform:<GSE17907,GPL570>'  
-      --parameters 'preprocess:rma' 
+	   the command is 
      
-	------------------------------------------------------------
-	C. When given a folder contains cel file, the command is
+      python run_rule.py  \
+      --input 'GEOSeries' \
+      --mattr 'GSEID=GSE17907' \
+      --mattr 'GPLID=GPL570' \
+      --output 'SignalFile' \
+      --dattr 'SignalFile,preprocess=rma' \
+      --dattr 'SignalFile,quantile_norm=yes' \
+      --png_file 'out.png'
+      ----------------------------------------------------------------
+     C. When given a folder contains cel file, the command is
 
-	run_protocol.py  
-      --protocol 'normalize_file' 
-      --input 'cel_files:<./GSE21947>'     	
-      --parameters 'preprocess:rma' 
-	------------------------------------------------------------
-
-	The output will be tdf format with annotations, 
-      without missing value and logged with base 2.
-      Also the result folder will contain pca_plot,intensity_plot,actb_plot,control_plot.
-
-2)Betsy can preprocess with illumina for illumina idat files.
-
-	Example:
+	python run_rule.py  \
+      --input 'CELFiles' \
+      --input_file '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+      --output 'SignalFile' \
+      --dattr 'SignalFile,preprocess=rma' \
+      --dattr 'SignalFile,quantile_norm=yes' \
+      --png_file 'out.png'
+-----------------------------------------------------------------------
+2) Betsy can preprocess with illumina for illumina idat files.
+     Example:
 	When given a folder contains idat files, the command is
-
-	run_protocol.py  
-      --protocol 'normalize_file' 
-      --input 'idat_files:<6991010018>'   
-      --parameters 'has_missing_value:zero_fill'
-      --parameters 'preprocess:illumina'
-
-	The output will be tdf format with annotations, 
-      without missing value and logged with base 2.
-      Also the result folder will contain pca_plot,intensity_plot,
-	hyb_bar_plot,actb_plot,biotin_plot,control file.
-
-
+     python run_rule.py  \
+     --input 'ExpressionFiles'  \
+     --input_file '/home/xchen/chencode/betsy_test/6991010018' \
+     --output 'SignalFile'  \
+     --dattr 'SignalFile,preprocess=illumina' \
+     --png_file 'out.png'
+ ----------------------------------------------------------------
+3) Betsy can preprocess with agilent for  Agilent files.
+     Example:
+	When given a folder contains agilent files, the command is
+     python run_rule.py \
+     --input 'ExpressionFiles' \
+     --input_file '/home/xchen/chencode/betsy_test/agilent_expression' \
+     --output 'SignalFile' \
+     --dattr 'SignalFile,preprocess=agilent' \
+     --png_file 'out.png'
+ ----------------------------------------------------------------
+4) Betsy can preprocess with gpr for gpr files.
+     Example:
+	When given a folder contains gpr files, the command is
+     python run_rule.py \
+     --input 'ExpressionFiles'  \
+     --input_file '/home/xchen/chencode/betsy_test/GSE4189' \
+     --output 'SignalFile' \
+     --dattr 'SignalFile,preprocess=loess' \
+     --png_file 'out.png'
+ ----------------------------------------------------------------  
+ (5) Betsy can download TCGA data and process it to a SignalFile
+    Example:
+   python run_rule.py \
+   --input 'TCGAID'  \
+   --mattr 'disease=BLCA' \
+   --output 'SignalFile'  \
+   --dattr 'SignalFile,preprocess=tcga' \
+   --dattr 'TCGAFile,data=rppa' \
+   --png_file 'out.png' 
+----------------------------------------------------------------
+(6) Betsy can preprocess RNA Seq with RSEM and convert into a SignalFile
+ 
+    python run_rule.py \
+   --input 'RNASeqFile' \
+   --input_file '/home/xchen/NGS/try_RSEM/big_sample_data' \
+   --output 'SignalFile' \
+   --dattr SignalFile,preprocess=rsem \
+   --dattr SamFolder,ref=human \
+   --input SampleGroupFile \
+   --input_file '/home/xchen/NGS/try_RSEM/big_sample_data/sample_group.txt' \
+   --png_file 'out.png'
 =============================================================================
 Process Usage
-1) Betsy can do preprocessdataset,log,unlog,gene_filter,quantile,combat, shiftscale,dwd,gene_center,
-    gene_normalize,gene_order for signal files
+
+Betsy can do predataset,log,unlog,gene_filter,quantile,combat, shiftscale,dwd,bfrm, predataset,gene_center,gene_normalize,gene_order, annotate, rename_sample, platform,
+num_features,unique_genes, duplicate_probe,group_fc,change format,for signal files
+
+The option of the attributes are:
+    preprocess:   unknown, illumina, agilent, mas5, rma, loess
+    missing_algorithm: none, median_fill, zero_fill         
+    filter:no, yes 
+    dwd_norm: no, yes
+    bfrm_norm: no, yes
+    quantile_norm: no, yes
+    shiftscale_norm: no, yes
+    combat_norm: no", yes
+    predataset: no, yes
+    gene_center: no, mean, median
+    gene_normalize:  no, variance, sum_of_squares
+    gene_order:no, class_neighbors, gene_list, t_test_p, t_test_fdr
+    annotate: no,yes
+    rename_sample: no, yes
+    platform: yes,no
+    num_features: yes,no
+    unique_genes: no, average_genes, high_var, first_gene,
+    duplicate_probe:no, closest_probe, high_var_probe    
+    group_fc: yes,no
+    contents:unspecified, train0, train1, test, class0,class1,test,
+        class0, class1, class0,class1,      
+    logged: no, yes
+    format: tdf, gct
+
+ ----------------------------------------------------------------
     Example:
-    When given a signal_file,do preprocessdataset, quantile, gene_center=mean,   gene_normalize=variance.
+    When given a SignalFile,do predataset, quantile, gene_center=mean,gene_normalize=variance.
     The command is
- 
-    run_protocol.py
-    --protocol 'normalize_file'
-    --input 'input_signal_file:<path of the file>'
-    --parameters 'predataset:yes_predataset'
-    --parameters 'quantile:yes_quantile'
-    --parameters 'gene_center:mean'
-    --parameters 'gene_normalize:variance'
-    --parameters 'has_missing_value:zero_fill'
-
-     The result folder will contain output signal_file 
-     with annotation,pca_plot,intensity_plot,actb_plot,control_plot.
-    --------------------------------------------------------------------
-    When given a signal_file and gene_list_file, fill the missing value with median, 
-    and quantile, gene_center=mean and extract the genes in gene_list_file from signal_file. 
-    The output format is tdf. The command is
-    run_protocol.py
-    --protocol 'normalize_file'
-    --input 'input_signal_file:<path of the file>'
-    --input 'gene_list_file:<path of the file>'
-    --parameters 'quantile:yes_quantile'
-    --parameters 'gene_center:mean'
-    --parameters 'has_missing_value:median_fill'
-    --parameters 'gene_order:by_gene_list'
-
-    The result folder will contain output signal_file 
-    with annotation,pca_plot,intensity_plot,atcb_plot,control_plot.
-     --------------------------------------------------------------------
-2) Betsy can merge several signal_file or split a signal_file into several signal_file 
-    according to the labels.
-    Example:
-    When given two signal_file, one contains positive sample, one contains negative sample, 
-    merge them together. Then command is:
-    run_protocol.py
-    --protocol 'normalize_file'
-    --input 'input_signal_file:pos:/path of the file'
-    --input 'input_signal_file:neg:/path of the file'
-    --parameters 'has_missing_value:zero_fill'
-    --parameters 'contents:pos,neg'
-
-     The result folder will contain output signal_file
-     with annotations,pca_plot,intensity_plot,actb_plot,control_plot
-    --------------------------------------------------------------------
-    When given a signal_file and its class_label_file, split them into two signal_file 
-    according to the labels. The command is:
-    run_protocol.py
-    --protocol 'normalize_file'
-    --input 'input_signal_file:pos,neg:<path of the file>'
-    --input 'class_label_file:pos,neg:<path of the file>'
-    --parameters 'has_missing_value:zero_fill'
-    --parameters 'contents:pos'
-    The result folder will contain output signal_file contains positive samples,
-    pca_plot,intensity_plot,actb_plot,control_plot.
-
-=============================================================================
-Clustering Usage
-Betsy can do clustering for a signal_file and plot the heatmap.
-    Example:
-    When given a signal_file, gene_center=mean, gene_normalize=variance, 
-    cluster the genes by hierarchical method and plot the heatmap, 
-    set the heatmap size as x=200,y=1.
+    python run_rule.py \
+    --input '_SignalFile_Postprocess' \
+    --input_file '/home/xchen/chencode/betsy_test/all_aml_train_missed.gct' \
+    --output 'SignalFile' \
+    --dattr 'SignalFile,predataset=yes' \
+    --dattr 'SignalFile,quantile_norm=yes' \
+    --dattr 'SignalFile,gene_center=mean' \
+    --dattr 'SignalFile,gene_normalize=variance'
+ ----------------------------------------------------------------
+    When given a SignalFile and ClassLabelFile, group_fc=yes and group_fc_num=1
     The command is:
-    run_protocol.py
-    --protocol 'cluster_genes'
-    --input 'input_signal_file:<path of the file>'
-    --parameters 'has_missing_value:zero_fill'
-    --parameters 'gene_normalize:variance'
-    --parameters 'cluster_alg:hierarchical'
-    --parameters 'hm_width:200'
-    --parameters 'hm_height:1'
- 
-    The result folder will contain a clustering file and a png file showing the heatmap.
-    --------------------------------------------------------------------
-    When given idat files,preprocess=illumina, rename sample names, select genes according to fdr value,gene_center=mean,gene_normalize=variance,clustering and then make heatmap.
-    The command is:
-    run_protocol.py
-    --protocol 'cluster_genes'
-    --input 'idat_files:<path of the file>'
-    --input 'class_label_file:<path of the file>'
-    --input 'rename_list_file:<path of the file>'
-    --parameters 'has_missing_value:zero_fill'
-    --parameters 'gene_center:mean'
-    --parameters 'gene_normalize:variance'
-    --parameters 'cluster_alg:hierarchical'
-    --parameters 'hm_width:20'
-    --parameters 'hm_height:1'
-    --parameters 'rename_sample:yes_rename'
-    --parameters 'gene_order:t_test_fdr'
-
-    The result folder will contain a clustering file and a png file showing the heatmap.
-
+	python run_rule.py \
+	--input '_SignalFile_Postprocess' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--input 'ClassLabelFile' \
+	--dattr 'cls_format=cls' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--output 'SignalFile' \
+	--dattr 'SignalFile,group_fc=yes' \
+	--mattr 'group_fc_num=1' \
+	--png_file 'out.png'
 =============================================================================
-Classification Usage
-Betsy can do classification with svm and weighted_voting method for dataset. 
-Also it can leave one out cross validation by these two methods.
-    Example:
-    When given three signal_files, one contains negative samples, one contains positive 
-    samples and one contains test samples.Classify the test sample. For the svm training model, 
-    set the kernel function as linear. For the weighted-voting method, the number of features 
-    is set to 50. The command is:
-    run_protocol.py
-    --protocol 'classification'
-    --input 'input_signal_file:train:<path of the file>'
-    --input 'class_label_file:train:<path of the file>'
-    --input 'input_signal_file:test:<path of the file>'
-    --parameters 'has_missing_value:zero_fill'
-    --parameters 'traincontents:train'
-    --parameters 'testcontents:test'
-    --parameters 'svm_kernel:linear'
-    --parameters 'num_features:50' 
-    The result folder contains one predication result for svm, one predication result for 
-    weighted_voting,one predication result for leave one out cross validation on svm and one 
-    leave one out cross validation on weighted_voting.
-
-=============================================================================
-Differential expressed genes analysis usage
-Betsy can do the differential expressed genes analysis for signal_files.
-Example:
-    When given a signal_file and its class_label_file, get the sam result.The delta is set to 1.0
-    The command is :
-    run_protocol.py
-    --protocol 'differential_expressed_gene_analysis'
-    --input 'input_signal_file:<path of the file>'
-    --input 'class_label_file:<path of the class_label_file>'
-    --parameters 'has_missing_value:zero_fill'
-    --parameters 'sam_delta:1.0'
-
-   The result folder will contain a result file for the analysis.
-=============================================================================
-
 Heatmap Usage
-Betsy can make heatmap for a signal_file without clustering.
+
+Betsy can make heatmap for a SignalFile without clustering.
     Example:
     When given a signal_file, plot the heatmap and set the heatmap size as x=20,y=20.
     The command is:
-    run_protocol.py
-    --protocol 'make_heatmap'
-    --input 'input_signal_file:<path of the file>'
-    --parameters 'has_missing_value:zero_fill'
-    --parameters 'hm_width:200'
-    --parameters 'hm_height:10'
+	python run_rule.py \
+	--input '_SignalFile_Postprocess' \
+	--input_file '/home/xchen/chencode/betsy_test/breast_19.mas5'  \
+	--output 'Heatmap'   \
+     --mattr 'hm_width=20' \
+     --mattr 'hm_height=20' \
+     --png_file 'out.png'
+
+   
     The result folder will contain a png file showing the heatmap.
 =============================================================================
-Batch effect remove Usage
-Example:
-When given a signal_file and class_label_file, try five different batch_effect remove methods and plot their pca figure.
+Clustering Usage
 
-     run_protocol.py
-     --protocol 'batch_effect_remove'
-     --input 'input_signal_file:<path of the file>'
-     --input 'class_label_file:<path of the file>'
-     --parameters 'has_missing_value:zero_fill'
-     --parameters 'num_factors:1'
-=============================================================================
-Geneset Analysis Usage
+Betsy can do clustering for a SignalFile and plot the heatmap.
+
+    Example:
+    When given a signalFile, gene_center=mean, gene_normalize=variance, 
+    cluster the genes by hierarchical method and plot the heatmap, 
+    set the heatmap size as x=200,y=1.
+    The command is:
+	python run_rule.py \
+	--input '_SignalFile_Postprocess'  \
+	--input_file '/home/xchen/chencode/betsy_test/breast_19.mas5'  \
+	--output 'ClusterReportFile'   \
+     --dattr 'SignalFile,gene_normalize=variance' \
+     --dattr 'SignalFile,gene_center=mean' \
+	--dattr 'ClusterFile,cluster_alg=pca' \
+	--dattr 'ClusterFile,distance=correlation' \
+     --mattr 'hm_width=200' \
+     --mattr 'hm_height=20' \
+	--png_file 'out.png'
+
+The result folder will contain a clustering file and a png file showing the heatmap.
+===============================================================================
+Classification Usage
+
+Betsy can do classification with svm and weighted_voting method for dataset. 
+Also it can leave one out cross validation by these two methods.
+The command is:
+	python run_rule.py \
+	--input '_SignalFile_Postprocess' \
+	--dattr 'contents=class0,class1' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train.res' \
+	--input '_SignalFile_Postprocess' \
+	--dattr 'contents=test' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_test.res' \
+	--input 'ClassLabelFile' \
+	--dattr 'contents=class0,class1' \
+	--dattr 'cls_format=cls' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--input 'ClassLabelFile' \
+	--dattr 'contents=test' \
+	--dattr 'cls_format=cls' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_test.cls' \
+	--output 'ClassifyReportFile' \
+	--png_file 'out.png' \
+	--text_file 'out.txt' 
+
+===============================================================================
+Differential expressed genes analysis usage
+
+Betsy can do the differential expressed genes analysis for signal_files.
+The command is:
+	python run_rule.py \
+	--input '_SignalFile_Postprocess'  \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--input 'ClassLabelFile' \
+	--dattr 'cls_format=cls' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--output 'DiffReportFile'  \
+	--png_file 'out.png'
+===============================================================================
+Geneset Analysis Usage 
+
 Example:
 When given a signal_file and a gene set file, try do geneset score analysis and plot the result.
 
-run_protocol.py \
---protocol 'geneset_analysis' \
---input 'input_signal_file:se2fplate6_48.illu.gz' \
---input 'geneset_file:genesets.gmt' \
---parameters 'has_missing_value:zero_fill' \
---parameters 'preprocess:unknown_preprocess' \
---parameters geneset:"E2F1n_affy_150_UP,E2F1n_affy_150_DN"
+	python run_rule.py \
+	--output 'GenesetReportFile' \
+	--dattr 'SignalFile,quantile_norm=yes' \
+	--dattr 'SignalFile,gene_center=mean' \
+        --dattr 'SignalFile,gene_normalize=variance' \
+	--dattr 'SignalFile,unique_genes=high_var' \
+	--dattr 'SignalFile,annotate=yes'  \
+	--input '_SignalFile_Postprocess'  \
+	--input_file '/home/xchen/chencode/betsy_test/se2fplate6_48.illu.gz' \
+	--input 'GenesetFile' \
+	--input_file '/home/xchen/chencode/betsy_test/genesets.gmt' \
+	--mattr 'geneset_value=E2F1n_affy_150_UP' \
+	--png_file 'out.png'
+===============================================================================
+Normalization Usage
+
+Example:
+When given a signal_file, try do quantile_norm and gene_center=median,get a normalization report
+
+	python run_rule.py \
+	--input '_SignalFile_Postprocess'  \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--output 'NormalizeReportFile'  \
+	--dattr 'SignalFile,quantile_norm=yes'  \
+	--dattr 'SignalFile,preprocess=unknown' \
+	--dattr 'SignalFile,gene_center=median' \
+	--png_file 'out.png' \
+      --json_file 'outjson.txt'
+--------------------------------------------------
+	When given a ExpressionFiles, try rma preprocess, do quantile_norm and gene_center=median,get a NormalizeReportFile report
+
+	python run_rule.py \
+	--input 'ExpressionFiles'  \
+	--input_file '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+	--output 'NormalizeReportFile'  \
+	--dattr 'SignalFile,quantile_norm=yes'  \
+	--dattr 'NormalizeReportFile,preprocess=rma' \
+	--dattr 'SignalFile,gene_center=median' \
+	--png_file 'out.png'
+--------------------------------------------------
+	When given a ExpressionFiles, try illumina preprocess, do quantile_norm and gene_center=median,get a NormalizeReportFile report
+
+	python run_rule.py \
+	--input 'ExpressionFiles'  \
+	--input_file '/home/xchen/chencode/betsy_test/6991010018' \
+	--output 'NormalizeReportFile'  \
+	--dattr 'SignalFile,quantile_norm=yes'  \
+	--dattr 'NormalizeReportFile,preprocess=illumina' \
+	--dattr 'SignalFile,gene_center=median' \
+	--png_file 'out.png'
+==============================================================================
+DNA NGS Usage
+
+When given a DNA fa file, require a vcf file.
+	python run_rule.py \
+	--output VcfFile \
+	--dattr  VcfFile,vcf_filter=yes \
+	--input FastqFile --input_file /data/xchen/human/human1_cut.fa \
+	--png_file out.png
+==============================================================================
+Clinical outcomes Usage
+
+Given an expression file and clinical file, doing clinical outcome analysis.
+	python run_rule.py \
+	--input _SignalFile_Postprocess \
+	--input_file  /home/xchen/chencode/examples/survial_analysis/GSE17907.rma.gz \
+	--input ClinicalFile \
+	--input_file /home/xchen/chencode/examples/survial_analysis/GSE17907.stdclin \
+	--mattr outcome=DMFS \
+	--mattr dead=DMFS_DEAD \
+	--mattr genename=117_at,1007_s_at \
+	--output ClinicalAnalysis   \
+	--png_file out.png --text_file 1.txt
+==============================================================================
+EMT analysis Usage
+
+Given an expression file and a cellType File, do EMT analysis on some genesets.
+
+python run_rule.py \
+	--input _SignalFile_Postprocess  \
+	--input_file /data/genomidata/stem_cell/EMT.cent.rma.gz \
+	--input CellTypeFile \
+	--input_file /data/genomidata/stem_cell/EMT.stdclin  \
+	--output EMTAnalysis \
+	--png_file 'out.png' \
+	--mattr 'geneset_value=CDH1,CDH2,VIM,ABCA1' \
+	--output_file 'text0'
+==============================================================================
+Pathway Signature Score Usage
+
+	python run_rule.py \
+	--input 'ExpressionFiles' \
+	--input_file '/home/xchen/chencode/betsy_test/GSE8286_folder' \
+	--output 'SignatureScore'  \
+	--mattr 'platform_name=HG_U133A' \
+	--png_file 'out.png' --text_file 'out.txt' 
+==============================================================================
+Batch effect remove usage
+
+Betsy can do the batch effect remove analysis for signal_files.
+The command is:
+	python run_rule.py \
+	--input '_SignalFile_Postprocess'  \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train_filt.res' \
+	--input 'ClassLabelFile' \
+	--dattr 'cls_format=cls' \
+	--input_file '/home/xchen/chencode/betsy_test/all_aml_train.cls' \
+	--output 'BatchEffectReportFile'  \
+	--png_file 'out.png'

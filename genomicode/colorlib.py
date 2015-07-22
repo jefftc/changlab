@@ -7,12 +7,15 @@ green_shade
 white_shade
 rg_array_colors
 by_array_colors
+red_green_soft
+red_blue_soft
 rgb_colors          From red, green, blue colorwheel.
 matlab_colors
 bild_colors
 broad_colors
 genespring_colors
 yahoo_weather_colors
+
 
 choose_contrasting_color
 choose_contrasting_bw
@@ -24,6 +27,9 @@ hsl2rgb
 """
 
 def _matrix2color(matrix, pos):
+    # Make sure matrix is sorted from low to high.
+    matrix = sorted(matrix)
+    
     # pos is [0, 1]
     # Return (R, G, B) where R, G, and B are percentages from 0 to 1.
     breaks = [x[0] for x in matrix]
@@ -94,6 +100,30 @@ def by_array_colors(n):
         (0.0,   0,   0, 255),
         (0.5,   0,   0,   0),
         (1.0, 255, 255,   0),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+
+def red_green_soft(n):
+    color_matrix = [
+        (0.00,   52, 112,  11),
+        (0.25,   95, 173,  93),
+        (0.50,  245, 245, 245),
+        #(0.75,  229,  89,  95),
+        #(1.00,  249,  39,  39),
+        (0.75,  229,  115,  105),
+        (1.00,  128,  52,  29),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+
+def red_blue_soft(n):
+    color_matrix = [
+        (1.00,   86,  15,  24),
+        (0.75,  213,  96,  76),
+        (0.50,  245, 245, 245),
+        (0.25,   79, 148, 194),
+        (0.00,    8,  34,  79),
         ]
     x = _colors(color_matrix, n)
     return x
@@ -210,13 +240,14 @@ def rgb2hex(c):
     r = hex(r)[2:].upper()
     g = hex(g)[2:].upper()
     b = hex(b)[2:].upper()
-    if r == "0":
-        r = "00"
-    if g == "0":
-        g = "00"
-    if b == "0":
-        b = "00"
+    if len(r) == 1:
+        r = "0%s" % r
+    if len(g) == 1:
+        g = "0%s" % g
+    if len(b) == 1:
+        b = "0%s" % b
     x = "0x%s%s%s" % (r, g, b)
+    assert len(x) == 8
     return x
 
 def choose_contrasting_color(col):

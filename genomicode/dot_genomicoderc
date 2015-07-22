@@ -9,11 +9,15 @@ primer3=/usr/local/bin/primer3_core
 patser=/usr/local/bin/patser-v3b
 cluster=/usr/local/bin/cluster
 BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
-
+bwa=/usr/local/bin/bwa
+sortsam=/usr/local/bin/picard-tools-1.87/SortSam.jar
 Gatk=/usr/local/bin/GenomeAnalysisTK-2.4-9/GenomeAnalysisTK.jar
 Mark_duplicates=/usr/local/bin/picard-tools-1.87/MarkDuplicates.jar
 AddOrReplaceReadGroups=/usr/local/bin/picard-tools-1.87/AddOrReplaceReadGroups.jar
-
+samtools=/usr/local/bin/samtools
+bcftools=/usr/local/bin/bcftools
+vcfutils=/usr/local/bin/vcfutils.pl
+RNASeQC=/usr/local/bin/RNA-SeQC_v1.1.8.jar 
 
 [BINREG]
 bfrm=/data/genomidata/bfrm64
@@ -32,13 +36,17 @@ xls2txt = /home/xchen/chencode/scripts/xls2txt
 genepattern=/home/xchen/chencode/scripts/run_genepattern.py
 bfrmnorm=/home/xchen/chencode/scripts/bfrmnorm.py
 combatnorm=/home/xchen/chencode/scripts/combatnorm.py
-run_combat=/home/xchen/chencode/scripts/run_combat.R
+combat=/Volumes/Users/jchang/changlab/scripts/ComBat.R
 scoresig=/home/xchen/chencode/scripts/scoresig.py
 slice_matrix=/home/xchen/chencode/scripts/slice_matrix.py
 annotate_matrix=/home/xchen/chencode/scripts/annotate_matrix.py
 score_geneset=/home/xchen/chencode/scripts/score_geneset.py
 gsea=/home/xchen/chencode/scripts/gsea.py
 combat = /home/xchen/chencode/scripts/ComBat.R
+download_tcga = /home/xchen/chencode/scripts/download_tcga.py
+analyze_clinical = /home/xchen/chencode/scripts/analyze_clinical_outcome.py
+find_diffexp_genes = /home/xchen/chencode/scripts/find_diffexp_genes.py
+analyze_phenotype = /home/xchen/chencode/scripts/analyze_phenotype.py
 
 changlab_Rlib=/home/xchen/chencode/Rlib
 kaplanmeierlib=/home/xchen/chencode/Rlib/kaplanmeierlib.R
@@ -60,11 +68,16 @@ hg19_dbsnp=/data/biocore/GATK/hg19/dbsnp_137.hg19.vcf
 hg19_indels=/data/biocore/GATK/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf
 hg18_dbsnp=/data/biocore/GATK/hg18/dbsnp_137.hg18.vcf
 hg18_indels=/data/biocore/GATK/hg18/Mills_and_1000G_gold_standard.indels.hg18.vcf
-rna_hum =/home/xchen/try_RSEM/ref/human
-rna_mouse=/home/xchen/try_RSEM/ref/mouse
+rna_human =/data/biocore/ensembl_reference_genome/ref/human
+rna_mouse=/data/biocore/ensembl_reference_genome/ref/mouse
+rna_hum_ref =/data/biocore/ensembl_reference_genome/ref/human.transcripts.fa
+rna_mouse_ref=/data/biocore/ensembl_reference_genome/ref/mouse.transcripts.fa
 annotate_vcf=/home/xchen/chencode/scripts/annovar/annotate_vcf.py
 chrom2genome=/data/genomidata/chrom2genome
 genomes=/data/genomidata/genomes
+convert_platform=/data/genomidata/convert_platform
+cghubkey = /data/biocore/cghub.key
+
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation
