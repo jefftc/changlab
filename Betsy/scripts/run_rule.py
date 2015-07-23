@@ -423,7 +423,7 @@ def main():
     if not args.output and args.input:
         raise AssertionError, "Missing --output"
     if args.num_cores:
-        assert args.num_cores>0,'num_cores should be bigger than 0'
+        assert args.num_cores > 0,'num_cores should be bigger than 0'
     print 'Generating network...'
     network = bie3.backchain(
         rulebase.all_modules, out_datatype, user_attributes)
@@ -441,6 +441,7 @@ def main():
     if not network or len(network.nodes)==1:
         in_datas = [i.data for i in in_objects]
         bie3.diagnose_start_node(network, in_datas)
+    #bie3.plot_network_gv("test.png", network)
     input_node_ids = []
     input_nodes = []
     for i in in_objects:

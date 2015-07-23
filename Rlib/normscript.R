@@ -159,15 +159,24 @@ if(!any(names(affyannot) == LLID.H))
 if(!any(names(affyannot) == SYMBOL.H))
   stop("Cannot find gene symbol")
 
+# Allow mismatches in control probes.
+x <- rep(FALSE, length(probeset.id))
+x[grep("^ERCC-", probeset.id)] <- TRUE
+x[grep("^AFFX-BkGr-", probeset.id)] <- TRUE
+I.control <- x
 
 I <- match(probeset.id, affyannot[[PSID.H]])
-if(any(is.na(I))) stop("mismatch")
+if(any(is.na(I) & !I.control)) stop("mismatch")
 affyannot <- affyannot[I,]
-if(any(probeset.id != affyannot[[PSID.H]])) stop("bug")
+if(any(probeset.id[!I.control] != affyannot[[PSID.H]][!I.control])) stop("bug")
 
 description <- affyannot[[DESCRIPTION.H]]
 locuslink.id <- affyannot[[LLID.H]]
 gene.symbol <- affyannot[[SYMBOL.H]]
+
+description[is.na(description)] <- ""
+locuslink.id[is.na(locuslink.id)] <- ""
+gene.symbol[is.na(gene.symbol)] <- ""
 
 # Write the annotated data.
 data.out <- cbind(probeset.id, description, locuslink.id, gene.symbol, M)

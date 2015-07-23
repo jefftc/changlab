@@ -31,7 +31,8 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
     for i in outputfiles:
         if i.endswith('.rma'):
             outputfile = i
-    
+    assert outputfile, "No output file created."
+
     os.rename(outputfile, outfile)
     assert module_utils.exists_nz(outfile), (
         'the output file %s for preprocess_rma fails' % outfile
