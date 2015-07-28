@@ -28,6 +28,7 @@
 # replace_whole_annot
 # prepend_to_annots
 # apply_re_to_annots
+#
 # add_two_annots
 # subtract_two_annots
 # divide_two_annots
@@ -52,6 +53,13 @@ class AnnotationMatrix:
         self.headers = headers[:]
         self.headers_h = headers_h[:]
         self.header2annots = header2annots.copy()
+    def num_headers(self):
+        return len(self.headers)
+    def num_annots(self):
+        if not self.headers_h:
+            return 0
+        h = self.headers_h[0]
+        return len(self.header2annots[h])
     def copy(self):
         return AnnotationMatrix(
             self.headers, self.headers_h, self.header2annots)
@@ -388,6 +396,8 @@ def add_column(MATRIX, add_column):
         x = x.split(",", 2)
         assert len(x) == 3
         index, header, default_value = x
+        if index == "END":
+            index = MATRIX.num_headers() + 1
         index = int(index) - 1
         add_all.append((index, header, default_value))
 
@@ -741,6 +751,103 @@ def _calc_two_annots(MATRIX, calc_annots, calc_fn):
     return MATRIX
 
 
+def all_same(MATRIX, all_same):
+    # format: <indexes 1-based>;<dest index>
+    from genomicode import jmath
+    
+    if not all_same:
+        return MATRIX
+
+    x = all_same.split(";")
+    assert len(x) == 2, "format should be: <indexes>;<index dest>"
+    indexes_str, dst_i = x
+    indexes = parse_indexes(MATRIX, indexes_str)
+    dst_i = int(dst_i)
+    assert dst_i >= 1 and dst_i <= MATRIX.num_headers()
+    dst_i -= 1
+
+    MATRIX = MATRIX.copy()
+    annot_matrix = []  # indexes x annot matrix
+    for i in indexes:
+        h = MATRIX.headers_h[i]
+        x = MATRIX.header2annots[h]
+        annot_matrix.append(x)
+
+    same_annot = [1] * MATRIX.num_annots()
+    for i in range(MATRIX.num_annots()):
+        # See if all annot_matrix[i] is same.
+        same = True
+        for j in range(1, len(annot_matrix)):
+            if annot_matrix[j][i] != annot_matrix[0][i]:
+                same = False
+        if not same:
+            same_annot[i] = 0
+
+    h = MATRIX.headers_h[dst_i]
+    MATRIX.header2annots[h] = same_annot
+    return MATRIX
+
+
+def min_annots(MATRIX, min_annots):
+    # format: <indexes 1-based>;<dest index>
+    from genomicode import jmath
+    
+    if not min_annots:
+        return MATRIX
+
+    x = min_annots.split(";")
+    assert len(x) == 2, "format should be: <indexes>;<index dest>"
+    indexes_str, dst_i = x
+    indexes = parse_indexes(MATRIX, indexes_str)
+    dst_i = int(dst_i)
+    assert dst_i >= 1 and dst_i <= MATRIX.num_headers()
+    dst_i -= 1
+
+    MATRIX = MATRIX.copy()
+    annot_matrix = []  # indexes x annot matrix
+    for i in indexes:
+        h = MATRIX.headers_h[i]
+        x = MATRIX.header2annots[h]
+        x = map(float, x)
+        annot_matrix.append(x)
+    mins = jmath.min(annot_matrix, byrow=False)
+    assert len(mins) == MATRIX.num_annots()
+
+    h = MATRIX.headers_h[dst_i]
+    MATRIX.header2annots[h] = mins
+    return MATRIX
+
+
+def max_annots(MATRIX, max_annots):
+    # format: <indexes 1-based>;<dest index>
+    from genomicode import jmath
+    
+    if not max_annots:
+        return MATRIX
+
+    x = max_annots.split(";")
+    assert len(x) == 2, "format should be: <indexes>;<index dest>"
+    indexes_str, dst_i = x
+    indexes = parse_indexes(MATRIX, indexes_str)
+    dst_i = int(dst_i)
+    assert dst_i >= 1 and dst_i <= MATRIX.num_headers()
+    dst_i -= 1
+
+    MATRIX = MATRIX.copy()
+    annot_matrix = []  # indexes x annot matrix
+    for i in indexes:
+        h = MATRIX.headers_h[i]
+        x = MATRIX.header2annots[h]
+        x = map(float, x)
+        annot_matrix.append(x)
+    maxes = jmath.max(annot_matrix, byrow=False)
+    assert len(maxes) == MATRIX.num_annots()
+
+    h = MATRIX.headers_h[dst_i]
+    MATRIX.header2annots[h] = maxes
+    return MATRIX
+
+
 def add_two_annots(MATRIX, add_annots):
     # Format: list of <annot 1>,<annot 2>,<dest>.  Each are 1-based
     # indexes.  dest is annot1 - annot2.
@@ -780,7 +887,8 @@ def main():
         help="Add one or more columns.  "
         "Format: <index>,<header>,<default value>.  The column will be "
         "added before <index> (1-based).  If <index> is 1, this will be "
-        "the new first column.  (MULTI)")
+        'the new first column.  If <index> is "END", this will be '
+        "the last column.  (MULTI)")
     group.add_argument(
         "--copy_column", 
         help="Copy a column.  Format: <index>,<new_header>.")
@@ -821,10 +929,6 @@ def main():
         "--lower_annots", 
         help="Convert annotations to lower case.  Format: 1-based indexes.")
     group.add_argument(
-        "--flip01",
-        help="Flip 0's to 1's and 1's to 0's.  "
-        "Format: indexes of columns to flip.")
-    group.add_argument(
         "--copy_value_if_empty", default=[], action="append",
         help="If the dest column is empty, copy the value from the src "
         "columns.  "
@@ -851,6 +955,25 @@ def main():
         "--apply_re_to_annots", default=[], action="append",
         help="Apply a regular expression to annots.  "
         "Format: <indexes>;<regular expression>.  (MULTI)")
+    
+    group = parser.add_argument_group(title="Mathematical Operations")
+    group.add_argument(
+        "--flip01",
+        help="Flip 0's to 1's and 1's to 0's.  "
+        "Format: indexes of columns to flip.")
+    group.add_argument(
+        "--all_same",
+        help="Sets a 0 or 1 depending on whether the values in <indexes> "
+        "are all the same.  "
+        "Format: <indexes>;<index dest>.  All indexes should be 1-based.")
+    group.add_argument(
+        "--min_annots",
+        help="Calculate the minimum value across a set of annotations.  "
+        "Format: <indexes>;<index dest>.  All indexes should be 1-based.")
+    group.add_argument(
+        "--max_annots",
+        help="Calculate the maximum value across a set of annotations.  "
+        "Format: <indexes>;<index dest>.  All indexes should be 1-based.")
     group.add_argument(
         "--add_two_annots", default=[], action="append",
         help="Add column 1 to column 2 and save to a third column.  "
@@ -890,7 +1013,6 @@ def main():
     MATRIX = strip_all_annots(MATRIX, args.strip_all_annots)
     MATRIX = upper_annots(MATRIX, args.upper_annots)
     MATRIX = lower_annots(MATRIX, args.lower_annots)
-    MATRIX = flip01_matrix(MATRIX, args.flip01)
     MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
     MATRIX = copy_value_if_empty_header(
         MATRIX, args.copy_value_if_empty_header)
@@ -898,7 +1020,12 @@ def main():
     MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
-    
+
+    # Math operations.
+    MATRIX = flip01_matrix(MATRIX, args.flip01)
+    MATRIX = all_same(MATRIX, args.all_same)
+    MATRIX = min_annots(MATRIX, args.min_annots)
+    MATRIX = max_annots(MATRIX, args.max_annots)
     MATRIX = add_two_annots(MATRIX, args.add_two_annots)
     MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)

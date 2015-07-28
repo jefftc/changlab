@@ -48,8 +48,10 @@ def score_many(jobs, lock=None):
                 gs_name, pos_genes, neg_genes, matrix_name, MATRIX,
                 any_matching_gene_sets, lock=lock)
         else:
-            assert pos_genes is None
-            assert neg_genes is None
+            assert not (pos_genes == [] and neg_genes == []), \
+                   "Empty gene set: %s" % gs_name
+            assert pos_genes is None, "Has pos genes: %s" % gs_name
+            assert neg_genes is None, "Has neg genes: %s" % gs_name
             x = score_gene(gs_name, matrix_name, MATRIX)
         # TODO: should make sure we don't overwrite previous results.
         results.update(x)
@@ -340,6 +342,10 @@ def main():
             
         pos_genes = geneset2genes[pos_gs]
         neg_genes = geneset2genes.get(neg_gs, [])
+
+        if not pos_genes and not neg_genes:
+            print "Empty gene set: %s.  Skipping." % gs_name
+            continue
 
         for matrix_name, matrix_file in zip(matrix_names, expression_files):
             x = gs_name, pos_genes, neg_genes, matrix_name, matrix_file, \
