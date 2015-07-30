@@ -32,12 +32,14 @@
 # add_two_annots
 # subtract_two_annots
 # divide_two_annots
+# divide_many_annots
 
 import os
 import sys
 
 
-# TODO: merge with aligh_matrices
+# TODO: merge with align_matrices
+# TODO: move to genomicode
 class AnnotationMatrix:
     def __init__(self, headers, headers_h, header2annots):
         # headers is a list of the original headers.
@@ -866,6 +868,40 @@ def divide_two_annots(MATRIX, divide_annots):
     return _calc_two_annots(MATRIX, divide_annots, _divide_annots)
 
 
+def divide_many_annots(MATRIX, divide_annots):
+    # Format: list of <numerator indexes>;<denominator index.  Each
+    # are 1-based indexes.
+    if not divide_annots:
+        return MATRIX
+    divide_all = []  # list of (list of 0-based indexes, 0-based index)
+    for x in divide_annots:
+        x = x.split(";")
+        assert len(x) == 2
+        x1, x2 = x
+        indexes1 = parse_indexes(MATRIX, x1)
+        indexes2 = parse_indexes(MATRIX, x2)
+        assert len(indexes2) == 1
+        for i in indexes1 + indexes2:
+            assert i >= 0 and i < len(MATRIX.headers)
+        divide_all.append((indexes1, indexes2[0]))
+
+    MATRIX = MATRIX.copy()
+    for x in divide_all:
+        num_indexes, den_index = x
+        for i in range(MATRIX.num_annots()):
+            header_h = MATRIX.headers_h[den_index]
+            annots = MATRIX.header2annots[header_h]
+            den = float(annots[i])
+
+            for index in num_indexes:
+                header_h = MATRIX.headers_h[index]
+                annots = MATRIX.header2annots[header_h]
+                num = float(annots[i])
+                annots[i] = num / den
+    
+    return MATRIX
+
+
 def main():
     import argparse
     import arrayio
@@ -989,6 +1025,11 @@ def main():
         help="Divide one column by another and save to a third column.  "
         "Format: <index numerator>,<index denominator>,<index dest>.  "
         "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
+        "--divide_many_annots", default=[], action="append",
+        help="Divide a list of columns (in place) by another.  "
+        "Format: <indexes numerator>;<index denominator>.  "
+        "All indexes should be 1-based.  (MULTI)")
 
     args = parser.parse_args()
     assert len(args.filename) == 1
@@ -1029,6 +1070,7 @@ def main():
     MATRIX = add_two_annots(MATRIX, args.add_two_annots)
     MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
+    MATRIX = divide_many_annots(MATRIX, args.divide_many_annots)
 
     # Write the matrix back out.
     write_annot(sys.stdout, MATRIX)

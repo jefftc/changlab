@@ -187,7 +187,7 @@ def exp_matrix(X, base=None):
 
 def exp(X, base=None):
     return _dispatch(
-        X, _fn(exp_item, base), _fn(exp_list, base), fn(exp_matrix, base))
+        X, _fn(exp_item, base), _fn(exp_list, base), _fn(exp_matrix, base))
 
 def sum_list(X):
     return sum(X)
