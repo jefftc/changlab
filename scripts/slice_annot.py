@@ -240,7 +240,7 @@ def replace_header(MATRIX, replace_list):
     for from_str, to_str in replace_all:
         for i in range(len(headers)):
             x = headers[i]
-            x.replace(from_str, to_str)
+            x = x.replace(from_str, to_str)
             headers[i] = x
     headers_h = _hash_headers_unique(headers)
     
