@@ -52,6 +52,7 @@ class AnnotationMatrix:
         assert sorted(headers_h) == sorted(header2annots)
         for x in headers_h[1:]:
             assert len(header2annots[x]) == len(header2annots[headers_h[0]])
+            
         self.headers = headers[:]
         self.headers_h = headers_h[:]
         self.header2annots = header2annots.copy()
@@ -196,6 +197,18 @@ def flip01_matrix(MATRIX, indexes):
                 annots[j] = "0"
         MATRIX.header2annots[header_h] = annots
     return MATRIX
+
+
+def reorder_headers_alphabetical(MATRIX, reorder_headers):
+    if not reorder_headers:
+        return MATRIX
+    from genomicode import jmath
+
+    O = jmath.order(MATRIX.headers)
+    headers = [MATRIX.headers[i] for i in O]
+    headers_h = [MATRIX.headers_h[i] for i in O]
+    M = AnnotationMatrix(headers, headers_h, MATRIX.header2annots)
+    return M
 
 
 def rename_duplicate_headers(MATRIX, rename_dups):
@@ -931,6 +944,9 @@ def main():
     
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
+        "--reorder_headers_alphabetical", action="store_true",
+        help="Change the order of the headers.")
+    group.add_argument(
         "--rename_duplicate_headers", action="store_true",
         help="Make all the headers unique.")
     group.add_argument(
@@ -1043,6 +1059,8 @@ def main():
     MATRIX = copy_column(MATRIX, args.copy_column)
 
     # Changing the headers.
+    MATRIX = reorder_headers_alphabetical(
+        MATRIX, args.reorder_headers_alphabetical)
     MATRIX = rename_duplicate_headers(MATRIX, args.rename_duplicate_headers)
     MATRIX = rename_header(MATRIX, args.rename_header)
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)
