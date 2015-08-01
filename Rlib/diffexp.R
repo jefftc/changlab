@@ -56,22 +56,23 @@ matrix2dataframe <- function(M) {
 
 normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
   # Return a list with members:
-  # n            Number of genes.
-  # m            Number of samples.
-  # g            Number of groups.
-  # X            nxm matrix of expression values.
-  # Y            m vector of 1...g
-  # geneid       n vector of gene IDs.
-  # genenames    n vector of gene names.
-  # group.names  g vector of group names.
-  # NS           g vector of samples per group.
-  # X.i          g list of nxNS matrices (samples in each group)
-  # MEAN         nxg matrix of the mean expression of each gene.         
-  # VAR          nxg matrix of the variance of each gene.
-  # lFC.group12  Fold change comparing group 1 to group 2.
-  #              NA if there are not exactly 2 groups.
-  # highest      Text description of the group with highest average expression.
-  #              NA if there is only 1 group.
+  # n               Number of genes.
+  # m               Number of samples.
+  # g               Number of groups.
+  # X               nxm matrix of expression values.
+  # Y               m vector of 1...g
+  # geneid          n vector of gene IDs.
+  # genenames       n vector of gene names.
+  # group.names     g vector of group names.
+  # NS              g vector of num samples per group.
+  # NS.not.missing  g list of n-vector of num samples for each gene.
+  # X.i             g list of nxNS matrices (samples in each group)
+  # MEAN            nxg matrix of the mean expression of each gene.         
+  # VAR             nxg matrix of the variance of each gene.
+  # lFC.group12     Fold change comparing group 1 to group 2.
+  #                 NA if there are not exactly 2 groups.
+  # highest         Text description of group with highest average expression.
+  #                 NA if there is only 1 group.
   if(ncol(X) != length(Y)) stop("X and Y not aligned")
 
   # Filter out NA.
@@ -84,7 +85,7 @@ normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
   Y <- rep(NA, length(Y.orig))
   for(i in 1:length(group.names))
     Y[Y.orig == group.names[i]] <- i
-  if(any(is.na(Y))) stop("bad")
+  if(any(is.na(Y))) stop("missing values in Y")
 
   n <- nrow(X)
   m <- ncol(X)
@@ -99,11 +100,6 @@ normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
     genenames <- geneid
   }
 
-  # Count the number of samples per group.
-  NS <- rep(NA, g)
-  for(i in 1:g)
-    NS[i] <- sum(Y==i)
-
   # Pull out a submatrix for each class.
   cn <- colnames(X)
   if(is.null(cn))
@@ -115,18 +111,33 @@ normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
     X.i[[i]] <- x
   }
   
+  # Count the number of samples per group.
+  NS <- rep(NA, g)
+  for(i in 1:g)
+    NS[i] <- sum(Y==i)
+  NS.not.missing <- list()
+  for(i in 1:g) {
+    x <- X.i[[i]]
+    num.not.missing <- apply(x, 1, function(row) sum(!is.na(row)))
+    NS.not.missing[[i]] <- num.not.missing
+  }
+
+  # BUG: MEAN and VAR calculations will fail is all values are
+  # missing.
   # Calculate the MEAN expression for each group.
   MEAN <- matrix(NA, n, g)
   for(i in 1:g) {
     x <- X.i[[i]]
-    MEAN[,i] <- apply(x, 1, mean) # will be NaN if empty matrix
+    # will be NaN if empty matrix
+    MEAN[,i] <- apply(x, 1, function(xi) mean(xi, na.rm=TRUE))
   }
 
   # Calculate the VARIANCE of expression for each group.
   VAR <- matrix(NA, n, g)
   for(i in 1:g) {
     x <- X.i[[i]]
-    VAR[,i] <- apply(x, 1, var) # will be NaN if empty matrix
+    # will be NaN if empty matrix
+    VAR[,i] <- apply(x, 1, function(xi) var(xi, na.rm=TRUE))
   }
 
   # Fold change between groups 1 and 2.
@@ -151,7 +162,7 @@ normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
   max.i <- apply(MEAN, 1, which.max)
   for(i in 1:g)
     x2[max.i==i] <- group.names[i]
-  if(any(is.na(x2))) stop("bad")
+  if(any(is.na(x2))) stop("missing max values")
   highest <- NA
   if(g > 1)
     highest <- sprintf("%s in %s", x1, x2)
@@ -167,15 +178,18 @@ normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
   if(length(genenames) != n) stop("unaligned 5")
   if(length(group.names) != g) stop("unaligned 6")
   if(length(NS) != g) stop("unaligned 7")
-  if(length(X.i) != g) stop("unaligned 8")
-  if(nrow(MEAN) != n) stop("unaligned 9")
-  if(ncol(MEAN) != g) stop("unaligned 10")
-  if((g == 2) && (length(lFC.group12) != n)) stop("unaligned 11")
-  if((g > 1) && (length(highest) != n)) stop("unaligned 12")
+  if(length(NS.not.missing) != g) stop("unaligned 8")
+  for(i in 1:g)
+    if(length(NS.not.missing[[i]]) != n) stop("unaligned 9")
+  if(length(X.i) != g) stop("unaligned 10")
+  if(nrow(MEAN) != n) stop("unaligned 11")
+  if(ncol(MEAN) != g) stop("unaligned 12")
+  if((g == 2) && (length(lFC.group12) != n)) stop("unaligned 13")
+  if((g > 1) && (length(highest) != n)) stop("unaligned 14")
 
   list(n=n, m=m, g=g, X=X, Y=Y, geneid=geneid, genenames=genenames, 
-    group.names=group.names, NS=NS, X.i=X.i, MEAN=MEAN, VAR=VAR,
-    lFC.group12=lFC.group12, highest=highest)
+    group.names=group.names, NS=NS, NS.not.missing=NS.not.missing, X.i=X.i, 
+    MEAN=MEAN, VAR=VAR, lFC.group12=lFC.group12, highest=highest)
 }
 
 slice.by.genes <- function(IN, I) {
@@ -183,6 +197,11 @@ slice.by.genes <- function(IN, I) {
   X <- matrix(IN$X[I,], ncol=ncol(IN$X), dimnames=list(NULL, colnames(IN$X)))
   geneid <- IN$geneid[I]
   genenames <- IN$genenames[I]
+  NS.not.missing <- list()
+  for(i in 1:length(IN$NS.not.missing)) {
+    x <- IN$NS.not.missing[[i]][I]
+    NS.not.missing[[i]] <- x
+  }
   X.i <- list()
   for(i in 1:length(IN$X.i)) {
     x <- matrix(IN$X.i[[i]][I,], ncol=ncol(IN$X.i[[i]]))
@@ -200,7 +219,8 @@ slice.by.genes <- function(IN, I) {
 
   list(n=nrow(X), m=IN$m, g=IN$g, X=X, Y=IN$Y, 
     geneid=geneid, genenames=genenames, group.names=IN$group.names,
-    NS=IN$NS, X.i=X.i, MEAN=MEAN, VAR=VAR, lFC.group12=lFC.group12,
+    NS=IN$NS, NS.not.missing=NS.not.missing,
+    X.i=X.i, MEAN=MEAN, VAR=VAR, lFC.group12=lFC.group12,
     highest=highest)
 }
 
@@ -228,11 +248,11 @@ make.output.table <- function(IN, p.values, fdr, bonf, filter.p05) {
     x1 <- cbind(x1, fdr)
   if(length(bonf))
     x1 <- cbind(x1, bonf)
-  x2 <- rep(IN$NS[1], IN$n)
-  if(IN$g >= 2) {
-    for(i in 2:IN$g)
-      x2 <- cbind(x2, rep(IN$NS[i], IN$n))
-  }
+  # BUG: Should use NS.not.missing.
+  x2 <- c()
+  if(length(IN$NS.not.missing) != IN$g) stop("unaligned: NS.not.missing")
+  for(i in 1:length(IN$NS.not.missing))
+    x2 <- cbind(x2, IN$NS.not.missing[[i]])
   x3 <- cbind(IN$MEAN, IN$lFC.group12, IN$highest)
   x4 <- IN$X.i[[1]]
   if(IN$g >= 2) {
@@ -315,14 +335,30 @@ find.de.genes.ttest <- function(X, Y, geneid=NA, genenames=NA,
   I <- which(is.na(p.values))
   X.1 <- IN$X.i[[1]]
   X.2 <- IN$X.i[[2]]
-  x <- mclapply(I, mc.cores=NPROCS, FUN=function(i) t.test(X.1[i,], X.2[i,]))
+  # Need to filter out missing values.
+  x <- mclapply(I, mc.cores=NPROCS, FUN=function(i) {
+    x1 <- X.1[i,]
+    x2 <- X.2[i,]
+    x1 <- x1[!is.na(x1)]
+    x2 <- x2[!is.na(x2)]
+    # t-test requires at least 2 values in x1 and 2 in x2.
+    if((length(x1) < 2) | (length(x2) < 2)) return(NA)
+    t.test(x1, x2)
+    })
   #x <- lapply(I, function(i) t.test(X.1[i,], X.2[i,]))
-  p.values[I] <- unlist(lapply(x, function(x) x$p.value))
+  for(i in 1:length(x)) {
+    if(is.na(x[[i]])) next
+    p.values[I[i]] <- x[[i]]$p.value
+  }
+  #p.values[I] <- unlist(lapply(x, function(x) x$p.value))
 
-  # BUG: will break if p-value is NA.
-  if(any(is.na(p.values))) stop("bad p.value")
-  fdr <- fdr.correct.bh(p.values)
-  bonf <- bonferroni.correct(p.values)
+  # Ignore NA.  Might be due to missing values.
+  fdr <- rep(NA, length(p.values))
+  bonf <- rep(NA, length(p.values))
+  #if(any(is.na(p.values))) stop("bad p.value")
+  I <- !is.na(p.values)
+  fdr[I] <- fdr.correct.bh(p.values[I])
+  bonf[I] <- bonferroni.correct(p.values[I])
 
   DATA <- make.output.table(IN, p.values, fdr, bonf, filter.p05)
   list(DATA=DATA)
@@ -414,6 +450,7 @@ find.de.genes.ebayes <- function(X, Y, geneid=NA, genenames=NA,
   GROUP1 <- as.numeric(IN$Y == 1)
   GROUP2 <- as.numeric(IN$Y == 2)
   design <- cbind(GROUP1=GROUP1, GROUP2=GROUP2)
+  # allows for missing values!
   fit <- lmFit(IN$X, design=design)
   fit2 <- contrasts.fit(fit, c(-1, 1))
   fit2 <- eBayes(fit2)

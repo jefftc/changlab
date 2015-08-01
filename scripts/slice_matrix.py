@@ -8,6 +8,9 @@
 # transpose_matrix
 # transpose_nonmatrix
 # correlate_matrix
+# calc_mean
+# calc_sd
+# calc_range
 # group_expression_by_samplename
 #
 # parse_indexes
@@ -87,6 +90,7 @@
 # rlog_blind
 # calc_cpm
 # set_min_value
+# normalize_rows_to
 # center_genes_mean
 # center_genes_median
 # normalize_genes_var
@@ -305,6 +309,119 @@ def correlate_matrix(MATRIX, correlate):
         X_cor, row_names=row_names, col_names=col_names,
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     return MATRIX_cor
+
+
+def calc_mean(MATRIX, calc_mean):
+    from genomicode import jmath
+    
+    if not calc_mean:
+        return MATRIX
+
+    mean = [None] * len(MATRIX._X)
+    # Calculate the mean of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        mean[i] = jmath.mean(x)
+    assert len(mean) == len(MATRIX._X)
+
+    header = "Mean"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Mean %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = mean
+    return MATRIX_new
+
+
+def calc_sd(MATRIX, calc_sd):
+    from genomicode import jmath
+    
+    if not calc_sd:
+        return MATRIX
+
+    sd = [None] * len(MATRIX._X)
+    # Calculate the standard deviation of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        sd[i] = jmath.stddev(x)
+    assert len(sd) == len(MATRIX._X)
+
+    header = "Standard Deviation"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Standard Deviation %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = sd
+    return MATRIX_new
+
+
+def calc_range(MATRIX, calc_range):
+    from genomicode import jmath
+    
+    if not calc_range:
+        return MATRIX
+
+    delta = [None] * len(MATRIX._X)
+    # Calculate the standard deviation of each row.  Handle missing values.
+    for i in range(len(MATRIX._X)):
+        x = MATRIX._X[i]
+        x = [x for x in x if x]
+        delta[i] = max(x) - min(x)
+    assert len(delta) == len(MATRIX._X)
+
+    header = "Range"
+    i = 1
+    while header in MATRIX._row_names:
+        header = "Range %d" % i
+        i += 1
+    MATRIX_new = MATRIX.matrix()
+    MATRIX_new._row_order.append(header)
+    MATRIX_new._row_names[header] = delta
+    return MATRIX_new
+
+
+def calc_pca_rows(MATRIX, calc_pca_rows):
+    if not calc_pca_rows:
+        return MATRIX
+    from arrayio import const, tdf
+    from genomicode import Matrix
+    from genomicode import pcalib
+    from genomicode import jmath
+
+    # Calculate the principal components.
+    K = min(MATRIX.nrow(), MATRIX.ncol())
+    pc, perc_var = pcalib.svd_project_cols(MATRIX._X, K)
+    # Make pc a K x ncol matrix.
+    pc = jmath.transpose(pc)
+    assert len(pc) == K
+    assert len(pc[0]) == MATRIX.ncol()
+    assert len(perc_var) == K
+
+    pc_name = ["PC %d" % i for i in range(1, K+1)]
+    
+    row_order = ["PC", "Perc Variance"]
+    col_order = [tdf.SAMPLE_NAME]
+    row_names = {
+        row_order[0] : pc_name,
+        row_order[1] : map(str, perc_var),
+        }
+    col_names = {
+        col_order[0] : MATRIX.col_names(const.COL_ID),
+        }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_pca = Matrix.InMemoryMatrix(
+        pc, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_pca
 
 
 def group_expression_by_samplename(MATRIX, group):
@@ -1632,11 +1749,12 @@ def select_row_mean_var(MATRIX, filter_mean, filter_var):
     num_genes_mean = num_genes_var = None
     if filter_mean is not None:
         # Calculate the number of genes to keep.
-        num_genes_mean = int((1.0 - filter_mean) * nrow)
+        num_genes_mean = int(round((1.0 - filter_mean) * nrow))
     if filter_var is not None:
         # Calculate the number of genes to keep.
-        num_genes_var = int((1.0 - filter_var) * nrow)
-    I = pcalib.select_genes_mv(MATRIX._X, num_genes_mean, num_genes_var)
+        num_genes_var = int(round((1.0 - filter_var) * nrow))
+    I = pcalib.select_genes_mv(
+        MATRIX._X, num_genes_mean, num_genes_var, test_for_missing_values=True)
     return I
 
 
@@ -2290,6 +2408,23 @@ def set_min_value(MATRIX, value):
     return MATRIX
 
 
+def normalize_rows_to(MATRIX, row_id):
+    if row_id is None:
+        return MATRIX
+    I_row = parse_names(MATRIX, True, row_id)
+    assert I_row, "Row not found: %s" % row_id
+    assert len(I_row) == 1, "Row not unique: %s" % row_id
+    I_norm = I_row[0]
+    
+    MATRIX = MATRIX.matrix()
+    X = MATRIX._X
+    x_norm = X[I_norm][:]
+    for i in range(len(X)):
+        for j in range(len(X[i])):
+            X[i][j] = X[i][j] / x_norm[j]
+    return MATRIX
+
+
 def center_genes_mean(MATRIX, indexes):
     from genomicode import jmath
 
@@ -2793,7 +2928,8 @@ def main():
     #    "-o", default=None, metavar="OUTFILE", dest="outfile",
     #    help="Save to this file.  By default, writes output to STDOUT.")
 
-    group = parser.add_argument_group(title="Matrix Manipulation")
+    group = parser.add_argument_group(
+        title="Matrix Manipulation and Computations")
     group.add_argument(
         "--transpose",
         help="Transpose the matrix.  Format: <old row ID>,<new row ID>.  "
@@ -2810,15 +2946,51 @@ def main():
         "--correlate", action="store_true",
         help="Calculate the pairwise correlation of the columns.")
     group.add_argument(
+        "--calc_mean", action="store_true",
+        help="Calculate the mean of each row.")
+    group.add_argument(
+        "--calc_sd", action="store_true",
+        help="Calculate the standard deviation of each row.")
+    group.add_argument(
+        "--calc_range", action="store_true",
+        help="Calculate the range (max - min) of each row.")
+    group.add_argument(
+        "--calc_pca_rows", action="store_true",
+        help="Calculate the principal components of the rows.")
+    group.add_argument(
         "--group_expression_by_samplename",
         help="Make a Prism formatted column table by grouping together "
         "the expression values.  All samples that share the same name "
         "will form a single group.  Format:<row ID to group>.")
+    
+    group = parser.add_argument_group(title="Missing values")
+    group.add_argument(
+        "--zerofill", action="store_true", help="Fill missing values with 0.")
+    group.add_argument(
+        "--fill_missing_values_median", action="store_true",
+        help="Fill missing values with the median of the row.  Performed "
+        "after logging, but before centering and normalizing.")
+    group.add_argument(
+        "--impute_missing_values_knn",
+        help="Fill missing values using KNN.  Specify K, the number of "
+        "neighbors to use (usually 10).")
+    group.add_argument(
+        "--count_missing_values",
+        help="Count the number of missing values in each row and store in "
+        "a new column.  The argument is the header for this column.")
+    group.add_argument(
+        "--add_missing_values",
+        help="Put missing values back into a matrix.  The argument should "
+        "be a filename that contains a matrix of the same dimensions with "
+        "missing values.  I will add missing values to the same place.")
 
     group = parser.add_argument_group(title="Normalization")
     group.add_argument(
         "-l", "--log_transform", dest="log_transform", 
         action="store_true", help="Log transform the data.")
+    group.add_argument(
+        "--unlog", action="store_true",
+        help="Exponentiate (unlog) transform the data.")
     group.add_argument(
         "--rlog_blind", action="store_true",
         help="Do a regularized log transformation (from DESeq2).  "
@@ -2850,28 +3022,14 @@ def main():
         "of squares) of this subset of the samples.  Given as indexes, "
         "e.g. 1-5,8 (1-based, inclusive).")
     group.add_argument(
-        "--zerofill", action="store_true", help="Fill missing values with 0.")
-    group.add_argument(
-        "--count_missing_values",
-        help="Count the number of missing values in each row and store in "
-        "a new column.  The argument is the header for this column.")
-    group.add_argument(
-        "--fill_missing_values_median", action="store_true",
-        help="Fill missing values with the median of the row.  Performed "
-        "after logging, but before centering and normalizing.")
-    group.add_argument(
         "--min_value", type=float,
         help="Set the minimum value for this matrix.  Done before logging.")
     group.add_argument(
-        "--impute_missing_values_knn",
-        help="Fill missing values using KNN.  Specify K, the number of "
-        "neighbors to use (usually 10).")
-    group.add_argument(
-        "--add_missing_values",
-        help="Put missing values back into a matrix.  The argument should "
-        "be a filename that contains a matrix of the same dimensions with "
-        "missing values.  I will add missing values to the same place.")
-
+        "--normalize_rows_to", 
+        help="Normalize each row to the values in the specified row.  "
+        "The argument to this flag should be an ID that uniquely specifies "
+        "the row to normalize to.")
+    
     group = parser.add_argument_group(title="Column filtering")
     group.add_argument(
         "--select_col_indexes", default=[], action="append",
@@ -3239,6 +3397,10 @@ def main():
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
     MATRIX = correlate_matrix(MATRIX, args.correlate)
+    MATRIX = calc_mean(MATRIX, args.calc_mean)
+    MATRIX = calc_sd(MATRIX, args.calc_sd)
+    MATRIX = calc_range(MATRIX, args.calc_range)
+    MATRIX = calc_pca_rows(MATRIX, args.calc_pca_rows)
     MATRIX = group_expression_by_samplename(
         MATRIX, args.group_expression_by_samplename)
 
@@ -3381,11 +3543,14 @@ def main():
 
     if args.min_value is not None:
         MATRIX._X = set_min_value(MATRIX._X, args.min_value)
+    MATRIX = normalize_rows_to(MATRIX, args.normalize_rows_to)
 
     # Log transform, if requested.  Do before other changes to
     # expression values (quantile, center, normalize).
     if args.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
+    if args.unlog:
+        MATRIX._X = jmath.exp(MATRIX._X, base=2)
     if args.rlog_blind:
         MATRIX._X = rlog_blind(MATRIX._X)
 

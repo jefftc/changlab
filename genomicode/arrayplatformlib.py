@@ -104,7 +104,8 @@ def get_priority(platform_name):
 
 
 def prioritize_platforms(platform_names):
-    """highest priority to lowest, lower number is higher priority"""
+    """highest priority to lowest"""
+    # lower number is higher priority    
     order_prioritize = [
         (get_priority(name), name) for name in platform_names]
     order_prioritize.sort()
@@ -204,7 +205,7 @@ def _read_annotations_h():
     result = []
 
     root = config.psid2platform
-    assert os.path.exists(root), "path not exist: %s" % root
+    assert os.path.exists(root), "Path not found: %s" % root
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
             continue
@@ -217,8 +218,8 @@ def _read_annotations_h():
     for x in paths:
         root, subfolder, platform = x
         platform_name = platform[:-4] #get rid of .txt
-        assert platform_name in all_platform,('%s is not a platform in PLATFORMS'
-                                         %platform_name)
+        assert platform_name in all_platform, (
+            '%s is not a platform in PLATFORMS' % platform_name)
         assert subfolder in ['case_sensitive','case_insensitive']
         f = file(os.path.join(root,subfolder,platform),'r')
         text = f.readlines()
@@ -364,29 +365,33 @@ def _parse_matrix_annotations(annots, delim):
 def score_all_platforms_of_matrix(DATA, annot_delim=None):
     """Return a list of (header, platform, score).  score is the
     percentage of the IDs from header that matches the IDs in this
-    platform.  List is ordered by increasing platform priority.
+    platform.  List is ordered by decreasing platform priority.
 
     """
-    platform2score = {}  # platform_name -> header, match
+    platform_scores = []  # list of header, platform_name, score
     for header in DATA.row_names():
         x = DATA.row_names(header)
         annots = _parse_matrix_annotations(x, annot_delim)
 
         platforms = score_platforms(annots)
         for platform, x, score in platforms:
-            if score <= 0:
-                continue
-            platform2score[platform] = (header, score)
-        #x = score_platform_of_annotations(annots)
-        #if x is None:
-        #    continue
-        #platform, score = x
-        #platform2score[platform] = (header, score)
-    order_platforms = prioritize_platforms(platform2score.keys())
-    # if chips is empty, will return an empty list
-    x = [(platform2score[platform][0], platform, platform2score[platform][1])
-         for platform in order_platforms]
-    return x
+            x = header, platform, score
+            platform_scores.append(x)
+            
+    # No 0 scores.
+    platform_scores = [x for x in platform_scores if x[2] > 0]
+
+    # Order by increasing platform priority, decreasing score.
+    x = [x[1] for x in platform_scores]
+    all_platforms = {}.fromkeys(x)
+    platform_order = prioritize_platforms(all_platforms)
+    priority = [platform_order.index(x[1]) for x in platform_scores]
+    x = [(priority[i], -platform_scores[i][2], platform_scores[i])
+         for i in range(len(platform_scores))]
+    x = sorted(x)
+    platform_scores = [x[-1] for x in x]
+    
+    return platform_scores
 
 
 def score_platform_of_matrix(DATA, annot_delim=None):

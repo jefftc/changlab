@@ -113,7 +113,7 @@ _SignalFile_Merge = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
-    help="The SignalFile after SiganlFile_Impute, care dwd_norm,bfrm_norm,"\
+    help="The SignalFile after SignalFile_Impute, care dwd_norm,bfrm_norm,"\
           "quantile_norm,shiftscale_norm,combat_norm.")
 
 _SignalFile_Normalize = DataType(
@@ -152,7 +152,7 @@ _SignalFile_Normalize = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
-    help="The SignalFile after SiganlFile_Merge, care gene_center,"\
+    help="The SignalFile after SignalFile_Merge, care gene_center,"\
           "gene_normalize.")
 
 
@@ -198,7 +198,7 @@ _SignalFile_Order = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
-    help="The SignalFile after SiganlFile_Normalize, care gene_order.")
+    help="The SignalFile after SignalFile_Normalize, care gene_order.")
 
 _SignalFile_Annotate= DataType(
     "_SignalFile_Annotate",
@@ -251,7 +251,7 @@ _SignalFile_Annotate= DataType(
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
-    help="The SignalFile after SiganlFile_Order, care annotate,"
+    help="The SignalFile after SignalFile_Order, care annotate,"
     "rename_sample,platform.")
 
 _SignalFile_Filter= DataType(
@@ -317,7 +317,7 @@ _SignalFile_Filter= DataType(
         help="contents"),
     AttributeDef("logged", [ "no", "yes"], "yes", "yes", help="logged or not"),
     AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf", help="file format"),
-    help="The SignalFile after SiganlFile_Annotate, care num_features,"\
+    help="The SignalFile after SignalFile_Annotate, care num_features,"\
           "unique_genes,duplicate_probe,group_fc,logged,format.")
 
 SignalFile= DataType(
@@ -382,7 +382,7 @@ SignalFile= DataType(
         help="contents"),
     AttributeDef("logged", ["no", "yes"], "yes", "yes", help="logged or not"),
     AttributeDef("format", ["tdf", "gct"], "tdf", "tdf", help="file format"),
-    help="The SignalFile after SiganlFile_Filter, the attributes are the "
+    help="The SignalFile after SignalFile_Filter, the attributes are the "
     "same as SignalFile_Filter.")
 
 
@@ -506,7 +506,7 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
-        Constraint("missing_values",MUST_BE, "no"),
+        Constraint("missing_values", MUST_BE, "no"),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
             ['none', 'zero_fill', 'median_fill']),
@@ -522,15 +522,15 @@ all_modules = [
         Consequence("shiftscale_norm", SET_TO, 'no'),
         help="convert SignalFile_Impute to SignalFile_Merge"),
 
+    # TODO: Why is this separate?
     Module(
         "convert_impute_merge_rma",
         _SignalFile_Impute, _SignalFile_Merge,
-        Constraint("preprocess",
-            MUST_BE, "rma"),
-        Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
+        Constraint("preprocess", MUST_BE, "rma"),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
-        Constraint("missing_values",MUST_BE, "no"),
+        Constraint("missing_values", MUST_BE, "no"),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
             ['none', 'zero_fill', 'median_fill']),
@@ -551,19 +551,19 @@ all_modules = [
         "merge_two_classes_rma", [_SignalFile_Merge, _SignalFile_Merge],
         _SignalFile_Merge,
         Constraint("contents", MUST_BE, "class0", 0),
-        Constraint("preprocess",MUST_BE, 'rma', 0),
-        Constraint("combat_norm",MUST_BE, 'no', 0),
-        Constraint("quantile_norm",MUST_BE, 'yes', 0),
-        Constraint("dwd_norm",MUST_BE, "no", 0),
-        Constraint("bfrm_norm",MUST_BE, "no", 0),
-        Constraint("shiftscale_norm",MUST_BE, "no", 0),
-        Constraint("preprocess",MUST_BE, 'rma', 1),
+        Constraint("preprocess", MUST_BE, 'rma', 0),
+        Constraint("combat_norm", MUST_BE, 'no', 0),
+        Constraint("quantile_norm", MUST_BE, 'yes', 0),
+        Constraint("dwd_norm", MUST_BE, "no", 0),
+        Constraint("bfrm_norm", MUST_BE, "no", 0),
+        Constraint("shiftscale_norm", MUST_BE, "no", 0),
+        Constraint("preprocess", MUST_BE, 'rma', 1),
         Constraint("contents", MUST_BE, "class1", 1),
-        Constraint("combat_norm",MUST_BE, 'no', 1),
-        Constraint("quantile_norm",MUST_BE, "yes", 1),
-        Constraint("dwd_norm",MUST_BE, "no", 1),
-        Constraint("bfrm_norm",MUST_BE, "no", 1),
-        Constraint("shiftscale_norm",MUST_BE, "no", 1),
+        Constraint("combat_norm", MUST_BE, 'no', 1),
+        Constraint("quantile_norm", MUST_BE, "yes", 1),
+        Constraint("dwd_norm", MUST_BE, "no", 1),
+        Constraint("bfrm_norm", MUST_BE, "no", 1),
+        Constraint("shiftscale_norm", MUST_BE, "no", 1),
         Consequence("contents", SET_TO, "class0,class1"),
         Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         Consequence("combat_norm", SAME_AS_CONSTRAINT, 0),
@@ -582,17 +582,17 @@ all_modules = [
         _SignalFile_Merge,
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS_WOrma),
         Constraint("contents", MUST_BE, "class0", 0),
-        Constraint("combat_norm",MUST_BE, 'no', 0),
-        Constraint("quantile_norm",MUST_BE, 'no', 0),
-        Constraint("dwd_norm",MUST_BE, "no", 0),
-        Constraint("bfrm_norm",MUST_BE, "no", 0),
-        Constraint("shiftscale_norm",MUST_BE, "no", 0),
+        Constraint("combat_norm", MUST_BE, 'no', 0),
+        Constraint("quantile_norm", MUST_BE, 'no', 0),
+        Constraint("dwd_norm", MUST_BE, "no", 0),
+        Constraint("bfrm_norm", MUST_BE, "no", 0),
+        Constraint("shiftscale_norm", MUST_BE, "no", 0),
         Constraint("contents", MUST_BE, "class1", 1),
-        Constraint("combat_norm",MUST_BE, 'no', 1),
-        Constraint("quantile_norm",MUST_BE, "no", 1),
-        Constraint("dwd_norm",MUST_BE, "no", 1),
-        Constraint("bfrm_norm",MUST_BE, "no", 1),
-        Constraint("shiftscale_norm",MUST_BE, "no", 1),
+        Constraint("combat_norm", MUST_BE, 'no', 1),
+        Constraint("quantile_norm", MUST_BE, "no", 1),
+        Constraint("dwd_norm", MUST_BE, "no", 1),
+        Constraint("bfrm_norm", MUST_BE, "no", 1),
+        Constraint("shiftscale_norm", MUST_BE, "no", 1),
         Consequence("contents", SET_TO, "class0,class1"),
         Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         Consequence("combat_norm", SAME_AS_CONSTRAINT, 0),

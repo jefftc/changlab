@@ -413,7 +413,8 @@ def main():
         help="Which columns in class 2, e.g. 1-5,8 (1-based, inclusive).  "
         "If not given, then will use all samples not in indexes1.")
     group.add_argument(
-        "--indexes_include_headers", default=False, action="store_true",
+        "--indexes_include_headers", "--iih",
+        default=False, action="store_true",
         help="If not given (default), then column 1 is the first column "
         "with data.  If given, then column 1 is the very first column in "
         "the file, including the headers.")

@@ -423,7 +423,7 @@ def main():
     if not args.output and args.input:
         raise AssertionError, "Missing --output"
     if args.num_cores:
-        assert args.num_cores>0,'num_cores should be bigger than 0'
+        assert args.num_cores > 0,'num_cores should be bigger than 0'
     print 'Generating network...'
     network = bie3.backchain(
         rulebase.all_modules, out_datatype, user_attributes)
@@ -441,6 +441,7 @@ def main():
     if not network or len(network.nodes)==1:
         in_datas = [i.data for i in in_objects]
         bie3.diagnose_start_node(network, in_datas)
+    #bie3.plot_network_gv("test.png", network)
     input_node_ids = []
     input_nodes = []
     for i in in_objects:
@@ -474,7 +475,8 @@ def main():
         bie3.write_network(args.json_file, network)
     if args.dry_run:
         return   
-    #test mattr are given when necessary    
+    #test mattr are given when necessary
+    # TODO: "option" should be "module attribute"
     network_modules = [
         i for i in network.nodes if isinstance(i, bie3.Module)]
     necessary_options = get_necessary_option(network_modules)
@@ -484,7 +486,7 @@ def main():
         module_name = necessary_option[1]
         if neccessary_option_name not in options:
             break_flag = False
-            print 'Please set option %s for module %s' % (
+            print 'Please set module attribute %s for module %s' % (
                 neccessary_option_name, module_name)
     if not break_flag:
          return

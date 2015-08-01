@@ -235,7 +235,7 @@ def main():
         help="Which columns in group 1, E.g. 1-5,8 (1-based, "
         "inclusive).  All other samples will be in group 2.")
     group.add_argument(
-        "--indexes_include_headers", default=False, action="store_true",
+        "--indexes_include_headers", "--iih", action="store_true",
         help="If not given (default), then column 1 is the first column "
         "with data.  If given, then column 1 is the very first column in "
         "the file, including the headers.")
