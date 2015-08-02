@@ -73,7 +73,7 @@ def convert_gene_ids(
     x = {}.fromkeys(x).keys()
     gene_ids_c = x
 
-
+    in2out = None
     if in_platform == "Entrez_Symbol_human" and \
        out_platform in ("Entrez_Symbol_human", "Entrez_ID_human"):
         in2out = _convert_entrez_symbol_to_entrez(gene_ids_c, out_platform)
