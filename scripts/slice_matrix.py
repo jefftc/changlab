@@ -75,6 +75,7 @@
 # reorder_row_indexes
 # reorder_row_cluster
 # reorder_row_cor
+# reorder_row_mean
 # rename_duplicate_rows
 #
 # align_rows
@@ -1937,7 +1938,7 @@ def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
                     indexes, count_headers):
     from genomicode import jmath
 
-    if not correlations:
+    if not correlations and not indexes:
         return MATRIX
     if not MATRIX.nrow() or not MATRIX.ncol():
         return MATRIX
@@ -1962,6 +1963,30 @@ def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
         jmath.R("cors[cors < 0] <- -1 - cors[cors < 0]")
     O = list(jmath.R("order(cors, decreasing=TRUE)"))
     O = [x-1 for x in O]  # convert 1-based to 0-based indexes
+    MATRIX_new = MATRIX.matrix(O, None)
+    return MATRIX_new
+
+
+def reorder_row_mean(MATRIX, means, indexes, count_headers):
+    from genomicode import jmath
+
+    if not means and not indexes:
+        return MATRIX
+    if not MATRIX.nrow() or not MATRIX.ncol():
+        return MATRIX
+
+    # Parse the indexes.
+    I = None
+    if indexes:
+        I = parse_indexes(MATRIX, False, indexes, count_headers)
+    X = MATRIX.slice(None, I)
+
+    assert X, "empty matrix"
+    nrow, ncol = len(X), len(X[0])
+    assert nrow and ncol
+
+    means = jmath.mean(X)
+    O = jmath.order(means)
     MATRIX_new = MATRIX.matrix(O, None)
     return MATRIX_new
 
@@ -3131,7 +3156,7 @@ def main():
         help="Reorder based on a file.  One line per sample name.")
     group.add_argument(
         "--align_col_matrix",
-        help="Align the cols to this other matrix file.")
+        help="Align the cols to a matrix in another file.")
     group.add_argument(
         "--ignore_missing_cols", default=False, action="store_true",
         help="Ignore any cols that can't be found in the align_col_matrix "
@@ -3326,10 +3351,17 @@ def main():
     group.add_argument(
         "--reorder_row_cor_subset_indexes",
         help="Will reorder rows based on correlation to this subset of "
-        "samples.")
+        "samples.  Can use --col_indexes_include_headers.")
+    group.add_argument(
+        "--reorder_row_mean", action="store_true",
+        help="Reorder the rows based on mean expression.")
+    group.add_argument(
+        "--reorder_row_mean_subset_indexes", 
+        help="Reorder the rows based on the mean expression of this "
+        "subset of samples.  Can use --col_indexes_include_headers.")
     group.add_argument(
         "--align_row_matrix",
-        help="Align the rows to this other matrix file.")
+        help="Align the rows to a matrix in another file.")
     group.add_argument(
         "--ignore_missing_rows", default=False, action="store_true",
         help="Ignore any rows that can't be found in the align_row_matrix.")
@@ -3605,6 +3637,11 @@ def main():
     MATRIX = reorder_row_cor(
         MATRIX, args.reorder_row_cor, args.reverse_negative_cors,
         args.reorder_row_cor_subset_indexes, args.col_indexes_include_headers)
+
+    # Reorder the rows based on correlation.
+    MATRIX = reorder_row_mean(
+        MATRIX, args.reorder_row_mean, 
+        args.reorder_row_mean_subset_indexes, args.col_indexes_include_headers)
 
     # Reverse the rows.  Do after all the selection.  Do after
     # aligning to a file.
