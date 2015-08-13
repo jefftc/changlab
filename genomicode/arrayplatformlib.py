@@ -209,8 +209,9 @@ def _read_annotations_h():
     for subfolder in os.listdir(root):
         if '.DS_Store' in subfolder:
             continue
-        assert os.path.isdir(os.path.join(root, subfolder))
-        for platform in os.listdir(os.path.join(root, subfolder)):
+        x = os.path.join(root, subfolder)
+        assert os.path.isdir(x), "Not directory: %s" % x
+        for platform in os.listdir(x):
             paths.append((root, subfolder, platform))
     all_platform = []
     for platform in PLATFORMS:
@@ -558,6 +559,10 @@ PLATFORMS = [
         PROBE_ID, 49),
     Platform(
         'UCSC_mouse_mm10_kg7', None, None, GENE_ID, 50),
+    Platform(
+        'Entrez_Description_human', None, None, DESCRIPTION, 51),
+    Platform(
+        'Entrez_Description_mouse', None, None, DESCRIPTION, 52),
     ]
 
 

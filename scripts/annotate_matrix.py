@@ -121,6 +121,7 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
         return None
     in_mart = arrayplatformlib.get_bm_organism(in_platform)
     out_mart = arrayplatformlib.get_bm_organism(out_platform)
+    assert in_mart, "No bm organism for platform: %s" % in_platform
 
     R = start_R()
     gene_ids = clean_genes_for_biomart(gene_ids)
@@ -169,7 +170,7 @@ def _convert_gene_ids_local(in_platform, out_platform):
     # if these platforms cannot be converted.
     from genomicode import config
     from genomicode import filelib
-    
+
     assert os.path.exists(config.convert_platform)
     x = "%s___%s.txt" % (in_platform, out_platform)
     filename = os.path.join(config.convert_platform, x)
@@ -527,7 +528,8 @@ def main():
     assert os.path.exists(args.infile), "File not found: %s" % args.infile
     assert args.platform, 'Please give at least one platform to add.'
     for x in args.platform:
-        assert arrayplatformlib.get_bm_organism(x), "Unknown platform: %s" % x
+        assert x, "Unknown platform: %s" % x
+        #assert arrayplatformlib.get_bm_organism(x), "Unknown platform: %s" % x
     assert len(args.geneset) <= 1, "Not implemented."
 
     assert not (args.header and args.geneset)

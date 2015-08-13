@@ -2,6 +2,7 @@
 
 import os
 
+
 def find_gene_names(MATRIX, gene_names):
     # gene_names is a list of names.  Each element can be a
     # comma-separated list of names.  To recover a single list of
@@ -12,6 +13,7 @@ def find_gene_names(MATRIX, gene_names):
     names = x.split(",")
     I_row, I_col = MATRIX._index(row=names)
     return I_row
+
 
 def get_pretty_gene_name(MATRIX, gene_i):
     from genomicode import arrayplatformlib as apl
@@ -53,6 +55,52 @@ def get_pretty_gene_name(MATRIX, gene_i):
     # Just return the index of the gene
     return "Gene %04d" % gene_i
 
+
+def write_prism_file(filename, MATRIX, gene_names):
+    # Format in prism format for an XY plot.  Each gene is a different
+    # series.
+    from genomicode import jmath
+    num_samples = MATRIX.ncol()
+
+    m = []  # Make a row-based matrix and transpose it.
+
+    # Write the sample name.
+    sample_names = MATRIX.col_names(MATRIX.col_names()[0])
+    x = []
+    for i in range(len(gene_names)):
+        x.extend(sample_names)
+    m.append(x)
+    
+    # Write the X-coordinate.
+    x = []
+    for i in range(len(gene_names)):
+        for j in range(num_samples):
+            x.append(j+1)
+    m.append(x)
+
+    # Add each series.
+    for i in range(len(gene_names)):
+        # Pre-pad blanks for the other series.
+        x1 = [""] * num_samples * i
+        x2 = MATRIX._X[i]
+        # Post-pad blanks to fill in the matrix.
+        x3 = [""] * (len(m[0]) - len(x1) - len(x2))
+        x = x1 + x2 + x3
+        m.append(x)
+
+    # Transpose to column-major format.
+    m = jmath.transpose(m)
+
+    # Add the gene names as the column headers.
+    x = ["Sample", "X"] + gene_names
+    m = [x] + m
+
+    # Write the matrix to the file.
+    handle = open(filename, 'w')
+    for x in m:
+        print >>handle, "\t".join(map(str, x))
+
+
 def main():
     import argparse
     
@@ -68,37 +116,42 @@ def main():
         "plot_file", help="Name of image file, e.g. outfile.png.  "
         "Will generate PNG format by default.  If this file name ends with "
         ".pdf, will generate a PDF file instead.")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="")
+    parser.add_argument(
+        "--prism_file", help="Save result in Prism-formatted file.")
 
-    parser.add_argument(
-        "--title", default=None, help="Put a title on the plot.")
-    parser.add_argument(
+    group = parser.add_argument_group(title="Genes")
+    group.add_argument(
         "--gene_names", default=[], action="append",
         help="Comma-separated list of IDs (e.g. probes, gene names) "
         "to include.")
-    parser.add_argument(
+    group.add_argument(
         "--all_genes", default=False, action="store_true",
         help="Plot all genes in the file.")
-    parser.add_argument(
+
+
+    group = parser.add_argument_group(title="Plot")
+    group.add_argument(
+        "--title", default=None, help="Put a title on the plot.")
+    group.add_argument(
         "--height", default=None, type=int,
         help="Height (in pixels) of the plot.")
-    parser.add_argument(
+    group.add_argument(
         "--width", default=None, type=int,
         help="Width (in pixels) of the plot.")
-    parser.add_argument(
+    group.add_argument(
         "--mar_left", default=1.0, type=float,
         help="Scale margin at left of plot.  Default 1.0 (no scaling).")
-    parser.add_argument(
+    group.add_argument(
         "--mar_bottom", default=1.0, type=float,
         help="Scale margin at bottom of plot.  Default 1.0 (no scaling).")
-    parser.add_argument(
+    group.add_argument(
         "--xlabel_size", default=1.0, type=float,
         help="Scale the size of the labels on X-axis.  Default 1.0.")
-    parser.add_argument(
+    group.add_argument(
         "--xlabel_off", default=False, action="store_true",
         help="Turn off the X labels.")
-    parser.add_argument(
-        "-v", "--verbose", default=False, action="store_true",
-        help="")
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -130,9 +183,12 @@ def main():
     assert I, "No genes found."
     assert len(I) < 50, "Too many genes."
     MATRIX = MATRIX.matrix(I, None)
-
     gene_names = [get_pretty_gene_name(MATRIX, i)
                   for i in range(MATRIX.nrow())]
+    assert len(gene_names) == MATRIX.nrow()
+
+    if args.prism_file:
+        write_prism_file(args.prism_file, MATRIX, gene_names)
 
     # Start R and set up the environment.
     R = jmath.start_R()

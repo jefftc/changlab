@@ -278,6 +278,16 @@ def transpose_nonmatrix(filename):
     x = filelib.openfh(filename).read()
     x = iolib.split_tdf(x, strip=True)
     data = tdf._clean_tdf(x)
+    # Make sure each line has the same number of columns.
+    max_cols = max([len(x) for x in data])
+    for i in range(len(data)):
+        x = data[i]
+        if len(x) >= max_cols:
+            continue
+        n = max_cols - len(x)
+        x = x + [""]*n
+        assert len(x) == max_cols
+        data[i] = x
     data_t = jmath.transpose(data)
     for x in data_t:
         print "\t".join(x)
