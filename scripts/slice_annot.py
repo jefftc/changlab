@@ -407,15 +407,18 @@ def add_column(MATRIX, add_column):
         assert num_annots == len(annots)
 
     add_all = []  # list of (0-based index, header, default_value)
+    last_index = -1
     for x in add_column:
         x = x.split(",", 2)
         assert len(x) == 3
         index, header, default_value = x
         if index == "END":
-            index = MATRIX.num_headers() + 1
+            x = max(last_index+1, MATRIX.num_headers())
+            index = x + 1
         index = int(index) - 1
+        last_index = index
         add_all.append((index, header, default_value))
-
+        
     # Since the hashed header names might change, keep track of the
     # indexes for each header.
     h_indexes = [("OLD", i) for i in range(len(MATRIX.headers))]
