@@ -276,6 +276,9 @@ make.output.table <- function(IN, p.values, fdr, bonf, filter.p05) {
   x <- c(x1, x2, x3)
   colnames(DATA) <- x
   DATA <- matrix2dataframe(DATA)
+  # Make sure Gene ID and Gene Names don't get converted to numbers
+  DATA[["Gene ID"]] <- IN$geneid
+  DATA[["Gene Name"]] <- IN$genenames
 
   if(filter.p05 && length(p.values)) {
     I <- which(p.values < 0.05)

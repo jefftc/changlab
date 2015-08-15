@@ -144,6 +144,7 @@ def find_diffexp_genes(
     old_stdout = sys.stdout
     sys.stdout = handle
 
+    # Call the proper R function.
     fn = algorithm2function[algorithm]
     x = ", ".join(args)
     R("x <- %s(%s)" % (fn, x))
@@ -167,8 +168,10 @@ def find_diffexp_genes(
     # rpy2.rinterface.NACharacterType or type
     # rpy2.rinterface.NARealType.
     tDATA_py = []
+    header = [DATA_R.colnames[i] for i in range(DATA_R.ncol)]
     for zzz, col_R in enumerate(DATA_R):  # iterate over columns
         col_py = [col_R[i] for i in range(len(col_R))]
+
         if col_R.__class__.__name__ == "StrVector":
             pass
         elif col_R.__class__.__name__ == "FloatVector":
@@ -177,7 +180,6 @@ def find_diffexp_genes(
             col_py = [int(x) for x in col_py]
         tDATA_py.append(col_py)
     DATA_py = jmath.transpose(tDATA_py)
-    header = [DATA_R.colnames[i] for i in range(DATA_R.ncol)]
 
     # Convert NA to None.
     for i in range(len(DATA_py)):
@@ -294,6 +296,8 @@ def find_diffexp_genes(
         I = [i for (i, gs) in enumerate(genesets) if gs == geneset]
         gid = [DATA_py[i][I_geneid] for i in I]
         gn = [DATA_py[i][I_genename] for i in I]
+        # gn might be float.  genesetlib expects array of strings.
+        #import sys; sys.exit(0)
         gid = genesetlib.clean_genes(gid)
         gn = genesetlib.clean_genes(gn)
         # <SAMPLE>_[ID|NAME]_[UP|DN]
@@ -546,7 +550,6 @@ def main():
     _run_forked(*args)
     #_run_not_forked(*args)  # for debugging
         
-
 
 if __name__ == '__main__':
     main()
