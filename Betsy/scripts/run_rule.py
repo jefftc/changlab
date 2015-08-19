@@ -423,7 +423,7 @@ def main():
     if not args.output and args.input:
         raise AssertionError, "Missing --output"
     if args.num_cores:
-        assert args.num_cores > 0,'num_cores should be bigger than 0'
+        assert args.num_cores > 0,'num_cores should be greater than 0'
     print 'Generating network...'
     network = bie3.backchain(
         rulebase.all_modules, out_datatype, user_attributes)
@@ -441,15 +441,14 @@ def main():
     if not network or len(network.nodes)==1:
         in_datas = [i.data for i in in_objects]
         bie3.diagnose_start_node(network, in_datas)
-    #bie3.plot_network_gv("test.png", network)
+    bie3.plot_network_gv("test.png", network)
+    bie3.print_network(network, open("test.txt", 'w'))
     input_node_ids = []
     input_nodes = []
     for i in in_objects:
         #print i.data
         start_node = bie3._find_start_nodes(network, i.data)
-        assert start_node, \
-               'input %s is not matched any node in the network' % \
-               i.data.datatype.name
+        assert start_node, "Input node not found: %s" % i.data.datatype.name
         if os.path.exists(i.identifier):
             store_file = userfile.set(getpass.getuser(), i.identifier)
             i.identifier = store_file
@@ -459,8 +458,9 @@ def main():
     #if required_flag:
     network = bie3.select_start_node(network, input_nodes)
     #else:
-     #   print_missing_inputs(network,user_attributes,input_node_ids)
-     #   return
+    #   print_missing_inputs(network,user_attributes,input_node_ids)
+    #   return
+    assert network.nodes, "Empty network after pruning."
    
     if args.png_file:
         bie3.plot_network_gv(args.png_file, network)

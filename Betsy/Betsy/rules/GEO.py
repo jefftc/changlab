@@ -1,6 +1,9 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
 
+# TODO: Need code to extract _SignalFile_Postprocess from series
+# matrix file.
+
 GEOSeries = DataType(
     "GEOSeries",
     AttributeDef(
@@ -35,46 +38,60 @@ list_files = [
 
 all_modules = [
     Module(
-        "download_geo_supplement", GEOSeries, BDT.ExpressionFiles,
-        OptionDef("GSEID"),
-        OptionDef("GPLID", ""),
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
-        Consequence("filetype", SET_TO, 'unknown'),
-        help="Download the supplemental expression files from GEO.",
-        ),
-     Module(
-        "check_geo_file_type", [BDT.ExpressionFiles, GEOSeriesMatrixFile],
-        BDT.ExpressionFiles,
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Constraint("contents", SAME_AS, 0, 1),
-        Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        Constraint("filetype", MUST_BE, 'unknown', 0),
-        Consequence(
-            "filetype", BASED_ON_DATA,
-            ['matrix', 'cel', 'gpr', 'idat', 'agilent']),
-        help="check the file type downloaded from geo database"
-        ),
-    Module(
         "download_geo_seriesmatrix", GEOSeries, GEOSeriesMatrixFile,
         OptionDef("GSEID"),
-        OptionDef("GPLID", ""),
+        OptionDef("GPLID", default=""),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="Download SeriesMatrix file from GEO."
         ),
-    Module(
-        "get_geo_sample_metadata", GEOSeriesMatrixFile, GEOSampleMetadata,
-        OptionDef("set_NA_to", "NA", help='Convert "NA" to another value.'),
-        help="Get the metadata for the samples for a GEO data set.",
-        ),
-
     Module(
         'download_GEO_family_soft', GEOSeries, GEOFamilySoftFile,
         OptionDef("GSEID", help='GSEID for download family_soft file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="download geo family soft file"),
+
+    Module(
+        "download_geo_supplement", GEOSeries, BDT.ExpressionFiles,
+        OptionDef("GSEID"),
+        OptionDef("GPLID", default=""),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("filetype", SET_TO, 'unknown'),
+        help="Download the supplemental expression files from GEO.",
+        ),
+
+    #Module(
+    #    "acquire_geo_expression_files",
+    #    [BDT.ExpressionFiles, GEOSeriesMatrixFile],
+    #    BDT.ExpressionFiles,
+    #    Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+    #    Constraint("contents", SAME_AS, 0, 1),
+    #    Consequence("contents", SAME_AS_CONSTRAINT, 0),
+    #    Constraint(
+    #        "filetype", CAN_BE_ANY_OF,
+    #        ["series_matrix", "cel", "gpr", "idat", "agilent"]),
+    #    help="Download from GEO the expression files of a specific type.",
+    #    ),
+    
+    Module(
+        "identify_type_of_expression_files",
+        BDT.ExpressionFiles, BDT.ExpressionFiles,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        Constraint("filetype", MUST_BE, "unknown", 0),
+        Consequence(
+            "filetype", BASED_ON_DATA, ['cel', 'gpr', 'idat', 'agilent']),
+        help="Identify the type of expression files in a folder.",
+        ),
+
+    Module(
+        "get_geo_sample_metadata", GEOSeriesMatrixFile, GEOSampleMetadata,
+        OptionDef("set_NA_to", "NA", help='Convert "NA" to another value.'),
+        help="Get the metadata for the samples for a GEO data set.",
+        ),
+
     Module(
         'convert_family_soft_to_rename', GEOFamilySoftFile, BDT.RenameFile,
         OptionDef("GSEID", help='GSEID for download family_soft file'),

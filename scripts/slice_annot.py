@@ -33,6 +33,8 @@
 # subtract_two_annots
 # divide_two_annots
 # divide_many_annots
+#
+# _replace_headers
 
 import os
 import sys
@@ -209,6 +211,16 @@ def reorder_headers_alphabetical(MATRIX, reorder_headers):
     headers_h = [MATRIX.headers_h[i] for i in O]
     M = AnnotationMatrix(headers, headers_h, MATRIX.header2annots)
     return M
+
+
+def upper_headers(MATRIX, upper_headers):
+    if not upper_headers:
+        return MATRIX
+
+    # Convert to the upper case name.  Need to be careful because may
+    # cause duplicates.
+    headers = [x.upper() for x in MATRIX.headers]
+    return _replace_headers(MATRIX, headers)
 
 
 def rename_duplicate_headers(MATRIX, rename_dups):
@@ -918,6 +930,17 @@ def divide_many_annots(MATRIX, divide_annots):
     return MATRIX
 
 
+def _replace_headers(MATRIX, headers):
+    headers_h = _hash_headers_unique(headers)
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+    
+
 def main():
     import argparse
     import arrayio
@@ -949,6 +972,9 @@ def main():
     group.add_argument(
         "--reorder_headers_alphabetical", action="store_true",
         help="Change the order of the headers.")
+    group.add_argument(
+        "--upper_headers", action="store_true",
+        help="Make headers upper case.")
     group.add_argument(
         "--rename_duplicate_headers", action="store_true",
         help="Make all the headers unique.")
@@ -1064,6 +1090,7 @@ def main():
     # Changing the headers.
     MATRIX = reorder_headers_alphabetical(
         MATRIX, args.reorder_headers_alphabetical)
+    MATRIX = upper_headers(MATRIX, args.upper_headers)
     MATRIX = rename_duplicate_headers(MATRIX, args.rename_duplicate_headers)
     MATRIX = rename_header(MATRIX, args.rename_header)
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)

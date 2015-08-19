@@ -1,7 +1,6 @@
 #preprocess_illumina.py
 
 import os
-import zipfile
 import subprocess
 import arrayio
 from genomicode import config
@@ -10,7 +9,52 @@ from Betsy import rulebase
 from Betsy import module_utils
 
 
+# TODO: Check if these are defined somewhere else.
+MANIFEST_ALL = [
+    'HumanHT-12_V3_0_R2_11283641_A.txt',
+    'HumanHT-12_V4_0_R2_15002873_B.txt',
+    'HumanHT-12_V3_0_R3_11283641_A.txt',
+    'HumanHT-12_V4_0_R1_15002873_B.txt',
+    'HumanMI_V1_R2_XS0000122-MAP.txt',
+    'HumanMI_V2_R0_XS0000124-MAP.txt',
+    'HumanRef-8_V2_0_R4_11223162_A.txt',
+    'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
+    'HumanRef-8_V3_0_R2_11282963_A.txt',
+    'HumanRef-8_V3_0_R3_11282963_A.txt',
+    'HumanWG-6_V2_0_R4_11223189_A.txt',
+    'HumanWG-6_V3_0_R2_11282955_A.txt',
+    'HumanWG-6_V3_0_R3_11282955_A.txt',
+    'MouseMI_V1_R2_XS0000127-MAP.txt',
+    'MouseMI_V2_R0_XS0000129-MAP.txt',
+    'MouseRef-8_V1_1_R4_11234312_A.txt',
+    'MouseRef-8_V2_0_R2_11278551_A.txt',
+    'MouseRef-8_V2_0_R3_11278551_A.txt',
+    'MouseWG-6_V1_1_R4_11234304_A.txt',
+    'MouseWG-6_V2_0_R2_11278593_A.txt',
+    'MouseWG-6_V2_0_R3_11278593_A.txt',
+    'RatRef-12_V1_0_R5_11222119_A.txt',
+    ]
+
+CHIP_ALL = [
+    'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
+    'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+    'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
+    'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
+    'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
+    'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
+    'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
+    'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
+    'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
+    'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
+    'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
+    'ilmn_RatRef_12_V1_0_R5_11222119_A.chip',
+    ]
+
+
+
 def zip_directory(dir, zip_file):
+    import zipfile
+
     zip = zipfile.ZipFile(zip_file, 'w', compression=zipfile.ZIP_DEFLATED)
     root_len = len(os.path.abspath(dir))
     for root, dirs, files in os.walk(dir):
@@ -23,48 +67,23 @@ def zip_directory(dir, zip_file):
 
 
 def run(network, antecedents, out_attributes, user_options, num_cores):
+    import zipfile
+    
     in_data = antecedents
-    outfile = name_outfile(in_data, user_options)
+    
     module_name = 'IlluminaExpressionFileCreator'
     gp_parameters = dict()
     if zipfile.is_zipfile(in_data.identifier):
         gp_parameters['idat.zip'] = in_data.identifier
     else:
+        # XXX IS THIS A BUG?  Should be splitext?
+        raise NotImplementedError, "Check this possible bug"
         zipfile_name = os.path.split(in_data.identifier)[-1] + '.zip'
         zip_directory(in_data.identifier, zipfile_name)
         gp_parameters['idat.zip'] = os.path.join(os.getcwd(), zipfile_name)
     
     gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
     gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
-    manifiest = [
-        'HumanHT-12_V3_0_R2_11283641_A.txt',
-        'HumanHT-12_V4_0_R2_15002873_B.txt',
-        'HumanHT-12_V3_0_R3_11283641_A.txt',
-        'HumanHT-12_V4_0_R1_15002873_B.txt', 'HumanMI_V1_R2_XS0000122-MAP.txt',
-        'HumanMI_V2_R0_XS0000124-MAP.txt', 'HumanRef-8_V2_0_R4_11223162_A.txt',
-        'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
-        'HumanRef-8_V3_0_R2_11282963_A.txt',
-        'HumanRef-8_V3_0_R3_11282963_A.txt',
-        'HumanWG-6_V2_0_R4_11223189_A.txt', 'HumanWG-6_V3_0_R2_11282955_A.txt',
-        'HumanWG-6_V3_0_R3_11282955_A.txt', 'MouseMI_V1_R2_XS0000127-MAP.txt',
-        'MouseMI_V2_R0_XS0000129-MAP.txt', 'MouseRef-8_V1_1_R4_11234312_A.txt',
-        'MouseRef-8_V2_0_R2_11278551_A.txt',
-        'MouseRef-8_V2_0_R3_11278551_A.txt',
-        'MouseWG-6_V1_1_R4_11234304_A.txt', 'MouseWG-6_V2_0_R2_11278593_A.txt',
-        'MouseWG-6_V2_0_R3_11278593_A.txt', 'RatRef-12_V1_0_R5_11222119_A.txt'
-    ]
-    chip = ['ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
-            'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-            'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
-            'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
-            'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
-            'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
-            'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
-            'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
-            'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
-            'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
-            'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
-            'ilmn_RatRef_12_V1_0_R5_11222119_A.chip']
     if 'illu_bg_mode' in out_attributes.keys():
         assert out_attributes['illu_bg_mode'] in [
             'true', 'false'
@@ -73,13 +92,13 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
 
     
     if 'illu_chip' in out_attributes.keys():
-        assert out_attributes['illu_chip'] in chip, 'illu_chip is not correct'
+        assert out_attributes['illu_chip'] in CHIP_ALL, 'illu_chip is not correct'
         gp_parameters['chip'] = str(out_attributes['illu_chip'])
 
     
     if 'illu_manifest' in out_attributes.keys():
         assert out_attributes['illu_manifest'
-                          ] in manifiest, 'illu_manifest is not correct'
+                          ] in MANIFEST_ALL, 'illu_manifest is not correct'
         gp_parameters['manifest'] = str(out_attributes['illu_manifest'])
 
     
@@ -128,6 +147,8 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
     #assert 'stderr.txt' not in result_files,('gene_pattern get error '+
     #        'The contents of stderr.txt is:'+
     #        file(os.path.join(download_directory,'stderr.txt')).read())
+
+    outfile = name_outfile(in_data, user_options)
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     
@@ -156,8 +177,8 @@ def run(network, antecedents, out_attributes, user_options, num_cores):
 
 def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
     identifier = antecedents.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
-                                         user_options)
+    return module_utils.make_unique_hash(
+        identifier, pipeline, out_attributes, user_options)
 
 
 def name_outfile(antecedents, user_options):
@@ -173,6 +194,6 @@ def set_out_attributes(antecedents, out_attributes):
 
 def find_antecedents(network, module_id, out_attributes, user_attributes,
                      pool):
-    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
-                                            pool)
+    data_node = module_utils.find_antecedents(
+        network, module_id, user_attributes, pool)
     return data_node

@@ -25,6 +25,31 @@ def _parse_breaks_seq(s):
     return breaks
 
 
+def write_prism_file(filename, hist):
+    # hist is R list from hist function.
+    from genomicode import jmath
+
+    # XY plot in Prism.
+
+    # Get "breaks" out of histogram return value.
+    breaks = [x for x in hist.rx2("breaks")]
+    breaks = breaks[:-1]
+    counts = [x for x in hist.rx2("counts")]
+    density = [x for x in hist.rx2("density")]
+    mids = [x for x in hist.rx2("mids")]
+    assert len(breaks) == len(counts)
+    assert len(breaks) == len(density)
+    assert len(breaks) == len(mids)
+
+    header = ["Mids", "Left", "Counts", "Density"]
+    x = [mids, breaks, counts, density]
+    x = jmath.transpose(x)
+    x = [header] + x
+    handle = open(filename, 'w')
+    for x in x:
+        print >>handle, "\t".join(map(str, x))
+
+
 def main():
     import os
     import argparse
@@ -39,6 +64,8 @@ def main():
         "plot_file", help="Name of image file, e.g. outfile.png.  "
         "Will generate PNG format by default.  If this file name ends with "
         ".pdf, will generate a PDF file instead.")
+    parser.add_argument(
+        "--prism_file", help="Write Prism-formatted results to this file.")
 
     group = parser.add_argument_group(title="Calculations")
     group.add_argument(
@@ -138,7 +165,7 @@ def main():
 
     jmath.R_fn(
         "hist", jmath.R_var("X"), breaks=breaks, main=main, xlab="", ylab="",
-        axes=jmath.R_var("FALSE"))
+        axes=jmath.R_var("FALSE"), RETVAL="x")
     # Make plot area solid white.
     #jmath.R('usr <- par("usr")')
     #jmath.R('rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF")')
@@ -156,6 +183,8 @@ def main():
     R("par(op)")
     jmath.R_fn("dev.off")
 
-
+    if args.prism_file:
+        write_prism_file(args.prism_file, R["x"])
+        
 if __name__ == '__main__':
     main()
