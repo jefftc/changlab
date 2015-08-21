@@ -1,62 +1,44 @@
-#remove_duplicate_genes.py
-import os
-import arrayio
-import re
-from Betsy import bie3
-from Betsy import rulebase
-from Betsy import module_utils
-from genomicode import jmath, arrayplatformlib, arrayannot
+from Module import AbstractModule
 
+class Module(AbstractModule):
+    def __init__(self):
+        AbstractModule.__init__(self)
 
-def run(network, antecedents, out_attributes, user_options, num_cores):
-    """remove duplicate genes"""
-    in_data = antecedents
-    outfile = name_outfile(in_data, user_options)
-    M = arrayio.read(in_data.identifier)
-    if out_attributes['unique_genes'] == 'average_genes':
-        M_new = average_genes(M)
-    elif out_attributes['unique_genes'] == 'high_var':
-        M_new = get_high_variance(M)
-    elif out_attributes['unique_genes'] == 'first_gene':
-        M_new = pick_first_one(M)
+    def run(
+        self, network, antecedents, out_attributes, user_options, num_cores,
+        outfile):
+        """remove duplicate genes"""
+        import arrayio
+        from Betsy import module_utils
+        in_data = antecedents
+        M = arrayio.read(in_data.identifier)
+        if out_attributes['unique_genes'] == 'average_genes':
+            M_new = average_genes(M)
+        elif out_attributes['unique_genes'] == 'high_var':
+            M_new = get_high_variance(M)
+        elif out_attributes['unique_genes'] == 'first_gene':
+            M_new = pick_first_one(M)
     
-    f = file(outfile, 'w')
-    arrayio.tab_delimited_format.write(M_new, f)
-    f.close()
-    assert module_utils.exists_nz(outfile), (
-        'the output file %s for remove_duplicate_genes fails' % outfile
-    )
-    out_node = bie3.Data(rulebase._SignalFile_Filter, **out_attributes)
-    out_object = module_utils.DataObject(out_node, outfile)
-    return out_object
+        
+        f = file(outfile, 'w')
+        arrayio.tab_delimited_format.write(M_new, f)
+        f.close()
+        assert module_utils.exists_nz(outfile), (
+            'the output file %s for remove_duplicate_genes fails' % outfile
+        )
 
 
-def find_antecedents(network, module_id, out_attributes, user_attributes,
-                     pool):
-    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
-                                            pool)
-    return data_node
 
+    def name_outfile(self, antecedents, user_options):
+        from Betsy import module_utils
+        original_file = module_utils.get_inputid(antecedents.identifier)
+        filename = 'signal_remove_duplicate_gene_' + original_file + '.tdf'
+        return filename
 
-def name_outfile(antecedents, user_options):
-    original_file = module_utils.get_inputid(antecedents.identifier)
-    filename = 'signal_remove_duplicate_gene_' + original_file + '.tdf'
-    outfile = os.path.join(os.getcwd(), filename)
-    return outfile
-
-
-def set_out_attributes(antecedents, out_attributes):
-    return out_attributes
-
-
-def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
-
-    identifier = antecedents.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
-                                         user_options)
 
 
 def get_duplicated_genes(M):
+    import re
     ProbeId, GeneID = guess_gene_header(M)
     gene_names = M._row_names[GeneID]
     name2indexes = dict()
@@ -70,6 +52,7 @@ def get_duplicated_genes(M):
             if gene_names[i] not in name2indexes:
                 name2indexes[gene_names[i]] = []
             name2indexes[gene_names[i]].append(i)
+    
     return name2indexes
 
 
@@ -91,6 +74,7 @@ def pick_first_one(M):
 
 
 def get_high_variance(M):
+    from genomicode import jmath
     name2indexes = get_duplicated_genes(M)
     for key in name2indexes.keys():
         if len(name2indexes[key]) > 1:
@@ -98,6 +82,7 @@ def get_high_variance(M):
             a.sort()
             index = a[-1][1]
             name2indexes[key] = [index]
+    
     all_index = name2indexes.values()
     all_index.sort()
     all_index = [i[0] for i in all_index if len(i) == 1]
@@ -106,6 +91,7 @@ def get_high_variance(M):
 
 
 def average_genes(M):
+    from genomicode import jmath
     name2indexes = get_duplicated_genes(M)
     for key in name2indexes.keys():
         if len(name2indexes[key]) > 1:
@@ -113,6 +99,7 @@ def average_genes(M):
             new = jmath.mean_matrix(newmatrix, byrow=0)
             M._X[name2indexes[key][0]] = new
             name2indexes[key] = [name2indexes[key][0]]
+    
     all_index = name2indexes.values()
     all_index.sort()
     all_index = [i[0] for i in all_index if len(i) == 1]
@@ -121,6 +108,8 @@ def average_genes(M):
 
 
 def guess_gene_header(M):
+    from genomicode import arrayannot
+    from genomicode import arrayplatformlib
     all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
     ids = M._row_order
     probe_header = all_platforms[0][0]
@@ -130,7 +119,7 @@ def guess_gene_header(M):
     value_list = [i.lower() for i in value_list]
     new_ids = ids[:]
     new_ids.remove(probe_header)
-    column = []
+    #column = []
     for id in new_ids:
         flag = True
         gene_list = M._row_names[id]
@@ -142,4 +131,5 @@ def guess_gene_header(M):
             ProbeID = probe_header
             GeneID = id
             return ProbeID, GeneID
+    
     assert flag, 'we cannot guess the header of this file'

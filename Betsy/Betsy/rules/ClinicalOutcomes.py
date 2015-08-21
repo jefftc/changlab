@@ -27,7 +27,7 @@ CellTypeFile=DataType('CellTypeFile',
 list_files = [ClinicalAnalysis,ClinicalFile,EMTAnalysis,CellTypeFile]
 
 all_modules = [
-    Module(
+    ModuleNode(
         'analyze_clinical_outcome',
         [GeneExpProcessing.SignalFile,ClinicalFile],
         ClinicalAnalysis,
@@ -42,7 +42,7 @@ all_modules = [
         Consequence("contents",SAME_AS_CONSTRAINT, 0),
         help="analyze clincal outcome"
         ),
-    Module(
+    ModuleNode(
         'analyze_phenotype_for_EMT',
          [GeneExpProcessing.SignalFile,CellTypeFile],EMTAnalysis,
          OptionDef("geneset_value",help="geneset value for EMT analysis"),

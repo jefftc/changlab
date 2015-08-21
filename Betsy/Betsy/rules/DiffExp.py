@@ -25,7 +25,7 @@ list_files = [
     ]
 
 all_modules = [
-    Module(
+    ModuleNode(
         'calc_diffexp_with_ttest',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         DiffExprFile,
@@ -43,7 +43,7 @@ all_modules = [
         #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
         #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with ttest method"),
-    Module(
+    ModuleNode(
         'calc_diffexp_with_sam',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         DiffExprFile,
@@ -64,7 +64,7 @@ all_modules = [
         #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
         #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with sam method"),
-    Module(
+    ModuleNode(
         'calc_diffexp_with_ebayes',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         DiffExprFile,
@@ -82,7 +82,7 @@ all_modules = [
         #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
         #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with ebayes method"),
-    Module(
+    ModuleNode(
         'calc_diffexp_with_fold_change',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         DiffExprFile,
@@ -100,7 +100,7 @@ all_modules = [
         #Constraint("preprocess",CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
         #Constraint("preprocess", SAME_AS,0,1),
         help="calculate the differential expression with fold change method"),
-    Module(
+    ModuleNode(
         'generate_genelist_from_diffexprfile', DiffExprFile, BDT.GeneListFile,
         OptionDef(
             "select_gene_by_foldchange", "",
@@ -119,7 +119,7 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="generate genelist from the result file of differential "
         "expression analysis"),
-    Module(
+    ModuleNode(
         'make_diffgenes_report',
         [DiffExprFile, DiffExprFile, Heatmap.Heatmap, GOAnalysis.GatherFile,
          GSEAAnalysis.GseaFile],

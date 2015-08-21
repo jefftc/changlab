@@ -34,12 +34,12 @@ GatherFile = DataType(
 list_files = [DavidFile, GatherFile]
 
 all_modules = [
-    Module(
+    ModuleNode(
         'annotate_genes_with_david', BDT.GeneListFile, DavidFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="annotate genes with david tool"),
-    Module(
+    ModuleNode(
         'annotate_genes_with_gather', BDT.GeneListFile, GatherFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),

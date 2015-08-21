@@ -22,7 +22,7 @@ ConsensusClusteringFolder = DataType('ConsensusClusteringFolder',
                     help="Consensus Clustering File")
 list_files = [ConsensusClusteringFolder]
 all_modules=[
-    Module(
+    ModuleNode(
         'consensusClustering',
          GeneExpProcessing.SignalFile,ConsensusClusteringFolder,
          OptionDef('cc_kmax',5,help="number of kmax cluster(must be >1)"),

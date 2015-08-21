@@ -20,7 +20,7 @@ Heatmap = DataType(
 list_files = [Heatmap]
 
 all_modules = [
- Module(
+ ModuleNode(
         'plot_signal_heatmap',
         GeneExpProcessing.SignalFile,Heatmap,
         OptionDef('hm_width',20,help="width in heatmap plot"),

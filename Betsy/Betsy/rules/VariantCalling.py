@@ -4,7 +4,7 @@ import BasicDataTypes as BDT
 import BasicDataTypesNGS
 
 all_modules = [
-    Module(
+    ModuleNode(
         'align_sequence',
          BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.SaiFile,
          Constraint("read",CAN_BE_ANY_OF,['single','pair1','pair2']),
@@ -15,7 +15,7 @@ all_modules = [
          Consequence("contents",SAME_AS_CONSTRAINT),
          help="algin sequence in FastqFile, generate SaiFile"
         ),
-    Module(
+    ModuleNode(
         'generate_alignment_sam',
          [BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.SaiFile], BasicDataTypesNGS.SamFile,
          Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -30,7 +30,7 @@ all_modules = [
          Consequence("has_header",SET_TO,'no'),
          help="generate algiment in SaiFile to SamFile"
          ),
-    Module(
+    ModuleNode(
         'generate_alignment_sam_pair',
          [BasicDataTypesNGS.FastqFile,BasicDataTypesNGS.FastqFile,
          BasicDataTypesNGS.SaiFile,BasicDataTypesNGS.SaiFile], BasicDataTypesNGS.SamFile,
@@ -59,7 +59,7 @@ all_modules = [
          Consequence("has_header",SET_TO,'no'),
          help="generate algiment in SaiFile to SamFile"
          ),
-    Module(
+    ModuleNode(
         'sort_sam_file',
         BasicDataTypesNGS.SamFile,BasicDataTypesNGS.BamFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -74,7 +74,7 @@ all_modules = [
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         help="sort sam file and generate bam file "
         ),
-     Module(
+     ModuleNode(
         'mark_duplicates',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -89,7 +89,7 @@ all_modules = [
         Consequence("duplicates_marked", SET_TO,'yes'),
         help="mark duplicates in SamFile"
         ),
-    Module(
+    ModuleNode(
         'fix_header_GATK',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -104,7 +104,7 @@ all_modules = [
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         help="use GATK to fix header"
         ),
-    Module(
+    ModuleNode(
         'recalibrate_base_quality_score',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.BamFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -121,7 +121,7 @@ all_modules = [
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         help="recalibration sam file"
         ),
-    Module(
+    ModuleNode(
         'call_variants_mpileup',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.VcfFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -135,7 +135,7 @@ all_modules = [
         Consequence("vcf_annotate",SET_TO, "no"),
         Consequence("recalibration", SAME_AS_CONSTRAINT),
         help="use mpileup to call variants"),
-    Module(
+    ModuleNode(
         'filter_vcf_file',
         BasicDataTypesNGS.VcfFile,BasicDataTypesNGS.VcfFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -149,7 +149,7 @@ all_modules = [
         Consequence("vcf_annotate",SAME_AS_CONSTRAINT),
         Consequence("recalibration", SAME_AS_CONSTRAINT),
         help="filter vcf file"),
-    Module(
+    ModuleNode(
         'call_variants_GATK',
         BasicDataTypesNGS.BamFile,BasicDataTypesNGS.VcfFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -163,7 +163,7 @@ all_modules = [
         Consequence("vcf_annotate",SET_TO, "no"),
         Consequence("recalibration", SAME_AS_CONSTRAINT),
         help="use GATK to call variants"),
-    Module(
+    ModuleNode(
         'annotate_vcf_file',
         BasicDataTypesNGS.VcfFile,BasicDataTypesNGS.VcfFile,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -178,7 +178,7 @@ all_modules = [
         Consequence("recalibration", SAME_AS_CONSTRAINT),
         help="annotate vcf file"),
     
-    Module('is_Bam_folder_sorted',
+    ModuleNode('is_Bam_folder_sorted',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
@@ -194,7 +194,7 @@ all_modules = [
         Consequence("sample_type", SAME_AS_CONSTRAINT),   
         help="check bam folder sorted or not"
         ),
-    Module('sort_bam_folder',
+    ModuleNode('sort_bam_folder',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
@@ -210,7 +210,7 @@ all_modules = [
         Consequence("sample_type", SAME_AS_CONSTRAINT),   
         help="sort bam folder"  ),
     
-    Module('flag_dups_in_bam_folder',
+    ModuleNode('flag_dups_in_bam_folder',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
@@ -227,7 +227,7 @@ all_modules = [
         help="mark duplicates in bam folder"  ),
     
     
-    Module('index_bam_folder',
+    ModuleNode('index_bam_folder',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.BamFolder,
         Constraint("contents", CAN_BE_ANY_OF,BDT.CONTENTS),
         Constraint("ref",CAN_BE_ANY_OF,['hg18','hg19']),
@@ -243,7 +243,7 @@ all_modules = [
         Consequence("sample_type", SAME_AS_CONSTRAINT),   
         help="index bam folder"  ),
     
-    Module('run_RNA_SeQC',
+    ModuleNode('run_RNA_SeQC',
         BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.RNASeQCFile,
         OptionDef("RNA_ref",
                      help="ref file for RNA_SeQC"),

@@ -71,7 +71,7 @@ list_files = [
     ]
 
 all_modules = [
-    Module(
+    ModuleNode(
         "merge_files_for_classification",
         [GeneExpProcessing.SignalFile, GeneExpProcessing.SignalFile],
         GeneExpProcessing.SignalFile,
@@ -99,7 +99,7 @@ all_modules = [
         DefaultAttributesFrom(1),
         help="merge two files for classification"),
     
-    Module(
+    ModuleNode(
         'classify_with_weighted_voting',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile,
          GeneExpProcessing.SignalFile], ClassifyFile,
@@ -126,7 +126,7 @@ all_modules = [
             ['linear', 'polynomial', 'RBF', 'sigmoid', 'precomputed_kernel']),
         help="classify with weighted voting method"),
     
-    Module(
+    ModuleNode(
         'classify_with_random_forest',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         ClassifyFile,
@@ -147,7 +147,7 @@ all_modules = [
             'svm_kernel', SET_TO_ONE_OF,
             ['linear', 'polynomial', 'RBF', 'sigmoid', 'precomputed_kernel']),
         help="classify with random forest method"),
-    Module(
+    ModuleNode(
         'train_svm_model',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         SvmModel,
@@ -161,7 +161,7 @@ all_modules = [
             "svm_kernel", SET_TO_ONE_OF,
             ['linear', 'polynomial', 'RBF', 'sigmoid', 'precomputed_kernel']),
         help="train data using svm method"),
-    Module(
+    ModuleNode(
         'classify_with_svm',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile,
          SvmModel],
@@ -183,7 +183,7 @@ all_modules = [
              'wv_snr_minstd', 'wv_ttest_minstd', 'wv_snr_median_minstd',
              'wv_ttest_median_minstd']),
         help="classify with svm method"),
-    Module(
+    ModuleNode(
         'run_loocv_weighted_voting',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         ClassifyFile,
@@ -209,7 +209,7 @@ all_modules = [
         Consequence('loocv', SET_TO, 'yes'),
         Consequence('actual_label', SET_TO, 'no'),
         help="run loocv in weighted voting method"),
-    Module(
+    ModuleNode(
         'run_loocv_svm',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         ClassifyFile,
@@ -230,7 +230,7 @@ all_modules = [
              'wv_snr_minstd', 'wv_ttest_minstd', 'wv_snr_median_minstd',
              'wv_ttest_median_minstd']),
         help="run loocv in svm method"),
-    Module(
+    ModuleNode(
         'run_loocv_random_forest',
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         ClassifyFile,
@@ -253,7 +253,7 @@ all_modules = [
             'svm_kernel', SET_TO_ONE_OF,
             ['linear', 'polynomial', 'RBF', 'sigmoid', 'precomputed_kernel']),
         help="run loocv in random forest method"),
-    Module(
+    ModuleNode(
         'evaluate_prediction',
         [GeneExpProcessing.ClassLabelFile, ClassifyFile], ClassifyFile,
         Constraint("contents", MUST_BE, 'test', 0),
@@ -264,7 +264,7 @@ all_modules = [
         Consequence("actual_label", SET_TO, 'yes'),
         DefaultAttributesFrom(1),
         help="evalutate prediction with actual label"),
-    Module(
+    ModuleNode(
         'plot_prediction', ClassifyFile, PredictionPlot,
         Constraint(
             "classify_alg", CAN_BE_ANY_OF,
@@ -275,7 +275,7 @@ all_modules = [
         Consequence("actual_label", SAME_AS_CONSTRAINT),
         Consequence("loocv", SAME_AS_CONSTRAINT),
         help="plot prediction result"),
-    Module(
+    ModuleNode(
         'plot_sample_pca_with_predictions',
         [ClassifyFile, PcaAnalysis.PcaAnalysis],
         PredictionPCAPlot,
@@ -289,7 +289,7 @@ all_modules = [
         Consequence("actual_label", SAME_AS_CONSTRAINT, 0),
         Consequence("loocv", SAME_AS_CONSTRAINT, 0),
         help="plot sample pca plot labeled with prediction result"),
-    Module(
+    ModuleNode(
         'make_classify_report',
         [GeneExpProcessing.SignalFile, ClassifyFile, ClassifyFile,
          PredictionPlot, PredictionPlot, PredictionPCAPlot, ClassifyFile,

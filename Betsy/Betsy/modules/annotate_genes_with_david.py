@@ -1,65 +1,42 @@
-##annotate_genes_with_david.py
-import os
-from genomicode import arrayplatformlib
-from time import strftime, localtime
-from Betsy import bie3
-from Betsy import rulebase
-from Betsy import module_utils
+from Module import AbstractModule
+
+class Module(AbstractModule):
+    def __init__(self):
+        AbstractModule.__init__(self)
+
+    def run(
+        self, network, antecedents, out_attributes, user_options, num_cores,
+        outfile):
+        from genomicode import arrayplatformlib
+        from Betsy import module_utils
+        
+        f = file(antecedents.identifier, 'r')
+        text = f.read()
+        f.close()
+        in_list = text.split()
+        # guess the idType
+        chipname = arrayplatformlib.identify_platform_of_annotations(in_list)
+        assert chipname in platform2idtype, \
+               'David does not handle %s' % chipname
+        idType = platform2idtype[chipname]
+          # convert the platform to idtype
+        DAVIDenrich(in_list, idType, outfile)
+        assert module_utils.exists_nz(outfile), (
+            'the outfile for run_david %s does not exist' % outfile
+        )
 
 
-def run(network, antecedents, out_attributes, user_options, num_cores):
-    """run David"""
-    in_data = antecedents
-    outfile = name_outfile(in_data, user_options)
-    f = file(in_data.identifier, 'r')
-    text = f.read()
-    f.close()
-    in_list = text.split()
-    # guess the idType
-    chipname = arrayplatformlib.identify_platform_of_annotations(in_list)
-    assert chipname in platform2idtype, 'David does not handle %s' % chipname
-    idType = platform2idtype[chipname]
-      # convert the platform to idtype
-    DAVIDenrich(in_list, idType, outfile)
-    assert module_utils.exists_nz(outfile), (
-        'the outfile for run_david %s does not exist' % outfile
-    )
-    out_node = bie3.Data(rulebase.DavidFile, **out_attributes)
-    out_object = module_utils.DataObject(out_node, outfile)
-    return out_object
+    def name_outfile(self, antecedents, user_options):
+        from Betsy import module_utils
+        original_file = module_utils.get_inputid(antecedents.identifier)
+        filename = 'david_' + original_file + '.tdf'
+        return filename
 
 
-def name_outfile(antecedents, user_options):
-    original_file = module_utils.get_inputid(antecedents.identifier)
-    filename = 'david_' + original_file + '.tdf'
-    outfile = os.path.join(os.getcwd(), filename)
-    return outfile
 
-
-def set_out_attributes(antecedents, out_attributes):
-    return out_attributes
-
-
-def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
-    identifier = antecedents.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
-                                         user_options)
-
-
-def find_antecedents(network, module_id, out_attributes, user_attributes,
-                     pool):
-    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
-                                            pool)
-    return data_node
-
-
-def DAVIDenrich(in_list, idType, outfile,
-                bg_list=[],
-                bgName='Background1',
-                listName='List1',
-                category='',
-                thd=0.1,
-                ct=2):
+def DAVIDenrich(
+    in_list, idType, outfile, bg_list=[], bgName='Background1',
+    listName='List1', category='', thd=0.1, ct=2):
     from suds.client import Client
     assert len(in_list) < 3000, (
         'the number of genes to David cannot exceed 3000'

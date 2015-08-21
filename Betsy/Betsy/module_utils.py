@@ -1,51 +1,57 @@
 """
 Objects:
-DataObject
+IdentifiedDataNode
+AntecedentFilter
 
 Functions:
-get_identifier
+
+# Network and Nodes
+find_antecedents
 get_inputid
-make_unique_hash
+high_light_path     Does something to network.
 
-write_Betsy_parameters_file
-write_Betsy_report_parameters_file
-
-which
-exists_nz
-is_number
-
-convert_gene_list_platform
-convert_to_same_platform
-
-replace_matrix_header
-format_convert
-is_missing
-
-plot_line_keywds
-plot_line_keywd
-plot_pca
-find_pcaplots
-
+# Network
 download_ftp
-download_dataset
+download_dataset   # move to GEO?
 
+# Zip
 gunzip
 extract_from_zip
 unzip_if_zip
 
+# File operations
+which             Find full path of executable program.
+exists_nz
 merge_two_files
-renew_parameters
-high_light_path
-process_group_info
+
+# Matrix operations
+is_missing        If a matrix has missing values.  Move?
+format_convert    Transpose matrix?
+replace_matrix_header
+convert_gene_list_platform
+convert_to_same_platform
+
+# Outputs
+write_Betsy_report_parameters_file
+plot_line_keywds
+plot_line_keywd
+find_pcaplots
+
+# Miscellaneous
+is_number
+renew_parameters    Delete a list of keys from a dictionary.
+
+???
+process_group_info  ???
 
 """
+# _find_ids_that_pass_filters
 
 
-FMT = "%a %b %d %H:%M:%S %Y"
+#FMT = "%a %b %d %H:%M:%S %Y"
 
-# Data + identifier.
-# Maybe should call IdentifiedData
-class DataObject:
+# DataNode + identifier.
+class IdentifiedDataNode:
     def __init__(self, data, identifier=""):
         self.data = data
         self.identifier = identifier
@@ -65,7 +71,7 @@ class AntecedentFilter:
         if self.datatype_name and self.datatype_name != node.datatype.name:
             self.mismatch_reason = "datatype_name"
             return False
-        if self.contents and node.attributes.get("contents") != contents:
+        if self.contents and node.attributes.get("contents") != self.contents:
             self.mismatch_reason = "contents"
             return False
         for (key, value) in self.attributes.iteritems():
@@ -105,9 +111,9 @@ def _find_ids_that_pass_filters(network, node_ids, filters):
 
 def find_antecedents(network, module_id, user_attributes, pool, *filters):
     # filters should be AntecedentFilter objects.  Return either a
-    # DataObject (if 0 or 1 filters), or a list of DataObjects
-    # parallel to filters.  Raises an exception if no antecedents
-    # could be found.
+    # IdentifiedDataNode (if 0 or 1 filters), or a list of
+    # IdentifiedDataNodes parallel to filters.  Raises an exception if
+    # no antecedents could be found.
     import os
     import bie3
 
@@ -146,24 +152,25 @@ def find_antecedents(network, module_id, user_attributes, pool, *filters):
             ids = _find_ids_that_pass_filters(network, input_ids, filters)
             if ids is not None:
                 break
-    assert ids, "%s: antecedents not found" % module_name
+    assert ids, "antecedents not found: %s" % module_name
     for id_ in ids:
         if not pool[id_].identifier:
             continue
         assert os.path.exists(pool[id_].identifier), (
-            'the input file %s for %s does not exist' %
-            (pool[id_].identifier, module_name))
+            "File not found: %s" % pool[id_].identifier)
     objs = [pool[x] for x in ids]
     assert not filters or len(objs) == len(filters)
-    if len(objs) <= 1:  # Return a single DataObject if 0 or 1 filters given.
+    # Return a single IdentifiedDataNode if 0 or 1 filters given.
+    if len(objs) <= 1:
         objs = objs[0]
     return objs
+
 
 ## def get_identifier(
 ##     network, module_id, pool, user_attributes, datatype=None, contents=None,
 ##     optional_key=None, optional_value=None, second_key=None, second_value=None,
 ##     **param):
-##     # Returns a single DataObject that goes into this module.  What is
+##     # Returns a single IdentifiedDataNode that goes into this module.  What is
 ##     # this used for?
 ##     import os
 ##     import bie3
@@ -246,20 +253,6 @@ def get_inputid(identifier):
     #return inputid
 
 
-# Rename to hash something.
-def make_unique_hash(identifier, pipeline, parameters, user_options):
-    import os
-    import hash_method
-
-    input_file = os.path.split(identifier)[-1]
-    new_parameters = parameters.copy()
-    new_parameters['filesize'] = os.path.getsize(identifier)
-    new_parameters['checksum'] = hash_method.get_input_checksum(identifier)
-    for key in user_options:
-        new_parameters[key] = user_options[key]
-    hash_result = hash_method.hash_parameters(
-        input_file, pipeline, **new_parameters)
-    return hash_result
 
 
 # Why is this here?  And why is rma hard coded?
@@ -273,7 +266,6 @@ def find_pcaplots(network, pool, module_id, rma=False):
         if not node.data.datatype.name == 'PcaPlot':
             continue
         if module_id in network.transitions[node_id]:
-
             assert os.path.exists(node.identifier), (
                 'the input file %s for %s does not exist' %
                 (node.identifier, network.nodes[module_id].name))
@@ -329,7 +321,7 @@ def is_missing(identifier):
 
 
 def merge_two_files(A_file, B_file, handle):
-    """input two files and merge,write the output to handle"""
+    """input two files and merge, write the output to handle"""
     import arrayio
     from genomicode import Matrix
     from genomicode import matrixlib
@@ -395,45 +387,6 @@ def format_convert(X):
     return data
 
 
-def write_Betsy_parameters_file(
-    parameters, data_nodes, outfile, user_input, pipeline, starttime, user,
-    job_name):
-    import os
-    import json
-    import time
-    import operator
-
-    f = file(os.path.join(os.getcwd(), 'Betsy_parameters.txt'), 'w')
-    if operator.isSequenceType(data_nodes):
-        # BUG: Why is st not used?
-        #st = os.stat(data_nodes[0].identifier)
-        modified_time = time.strftime(FMT, time.localtime())
-        text = ['Module input:', [(data_node.data.datatype.name,
-                                   data_node.identifier)
-                                  for data_node in data_nodes
-                                 ], 'Module output parameters:', parameters,
-                'Pipeline module sequence:', pipeline, 'User_input:',
-                user_input, 'Start time:', starttime, 'Finish time:',
-                modified_time, 'User:', user, 'Jobname:', job_name, 'Outfile:',
-                outfile]
-    else:
-        #st = 'None'
-        modified_time = 'None'
-        identifier = data_nodes.identifier
-        if identifier:
-            #st = os.stat(identifier)
-            modified_time = time.strftime(FMT, time.localtime())
-        text = ['Module input:', (data_nodes.data.datatype.name,
-                                  identifier), 'Module output parameters:',
-                parameters, 'Pipeline module sequence:', pipeline,
-                'User_input:', user_input, 'Start time:', starttime,
-                'Finish time:', modified_time, 'User:', user, 'Jobname:',
-                job_name, 'Outfile:', outfile]
-    newtext = json.dumps(text, sort_keys=True, indent=4)
-    f.write(newtext)
-    f.close()
-
-
 def write_Betsy_report_parameters_file(inputs, outfile, starttime, user,
                                        job_name):
     import os
@@ -463,7 +416,7 @@ def write_Betsy_report_parameters_file(inputs, outfile, starttime, user,
 
 
 def exists_nz(filename):
-    """check if the filename exists and not empty"""
+    """check if filename (file or path) exists and not empty"""
     import os
 
     if not os.path.exists(filename):  # does not exist
@@ -547,18 +500,14 @@ def plot_line_keywd(filename, keyword, outfile):
         if M.row_names(header[1])[i] == keyword:
             data.append(M.slice()[i])
             legend_name.append(keyword + '(' + M.row_names(header[0])[i] + ')')
-    # Bug: keywords?
     assert len(data) > 0, 'cannot find the keyword %s in the file %s' % (
-        keywords, filename)
+        keyword, filename)
     for i in range(len(data)):
         line = [(j, data[i][j]) for j in range(len(data[i]))]
         lines.append(line)
-    fig = mplgraph.lineplot(*lines,
-                            box_label=label,
-                            legend=legend_name,
-                            ylim_min=0,
-                            ylabel='Signal',
-                            left=0.1)
+    fig = mplgraph.lineplot(
+        *lines, box_label=label, legend=legend_name, ylim_min=0,
+        ylabel='Signal', left=0.1)
     fig.savefig(outfile)
     assert exists_nz(outfile), 'the plot_line_keywd fails'
 
@@ -762,39 +711,6 @@ def convert_to_same_platform(filename1, filename2, platform=None):
             assert exists_nz('tmp'), 'the platform conversion fails'
     return newfilename1, newfilename2
 
-
-def plot_pca(filename, result_fig, opts='b', legend=None):
-    from genomicode import jmath, mplgraph
-    import arrayio
-
-    R = jmath.start_R()
-    jmath.R_equals(filename, 'filename')
-    M = arrayio.read(filename)
-    labels = M._col_names['_SAMPLE_NAME']
-    data = M.slice()
-    jmath.R_equals(data, 'X')
-    R('NUM.COMPONENTS <- 2')
-    R('S <- svd(X)')
-    R('U <- S$u[,1:NUM.COMPONENTS]')
-    R('D <- S$d[1:NUM.COMPONENTS]')
-    # Project the data onto the first 2 components.
-    R('x <- t(X) %*% U %*% diag(D)')
-    x1 = R['x'][0:M.ncol()]
-    x2 = R['x'][M.ncol():]
-    if len(opts) > 1:
-        fig = mplgraph.scatter(x1, x2,
-                               xlabel='Principal Component 1',
-                               ylabel='Principal Component 2',
-                               color=opts,
-                               legend=legend)
-    else:
-        fig = mplgraph.scatter(x1, x2,
-                               label=labels,
-                               xlabel='Principal Component 1',
-                               ylabel='Principal Component 2',
-                               color=opts)
-    fig.savefig(result_fig)
-    assert exists_nz(result_fig), 'the plot_pca.py fails'
 
     ##def extract_from_zip(zipName):
     ##    z = zipfile.ZipFile(zipName)

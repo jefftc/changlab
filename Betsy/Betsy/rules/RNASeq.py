@@ -6,7 +6,7 @@ import GeneExpProcessing
 
 list_files = []
 all_modules = [
-    Module(
+    ModuleNode(
         'is_sam_folder',
          BasicDataTypesNGS.RNASeqFile,BasicDataTypesNGS.RNASeqFile,
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -15,7 +15,7 @@ all_modules = [
          Consequence("format_type",BASED_ON_DATA,['not_samfolder','samfolder']),
          help=("extract rna files with different format")
         ),
-    Module(
+    ModuleNode(
         'is_bam_folder',
          BasicDataTypesNGS.RNASeqFile,BasicDataTypesNGS.RNASeqFile,
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -24,7 +24,7 @@ all_modules = [
          Consequence("format_type",BASED_ON_DATA,['not_bamfolder','bamfolder']),
          help=("extract rna files with different format")
         ),
-    Module(
+    ModuleNode(
         'is_fastq_folder',
          BasicDataTypesNGS.RNASeqFile,BasicDataTypesNGS.RNASeqFile,
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -33,7 +33,7 @@ all_modules = [
          Consequence("format_type",BASED_ON_DATA,['not_fastqfolder','fastqfolder']),
          help=("extract rna files with different format")
         ),
-    Module(
+    ModuleNode(
         'extract_rna_files_sam',
          BasicDataTypesNGS.RNASeqFile,BasicDataTypesNGS.SamFolder,
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -42,7 +42,7 @@ all_modules = [
          Consequence("ref",SET_TO_ONE_OF,['human','mouse']),
          help=("extract rna files with different format")
         ),
-    Module(
+    ModuleNode(
         'extract_rna_files_bam',
          BasicDataTypesNGS.RNASeqFile,BasicDataTypesNGS.BamFolder,
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -51,7 +51,7 @@ all_modules = [
          Consequence("ref",SET_TO_ONE_OF,['human','mouse']),
          help=("extract rna files with bam format")
         ),
-    Module(
+    ModuleNode(
         'extract_rna_files_fastq',
          BasicDataTypesNGS.RNASeqFile,BasicDataTypesNGS.FastqFolder,
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -59,7 +59,7 @@ all_modules = [
          Consequence("contents",SAME_AS_CONSTRAINT),
          help=("extract rna files with fa or fastq format")
         ),
-    Module(
+    ModuleNode(
         'align_with_bowtie',
          [BasicDataTypesNGS.FastqFolder,BasicDataTypesNGS.SampleGroupFile],
          BasicDataTypesNGS.SamFolder,
@@ -69,7 +69,7 @@ all_modules = [
          Consequence("ref",SET_TO_ONE_OF,['human','mouse']),
          help=("convert fastq folder into sam folder with bowtie")
         ),
-    Module(
+    ModuleNode(
         'convert_sam_to_bam',
          BasicDataTypesNGS.SamFolder,BasicDataTypesNGS.BamFolder,
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
@@ -77,7 +77,7 @@ all_modules = [
          #Consequence("ref",SET_TO_ONE_OF,['human','mouse']),
          help=("convert sam folder into bam folder")
         ),
-     Module(
+     ModuleNode(
         'normalize_with_rsem',
          [BasicDataTypesNGS.BamFolder,BasicDataTypesNGS.SampleGroupFile],
          GeneExpProcessing._SignalFile_Postprocess,

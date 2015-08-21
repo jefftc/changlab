@@ -1,14 +1,3 @@
-#preprocess_illumina.py
-
-import os
-import subprocess
-import arrayio
-from genomicode import config
-from Betsy import bie3
-from Betsy import rulebase
-from Betsy import module_utils
-
-
 # TODO: Check if these are defined somewhere else.
 MANIFEST_ALL = [
     'HumanHT-12_V3_0_R2_11283641_A.txt',
@@ -50,9 +39,129 @@ CHIP_ALL = [
     'ilmn_RatRef_12_V1_0_R5_11222119_A.chip',
     ]
 
+from Module import AbstractModule
+
+class Module(AbstractModule):
+    def __init__(self):
+        AbstractModule.__init__(self)
+
+    def run(
+        self, network, antecedents, out_attributes, user_options, num_cores,
+        outfile):
+        import os
+        import subprocess
+        import arrayio
+        from Betsy import module_utils
+        from genomicode import config
+        import zipfile
+    
+        in_data = antecedents
+    
+        module_name = 'IlluminaExpressionFileCreator'
+        gp_parameters = dict()
+        if zipfile.is_zipfile(in_data.identifier):
+            gp_parameters['idat.zip'] = in_data.identifier
+        else:
+            # Add ".zip" to the end of the file.
+            zipfile_name = os.path.split(in_data.identifier)[-1] + '.zip'
+            zip_directory(in_data.identifier, zipfile_name)
+            gp_parameters['idat.zip'] = os.path.join(".", zipfile_name)
+    
+        
+        gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
+        gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
+        if 'illu_bg_mode' in out_attributes.keys():
+            assert out_attributes['illu_bg_mode'] in [
+                'true', 'false'
+            ], 'illu_bg_mode should be ill_yes or ill_no'
+            gp_parameters['background.subtraction.mode'] = \
+                                                         out_attributes['illu_bg_mode']
+
+        if 'illu_chip' in out_attributes.keys():
+            assert out_attributes['illu_chip'] in CHIP_ALL, \
+                   'illu_chip is not correct'
+            gp_parameters['chip'] = str(out_attributes['illu_chip'])
+        if 'illu_manifest' in out_attributes.keys():
+            assert out_attributes['illu_manifest'] in MANIFEST_ALL, \
+                   'illu_manifest is not correct'
+            gp_parameters['manifest'] = str(out_attributes['illu_manifest'])
+        if 'illu_coll_mode' in out_attributes.keys():
+            assert out_attributes['illu_coll_mode'] in [
+                'none', 'max', 'median'
+            ], 'ill_coll_mode is not correct'
+            gp_parameters['collapse.mode'] = str(
+                out_attributes['illu_coll_mode'])
+        if 'illu_clm' in user_options:
+            gp_parameters['clm'] = str(user_options['illu_clm'])
+        if 'illu_custom_chip' in user_options:
+            gp_parameters['chip'] = str(user_options['illu_custom_chip'])
+        if 'illu_custom_manifest' in user_options:
+            gp_parameters['custom.manifest'] = str(
+                user_options['illu_custom_manifest'])
+    
+        
+        gp_path = config.genepattern
+        gp_module = module_utils.which(gp_path)
+        assert gp_module, 'cannot find the %s' % gp_path
+        download_directory = os.path.join(".", 'illumina_result')
+        command = [gp_module, module_name, '-o', download_directory]
+        for key in gp_parameters.keys():
+            a = ['--parameters', key + ':' + gp_parameters[key]]
+            command.extend(a)
+    
+        
+        process = subprocess.Popen(command,
+                                   shell=False,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        process.wait()
+        error_message = process.communicate()[1]
+        if error_message:
+            raise ValueError(error_message)
+    
+        
+        #goal_file = None
+        assert os.path.exists(download_directory), (
+            'there is no output directory for illumina'
+        )
+        result_files = os.listdir(download_directory)
+        #assert 'stderr.txt' not in result_files,('gene_pattern get error '+
+        #        'The contents of stderr.txt is:'+
+        #        file(os.path.join(download_directory,'stderr.txt')).read())
+
+        if not os.path.exists(outfile):
+            os.mkdir(outfile)
+    
+        
+        for result_file in result_files:
+            if result_file == 'System.out':
+                continue
+            result_path = os.path.join(outfile, result_file)
+            M = arrayio.read(os.path.join(download_directory, result_file))
+            a = M._col_names['_SAMPLE_NAME']
+            b = sorted(a)
+            index = []
+            for i in b:
+                index.append(a.index(i))
+            M_new = M.matrix(None, index)
+            f = file(result_path, 'w')
+            arrayio.gct_format.write(M_new, f)
+            f.close()
+    
+        
+        assert module_utils.exists_nz(outfile), (
+            'the output file %s for illumina fails' % outfile)
+        
+
+    def name_outfile(self, antecedents, user_options):
+        from Betsy import module_utils
+        original_file = module_utils.get_inputid(antecedents.identifier)
+        filename = 'IlluFolder_' + original_file
+        return filename
 
 
 def zip_directory(dir, zip_file):
+    import os
     import zipfile
 
     zip = zipfile.ZipFile(zip_file, 'w', compression=zipfile.ZIP_DEFLATED)
@@ -63,137 +172,5 @@ def zip_directory(dir, zip_file):
             fullpath = os.path.join(root, f)
             archive_name = os.path.join(archive_root, f)
             zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
+    
     zip.close()
-
-
-def run(network, antecedents, out_attributes, user_options, num_cores):
-    import zipfile
-    
-    in_data = antecedents
-    
-    module_name = 'IlluminaExpressionFileCreator'
-    gp_parameters = dict()
-    if zipfile.is_zipfile(in_data.identifier):
-        gp_parameters['idat.zip'] = in_data.identifier
-    else:
-        # XXX IS THIS A BUG?  Should be splitext?
-        raise NotImplementedError, "Check this possible bug"
-        zipfile_name = os.path.split(in_data.identifier)[-1] + '.zip'
-        zip_directory(in_data.identifier, zipfile_name)
-        gp_parameters['idat.zip'] = os.path.join(os.getcwd(), zipfile_name)
-    
-    gp_parameters['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
-    gp_parameters['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
-    if 'illu_bg_mode' in out_attributes.keys():
-        assert out_attributes['illu_bg_mode'] in [
-            'true', 'false'
-        ], 'illu_bg_mode should be ill_yes or ill_no'
-        gp_parameters['background.subtraction.mode'] = out_attributes['illu_bg_mode']
-
-    
-    if 'illu_chip' in out_attributes.keys():
-        assert out_attributes['illu_chip'] in CHIP_ALL, 'illu_chip is not correct'
-        gp_parameters['chip'] = str(out_attributes['illu_chip'])
-
-    
-    if 'illu_manifest' in out_attributes.keys():
-        assert out_attributes['illu_manifest'
-                          ] in MANIFEST_ALL, 'illu_manifest is not correct'
-        gp_parameters['manifest'] = str(out_attributes['illu_manifest'])
-
-    
-    if 'illu_coll_mode' in out_attributes.keys():
-        assert out_attributes['illu_coll_mode'] in [
-            'none', 'max', 'median'
-        ], 'ill_coll_mode is not correct'
-        gp_parameters['collapse.mode'] = str(out_attributes['illu_coll_mode'])
-
-    
-    if 'illu_clm' in user_options.keys():
-        gp_parameters['clm'] = str(out_attributes['illu_clm'])
-
-    
-    if 'illu_custom_chip' in user_options.keys():
-        gp_parameters['chip'] = str(out_attributes['illu_custom_chip'])
-
-    
-    if 'illu_custom_manifest' in user_options.keys():
-        gp_parameters['custom.manifest'] = str(
-            out_attributes['illu_custom_manifest'])
-    
-    gp_path = config.genepattern
-    gp_module = module_utils.which(gp_path)
-    assert gp_module, 'cannot find the %s' % gp_path
-    download_directory = os.path.join(os.getcwd(), 'illumina_result')
-    command = [gp_module, module_name, '-o', download_directory]
-    for key in gp_parameters.keys():
-        a = ['--parameters', key + ':' + gp_parameters[key]]
-        command.extend(a)
-    
-    process = subprocess.Popen(command,
-                               shell=False,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    process.wait()
-    error_message = process.communicate()[1]
-    if error_message:
-        raise ValueError(error_message)
-    
-    goal_file = None
-    assert os.path.exists(download_directory), (
-        'there is no output directory for illumina'
-    )
-    result_files = os.listdir(download_directory)
-    #assert 'stderr.txt' not in result_files,('gene_pattern get error '+
-    #        'The contents of stderr.txt is:'+
-    #        file(os.path.join(download_directory,'stderr.txt')).read())
-
-    outfile = name_outfile(in_data, user_options)
-    if not os.path.exists(outfile):
-        os.mkdir(outfile)
-    
-    for result_file in result_files:
-        if result_file == 'System.out':
-            continue
-        result_path = os.path.join(outfile, result_file)
-        M = arrayio.read(os.path.join(download_directory, result_file))
-        a = M._col_names['_SAMPLE_NAME']
-        b = sorted(a)
-        index = []
-        for i in b:
-            index.append(a.index(i))
-        M_new = M.matrix(None, index)
-        f = file(result_path, 'w')
-        arrayio.gct_format.write(M_new, f)
-        f.close()
-    
-    assert module_utils.exists_nz(outfile), (
-        'the output file %s for illumina fails' % outfile
-    )
-    out_node = bie3.Data(rulebase.ILLUFolder, **out_attributes)
-    out_object = module_utils.DataObject(out_node, outfile)
-    return out_object
-
-
-def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
-    identifier = antecedents.identifier
-    return module_utils.make_unique_hash(
-        identifier, pipeline, out_attributes, user_options)
-
-
-def name_outfile(antecedents, user_options):
-    original_file = module_utils.get_inputid(antecedents.identifier)
-    filename = 'IlluFolder_' + original_file
-    outfile = os.path.join(os.getcwd(), filename)
-    return outfile
-
-
-def set_out_attributes(antecedents, out_attributes):
-    return out_attributes
-
-
-def find_antecedents(network, module_id, out_attributes, user_attributes,
-                     pool):
-    data_node = module_utils.find_antecedents(
-        network, module_id, user_attributes, pool)
-    return data_node

@@ -100,7 +100,7 @@ PcaPlot = DataType(
 
 list_files = [PcaAnalysis,PcaPlot]
 all_modules = [
-    Module(
+    ModuleNode(
         'analyze_samples_pca',
         GeneExpProcessing.SignalFile,PcaAnalysis,
         OptionDef('pca_gene_num',500,help="number of genes in pca"),
@@ -151,7 +151,7 @@ all_modules = [
         help="analyze samples by pca method"
         ),
     
-    Module(
+    ModuleNode(
         'plot_sample_pca_wo_label',
         PcaAnalysis,PcaPlot,
         Constraint("contents",CAN_BE_ANY_OF,["train0", "train1", "test", "class0,class1,test",

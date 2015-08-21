@@ -1,65 +1,51 @@
-#download_geo_supplement.py
-import os
-import shutil
-from genomicode import affyio
-from ftplib import FTP
-from Betsy import module_utils, bie3, rulebase
-import string
-import gzip
+from Module import AbstractModule
 
+class Module(AbstractModule):
+    def __init__(self):
+        AbstractModule.__init__(self)
 
-def run(network, antecedents, out_attributes, user_options, num_cores):
-    """given a database ID and GPLID, get the cel files"""
-    in_data = antecedents
-    outfile = name_outfile(in_data, user_options)
-    GSEID = user_options['GSEID']
-    GPLID = None
-    if 'GPLID' in user_options:
-        GPLID = user_options['GPLID']
+    def run(
+        self, network, antecedents, out_attributes, user_options, num_cores,
+        outfile):
+        """given a database ID and GPLID, get the cel files"""
+        from Betsy import module_utils
+        GSEID = user_options['GSEID']
+        GPLID = None
+        if 'GPLID' in user_options:
+            GPLID = user_options['GPLID']
     
-    assert GSEID.startswith('GSE'), 'GSEID %s is not correct' % GSEID
-    if not GPLID:
-        download_geo_with_GSEID(GSEID, outfile)
-    else:
-        assert GPLID.startswith('GPL'), 'GPLID %s is not correct' % GPLID
-        download_geo_with_GPLID(GSEID, GPLID, outfile)
+        
+        assert GSEID.startswith('GSE'), 'GSEID %s is not correct' % GSEID
+        if not GPLID:
+            download_geo_with_GSEID(GSEID, outfile)
+        else:
+            assert GPLID.startswith('GPL'), 'GPLID %s is not correct' % GPLID
+            download_geo_with_GPLID(GSEID, GPLID, outfile)
     
-    assert module_utils.exists_nz(outfile), (
-        'the output file %s for download_geo_supplement fails' % outfile
-    )
-    out_node = bie3.Data(rulebase.ExpressionFiles, **out_attributes)
-    out_object = module_utils.DataObject(out_node, outfile)
-    return out_object
+        
+        assert module_utils.exists_nz(outfile), (
+            'the output file %s for download_geo_supplement fails' % outfile
+        )
 
 
-def name_outfile(antecedents, user_options):
-    original_file = module_utils.get_inputid(user_options['GSEID'])
-    filename = 'expression_files_' + original_file
-    outfile = os.path.join(os.getcwd(), filename)
-    return outfile
+    def name_outfile(self, antecedents, user_options):
+        from Betsy import module_utils
+        original_file = module_utils.get_inputid(user_options['GSEID'])
+        filename = 'expression_files_' + original_file
+        return filename
 
+    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
+        GPLID = ''
+        if 'GPLID' in user_options:
+            GPLID = user_options['GPLID']
+        identifier = user_options['GSEID'] + GPLID
+        return identifier
 
-def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
-    GPLID = ''
-    if 'GPLID' in user_options:
-        GPLID = user_options['GPLID']
-    identifier = user_options['GSEID'] + GPLID
-    return identifier
-
-
-def set_out_attributes(antecedents, out_attributes):
-    return out_attributes
-
-
-def find_antecedents(network, module_id, out_attributes, user_attributes,
-                     pool):
-    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
-                                            pool)
-    return data_node
 
 
 def clean_cel_filename(cel_file):
     """clean the cel_file name"""
+    import string
     if cel_file.upper().endswith('CEL'):
         cel_file = cel_file[0:-4]
         punc = string.punctuation
@@ -83,12 +69,18 @@ def clean_cel_filename(cel_file):
         return cel_file
 
 
+
 def download_geo_with_GSEID(GSEID, outfile):
-    file_folder = os.path.join(os.getcwd(), GSEID)
+    import os
+    import gzip
+    import shutil
+    from Betsy import module_utils
+    from genomicode import affyio
+    file_folder = os.path.join(".", GSEID)
     module_utils.download_dataset(GSEID)
     #get chip name
     cel_files = os.listdir(file_folder)
-    unknown_folder = os.path.join(os.getcwd(), 'unknown_folder')
+    unknown_folder = os.path.join(".", 'unknown_folder')
     chip_name_list = []
     for cel_file in cel_files:
         fileloc = os.path.join(file_folder, cel_file)
@@ -124,16 +116,17 @@ def download_geo_with_GSEID(GSEID, outfile):
         if chip_name is not None:
             if chip_name not in chip_name_list:
                 chip_name_list.append(chip_name)
-                os.mkdir(os.path.join(os.getcwd(), chip_name))
-            chip_folder = os.path.join(os.getcwd(), chip_name)
+                os.mkdir(os.path.join(".", chip_name))
+            chip_folder = os.path.join(".", chip_name)
             shutil.copyfile(unzipfile, os.path.join(chip_folder, newcelfname))
         if fileloc.endswith('.gz'):
             os.remove(unzipfile)
     #determine the one to preprocess
+    
     if len(chip_name_list) == 1:
-        out_filename = os.path.join(os.getcwd(), chip_name_list[0])
+        out_filename = os.path.join(".", chip_name_list[0])
     elif len(chip_name_list) > 1:
-        size_list = [os.path.getsize(os.path.join(os.getcwd(), x))
+        size_list = [os.path.getsize(os.path.join(".", x))
                      for x in chip_name_list]
         #makesure there is no multiple folder have the same maximum size
         maxsize = max(size_list)
@@ -142,7 +135,7 @@ def download_geo_with_GSEID(GSEID, outfile):
         #only one folder is maximum size
         if maxsize > max(new_size_list):
             out_chip_name = chip_name_list[size_list.index(maxsize)]
-            out_filenanme = os.path.join(os.getcwd(), out_chip_name)
+            #out_filenanme = os.path.join(".", out_chip_name)
         #multiple has same maximum size
         elif maxsize == max(new_size_list):
             start = -1
@@ -166,26 +159,31 @@ def download_geo_with_GSEID(GSEID, outfile):
             #choose the human platform
             if sum(a) == 1:
                 out_chip_name = folder_names[a.index(1)]
-                out_filename = os.path.join(os.getcwd(), out_chip_name)
+                out_filename = os.path.join(".", out_chip_name)
             #multipld human paltforms
             elif sum(a) > 1:
                 if 'HG-U133_Plus_2' in folder_names:
-                    out_filename = os.path.join(os.getcwd(), 'HG-U133_Plus_2')
+                    out_filename = os.path.join(".", 'HG-U133_Plus_2')
                 elif 'HG-U133A' in folder_names:
-                    out_filename = os.path.join(os.getcwd(), 'HG-U133A')
+                    out_filename = os.path.join(".", 'HG-U133A')
                 elif 'HG-U95A' in folder_names:
-                    out_filename = os.path.join(os.getcwd(), 'HG-U95A')
+                    out_filename = os.path.join(".", 'HG-U95A')
                 else:
                     raise ValueError('does not recognazie the platform')
+    
     os.rename(out_filename, outfile)
 
 
 def download_geo_with_GPLID(GSEID, GPLID, outfile):
+    import os
+    import shutil
+    from Betsy import module_utils
     GSEID_path = module_utils.download_dataset(GSEID)
     platform_txtfiles = get_seriesmatrix_file(GSEID, GPLID)
     #get the cel file name for the GPL platform
     if not os.path.exists(outfile):
         os.mkdir(outfile)
+    
     if len(platform_txtfiles) > 0:
         for platform_txtfile in platform_txtfiles:
             cel_list = open(platform_txtfile, 'r').readlines()
@@ -223,19 +221,24 @@ def download_geo_with_GPLID(GSEID, GPLID, outfile):
         os.rename(GSEID_path, outfile)
 
 
+
 def get_seriesmatrix_file(GSEID, GPLID):
     'download series matrix and unzip'
+    import os
+    from ftplib import FTP
     try:
         ftp = FTP('ftp.ncbi.nih.gov')
         ftp.login()
     except Exception, e:
         raise ValueError(e)
+    
     try:
         ftp.cwd('pub/geo/DATA/SeriesMatrix/' + GSEID)
     except FTP.error_perm, x:
         raise
         #if str(x).find('No such file') >= 0:
         #    raise AssertionError('cannot find the %s' % path)
+    
     entry = []
     ftp.retrlines('NLST', entry.append)
     platform_txtfiles = []
@@ -264,5 +267,6 @@ def get_seriesmatrix_file(GSEID, GPLID):
                 'the unzip %s in download_geo_dataset_GPL fails' % platform_txtfile
             )
             platform_txtfiles.append(platform_txtfile)
+    
     ftp.close()
     return platform_txtfiles

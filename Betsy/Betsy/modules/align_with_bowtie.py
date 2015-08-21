@@ -1,13 +1,44 @@
-#align_with_bowtie.py
-import os
-from Betsy import module_utils, bie3, rulebase
-import subprocess
-from genomicode import config
-import gzip
+from Module import AbstractModule
+
+class Module(AbstractModule):
+    def __init__(self):
+        AbstractModule.__init__(self)
+
+    def run(
+        self, network, antecedents, out_attributes, user_options, num_cores,
+        outfile):
+        from Betsy import module_utils
+        
+        data_node, group_node = antecedents
+        group_dict = module_utils.process_group_info(group_node.identifier)
+        preprocess_multiple_sample(data_node.identifier, group_dict, outfile,
+                                   out_attributes['ref'])
+        assert module_utils.exists_nz(outfile), (
+            'the output file %s for align_with_bowtie does not exist' % outfile
+        )
+
+
+    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
+        from Betsy import module_utils
+        data_node, group_node = antecedents
+        identifier = data_node.identifier
+        return module_utils.hash_input(
+            identifier, pipeline, out_attributes, user_options)
+
+
+    def name_outfile(self, antecedents, user_options):
+        from Betsy import module_utils
+        data_node, group_node = antecedents
+        original_file = module_utils.get_inputid(data_node.identifier)
+        filename = 'Samfolder_' + original_file
+        return filename
 
 
 def concatenate_files(input_files, outfile):
     """Concatenate multiple files into a single one"""
+    import os
+    import gzip
+    
     with open(outfile, 'w') as outfile:
         for fname in input_files:
             if fname.endswith('.gz'):
@@ -31,6 +62,8 @@ def concatenate_multiple_line(group_dict, foldername):
     """given group_dict, concatenate multiple line fastq files under foldername
        output is a new dictionary in format <sample:[R1_sample,R2_sample]>
                    or <sample:[sample]>"""
+    import os
+
     current_dir = os.getcwd()
     new_group_dict = {}
     for sample_name, files in group_dict.iteritems():
@@ -59,6 +92,10 @@ def preprocess_multiple_sample(folder, group_dict, outfile, ref):
                    or <sample:[[samples]]>
        outfile: output file name,
        ref: reference species, human or mouse"""
+    import os
+    import subprocess
+    from genomicode import config
+
     if not os.path.exists(outfile):
         os.mkdir(outfile)
     if ref == 'human':
@@ -87,10 +124,8 @@ def preprocess_multiple_sample(folder, group_dict, outfile, ref):
         outfilename = os.path.join(outfile, sample + '.sam')
         f = file(outfilename, 'w')
         try:
-            process = subprocess.Popen(command,
-                                       shell=False,
-                                       stdout=f,
-                                       stderr=subprocess.PIPE)
+            process = subprocess.Popen(
+                command, shell=False, stdout=f, stderr=subprocess.PIPE)
             process.wait()
             error_message = process.communicate()[1]
             if 'error' in error_message:
@@ -99,43 +134,3 @@ def preprocess_multiple_sample(folder, group_dict, outfile, ref):
             f.close()
 
 
-def run(network, antecedents, out_attributes, user_options, num_cores):
-    data_node, group_node = antecedents
-    outfile = name_outfile(antecedents, user_options)
-    group_dict = module_utils.process_group_info(group_node.identifier)
-    preprocess_multiple_sample(data_node.identifier, group_dict, outfile,
-                               out_attributes['ref'])
-    assert module_utils.exists_nz(outfile), (
-        'the output file %s for align_with_bowtie does not exist' % outfile
-    )
-    out_node = bie3.Data(rulebase.SamFolder, **out_attributes)
-    out_object = module_utils.DataObject(out_node, outfile)
-    return out_object
-
-
-def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
-    data_node, group_node = antecedents
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
-                                         user_options)
-
-
-def name_outfile(antecedents, user_options):
-    data_node, group_node = antecedents
-    original_file = module_utils.get_inputid(data_node.identifier)
-    filename = 'Samfolder_' + original_file
-    outfile = os.path.join(os.getcwd(), filename)
-    return outfile
-
-
-def set_out_attributes(antecedents, out_attributes):
-    return out_attributes
-
-
-def find_antecedents(network, module_id, out_attributes, user_attributes,
-                     pool):
-    filter1 = module_utils.AntecedentFilter(datatype_name='FastqFolder')
-    filter2 = module_utils.AntecedentFilter(datatype_name='SampleGroupFile')
-    x = module_utils.find_antecedents(
-        network, module_id, user_attributes, pool, filter1, filter2)
-    return x

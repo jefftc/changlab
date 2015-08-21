@@ -169,7 +169,7 @@ list_files = [
     ]
 
 all_modules = [
-    Module(
+    ModuleNode(
         "extract_matrix_data", BDT.ExpressionFiles,
         GeneExpProcessing._SignalFile_Postprocess,
         Constraint("filetype", MUST_BE, 'matrix'),
@@ -182,28 +182,28 @@ all_modules = [
         help="extract SignalFile_Postprocess files from Expression Files"),
     
     #CELFiles
-    Module(
+    ModuleNode(
         "extract_CEL_files", BDT.ExpressionFiles, CELFiles,
         Constraint("filetype", MUST_BE, 'cel'),
         Consequence("version", SET_TO, "unknown"),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="extract CEL files from Expression Files folder"),
-    Module(
+    ModuleNode(
         "detect_CEL_version", CELFiles, CELFiles,
         Constraint("version", MUST_BE, "unknown"),
         Consequence("version", BASED_ON_DATA, ["cc", "v3_v4"]),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="detect the version of cel files"),
-    Module(
+    ModuleNode(
         "convert_CEL_to_v3", CELFiles, CELFiles,
         Constraint("version", MUST_BE, "cc"),
         Consequence("version", SET_TO, "v3_v4"),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="convert cel files to v3 version"),
-    Module(
+    ModuleNode(
         "preprocess_rma", CELFiles, GeneExpProcessing._SignalFile_Postprocess,
         Constraint("version", MUST_BE, 'v3_v4'),
         Consequence("logged", SET_TO, "yes"),
@@ -214,7 +214,7 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         help=
         "preprocess CELFiles with rma method,generate SignalFile_Postprocess"),
-    Module(
+    ModuleNode(
         "preprocess_mas5", CELFiles, GeneExpProcessing._SignalFile_Postprocess,
         Constraint("version", MUST_BE, 'v3_v4'),
         Consequence("logged", SET_TO, "no"),
@@ -227,13 +227,13 @@ all_modules = [
         "SignalFile_Postprocess",
         ),
     # IDATFiles
-    Module(
+    ModuleNode(
         "extract_illumina_idat_files", BDT.ExpressionFiles, IDATFiles,
         Constraint("filetype", MUST_BE, 'idat'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="extract idat files from Expression File folder"),
-    Module(
+    ModuleNode(
         "preprocess_illumina", IDATFiles, ILLUFolder,
         Consequence('illu_manifest', SET_TO_ONE_OF, ILLU_MANIFEST),
         Consequence('illu_chip', SET_TO_ONE_OF, ILLU_CHIP),
@@ -244,12 +244,12 @@ all_modules = [
         OptionDef("illu_clm", '', help="illumina clm"),
         OptionDef("illu_custom_chip", '', help="illumina custom chip name"),
         OptionDef(
-            "illu_custom_manifest", '', help='illumina custrom manifest file'),
+            "illu_custom_manifest", '', help='illumina custom manifest file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="preprocess idat files,generate SignalFile_Postprocess"),
     
-    Module(
+    ModuleNode(
         "get_illumina_control", ILLUFolder, ControlFile,
         Consequence('preprocess', SET_TO, "illumina"),
         Consequence("format", SET_TO, "gct"),
@@ -257,7 +257,7 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="extract illumina ControlFile from ILLUFolder"),
-    Module(
+    ModuleNode(
         "get_illumina_signal", ILLUFolder,
         GeneExpProcessing._SignalFile_Postprocess,
         Consequence('preprocess', SET_TO, "illumina"),
@@ -268,13 +268,13 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="extract the SignalFile_Postprocess from ILLUFolder"),
     # AgilentFiles
-    Module(
+    ModuleNode(
         "extract_agilent_files", BDT.ExpressionFiles, AgilentFiles,
         Constraint("filetype", MUST_BE, 'agilent'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="extract agilent files from ExpressionFiles"),
-    Module(
+    ModuleNode(
         "preprocess_agilent", AgilentFiles,
         GeneExpProcessing._SignalFile_Postprocess,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
@@ -285,13 +285,13 @@ all_modules = [
         Consequence('format', SET_TO, "tdf"),
         help="preprocess agilent, generate SignalFile_Postprocess"),
     # GPRFiles
-    Module(
+    ModuleNode(
         "extract_gpr_files", BDT.ExpressionFiles, GPRFiles,
         Constraint("filetype", MUST_BE, 'gpr'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="extract gpr files from ExpressionFiles"),
-    Module(
+    ModuleNode(
         "normalize_with_loess", GPRFiles,
         GeneExpProcessing._SignalFile_Postprocess,
         Consequence("format", SET_TO, "tdf"),
@@ -301,7 +301,7 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="normalize GPRFiles,generate SignalFile_Postprocess"),
-    Module(
+    ModuleNode(
         'plot_actb_line', GeneExpProcessing._SignalFile_Impute, ActbPlot,
         Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
         Constraint("missing_values", MUST_BE, 'no'),
@@ -309,14 +309,14 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
         help="plot actb line"),
-    Module(
+    ModuleNode(
         'plot_affy_affx_line', GeneExpProcessing.SignalFile, ControlPlot,
         Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="plot affy affx line"),
-    Module(
+    ModuleNode(
         'plot_illu_hyb_bar', ControlFile, Hyb_barPlot,
         Constraint("preprocess", MUST_BE, "illumina"),
         Constraint("format", MUST_BE, "gct"),
@@ -324,7 +324,7 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="plot illumina affx line"),
-    Module(
+    ModuleNode(
         'plot_illu_biotin_line', ControlFile, BiotinPlot,
         Constraint("preprocess", MUST_BE, 'illumina'),
         Constraint("format", MUST_BE, "gct"),
@@ -332,7 +332,7 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="plot illumina biotin line"),
-    Module(
+    ModuleNode(
         'plot_illu_housekeeping_line', ControlFile, HousekeepingPlot,
         Constraint("preprocess", MUST_BE, 'illumina'),
         Constraint("format", MUST_BE, "gct"),

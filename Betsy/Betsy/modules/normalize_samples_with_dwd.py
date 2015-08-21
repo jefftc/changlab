@@ -1,66 +1,55 @@
-#normalize_samples_with_dwd.py
+from Module import AbstractModule
 
-import os
-from genomicode import dwdnorm
-import arrayio
-from Betsy import bie3
-from Betsy import rulebase
-from Betsy import module_utils, read_label_file
+class Module(AbstractModule):
+    def __init__(self):
+        AbstractModule.__init__(self)
 
-
-def run(network, antecedents, out_attributes, user_options, num_cores):
-    data_node, cls_node = antecedents
-    if data_node and cls_node:
-        outfile = name_outfile(antecedents, user_options)
-        M = arrayio.read(data_node.identifier)
-        result, label_line, second_line = read_label_file.read(
-            cls_node.identifier)
-        assert len(result) == 2, 'for dwd,there should be only 2 classes'
-        assert [i in ['0', '1']
-                for i in label_line] == [True] * len(label_line), (
-                    'the label of class shoul be 0 and 1'
-                )
-        y = [i.replace('0', '-1') for i in label_line]
-        M_y = dwdnorm.normalize(M, y)
-        f = file(outfile, 'w')
-        arrayio.tab_delimited_format.write(M_y, f)
-        f.close()
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for dwd fails' % outfile
-        )
-        new_parameters = out_attributes.copy()
-        out_node = bie3.Data(rulebase._SignalFile_Merge, **out_attributes)
-        out_object = module_utils.DataObject(out_node, outfile)
-        return out_object
-    return False
-
-
-def find_antecedents(network, module_id, out_attributes, user_attributes,
-                     pool):
-    filter1 = module_utils.AntecedentFilter(datatype_name='_SignalFile_Merge')
-    filter2 = module_utils.AntecedentFilter(datatype_name='ClassLabelFile')
-    x = module_utils.find_antecedents(
-        network, module_id, user_attributes, pool, filter1, filter2)
-    return x
+    def run(
+        self, network, antecedents, out_attributes, user_options, num_cores,
+        outfile):
+        from genomicode import dwdnorm
+        import arrayio
+        from Betsy import read_label_file
+        from Betsy import module_utils
+        data_node, cls_node = antecedents
+        # BUG: What happens if no antecedents?
+        if data_node and cls_node:
+            M = arrayio.read(data_node.identifier)
+            result, label_line, second_line = read_label_file.read(
+                cls_node.identifier)
+            assert len(result) == 2, 'for dwd,there should be only 2 classes'
+            assert [i in ['0', '1']
+                    for i in label_line] == [True] * len(label_line), (
+                        'the label of class shoul be 0 and 1'
+                    )
+            y = [i.replace('0', '-1') for i in label_line]
+            M_y = dwdnorm.normalize(M, y)
+            f = file(outfile, 'w')
+            arrayio.tab_delimited_format.write(M_y, f)
+            f.close()
+            assert module_utils.exists_nz(outfile), (
+                'the output file %s for dwd fails' % outfile
+            )
+            #new_parameters = out_attributes.copy()
+        #return False
 
 
-def name_outfile(antecedents, user_options):
-    data_node, cls_node = antecedents
-    original_file = module_utils.get_inputid(data_node.identifier)
-    filename = 'signal_dwd_' + original_file + '.tdf'
-    outfile = os.path.join(os.getcwd(), filename)
-    return outfile
+    def name_outfile(self, antecedents, user_options):
+        from Betsy import module_utils
+        data_node, cls_node = antecedents
+        original_file = module_utils.get_inputid(data_node.identifier)
+        filename = 'signal_dwd_' + original_file + '.tdf'
+        return filename
 
+    def set_out_attributes(self, antecedents, out_attributes):
+        data_node, cls_node = antecedents
+        new_parameters = data_node.data.attributes.copy()
+        new_parameters['dwd_norm'] = 'yes'
+        return new_parameters
 
-def set_out_attributes(antecedents, out_attributes):
-    data_node, cls_node = antecedents
-    new_parameters = data_node.data.attributes.copy()
-    new_parameters['dwd_norm'] = 'yes'
-    return new_parameters
-
-
-def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
-    data_node, cls_node = antecedents
-    identifier = data_node.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
-                                         user_options)
+    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
+        from Betsy import module_utils
+        data_node, cls_node = antecedents
+        identifier = data_node.identifier
+        return module_utils.hash_input(
+            identifier, pipeline, out_attributes, user_options)

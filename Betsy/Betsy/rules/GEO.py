@@ -37,7 +37,7 @@ list_files = [
     ]
 
 all_modules = [
-    Module(
+    ModuleNode(
         "download_geo_seriesmatrix", GEOSeries, GEOSeriesMatrixFile,
         OptionDef("GSEID"),
         OptionDef("GPLID", default=""),
@@ -45,14 +45,14 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="Download SeriesMatrix file from GEO."
         ),
-    Module(
+    ModuleNode(
         'download_GEO_family_soft', GEOSeries, GEOFamilySoftFile,
         OptionDef("GSEID", help='GSEID for download family_soft file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="download geo family soft file"),
 
-    Module(
+    ModuleNode(
         "download_geo_supplement", GEOSeries, BDT.ExpressionFiles,
         OptionDef("GSEID"),
         OptionDef("GPLID", default=""),
@@ -62,7 +62,7 @@ all_modules = [
         help="Download the supplemental expression files from GEO.",
         ),
 
-    #Module(
+    #ModuleNode(
     #    "acquire_geo_expression_files",
     #    [BDT.ExpressionFiles, GEOSeriesMatrixFile],
     #    BDT.ExpressionFiles,
@@ -75,7 +75,7 @@ all_modules = [
     #    help="Download from GEO the expression files of a specific type.",
     #    ),
     
-    Module(
+    ModuleNode(
         "identify_type_of_expression_files",
         BDT.ExpressionFiles, BDT.ExpressionFiles,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
@@ -86,13 +86,13 @@ all_modules = [
         help="Identify the type of expression files in a folder.",
         ),
 
-    Module(
+    ModuleNode(
         "get_geo_sample_metadata", GEOSeriesMatrixFile, GEOSampleMetadata,
         OptionDef("set_NA_to", "NA", help='Convert "NA" to another value.'),
         help="Get the metadata for the samples for a GEO data set.",
         ),
 
-    Module(
+    ModuleNode(
         'convert_family_soft_to_rename', GEOFamilySoftFile, BDT.RenameFile,
         OptionDef("GSEID", help='GSEID for download family_soft file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),

@@ -19,7 +19,7 @@ BatchEffectReportFile = DataType(
 list_files = [NormalizeReportFile,BatchEffectReportFile]
 all_modules = [
     
-    Module(
+    ModuleNode(
         'make_normalize_report',
         [
             GeneExpProcessing.SignalFile,
@@ -101,7 +101,7 @@ all_modules = [
         help="make normalize report for mas5,agilent,loess,unknown,tcga,rsem"
         ),
     
-    Module(
+    ModuleNode(
         'make_normalize_report_rma',
         [
             GeneExpProcessing.SignalFile,
@@ -179,7 +179,7 @@ all_modules = [
         help="make normalize report for rma"
         ),
     
-    Module(
+    ModuleNode(
         'make_normalize_report_illumina',
         [
             GeneExpProcessing.SignalFile,
@@ -263,7 +263,7 @@ all_modules = [
         Consequence('preprocess',SAME_AS_CONSTRAINT),
         help="make normalize report for illumina"),
     
-    Module(
+    ModuleNode(
         'make_batch_effect_report',
         [
             GeneExpProcessing.SignalFile,
@@ -314,7 +314,7 @@ all_modules = [
         
         help="make batch effect remove report",
         ),
-    Module('convert_normalize_report_preprocess',
+    ModuleNode('convert_normalize_report_preprocess',
            NormalizeReportFile,NormalizeReportFile,
            Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
            Consequence("preprocess", SET_TO,'any'),

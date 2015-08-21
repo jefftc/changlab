@@ -1,50 +1,38 @@
-#check_for_missing.py
-import os
-import shutil
-from Betsy import module_utils
-from genomicode import binreg
-from Betsy import bie3
-from Betsy import rulebase
+from Module import AbstractModule
+
+class Module(AbstractModule):
+    def __init__(self):
+        AbstractModule.__init__(self)
+
+    def run(
+        self, network, antecedents, out_attributes, user_options, num_cores,
+        outfile):
+        """log the input file"""
+        import shutil
+        from Betsy import module_utils
+        in_data = antecedents
+        #out_attributes = set_out_attributes(in_data, out_attributes)
+        shutil.copyfile(in_data.identifier, outfile)
+        assert module_utils.exists_nz(outfile), (
+            'the output file %s for check_for_missing fails' % outfile
+        )
 
 
-def run(network, antecedents, out_attributes, user_options, num_cores):
-    """log the input file"""
-    in_data = antecedents
-    out_attributes = set_out_attributes(in_data, out_attributes)
-    outfile = name_outfile(in_data, user_options)
-    shutil.copyfile(in_data.identifier, outfile)
-    assert module_utils.exists_nz(outfile), (
-        'the output file %s for check_for_missing fails' % outfile
-    )
-    out_node = bie3.Data(rulebase._SignalFile_Impute, **out_attributes)
-    out_object = module_utils.DataObject(out_node, outfile)
-    return out_object
+    def name_outfile(self, antecedents, user_options):
+        from Betsy import module_utils
+        original_file = module_utils.get_inputid(antecedents.identifier)
+        filename = 'signal_missing_' + original_file + '.tdf'
+        return filename
+
+    def set_out_attributes(self, antecedents, out_attributes):
+        from Betsy import module_utils
+        new_parameters = out_attributes.copy()
+        if module_utils.is_missing(antecedents.identifier):
+            new_parameters['missing_values'] = 'yes'
+        else:
+            new_parameters['missing_values'] = 'no'
+        
+        return new_parameters
 
 
-def name_outfile(antecedents, user_options):
-    original_file = module_utils.get_inputid(antecedents.identifier)
-    filename = 'signal_missing_' + original_file + '.tdf'
-    outfile = os.path.join(os.getcwd(), filename)
-    return outfile
 
-
-def set_out_attributes(antecedents, out_attributes):
-    new_parameters = out_attributes.copy()
-    if module_utils.is_missing(antecedents.identifier):
-        new_parameters['missing_values'] = 'yes'
-    else:
-        new_parameters['missing_values'] = 'no'
-    return new_parameters
-
-
-def make_unique_hash(pipeline, antecedents, out_attributes, user_options):
-    identifier = antecedents.identifier
-    return module_utils.make_unique_hash(identifier, pipeline, out_attributes,
-                                         user_options)
-
-
-def find_antecedents(network, module_id, out_attributes, user_attributes,
-                     pool):
-    data_node = module_utils.find_antecedents(network, module_id, user_attributes,
-                                            pool)
-    return data_node

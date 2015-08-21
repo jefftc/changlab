@@ -30,7 +30,7 @@ list_files = [
     ]
 
 all_modules = [
-    Module(
+    ModuleNode(
         'download_tcga', TCGAID, TCGAFile,
         OptionDef("disease", help="tcga disease type"),
         OptionDef("date", "", help="date for tcga disease"),
@@ -43,7 +43,7 @@ all_modules = [
         Consequence("tumor_only", SET_TO, 'no'),
         help="download data from tcga website according to TCGAID"),
     
-    Module(
+    ModuleNode(
         'download_tcga_agilent', TCGAID, TCGAFile,
         OptionDef("disease", help="tcga disease type"),
         OptionDef("date", "", help="date for tcga disease"),
@@ -53,7 +53,7 @@ all_modules = [
         Consequence("tumor_only", SET_TO, 'no'),
         help="download agilent data from tcga website according to TCGAID"),
     
-    Module(
+    ModuleNode(
         'download_tcga_affymetrix', TCGAID, TCGAFile,
         OptionDef("disease", help="tcga disease type"),
         OptionDef("date", "", help="date for tcga disease"),
@@ -63,7 +63,7 @@ all_modules = [
         Consequence("tumor_only", SET_TO, 'no'),
         help="download affymetrix data from tcga website according to TCGAID"),
 
-    Module(
+    ModuleNode(
         'select_tumor_only', TCGAFile, TCGAFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
@@ -71,7 +71,7 @@ all_modules = [
         Consequence("tumor_only", SET_TO, 'yes'),
         help="select the tumor sample only in the TCGAFile"),
     
-    Module(
+    ModuleNode(
         'preprocess_tcga', TCGAFile, GEP._SignalFile_Postprocess,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("tumor_only", MUST_BE, 'yes'),

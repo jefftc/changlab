@@ -3,7 +3,7 @@
 #from Betsy.bie_rules import GeneExpProcessing,ArrayPlatforms,Clustering,Classification,GOAnalysis,PcaAnalysis,BasicDataTypes
 #from Betsy.bie_rules import GeneExpSignature, DiffExp,GSEAAnalysis,ClinicalOutcomes,Heatmap
 
-from Betsy.bie3 import DataType, Module, Constraint
+from Betsy.bie3 import DataType, ModuleNode, Constraint
 from Betsy.bie3 import MUST_BE
 
 from Betsy.rules import GeneExpSignature
@@ -32,7 +32,7 @@ list_files = [NetworkFile,NetworkFile_Test]
                                   
 all_modules = [
 
-    Module('group_all_module_2mintues',
+    ModuleNode('group_all_module_2mintues',
            [GeneExpProcessing.SignalFile,#0
             GeneExpProcessing.SignalFile,#1
             GeneExpProcessing.SignalFile,#2
@@ -69,7 +69,7 @@ all_modules = [
             Constraint('gene_order', MUST_BE, 't_test_p', 2),
             Constraint('gene_order', MUST_BE, 'diff_ttest', 3),
             Constraint('duplicate_probe',MUST_BE,'closest_probe',2),),
-    Module('group_all_module',
+    ModuleNode('group_all_module',
            [GeneExpProcessing.SignalFile,#0
             GeneExpProcessing.SignalFile,#1
             GeneExpProcessing.SignalFile,#2

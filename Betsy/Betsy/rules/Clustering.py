@@ -22,7 +22,7 @@ ClusterReportFile = DataType(
 list_files = [ClusterFile,ClusterReportFile]
 
 all_modules = [
-    Module(
+    ModuleNode(
         'cluster_genes_by_som',
         GeneExpProcessing.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'som'),
@@ -31,7 +31,7 @@ all_modules = [
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="cluster genes by som method"
         ),
-    Module(
+    ModuleNode(
         'cluster_genes_by_pca',
         GeneExpProcessing.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'pca'),
@@ -39,7 +39,7 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="cluster genes by pca method"),
-    Module(
+    ModuleNode(
         'cluster_genes_by_kmeans',
          GeneExpProcessing.SignalFile,ClusterFile,
         OptionDef("k_value",5,help='k value for k means'),
@@ -48,7 +48,7 @@ all_modules = [
         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS),
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="cluster genes by kmeans method"),
-    Module(
+    ModuleNode(
         'cluster_genes_by_hierarchical',
         GeneExpProcessing.SignalFile,ClusterFile,
         Consequence("cluster_alg",SET_TO,'hierarchical'),
@@ -58,7 +58,7 @@ all_modules = [
         help="cluster genes by hierarchical method"
         ),
    
-    Module(
+    ModuleNode(
         'plot_cluster_heatmap',
         ClusterFile,Heatmap.Heatmap,
         OptionDef('hm_width',20,help="width in heatmap plot"),
@@ -70,7 +70,7 @@ all_modules = [
         Consequence("contents",SAME_AS_CONSTRAINT),
         Consequence("distance",SAME_AS_CONSTRAINT),
         help="plot heatmap for cluster file"),
-    Module(
+    ModuleNode(
         'make_cluster_report',
         [ClusterFile,
          Heatmap.Heatmap],ClusterReportFile,

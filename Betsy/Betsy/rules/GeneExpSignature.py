@@ -52,7 +52,7 @@ list_files = [GenesetAnalysis,GenesetPlot,GenesetFile,SignatureScore,
               GenesetReportFile,ScoreCompareReportFile,ScoreComparePlot]
 
 all_modules = [
-    Module(
+    ModuleNode(
         'score_pathway_with_geneset',
         [GenesetFile,
          GeneExpProcessing.SignalFile],GenesetAnalysis,
@@ -69,7 +69,7 @@ all_modules = [
          Consequence("contents",SAME_AS_CONSTRAINT,0),
          help="score pathway with geneset"
         ),
-    Module(
+    ModuleNode(
         'score_pathway_with_geneset_all',
         [GenesetFile,
          GeneExpProcessing.SignalFile],GenesetAnalysis,
@@ -86,7 +86,7 @@ all_modules = [
          help="score pathway with all the geneset"
          ),
     
-    Module(
+    ModuleNode(
         'plot_geneset_score_bar',
         GenesetAnalysis,GenesetPlot,
         Constraint("allgenes",CAN_BE_ANY_OF,['yes','no']),
@@ -97,7 +97,7 @@ all_modules = [
         Consequence("contents",SAME_AS_CONSTRAINT),
         help="plot geneset analysis file to bar plot"
         ),
-    Module(
+    ModuleNode(
         'score_pathway_with_scoresig_affymetrix',
         [GeneExpProcessing.SignalFile,GeneExpProcessing.SignalFile],SignatureScore,
         Constraint("format",MUST_BE,'tdf',0),
@@ -117,7 +117,7 @@ all_modules = [
         Consequence('preprocess',SET_TO,'rma'),
         help="score pathway iwth scoresig method for affymetrix"
         ),
-     Module(
+     ModuleNode(
         'score_pathway_with_scoresig',
         GeneExpProcessing.SignalFile,SignatureScore,
         Constraint("format",MUST_BE,'tdf'),
@@ -131,24 +131,24 @@ all_modules = [
         Consequence('preprocess',SAME_AS_CONSTRAINT),
         help="score pathway iwth scoresig method"
         ),
-    Module('convert_SignatureScore_preprocess',
+    ModuleNode('convert_SignatureScore_preprocess',
            SignatureScore,SignatureScore,
            Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
            Consequence("preprocess", SET_TO,'any'),
            help='convert SignatureScore preprocess from others to any'),
-##    Module(
+##    ModuleNode(
 ##        'make_geneset_report',
 ##        [GenesetAnalysis,
 ##         GenesetPlot],GenesetReportFile,
 ##        help="make geneset report"),
-    Module(
+    ModuleNode(
         'make_score_signature_report',
         [GenesetAnalysis,
          GenesetPlot,
          SignatureScore],GenesetReportFile,
         help="make signature report"),
     
-    Module('compare_signature_predictions',
+    ModuleNode('compare_signature_predictions',
            [SignatureScore,SignatureScore,SignatureScore],ScoreCompareReportFile,
            Constraint("preprocess", MUST_BE,'RSEM_genes',0),
            Constraint("preprocess", MUST_BE,'agilent',1),
@@ -156,7 +156,7 @@ all_modules = [
            
            help='compare three SignatureScore'),
 
-    Module('plot_signature_predictions_comparison',
+    ModuleNode('plot_signature_predictions_comparison',
            ScoreCompareReportFile,ScoreComparePlot,
            help='plot the SignatureScore comparison'),
     ]

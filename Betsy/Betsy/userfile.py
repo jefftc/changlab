@@ -31,14 +31,14 @@ def _make_user_path(username):
 
 def _hash_storefile(username, filename):
     import os
-    import hash_method
+    from Betsy import bhashlib
     
     assert '___' not in username
     assert '___' not in filename
     assert '__' not in filename
 
     file_length = os.path.getsize(filename)
-    checksum = hash_method.get_input_checksum(filename)
+    checksum = bhashlib.checksum_file_or_path(filename)
 
     x = filename.replace("/", "__")
     # Put the file at the end to preserve the file extension.
