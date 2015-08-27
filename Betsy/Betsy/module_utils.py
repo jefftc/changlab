@@ -1,12 +1,10 @@
 """
 Objects:
 IdentifiedDataNode
-AntecedentFilter
 
 Functions:
 
 # Network and Nodes
-find_antecedents
 get_inputid
 high_light_path     Does something to network.
 
@@ -60,110 +58,109 @@ class IdentifiedDataNode:
         return x
 
 
-# TODO: don't make contents hard coded.
-class AntecedentFilter:
-    def __init__(self, datatype_name=None, contents=None, **attributes):
-        self.datatype_name = datatype_name
-        self.contents = contents
-        self.attributes = attributes
-        self.mismatch_reason = None
-    def matches_node(self, node):
-        if self.datatype_name and self.datatype_name != node.datatype.name:
-            self.mismatch_reason = "datatype_name"
-            return False
-        if self.contents and node.attributes.get("contents") != self.contents:
-            self.mismatch_reason = "contents"
-            return False
-        for (key, value) in self.attributes.iteritems():
-            if node.attributes.get(key) != value:
-                self.mismatch_reason = "attributes: %s" % key
-                return False
-        self.mismatch_reason = None
-        return True
-    def __str__(self):
-        return self.__repr__()
-    def __repr__(self):
-        x = [self.datatype_name, repr(self.contents)]
-        for name, value in self.attributes.iteritems():
-            # Bug: strings should be hashed.
-            x.append("%s=%s" % (name, value))
-        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
-        return x
+## class AntecedentFilter:
+##     def __init__(self, datatype_name=None, contents=None, **attributes):
+##         self.datatype_name = datatype_name
+##         self.contents = contents
+##         self.attributes = attributes
+##         self.mismatch_reason = None
+##     def matches_node(self, node):
+##         if self.datatype_name and self.datatype_name != node.datatype.name:
+##             self.mismatch_reason = "datatype_name"
+##             return False
+##         if self.contents and node.attributes.get("contents") != self.contents:
+##             self.mismatch_reason = "contents"
+##             return False
+##         for (key, value) in self.attributes.iteritems():
+##             if node.attributes.get(key) != value:
+##                 self.mismatch_reason = "attributes: %s" % key
+##                 return False
+##         self.mismatch_reason = None
+##         return True
+##     def __str__(self):
+##         return self.__repr__()
+##     def __repr__(self):
+##         x = [self.datatype_name, repr(self.contents)]
+##         for name, value in self.attributes.iteritems():
+##             # Bug: strings should be hashed.
+##             x.append("%s=%s" % (name, value))
+##         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+##         return x
 
 
-def _find_ids_that_pass_filters(network, node_ids, filters):
-    # For each of the filters, pick out one of the nodes.  Return a
-    # list of nodes parallel to filters, or None if not found
+## def _find_ids_that_pass_filters(network, node_ids, filters):
+##     # For each of the filters, pick out one of the nodes.  Return a
+##     # list of nodes parallel to filters, or None if not found
 
-    matches = []
-    for f in filters:
-        for id_ in node_ids:
-            if id_ in matches:  # don't reuse nodes
-                continue
-            if f.matches_node(network.nodes[id_]):
-                matches.append(id_)
-                break
-        else:
-            return None
-    assert len(matches) == len(filters)
-    return matches
+##     matches = []
+##     for f in filters:
+##         for id_ in node_ids:
+##             if id_ in matches:  # don't reuse nodes
+##                 continue
+##             if f.matches_node(network.nodes[id_]):
+##                 matches.append(id_)
+##                 break
+##         else:
+##             return None
+##     assert len(matches) == len(filters)
+##     return matches
 
 
-def find_antecedents(network, module_id, user_attributes, pool, *filters):
-    # filters should be AntecedentFilter objects.  Return either a
-    # IdentifiedDataNode (if 0 or 1 filters), or a list of
-    # IdentifiedDataNodes parallel to filters.  Raises an exception if
-    # no antecedents could be found.
-    import os
-    import bie3
+## def find_antecedents(network, module_id, user_attributes, pool, *filters):
+##     # filters should be AntecedentFilter objects.  Return either a
+##     # IdentifiedDataNode (if 0 or 1 filters), or a list of
+##     # IdentifiedDataNodes parallel to filters.  Raises an exception if
+##     # no antecedents could be found.
+##     import os
+##     import bie3
 
-    module_name = network.nodes[module_id].name
+##     module_name = network.nodes[module_id].name
 
-    # Make a list of every possible combination of inputs that goes
-    # into this module.
-    prev_ids = []
-    for id_ in network.transitions:
-        if module_id in network.transitions[id_]:
-            prev_ids.append(id_)
-    all_input_ids = bie3._get_valid_input_combinations(
-        network, module_id, prev_ids, user_attributes)
+##     # Make a list of every possible combination of inputs that goes
+##     # into this module.
+##     prev_ids = []
+##     for id_ in network.transitions:
+##         if module_id in network.transitions[id_]:
+##             prev_ids.append(id_)
+##     all_input_ids = bie3._get_valid_input_combinations(
+##         network, module_id, prev_ids, user_attributes)
 
-    # Filter for just the combinations in which all input nodes have
-    # been run.
-    filtered = []
-    for input_ids in all_input_ids:
-        # If not all the input nodes have been run, then ignore this
-        # combination.
-        x = [x for x in input_ids if x in pool]
-        if len(x) != len(input_ids):
-            continue
-        filtered.append(x)
-    all_input_ids = filtered
+##     # Filter for just the combinations in which all input nodes have
+##     # been run.
+##     filtered = []
+##     for input_ids in all_input_ids:
+##         # If not all the input nodes have been run, then ignore this
+##         # combination.
+##         x = [x for x in input_ids if x in pool]
+##         if len(x) != len(input_ids):
+##             continue
+##         filtered.append(x)
+##     all_input_ids = filtered
 
-    # Filter based on the user criteria.
-    ids = None
-    if not filters:
-        # If no filters given, then just return the first id found.
-        assert all_input_ids
-        assert all_input_ids[0]
-        ids = [all_input_ids[0][0]]
-    else:
-        for input_ids in all_input_ids:
-            ids = _find_ids_that_pass_filters(network, input_ids, filters)
-            if ids is not None:
-                break
-    assert ids, "antecedents not found: %s" % module_name
-    for id_ in ids:
-        if not pool[id_].identifier:
-            continue
-        assert os.path.exists(pool[id_].identifier), (
-            "File not found: %s" % pool[id_].identifier)
-    objs = [pool[x] for x in ids]
-    assert not filters or len(objs) == len(filters)
-    # Return a single IdentifiedDataNode if 0 or 1 filters given.
-    if len(objs) <= 1:
-        objs = objs[0]
-    return objs
+##     # Filter based on the user criteria.
+##     ids = None
+##     if not filters:
+##         # If no filters given, then just return the first id found.
+##         assert all_input_ids
+##         assert all_input_ids[0]
+##         ids = [all_input_ids[0][0]]
+##     else:
+##         for input_ids in all_input_ids:
+##             ids = _find_ids_that_pass_filters(network, input_ids, filters)
+##             if ids is not None:
+##                 break
+##     assert ids, "antecedents not found: %s" % module_name
+##     for id_ in ids:
+##         if not pool[id_].identifier:
+##             continue
+##         assert os.path.exists(pool[id_].identifier), (
+##             "File not found: %s" % pool[id_].identifier)
+##     objs = [pool[x] for x in ids]
+##     assert not filters or len(objs) == len(filters)
+##     # Return a single IdentifiedDataNode if 0 or 1 filters given.
+##     if len(objs) <= 1:
+##         objs = objs[0]
+##     return objs
 
 
 ## def get_identifier(
@@ -242,6 +239,10 @@ def find_antecedents(network, module_id, user_attributes, pool, *filters):
 def get_inputid(identifier):
     import os
 
+    # identifier is in format:
+    # <data type>_<file>.<ext>
+    # class_label_<user_given_name>.cls
+    # Pull out just the <user_given_name>.
     x = identifier
     x = os.path.split(x)[-1]     # get file (no path)
     x = os.path.splitext(x)[-2]  # get base name (no extension)
@@ -251,8 +252,6 @@ def get_inputid(identifier):
     #old_filename_no_ext = os.path.splitext(old_filename)[-2]
     #inputid = old_filename_no_ext.split('_')[-1]
     #return inputid
-
-
 
 
 # Why is this here?  And why is rma hard coded?
@@ -269,36 +268,20 @@ def find_pcaplots(network, pool, module_id, rma=False):
             assert os.path.exists(node.identifier), (
                 'the input file %s for %s does not exist' %
                 (node.identifier, network.nodes[module_id].name))
-            if not rma:
-                if (node.data.attributes['quantile_norm'] == 'no' and
-                    node.data.attributes['combat_norm'] == 'no' and
-                    node.data.attributes['shiftscale_norm'] == 'no' and
-                    node.data.attributes['bfrm_norm'] == 'no' and
-                    node.data.attributes['dwd_norm'] == 'no' and
-                    node.data.attributes['gene_center'] == 'no' and
-                    node.data.attributes['gene_normalize'] == 'no' and
-                    node.data.attributes['unique_genes'] == 'no' and
-                    node.data.attributes['platform'] == 'no' and
-                    node.data.attributes['duplicate_probe'] == 'no' and
-                    node.data.attributes['group_fc'] == 'no'):
-                    before_pcaplot = node
-                else:
-                    after_pcaplot = node
+            if (node.data.attributes['quantile_norm'] == 'no' and
+                node.data.attributes['combat_norm'] == 'no' and
+                node.data.attributes['shiftscale_norm'] == 'no' and
+                node.data.attributes['bfrm_norm'] == 'no' and
+                node.data.attributes['dwd_norm'] == 'no' and
+                node.data.attributes['gene_center'] == 'no' and
+                node.data.attributes['gene_normalize'] == 'no' and
+                node.data.attributes['unique_genes'] == 'no' and
+                node.data.attributes['platform'] == 'no' and
+                node.data.attributes['duplicate_probe'] == 'no' and
+                node.data.attributes['group_fc'] == 'no'):
+                before_pcaplot = node
             else:
-                if (node.data.attributes['quantile_norm'] == 'yes' and
-                    node.data.attributes['combat_norm'] == 'no' and
-                    node.data.attributes['shiftscale_norm'] == 'no' and
-                    node.data.attributes['bfrm_norm'] == 'no' and
-                    node.data.attributes['dwd_norm'] == 'no' and
-                    node.data.attributes['gene_center'] == 'no' and
-                    node.data.attributes['gene_normalize'] == 'no' and
-                    node.data.attributes['unique_genes'] == 'no' and
-                    node.data.attributes['platform'] == 'no' and
-                    node.data.attributes['duplicate_probe'] == 'no' and
-                    node.data.attributes['group_fc'] == 'no'):
-                    before_pcaplot = node
-                else:
-                    after_pcaplot = node
+                after_pcaplot = node
         if not after_pcaplot:
             after_pcaplot = before_pcaplot
     return before_pcaplot, after_pcaplot
@@ -387,8 +370,8 @@ def format_convert(X):
     return data
 
 
-def write_Betsy_report_parameters_file(inputs, outfile, starttime, user,
-                                       job_name):
+def write_Betsy_report_parameters_file(
+    inputs, outfile, starttime, user, job_name):
     import os
     import json
     import time
@@ -674,6 +657,8 @@ def convert_gene_list_platform(genes, platform):
 
 def convert_to_same_platform(filename1, filename2, platform=None):
     import arrayio
+    import subprocess
+    from genomicode import config
     from genomicode import arrayplatformlib
 
     M1 = arrayio.read(filename1)
@@ -682,33 +667,32 @@ def convert_to_same_platform(filename1, filename2, platform=None):
     platform2 = arrayplatformlib.identify_platform_of_matrix(M2)
     if platform1 == platform2:
         return filename1, filename2
-    else:
-        import subprocess
-        from genomicode import config
-        Annot_path = config.annotate_matrix
-        Annot_BIN = which(Annot_path)
-        assert Annot_BIN, 'cannot find the %s' % Annot_path
-        if platform1 == platform:
-            filename = filename2
-            newfilename1 = filename1
-            newfilename2 = 'tmp'
-        elif platform2 == platform:
-            filename = filename1
-            newfilename1 = 'tmp'
-            newfilename2 = filename2
-        if platform:
-            command = ['python', Annot_BIN, '-f', filename, '-o', 'tmp',
-                       "--platform", platform]
-            process = subprocess.Popen(command,
-                                       shell=False,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            error_message = process.communicate()[1]
-            if error_message:
-                raise ValueError(error_message)
-            #assert module_utils.exists_nz('tmp'), (
-            #    'the platform conversion fails')
-            assert exists_nz('tmp'), 'the platform conversion fails'
+
+    Annot_path = config.annotate_matrix
+    Annot_BIN = which(Annot_path)
+    assert Annot_BIN, 'cannot find the %s' % Annot_path
+    if platform1 == platform:
+        filename = filename2
+        newfilename1 = filename1
+        newfilename2 = 'tmp'
+    elif platform2 == platform:
+        filename = filename1
+        newfilename1 = 'tmp'
+        newfilename2 = filename2
+        
+    if platform:
+        command = [
+            'python', Annot_BIN, '-f', filename, '-o', 'tmp',
+            "--platform", platform]
+        process = subprocess.Popen(
+            command, shell=False, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        error_message = process.communicate()[1]
+        if error_message:
+            raise ValueError(error_message)
+        #assert module_utils.exists_nz('tmp'), (
+        #    'the platform conversion fails')
+        assert exists_nz('tmp'), 'the platform conversion fails'
     return newfilename1, newfilename2
 
 

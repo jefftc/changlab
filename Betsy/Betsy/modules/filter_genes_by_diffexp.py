@@ -9,6 +9,9 @@ class Module(AbstractModule):
         outfile):
         import math
         from Betsy import module_utils
+
+        raise NotImplementedError, "Changed a lot"
+
         in_data = antecedents
         foldchange = None
         p_value = None
@@ -74,8 +77,6 @@ class Module(AbstractModule):
                     new_gene_list.append(index)
             gene_list = new_gene_list
 
-    
-        
         gene_index = headers.index('Gene ID')
         gene_list_name = [text[i].split('\t')[gene_index] for i in gene_list]
 
@@ -83,19 +84,10 @@ class Module(AbstractModule):
         f.write('\t'.join(gene_list_name))
         f.close()
         assert len(gene_list_name) > 0, 'there is no genes can be found'
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for generate_genelist_from_diffexprfile fails' % outfile
-        )
 
 
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'gene_list' + original_file + '.txt'
-        return filename
-
-
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        return module_utils.hash_input(
-            antecedents.identifier, pipeline, out_attributes, user_options)
+        signal_node, de_node = antecedents
+        original_file = module_utils.get_inputid(signal_node.identifier)
+        return 'gene_list_' + original_file + '.txt'

@@ -94,18 +94,6 @@ class Module(AbstractModule):
         )
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', contents="class0,class1")
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='ClassLabelFile', contents="class0,class1")
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2)
-        return x
-
-
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
         data_node, cls_node = antecedents
@@ -114,9 +102,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, cls_node = antecedents
-        identifier = data_node.identifier
-        return module_utils.hash_input(identifier, pipeline, out_attributes,
-                                             user_options)
+    

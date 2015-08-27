@@ -1,5 +1,5 @@
-#Classification
 from Betsy.bie3 import *
+import BasicDataTypes as BDT
 import GeneExpProcessing
 import PcaAnalysis
 
@@ -62,7 +62,7 @@ SvmModel = DataType(
 ClassifyReportFile = DataType(
     'ClassifyReportFile', help="Report file for Classify report")
 
-list_files = [
+all_data_types = [
     ClassifyFile,
     SvmModel,
     PredictionPCAPlot,
@@ -84,12 +84,9 @@ all_modules = [
         Consequence('contents', SET_TO, "class0,class1,test"),
         Consequence('format', SAME_AS_CONSTRAINT, 0),
         Consequence('logged', SAME_AS_CONSTRAINT, 0),
-        Constraint(
-            'gene_order', CAN_BE_ANY_OF,
-            ["no", "class_neighbors", "gene_list", "t_test_p", "t_test_fdr",
-             'diff_ttest', 'diff_sam', 'diff_ebayes', 'diff_fold_change'],
-            0),
-        Constraint('gene_order', MUST_BE, "no", 1),
+        # XXX why gene_order weirdness?
+        Constraint('gene_order', CAN_BE_ANY_OF, BDT.GENE_ORDER, 0),
+        Constraint('gene_order', MUST_BE, "none", 1),
         Consequence('gene_order', SAME_AS_CONSTRAINT, 0),
         Constraint('num_features', CAN_BE_ANY_OF, ["no", "yes"], 0),
         Constraint('num_features', MUST_BE, "no", 1),
@@ -110,7 +107,6 @@ all_modules = [
             'wv_minstd', 1,
             help="minstd for weighted voting"),
         Constraint('contents', MUST_BE, 'class0,class1', 0),
-        Constraint('cls_format', MUST_BE, 'cls', 0),
         Constraint("contents", MUST_BE, 'test', 1),
         Constraint("format", MUST_BE, 'gct', 1),
         Constraint("contents", MUST_BE, 'class0,class1', 2),
@@ -132,7 +128,6 @@ all_modules = [
         ClassifyFile,
         
         Constraint("contents", MUST_BE, 'class0,class1', 0),
-        Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("contents", MUST_BE, 'class0,class1,test', 1),
         Constraint("format", MUST_BE, 'gct', 1),
         #Constraint("logged",MUST_BE,'yes',1),
@@ -152,7 +147,6 @@ all_modules = [
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         SvmModel,
         Constraint("contents", MUST_BE, 'class0,class1', 0),
-        Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("contents", MUST_BE, 'class0,class1,test', 1),
         Constraint("format", MUST_BE, 'gct', 1),
         #Constraint("logged",MUST_BE,'yes',1),
@@ -167,9 +161,9 @@ all_modules = [
          SvmModel],
         ClassifyFile,
         Constraint("contents", MUST_BE, 'class0,class1', 0),
-        Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("contents", MUST_BE, 'class0,class1,test', 1),
         Constraint("format", MUST_BE, 'gct', 1),
+        
         Constraint("classify_alg", MUST_BE, 'svm', 2),
         Constraint(
             "svm_kernel", CAN_BE_ANY_OF,
@@ -193,7 +187,6 @@ all_modules = [
         OptionDef(
             'wv_minstd', 1, help="minstd for weighted voting"),
         Constraint("contents", MUST_BE, 'class0,class1', 0),
-        Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("contents", MUST_BE, 'class0,class1', 1),
         Constraint("format", MUST_BE, 'gct', 1),
         #Constraint("logged",MUST_BE,'yes',1),
@@ -214,7 +207,6 @@ all_modules = [
         [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
         ClassifyFile,
         Constraint('contents', MUST_BE, 'class0,class1', 0),
-        Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("contents", MUST_BE, 'class0,class1', 1),
         Constraint("format", MUST_BE, 'gct', 1),
         #Constraint("logged",MUST_BE,'yes',1),
@@ -236,7 +228,6 @@ all_modules = [
         ClassifyFile,
         
         Constraint('contents', MUST_BE, 'class0,class1', 0),
-        Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("contents", MUST_BE, 'class0,class1', 1),
         Constraint("format", MUST_BE, 'gct', 1),
         #Constraint("logged",MUST_BE,'yes',1),
@@ -257,7 +248,6 @@ all_modules = [
         'evaluate_prediction',
         [GeneExpProcessing.ClassLabelFile, ClassifyFile], ClassifyFile,
         Constraint("contents", MUST_BE, 'test', 0),
-        Constraint("cls_format", MUST_BE, 'cls', 0),
         Constraint("loocv", MUST_BE, 'no', 1),
         Constraint("actual_label", MUST_BE, 'no', 1),
         Consequence("loocv", SAME_AS_CONSTRAINT, 1),

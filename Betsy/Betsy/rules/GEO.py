@@ -29,7 +29,7 @@ GEOSampleMetadata = DataType(
     "GEOSampleMetadata",
     help="Metadata for the samples in a GEO data set.")
 
-list_files = [
+all_data_types = [
     GEOSeries,
     GEOFamilySoftFile,
     GEOSeriesMatrixFile,

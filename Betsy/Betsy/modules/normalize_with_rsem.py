@@ -19,15 +19,6 @@ class Module(AbstractModule):
 
 
     
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, group_node = antecedents
-        identifier = data_node.identifier
-        return module_utils.hash_input(identifier, pipeline, out_attributes,
-                                             user_options)
-
-
-    
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
         data_node, group_node = antecedents

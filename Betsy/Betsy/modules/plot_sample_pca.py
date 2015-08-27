@@ -30,14 +30,6 @@ class Module(AbstractModule):
             plot_pca(data_node.identifier, outfile)
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, cls_node = antecedents
-        identifier = data_node.identifier
-        return module_utils.hash_input(
-            identifier, pipeline, out_attributes, user_options)
-
-
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
         data_node, cls_node = antecedents
@@ -50,18 +42,7 @@ class Module(AbstractModule):
         return filename
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(
-            datatype_name='PcaAnalysis', process=out_attributes["process"])
-        filter2 = module_utils.AntecedentFilter(datatype_name='ClassLabelFile')
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2)
-        return x
-
-
-def plot_pca(filename, result_fig, opts='b', legend=None):
+    def plot_pca(filename, result_fig, opts='b', legend=None):
     from genomicode import jmath, mplgraph
     import arrayio
 
@@ -93,4 +74,3 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
                                color=opts)
     fig.savefig(result_fig)
     assert exists_nz(result_fig), 'the plot_pca.py fails'
-

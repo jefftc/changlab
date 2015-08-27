@@ -46,10 +46,4 @@ class Module(AbstractModule):
         return new_parameters
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, rename_node = antecedents
-        identifier = data_node.identifier
-        # XXX BUG?  Should be based on the identifier of the rename_node, too?
-        return module_utils.hash_input(identifier, pipeline, out_attributes,
-                                             user_options)
+    

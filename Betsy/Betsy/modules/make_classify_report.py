@@ -264,41 +264,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(datatype_name='SignalFile')
     
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='ClassifyFile', classify_alg="svm", loocv="no")
-        filter3 = module_utils.AntecedentFilter(
-            datatype_name='PredictionPlot', classify_alg="svm", loocv="no")
-    
-        filter4 = module_utils.AntecedentFilter(
-            datatype_name='ClassifyFile', classify_alg="svm", loocv="yes")
-        filter5 = module_utils.AntecedentFilter(
-            datatype_name='PredictionPlot', classify_alg="svm", loocv="yes")
-        filter6 = module_utils.AntecedentFilter(
-            datatype_name='PredictionPCAPlot', classify_alg="svm")
-    
-        filter7 = module_utils.AntecedentFilter(
-            datatype_name='ClassifyFile', classify_alg="weighted_voting",
-            loocv="no")
-        filter8 = module_utils.AntecedentFilter(
-            datatype_name='PredictionPlot', classify_alg="weighted_voting",
-            loocv="no")
-
-        filter9 = module_utils.AntecedentFilter(
-            datatype_name='ClassifyFile', classify_alg="weighted_voting",
-            loocv="yes")
-        filter10 = module_utils.AntecedentFilter(
-            datatype_name='PredictionPlot', classify_alg="weighted_voting",
-            loocv="yes")
-        filter11 = module_utils.AntecedentFilter(
-            datatype_name='PredictionPCAPlot', classify_alg="weighted_voting")
-    
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2,
-            filter3, filter4, filter5, filter6, filter7, filter8,
-            filter9, filter10, filter11)
-        return x

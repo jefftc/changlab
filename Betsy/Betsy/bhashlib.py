@@ -23,7 +23,6 @@ def checksum_path(path):
 
 
 def checksum_file(filename):
-    import os
     from hashlib import md5
     
     hasher = md5()

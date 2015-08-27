@@ -53,29 +53,7 @@ class Module(AbstractModule):
         return filename
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node1, data_node2, data_node3 = antecedents
-        identifier = data_node1.identifier
-        return module_utils.hash_input(
-            identifier, pipeline, out_attributes, user_options)
-
-
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(
-            datatype_name='SignatureScore', preprocess="affymetrix")
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='SignatureScore', preprocess="agilent")
-        filter3 = module_utils.AntecedentFilter(
-            datatype_name='SignatureScore', preprocess="RSEM_genes")
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2, filter3)
-        return x
-
-
-def get_new_matrix(total_sample, filename):
+    def get_new_matrix(total_sample, filename):
     import arrayio
     M = arrayio.read(filename)
     samples = M.col_names('_SAMPLE_NAME')

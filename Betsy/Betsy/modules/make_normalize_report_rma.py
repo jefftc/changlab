@@ -168,22 +168,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(datatype_name='SignalFile')
-        filter2 = module_utils.AntecedentFilter(datatype_name='IntensityPlot')
-        filter3 = module_utils.AntecedentFilter(datatype_name='ActbPlot')
-        filter4 = module_utils.AntecedentFilter(datatype_name='ControlPlot')
-
-        x1 = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2,
-            filter3, filter4)
-        data_node1, data_node4, data_node5, data_node6 = x1
     
-        # TODO: get rid of this.
-        x2 = module_utils.find_pcaplots(network, pool, module_id, rma=True)
-        data_node2, data_node3 = x2
-
-        return data_node1, data_node2, data_node3, data_node4, data_node5, \
-               data_node6

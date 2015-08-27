@@ -24,7 +24,7 @@ TCGAFile = DataType(
         help="select tumor sample only"),
     help="TCGA file download from TCGA database")
 
-list_files = [
+all_data_types = [
     TCGAID,
     TCGAFile,
     ]
@@ -72,7 +72,7 @@ all_modules = [
         help="select the tumor sample only in the TCGAFile"),
     
     ModuleNode(
-        'preprocess_tcga', TCGAFile, GEP._SignalFile_Postprocess,
+        'preprocess_tcga', TCGAFile, GEP.UnprocessedSignalFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("tumor_only", MUST_BE, 'yes'),
         Constraint(

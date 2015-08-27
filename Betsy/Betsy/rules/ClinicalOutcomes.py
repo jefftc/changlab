@@ -24,7 +24,7 @@ CellTypeFile=DataType('CellTypeFile',
                                   'unspecified','unspecified',help='contents'),
                       help="Cell type file for EMT analysis")
 
-list_files = [ClinicalAnalysis,ClinicalFile,EMTAnalysis,CellTypeFile]
+all_data_types = [ClinicalAnalysis,ClinicalFile,EMTAnalysis,CellTypeFile]
 
 all_modules = [
     ModuleNode(

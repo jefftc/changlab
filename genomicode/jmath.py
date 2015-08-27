@@ -103,6 +103,17 @@ def _dispatch(X, single_fn, list_fn, matrix_fn):
     assert single_fn, "single object not supported or implemented"
     return single_fn(X)
 
+
+def is_int(x, allow_special=False):
+    if allow_special and x in ["na", "null", "nan"]:
+        return True
+    try:
+        int(x)
+    except ValueError, x:
+        return False
+    return True
+
+
 def safe_int(x):
     if x is None:
         return None

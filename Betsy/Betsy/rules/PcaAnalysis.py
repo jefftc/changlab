@@ -98,7 +98,7 @@ PcaPlot = DataType(
     )
     
 
-list_files = [PcaAnalysis,PcaPlot]
+all_data_types = [PcaAnalysis,PcaPlot]
 all_modules = [
     ModuleNode(
         'analyze_samples_pca',

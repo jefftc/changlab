@@ -154,7 +154,7 @@ HousekeepingPlot = DataType(
         help='contents'),
     help="Housekeeping plot file")
 
-list_files = [
+all_data_types = [
     AgilentFiles,
     CELFiles,
     ControlFile,
@@ -171,7 +171,7 @@ list_files = [
 all_modules = [
     ModuleNode(
         "extract_matrix_data", BDT.ExpressionFiles,
-        GeneExpProcessing._SignalFile_Postprocess,
+        GeneExpProcessing.UnprocessedSignalFile,
         Constraint("filetype", MUST_BE, 'matrix'),
         Consequence("preprocess", SET_TO, "unknown"),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
@@ -204,7 +204,7 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="convert cel files to v3 version"),
     ModuleNode(
-        "preprocess_rma", CELFiles, GeneExpProcessing._SignalFile_Postprocess,
+        "preprocess_rma", CELFiles, GeneExpProcessing.UnprocessedSignalFile,
         Constraint("version", MUST_BE, 'v3_v4'),
         Consequence("logged", SET_TO, "yes"),
         Consequence("preprocess", SET_TO, "rma"),
@@ -215,7 +215,7 @@ all_modules = [
         help=
         "preprocess CELFiles with rma method,generate SignalFile_Postprocess"),
     ModuleNode(
-        "preprocess_mas5", CELFiles, GeneExpProcessing._SignalFile_Postprocess,
+        "preprocess_mas5", CELFiles, GeneExpProcessing.UnprocessedSignalFile,
         Constraint("version", MUST_BE, 'v3_v4'),
         Consequence("logged", SET_TO, "no"),
         Consequence("preprocess", SET_TO, "mas5"),
@@ -259,7 +259,7 @@ all_modules = [
         help="extract illumina ControlFile from ILLUFolder"),
     ModuleNode(
         "get_illumina_signal", ILLUFolder,
-        GeneExpProcessing._SignalFile_Postprocess,
+        GeneExpProcessing.UnprocessedSignalFile,
         Consequence('preprocess', SET_TO, "illumina"),
         Consequence('format', SET_TO, "gct"),
         Consequence('logged', SET_TO, "no"),
@@ -276,7 +276,7 @@ all_modules = [
         help="extract agilent files from ExpressionFiles"),
     ModuleNode(
         "preprocess_agilent", AgilentFiles,
-        GeneExpProcessing._SignalFile_Postprocess,
+        GeneExpProcessing.UnprocessedSignalFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence('logged', SET_TO, "unknown"),
@@ -293,7 +293,7 @@ all_modules = [
         help="extract gpr files from ExpressionFiles"),
     ModuleNode(
         "normalize_with_loess", GPRFiles,
-        GeneExpProcessing._SignalFile_Postprocess,
+        GeneExpProcessing.UnprocessedSignalFile,
         Consequence("format", SET_TO, "tdf"),
         Consequence("logged", SET_TO, "unknown"),
         Consequence('predataset', SET_TO, "no"),
@@ -303,7 +303,8 @@ all_modules = [
         help="normalize GPRFiles,generate SignalFile_Postprocess"),
     ModuleNode(
         'plot_actb_line', GeneExpProcessing._SignalFile_Impute, ActbPlot,
-        Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
+        #Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
+        Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
         Constraint("missing_values", MUST_BE, 'no'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),

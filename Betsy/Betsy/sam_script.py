@@ -1,6 +1,5 @@
 #sam_script.py
 
-import shutil
 import os
 import arrayio
 import sys

@@ -56,18 +56,4 @@ class Module(AbstractModule):
         filename = 'generate_alignment_sam' + original_file + '.sam'
         return filename
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(
-            datatype_name='FastqFile', read="pair1")
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='SaiFile', read="pair1")
-        filter3 = module_utils.AntecedentFilter(
-            datatype_name='FastqFile', read="pair2")
-        filter4 = module_utils.AntecedentFilter(
-            datatype_name='SaiFile', read="pair2")
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2,
-            filter3, filter4)
-        return x
+    

@@ -34,16 +34,7 @@ class Module(AbstractModule):
         filename = 'expression_files_' + original_file
         return filename
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        GPLID = ''
-        if 'GPLID' in user_options:
-            GPLID = user_options['GPLID']
-        identifier = user_options['GSEID'] + GPLID
-        return identifier
-
-
-
-def clean_cel_filename(cel_file):
+    def clean_cel_filename(cel_file):
     """clean the cel_file name"""
     import string
     if cel_file.upper().endswith('CEL'):

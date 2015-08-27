@@ -142,7 +142,7 @@ RNASeQCFile=DataType(
                  'unspecified','unspecified',help="contents"),
     help="File contains sample group infomation"
     )
-list_files = [FastqFile, SaiFile, SamFile, BamFile, VcfFile,
+all_data_types = [FastqFile, SaiFile, SamFile, BamFile, VcfFile,
               RNASeqFile, FastqFolder, SamFolder, BamFolder,SampleGroupFile,RNASeQCFile]
 
 all_modules = []

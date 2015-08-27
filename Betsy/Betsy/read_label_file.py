@@ -17,7 +17,11 @@ def find_index_list(inputlist, key):
 
 
 def read(filename):
-    """read the cls file and return a list of tuples(label_index,label)"""
+    """read the cls file and return a list of tuples(label_index, label)"""
+    # Return tuple:
+    # list of (indexes, class name)
+    # list of classes (parallel to samples)
+    # list of class names
     f = open(filename, 'r')
     content = f.readlines()
     f.close()
@@ -46,6 +50,7 @@ def read(filename):
 
 
 def write(filename, class_name, label_line):
+    # Writes categorical CLS file.
     f = file(filename, 'w')
     f.write('\t'.join([str(len(label_line)), str(len(class_name)), '1']))
     f.write('\n')

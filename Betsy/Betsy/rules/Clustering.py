@@ -19,7 +19,7 @@ ClusterReportFile = DataType(
     help="Report file for cluster report"
     )
 
-list_files = [ClusterFile,ClusterReportFile]
+all_data_types = [ClusterFile,ClusterReportFile]
 
 all_modules = [
     ModuleNode(

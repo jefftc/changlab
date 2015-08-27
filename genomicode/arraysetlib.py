@@ -2,7 +2,8 @@
 
 Functions:
 read_cls_file
-write_cls_file
+write_cls_file        # for 2 classes only
+write_multi_cls_file  # Can be any number of classes
 
 resolve_classes
 
@@ -24,7 +25,7 @@ def read_cls_file(filename):
     # <0/1 or class name> ...
     handle = filelib.openfh(filename)
     x = [x for x in handle if x.strip()]
-    assert len(x) == 3, "CLS file should contain 3 lines."
+    assert len(x) == 3, "CLS file should contain 3 lines.  Found %d." % len(x)
     line1, line2, line3 = x
 
     # Parse the first line.
@@ -59,38 +60,106 @@ def write_cls_file(outhandle, name0, name1, classes):
     # Only handles categorical CLS files with 2 classes.
     # classes should be a list of 0/1 or class names.
     from genomicode import hashlib
-    
-    # Check the classes variable.
-    assert classes
-    #for x in classes:
-    #    assert x in [0, 1, "0", "1", name0, name1]
-    uniq_classes = []
-    for x in classes:
-        if x not in uniq_classes:
-            uniq_classes.append(x)
-    assert len(uniq_classes) == 2, "Need exactly 2 classes."
-    sorted_classes = sorted(map(str, uniq_classes))
-    assert sorted_classes in [["0", "1"], sorted([name0, name1])]
-    # Make sure order of the classes is consistent with the names.
-    assert str(uniq_classes[0]) in ["0", name0], "classes out of order"
-    
-    if type(outhandle) is type(""):
-        outhandle = open(outhandle, 'w')
 
+    # Make sure there are exactly 2 classes.
+    x = {}.fromkeys(classes)
+    assert len(x) == 2, "Need exactly 2 classes."
+
+    names = [name0, name1]
+    write_multi_cls_file(outhandle, names, classes)
+    
+    ## # Check the classes variable.
+    ## assert classes
+    ## #for x in classes:
+    ## #    assert x in [0, 1, "0", "1", name0, name1]
+    ## uniq_classes = []
+    ## for x in classes:
+    ##     if x not in uniq_classes:
+    ##         uniq_classes.append(x)
+    ## assert len(uniq_classes) == 2, "Need exactly 2 classes."
+    ## sorted_classes = sorted(map(str, uniq_classes))
+    ## assert sorted_classes in [["0", "1"], sorted([name0, name1])]
+    ## # Make sure order of the classes is consistent with the names.
+    ## assert str(uniq_classes[0]) in ["0", name0], "classes out of order"
+    
+    ## if type(outhandle) is type(""):
+    ##     outhandle = open(outhandle, 'w')
+
+    ## # Space or tab-delimited format.
+    ## # <num samples> <num classes> 1
+    ## # # <class name 0> <class name 1> ...
+    ## # <0/1 or class name> ...
+    ## num_samples = len(classes)
+    ## x = [num_samples, 2, 1] + [""]*(num_samples-3)
+    ## print >>outhandle, "\t".join(map(str, x))
+
+    ## hname0, hname1 = hashlib.hash_var(name0), hashlib.hash_var(name1)
+    ## assert hname0 != hname1
+    ## x = ["#", hname0, hname1] + [""]*(num_samples-3)
+    ## print >>outhandle, "\t".join(map(str, x))
+
+    ## print >>outhandle, "\t".join(map(str, classes))
+
+
+def write_multi_cls_file(outhandle, names, classes):
+    # Only handles categorical CLS files with any number of classes.
+    # names is a unique list of the names of the possible classes.
+    # classes should be a list of [0 - len(class_names)-1] or class
+    # names.
+    from genomicode import hashlib
+    from genomicode import jmath
+
+    # Not handled: if class names are numbers.
+    for x in names:
+        assert not jmath.is_int(x) is None, "Invalid class name: %s" % x
+
+    # Make sure the class names is unique.
+    x = {}.fromkeys(names)
+    assert len(names) == len(x), "class names not unique"
+
+    # Hash the class names.
+    names_h = [hashlib.hash_var(x) for x in names]
+    # Make sure hashed names are still unique.
+    x = {}.fromkeys(names_h)
+    assert len(names_h) == len(x)
+
+    # Make sure the class assignments are valid.
+    assert classes
+    for x in classes:
+        if jmath.is_int(x):
+            x = int(x)
+            assert x >= 0 and x < len(names)
+        else:
+            assert x in names
+
+    # Convert class assignments to numbers, if necessary.
+    classes_int = []
+    for x in classes:
+        if not jmath.is_int(x):
+            x = names.index(x)
+        classes_int.append(x)
+
+    # Some GenePattern tools require the first sample to be in class
+    # 0.  Make sure this is true.
+    assert classes_int[0] == 0, "First sample must be in first class."
+    
+
+    # Write the file.
     # Space or tab-delimited format.
     # <num samples> <num classes> 1
     # # <class name 0> <class name 1> ...
     # <0/1 or class name> ...
+    if type(outhandle) is type(""):
+        outhandle = open(outhandle, 'w')
+    num_classes = len(names)
     num_samples = len(classes)
-    x = [num_samples, 2, 1] + [""]*(num_samples-3)
+    x = [num_samples, num_classes, 1] + [""]*(num_samples-3)
     print >>outhandle, "\t".join(map(str, x))
 
-    hname0, hname1 = hashlib.hash_var(name0), hashlib.hash_var(name1)
-    assert hname0 != hname1
-    x = ["#", hname0, hname1] + [""]*(num_samples-3)
-    print >>outhandle, "\t".join(map(str, x))
+    x = ["#"] + names_h + [""]*(num_samples-3)
+    print >>outhandle, "\t".join(x)
 
-    print >>outhandle, "\t".join(map(str, classes))
+    print >>outhandle, "\t".join(map(str, classes_int))
 
 
 def resolve_classes(MATRIX, indexes1, indexes2, count_headers, name1, name2):

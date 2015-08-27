@@ -25,22 +25,6 @@ class Module(AbstractModule):
         error_message = process.communicate()[1]
         if error_message:
             raise ValueError(error_message)
-        
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for score_path_with_scoresig_affymetrix does not exists'
-            % outfile)
-
-
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', preprocess="rma")
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', preprocess="mas5")
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2)
-        return x
 
 
     def name_outfile(self, antecedents, user_options):
@@ -49,11 +33,3 @@ class Module(AbstractModule):
         original_file = module_utils.get_inputid(rma_node.identifier)
         filename = 'signature_score' + original_file
         return filename
-
-
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        rma_node, mas5_node = antecedents
-        identifier = rma_node.identifier
-        return module_utils.hash_input(identifier, pipeline, out_attributes,
-                                             user_options)

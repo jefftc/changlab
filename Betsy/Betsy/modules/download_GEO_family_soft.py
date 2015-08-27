@@ -25,11 +25,7 @@ class Module(AbstractModule):
         filename = original_file + '_family.soft.gz'
         return filename
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        return user_options['GSEID']
-
-
-def download_series_family(GSEID, DELAY, outhandle):
+    def download_series_family(GSEID, DELAY, outhandle):
     import urllib
     from genomicode import timer
 

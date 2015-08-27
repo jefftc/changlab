@@ -51,13 +51,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        assert 'disease' in user_options
-        x = ''
-        if 'date' in user_options:
-            x = '_' + user_options['date']
-        identifier = user_options['disease'] + '_' + out_attributes['preprocess'] + x
-        return identifier
-
-
-
+    

@@ -42,12 +42,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(datatype_name='ClassifyFile')
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='ClassLabelFile', contents="test")
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2)
-        return x
+    

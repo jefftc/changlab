@@ -10,21 +10,18 @@ class Module(AbstractModule):
         """merge three signal file to generate a joined signal file"""
         import os
         from Betsy import module_utils
+        
         merge_node1, merge_node2 = antecedents
-        assert os.path.exists(merge_node1.identifier), (
-            'the merge_file1 %s in merge_data does not exist' % merge_node1.identifier
-        )
-        assert os.path.exists(merge_node2.identifier), (
-            'the merge_file2 %s in merge_data does not exist' % merge_node2.identifier
-        )
+        assert os.path.exists(merge_node1.identifier), \
+            'File not found: %s' % merge_node1.identifier
+        assert os.path.exists(merge_node2.identifier), \
+            'File not found: %s' % merge_node2.identifier
+        
         file1, file2 = module_utils.convert_to_same_platform(
             merge_node1.identifier, merge_node2.identifier)
         f = file(outfile, 'w')
         module_utils.merge_two_files(file1, file2, f)
         f.close()
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for merge_data fails' % outfile
-        )
 
 
     def name_outfile(self, antecedents, user_options):
@@ -35,11 +32,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(contents='class0')
-        filter2 = module_utils.AntecedentFilter(contents='class1')
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2)
-        return x
+    

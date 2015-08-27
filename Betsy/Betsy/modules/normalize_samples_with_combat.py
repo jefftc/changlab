@@ -50,9 +50,4 @@ class Module(AbstractModule):
         return new_parameters
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, cls_node = antecedents
-        identifier = data_node.identifier
-        return module_utils.hash_input(
-            identifier, pipeline, out_attributes, user_options)
+    

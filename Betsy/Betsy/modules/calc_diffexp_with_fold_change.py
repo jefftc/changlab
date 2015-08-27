@@ -11,21 +11,25 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import module_utils
         from genomicode import config
+        
         data_node, cls_node = antecedents
         diffexp_bin = config.find_diffexp_genes
         assert os.path.exists(diffexp_bin)
-        cmd = ['python', diffexp_bin, data_node.identifier, '--cls_file',
-               cls_node.identifier, '--algorithm', 'fold_change']
-        if 'diffexp_foldchange_value' in user_options:
-            foldchange = float(user_options['diffexp_foldchange_value'])
-            cmd = cmd + ['--fold_change', str(foldchange)]
+        cmd = [
+            'python',
+            diffexp_bin,
+            data_node.identifier,
+            '--cls_file', cls_node.identifier,
+            '--algorithm', 'fold_change',
+            ]
+        ## x = user_options.get("fold_change_cutoff")
+        ## if x:
+        ##     cmd = cmd + ['--fold_change', x]
         
         handle = open(outfile, 'w')
         try:
-            process = subprocess.Popen(cmd,
-                                       shell=False,
-                                       stdout=handle,
-                                       stderr=subprocess.PIPE)
+            process = subprocess.Popen(
+                cmd, shell=False, stdout=handle, stderr=subprocess.PIPE)
             process.wait()
             error_message = process.communicate()[1]
             if error_message:
@@ -33,7 +37,6 @@ class Module(AbstractModule):
         finally:
             handle.close()
         
-
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
         data_node, cls_node = antecedents
@@ -42,9 +45,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, cls_node = antecedents
-        identifier = data_node.identifier
-        return module_utils.hash_input(identifier, pipeline, out_attributes,
-                                             user_options)
+    

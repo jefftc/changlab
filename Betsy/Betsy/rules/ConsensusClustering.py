@@ -20,7 +20,7 @@ ConsensusClusteringFolder = DataType('ConsensusClusteringFolder',
                      AttributeDef("cc_resample",['subsample', 'reatures','nosampling'],
                         "subsample","subsample",help="resampling scheme(one of 'subsample[ratio]','reatures[nfeat]','nosampling'"), 
                     help="Consensus Clustering File")
-list_files = [ConsensusClusteringFolder]
+all_data_types = [ConsensusClusteringFolder]
 all_modules=[
     ModuleNode(
         'consensusClustering',

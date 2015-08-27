@@ -21,11 +21,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        # XXX does this need to be here?
-        filter1 = module_utils.AntecedentFilter(datatype_name='PcaAnalysis')
-        data_node = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1)
-        return data_node
+    

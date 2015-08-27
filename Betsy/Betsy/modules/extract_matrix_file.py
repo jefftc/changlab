@@ -30,7 +30,7 @@ class Module(AbstractModule):
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
         original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'SignalFile_Postprocess_' + original_file
+        filename = 'UnprocessedSignalFile_' + original_file
         return filename
 
 

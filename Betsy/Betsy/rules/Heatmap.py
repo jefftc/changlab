@@ -17,7 +17,7 @@ Heatmap = DataType(
                                'unspecified','unspecified',help='contents'),
     help="Heatmap file")
 
-list_files = [Heatmap]
+all_data_types = [Heatmap]
 
 all_modules = [
  ModuleNode(

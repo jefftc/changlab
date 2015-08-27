@@ -51,21 +51,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, classify_node = antecedents
-        identifier = data_node.identifier
-        return module_utils.hash_input(identifier, pipeline, out_attributes,
-                                             user_options)
-
-
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(datatype_name='PcaAnalysis')
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='ClassLabelFile',
-            classify_alg=out_attributes["classify_alg"])
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2)
-        return x
+    

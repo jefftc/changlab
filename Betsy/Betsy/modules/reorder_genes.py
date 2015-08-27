@@ -91,11 +91,4 @@ class Module(AbstractModule):
         return filename
 
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        from Betsy import module_utils
-        data_node, cls_node = antecedents
-        identifier = data_node.identifier
-        newparameters = out_attributes.copy()
-        newparameters['genelistfile'] = cls_node.identifier
-        return module_utils.hash_input(
-            identifier, pipeline, newparameters, user_options)
+    

@@ -36,10 +36,10 @@ backchain
 complete_network
 optimize_network
 select_start_node
-remove_data_node
 
-get_inputs
-group_inputs_by_datatype
+get_input_datatypes       Show all combinations of datatype that can be inputs.
+get_input_nodes           Show all possible input nodes for the network.
+group_nodes_by_datatype
 
 summarize_moduledb
 check_moduledb
@@ -52,6 +52,7 @@ read_network
 write_network
 
 diagnose_start_node
+debug_print
 
 """
 # Functions:
@@ -67,8 +68,10 @@ diagnose_start_node
 # _make_backchain_dict
 # _make_ancestor_dict
 #
-# _can_module_take_data
-# _can_module_take_data_network    Uses information from Network.
+# _can_module_take_data                 Need to supply out_node attributes.
+# _can_module_take_one_data
+# _can_module_in_network_take_data      Uses out_node attributes from Network.
+# _can_module_in_network_take_one_data
 # _can_module_produce_data
 # _get_valid_input_combinations
 #
@@ -92,15 +95,13 @@ diagnose_start_node
 # _print_line
 # _pretty_attributes
 #
-# debug_print
+# _compare_two_nodes
 
 # _object_to_dict           Use for writing and reading json file
 # _dict_to_object           Use for writing and reading json file
 
-# TODO:
-# - Some input data objects flow through the module and becomes the
-#   output.  Need a name for this.
-
+# These are also used in cbie3module.c.  If these values change, you
+# need to change that file too!
 TYPE_ATOM = 100
 TYPE_ENUM = 101
 
@@ -148,6 +149,10 @@ CONST2STR = {
 DEBUG = False
 #DEBUG = True
 
+# When backchaining, should we allow the attributes of the input data
+# to be all possible values, or fix it to the default?  All possible
+# values is correct, but generates a combinatorial explosion that is
+# difficult to manage.
 DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
 #DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True
 
@@ -169,10 +174,12 @@ class AttributeDef:
             seen[x] = 1
 
         # Make sure default_in and default_out are valid values.
-        assert type(default_in) is type("")
-        assert type(default_out) is type("")
-        assert default_in in values
-        assert default_out in values
+        assert type(default_in) is type(""), "default_in must be ATOM"
+        assert type(default_out) is type(""), "default_out must be ATOM"
+        assert default_in in values, \
+               "Invalid value %r for attribute %r." % (default_in, name)
+        assert default_out in values, \
+               "Invalid value %r for attribute %r." % (default_out, name)
 
         self.name = name
         self.values = values
@@ -235,7 +242,6 @@ class Attribute:
         assert len(x) == 1, "datatype %r does not have attribute %r." % (
             datatype.name, name)
         #attr = x[0]
-        # TODO: should show the valid values.
         assert datatype.is_valid_attribute_value(name, value), \
                "Invalid value %r for attribute %r." % (value, name)
 
@@ -475,7 +481,7 @@ class DataType:
         # Optimizations:
         # 1.  Save attribute_defs as a dictionary for fast lookups.
         # 2.  Pre-hash objects for fast comparisons.
-        attr_defs_dict = {}  # name -> AttributeDer
+        attr_defs_dict = {}  # name -> AttributeDef
         for adef in attribute_defs:
             assert adef.name not in attr_defs_dict, \
                    "Multiple attributes named %s" % adef.name
@@ -487,6 +493,7 @@ class DataType:
         self.name = name
         #self.attribute_defs = attribute_defs   # AttributeDef
         self.attribute_defs = attr_defs_dict
+        self._attribute_names = sorted(attr_defs_dict)   # optimize
         self.help = keywds.get("help")
         self.hash_ = hash((name, hash(attr_defs_tuple), self.help))
 
@@ -503,7 +510,8 @@ class DataType:
 
     def get_attribute_names(self):
         #return [x.name for x in self.attribute_defs]
-        return sorted(self.attribute_defs)
+        #return sorted(self.attribute_defs)
+        return self._attribute_names
 
     def is_valid_attribute_name(self, name):
         return name in self.get_attribute_names()
@@ -756,13 +764,13 @@ class ModuleNode:
         seen = {}  # make sure no duplicates
         for daf in default_attributes_from:
             assert daf.input_index < len(in_datatypes)
-            assert out_datatype == in_datatypes[daf.input_index]
+            assert out_datatype.name == in_datatypes[daf.input_index].name
             assert daf.input_index not in seen
             seen[daf.input_index] = 1
 
         # default_attributes_from can be an empty list if the
         # attributes of the output object should come from none of the
-        # input data types.  Probably the most common case if if the
+        # input data types.  Probably the most common case if the
         # module converts the data type.
 
         #assert len(default_attributes_from) <= 1
@@ -836,7 +844,7 @@ class ModuleNode:
 
         # For every constraint, there must be a consequent given.
         # Need to specify what the module does with the variable.
-        if in_datatype == out_datatype:
+        if in_datatype.name == out_datatype.name:
             x = [x for x in consequences if x.name == constraint.name]
             assert x, "%r: constraint but no consequence for %r." % (
                 name, constraint.name)
@@ -896,7 +904,7 @@ class ModuleNode:
         if consequence.behavior == SET_TO:
             for x in itertools.product(in_datatypes, constraints):
                 in_datatype, constraint = x
-                if in_datatype != out_datatype:
+                if in_datatype.name != out_datatype.name:
                     continue
                 if consequence.name != constraint.name:
                     continue
@@ -1046,8 +1054,9 @@ class Network:
     def delete_nodes(self, node_ids):
         # Make sure no duplicates.
         for i in range(len(node_ids)):
-            assert node_ids[i] not in node_ids[i + 1:]
+            assert node_ids[i] not in node_ids[i+1:]
         network = Network(self.nodes, self.transitions)
+        # Delete from high to low so the node_ids don't get messed up.
         node_ids = reversed(sorted(node_ids))
         for nid in node_ids:
             network = network.delete_node(nid)
@@ -1067,7 +1076,8 @@ class Network:
         for i in range(1, len(node_ids)):
             n1 = self.nodes[node_ids[0]]
             n2 = self.nodes[node_ids[i]]
-            assert n1.__class__ == n2.__class__
+            assert n1.__class__ == n2.__class__, "%s %s" % (
+                n1.__class__, n2.__class__)
 
         # Keep the first node, and delete the rest.
 
@@ -1092,9 +1102,9 @@ class Network:
             x = sorted({}.fromkeys(x))
             transitions[nid0] = x
 
-        merged = Network(self.nodes, transitions)
-        merged = merged.delete_nodes(node_ids[1:])
-        return merged
+        x = Network(self.nodes, transitions)
+        x = x.delete_nodes(node_ids[1:])
+        return x
 
     def __cmp__(self, other):
         if not isinstance(other, Network):
@@ -1131,7 +1141,7 @@ def backchain(moduledb, out_data, user_attributes):
     if isinstance(out_data, DataType):
         attrdict = {}
         for attr in user_attributes:
-            if attr.datatype != out_data:
+            if attr.datatype.name != out_data.name:
                 continue
             attrdict[attr.name] = attr.value
         out_data = out_data.output(**attrdict)
@@ -1185,7 +1195,8 @@ def backchain(moduledb, out_data, user_attributes):
 
     # Remove the duplicates from transitions.
     for nid in transitions:
-        next_ids = sorted({}.fromkeys(transitions[nid]))
+        #next_ids = sorted({}.fromkeys(transitions[nid]))
+        next_ids = {}.fromkeys(transitions[nid]).keys()
         transitions[nid] = next_ids
 
     network = Network(nodes, transitions)
@@ -1286,6 +1297,16 @@ def complete_network(network, user_attributes):
             #    input_id, module_id))
             continue
 
+        # If this node is not a DataType that the module takes, then
+        # don't bother checking.
+        found = False
+        for dt in network.nodes[module_id].in_datatypes:
+            if network.nodes[input_id].datatype.name == dt.name:
+                found = True
+                break
+        if not found:
+            continue
+
         # Since modules can take multiple inputs, we need to combine
         # input_id with all previous input IDs and try all possible
         # combinations.
@@ -1312,11 +1333,15 @@ def complete_network(network, user_attributes):
 def optimize_network(network, user_attributes):
     # Clean up the network by removing cycles, extra nodes, etc.
     # Returns a new Network object.
-    optimizers = [_OptimizeNoCycles(), _OptimizeNoDanglingNodes(),
-                  _OptimizeNoDuplicateModules(), _OptimizeNoDuplicateData(),
-                  _OptimizeNoOverlappingData(), _OptimizeNoInvalidOutputs(),
-                  # Fixes NoOverlappingData.
-                 ]
+    optimizers = [
+        _OptimizeNoCycles(),
+        _OptimizeNoDanglingNodes(),
+        _OptimizeNoDuplicateModules(),
+        _OptimizeNoDuplicateData(),
+        _OptimizeNoOverlappingData(),
+        _OptimizeNoInvalidOutputs(),    # Fixes NoOverlappingData.
+        _OptimizeMergeNodes(),
+        ]
 
     it = 0
     old_network = None
@@ -1530,30 +1555,45 @@ class _OptimizeNoDuplicateData:
             duplicates = self.find_duplicate_data(network)
             if not duplicates:
                 break
-            # Will merge high node_id into low node_id, so id of root
-            # node will never be changed.
-            network = network.merge_nodes(duplicates)
+            # Merge each of the duplicates.
+            while duplicates:
+                n1, n2 = duplicates.pop()
+                network = network.merge_nodes([n1, n2])
+                duplicates = _fix_node_ids_after_merge(n1, n2, duplicates)
         return network
 
     def find_duplicate_data(self, network):
-        # Return list of node_ids for DataNode objects that are
-        # duplicated.  If no duplicates found, return an empty list.
-        import itertools
+        # Return list of (node_id1, node_id2) for DataNode objects
+        # that are duplicated.  If no duplicates found, return an
+        # empty list.
 
         # Make a list of all pairs of DataNode objects.
-        data_nodes = [node_id for (node_id, node) in enumerate(network.nodes)
-                      if isinstance(node, DataNode)]
-        data_pairs = itertools.product(data_nodes, data_nodes)
+        data_node_ids = [
+            node_id for (node_id, node) in enumerate(network.nodes)
+            if isinstance(node, DataNode)]
+        
+        duplicates = []
+        for i, node_id1 in enumerate(data_node_ids):
+            node_1 = network.nodes[node_id1]
+            for node_id2 in data_node_ids[i+1:]:
+                node_2 = network.nodes[node_id2]
+                if node_1.datatype.name != node_2.datatype.name:
+                    continue
+                if node_1 == node_2:
+                    duplicates.append((node_id1, node_id2))
+        return duplicates
+        
+        ## data_pairs = itertools.product(data_nodes, data_nodes)
 
-        # Can optimize this by sorting.
-        for (node_id1, node_id2) in data_pairs:
-            if node_id1 == node_id2:
-                continue
-            data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
-            # Everything has to be the same.
-            if data1 == data2:
-                return [node_id1, node_id2]
-        return []
+        ## # Can optimize this by sorting.
+        ## for (node_id1, node_id2) in data_pairs:
+        ##     if node_id1 == node_id2:
+        ##         continue
+        ##     data1, data2 = network.nodes[node_id1], network.nodes[node_id2]
+        ##     # Everything has to be the same.
+        ##     if data1 == data2:
+        ##         return [node_id1, node_id2]
+        ## return []
 
 
 class _OptimizeNoDuplicateModules:
@@ -1561,36 +1601,79 @@ class _OptimizeNoDuplicateModules:
         pass
 
     def optimize(self, network, user_attributes):
-        while 1:
+        while True:
             duplicates = self.find_duplicate_modules(network)
             if not duplicates:
                 break
-            network = network.merge_nodes(duplicates)
-            assert isinstance(network, Network)
+            # Merge each of the duplicates.
+            while duplicates:
+                n1, n2 = duplicates.pop()
+                network = network.merge_nodes([n1, n2])
+                duplicates = _fix_node_ids_after_merge(n1, n2, duplicates)
         return network
 
     def find_duplicate_modules(self, network):
-        # Return list of f_ids for modules that are duplicated.  If
-        # no duplicates found, return an empty list.
+        # Return a list of (node_id1, node_id2) for modules that are
+        # duplicated.  If no duplicates found, return an empty list.
 
         # DEFINITION: If the same data node points to two of the same
         # module nodes, then those modules are duplicated.
-        for data_id, next_ids in network.iterate(node_class=DataNode):
+        dups = {}
+        for node_id, next_ids in network.iterate(node_class=DataNode):
             if len(next_ids) < 2:
                 continue
-
             for i in range(len(next_ids) - 1):
                 node_id1 = next_ids[i]
                 node_1 = network.nodes[node_id1]
-                dups = [node_id1]
-                for j in range(i + 1, len(next_ids)):
+                for j in range(i+1, len(next_ids)):
                     node_id2 = next_ids[j]
                     node_2 = network.nodes[node_id2]
-                    if node_1 == node_2:
-                        dups.append(node_id2)
-                if len(dups) > 1:
-                    return dups
-        return None
+                    if node_1.name != node_2.name:
+                        continue
+                    id1, id2 = node_id1, node_id2
+                    if id1 > id2:
+                        id1, id2 = id2, id1
+                    assert id1 != id2
+                    dups[(id1, id2)] = 1
+        dups = dups.keys()
+        return dups
+
+
+def _fix_node_ids_after_merge(merge_id1, merge_id2, node_id_pairs):
+    # n2 was merged into n1.
+    # n2 doesn't exist anymore.
+    assert merge_id1 != merge_id2
+    n1, n2 = merge_id1, merge_id2
+    if n1 > n2:   # make sure n1 < n2, for convenience.
+        n1, n2 = n2, n1
+
+    # d  < n1 < n2   Don't change d.
+    # n1 <  d < n2   Don't change d.
+    # n1 < n2 <  d   Subtract d by 1.
+    # n1 < n2 =  d   d is now n1.
+
+    # Watch out for weird situations, e.g. 3-way merges.
+    # A-B, A-C, B-C
+    # After we merge A and B, we are left with A-C, A-C.
+    # Then, after we merge the second A-C, we are left with
+    # A-A.  Ignore duplicates.
+
+    pairs = []
+    for i in range(len(node_id_pairs)):
+        d1, d2 = node_id_pairs[i]
+        if d1 == n2:
+            d1 = n1
+        elif d1 >= n2:
+            d1 -= 1
+            
+        if d2 == n2:
+            d2 = n1
+        elif d2 >= n2:
+            d2 -= 1
+            
+        if d1 != d2:
+            pairs.append((d1, d2))
+    return pairs
 
 
 class _OptimizeNoDanglingNodes:
@@ -1664,9 +1747,9 @@ class _OptimizeNoOverlappingData:
     # _find_overlapping_attribute
     #
     # _fix_overlapping_data
-    # _remove_atom_from_list
-    # _remove_list_from_list
-    # _split_list
+    # _remove_atom_from_list    Happens very often.
+    # _remove_list_from_list    Rare
+    # _split_list               Rare
 
     def __init__(self):
         pass
@@ -1680,30 +1763,46 @@ class _OptimizeNoOverlappingData:
         # will be done in place.
         network = copy.deepcopy(network)
         while True:
-            x = self._find_overlapping_data(network)
-            if not x:
+            overlaps = self._find_overlapping_data(network)
+            if not overlaps:
                 break
-            node_id1, node_id2, attr_name = x
-            self._fix_overlapping_data(network, node_id1, node_id2, attr_name,
-                                       user_attributes)
+            for x in overlaps:
+                node_id1, node_id2, attr_name = x
+                # The changes may add new nodes to the network.
+                # However, they'll append to the end, so the node IDs
+                # should still be valid.
+                self._fix_overlapping_data(
+                    network, node_id1, node_id2, attr_name, user_attributes)
 
         return network
 
     def _find_overlapping_data(self, network):
-        # Return (node_id1, node_id2, name of overlapping attribute)
-        # or None.
-        for (node_id1, node_id2) in _iter_upper_diag(len(network.nodes)):
-            node_1 = network.nodes[node_id1]
-            node_2 = network.nodes[node_id2]
-            if not isinstance(node_1, DataNode):
-                continue
-            if not isinstance(node_2, DataNode):
-                continue
-            attr = self._find_overlapping_attribute(network, node_id1,
-                                                    node_id2)
-            if attr:
-                return node_id1, node_id2, attr
-        return None
+        # Return list of (node_id1, node_id2, name of overlapping
+        # attribute).  Empty list means no overlapping data found.
+        data_node_ids = [
+            node_id for (node_id, node) in enumerate(network.nodes)
+            if isinstance(node, DataNode)]
+
+        dt2nodeids = {}  # name of datatype -> list of node IDs
+        for node_id in data_node_ids:
+            name = network.nodes[node_id].datatype.name
+            if name not in dt2nodeids:
+                dt2nodeids[name] = []
+            dt2nodeids[name].append(node_id)
+            
+        overlapping = []
+        for dt, node_ids in dt2nodeids.iteritems():
+            for i, node_id1 in enumerate(node_ids):
+                for node_id2 in node_ids[i+1:]:
+                    node_1 = network.nodes[node_id1]
+                    node_2 = network.nodes[node_id2]
+                    attr = self._find_overlapping_attribute(
+                        network, node_id1, node_id2)
+                    if not attr:
+                        continue
+                    x = node_id1, node_id2, attr
+                    overlapping.append(x)
+        return overlapping
 
     def _find_overlapping_attribute(self, network, data_id1, data_id2):
         # Return the name of the single overlapping attribute or None.
@@ -1711,9 +1810,10 @@ class _OptimizeNoOverlappingData:
         # attribute with overlapping values.
         data1 = network.nodes[data_id1]
         data2 = network.nodes[data_id2]
-        assert isinstance(data1, DataNode)
-        assert isinstance(data2, DataNode)
-        if data1.datatype != data2.datatype:
+        # Not needed.  Check done in _find_overlapping_data.
+        #assert isinstance(data1, DataNode)
+        #assert isinstance(data2, DataNode)
+        if data1.datatype.name != data2.datatype.name:
             return False
 
         # CASE    DATA1      DATA2     RESULT
@@ -1723,15 +1823,15 @@ class _OptimizeNoOverlappingData:
         #   4      ENUM       ENUM     OVERLAP if ENUMs share ATOMs; not root.
         data1_attr = data1.attributes
         data2_attr = data2.attributes
+        assert data1_attr.keys() == data2_attr.keys()
 
         mismatch = False
         overlapping = []  # list of attribute names
 
-        x = data1_attr.keys() + data2_attr.keys()
-        all_attributes = sorted({}.fromkeys(x))
+        all_attributes = data1_attr
         for key in all_attributes:
-            assert key in data1_attr
-            assert key in data2_attr
+            #assert key in data1_attr
+            #assert key in data2_attr
             DATA1_VALUE = data1_attr[key]
             DATA2_VALUE = data2_attr[key]
             DATA1_TYPE = _get_attribute_type(DATA1_VALUE)
@@ -1770,6 +1870,10 @@ class _OptimizeNoOverlappingData:
                     mismatch = True
             else:
                 raise AssertionError
+            # Optimization.  Short circuit the comparison.  Saves a
+            # little bit of time, but not a lot.
+            if mismatch or len(overlapping) > 1:
+                break
 
         if mismatch:
             return None
@@ -1789,6 +1893,7 @@ class _OptimizeNoOverlappingData:
         DATA2_TYPE = _get_attribute_type(DATA2_VALUE)
         if DATA1_TYPE is TYPE_ENUM and DATA2_TYPE is TYPE_ENUM:
             COMMON_VALUES = _intersection(DATA1_VALUE, DATA2_VALUE)
+            s_COMMON_VALUES = sorted(COMMON_VALUES)
 
         if DATA1_TYPE is TYPE_ATOM:
             assert DATA2_TYPE is TYPE_ENUM
@@ -1796,13 +1901,13 @@ class _OptimizeNoOverlappingData:
         elif DATA2_TYPE is TYPE_ATOM:
             assert DATA1_TYPE is TYPE_ENUM
             self._remove_atom_from_list(network, data_id1, data_id2, attr_name)
-        elif sorted(DATA1_VALUE) == sorted(COMMON_VALUES):
+        elif sorted(DATA1_VALUE) == s_COMMON_VALUES:
             self._remove_list_from_list(network, data_id2, data_id1, attr_name)
-        elif sorted(DATA2_VALUE) == sorted(COMMON_VALUES):
+        elif sorted(DATA2_VALUE) == s_COMMON_VALUES:
             self._remove_list_from_list(network, data_id1, data_id2, attr_name)
         else:
-            self._split_list(network, data_id1, data_id2, attr_name,
-                             user_attributes)
+            self._split_list(
+                network, data_id1, data_id2, attr_name, user_attributes)
 
     def _remove_atom_from_list(self, network, data_id1, data_id2, attr_name):
         # Changes network in place.  data1 is a ENUM and data2 is an
@@ -1930,19 +2035,14 @@ class _OptimizeNoOverlappingData:
         # module.
         x1 = network.transitions.get(data_id1, [])
         x2 = network.transitions.get(data_id2, [])
-        module_ids = sorted({}.fromkeys(x1 + x2))
+        #module_ids = sorted({}.fromkeys(x1 + x2))
+        module_ids = {}.fromkeys(x1 + x2)
         for module_id in module_ids:
-            if _can_module_in_network_take_data(network, module_id, [data3],
-                                                user_attributes):
+            if _can_module_in_network_take_data(
+                network, module_id, [data3], user_attributes):
                 if data_id3 not in network.transitions:
                     network.transitions[data_id3] = []
                 network.transitions[data_id3].append(module_id)
-            # Bug here.  Need to check output and user attributes.
-            #module = network.nodes[module_id]
-            #if _can_module_take_data(module, [data3]):
-            #    if data_id3 not in network.transitions:
-            #        network.transitions[data_id3] = []
-            #    network.transitions[data_id3].append(module_id)
 
 
 class _OptimizeNoInvalidOutputs:
@@ -1980,7 +2080,161 @@ class _OptimizeNoInvalidOutputs:
         return network
 
 
-def select_start_node(network, start_data):
+class _OptimizeMergeNodes:
+    # Sometimes the inference can lead to two nodes that share the
+    # same parents and the same children, and almost the same
+    # attributes.  For example:
+    # Node1                   Node2
+    # preprocess="unknown"    preprocess=<everything else>
+    #
+    # If this happens, merge them to simplify the network.
+    def __init__(self):
+        pass
+
+    def optimize(self, network, user_attributes):
+        while True:
+            similar = self._find_similar_nodes(network)
+            if not similar:
+                break
+            # Merge the similar nodes.
+            while similar:
+                n1, n2 = similar.pop()
+                network = self._merge_nodes(network, n1, n2)
+                similar = _fix_node_ids_after_merge(n1, n2, similar)
+        return network
+
+    def _find_similar_nodes(self, network):
+        # Return a list of (node_id1, node_id2).  Can be empty.
+        nodeid2previds = _make_backchain_dict(network)
+        
+        data_node_ids = [
+            node_id for (node_id, node) in enumerate(network.nodes)
+            if isinstance(node, DataNode)]
+        
+        similar = []
+        for i, node_id1 in enumerate(data_node_ids):
+            for node_id2 in data_node_ids[i+1:]:
+                if self._are_nodes_similar(
+                    network, node_id1, node_id2, nodeid2previds):
+                    similar.append((node_id1, node_id2))
+        return similar
+    
+        ## for node_id1 in range(len(network.nodes)):
+        ##     node_1 = network.nodes[node_id1]
+        ##     if not isinstance(node_1, DataNode):
+        ##         continue
+        ##     for node_id2 in range(node_id1+1, len(network.nodes)):
+        ##         node_2 = network.nodes[node_id2]
+        ##         if not isinstance(node_2, DataNode):
+        ##             continue
+        ##         if self._are_nodes_similar(
+        ##             network, node_id1, node_id2, nodeid2previds):
+        ##             return (node_id1, node_id2)
+        ## return None
+
+    def _are_nodes_similar(self, network, node_id1, node_id2, nodeid2previds):
+        node_1 = network.nodes[node_id1]
+        node_2 = network.nodes[node_id2]
+
+        # The data type must be the same.
+        if node_1.datatype.name != node_2.datatype.name:
+            return False
+        
+        # They must share the same children.
+        c1 = network.transitions.get(node_id1, [])
+        c2 = network.transitions.get(node_id2, [])
+        if len(c1) != len(c2):
+            return False
+        if sorted(c1) != sorted(c2):
+            return False
+
+        # They must share the same parents.
+        p1 = nodeid2previds.get(node_id1, [])
+        p2 = nodeid2previds.get(node_id2, [])
+        if len(p1) != len(p2):
+            return False
+        if sorted(p1) != sorted(p2):
+            return False
+
+        # They must share all but 1 attribute.
+        x, diff_attrs = _compare_two_nodes(node_1, node_2)
+        if len(diff_attrs) > 1:
+            return False
+        return True
+
+    def _merge_nodes(self, network, node_id1, node_id2):
+        # Since these nodes share the same parents, I can just delete
+        # one of these nodes.
+
+        # Delete the one with the higher node_id (node_id2) to disturb the
+        # network as little as possible.
+        if node_id1 > node_id2:
+            node_id1, node_id2 = node_id2, node_id1
+
+        # Merge the attributes of the nodes.
+        n1 = network.nodes[node_id1]
+        n2 = network.nodes[node_id2]
+        
+        for name in n1.attributes:
+            V1 = n1.attributes[name]
+            V2 = n2.attributes[name]
+            if V1 == V2:
+                continue
+            T1 = _get_attribute_type(V1)
+            T2 = _get_attribute_type(V2)
+            case = _assign_case_by_type(T1, T2)
+
+            if case == 1:
+                V = [V1, V2]
+            elif case == 2:
+                V = V2
+                if V1 not in V:
+                    V.append(V1)
+            elif case == 3:
+                V = V1
+                if V2 not in V:
+                    V.append(V2)
+            else:
+                V = V1
+                for x in V2:
+                    if x not in V:
+                        V.append(x)
+            n1.attributes[name] = V
+        x = network.delete_node(node_id2)
+        return x
+
+
+def _compare_two_nodes(node1, node2):
+    # Return a tuple (has_same_datatype, list of attributes with
+    # different values).  If the two nodes have a different datatype,
+    # then the attributes will be None.
+
+    if node1.datatype.name != node2.datatype.name:
+        return (False, None)
+
+    attrs = []
+    for name in node1.attributes:
+        V1 = node1.attributes[name]
+        V2 = node2.attributes[name]
+        T1 = _get_attribute_type(V1)
+        T2 = _get_attribute_type(V2)
+        case = _assign_case_by_type(T1, T2)
+
+        if case == 1:
+            if V1 != V2:
+                attrs.append(name)            
+        elif case in [2, 3]:  # different types
+            attrs.append(name)
+        elif case == 4:
+            if sorted(V1) != sorted(V2):
+                attrs.append(name)
+        else:
+            raise AssertionError
+    return (True, attrs)
+
+
+
+def select_start_node(network, start_data, user_attributes):
     # start_data may be a single DataNode object or a list of DataNode
     # objects.  DataTypes are also allowed in lieu of DataNode
     # objects.
@@ -2017,138 +2271,110 @@ def select_start_node(network, start_data):
             if len(node.in_datatypes) <= 1:
                 continue
             in_ids = _backchain_to_ids(network, node_id)
-            nid = [x for x in in_ids if x in good_ids]
-            if len(nid) != len(in_ids):
-                delete_ids[node_id] = 1
+            combos = _get_valid_input_combinations(
+                network, node_id, in_ids, user_attributes)
+            # Delete the IDs in in_ids if they aren't a part of a
+            # combination that's all good.
+            in_good_combo = {}
+            for combo in combos:
+                x = [x for x in combo if x in good_ids]
+                if len(x) == len(combo):
+                    # All good.
+                    in_good_combo.update({}.fromkeys(x))
+            # Figure out which nodes to delete.
+            x = in_ids
+            x = [x for x in x if x not in in_good_combo]
+            x = [x for x in x if x in good_ids]
+            delete_ids.update({}.fromkeys(x))
+            #nid = [x for x in in_ids if x in good_ids]
+            #if len(nid) != len(in_ids):
+            #    delete_ids[node_id] = 1
 
         for node_id in delete_ids:
-            del good_ids[node_id]
+            if node_id in good_ids:
+                del good_ids[node_id]
         if not delete_ids:
             break
 
     # Delete all the IDs that aren't in good_ids.
     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
     network = network.delete_nodes(bad_ids)
+    network = optimize_network(network, user_attributes)
     return network
 
 
-def remove_data_node(network, *attributes):
-    # Look for the nodes that are compatible with the attributes.  If
-    # an attribute has multiple values, DataNode that matches any of
-    # those values will be removed.
-    node_ids = []  # list of node_ids to remove
-    for node_id, next_ids in network.iterate(node_class=DataNode):
-        node = network.nodes[node_id]
-        if not isinstance(node, DataNode):
-            continue
+## def remove_data_node(network, *attributes):
+##     # Look for the nodes that are compatible with the attributes.  If
+##     # an attribute has multiple values, DataNode that matches any of
+##     # those values will be removed.
+##     node_ids = []  # list of node_ids to remove
+##     for node_id, next_ids in network.iterate(node_class=DataNode):
+##         node = network.nodes[node_id]
+##         if not isinstance(node, DataNode):
+##             continue
 
-        # If compatible, remove or alter this node.
-        remove_attr = {}  # name -> list of values
-        for attr in attributes:
-            assert isinstance(attr, Attribute)
-            if node.datatype != attr.datatype:
-                break
-            assert attr.name in node.attributes
-            assert attr.name not in remove_attr
+##         # If compatible, remove or alter this node.
+##         remove_attr = {}  # name -> list of values
+##         for attr in attributes:
+##             assert isinstance(attr, Attribute)
+##             if node.datatype != attr.datatype:
+##                 break
+##             assert attr.name in node.attributes
+##             assert attr.name not in remove_attr
 
-            DATA_VALUE = node.attributes[attr.name]
-            ATTR_VALUE = attr.value
-            DATA_TYPE = _get_attribute_type(DATA_VALUE)
-            ATTR_TYPE = _get_attribute_type(ATTR_VALUE)
-            case = _assign_case_by_type(DATA_TYPE, ATTR_TYPE)
+##             DATA_VALUE = node.attributes[attr.name]
+##             ATTR_VALUE = attr.value
+##             DATA_TYPE = _get_attribute_type(DATA_VALUE)
+##             ATTR_TYPE = _get_attribute_type(ATTR_VALUE)
+##             case = _assign_case_by_type(DATA_TYPE, ATTR_TYPE)
 
-            if case == 1:
-                if DATA_VALUE != ATTR_VALUE:
-                    break
-                remove_attr[attr.name] = [DATA_VALUE]
-            elif case == 2:
-                # DATA is ATOM, ATTR is ENUM.
-                if DATA_VALUE not in ATTR_VALUE:
-                    break
-                remove_attr[attr.name] = [DATA_VALUE]
-            elif case == 3:
-                # DATA is ENUM, ATTR is ATOM
-                if ATTR_VALUE not in DATA_VALUE:
-                    break
-                remove_attr[attr.name] = [ATTR_VALUE]
-            else:
-                # DATA is ENUM, ATTR is ATOM
-                x = _intersection(DATA_VALUE, ATTR_VALUE)
-                if not x:
-                    break
-                remove_attr[attr.name] = x
-        else:
-            # Remove or alter this node.
-            for name in remove_attr:
-                assert name in node.attributes
-                values = node.attributes[name][:]
-                if type(values) is type(""):
-                    values = [values]
-                for value in remove_attr[name]:
-                    i = values.index(value)
-                    values.pop(i)
-                if not values:
-                    # Removed everything, delete this node.
-                    node_ids.append(node_id)
-                    break
-                if len(values) == 1:
-                    values = values[0]
-                node.attributes[name] = values
+##             if case == 1:
+##                 if DATA_VALUE != ATTR_VALUE:
+##                     break
+##                 remove_attr[attr.name] = [DATA_VALUE]
+##             elif case == 2:
+##                 # DATA is ATOM, ATTR is ENUM.
+##                 if DATA_VALUE not in ATTR_VALUE:
+##                     break
+##                 remove_attr[attr.name] = [DATA_VALUE]
+##             elif case == 3:
+##                 # DATA is ENUM, ATTR is ATOM
+##                 if ATTR_VALUE not in DATA_VALUE:
+##                     break
+##                 remove_attr[attr.name] = [ATTR_VALUE]
+##             else:
+##                 # DATA is ENUM, ATTR is ATOM
+##                 x = _intersection(DATA_VALUE, ATTR_VALUE)
+##                 if not x:
+##                     break
+##                 remove_attr[attr.name] = x
+##         else:
+##             # Remove or alter this node.
+##             for name in remove_attr:
+##                 assert name in node.attributes
+##                 values = node.attributes[name][:]
+##                 if type(values) is type(""):
+##                     values = [values]
+##                 for value in remove_attr[name]:
+##                     i = values.index(value)
+##                     values.pop(i)
+##                 if not values:
+##                     # Removed everything, delete this node.
+##                     node_ids.append(node_id)
+##                     break
+##                 if len(values) == 1:
+##                     values = values[0]
+##                 node.attributes[name] = values
 
-    # Remove each of these node_ids from the network.
-    network = network.delete_nodes(node_ids)
-    network = _OptimizeNoDanglingNodes().optimize(network)
-    return network
-
-
-def _get_inputs_h(network, node_id, nodeid2previds, user_attributes):
-    import itertools
-    node = network.nodes[node_id]
-
-    inputs = []
-    if isinstance(node, DataNode):
-        # I am a valid input, as well as all inputs generated from any
-        # of the previous nodes.
-        inputs = [(node_id, )]
-        for previd in nodeid2previds.get(node_id, []):
-            x = _get_inputs_h(network, previd, nodeid2previds, user_attributes)
-            inputs.extend(x)
-    elif isinstance(node, ModuleNode):
-        # Find all potential sets of DataNode notes that can feed into me.
-        assert node_id in nodeid2previds
-        previds = nodeid2previds[node_id]
-        combos = _get_valid_input_combinations(
-            network, node_id, previds, user_attributes,
-            node2previds=nodeid2previds)
-
-        # Get the inputs from each of the combinations.
-        for combo in combos:
-            # Get the inputs for each branch of this combination.
-            branch2inputs = [
-                _get_inputs_h(network, x, nodeid2previds, user_attributes)
-                for x in combo
-            ]
-
-            # Find all permutations for the inputs for each branch.
-            # [ [(49, 40)]              Each branch has a set of inputs.
-            #   [(38,), (35,)] ]
-            # ->                        itertools.product
-            # [ ((49, 40), (38,)),
-            #   ((49, 40), (35,)) ]
-            # ->                        flatten
-            # [ (49, 40, 38), (49, 40, 35) ]
-            x = itertools.product(*branch2inputs)
-            # Flatten the tuples.
-            x = [_flatten(x) for x in x]
-            inputs = x
-    else:
-        raise AssertionError
-
-    inputs = sorted({}.fromkeys(inputs))
-    return inputs
+##     # Remove each of these node_ids from the network.
+##     network = network.delete_nodes(node_ids)
+##     network = _OptimizeNoDanglingNodes().optimize(network)
+##     return network
 
 
-def get_inputs(network, user_attributes):
+def get_input_nodes(
+    network, user_attributes, skip_datatypes=None,
+    skip_private_datatypes=False, max_inputs=None):
     # Return a list of tuples of node ids.  Each tuple contains a set
     # of node IDs that can serve as the inputs to this network.
     #
@@ -2157,12 +2383,197 @@ def get_inputs(network, user_attributes):
     # This means that the set of nodes 1 and 5 would make a valid input
     # to this network.  Or, node 8 by itself would also be a valid
     # input.
+    
+    # Should be list of names of datatypes to ignore.
+    skip_datatypes = skip_datatypes or []
+
+    data_node_ids = [
+        node_id for (node_id, node) in enumerate(network.nodes)
+        if isinstance(node, DataNode)]
+
+    # Make list of node_ids to skip.
+    skip_ids = [
+        x for x in data_node_ids
+        if network.nodes[x].datatype.name in skip_datatypes]
+    if skip_private_datatypes:
+        x = [x for x in data_node_ids
+             if network.nodes[x].datatype.name.startswith("_")]
+        skip_ids.extend(x)
+    skip_ids = {}.fromkeys(skip_ids)
+
+    class nodeid2nodeid_fn:
+        def __init__(self, skip_ids):
+            self.skip_ids = skip_ids
+        def __call__(self, node_id):
+            if node_id in self.skip_ids:
+                return None
+            return node_id
+    fn = nodeid2nodeid_fn(skip_ids)
+
+    nodeid_combos = _product_network(
+        network, user_attributes, max_nodes=max_inputs, nodeid2id_fn=fn)
+    return nodeid_combos
+
+
+def _product_network(
+    network, user_attributes, max_nodes=None, nodeid2id_fn=None):
+    # Perform a product operation over every node in the network.
+    # max_nodes is the maximum number of nodes that I should perform a
+    # product over.
+    # Return a list of tuples.
+    if max_nodes is None:
+        max_nodes = len(network.nodes)
+
     nodeid2previds = _make_backchain_dict(network)
-    inputs = _get_inputs_h(network, 0, nodeid2previds, user_attributes)
+    cache = {}
+    x = _product_network_h(
+        network, 0, nodeid2previds, user_attributes, max_nodes, nodeid2id_fn,
+        cache)
+    return x.keys()
+
+
+def _product_network_h(
+    network, node_id, nodeid2previds, user_attributes, max_nodes, nodeid2id_fn,
+    cache):
+    if node_id not in cache:
+        x = _product_network_hh(
+            network, node_id, nodeid2previds, user_attributes, max_nodes,
+            nodeid2id_fn, cache)
+        cache[node_id] = x
+    return cache[node_id]
+
+
+def _product_network_hh(
+    network, node_id, nodeid2previds, user_attributes, max_nodes, nodeid2id_fn,
+    cache):
+    # Gets called exactly once per node in the network (due to caching
+    # in _product_network_h).
+    node = network.nodes[node_id]
+
+    inputs = {}
+    if isinstance(node, DataNode):
+        #if node_id not in skip_ids:
+        #    inputs[(node_id, )] = 1
+        x = node_id
+        if nodeid2id_fn is not None:
+            x = nodeid2id_fn(node_id)
+        if x is not None:
+            inputs[(x, )] = 1
+        for previd in nodeid2previds.get(node_id, []):
+            x = _product_network_h(
+                network, previd, nodeid2previds, user_attributes, max_nodes,
+                nodeid2id_fn, cache)
+            inputs.update(x)
+    elif isinstance(node, ModuleNode):
+        # Find all potential sets of DataNode notes that can feed into me.
+        assert node_id in nodeid2previds
+        # list of tuples
+        combos = _get_valid_input_combinations(
+            network, node_id, nodeid2previds[node_id], user_attributes,
+            node2previds=nodeid2previds)
+
+        # Get the inputs from each of the combinations.
+        for combo in combos:
+            if max_nodes is not None and len(combo) > max_nodes:
+                continue
+            # Get the inputs for each branch of this combination.
+            # list (for each branch) of list of tuples (possible
+            # inputs from this branch).
+            branch2inputs = [
+                _product_network_h(
+                    network, x, nodeid2previds, user_attributes, max_nodes,
+                    nodeid2id_fn, cache)
+                for x in combo
+            ]
+            branch2inputs = [x.keys() for x in branch2inputs]
+
+            # Debug.  See what tuples can make each branch.
+            #for i in range(len(combo)):
+            #    for x in branch2inputs[i]:
+            #        print node_id, combo[i], x
+
+            # Optimization: if only one branch, then no need to find
+            # combinations.  Just handle it here.  Actually, this
+            # optimization doesn't really save much time.
+            if len(branch2inputs) == 1:
+                for x in branch2inputs[0]:
+                    inputs[x] = 1
+                continue
+
+            # If any branches are empty (e.g. the branch consists
+            # entirely of skip_ids), then skip this set of
+            # combinations.
+            empty_branches = False
+            for x in branch2inputs:
+                if not x:
+                    empty_branches = True
+                    break
+            if empty_branches:
+                continue
+
+            # Doing the product and chaining takes ~50% of the time in
+            # this function.
+            #x = itertools.product(*branch2inputs)
+            #x = [itertools.chain(*x) for x in x]
+            x = _product_and_chain(branch2inputs, max_nodes)
+            inputs.update(x)
+    else:
+        raise AssertionError
+
     return inputs
 
 
-def group_inputs_by_datatype(network, inputs):
+def _product_and_chain(lists_of_tuples, max_length):
+    # list of list of tuples of integers
+    # Find all permutations for the inputs for each branch.
+    # [ [(49, 40)]              Each branch has a set of inputs.
+    #   [(38,), (35,)] ]
+    # ->                        itertools.product
+    # [ ((49, 40), (38,)),
+    #   ((49, 40), (35,)) ]
+    # ->                        flatten or itertools.chain
+    # [ (49, 40, 38), (49, 40, 35) ]
+    # Is shallow list, so don't need to flatten arbitrarily
+    # deeply.
+    # Flatten the tuples.
+    #x = [_flatten(x) for x in x]
+    assert lists_of_tuples
+    
+    if max_length is None:
+        max_length = 1E6  # shouldn't be network this big
+        
+    product = {}
+    for x in lists_of_tuples[0]:
+        if len(x) <= max_length:
+            product[x] = 1
+    for i in range(1, len(lists_of_tuples)):
+        list_of_tuples = lists_of_tuples[i]
+        # Do a product of everything in product with everything in
+        # list_of_tuples.
+        # Nearly all the time in this function is spent in this
+        # function.
+        product = _product_and_chain_h(
+            product.keys(), list_of_tuples, max_length)
+    return product
+
+
+def _product_and_chain_h(tup_list1, tup_list2, max_length):
+    results = {}
+    for x1 in tup_list1:
+        for x2 in tup_list2:
+            x = x1 + x2
+            if len(x) > max_length:
+                continue
+            # No duplicates.
+            x = {}.fromkeys(x)
+            x = tuple(sorted(x))
+            if len(x) > max_length:
+                continue
+            results[x] = 1
+    return results
+
+
+def group_nodes_by_datatype(network, inputs):
     # Take a network and inputs (e.g. from get_inputs) and return a
     # dictionary where the keys are tuples of DataTypes and the values
     # are the inputs with that pattern of DataTypes.
@@ -2174,18 +2585,117 @@ def group_inputs_by_datatype(network, inputs):
     # }
     # The order of the nodes may not be preserved.
 
-    dt2inputs = {}
-    for inp in inputs:
-        nodes = [network.nodes[x] for x in inp]
-        datatypes = [x.datatype for x in nodes]
-        y = sorted(zip(datatypes, inp))
-        datatypes = tuple([x[0] for x in y])
-        inp = tuple([x[1] for x in y])
+    data_node_ids = [
+        node_id for (node_id, node) in enumerate(network.nodes)
+        if isinstance(node, DataNode)]
 
-        if datatypes not in dt2inputs:
-            dt2inputs[datatypes] = []
-        dt2inputs[datatypes].append(inp)
-    return dt2inputs
+    # Make a list of all the datatypes in the network.  Datatype ID is
+    # index into this list.
+    #all_datatypes = []  # id of datatype -> name of datatype
+    name2datatype = {}   # name of datatype -> DataType
+    datatype2id = {}     # name of datatype -> id of datatype
+    for node_id in data_node_ids:
+        dt = network.nodes[node_id].datatype
+        name2datatype[dt.name] = dt
+    all_datatypes = sorted(name2datatype)
+    for i, dt in enumerate(all_datatypes):
+        datatype2id[dt] = i
+    
+    # Figure out the datatype for each node.
+    # Really fast.
+    nodeid2dtid = {}
+    for node_id in data_node_ids:
+        dtid = datatype2id[network.nodes[node_id].datatype.name]
+        nodeid2dtid[node_id] = dtid
+
+    # Figure out the nodes for each data type.  Very slow.  There's
+    # lots of different inputs, all unique.  There are many fewer
+    # combinations of datatypes.  Thus, iterating over datatypes will
+    # be much faster.
+    data = {}  # tuple of datatype ids -> tuple of node IDs -> 1
+    for inp in inputs:
+        # This line takes ~50% of the time in this function.
+        x = [nodeid2dtid[x] for x in inp]
+        x = sorted(x)     # Takes ~25% of time.
+        dtids = tuple(x)
+        if dtids not in data:
+            data[dtids] = {}
+        data[dtids][inp] = 1
+
+    # Convert the datatype IDs to objects.
+    # Relatively fast.
+    clean = {}  # tuple of datatype objects -> list of tuple of node IDs
+    for dtids, value in data.iteritems():
+        names = [all_datatypes[x] for x in dtids]
+        datatypes = tuple([name2datatype[x] for x in names])
+        clean[datatypes] = value.keys()
+    return clean
+
+
+def get_input_datatypes(
+    network, user_attributes, skip_datatypes=None,
+    skip_private_datatypes=False, max_inputs=None):
+    # Return a list of tuples of datatypes.  Each tuple contains a set
+    # of DataType objects that can serve as the inputs to this
+    # network.
+    #
+    # Example return value:
+    #   [(UnprocessedSignalFile, ClassLabelFile), (UnprocessedSignalFile,)]
+
+    # Should be list of names of datatypes to ignore.
+    skip_datatypes = skip_datatypes or []    
+
+    data_node_ids = [
+        node_id for (node_id, node) in enumerate(network.nodes)
+        if isinstance(node, DataNode)]
+
+    # Make list of node_ids to skip.
+    skip_ids = [
+        x for x in data_node_ids
+        if network.nodes[x].datatype.name in skip_datatypes]
+    if skip_private_datatypes:
+        x = [x for x in data_node_ids
+             if network.nodes[x].datatype.name.startswith("_")]
+        skip_ids.extend(x)
+    skip_ids = {}.fromkeys(skip_ids)
+
+    class nodeid2dtid_fn:
+        def __init__(self, network, skip_ids):
+            # Make a list of all the datatypes in the network.
+            # Datatype ID is index into this list.
+            id2name = []         # id of datatype -> name of datatype
+            name2datatype = {}   # name of datatype -> DataType
+            name2id = {}         # name of datatype -> id of datatype
+            for node_id in data_node_ids:
+                dt = network.nodes[node_id].datatype
+                name2datatype[dt.name] = dt
+            id2name = sorted(name2datatype)
+            for i, dt in enumerate(id2name):
+                name2id[dt] = i
+
+            self.network = network
+            self.skip_ids = skip_ids
+            self.name2datatype = name2datatype
+            self.id2name = id2name
+            self.name2id = name2id
+        def __call__(self, node_id):
+            if node_id in self.skip_ids:
+                return None
+            node = self.network.nodes[node_id]
+            return self.name2id[node.datatype.name]
+    fn = nodeid2dtid_fn(network, skip_ids)
+
+    # Take the product of the data types across the network.
+    dtid_combos = _product_network(
+        network, user_attributes, max_nodes=max_inputs, nodeid2id_fn=fn)
+
+    # Convert from ID back to datatypes.
+    datatype_combos = []
+    for dtid_combo in dtid_combos:
+        names = [fn.id2name[x] for x in dtid_combo]
+        x = tuple([fn.name2datatype[x] for x in names])
+        datatype_combos.append(x)
+    return datatype_combos
 
 
 def summarize_moduledb(moduledb):
@@ -2272,6 +2782,8 @@ def print_network(network, outhandle=None):
 
 
 def _format_datanode_gv(node, node_id):
+    from genomicode import parselib
+    
     node_name = "%s [%d]" % (node.datatype.name, node_id)
 
     LINE_WIDTH = 60
@@ -2288,7 +2800,7 @@ def _format_datanode_gv(node, node_id):
     for x in node.attributes.iteritems():
         name, value = x
         x = "%s = %s" % (name, value)
-        for x in _split_line(x, "", "    ", LINE_WIDTH):
+        for x in parselib.linesplit(x, prefix1=0, prefixn=4, width=LINE_WIDTH):
             w(x)
             w('<BR ALIGN="LEFT"/>')
     return "<%s>" % "".join(lines)
@@ -2392,7 +2904,7 @@ def plot_network_gv(
         gv_nodes, gv_edges, node2attributes=gv_node2attr,
         prog="dot", directed=True)
     G.draw(filename)
-    G.write("test.gv")
+    #G.write("test.gv")
 
 
 def read_network(file_or_handle):
@@ -2431,23 +2943,39 @@ def write_network(file_or_handle, network):
 ##    return pickle.load(handle)
 
 
-def diagnose_start_node(network, user_data):
+def diagnose_start_node(network, user_data, outhandle=None):
+    import sys
+
+    outhandle = outhandle or sys.stdout
+    
     results = _score_start_nodes(network, user_data)
 
+    # This can happen if the network doesn't contain any of the same
+    # datatypes as user_data.  This can be if the network is really
+    # small, e.g. if there's no way at all to generate the desired out
+    # data type.
+    if not results:
+        node_or_nodes = "node"
+        if len(network.nodes) > 1:
+            node_or_nodes = "nodes"
+        print >>outhandle, \
+              "The network (%d %s) contains no matching data types." % (
+            len(network.nodes), node_or_nodes)
+        return
     header = [
         "Mismatches", "Datatype", "Node ID", "Attribute", "Network", "User"]
-    print "\t".join(header)
+    print >>outhandle, "\t".join(header)
     for x in results:
         score, node_id, user_data, attr_values = x
         dt_name = network.nodes[node_id].datatype.name
         if not attr_values:
             x = score, dt_name, node_id, "", "", ""
             assert len(x) == len(header)
-            print "\t".join(map(str, x))
+            print >>outhandle, "\t".join(map(str, x))
         for name, netw_value, user_value in attr_values:
             x = score, dt_name, node_id, name, netw_value, user_value
             assert len(x) == len(header)
-            print "\t".join(map(str, x))
+            print >>outhandle, "\t".join(map(str, x))
 
 
 def _backchain_to_modules(moduledb, data):
@@ -2461,16 +2989,22 @@ def _backchain_to_modules(moduledb, data):
     return modules
 
 
-def _backchain_to_input(module, in_num, out_data, user_attributes):
+def _backchain_to_input(module, in_num, out_data, user_attributes,
+                        force_default_input_attribute_to_be_all_values=False):
     # Given a module and output_data, return the input_data object
     # that can generate the output.  This should only be called by
     # _backchain_to_all_inputs.  The SAME_AS constraint is handled
     # there.  If this is called by itself, the attributes might not be
     # right.
+    #
+    # force_default_input_attribute_to_be_all_values can be useful
+    # when checking for the possibility that an input node can go into
+    # a module.  However, it should be False when generating the
+    # network to prevent combinatorial explosion.
     assert in_num < len(module.in_datatypes)
 
     in_datatype = module.in_datatypes[in_num]
-    out_datatype = out_data.datatype
+    #out_datatype = out_data.datatype
 
     # Can't generate debug messages here because the SAME_AS
     # constraints aren't handled in this function.
@@ -2480,10 +3014,10 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
     # 1.  Consequence (i.e. SAME_AS_CONSTRAINT).
     # 2.  Constraint.
     # 3.  user attribute
-    # 4.  out_data
+    # 4.  out_data              (default_attributes_from)
     # 5.  default output value of input datatype
     #
-    # If the user attribute conflicts with a Constraint, thte
+    # If the user attribute conflicts with a Constraint, the
     # Constraint is higher priority to make sure no objects are
     # generated that the module cannot handle.  However, if the user
     # attribute or default value is a part of the constraint,
@@ -2513,7 +3047,8 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
     # than the default?
     for attrdef in in_datatype.attribute_defs.itervalues():
         default = attrdef.default_out
-        if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES:
+        if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES or \
+               force_default_input_attribute_to_be_all_values:
             default = attrdef.values
         attributes[attrdef.name] = default
         attrsource[attrdef.name] = "default"
@@ -2533,7 +3068,7 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
         # Set values from user attributes.
         for attr in user_attributes:
             # Ignore attributes for other data types.
-            if attr.datatype != in_datatype:
+            if attr.datatype.name != in_datatype.name:
                 continue
 
             ### Make sure this value doesn't conflict with a higher
@@ -2608,6 +3143,7 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
     consequences = x
     for consequence in consequences:
         n = consequence.name
+        source = "consequence"
 
         # Copy the value from the output data.
         data_value = out_data.attributes[n]
@@ -2631,6 +3167,7 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
             elif data_type == TYPE_ENUM:
                 assert constraint.arg1 in data_value
                 data_value = constraint.arg1
+                source = "consequence+constraint"
             else:
                 raise AssertionError
         elif constraint.behavior == CAN_BE_ANY_OF:
@@ -2641,29 +3178,35 @@ def _backchain_to_input(module, in_num, out_data, user_attributes):
                 common = _intersection(constraint.arg1, data_value)
                 assert common
                 data_value = common
+                source = "consequence+constraint"
             else:
                 raise AssertionError
         else:
             raise AssertionError
 
         attributes[n] = data_value
-        attrsource[n] = "consequence"
+        attrsource[n] = source
 
     return attributes, attrsource
 
 
-def _backchain_to_all_inputs(module, out_data, user_attributes):
+def _backchain_to_all_inputs(
+    module, out_data, user_attributes,
+    force_default_input_attribute_to_be_all_values=False):
     all_attributes = []
     all_attrsource = []
+    force = force_default_input_attribute_to_be_all_values
     for in_num in range(len(module.in_datatypes)):
-        x = _backchain_to_input(module, in_num, out_data, user_attributes)
+        x = _backchain_to_input(
+            module, in_num, out_data, user_attributes,
+            force_default_input_attribute_to_be_all_values=force)
         attributes, attrsource = x
         all_attributes.append(attributes)
         all_attrsource.append(attrsource)
 
-    # Handle the SAME_AS constraints here.  Difficult to do it in
-    # _backchain_to_input because not all inputs have been created
-    # yet.
+    # Handle the SAME_AS constraints here.  Can't do in
+    # _backchain_to_input because these constrains require the
+    # comparison of multiple inputs.
     for constraint in module.constraints:
         if constraint.behavior != SAME_AS:
             continue
@@ -2696,14 +3239,19 @@ def _backchain_to_all_inputs(module, out_data, user_attributes):
         attributes = all_attributes[in_num]
         attrsource = all_attrsource[in_num]
 
-        debug_print("Backchaining %s (input=%d) -> %s -> %s." %
-                    (in_datatype.name, in_num, module.name, out_datatype.name))
+        x = in_datatype.output(**attributes)
+        all_inputs.append(x)
+
+        # Optimization: Don't call debug_print and sorted.
+        if not DEBUG:
+            continue
+        debug_print(
+            "Backchaining %s (input=%d) -> %s -> %s." %
+            (in_datatype.name, in_num, module.name, out_datatype.name))
         #debug_print("Generating a %s with attributes:" % in_datatype.name)
         for name in sorted(attributes):
             debug_print("  %s=%s (%s)" %
                         (name, attributes[name], attrsource[name]))
-        x = in_datatype.output(**attributes)
-        all_inputs.append(x)
 
     return all_inputs
 
@@ -2719,7 +3267,7 @@ def _forwardchain_to_outputs(module, in_datas):
     # Check the input variables.
     assert len(module.in_datatypes) == len(in_datas)
     for i in range(len(module.in_datatypes)):
-        assert in_datas[i].datatype == module.in_datatypes[i]
+        assert in_datas[i].datatype.name == module.in_datatypes[i].name
 
     # Assume that in_datas fulfill the constraints of the module.
 
@@ -2740,7 +3288,7 @@ def _forwardchain_to_outputs(module, in_datas):
         input_index = module.default_attributes_from[0].input_index
         assert input_index < len(in_datas)
         data = in_datas[input_index]
-        assert data.datatype == datatype
+        assert data.datatype.name == datatype.name
         attributes.update(data.attributes)
     # Case 2.
     else:
@@ -2796,7 +3344,8 @@ def _backchain_to_ids(network, node_id):
     for nid, next_ids in network.transitions.iteritems():
         if node_id in next_ids:
             ids[nid] = 1
-    return sorted(ids)
+    #return sorted(ids)
+    return ids.keys()
 
 
 def _make_backchain_dict(network):
@@ -2913,45 +3462,35 @@ def _make_backchain_dict(network):
 ##     return True
 
 
-def _can_module_take_one_data(module, input_num, in_data, out_data,
-                              user_attributes):
-    assert input_num < len(module.in_datatypes)
-
-    # BUG: should not call _backchain_to_input!!!
-    #good_in_data = _backchain_to_input(
-    #    module, input_num, out_data, user_attributes)
-    all_inputs = _backchain_to_all_inputs(module, out_data, user_attributes)
-    return _is_data_compatible_with(in_data, all_inputs[input_num])
-
-
 def _can_module_take_data(module, in_datas, out_data, user_attributes):
     # Return True/False if a module can take in_datas (list of
     # DataNode nodes) as input.
 
     assert len(in_datas) == len(module.in_datatypes)
-    all_inputs = _backchain_to_all_inputs(module, out_data, user_attributes)
+    all_inputs = _backchain_to_all_inputs(
+        module, out_data, user_attributes,
+        force_default_input_attribute_to_be_all_values=True)
     for i in range(len(in_datas)):
         if not _is_data_compatible_with(in_datas[i], all_inputs[i]):
             return False
     return True
 
 
-def _can_module_in_network_take_one_data(network, module_id, input_num,
-                                         in_data, user_attributes):
-    module = network.nodes[module_id]
-    # If in_datas is compatible with any of the out_datas, then return
-    # True.
-    out_data_ids = network.transitions.get(module_id, [])
-    for out_data_id in out_data_ids:
-        out_data = network.nodes[out_data_id]
-        if _can_module_take_one_data(module, input_num, in_data, out_data,
-                                     user_attributes):
-            return True
-    return False
+def _can_module_take_one_data(
+    module, input_num, in_data, out_data, user_attributes):
+    assert input_num < len(module.in_datatypes)
+
+    # BUG: should not call _backchain_to_input!!!
+    #good_in_data = _backchain_to_input(
+    #    module, input_num, out_data, user_attributes)
+    all_inputs = _backchain_to_all_inputs(
+        module, out_data, user_attributes,
+        force_default_input_attribute_to_be_all_values=True)
+    return _is_data_compatible_with(in_data, all_inputs[input_num])
 
 
-def _can_module_in_network_take_data(network, module_id, in_datas,
-                                     user_attributes):
+def _can_module_in_network_take_data(
+    network, module_id, in_datas, user_attributes):
     module = network.nodes[module_id]
     # If in_datas is compatible with any of the out_datas, then return
     # True.
@@ -2959,6 +3498,21 @@ def _can_module_in_network_take_data(network, module_id, in_datas,
     for out_data_id in out_data_ids:
         out_data = network.nodes[out_data_id]
         if _can_module_take_data(module, in_datas, out_data, user_attributes):
+            return True
+    return False
+
+
+def _can_module_in_network_take_one_data(
+    network, module_id, input_num, in_data, user_attributes):
+    module = network.nodes[module_id]
+    # If in_datas is compatible with any of the out_datas, then return
+    # True.
+
+    out_data_ids = network.transitions.get(module_id, [])
+    for out_data_id in out_data_ids:
+        out_data = network.nodes[out_data_id]
+        if _can_module_take_one_data(
+            module, input_num, in_data, out_data, user_attributes):
             return True
     return False
 
@@ -3015,7 +3569,7 @@ def _can_module_produce_data(module, data):
 
     # If this module doesn't produce the same data type, then it can't
     # produce this data object.
-    if module.out_datatype != data.datatype:
+    if module.out_datatype.name != data.datatype.name:
         #debug_print(
         #    "ModuleNode can't generate data type: %s." % data.datatype.name)
         return False
@@ -3051,8 +3605,8 @@ def _can_module_produce_data(module, data):
             # check the other constraint.
             if constraint.behavior == SAME_AS:
                 assert constraint.arg1 < len(module.in_datatypes)
-                constraint = _resolve_constraint(constraint,
-                                                 module.constraints)
+                constraint = _resolve_constraint(
+                    constraint, module.constraints)
                 #x = [x for x in module.constraints
                 #     if x.name == consequence.name]
                 #x = [x for x in x if x.input_index == constraint.arg1]
@@ -3291,23 +3845,27 @@ def _get_valid_input_combinations(
     # checks to make sure the inputs are valid.
     import itertools
 
+    # In about 97% of the cases, the module only has 1 datatype.  In
+    # ~90% of the cases, there are 2 input IDs.
     module = network.nodes[module_id]
 
     # For each in_datatype, find all the data objects that match this
     # type.
-    args = []
+    args = []   # list of list node IDs.  Parallel to module.in_datatypes
     for datatype in module.in_datatypes:
-        x = [x for x in all_input_ids if network.nodes[x].datatype == datatype]
+        x = [x for x in all_input_ids
+             if network.nodes[x].datatype.name == datatype.name]
         args.append(x)
 
     # If there are many in_datatypes, then this could cause a
     # combinatorial explosion of possibilities.  Optimize by throwing
     # out data objects that fail a constraint.
-    for i in range(len(args)):
-        x = args[i]
-        x = [x for x in x if _can_module_in_network_take_one_data(
-            network, module_id, i, network.nodes[x], user_attributes)]
-        args[i] = x
+    if len(args) > 1:
+        for i in range(len(args)):
+            x = args[i]
+            x = [x for x in x if _can_module_in_network_take_one_data(
+                network, module_id, i, network.nodes[x], user_attributes)]
+            args[i] = x
 
     valid = []
     # Optimization: Assume existing inputs in the network are valid
@@ -3354,9 +3912,9 @@ def _get_valid_input_combinations(
 
             if _is_data_compatible_with(output_data, node):
                 output_is_compatible = True
+                break
         if not output_is_compatible:
             continue
-
         valid.append(input_ids)
     return valid
 
@@ -3409,17 +3967,18 @@ def _find_data_node(nodes, node):
     for i, n in enumerate(nodes):
         if not isinstance(n, DataNode):
             continue
-        if n.datatype != node.datatype:
+        if n.datatype.name != node.datatype.name:
             continue
 
         n1_attr = n.attributes
         n2_attr = node.attributes
-        x1 = n1_attr.keys()
-        x2 = n2_attr.keys()
-        all_attributes = {}.fromkeys(x1 + x2)
+        # Attributes should be the same.
+        #x1 = n1_attr.keys()
+        #x2 = n2_attr.keys()
+        #all_attributes = {}.fromkeys(x1 + x2)
 
         is_equal = True
-        for key in all_attributes:
+        for key in n1_attr:
             assert key in n1_attr
             assert key in n2_attr
             N1_VALUE = n1_attr[key]
@@ -3471,7 +4030,7 @@ def _score_start_nodes(network, user_data):
     for node_id, next_ids in network.iterate(node_class=DataNode):
         for user_data in user_datas:
             netw_data = network.nodes[node_id]
-            if netw_data.datatype != user_data.datatype:
+            if netw_data.datatype.name != user_data.datatype.name:
                 continue
 
             attrs = _score_one_start_node(netw_data, user_data)
@@ -3487,7 +4046,18 @@ def _score_start_nodes(network, user_data):
     return sorted(results)
 
 
+ITER_UPPER_DIAG_CACHE = {}
 def _iter_upper_diag(n):
+    global ITER_UPPER_DIAG_CACHE
+    if n >= 1024:
+        return _iter_upper_diag_h(n)
+    if n not in ITER_UPPER_DIAG_CACHE:
+        x = list(_iter_upper_diag_h(n))
+        ITER_UPPER_DIAG_CACHE[n] = x
+    return ITER_UPPER_DIAG_CACHE[n]
+    
+
+def _iter_upper_diag_h(n):
     for i in range(n - 1):
         for j in range(i + 1, n):
             yield i, j
@@ -3499,7 +4069,7 @@ def _score_one_start_node(network_data, user_data):
     # <attributes> that are incompatible between the network_data and
     # user_data.  An empty list indicates that the two nodes are
     # compatible.
-    assert network_data.datatype == user_data.datatype
+    assert network_data.datatype.name == user_data.datatype.name
 
     # Start DataNode
     # ATOM      Must match a specific value.
@@ -3541,7 +4111,7 @@ def _is_data_compatible_with(data_specific, data_general):
     # Return boolean indicating whether data_specific is compatible
     # with data_general.
     data_s, data_g = data_specific, data_general
-    if data_s.datatype != data_g.datatype:
+    if data_s.datatype.name != data_g.datatype.name:
         return False
     assert len(data_s.attributes) == len(data_g.attributes)
     assert sorted(data_s.attributes) == sorted(data_g.attributes)
@@ -3600,11 +4170,19 @@ def _assign_case_by_type(type1, type2):
     return i + 1
 
 
+import types
 def _get_attribute_type(name):
-    if type(name) is type(""):
+    t = type(name)
+    if t is types.StringType:
         return TYPE_ATOM
-    elif type(name) in [type([]), type(())]:
+    elif t is types.ListType:
         return TYPE_ENUM
+    elif t is types.TupleType:
+        return TYPE_ENUM
+    #if type(name) is type(""):
+    #    return TYPE_ATOM
+    #elif type(name) in [type([]), type(())]:
+    #    return TYPE_ENUM
     raise AssertionError, "Unknown attribute type: %s" % str(name)
 
 
@@ -3644,11 +4222,13 @@ def _print_string(s):
     print s
 
 
-def _print_line(line, prefix0, prefixn, width, outhandle=None):
+def _print_line(line, prefix1, prefixn, width, outhandle=None):
     import sys
+    from genomicode import parselib
 
     outhandle = outhandle or sys.stdout
-    lines = _split_line(line, prefix0, prefixn, width)
+    lines = parselib.linesplit(
+        line, prefix1=prefix1, prefixn=prefixn, width=width)
     for x in lines:
         print >>outhandle, x
 
@@ -3667,24 +4247,24 @@ def _print_line(line, prefix0, prefixn, width, outhandle=None):
     #    print >> outhandle, "%s%s" % (p, lines[i])
 
 
-def _split_line(line, prefix0, prefixn, width):
-    # Return a list of lines.  prefix0 is a string to put in front of
-    # the first line.  prefixn is what to put in front of the
-    # remaining lines.
-    lines = []
-    p = prefix0
-    while line:
-        x = line[:(width - len(p))]
-        line = line[len(x):]
-        lines.append(x)
-        p = prefixn
+## def _split_line(line, prefix0, prefixn, width):
+##     # Return a list of lines.  prefix0 is a string to put in front of
+##     # the first line.  prefixn is what to put in front of the
+##     # remaining lines.
+##     lines = []
+##     p = prefix0
+##     while line:
+##         x = line[:(width - len(p))]
+##         line = line[len(x):]
+##         lines.append(x)
+##         p = prefixn
 
-    for i in range(len(lines)):
-        p = prefixn
-        if i == 0:
-            p = prefix0
-        lines[i] = p + lines[i]
-    return lines
+##     for i in range(len(lines)):
+##         p = prefixn
+##         if i == 0:
+##             p = prefix0
+##         lines[i] = p + lines[i]
+##     return lines
 
 
 def _pretty_attributes(attributes):
@@ -3725,8 +4305,11 @@ def _pretty_attributes(attributes):
 
 
 def debug_print(s):
-    if DEBUG:
-        print s
+    from genomicode import parselib
+    
+    if not DEBUG:
+        return
+    parselib.print_split(s)
 
 
 def _object_to_dict(obj):
@@ -3763,3 +4346,17 @@ def _dict_to_object(d):
         fn = getattr(class_, '_' + class_name + '__init_from_dict')
         inst = fn(args)
     return inst
+
+
+
+try:
+    import cbie3
+except ImportError:
+    pass
+else:
+    import sys
+    this_module = sys.modules[__name__]
+    for name in cbie3.__dict__.keys():
+        if name.startswith("__"):
+            continue
+        this_module.__dict__[name] = cbie3.__dict__[name]

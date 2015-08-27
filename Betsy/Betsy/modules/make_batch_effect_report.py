@@ -240,43 +240,4 @@ class Module(AbstractModule):
         return 'report'
 
 
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', quantile_norm="no")
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='PcaPlot', quantile_norm="no")
     
-        filter3 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', quantile_norm="yes", bfrm_norm="no",
-            shiftscale_norm="no", dwd_norm="no", combat_norm="no")
-        filter4 = module_utils.AntecedentFilter(
-            datatype_name='PcaPlot', quantile_norm="yes", bfrm_norm="no",
-            shiftscale_norm="no", dwd_norm="no", combat_norm="no")
-    
-        filter5 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', quantile_norm="yes", bfrm_norm="yes")
-        filter6 = module_utils.AntecedentFilter(
-            datatype_name='PcaPlot', quantile_norm="yes", bfrm_norm="yes")
-    
-        filter7 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', quantile_norm="yes", combat_norm="yes")
-        filter8 = module_utils.AntecedentFilter(
-            datatype_name='PcaPlot', quantile_norm="yes", combat_norm="yes")
-    
-        filter9 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', quantile_norm="yes", dwd_norm="yes")
-        filter10 = module_utils.AntecedentFilter(
-            datatype_name='PcaPlot', quantile_norm="yes", dwd_norm="yes")
-    
-        filter11 = module_utils.AntecedentFilter(
-            datatype_name='SignalFile', quantile_norm="yes", shiftscale_norm="yes")
-        filter12 = module_utils.AntecedentFilter(
-            datatype_name='PcaPlot', quantile_norm="yes", shiftscale_norm="yes")
-
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2,
-            filter3, filter4, filter5, filter6, filter7, filter8,
-            filter9, filter10, filter11, filter12)
-        return x

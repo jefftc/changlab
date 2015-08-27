@@ -12,6 +12,9 @@ pretty_pvalue
 pretty_date
 pretty_list
 
+linesplit              Split one long string into lines.
+print_split
+
 
 HTML PARSING
 remove                 Remove text from a string.
@@ -211,6 +214,71 @@ def pretty_list(items):
     x = ", ".join(items[:-1])
     return "%s, and %s" % (x, items[-1])
 
+
+def linesplit(one_long_line, prefix1=0, prefixn=4, width=72):
+    lines = one_long_line.split("\n")
+    all_lines = []
+    for i in range(len(lines)):
+        p1, pn = prefix1, prefixn
+        if i > 0:
+            p1 = pn
+        x = _linesplit_h(lines[i], p1, pn, width)
+        all_lines.extend(x)
+    return all_lines
+
+def _linesplit_h(one_long_line, prefix1, prefixn, width):
+    # prefix1 and prefixn can be integer indicating the number of
+    # spaces, or a string indicating the prefix to print.
+    assert width > 0
+    if type(prefix1) is type(0):
+        assert prefix1 >= 0
+        prefix1 = " " * prefix1
+    if type(prefixn) is type(0):
+        assert prefixn >= 0
+        prefixn = " " * prefixn
+    assert width > len(prefix1)
+    assert width > len(prefixn)
+
+    assert "\n" not in one_long_line
+    assert "\r" not in one_long_line
+    assert "\t" not in one_long_line
+    
+    lines = []
+    while 1:
+        #ind = " "*indent1
+        ind = prefix1
+        if lines:
+            #ind = " "*indento
+            ind = prefixn
+        #if ind:
+        #    one_long_line = one_long_line.lstrip()  # no leading spaces
+        if lines:
+            one_long_line = one_long_line.lstrip()  # no leading spaces
+        one_long_line = ind + one_long_line
+
+        if len(one_long_line) < width:
+            lines.append(one_long_line)
+            break
+
+        # Try to split on a space.
+        w = width
+        i = one_long_line.rfind(" ", len(ind), w)
+        if i > 0:
+            w = i
+        x = one_long_line[:w]
+        one_long_line = one_long_line[w:]
+        lines.append(x)
+    return lines
+
+
+def print_split(one_long_line, prefix1=0, prefixn=4, width=72, outhandle=None):
+    import sys
+    outhandle = outhandle or sys.stdout
+
+    lines = linesplit(
+        one_long_line, prefix1=prefix1, prefixn=prefixn, width=width)
+    for line in lines:
+        print >>outhandle, line
 
 # NOTE: The functions in this package use quick and dirty regular
 # expressions to handle HTML.  There are cases where the code can get

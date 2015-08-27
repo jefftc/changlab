@@ -41,11 +41,4 @@ class Module(AbstractModule):
         filename = "download_geo_seriesmatrix_%s" % original_file
         return filename
 
-    def hash_input(self, pipeline, antecedents, out_attributes, user_options):
-        # TODO: Is this correct?
-        GSEID = user_options["GSEID"]
-        GPLID = user_options.get("GPLID", "")
-        return "%s_%s" % (GSEID, GPLID)
-
-
-
+    

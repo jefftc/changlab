@@ -190,10 +190,10 @@ def find_diffexp_genes(
 
     # Filter based on user criteria.
     if fold_change is not None:
+        log_2_fc = math.log(fold_change, 2)
         name = "Log_2 Fold Change"
         assert name in header, 'I could not find the "%s" column.' % name
         I = header.index(name)
-        log_2_fc = math.log(fold_change, 2)
         DATA_py = [x for x in DATA_py
                    if x[I] is not None and abs(x[I]) >= log_2_fc]
     if p_cutoff is not None:
@@ -466,7 +466,8 @@ def main():
         "File not found: %s" % args.expression_file
     assert args.num_procs >= 1 and args.num_procs < 100
     if args.fold_change is not None:
-        assert args.fold_change >= 0 and args.fold_change < 1000
+        assert args.fold_change >= 1E-10 and args.fold_change < 1000, \
+               "Invalid fold change: %s" % args.fold_change
     if args.fdr_cutoff is not None:
         assert args.fdr_cutoff > 0.0 and args.fdr_cutoff < 1.0
         assert args.p_cutoff is None, "Cannot have both FDR and p cutoff."

@@ -258,4 +258,4 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         help="run RNA-SeQC"  ),
     ]
-list_files=[]
+all_data_types=[]

@@ -177,23 +177,7 @@ class Module(AbstractModule):
 
 
     
-    def find_antecedents(
-        self, network, module_id, out_attributes, user_attributes, pool):
-        from Betsy import module_utils
-        filter1 = module_utils.AntecedentFilter(
-            datatype_name='DiffExprFile', gene_order="diff_ttest")
-        filter2 = module_utils.AntecedentFilter(
-            datatype_name='DiffExprFile', gene_order="diff_sam")
-        filter3 = module_utils.AntecedentFilter(datatype_name='Heatmap')
-        filter4 = module_utils.AntecedentFilter(datatype_name='GatherFile')
-        filter5 = module_utils.AntecedentFilter(datatype_name='GseaFile')
-        x = module_utils.find_antecedents(
-            network, module_id, user_attributes, pool, filter1, filter2,
-            filter3, filter4, filter5)
-        return x
-
-    
-def write_table(header, data, N):
+    def write_table(header, data, N):
     from genomicode import htmllib
     rows = []
     a = ''
