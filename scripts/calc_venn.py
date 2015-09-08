@@ -49,7 +49,9 @@ def match_gene_sets(genesets):
     return genesets, pretty_names
 
 
-def draw_venn(filename, all_names, name2genes, pair2common):
+def draw_venn(
+    filename, all_names, name2genes, pair2common, args_margin,
+    args_label_size, args_count_size):
     import sys
     import StringIO
     from genomicode import jmath
@@ -68,17 +70,48 @@ def draw_venn(filename, all_names, name2genes, pair2common):
 
     if len(all_names) == 2:
         raise NotImplementedError
-    elif len(all_names) == 3:
-        n1, n2, n3 = all_names
-        R_equals(name2genes[n1], "A")
-        R_equals(name2genes[n2], "B")
-        R_equals(name2genes[n3], "C")
-        R('x <- list(A=A, B=B, C=C)')
-        R('names(x)[1] <- "%s"' % n1)
-        R('names(x)[2] <- "%s"' % n2)
-        R('names(x)[3] <- "%s"' % n3)
-        fill = ["cornflowerblue", "green", "yellow"]
-        cat_col = ["darkblue", "darkgreen", "orange"]
+    elif len(all_names) == 3 or len(all_names) == 5:
+        varnames = ["A", "B", "C", "D", "E"]
+        for i in range(len(all_names)):
+            n = all_names[i]
+            R_equals(name2genes[n], varnames[i])
+        #n1, n2, n3 = all_names
+        #R_equals(name2genes[n1], "A")
+        #R_equals(name2genes[n2], "B")
+        #R_equals(name2genes[n3], "C")
+        if len(all_names) == 3:
+            R('x <- list(A=A, B=B, C=C)')
+        elif len(all_names) == 5:
+            R('x <- list(A=A, B=B, C=C, D=D, E=E)')
+        else:
+            raise NotImplementedError
+        for i in range(len(all_names)):
+            n = all_names[i]
+            R('names(x)[%d] <- "%s"' % (i+1, n))
+        #R('names(x)[1] <- "%s"' % n1)
+        #R('names(x)[2] <- "%s"' % n2)
+        #R('names(x)[3] <- "%s"' % n3)
+
+        cex = 1*args_count_size         # Size of number in each circle.
+        cat_cex = 1.5*args_label_size   # Size of category labels.
+        margin = 0.05*args_margin   # Amount of space around plot.
+        # Bigger margin is smaller figure.
+        
+        if len(all_names) == 3:
+            fill = ["cornflowerblue", "green", "yellow"]
+            cat_col = ["darkblue", "darkgreen", "orange"]
+        elif len(all_names) == 5:
+            fill = [
+                "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
+                "orchid3"]
+            cat_col = [
+                "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
+                "orchid3"]
+            margin = 0.25*args_margin
+            cat_cex = 0.75*args_label_size
+            cex = 0.65*args_count_size
+        else:
+            raise NotImplementedError
         
         params = {
             "col" : "transparent",   # color of outer lines
@@ -88,12 +121,13 @@ def draw_venn(filename, all_names, name2genes, pair2common):
 
             # Number of items.
             #"lty" : "blank",
-            "cex" : 1,   # Number in each circle.
+            "cex" : cex,
             
             # Labels
-            "cat.cex" : 1.5,  # Size of category labels.
+            "cat.cex" : cat_cex,
             "cat.col" : cat_col,
             "cat.default.pos" : "text",
+            "margin" : margin,
             }
         R_fn(
             "venn.diagram", R_var("x"), filename=filename,
@@ -136,8 +170,11 @@ def draw_venn(filename, all_names, name2genes, pair2common):
         ##     "draw.triple.venn", area1, area2, area3, n12, n23, n13, n123,
         ##     **params)
         ## jmath.R_fn("dev.off")
+    elif len(all_names) > 5:
+        raise AssertionError, "Can't draw venn diagram with %d circles." % \
+              len(all_names)
     else:
-        raise NotImplementedError
+        raise NotImplementedError, len(all_names)
 
 def main():
     import os
@@ -158,12 +195,27 @@ def main():
     parser.add_argument(
         "--automatch", action="store_true", 
         help="Will match _UP with _DN (or _DOWN).")
-    parser.add_argument(
+
+    group = parser.add_argument_group(title="Plot")
+    group.add_argument(
         "--plotfile", help="Save a TIFF plot to this file.")
+    group.add_argument(
+        "--margin", default=1.0, type=float,
+        help="Increase or decrease the margin.")
+    group.add_argument(
+        "--label_size", default=1.0, type=float,
+        help="Increase or decrease the font for the labels.")
+    group.add_argument(
+        "--count_size", default=1.0, type=float,
+        help="Increase or decrease the font for the counts.")
 
     args = parser.parse_args()
     assert os.path.exists(args.geneset_file), \
            "File not found: %s" % args.geneset_file
+
+    assert args.margin > 0 and args.margin < 100
+    assert args.label_size > 0 and args.label_size < 10
+    assert args.count_size > 0 and args.count_size < 10
 
     name2genes = {}
     all_names = []  # preserve order of gene sets
@@ -223,7 +275,9 @@ def main():
         write_fn(args.outfile, genesets)
 
     if args.plotfile:
-        draw_venn(args.plotfile, all_names, name2genes, pair2common)
+        draw_venn(
+            args.plotfile, all_names, name2genes, pair2common,
+            args.margin, args.label_size, args.count_size)
 
 
 if __name__ == '__main__':

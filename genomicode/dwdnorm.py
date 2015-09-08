@@ -86,6 +86,7 @@ def normalize(X, Y, version=None, matlab=None, dwd_path=None):
         x, X_file = tempfile.mkstemp(dir=temp_path); os.close(x)
         _write_matlab_matrix(X, X_file)
         script = _format_exec_file(X_file, Y, version, dwd_path)
+        # This might fail with a "Broken pipe" if no Matlab installed.
         w.write(script)
         w.close()
         lines = r.readlines()

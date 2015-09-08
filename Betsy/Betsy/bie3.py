@@ -2474,8 +2474,13 @@ def _product_network_hh(
 
         # Get the inputs from each of the combinations.
         for combo in combos:
-            if max_nodes is not None and len(combo) > max_nodes:
-                continue
+            # No.  Combo is the number of input nodes.  However, if
+            # multiple of those input nodes can be created by the same
+            # upstream node, then the total number of nodes might be
+            # fewer.  So it is inappropriate to check for max_nodes
+            # here.
+            #if max_nodes is not None and len(combo) > max_nodes:
+            #    continue
             # Get the inputs for each branch of this combination.
             # list (for each branch) of list of tuples (possible
             # inputs from this branch).
@@ -2949,6 +2954,8 @@ def diagnose_start_node(network, user_data, outhandle=None):
     outhandle = outhandle or sys.stdout
     
     results = _score_start_nodes(network, user_data)
+
+    # TODO: Should prettify this output.
 
     # This can happen if the network doesn't contain any of the same
     # datatypes as user_data.  This can be if the network is really

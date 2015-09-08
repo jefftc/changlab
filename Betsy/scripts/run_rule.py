@@ -1,28 +1,5 @@
 #! /usr/bin/env python
 
-# Workflow:
-# 1.  Look through the rulebase for the DataType of interest.
-# 2.  Enter the output DataType.
-# --output
-# 3.  Browse through the list of possible combinations of input
-#     DataTypes.
-# 4.  Select one or more input DataTypes.
-#     Now shows just the combinations that includes the input
-#     DataTypes requested.
-# --complete_inputs
-# 5.  Work out the attributes of the inputs.
-#     Shows the detailed information about each node.
-# --complete_attrs
-# 6.  System makes sure each node can be found in the network.
-#     If not, try to diagnose differences.
-# 7.  System makes sure this is a complete set of input nodes.
-# 8.  System makes sure all required module attributes are given.
-# --run
-# 9.  System makes sure all input files are provided.
-# 10.  Actually run the analysis.
-
-
-
 # Functions:
 # print_rulebase            To help select output DataType.
 # _pretty_print_datatype
@@ -31,7 +8,7 @@
 # print_input_nodes         To help configure input attributes.
 # print_diagnose            Ready to run, but something is wrong with input.
 # plot_network
-# 
+#
 # is_complete_input           SLOW
 # get_all_option_names        Get the names of all OptionDef in the rulebase.
 # get_required_option_names   Get the required options in a list of modules.
@@ -39,7 +16,7 @@
 # _prune_unwanted_input_nodes
 # _list_differences_in_nodelists
 # _merge_nodelists
-# 
+#
 # _parse_args                 Parse the arguments from the user.
 
 
@@ -51,13 +28,13 @@
 
 
 def print_rulebase(rulebase):
-    from Betsy import bie3 
+    from Betsy import bie3
 
     # Make a list of the DataType objects.
     x = [getattr(rulebase, x) for x in dir(rulebase)]
     x = [x for x in x if isinstance(x, bie3.DataType)]
     datatypes = x
-    
+
     # Make a list of the modules
     modules = rulebase.all_modules
 
@@ -82,7 +59,7 @@ def print_rulebase(rulebase):
 def _pretty_print_datatype(datatype, handle=None):
     import sys
     from genomicode import parselib
-    
+
     handle = handle or sys.stdout
 
     LW = 72
@@ -111,7 +88,7 @@ def _pretty_print_datatype(datatype, handle=None):
 def _pretty_print_module(module, handle=None):
     import sys
     from genomicode import parselib
-    
+
     handle = handle or sys.stdout
 
     LW = 72
@@ -135,7 +112,7 @@ def _pretty_print_module(module, handle=None):
         lines = parselib.linesplit(x)
         for line in lines:
             print >>handle, line
-            
+
 
 def print_input_datatypes(
     network, required_datatypes, excluded_datatypes, user_attributes,
@@ -150,16 +127,19 @@ def print_input_datatypes(
 
     ps = parselib.print_split
 
-    x1 = "Acceptable combinations of DataTypes.  "
-    x2 = "The exact number of each DataType needed is not shown."
-    x = x1 + x2
+    x1 = ""
+    if max_inputs is not None:
+        x1 += " (up to %d)" % max_inputs
+    x2 = "Acceptable combinations of DataTypes%s.  " % x1
+    x3 = "The exact number of each DataType needed is not shown."
+    x = x2 + x3
     ps(x, prefixn=0, outhandle=outhandle)
     outhandle.flush()
-    
+
     datatype_combos = bie3.get_input_datatypes(
         network, user_attributes, skip_datatypes=excluded_datatypes,
         skip_private_datatypes=True, max_inputs=max_inputs)
-    
+
     # Filter out the datatype_combos that do not contain all the
     # datatypes in required_datatypes.
     i = 0
@@ -183,7 +163,7 @@ def print_input_datatypes(
         schwartz.append((x1, x2, combo))
     schwartz.sort()
     datatype_combos = [x[-1] for x in schwartz]
-            
+
     if not datatype_combos:
         print >>outhandle, "None"
         return
@@ -208,7 +188,7 @@ def print_input_nodes(
 
     print >>outhandle, "Possible Inputs"
     outhandle.flush()
-    
+
     inputs = bie3.get_input_nodes(
         network, user_attributes, skip_datatypes=excluded_datatypes,
         skip_private_datatypes=True, max_inputs=max_inputs)
@@ -252,7 +232,7 @@ def print_input_nodes(
         schwartz.append((x1, x2, dt))
     schwartz.sort()
     datatype_combos = [x[-1] for x in schwartz]
-            
+
     if not datatype_combos:
         print >>outhandle, "None"
         return
@@ -298,7 +278,7 @@ def print_input_nodes(
             # Indexes of node_combos to merge, not including this
             # combo.
             group = []
-            
+
             # Find other nodes that fit into this group.
             diff = None
             for k in range(j+1, len(node_combos)):
@@ -360,9 +340,8 @@ def print_diagnose(network, start_nodes, missing, outhandle=None):
     # the indexes of start_nodes that cannot be found in the network.
     from genomicode import parselib
     from Betsy import bie3
-    
+
     x = [start_nodes[i] for i in missing]
-    x = [x.data for x in x]
     x = [str(x) for x in x]
     node_or_nodes = "node"
     if len(x) > 1:
@@ -373,9 +352,8 @@ def print_diagnose(network, start_nodes, missing, outhandle=None):
         "It is likely there is an incompatibility in the attributes "
         "somewhere.", outhandle=outhandle)
     print >>outhandle
-    x = [x.data for x in start_nodes]
     # TODO: Move code to this module.
-    bie3.diagnose_start_node(network, x, outhandle=outhandle)
+    bie3.diagnose_start_node(network, start_nodes, outhandle=outhandle)
 
 
 def plot_network(filename, network, user_options=None, highlight_node_ids=None,
@@ -383,7 +361,7 @@ def plot_network(filename, network, user_options=None, highlight_node_ids=None,
     from Betsy import bie3
 
     highlight_node_ids = highlight_node_ids or []
-    
+
     if filename is None:
         return
     print "Plotting network to %s." % filename
@@ -395,7 +373,7 @@ def plot_network(filename, network, user_options=None, highlight_node_ids=None,
 def is_complete_input(network, user_attributes, start_node_ids):
     # Return a boolean indicating whether this is a valid set of start
     # nodes.  (SLOW).
-    from Betsy import bie3 
+    from Betsy import bie3
 
     start_node_ids = sorted(start_node_ids)
     inputs = bie3.get_inputs(network, user_attributes)
@@ -418,7 +396,7 @@ def get_all_option_names():
     # Return a list of the names for all OptionDef objects in the
     # rulebase.
     from Betsy import rulebase
-    
+
     names = {}
     for module in rulebase.all_modules:
         for option in module.option_defs:
@@ -440,7 +418,7 @@ def get_required_option_names(modules):
                 option2modules[on] = []
             option2modules[on].append(mn)
     return option2modules
-                
+
 
 def _delete_input_nodes(
     network, wanted_dt_names, unwanted_dt_names, user_attributes):
@@ -453,7 +431,7 @@ def _delete_input_nodes(
     unwanted_dt_names = unwanted_dt_names or []
     wanted_dict = {}.fromkeys(wanted_dt_names)
     unwanted_dict = {}.fromkeys(unwanted_dt_names)
-    
+
     while True:
         # Keep all the internal IDs.  These are the nodes that someone
         # points to.
@@ -495,7 +473,7 @@ def _remove_unwanted_input_nodes(network, unwanted_datatypes, user_attributes):
     # unwanted_datatypes is a list of names.
     return _delete_input_nodes(
         network, None, unwanted_datatypes, user_attributes)
-    
+
 
 def _keep_wanted_input_nodes(network, wanted_datatypes, user_attributes):
     # Keep only the input nodes that represents one of these wanted
@@ -503,8 +481,8 @@ def _keep_wanted_input_nodes(network, wanted_datatypes, user_attributes):
     # wanted_datatypes is a list of names.
     return _delete_input_nodes(
         network, wanted_datatypes, None, user_attributes)
-            
-        
+
+
 def _list_differences_in_nodelists(nodes1, nodes2):
     # nodes1 and nodes2 are lists of nodes.  Should have same
     # datatypes.  Return a list of tuples (node index, attribute name)
@@ -535,7 +513,7 @@ def _list_differences_in_nodelists(nodes1, nodes2):
 
 def _merge_nodelists(nodes1, nodes2):
     from Betsy import bie3
-    
+
     assert len(nodes1) == len(nodes2)
     merged = []
     for (n1, n2) in zip(nodes1, nodes2):
@@ -563,13 +541,13 @@ def _merge_nodelists(nodes1, nodes2):
         n = bie3.DataNode(n1.datatype, **attr)
         merged.append(n)
     return merged
-        
+
 
 def _parse_args(args):
     inputs = []            # list of names of datatypes
     in_parameters = {}     # index (into inputs) -> list of (key, value)
     in_identifiers = {}    # index (into inputs) -> identifier (e.g. filename)
-    
+
     output = None          # name of datatype
     out_parameters = []    # list of (key, value)
     out_identifier = None  # identifier
@@ -619,7 +597,7 @@ def _parse_args(args):
             assert len(args) >= i+1
             dattr = args[i+1]
             i += 2
-            
+
             # Format: <datatype>,<key>=<value>
             x = dattr.split(",", 1)
             assert len(x) == 2, \
@@ -675,14 +653,38 @@ def main():
     from Betsy import rule_engine_bie3
     from Betsy import userfile
     from Betsy import rulebase
-    from Betsy import bie3 
-    
-    parser = argparse.ArgumentParser(description='Run the engine')
+    from Betsy import bie3
+
+    WORKFLOW = (
+        "1.  Look through the rulebase for the DataType of interest.\n"
+        "2.  Enter the output DataType.\n"
+        "FLAG: --output\n"
+        "3.  Browse through the list of possible combinations of input\n"
+        "    DataTypes.\n"
+        "4.  Select one or more input DataTypes.\n"
+        "    Now shows just the combinations that includes the input\n"
+        "    DataTypes requested.\n"
+        "FLAG: --inputs_complete\n"
+        "5.  Work out the attributes of the inputs.\n"
+        "    Shows the detailed information about each node.\n"
+        "FLAG: --attrs_complete\n"
+        "6.  System makes sure each node can be found in the network.\n"
+        "    If not, try to diagnose differences.\n"
+        "7.  System makes sure this is a complete set of input nodes.\n"
+        "8.  System makes sure all required module attributes are given.\n"
+        "FLAG:--run\n"
+        "9.  System makes sure all input files are provided.\n"
+        "10.  Actually run the analysis.\n"
+        )
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Hi!  I'm BETSY, and I'm here to do bioinformatics.\n\n"
+        "Workflow:\n%s\n\n" % WORKFLOW)
     parser.add_argument(
-        "--complete_inputs",  action="store_const", const=True,
+        "--inputs_complete",  action="store_const", const=True,
         help="Have finished specifying --input DataTypes.")
     parser.add_argument(
-        "--complete_attrs",  action="store_const", const=True,
+        "--attrs_complete",  action="store_const", const=True,
         help="Have finished configuring --dattr attributes.")
     parser.add_argument(
         "--run",  action="store_const", const=True,
@@ -703,7 +705,7 @@ def main():
         '--max_inputs', default=DEFAULT_MAX_INPUTS, type=int,
         help="Maximum number of inputs to be shown (default %d).  "
         "(For optimization)" % DEFAULT_MAX_INPUTS)
-    
+
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
         '--input', action='append', help='DataType of the input')
@@ -720,7 +722,7 @@ def main():
     #    "--prune_other_inputs", action="store_true",
     #    help="There should be no other input data types in this network.  "
     #    "(For optimization)")
-    
+
     group.add_argument(
         '--output',  help='Desired DataType for the output.')
     group.add_argument(
@@ -734,7 +736,7 @@ def main():
         "given after the --output.  Format: <datatype>,<key>=<value>.")
     group.add_argument(
         '--output_file', help='file or folder of output result')
-    
+
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
         '--network_png', help='generate the output network png file')
@@ -758,7 +760,7 @@ def main():
 
     print "Starting rule engine."
     sys.stdout.flush()
-    
+
     # Parse the arguments.
     args = parser.parse_args()
     input_list, x = _parse_args(sys.argv)
@@ -767,18 +769,18 @@ def main():
     args.clobber = True
     assert args.num_cores > 0,'num_cores should be greater than 0'
     assert args.max_inputs > 0 and args.max_inputs < 20
-    if args.complete_inputs or args.complete_attrs or args.run:
+    if args.inputs_complete or args.attrs_complete or args.run:
         if args.run:
             x = "--run"
-        elif args.complete_attrs:
-            x = "--complete_attrs"
+        elif args.attrs_complete:
+            x = "--attrs_complete"
         else:
-            x = "--complete_inputs"
+            x = "--inputs_complete"
         assert input_list, "%s given, but no --input." % x
     # TODO: Make sure args.exclude_input is valid.
     # args.exclude_input
-    
-    
+
+
     # Make sure configuration directory exists.
     if not os.path.exists(config.OUTPUTPATH):
         print "Making BETSY working path: %s." % config.OUTPUTPATH
@@ -814,7 +816,7 @@ def main():
         in_data = fn.input(**params)
         x = module_utils.IdentifiedDataNode(in_data, identifier)
         in_data_nodes.append(x)
-         
+
     # test outtype and build the list of user_attributes.
     user_attributes = []  # List of bie3.Attribute objects.
     if outtype:
@@ -836,7 +838,7 @@ def main():
             continue
         x = userfile.set(getpass.getuser(), filename)
         i_data_node.identifier = x
-            
+
     # Parse out the module attributes (or user_options).
     user_options = {}
     if args.mattr:
@@ -858,7 +860,7 @@ def main():
     # 4.  Input and output.  (requires network)
     #     Show the input nodes.
     #     Run the analysis.
-            
+
     # Case 1.  No inputs and no outputs.
     if not args.output and not args.input:
         # If there's no inputs and no outputs, just print the whole
@@ -892,7 +894,7 @@ def main():
             print "Remove %d data types as inputs." % len(args.exclude_input)
         network = _remove_unwanted_input_nodes(
             network, args.exclude_input, user_attributes)
-    
+
 
     ## if args.unpruned_network_png:
     ##     print "Plotting unpruned network: %s." % args.unpruned_network_png
@@ -905,13 +907,16 @@ def main():
 
 
     # Case 2.  No input and has output.
-    if (not args.complete_inputs and not args.complete_attrs and not args.run)\
+    if (not args.inputs_complete and not args.attrs_complete and not args.run)\
            or not in_data_nodes:
         # If there's an output and no inputs, then show the possible
         # data types.  The network is probably too big to show
         # everything.
         print
-        print "Selecting --input DataTypes.  Add --complete_inputs when done."
+        print "Selecting --input DataTypes.  Add --inputs_complete when done."
+        # TODO: Should not show the same datatype as the output.
+        # e.g. if output is a FastQCFolder, don't show an input that
+        # just consists of a FastQCFolder.  That's just lame.
         x = [x.data.datatype.name for x in in_data_nodes]
         print_input_datatypes(
             network, x, args.exclude_input, user_attributes,
@@ -931,9 +936,9 @@ def main():
     network = _keep_wanted_input_nodes(network, x, user_attributes)
 
     # Configure the attributes if the user is not ready to run yet.
-    if not args.complete_attrs and not args.run:
+    if not args.attrs_complete and not args.run:
         print
-        print "Configuring input data.  Add --complete_attrs when done."
+        print "Configuring input data.  Add --attrs_complete when done."
         x = [x.data.datatype.name for x in in_data_nodes]
         print_input_nodes(
             network, x, args.exclude_input, user_attributes,
@@ -942,7 +947,7 @@ def main():
             args.network_png, network, user_options=user_options,
             verbose=(not args.sparse_network_png))
         return
-        
+
     # See if all the inputs can be found in the network.
     print "Searching for each input in the network..."
     sys.stdout.flush()
@@ -968,7 +973,7 @@ def main():
     else:
         print "all input nodes found."
     sys.stdout.flush()
-        
+
     ## if 0:  # This takes way too long.
     ##     # If this is taking too long, can speed it up by simplifying
     ##     # the network with more constraints.
@@ -992,7 +997,7 @@ def main():
     # TODO: rename select_start_node.  Actually makes a new network.
     p_network = bie3.select_start_node(network, x, user_attributes)
     if not p_network.nodes:
-        print "No network.  Problem with --inputs somehow."        
+        print "No network.  Problem with --inputs somehow."
         plot_network(
             args.network_png, network, user_options=user_options,
             highlight_node_ids=start_node_ids,
@@ -1009,7 +1014,7 @@ def main():
 
     print "Success!  I have a network."
     print "The final network has %d nodes." % len(network.nodes)
-   
+
     #if args.network_png:
     #    print "Plotting network: %s." % args.network_png
     #    bie3.plot_network_gv(
@@ -1039,24 +1044,16 @@ def main():
             highlight_node_ids=start_node_ids,
             verbose=(not args.sparse_network_png))
         return
-    print "all --mattr are specified or have defaults."
-     
-    if not args.run:
-        print "Add --run when ready to run network."
-        plot_network(
-            args.network_png, network, user_options=user_options,
-            highlight_node_ids=start_node_ids,
-            verbose=(not args.sparse_network_png))
-        return
-    
+    print "All --mattr are specified or have defaults."
+
     print "Looking for input files...."
     missing = False
     for x in in_data_nodes:
         if not x.identifier:
-            print "No file given for: %s" % (x.data.datatype.name)
+            print "no file given for: %s." % (x.data.datatype.name)
             missing = True
         elif not os.path.exists(x.identifier):
-            print "File not found: %s" % x.identifier
+            print "File not found: %s." % x.identifier
             missing = True
     if missing:
         plot_network(
@@ -1064,7 +1061,15 @@ def main():
             highlight_node_ids=start_node_ids,
             verbose=(not args.sparse_network_png))
         return
-    print "All input files found."
+    print "all input files found."
+
+    if not args.run:
+        print "Add --run when ready to run network."
+        plot_network(
+            args.network_png, network, user_options=user_options,
+            highlight_node_ids=start_node_ids,
+            verbose=(not args.sparse_network_png))
+        return
 
     print "Running the analysis."
     output_file = rule_engine_bie3.run_pipeline(
@@ -1076,12 +1081,11 @@ def main():
         args.network_png, network, user_options=user_options,
         highlight_node_ids=start_node_ids,
         verbose=(not args.sparse_network_png))
-    
-    if not output_file:
+
+    if not output_file or not args.output_file:
         return
-    if not args.output_file:
-        return
-    
+
+    # TODO: Use reportlib.copy_file_or_path.
     # Remove the previous files if they exist.
     if args.clobber and os.path.exists(args.output_file):
         if os.path.isdir(args.output_file):
@@ -1089,6 +1093,7 @@ def main():
         else:
             os.unlink(args.output_file)
     # Copy the file or directory.
+    print "Saving results at %s." % args.output_file
     if os.path.isdir(output_file):
         shutil.copytree(output_file, args.output_file)
     else:

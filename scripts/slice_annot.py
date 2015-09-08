@@ -223,6 +223,17 @@ def upper_headers(MATRIX, upper_headers):
     return _replace_headers(MATRIX, headers)
 
 
+def hash_headers(MATRIX, hash_headers):
+    if not hash_headers:
+        return MATRIX
+    from genomicode import hashlib
+
+    # Hash each name.  Need to be careful because may cause
+    # duplicates.
+    headers = [hashlib.hash_var(x) for x in MATRIX.headers]
+    return _replace_headers(MATRIX, headers)
+
+
 def rename_duplicate_headers(MATRIX, rename_dups):
     if not rename_dups:
         return MATRIX
@@ -976,6 +987,9 @@ def main():
         "--upper_headers", action="store_true",
         help="Make headers upper case.")
     group.add_argument(
+        "--hash_headers", action="store_true",
+        help="Hash the names of the headers.")
+    group.add_argument(
         "--rename_duplicate_headers", action="store_true",
         help="Make all the headers unique.")
     group.add_argument(
@@ -1091,6 +1105,7 @@ def main():
     MATRIX = reorder_headers_alphabetical(
         MATRIX, args.reorder_headers_alphabetical)
     MATRIX = upper_headers(MATRIX, args.upper_headers)
+    MATRIX = hash_headers(MATRIX, args.hash_headers)
     MATRIX = rename_duplicate_headers(MATRIX, args.rename_duplicate_headers)
     MATRIX = rename_header(MATRIX, args.rename_header)
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)

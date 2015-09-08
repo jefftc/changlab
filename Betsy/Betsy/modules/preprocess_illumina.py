@@ -1,45 +1,5 @@
 from Betsy.rules import ArrayPlatforms as AP
 
-## MANIFEST_ALL = [
-##     'HumanHT-12_V3_0_R2_11283641_A.txt',
-##     'HumanHT-12_V4_0_R2_15002873_B.txt',
-##     'HumanHT-12_V3_0_R3_11283641_A.txt',
-##     'HumanHT-12_V4_0_R1_15002873_B.txt',
-##     'HumanMI_V1_R2_XS0000122-MAP.txt',
-##     'HumanMI_V2_R0_XS0000124-MAP.txt',
-##     'HumanRef-8_V2_0_R4_11223162_A.txt',
-##     'HumanRef-8_V3_0_R1_11282963_A_WGDASL.txt',
-##     'HumanRef-8_V3_0_R2_11282963_A.txt',
-##     'HumanRef-8_V3_0_R3_11282963_A.txt',
-##     'HumanWG-6_V2_0_R4_11223189_A.txt',
-##     'HumanWG-6_V3_0_R2_11282955_A.txt',
-##     'HumanWG-6_V3_0_R3_11282955_A.txt',
-##     'MouseMI_V1_R2_XS0000127-MAP.txt',
-##     'MouseMI_V2_R0_XS0000129-MAP.txt',
-##     'MouseRef-8_V1_1_R4_11234312_A.txt',
-##     'MouseRef-8_V2_0_R2_11278551_A.txt',
-##     'MouseRef-8_V2_0_R3_11278551_A.txt',
-##     'MouseWG-6_V1_1_R4_11234304_A.txt',
-##     'MouseWG-6_V2_0_R2_11278593_A.txt',
-##     'MouseWG-6_V2_0_R3_11278593_A.txt',
-##     'RatRef-12_V1_0_R5_11222119_A.txt',
-##     ]
-
-## CHIP_ALL = [
-##     'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
-##     'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-##     'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
-##     'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
-##     'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
-##     'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
-##     'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
-##     'ilmn_MouseRef_8_V1_1_R4_11234312_A.chip',
-##     'ilmn_MouseRef_8_V2_0_R3_11278551_A.chip',
-##     'ilmn_MouseWG_6_V1_1_R4_11234304_A.chip',
-##     'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
-##     'ilmn_RatRef_12_V1_0_R5_11222119_A.chip',
-##     ]
-
 from Module import AbstractModule
 
 class Module(AbstractModule):
@@ -68,26 +28,21 @@ class Module(AbstractModule):
             zip_directory(in_data.identifier, zipfile_name)
             params['idat.zip'] = os.path.join(".", zipfile_name)
 
+        x = user_options.get("illu_manifest", AP.DEFAULT_MANIFEST)
+        assert x in AP.ILLU_MANIFEST, "Unknown manifest: %s" % x
+        params['manifest'] = x
 
-        params['manifest'] = 'HumanHT-12_V4_0_R2_15002873_B.txt'
-        x = out_attributes.get("illu_manifest")
-        if x is not None:
-            assert x in AP.ILLU_MANIFEST, 'illu_manifest is not correct'
-            params['manifest'] = str(x)
+        x = user_options.get("illu_chip", AP.DEFAULT_CHIP)
+        assert x in AP.ILLU_CHIP, "Unknown chip: %s" % x
+        params['chip'] = x
 
-        params['chip'] = 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip'
-        x = out_attributes.get("illu_chip")
-        if x is not None:
-            assert x in AP.ILLU_CHIP, 'illu_chip is not correct'
-            params['chip'] = str(x)
-            
-        x = out_attributes.get("illu_bg_mode")
+        x = user_options.get("illu_bg_mode")
         if x is not None:
             assert x in ['true', 'false'], \
                    'illu_bg_mode should be true or false'
             params['background.subtraction.mode'] = x
 
-        x = out_attributes.get("illu_coll_mode")
+        x = user_options.get("illu_coll_mode")
         if x is not None:
             assert x in ['none', 'max', 'median'], \
                    'ill_coll_mode is not correct'
@@ -175,3 +130,5 @@ def zip_directory(dir, zip_file):
             zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
 
     zip.close()
+
+

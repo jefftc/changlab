@@ -2,11 +2,10 @@ class AbstractModule:
     # Methods:
     # name_outfile        REQUIRED.
     # run                 REQUIRED.
-    
     # set_out_attributes  OPTIONAL.  Needed if the module determines the
     #                     output attributes, e.g. is_logged.
-    # find_antecedents    OPTIONAL.  Needed to distinguish multiple
-    #                     antecedents with same datatype.
+
+    # DEPRECATE THIS
     # hash_input          OPTIONAL.  Maybe never needed?
 
     def __init__(self):

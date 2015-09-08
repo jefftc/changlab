@@ -1,5 +1,3 @@
-#BasicDataTypes
-
 from Betsy.bie3 import *
 
 CONTENTS2NUMCLASSES = {
@@ -16,7 +14,7 @@ CONTENTS2NUMCLASSES = {
     "train1" : 1,
     "test" : 1,
     
-    # Why is diff_unspecified needed?
+    # Why is diff_unspecified needed?  Is this needed at all?
     "diff_unspecified" : 1,
     "diff_class0" : 1,
     "diff_class1" : 1,
@@ -90,7 +88,11 @@ GeneListFile=DataType(
     help="A file that contains a list of genes.")
 
 
-all_data_types = [RenameFile, ExpressionFiles, GeneListFile]
+all_data_types = [
+    RenameFile,
+    ExpressionFiles,
+    GeneListFile,
+    ]
 
 all_modules = [
     ]

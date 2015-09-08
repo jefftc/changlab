@@ -11,12 +11,11 @@ class Module(AbstractModule):
         from Betsy import module_utils
         from genomicode import arrayannot
         from genomicode import arrayplatformlib
+        
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
         all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
-        if not all_platforms:
-            raise ValueError('we cannot guess the platform and annotate the file')
-    
+        assert all_platforms, "Unknown platform: %s" % in_data.identifier
         
         ids = M._row_order
         probe_header = all_platforms[0][0]
@@ -28,7 +27,9 @@ class Module(AbstractModule):
         annotate_header = arrayplatformlib.annotate_header
         #elif annotate_type == 'gene_id':
         #    annotate_header = ['Gene ID']
-        dictionary = arrayannot.annotate_probes_multiple(probe_id, annotate_header)
+        dictionary = arrayannot.annotate_probes_multiple(
+            probe_id, annotate_header)
+        
         column = []
         for id in new_ids:
             flag = True
@@ -57,15 +58,11 @@ class Module(AbstractModule):
             ids.append(col_2)
             M._row_order = ids
             M._row_names[col_2] = dictionary[col]
-    
         
         f = file(outfile, 'w')
         arrayio.tab_delimited_format.write(M, f)
         f.close()
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for annot_probes fails' % outfile
-        )
-
+        
 
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils

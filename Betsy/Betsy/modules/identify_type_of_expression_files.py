@@ -1,5 +1,13 @@
 from Module import AbstractModule
 
+# TODO: Have attribute that indicates what kind of array data to pull
+# out of this folder.  If multiple types of files are given, then this
+# needs to be set.
+
+# Multiple platforms detected (cel, gpr).  Please specify desired
+# platform with the --mattr option.
+
+
 class Module(AbstractModule):
     def __init__(self):
         AbstractModule.__init__(self)
@@ -10,24 +18,23 @@ class Module(AbstractModule):
         import os
         import shutil
         from Betsy import module_utils
+        
         in_data = antecedents
         out_path = outfile
         if not os.path.exists(out_path):
             os.mkdir(out_path)
         
-        
-        
         in_path = module_utils.unzip_if_zip(in_data.identifier)
         assert in_path == in_data.identifier
         filenames = os.listdir(in_path)
-        assert filenames, 'The input folder or zip file is empty.'
+        assert filenames, "The input folder or zip file is empty."
     
         x = guess_datatype(in_path)
-        datatype, files = x
-        for file in files:
-            infile = os.path.join(in_path, file)
-            outfile = os.path.join(out_path, file)
-            shutil.copyfile(infile, outfile)
+        datatype, filenames = x
+        for in_filename in filenames:
+            in_path, in_file = os.path.split(in_filename)
+            out_filename = os.path.join(out_path, in_file)
+            shutil.copyfile(in_filename, out_filename)
 
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
@@ -43,20 +50,22 @@ class Module(AbstractModule):
         return attrs
 
 
-
 def guess_datatype(path):
     import os
+    
     # TODO: What is folder contains files with multiple data types?
     assert os.path.isdir(path)
 
-    files = os.listdir(path)
-    assert files, "No files: %s" % path
+    # Make a list of all the files in the directory.
+    filenames = []
+    for x in os.walk(path):
+        dirpath, dirnames, files = x
+        x = [os.path.join(dirpath, x) for x in files]
+        filenames.extend(x)
 
-    type2files = {}
-      # filetype -> list of files
-    for file in files:
-        filename = os.path.join(path, file)
-        stem, ext = os.path.splitext(file)
+    typed_files = []  # list of (filename, type)
+    for filename in filenames:
+        stem, ext = os.path.splitext(filename)
         uext = ext.upper()
 
         filetype = None
@@ -68,13 +77,18 @@ def guess_datatype(path):
             filetype = "gpr"
         elif is_agilent_file(filename):
             filetype = "agilent"
-        if filetype:
-            if filetype not in type2files:
-                type2files[filetype] = []
-            type2files[filetype].append(file)
+        if not filetype:
+            continue
+        x = filename, filetype
+        typed_files.append(x)
 
-    
-    assert type2files, "Unknown file types: %s" % path
+    assert typed_files, "No known microarray file types: %s" % path
+
+    type2files = {}
+    for filename, ftype in typed_files:
+        if ftype not in type2files:
+            type2files[ftype] = []
+        type2files[ftype].append(filename)
 
     if 'cel' in type2files:
         return 'cel', type2files['cel']
@@ -84,8 +98,9 @@ def guess_datatype(path):
         return 'gpr', type2files['gpr']
     elif 'agilent' in type2files:
         return 'agilent', type2files['agilent']
-    
-    return None
+    # Should not get here.
+    raise AssertionError
+
 
 
     ## def guess_datatype(folder, matrix_folder):

@@ -4,10 +4,10 @@ import GeneExpProcessing
 import BasicDataTypes as BDT
 
 ILLU_MANIFEST = [
-    'HumanHT-12_V3_0_R2_11283641_A.txt',
-    'HumanHT-12_V4_0_R2_15002873_B.txt',
-    'HumanHT-12_V3_0_R3_11283641_A.txt',
     'HumanHT-12_V4_0_R1_15002873_B.txt',
+    'HumanHT-12_V4_0_R2_15002873_B.txt',
+    'HumanHT-12_V3_0_R2_11283641_A.txt',
+    'HumanHT-12_V3_0_R3_11283641_A.txt',
     'HumanMI_V1_R2_XS0000122-MAP.txt',
     'HumanMI_V2_R0_XS0000124-MAP.txt',
     'HumanRef-8_V2_0_R4_11223162_A.txt',
@@ -32,7 +32,7 @@ ILLU_CHIP = [
     'ilmn_HumanHT_12_V3_0_R3_11283641_A.chip',
     'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
     'ilmn_HumanRef_8_V2_0_R4_11223162_A.chip',
-    'ilmn_HumanReF_8_V3_0_R1_11282963_A_WGDASL.chip',
+    'ilmn_HumanRef_8_V3_0_R1_11282963_A_WGDASL.chip',
     'ilmn_HumanRef_8_V3_0_R3_11282963_A.chip',
     'ilmn_HumanWG_6_V2_0_R4_11223189_A.chip',
     'ilmn_HumanWG_6_V3_0_R3_11282955_A.chip',
@@ -42,6 +42,9 @@ ILLU_CHIP = [
     'ilmn_MouseWG_6_V2_0_R3_11278593_A.chip',
     'ilmn_RatRef_12_V1_0_R5_11222119_A.chip',
     ]
+DEFAULT_MANIFEST = "HumanHT-12_V4_0_R2_15002873_B.txt"
+DEFAULT_CHIP = "ilmn_HumanHT_12_V4_0_R1_15002873_B.chip"
+
 
 AgilentFiles = DataType(
     "AgilentFiles",
@@ -94,24 +97,24 @@ IDATFiles = DataType(
 
 ILLUFolder = DataType(
     "ILLUFolder",
-    AttributeDef(
-        "illu_manifest", ILLU_MANIFEST, 'HumanHT-12_V4_0_R2_15002873_B.txt',
-        'HumanHT-12_V4_0_R2_15002873_B.txt', help="illumina manifest"),
-    AttributeDef(
-        'illu_chip', ILLU_CHIP, 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-        'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
-        help="illumina chip type"),
-    AttributeDef(
-        'illu_bg_mode', ['false', 'true'], "false", "false",
-        help="illumina background mode"),
-    AttributeDef(
-        'illu_coll_mode', ['none', 'max', 'median'], "none", "none",
-        help="illumina coll mode"),
+    #AttributeDef(
+    #    "illu_manifest", ILLU_MANIFEST, 'HumanHT-12_V4_0_R2_15002873_B.txt',
+    #    'HumanHT-12_V4_0_R2_15002873_B.txt', help="illumina manifest"),
+    #AttributeDef(
+    #    'illu_chip', ILLU_CHIP, 'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+    #    'ilmn_HumanHT_12_V4_0_R1_15002873_B.chip',
+    #    help="illumina chip type"),
+    #AttributeDef(
+    #    'illu_bg_mode', ['false', 'true'], "false", "false",
+    #    help="illumina background mode"),
+    #AttributeDef(
+    #    'illu_coll_mode', ['none', 'max', 'median'], "none", "none",
+    #    help="illumina coll mode"),
     AttributeDef(
         "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
         help="contents"),
     help="A folder generated from preprocess_illumina," \
-    "it contains SignalFile_Postprocess and ControlFile.")
+    "it contains UnprocessedSignalFile and ControlFile.")
 
 ActbPlot = DataType(
     'ActbPlot',
@@ -235,19 +238,35 @@ all_modules = [
         help="extract idat files from Expression File folder"),
     ModuleNode(
         "preprocess_illumina", IDATFiles, ILLUFolder,
-        Consequence('illu_manifest', SET_TO_ONE_OF, ILLU_MANIFEST),
-        Consequence('illu_chip', SET_TO_ONE_OF, ILLU_CHIP),
-        Consequence('illu_bg_mode', SET_TO_ONE_OF, ["false", "true"]),
-        Consequence(
-            'illu_coll_mode', SET_TO_ONE_OF, ["none", "max", "median"]),
-        
-        OptionDef("illu_clm", '', help="illumina clm"),
-        OptionDef("illu_custom_chip", '', help="illumina custom chip name"),
+        #Consequence('illu_manifest', SET_TO_ONE_OF, ILLU_MANIFEST),
+        #Consequence('illu_chip', SET_TO_ONE_OF, ILLU_CHIP),
+        #Consequence('illu_bg_mode', SET_TO_ONE_OF, ["false", "true"]),
+        #Consequence(
+        #    'illu_coll_mode', SET_TO_ONE_OF, ["none", "max", "median"]),
+
         OptionDef(
-            "illu_custom_manifest", '', help='illumina custom manifest file'),
+            "illu_manifest", DEFAULT_MANIFEST,
+            help="manifest: %s" % ", ".join(ILLU_MANIFEST)),
+        OptionDef(
+            'illu_chip', DEFAULT_CHIP,
+            help="CHIP file to map probes to genes: %s" %
+            ", ".join(ILLU_CHIP)),
+        OptionDef(
+            "illu_bg_mode", "false", 
+            help="background subtraction (false or true)"),
+        OptionDef(
+            'illu_coll_mode', "none",
+            help="collapse probes to genes (none, max, or median)"),
+        
+        OptionDef(
+            "illu_clm", '', help="CLM file for mapping file to sample names"),
+        OptionDef("illu_custom_chip", '', help=""),
+        OptionDef("illu_custom_manifest", '', help=""),
+
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
-        help="preprocess idat files,generate SignalFile_Postprocess"),
+        help="Preprocess .idat files into signal values",
+        ),
     
     ModuleNode(
         "get_illumina_control", ILLUFolder, ControlFile,

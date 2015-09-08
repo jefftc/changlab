@@ -64,6 +64,10 @@ def _clean_id(gene_id, delimiter, in_platform):
 def convert_gene_ids(
     gene_ids, in_platform, out_platform, in_delim, out_delim,
     keep_dups, keep_emptys, no_na):
+    # Return a list of the output IDs, parallel to gene_ids.  If a
+    # gene ID to multiple output IDs, the output IDs will be separated
+    # by out_delim.  If it is missing, then the output will be an
+    # empty string.
 
     # Make a cleaned up version of the gene_ids to convert.
     x = []
@@ -90,8 +94,8 @@ def convert_gene_ids(
         in_ids = _clean_id(gene_id, in_delim, in_platform)
         out_ids = []
         for x in in_ids:
-            x = in2out.get(x, [""])
-            out_ids.extend(x)
+            y = in2out.get(x, [""])
+            out_ids.extend(y)
         if not keep_emptys:
             out_ids = [x for x in out_ids if x]
         if not keep_dups:
@@ -343,51 +347,69 @@ def _find_entrez_gene(gene_symbol, tax_id):
 
 
 def convert_geneset(
-    filename, in_delim, out_delim, keep_dups, keep_emptys, no_na, 
-    in_genesets, out_platforms, out_geneset, out_format):
+    filename, in_delim, keep_dups, keep_emptys, no_na, 
+    in_genesets, all_genesets, out_platforms, out_format):
     from genomicode import genesetlib
     from genomicode import arrayplatformlib
 
     # NOT IMPLEMENTED:
     # min_match_score
-    # delim -> in_delim, out_delim
-    raise NotImplementedError, "Not tested after refactoring."
 
-    assert len(in_genesets) == 1
-    geneset = in_genesets[0]
+    assert in_genesets or all_genesets
 
-    gene_ids = genesetlib.read_genes(filename, geneset)
-    
-    x = arrayplatformlib.score_platform_of_annotations(gene_ids)
-    assert x, "I could not figure out the platform of the infile."
-    in_platform, score = x
+    # Search for the gene sets to convert.
+    name2geneset = {}   # name -> (name, description, gene_ids)
+    for x in genesetlib.read_genesets(filename):
+        name, description, gene_ids = x
+        if not all_genesets and name not in in_genesets:
+            continue
+        assert name not in name2geneset, "Duplicate gene set: %s" % name
+        name2geneset[name] = x
 
-    # Convert each of the platforms.
-    platform2geneid2outids = {}
-    for out_platform in out_platforms:
-        x = convert_gene_ids(
-            gene_ids, in_platform, out_platform, in_delim, out_delim,
-            keep_dups, keep_emptys, no_na)
-        platform2geneid2outids[out_platform] = x
+    # Make sure all the desired gene sets were found.
+    for name in in_genesets:
+        assert name in name2geneset, "Missing: %s" % name
 
-    # Write out the gene set.
+    # Convert each of the gene sets.
+    # list of name, description, in_platform, out_platform, in_ids, out_ids
+    converted = []
+    for x in sorted(name2geneset.values()):
+        name, description, in_ids = x
+        
+        x = arrayplatformlib.score_platform_of_annotations(in_ids)
+        assert x, "Unknown platform: %s" % name
+        in_platform, score = x
+
+        # Convert to each of the out platformss.
+        for out_platform in out_platforms:
+            out_delim = " /// "
+            out_ids = convert_gene_ids(
+                in_ids, in_platform, out_platform, in_delim, out_delim,
+                keep_dups, keep_emptys, no_na)
+            # Since gene sets are unordered and unaligned lists of genes,
+            # separate any genes that are separated by out_delim.
+            x = []
+            for out_id in out_ids:
+                x.extend(out_id.split(out_delim))
+            x = [x.strip() for x in x]
+            x = [x for x in x if x]
+            x = sorted({}.fromkeys(x))
+            out_ids = x
+
+            x = name, description, in_platform, out_platform, in_ids, out_ids
+            converted.append(x)
+
+    # Convert to gene sets.
     genesets = []
-    for out_platform in out_platforms:
-        geneid2outids = platform2geneid2outids[out_platform]
-
-        name = out_platform
-        if out_geneset:
-            # BUG: If multiple gene sets, will generate duplicate names.
-            name = out_geneset
-
-        description = "na"
-        genes = []
-        for gene_id in gene_ids:
-            genes.extend(geneid2outids.get(gene_id, []))
-        genes = sorted({}.fromkeys(genes))
-        x = genesetlib.GeneSet(name, description, genes)
+    for x in converted:
+        name, description, in_platform, out_platform, in_ids, out_ids = x
+        out_name = name
+        if len(out_platforms) > 1:
+            out_name = "%s_%s" % (name, out_platform)
+        x = genesetlib.GeneSet(out_name, description, out_ids)
         genesets.append(x)
-
+        
+    # Save the gene sets.
     if out_format == "gmt":
         genesetlib.write_gmt(sys.stdout, genesets)
     elif out_format == "gmx":
@@ -518,11 +540,13 @@ def main():
     group.add_argument(
         '--geneset', default=[], action='append',
         help='Which gene set to annotate (if infile is a gene set file).  '
-        'Required for geneset files.')
-    group.add_argument("--out_geneset_name")
+        'Required for geneset files.  (MULTI)')
+    group.add_argument(
+        "--all_genesets", action="store_true", help="Convert all genesets.")
+    #group.add_argument("--out_geneset_name")
     group.add_argument(
         "--out_geneset_format", default="gmt", choices=["gmt", "gmx"],
-        help="For output geneset file.")
+        help="For output geneset file (default: gmt).")
     
     args = parser.parse_args()
     assert os.path.exists(args.infile), "File not found: %s" % args.infile
@@ -532,20 +556,26 @@ def main():
         #assert arrayplatformlib.get_bm_organism(x), "Unknown platform: %s" % x
     assert len(args.geneset) <= 1, "Not implemented."
 
-    assert not (args.header and args.geneset)
-    assert not (args.header_and_platform and args.geneset)
+    annotate_matrix = False
+    annotate_geneset = False
+    if args.header or args.header_and_platform:
+        annotate_matrix = True
+    if args.geneset or args.all_genesets:
+        annotate_geneset = True
+    #assert annotate_matrix or annotate_geneset
+    assert not (annotate_matrix and annotate_geneset)
     assert not (args.header and args.header_and_platform)
+    assert not (args.geneset and args.all_genesets)
     
     assert type(args.min_match_score) is type(0.0)
     assert args.min_match_score > 0.2, "min_match_score too low"
     assert args.min_match_score <= 1.0, "min_match_score too high"
 
-    if args.geneset:
+    if annotate_geneset:
         convert_geneset(
-            args.infile, args.in_delim, args.out_delim,
-            args.keep_dups, args.keep_emptys, args.no_na, 
-            args.geneset, args.platform,
-            args.out_geneset_name, args.out_geneset_format)
+            args.infile, args.in_delim,  args.keep_dups, args.keep_emptys,
+            args.no_na,  args.geneset, args.all_genesets, args.platform,
+            args.out_geneset_format)
     else:
         convert_matrix(
             args.infile, args.header, args.header_and_platform,

@@ -482,7 +482,8 @@ def plot_line_keywd(filename, keyword, outfile):
     for i in range(M.dim()[0]):
         if M.row_names(header[1])[i] == keyword:
             data.append(M.slice()[i])
-            legend_name.append(keyword + '(' + M.row_names(header[0])[i] + ')')
+            x = "%s (%s)" % (keyword, M.row_names(header[0])[i])
+            legend_name.append(x)
     assert len(data) > 0, 'cannot find the keyword %s in the file %s' % (
         keyword, filename)
     for i in range(len(data)):

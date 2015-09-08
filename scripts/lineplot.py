@@ -152,6 +152,9 @@ def main():
     group.add_argument(
         "--xlabel_off", default=False, action="store_true",
         help="Turn off the X labels.")
+    group.add_argument(
+        "--gene_name_header",
+        help="Header for gene names to be used in the legend.")
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -183,8 +186,15 @@ def main():
     assert I, "No genes found."
     assert len(I) < 50, "Too many genes."
     MATRIX = MATRIX.matrix(I, None)
-    gene_names = [get_pretty_gene_name(MATRIX, i)
-                  for i in range(MATRIX.nrow())]
+
+    # Find the gene names for the legend.
+    if args.gene_name_header:
+        h = args.gene_name_header
+        assert h in MATRIX.row_names(), "Missing header: %s" % h
+        gene_names = MATRIX.row_names(h)
+    else:
+        gene_names = [
+            get_pretty_gene_name(MATRIX, i) for i in range(MATRIX.nrow())]
     assert len(gene_names) == MATRIX.nrow()
 
     if args.prism_file:

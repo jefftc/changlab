@@ -884,15 +884,17 @@ def replace_col_ids(MATRIX, replace_list, ignore_missing):
 
 
 def relabel_col_ids(MATRIX, geneset, ignore_missing):
+    if not geneset:
+        return MATRIX
+
     import os
     import sys
     import arrayio
     from genomicode import genesetlib
     from genomicode import matrixlib
-    if not geneset:
-        return MATRIX
+    
     filename, genesets = _parse_file_gs(geneset)
-    assert len(genesets) == 1
+    assert len(genesets) == 1, "Multiple genesets specified: %s." % geneset
 
     # Read all genesets out of the geneset file.
     geneset2genes = {}

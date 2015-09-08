@@ -1,98 +1,78 @@
 #RNASeq
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import BasicDataTypesNGS
+import BasicDataTypesNGS as NGS
 import GeneExpProcessing
 
-all_data_types = []
+# TODO: Should move out modules that aren"t specifically for RNA-Seq.
+# E.g. is_sam_folder.
+
+RNASeqFile = DataType(
+    "RNASeqFile",
+    AttributeDef("contents", BDT.CONTENTS,
+                 "unspecified", "unspecified", help="contents"),
+    AttributeDef(
+        "format_type",
+        ["unknown", "not_fastqfolder", "not_samfolder", "not_bamfolder",
+         "samfolder", "bamfolder", "fastqfolder"],
+        "unknown", "unknown", help="format type"),
+    help="RNA Seq File"
+    )
+
+all_data_types = [
+    RNASeqFile,
+    ]
 all_modules = [
     ModuleNode(
-        'is_sam_folder',
-         BasicDataTypesNGS.RNASeqFile, BasicDataTypesNGS.RNASeqFile,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-         Constraint("format_type",MUST_BE, 'not_fastqfolder'),
-         Consequence("contents", SAME_AS_CONSTRAINT),
-         Consequence(
-            "format_type", BASED_ON_DATA, ['not_samfolder', 'samfolder']),
-         help=("extract rna files with different format")
+        # What does this do?
+        "extract_rna_files_sam",
+        RNASeqFile, NGS.SamFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Constraint("format_type",MUST_BE, "samfolder"),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
+        help=("extract rna files with different format")
         ),
     ModuleNode(
-        'is_bam_folder',
-         BasicDataTypesNGS.RNASeqFile, BasicDataTypesNGS.RNASeqFile,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-         Constraint("format_type",MUST_BE, 'not_samfolder'),
-         Consequence("contents", SAME_AS_CONSTRAINT),
-         Consequence(
-            "format_type", BASED_ON_DATA, ['not_bamfolder', 'bamfolder']),
-         help=("extract rna files with different format")
+        # What does this do?
+        "extract_rna_files_bam",
+        RNASeqFile, NGS.BamFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Constraint("format_type",MUST_BE, "bamfolder"),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
+        help=("extract rna files with bam format")
         ),
     ModuleNode(
-        'is_fastq_folder',
-         BasicDataTypesNGS.RNASeqFile, BasicDataTypesNGS.RNASeqFile,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-         Constraint("format_type",MUST_BE, 'unknown'),
-         Consequence("contents", SAME_AS_CONSTRAINT),
-         Consequence(
-            "format_type", BASED_ON_DATA, ['not_fastqfolder', 'fastqfolder']),
-         help=("extract rna files with different format")
+        # What does this do?
+        "extract_rna_files_fastq",
+        RNASeqFile, NGS.FastqFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Constraint("format_type",MUST_BE, "fastqfolder"),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        help=("extract rna files with fa or fastq format")
         ),
     ModuleNode(
-        'extract_rna_files_sam',
-         BasicDataTypesNGS.RNASeqFile, BasicDataTypesNGS.SamFolder,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-         Constraint("format_type",MUST_BE, 'samfolder'),
-         Consequence("contents", SAME_AS_CONSTRAINT),
-         Consequence("ref", SET_TO_ONE_OF, ['human', 'mouse']),
-         help=("extract rna files with different format")
+        "align_with_bowtie",
+        [NGS.FastqFolder, NGS.SampleGroupFile],
+        NGS.SamFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS,0),
+        Constraint("contents", SAME_AS,0,1),
+        Consequence("contents", SAME_AS_CONSTRAINT,0),
+        Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
+        help=("convert fastq folder into sam folder with bowtie")
         ),
     ModuleNode(
-        'extract_rna_files_bam',
-         BasicDataTypesNGS.RNASeqFile, BasicDataTypesNGS.BamFolder,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-         Constraint("format_type",MUST_BE, 'bamfolder'),
-         Consequence("contents", SAME_AS_CONSTRAINT),
-         Consequence("ref", SET_TO_ONE_OF, ['human', 'mouse']),
-         help=("extract rna files with bam format")
+        "normalize_with_rsem",
+        [NGS.BamFolder, NGS.SampleGroupFile],
+        GeneExpProcessing.UnprocessedSignalFile,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS,0),
+        Constraint("contents", SAME_AS,0,1),
+        Consequence("contents", SAME_AS_CONSTRAINT,0),
+        Consequence("preprocess", SET_TO, "RSEM"),
+        Consequence("logged", SET_TO, "unknown"),
+        Consequence("predataset", SET_TO, "no"),
+        Consequence("format", SET_TO, "tdf"),
+        help=("process BamFolder, generate SignalFile_Postprocess with preprocess rsem"),
         ),
-    ModuleNode(
-        'extract_rna_files_fastq',
-         BasicDataTypesNGS.RNASeqFile, BasicDataTypesNGS.FastqFolder,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-         Constraint("format_type",MUST_BE, 'fastqfolder'),
-         Consequence("contents", SAME_AS_CONSTRAINT),
-         help=("extract rna files with fa or fastq format")
-        ),
-    ModuleNode(
-        'align_with_bowtie',
-         [BasicDataTypesNGS.FastqFolder, BasicDataTypesNGS.SampleGroupFile],
-         BasicDataTypesNGS.SamFolder,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS,0),
-         Constraint("contents", SAME_AS,0,1),
-         Consequence("contents", SAME_AS_CONSTRAINT,0),
-         Consequence("ref", SET_TO_ONE_OF, ['human', 'mouse']),
-         help=("convert fastq folder into sam folder with bowtie")
-        ),
-    ModuleNode(
-        'convert_sam_to_bam',
-         BasicDataTypesNGS.SamFolder, BasicDataTypesNGS.BamFolder,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-         Consequence("contents", SAME_AS_CONSTRAINT),
-         #Consequence("ref", SET_TO_ONE_OF, ['human', 'mouse']),
-         help=("convert sam folder into bam folder")
-        ),
-     ModuleNode(
-        'normalize_with_rsem',
-         [BasicDataTypesNGS.BamFolder, BasicDataTypesNGS.SampleGroupFile],
-         GeneExpProcessing.UnprocessedSignalFile,
-         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS,0),
-         Constraint("contents", SAME_AS,0,1),
-         Consequence("contents", SAME_AS_CONSTRAINT,0),
-         Consequence("preprocess", SET_TO, "RSEM"),
-         Consequence("logged", SET_TO, "unknown"),
-         Consequence("predataset", SET_TO, "no"),
-         Consequence("format", SET_TO, "tdf"),
-         help=("process BamFolder, generate SignalFile_Postprocess with preprocess rsem"),
-        ),
-
-
     ]

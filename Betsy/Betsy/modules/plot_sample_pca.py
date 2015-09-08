@@ -10,6 +10,7 @@ class Module(AbstractModule):
         from matplotlib import cm
         from Betsy import read_label_file
         from Betsy import module_utils
+        
         data_node, cls_node = antecedents
         a, b, c = read_label_file.read(cls_node.identifier)
         if len(a) > 1:
@@ -35,16 +36,16 @@ class Module(AbstractModule):
         data_node, cls_node = antecedents
         original_file = module_utils.get_inputid(data_node.identifier)
         # TODO: BUG? process or preprocess?  What does this line do?
-        data_node.attributes['process']
-        filename = (
-            'Pca_' + original_file + '_' + data_node.attributes['process'] + '.png'
-        )
+        #data_node.attributes['process']
+        filename = "Pca_%s_%s.png" % (
+            original_file, data_node.attributes['preprocess'])
         return filename
 
 
-    def plot_pca(filename, result_fig, opts='b', legend=None):
-    from genomicode import jmath, mplgraph
+def plot_pca(filename, result_fig, opts='b', legend=None):
     import arrayio
+    from genomicode import jmath, mplgraph
+    from Betsy import module_utils
 
     R = jmath.start_R()
     jmath.R_equals(filename, 'filename')
@@ -60,17 +61,17 @@ class Module(AbstractModule):
     R('x <- t(X) %*% U %*% diag(D)')
     x1 = R['x'][0:M.ncol()]
     x2 = R['x'][M.ncol():]
+
+    xlabel = 'Principal Component 1'
+    ylabel = 'Principal Component 2'
+    
     if len(opts) > 1:
-        fig = mplgraph.scatter(x1, x2,
-                               xlabel='Principal Component 1',
-                               ylabel='Principal Component 2',
-                               color=opts,
-                               legend=legend)
+        fig = mplgraph.scatter(
+            x1, x2, xlabel=xlabel, ylabel=ylabel, color=opts,
+            legend=legend)
     else:
-        fig = mplgraph.scatter(x1, x2,
-                               label=labels,
-                               xlabel='Principal Component 1',
-                               ylabel='Principal Component 2',
-                               color=opts)
+        fig = mplgraph.scatter(
+            x1, x2, xlabel=xlabel, ylabel=ylabel, color=opts,
+            label=labels)
     fig.savefig(result_fig)
-    assert exists_nz(result_fig), 'the plot_pca.py fails'
+    assert module_utils.exists_nz(result_fig), 'the plot_pca.py fails'
