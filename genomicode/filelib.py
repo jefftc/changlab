@@ -7,6 +7,8 @@ openfh       Open a file name or handle.
 exists       Whether a filename exists.  Also checks for .gz and .bz2.
 exists_nz    Whether a filename exists and has non-zero size.
 safe_unlink  Unlink file only if it exists.
+list_files_in_path      Return all files under a path.
+get_file_or_path_size   Get size of all files in a directory.
 
 read_row     Read one row from a tab-delimited table from a file.
 write_row    Save one row from a tab-delimited table to a file.
@@ -85,6 +87,7 @@ def tswrite(s, handle=None, format="%m/%d/%Y %H:%M:%S", write_fn=lwrite):
     now = time.strftime(format, time_tup)
     write_fn("%s\t%s" % (now, s), handle=handle)
 
+# Fix this.  Use the new subprocess code.
 def _my_popen(cmd):
     if sys.hexversion >= 0x02040000:
         from subprocess import Popen, PIPE
@@ -130,6 +133,17 @@ def openfh(file_or_handle, mode='rU'):
             if not os.path.exists(file_or_handle):
                 raise IOError, "File does not exist: %s" % file_or_handle
             cmd = "bzcat '%s'" % file_or_handle
+            w, r, e = _my_popen(cmd)
+            w.close()
+            e.close()
+            return r
+        else:
+            raise NotImplementedError
+    elif file_or_handle.lower().endswith(".xz"):
+        if "r" in mode:
+            if not os.path.exists(file_or_handle):
+                raise IOError, "File does not exist: %s" % file_or_handle
+            cmd = "xzcat '%s'" % file_or_handle
             w, r, e = _my_popen(cmd)
             w.close()
             e.close()
@@ -540,10 +554,37 @@ def as_dict(iterator, *args, **keywds):
             dict_[key] = d
     return dict_
 
+
 def safe_unlink(filename):
     if not filename or not os.path.exists(filename):
         return
     os.unlink(filename)
+
+
+def list_files_in_path(file_or_path):
+    # Return a list of the files.  Returns full paths.
+    assert os.path.exists(file_or_path)
+
+    # If this is a file, return this file.
+    if not os.path.isdir(file_or_path):
+        x = os.path.realpath(file_or_path)
+        return [x]
+
+    filenames = []
+    for x in os.walk(file_or_path):
+        dirpath, dirnames, files = x
+        x = [os.path.join(dirpath, x) for x in files]
+        filenames.extend(x)
+    return filenames
+
+
+def get_file_or_path_size(file_or_path):
+    import stat
+
+    filenames = list_files_in_path(file_or_path)
+    sizes = [os.stat(x)[stat.ST_SIZE] for x in filenames]
+    return sum(sizes)
+    
 
 class DelFile:
     def __init__(self, filename, mode):

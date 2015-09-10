@@ -165,7 +165,8 @@ def print_input_datatypes(
     datatype_combos = [x[-1] for x in schwartz]
 
     if not datatype_combos:
-        print >>outhandle, "None"
+        print >>outhandle, \
+              "No combination of DataTypes can generate this network."
         return
     for i, combo in enumerate(datatype_combos):
         x = [x.name for x in combo]
@@ -349,8 +350,13 @@ def print_diagnose(network, start_nodes, missing, outhandle=None):
     x = "Input %s not found:\n%s" % (node_or_nodes, "\n".join(x))
     parselib.print_split(x, outhandle=outhandle)
     parselib.print_split(
-        "It is likely there is an incompatibility in the attributes "
-        "somewhere.", outhandle=outhandle)
+        "Possible reasons are:", outhandle=outhandle)
+    parselib.print_split(
+        "- There is an incompatibility in the attributes somewhere.",
+        prefix1=4, outhandle=outhandle)
+    parselib.print_split(
+        "- It is not needed for this pipeline.", prefix1=4,
+        outhandle=outhandle)
     print >>outhandle
     # TODO: Move code to this module.
     bie3.diagnose_start_node(network, start_nodes, outhandle=outhandle)
@@ -643,7 +649,7 @@ def main():
     import os
     import sys
     import argparse
-    import shutil
+    #import shutil
     import getpass
     import copy
 
@@ -652,6 +658,7 @@ def main():
     from Betsy import module_utils
     from Betsy import rule_engine_bie3
     from Betsy import userfile
+    from Betsy import reportlib
     from Betsy import rulebase
     from Betsy import bie3
 
@@ -705,6 +712,9 @@ def main():
         '--max_inputs', default=DEFAULT_MAX_INPUTS, type=int,
         help="Maximum number of inputs to be shown (default %d).  "
         "(For optimization)" % DEFAULT_MAX_INPUTS)
+    parser.add_argument(
+        "--save_failed_data", action="store_true",
+        help="If a module failed, do not clean up its working files.")
 
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
@@ -832,6 +842,8 @@ def main():
     # Cache the files in the user's directory.  Don't depend on the
     # user keeping the file in the same place.  Needed for the first
     # module.
+    print "Making a local copy of the input files."
+    sys.stdout.flush()
     for i_data_node in in_data_nodes:
         filename = i_data_node.identifier
         if not filename or not os.path.exists(filename):
@@ -881,6 +893,11 @@ def main():
     network = bie3.optimize_network(network, user_attributes)
     assert network, "Unexpected error: No network generated."
     print "Made a network with %d nodes." % len(network.nodes)
+
+    #plot_network(
+    #    args.network_png, network, user_options=user_options,
+    #    verbose=(not args.sparse_network_png))
+    #return
 
     network_orig = copy.deepcopy(network)
 
@@ -933,6 +950,9 @@ def main():
     x = [x.data.datatype.name for x in in_data_nodes]
     x = {}.fromkeys(x).keys()
     assert x
+
+    # This can lead to an empty network.  This can happen if user
+    # specifies --inputs_complete, but inputs were not complete.
     network = _keep_wanted_input_nodes(network, x, user_attributes)
 
     # Configure the attributes if the user is not ready to run yet.
@@ -1064,6 +1084,8 @@ def main():
     print "all input files found."
 
     if not args.run:
+        print ("Please review the network to make sure the you agree with "
+               "the analysis.")
         print "Add --run when ready to run network."
         plot_network(
             args.network_png, network, user_options=user_options,
@@ -1072,32 +1094,53 @@ def main():
         return
 
     print "Running the analysis."
-    output_file = rule_engine_bie3.run_pipeline(
-        network, in_data_nodes, user_attributes, user_options, args.user,
-        args.job_name, args.num_cores)
+    clean_up = not args.save_failed_data
+    node_dict = output_file = None
+    x = rule_engine_bie3.run_pipeline(
+        network, in_data_nodes, user_attributes, user_options, user=args.user,
+        job_name=args.job_name, clean_up=clean_up, num_cores=args.num_cores)
+    if x:
+        node_dict, output_file = x
 
-    # TODO: Should print network again with the path that was taken.
-    plot_network(
-        args.network_png, network, user_options=user_options,
-        highlight_node_ids=start_node_ids,
-        verbose=(not args.sparse_network_png))
+    # Print the original network, showing the path that was taken.
+    # Find the node_ids in the original network.
+    if not node_dict:
+        # Pipeline was not successful.  Print the filtered network to
+        # facilitate diagnosing.
+        plot_network(
+            args.network_png, network, user_options=user_options,
+            highlight_node_ids=start_node_ids,
+            verbose=(not args.sparse_network_png))
+    else:
+        # Successful.  Show the full network.
+        node_ids = []
+        for inode in node_dict.itervalues():
+            x = bie3.find_node(network_orig, inode.data)
+            assert x is not None
+            node_ids.append(x)
+        plot_network(
+            args.network_png, network_orig, user_options=user_options,
+            highlight_node_ids=node_ids,
+            verbose=(not args.sparse_network_png))
 
     if not output_file or not args.output_file:
         return
 
-    # TODO: Use reportlib.copy_file_or_path.
-    # Remove the previous files if they exist.
-    if args.clobber and os.path.exists(args.output_file):
-        if os.path.isdir(args.output_file):
-            shutil.rmtree(args.output_file)
-        else:
-            os.unlink(args.output_file)
-    # Copy the file or directory.
+
     print "Saving results at %s." % args.output_file
-    if os.path.isdir(output_file):
-        shutil.copytree(output_file, args.output_file)
-    else:
-        shutil.copy(output_file, args.output_file)
+    reportlib.copy_file_or_path(output_file, args.output_file)
+    ## # TODO: Use reportlib.copy_file_or_path.
+    ## # Remove the previous files if they exist.
+    ## if args.clobber and os.path.exists(args.output_file):
+    ##     if os.path.isdir(args.output_file):
+    ##         shutil.rmtree(args.output_file)
+    ##     else:
+    ##         os.unlink(args.output_file)
+    ## # Copy the file or directory.
+    ## if os.path.isdir(output_file):
+    ##     shutil.copytree(output_file, args.output_file)
+    ## else:
+    ##     shutil.copy(output_file, args.output_file)
 
 
 if __name__ == '__main__':

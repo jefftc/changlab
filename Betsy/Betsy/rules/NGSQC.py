@@ -7,39 +7,54 @@ FastQCFolder = DataType(
     help="Folder that holds FastQC results.",
     )
 
-RNASeQCFile = DataType(
-    "RNASeQCFile",
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
-    help="File contains sample group infomation"
+FastQCSummary = DataType(
+    "FastQCSummary",
+    help="An Excel file that merges and summarizes FastQC results."
+    )
+
+RNASeQCResults = DataType(
+    "RNASeQCResults",
+    )
+
+RNASeQCSummary = DataType(
+    "RNASeQCSummary",
     )
 
 all_data_types = [
     FastQCFolder,
-    RNASeQCFile,
+    FastQCSummary,
+    RNASeQCResults,
+    RNASeQCSummary,
     ]
 
 all_modules = [
     ModuleNode(
         "run_fastqc",
         NGS.FastqFolder, FastQCFolder,
+        # Actually, will work on gzip'd data.
         Constraint("compressed", MUST_BE, "no"),
-        help="Run FastQC on a file of fastq files",
+        help="Run FastQC on a folder of FASTQ files.",
+        ),
+    ModuleNode(
+        "summarize_fastqc_results",
+        FastQCFolder, FastQCSummary,
+        help="Merge and summarize the results from a FastQC folder.",
         ),
     ModuleNode(
         "run_RNA_SeQC",
-        NGS.BamFolder, RNASeQCFile,
+        NGS.BamFolder, RNASeQCResults,
         OptionDef(
             "RNA_ref", help="ref file for RNA_SeQC"),
         OptionDef(
             "RNA_gtf", help="gtf file for RNA_SeQC"),
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
-        Constraint("duplicates_marked",MUST_BE, "yes"),
-        Constraint("indexed",MUST_BE, "yes"),
-        Constraint("sorted", MUST_BE, "yes"),
-        Constraint("sample_type", MUST_BE, "RNA"),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        
+        #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
+        Constraint("has_read_groups", MUST_BE, "yes"),
+        Constraint("duplicates_marked", MUST_BE, "yes"),
+        Constraint("indexed", MUST_BE, "yes"),
+        Constraint("sorted", MUST_BE, "contig"),
+        #Constraint("sample_type", MUST_BE, "RNA"),
         help="run RNA-SeQC"),
     ]

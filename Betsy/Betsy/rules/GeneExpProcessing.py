@@ -1098,16 +1098,21 @@ all_modules = [
         Consequence("platform", SET_TO, "no"),
         help="convert SignalFile_Order to SignalFile_Annotate"
         ),
+    
     ModuleNode(
-         'annotate_probes',
-         _SignalFile_Annotate, _SignalFile_Annotate,
-         Constraint("annotate", MUST_BE, "no"),
-         Constraint("platform", MUST_BE, "no"),
-         Consequence("annotate", SET_TO, "yes"),
-         Consequence("platform", SAME_AS_CONSTRAINT),
-         help="annotate SignalFile_Annotate"),
+        'annotate_probes',
+        _SignalFile_Annotate, _SignalFile_Annotate,
 
+        OptionDef(
+            "illu_clm", '', help="CLM file for mapping file to sample names"),
+        
+        Constraint("annotate", MUST_BE, "no"),
+        Consequence("annotate", SET_TO, "yes"),
+        Constraint("platform", MUST_BE, "no"),
+        Consequence("platform", SAME_AS_CONSTRAINT),
 
+        help="annotate SignalFile_Annotate",
+        ),
 
     ModuleNode(
        "relabel_samples",

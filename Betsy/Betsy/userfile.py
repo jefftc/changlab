@@ -15,20 +15,38 @@ dir               List the files owned by the user.
 def set(username, filename):
     import os
     import shutil
+    import tempfile
 
     assert os.path.exists(filename), '%s does not exists' % filename
     
-    user_path = _make_path(username)
+    out_path = _make_path(username)
+    out_file = _hash_storefile(username, filename)
+    out_filename = os.path.join(out_path, out_file)
     
-    store_name = _hash_storefile(username, filename)
-    new_file_path = os.path.join(user_path, store_name)
-    if os.path.exists(new_file_path):
-        return new_file_path
-    if os.path.isdir(filename):
-        shutil.copytree(filename, new_file_path)
-    else:
-        shutil.copy(filename, new_file_path)
-    return new_file_path
+    # If this file already exists, don't copy it again.
+    if os.path.exists(out_filename):
+        return out_filename
+
+    # Copy to a temporary path and then move it once it's done
+    # copying.  This prevents partial copies.
+    temp_filename = None
+    try:
+        x, temp_filename = tempfile.mkstemp(dir=out_path); os.close(x)
+        if os.path.exists(temp_filename):
+            os.unlink(temp_filename)
+        
+        if os.path.isdir(filename):
+            shutil.copytree(filename, temp_filename)
+        else:
+            shutil.copy(filename, temp_filename)
+        os.rename(temp_filename, out_filename)
+    finally:
+        if temp_filename is not None and os.path.exists(temp_filename):
+            if os.path.isdir(temp_filename):
+                shutil.rmtree(temp_filename)
+            else:
+                os.unlink(temp_filename)
+    return out_filename
 
 
 def get(username, filename, file_length=None):
@@ -91,15 +109,18 @@ def _make_path(username):
 
 
 def _hash_storefile(username, filename):
+    # Return a unique name or path to save this file.
     import os
+    from genomicode import filelib
     from Betsy import bhashlib
     
     assert '___' not in username
     assert '___' not in filename
     assert '__' not in filename
 
-    file_length = os.path.getsize(filename)
-    checksum = bhashlib.checksum_file_or_path(filename)
+    #file_length = os.path.getsize(filename)
+    file_length = filelib.get_file_or_path_size(filename)
+    checksum = bhashlib.checksum_file_or_path_smart(filename)
 
     x = filename.replace("/", "__")
     # Put the file at the end to preserve the file extension.

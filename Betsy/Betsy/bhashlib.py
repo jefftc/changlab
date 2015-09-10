@@ -2,30 +2,44 @@
 # checksum_file_or_path
 # checksum_file
 # checksum_path
+# 
+# checksum_file_or_path_smart
 
 CHUNK_SIZE = 1024*1024
 
-def checksum_path(path):
+def checksum_path(path, fast=False):
     import os
     from hashlib import md5
+    from genomicode import filelib
     
     hasher = md5()
 
-    all_filenames = []
-    for x in os.walk(path):
-        dirpath, dirnames, files = x
-        x = [os.path.join(dirpath, x) for x in files]
-        all_filenames.extend(x)
-    for filename in all_filenames:
-        x = checksum_file(filename)
+    # Checksum each file.
+    filenames = filelib.list_files_in_path(path)
+    for filename in filenames:
+        x = checksum_file(filename, fast=fast)
         hasher.update(x)
+        
     return hasher.hexdigest()
 
 
-def checksum_file(filename):
+def checksum_file(filename, fast=False):
+    import os
+    import stat
     from hashlib import md5
     
+    assert os.path.exists(filename)
+    
     hasher = md5()
+
+    # If fast, just checksum based on size and creation date.
+    # Otherwise, checksum the entire contents.
+    if fast:
+        x = os.stat(filename)
+        x = "%d %d" % (x[stat.ST_SIZE], x[stat.ST_MTIME])
+        hasher.update(x)
+        return hasher.hexdigest()
+    
     handle = open(filename)
     while True:
         x = handle.read(CHUNK_SIZE)
@@ -35,8 +49,21 @@ def checksum_file(filename):
     return hasher.hexdigest()
 
 
-def checksum_file_or_path(file_or_path):
+def checksum_file_or_path(file_or_path, fast=False):
     import os
+
+    #size = get_file_or_path_size(file_or_path)
     if os.path.isdir(file_or_path):
-        return checksum_path(file_or_path)
-    return checksum_file(file_or_path)
+        return checksum_path(file_or_path, fast=fast)
+    return checksum_file(file_or_path, fast=fast)
+
+
+def checksum_file_or_path_smart(file_or_path):
+    # Returns a checksum.  If the files are too big, does a fast
+    # checksum.
+    from genomicode import filelib
+
+    size = filelib.get_file_or_path_size(file_or_path)
+    # Do a fast checksum if files are over 128 Mb.
+    fast = size > 1024*1024*128
+    return checksum_file_or_path(file_or_path, fast=fast)

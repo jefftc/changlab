@@ -8,16 +8,14 @@ run_module
 # _get_available_input_combinations
 # _write_parameter_file
 
-# TODO: generate figure that show based on the original network all
-# the nodes that were run.
-
 VERSION = 4
 
 def run_pipeline(
     network, in_datas, user_attributes, user_options, user=None,
-    job_name='', num_cores=8):
+    job_name='', clean_up=True, num_cores=8):
     # Run the pipeline that is indicated by the network.  Returns a
-    # filename if successful or None if not.
+    # tuple of (dictionary of node_id -> IdentifiedDataNode, output
+    # filename).  Returns None if not successful.
     #
     # in_datas         List of IdentifiedDataNodes.
     # user_attributes  From --dattr.  AttributeDef
@@ -43,6 +41,7 @@ def run_pipeline(
     # 1.  (IdentifiedDataNode, node_id, None)
     # 2.  (ModuleNode, node_id, None)
     # 3.  (ModuleNode, node_id, antecedent_ids)
+    #     Keep track of which set of antecedents to run.
     stack = []
     for node in in_datas:
         data_node = node.data
@@ -67,6 +66,7 @@ def run_pipeline(
                "Inference error: No more nodes to run."
         node, node_id, more_info = stack.pop()
         if node_id == 0:
+            pool[node_id] = node
             success = True
             break
         elif isinstance(node, module_utils.IdentifiedDataNode):
@@ -106,7 +106,7 @@ def run_pipeline(
             x = run_module(
                 network, pipeline, module_id, antecedent_ids,
                 user_attributes, user_options, 
-                pool, user, job_name, num_cores=num_cores)
+                pool, user, job_name, clean_up=clean_up, num_cores=num_cores)
             if x is None:
                 # Can happen if this module has already been run.  It
                 # might've gotten added to the stack because there are
@@ -145,7 +145,7 @@ def run_pipeline(
         #print next_node.identifier
         #sys.stdout.flush()
         assert next_node
-        return next_node.identifier
+        return pool, next_node.identifier
     print "This pipeline has completed unsuccessfully."
     return None
 
@@ -197,6 +197,8 @@ def run_module(
     # Import module.
     module_node = network.nodes[module_id]
     module_name = module_node.name
+    # If module is missing, will raise ImportError with decent error
+    # message.
     x = __import__(
         'modules.'+module_name, globals(), locals(), [module_name], -1)
     module = x.Module()
@@ -292,9 +294,11 @@ def run_module(
         return out_identified_data_node, next_id
 
     # Run the module in a temporary directory.
+    completed_successfully = False
     cwd = os.getcwd()
     try:
-        temp_dir = tempfile.mkdtemp()
+        temp_dir = tempfile.mkdtemp(dir=output_path)
+        assert temp_dir != result_dir
         os.chdir(temp_dir)
         temp_outfile = os.path.join(temp_dir, outfile)
         start_time = time.localtime()
@@ -312,7 +316,7 @@ def run_module(
         # Write stdout.txt to indicate success.
         assert module_utils.exists_nz(temp_outfile), "no file generated"
         success_file = os.path.join(temp_dir, 'stdout.txt')
-        open(success_file, 'w').write('success')
+        open(success_file, 'w').write('success\n')
 
         # Write parameters.
         x = os.path.join(temp_dir, 'BETSY_parameters.txt')
@@ -336,11 +340,14 @@ def run_module(
         if copy_files:
             if os.path.exists(result_dir):
                 shutil.rmtree(result_dir)
-            shutil.copytree(temp_dir, result_dir)
+            #shutil.copytree(temp_dir, result_dir)
+            shutil.move(temp_dir, result_dir)
+        completed_successfully = True
     finally:
         os.chdir(cwd)
-        if clean_up and os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+        if os.path.exists(temp_dir):
+            if clean_up or completed_successfully:
+                shutil.rmtree(temp_dir)
 
     return out_identified_data_node, next_id
 
@@ -459,6 +466,28 @@ def _get_available_input_combinations(
 ##             raise ValueError('copy fails')
 
 
+def _pretty_time_delta(delta):
+    days, x = divmod(delta, 60*60*24)
+    hours, x = divmod(x, 60*60)
+    minutes, seconds = divmod(x, 60)
+
+    if not days and not hours and not minutes and seconds < 1:
+        return "instant"
+    if not days and not hours and not minutes:
+        return "%d s" % seconds
+    if not days and not hours:
+        x = minutes + seconds/60.
+        return "%.1f mins" % x
+    if not days:
+        x = hours + minutes/60. + seconds/3600.
+        return "%.1f hrs" % x
+
+    day_or_days = "day"
+    if days > 1:
+        day_or_days = "days"
+    x = hours + minutes/60. + seconds/3600.
+    return "%d %s, %.1f hours" % (days, day_or_days, x)
+
 
 def _write_parameter_file(
     parameter_file, pipeline, antecedents, out_attributes, user_options,
@@ -467,7 +496,10 @@ def _write_parameter_file(
     import time
     import operator
 
+    # Time format.
     FMT = "%a %b %d %H:%M:%S %Y"
+
+    elapsed = time.mktime(end_time) - time.mktime(start_time)
 
     params = {}
     params["pipeline"] = pipeline
@@ -480,8 +512,11 @@ def _write_parameter_file(
     params["outfile"] = outfile
     params["start_time"] = time.strftime(FMT, start_time)
     params["end_time"] = time.strftime(FMT, end_time)
+    params["elapsed"] = elapsed
+    params["elapsed_pretty"] = _pretty_time_delta(elapsed)
     params["user"] = user
     params["job_name"] = job_name
         
     x = json.dumps(params, sort_keys=True, indent=4)
+    x = x + "\n"
     open(parameter_file, 'w').write(x)
