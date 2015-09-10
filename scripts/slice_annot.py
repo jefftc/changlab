@@ -557,34 +557,56 @@ def copy_value_if_empty(MATRIX, copy_values):
 
 
 def copy_value_if_empty_header(MATRIX, copy_values):
-    # copy_values is list of header names.
+    # copy_values is list of strings in format of: <dst header>,<src
+    # 1>[,<src 2>...].
     import itertools
     if not copy_values:
         return MATRIX
 
-    copy_indexes = []   # list of list of indexes. 0-based
+    copy_indexes = []   # list of (dst, src1 [, src 2...]).  0-based
     for copy_value in copy_values:
-        indexes = [i for i in range(len(MATRIX.headers))
-                   if copy_value == MATRIX.headers[i]]
-        assert indexes, "Header not found: %s" % copy_value
-        assert len(indexes) > 1, "Header only found once: %s" % copy_value
-        copy_indexes.append(indexes)
+        headers = copy_value.split(",")
+        assert len(headers) >= 2, \
+               "format should be: <dst>,<src 1>[, <src 2>...]"
+        indexes = []
+        for header in headers:
+            i = [i for i in range(len(MATRIX.headers))
+                 if header == MATRIX.headers[i]]
+            assert i, "Header not found: %s" % header
+            assert len(i) == 1, "Header duplicated: %s" % header
+            i = i[0]
+            indexes.append(i)
+        copy_indexes.append(tuple(indexes))
 
     MATRIX = MATRIX.copy()
     for indexes in copy_indexes:
-        for x in itertools.product(indexes, indexes):
-            i_dst, i_src = x
-            if i_dst == i_src:
-                continue
-            header_dst = MATRIX.headers_h[i_dst]
+        i_dst = indexes[0]
+        header_dst = MATRIX.headers_h[i_dst]
+        for i_src in indexes[1:]:
             header_src = MATRIX.headers_h[i_src]
+
             # Change the annotations in place.
             annots_dst = MATRIX.header2annots[header_dst]
             annots_src = MATRIX.header2annots[header_src]
             for i in range(len(annots_dst)):
-                # If dst is empty, then copy from src.
-                if not annots_dst[i].strip() and annots_src[i].strip():
+                if not annots_dst[i].strip():
                     annots_dst[i] = annots_src[i]
+
+        # SHOOT.  Keep this code.  It does something different that
+        # should be re-implemented.
+        ## for x in itertools.product(indexes, indexes):
+        ##     i_dst, i_src = x
+        ##     if i_dst == i_src:
+        ##         continue
+        ##     header_dst = MATRIX.headers_h[i_dst]
+        ##     header_src = MATRIX.headers_h[i_src]
+        ##     # Change the annotations in place.
+        ##     annots_dst = MATRIX.header2annots[header_dst]
+        ##     annots_src = MATRIX.header2annots[header_src]
+        ##     for i in range(len(annots_dst)):
+        ##         # If dst is empty, then copy from src.
+        ##         if not annots_dst[i].strip() and annots_src[i].strip():
+        ##             annots_dst[i] = annots_src[i]
     return MATRIX
 
 
@@ -1033,7 +1055,8 @@ def main():
         "--copy_value_if_empty_header", default=[], action="append",
         help="Fill empty annotations with values from other columns "
         "with this header.  Gets the value from the left-most non-empty "
-        "column with the same header.  (MULTI)")
+        "column with the same header.  "
+        "Format: <dest header>,<src header 1>[, <src header 2>...].  (MULTI)")
     group.add_argument(
         "--rename_annot", default=[], action="append",
         help="Replace one whole annotation (not a substring) with another.  "

@@ -218,7 +218,8 @@ def _read_annotations_h():
         all_platform.append(platform.name)
     for x in paths:
         root, subfolder, platform = x
-        platform_name = platform[:-4] #get rid of .txt
+        assert platform.lower().endswith(".txt")
+        platform_name = platform[:-4] # get rid of .txt
         assert platform_name in all_platform, (
             '%s is not a platform in PLATFORMS' % platform_name)
         assert subfolder in ['case_sensitive','case_insensitive']
