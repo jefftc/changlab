@@ -1,4 +1,3 @@
-#arrayplatformlib.py
 """
 
 Functions:
@@ -58,7 +57,7 @@ PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION = range(4)
 class Platform:
     def __init__(self, name, bm_attribute, bm_organism, category, priority):
         # our description of platform, corresponds to files
-        # in genemodata/pid2platform, also matches annotation files in
+        # in genomidata/psid2platform, also matches annotation files in
         # /data/genomidata/affymetrix and /data/genomidata/illumina
         self.name = name
         # bm_organism   Which BioMart organism to use.  XXX how to get list?
@@ -116,15 +115,28 @@ def prioritize_platforms(platform_names):
 def find_header(MATRIX, category):
     # Returns a header from MATRIX that matches this category or None.
 
-    # XXX NEED TO FIX THIS
-    name_fix = {
-        "entrez_ID_human" : "Entrez_ID_human",
-        "entrez_ID_symbol_human" : "Entrez_Symbol_human",
-        }
+    #name_fix = {
+    #    "entrez_ID_human" : "Entrez_ID_human",
+    #    "entrez_ID_symbol_human" : "Entrez_Symbol_human",
+    #    }
 
-    for x in score_all_platforms_of_matrix(MATRIX):
+    scores = score_all_platforms_of_matrix(MATRIX)
+
+    # Order by increasing platform priority, decreasing score.
+    # This is not quite right.  Really want decreasing score, as long
+    # as category is not too bad.
+    x = [x[1] for x in scores]
+    all_platforms = {}.fromkeys(x)
+    platform_order = prioritize_platforms(all_platforms)
+    priority = [platform_order.index(x[1]) for x in scores]
+    x = [(priority[i], -scores[i][2], scores[i])
+         for i in range(len(scores))]
+    x = sorted(x)
+    scores = [x[-1] for x in x]
+    
+    for x in scores:
         header, platform_name, score = x
-        platform_name = name_fix.get(platform_name, platform_name)
+        #platform_name = name_fix.get(platform_name, platform_name)
 
         if score < 0.5:
             continue
@@ -152,7 +164,7 @@ def _hash_chipname(filename):
     m = re.search(r".na(\d+)",x)
     if m:
         version = int(m.group(1))
-        x = x.replace(m.group(0), '')
+        x = x.replace(m.group(0), "")
     return x, version
 
 
@@ -166,8 +178,8 @@ def chipname2filename(chipname):
 def chipname2filename_illu(chipname):
     filename = None
     path = config.annot_data_illu
-    assert os.path.exists(path), '%s does not exist' % path
-    chipname = chipname.replace('_', '-')
+    assert os.path.exists(path), "%s does not exist" % path
+    chipname = chipname.replace("_", "-")
     for f in os.listdir(path):
         if chipname in f:
             filename = os.path.join(path, f)
@@ -176,7 +188,7 @@ def chipname2filename_illu(chipname):
 
 def chipname2filename_affy(chipname):
     path = config.annot_data_affy
-    assert os.path.exists(path), '%s does not exist' % path
+    assert os.path.exists(path), "%s does not exist" % path
 
     # Read the files in config.annot_data_affy path.
     chip2file = {}  # chip -> (version, filename)
@@ -207,7 +219,7 @@ def _read_annotations_h():
     root = config.psid2platform
     assert os.path.exists(root), "Path not found: %s" % root
     for subfolder in os.listdir(root):
-        if '.DS_Store' in subfolder:
+        if ".DS_Store" in subfolder:
             continue
         x = os.path.join(root, subfolder)
         assert os.path.isdir(x), "Not directory: %s" % x
@@ -220,14 +232,14 @@ def _read_annotations_h():
         root, subfolder, platform = x
         platform_name = platform[:-4] #get rid of .txt
         assert platform_name in all_platform, (
-            '%s is not a platform in PLATFORMS' % platform_name)
-        assert subfolder in ['case_sensitive','case_insensitive']
-        f = file(os.path.join(root,subfolder,platform),'r')
+            "%s is not a platform in PLATFORMS" % platform_name)
+        assert subfolder in ["case_sensitive","case_insensitive"]
+        f = file(os.path.join(root,subfolder,platform),"r")
         text = f.readlines()
         text = [i.strip() for i in text if len(i.strip())>0]
         f.close()
-        chipname = os.path.splitext(platform)[-2]  # remove the '.txt'
-        if subfolder == 'case_insensitive':
+        chipname = os.path.splitext(platform)[-2]  # remove the ".txt"
+        if subfolder == "case_insensitive":
             result.append((chipname, False, text))
         else:
             result.append((chipname, True, text))
@@ -246,6 +258,9 @@ def _read_annotations():
 # list of (chip_name, case_sensitive, dict of IDs)
 ALL_PLATFORMS_CLEAN = None
 def _score_platforms_fast(annotations):
+    # Return list of (platform_name, num_my_annots, num_platform_annots,
+    # num_shared_annots, min_score, max_score).  Sorted by decreasing
+    # score.
     # Optimized version of the function.
     global ALL_PLATFORMS_CLEAN
 
@@ -274,13 +289,18 @@ def _score_platforms_fast(annotations):
         num_shared_annots = len(x)
         num_annots1_only = len(annots1) - num_shared_annots
         num_annots2_only = len(annots2) - num_shared_annots
-        perc_shared = 0
+        perc_shared_max = 0
+        perc_shared_min = 0
         if annots1 and annots2:
             x = float(num_shared_annots)/min(len(annots1), len(annots2))
-            perc_shared = x
+            perc_shared_max = x
+            x = float(num_shared_annots)/max(len(annots1), len(annots2))
+            perc_shared_min = x
 
-        results.append((chipname, num_shared_annots, perc_shared))
-    results.sort(key=lambda x: (x[2], x[1]),reverse=True)
+        x = (chipname, len(annots1), len(annots2),
+             num_shared_annots, perc_shared_min, perc_shared_max)
+        results.append(x)
+    results.sort(key=lambda x: (x[-1], x[-2], x[-3]),reverse=True)
     return results
 
 
@@ -339,12 +359,13 @@ def _compare_annotations(annots1, annots2, case_sensitive):
 
 def score_platform_of_annotations(annotations):
     # Tuple of (platform, match score) or None if nothing matches.
-    possible_platforms = score_platforms(annotations)
-    assert possible_platforms
-    if possible_platforms[0][1] <= 0:
+    scores = score_platforms(annotations)
+    assert scores
+    (platform, num_my_annots, num_platform_annots, num_shared_annots,
+     score_min, score_max) = scores[0]
+    if score_max <= 0:
         return None
-    platform, number_shared_annots, match = possible_platforms[0]
-    return platform, match
+    return platform, score_max
 
 
 def _parse_matrix_annotations(annots, delim):
@@ -364,35 +385,33 @@ def _parse_matrix_annotations(annots, delim):
 
 
 def score_all_platforms_of_matrix(DATA, annot_delim=None):
-    """Return a list of (header, platform, score).  score is the
+    """Return a list of (header, platform name, score).  score is the
     percentage of the IDs from header that matches the IDs in this
-    platform.  List is ordered by decreasing platform priority.
+    platform.  List is ordered by decreasing score.
 
     """
-    platform_scores = []  # list of header, platform_name, score
+    scores = []  # List of (header, score_platforms results)
     for header in DATA.row_names():
         x = DATA.row_names(header)
         annots = _parse_matrix_annotations(x, annot_delim)
 
-        platforms = score_platforms(annots)
-        for platform, x, score in platforms:
-            x = header, platform, score
-            platform_scores.append(x)
+        x = score_platforms(annots)
+        for s in x:
+            scores.append((header, s))
+
+    clean = []  # List of (header, platform, score_max)
+    for x in scores:
+        header, (platform, num_annots_matrix, num_annots_platform,
+                 num_shared, score_min, score_max) = x
+        x = header, platform, score_max
+        clean.append(x)
+    scores = clean
             
     # No 0 scores.
-    platform_scores = [x for x in platform_scores if x[2] > 0]
-
-    # Order by increasing platform priority, decreasing score.
-    x = [x[1] for x in platform_scores]
-    all_platforms = {}.fromkeys(x)
-    platform_order = prioritize_platforms(all_platforms)
-    priority = [platform_order.index(x[1]) for x in platform_scores]
-    x = [(priority[i], -platform_scores[i][2], platform_scores[i])
-         for i in range(len(platform_scores))]
-    x = sorted(x)
-    platform_scores = [x[-1] for x in x]
+    scores = [x for x in scores if x[-1] > 0]
     
-    return platform_scores
+    return scores
+
 
 
 def score_platform_of_matrix(DATA, annot_delim=None):
@@ -406,9 +425,8 @@ def score_platform_of_matrix(DATA, annot_delim=None):
     schwartz.sort()
     platforms = [x[-1] for x in schwartz]
 
-    out_platform = platforms[0][1]
-    out_platform_match = platforms[0][2]
-    return out_platform, out_platform_match
+    header, platform, score = platforms[0]
+    return platform, score
 
 
 def identify_platform_of_annotations(annotations):
@@ -422,7 +440,7 @@ def identify_platform_of_annotations(annotations):
 
 
 def identify_all_platforms_of_matrix(DATA, annot_delim=None):
-    """return a list of (header, platform) we can identify"""
+    """return a list of (header, platform name) we can identify"""
     platforms = score_all_platforms_of_matrix(DATA, annot_delim=annot_delim)
     result = []
     for x in platforms:
@@ -441,178 +459,182 @@ def identify_platform_of_matrix(DATA, annot_delim=None):
 
 
 PLATFORMS = [
-    Platform('HG_U95A', "affy_hg_u95a", "hsapiens_gene_ensembl", PROBE_ID, 1),
+    Platform("HG_U95A", "affy_hg_u95a", "hsapiens_gene_ensembl", PROBE_ID, 1),
     Platform(
-        'HG_U95Av2', "affy_hg_u95av2", "hsapiens_gene_ensembl", PROBE_ID, 2),
+        "HG_U95Av2", "affy_hg_u95av2", "hsapiens_gene_ensembl", PROBE_ID, 2),
     Platform(
-        'HG_U133_Plus_2', "affy_hg_u133_plus_2", "hsapiens_gene_ensembl",
+        "HG_U133_Plus_2", "affy_hg_u133_plus_2", "hsapiens_gene_ensembl",
         PROBE_ID, 3),
     Platform(
-        'HG_U133A_2', "affy_hg_u133a_2", "hsapiens_gene_ensembl", PROBE_ID, 4),
+        "HG_U133A_2", "affy_hg_u133a_2", "hsapiens_gene_ensembl", PROBE_ID, 4),
     Platform(
-        'HG_U133A', "affy_hg_u133a", "hsapiens_gene_ensembl", PROBE_ID, 5),
+        "HG_U133A", "affy_hg_u133a", "hsapiens_gene_ensembl", PROBE_ID, 5),
     Platform(
-        'HG_U133B', "affy_hg_u133b", "hsapiens_gene_ensembl", PROBE_ID, 6),
-    Platform('Hu35KsubA', None, None, PROBE_ID, 7),
-    Platform('Hu35KsubB', None, None, PROBE_ID, 8),
-    Platform('Hu35KsubC', None, None, PROBE_ID, 9),
-    Platform('Hu35KsubD', None, None, PROBE_ID, 10),
-    Platform('Hu6800', "affy_hugenefl", "hsapiens_gene_ensembl", PROBE_ID, 11),
+        "HG_U133B", "affy_hg_u133b", "hsapiens_gene_ensembl", PROBE_ID, 6),
+    Platform("Hu35KsubA", None, "hsapiens_gene_ensembl", PROBE_ID, 7),
+    Platform("Hu35KsubB", None, "hsapiens_gene_ensembl", PROBE_ID, 8),
+    Platform("Hu35KsubC", None, "hsapiens_gene_ensembl", PROBE_ID, 9),
+    Platform("Hu35KsubD", None, "hsapiens_gene_ensembl", PROBE_ID, 10),
+    Platform("Hu6800", "affy_hugenefl", "hsapiens_gene_ensembl", PROBE_ID, 11),
     Platform(
-        'MG_U74Av2', "affy_mg_u74av2", "mmusculus_gene_ensembl", PROBE_ID, 12),
+        "MG_U74Av2", "affy_mg_u74av2", "mmusculus_gene_ensembl", PROBE_ID, 12),
     Platform(
-        'MG_U74Bv2','affy_mg_u74bv2', "mmusculus_gene_ensembl", PROBE_ID, 13),
+        "MG_U74Bv2","affy_mg_u74bv2", "mmusculus_gene_ensembl", PROBE_ID, 13),
     Platform(
-        'MG_U74Cv2','affy_mg_u74cv2', "mmusculus_gene_ensembl", PROBE_ID, 14),
+        "MG_U74Cv2","affy_mg_u74cv2", "mmusculus_gene_ensembl", PROBE_ID, 14),
     Platform(
-        'Mouse430_2','affy_mouse430_2', "mmusculus_gene_ensembl", PROBE_ID,
+        "Mouse430_2","affy_mouse430_2", "mmusculus_gene_ensembl", PROBE_ID,
         15),
     Platform(
-        'Mouse430A_2','affy_mouse430a_2', "mmusculus_gene_ensembl", PROBE_ID,
+        "Mouse430A_2","affy_mouse430a_2", "mmusculus_gene_ensembl", PROBE_ID,
         16),
     Platform(
-        'Mu11KsubA','affy_mu11ksuba', "mmusculus_gene_ensembl", PROBE_ID, 17),
+        "Mu11KsubA","affy_mu11ksuba", "mmusculus_gene_ensembl", PROBE_ID, 17),
     Platform(
-        'Mu11KsubB', "affy_mu11ksubb", "mmusculus_gene_ensembl", PROBE_ID, 18),
+        "Mu11KsubB", "affy_mu11ksubb", "mmusculus_gene_ensembl", PROBE_ID, 18),
     Platform(
-        'RG_U34A','affy_rg_u34a', "rnorvegicus_gene_ensembl", PROBE_ID, 19),
+        "RG_U34A","affy_rg_u34a", "rnorvegicus_gene_ensembl", PROBE_ID, 19),
     Platform(
-        'RAE230A','affy_rae230a', "rnorvegicus_gene_ensembl", PROBE_ID, 20),
+        "RAE230A","affy_rae230a", "rnorvegicus_gene_ensembl", PROBE_ID, 20),
     Platform(
-        'HumanHT_12', "illumina_humanht_12_v4", "hsapiens_gene_ensembl",
+        "HumanHT_12", "illumina_humanht_12_v4", "hsapiens_gene_ensembl",
         PROBE_ID, 21),
     Platform(
-        'HumanWG_6', "illumina_humanwg_6_v3", "hsapiens_gene_ensembl",
+        "HumanWG_6", "illumina_humanwg_6_v3", "hsapiens_gene_ensembl",
         PROBE_ID, 22),
     Platform(
-        'MouseRef_8', "illumina_mousewg_6_v2", "mmusculus_gene_ensembl",
+        "MouseRef_8", "illumina_mousewg_6_v2", "mmusculus_gene_ensembl",
         PROBE_ID, 23),
     Platform(
-        'Entrez_ID_human', "entrezgene", "hsapiens_gene_ensembl", GENE_ID, 24),
+        "Entrez_ID_human", "entrezgene", "hsapiens_gene_ensembl", GENE_ID, 24),
     Platform(
-        'Entrez_ID_mouse', "entrezgene", "mmusculus_gene_ensembl", GENE_ID,
+        "Entrez_ID_mouse", "entrezgene", "mmusculus_gene_ensembl", GENE_ID,
         25),
     Platform(
-        'Entrez_Symbol_human', "hgnc_symbol", "hsapiens_gene_ensembl",
+        "Entrez_Symbol_human", "hgnc_symbol", "hsapiens_gene_ensembl",
         GENE_SYMBOL, 26),
     Platform(
-        'Entrez_Symbol_mouse', "mgi_symbol", "mmusculus_gene_ensembl",
+        "Entrez_Symbol_mouse", "mgi_symbol", "mmusculus_gene_ensembl",
         GENE_SYMBOL, 27),
     Platform(
-        'Ensembl_human', "ensembl_gene_id", "hsapiens_gene_ensembl",
+        "Ensembl_human", "ensembl_gene_id", "hsapiens_gene_ensembl",
         PROBE_ID, 28),
     Platform(
-        'Ensembl_mouse', "ensembl_gene_id", "mmusculus_gene_ensembl",
+        "Ensembl_mouse", "ensembl_gene_id", "mmusculus_gene_ensembl",
         PROBE_ID, 29),
     Platform(
-        'UCSC_human_hg19_kg7', None, None, GENE_ID, 30),
+        "UCSC_human_hg19_kg7", None, "hsapiens_gene_ensembl", GENE_ID, 30),
     Platform(
-        'UCSC_human_hg19_kg6', None, None, GENE_ID, 31),
+        "UCSC_human_hg19_kg6", None, "hsapiens_gene_ensembl", GENE_ID, 31),
     Platform(
-        'UCSC_human_hg19_kg5', None, None, GENE_ID, 32),
+        "UCSC_human_hg19_kg5", None, "hsapiens_gene_ensembl", GENE_ID, 32),
     Platform(
-        'UCSC_human_hg38_kg8', None, None, GENE_ID, 33),
+        "UCSC_human_hg38_kg8", None, "hsapiens_gene_ensembl", GENE_ID, 33),
     Platform(
-        'Agilent_Human1A', None, None, GENE_ID, 34),
+        "Agilent_Human1A", None, "hsapiens_gene_ensembl", GENE_ID, 34),
     Platform(
-        'HumanHT_12_control', None, None, GENE_ID, 35),
+        "HumanHT_12_control", None, "hsapiens_gene_ensembl", GENE_ID, 35),
     Platform(
-        'MouseRef_8_control', None, None, GENE_ID, 36),
+        "MouseRef_8_control", None, "hsapiens_gene_ensembl", GENE_ID, 36),
     Platform(
-        'UCSC_human_hg38_kg8', None, None, GENE_ID, 37),
+        "UCSC_human_hg38_kg8", None, "hsapiens_gene_ensembl", GENE_ID, 37),
     Platform(
-        'RefSeq_protein_mouse', "refseq_peptide", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 38),
+        "RefSeq_protein_mouse", "refseq_peptide", "mmusculus_gene_ensembl",
+        PROBE_ID, 38),
     Platform(
-        'RefSeq_predicted_protein_mouse', "refseq_peptide_predicted", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 39),
-
+        "RefSeq_predicted_protein_mouse", "refseq_peptide_predicted",
+        "mmusculus_gene_ensembl", PROBE_ID, 39),
     Platform(
-        'RefSeq_protein_human', "refseq_peptide", "hsapiens_gene_ensembl",
+        "RefSeq_protein_human", "refseq_peptide", "hsapiens_gene_ensembl",
         PROBE_ID, 40),
     Platform(
-        'RefSeq_predicted_protein_human', "refseq_peptide_predicted", "hsapiens_gene_ensembl",
-        PROBE_ID, 41),
+        "RefSeq_predicted_protein_human", "refseq_peptide_predicted",
+        "hsapiens_gene_ensembl", PROBE_ID, 41),
     Platform(
-        'RefSeq_mRNA_mouse', "refseq_mrna", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 42),
+        "RefSeq_mRNA_mouse", "refseq_mrna", "mmusculus_gene_ensembl",
+        PROBE_ID, 42),
     Platform(
-        'RefSeq_predicted_mRNA_mouse', "refseq_mrna_predicted", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 43),
+        "RefSeq_predicted_mRNA_mouse", "refseq_mrna_predicted",
+        "mmusculus_gene_ensembl", PROBE_ID, 43),
     Platform(
-        'RefSeq_ncRNA_mouse', "refseq_ncrna", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 44),
+        "RefSeq_ncRNA_mouse", "refseq_ncrna", "mmusculus_gene_ensembl",
+        PROBE_ID, 44),
     Platform(
-        'RefSeq_predicted_ncRNA_mouse', "refseq_ncrna_predicted", "mmusculus_gene_ensembl",
-        GENE_SYMBOL, 45),
+        "RefSeq_predicted_ncRNA_mouse", "refseq_ncrna_predicted",
+        "mmusculus_gene_ensembl", PROBE_ID, 45),
     Platform(
-        'RefSeq_mRNA_human', "refseq_mrna", "hsapiens_gene_ensembl",
+        "RefSeq_mRNA_human", "refseq_mrna", "hsapiens_gene_ensembl",
         PROBE_ID, 46),
     Platform(
-        'RefSeq_predicted_mRNA_human', "refseq_mrna_predicted", "hsapiens_gene_ensembl",
-        PROBE_ID, 47),
+        "RefSeq_predicted_mRNA_human", "refseq_mrna_predicted",
+        "hsapiens_gene_ensembl", PROBE_ID, 47),
     Platform(
-        'RefSeq_ncRNA_human', "refseq_ncrna", "hsapiens_gene_ensembl",
+        "RefSeq_ncRNA_human", "refseq_ncrna", "hsapiens_gene_ensembl",
         PROBE_ID, 48),
     Platform(
-        'RefSeq_predicted_ncRNA_human', "refseq_ncrna_predicted", "hsapiens_gene_ensembl",
-        PROBE_ID, 49),
+        "RefSeq_predicted_ncRNA_human", "refseq_ncrna_predicted",
+        "hsapiens_gene_ensembl", PROBE_ID, 49),
     Platform(
-        'UCSC_mouse_mm10_kg7', None, None, GENE_ID, 50),
+        "UCSC_mouse_mm10_kg7", None, "mmusculus_gene_ensembl", GENE_ID, 50),
     Platform(
-        'Entrez_Description_human', None, None, DESCRIPTION, 51),
+        "Entrez_Description_human", None, "hsapiens_gene_ensembl",
+        DESCRIPTION, 51),
     Platform(
-        'Entrez_Description_mouse', None, None, DESCRIPTION, 52),
+        "Entrez_Description_mouse", None, "mmusculus_gene_ensembl",
+        DESCRIPTION, 52),
+    # BioMart only has v3, not v2.
+    Platform("HumanRef_8_v2", None, "hsapiens_gene_ensembl", PROBE_ID, 53),
+    Platform("HumanRef_8_v3", None, "hsapiens_gene_ensembl", PROBE_ID, 54),
     ]
 
 
 
-annotate_header = [#The added header names when annotate a file
-    'Description', 'Gene Symbol', 'Gene ID', 'Swiss-Prot ID']
+## annotate_header = [#The added header names when annotate a file
+##     "Description", "Gene Symbol", "Gene ID", "Swiss-Prot ID"]
 
-affy_headers = {# Header names in affymetrix annotation
-                # files in /data/genomidata/affymetrix
-    'Description' : ['Target Description'],
-    'Gene Symbol' : ['Gene Symbol'],
-    'Gene ID' : ['Entrez Gene'],
-    'Swiss-Prot ID' : ['SwissProt']
-    }
-illu_headers = {# Header names in illumina annotation
-                # files in /data/genomidata/illumina
-    'Description' : ['Definition'],
-    'Gene Symbol' : ['Symbol'],
-    'Gene ID' : ['Entrez_Gene_ID'],
-    'Swiss-Prot ID' : ['swissport_id']
-    }
-biomart_headers = {# Header names in biomart attributesL
-    'Description' : ['description'],
-    'Gene Symbol' : ['hgnc_symbol','mgi_symbol'],
-    'Gene ID' : ['entrezgene'],
-    'Swiss-Prot ID' : ['uniprot_swissprot']
-    }
+## affy_headers = {# Header names in affymetrix annotation
+##                 # files in /data/genomidata/affymetrix
+##     "Description" : ["Target Description"],
+##     "Gene Symbol" : ["Gene Symbol"],
+##     "Gene ID" : ["Entrez Gene"],
+##     "Swiss-Prot ID" : ["SwissProt"]
+##     }
+## illu_headers = {# Header names in illumina annotation
+##                 # files in /data/genomidata/illumina
+##     "Description" : ["Definition"],
+##     "Gene Symbol" : ["Symbol"],
+##     "Gene ID" : ["Entrez_Gene_ID"],
+##     "Swiss-Prot ID" : ["swissport_id"]
+##     }
+## biomart_headers = {# Header names in biomart attributesL
+##     "Description" : ["description"],
+##     "Gene Symbol" : ["hgnc_symbol","mgi_symbol"],
+##     "Gene ID" : ["entrezgene"],
+##     "Swiss-Prot ID" : ["uniprot_swissprot"]
+##     }
 
 platform_to_GSEA_chipname={# corresponds to chipname in genepattern GSEA module
-    'Agilent_Human1A':'Agilent_Human1A',
-    'HG_U133A_2':'HG_U133A_2',
-    'HG_U133A':'HG_U133A',
-    'HG_U133B':'HG_U133B',
-    'HG_U133_Plus_2':'HG_U133_Plus_2',
-    'HG_U95Av2':'HG_U95Av2',
-    'Hu35KsubA':'Hu35KsubA',
-    'Hu35KsubB':'Hu35KsubB',
-    'Hu35KsubC':'Hu35KsubC',
-    'Hu35KsubD':'Hu35KsubD',
-    'Hu6800':'Hu6800',
-    'MG_U74Av2':'MG_U74Av2',
-    'MG_U74Bv2':'MG_U74Bv2',
-    'MG_U74Cv2':'MG_U74Cv2',
-    'Mouse430_2':'Mouse430_2',
-    'Mouse430A_2':'Mouse430A_2',
-    'Mu11KsubA':'Mu11KsubA',
-    'Mu11KsubB':'Mu11KsubB',
-    'RAE230A':'RAE230A',
-    'RG_U34A':'RG_U34A',
-    'HumanWG_6':'ilmn_HumanWG_6_V3_0_R3_11282955_A',
-    'HumanHT_12':'ilmn_HumanHT_12_V3_0_R3_11283641_A',
-    'MouseRef_8':'ilmn_MouseRef_8_V2_0_R3_11278551_A'
+    "Agilent_Human1A" : "Agilent_Human1A",
+    "HG_U133A_2" : "HG_U133A_2",
+    "HG_U133A" : "HG_U133A",
+    "HG_U133B" : "HG_U133B",
+    "HG_U133_Plus_2" : "HG_U133_Plus_2",
+    "HG_U95Av2" : "HG_U95Av2",
+    "Hu35KsubA" : "Hu35KsubA",
+    "Hu35KsubB" : "Hu35KsubB",
+    "Hu35KsubC" : "Hu35KsubC",
+    "Hu35KsubD" : "Hu35KsubD",
+    "Hu6800" : "Hu6800",
+    "MG_U74Av2" : "MG_U74Av2",
+    "MG_U74Bv2" : "MG_U74Bv2",
+    "MG_U74Cv2" : "MG_U74Cv2",
+    "Mouse430_2" : "Mouse430_2",
+    "Mouse430A_2" : "Mouse430A_2",
+    "Mu11KsubA" : "Mu11KsubA",
+    "Mu11KsubB" : "Mu11KsubB",
+    "RAE230A" : "RAE230A",
+    "RG_U34A" : "RG_U34A",
+    "HumanWG_6" : "ilmn_HumanWG_6_V3_0_R3_11282955_A",
+    "HumanHT_12" : "ilmn_HumanHT_12_V3_0_R3_11283641_A",
+    "MouseRef_8" : "ilmn_MouseRef_8_V2_0_R3_11278551_A"
     }

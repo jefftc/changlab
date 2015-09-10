@@ -1,38 +1,107 @@
 # SampleGroupFile
-# FastqFile
 # FastqFolder
-# SamFile
 # SamFolder
-# BamFile
 # BamFolder
-#
-# SaiFile
-# VcfFile
+# VcfFolder
+# SaiFolder     # from BWA
+
+# FastqFile
+# SamFile
+# BamFile
+
 
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
 
+ALIGNERS = ["unknown", "bowtie1", "bowtie2", "bwa"]
+#REFERENCE_GENOMES = ["hg18", "hg19", "mm9", "dm3"]
+
+COMPRESSION = ["unknown", "no", "gz", "bz2", "xz"]
+COMPRESSION_NOT_UNKNOWN = [x for x in COMPRESSION if x != "unknown"]
+
+SORT_ORDERS = ["no", "coordinate", "name", "contig"]
+SORTED = [x for x in SORT_ORDERS if x != "no"]
+# coordinate  samtools sort
+# name        by read name samtools sort -n
+# contig      match contig ordering of reference genome (Picard)
+
+
+
+ReferenceGenome = DataType(
+    "ReferenceGenome",
+    help="Should be FASTA file with reference genome.",
+    )
+
+Bowtie2IndexedGenome = DataType(
+    "Bowtie2IndexedGenome",
+    help="Indexed for bowtie2.",
+    )
+
+BWAIndexedGenome = DataType(
+    "BWAIndexedGenome",
+    help="Indexed for BWA.",
+    )
+
+
+SAM_ATTRIBUTES = [
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
+    AttributeDef(
+        "read", ["single", "paired"], "single", "single",
+        help="single or paired end read"),
+
+    #AttributeDef(
+    #    "ref", REFERENCE_GENOMES, "hg19", "hg19",
+    #    help="ref species"),
+    #AttributeDef(
+    #    "sample_type", ["RNA", "DNA"],
+    #    "RNA", "RNA", help="RNA or DNA type"),
+    ]
+
+BAM_ATTRIBUTES = SAM_ATTRIBUTES + [
+    AttributeDef(
+        "indexed", ["yes", "no"], "no", "no",
+        ),
+    AttributeDef("sorted", SORT_ORDERS, "no", "no"),
+    AttributeDef(
+        "duplicates_marked", ["yes", "no"], "no", "no",
+        help="mark duplicate or not"),
+    AttributeDef(
+        "recalibrated", ["yes", "no"], "no", "no",
+        help="recalibrated or not"),
+    AttributeDef(
+        "has_header", ["yes", "no"], "no", "no",
+        help="fix header or not"),
+    AttributeDef(
+        "has_read_groups", ["yes", "no"], "no", "no",
+        help="Whether the file contains read groups.",
+        ),
+    ]
+
 
 SampleGroupFile = DataType(
     "SampleGroupFile",
-    AttributeDef("contents", BDT.CONTENTS,
-                 "unspecified", "unspecified", help="contents"),
-    help="File contains sample group infomation"
-    )
-
-FastqFile = DataType(
-    "FastqFile",
-    AttributeDef(
-        "read", ["single", "pair", "pair1", "pair2"],
-        "single", "single", help="single or pair read"),
-    AttributeDef(
-        "ref", ["hg18", "hg19", "mm9", "dm3"], "hg19", "hg19",
-        help="ref species"),
     AttributeDef(
         "contents", BDT.CONTENTS,
         "unspecified", "unspecified", help="contents"),
-    help="Fastq file"
+    help="File contains sample group infomation"
     )
+
+## FastqFile = DataType(
+##     "FastqFile",
+##     AttributeDef(
+##         "read", ["single", "pair", "pair1", "pair2"],
+##         "single", "single", help="single or pair read"),
+##     #AttributeDef(
+##     #    "ref", REFERENCE_GENOMES, "hg19", "hg19",
+##     #    help="ref species"),
+##     AttributeDef(
+##         "contents", BDT.CONTENTS,
+##         "unspecified", "unspecified", help="contents"),
+##     )
 
 FastqFolder = DataType(
     "FastqFolder",
@@ -40,127 +109,81 @@ FastqFolder = DataType(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help=""),
     AttributeDef(
-        "compressed", ["yes", "no", "unknown"], "unknown", "yes",
+        "compressed", COMPRESSION, "unknown", "no",
         help="Whether the files are compressed (gz, bz2, xz)."),
-    help="RNA seq Fastq folder"
+    AttributeDef(
+        "adapter_trimmed", ["yes", "no"], "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef(
+        "reads_merged", ["yes", "no"], "no", "no",
+        help="Whether reads for a sample are merged into one file."),
+    help="A folder containing FASTQ files."
     )
 
-SamFile = DataType(
-    "SamFile",
-    AttributeDef("contents", BDT.CONTENTS,
-                 "unspecified", "unspecified",
-                 help="contents"),
-    AttributeDef("sorted", ["yes", "no"], "no", "no",
-                 help="sorted or not"),
-    AttributeDef("duplicates_marked", ["yes", "no"], "no", "no",
-                 help="mark duplicate or not"),
-    AttributeDef("recalibration", ["yes", "no"], "no", "no",
-                 help="recalibration or not"),
-    AttributeDef("has_header", ["yes", "no"], "no", "no",
-                 help="fix header or not"),
-    AttributeDef("read", ["single", "pair"],
-                 "single", "single",
-                 help="single or pair read"),
-    AttributeDef("ref", ["hg18", "hg19", "mm9", "dm3"],
-                 "hg19", "hg19",
-                 help="ref species"),
-    help="Sam file"
-    )
+
+
+SamFile = DataType("SamFile", *SAM_ATTRIBUTES)
 
 SamFolder = DataType(
-    "SamFolder",
-    AttributeDef("ref", ["human", "mouse", "hg18", "hg19"], "human", "human",
-                 help="ref species"),
-    AttributeDef("contents", BDT.CONTENTS,
-                 "unspecified", "unspecified", help="contents"),
-    AttributeDef("sample_type", ["RNA", "DNA"],
-                 "RNA", "RNA", help="RNA or DNA type"),
-    help="RNA seq Sam folder"
-    )
+    "SamFolder", *SAM_ATTRIBUTES, help="A folder containing SAM files.")
 
-BamFile = DataType(
-    "BamFile",
-    AttributeDef("contents", BDT.CONTENTS,
-                 "unspecified", "unspecified",
-                 help="contents"),
-    AttributeDef("sorted", ["yes", "no"], "no", "no",
-                 help="sorted or not"),
-    AttributeDef("duplicates_marked", ["yes", "no"], "no", "no",
-                 help="mark duplicate or not"),
-    AttributeDef("recalibration", ["yes", "no"], "no", "no",
-                 help="recalibration or not"),
-    AttributeDef("has_header", ["yes", "no"], "no", "no",
-                 help="fix header or not"),
-    AttributeDef("read", ["single", "pair"],
-                 "single", "single",
-                 help="single or pair read"),
-    AttributeDef("ref", ["hg18", "hg19", "mm9", "dm3"],
-                 "hg19", "hg19",
-                 help="ref species"),
-    help="Bam file"
-    )
+BamFile = DataType("BamFile", *BAM_ATTRIBUTES)
 
 BamFolder = DataType(
-    "BamFolder",
-    AttributeDef("ref", ["human", "mouse", "hg18", "hg19"], "human", "human",
-                 help="ref species"),
-    AttributeDef("contents", BDT.CONTENTS,
-                 "unspecified", "unspecified", help="contents"),
-    AttributeDef("sample_type", ["RNA", "DNA"],
-                 "RNA", "RNA", help="RNA or DNA type"),
-    AttributeDef("duplicates_marked", ["yes", "no"], "no", "no",
-                 help="mark duplicate or not"),
-    AttributeDef("sorted", ["yes", "no", "unknown"], "unknown", "unknown",
-                 help="sorted or not"),
-    AttributeDef("indexed", ["yes", "no"], "no", "no",
-                 help="indexed or not"),
-    help="RNA seq Bam folder"
+    "BamFolder", *BAM_ATTRIBUTES, help="A folder containing BAM files.")
+
+SaiFolder = DataType(
+    "SaiFolder",
+    AttributeDef(
+        "contents", BDT.CONTENTS,
+        "unspecified", "unspecified", help="contents"),
+    #AttributeDef(
+    #    "read", ["single", "pair", "pair1", "pair2"],
+    #    "single", "single", help="single or pair read"),
+    #AttributeDef(
+    #    "ref", REFERENCE_GENOMES,
+    #    "hg19", "hg19", help="ref species"),
+    help=".sai file generated by BWA."
     )
 
-SaiFile = DataType(
-    "SaiFile",
-    AttributeDef("read", ["single", "pair", "pair1", "pair2"],
-                 "single", "single", help="single or pair read"),
-    AttributeDef("ref", ["hg18", "hg19", "mm9", "dm3"],
-                 "hg19", "hg19", help="ref species"),
-    AttributeDef("contents", BDT.CONTENTS,
-                 "unspecified", "unspecified", help="contents"),
-    help="Sai file"
-    )
-
-VcfFile = DataType(
-    "VcfFile",
-    AttributeDef("contents", BDT.CONTENTS,
-                 "unspecified", "unspecified",
-                 help="contents"),
-    AttributeDef("recalibration", ["yes", "no"], "no", "no",
-                 help="recalibration or not"),
-    AttributeDef("read", ["single", "pair"],
-                 "single", "single",
-                 help="single or pair read"),
-    AttributeDef("ref", ["hg18", "hg19", "mm9", "dm3"],
-                 "hg19", "hg19",
-                 help="ref species"),
-    AttributeDef("vcf_filter", ["yes", "no"], "no", "no",
-                 help="filter VcfFile or not"),
-    AttributeDef("reheader", ["standard", "bcftool"],
-                 "standard", "standard",
-                 help="method to convert to VcfFile"),
-    AttributeDef("vcf_annotate", ["yes", "no"], "no", "no",
-                 help="annotate VcfFile or not"),
+VcfFolder = DataType(
+    "VcfFolder",
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    AttributeDef(
+        "recalibrated", ["yes", "no"], "no", "no",
+        help="recalibrated or not"),
+    AttributeDef(
+        "read", ["single", "paired"], "single", "single",
+        help="single or pair read"),
+    #AttributeDef(
+    #    "ref", REFERENCE_GENOMES, "hg19", "hg19",
+    #    help="ref species"),
+    AttributeDef(
+        "vcf_filter", ["yes", "no"], "no", "no", help="filter VcfFile or not"),
+    AttributeDef(
+        "reheader", ["standard", "bcftool"], "standard", "standard",
+        help="method to convert to VcfFile"),
+    AttributeDef(
+        "vcf_annotate", ["yes", "no"], "no", "no",
+        help="annotate VcfFile or not"),
     help="Vcf file"
     )
 
 all_data_types = [
+    ReferenceGenome,
+    Bowtie2IndexedGenome,
+    BWAIndexedGenome,
+    #FastqFile,
+    #SamFile,
+    #BamFile,
     SampleGroupFile,
-    FastqFile,
     FastqFolder,
-    SamFile,
     SamFolder,
-    BamFile,
     BamFolder,
-    SaiFile,
-    VcfFile,
+    SaiFolder,
+    VcfFolder,
     ]
 
 all_modules = [
@@ -168,20 +191,27 @@ all_modules = [
         "is_fastq_folder_compressed",
         FastqFolder, FastqFolder,
         Constraint("compressed", MUST_BE, "unknown"),
-        Consequence("compressed", BASED_ON_DATA, ["no", "yes"]),
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("compressed", BASED_ON_DATA, COMPRESSION_NOT_UNKNOWN),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
         "uncompress_fastq_folder",
         FastqFolder, FastqFolder,
-        Constraint("compressed", MUST_BE, "yes"),
+        Constraint("compressed", CAN_BE_ANY_OF, ["gz", "bz2", "xz"]),
         Consequence("compressed", SET_TO, "no"),
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        ),
+    ModuleNode(
+        "merge_reads",
+        [FastqFolder, SampleGroupFile], FastqFolder,
+        Constraint("reads_merged", MUST_BE, "no"),
+        Consequence("reads_merged", SET_TO, "yes"),
+        Constraint("compressed", CAN_BE_ANY_OF, ["no", "gz", "bz2", "xz"]),
+        Consequence("compressed", SET_TO, "no"),
         ),
     
-
     ## ModuleNode(
     ##     "is_fastq_folder",
     ##     RNASeqFile, RNASeqFile,
@@ -213,11 +243,247 @@ all_modules = [
     ##     help=("extract rna files with different format")
     ##     ),
     ModuleNode(
-        "convert_sam_to_bam",
+        "convert_sam_to_bam_folder",
         SamFolder, BamFolder,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
+        Constraint("read", CAN_BE_ANY_OF, ["single", "paired"]),
+        #Constraint("has_header", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Constraint("sorted", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Constraint("recalibrated", CAN_BE_ANY_OF, ["yes", "no"]),
+      
         Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
+        Consequence("read", SAME_AS_CONSTRAINT),
+        Consequence("has_header", SET_TO, "no"),
+        Consequence("has_read_groups", SET_TO, "no"),
+        Consequence("sorted", SET_TO, "no"),
+        Consequence("duplicates_marked", SET_TO, "no"),
+        Consequence("recalibrated", SET_TO, "no"),
+
         #Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
-        help="Convert SAM to BAM files.",
+        #help="Convert SAM to BAM files.",
+        ),
+    ModuleNode(
+        "index_bwa_reference",
+        ReferenceGenome, BWAIndexedGenome,
+        OptionDef(
+            "assembly", default="genome",
+            help="Optional name for the genome assembly, e.g. hg19",
+            ),
+        ),
+    ModuleNode(
+        "align_with_bwa",
+        #[FastqFolder, SaiFile], SamFolder,
+        [FastqFolder, SampleGroupFile, BWAIndexedGenome],
+        SaiFolder,
+        
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+
+        #Consequence("read", SAME_AS_CONSTRAINT),
+        #Consequence("aligner", SET_TO, "bwa"),
+        #Consequence("sorted", SET_TO, "no"),
+        #Consequence("duplicates_marked", SET_TO, "no"),
+        #Consequence("recalibration", SET_TO, "no"),
+        #Consequence("has_header", SET_TO, "no"),
+        #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19", "mm9", "dm3"]),
+        #Consequence("ref", SAME_AS_CONSTRAINT),
+        #help="generate algiment in SaiFile to SamFile"
+        ),
+    ModuleNode(
+        "index_bowtie2_reference",
+        ReferenceGenome, Bowtie2IndexedGenome,
+        OptionDef(
+            "assembly", default="genome",
+            help="Optional name for the genome assembly, e.g. hg19",
+            ),
+        ),
+    ModuleNode(
+        "align_with_bowtie2",
+        [FastqFolder, SampleGroupFile, Bowtie2IndexedGenome],
+        SamFolder,
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        Consequence("aligner", SET_TO, "bowtie2"),
+        #Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
+        help="Align to a reference genome with bowtie 2.",
+        ),
+    ModuleNode(
+        "convert_sai_to_sam_folder",
+        [FastqFolder, SaiFolder, BWAIndexedGenome, SampleGroupFile], SamFolder,
+
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Constraint("contents", SAME_AS, 0, 3),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("aligner", SET_TO, "bwa"),
+
+        #Constraint("read", MUST_BE, "pair1", 0),
+        #Constraint("read", MUST_BE, "pair2", 1),
+        #Constraint("read", MUST_BE, "pair1", 2),
+        #Constraint("read", MUST_BE, "pair2", 3),
+        #Consequence("read", SET_TO, "single"),
+        
+        #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19", "mm9", "dm3"], 0),
+        #Constraint("ref", SAME_AS,0,1),
+        #Constraint("ref", SAME_AS,0,2),
+        #Constraint("ref", SAME_AS,0,3),
+        #Consequence("ref", SAME_AS_CONSTRAINT,0),
+        
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("contents", SAME_AS, 0, 1),
+        #Constraint("contents", SAME_AS,0,2),
+        #Constraint("contents", SAME_AS,0,3),
+        
+        #Consequence("sorted", SET_TO, "no"),
+        #Consequence("duplicates_marked", SET_TO, "no"),
+        #Consequence("recalibration", SET_TO, "no"),
+        #Consequence("has_header", SET_TO, "no"),
+        help="Convert bwa's .sai alignments into .sam format.",
+        ),
+    ModuleNode(
+        "convert_sai_to_sam_folder_paired",
+        SaiFolder, SamFolder,
+        Consequence("read", SET_TO, "paired"),
+        Consequence("aligner", SET_TO, "bwa"),
+        ),
+
+    ModuleNode(
+        "sort_bam_folder_by_coordinate",
+        BamFolder, BamFolder,
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Constraint("duplicates_marked", MUST_BE, "no"),
+        #Constraint("recalibrated", MUST_BE, "no"),
+        #Constraint("has_header", MUST_BE, "no"),
+        Constraint("sorted", CAN_BE_ANY_OF, ["no", "name", "contig"]),
+        Constraint("indexed", MUST_BE, "no"),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("sorted", SET_TO, "coordinate"),
+        Consequence("indexed", SAME_AS_CONSTRAINT),
+        #Consequence("has_header", SAME_AS_CONSTRAINT),
+        #Consequence("recalibrated", SAME_AS_CONSTRAINT),
+        #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        help="sort sam file and generate bam file "
+        ),
+    ModuleNode(
+        "add_read_groups_to_bam_folder",
+        BamFolder, BamFolder,
+        Constraint("has_read_groups", MUST_BE, "no"),
+        Consequence("has_read_groups", SET_TO, "yes"),
+        Constraint("indexed", MUST_BE, "no"),
+        Consequence("indexed", SAME_AS_CONSTRAINT),
+        ),
+    ModuleNode(
+        "mark_duplicates_bam_folder",
+        BamFolder, BamFolder,
+        Constraint("duplicates_marked", MUST_BE, "no"),
+        Consequence("duplicates_marked", SET_TO, "yes"),
+        Constraint("sorted", MUST_BE, "coordinate"),
+        Consequence("sorted", SAME_AS_CONSTRAINT),
+        Constraint("indexed", MUST_BE, "no"),
+        Consequence("indexed", SAME_AS_CONSTRAINT),
+        help="mark duplicates in SamFile"
+        ),
+    ModuleNode(
+        "fix_header_GATK",
+        #BamFile, BamFile,
+        BamFolder, BamFolder,
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Constraint("duplicates_marked", MUST_BE, "yes"),
+        #Constraint("recalibrated", MUST_BE, "no"),
+        Constraint("has_header", MUST_BE, "no"),
+        #Constraint("sorted", MUST_BE, "yes"),
+        #Consequence("sorted", SAME_AS_CONSTRAINT),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Consequence("has_header", SET_TO, "yes"),
+        #Consequence("recalibrated", SAME_AS_CONSTRAINT),
+        #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        help="use GATK to fix header"
+        ),
+    ## ModuleNode(
+    ##     "recalibrate_base_quality_score",
+    ##     #BamFile, BamFile,
+    ##     BamFolder, BamFolder,
+        
+    ##     Constraint("recalibrated", MUST_BE, "no"),
+    ##     Consequence("recalibrated", SET_TO, "yes"),
+
+    ##     Constraint("sorted", MUST_BE, "yes"),
+    ##     Consequence("sorted", SAME_AS_CONSTRAINT),
+
+    ##     #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+    ##     #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
+    ##     #Constraint("duplicates_marked", MUST_BE, "yes"),
+    ##     #Constraint("has_header", MUST_BE, "yes"),
+    ##     #Consequence("contents", SAME_AS_CONSTRAINT),
+    ##     #Consequence("has_header", SAME_AS_CONSTRAINT),
+    ##     #Consequence("ref", SAME_AS_CONSTRAINT),
+    ##     #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+    ##     help="recalibrated sam file"
+    ##     ),
+    ## ModuleNode(
+    ##     "sort_bam_folder",
+    ##     BamFolder, BamFolder,
+    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+    ##     Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
+    ##     Constraint("duplicates_marked", MUST_BE, "no"),
+    ##     Constraint("indexed", MUST_BE, "no"),
+    ##     Constraint("sorted", MUST_BE, "no"),
+    ##     Constraint("sample_type", MUST_BE, "RNA"),
+    ##     Consequence("contents", SAME_AS_CONSTRAINT),
+    ##     Consequence("ref", SAME_AS_CONSTRAINT),
+    ##     Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+    ##     Consequence("indexed", SAME_AS_CONSTRAINT),
+    ##     Consequence("sorted", SET_TO, "yes"),
+    ##     Consequence("sample_type", SAME_AS_CONSTRAINT),   
+    ##     help="sort bam folder"  ),
+    
+    ## ModuleNode(
+    ##     "flag_dups_in_bam_folder",
+    ##     BamFolder, BamFolder,
+    ##     #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+    ##     #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
+    ##     Constraint("duplicates_marked", MUST_BE, "no"),
+    ##     #Constraint("indexed", MUST_BE, "no"),
+    ##     #Constraint("sorted", MUST_BE, "yes"),
+    ##     #Constraint("sample_type", MUST_BE, "RNA"),
+    ##     #Consequence("contents", SAME_AS_CONSTRAINT),
+    ##     #Consequence("ref", SAME_AS_CONSTRAINT),
+    ##     Consequence("duplicates_marked", SET_TO, "yes"),
+    ##     #Consequence("indexed", SAME_AS_CONSTRAINT),
+    ##     #Consequence("sorted", SAME_AS_CONSTRAINT),
+    ##     #Consequence("sample_type", SAME_AS_CONSTRAINT),   
+    ##     help="mark duplicates in bam folder",
+    ##     ),
+    
+    ModuleNode(
+        "index_bam_folder",
+        BamFolder, BamFolder,
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
+        #Constraint("duplicates_marked", MUST_BE, "yes"),
+        Constraint("indexed", MUST_BE, "no"),
+        Constraint("sorted", CAN_BE_ANY_OF, SORTED),
+        #Constraint("sample_type", MUST_BE, "RNA"),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        #Consequence("ref", SAME_AS_CONSTRAINT),
+        #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        Consequence("indexed", SET_TO, "yes"),
+        Consequence("sorted", SAME_AS_CONSTRAINT),
+        #Consequence("sample_type", SAME_AS_CONSTRAINT),   
+        help="index bam folder",
         ),
     ]

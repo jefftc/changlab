@@ -21,6 +21,7 @@
 # 
 # copy_value_if_empty
 # copy_value_if_empty_header
+# copy_value_if_empty_same_header
 # strip_all_annots
 # upper_annots
 # lower_annots
@@ -556,7 +557,7 @@ def copy_value_if_empty(MATRIX, copy_values):
     return MATRIX
 
 
-def copy_value_if_empty_header(MATRIX, copy_values):
+def copy_value_if_empty_same_header(MATRIX, copy_values):
     # copy_values is list of header names.
     import itertools
     if not copy_values:
@@ -1035,6 +1036,11 @@ def main():
         "with this header.  Gets the value from the left-most non-empty "
         "column with the same header.  (MULTI)")
     group.add_argument(
+        "--copy_value_if_empty_same_header", default=[], action="append",
+        help="Fill empty annotations with values from other columns "
+        "that share this header.  Gets the value from the left-most non-empty "
+        "column with the same header.  (MULTI)")
+    group.add_argument(
         "--rename_annot", default=[], action="append",
         help="Replace one whole annotation (not a substring) with another.  "
         "Format: <indexes>;<src>;<dst>.  (MULTI)")
@@ -1120,6 +1126,8 @@ def main():
     MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
     MATRIX = copy_value_if_empty_header(
         MATRIX, args.copy_value_if_empty_header)
+    MATRIX = copy_value_if_empty_same_header(
+        MATRIX, args.copy_value_if_empty_same_header)
     MATRIX = replace_annot(MATRIX, args.replace_annot)
     MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)

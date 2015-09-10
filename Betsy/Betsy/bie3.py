@@ -36,6 +36,7 @@ backchain
 complete_network
 optimize_network
 select_start_node
+find_node
 
 get_input_datatypes       Show all combinations of datatype that can be inputs.
 get_input_nodes           Show all possible input nodes for the network.
@@ -754,9 +755,18 @@ class ModuleNode:
         # Convenience hack: If the module doesn't convert the data
         # type, and no DefaultAttributesFrom is given, then set the
         # default_attributes_from.
-        if len(in_datatypes) == 1 and in_datatypes[0] == out_datatype and \
-           not default_attributes_from:
+        if not default_attributes_from and \
+               len(in_datatypes) == 1 and in_datatypes[0] == out_datatype:
             default_attributes_from = [DefaultAttributesFrom(0)]
+        # Another hack: If no DefaultAttributesFrom is given, and only
+        # one of the in_datatypes is the same as the out_datatype,
+        # then set the default_attributes_from.
+        if not default_attributes_from and len(in_datatypes) > 1:
+            i = [i for i in range(len(in_datatypes))
+                 if in_datatypes[i] == out_datatype]
+            if len(i) == 1:
+                i = i[0]
+                default_attributes_from = [DefaultAttributesFrom(i)]
 
         # Check default_attributes_from.  Should be a list of
         # DefaultAttributesFrom objects.
@@ -806,7 +816,8 @@ class ModuleNode:
                            consequences, constraint):
         # Get the input datatype that this constraint refers to.
         i = constraint.input_index
-        assert i < len(in_datatypes)
+        assert i < len(in_datatypes), \
+               "Invalid constraint index %d in module %s" % (i, name)
         in_datatype = in_datatypes[i]
 
         assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF, SAME_AS]
@@ -912,7 +923,8 @@ class ModuleNode:
                     continue
                 assert constraint.arg1 != consequence.arg1, \
                        "MUST_BE and SET_TO should not be set to the " \
-                       "same value in module %s (%s)." % self.name
+                       "same value in module %s (%s)." % (
+                    self.name, constraint.name)
 
     def __cmp__(self, other):
         if not isinstance(other, ModuleNode):
@@ -1823,7 +1835,7 @@ class _OptimizeNoOverlappingData:
         #   4      ENUM       ENUM     OVERLAP if ENUMs share ATOMs; not root.
         data1_attr = data1.attributes
         data2_attr = data2.attributes
-        assert data1_attr.keys() == data2_attr.keys()
+        assert sorted(data1_attr) == sorted(data2_attr)
 
         mismatch = False
         overlapping = []  # list of attribute names
@@ -2301,6 +2313,23 @@ def select_start_node(network, start_data, user_attributes):
     network = network.delete_nodes(bad_ids)
     network = optimize_network(network, user_attributes)
     return network
+
+
+def find_node(network, node):
+    # Return a node_id or None.
+    assert isinstance(node, DataNode)
+
+    found = []
+    for i in range(len(network.nodes)):
+        net_node = network.nodes[i]
+        if not isinstance(net_node, DataNode):
+            continue
+        if _is_data_compatible_with(node, net_node):
+            found.append(i)
+    assert len(found) <= 1
+    if not found:
+        return None
+    return found[0]
 
 
 ## def remove_data_node(network, *attributes):
@@ -3233,8 +3262,12 @@ def _backchain_to_all_inputs(
         attr_dst = all_attributes[i_dst]
 
         name = constraint.name
-        assert name in attr_src
-        assert name in attr_dst
+        assert name in attr_src, \
+               "Invalid attribute %s (%s:%s)" % (
+            name, module.name, module.in_datatypes[i_src].name)
+        assert name in attr_dst, \
+               "Invalid attribute %s (%s:%s)" % (
+            name, module.name, module.in_datatypes[i_dst].name)
         attr_dst[name] = attr_src[name]
         all_attrsource[i_dst][name] = "SAME_AS,%d" % (i_src)
 
