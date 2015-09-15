@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+def product_genesets(all_names, num_to_compare):
+    import itertools
+    
+    x = [all_names] * num_to_compare
+    for combo in itertools.product(*x):
+        assert len(combo) == num_to_compare
+        uniq_combo = {}.fromkeys(combo).keys()
+        yield tuple(uniq_combo)
+
 
 def match_gene_sets(genesets):
     # Return a tuple.  First element is list of genesets where the _UP
@@ -50,8 +59,8 @@ def match_gene_sets(genesets):
 
 
 def draw_venn(
-    filename, all_names, name2genes, pair2common, args_margin,
-    args_label_size, args_count_size):
+    filename, all_names, name2genes,
+    args_margin, args_label_size, args_count_size):
     import sys
     import StringIO
     from genomicode import jmath
@@ -68,9 +77,7 @@ def draw_venn(
     R_fn('library', R_var('VennDiagram'))
     sys.stdout = old_stdout
 
-    if len(all_names) == 2:
-        raise NotImplementedError
-    elif len(all_names) == 3 or len(all_names) == 5:
+    if len(all_names) in [2, 3, 5]:
         varnames = ["A", "B", "C", "D", "E"]
         for i in range(len(all_names)):
             n = all_names[i]
@@ -79,7 +86,9 @@ def draw_venn(
         #R_equals(name2genes[n1], "A")
         #R_equals(name2genes[n2], "B")
         #R_equals(name2genes[n3], "C")
-        if len(all_names) == 3:
+        if len(all_names) == 2:
+            R('x <- list(A=A, B=B)')
+        elif len(all_names) == 3:
             R('x <- list(A=A, B=B, C=C)')
         elif len(all_names) == 5:
             R('x <- list(A=A, B=B, C=C, D=D, E=E)')
@@ -96,10 +105,19 @@ def draw_venn(
         cat_cex = 1.5*args_label_size   # Size of category labels.
         margin = 0.05*args_margin   # Amount of space around plot.
         # Bigger margin is smaller figure.
-        
-        if len(all_names) == 3:
+
+        if len(all_names) == 2:
+            fill = ["cornflowerblue", "darkorchid1"]
+            cat_col = ["cornflowerblue", "darkorchid1"]
+            margin = 0.10*args_margin
+            cat_cex = 0.75*args_label_size
+            cex = 0.65*args_count_size
+        elif len(all_names) == 3:
             fill = ["cornflowerblue", "green", "yellow"]
             cat_col = ["darkblue", "darkgreen", "orange"]
+            margin = 0.10*args_margin
+            cat_cex = 0.75*args_label_size
+            cex = 0.65*args_count_size
         elif len(all_names) == 5:
             fill = [
                 "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
@@ -179,7 +197,6 @@ def draw_venn(
 def main():
     import os
     import argparse
-    import itertools
     from genomicode import genesetlib
 
     # Option for case insensitive comparison?
@@ -192,6 +209,17 @@ def main():
     #parser.add_argument(
     #    "--upper_diagonal", action="store_true",
     #    help="Calculate upper diagonal only.")
+    parser.add_argument(
+        "--num_to_compare", type=int, default=2, 
+        help="Num gene sets to compare at once.  "
+        "Default is 2 (pairwise comparisons).")
+    parser.add_argument(
+        "--geneset", default=[], action="append",
+        help="Which gene sets to include in the VENN diagram.  "
+        "If automatch, this is the name without the _UP or _DN suffix.")
+    parser.add_argument(
+        "--all_genesets", action="store_true",
+        help="Calculate the intersection of all gene sets.")
     parser.add_argument(
         "--automatch", action="store_true", 
         help="Will match _UP with _DN (or _DOWN).")
@@ -212,10 +240,16 @@ def main():
     args = parser.parse_args()
     assert os.path.exists(args.geneset_file), \
            "File not found: %s" % args.geneset_file
+    assert args.num_to_compare >= 2 and args.num_to_compare <= 5
 
     assert args.margin > 0 and args.margin < 100
     assert args.label_size > 0 and args.label_size < 10
     assert args.count_size > 0 and args.count_size < 10
+
+    assert not (args.geneset and args.all_genesets)
+    if not args.all_genesets:
+        assert len(args.geneset) > 1, "Must compare multiple gene sets."
+        assert len(args.geneset) >= args.num_to_compare
 
     name2genes = {}
     all_names = []  # preserve order of gene sets
@@ -239,35 +273,53 @@ def main():
         name2genes = merged
         all_names = pretty_names
 
+    # Select only the gene sets of interest.
+    if args.geneset:
+        for x in args.geneset:
+            assert x in name2genes, "Missing geneset: %s" % x
+        all_names = args.geneset
+
     # Count all pairwise intersections.
-    pair2common = {}  # (name1, name2) -> common genes
-    for x in itertools.product(all_names, all_names):
-        name1, name2 = x
-        genes1 = name2genes[name1]
-        genes2 = name2genes[name2]
-        common = set(genes1).intersection(genes2)
-        pair2common[(name1, name2)] = sorted(common)
+    combo2common = {}  # (gs1, gs2[, ...]) -> list of common genes
+    for combo in product_genesets(all_names, args.num_to_compare):
+        assert len(combo) >= 1
+        common = set(name2genes[combo[0]])
+        for i in range(1, len(combo)):
+            x = name2genes[combo[i]]
+            common = common.intersection(x)
+        combo2common[combo] = sorted(common)
+        # Hack to make writing out matrix below easier.
+        if args.num_to_compare == 2:
+            if len(combo) == 1:
+                x = (combo[0], combo[0])
+                combo2common[x] = sorted(common)
 
     # Write out the matrix.
-    header = ["Count"] + all_names
-    print "\t".join(header)
-    for name1 in all_names:
-        x = [len(pair2common[(name1, name2)]) for name2 in all_names]
-        x = [name1] + x
-        assert len(x) == len(header)
-        print "\t".join(map(str, x))
+    if args.num_to_compare == 2:
+        header = ["Count"] + all_names
+        print "\t".join(header)
+        for name1 in all_names:
+            x = [len(combo2common[(name1, name2)]) for name2 in all_names]
+            x = [name1] + x
+            assert len(x) == len(header)
+            print "\t".join(map(str, x))
+    else:
+        print "No matrix for comparing %d gene sets." % args.num_to_compare
 
     # Write to an output file.
     if args.outfile:
         genesets = []  # list of GeneSet objects
-        for i in range(len(all_names) - 1):
-            for j in range(i, len(all_names)):
-                name1 = all_names[i]
-                name2 = all_names[j]
-                genes = pair2common[(name1, name2)]
-                name = "%s___%s" % (name1, name2)
-                x = genesetlib.GeneSet(name, "na", genes)
-                genesets.append(x)
+        seen = {}
+        for combo in product_genesets(all_names, args.num_to_compare):
+            combo_s = tuple(sorted(combo))
+            if combo_s in seen:
+                continue
+            seen[combo_s] = 1
+            
+            genes = combo2common[combo]
+            name = "___".join(combo)
+            x = genesetlib.GeneSet(name, "na", genes)
+            genesets.append(x)
 
         write_fn = genesetlib.write_gmx
         if args.outfile.lower().endswith(".gmt"):
@@ -276,7 +328,7 @@ def main():
 
     if args.plotfile:
         draw_venn(
-            args.plotfile, all_names, name2genes, pair2common,
+            args.plotfile, all_names, name2genes, 
             args.margin, args.label_size, args.count_size)
 
 

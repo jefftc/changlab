@@ -26,7 +26,10 @@ def main():
         "--geneset", default=[], action="append",
         help="Format: <gmx/gmt_file>,<geneset>")
     parser.add_argument("--geneset_name")
-    parser.add_argument("--format", default="gmt", choices=["gmt", "gmx"])
+    DEFAULT_OUTPUT_FORMAT = "gmt"
+    parser.add_argument(
+        "--format", default=DEFAULT_OUTPUT_FORMAT, choices=["gmt", "gmx"],
+        help="Output format.  Default %s." % DEFAULT_OUTPUT_FORMAT)
     
     args = parser.parse_args()
     assert len(args.geneset) >= 2, "At least two gene sets."

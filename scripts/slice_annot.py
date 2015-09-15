@@ -183,6 +183,30 @@ def indexes_matrix(MATRIX, indexes_list):
     return AnnotationMatrix(headers, headers_h, header2annots)
 
 
+def select_cols_substr(MATRIX, cols_substr):
+    # cols_substr is a list of the substrings of the headers to keep.
+    if not cols_substr:
+        return MATRIX
+    
+    I = []
+    for i, h in enumerate(MATRIX.headers):
+        found = False
+        for s in cols_substr:
+            if h.find(s) >= 0:
+                found = True
+        if found:
+            I.append(i)
+
+    for i in I:
+        assert i >= 0 and i < len(MATRIX.headers_h)
+    headers = [MATRIX.headers[i] for i in I]
+    headers_h = [MATRIX.headers_h[i] for i in I]
+    header2annots = {}
+    for header_h in headers_h:
+        header2annots[header_h] = MATRIX.header2annots[header_h]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+
+
 def flip01_matrix(MATRIX, indexes):
     if not indexes:
         return MATRIX
@@ -1007,6 +1031,11 @@ def main():
         "--indexes", "--cut", dest="indexes", default=[], action="append",
         help="Select only these indexes from the file e.g. 1-5,8 "
         "(1-based, inclusive).  (MULTI)")
+
+    group.add_argument(
+        "--select_cols_substr", default=[], action="append",
+        help="Select the columns whose header contains this substring.  "
+        "(MULTI)")
     group.add_argument(
         "--add_column", default=[], action="append",
         help="Add one or more columns.  "
@@ -1143,6 +1172,7 @@ def main():
 
     # Perform operations.
     MATRIX = indexes_matrix(MATRIX, args.indexes)
+    MATRIX = select_cols_substr(MATRIX, args.select_cols_substr)
     MATRIX = add_column(MATRIX, args.add_column)
     MATRIX = copy_column(MATRIX, args.copy_column)
 

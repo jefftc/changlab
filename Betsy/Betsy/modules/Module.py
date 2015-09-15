@@ -6,7 +6,7 @@ class AbstractModule:
     #                     output attributes, e.g. is_logged.
 
     # DEPRECATE THIS
-    # hash_input          OPTIONAL.  Maybe never needed?
+    # hash_input          OPTIONAL.  Maybe never need to overload?
 
     def __init__(self):
         pass
@@ -15,8 +15,8 @@ class AbstractModule:
     def run(self, network, antecedents, out_attributes, user_options,
             num_cores, outfile):
         # Performs the computation that the module is supposed to do.
-        # Does not return anything.
-        # XXX What if there is an error?
+        # Does not return anything.  Can raise an exception of there
+        # is a problem.
         #
         # There is no default implementation.
         #
@@ -91,6 +91,7 @@ class AbstractModule:
         attrs.update(user_options)
         for key, value in attrs.iteritems():
             hasher.update(key)
+            #x = value
             if operator.isSequenceType(value):
                 for x in value:
                     hasher.update(str(x))
