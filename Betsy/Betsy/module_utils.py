@@ -48,7 +48,21 @@ find_picard_jar
 run_parallel
 run_single
 
+read_sample_group_file
+fix_sample_group_filenames
+assert_sample_group_file
+
+shellquote
+
 assert_bin
+
+find_bowtie1_reference
+make_bowtie1_command
+parse_bowtie1_output
+
+find_bowtie2_reference
+make_bowtie2_command
+parse_bowtie2_output
 
 """
 # _find_ids_that_pass_filters
@@ -1064,3 +1078,241 @@ def find_picard_jar(jar_name):
     assert os.path.exists(jar_filename)
     return jar_filename
     
+
+
+def find_bowtie1_reference(search_path):
+    # Find the indexed reference genome at:
+    # <reference_path>/<assembly>.[1234].ebwt
+    # <reference_path>/<assembly>.rev.[12].ebwt
+    #
+    # <reference_genome> is <reference_path>/<assembly>
+    import os
+    from genomicode import filelib
+    
+    x = filelib.list_files_in_path(search_path)
+    x = [x for x in x if x.lower().endswith(".1.ebwt")]
+    x = [x for x in x if not x.lower().endswith(".rev.1.ebwt")]
+    assert len(x) == 1, "Cannot find bowtie index."
+    x = x[0]
+    reference_path, file_ = os.path.split(x)
+    assembly = file_.replace(".1.ebwt", "")
+    x = os.path.join(reference_path, assembly)
+    return x
+
+    
+def find_bowtie2_reference(search_path):
+    # Find the indexed reference genome at:
+    # <reference_path>/<assembly>.[1234].bt2
+    # <reference_path>/<assembly>.rev.[12].bt2
+    #
+    # <reference_genome> is <reference_path>/<assembly>
+    import os
+    from genomicode import filelib
+    
+    x = filelib.list_files_in_path(search_path)
+    x = [x for x in x if x.lower().endswith(".1.bt2")]
+    x = [x for x in x if not x.lower().endswith(".rev.1.bt2")]
+    assert len(x) == 1, "Cannot find bowtie2 index."
+    # Assume the rest of the files are present.
+    x = x[0]
+    reference_path, file_ = os.path.split(x)
+    assembly = file_.replace(".1.bt2", "")
+    x = os.path.join(reference_path, assembly)
+    return x
+
+
+def make_bowtie2_command(
+    reference_genome, fastq_file1, fastq_file2=None, orientation=None,
+    sam_file=None, num_threads=None):
+    # Orientation must be None, "ff", "fr", "rf"
+    import os
+    from genomicode import config
+
+    assert os.path.exists(fastq_file1)
+    if fastq_file2:
+        assert os.path.exists(fastq_file2)
+    if orientation:
+        assert orientation in ["ff", "fr", "rf"]
+    if num_threads is not None:
+        assert num_threads >= 1 and num_threads < 100
+    
+    
+    bowtie2 = which_assert(config.bowtie2)
+
+    # bowtie2 -p <nthreads> -x <reference_base> -U <sample.fq>
+    #   -S <sample.sam>
+    # bowtie2 -p <nthreads> -x <reference_base> -1 <sample_1.fq>
+    #   -2 <sample_2.fq> --fr -S <sample.sam>
+
+    sq = shellquote
+    cmd = [
+        sq(bowtie2),
+        ]
+    if num_threads:
+        cmd += ["-p", str(num_threads)]
+    cmd += ["-x", sq(reference_genome)]
+    if not fastq_file2:
+        cmd += [
+            "-U", sq(fastq_file1),
+            ]
+    else:
+        cmd += [
+            "-1", sq(fastq_file1),
+            "-2", sq(fastq_file2),
+            ]
+    if orientation:
+        cmd += ["--%s" % orientation]
+    if sam_file:
+        cmd += [
+            "-S", sq(sam_file),
+            ]
+    return " ".join(cmd)
+
+
+def make_bowtie1_command(
+    reference_genome, sam_file, fastq_file1, fastq_file2=None,
+    orientation=None, num_threads=None):
+    # Orientation must be None, "ff", "fr", "rf"
+    import os
+    from genomicode import config
+
+    assert os.path.exists(fastq_file1)
+    if fastq_file2:
+        assert os.path.exists(fastq_file2)
+    if orientation:
+        assert orientation in ["ff", "fr", "rf"]
+    if num_threads is not None:
+        assert num_threads >= 1 and num_threads < 100
+    
+    bowtie1 = which_assert(config.bowtie)
+
+    # bowtie --sam -p <nthreads> <reference_base> <sample.fq>
+    #   <sample.sam>
+    # bowtie --sam --fr -p <nthreads> <reference_base> -1 <sample_1.fq> -2
+    #   <sample_2.fq> <sample.sam>
+
+    sq = shellquote
+    cmd = [
+        sq(bowtie1),
+        "--sam",
+        ]
+    if orientation:
+        cmd += ["--%s" % orientation]
+    if num_threads:
+        cmd += ["-p", str(num_threads)]
+    cmd += [sq(reference_genome)]
+    if not fastq_file2:
+        cmd += [sq(fastq_file1)]
+    else:
+        cmd += [
+            "-1", sq(fastq_file1),
+            "-2", sq(fastq_file2),
+            ]
+    cmd += [sq(sam_file)]
+    return " ".join(cmd)
+
+
+def parse_bowtie2_output(filename):
+    # Return a dictionary with keys:
+    # reads_processed    BOTH
+    # aligned_reads      BOTH    (aligned >= 1 time)
+    # concordant_reads   paired  (concordant >= 1 time)
+    #
+    # 1000 reads_processed means there are 1000 possible pairs.
+
+    # For single-end reads.
+    # 20000 reads; of these:
+    #   20000 (100.00%) were unpaired; of these:
+    #      1247 (6.24%) aligned 0 times
+    #      18739 (93.69%) aligned exactly 1 time
+    #      14 (0.07%) aligned >1 times
+    # 93.77% overall alignment rate
+
+    # For paired-end reads.
+    # 62830141 reads; of these:
+    #   62830141 (100.00%) were paired; of these:
+    #     6822241 (10.86%) aligned concordantly 0 times
+    #     48713485 (77.53%) aligned concordantly exactly 1 time
+    #     7294415 (11.61%) aligned concordantly >1 times
+    #     ----
+    #     6822241 pairs aligned concordantly 0 times; of these:
+    #       3004782 (44.04%) aligned discordantly 1 time
+    #     ----
+    #     3817459 pairs aligned 0 times concordantly or discordantly; of these:
+    #       7634918 mates make up the pairs; of these:
+    #         3135692 (41.07%) aligned 0 times
+    #         1870375 (24.50%) aligned exactly 1 time
+    #         2628851 (34.43%) aligned >1 times
+    # 97.50% overall alignment rate
+    from genomicode import filelib
+
+    concordant_1 = concordant_more = None
+    results = {}
+    for line in filelib.openfh(filename):
+        if line.find("reads; of these:") >= 0:
+            x = line.strip().split()
+            results["reads_processed"] = int(x[0])
+        elif line.find("overall alignment rate") >= 0:
+            x = line.strip().split()
+            # 93.77% overall alignment rate
+            x = x[0]            # 93.77%
+            assert x.endswith("%")
+            x = x[:-1]          # 93.77
+            x = float(x) / 100  # 0.9377
+            assert "reads_processed" in results
+            aligned = int(x * results["reads_processed"])
+            results["aligned_reads"] = aligned
+        elif line.find("aligned concordantly exactly 1 time") >= 0:
+            x = line.strip().split()
+            x = x[0]
+            concordant_1 = int(x)
+        elif line.find("aligned concordantly >1 times") >= 0:
+            x = line.strip().split()
+            x = x[0]
+            concordant_more = int(x)
+    assert "reads_processed" in results
+    assert "aligned_reads" in results
+
+    if concordant_1 is not None:
+        assert concordant_more is not None
+    if concordant_more is not None:
+        assert concordant_1 is not None
+    if concordant_1 is not None:
+        results["concordant_reads"] = concordant_1 + concordant_more
+    return results
+
+
+def parse_bowtie1_output(filename):
+    # Return a dictionary with keys:
+    # reads_processed
+    # aligned_reads
+    # 
+    # Warning: Exhausted best-first chunk memory ...; skipping read
+    # # reads processed: 62830141
+    # # reads with at least one reported alignment: 28539063 (45.42%)
+    # # reads that failed to align: 34291078 (54.58%)
+    # Reported 28539063 paired-end alignments to 1 output stream(s)
+    from genomicode import filelib
+    
+    results = {}
+    for line in filelib.openfh(filename):
+        if line.startswith("Warning:"):
+            continue
+        elif line.startswith("# reads processed"):
+            x = line.split(":")
+            assert len(x) == 2
+            results["reads_processed"] = int(x[1])
+        elif line.startswith("# reads with at least one reported alignment"):
+            x = line.split(":")
+            assert len(x) == 2
+            x = x[1].strip()
+            x = x.split(" ")
+            assert len(x) == 2
+            results["aligned_reads"] = int(x[0])
+        elif line.startswith("# reads that failed to align"):
+            pass
+        elif line.startswith("Reported "):
+            pass
+        else:
+            raise AssertionError, "Unknown line: %s" % line.strip()
+    return results

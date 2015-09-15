@@ -12,7 +12,7 @@ class Module(AbstractModule):
         from genomicode import filelib
         from Betsy import module_utils
 
-        fastq_node, sai_node, index_node, group_node = antecedents
+        fastq_node, sai_node, index_node, sample_node = antecedents
         module_utils.safe_mkdir(out_path)
 
         # Technically, doesn't need the SampleGroupFile, since that's
@@ -32,7 +32,7 @@ class Module(AbstractModule):
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
-            group_node.identifier, fastq_path)
+            sample_node.identifier, fastq_path)
         fastq_files = x
 
         # Find the sai files.
@@ -50,9 +50,9 @@ class Module(AbstractModule):
         reference_fa = os.path.join(index_path, x)
         
         bwa = module_utils.which_assert(config.bwa)
-        # bwa samse <reference.fa> <input.sai> <input.fq> > <output.sam>
-        # bwa sampe <reference.fa> <input_1.sai> <input_2.sai>
-        #   <input_1.fq> <input_2.fq> > <output.sam>
+        # bwa samse -f <output.sam> <reference.fa> <input.sai> <input.fq>
+        # bwa sampe -f <output.sam> <reference.fa> <input_1.sai> <input_2.sai>
+        #   <input_1.fq> <input_2.fq> >
 
         # list of (pair1.fq, pair1.sai, pair2.fq, pair2.sai, output.sam)
         # all full paths
@@ -83,38 +83,60 @@ class Module(AbstractModule):
             if pair2_fq:
                 assert pair2_sai, "Missing .sai file 2: %s" % sample
             if pair2_sai:
-                assert not pair2_fq, "Extra .sai file 2: %s" % sample
+                assert pair2_fq, "Missing .fq file 2: %s" % sample
                 
             sam_filename = os.path.join(out_path, "%s.sam" % sample)
+            log_filename = os.path.join(out_path, "%s.log" % sample)
 
-            x = sample, pair1_fq, pair1_sai, pair2_fq, pair2_sai, sam_filename
+            x = sample, pair1_fq, pair1_sai, pair2_fq, pair2_sai, \
+                sam_filename, log_filename
             jobs.append(x)
+
+        orientation = sample_node.data.attributes["orientation"]
+        assert orientation in ["single", "paired_fr", "paired_rf"]
 
         # Make a list of bwa commands.
         sq = module_utils.shellquote
         commands = []
         for x in jobs:
-            sample, pair1_fq, pair1_sai, pair2_fq, pair2_sai, sam_filename = x
+            sample, pair1_fq, pair1_sai, pair2_fq, pair2_sai, \
+                    sam_filename, log_filename = x
+            if orientation == "single":
+                assert not pair2_fq
+                assert not pair2_sai
 
             samse = "samse"
-            if pair2_fq:
+            if orientation.startswith("paired"):
                 samse = "sampe"
 
             x = [
-                bwa,
+                sq(bwa),
                 samse,
+                "-f", sq(sam_filename),
                 sq(reference_fa),
-                sq(pair1_sai),
-                sq(pair1_fq),
                 ]
-            if pair2_fq:
+            if orientation == "single":
                 x += [
+                    sq(pair1_sai),
+                    sq(pair1_fq),
+                ]
+            else:
+                y = [
+                    sq(pair1_sai),
                     sq(pair2_sai),
+                    sq(pair1_fq),
                     sq(pair2_fq),
                     ]
+                if orientation == "paired_rf":
+                    y = [
+                        sq(pair2_sai),
+                        sq(pair1_sai),
+                        sq(pair2_fq),
+                        sq(pair1_fq),
+                        ]
+                x += y
             x += [
-                ">",
-                sam_filename,
+                ">&", sq(log_filename),
                 ]
             x = " ".join(x)
             commands.append(x)
@@ -123,7 +145,8 @@ class Module(AbstractModule):
 
         # Make sure the analysis completed successfully.
         for x in jobs:
-            sample, pair1_fq, pair1_sai, pair2_fq, pair2_sai, sam_filename = x
+            sample, pair1_fq, pair1_sai, pair2_fq, pair2_sai, \
+                    sam_filename, log_filename = x
             assert module_utils.exists_nz(sam_filename), \
                    "Missing: %s" % sam_filename
     

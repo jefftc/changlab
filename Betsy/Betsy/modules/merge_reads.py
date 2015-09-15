@@ -20,8 +20,7 @@ class Module(AbstractModule):
         sample_group_file = group_node.identifier
 
         module_utils.assert_sample_group_file(sample_group_file, fastq_path)
-        x = module_utils.read_sample_group_file(
-            group_node.identifier)
+        x = module_utils.read_sample_group_file(group_node.identifier)
         x = module_utils.fix_sample_group_filenames(x, fastq_path)
         sample_groups = x
 

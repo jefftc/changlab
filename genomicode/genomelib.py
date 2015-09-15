@@ -25,11 +25,12 @@ calc_tss_seq_dist
 calc_seq_seq_dist        WAS calc_seq_distance WAS calc_5p_offset
 calc_seq_seq_sep         WAS calc_seq_separation WAS calc_raw_offset
 
-read_fasta
 read_fasta_many
 write_fasta
 read_ra
 write_ra
+read_fastq
+write_fastq
 
 """
 # _get_default_ra_chrom
@@ -348,13 +349,15 @@ def calc_seq_seq_sep(base1, length1, base2, length2):
     offset = max(offset, -length1, -length2)
     return offset
 
+
 def read_fasta(fh):
-    # Return a tuple of (title, sequence)
+    # Return (title, sequence)
     for x in read_fasta_many(fh):
-        yield x
+        return x
 
 def read_fasta_many(fh):
     # Yield tuples of (title, sequence)
+    # Title does does not have the ">" character.
     import filelib
 
     handle = filelib.openfh(fh)
@@ -575,3 +578,42 @@ def _assert_chrom(chrom):
         assert x >= 1 and x <= 25, "Invalid (2) chrom: %s" % chrom
         # danRer has up to 25.
     GOOD_CHROM[chrom] = 1
+
+
+def read_fastq(fh):
+    # Yield tuples of (title, sequence, quality)
+    # Title contains the "@" character.
+    import filelib
+
+    handle = filelib.openfh(fh)
+    while True:
+        # @<title>
+        # <sequence>
+        # +
+        # <quality>
+        x1 = handle.readline()
+        if not x1:
+            break
+        x2 = handle.readline()
+        x3 = handle.readline()
+        x4 = handle.readline()
+        assert x2
+        assert x2
+        assert x4
+        assert x3.strip() == "+", "Missing + line"
+        title = x1.strip()
+        sequence = x2.strip()
+        quality = x4.strip()
+        assert len(sequence) == len(quality)
+        yield title, sequence, quality
+
+    
+def write_fastq(title, sequence, quality, handle=None):
+    handle = handle or sys.stdout
+    w = handle.write
+
+    assert len(sequence) == len(quality)
+    w("%s\n" % title)
+    w("%s\n" % sequence)
+    w("+\n")
+    w("%s\n" % quality)

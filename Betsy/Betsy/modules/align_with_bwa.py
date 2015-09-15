@@ -11,6 +11,7 @@ class Module(AbstractModule):
         from Betsy import module_utils
         from genomicode import config
 
+        # TODO: Implement bwa mem for longer reads.
         fastq_node, group_node, index_node = antecedents
         module_utils.safe_mkdir(out_path)
 
@@ -67,7 +68,6 @@ class Module(AbstractModule):
             jobs.append(x)
 
         # Calculate the number of cores per job.
-        nc = 1
         nc = max(1, num_cores/len(jobs))
 
         # Make the bwa commands.

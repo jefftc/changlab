@@ -22,8 +22,8 @@ class Module(AbstractModule):
         assert os.path.isdir(fastq_path)
         assert os.path.isdir(reference_path)
 
-        bowtie2 = module_utils.which_assert(config.bowtie2)
-        reference_genome = module_utils.find_bowtie2_reference(reference_path)
+        bowtie = module_utils.which_assert(config.bowtie)
+        reference_genome = module_utils.find_bowtie1_reference(reference_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -39,7 +39,7 @@ class Module(AbstractModule):
             x = sample, pair1, pair2, sam_filename, log_filename
             jobs.append(x)
         
-        # Generate bowtie2 commands for each of the files.
+        # Generate bowtie1 commands for each of the files.
         attr2orient = {
             "single" : None,
             "paired_ff" : "ff",
@@ -54,9 +54,9 @@ class Module(AbstractModule):
         for x in jobs:
             sample, pair1, pair2, sam_filename, log_filename = x
             nc = max(1, num_cores/len(jobs))
-            x = module_utils.make_bowtie2_command(
-                reference_genome, pair1, fastq_file2=pair2,
-                orientation=orientation, sam_file=sam_filename, num_threads=nc)
+            x = module_utils.make_bowtie1_command(
+                reference_genome, sam_filename, pair1, fastq_file2=pair2,
+                orientation=orientation, num_threads=nc)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
@@ -65,8 +65,12 @@ class Module(AbstractModule):
         # Make sure the analysis completed successfully.
         for x in jobs:
             sample, pair1, pair2, sam_filename, log_filename = x
+            # Make sure sam file created.
             assert module_utils.exists_nz(sam_filename), \
                    "Missing: %s" % sam_filename
+            # Make sure there are some alignments.
+            x = open(log_filename).read()
+            assert x.find("No alignments") < 0, "No alignments"
 
 
     def name_outfile(self, antecedents, user_options):
@@ -75,7 +79,7 @@ class Module(AbstractModule):
         #original_file = module_utils.get_inputid(data_node.identifier)
         #filename = 'Samfolder_' + original_file
         #return filename
-        return "alignments.bowtie2"
+        return "alignments.bowtie"
 
 
 ## def concatenate_files(input_files, outfile):

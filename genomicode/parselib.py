@@ -118,6 +118,7 @@ def test_parse_ranges():
         print "\t".join(map(str, x))
 
 def pretty_int(num):
+    # Put commas every 3 digits.
     num = int(num)
     num = str(num)
     # Split into groups of three characters.

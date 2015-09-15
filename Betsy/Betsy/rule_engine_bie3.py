@@ -8,7 +8,9 @@ run_module
 # _get_available_input_combinations
 # _write_parameter_file
 
-VERSION = 4
+VERSION = 5
+
+BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
 def run_pipeline(
     network, in_datas, user_attributes, user_options, user=None,
@@ -203,10 +205,6 @@ def run_module(
         'modules.'+module_name, globals(), locals(), [module_name], -1)
     module = x.Module()
 
-    # Running this module now.
-    print "[%s]  %s" % (time.strftime('%I:%M %p'), module_name)
-    sys.stdout.flush()
-
     # Get the antecedents from the pool.
     in_identified_data_nodes = [pool[x] for x in input_ids]
     # Same as in_identified_data_nodes, but lists of length 1 are
@@ -247,6 +245,8 @@ def run_module(
     # out_nodes may differ by logged value.  However, the module will
     # set all the out_nodes to the same logged value, so they'll be
     # identical.
+    # TODO: Cache this result.  Some can take a long time,
+    # e.g. finding out how paired reads are oriented.
     attr = module.set_out_attributes(antecedents, out_data_node.attributes)
     out_data_node.attributes = attr
 
@@ -272,7 +272,7 @@ def run_module(
     # will never re-use prior analyses.  Have to be more clever about
     # this.
     h = module.hash_input(
-        pipeline, antecedents, out_data_node.attributes, user_options)
+        module_name, antecedents, out_data_node.attributes, user_options)
     ## Get milliseconds.
     #x = time.time()
     #ms = int((x-int(x))*100)
@@ -291,7 +291,24 @@ def run_module(
 
     # Check if this has already been run.
     if os.path.exists(os.path.join(result_dir, 'stdout.txt')):
+        filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
+        assert os.path.exists(filename)
+        params = _read_parameter_file(filename)
+        run_time = params["elapsed_pretty"]
+        if run_time == "instant":
+            x = "ran instantly"
+        else:
+            x = "took %s" % run_time
+        print "[%s]  %s (CACHED, previously %s)" % (
+            time.strftime('%I:%M %p'), module_name, x)
+        #x = " "*12
+        #print "%sRetrieved from cache.  Previously took %s." % (
+        #    x, params["elapsed_pretty"])
         return out_identified_data_node, next_id
+
+    # Running this module now.
+    print "[%s]  %s" % (time.strftime('%I:%M %p'), module_name)
+    sys.stdout.flush()
 
     # Run the module in a temporary directory.
     completed_successfully = False
@@ -319,7 +336,7 @@ def run_module(
         open(success_file, 'w').write('success\n')
 
         # Write parameters.
-        x = os.path.join(temp_dir, 'BETSY_parameters.txt')
+        x = os.path.join(temp_dir, BETSY_PARAMETER_FILE)
         _write_parameter_file(
             x, pipeline, antecedents, out_data_node.attributes, user_options,
             outfile, start_time, end_time, user, job_name)
@@ -329,9 +346,10 @@ def run_module(
         # wait for them to finish.
         copy_files = True
         if os.path.exists(result_dir):
+            # Define MODULE_TIMEOUT
             timeout = int(config.MODULE_TIMEOUT)
-            end_wait = time.localtime() + timeout
-            while time.localtime() < end_wait:
+            end_wait = time.time() + timeout
+            while time.time() < end_wait:
                 if os.path.isfile(success_file):
                     # Other process finished. Don't copy.
                     copy_files = False
@@ -520,3 +538,7 @@ def _write_parameter_file(
     x = json.dumps(params, sort_keys=True, indent=4)
     x = x + "\n"
     open(parameter_file, 'w').write(x)
+
+def _read_parameter_file(filename):
+    import json
+    return json.loads(open(filename).read())
