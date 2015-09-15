@@ -4,7 +4,7 @@ class AbstractModule:
     # run                 REQUIRED.
     # set_out_attributes  OPTIONAL.  Needed if the module determines the
     #                     output attributes, e.g. is_logged.
-
+    
     # DEPRECATE THIS
     # hash_input          OPTIONAL.  Maybe never needed?
 
@@ -16,7 +16,6 @@ class AbstractModule:
             num_cores, outfile):
         # Performs the computation that the module is supposed to do.
         # Does not return anything.
-        # XXX What if there is an error?
         #
         # There is no default implementation.
         #
@@ -57,7 +56,7 @@ class AbstractModule:
 
 
     def hash_input(
-        self, pipeline, antecedents, out_attributes, user_options):
+        self, module_name, antecedents, out_attributes, user_options):
         # Return a hash that uniquely describes the input to this
         # module.  This is used so that the module won't be re-run on
         # the same data.
@@ -67,35 +66,32 @@ class AbstractModule:
         import os
         import hashlib
         import operator
-        #from Betsy import bhashlib
-        #from Betsy import module_utils
 
         if not operator.isSequenceType(antecedents):
             antecedents = [antecedents]
 
         hasher = hashlib.md5()
-        # Hash the pipeline.
-        for x in pipeline:
-            hasher.update(x)
+
+        # Hash the module name.
+        hasher.update(module_name)
             
         # Hash the inputs.
         for data_node in antecedents:
             identifier = data_node.identifier
             hasher.update(identifier)
-            hasher.update(str(os.path.getsize(identifier)))
             # Shortcut: don't actually hash the whole file.
+            hasher.update(str(os.path.getsize(identifier)))
             #hasher.update(bhashlib.checksum_file_or_path(identifier))
             
         # Hash the outputs.
         attrs = out_attributes.copy()
         attrs.update(user_options)
-        for key, value in attrs.iteritems():
+        for key in sorted(attrs):
             hasher.update(key)
-            if operator.isSequenceType(value):
-                for x in value:
-                    hasher.update(str(x))
-            else:
-                hasher.update(str(value))
+            x = attrs[key]
+            if operator.isSequenceType(x):
+                x = ",".join(x)
+            hasher.update(str(x))
         return hasher.hexdigest()
 
 
@@ -158,5 +154,3 @@ class AbstractModule:
     ##     x = module_utils.find_antecedents(
     ##         network, module_id, user_attributes, pool, *filters)
     ##     return x
-
-

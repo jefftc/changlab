@@ -164,7 +164,8 @@ class AttributeDef:
     def __init__(self, name, values, default_in, default_out, help=None):
         # Make sure name and values are valid.
         assert type(name) is type("")
-        assert type(values) is type([])
+        assert type(values) is type([]), "Value must be list: %s" % \
+               type(values)
         for x in values:
             assert type(x) is type("")
 

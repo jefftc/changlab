@@ -25,6 +25,8 @@ SORTED = [x for x in SORT_ORDERS if x != "no"]
 # name        by read name samtools sort -n
 # contig      match contig ordering of reference genome (Picard)
 
+ORIENTATION = ["unknown", "single", "paired_fr", "paired_rf", "paired_ff"]
+ORIENTATION_NOT_UNKNOWN = [x for x in ORIENTATION if x != "unknown"]
 
 
 ReferenceGenome = DataType(
@@ -32,9 +34,24 @@ ReferenceGenome = DataType(
     help="Should be FASTA file with reference genome.",
     )
 
+Bowtie1IndexedGenome = DataType(
+    "Bowtie1IndexedGenome",
+    help="Indexed for bowtie1.",
+    )
+
 Bowtie2IndexedGenome = DataType(
     "Bowtie2IndexedGenome",
     help="Indexed for bowtie2.",
+    )
+
+Bowtie1AlignmentSummary = DataType(
+    "Bowtie1AlignmentSummary",
+    help="Summarizes the alignment from bowtie1.",
+    )
+
+Bowtie2AlignmentSummary = DataType(
+    "Bowtie2AlignmentSummary",
+    help="Summarizes the alignment from bowtie2.",
     )
 
 BWAIndexedGenome = DataType(
@@ -49,9 +66,6 @@ SAM_ATTRIBUTES = [
     AttributeDef(
         "aligner", ALIGNERS, "unknown", "bowtie2",
         help="Alignment algorithm."),
-    AttributeDef(
-        "read", ["single", "paired"], "single", "single",
-        help="single or paired end read"),
 
     #AttributeDef(
     #    "ref", REFERENCE_GENOMES, "hg19", "hg19",
@@ -87,6 +101,11 @@ SampleGroupFile = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS,
         "unspecified", "unspecified", help="contents"),
+    AttributeDef(
+        "orientation", ORIENTATION, "unknown", "unknown",
+        help="Either single-end reads, paired-end reads with orientation.  "
+        "See the bowtie manual for a description of the orientation.",
+        ),
     help="File contains sample group infomation"
     )
 
@@ -117,6 +136,11 @@ FastqFolder = DataType(
     AttributeDef(
         "reads_merged", ["yes", "no"], "no", "no",
         help="Whether reads for a sample are merged into one file."),
+    #AttributeDef(
+    #    "orientation", ORIENTATION, "unknown", "unknown",
+    #    help="Either single-end reads, paired-end reads with orientation.  "
+    #    "See the bowtie manual for a description of the orientation.",
+    #    ),
     help="A folder containing FASTQ files."
     )
 
@@ -137,6 +161,11 @@ SaiFolder = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS,
         "unspecified", "unspecified", help="contents"),
+    #AttributeDef(
+    #    "orientation", ORIENTATION, "unknown", "unknown",
+    #    help="Either single-end reads, paired-end reads with orientation.  "
+    #    "See the bowtie manual for a description of the orientation.",
+    #    ),
     #AttributeDef(
     #    "read", ["single", "pair", "pair1", "pair2"],
     #    "single", "single", help="single or pair read"),
@@ -173,8 +202,13 @@ VcfFolder = DataType(
 
 all_data_types = [
     ReferenceGenome,
+    Bowtie1IndexedGenome,
     Bowtie2IndexedGenome,
     BWAIndexedGenome,
+
+    Bowtie1AlignmentSummary,
+    Bowtie2AlignmentSummary,
+    
     #FastqFile,
     #SamFile,
     #BamFile,
@@ -206,10 +240,23 @@ all_modules = [
     ModuleNode(
         "merge_reads",
         [FastqFolder, SampleGroupFile], FastqFolder,
-        Constraint("reads_merged", MUST_BE, "no"),
+        Constraint("reads_merged", MUST_BE, "no", 0),
         Consequence("reads_merged", SET_TO, "yes"),
-        Constraint("compressed", CAN_BE_ANY_OF, ["no", "gz", "bz2", "xz"]),
+        Constraint("compressed", CAN_BE_ANY_OF, ["no", "gz", "bz2", "xz"], 0),
         Consequence("compressed", SET_TO, "no"),
+        Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION, 1),
+        #Consequence("orientation", SAME_AS_CONSTRAINT),
+        
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        ),
+    ModuleNode(
+        "check_single_or_paired_orientation",
+        [SampleGroupFile, FastqFolder, Bowtie2IndexedGenome], SampleGroupFile,
+        Constraint("orientation", MUST_BE, "unknown", 0),
+        Consequence("orientation", BASED_ON_DATA, ORIENTATION_NOT_UNKNOWN),
+        Constraint("reads_merged", MUST_BE, "yes", 1),
         ),
     
     ## ModuleNode(
@@ -247,7 +294,7 @@ all_modules = [
         SamFolder, BamFolder,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
-        Constraint("read", CAN_BE_ANY_OF, ["single", "paired"]),
+        #Constraint("read", CAN_BE_ANY_OF, ["single", "paired"]),
         #Constraint("has_header", CAN_BE_ANY_OF, ["yes", "no"]),
         #Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"]),
         #Constraint("sorted", CAN_BE_ANY_OF, ["yes", "no"]),
@@ -256,7 +303,7 @@ all_modules = [
       
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("aligner", SAME_AS_CONSTRAINT),
-        Consequence("read", SAME_AS_CONSTRAINT),
+        #Consequence("read", SAME_AS_CONSTRAINT),
         Consequence("has_header", SET_TO, "no"),
         Consequence("has_read_groups", SET_TO, "no"),
         Consequence("sorted", SET_TO, "no"),
@@ -279,6 +326,9 @@ all_modules = [
         #[FastqFolder, SaiFile], SamFolder,
         [FastqFolder, SampleGroupFile, BWAIndexedGenome],
         SaiFolder,
+        
+        Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
+        #Consequence("orientation", SAME_AS_CONSTRAINT),
         
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
@@ -309,6 +359,12 @@ all_modules = [
         "align_with_bowtie2",
         [FastqFolder, SampleGroupFile, Bowtie2IndexedGenome],
         SamFolder,
+        #OptionDef(
+        #    "orientation", default="fr",
+        #    help="Which orientation.  See bowtie2 manual.  "
+        #    "Values: fr, rf, ff.",
+        #    ),
+        Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -319,9 +375,61 @@ all_modules = [
         help="Align to a reference genome with bowtie 2.",
         ),
     ModuleNode(
+        "index_bowtie1_reference",
+        ReferenceGenome, Bowtie1IndexedGenome,
+        OptionDef(
+            "assembly", default="genome",
+            help="Optional name for the genome assembly, e.g. hg19",
+            ),
+        ),
+    ModuleNode(
+        "align_with_bowtie1",
+        [FastqFolder, SampleGroupFile, Bowtie1IndexedGenome],
+        SamFolder,
+        #OptionDef(
+        #    "bowtie1_orientation", default="fr",
+        #    help="Which orientation.  See bowtie manual.  "
+        #    "Values: fr, rf, ff.",
+        #    ),
+        Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        Consequence("aligner", SET_TO, "bowtie1"),
+        help="Align to a reference genome with bowtie.",
+        ),
+    ModuleNode(
+        "summarize_bowtie1_alignment",
+        SamFolder, Bowtie1AlignmentSummary,
+        Constraint("aligner", MUST_BE, "bowtie1"),
+        help="Summarize the alignment, e.g. number of reads aligned.",
+        # This rule isn't quite right.  Actually requires the "log"
+        # files saved by bowtie, not the SAM files.  So this might
+        # fail if the user doesn't provide the log files along with
+        # the SAM files.
+        ),
+    ModuleNode(
+        "summarize_bowtie2_alignment",
+        SamFolder, Bowtie2AlignmentSummary,
+        Constraint("aligner", MUST_BE, "bowtie2"),
+        help="Summarize the alignment, e.g. number of reads aligned.",
+        # This rule isn't quite right.  Actually requires the "log"
+        # files saved by bowtie, not the SAM files.  So this might
+        # fail if the user doesn't provide the log files along with
+        # the SAM files.
+        ),
+        
+    ModuleNode(
         "convert_sai_to_sam_folder",
         [FastqFolder, SaiFolder, BWAIndexedGenome, SampleGroupFile], SamFolder,
 
+        #OptionDef(
+        #    "bwa_reverse_orientation", default="false",
+        #    help='Set to "true" to flip the left and right Fastq files '
+        #    'for each pair.',
+        #    ),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -329,7 +437,10 @@ all_modules = [
         Constraint("contents", SAME_AS, 0, 3),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("aligner", SET_TO, "bwa"),
-
+        
+        Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 3),
+        #Constraint("orientation", SAME_AS, 0, 1),
+        
         #Constraint("read", MUST_BE, "pair1", 0),
         #Constraint("read", MUST_BE, "pair2", 1),
         #Constraint("read", MUST_BE, "pair1", 2),
@@ -354,12 +465,12 @@ all_modules = [
         #Consequence("has_header", SET_TO, "no"),
         help="Convert bwa's .sai alignments into .sam format.",
         ),
-    ModuleNode(
-        "convert_sai_to_sam_folder_paired",
-        SaiFolder, SamFolder,
-        Consequence("read", SET_TO, "paired"),
-        Consequence("aligner", SET_TO, "bwa"),
-        ),
+    #ModuleNode(
+    #    "convert_sai_to_sam_folder_paired",
+    #    SaiFolder, SamFolder,
+    #    Consequence("read", SET_TO, "paired"),
+    #    Consequence("aligner", SET_TO, "bwa"),
+    #    ),
 
     ModuleNode(
         "sort_bam_folder_by_coordinate",

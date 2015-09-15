@@ -887,6 +887,12 @@ def main():
 
     print "Generating a network that produces a %s..." % outtype
     sys.stdout.flush()
+    # There's a bug in here somehow where impossible networks can be
+    # created.  e.g. FastqFolder:orientation="unknown" -> merge_reads
+    # -> FastqFolder:orientation="single", even though constraint
+    # forces them to be the same.  Happens during complete_network or
+    # optimize_network step.  Don't see anymore, because got rid of
+    # orientation attribute in FastqFolder.
     network = bie3.backchain(
         rulebase.all_modules, out_datatype, user_attributes)
     network = bie3.complete_network(network, user_attributes)
