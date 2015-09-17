@@ -1007,51 +1007,38 @@ def main():
     ##         print_input_nodes(network, user_attributes)
     ##         return
 
-    # Prune network based on these inputs.
-    x = [x.data for x in in_data_nodes]
-    x = [x.datatype.name for x in x]
-    x = sorted({}.fromkeys(x))
-    x_str = ", ".join(x)
-    input_or_inputs = "input"
-    if len(x) > 1:
-        input_or_inputs = "inputs"
-    x = "Pruning the network for paths that start from %s: %s." % (
-        input_or_inputs, x_str)
-    parselib.print_split(x, prefixn=2)
-    sys.stdout.flush()
-    x = [x.data for x in in_data_nodes]
-    # TODO: rename select_start_node.  Actually makes a new network.
-    p_network = bie3.select_start_node(network, x, user_attributes)
-    if not p_network.nodes:
-        print "No network.  Problem with --inputs somehow."
-        plot_network(
-            args.network_png, network, user_options=user_options,
-            highlight_node_ids=start_node_ids,
-            verbose=(not args.sparse_network_png))
-        return
-    network = p_network
+    ## # Actually, don't prune the network.  It can be helpful for
+    ## # diagnosing problems.
+    ## # Prune network based on these inputs.
+    ## x = [x.data for x in in_data_nodes]
+    ## x = [x.datatype.name for x in x]
+    ## x = sorted({}.fromkeys(x))
+    ## x_str = ", ".join(x)
+    ## input_or_inputs = "input"
+    ## if len(x) > 1:
+    ##     input_or_inputs = "inputs"
+    ## x = "Pruning the network for paths that start from %s: %s." % (
+    ##     input_or_inputs, x_str)
+    ## parselib.print_split(x, prefixn=2)
+    ## sys.stdout.flush()
+    ## x = [x.data for x in in_data_nodes]
+    ## p_network = bie3.select_start_node(network, x, user_attributes)
+    ## if not p_network.nodes:
+    ##     print "No network.  Problem with --inputs somehow."
+    ##     plot_network(
+    ##         args.network_png, network, user_options=user_options,
+    ##         highlight_node_ids=start_node_ids,
+    ##         verbose=(not args.sparse_network_png))
+    ##     return
+    ## network = p_network
 
-    # Network has changed.  Need to find the new start_node_ids.
-    start_node_ids = []
-    for node in in_data_nodes:
-        x = bie3._find_start_nodes(network, node.data)
-        assert x
-        start_node_ids.extend(x)
-
-    print "Success!  I have a network."
-    print "The final network has %d nodes." % len(network.nodes)
-
-    #if args.network_png:
-    #    print "Plotting network: %s." % args.network_png
-    #    bie3.plot_network_gv(
-    #        args.network_png, network, options=user_options,
-    #        verbose=(not args.sparse_network_png))
-    #if args.network_text:
-    #    print "Writing detailed network: %s." % args.network_text
-    #    bie3.print_network(network, outhandle=args.network_text)
-    #if args.network_json:
-    #    print "Writing network in json format: %s." % args.network_json
-    #    bie3.write_network(args.network_json, network)
+    ## # Network has changed.  Need to find the new start_node_ids.
+    ## start_node_ids = []
+    ## for node in in_data_nodes:
+    ##     x = bie3._find_start_nodes(network, node.data)
+    ##     print "HERE 7", x
+    ##     assert x
+    ##     start_node_ids.extend(x)
 
     print "Making sure all required --mattr are provided..."
     # Make sure all required mattr are provided.  This can only be run
@@ -1071,6 +1058,21 @@ def main():
             verbose=(not args.sparse_network_png))
         return
     print "All --mattr are specified or have defaults."
+
+    print "Success!  I have a network."
+    print "The final network has %d nodes." % len(network.nodes)
+
+    #if args.network_png:
+    #    print "Plotting network: %s." % args.network_png
+    #    bie3.plot_network_gv(
+    #        args.network_png, network, options=user_options,
+    #        verbose=(not args.sparse_network_png))
+    #if args.network_text:
+    #    print "Writing detailed network: %s." % args.network_text
+    #    bie3.print_network(network, outhandle=args.network_text)
+    #if args.network_json:
+    #    print "Writing network in json format: %s." % args.network_json
+    #    bie3.write_network(args.network_json, network)
 
     print "Looking for input files...."
     missing = False
@@ -1102,11 +1104,21 @@ def main():
     print "Running the analysis."
     clean_up = not args.save_failed_data
     node_dict = output_file = None
-    x = rule_engine_bie3.run_pipeline(
-        network, in_data_nodes, user_attributes, user_options, user=args.user,
-        job_name=args.job_name, clean_up=clean_up, num_cores=args.num_cores)
-    if x:
-        node_dict, output_file = x
+    try:
+        x = rule_engine_bie3.run_pipeline(
+            network, in_data_nodes, user_attributes, user_options,
+            user=args.user, job_name=args.job_name, clean_up=clean_up,
+            num_cores=args.num_cores)
+        if x:
+            node_dict, output_file = x
+    except AssertionError, x:
+        if str(x).startswith("Inference error"):
+            node_ids = rule_engine_bie3.DEBUG_POOL.keys()
+            plot_network(
+                args.network_png, network, user_options=user_options,
+                highlight_node_ids=node_ids,
+                verbose=(not args.sparse_network_png))
+        raise 
 
     # Print the original network, showing the path that was taken.
     # Find the node_ids in the original network.

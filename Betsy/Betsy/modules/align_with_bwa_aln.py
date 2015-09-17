@@ -11,7 +11,6 @@ class Module(AbstractModule):
         from Betsy import module_utils
         from genomicode import config
 
-        # TODO: Implement bwa mem for longer reads.
         fastq_node, group_node, index_node = antecedents
         module_utils.safe_mkdir(out_path)
 
@@ -25,14 +24,7 @@ class Module(AbstractModule):
 
         # bwa aln -t <num_cores> <reference.fa> <input.fastq> > <output.sai>
         bwa = module_utils.which_assert(config.bwa)
-
-        # Find the indexed reference genome at:
-        # <index_path>/<assembly>.fa
-        x = os.listdir(index_path)
-        x = [x for x in x if x.lower().endswith(".fa")]
-        assert len(x) == 1, "Cannot find bwa index."
-        x = x[0]
-        reference_fa = os.path.join(index_path, x)
+        reference_fa = module_utils.find_bwa_reference(index_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -44,6 +36,7 @@ class Module(AbstractModule):
         x2 = {}.fromkeys(x1).keys()
         assert len(x1) == len(x2), "dup sample"
 
+        # Make a list of all FASTQ files to align.
         fastq_files = []
         for x in grouped_fastq_files:
             sample, pair1, pair2 = x

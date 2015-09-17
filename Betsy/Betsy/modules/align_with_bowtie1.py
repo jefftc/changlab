@@ -8,7 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import config
         from Betsy import module_utils
 
         fastq_node, sample_node, reference_node = antecedents
@@ -22,13 +21,13 @@ class Module(AbstractModule):
         assert os.path.isdir(fastq_path)
         assert os.path.isdir(reference_path)
 
-        bowtie = module_utils.which_assert(config.bowtie)
         reference_genome = module_utils.find_bowtie1_reference(reference_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
             sample_node.identifier, fastq_path)
         fastq_files = x
+        assert fastq_files, "I could not find any FASTQ files."
 
         # Make a list of the jobs to run.
         jobs = []

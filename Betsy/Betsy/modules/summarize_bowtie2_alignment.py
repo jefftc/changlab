@@ -15,6 +15,7 @@ class Module(AbstractModule):
 
         log_filenames = summarize_bowtie1_alignment._find_output_logs(
             in_data.identifier)
+        assert log_filenames
 
         results = {}  # dict of sample -> dictionary of output
         for filename in log_filenames:
@@ -46,7 +47,7 @@ class Module(AbstractModule):
 
             x1 = parselib.pretty_int(aligned_reads)
             x2 = parselib.pretty_int(total_reads)
-            x3 = "%.2f" % perc_aligned
+            x3 = "%.2f%%" % perc_aligned
             x = sample, x1, x2, x3
             if is_paired:
                 x4 = parselib.pretty_int(concordant_reads)

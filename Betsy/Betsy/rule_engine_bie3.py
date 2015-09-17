@@ -12,16 +12,21 @@ VERSION = 5
 
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
+DEBUG_POOL = {}
 def run_pipeline(
     network, in_datas, user_attributes, user_options, user=None,
     job_name='', clean_up=True, num_cores=8):
     # Run the pipeline that is indicated by the network.  Returns a
     # tuple of (dictionary of node_id -> IdentifiedDataNode, output
     # filename).  Returns None if not successful.
+    # Can raise an exception if there was an error in one of the
+    # modules, or if there is no path through the network.
     #
     # in_datas         List of IdentifiedDataNodes.
     # user_attributes  From --dattr.  AttributeDef
     # user_options     From --mattr.  OptionDef
+    global DEBUG_POOL
+    
     import os
     import getpass
     import logging
@@ -64,6 +69,7 @@ def run_pipeline(
     num_failures = 0
     success = False
     while stack:
+        DEBUG_POOL = pool
         assert num_failures < len(stack), \
                "Inference error: No more nodes to run."
         node, node_id, more_info = stack.pop()
@@ -179,6 +185,7 @@ def run_module(
     import tempfile
     import shutil
     import logging
+    import random
     
     from Betsy import config
     from Betsy import module_utils
@@ -348,7 +355,9 @@ def run_module(
         if os.path.exists(result_dir):
             # Define MODULE_TIMEOUT
             timeout = int(config.MODULE_TIMEOUT)
-            end_wait = time.time() + timeout
+            # Add a random factor, so two processes that were started
+            # at the same time won't collide.
+            end_wait = time.time() + timeout + random.randint(0, 59)
             while time.time() < end_wait:
                 if os.path.isfile(success_file):
                     # Other process finished. Don't copy.

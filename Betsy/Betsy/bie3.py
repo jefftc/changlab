@@ -2248,6 +2248,7 @@ def _compare_two_nodes(node1, node2):
 
 
 def select_start_node(network, start_data, user_attributes):
+    # TODO: Rename this.  Actually prunes network based on start node.
     # start_data may be a single DataNode object or a list of DataNode
     # objects.  DataTypes are also allowed in lieu of DataNode
     # objects.
@@ -2312,7 +2313,52 @@ def select_start_node(network, start_data, user_attributes):
     # Delete all the IDs that aren't in good_ids.
     bad_ids = [x for x in range(len(network.nodes)) if x not in good_ids]
     network = network.delete_nodes(bad_ids)
-    network = optimize_network(network, user_attributes)
+
+    # This can generate networks that contain internal nodes that
+    # can't be generated.
+    # DATA1 -> MODULE1 -> DATA2
+    # DATA3 -> MODULE1 -> DATA4
+    # If DATA1 is deleted, DATA2 will still be in the network, even
+    # though it can't be generated anymore.  Should go through and
+    # remove all internal nodes that can't be generated anymore.
+    #
+    # The problem with keeping them in there, is that it's difficult
+    # to know whether a network can be created or not.
+
+    # Check each internal DataNode and delete if it can't be
+    # generated.
+    print "HERE 1"
+    node2previds = _make_backchain_dict(network)
+    bad_ids = []
+    for node_id in range(len(network.nodes)):
+        if not isinstance(network.nodes[node_id], DataNode):
+            continue
+        # in_ids -> module_id -> node_id    ID
+        # in_datas -> module -> out_data    objects
+        module_ids = node2previds.get(node_id, [])
+        if not module_ids:  # not internal node
+            continue
+        # Make sure there is a combination of inputs that can generate
+        # this output.
+        is_reachable = False
+        for module_id in module_ids:
+            all_in_ids = node2previds[module_id]
+            combos = _get_valid_input_combinations(
+                network, module_id, all_in_ids, user_attributes)
+            for combo in combos:
+                module = network.nodes[module_id]
+                in_datas = [network.nodes[x] for x in combo]
+                out_data = network.nodes[node_id]
+                if _can_module_take_data(
+                    module, in_datas, out_data, user_attributes):
+                    is_reachable = True
+                    break
+            if is_reachable:
+                break
+        if not is_reachable:
+            bad_ids.append(node_id)
+    network = network.delete_nodes(bad_ids)
+    #network = optimize_network(network, user_attributes)
     return network
 
 
@@ -3242,7 +3288,7 @@ def _backchain_to_all_inputs(
         all_attrsource.append(attrsource)
 
     # Handle the SAME_AS constraints here.  Can't do in
-    # _backchain_to_input because these constrains require the
+    # _backchain_to_input because these constraints require the
     # comparison of multiple inputs.
     for constraint in module.constraints:
         if constraint.behavior != SAME_AS:

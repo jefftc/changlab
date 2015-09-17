@@ -64,6 +64,8 @@ find_bowtie2_reference
 make_bowtie2_command
 parse_bowtie2_output
 
+find_bwa_reference
+
 """
 # _find_ids_that_pass_filters
 
@@ -364,8 +366,10 @@ def merge_two_files(A_file, B_file, handle):
 def which(program):
     import os
 
+    is_jar = program.lower().endswith(".jar")
+
     def is_exe(fpath):
-        return os.path.exists(fpath) and os.access(fpath, os.X_OK)
+        return os.path.exists(fpath) and (os.access(fpath, os.X_OK) or is_jar)
 
     def ext_candidates(fpath):
         yield fpath
@@ -1316,3 +1320,60 @@ def parse_bowtie1_output(filename):
         else:
             raise AssertionError, "Unknown line: %s" % line.strip()
     return results
+
+
+def find_bwa_reference(search_path):
+    # Find the indexed reference genome at:
+    # <path>/<assembly>.fa
+    # Return "<path>/<assembly>.fa", which is used as input to the bwa
+    # tools.
+    #
+    # Other files:
+    # <path>/<assembly>.fa.amb .ann .bwt .pac .sa
+    import os
+    from genomicode import filelib
+    
+    x = os.listdir(search_path)
+    x = [x for x in x if x.lower().endswith(".fa")]
+    assert len(x) < 2, "Multiple fa files."
+    assert len(x) == 1, "Cannot find bwa index."
+    x = x[0]
+    reference_fa = os.path.join(search_path, x)
+    INDEX = [".amb", ".ann", ".bwt", ".pac", ".sa"]
+    for x in INDEX:
+        x = "%s%s" % (reference_fa, x)
+        assert filelib.exists_nz(x), "Missing index file: %s" % x
+    return reference_fa
+
+
+def make_bwa_mem_command(
+    reference_genome, sam_filename, err_filename, fastq_file1,
+    fastq_file2=None, num_threads=None):
+    import os
+    from genomicode import config
+
+    assert os.path.exists(reference_genome)
+    assert os.path.exists(fastq_file1)
+    if fastq_file2:
+        assert os.path.exists(fastq_file2)
+    if num_threads is not None:
+        assert num_threads >= 1 and num_threads < 100
+    
+    bwa = which_assert(config.bwa)
+
+    # bwa mem -t <num_cores> ref.fa read1.fq read2.fq > aln-pe.sam
+    sq = shellquote
+    cmd = [sq(bwa), "mem"]
+    if num_threads:
+        cmd += ["-t", str(num_threads)]
+    cmd += [sq(reference_genome)]
+    cmd += [sq(fastq_file1)]
+    if fastq_file2:
+        cmd += [sq(fastq_file2)]
+    cmd += [
+        "1>", sq(sam_filename),
+        "2>", sq(err_filename),
+        ]
+    return " ".join(cmd)
+
+
