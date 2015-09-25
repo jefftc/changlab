@@ -19,7 +19,6 @@ class Module(AbstractModule):
         else:
             x = []
     
-        
         command = ['python', TCGA_BIN, '--disease', user_options['disease'],
                    '--data', out_attributes['preprocess'], '--download_only'] + x
         process = subprocess.Popen(command,
@@ -37,8 +36,6 @@ class Module(AbstractModule):
             if result_file.endswith(result_format):
                 os.rename(result_file, outfile)
 
-    
-        
         assert module_utils.exists_nz(outfile), (
             'the output file %s for download_tcga fails' % outfile
         )

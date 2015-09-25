@@ -32,8 +32,8 @@ all_data_types = [
 all_modules = [
     ModuleNode(
         'download_tcga', TCGAID, TCGAFile,
-        OptionDef("disease", help="tcga disease type"),
-        OptionDef("date", "", help="date for tcga disease"),
+        OptionDef("disease", help="Which TCGA disease, e.g. BRCA"),
+        OptionDef("date", "", help="Date of data set, e.g. 20140715"),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence(
@@ -43,25 +43,25 @@ all_modules = [
         Consequence("tumor_only", SET_TO, 'no'),
         help="download data from tcga website according to TCGAID"),
     
-    ModuleNode(
-        'download_tcga_agilent', TCGAID, TCGAFile,
-        OptionDef("disease", help="tcga disease type"),
-        OptionDef("date", "", help="date for tcga disease"),
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
-        Consequence("preprocess", SET_TO, 'agilent'),
-        Consequence("tumor_only", SET_TO, 'no'),
-        help="download agilent data from tcga website according to TCGAID"),
+    ## ModuleNode(
+    ##     'download_tcga_agilent', TCGAID, TCGAFile,
+    ##     OptionDef("disease", help="tcga disease type"),
+    ##     OptionDef("date", "", help="date for tcga disease"),
+    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+    ##     Consequence("contents", SAME_AS_CONSTRAINT),
+    ##     Consequence("preprocess", SET_TO, 'agilent'),
+    ##     Consequence("tumor_only", SET_TO, 'no'),
+    ##     help="download agilent data from tcga website according to TCGAID"),
     
-    ModuleNode(
-        'download_tcga_affymetrix', TCGAID, TCGAFile,
-        OptionDef("disease", help="tcga disease type"),
-        OptionDef("date", "", help="date for tcga disease"),
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
-        Consequence("preprocess", SET_TO, 'affymetrix'),
-        Consequence("tumor_only", SET_TO, 'no'),
-        help="download affymetrix data from tcga website according to TCGAID"),
+    ## ModuleNode(
+    ##     'download_tcga_affymetrix', TCGAID, TCGAFile,
+    ##     OptionDef("disease", help="tcga disease type"),
+    ##     OptionDef("date", "", help="date for tcga disease"),
+    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+    ##     Consequence("contents", SAME_AS_CONSTRAINT),
+    ##     Consequence("preprocess", SET_TO, 'affymetrix'),
+    ##     Consequence("tumor_only", SET_TO, 'no'),
+    ##     help="download affymetrix data from tcga website according to TCGAID"),
 
     ModuleNode(
         'select_tumor_only', TCGAFile, TCGAFile,
