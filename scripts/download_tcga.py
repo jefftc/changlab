@@ -12,33 +12,48 @@ from genomicode import genefinder,timer,Matrix,matrixlib
 # retrieve_all_dates
 # retrieve_diseases
 
-datatype_match = {'RSEM_genes':
-                  'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_genes_normalized__data.Level_3',
-                  'RSEM_exons':'exon_expression__data.Level_3',
-                  'humanmethylation450':
-                  'Merge_methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.Level_3',
-                  'mirnaseq':
-                  'Merge_mirnaseq__illuminahiseq_mirnaseq__bcgsc_ca__Level_3__miR_gene_expression__data.Level_3',
-                  'clinical':'Merge_Clinical.Level_1',
-                  'rppa':'.RPPA_AnnotateWithGene.Level_3',
-                  'RSEM_isoforms':'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_isoforms_normalized__data.Level_3',
-                  'cnv_gistic2':'CopyNumber_Gistic2.Level_4',
-                  'agilent':['Merge_transcriptome__agilentg4502a_07_1__unc_edu__Level_3__unc_lowess_normalization_gene_level__data.Level_3',
-                             'Merge_transcriptome__agilentg4502a_07_2__unc_edu__Level_3__unc_lowess_normalization_gene_level__data.Level_3'],
-                  'affymetrix':'Merge_transcriptome__ht_hg_u133a__broad_mit_edu__Level_3__gene_rma__data.Level_3'}
+# Not quite a good idea.
+datatype_match = {
+    'RSEM_genes' : (
+        'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__' +
+        'RSEM_genes_normalized__data.Level_3'),
+    'RSEM_exons' : 'exon_expression__data.Level_3',
+    'humanmethylation450' : (
+        'Merge_methylation__humanmethylation450__jhu_usc_edu__Level_3__' +
+        'within_bioassay_data_set_function__data.Level_3'),
+    'mirnaseq' : (
+            'Merge_mirnaseq__illuminahiseq_mirnaseq__bcgsc_ca__Level_3__' +
+            'miR_gene_expression__data.Level_3'),
+    'clinical' : 'Merge_Clinical.Level_1',
+    'rppa' : '.RPPA_AnnotateWithGene.Level_3',
+    'RSEM_isoforms' : (
+            'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__' +
+            'RSEM_isoforms_normalized__data.Level_3'),
+    'cnv_gistic2' : 'CopyNumber_Gistic2.Level_4',
+    
+    'agilent' : [
+        'Merge_transcriptome__agilentg4502a_07_1__unc_edu__Level_3__unc_lowess_normalization_gene_level__data.Level_3',
+        'Merge_transcriptome__agilentg4502a_07_2__unc_edu__Level_3__unc_lowess_normalization_gene_level__data.Level_3',
+        ],
+    'affymetrix' : (
+            'Merge_transcriptome__ht_hg_u133a__broad_mit_edu__Level_3__' +
+            'gene_rma__data.Level_3'),
+    }
 
-datatype2resource = {'RSEM_genes':'stddata',
-                    'RSEM_exons':'stddata',
-                    'humanmethylation450':'stddata',
-                    'mirnaseq':'stddata',
-                    'clinical':'stddata',
-                    'rppa':'stddata',
-                    'RSEM_isoforms':'stddata',
-                    'cnv_gistic2':'analyses',
-                    'agilent':'stddata',
-                    'affymetrix':'stddata'}
+datatype2resource = {
+    'RSEM_genes' : 'stddata',
+    'RSEM_exons' : 'stddata',
+    'humanmethylation450' : 'stddata',
+    'mirnaseq' : 'stddata',
+    'clinical' : 'stddata',
+    'rppa' : 'stddata',
+    'RSEM_isoforms' : 'stddata',
+    'cnv_gistic2' : 'analyses',
+    'agilent' : 'stddata',
+    'affymetrix' : 'stddata',
+    }
 
-resources = ['stddata','analyses']
+resources = ['stddata', 'analyses']
 
 URL2HTML = {}
 def read_url(url):
