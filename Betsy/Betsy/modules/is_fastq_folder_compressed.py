@@ -6,22 +6,22 @@ class Module(AbstractModule):
 
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
-        outfile):
+        out_path):
         
         import os
         import shutil
         from Betsy import module_utils
         
-        if not os.path.exists(outfile):
-            os.mkdir(outfile)
+        if not os.path.exists(out_path):
+            os.mkdir(out_path)
 
         filenames = module_utils.find_fastq_files(antecedents.identifier)
         assert filenames, "I could not find any FASTQ files."
 
         # Copy the files to the new directory.
         for in_filename in filenames:
-            inpath, infile = os.path.split(in_filename)
-            out_filename = os.path.join(outfile, infile)
+            in_path, in_file = os.path.split(in_filename)
+            out_filename = os.path.join(out_path, in_file)
             shutil.copyfile(in_filename, out_filename)
 
         

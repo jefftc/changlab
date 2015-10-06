@@ -13,7 +13,9 @@
 # Bowtie2AlignmentSummary
 #
 # BWAIndexedGenome
-# SaiFolder     # from BWA Backtrack
+# SaiFolder                  # from BWA Backtrack
+#
+#
 #
 # Modules:
 # is_fastq_folder_compressed
@@ -28,6 +30,8 @@
 # add_read_groups_to_bam_folder
 # mark_duplicates_bam_folder
 # fix_header_GATK
+#
+# calculate_coverage
 # 
 # index_bwa_reference
 # align_with_bwa_aln
@@ -62,14 +66,30 @@ ORIENTATION = ["unknown", "single", "paired_fr", "paired_rf", "paired_ff"]
 ORIENTATION_NOT_UNKNOWN = [x for x in ORIENTATION if x != "unknown"]
 
 
+# TODO: Get rid of Bowtie1IndexedGenome.
 ReferenceGenome = DataType(
     "ReferenceGenome",
+    AttributeDef(
+        "samtools_indexed", ["no", "yes"], "no", "no"),
+    AttributeDef(
+        "dict_added", ["no", "yes"], "no", "no"),
+    AttributeDef(
+        "bowtie1_indexed", ["no", "yes"], "no", "no"),
+    AttributeDef(
+        "bowtie2_indexed", ["no", "yes"], "no", "no"),
+    AttributeDef(
+        "bwa_indexed", ["no", "yes"], "no", "no"),
     help="Should be FASTA file with reference genome.",
     )
 
 TrimmomaticSummary = DataType(
     "TrimmomaticSummary",
     help="Summarizes the results from trimmomatic.",
+    )
+
+CoverageSummary = DataType(
+    "CoverageSummary",
+    help="Summarizes the coverage for an alignment.",
     )
 
 Bowtie1IndexedGenome = DataType(
@@ -92,6 +112,7 @@ Bowtie2AlignmentSummary = DataType(
     help="Summarizes the alignment from bowtie2.",
     )
 
+# Fix the indexes.  Should be attributes on ReferenceGenome.
 BWAIndexedGenome = DataType(
     "BWAIndexedGenome",
     help="Indexed for BWA.",
@@ -187,12 +208,12 @@ FastqFolder = DataType(
 SamFile = DataType("SamFile", *SAM_ATTRIBUTES)
 
 SamFolder = DataType(
-    "SamFolder", *SAM_ATTRIBUTES, help="A folder containing SAM files.")
+    "SamFolder", *SAM_ATTRIBUTES, **{"help":"A folder containing SAM files."})
 
 BamFile = DataType("BamFile", *BAM_ATTRIBUTES)
 
 BamFolder = DataType(
-    "BamFolder", *BAM_ATTRIBUTES, help="A folder containing BAM files.")
+    "BamFolder", *BAM_ATTRIBUTES, **{"help":"A folder containing BAM files."})
 
 SaiFolder = DataType(
     "SaiFolder",
@@ -246,6 +267,7 @@ all_data_types = [
     SaiFolder,
     VcfFolder,
 
+    CoverageSummary,
     TrimmomaticSummary,
 
     ReferenceGenome,
@@ -370,7 +392,6 @@ all_modules = [
         Consequence("sorted", SET_TO, "no"),
         Consequence("duplicates_marked", SET_TO, "no"),
         Consequence("recalibrated", SET_TO, "no"),
-
         #Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
         #help="Convert SAM to BAM files.",
         ),
@@ -457,6 +478,21 @@ all_modules = [
         help="Align to a reference genome with bowtie 2.",
         ),
     ModuleNode(
+        "index_reference_samtools",
+        ReferenceGenome, ReferenceGenome,
+        Constraint("samtools_indexed", MUST_BE, "no"),
+        Consequence("samtools_indexed", SET_TO, "yes"),
+        help="samtools faidx",
+        ),
+    ModuleNode(
+        "add_dict_to_reference",
+        ReferenceGenome, ReferenceGenome,
+        Constraint("dict_added", MUST_BE, "no"),
+        Consequence("dict_added", SET_TO, "yes"),
+        help="CreateSequenceDictionary.jar",
+        ),
+    
+    ModuleNode(
         "index_bowtie1_reference",
         ReferenceGenome, Bowtie1IndexedGenome,
         OptionDef(
@@ -519,22 +555,34 @@ all_modules = [
         help="Convert bwa's .sai alignments into .sam format.",
         ),
 
+    # Sorting.
+    # Sorting by contig must be last, because RNA-SeQC needs it.
+    # Don't allow sorting by contig -> coordinate.  This prevents a cycle.
     ModuleNode(
         "sort_bam_folder_by_coordinate",
-        BamFolder, BamFolder,
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        [BamFolder, ReferenceGenome], BamFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
         #Constraint("duplicates_marked", MUST_BE, "no"),
         #Constraint("recalibrated", MUST_BE, "no"),
         #Constraint("has_header", MUST_BE, "no"),
-        Constraint("sorted", CAN_BE_ANY_OF, ["no", "name", "contig"]),
+        Constraint("sorted", CAN_BE_ANY_OF, ["no", "name"]),
         Constraint("indexed", MUST_BE, "no"),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("sorted", SET_TO, "coordinate"),
         Consequence("indexed", SAME_AS_CONSTRAINT),
         #Consequence("has_header", SAME_AS_CONSTRAINT),
         #Consequence("recalibrated", SAME_AS_CONSTRAINT),
         #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
-        help="sort sam file and generate bam file "
+        ),
+    ModuleNode(
+        "sort_bam_folder_by_contig",
+        BamFolder, BamFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("sorted", CAN_BE_ANY_OF, ["no", "name", "coordinate"]),
+        Constraint("indexed", MUST_BE, "no"),
+        Consequence("sorted", SET_TO, "contig"),
+        Consequence("indexed", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
         "add_read_groups_to_bam_folder",
@@ -551,8 +599,9 @@ all_modules = [
         Consequence("duplicates_marked", SET_TO, "yes"),
         Constraint("sorted", MUST_BE, "coordinate"),
         Consequence("sorted", SAME_AS_CONSTRAINT),
-        Constraint("indexed", MUST_BE, "no"),
-        Consequence("indexed", SAME_AS_CONSTRAINT),
+        #Constraint("indexed", MUST_BE, "no"),
+        #Consequence("indexed", SAME_AS_CONSTRAINT),
+        Consequence("indexed", SET_TO, "no"),
         help="mark duplicates in SamFile"
         ),
     ModuleNode(
@@ -570,6 +619,23 @@ all_modules = [
         #Consequence("recalibrated", SAME_AS_CONSTRAINT),
         #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         help="use GATK to fix header"
+        ),
+    ModuleNode(
+        "calculate_coverage",
+        [BamFolder, ReferenceGenome], CoverageSummary,
+        OptionDef(
+            "ignore_coverage_below", default="",
+            help="If given, will ignore all regions of the genome with a "
+            "coverage below this value (e.g. 1) when calculating mean "
+            "coverage.  Provides better estimate of WES.",
+            ),
+        OptionDef(
+            "features_bed", default="",
+            help="A bed file for the regions of the genome to include.  "
+            "e.g. for looking at coverage of exons.",
+            ),
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        help="Calculate the coverage for an alignment.",
         ),
     ## ModuleNode(
     ##     "recalibrate_base_quality_score",

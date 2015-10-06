@@ -91,18 +91,17 @@ def run_pipeline(
             # If I've added new modules, then reset the failures counter.
             num_failures = 0
         elif isinstance(node, bie3.ModuleNode) and more_info is None:
-            module_id = node_id
-
             # If the input data for this module doesn't exist, then
             # just try it again later.
             all_antecedent_ids = _get_available_input_combinations(
-                network, module_id, user_attributes, pool)
+                network, node_id, user_attributes, pool)
             if not all_antecedent_ids:
                 # Put back to the bottom of the stack.
                 stack.insert(0, (node, node_id, more_info))
                 num_failures += 1
                 continue
             for antecedent_ids in all_antecedent_ids:
+                assert len(node.in_datatypes) == len(antecedent_ids)
                 x = node, node_id, antecedent_ids
                 stack.append(x)
             # If I've added new analyses to run, then reset the
@@ -111,8 +110,10 @@ def run_pipeline(
         elif isinstance(node, bie3.ModuleNode):
             # Run this module.
             pipeline.append(node.name)
+            antecedent_ids = more_info
+            assert len(node.in_datatypes) == len(antecedent_ids)
             x = run_module(
-                network, pipeline, module_id, antecedent_ids,
+                network, pipeline, node_id, antecedent_ids,
                 user_attributes, user_options, 
                 pool, user, job_name, clean_up=clean_up, num_cores=num_cores)
             if x is None:
@@ -206,6 +207,8 @@ def run_module(
     # Import module.
     module_node = network.nodes[module_id]
     module_name = module_node.name
+    assert len(module_node.in_datatypes) == len(input_ids)
+    
     # If module is missing, will raise ImportError with decent error
     # message.
     x = __import__(
@@ -387,6 +390,8 @@ def _get_available_input_combinations(
     # node_ids are in the same order as the module.datatypes.
     import bie3
 
+    module = network.nodes[module_id]
+
     # Make a list of every possible combination of inputs that goes
     # into this module.
     prev_ids = network.points_to(module_id)
@@ -396,6 +401,7 @@ def _get_available_input_combinations(
     # See if we have the data to run this module.
     available = []
     for input_ids in all_input_ids:
+        assert len(module.in_datatypes) == len(input_ids)
         x = [x for x in input_ids if x in pool]
         if len(x) == len(input_ids):
             available.append(x)

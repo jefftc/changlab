@@ -598,7 +598,7 @@ def _parse_args(args):
             x = [x[1] for x in in_parameters[index] if x[0] == key]
             x = {}.fromkeys(x)  # sorted list of unique values.
             assert not x, "Duplicate --dattr: %s" % key
-            in_parameters[index].append((key,value))
+            in_parameters[index].append((key, value))
         elif arg == "--dattr" and input_or_output == "--output":
             assert len(args) >= i+1
             dattr = args[i+1]
@@ -715,6 +715,9 @@ def main():
     parser.add_argument(
         "--save_failed_data", action="store_true",
         help="If a module failed, do not clean up its working files.")
+    parser.add_argument(
+        "--cache_input_files", action="store_true",
+        help="Save a copy of the input files.")
 
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
@@ -820,36 +823,53 @@ def main():
         assert hasattr(rulebase, intype), "Unknown datatype: %s" % intype
         fn = getattr(rulebase, intype)
         params = {}
-        for x in attributes:
-            key, value = x
+        for key, value in attributes:
             params[key] = value
+        # Make sure the identifier is a full path since we'll be
+        # changing directories.
+        identifier = os.path.realpath(identifier)
         in_data = fn.input(**params)
         x = module_utils.IdentifiedDataNode(in_data, identifier)
         in_data_nodes.append(x)
 
     # test outtype and build the list of user_attributes.
     user_attributes = []  # List of bie3.Attribute objects.
+    out_datatype = None
     if outtype:
         print "Parsing output options."
+        # Get the out_datatype.
         assert hasattr(rulebase, outtype), "Unknown datatype: %s" % outtype
         out_datatype = getattr(rulebase, outtype)
-        for x in out_attributes:
-            subtype, key, value = x
-            assert hasattr(rulebase, subtype), "Unknown datatype: %s" % subtype
-            fn = getattr(rulebase, subtype)
+
+        # Get the user_attributes.  These are the attributes from the
+        # output data (out_attributes), plus the attributes from the
+        # input data (to guide the inferencing engine).
+        attrs = []  # list of (datatype, key, value)
+        for x in input_list:
+            intype, identifier, attributes = x
+            for k, v in attributes:
+                attrs.append((intype, k, v))
+        attrs.extend(out_attributes)
+        #for x in out_attributes:
+        for x in attrs:
+            datatype, key, value = x
+            assert hasattr(rulebase, datatype), \
+                   "Unknown datatype: %s" % datatype
+            fn = getattr(rulebase, datatype)
             user_attributes.append(bie3.Attribute(fn, key, value))
 
     # Cache the files in the user's directory.  Don't depend on the
     # user keeping the file in the same place.  Needed for the first
     # module.
-    print "Making a local copy of the input files."
-    sys.stdout.flush()
-    for i_data_node in in_data_nodes:
-        filename = i_data_node.identifier
-        if not filename or not os.path.exists(filename):
-            continue
-        x = userfile.set(getpass.getuser(), filename)
-        i_data_node.identifier = x
+    if args.cache_input_files:
+        print "Making a local copy of the input files."
+        sys.stdout.flush()
+        for i_data_node in in_data_nodes:
+            filename = i_data_node.identifier
+            if not filename or not os.path.exists(filename):
+                continue
+            x = userfile.set(getpass.getuser(), filename)
+            i_data_node.identifier = x
 
     # Parse out the module attributes (or user_options).
     user_options = {}
@@ -893,6 +913,7 @@ def main():
     # forces them to be the same.  Happens during complete_network or
     # optimize_network step.  Don't see anymore, because got rid of
     # orientation attribute in FastqFolder.
+    assert out_datatype
     network = bie3.backchain(
         rulebase.all_modules, out_datatype, user_attributes)
     network = bie3.complete_network(network, user_attributes)
@@ -959,6 +980,7 @@ def main():
 
     # This can lead to an empty network.  This can happen if user
     # specifies --inputs_complete, but inputs were not complete.
+    # TODO: Better error message here.
     network = _keep_wanted_input_nodes(network, x, user_attributes)
 
     # Configure the attributes if the user is not ready to run yet.
@@ -1036,7 +1058,6 @@ def main():
     ## start_node_ids = []
     ## for node in in_data_nodes:
     ##     x = bie3._find_start_nodes(network, node.data)
-    ##     print "HERE 7", x
     ##     assert x
     ##     start_node_ids.extend(x)
 

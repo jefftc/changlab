@@ -40,15 +40,23 @@ all_modules = [
         FastQCFolder, FastQCSummary,
         help="Merge and summarize the results from a FastQC folder.",
         ),
+    
     ModuleNode(
         "run_RNA_SeQC",
-        NGS.BamFolder, RNASeQCResults,
+        [NGS.BamFolder, NGS.ReferenceGenome], RNASeQCResults,
+        #OptionDef(
+        #    "RNA_ref", help="ref file for RNA_SeQC"),
+        #OptionDef(
+        #    "RNA_gtf", help="gtf file for RNA_SeQC"),
         OptionDef(
-            "RNA_ref", help="ref file for RNA_SeQC"),
-        OptionDef(
-            "RNA_gtf", help="gtf file for RNA_SeQC"),
+            "rna_seqc_gtf_file", 
+            help="Gene annotations in GTF format.",
+            ),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Consequence("contents", SAME_AS_CONSTRAINT),
+
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Constraint("dict_added", MUST_BE, "yes", 1),
         
         #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
         Constraint("has_read_groups", MUST_BE, "yes"),

@@ -17,22 +17,24 @@ class Module(AbstractModule):
 
         #time bowtie /data/biocore/tophat/ebwt/hg19 test.fastq >& test.sam
 
-        # bowtie2-build <ref.fa> <output_stem>
+        # bowtie-build <ref.fa> <output_stem>
         # Makes files:
         # <output_stem>.[1234].ebwt
         # <output_stem>.rev.[12].ebwt
 
         out_stem = user_options.get("assembly", "genome")
 
+        sq = module_utils.shellquote
+        cmd = [
+            sq(bowtie_build),
+            sq(in_filename),
+            out_stem,
+            ]
+        cmd = " ".join(cmd)
+
         cwd = os.getcwd()
         try:
             os.chdir(out_path)
-
-            cmd = [
-                bowtie_build,
-                in_filename,
-                out_stem,
-                ]
             module_utils.run_single(cmd)
         finally:
             os.chdir(cwd)
@@ -43,4 +45,5 @@ class Module(AbstractModule):
 
 
     def name_outfile(self, antecedents, user_options):
+        # Should name outfile based on the assembly.
         return "reference.bowtie"

@@ -5,27 +5,34 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
-        outfile):
+        self, network, in_data, out_attributes, user_options, num_cores,
+        out_path):
         import os
         import subprocess
         from Betsy import module_utils
         from genomicode import config
-        in_data = antecedents
-        directory = module_utils.unzip_if_zip(in_data.identifier)
-        filenames = os.listdir(directory)
-        assert filenames, 'The input folder or zip file is empty.'
-        if not os.path.exists(outfile):
-            os.mkdir(outfile)
-    
+
+        module_utils.safe_mkdir(out_path)
+        in_path = in_data.identifier
+        bam_filenames = module_utils.find_bam_files(in_path)
+
+        # java -jar /usr/local/bin/RNA-SeQC_v1.1.8.jar \
+        #   -o <sample> -r <reference_file> -s "<sample>|<in_filename>|NA"
+        #   -t <gtf_file> >& <log_filename>"
+        # <in_filename>     BAM file
+        # <reference_file>  /data/biocore/genomes/UCSC/mm10.fa
+        # <gtf_file>   /data/biocore/rsem/mouse_refseq_mm10/UCSC_knownGenes.gtf
+        #
+        # <reference_file> must be indexed and has a dict file.
+
+        rna_seqc_jar = module_utils.which_assert(config.rna_seqc_jar)
         
-        RNA_SeQC_path = config.RNASeQC
+        
         REF = user_options['RNA_ref']
         GTF = user_options['RNA_gtf']
-        assert os.path.exists(RNA_SeQC_path), ('cannot find the %s' % RNA_SeQC_path
-                                             )
         assert os.path.exists(REF), ('cannot find the %s' % REF)
         assert os.path.exists(GTF), ('cannot find the %s' % GTF)
+        
         for filename in filenames:
             infile = os.path.join(directory, filename)
             outname = os.path.splitext(filename)[0]

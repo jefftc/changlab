@@ -5,7 +5,7 @@ class AbstractModule:
     # set_out_attributes  OPTIONAL.  Needed if the module determines the
     #                     output attributes, e.g. is_logged.
     
-    # DEPRECATE THIS
+    # DEPRECATE THIS.  MOVE AWAY
     # hash_input          OPTIONAL.  Maybe never need to overload?
 
     def __init__(self):
@@ -64,9 +64,10 @@ class AbstractModule:
         # 
         # out_attributes has already been updated with
         # set_out_attributes.
-        import os
+        # user_options is a dictionary of the options for this module.
         import hashlib
         import operator
+        from Betsy import bhashlib
 
         if not operator.isSequenceType(antecedents):
             antecedents = [antecedents]
@@ -78,10 +79,14 @@ class AbstractModule:
             
         # Hash the inputs.
         for data_node in antecedents:
-            identifier = data_node.identifier
-            hasher.update(identifier)
-            # Shortcut: don't actually hash the whole file.
-            hasher.update(str(os.path.getsize(identifier)))
+            # Hash the hash of the input files.
+            x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
+            hasher.update(x)
+            #identifier = data_node.identifier
+            #hasher.update(identifier)
+            ## Shortcut: don't actually hash the whole file.
+            #size = os.path.getsize(identifier)
+            #hasher.update(str(size))
             #hasher.update(bhashlib.checksum_file_or_path(identifier))
             
         # Hash the outputs.
@@ -90,7 +95,7 @@ class AbstractModule:
         for key in sorted(attrs):
             hasher.update(key)
             x = attrs[key]
-            if operator.isSequenceType(x):
+            if type(x) is not type("") and operator.isSequenceType(x):
                 x = ",".join(x)
             hasher.update(str(x))
         return hasher.hexdigest()

@@ -648,7 +648,7 @@ class DataType:
         attributes = []
         for i in dictionary:
             attributes.append(dictionary[i])
-        inst = DataType(args['name'], *attributes, help=args['help'])
+        inst = DataType(args['name'], *attributes, **{"help" : args['help']})
         return inst
 
 
@@ -983,7 +983,7 @@ class ModuleNode:
         params = (args['consequences'] + args['constraints'] +
                   args['option_defs'] + args['default_attributes_from'])
         inst = ModuleNode(
-            name, in_datatypes, out_datatype, *params, help=help_)
+            name, in_datatypes, out_datatype, *params, **{"help" : help_})
         return inst
 
 
@@ -1226,7 +1226,10 @@ def _make_ancestor_dict(network):
 
     ancestors = {}  # node id -> list of parent node ids.
     all_nodes = list(range(len(network.nodes)))
+    niter = 0
     while all_nodes:
+        niter += 1
+        assert niter < 1E6, "cycle in network"
         node_id = all_nodes.pop(0)
         parents = node2parents.get(node_id, [])
 
@@ -1237,7 +1240,9 @@ def _make_ancestor_dict(network):
 
         # If I haven't found the ancestors of all my parents, try
         # again later.
-        # BUG: will have infinite loop if there are cycles.
+        # BUG: This will generate an infinite loop if there are
+        # cycles.  If there is a cycle, there will never be a node
+        # with no parents.
         all_found = True
         for parent_id in parents:
             if parent_id not in ancestors:
@@ -1449,9 +1454,8 @@ class _OptimizeNoCycles:
         cycle = None
         node_ids = [i for i in range(len(network.nodes)) if i not in noncycle]
         for start_id in node_ids:
-            cycle = self._find_cycle_from_one_node(network, start_id,
-                                                   max_path_length, noncycle,
-                                                   nodeid2previds)
+            cycle = self._find_cycle_from_one_node(
+                network, start_id, max_path_length, noncycle, nodeid2previds)
             if cycle:
                 break
         return cycle
@@ -2327,7 +2331,6 @@ def select_start_node(network, start_data, user_attributes):
 
     # Check each internal DataNode and delete if it can't be
     # generated.
-    print "HERE 1"
     node2previds = _make_backchain_dict(network)
     bad_ids = []
     for node_id in range(len(network.nodes)):
@@ -3352,7 +3355,7 @@ def _forwardchain_to_outputs(module, in_datas):
     import itertools
 
     # Check the input variables.
-    assert len(module.in_datatypes) == len(in_datas)
+    assert len(module.in_datatypes) == len(in_datas), module.name
     for i in range(len(module.in_datatypes)):
         assert in_datas[i].datatype.name == module.in_datatypes[i].name
 

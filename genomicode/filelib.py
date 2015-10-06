@@ -561,7 +561,7 @@ def safe_unlink(filename):
     os.unlink(filename)
 
 
-def list_files_in_path(file_or_path):
+def list_files_in_path(file_or_path, endswith=None, case_insensitive=False):
     # Return a list of the files.  Returns full paths.
     assert os.path.exists(file_or_path)
 
@@ -575,6 +575,15 @@ def list_files_in_path(file_or_path):
         dirpath, dirnames, files = x
         x = [os.path.join(dirpath, x) for x in files]
         filenames.extend(x)
+
+    x = filenames
+    if endswith is not None:
+        if case_insensitive:
+            x = [x for x in x if x.lower().endswith(endswith.lower())]
+        else:
+            x = [x for x in x if x.endswith(endswith)]
+    filenames = x
+        
     return filenames
 
 

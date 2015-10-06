@@ -10,7 +10,6 @@ Functions:
 read
 write
 
-
 """
 
 class AnnotationMatrix:
@@ -47,7 +46,7 @@ class AnnotationMatrix:
             self.headers, self.headers_h, self.header2annots)
 
 
-def read(filename, is_csv):
+def read(filename, is_csv=False):
     # Everything are strings.  No numeric conversion.
     import re
     from genomicode import genesetlib

@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         import shutil
         from genomicode import config
+        from genomicode import hashlib
         from Betsy import module_utils
         
         in_filename = in_data.identifier
@@ -21,19 +22,21 @@ class Module(AbstractModule):
         # <out_stem>.fa.amb .ann .bwt .pac .sa
 
         out_stem = user_options.get("assembly", "genome")
+        out_stem = hashlib.hash_var(out_stem)
 
         # Copy the in_filename to the out_path.
         assembly_filename = os.path.join(out_path, "%s.fa" % out_stem)
         shutil.copyfile(in_filename, assembly_filename)
 
+        sq = module_utils.shellquote
         cwd = os.getcwd()
         try:
             os.chdir(out_path)
 
             cmd = [
-                bwa,
+                sq(bwa),
                 "index",
-                assembly_filename,
+                sq(assembly_filename),
                 ]
             module_utils.run_single(cmd)
         finally:
@@ -47,4 +50,9 @@ class Module(AbstractModule):
 
 
     def name_outfile(self, antecedents, user_options):
+        # Should name outfile based on the assembly.
+        #from genomicode import hashlib
+        #x = user_options.get("assembly", "genome")
+        #x = hashlib.hash_var(x)
+        #return "%s.bwa" % x
         return "reference.bwa"

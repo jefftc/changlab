@@ -29,6 +29,8 @@ def checksum_file(filename, fast=False):
     from hashlib import md5
     
     assert os.path.exists(filename)
+    # Make sure I don't hash a symlink.
+    filename = os.path.realpath(filename)
     
     hasher = md5()
 

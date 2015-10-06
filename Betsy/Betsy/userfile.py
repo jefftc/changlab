@@ -1,99 +1,150 @@
 """
 
 Functions:
-set               Save a file for a user.
-get               Retrieve a file for a user.
-get_by_checksum   Retrieve a file based on checksum.
-dir               List the files owned by the user.
+set            Cache a file for a user, returning the cache filename.
+has_file
 
 """
-# _make_path
-# _hash_storefile
-# _unhash_storefile
+# _make_user_path
+# _make_cache_path
 
+
+# File path:
+# <config.OUTPATH>/userfile/<username>/           user_path
+#   <uid>___<filename>/                           cache_path
+#     <filename>     # can be file or path            (always there)
+#     hash_smart.txt # hash based on contents or size (always there)
+#     hash_full.txt  # full hash of file contents     (can be missing)
 
 def set(username, filename):
     import os
     import shutil
     import tempfile
+    from Betsy import bhashlib
 
-    assert os.path.exists(filename), '%s does not exists' % filename
+    assert os.path.exists(filename), "File not found: %s" % filename
+    filename = os.path.realpath(filename)  # don't cache symlink
+    cache_filename = has_file(username, filename)
+    if cache_filename:
+        return cache_filename
     
-    out_path = _make_path(username)
-    out_file = _hash_storefile(username, filename)
-    out_filename = os.path.join(out_path, out_file)
+    # Make the cache path.
+    user_path = _make_user_path(username)
+    cache_path = _make_cache_path(username, filename)
+    assert not os.path.exists(cache_path)  # should be unique
     
-    # If this file already exists, don't copy it again.
-    if os.path.exists(out_filename):
-        return out_filename
+    # Make the name of the file that will exist.
+    p, file_ = os.path.split(filename)
+    assert file_ not in ["hash_smart.txt", "hash_full.txt"]
+    data_filename = os.path.join(cache_path, file_)
+    hash_filename = os.path.join(cache_path, "hash_smart.txt")
 
     # Copy to a temporary path and then move it once it's done
     # copying.  This prevents partial copies.
-    temp_filename = None
+    temp_path = None
     try:
-        x, temp_filename = tempfile.mkstemp(dir=out_path); os.close(x)
-        if os.path.exists(temp_filename):
-            os.unlink(temp_filename)
+        x, temp_path = tempfile.mkstemp(dir=user_path); os.close(x)
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        os.mkdir(temp_path)
         
+        temp_filename = os.path.join(temp_path, file_)
         if os.path.isdir(filename):
             shutil.copytree(filename, temp_filename)
         else:
             shutil.copy(filename, temp_filename)
-        os.rename(temp_filename, out_filename)
+
+        # Make the smart hash file.
+        smart_hash = bhashlib.checksum_file_or_path_smart(filename)
+        x = os.path.join(temp_path, "hash_smart.txt")
+        open(x, 'w').write(smart_hash)
+            
+        # If the file exists now, then assume it's correct.  This can
+        # happen if two processes are trying to generate this file at
+        # the same time.
+        if not os.path.exists(cache_path):
+            os.rename(temp_path, cache_path)
     finally:
-        if temp_filename is not None and os.path.exists(temp_filename):
-            if os.path.isdir(temp_filename):
-                shutil.rmtree(temp_filename)
-            else:
-                os.unlink(temp_filename)
-    return out_filename
+        if temp_path is not None and os.path.exists(temp_path):
+            assert os.path.isdir(temp_path)
+            shutil.rmtree(temp_path)
+
+    assert os.path.exists(data_filename)
+    assert os.path.exists(hash_filename)
+    return data_filename
 
 
-def get(username, filename, file_length=None):
+def has_file(username, filename):
+    # Return the name of the file.
     import os
+    from Betsy import bhashlib
     
-    user_path = _make_path(username)
-    storefiles = os.listdir(user_path)
-    for storefile in storefiles:
-        x = _unhash_storefile(storefile)
-        username, in_filename, checksum, in_file_length = x
-        if in_filename != filename:
-            continue
-        if file_length is not None and in_file_length != file_length:
-            continue
-        return os.path.join(user_path, storefile)
-    raise KeyError, filename
+    user_path = _make_user_path(username)
+    assert os.path.exists(filename), "Not found: %s" % filename
+    filename = os.path.realpath(filename)  # don't cache symlink
+    file_smart_hash = bhashlib.checksum_file_or_path_smart(filename)
 
+    # Look for files that match the smart hash.  If I find any, then
+    # do a hash of the full contents of the file.
+    found = []  # list of "<uid>___<filename>"
+    paths = os.listdir(user_path)
+    for path in paths:
+        cache_file = os.path.join(user_path, path, "hash_smart.txt")
+        assert os.path.exists(cache_file), "File not found: %s" % cache_file
+        cache_smart_hash = open(cache_file).read()
+        if file_smart_hash == cache_smart_hash:
+            found.append(path)
+    if not found:
+        return None
 
-def get_by_checksum(username, checksum, file_length):
-    import os
+    # For everything found, see if it matches hash.txt.
+    # Not implemented.  Just use hash_fast.txt.  Can result in
+    # collisions.
+
+    # BUG:
+    # There might be multiple files that match.  This can happen if
+    # there is a collision, or if two processes generated this file at
+    # the same time.  Assume no collisions, and use the first one.
+    #assert len(found) == 1, "collision"
+    assert len(found) >= 1
+    cache_path = os.path.join(user_path, found[0])
+    # Look for <filename> in cache_path.
+    x = os.listdir(cache_path)
+    x = [x for x in x if x not in ["hash_smart.txt", "hash_full.txt"]]
+    assert len(x) == 1
+    cache_filename = os.path.join(cache_path, x[0])
+    return cache_filename
     
-    user_path = _make_path(username)
-    storefiles = os.listdir(user_path)
-    for storefile in storefiles:
-        x = _unhash_storefile(storefile)
-        username, in_filename, in_checksum, in_file_length = x
-        if in_checksum == checksum and in_file_length == file_length:
-            return os.path.join(user_path, storefile)
-    raise ValueError(
-        'cannot find the file with checksum %s and file_length %s' %
-        (checksum, file_length))
 
-
-def dir(username):
-    import os
+## def get_by_checksum(username, checksum, file_length):
+##     import os
     
-    user_path = _make_path(username)
-    filenames = os.listdir(user_path)
-    filenames = [i for i in filenames if not i.startswith('.')]
-    result = []
-    for storefile in filenames:
-        x = _unhash_storefile(storefile)
-        result.append(list(x))
-    return result
+##     user_path = _make_path(username)
+##     storefiles = os.listdir(user_path)
+##     for storefile in storefiles:
+##         x = _unhash_storefile(storefile)
+##         username, in_filename, in_checksum, in_file_length = x
+##         if in_checksum == checksum and in_file_length == file_length:
+##             return os.path.join(user_path, storefile)
+##     raise ValueError(
+##         'cannot find the file with checksum %s and file_length %s' %
+##         (checksum, file_length))
 
 
-def _make_path(username):
+## def dir(username):
+##     import os
+    
+##     user_path = _make_path(username)
+##     filenames = os.listdir(user_path)
+##     filenames = [i for i in filenames if not i.startswith('.')]
+##     result = []
+##     for storefile in filenames:
+##         x = _unhash_storefile(storefile)
+##         result.append(list(x))
+##     return result
+
+
+def _make_user_path(username):
     # Return the full path to store files for this user.
     # <config.OUTPUTPATH>/userfile/<username>
     import os
@@ -108,35 +159,56 @@ def _make_path(username):
     return p2
 
 
-def _hash_storefile(username, filename):
-    # Return a unique name or path to save this file.
-    import os
-    from genomicode import filelib
-    from Betsy import bhashlib
+## def _hash_storefile(username, filename):
+##     # Return a unique name or path to save this file.
+##     import os
+##     from genomicode import filelib
+##     from Betsy import bhashlib
     
-    assert '___' not in username
-    assert '___' not in filename
-    assert '__' not in filename
+##     assert '___' not in username
+##     assert '___' not in filename
+##     assert '__' not in filename
 
-    #file_length = os.path.getsize(filename)
-    file_length = filelib.get_file_or_path_size(filename)
-    checksum = bhashlib.checksum_file_or_path_smart(filename)
+##     #file_length = os.path.getsize(filename)
+##     file_length = filelib.get_file_or_path_size(filename)
+##     checksum = bhashlib.checksum_file_or_path_smart(filename)
 
-    x = filename.replace("/", "__")
-    # Put the file at the end to preserve the file extension.
-    x = [username, checksum, file_length, x]
-    x = "___".join(map(str, x))
+##     x = filename.replace("/", "__")
+##     # Put the file at the end to preserve the file extension.
+##     x = [username, checksum, file_length, x]
+##     x = "___".join(map(str, x))
+##     return x
+##     #newfilename = filename.replace('/', '__')
+##     #store_name = str(username + '___' + newfilename + '___' + str(checksum) +
+##     #                 '___' + str(file_length))
+##     #return store_name
+
+
+## def _unhash_storefile(storefilename):
+##     if '___' not in storefilename:
+##         return storefilename
+##     x = storefilename.split('___')
+##     username, checksum, file_length, filename = x
+##     real_filename = filename.replace('__', '/')
+##     return username, real_filename, checksum, file_length
+
+def _make_cache_path(username, filename):
+    import tempfile
+    # <uid>___<filename>
+    import os
+    import tempfile
+
+    user_path = _make_user_path(username)
+    uid = None
+    try:
+        x, uid = tempfile.mkstemp(dir=user_path, prefix=""); os.close(x)
+    finally:
+        if uid:
+            x = os.path.join(user_path, uid)
+            if os.path.exists(x):
+                os.unlink(x)
+    
+    p, file_ = os.path.split(filename)
+    x = "%s___%s" % (uid, file_)
+    x = os.path.join(user_path, x)
     return x
-    #newfilename = filename.replace('/', '__')
-    #store_name = str(username + '___' + newfilename + '___' + str(checksum) +
-    #                 '___' + str(file_length))
-    #return store_name
-
-
-def _unhash_storefile(storefilename):
-    if '___' not in storefilename:
-        return storefilename
-    x = storefilename.split('___')
-    username, checksum, file_length, filename = x
-    real_filename = filename.replace('__', '/')
-    return username, real_filename, checksum, file_length

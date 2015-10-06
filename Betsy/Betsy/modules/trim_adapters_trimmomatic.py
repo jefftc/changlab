@@ -40,6 +40,8 @@ class Module(AbstractModule):
             if pair2:
                 p2, f2 = os.path.split(pair2)
                 trimmed2 = os.path.join(out_path, f2)
+            # BUG: Will be overwritten.  Need to give unpaired files
+            # unique names.
             unpaired1 = os.path.join(out_path, "unpaired_1.fasta")
             unpaired2 = os.path.join(out_path, "unpaired_2.fasta")
             log_filename = os.path.join(out_path, "%s.log" % sample)
@@ -59,7 +61,6 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
-        # XXX test what if this is broken.
         module_utils.run_parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.

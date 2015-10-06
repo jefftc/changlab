@@ -24,9 +24,13 @@ class Module(AbstractModule):
         x = module_utils.fix_sample_group_filenames(x, fastq_path)
         sample_groups = x
 
+        # For merging, the order of the files in the sample_group_file
+        # must be maintainted.  Otherwise, will be merged out of order.
+        
         # The new files should be named:
         # <Sample>.fastq          # if single end
         # <Sample>_<Pair>.fastq   # if paired end
+        jobs = []  # list of (in_filename, out_filename)
         for x in sample_groups:
             file_, sample, pair = x
             in_filename = os.path.join(fastq_path, file_)
@@ -36,14 +40,15 @@ class Module(AbstractModule):
             if pair:
                 out_file = "%s_%s.fastq" % (sample, pair)
             out_filename = os.path.join(out_path, out_file)
+            x = in_filename, out_filename
+            jobs.append(x)
+            
+        for x in jobs:
+            in_filename, out_filename = x
 
-            #if not os.path.exists(out_filename):
-            #    # Create an empty outfile that I can append to.
-            #    open(out_filename, 'w')
-            #else:
-            if os.path.exists(out_filename):
-                raise NotImplementedError, "Haven't debugged merging."
-
+            if not os.path.exists(out_filename):
+                # Create an empty outfile that I can append to.
+                open(out_filename, 'w')
             
             in_handle = filelib.openfh(in_filename)
             out_handle = open(out_filename, 'a')

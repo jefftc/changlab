@@ -5,75 +5,80 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
-        out_path):
+        self, network, in_data, out_attributes, user_options, num_cores,
+        out_filename):
         import os
+        from genomicode import jmath
+        from genomicode import AnnotationMatrix
         from Betsy import module_utils
 
-        fastq_node, sample_node, reference_node = antecedents
-        module_utils.safe_mkdir(out_path)
+        rsem_path = in_data.identifier
+        assert os.path.exists(rsem_path)
+        assert os.path.isdir(rsem_path)
 
-        fastq_path = fastq_node.identifier
-        reference_path = reference_node.identifier
+        result_files = module_utils.find_rsem_result_files(rsem_path)
+        assert result_files, "No .results files found."
 
-        assert os.path.exists(fastq_path)
-        assert os.path.exists(reference_path)
-        assert os.path.isdir(fastq_path)
-        assert os.path.isdir(reference_path)
+        preprocess = out_attributes.get("preprocess")
+        assert preprocess in ["tpm", "fpkm"]
 
-        # With low alignment percentages, might want to play around with:
-        # insert size
-        # maximum mismatch
+        # For each of the gene files, get the expression data.
+        sample2matrix = {}  # sample -> AnnotationMatrix
+        for x in result_files:
+            sample, gene_filename, isoform_filename = x
+            # Get the gene results.
+            # TODO: Implement isoforms.
+            filename = gene_filename
+            if filename is None:
+                continue
+            assert os.path.exists(filename)
+            matrix = AnnotationMatrix.read(filename)
+            # Do some checking on the matrix.
+            assert "gene_id" in matrix.headers
+            assert "transcript_id(s)" in matrix.headers
+            assert "TPM" in matrix.headers
+            assert "FPKM" in matrix.headers
+            sample2matrix[sample] = matrix
+        assert sample2matrix, "No samples"
 
-        reference_genome = module_utils.find_bowtie1_reference(reference_path)
+        gene_id = transcript_id = None
+        # Pull out the gene and transcript IDs.
+        for matrix in sample2matrix.itervalues():
+            x1 = matrix.get_annots("gene_id")
+            x2 = matrix.get_annots("transcript_id(s)")
+            if gene_id is None:
+                gene_id = x1
+            if transcript_id is None:
+                transcript_id = x2
+            assert x1 == gene_id
+            assert x2 == transcript_id
+        assert gene_id
+        assert transcript_id
+        assert len(gene_id) == len(transcript_id)
 
-        # Find the merged fastq files.
-        x = module_utils.find_merged_fastq_files(
-            sample_node.identifier, fastq_path)
-        fastq_files = x
-        assert fastq_files, "I could not find any FASTQ files."
+        # Assemble into a gene expression matrix.
+        header = "TPM"
+        if preprocess == "fpkm":
+            header = "FPKM"
+        t_data = []  # matrix, where each row is a sample.
+        t_data.append(gene_id)
+        t_data.append(transcript_id)
+        samples = []
+        for sample in sorted(sample2matrix):
+            matrix = sample2matrix[sample]
+            exp = matrix.get_annots(header)
+            assert len(exp) == len(gene_id)
+            t_data.append(exp)
+            samples.append(sample)
 
-        # Make a list of the jobs to run.
-        jobs = []
-        for x in fastq_files:
-            sample, pair1, pair2 = x
-            sam_filename = os.path.join(out_path, "%s.sam" % sample)
-            log_filename = os.path.join(out_path, "%s.log" % sample)
-            x = sample, pair1, pair2, sam_filename, log_filename
-            jobs.append(x)
-        
-        # Generate bowtie1 commands for each of the files.
-        attr2orient = {
-            "single" : None,
-            "paired_ff" : "ff",
-            "paired_fr" : "fr",
-            "paired_rf" : "rf",
-            }
-        x = sample_node.data.attributes["orientation"]
-        orientation = attr2orient[x]
+        data = jmath.transpose(t_data)
+        header = ["gene_id", "transcript_id(s)"] + samples
+        data = [header] + data
 
-        sq = module_utils.shellquote
-        commands = []
-        for x in jobs:
-            sample, pair1, pair2, sam_filename, log_filename = x
-            nc = max(1, num_cores/len(jobs))
-            x = module_utils.make_bowtie1_command(
-                reference_genome, sam_filename, pair1, fastq_file2=pair2,
-                orientation=orientation, num_threads=nc)
-            x = "%s >& %s" % (x, sq(log_filename))
-            commands.append(x)
-
-        module_utils.run_parallel(commands, max_procs=num_cores)
-
-        # Make sure the analysis completed successfully.
-        for x in jobs:
-            sample, pair1, pair2, sam_filename, log_filename = x
-            # Make sure sam file created.
-            assert module_utils.exists_nz(sam_filename), \
-                   "Missing: %s" % sam_filename
-            # Make sure there are some alignments.
-            x = open(log_filename).read()
-            assert x.find("No alignments") < 0, "No alignments"
+        # Write out the data file.
+        handle = open(out_filename, 'w')
+        for x in data:
+            print >>handle, "\t".join(map(str, x))
 
 
     def name_outfile(self, antecedents, user_options):

@@ -41,8 +41,7 @@ import os
 import sys
 
 
-# TODO: merge with align_matrices
-# TODO: move to genomicode
+# TODO: use implementation in genomicode
 class AnnotationMatrix:
     def __init__(self, headers, headers_h, header2annots):
         # headers is a list of the original headers.

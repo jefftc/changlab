@@ -10,9 +10,7 @@ class Module(AbstractModule):
         import os
         from Betsy import module_utils
 
-        if not os.path.exists(out_path):
-            os.mkdir(out_path)
-
+        module_utils.safe_mkdir(out_path)
         filenames = module_utils.find_fastq_files(in_data.identifier)
         assert filenames, "FASTQ files not found: %s" % in_data.identifier
 

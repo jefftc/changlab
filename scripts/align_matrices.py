@@ -33,6 +33,7 @@ import os
 import sys
 
 
+# TODO: Use the AnnotationMatrix in genomicode.  More robust.
 class AnnotationMatrix:
     def __init__(self, name2annots, name_order):
         self.name2annots = name2annots.copy()

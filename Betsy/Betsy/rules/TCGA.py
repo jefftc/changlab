@@ -15,10 +15,14 @@ TCGAFile = DataType(
         "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
         help="contents"),
     AttributeDef(
-        "preprocess", ['RSEM_genes', 'RSEM_exons',
+        #"preprocess", ['RSEM_genes', 'RSEM_exons',
+        #               'humanmethylation450', 'mirnaseq',
+        #               'rppa', 'clinical', 'agilent', 'affymetrix'],
+        # XXX exons
+        "preprocess", ['tpm', 
                        'humanmethylation450', 'mirnaseq',
                        'rppa', 'clinical', 'agilent', 'affymetrix'],
-        'RSEM_genes', 'RSEM_genes',help="TCGA data type"),
+        'tpm', 'tpm', help="TCGA data type"),
     AttributeDef(
         "tumor_only", ['yes', 'no'],'no', 'no',
         help="select tumor sample only"),
@@ -38,8 +42,10 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence(
             "preprocess", SET_TO_ONE_OF,
-            ['RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
-             'rppa', 'clinical']),
+            # XXX RSEM_exons
+            ['tpm', 'humanmethylation450', 'mirnaseq', 'rppa', 'clinical']),
+            #['RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
+            # 'rppa', 'clinical']),
         Consequence("tumor_only", SET_TO, 'no'),
         help="download data from tcga website according to TCGAID"),
     
@@ -77,8 +83,10 @@ all_modules = [
         Constraint("tumor_only", MUST_BE, 'yes'),
         Constraint(
             "preprocess", CAN_BE_ANY_OF,
-            ['RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
+            ['tpm', 'humanmethylation450', 'mirnaseq',
              'rppa', 'clinical', 'affymetrix', 'agilent']),
+            #['RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
+            # 'rppa', 'clinical', 'affymetrix', 'agilent']),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence('logged', SET_TO, "unknown"),
         Consequence('predataset', SET_TO, "no"),

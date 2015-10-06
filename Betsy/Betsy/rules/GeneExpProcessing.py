@@ -38,11 +38,14 @@ PREPROCESS = [
     "loess",  # What is this for?  Better in normalization?
 
     # RNA-Seq
-    "RSEM",
+    #"RSEM",
+    "tpm",
+    "fpkm",
+    "read_counts",
     
     # Not sure why this is here.
-    'RSEM_genes',
-    'RSEM_exons',
+    #'RSEM_genes',
+    #'RSEM_exons',
 
     # Not sure why there are here.
     'humanmethylation450',

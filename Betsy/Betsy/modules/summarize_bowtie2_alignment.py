@@ -8,8 +8,8 @@ class Module(AbstractModule):
         self, network, in_data, out_attributes, user_options, num_cores,
         outfile):
         import os
-        from genomicode import filelib
         from genomicode import parselib
+        from Betsy import module_utils
 
         import summarize_bowtie1_alignment
 
