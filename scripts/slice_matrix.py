@@ -53,6 +53,7 @@
 # tcga_primary_tumor_only
 # tcga_metastasis_only
 # tcga_relabel_patient_barcodes
+# tcga_label_by_tissue_type
 #
 # select_row_indexes
 # select_row_ids
@@ -1411,7 +1412,7 @@ def _parse_tcga_barcode(barcode):
     # barcode.
 
     # Patient barcode  TCGA-02-0021
-    # Sample barcode               -01B              + sample
+    # Sample barcode               -01B              + sample (without "-")
     # Aliquot barcode                  -02D          + portion
     # Analyte barcode                      -181-06   + plate and center
     assert len(barcode) >= 12, "Invalid barcode: %s" % barcode
@@ -1550,6 +1551,54 @@ def tcga_relabel_patient_barcodes(MATRIX, relabel, ignore_non_tcga):
         barcodes[i] = barcode
     #x = [_parse_tcga_barcode(x) for x in barcodes]
     #x = [x[0] for x in x]
+    MATRIX_new._col_names[name] = barcodes
+
+    return MATRIX_new
+
+
+def tcga_label_by_tissue_type(MATRIX, label_tissue, ignore_non_tcga):
+    if not label_tissue:
+        return MATRIX
+    import arrayio
+
+    name = arrayio.COL_ID
+    if name not in MATRIX._col_names:
+        name = MATRIX._synonyms[name]
+    assert name in MATRIX._col_names, "I can not find the sample names."
+
+    MATRIX_new = MATRIX.matrix()
+    barcodes = MATRIX.col_names(name)
+    
+    for i in range(len(barcodes)):
+        barcode = barcodes[i]
+        try:
+            x = _parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+                pass
+            else:
+                raise
+        else:
+            assert len(x) >= 2
+            patient, sample = x[:2]
+            assert len(sample) >= 2
+            sample_i = int(sample[:2])
+            if sample_i == 1:
+                barcode = "PRIMARY"
+            elif sample_i == 2:
+                barcode = "RECURRENT"
+            elif sample_i == 6:
+                barcode = "METASTATIC"
+            elif sample_i == 7:
+                barcode = "ADDITIONAL_METASTATIC"
+            elif sample_i == 10:
+                barcode = "NORMAL_BLOOD"
+            elif sample_i == 11:
+                barcode = "NORMAL_SOLID"
+            else:
+                raise AssertionError, "Unknown sample: %s" % sample
+        barcodes[i] = barcode
     MATRIX_new._col_names[name] = barcodes
 
     return MATRIX_new
@@ -3262,6 +3311,10 @@ def main():
         "--tcga_relabel_patient_barcodes", default=False, action="store_true",
         help="Sample names should be patient barcodes.")
     group.add_argument(
+        "--tcga_label_by_tissue_type", default=False, action="store_true",
+        help="Label PRIMARY, RECURRENT, METASTATIC, ADDITIONAL_METASTATIC, "
+        "NORMAL_BLOOD, or NORMAL_SOLID.")
+    group.add_argument(
         "--ignore_non_tcga", default=False, action="store_true",
         help="Keep all samples that don't look like a TCGA barcode.")
 
@@ -3599,6 +3652,8 @@ def main():
         MATRIX, args.tcga_metastasis_only, args.ignore_non_tcga)
     MATRIX = tcga_relabel_patient_barcodes(
         MATRIX, args.tcga_relabel_patient_barcodes, args.ignore_non_tcga)
+    MATRIX = tcga_label_by_tissue_type(
+        MATRIX, args.tcga_label_by_tissue_type, args.ignore_non_tcga)
 
     # Filter after relabeling.
     MATRIX = remove_duplicate_cols(MATRIX, args.remove_duplicate_cols)
