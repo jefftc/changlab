@@ -4,17 +4,14 @@
 # FastqFolder
 # SamFolder
 # BamFolder
+# SaiFolder                  # from BWA Backtrack
 # VcfFolder
 #
-# Bowtie1IndexedGenome       # Move to file for alignment.
 # Bowtie1AlignmentSummary
-#
-# Bowtie2IndexedGenome
 # Bowtie2AlignmentSummary
 #
-# BWAIndexedGenome
-# SaiFolder                  # from BWA Backtrack
-#
+# CoverageSummary
+# TrimmomaticSummary
 #
 #
 # Modules:
@@ -33,7 +30,9 @@
 #
 # calculate_coverage
 # 
-# index_bwa_reference
+# index_reference_samtools  XXX IMPLEMENT
+# 
+# index_reference_bwa
 # align_with_bwa_aln
 # align_with_bwa_mem
 # convert_sai_to_sam_folder
@@ -45,6 +44,12 @@
 # index_bowtie1_reference
 # align_with_bowtie1
 # summarize_bowtie1_alignment
+
+
+# OBSOLETE:
+# Bowtie1IndexedGenome       # Move to file for alignment.
+# Bowtie2IndexedGenome
+# BWAIndexedGenome
 
 
 from Betsy.bie3 import *
@@ -66,13 +71,12 @@ ORIENTATION = ["unknown", "single", "paired_fr", "paired_rf", "paired_ff"]
 ORIENTATION_NOT_UNKNOWN = [x for x in ORIENTATION if x != "unknown"]
 
 
-# TODO: Get rid of Bowtie1IndexedGenome.
 ReferenceGenome = DataType(
     "ReferenceGenome",
     AttributeDef(
-        "samtools_indexed", ["no", "yes"], "no", "no"),
-    AttributeDef(
         "dict_added", ["no", "yes"], "no", "no"),
+    AttributeDef(
+        "samtools_indexed", ["no", "yes"], "no", "no"),
     AttributeDef(
         "bowtie1_indexed", ["no", "yes"], "no", "no"),
     AttributeDef(
@@ -92,15 +96,15 @@ CoverageSummary = DataType(
     help="Summarizes the coverage for an alignment.",
     )
 
-Bowtie1IndexedGenome = DataType(
-    "Bowtie1IndexedGenome",
-    help="Indexed for bowtie1.",
-    )
+## Bowtie1IndexedGenome = DataType(
+##     "Bowtie1IndexedGenome",
+##     help="Indexed for bowtie1.",
+##     )
 
-Bowtie2IndexedGenome = DataType(
-    "Bowtie2IndexedGenome",
-    help="Indexed for bowtie2.",
-    )
+## Bowtie2IndexedGenome = DataType(
+##     "Bowtie2IndexedGenome",
+##     help="Indexed for bowtie2.",
+##     )
 
 Bowtie1AlignmentSummary = DataType(
     "Bowtie1AlignmentSummary",
@@ -112,11 +116,10 @@ Bowtie2AlignmentSummary = DataType(
     help="Summarizes the alignment from bowtie2.",
     )
 
-# Fix the indexes.  Should be attributes on ReferenceGenome.
-BWAIndexedGenome = DataType(
-    "BWAIndexedGenome",
-    help="Indexed for BWA.",
-    )
+## BWAIndexedGenome = DataType(
+##     "BWAIndexedGenome",
+##     help="Indexed for BWA.",
+##     )
 
 
 SAM_ATTRIBUTES = [
@@ -260,6 +263,7 @@ all_data_types = [
     #FastqFile,
     #SamFile,
     #BamFile,
+    ReferenceGenome,
     SampleGroupFile,
     FastqFolder,
     SamFolder,
@@ -267,16 +271,14 @@ all_data_types = [
     SaiFolder,
     VcfFolder,
 
-    CoverageSummary,
-    TrimmomaticSummary,
-
-    ReferenceGenome,
-    Bowtie1IndexedGenome,
-    Bowtie2IndexedGenome,
-    BWAIndexedGenome,
-
+    #Bowtie1IndexedGenome,
+    #Bowtie2IndexedGenome,
+    #BWAIndexedGenome,
     Bowtie1AlignmentSummary,
     Bowtie2AlignmentSummary,
+    
+    CoverageSummary,
+    TrimmomaticSummary,
     ]
 
 all_modules = [
@@ -396,12 +398,14 @@ all_modules = [
         #help="Convert SAM to BAM files.",
         ),
     ModuleNode(
-        "index_bwa_reference",
-        ReferenceGenome, BWAIndexedGenome,
-        OptionDef(
-            "assembly", default="genome",
-            help="Optional name for the genome assembly, e.g. hg19",
-            ),
+        "index_reference_bwa",
+        ReferenceGenome, ReferenceGenome,
+        #OptionDef(
+        #    "assembly", default="genome",
+        #    help="Optional name for the genome assembly, e.g. hg19",
+        #    ),
+        Constraint("bwa_indexed", MUST_BE, "no"),
+        Consequence("bwa_indexed", SET_TO, "yes"),
         ),
     # TODO: Choose bwa aln or bwa mem automatically.
     ModuleNode(
@@ -448,12 +452,14 @@ all_modules = [
         help="bwa mem for reads >= 70 bp",
         ),
     ModuleNode(
-        "index_bowtie2_reference",
-        ReferenceGenome, Bowtie2IndexedGenome,
-        OptionDef(
-            "assembly", default="genome",
-            help="Optional name for the genome assembly, e.g. hg19",
-            ),
+        "index_reference_bowtie2",
+        ReferenceGenome, ReferenceGenome,
+        #OptionDef(
+        #    "assembly", default="genome",
+        #    help="Optional name for the genome assembly, e.g. hg19",
+        #    ),
+        Constraint("bowtie2_indexed", MUST_BE, "no"),
+        Consequence("bowtie2_indexed", SET_TO, "yes"),
         ),
     ModuleNode(
         "align_with_bowtie2",
@@ -493,12 +499,14 @@ all_modules = [
         ),
     
     ModuleNode(
-        "index_bowtie1_reference",
-        ReferenceGenome, Bowtie1IndexedGenome,
-        OptionDef(
-            "assembly", default="genome",
-            help="Optional name for the genome assembly, e.g. hg19",
-            ),
+        "index_reference_bowtie1",
+        ReferenceGenome, ReferenceGenome,
+        #OptionDef(
+        #    "assembly", default="genome",
+        #    help="Optional name for the genome assembly, e.g. hg19",
+        #    ),
+        Constraint("bowtie1_indexed", MUST_BE, "no"),
+        Consequence("bowtie1_indexed", SET_TO, "yes"),
         ),
     ModuleNode(
         "align_with_bowtie1",
