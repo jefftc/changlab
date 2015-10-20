@@ -9,6 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
+        from genomicode import shell
         from Betsy import module_utils
 
         fastq_node, sample_node = antecedents
@@ -23,7 +24,7 @@ class Module(AbstractModule):
                "Not found: %s" % adapters_filename
                #"Not found: %s" % os.path.realpath(adapters_filename)
         
-        module_utils.safe_mkdir(out_path)
+        filelib.safe_mkdir(out_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -49,7 +50,7 @@ class Module(AbstractModule):
                 unpaired1, unpaired2, log_filename
             jobs.append(x)
 
-        sq = module_utils.shellquote
+        sq = shell.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, trimmed1, trimmed2, unpaired1, unpaired2, \
@@ -61,17 +62,17 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
-        module_utils.run_parallel(commands, max_procs=num_cores)
-
+        shell.parallel(commands, max_procs=num_cores)
+        
         # Make sure the analysis completed successfully.
         for x in jobs:
             sample, pair1, pair2, trimmed1, trimmed2, unpaired1, unpaired2, \
                     log_filename = x
             # Make sure outfile created.
-            assert module_utils.exists_nz(trimmed1), \
+            assert filelib.exists_nz(trimmed1), \
                    "Missing: %s" % trimmed1
             if trimmed2:
-                assert module_utils.exists_nz(trimmed2), \
+                assert filelib.exists_nz(trimmed2), \
                        "Missing: %s" % trimmed2
             x = open(log_filename).read()
             assert not x.startswith("Usage:"), "usage problem"
@@ -86,9 +87,10 @@ def _make_trimmomatic_cmd(
     num_threads=None):
     import os
     from genomicode import config
-    from Betsy import module_utils
+    from genomicode import filelib
+    from genomicode import shell
 
-    assert os.path.exists(adapters_filename)
+    assert filelib.exists_nz(adapters_filename)
     if num_threads is not None:
         assert num_threads >= 1 and num_threads < 200
 
@@ -110,8 +112,8 @@ def _make_trimmomatic_cmd(
         orientation = "PE"
         assert pair2 and trimmed2 and unpaired1 and unpaired2
 
-    trimmomatic = module_utils.which_assert(config.trimmomatic_jar)
-    sq = module_utils.shellquote
+    trimmomatic = filelib.which_assert(config.trimmomatic_jar)
+    sq = shell.quote
     cmd = [
         "java",
         "-jar", sq(trimmomatic),

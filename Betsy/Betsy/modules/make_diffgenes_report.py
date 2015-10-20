@@ -177,7 +177,7 @@ class Module(AbstractModule):
 
 
     
-    def write_table(header, data, N):
+def write_table(header, data, N):
     from genomicode import htmllib
     rows = []
     a = ''

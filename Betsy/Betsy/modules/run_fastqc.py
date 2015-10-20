@@ -8,15 +8,17 @@ class Module(AbstractModule):
         self, network, in_data, out_attributes, user_options, num_cores,
         out_path):
         import os
+        from genomicode import filelib
+        from genomicode import shell
         from Betsy import module_utils
 
-        module_utils.safe_mkdir(out_path)
+        filelib.safe_mkdir(out_path)
         filenames = module_utils.find_fastq_files(in_data.identifier)
         assert filenames, "FASTQ files not found: %s" % in_data.identifier
 
         commands = ["fastqc --outdir=%s %s" % (out_path, x) for x in filenames]
         #commands = ["ls > %s" % x for x in filenames]
-        module_utils.run_parallel(commands, max_procs=num_cores)
+        shell.parallel(commands, max_procs=num_cores)
 
         # Fastqc generates files:
         # <file>_fastqc/

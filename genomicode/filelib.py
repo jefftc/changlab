@@ -1,14 +1,22 @@
 """
 
 Functions:
-lwrite       Write to a handle, locking it to prevent concurrent writing.
-tswrite      Write to a handle with a timestamp.
-openfh       Open a file name or handle.
-exists       Whether a filename exists.  Also checks for .gz and .bz2.
-exists_nz    Whether a filename exists and has non-zero size.
-safe_unlink  Unlink file only if it exists.
-list_files_in_path      Return all files under a path.
-get_file_or_path_size   Get size of all files in a directory.
+lwrite        Write to a handle, locking it to prevent concurrent writing.
+tswrite       Write to a handle with a timestamp.
+openfh        Open a file name or handle.
+safe_unlink   Unlink file only if it exists.
+safe_mkdir    Make a directory only if it does not exist.
+
+which         Find full path of executable program or return None
+which_assert  Find full path or raise AssertionError.
+exists        Whether a filename exists.  Also checks for .gz and .bz2.
+exists_nz     Whether a filename exists and has non-zero size.
+fp_exists_nz  Whether a file or directory exists and is not empty.
+
+list_files_in_path         Return all files under a path.
+get_file_or_path_size      Get size of all files in a directory.
+symlink_file_or_path_to_path
+copy_file_or_path_to_path
 
 read_row     Read one row from a tab-delimited table from a file.
 write_row    Save one row from a tab-delimited table to a file.
@@ -178,6 +186,39 @@ def openfh(file_or_handle, mode='rU'):
         return r
     return open(file_or_handle, mode)
 
+
+
+def which(program):
+    is_jar = program.lower().endswith(".jar")
+
+    def is_exe(fpath):
+        return os.path.exists(fpath) and (os.access(fpath, os.X_OK) or is_jar)
+
+    def ext_candidates(fpath):
+        yield fpath
+        for ext in os.environ.get("PATHEXT", "").split(os.pathsep):
+            yield fpath + ext
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            for candidate in ext_candidates(exe_file):
+                if is_exe(candidate):
+                    return candidate
+    return None
+
+
+def which_assert(binary):
+    # Make sure a binary exists and return its realpath.
+    which_binary = which(binary)
+    assert which_binary, "Cannot find: %s" % binary
+    return which_binary
+              
+
 def exists(filename):
     if type(filename) is type("") and filename.lower().startswith("http"):
         # Looks like a URL.
@@ -208,6 +249,15 @@ def exists_nz(filename):
     if os.stat(fn)[stat.ST_SIZE] > 0:
         return fn
     return None
+
+
+def fp_exists_nz(file_or_path):
+    if os.path.isdir(file_or_path):
+        if os.listdir(file_or_path):
+            return True
+        return False
+    return exists_nz(file_or_path)
+
     
 def _parse_format(format):
     """Return names, format."""
@@ -561,6 +611,11 @@ def safe_unlink(filename):
     os.unlink(filename)
 
 
+def safe_mkdir(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+
 def list_files_in_path(file_or_path, endswith=None, case_insensitive=False):
     # Return a list of the files.  Returns full paths.
     assert os.path.exists(file_or_path)
@@ -593,7 +648,66 @@ def get_file_or_path_size(file_or_path):
     filenames = list_files_in_path(file_or_path)
     sizes = [os.stat(x)[stat.ST_SIZE] for x in filenames]
     return sum(sizes)
+
+
+def symlink_file_or_path_to_path(
+    in_file_or_path, out_path, overwrite_outpath=True):
+    # in_file_or_path can be a file or a path.  
+    # <file>         ->  <out_path>/<file>
+    # <path>/<file>  ->  <out_path>/<file>   Symlink the files under <path>.
+    #
+    # If overwrite_outpath is True, then will remove out_path if it
+    # already exists.  Otherwise, will merge with the existing contents.
+    import shutil
     
+    assert os.path.exists(in_file_or_path)
+    # If in_file_or_path is a symlink, then symlink to the original
+    # file.
+    in_file_or_path = os.path.realpath(in_file_or_path)
+
+    if overwrite_outpath and os.path.exists(out_path):
+        if os.path.dir(out_path):
+            shutil.rmtree(out_path)
+        else:
+            os.unlink(out_path)
+    if not os.path.exists(out_path):
+        os.mkdir(out_path)
+    if os.path.isfile(in_file_or_path):  # follows symbolic links
+        p, f = os.path.split(in_file_or_path)
+        out_filename = os.path.join(out_path, f)
+        if not os.path.exists(out_filename):
+            os.symlink(in_file_or_path, out_filename)
+    elif os.path.isdir(in_file_or_path):
+        files = os.listdir(in_file_or_path)
+        for x in files:
+            in_filename = os.path.join(in_file_or_path, x)
+            out_filename = os.path.join(out_path, x)
+            if not os.path.exists(out_filename):
+                os.symlink(in_filename, out_filename)
+    else:
+        raise AssertionError, "not file or path"
+
+
+def copy_file_or_path_to_path(in_file_or_path, out_path):
+    # in_file_or_path can be a file.
+    # <file>         ->  <out_path>/<file>
+    # <path>/<file>  ->  <out_path>/<file>
+    import shutil
+    
+    assert os.path.exists(in_file_or_path)
+    if os.path.exists(out_path):
+        if os.path.dir(out_path):
+            shutil.rmtree(out_path)
+        else:
+            os.unlink(out_path)
+    if os.path.isfile(in_file_or_path):  # follows symbolic links
+        os.mkdir(out_path)
+        shutil.copy2(in_file_or_path, out_path)
+    elif os.path.isdir(in_file_or_path):
+        shutil.copytree(in_file_or_path, out_path)
+    else:
+        raise AssertionError, "not file or path"
+
 
 class DelFile:
     def __init__(self, filename, mode):

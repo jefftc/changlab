@@ -26,9 +26,9 @@ class Module(AbstractModule):
         
         if not os.path.exists(outpath):
             os.mkdir(outpath)
-        for file in files:
-            x1 = os.path.join(directory, file)
-            x2 = os.path.join(outpath, file)
+        for file_ in files:
+            x1 = os.path.join(directory, file_)
+            x2 = os.path.join(outpath, file_)
             shutil.copyfile(x1, x2)
 
 

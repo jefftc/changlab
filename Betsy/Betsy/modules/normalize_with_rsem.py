@@ -8,19 +8,17 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
+        from genomicode import filelib
+        from genomicode import alignlib
+        from genomicode import shell
         from Betsy import module_utils
         
         fastq_node, sample_node, reference_node = antecedents
-        module_utils.safe_mkdir(out_path)
-
         fastq_path = fastq_node.identifier
-        reference_path = reference_node.identifier
         assert os.path.exists(fastq_path)
-        assert os.path.exists(reference_path)
         assert os.path.isdir(fastq_path)
-        assert os.path.isdir(reference_path)
-
-        index_stem = module_utils.find_rsem_reference(reference_path)
+        ref = alignlib.create_reference_genome(reference_node.identifier)
+        filelib.safe_mkdir(out_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -36,33 +34,29 @@ class Module(AbstractModule):
             x = sample, pair1, pair2, log_filename
             jobs.append(x)
         
-        sq = module_utils.shellquote
+        sq = shell.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, log_filename = x
             nc = max(1, num_cores/len(jobs))
-            x = module_utils.make_rsem_command(
-                index_stem, sample, pair1, fastq_file2=pair2, num_threads=nc)
+            x = alignlib.make_rsem_command(
+                ref.fasta_file_full, sample, pair1, fastq_file2=pair2,
+                num_threads=nc)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
         # Need to run in out_path.  Otherwise, files will be everywhere.
-        cwd = os.getcwd()
-        try:
-            os.chdir(out_path)
-            module_utils.run_parallel(commands, max_procs=num_cores)
-        finally:
-            os.chdir(cwd)
+        shell.parallel(commands, max_procs=num_cores, path=out_path)
 
         # Make sure the analysis completed successfully.
         for x in jobs:
             sample, pair1, pair2, log_filename = x
             # Make sure sam file created.
-            assert module_utils.exists_nz(log_filename), \
+            assert filelib.exists_nz(log_filename), \
                    "Missing: %s" % log_filename
             # Make sure there are some alignments.
             filename = os.path.join(out_path, "%s.genes.results" % sample)
-            assert module_utils.exists_nz(filename)
+            assert filelib.exists_nz(filename)
 
         
     def name_outfile(self, antecedents, user_options):

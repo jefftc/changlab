@@ -5,50 +5,52 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
-        outfile):
+        self, network, in_data, out_attributes, user_options, num_cores,
+        out_path):
         import os
-        import subprocess
-        from Betsy import module_utils
         from genomicode import config
-        in_data = antecedents
-        directory = module_utils.unzip_if_zip(in_data.identifier)
-        filenames = os.listdir(directory)
-        assert filenames, 'The input folder or zip file is empty.'
-        if not os.path.exists(outfile):
-            os.mkdir(outfile)
-    
+        from genomicode import filelib
+        from genomicode import shell
+
+        bam_path = in_data.identifier
+        assert os.path.exists(bam_path)
+        assert os.path.isdir(bam_path)
+        filelib.safe_mkdir(out_path)
+
+        # Find all the BAM files.
+        bam_filenames = filelib.list_files_in_path(
+            bam_path, endswith=".bam", case_insensitive=True)
+
+        jobs = []  # list of in_filename, out_filename
+        for in_filename in bam_filenames:
+            p, f = os.path.split(in_filename)
+            out_filename = os.path.join(out_path, f)
+            assert not os.path.exists(out_filename)
+            x = in_filename, out_filename
+            jobs.append(x)
+
+        # Symlink the BAM files to the output path.
+        for x in jobs:
+            in_filename, out_filename = x
+            os.symlink(in_filename, out_filename)
+
+        # Index each of the files.
+        sq = shell.quote
+        samtools = filelib.which_assert(config.samtools)
+        commands = []
+        for x in jobs:
+            in_filename, out_filename = x
+            cmd = [
+                sq(samtools),
+                "index",
+                sq(out_filename),
+                ]
+            x = " ".join(cmd)
+            commands.append(x)
         
-        AddOrReplaceReadGroups_path = config.AddOrReplaceReadGroups
-        assert os.path.exists(AddOrReplaceReadGroups_path), (
-            'cannot find the %s' % AddOrReplaceReadGroups_path
-        )
-
-        for filename in filenames:
-            infile = os.path.join(directory, filename)
-            outname = os.path.splitext(filename)[0] + '_index.bam'
-            outname = os.path.join(outfile, outname)
-            command = ['java', '-Xmx5g', '-jar', AddOrReplaceReadGroups_path,
-                       'I=' + infile, 'O=' + outname, 'PL=illumina', 'ID=Group1',
-                       'LB=Al_chrom3', 'PU=Al_chrom3', 'SM=Al_chrom3',
-                       'CREATE_INDEX=true', 'VALIDATION_STRINGENCY=LENIENT']
-
-            process = subprocess.Popen(command,
-                                       shell=False,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            process.wait()
-            error_message = process.communicate()
-            if 'error' in error_message[1]:
-                raise ValueError(error_message)
-            assert module_utils.exists_nz(outname), (
-                'the output file %s for index_in_bam_folder does not exist' % outname
-            )
+        shell.parallel(commands, max_procs=num_cores, path=out_path)
     
 
-
-
-    
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
         original_file = module_utils.get_inputid(antecedents.identifier)

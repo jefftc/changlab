@@ -1,8 +1,30 @@
+import os, sys
+
+def run(commands, num_procs):
+    # commands list a list of (fn, args, keywds).
+    import multiprocessing
+    
+    manager = multiprocessing.Manager()
+    pool = multiprocessing.Pool(num_procs)
+
+    results = []
+    for x in commands:
+        fn, args, keywds = x
+        if num_procs == 1 or len(commands) == 1:
+            fn(*args, **keywds)
+        else:
+            x = pool.apply_async(fn, args, keywds)
+            results.append(x)
+    pool.close()
+    pool.join()
+    for x in results:
+        x.get()
+    
+    
+
 # Functions for running GNU parallel.
 
 # Should deprecate this in favor of multiprocessing module.
-
-import os, sys
 
 def find():
     # Return the full path for GNU parallel.

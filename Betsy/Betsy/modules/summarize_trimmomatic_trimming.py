@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import parselib
 
-        log_filenames = _find_output_logs(in_data.identifier)
+        log_filenames = find_trimmomatic_logs(in_data.identifier)
         assert log_filenames
 
         results = {}  # dict of sample -> dictionary of output
@@ -20,13 +20,13 @@ class Module(AbstractModule):
             f, e = os.path.splitext(file_)
             assert e == ".log"
             sample = f
-            results[sample] = _parse_trimmomatic_output(filename)
+            results[sample] = parse_trimmomatic_output(filename)
 
         # Make table where the rows are the samples and the columns
         # are the statistics.
         all_samples = sorted(results)
         table = []
-        header = "Sample", "Dropped Reads", "Total Reads", "Perc Dropped"
+        header = "Sample", "Total Reads", "Dropped Reads", "Perc Dropped"
         table.append(header)
         for sample in all_samples:
             stats = results[sample]
@@ -55,7 +55,7 @@ class Module(AbstractModule):
         return "trimmomatic_summary.xls"
 
 
-def _find_output_logs(path):
+def find_trimmomatic_logs(path):
     from genomicode import filelib
     
     # Should be a folder of results from trimmomatic.  STDOUT should
@@ -64,7 +64,7 @@ def _find_output_logs(path):
     x = [x for x in x if x.endswith(".log")]
     return x
 
-def _parse_trimmomatic_output(filename):
+def parse_trimmomatic_output(filename):
     # Return a dictionary with keys:
     # reads_processed
     # dropped_reads

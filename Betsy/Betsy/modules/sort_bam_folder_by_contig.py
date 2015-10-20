@@ -9,14 +9,15 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
+        from genomicode import shell
+        from genomicode import alignlib
         from Betsy import module_utils
 
-        module_utils.safe_mkdir(out_path)
+        filelib.safe_mkdir(out_path)
 
         raise NotImplementedError
         # Can be file or folder.  Return a full path to the FASTA file.
-        reference_filename = module_utils.find_reference_genome(
-            in_data.identifier)
+        ref = alignlib.create_reference_genome(in_data.identifier)
         
         in_path = module_utils.unzip_if_zip(in_data.identifier)
         x = filelib.list_files_in_path(in_path)
@@ -56,7 +57,7 @@ class Module(AbstractModule):
             x = " ".join(x)
             commands.append(x)
             
-        module_utils.run_parallel(commands, max_procs=num_cores)
+        shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:

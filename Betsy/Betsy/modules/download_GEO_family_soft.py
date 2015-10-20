@@ -25,7 +25,7 @@ class Module(AbstractModule):
         filename = original_file + '_family.soft.gz'
         return filename
 
-    def download_series_family(GSEID, DELAY, outhandle):
+def download_series_family(GSEID, DELAY, outhandle):
     import urllib
     from genomicode import timer
 

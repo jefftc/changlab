@@ -53,7 +53,7 @@ class Module(AbstractModule):
         return filename
 
 
-    def get_new_matrix(total_sample, filename):
+def get_new_matrix(total_sample, filename):
     import arrayio
     M = arrayio.read(filename)
     samples = M.col_names('_SAMPLE_NAME')

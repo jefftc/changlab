@@ -8,23 +8,20 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from Betsy import module_utils
         from genomicode import config
+        from genomicode import shell
+        from genomicode import filelib
+        from genomicode import alignlib
+        from Betsy import module_utils
 
-        fastq_node, group_node, index_node = antecedents
-        module_utils.safe_mkdir(out_path)
-
+        fastq_node, group_node, reference_node = antecedents
         fastq_path = fastq_node.identifier
-        index_path = index_node.identifier
-
         assert os.path.exists(fastq_path)
-        assert os.path.exists(index_path)
         assert os.path.isdir(fastq_path)
-        assert os.path.isdir(index_path)
+        ref = alignlib.create_reference_genome(reference_node.identifier)
+        filelib.safe_mkdir(out_path)
 
-        # bwa aln -t <num_cores> <reference.fa> <input.fastq> > <output.sai>
-        bwa = module_utils.which_assert(config.bwa)
-        reference_fa = module_utils.find_bwa_reference(index_path)
+        #reference_fa = module_utils.find_bwa_reference(index_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -54,42 +51,30 @@ class Module(AbstractModule):
                 x = x[:-3]
             elif x.lower().endswith(".fastq"):
                 x = x[:-6]
-            x = x + ".sai"
-            out_file = x
-            out_filename = os.path.join(out_path, out_file)
-            x = in_filename, out_filename
+            sai_filename = os.path.join(out_path, "%s.sai" % x)
+            log_filename = os.path.join(out_path, "%s.log" % x)
+            x = in_filename, sai_filename, log_filename
             jobs.append(x)
 
         # Calculate the number of cores per job.
         nc = max(1, num_cores/len(jobs))
 
         # Make the bwa commands.
-        sq = module_utils.shellquote
         commands = []
         for x in jobs:
-            fastq_filename, sai_filename = x
-
-            x = [
-                bwa,
-                "aln",
-                "-t", nc,
-                sq(reference_fa),
-                sq(fastq_filename),
-                ">",
-                sq(sai_filename),
-                ]
-            x = " ".join(map(str, x))
+            fastq_filename, sai_filename, log_filename = x
+            x = alignlib.make_bwa_aln_command(
+                ref.fasta_file_full, fastq_filename, sai_filename,
+                log_filename, num_threads=nc)
             commands.append(x)
-
-        module_utils.run_parallel(commands, max_procs=num_cores)
+        shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:
-            in_filename, out_filename = x
-            assert module_utils.exists_nz(out_filename), \
-                   "Missing: %s" % out_filename
+            in_filename, sai_filename, log_filename = x
+            assert filelib.exists_nz(sai_filename), \
+                   "Missing: %s" % sai_filename
 
         
     def name_outfile(self, antecedents, user_options):
         return "alignments.bwa.sai"
-

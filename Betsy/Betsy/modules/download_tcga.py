@@ -10,10 +10,11 @@ class Module(AbstractModule):
         import os
         import subprocess
         from genomicode import config
+        from genomicode import filelib
         from Betsy import module_utils
         #out_attributes = set_out_attributes(in_data, out_attributes)
         
-        TCGA_BIN = module_utils.which_assert(config.download_tcga)
+        TCGA_BIN = filelib.which_assert(config.download_tcga)
         
         assert 'disease' in user_options
         command = [
@@ -25,6 +26,8 @@ class Module(AbstractModule):
             ]
         if 'date' in user_options:
             command += ['--date', user_options['date']]
+        # TODO: Need to return results from command.
+        #shell.single(command)
             
         process = subprocess.Popen(
             command,
@@ -41,7 +44,7 @@ class Module(AbstractModule):
             if result_file.endswith(result_format):
                 os.rename(result_file, outfile)
 
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for download_tcga fails' % outfile
         )
 

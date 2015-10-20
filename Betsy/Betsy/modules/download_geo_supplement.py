@@ -34,7 +34,7 @@ class Module(AbstractModule):
         filename = 'expression_files_' + original_file
         return filename
 
-    def clean_cel_filename(cel_file):
+def clean_cel_filename(cel_file):
     """clean the cel_file name"""
     import string
     if cel_file.upper().endswith('CEL'):

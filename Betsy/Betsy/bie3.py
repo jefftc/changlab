@@ -384,7 +384,7 @@ class Consequence:
             assert type(arg1) is type("")
             assert arg2 is None
         elif behavior in [SET_TO_ONE_OF, BASED_ON_DATA]:
-            assert type(arg1) in [type([]), type(())]
+            assert type(arg1) in [type([]), type(())], "arg should be list"
             for x in arg1:
                 assert type(x) is type("")
             assert arg2 is None

@@ -19,10 +19,21 @@ import GeneExpProcessing as GXP
 #    help="RNA Seq File"
 #    )
 
-RSEMIndexedGenome = DataType(
-    "RSEMIndexedGenome",
+RSEMReferenceGenome = DataType(
+    "RSEMReferenceGenome",
+    AttributeDef(
+        "bowtie1_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
+    AttributeDef(
+        "bowtie2_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
+    AttributeDef(
+        "rsem_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
     help="Indexed for rsem.",
     )
+#FullyIndexedRSEMReferenceGenome = DataType(
+#    "FullyIndexedReferenceGenome",
+#    help="Used only for indexing a new reference genome."
+#    )
+
 RSEMResults = DataType(
     "RSEMResults",
     AttributeDef(
@@ -31,63 +42,55 @@ RSEMResults = DataType(
     )
 
 all_data_types = [
-    RSEMIndexedGenome,
+    RSEMReferenceGenome,
+    #FullyIndexedRSEMReferenceGenome,
     RSEMResults,
     ]
 all_modules = [
-#    ModuleNode(
-#        # What does this do?
-#        "extract_rna_files_sam",
-#        RNASeqFile, NGS.SamFolder,
-#        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-#        Constraint("format_type",MUST_BE, "samfolder"),
-#        Consequence("contents", SAME_AS_CONSTRAINT),
-#        Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
-#        help=("extract rna files with different format")
-#        ),
-#    ModuleNode(
-#        # What does this do?
-#        "extract_rna_files_bam",
-#        RNASeqFile, NGS.BamFolder,
-#        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-#        Constraint("format_type",MUST_BE, "bamfolder"),
-#        Consequence("contents", SAME_AS_CONSTRAINT),
-#        Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
-#        help=("extract rna files with bam format")
-#        ),
-#    ModuleNode(
-#        # What does this do?
-#        "extract_rna_files_fastq",
-#        RNASeqFile, NGS.FastqFolder,
-#        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-#        Constraint("format_type",MUST_BE, "fastqfolder"),
-#        Consequence("contents", SAME_AS_CONSTRAINT),
-#        help=("extract rna files with fa or fastq format")
-#        ),
-    
     ModuleNode(
-        "index_rsem_reference",
-        NGS.ReferenceGenome, RSEMIndexedGenome,
-        OptionDef(
-            "assembly", default="genome",
-            help="Optional name for the genome assembly, e.g. hg19",
-            ),
+        "is_rsemreference_rsem_indexed",
+        RSEMReferenceGenome, RSEMReferenceGenome,
+        Constraint("rsem_indexed", MUST_BE, "unknown"),
+        Consequence("rsem_indexed", BASED_ON_DATA, ["no", "yes"]),
+        ),
+    ModuleNode(
+        "is_rsemreference_bowtie1_indexed",
+        RSEMReferenceGenome, RSEMReferenceGenome,
+        Constraint("bowtie1_indexed", MUST_BE, "unknown"),
+        Consequence("bowtie1_indexed", BASED_ON_DATA, ["no", "yes"]),
+        ),
+    ModuleNode(
+        "is_rsemreference_bowtie2_indexed",
+        RSEMReferenceGenome, RSEMReferenceGenome,
+        Constraint("bowtie2_indexed", MUST_BE, "unknown"),
+        Consequence("bowtie2_indexed", BASED_ON_DATA, ["no", "yes"]),
+        ),
+    ModuleNode(
+        "index_reference_rsem",
+        RSEMReferenceGenome, RSEMReferenceGenome,
         OptionDef(
             "gtf_file", 
             help="Gene annotations in GTF format.",
             ),
+        Constraint("rsem_indexed", MUST_BE, "no"),
+        Consequence("rsem_indexed", SET_TO, "yes"),
+        Constraint("bowtie1_indexed", MUST_BE, "no"),
+        Consequence("bowtie1_indexed", SET_TO, "yes"),
+        Constraint("bowtie2_indexed", MUST_BE, "no"),
+        Consequence("bowtie2_indexed", SET_TO, "yes"),
         ),
     
     ModuleNode(
         "normalize_with_rsem",
-        [NGS.FastqFolder, NGS.SampleGroupFile, RSEMIndexedGenome],
+        [NGS.FastqFolder, NGS.SampleGroupFile, RSEMReferenceGenome],
         #GXP.UnprocessedSignalFile,
         RSEMResults,
-        Constraint(
-            "orientation", CAN_BE_ANY_OF, NGS.ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint(
+            "orientation", CAN_BE_ANY_OF, NGS.ORIENTATION_NOT_UNKNOWN, 1),
+        Constraint("rsem_indexed", MUST_BE, "yes", 2),
         
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Constraint("contents", SAME_AS, 0, 1),

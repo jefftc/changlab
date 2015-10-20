@@ -8,24 +8,25 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
+        from genomicode import shell
+        from genomicode import filelib
+        from genomicode import alignlib
         from Betsy import module_utils
 
         fastq_node, sample_node, reference_node = antecedents
-        module_utils.safe_mkdir(out_path)
-
         fastq_path = fastq_node.identifier
-        reference_path = reference_node.identifier
+        ref = alignlib.create_reference_genome(reference_node.identifier)
+        filelib.safe_mkdir(out_path)
 
         assert os.path.exists(fastq_path)
-        assert os.path.exists(reference_path)
+        assert os.path.exists(ref.fasta_file_full)
         assert os.path.isdir(fastq_path)
-        assert os.path.isdir(reference_path)
 
         # With low alignment percentages, might want to play around with:
         # insert size
         # maximum mismatch
 
-        reference_genome = module_utils.find_bowtie1_reference(reference_path)
+        #reference_genome = module_utils.find_bowtie1_reference(reference_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -45,6 +46,7 @@ class Module(AbstractModule):
         # Generate bowtie1 commands for each of the files.
         attr2orient = {
             "single" : None,
+            "paired" : None,
             "paired_ff" : "ff",
             "paired_fr" : "fr",
             "paired_rf" : "rf",
@@ -52,24 +54,24 @@ class Module(AbstractModule):
         x = sample_node.data.attributes["orientation"]
         orientation = attr2orient[x]
 
-        sq = module_utils.shellquote
+        sq = shell.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, sam_filename, log_filename = x
             nc = max(1, num_cores/len(jobs))
-            x = module_utils.make_bowtie1_command(
-                reference_genome, sam_filename, pair1, fastq_file2=pair2,
+            x = alignlib.make_bowtie1_command(
+                ref.fasta_file_full, sam_filename, pair1, fastq_file2=pair2,
                 orientation=orientation, num_threads=nc)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
-        module_utils.run_parallel(commands, max_procs=num_cores)
+        shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:
             sample, pair1, pair2, sam_filename, log_filename = x
             # Make sure sam file created.
-            assert module_utils.exists_nz(sam_filename), \
+            assert filelib.exists_nz(sam_filename), \
                    "Missing: %s" % sam_filename
             # Make sure there are some alignments.
             x = open(log_filename).read()
