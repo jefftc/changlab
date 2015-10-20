@@ -149,12 +149,15 @@ def find_header(MATRIX, category):
     return None
 
 def _hash_chipname(filename):
-    # RG_U34A_annot.csv.gz           RG_U34A
-    # Rat230_2.na26.annot.csv.gz     Rat230_2
-    # MoEx_1_0_st_v1.1.mm9.probeset  MoEx_1_0_st_v1
+    # RG_U34A_annot.csv.gz                   RG_U34A
+    # Rat230_2.na26.annot.csv.gz             Rat230_2
+    # MoEx_1_0_st_v1.1.mm9.probeset          MoEx_1_0_st_v1  [151015 no v1?]
+    # HuGene-2_0-st-v1.na35.hg19.probeset    HuGene_2_0_st
+    # HuGene-2_0-st-v1.na35.hg19.transcript  HuGene_2_0_st
     REMOVE = [
         ".gz", ".csv", ".annot", "_annot",
-        ".mm9", ".probeset", ".1", ".hg19",
+        ".mm9", ".probeset", ".transcript", ".1", ".hg19",
+        "-v1",
         ]
     x = os.path.split(filename)[1]
     for r in REMOVE:

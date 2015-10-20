@@ -652,6 +652,11 @@ def get_color_scheme_fn(name):
         "genepattern" : colorlib.broad_colors,
         "genespring" : colorlib.genespring_colors,
         "yahoo" : colorlib.yahoo_weather_colors,
+        "brewer-prgn-div" : colorlib.brewer_prgn_div,
+        "brewer-rdbu-div" : colorlib.brewer_rdbu_div,
+        "brewer-rdylbu-div" : colorlib.brewer_rdylbu_div,
+        "brewer-rdylgn-div" : colorlib.brewer_rdylgn_div,
+        "brewer-spectral-div" : colorlib.brewer_spectral_div,
         }
     assert name in scheme2fn, "Unknown color scheme: %s" % name
     color_fn = scheme2fn[name]
@@ -1834,8 +1839,10 @@ def main():
         "red", "white", "red-green", "red-green-soft", "red-blue-soft",
         "blue-yellow", "matlab", "bild", "genepattern", "genespring",
         "yahoo",
+        "brewer-prgn-div", "brewer-rdbu-div", "brewer-rdylbu-div",
+        "brewer-rdylgn-div", "brewer-spectral-div",
         ]
-    DEFAULT_COLOR_SCHEME = "bild"
+    DEFAULT_COLOR_SCHEME = "brewer-rdylbu-div"
     assert DEFAULT_COLOR_SCHEME in COLOR_SCHEMES
 
     group = OptionGroup(parser, "Heatmap")

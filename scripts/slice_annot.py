@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 # Functions:
-# read_annot
-# write_annot
-#
 # parse_indexes
 #
 # indexes_matrix
@@ -34,106 +31,7 @@
 # subtract_two_annots
 # divide_two_annots
 # divide_many_annots
-#
-# _replace_headers
-
-import os
-import sys
-
-
-# TODO: use implementation in genomicode
-class AnnotationMatrix:
-    def __init__(self, headers, headers_h, header2annots):
-        # headers is a list of the original headers.
-        # headers_h are the headers, hashed to ensure uniqueness.
-        # headers2annots is a dictionary of hashed headers to the list
-        # of annotations.
-        assert headers
-        assert headers_h
-        assert len(headers) == len(headers_h)
-        assert sorted(headers_h) == sorted(header2annots)
-        for x in headers_h[1:]:
-            assert len(header2annots[x]) == len(header2annots[headers_h[0]])
-            
-        self.headers = headers[:]
-        self.headers_h = headers_h[:]
-        self.header2annots = header2annots.copy()
-    def num_headers(self):
-        return len(self.headers)
-    def num_annots(self):
-        if not self.headers_h:
-            return 0
-        h = self.headers_h[0]
-        return len(self.header2annots[h])
-    def copy(self):
-        return AnnotationMatrix(
-            self.headers, self.headers_h, self.header2annots)
-
-
-def _hash_headers_unique(headers):
-    # Make sure the headers in all_headers is unique.
-    header2I = {}  # header -> list of indexes
-    for i, header in enumerate(headers):
-        if header not in header2I:
-            header2I[header] = []
-        header2I[header].append(i)
-
-    nodup = headers[:]
-    for (header, I) in header2I.iteritems():
-        if len(I) < 2:
-            continue
-        for i in range(len(I)):
-            nodup[I[i]] = "%s_%d" % (header, i+1)
-    return nodup
-
-
-def read_annot(filename, is_csv):
-    # Everything are strings.  No numeric conversion.
-    import re
-    from genomicode import genesetlib
-
-    delimiter = "\t"
-    if is_csv:
-        delimiter = ","
-
-    all_headers, all_annots = [], []
-    for x in genesetlib.read_tdf(
-        filename, preserve_spaces=True, allow_duplicates=True,
-        delimiter=delimiter):
-        name, description, annots = x
-
-        # Hack: Some files contain special characters, which mess up
-        # alignment. Fix this here.
-        # na\xc3\xafve-WIBR3.5 hESC
-        # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
-        annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
-
-        all_headers.append(name)
-        all_annots.append(annots)
-
-    headers_h = _hash_headers_unique(all_headers)
-    header2annots = {}
-    for (header_h, annots) in zip(headers_h, all_annots):
-        header2annots[header_h] = annots
-    return AnnotationMatrix(all_headers, headers_h, header2annots)
-
-
-def write_annot(handle_or_file, annot_matrix):
-    from genomicode import jmath
-    matrix = []
-    for i, header_h in enumerate(annot_matrix.headers_h):
-        header = annot_matrix.headers[i]
-        annots = annot_matrix.header2annots[header_h]
-        x = [header] + annots
-        matrix.append(x)
-    # Transpose the matrix.
-    matrix = jmath.transpose(matrix)
-
-    handle = handle_or_file
-    if type(handle) is type(""):
-        handle = open(handle, 'w')
-    for x in matrix:
-        print >>handle, "\t".join(map(str, x))
+# average_same_header
 
 
 def parse_indexes(MATRIX, indexes_str):
@@ -164,28 +62,25 @@ def parse_indexes(MATRIX, indexes_str):
 
 
 def indexes_matrix(MATRIX, indexes_list):
-    # indexes is a list of strings indicating indexes.
+    # indexes is a list of strings indicating indexes.  Parse this and
+    # return a submatrix consisting of just those indexes.
+    from genomicode import AnnotationMatrix
+    
     if not indexes_list:
         return MATRIX
     I = []
     for indexes in indexes_list:
         x = parse_indexes(MATRIX, indexes)
         I.extend(x)
-
-    for i in I:
-        assert i >= 0 and i < len(MATRIX.headers_h)
-    headers = [MATRIX.headers[i] for i in I]
-    headers_h = [MATRIX.headers_h[i] for i in I]
-    header2annots = {}
-    for header_h in headers_h:
-        header2annots[header_h] = MATRIX.header2annots[header_h]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix.colslice(MATRIX, I)
+    return x
 
 
 def select_cols_substr(MATRIX, cols_substr):
     # cols_substr is a list of the substrings of the headers to keep.
     if not cols_substr:
         return MATRIX
+    from genomicode import AnnotationMatrix
     
     I = []
     for i, h in enumerate(MATRIX.headers):
@@ -203,7 +98,7 @@ def select_cols_substr(MATRIX, cols_substr):
     header2annots = {}
     for header_h in headers_h:
         header2annots[header_h] = MATRIX.header2annots[header_h]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 
 
 def flip01_matrix(MATRIX, indexes):
@@ -229,38 +124,43 @@ def reorder_headers_alphabetical(MATRIX, reorder_headers):
     if not reorder_headers:
         return MATRIX
     from genomicode import jmath
+    from genomicode import AnnotationMatrix
 
     O = jmath.order(MATRIX.headers)
     headers = [MATRIX.headers[i] for i in O]
     headers_h = [MATRIX.headers_h[i] for i in O]
-    M = AnnotationMatrix(headers, headers_h, MATRIX.header2annots)
+    M = AnnotationMatrix.AnnotationMatrix(
+        headers, headers_h, MATRIX.header2annots)
     return M
 
 
 def upper_headers(MATRIX, upper_headers):
     if not upper_headers:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     # Convert to the upper case name.  Need to be careful because may
     # cause duplicates.
     headers = [x.upper() for x in MATRIX.headers]
-    return _replace_headers(MATRIX, headers)
+    return AnnotationMatrix.replace_headers(MATRIX, headers)
 
 
 def hash_headers(MATRIX, hash_headers):
     if not hash_headers:
         return MATRIX
     from genomicode import hashlib
+    from genomicode import AnnotationMatrix
 
     # Hash each name.  Need to be careful because may cause
     # duplicates.
     headers = [hashlib.hash_var(x) for x in MATRIX.headers]
-    return _replace_headers(MATRIX, headers)
+    return AnnotationMatrix.replace_headers(MATRIX, headers)
 
 
 def rename_duplicate_headers(MATRIX, rename_dups):
     if not rename_dups:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     name2I = {}  # name -> list of indexes
     for i, name in enumerate(MATRIX.headers):
@@ -275,21 +175,15 @@ def rename_duplicate_headers(MATRIX, rename_dups):
         for i in range(len(I)):
             nodup[I[i]] = "%s (%d)" % (name, i+1)
 
-    headers = nodup
-    headers_h = _hash_headers_unique(headers)
-    header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix.replace_headers(MATRIX, nodup)
+    return x
     
 
 def rename_header(MATRIX, rename_list):
     # rename_list is list of strings in format of: <from>,<to>.
     if not rename_list:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     rename_all = []  # list of (from_str, to_str)
     for rename_str in rename_list:
@@ -310,20 +204,15 @@ def rename_header(MATRIX, rename_list):
 
     # Convert to the new names.
     headers = [convert.get(x, x) for x in MATRIX.headers]
-    headers_h = _hash_headers_unique(headers)
-    header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix.replace_headers(MATRIX, headers)
+    return x
         
 
 def rename_header_i(MATRIX, rename_list):
     # rename_list is list of strings in format of: <index>,<to>.
     if not rename_list:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     rename_all = []  # list of (0-based index, to_str)
     for rename_str in rename_list:
@@ -339,20 +228,15 @@ def rename_header_i(MATRIX, rename_list):
     headers = MATRIX.headers[:]
     for index, to_str in rename_all:
         headers[index] = to_str
-    headers_h = _hash_headers_unique(headers)
-    header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix.replace_headers(MATRIX, headers)
+    return x
 
 
 def replace_header(MATRIX, replace_list):
     # replace_list is list of strings in format of: <from>,<to>.
     if not replace_list:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     replace_all = []  # list of (from_str, to_str)
     for replace_str in replace_list:
@@ -368,15 +252,8 @@ def replace_header(MATRIX, replace_list):
             x = headers[i]
             x = x.replace(from_str, to_str)
             headers[i] = x
-    headers_h = _hash_headers_unique(headers)
-    
-    header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix.replace_headers(MATRIX, headers)
+    return x
         
 
 def replace_header_re(MATRIX, replace_list):
@@ -385,6 +262,7 @@ def replace_header_re(MATRIX, replace_list):
 
     if not replace_list:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     replace_all = []  # list of (from_re_str, to_str)
     for replace_str in replace_list:
@@ -400,23 +278,18 @@ def replace_header_re(MATRIX, replace_list):
             x = headers[i]
             m = re.search(from_str, x)
             if m:
-                x = x.replace(m.group(0), to_str)
+                x = x[:m.start(0)] + to_str + x[m.end(0):]
+                #x = x.replace(m.group(0), to_str)
             headers[i] = x
-    headers_h = _hash_headers_unique(headers)
-    
-    header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix.replace_headers(MATRIX, headers)
+    return x
 
 
 def prepend_to_headers(MATRIX, prepend_to_headers):
     # prepend_to_headers is list of strings in format of: <indexes>;<prefix>.
     if not prepend_to_headers:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     prepend_all = []  # list of (list of 0-based indexes, prefix)
     for x in prepend_to_headers:
@@ -432,20 +305,15 @@ def prepend_to_headers(MATRIX, prepend_to_headers):
     for indexes, prefix in prepend_all:
         for i in indexes:
             headers[i] = "%s%s" % (prefix, headers[i])
-    headers_h = _hash_headers_unique(headers)
-    header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix.replace_headers(MATRIX, headers)
+    return x
     
 
 def add_column(MATRIX, add_column):
     # add_column is list of strings in format of: <index>,<header>,<default>.
     if not add_column:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     num_annots = None
     for annots in MATRIX.header2annots.itervalues():
@@ -483,7 +351,7 @@ def add_column(MATRIX, add_column):
             headers.append(header)
         else:
             raise AssertionError
-    headers_h = _hash_headers_unique(headers)
+    headers_h = AnnotationMatrix.uniquify_headers(headers)
 
     header2annots = {}
     for i_new, (which_one, i_old) in enumerate(h_indexes):
@@ -499,13 +367,14 @@ def add_column(MATRIX, add_column):
         else:
             raise AssertionError
 
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 
 
 def copy_column(MATRIX, copy_column):
     # copy_column is in format of: <index>,<new_header>.
     if not copy_column:
         return MATRIX
+    from genomicode import AnnotationMatrix
 
     x = copy_column.split(",", 1)
     assert len(x) == 2
@@ -528,7 +397,7 @@ def copy_column(MATRIX, copy_column):
             headers.append(new_header)
         else:
             raise AssertionError
-    headers_h = _hash_headers_unique(headers)
+    headers_h = AnnotationMatrix.uniquify_headers(headers)
 
     header2annots = {}
     for i_new, (which_one, i_old) in enumerate(h_indexes):
@@ -543,7 +412,7 @@ def copy_column(MATRIX, copy_column):
         else:
             raise AssertionError
 
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 
 
 def copy_value_if_empty(MATRIX, copy_values):
@@ -583,7 +452,6 @@ def copy_value_if_empty(MATRIX, copy_values):
 def copy_value_if_empty_header(MATRIX, copy_values):
     # copy_values is list of strings in format of: <dst header>,<src
     # 1>[,<src 2>...].
-    import itertools
     if not copy_values:
         return MATRIX
 
@@ -653,18 +521,22 @@ def copy_value_if_empty_same_header(MATRIX, copy_values):
 def strip_all_annots(MATRIX, strip):
     if not strip:
         return MATRIX
+    from genomicode import AnnotationMatrix
+    
     header2annots = {}
     for header_h, annots in MATRIX.header2annots.iteritems():
         annots = [x.strip() for x in annots]
         header2annots[header_h] = annots
-    return AnnotationMatrix(MATRIX.headers, MATRIX.headers_h, header2annots)
+    return AnnotationMatrix.AnnotationMatrix(
+        MATRIX.headers, MATRIX.headers_h, header2annots)
 
 
 def upper_annots(MATRIX, upper):
     if not upper:
         return MATRIX
-    I = parse_indexes(MATRIX, upper)
+    from genomicode import AnnotationMatrix
     
+    I = parse_indexes(MATRIX, upper)
     header2annots = MATRIX.header2annots.copy()
     for i in I:
         assert i >= 0 and i < len(MATRIX.headers_h)
@@ -672,14 +544,16 @@ def upper_annots(MATRIX, upper):
         annots = MATRIX.header2annots[header_h]
         annots = [x.upper() for x in annots]
         header2annots[header_h] = annots
-    return AnnotationMatrix(MATRIX.headers, MATRIX.headers_h, header2annots)
+    return AnnotationMatrix.AnnotationMatrix(
+        MATRIX.headers, MATRIX.headers_h, header2annots)
 
 
 def lower_annots(MATRIX, lower):
     if not lower:
         return MATRIX
-    I = parse_indexes(MATRIX, lower)
+    from genomicode import AnnotationMatrix
     
+    I = parse_indexes(MATRIX, lower)    
     header2annots = MATRIX.header2annots.copy()
     for i in I:
         assert i >= 0 and i < len(MATRIX.headers_h)
@@ -687,7 +561,8 @@ def lower_annots(MATRIX, lower):
         annots = MATRIX.header2annots[header_h]
         annots = [x.lower() for x in annots]
         header2annots[header_h] = annots
-    return AnnotationMatrix(MATRIX.headers, MATRIX.headers_h, header2annots)
+    return AnnotationMatrix.AnnotationMatrix(
+        MATRIX.headers, MATRIX.headers_h, header2annots)
 
 
 def replace_annot(MATRIX, replace_annot):
@@ -856,8 +731,6 @@ def _calc_two_annots(MATRIX, calc_annots, calc_fn):
 
 def all_same(MATRIX, all_same):
     # format: <indexes 1-based>;<dest index>
-    from genomicode import jmath
-    
     if not all_same:
         return MATRIX
 
@@ -1003,20 +876,46 @@ def divide_many_annots(MATRIX, divide_annots):
     return MATRIX
 
 
-def _replace_headers(MATRIX, headers):
-    headers_h = _hash_headers_unique(headers)
+def average_same_header(MATRIX, average):
+    if not average:
+        return MATRIX
+    from genomicode import jmath
+    from genomicode import AnnotationMatrix
+
+    # Make a list of all the duplicate headers.
+    header2I = {}  # header -> list of indexes
+    for i, header in enumerate(MATRIX.headers):
+        if header not in header2I:
+            header2I[header] = []
+        header2I[header].append(i)
+
+    # Now make the new matrix.
+    headers = []
     header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
-    
+    for header in MATRIX.headers:
+        if header in header2annots:
+            continue
+        I = header2I[header]
+        MATRIX_I = []
+        for i in I:
+            h = MATRIX.headers_h[i]
+            x = MATRIX.header2annots[h]
+            MATRIX_I.append(x)
+        if len(MATRIX_I) == 1:
+            x = MATRIX_I[0]
+        else:
+            for i in range(len(MATRIX_I)):
+                MATRIX_I[i] = [float(x) for x in MATRIX_I[i]]
+            x = jmath.mean(MATRIX_I, byrow=0)
+        headers.append(header)
+        header2annots[header] = x
+    return AnnotationMatrix.AnnotationMatrix(headers, headers, header2annots)
+
 
 def main():
+    import sys
     import argparse
-    import arrayio
+    from genomicode import AnnotationMatrix
 
     parser = argparse.ArgumentParser(
         description="Perform operations on an annotation file.")
@@ -1030,7 +929,6 @@ def main():
         "--indexes", "--cut", dest="indexes", default=[], action="append",
         help="Select only these indexes from the file e.g. 1-5,8 "
         "(1-based, inclusive).  (MULTI)")
-
     group.add_argument(
         "--select_cols_substr", default=[], action="append",
         help="Select the columns whose header contains this substring.  "
@@ -1162,12 +1060,16 @@ def main():
         help="Divide a list of columns (in place) by another.  "
         "Format: <indexes numerator>;<index denominator>.  "
         "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
+        "--average_same_header", action="store_true",
+        help="Average the annotations that have the same header.")
+    
 
     args = parser.parse_args()
     assert len(args.filename) == 1
 
     # Read the matrix.
-    MATRIX = read_annot(args.filename[0], args.read_as_csv)
+    MATRIX = AnnotationMatrix.read(args.filename[0], args.read_as_csv)
 
     # Perform operations.
     MATRIX = indexes_matrix(MATRIX, args.indexes)
@@ -1210,9 +1112,10 @@ def main():
     MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
     MATRIX = divide_many_annots(MATRIX, args.divide_many_annots)
+    MATRIX = average_same_header(MATRIX, args.average_same_header)
 
     # Write the matrix back out.
-    write_annot(sys.stdout, MATRIX)
+    AnnotationMatrix.write(sys.stdout, MATRIX)
 
 if __name__ == '__main__':
     main()

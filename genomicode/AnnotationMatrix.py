@@ -7,8 +7,14 @@ Classes:
 AnnotationMatrix
 
 Functions:
+uniquify_headers
+replace_headers
+
+colslice   Slice the columns based on a list of indexes.
+
 read
 write
+
 
 """
 
@@ -28,6 +34,7 @@ class AnnotationMatrix:
         self.headers_h = headers_h[:]
         self.header2annots = header2annots.copy()
     def get_annots(self, header):
+        # Return a list of the annotations for this header.
         I = [i for i in range(len(self.headers)) if self.headers[i] == header]
         assert I, "header not found: %s" % header
         assert len(I) == 1, "Multiple headers match: %s" % header
@@ -70,7 +77,7 @@ def read(filename, is_csv=False):
         all_headers.append(name)
         all_annots.append(annots)
 
-    headers_h = _hash_headers_unique(all_headers)
+    headers_h = uniquify_headers(all_headers)
     header2annots = {}
     for (header_h, annots) in zip(headers_h, all_annots):
         header2annots[header_h] = annots
@@ -95,8 +102,19 @@ def write(handle_or_file, annot_matrix):
         print >>handle, "\t".join(map(str, x))
 
 
-def _hash_headers_unique(headers):
-    # Make sure the headers in all_headers is unique.
+def colslice(MATRIX, I):
+    for i in I:
+        assert i >= 0 and i < len(MATRIX.headers_h)
+    headers = [MATRIX.headers[i] for i in I]
+    headers_h = [MATRIX.headers_h[i] for i in I]
+    header2annots = {}
+    for header_h in headers_h:
+        header2annots[header_h] = MATRIX.header2annots[header_h]
+    return AnnotationMatrix(headers, headers_h, header2annots)
+
+
+def uniquify_headers(headers):
+    # Return a parallel list of unique headers.
     header2I = {}  # header -> list of indexes
     for i, header in enumerate(headers):
         if header not in header2I:
@@ -110,3 +128,16 @@ def _hash_headers_unique(headers):
         for i in range(len(I)):
             nodup[I[i]] = "%s_%d" % (header, i+1)
     return nodup
+
+
+def replace_headers(MATRIX, headers):
+    # Return a new AnnotationMatrix with these headers.
+    assert len(headers) == len(MATRIX.headers)
+    headers_h = uniquify_headers(headers)
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    return AnnotationMatrix(headers, headers_h, header2annots)

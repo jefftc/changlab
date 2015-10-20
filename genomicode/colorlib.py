@@ -16,6 +16,13 @@ broad_colors
 genespring_colors
 yahoo_weather_colors
 
+brewer_prgn_div
+brewer_rdbu_div
+brewer_rdylbu_div
+brewer_rdylgn_div
+brewer_spectral_div
+
+
 
 choose_contrasting_color
 choose_contrasting_bw
@@ -200,6 +207,7 @@ def broad_colors(n):
     x = _colors(color_matrix, n)
     return x
 
+
 def genespring_colors(n):
     color_matrix = [
         (0.0,   0,   0, 255),
@@ -225,6 +233,97 @@ def yahoo_weather_colors(n):
         ]
     x = _colors(color_matrix, n)
     return x
+
+
+def brewer_prgn_div(n):
+    color_matrix = [
+        (1.00, 61, 1, 80),
+        (0.90, 119, 44, 135),
+        (0.80, 154, 112, 171),
+        (0.70, 195, 166, 208),
+        (0.60, 232, 212, 233),
+        (0.50, 248, 248, 248),
+        (0.40, 217, 241, 211),
+        (0.30, 169, 221, 162),
+        (0.20, 79, 174, 106),
+        (0.10, 26, 128, 63),
+        (0.00, 0, 69, 30),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+    
+
+def brewer_rdbu_div(n):
+    color_matrix = [
+        (1.00, 103, 0, 28),
+        (0.90, 177, 20, 42),
+        (0.80, 215, 96, 78),
+        (0.70, 245, 165, 130),
+        (0.60, 253, 220, 200),
+        (0.50, 248, 248, 248),
+        (0.40, 210, 230, 240),
+        (0.30, 146, 198, 223),
+        (0.20, 67, 147, 197),
+        (0.10, 33, 102, 173),
+        (0.00, 6, 46, 95),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+    
+
+def brewer_rdylbu_div(n):
+    color_matrix = [
+        (1.00, 154, 1, 64),
+        (0.90, 216, 47, 39),
+        (0.80, 245, 107, 70),
+        (0.70, 254, 175, 100),
+        (0.60, 254, 226, 144),
+        (0.50, 254, 255, 182),
+        (0.40, 227, 245, 249),
+        (0.30, 171, 217, 235),
+        (0.20, 116, 174, 209),
+        (0.10, 69, 118, 181),
+        (0.00, 44, 52, 147),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+
+
+def brewer_rdylgn_div(n):
+    color_matrix = [
+        (1.00, 157, 1, 55),
+        (0.90, 216, 47, 39),
+        (0.80, 245, 107, 70),
+        (0.70, 254, 175, 100),
+        (0.60, 254, 225, 139),
+        (0.50, 254, 255, 192),
+        (0.40, 218, 240, 140),
+        (0.30, 164, 217, 106),
+        (0.20, 103, 190, 99),
+        (0.10, 26, 152, 76),
+        (0.00, 10, 111, 54),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+
+
+def brewer_spectral_div(n):
+    color_matrix = [
+        (1.00, 150, 0, 69),
+        (0.90, 213, 62, 80),
+        (0.80, 245, 107, 70),
+        (0.70, 254, 175, 100),
+        (0.60, 254, 225, 139),
+        (0.50, 254, 255, 192),
+        (0.40, 231, 246, 152),
+        (0.30, 169, 221, 163),
+        (0.20, 102, 195, 165),
+        (0.10, 61, 143, 194),
+        (0.00, 102, 81, 164),
+        ]
+    x = _colors(color_matrix, n)
+    return x
+
 
 def rgb2hex(c):
     # red, green, blue values from 0-1.

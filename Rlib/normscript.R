@@ -147,8 +147,12 @@ DESCRIPTION.H <- "Target.Description"
 LLID.H <- "LocusLink"
 SYMBOL.H <- "Gene.Symbol"
 
+if(!any(names(affyannot) == PSID.H))
+  PSID.H <- "probeset_id"
 if(!any(names(affyannot) == LLID.H))
   LLID.H <- "Entrez.Gene"
+if(!any(names(affyannot) == LLID.H))
+  LLID.H <- "geneid"
 
 if(!any(names(affyannot) == PSID.H))
   stop("Cannot find probe set ID")

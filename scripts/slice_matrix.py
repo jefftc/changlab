@@ -11,6 +11,8 @@
 # calc_mean
 # calc_sd
 # calc_range
+# calc_pca
+# average_row_indexes
 # group_expression_by_samplename
 #
 # parse_indexes
@@ -94,6 +96,7 @@
 # calc_cpm
 # set_min_value
 # normalize_rows_to
+# normalize_rows_sub
 # center_genes_mean
 # center_genes_median
 # normalize_genes_var
@@ -436,6 +439,33 @@ def calc_pca_rows(MATRIX, calc_pca_rows):
         row_order=row_order, col_order=col_order, synonyms=synonyms)
     return MATRIX_pca
 
+
+def average_row_indexes(MATRIX, indexes, count_headers):
+    if not indexes:
+        return MATRIX
+    from genomicode import Matrix
+    from genomicode import jmath
+    
+    I = parse_indexes(MATRIX, True, indexes, count_headers)
+    X = MATRIX.slice(I, None)
+    average = jmath.mean(X, byrow=0)
+
+    # Add average to the Matrix.
+    row_order = MATRIX._row_order[:]
+    col_order = MATRIX._col_order[:]
+    row_names = MATRIX._row_names.copy()
+    col_names = MATRIX._col_names.copy()
+    synonyms = MATRIX._synonyms.copy()
+
+    X = MATRIX._X[:]
+    X.insert(0, average)
+    for n, values in row_names.iteritems():
+        values.insert(0, "AVERAGE")
+    M = Matrix.InMemoryMatrix(
+        X, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return M
+    
 
 def group_expression_by_samplename(MATRIX, group):
     from genomicode import jmath
@@ -2540,6 +2570,23 @@ def normalize_rows_to(MATRIX, row_id):
     return MATRIX
 
 
+def normalize_rows_sub(MATRIX, row_id):
+    if row_id is None:
+        return MATRIX
+    I_row = parse_names(MATRIX, True, row_id)
+    assert I_row, "Row not found: %s" % row_id
+    assert len(I_row) == 1, "Row not unique: %s" % row_id
+    I_norm = I_row[0]
+    
+    MATRIX = MATRIX.matrix()
+    X = MATRIX._X
+    x_norm = X[I_norm][:]
+    for i in range(len(X)):
+        for j in range(len(X[i])):
+            X[i][j] = X[i][j] - x_norm[j]
+    return MATRIX
+
+
 def center_genes_mean(MATRIX, indexes):
     from genomicode import jmath
 
@@ -3072,6 +3119,14 @@ def main():
     group.add_argument(
         "--calc_pca_rows", action="store_true",
         help="Calculate the principal components of the rows.")
+
+    group.add_argument(
+        "--average_row_indexes", 
+        help="Take the average of multiple rows of the matrix.  "
+        "Add the mean as a new row in the matrix.  "
+        "Format: 1-50,75 (1-based, inclusive).  "
+        "Respects --row_indexes_include_headers.")
+    
     group.add_argument(
         "--group_expression_by_samplename",
         help="Make a Prism formatted column table by grouping together "
@@ -3141,7 +3196,12 @@ def main():
         help="Set the minimum value for this matrix.  Done before logging.")
     group.add_argument(
         "--normalize_rows_to", 
-        help="Normalize each row to the values in the specified row.  "
+        help="Normalize each row by dividing the values in a specified row.  "
+        "The argument to this flag should be an ID that uniquely specifies "
+        "the row to normalize to.")
+    group.add_argument(
+        "--normalize_rows_sub", 
+        help="Normalize each row by subtracting a specified row.  "
         "The argument to this flag should be an ID that uniquely specifies "
         "the row to normalize to.")
     
@@ -3530,6 +3590,8 @@ def main():
     MATRIX = calc_sd(MATRIX, args.calc_sd)
     MATRIX = calc_range(MATRIX, args.calc_range)
     MATRIX = calc_pca_rows(MATRIX, args.calc_pca_rows)
+    MATRIX = average_row_indexes(
+        MATRIX, args.average_row_indexes, args.row_indexes_include_headers)
     MATRIX = group_expression_by_samplename(
         MATRIX, args.group_expression_by_samplename)
 
@@ -3677,7 +3739,8 @@ def main():
     if args.min_value is not None:
         MATRIX._X = set_min_value(MATRIX._X, args.min_value)
     MATRIX = normalize_rows_to(MATRIX, args.normalize_rows_to)
-
+    MATRIX = normalize_rows_sub(MATRIX, args.normalize_rows_sub)
+    
     # Log transform, if requested.  Do before other changes to
     # expression values (quantile, center, normalize).
     if args.log_transform:
