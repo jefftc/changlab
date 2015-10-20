@@ -364,6 +364,7 @@ def print_diagnose(network, start_nodes, missing, outhandle=None):
 
 def plot_network(filename, network, user_options=None, highlight_node_ids=None,
                  verbose=False):
+    import sys
     from Betsy import bie3
 
     highlight_node_ids = highlight_node_ids or []
@@ -371,6 +372,7 @@ def plot_network(filename, network, user_options=None, highlight_node_ids=None,
     if filename is None:
         return
     print "Plotting network to %s." % filename
+    sys.stdout.flush()
     bie3.plot_network_gv(
         filename, network, options=user_options,
         highlight_node_ids=highlight_node_ids, verbose=verbose)
@@ -715,9 +717,13 @@ def main():
     parser.add_argument(
         "--save_failed_data", action="store_true",
         help="If a module failed, do not clean up its working files.")
+    #parser.add_argument(
+    #    "--cache_input_files", action="store_true",
+    #    help="Save a copy of the input files.")
     parser.add_argument(
-        "--cache_input_files", action="store_true",
-        help="Save a copy of the input files.")
+        "--dont_cache_input_files", action="store_true",
+        help="Don't save a copy of the input files.  "
+        "Helpful for very big files.")
 
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
@@ -780,7 +786,8 @@ def main():
     outtype, out_identifier, out_attributes = x
 
     args.clobber = True
-    assert args.num_cores > 0,'num_cores should be greater than 0'
+    #args.cache_input_files = True
+    assert args.num_cores > 0, "num_cores should be greater than 0"
     assert args.max_inputs > 0 and args.max_inputs < 20
     if args.inputs_complete or args.attrs_complete or args.run:
         if args.run:
@@ -827,7 +834,8 @@ def main():
             params[key] = value
         # Make sure the identifier is a full path since we'll be
         # changing directories.
-        identifier = os.path.realpath(identifier)
+        if identifier:
+            identifier = os.path.realpath(identifier)
         in_data = fn.input(**params)
         x = module_utils.IdentifiedDataNode(in_data, identifier)
         in_data_nodes.append(x)
@@ -861,7 +869,7 @@ def main():
     # Cache the files in the user's directory.  Don't depend on the
     # user keeping the file in the same place.  Needed for the first
     # module.
-    if args.cache_input_files:
+    if not args.dont_cache_input_files:
         print "Making a local copy of the input files."
         sys.stdout.flush()
         for i_data_node in in_data_nodes:
@@ -1062,6 +1070,7 @@ def main():
     ##     start_node_ids.extend(x)
 
     print "Making sure all required --mattr are provided..."
+    sys.stdout.flush()
     # Make sure all required mattr are provided.  This can only be run
     # after the final network is generated.
     modules = [
@@ -1069,8 +1078,12 @@ def main():
     opt2mods = get_required_option_names(modules)
     x = opt2mods.keys()
     x = [x for x in x if x not in user_options]
+    seen = {}
     for on in x:
         for mn in opt2mods[on]:
+            if (mn, on) in seen:
+                continue
+            seen[(mn, on)] = 1
             print 'Missing --mattr: %s requires attribute "%s".' % (mn, on)
     if x:
         plot_network(
@@ -1082,6 +1095,7 @@ def main():
 
     print "Success!  I have a network."
     print "The final network has %d nodes." % len(network.nodes)
+    sys.stdout.flush()
 
     #if args.network_png:
     #    print "Plotting network: %s." % args.network_png
@@ -1096,6 +1110,7 @@ def main():
     #    bie3.write_network(args.network_json, network)
 
     print "Looking for input files...."
+    sys.stdout.flush()
     missing = False
     for x in in_data_nodes:
         if not x.identifier:
@@ -1111,11 +1126,13 @@ def main():
             verbose=(not args.sparse_network_png))
         return
     print "all input files found."
+    sys.stdout.flush()
 
     if not args.run:
         print ("Please review the network to make sure the you agree with "
                "the analysis.")
         print "Add --run when ready to run network."
+        sys.stdout.flush()
         plot_network(
             args.network_png, network, user_options=user_options,
             highlight_node_ids=start_node_ids,
@@ -1123,6 +1140,7 @@ def main():
         return
 
     print "Running the analysis."
+    sys.stdout.flush()
     clean_up = not args.save_failed_data
     node_dict = output_file = None
     try:
@@ -1167,6 +1185,7 @@ def main():
 
 
     print "Saving results at %s." % args.output_file
+    sys.stdout.flush()
     reportlib.copy_file_or_path(output_file, args.output_file)
     ## # TODO: Use reportlib.copy_file_or_path.
     ## # Remove the previous files if they exist.

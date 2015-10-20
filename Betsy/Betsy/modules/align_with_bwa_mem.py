@@ -8,20 +8,18 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
+        from genomicode import shell
+        from genomicode import filelib
+        from genomicode import alignlib
         from Betsy import module_utils
 
-        fastq_node, group_node, index_node = antecedents
-        module_utils.safe_mkdir(out_path)
-
+        fastq_node, group_node, reference_node = antecedents
         fastq_path = fastq_node.identifier
-        index_path = index_node.identifier
-
         assert os.path.exists(fastq_path)
-        assert os.path.exists(index_path)
         assert os.path.isdir(fastq_path)
-        assert os.path.isdir(index_path)
-
-        reference_fa = module_utils.find_bwa_reference(index_path)
+        ref = alignlib.create_reference_genome(reference_node.identifier)
+        filelib.safe_mkdir(out_path)
+        #reference_fa = module_utils.find_bwa_reference(index_path)
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -49,22 +47,20 @@ class Module(AbstractModule):
         commands = []
         for x in jobs:
             sample, pair1, pair2, sam_filename, log_filename = x
-            x = module_utils.make_bwa_mem_command(
-                reference_fa, sam_filename, log_filename, pair1,
+            x = alignlib.make_bwa_mem_command(
+                ref.fasta_file_full, sam_filename, log_filename, pair1,
                 fastq_file2=pair2, num_threads=nc)
             commands.append(x)
 
-        module_utils.run_parallel(commands, max_procs=num_cores)
+        shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:
             sample, pair1, pair2, sam_filename, log_filename = x
-            assert module_utils.exists_nz(sam_filename), \
+            assert filelib.exists_nz(sam_filename), \
                    "Missing: %s" % sam_filename
             # TODO: Should also check log file.
 
         
     def name_outfile(self, antecedents, user_options):
         return "alignments.bwa_mem"
-
-

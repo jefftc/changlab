@@ -19,13 +19,16 @@ all_modules = [
         "run_MACS",
         [NGS.BamFolder, NGS.SampleGroupFile], MACSResults,
         OptionDef(
+            "macs_genome", 
+            help="Genome.  Must be: hs, mm, ce, or dm.",
+            ),
+        OptionDef(
             "treatment_sample", 
             help="Comma-separated names the samples to analyze.",
             ),
         OptionDef(
             "control_sample", default="",
-            help="(OPTIONAL) Comma-separated names of the samples for "
-            "background.",
+            help="(OPTIONAL) Name of the sample for background.",
             ),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         ),

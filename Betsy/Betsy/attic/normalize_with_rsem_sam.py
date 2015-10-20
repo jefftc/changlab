@@ -7,7 +7,6 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
-        from Betsy import module_utils
         data_node, group_node = antecedents
         group_dict = process_group_info(group_node.identifier)
         preprocess_multiple_sample(

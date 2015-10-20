@@ -9,8 +9,12 @@ class Module(AbstractModule):
         out_path):
         import os
         import subprocess
+        from genomicode import filelib
+        from genomicode import shell
         from Betsy import module_utils
         from genomicode import config
+
+        raise NotImplementedError
 
         module_utils.safe_mkdir(out_path)
         in_path = in_data.identifier

@@ -13,7 +13,7 @@ class Module(AbstractModule):
         from Betsy import module_utils
         in_data = antecedents
         GATK_path = config.Gatk
-        GATK_BIN = module_utils.which(GATK_path)
+        #GATK_BIN = module_utils.which(GATK_path)
         assert os.path.exists(GATK_path), ('cannot find the %s' % GATK_path)
         species = out_attributes['ref']
         if species == 'hg18':

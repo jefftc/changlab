@@ -9,7 +9,7 @@ class Module(AbstractModule):
         outfile):
         import os
         from genomicode import parselib
-        from Betsy import module_utils
+        from genomicode import alignlib
 
         import summarize_bowtie1_alignment
 
@@ -24,7 +24,7 @@ class Module(AbstractModule):
             f, e = os.path.splitext(file_)
             assert e == ".log"
             sample = f
-            results[sample] = module_utils.parse_bowtie2_output(filename)
+            results[sample] = alignlib.parse_bowtie2_output(filename)
         all_samples = sorted(results)
 
         is_paired = False

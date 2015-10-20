@@ -10,7 +10,8 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import parselib
-        from Betsy import module_utils
+        from genomicode import alignlib
+        #from Betsy import module_utils
 
         log_filenames = _find_output_logs(in_data.identifier)
         assert log_filenames
@@ -22,7 +23,7 @@ class Module(AbstractModule):
             f, e = os.path.splitext(file_)
             assert e == ".log"
             sample = f
-            results[sample] = module_utils.parse_bowtie1_output(filename)
+            results[sample] = alignlib.parse_bowtie1_output(filename)
 
         # Make table where the rows are the samples and the columns
         # are the statistics.

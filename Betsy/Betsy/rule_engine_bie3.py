@@ -114,8 +114,8 @@ def run_pipeline(
             assert len(node.in_datatypes) == len(antecedent_ids)
             x = run_module(
                 network, pipeline, node_id, antecedent_ids,
-                user_attributes, user_options, 
-                pool, user, job_name, clean_up=clean_up, num_cores=num_cores)
+                user_options, pool, user, job_name, clean_up=clean_up,
+                num_cores=num_cores)
             if x is None:
                 # Can happen if this module has already been run.  It
                 # might've gotten added to the stack because there are
@@ -172,14 +172,12 @@ def run_pipeline(
 
 
 def run_module(
-    network, pipeline, module_id, input_ids, user_attributes,
+    network, pipeline, module_id, input_ids, 
     all_user_options, pool, user, job_name='', clean_up=True, num_cores=8):
     # Return tuple of (IdentifiedDataNode, node_id) for the node that
     # was created.  Returns None if this module fails (no compatible
     # output nodes, or all output nodes already generated).
 
-    # TODO: Remove user_attributes.  Used in the generation of the
-    # network.  Not necessary anymore.
     import os
     import sys
     import time
@@ -187,7 +185,8 @@ def run_module(
     import shutil
     import logging
     import random
-    
+
+    from genomicode import filelib
     from Betsy import config
     from Betsy import module_utils
     from Betsy import bie3
@@ -300,7 +299,7 @@ def run_module(
         out_data_node, full_outfile)
 
     # Check if this has already been run.
-    if os.path.exists(os.path.join(result_dir, 'stdout.txt')):
+    if _is_module_output_complete(result_dir):
         filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
         assert os.path.exists(filename)
         params = _read_parameter_file(filename)
@@ -341,7 +340,7 @@ def run_module(
         end_time = time.localtime()
 
         # Write stdout.txt to indicate success.
-        assert module_utils.exists_nz(temp_outfile), "no file generated"
+        assert filelib.fp_exists_nz(temp_outfile), "no file generated"
         success_file = os.path.join(temp_dir, 'stdout.txt')
         open(success_file, 'w').write('success\n')
 
@@ -380,6 +379,33 @@ def run_module(
                 shutil.rmtree(temp_dir)
 
     return out_identified_data_node, next_id
+
+
+def _is_module_output_complete(path):
+    # Return a True or False indicating whether path contains the
+    # complete results of a previously run module.
+    import os
+
+    if not os.path.exists(path):
+        return False
+
+    # Make sure "stdout.txt" exists.
+    x = os.path.join(path, "stdout.txt")
+    if not os.path.exists(x):
+        return False
+    # Make sure BETSY_PARAMETER_FILE exists.
+    x = os.path.join(path, BETSY_PARAMETER_FILE)
+    if not os.path.exists(x):
+        return False
+    # Make sure no broken symlinks.
+    for x in os.walk(path, followlinks=True):
+        dirpath, dirnames, filenames = x
+        for x in dirnames + filenames:
+            x = os.path.join(dirpath, x)
+            # Returns False for broken links.
+            if not os.path.exists(x):
+                return False
+    return True
 
 
 def _get_available_input_combinations(

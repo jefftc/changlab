@@ -1,5 +1,6 @@
 from Module import AbstractModule
 
+
 class Module(AbstractModule):
     def __init__(self):
         AbstractModule.__init__(self)
@@ -8,13 +9,14 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        #from genomicode import parselib
         import math
+        
+        from genomicode import shell
         from genomicode import filelib
-        from Betsy import module_utils
+        from genomicode import ngslib
 
         bam_node, reference_node = antecedents
-        module_utils.safe_mkdir(out_path)
+        filelib.safe_mkdir(out_path)
 
         bam_path = bam_node.identifier
         reference_file = reference_node.identifier
@@ -44,23 +46,24 @@ class Module(AbstractModule):
         commands = []
         for x in jobs:
             sample, bam_filename, cov_filename = x
-            x = _make_bedtools_command(
+            x = ngslib.make_bedtools_genomecov_command(
                 bam_filename, reference_file, cov_filename)
             commands.append(x)
 
-        module_utils.run_parallel(commands, max_procs=num_cores)
+        shell.run_parallel(commands, max_procs=num_cores)
         
         # Make sure the analysis completed successfully.
         for x in jobs:
             sample, bam_filename, cov_filename = x
-            assert module_utils.exists_nz(cov_filename), \
+            assert filelib.exists_nz(cov_filename), \
                    "Missing: %s" % cov_filename
 
         results = {}  # sample -> bedtools results
         for x in jobs:
             sample, bam_filename, cov_filename = x
             assert sample not in results
-            results[sample] = _parse_genomecov_results(cov_filename)
+            results[sample] = ngslib.parse_bedtools_genomecov_results(
+                cov_filename)
 
         min_coverage = user_options.get("ignore_coverage_below")
         if min_coverage == "":
@@ -118,7 +121,7 @@ class Module(AbstractModule):
             print >>handle, "\t".join(x)
         handle.close()
 
-        sq = module_utils.shellquote
+        sq = shell.quote
         os.system("txt2xls -b %s > %s" % (sq(TXT_FILE), sq(XLS_FILE)))
             
         # TODO: 
@@ -127,65 +130,3 @@ class Module(AbstractModule):
         
     def name_outfile(self, antecedents, user_options):
         return "trimmomatic_summary.xls"
-
-
-def _make_bedtools_coverage_command(
-    bam_filename, features_bed, cov_filename):
-    from genomicode import config
-    from Betsy import module_utils
-
-    # XXX Generates a histogram of the counts for each read depth.
-    # bedtools coverage [OPTIONS] -abam <align.bam> -b <features.bed>
-    bedtools = module_utils.which_assert(config.bedtools)
-    assert os.path.exists(bam_filename)
-    assert os.path.exists(features_bed)
-
-    sq = module_utils.shellquote
-    x = [
-        sq(bedtools),
-        "coverage",
-        "-abam", sq(bam_filename),
-        "-b", sq(features_bed),
-        ">&", sq(cov_filename),
-        ]
-    return " ".join(x)
-    
-
-def _make_bedtools_genomecov_command(
-    bam_filename, reference_file, cov_filename):
-    from genomicode import config
-    from Betsy import module_utils
-
-    # Generates a histogram of the counts for each read depth.
-    # bedtools genomecov [OPTIONS] -ibam <align.bam> -g <ref.fa>
-    bedtools = module_utils.which_assert(config.bedtools)
-    assert os.path.exists(bam_filename)
-    assert os.path.exists(reference_file)
-
-    sq = module_utils.shellquote
-    x = [
-        sq(bedtools),
-        "genomecov",
-        "-ibam", sq(bam_filename),
-        "-g", sq(reference_file),
-        ">&", sq(cov_filename),
-        ]
-    return " ".join(x)
-
-
-def _parse_bedtools_genomecov_results(filename):
-    # Return list of (chromosome or "genome", coverage, bases with
-    # coverage, size of chromosome, perc bases with coverage).
-    # genome  0       18413   4392353 0.00419206
-    # genome  1       17191   4392353 0.00391385
-    # genome  2       19904   4392353 0.00453151
-    # genome  3       27298   4392353 0.00621489
-    # ...
-    from genomicode import filelib
-
-    results = []
-    for d in filelib.read_row(
-        filename, "chrom:s depth:d num_bases:d chr_size:d perc_bases:f"):
-        x = d.chrom, d.depth, d.num_bases, d.chr_size, d.perc_bases
-        results.append(x)
-    return results

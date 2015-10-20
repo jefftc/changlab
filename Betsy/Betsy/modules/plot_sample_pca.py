@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from matplotlib import cm
         from Betsy import read_label_file
-        from Betsy import module_utils
         
         data_node, cls_node = antecedents
         a, b, c = read_label_file.read(cls_node.identifier)

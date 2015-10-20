@@ -33,23 +33,23 @@ def extract_sample2desc(GSEID, filename):
     from genomicode.filelib import openfh
     title_dict = {}
     description_dict = {}
-    id = None
+    id_ = None
     for line in openfh(filename):
         if line.startswith("^SAMPLE"):
-            assert id is None, "problem with %s" % filename
-            id = line.strip().split()[2]
+            assert id_ is None, "problem with %s" % filename
+            id_ = line.strip().split()[2]
         elif line.startswith("!Sample_description"):
-            assert id is not None, "problem with %s" % filename
+            assert id_ is not None, "problem with %s" % filename
             title = line.strip().split(None, 2)[2]
             #x = id, title
-            description_dict[id] = title
+            description_dict[id_] = title
         elif line.startswith("!Sample_title"):
-            assert id is not None, "problem with %s" % filename
+            assert id_ is not None, "problem with %s" % filename
             title = line.strip().split(None, 2)[2]
             #x = id, "Title: %s" % title
-            title_dict[id] = title
+            title_dict[id_] = title
         elif line.startswith("!sample_table_end"):
-            id = None
+            id_ = None
     
     return title_dict, description_dict
 

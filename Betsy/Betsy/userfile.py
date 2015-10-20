@@ -89,8 +89,14 @@ def has_file(username, filename):
     found = []  # list of "<uid>___<filename>"
     paths = os.listdir(user_path)
     for path in paths:
+        # If a previous "set" operation was interrupted, there might
+        # be temp directories leftover with no hash files.  Ignore
+        # directories with no hash files.
         cache_file = os.path.join(user_path, path, "hash_smart.txt")
-        assert os.path.exists(cache_file), "File not found: %s" % cache_file
+        if not os.path.exists(cache_file):
+            # delete this directory?
+            continue
+        #assert os.path.exists(cache_file), "File not found: %s" % cache_file
         cache_smart_hash = open(cache_file).read()
         if file_smart_hash == cache_smart_hash:
             found.append(path)

@@ -15,7 +15,7 @@ class Module(AbstractModule):
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
         platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
-        id = platforms[0][0]
+        id_ = platforms[0][0]
         platform = platforms[0][1]
         if platform:
             if platform in ['HumanHT_12', 'MouseRef_8', 'HumanHT_12_control',
@@ -31,7 +31,7 @@ class Module(AbstractModule):
             else:
                 M = arrayio.read(in_data.identifier)
                 label = M._col_names['_SAMPLE_NAME']
-                row_names = M._row_names[id]
+                row_names = M._row_names[id_]
                 index = []
                 for i, name in enumerate(row_names):
                     if name.startswith('AFFX-'):
