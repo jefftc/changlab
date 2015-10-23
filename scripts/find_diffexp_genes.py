@@ -29,7 +29,7 @@ def choose_gene_names(MATRIX):
     
 def find_diffexp_genes(
     outfile, gmt_file, algorithm, paired,
-    MATRIX, geneid_header, genename_header, 
+    MATRIX, geneid_header, genename_header, genename_delim,
     name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff, 
     sam_DELTA, sam_qq_file, edger_tagwise_dispersion, num_procs):
     # classes must be 0, 1, None.
@@ -299,7 +299,7 @@ def find_diffexp_genes(
         # gn might be float.  genesetlib expects array of strings.
         #import sys; sys.exit(0)
         gid = genesetlib.clean_genes(gid)
-        gn = genesetlib.clean_genes(gn)
+        gn = genesetlib.clean_genes(gn, delim=genename_delim)
         # <SAMPLE>_[ID|NAME]_[UP|DN]
         if gid:
             x = "%s_%s_%s" % (sample, "ID", direct)
@@ -313,9 +313,10 @@ def find_diffexp_genes(
 
 
 def _run_forked(
-        gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
-        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
-        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
+    gmt_file, algorithm, paired, MATRIX,
+    geneid_header, genename_header, genename_delim,
+    name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+    sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
     import os
     import sys
     import tempfile
@@ -346,7 +347,7 @@ def _run_forked(
             os.dup2(w.fileno(), sys.stdout.fileno())
             find_diffexp_genes(
                 outfile, gmt_file, algorithm, paired, 
-                MATRIX, geneid_header, genename_header, 
+                MATRIX, geneid_header, genename_header, genename_delim,
                 name1, name2, classes,
                 fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
                 sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
@@ -404,7 +405,14 @@ def main():
     parser.add_argument(
         "--genename_header", help="The column header of the gene names.")
     parser.add_argument(
+        "--num_header_cols", type=int,
+        help="This number of columns are headers.  If not given, will guess.")
+    parser.add_argument(
         "--gmt_file", help="Save the results in GMT format.")
+    parser.add_argument(
+        "--genename_delim",
+        help="When writing gmt file, separate gene names based on this "
+        "delimiter.")
     
     group = parser.add_argument_group(title="Class Labels")
     group.add_argument(
@@ -464,6 +472,8 @@ def main():
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
         "File not found: %s" % args.expression_file
+    if args.num_header_cols is not None:
+        assert args.num_header_cols > 0 and args.num_header_cols < 100
     assert args.num_procs >= 1 and args.num_procs < 100
     if args.fold_change is not None:
         assert args.fold_change >= 1E-10 and args.fold_change < 1000, \
@@ -507,7 +517,8 @@ def main():
     if args.indexes2:
         assert args.indexes1
 
-    MATRIX = arrayio.read(args.expression_file)
+    MATRIX = arrayio.read(args.expression_file, hcols=args.num_header_cols)
+    assert MATRIX.nrow() and MATRIX.ncol(), "Empty matrix."
 
     #log_data = False
     #if args.log_the_data == "yes":
@@ -543,7 +554,7 @@ def main():
     # Run the analysis
     args = (
         args.gmt_file, args.algorithm, args.paired, MATRIX,
-        args.geneid_header, args.genename_header,
+        args.geneid_header, args.genename_header, args.genename_delim, 
         name1, name2, classes,
         args.fold_change, args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
         args.sam_delta, args.sam_qq_file, args.edger_tagwise_dispersion,

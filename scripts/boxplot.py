@@ -17,30 +17,35 @@ def main():
         ".pdf, will generate a PDF file instead.")
 
     parser.add_argument(
+        "--num_header_cols", type=int,
+        help="This number of columns are headers.  If not given, will guess.")
+    parser.add_argument(
         "-v", "--verbose", default=False, action="store_true",
         help="")
 
     # Plot labels.
-    parser.add_argument(
+    group = parser.add_argument_group(title="Plot labels")
+    group.add_argument(
         "--title", default=None, help="Put a title on the plot.")
 
     # Margins and sizes.
-    parser.add_argument(
+    group = parser.add_argument_group(title="Margins and sizes")
+    group.add_argument(
         "--height", default=None, type=int,
         help="Height (in pixels) of the plot.")
-    parser.add_argument(
+    group.add_argument(
         "--width", default=None, type=int,
         help="Width (in pixels) of the plot.")
-    parser.add_argument(
+    group.add_argument(
         "--mar_left", default=1.0, type=float,
         help="Scale margin at left of plot.  Default 1.0 (no scaling).")
-    parser.add_argument(
+    group.add_argument(
         "--mar_bottom", default=1.0, type=float,
         help="Scale margin at bottom of plot.  Default 1.0.")
-    parser.add_argument(
+    group.add_argument(
         "--xlabel_size", default=1.0, type=float,
         help="Scale the size of the labels on X-axis.  Default 1.0.")
-    parser.add_argument(
+    group.add_argument(
         "--xlabel_off", default=False, action="store_true",
         help="Turn off the X labels.")
     
@@ -49,6 +54,8 @@ def main():
     args = parser.parse_args()
     if not os.path.exists(args.expression_file):
         parser.error("I could not find file %s." % args.expression_file)
+    if args.num_header_cols is not None:
+        assert args.num_header_cols > 0 and args.num_header_cols < 100
     if args.width is not None:
         assert args.width > 10, "too small"
         assert args.width < 4096*16, "width too big"
@@ -62,7 +69,7 @@ def main():
     height = args.height or 1600
     width = args.width or 1600
 
-    MATRIX = arrayio.read(args.expression_file)
+    MATRIX = arrayio.read(args.expression_file, hcols=args.num_header_cols)
     assert MATRIX.nrow() and MATRIX.ncol(), "Empty matrix."
 
     # Start R and set up the environment.

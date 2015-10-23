@@ -648,10 +648,10 @@ def _parse_file_num(annotation):
 
 def _parse_file_annot(annotation):
     # annotations is in the format:
-    # <txt_file>,<header>,<value>[,<value,...]
+    # <txt_file>,<header>,<value>[,<value>,...]
     # Return a tuple of <filename>, <header>, list of <value>.
     x = annotation.split(",")
-    assert len(x) >= 3
+    assert len(x) >= 3, "Format: <txt_file>,<header>,<value>[,<value>,...]"
     filename, header, values = x[0], x[1], x[2:]
     return filename, header, values
 

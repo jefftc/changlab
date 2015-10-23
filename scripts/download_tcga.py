@@ -299,7 +299,7 @@ def merge_files(input_list,outfile):
     arrayio.tab_delimited_format.write(M_c, handle)
     handle.close()
     
-def extract_and_merge_files(gzfile_list,resource):
+def extract_and_merge_files(gzfile_list, resource):
     result = []
     for gzfile in gzfile_list:
         if not gzfile.endswith('tar.gz'):
@@ -327,9 +327,9 @@ def extract_and_merge_files(gzfile_list,resource):
                     result.append(os.path.join(directory,filename))
         else:
             raise ValueError('not recoginzed resource %s'%resource)
-    if len(result)==1:
+    if len(result) == 1:
         return result[0]
-    elif len(result)==2:
+    elif len(result) == 2:
         newname=os.path.split(result[0])[-1].replace(
             'agilentg4502a_07_1__unc_edu__Level_3__unc_lowess_normalization_gene_level__data',
             'agilentg4502a_07__unc_edu__Level_3__unc_lowess_normalization_gene_level__data')
@@ -654,10 +654,10 @@ def main():
     
     parser.add_argument(
         '--disease', 
-        help='which disease to download data from.  Format: BRCA')
+        help='Which disease to download data from.  Format: BRCA')
     parser.add_argument(
         '--date', 
-        help='download data from this date, if not given, get the most '
+        help='Download data from this date.  If not given, get the most '
         'recent.  Format: 20140715')
     x = sorted(datatype_match)
     x = ", ".join(x)
@@ -706,7 +706,7 @@ def main():
         assert args.data, 'please specify the data'
     if args.process_only:
         assert args.data, 'please specify the data'
-    all_dates,all_dates_list = retrieve_all_dates()
+    all_dates, all_dates_list = retrieve_all_dates()
     if args.list_dates:
         assert not args.date
         assert not args.data
