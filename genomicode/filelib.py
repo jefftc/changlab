@@ -251,6 +251,36 @@ def exists_nz(filename):
     return None
 
 
+def assert_exists_nz(filename):
+    assert exists_nz(filename), "File not found: %s" % filename
+    
+
+def exists_nz_many(filenames):
+    # Check if multiple files exist.
+    for filename in filenames:
+        if not exists_nz(filename):
+            return False
+    return True
+
+
+def assert_exists_nz_many(filenames):
+    # Assert that multiple filenames exists and is non-zero.
+    missing = []
+    for filename in filenames:
+        if not exists_nz(filename):
+            missing.append(filename)
+    if not missing:
+        return
+    if len(missing) == 1:
+        msg = "File not found: %s" % missing[0]
+    elif len(missing) < 5:
+        msg = "Files not found: %s" % ", ".join(missing)
+    else:
+        x = missing[:5] + ["..."]
+        msg = "Files (%d) not found: %s" % (len(missing), ", ".join(x))
+    assert not missing, msg
+
+
 def fp_exists_nz(file_or_path):
     if os.path.isdir(file_or_path):
         if os.listdir(file_or_path):

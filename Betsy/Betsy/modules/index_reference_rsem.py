@@ -68,9 +68,7 @@ class Module(AbstractModule):
             "%s.transcripts.fa" % assembly,
             ]
         index_files += x1 + x2 + x3 + x4 + x5
-        for f in index_files:
-            filename = os.path.join(out_path, f)
-            assert filelib.exists_nz(filename), "File not found: %s" % f
+        filelib.assert_exists_nz_many(index_files)
 
 
     def name_outfile(self, antecedents, user_options):

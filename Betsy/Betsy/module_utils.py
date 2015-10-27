@@ -47,6 +47,8 @@ read_sample_group_file
 fix_sample_group_filenames
 assert_sample_group_file
 
+check_inpath
+
 """
 # _find_ids_that_pass_filters
 
@@ -1047,3 +1049,27 @@ def find_picard_jar(jar_name):
     return jar_filename
 
 
+def check_inpath(path):
+    import os
+    assert os.path.exists(path)
+    assert os.path.isdir(path)
+    return path
+    
+
+def get_user_option(
+    user_options, name, default=None, required=False, not_empty=True,
+    allowed_values=None):
+    # required means the user must supply a value (even if default given).
+    # default is used if the user did not supply the value.
+    # not_empty means I will make sure the value is not an empty value.
+    # allowed_values is a list of the allowed values of this option.
+    if required:
+        assert name in user_options, "Missing option: %s" % name
+    value = user_options.get(name, default)
+    if value is not default and not_empty:
+        assert value, "Empty user option: %s" % name
+    if allowed_values:
+        assert value in allowed_values, "Invalid option for %s: %s" % (
+            name, value)
+    return value
+    

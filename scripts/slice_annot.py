@@ -157,6 +157,37 @@ def hash_headers(MATRIX, hash_headers):
     return AnnotationMatrix.replace_headers(MATRIX, headers)
 
 
+def add_header_line(filename, header_list, is_csv=False):
+    # header_list is a list of a comma-separated list of headers.
+    import StringIO
+    from genomicode import AnnotationMatrix
+    from genomicode import filelib
+    from genomicode import jmath
+
+    delimiter = "\t"
+    if is_csv:
+        delimiter = ","
+
+    X = [x for x in filelib.read_cols(filename, delimiter=delimiter)]
+    # Check the dimensions of the matrix.
+    assert X, "empty matrix"
+    for i in range(len(X)):
+        assert len(X[i]) == len(X[0])
+    # Make each row an annotation.
+    X = jmath.transpose(X)
+
+    header_str = ",".join(header_list)
+    x = header_str.split(",")
+    assert len(x) == len(X), "Matrix has %d columns, but %d headers given." % (
+        len(X), len(x))
+    headers = x
+    headers_h = AnnotationMatrix.uniquify_headers(headers)
+    header2annots = {}
+    for (header_h, annots) in zip(headers_h, X):
+        header2annots[header_h] = annots
+    return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
+
+
 def rename_duplicate_headers(MATRIX, rename_dups):
     if not rename_dups:
         return MATRIX
@@ -824,6 +855,65 @@ def max_annots(MATRIX, max_annots):
     return MATRIX
 
 
+def multiply_by(MATRIX, multiply_by):
+    # format: list of <index 1-based>,<number>
+    if not multiply_by:
+        return MATRIX
+    
+    jobs = []  # list of (0-based index, number)
+    for x in multiply_by:
+        x = x.split(",")
+        assert len(x) == 2, "format should be: <index>,<number>"
+        index, number = x
+        index = int(index)
+        number = float(number)
+        x = index-1, number
+        jobs.append(x)
+    
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        index, number = x
+        assert index < len(MATRIX.headers_h)
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+        for i in range(len(annots)):
+            x = float(annots[i])
+            x = x * number
+            annots[i] = str(x)
+    return MATRIX
+
+
+def log_base(MATRIX, log_base):
+    # format: list of <index 1-based>,<base>
+    if not log_base:
+        return MATRIX
+    import math
+    
+    jobs = []  # list of (0-based index, base)
+    for x in log_base:
+        x = x.split(",")
+        assert len(x) == 2, "format should be: <index>,<base>"
+        index, base = x
+        index = int(index)
+        base = float(base)
+        x = index-1, base
+        jobs.append(x)
+
+    MIN = 1E-100
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        index, base = x
+        assert index < len(MATRIX.headers_h)
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+        for i in range(len(annots)):
+            x = float(annots[i])
+            x = max(x, MIN)
+            x = math.log(x, base)
+            annots[i] = str(x)
+    return MATRIX
+
+
 def add_two_annots(MATRIX, add_annots):
     # Format: list of <annot 1>,<annot 2>,<dest>.  Each are 1-based
     # indexes.  dest is annot1 - annot2.
@@ -946,6 +1036,10 @@ def main():
     
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
+        "--add_header_line", default=[], action="append",
+        help="Add a header line to a file with no headers.  "
+        "Format: <header1>[,<header2>...].  (MULTI)")
+    group.add_argument(
         "--reorder_headers_alphabetical", action="store_true",
         help="Change the order of the headers.")
     group.add_argument(
@@ -1041,6 +1135,16 @@ def main():
         help="Calculate the maximum value across a set of annotations.  "
         "Format: <indexes>;<index dest>.  All indexes should be 1-based.")
     group.add_argument(
+        "--multiply_by", default=[], action="append",
+        help="Multiply a column by a number.  "
+        "Format: <index>,<number>.  "
+        "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
+        "--log_base", default=[], action="append",
+        help="Log a column with a specific base.  "
+        "Format: <index>,<base>.  "
+        "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
         "--add_two_annots", default=[], action="append",
         help="Add column 1 to column 2 and save to a third column.  "
         "Format: <index 1>,<index 2>,<index dest>.  "
@@ -1068,8 +1172,13 @@ def main():
     args = parser.parse_args()
     assert len(args.filename) == 1
 
-    # Read the matrix.
-    MATRIX = AnnotationMatrix.read(args.filename[0], args.read_as_csv)
+    # Do operations that do not take a matrix.
+    if args.add_header_line:
+        MATRIX = add_header_line(
+            args.filename[0], args.add_header_line, args.read_as_csv)
+    else:
+        # Read the matrix.
+        MATRIX = AnnotationMatrix.read(args.filename[0], args.read_as_csv)
 
     # Perform operations.
     MATRIX = indexes_matrix(MATRIX, args.indexes)
@@ -1108,6 +1217,8 @@ def main():
     MATRIX = all_same(MATRIX, args.all_same)
     MATRIX = min_annots(MATRIX, args.min_annots)
     MATRIX = max_annots(MATRIX, args.max_annots)
+    MATRIX = log_base(MATRIX, args.log_base)
+    MATRIX = multiply_by(MATRIX, args.multiply_by)
     MATRIX = add_two_annots(MATRIX, args.add_two_annots)
     MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)

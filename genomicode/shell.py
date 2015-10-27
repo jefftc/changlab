@@ -18,6 +18,8 @@ def single(command, path=None):
     cwd = os.getcwd()
     try:
         if path is not None:
+            if not os.path.exists(path):
+                os.mkdir(path)
             os.chdir(path)
         x = _single_h(command)
     finally:
@@ -72,6 +74,8 @@ def parallel(commands, max_procs=None, path=None):
     cwd = os.getcwd()
     try:
         if path is not None:
+            if not os.path.exists(path):
+                os.mkdir(path)
             os.chdir(path)
         x = _parallel_h(commands, max_procs)
     finally:
