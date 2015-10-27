@@ -268,7 +268,9 @@ def main():
     # gene_set.  (Not sure about 3 samples?  Where is the limit?)
     group.add_argument(
         "--permutation_type", default="phenotype",
-        choices=["phenotype", "gene_set"])
+        choices=["phenotype", "gene_set"],
+        help="Default is phenotype.  With <= 6 samples, recommend using "
+        "gene_set instead.")
     
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
@@ -420,7 +422,15 @@ def main():
         p.wait()
     finally:
         os.chdir(cwd)
-    assert not data.strip(), "%s\n%s" % (cmd, data)
+    x = data.strip()
+    # rpy2 generates UserWarnings for some reason.
+    # /opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/
+    #   python2.7/site-packages/rpy2/robjects/functions.py:106: UserWarning:
+    #       res = super(Function, self).__call__(*new_args, **new_kwargs)
+    if x.find("UserWarning") >= 0 and x.endswith("(*new_args, **new_kwargs)"):
+        # Ignore this UserWarning.
+        x = ""
+    assert not x, "%s\n%s" % (cmd, data)
 
 
     error_file = os.path.join(args.outpath, "stderr.txt")

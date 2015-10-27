@@ -6,10 +6,10 @@
 
 import os, sys
 
-def read_matrix(filename):
+def read_matrix(filename, num_header_cols=None):
     import arrayio
 
-    return arrayio.read(filename)
+    return arrayio.read(filename, hcols=num_header_cols)
 
 def _parse_cluster(options_cluster, indexes_include_headers, MATRIX):
     # Return a vector of clusters, where each cluster is an integer
@@ -86,43 +86,53 @@ def main():
     usage = "usage: %prog [options] filename outfile.png"
     parser = OptionParser(usage=usage, version="%prog 01")
 
+    #parser.add_option(
+    #    "-l", "--log_transform", default=False,
+    #    action="store_true",
+    #    help="Log transform the data first.")
+    
     parser.add_option(
-        "-l", "--log_transform", default=False,
-        action="store_true",
-        help="Log transform the data first.")
+        "--num_header_cols", type=int,
+        help="This number of columns are headers.  If not given, will guess.")
     parser.add_option(
         "-g", "--genes", default=None, type="int",
         help="Number of genes to use.")
     parser.add_option(
+        "--prism_file", 
+        help="Write the results out to a prism-formatted file.")
+    parser.add_option(
+        "-v", "--verbose", default=False, action="store_true",
+        help="")
+
+    group = OptionGroup(parser, "Clustering")
+    parser.add_option_group(group)
+    group.add_option(
         "-c", "--cluster", default=[], action="append",
         help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
-    parser.add_option(
+    group.add_option(
         "--indexes_include_headers", "--iih", action="store_true",
         help="If not given (default), then index 1 is the first column "
         "with data.  If given, then index 1 is the very first column "
         "in the file, including the headers.")
-    parser.add_option(
+    group.add_option(
         "--cluster_file", 
         help="A KGG format file of the clusters for the samples.  "
         "Clusters in this file can be 0-based or 1-based.")
-    parser.add_option(
-        "--prism_file", 
-        help="A KGG format file of the clusters for the samples.  "
-        "Clusters in this file can be 0-based or 1-based.")
-    parser.add_option(
-        "--label", default=False, action="store_true",
-        help="Label the samples.")
-    parser.add_option(
-        "--scale_label", type=float, default=1.0, 
-        help="Scale the size of the labels.")
-    parser.add_option(
+    
+
+    group = OptionGroup(parser, "Visualization")
+    parser.add_option_group(group)
+    group.add_option(
         "--title", help="Put a title on the plot.")
-    parser.add_option(
+    group.add_option(
         "--width", default=None, type="int",
         help="Width (in pixels) of the plot.")
-    parser.add_option(
-        "-v", "--verbose", default=False, action="store_true",
-        help="")
+    group.add_option(
+        "--label", default=False, action="store_true",
+        help="Label the samples.")
+    group.add_option(
+        "--scale_label", type=float, default=1.0, 
+        help="Scale the size of the labels.")
     
     # Parse the input arguments.
     options, args = parser.parse_args()
@@ -133,15 +143,18 @@ def main():
     filename, outfile = args
     if not os.path.exists(filename):
         parser.error("I could not find file %s." % filename)
+    if options.num_header_cols is not None:
+        assert options.num_header_cols > 0 and options.num_header_cols < 100
     if options.width is not None:
         assert options.width > 10, "too small"
         assert options.width < 4096*16, "width too big"
     assert options.scale_label > 0.01 and options.scale_label < 100
+    options.log_transform = False
 
     num_genes = options.genes
     #K = 10  # number of dimensions
 
-    MATRIX = read_matrix(filename)
+    MATRIX = read_matrix(filename, options.num_header_cols)
     if options.log_transform:
         MATRIX._X = jmath.log(MATRIX._X, base=2, safe=1)
     assert MATRIX.nrow() and MATRIX.ncol(), "Empty matrix."

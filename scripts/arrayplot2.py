@@ -679,7 +679,7 @@ def make_layout(
     gene_tree_scale, gene_tree_thickness,
     array_tree_scale, array_tree_thickness,
     # Colorbar
-    colorbar, cb_horizontal, cb_scale_height, cb_scale_width,
+    colorbar, cb_horizontal, cb_scale_height, cb_scale_width, cb_scale_font,
     ):
     from genomicode import colorlib
 
@@ -695,11 +695,11 @@ def make_layout(
     if colorbar:
         x = _calc_colorbar_size(
             hm_layout.width(), hm_layout.height(), hm_layout.GRID_SIZE,
-            boxwidth, boxheight, cb_scale_width, cb_scale_height, 
+            boxwidth, boxheight, cb_scale_width, cb_scale_height,
             cb_horizontal)
         width, height = x
         x = _calc_colorbar_ticks(
-            width, height, signal_0, signal_1, plotlib)
+            width, height, signal_0, signal_1, cb_scale_font, plotlib)
         ticks, tick_labels, label_sizes, fontsize = x
         cb_layout = ColorbarLayout(
             width, height, signal_0, signal_1,
@@ -1556,11 +1556,11 @@ def _calc_colorbar_size(
 
 
 def _calc_colorbar_ticks(
-    cb_width, cb_height, signal_0, signal_1, plotlib):
+    cb_width, cb_height, signal_0, signal_1, scale_font, plotlib):
     import math
     from genomicode import graphlib
 
-    TEXT_SIZE = 0.75
+    TEXT_SIZE = 0.75 * scale_font
     MAX_TICKS = 20
 
     vertical = cb_height > cb_width
@@ -1604,7 +1604,9 @@ def _calc_colorbar_ticks(
             total = sum([x[1] for x in label_sizes])
         else:
             total = sum([x[0] for x in label_sizes])
-        if total < max(cb_width, cb_height)/2:
+        # 0.75 is the total amount of space to be taken by the labels.
+        # This means 25% should be reserved for spaces.
+        if total < max(cb_width, cb_height)*0.75:
             break
         num_ticks = min(num_ticks, len(ticks))-1
     assert num_ticks, "I couldn't place any tick marks."
@@ -1988,6 +1990,9 @@ def main():
     group.add_option(
         "--cb_width", type="float", default=1.0, 
         help="Scale the width of the colorbar by this factor.")
+    group.add_option(
+        "--cb_font", dest="cb_font_scale", type="float", default=1.0, 
+        help="Scale the font of the colorbar by this factor.")
     
     group = OptionGroup(parser, "Layout")
     parser.add_option_group(group)
@@ -2089,7 +2094,7 @@ def main():
         options.array_tree_scale, options.array_tree_thickness,
         # Colorbar
         options.colorbar, options.cb_horizontal,
-        options.cb_height, options.cb_width,
+        options.cb_height, options.cb_width, options.cb_font_scale,
         )
 
     megapixels = layout.heatmap.width() * layout.heatmap.height() / 1024 / 1024

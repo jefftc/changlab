@@ -620,13 +620,19 @@ def int_if_possible(x):
     return x
         
 
-def clean_genes(genes):
+def clean_genes(genes, delim=None):
     x = genes
+    if delim is not None:
+        x2 = []
+        for x in x:
+            x2.extend(x.split(delim))
+        x = x2
     x = [x.strip() for x in x if x.strip()]
     x = [x for x in x if x != "---"]
     # Sort numerically, of possible.
     x = [int_if_possible(x) for x in x]
     x = sorted(x)
+    # Only unique genes.
     seen = {}
     i = 0
     while i < len(x):
