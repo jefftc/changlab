@@ -10,9 +10,11 @@ class Module(AbstractModule):
         import subprocess
         import shutil
         import arrayio
-        from Betsy import module_utils
         from genomicode import config
         from genomicode import arrayplatformlib
+        from genomicode import filelib
+        from Betsy import module_utils
+        
         in_data = antecedents
         DATA = arrayio.read(in_data.identifier)
         chipname = arrayplatformlib.identify_platform_of_matrix(DATA)
@@ -39,11 +41,8 @@ class Module(AbstractModule):
             error_message = process.communicate()[1]
             if error_message:
                 raise ValueError(error_message)
-    
-        
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for add_crossplatform_probeid fails' % outfile
-        )
+
+        filelib.assert_exists_nz(outfile)
 
 
 

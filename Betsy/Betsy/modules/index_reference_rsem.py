@@ -67,7 +67,8 @@ class Module(AbstractModule):
             "%s.ti" % assembly,
             "%s.transcripts.fa" % assembly,
             ]
-        index_files += x1 + x2 + x3 + x4 + x5
+        x += x1 + x2 + x3 + x4 + x5
+        index_files = [os.path.join(out_path, x) for x in x]
         filelib.assert_exists_nz_many(index_files)
 
 

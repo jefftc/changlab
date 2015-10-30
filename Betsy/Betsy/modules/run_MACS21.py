@@ -12,6 +12,7 @@ class Module(AbstractModule):
         from genomicode import hashlib
         from genomicode import filelib
         from Betsy import module_utils
+        import run_MACS14
 
         bam_node, group_node = antecedents
         bam_path = module_utils.check_inpath(bam_node.identifier)
@@ -20,15 +21,17 @@ class Module(AbstractModule):
 
         # Get options.
         treat_sample = module_utils.get_user_option(
-            user_options, "treatment_sample", required=True)
+            user_options, "treatment_sample", not_empty=True)
         control_sample = module_utils.get_user_option(
             user_options, "control_sample")
         genome_size = module_utils.get_user_option(
-            user_options, "macs_genome", required=True)
+            user_options, "macs_genome", not_empty=True)
         x = module_utils.get_user_option(
-            user_options, "broad_peaks", default="no",
-            allowed_values=["no", "yes"])
+            user_options, "broad_peaks", allowed_values=["no", "yes"])
         broad_peaks = (x == "yes")
+        x = module_utils.get_user_option(
+            user_options, "macs_paired", allowed_values=["no", "yes"])
+        is_paired = (x == "yes")
 
         # Set the name.
         name = hashlib.hash_var(treat_sample)
@@ -43,27 +46,15 @@ class Module(AbstractModule):
             assert control_sample in samples, \
                    "Unknown sample: %s" % control_sample
 
-        # Assume if one sample is paired, all samples are paired.
-        pairs = [x[2] for x in sample_groups]
-        pairs = [x for x in x if x != None]
-        is_paired = False
-        if pairs:
-            is_paired = True
-
         # Find the BAM files.
-        # Should be named:
-        # <sample>.bam
-        treat_file = "%s.bam" % treat_sample
-        treat_filename = os.path.join(bam_path, treat_file)
-        assert os.path.exists(treat_filename), \
-               "File not found: %s" % treat_file
-
+        treat_filename = run_MACS14.find_bam_file(
+            bam_path, treat_sample, sample_groups)
+        assert treat_filename, "Missing bam file for %s" % treat_sample
         control_filename = None
         if control_sample:
-            control_file = "%s.bam" % control_sample
-            control_filename = os.path.join(bam_path, control_file)
-            assert os.path.exists(control_filename), \
-                   "File not found: %s" % control_file
+            control_filename = run_MACS14.find_bam_file(
+                bam_path, control_sample, sample_groups)
+            assert control_filename, "Missing bam file for %s" % control_sample
 
         cmd = make_macs2_command(
             treat_filename, control_filename, 
@@ -75,7 +66,8 @@ class Module(AbstractModule):
         files = [
             "%s_peaks.xls" % name,
             ]
-        filelib.assert_exists_nz_many(files)
+        filenames = [os.path.join(out_path, x) for x in files]
+        filelib.assert_exists_nz_many(filenames)
         
     def name_outfile(self, antecedents, user_options):
         return "macs21"

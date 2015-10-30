@@ -5,17 +5,10 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
+        self, network, in_data, out_attributes, user_options, num_cores,
         outfile):
-        """check gene normalize"""
         import shutil
-        from Betsy import module_utils
-        in_data = antecedents
-        #out_attributes = set_out_attributes(in_data, out_attributes)
         shutil.copyfile(in_data.identifier, outfile)
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for check_gene_normalize fails' % outfile
-        )
 
 
     def name_outfile(self, antecedents, user_options):
@@ -28,7 +21,7 @@ class Module(AbstractModule):
         import arrayio
         new_parameters = out_attributes.copy()
         M = arrayio.read(antecedents.identifier)
-        if is_gene_normalize_varaince(M):
+        if is_gene_normalize_variance(M):
             new_parameters['gene_normalize'] = 'variance'
         elif is_gene_normalize_ss(M):
             new_parameters['gene_normalize'] = 'sum_of_squares'
@@ -39,7 +32,7 @@ class Module(AbstractModule):
 
 
 
-def is_gene_normalize_varaince(M):
+def is_gene_normalize_variance(M):
     import numpy
     for line in M.slice():
         if abs(numpy.var(line) - 1) > 0.000001:

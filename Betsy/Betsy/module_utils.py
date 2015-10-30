@@ -1057,16 +1057,13 @@ def check_inpath(path):
     
 
 def get_user_option(
-    user_options, name, default=None, required=False, not_empty=True,
-    allowed_values=None):
-    # required means the user must supply a value (even if default given).
-    # default is used if the user did not supply the value.
+    user_options, name, not_empty=False, allowed_values=None):
     # not_empty means I will make sure the value is not an empty value.
+    # required means the user must supply a value (even if default given).
     # allowed_values is a list of the allowed values of this option.
-    if required:
-        assert name in user_options, "Missing option: %s" % name
-    value = user_options.get(name, default)
-    if value is not default and not_empty:
+    assert name in user_options, "Missing option: %s" % name
+    value = user_options[name]
+    if not_empty:
         assert value, "Empty user option: %s" % name
     if allowed_values:
         assert value in allowed_values, "Invalid option for %s: %s" % (
