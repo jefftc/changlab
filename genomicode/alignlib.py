@@ -220,12 +220,19 @@ def standardize_reference_genome(
     # <path>/<file>  ->  <out_path>/<file>
     #
     # Return a ReferenceGenome object.
+    import os
     import filelib
 
+    # If file_or_path is a file, then find the path of this file.
+    path = in_file_or_path
+    if os.path.isfile(path):
+        p, f = os.path.split(in_file_or_path)
+        path = p
+
     if use_symlinks:
-        filelib.symlink_file_or_path_to_path(in_file_or_path, out_path)
+        filelib.symlink_file_or_path_to_path(path, out_path)
     else:
-        filelib.copy_file_or_path_to_path(in_file_or_path, out_path)
+        filelib.copy_file_or_path_to_path(path, out_path)
     x = create_reference_genome(out_path)
     return x
 

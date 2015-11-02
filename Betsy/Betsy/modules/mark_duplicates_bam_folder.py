@@ -24,7 +24,8 @@ class Module(AbstractModule):
         #   I=<input.sam or .bam> O=<output.bam> 
         #   METRICS_FILE=metricsFile CREATE_INDEX=true 
         #   VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
-        picard_jar = module_utils.find_picard_jar("MarkDuplicates")
+        #picard_jar = module_utils.find_picard_jar("MarkDuplicates")
+        picard_jar = module_utils.find_picard_jar("picard")
 
         jobs = []  # list of (in_filename, out_filename)
         for in_filename in in_filenames:
