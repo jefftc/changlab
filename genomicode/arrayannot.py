@@ -97,8 +97,11 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
     gene_ids = _clean_genes_for_biomart(gene_ids)
     jmath.R_equals_vector(gene_ids, 'gene.ids')
     # Select the BioMart dataset to use.
-    R_fn("useMart", "ensembl", in_mart, RETVAL="in.dataset")
-    R_fn("useMart", "ensembl", out_mart, RETVAL="out.dataset")
+    #mart = "ensembl"
+    mart = "ENSEMBL_MART_ENSEMBL"  # Changed 151120.
+    host = "www.ensembl.org"
+    R_fn("useMart", mart, in_mart, host=host, RETVAL="in.dataset")
+    R_fn("useMart", mart, out_mart, host=host, RETVAL="out.dataset")
 
     # Link two data sets and retrieve information from the linked datasets.
     R_fn(

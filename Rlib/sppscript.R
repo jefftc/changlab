@@ -8,8 +8,11 @@ if(length(argv) != 6)
 
 TREATMENT.FILE <- argv[3]
 CONTROL.FILE <- argv[4]
-FDR <- argv[5]
-NUM.PROCS <- argv[6]
+FDR <- as.numeric(argv[5])
+NUM.PROCS <- as.numeric(argv[6])
+
+if(is.na(FDR)) stop("invalid FDR")
+if(is.na(NUM.PROCS)) stop("invalid NUM.PROCS")
 
 # Check the parameters.
 if(!file.exists(TREATMENT.FILE))
@@ -168,7 +171,7 @@ bp <- find.binding.positions(signal.data=chip.data, control.data=input.data,
 #bp <- find.binding.positions(signal.data=chip.data, control.data=input.data,
 #  fdr=fdr, method=tag.lwcc, whs=detection.window.halfsize, cluster=cluster)
 x <- sum(unlist(lapply(bp$npl,function(d) length(d$x))))
-print(paste(fdr, "detected", x, "peaks"))
+print(paste(FDR, "detected", x, "peaks"))
 print((proc.time()-start)[3])
 
 # output detected binding positions
