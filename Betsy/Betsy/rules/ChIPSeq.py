@@ -63,6 +63,10 @@ all_modules = [
             "broad_peaks", default="no",
             help='Set to "yes" to look for Broad peaks.',
             ),
+        OptionDef(
+            "macs_paired", default="no",
+            help='Set to "yes" to do paired analysis.',
+            ),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         ),
     ]

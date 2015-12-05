@@ -13,6 +13,8 @@ class Module(AbstractModule):
         from Betsy import module_utils
         from genomicode import config
         from genomicode import arrayplatformlib
+        from genomicode import filelib
+        
         in_data = antecedents
         DATA = arrayio.read(in_data.identifier)
         chipname = arrayplatformlib.identify_platform_of_matrix(DATA)
@@ -51,12 +53,9 @@ class Module(AbstractModule):
             line = line.split('\t')
             newline = [line[index]] + line[0:index] + line[index + 1:]
             f.write('\t'.join(newline))
-    
-        
         f.close()
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for add_U133A_probeid fails' % outfile
-        )
+
+        filelib.assert_exists_nz(outfile)
 
 
     def name_outfile(self, antecedents, user_options):

@@ -16,7 +16,7 @@ class Module(AbstractModule):
             # Symlink the files for each of the individual indexes.
             filelib.symlink_file_or_path_to_path(
                 ref.identifier, out_path, overwrite_outpath=False)
-            
+
 
     def name_outfile(self, antecedents, user_options):
         return "ref.index"

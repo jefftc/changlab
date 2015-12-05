@@ -507,7 +507,8 @@ all_modules = [
         "convert_postprocess_impute",
         UnprocessedSignalFile, _SignalFile_Impute,
         Constraint("format", MUST_BE, "tdf"),
-        Constraint("logged", MUST_BE, "yes"),
+        #Constraint("logged", MUST_BE, "yes"),
+        #Constraint("logged", CAN_BE_ANY_OF, ["no", "yes", "unknown"]),
         
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
@@ -1158,6 +1159,7 @@ all_modules = [
         Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
+        #Constraint("logged", CAN_BE_ANY_OF, ["no", "yes", "unknown"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
@@ -1194,7 +1196,8 @@ all_modules = [
         Consequence("annotate", SAME_AS_CONSTRAINT),
         Consequence("rename_sample", SAME_AS_CONSTRAINT),
         Consequence("platform", SAME_AS_CONSTRAINT),
-        Consequence("logged", SET_TO, "yes"),
+        #Consequence("logged", SET_TO, "yes"),
+        #Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("format", SET_TO, "tdf"),
         Consequence("num_features", SET_TO, "no"),
         Consequence("unique_genes", SET_TO, "no"),
@@ -1214,8 +1217,8 @@ all_modules = [
         Consequence("duplicate_probe", SAME_AS_CONSTRAINT),
         Constraint("format", MUST_BE, "tdf"),
         Consequence("format", SAME_AS_CONSTRAINT),
-        Constraint("logged", MUST_BE, "yes"),
-        Consequence("logged", SAME_AS_CONSTRAINT),
+        #Constraint("logged", MUST_BE, "yes"),
+        #Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence(
             "unique_genes", SET_TO_ONE_OF,
             ['average_genes', 'high_var', 'first_gene']),

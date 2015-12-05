@@ -363,6 +363,7 @@ all_modules = [
         Consequence("adapters_trimmed", SET_TO, "yes"),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Consequence("reads_merged", SAME_AS_CONSTRAINT),
+        help="Trim adapters.  Files should be merged.",
         ),
     ModuleNode(
         "summarize_trimmomatic_trimming",
@@ -693,7 +694,7 @@ all_modules = [
         ),
     ModuleNode(
         "sort_bam_folder_by_contig",
-        BamFolder, BamFolder,
+        [BamFolder, ReferenceGenome], BamFolder,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", CAN_BE_ANY_OF, ["no", "name", "coordinate"]),

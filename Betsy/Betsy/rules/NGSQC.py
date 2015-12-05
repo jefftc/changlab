@@ -54,15 +54,20 @@ all_modules = [
             ),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("sorted", MUST_BE, "contig", 0),
+        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("has_read_groups", MUST_BE, "yes", 0),
+        #Constraint("sample_type", MUST_BE, "RNA"),
 
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Constraint("dict_added", MUST_BE, "yes", 1),
         
-        #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19"]),
-        Constraint("has_read_groups", MUST_BE, "yes"),
-        Constraint("duplicates_marked", MUST_BE, "yes"),
-        Constraint("indexed", MUST_BE, "yes"),
-        Constraint("sorted", MUST_BE, "contig"),
-        #Constraint("sample_type", MUST_BE, "RNA"),
         help="run RNA-SeQC"),
+    ModuleNode(
+        "summarize_rnaseqc_results",
+        RNASeQCResults, RNASeQCSummary,
+        help="Summarize the results from a RNASeQC analysis.",
+        ),
     ]

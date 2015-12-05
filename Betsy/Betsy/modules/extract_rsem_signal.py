@@ -10,13 +10,13 @@ class Module(AbstractModule):
         import os
         from genomicode import jmath
         from genomicode import AnnotationMatrix
-        from Betsy import module_utils
+        from genomicode import alignlib
 
         rsem_path = in_data.identifier
         assert os.path.exists(rsem_path)
         assert os.path.isdir(rsem_path)
 
-        result_files = module_utils.find_rsem_result_files(rsem_path)
+        result_files = alignlib.find_rsem_result_files(rsem_path)
         assert result_files, "No .results files found."
 
         preprocess = out_attributes.get("preprocess")

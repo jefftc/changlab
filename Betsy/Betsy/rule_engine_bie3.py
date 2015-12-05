@@ -246,7 +246,6 @@ def run_module(
     assert out_data_nodes
     x = sorted([x.datatype for x in out_data_nodes])
     assert x[0] == x[-1], "ModuleNode points to different DataTypes."
-    out_data_node = out_data_nodes[0]
 
     # Optimization: set_out_attributes can be computationally
     # expensive, so assume that the module will set the output
@@ -256,25 +255,39 @@ def run_module(
     # identical.
     # TODO: Cache this result.  Some can take a long time,
     # e.g. finding out how paired reads are oriented.
-    attr = module.set_out_attributes(antecedents, out_data_node.attributes)
-    out_data_node.attributes = attr
+    i = 0
+    while i < len(out_data_nodes):
+        out_data_node = out_data_nodes[i]
+        attr = module.set_out_attributes(antecedents, out_data_node.attributes)
+        out_data_node.attributes = attr
+    
+        # This might generate duplicate out_data_nodes.  Get rid of them.
+        j = i+1
+        while j < len(out_data_nodes):
+            if out_data_node == out_data_nodes[j]:
+                del out_data_nodes[j]
+            else:
+                j += 1
+        i += 1
 
     # Figure out which node in the network is compatible with out_node.
-    compatible = []  # list of next_ids
+    compatible = []  # list of (out_data_node, next_ids)
     for next_id in network.transitions[module_id]:
         # If this has already been run, then ignore.
         if next_id in pool:
             continue
         next_node = network.nodes[next_id]
-        # out_attributes should be subset of next_data.attributes.
-        if not bie3._is_data_compatible_with(out_data_node, next_node):
-            continue
-        compatible.append(next_id)
+        for out_data_node in out_data_nodes:
+            # out_attributes should be subset of next_data.attributes.
+            if not bie3._is_data_compatible_with(out_data_node, next_node):
+                continue
+            compatible.append((out_data_node, next_id))
     # If there are no compatible out nodes, then return None.
     if not compatible:
         return None
-    assert len(compatible) == 1
-    next_id = compatible[0]
+    # If there are multiple compatible nodes, arbitrarily use the first one.
+    assert len(compatible) >= 1
+    out_data_node, next_id = compatible[0]
     
     # Set up the directories and outfile.
     # Unfortunately, can't use timestamp in pathname, or else this

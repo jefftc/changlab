@@ -3364,12 +3364,16 @@ def _forwardchain_to_outputs(module, in_datas):
     datatype = module.out_datatype
     attributes = {}
 
+    # Priorities (in increasing order):
+    # 1.  Default values
+    # 2.  Constraints
+
+    # Set the default values.
     # Set the attributes based on the default values.
     # Case 1: default_attributes_from is given.
     #         Use the attributes from this default.
     # Case 2: Fill with the default input values of the output
     #         datatype.
-
     # Case 1.
     if module.default_attributes_from:
         # If there are multiple default_attributes_from, just use the
@@ -3385,9 +3389,9 @@ def _forwardchain_to_outputs(module, in_datas):
         for attrdef in datatype.attribute_defs.itervalues():
             attributes[attrdef.name] = attrdef.default_in
 
+    # Set the constraints.
     # Set the attributes based on the consequences of the module.
     possibilities = {}
-
     for cons in module.consequences:
         if cons.behavior == SET_TO:
             attributes[cons.name] = cons.arg1
@@ -3401,6 +3405,7 @@ def _forwardchain_to_outputs(module, in_datas):
             attributes[cons.name] = data.attributes[cons.name]
         else:
             raise AssertionError
+
 
     # If no possibilities, then make one output variable.
     if not possibilities:

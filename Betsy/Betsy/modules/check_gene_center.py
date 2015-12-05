@@ -5,17 +5,10 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
+        self, network, in_data, out_attributes, user_options, num_cores,
         outfile):
-        """check gene cetenr"""
         import shutil
-        from Betsy import module_utils
-        in_data = antecedents
-        #out_attributes = set_out_attributes(in_data, out_attributes)
         shutil.copyfile(in_data.identifier, outfile)
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for check_gene_center fails' % outfile
-        )
 
 
     def name_outfile(self, antecedents, user_options):
