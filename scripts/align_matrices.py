@@ -26,18 +26,16 @@
 # write_matrix
 # read_express
 # write_express
-# read_annot
-# write_annot
 
 import os
 import sys
 
 
-# TODO: Use the AnnotationMatrix in genomicode.  More robust.
-class AnnotationMatrix:
-    def __init__(self, name2annots, name_order):
-        self.name2annots = name2annots.copy()
-        self.name_order = name_order[:]
+## # TODO: Use the AnnotationMatrix in genomicode.  More robust.
+## class AnnotationMatrix:
+##     def __init__(self, name2annots, name_order):
+##         self.name2annots = name2annots.copy()
+##         self.name_order = name_order[:]
 
 
 def list_all_samples(matrix_data, case_insensitive, hash_samples,
@@ -106,8 +104,10 @@ def peek_samples_hint(matrix_data):
     # Figure out what the samples look like.  Look for an expression
     # file first.  If an expression file is not found, use the
     # annotation files.
+    from genomicode import AnnotationMatrix as AM
+    
     samples_hint = None
-    x = [x for x in matrix_data if not isinstance(x[2], AnnotationMatrix)]
+    x = [x for x in matrix_data if not isinstance(x[2], AM.AnnotationMatrix)]
     if x:
         # Found an expression file.
         infile, outfile, matrix, header = x[0][:4]
@@ -121,9 +121,9 @@ def peek_samples_hint(matrix_data):
             infile, outfile, matrix, header = matrix_data[0][:4]
             if header is None:
                 continue
-            assert header in matrix.name2annots, "Missing header: %s\n%s" % (
-                repr(header), sorted(matrix.name2annots))
-            samples_hint = matrix.name2annots[header]
+            assert header in matrix.header2annots, "Missing header: %s\n%s" % (
+                repr(header), sorted(matrix.header2annots))
+            samples_hint = matrix.header2annots[header]
             break
         assert samples_hint is not None, \
                "Please specify at least one --header."
@@ -323,7 +323,9 @@ def align_matrices(
 
 
 def align_matrix(matrix, indexes, null_string):
-    if isinstance(matrix, AnnotationMatrix):
+    from genomicode import AnnotationMatrix as AM
+    
+    if isinstance(matrix, AM.AnnotationMatrix):
         aligned_matrix = align_annot(matrix, indexes, null_string)
     else:
         aligned_matrix = align_express(matrix, indexes, null_string)
@@ -382,8 +384,10 @@ def align_express(matrix, indexes, null_string):
 
 
 def align_annot(matrix, indexes, null_string):
+    from genomicode import AnnotationMatrix as AM
+
     name2annots_new = {}
-    for name, annots in matrix.name2annots.iteritems():
+    for name, annots in matrix.header2annots.iteritems():
         annots_new = []
         for i, i_annot in enumerate(indexes):
             if i_annot != None:
@@ -393,7 +397,10 @@ def align_annot(matrix, indexes, null_string):
             else:
                 annots_new.append(null_string)
         name2annots_new[name] = annots_new
-    return AnnotationMatrix(name2annots_new, matrix.name_order)
+    #return AnnotationMatrix(name2annots_new, matrix.name_order)
+    x = AM.AnnotationMatrix(matrix.headers, matrix.headers_h, name2annots_new)
+    return x
+
 
 
 def align_samples(samples, indexes, null_string):
@@ -408,6 +415,8 @@ def align_samples(samples, indexes, null_string):
 
 def add_missing_samples(matrix_data, null_string):
     # Make a list of all the samples.
+    from genomicode import AnnotationMatrix as AM
+
     complete_samples = None
     for x in matrix_data:
         infile, outfile, matrix, header, samples = x
@@ -423,15 +432,15 @@ def add_missing_samples(matrix_data, null_string):
     for x in matrix_data:
         infile, outfile, matrix, header, samples = x
 
-        if isinstance(matrix, AnnotationMatrix):
-            samples = matrix.name2annots[header]
+        if isinstance(matrix, AM.AnnotationMatrix):
+            samples = matrix.header2annots[header]
         else:
             samples = matrix.col_names(header)
         for i in range(len(samples)):
             if samples[i] == null_string:
                 samples[i] = complete_samples[i]
-        if isinstance(matrix, AnnotationMatrix):
-            matrix.name2annots[header] = samples
+        if isinstance(matrix, AM.AnnotationMatrix):
+            matrix.header2annots[header] = samples
         else:
             matrix._col_names[header] = samples
         x = infile, outfile, matrix, header, samples
@@ -447,7 +456,9 @@ def get_samples(
     # anything in the annotation file can be a sample, need to give it
     # a hint of what the samples look like.  Returns None if I could
     # not find the samples.
-    if isinstance(matrix, AnnotationMatrix):
+    from genomicode import AnnotationMatrix as AM
+
+    if isinstance(matrix, AM.AnnotationMatrix):
         return get_annot_samples(
             matrix, header_hint, samples_hint, case_insensitive, hash_samples,
             ignore_nonalnum)
@@ -468,11 +479,11 @@ def get_express_samples(matrix):
 def get_annot_samples(matrix, header_hint, samples_hint,
                       case_insensitive, hash_samples, ignore_nonalnum):
     if header_hint:
-        assert header_hint in matrix.name2annots
-        return header_hint, matrix.name2annots[header_hint]
+        assert header_hint in matrix.header2annots
+        return header_hint, matrix.header2annots[header_hint]
 
     all_matches = []  # list of (num_matches, name, matches)
-    for name, annots in matrix.name2annots.iteritems():
+    for name, annots in matrix.header2annots.iteritems():
         x = intersect_samples(
             annots, samples_hint, case_insensitive, hash_samples,
             ignore_nonalnum)
@@ -486,7 +497,7 @@ def get_annot_samples(matrix, header_hint, samples_hint,
     num_matches, name, x = x
     if not num_matches:
         return None
-    return name, matrix.name2annots[name]
+    return name, matrix.header2annots[name]
 
 
 def cmp_sample(x, y,
@@ -609,8 +620,10 @@ def strip_nonalnum(s):
 
 
 def write_matrix(outfile, matrix):
-    if isinstance(matrix, AnnotationMatrix):
-        write_annot(outfile, matrix)
+    from genomicode import AnnotationMatrix as AM
+
+    if isinstance(matrix, AM.AnnotationMatrix):
+        AM.write(outfile, matrix)
     else:
         write_express(outfile, matrix)
 
@@ -633,46 +646,47 @@ def write_express(filename, matrix):
     arrayio.write(matrix, open(filename, 'w'))
 
 
-def read_annot(filename):
-    import re
-    from genomicode import genesetlib
+## def read_annot(filename):
+##     import re
+##     from genomicode import genesetlib
 
-    name_order = []
-    name2annots = {}
-    for x in genesetlib.read_tdf(
-        filename, preserve_spaces=True, allow_duplicates=True):
-        name, description, annots = x
+##     name_order = []
+##     name2annots = {}
+##     for x in genesetlib.read_tdf(
+##         filename, preserve_spaces=True, allow_duplicates=True):
+##         name, description, annots = x
 
-        # Hack: Some files contain special characters, which mess up
-        # alignment. Fix this here.
-        # na\xc3\xafve-WIBR3.5 hESC
-        # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
-        annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
+##         # Hack: Some files contain special characters, which mess up
+##         # alignment. Fix this here.
+##         # na\xc3\xafve-WIBR3.5 hESC
+##         # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
+##         annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
 
-        # TODO: allow duplicate header names.
-        assert name not in name2annots, "Duplicate header: %s" % name
-        name_order.append(name)
-        name2annots[name] = annots
-    return AnnotationMatrix(name2annots, name_order)
+##         # TODO: allow duplicate header names.
+##         assert name not in name2annots, "Duplicate header: %s" % name
+##         name_order.append(name)
+##         name2annots[name] = annots
+##     return AnnotationMatrix(name2annots, name_order)
 
 
-def write_annot(filename, annot_matrix):
-    from genomicode import jmath
-    matrix = []
-    for name in annot_matrix.name_order:
-        annots = annot_matrix.name2annots[name]
-        x = [name] + annots
-        matrix.append(x)
-    # Transpose the matrix.
-    matrix = jmath.transpose(matrix)
+## def write_annot(filename, annot_matrix):
+##     from genomicode import jmath
+##     matrix = []
+##     for name in annot_matrix.name_order:
+##         annots = annot_matrix.name2annots[name]
+##         x = [name] + annots
+##         matrix.append(x)
+##     # Transpose the matrix.
+##     matrix = jmath.transpose(matrix)
 
-    handle = open(filename, 'w')
-    for x in matrix:
-        print >>handle, "\t".join(map(str, x))
+##     handle = open(filename, 'w')
+##     for x in matrix:
+##         print >>handle, "\t".join(map(str, x))
 
 
 def main():
     import argparse
+    from genomicode import AnnotationMatrix as AM
 
     SKIP_OUTFILE = "_"
 
@@ -803,7 +817,7 @@ def main():
         if is_express_file:
             data = read_express(infile)
         else:
-            data = read_annot(infile)
+            data = AM.read(infile)
         x = infile, outfile, data, header
         new_matrix_data.append(x)
     matrix_data = new_matrix_data

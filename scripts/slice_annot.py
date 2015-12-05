@@ -76,6 +76,23 @@ def indexes_matrix(MATRIX, indexes_list):
     return x
 
 
+def select_cols_str(MATRIX, cols_str):
+    # cols_str is a list of the names of the headers to keep.
+    if not cols_str:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+    
+    I = []
+    for i, h in enumerate(MATRIX.headers):
+        found = False
+        for s in cols_str:
+            if h == s:
+                found = True
+        if found:
+            I.append(i)
+    return AnnotationMatrix.colslice(MATRIX, I)
+
+
 def select_cols_substr(MATRIX, cols_substr):
     # cols_substr is a list of the substrings of the headers to keep.
     if not cols_substr:
@@ -90,15 +107,7 @@ def select_cols_substr(MATRIX, cols_substr):
                 found = True
         if found:
             I.append(i)
-
-    for i in I:
-        assert i >= 0 and i < len(MATRIX.headers_h)
-    headers = [MATRIX.headers[i] for i in I]
-    headers_h = [MATRIX.headers_h[i] for i in I]
-    header2annots = {}
-    for header_h in headers_h:
-        header2annots[header_h] = MATRIX.header2annots[header_h]
-    return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
+    return AnnotationMatrix.colslice(MATRIX, I)
 
 
 def flip01_matrix(MATRIX, indexes):
@@ -187,6 +196,21 @@ def add_header_line(filename, header_list, is_csv=False):
         header2annots[header_h] = annots
     return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 
+
+def remove_header_line(filename, read_as_csv):
+    from genomicode import AnnotationMatrix
+    from genomicode import jmath
+
+    MATRIX = AnnotationMatrix.read(filename, read_as_csv)
+    matrix = []
+    for header_h in MATRIX.headers_h:
+        x = MATRIX.header2annots[header_h]
+        matrix.append(x)
+    # Transpose the matrix.
+    matrix = jmath.transpose(matrix)
+    for x in matrix:
+        print "\t".join(map(str, x))
+    
 
 def rename_duplicate_headers(MATRIX, rename_dups):
     if not rename_dups:
@@ -446,6 +470,36 @@ def copy_column(MATRIX, copy_column):
     return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 
 
+def set_value_if_empty(MATRIX, params):
+    # list of strings in format of: <index 1-based>,<value>
+    if not params:
+        return MATRIX
+
+    jobs = []    # list of (index 0-based, value)
+    for x in params:
+        x = x.split(",")
+        assert len(x) == 2, "format should be: <index 1-based>,<value>"
+        index, value = x
+        index = int(index)
+        # Should be 1-based indexes.
+        assert index >= 1 and index <= len(MATRIX.headers)
+        # Convert to 0-based indexes.
+        index = index - 1
+        jobs.append((index, value))
+
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        index, value = x
+        h = MATRIX.headers_h[index]
+        
+        # Change the annotations in place.
+        annots = MATRIX.header2annots[h]
+        for i in range(len(annots)):
+            if not annots[i]:
+                annots[i] = value
+    return MATRIX
+
+
 def copy_value_if_empty(MATRIX, copy_values):
     # copy_values is list of strings in format of: <dst>,<src 1>[,<src
     # 2>...].
@@ -703,6 +757,41 @@ def apply_re_to_annots(MATRIX, apply_annots):
             m = re.search(regex, annots[i])
             if m:
                 annots[i] = m.group(1)
+    return MATRIX
+
+
+def merge_annots(MATRIX, merge_annots):
+    # list of strings in format of:
+    # <src indexes 1-based>;<dst index 1-based>;<char>
+    if not merge_annots:
+        return MATRIX
+
+    merge_all = []   # list of (src indexes 0-based, dst index 0-based, char)
+    for merge in merge_annots:
+        x = merge.split(";")
+        assert len(x) == 3, \
+               "format should be: <src indexes>;<dst index>;<char>"
+        src_indexes_str, dst_indexes_str, merge_char = x
+        src_indexes = parse_indexes(MATRIX, src_indexes_str)
+        dst_indexes = parse_indexes(MATRIX, dst_indexes_str)
+        assert len(dst_indexes) == 1
+        dst_index = dst_indexes[0]
+        merge_all.append((src_indexes, dst_index, merge_char))
+
+    MATRIX = MATRIX.copy()
+    for x in merge_all:
+        src_indexes, dst_index, merge_char = x
+        for i in range(MATRIX.num_annots()):
+            all_annots = []
+            for s_i in src_indexes:
+                h = MATRIX.headers_h[s_i]
+                annots = MATRIX.header2annots[h]
+                annot = annots[i]
+                all_annots.append(annot)
+            merged = merge_char.join(all_annots)
+            h = MATRIX.headers_h[dst_index]
+            annots = MATRIX.header2annots[h]
+            annots[i] = merged
     return MATRIX
 
 
@@ -1020,6 +1109,10 @@ def main():
         help="Select only these indexes from the file e.g. 1-5,8 "
         "(1-based, inclusive).  (MULTI)")
     group.add_argument(
+        "--select_cols_str", default=[], action="append",
+        help="Select the columns whose header contains matches this string.  "
+        "(MULTI)")
+    group.add_argument(
         "--select_cols_substr", default=[], action="append",
         help="Select the columns whose header contains this substring.  "
         "(MULTI)")
@@ -1039,6 +1132,9 @@ def main():
         "--add_header_line", default=[], action="append",
         help="Add a header line to a file with no headers.  "
         "Format: <header1>[,<header2>...].  (MULTI)")
+    group.add_argument(
+        "--remove_header_line", action="store_true",
+        help="Remove the header line from the file.")
     group.add_argument(
         "--reorder_headers_alphabetical", action="store_true",
         help="Change the order of the headers.")
@@ -1083,6 +1179,10 @@ def main():
         "--lower_annots", 
         help="Convert annotations to lower case.  Format: 1-based indexes.")
     group.add_argument(
+        "--set_value_if_empty", default=[], action="append",
+        help="If the column is empty, set with this value.  "
+        "Format: <index 1-based>,<value>.  (MULTI)")
+    group.add_argument(
         "--copy_value_if_empty", default=[], action="append",
         help="If the dest column is empty, copy the value from the src "
         "columns.  "
@@ -1115,6 +1215,10 @@ def main():
         "--apply_re_to_annots", default=[], action="append",
         help="Apply a regular expression to annots.  "
         "Format: <indexes>;<regular expression>.  (MULTI)")
+    group.add_argument(
+        "--merge_annots", default=[], action="append",
+        help="Merge a multiple annotations into one string.  "
+        "Format: <src indexes>;<dst index>;<merge char>.  (MULTI)")
     
     group = parser.add_argument_group(title="Mathematical Operations")
     group.add_argument(
@@ -1176,12 +1280,16 @@ def main():
     if args.add_header_line:
         MATRIX = add_header_line(
             args.filename[0], args.add_header_line, args.read_as_csv)
+    elif args.remove_header_line:
+        remove_header_line(args.filename[0], args.read_as_csv)
+        sys.exit(0)
     else:
         # Read the matrix.
         MATRIX = AnnotationMatrix.read(args.filename[0], args.read_as_csv)
 
     # Perform operations.
     MATRIX = indexes_matrix(MATRIX, args.indexes)
+    MATRIX = select_cols_str(MATRIX, args.select_cols_str)
     MATRIX = select_cols_substr(MATRIX, args.select_cols_substr)
     MATRIX = add_column(MATRIX, args.add_column)
     MATRIX = copy_column(MATRIX, args.copy_column)
@@ -1202,6 +1310,7 @@ def main():
     MATRIX = strip_all_annots(MATRIX, args.strip_all_annots)
     MATRIX = upper_annots(MATRIX, args.upper_annots)
     MATRIX = lower_annots(MATRIX, args.lower_annots)
+    MATRIX = set_value_if_empty(MATRIX, args.set_value_if_empty)
     MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
     MATRIX = copy_value_if_empty_header(
         MATRIX, args.copy_value_if_empty_header)
@@ -1211,6 +1320,7 @@ def main():
     MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
+    MATRIX = merge_annots(MATRIX, args.merge_annots)
 
     # Math operations.
     MATRIX = flip01_matrix(MATRIX, args.flip01)
