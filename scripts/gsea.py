@@ -31,7 +31,8 @@ platform2gpplatform = {
     # Missing entrez_ID_human
     }
 
-def guess_chip_platform(M):
+
+def guess_chip_platform(M, min_match_score):
     # Return the GenePattern chip.platform for this matrix.
     from genomicode import arrayplatformlib
 
@@ -39,7 +40,11 @@ def guess_chip_platform(M):
     #assert platform, "I could not guess the platform for this file."
     x = arrayplatformlib.score_platform_of_matrix(M)
     platform, match = x
-    assert match > 0.95, "I could not guess the platform for this file."
+    x = ""
+    if match > 0:
+        x = "  The closest was %s (%.2f)." % (platform, match)
+    assert match > min_match_score, \
+           "I could not guess the platform for this file.%s" % x
     assert platform in platform2gpplatform, \
         "I don't know how to convert %s to a GenePattern platform." % platform
     chipname = platform2gpplatform.get(platform)
@@ -249,6 +254,10 @@ def main():
         "e.g. HG_U133A_2.chip.  You should leave this blank if the IDs "
         "in the gene expression data set are gene symbols.  Allowed "
         "values can be found on the GenePattern/GSEA website.")
+    group.add_argument(
+        '--min_match_score', default=0.95, type=float,
+        help="When trying to identify the rows of a matrix or geneset, "
+        "require at least this portion of the IDs to be recognized.")
     x = sorted(DATABASE2GENESET)
     x = [x.replace(DEFAULT_DATABASE, "%s (DEFAULT)" % x) for x in x]
     x = ", ".join(x)
@@ -275,6 +284,11 @@ def main():
     args = parser.parse_args()
     assert os.path.exists(args.expression_file), \
         "File not found: %s" % args.expression_file
+    
+    assert type(args.min_match_score) is type(0.0)
+    assert args.min_match_score > 0.2, "min_match_score too low"
+    assert args.min_match_score <= 1.0, "min_match_score too high"
+
     # Must have either the indexes or the cls_file, but not both.
     assert args.cls_file or args.indexes1, (
         "Must provide either CLS file or the indexes for one group.")
@@ -332,7 +346,7 @@ def main():
     # sure the platforms match.)
     platform = args.platform
     if platform is None and not database_file and not args.no_collapse_dataset:
-        platform = guess_chip_platform(MATRIX)
+        platform = guess_chip_platform(MATRIX, args.min_match_score)
         # If gene symbols already provided, then turn off collapse_dataset.
         if platform is None:  # Gene Symbol
             args.no_collapse_dataset = True

@@ -129,6 +129,25 @@ def flip01_matrix(MATRIX, indexes):
     return MATRIX
 
 
+def fill_empty_headers(MATRIX, fill_headers):
+    if not fill_headers:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    headers = MATRIX.headers[:]
+    for i in range(len(headers)):
+        if headers[i].strip():
+            continue
+        j = 0
+        while True:
+            x = "H%03d" % j
+            if x not in headers:
+                break
+            j += 1
+        headers[i] = x
+    return AnnotationMatrix.replace_headers(MATRIX, headers)
+
+
 def reorder_headers_alphabetical(MATRIX, reorder_headers):
     if not reorder_headers:
         return MATRIX
@@ -1133,6 +1152,10 @@ def main():
         help="Add a header line to a file with no headers.  "
         "Format: <header1>[,<header2>...].  (MULTI)")
     group.add_argument(
+        "--fill_empty_headers", action="store_true",
+        help="If the header line contains some blanks, fill them in with "
+        "defaults.")
+    group.add_argument(
         "--remove_header_line", action="store_true",
         help="Remove the header line from the file.")
     group.add_argument(
@@ -1295,6 +1318,7 @@ def main():
     MATRIX = copy_column(MATRIX, args.copy_column)
 
     # Changing the headers.
+    MATRIX = fill_empty_headers(MATRIX, args.fill_empty_headers)
     MATRIX = reorder_headers_alphabetical(
         MATRIX, args.reorder_headers_alphabetical)
     MATRIX = upper_headers(MATRIX, args.upper_headers)

@@ -683,7 +683,6 @@ def make_layout(
     ):
     from genomicode import colorlib
 
-
     # Make the layout for the heatmap.
     color_fn = get_color_scheme_fn(color_scheme)
     hm_layout = HeatmapLayout(

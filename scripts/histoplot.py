@@ -2,7 +2,6 @@
 
 def _parse_breaks_seq(s):
     # Format: <start>,<stop>,<skip>
-    from genomicode import jmath
     x = s.split(",")
     assert len(x) == 3, "Format: <start>,<stop>,<skip>"
 
@@ -50,6 +49,74 @@ def write_prism_file(filename, hist):
         print >>handle, "\t".join(map(str, x))
 
 
+PALETTE2FN = [
+    ("red", "red_shade"),
+    ("white", "white_shade"),
+    ("red-green", "rg_array_colors"),
+    ("blue-yellow", "by_array_colors"),
+    ("red-green-soft", "red_green_soft"),
+    ("red-blue-soft", "red_blue_soft"),
+    ("matlab", "matlab_colors"),
+    ("bild", "bild_colors"),
+    ("genepattern", "broad_colors"),
+    ("genespring", "genespring_colors"),
+    ("yahoo", "yahoo_weather_colors"),
+    ("brewer-prgn-div", "brewer_prgn_div"),
+    ("brewer-rdbu-div", "brewer_rdbu_div"),
+    ("brewer-rdylbu-div", "brewer_rdylbu_div"),
+    ("brewer-rdylgn-div", "brewer_rdylgn_div"),
+    ("brewer-spectral-div", "brewer_spectral_div"),
+    ]
+
+def _fmt_palettes():
+    palettes = [x[0] for x in PALETTE2FN]
+    if len(palettes) == 1:
+        return palettes[0]
+
+    # Make it comma separated.
+    x = ", ".join(palettes[:-1])
+    if len(palettes) > 2:
+        x = "%s," % x
+    x = "%s or %s" % (x, palettes[-1])
+    return x
+
+
+def get_palette_fn(name):
+    # Choose the palette.
+    from genomicode import colorlib
+
+    for palette, fn_name in PALETTE2FN:
+        if palette == name:
+            break
+    else:
+        raise AssertionError, "Unknown color scheme: %s" % name
+    assert hasattr(colorlib, fn_name)
+    x = getattr(colorlib, fn_name)
+    return x
+
+
+def _make_col_palette(palette_name, num_bars, symmetric):
+    # Format the col variable for the R hist function.
+    from genomicode import colorlib
+
+    color_fn = get_palette_fn(palette_name)
+    if not symmetric:
+        x = color_fn(num_bars)
+        print x
+    else:
+        # Color order goes from left to right.  The colors that was on
+        # the left should now be in the middle.
+        if num_bars % 2:  # Odd.
+            x = color_fn(num_bars/2+1)
+            x = list(reversed(x)) + x[:-1]
+        else:
+            x = color_fn(num_bars/2)
+            x = list(reversed(x)) + x
+    x = [colorlib.rgb2hex(x) for x in x]
+    x = [x.replace("0x", "#") for x in x]
+    assert len(x) == num_bars
+    return x
+
 def main():
     import os
     import argparse
@@ -75,8 +142,28 @@ def main():
     group = parser.add_argument_group(title="Plot Labels")
     group.add_argument("--title", help="Put a title on the plot.")
     group.add_argument("--xlab", help="Label the X-axis.")
+    group.add_argument(
+        "--xlabel_size", default=1.0, type=float,
+        help="Scale the size of the labels on X-axis.  Default 1.0.")
+    group.add_argument(
+        "--xlabels_off", action="store_true", help="Do not label the X axis.")
+    group.add_argument(
+        "--ylabels_off", action="store_true", help="Do not label the Y axis.")
+    group.add_argument(
+        "--xtick_labels_off", action="store_true",
+        help="Do not draw the tick labels on the X axis.")
 
-    group = parser.add_argument_group(title="Margins and Sizes")
+    group = parser.add_argument_group(title="Colors")
+    group.add_argument(
+        "--bar_color",  help="Set the color of the bars.  Default #FFFFFF")
+    x = _fmt_palettes()
+    group.add_argument(
+        "--bar_palette", help="Color the bars according to a palette: %s." % x)
+    group.add_argument(
+        "--symmetric_palette", action="store_true",
+        help="Make the color symmetric.")
+
+    group = parser.add_argument_group(title="Appearance")
     group.add_argument(
         "--height", type=int, help="Height (in pixels) of the plot.")
     group.add_argument(
@@ -88,9 +175,10 @@ def main():
         "--mar_bottom", default=1.0, type=float,
         help="Scale margin at bottom of plot.  Default 1.0.")
     group.add_argument(
-        "--xlabel_size", default=1.0, type=float,
-        help="Scale the size of the labels on X-axis.  Default 1.0.")
-    
+        "--xaxis_off", action="store_true", help="Do not show the X axis.")
+    group.add_argument(
+        "--yaxis_off", action="store_true", help="Do not show the Y axis.")
+
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -105,6 +193,8 @@ def main():
     assert args.mar_bottom > 0 and args.mar_bottom < 10
     assert args.mar_left > 0 and args.mar_left < 10
     assert args.xlabel_size > 0 and args.xlabel_size < 10
+    assert not (args.bar_color and args.bar_palette)
+    assert not args.symmetric_palette or args.bar_palette
         
     height = args.height or 2400
     width = args.width or 3200
@@ -130,7 +220,16 @@ def main():
     if args.xlab:
         xlab = args.xlab
     ylab = "Frequency"
-    
+    xtick_labels = jmath.R_var("TRUE")
+    ytick_labels = jmath.R_var("TRUE")
+
+    if args.xlabels_off:
+        xlab = ""
+    if args.ylabels_off:
+        ylab = ""
+    if args.xtick_labels_off:
+        xtick_labels = jmath.R_var("FALSE")
+
     breaks = "Sturges"
     if args.breaks_seq:
         breaks = _parse_breaks_seq(args.breaks_seq)
@@ -151,6 +250,22 @@ def main():
     assert values
     jmath.R_equals(values, "X")
 
+    # Figure out the colors.  Do it after X is assigned.
+    col = jmath.R_var("NULL")
+    if args.bar_color:
+        assert args.bar_color.startswith("#")
+        col = args.bar_color
+    elif args.bar_palette:
+        # Figure out how many breaks there are.  Number of bars is num
+        # breaks + 1.
+        jmath.R_fn(
+            "hist", jmath.R_var("X"), breaks=breaks, plot=jmath.R_var("FALSE"),
+            RETVAL="x")
+        breaks = [x for x in R["x"].rx2("breaks")]
+        num_bars = len(breaks) + 1
+        col = _make_col_palette(
+            args.bar_palette, num_bars, args.symmetric_palette)
+
     bm_type = "png16m"
     if args.plot_file.lower().endswith(".pdf"):
         bm_type = "pdfwrite"
@@ -165,7 +280,7 @@ def main():
 
     jmath.R_fn(
         "hist", jmath.R_var("X"), breaks=breaks, main=main, xlab="", ylab="",
-        axes=jmath.R_var("FALSE"), RETVAL="x")
+        axes=jmath.R_var("FALSE"), col=col, RETVAL="x")
     # Make plot area solid white.
     #jmath.R('usr <- par("usr")')
     #jmath.R('rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF")')
@@ -175,8 +290,14 @@ def main():
     #    add=jmath.R_var("TRUE"))
     
     #jmath.R_fn("box", lwd=lwd)
-    jmath.R_fn("axis", 1, lwd=lwd, **{ "cex.axis" : 1.5 })
-    jmath.R_fn("axis", 2, lwd=lwd, **{ "cex.axis" : 1.5 })
+    # x-axis
+    if not args.xaxis_off:
+        jmath.R_fn(
+            "axis", 1, lwd=lwd, labels=xtick_labels, **{ "cex.axis" : 1.5 })
+    # y-axis
+    if not args.yaxis_off:
+        jmath.R_fn(
+            "axis", 2, lwd=lwd, labels=ytick_labels, **{ "cex.axis" : 1.5 })
     jmath.R_fn(
         "title", main=main, sub=sub, xlab=xlab, ylab=ylab,
         **{ "cex.lab" : cex_lab, "cex.main" : cex_main, "cex.sub" : cex_sub })
