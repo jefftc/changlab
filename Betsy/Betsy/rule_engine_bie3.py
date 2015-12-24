@@ -14,7 +14,7 @@ BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
 DEBUG_POOL = {}
 def run_pipeline(
-    network, in_datas, user_attributes, user_options, user=None,
+    network, in_datas, user_attributes, user_options, paths, user=None,
     job_name='', clean_up=True, num_cores=8):
     # Run the pipeline that is indicated by the network.  Returns a
     # tuple of (dictionary of node_id -> IdentifiedDataNode, output
@@ -25,6 +25,7 @@ def run_pipeline(
     # in_datas         List of IdentifiedDataNodes.
     # user_attributes  From --dattr.  AttributeDef
     # user_options     From --mattr.  OptionDef
+    # paths            List of (node_ids, start_ids, indexes into in_datas).
     global DEBUG_POOL
     
     import os
@@ -44,23 +45,35 @@ def run_pipeline(
     LOG_FILENAME = os.path.join(output_path, 'traceback.txt')
     logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
 
+    
     # Each member of the stack can be a tuple of:
     # 1.  (IdentifiedDataNode, node_id, None)
     # 2.  (ModuleNode, node_id, None)
     # 3.  (ModuleNode, node_id, antecedent_ids)
     #     Keep track of which set of antecedents to run.
     stack = []
-    for node in in_datas:
-        data_node = node.data
-        start_node_ids = bie3._find_start_nodes(network, data_node)
-        assert start_node_ids, \
-               '%s cannot matched to network' % data_node.datatype.name
-        for start_node_id in start_node_ids:
-            stack.append((node, start_node_id, None))
-            #pool[start_node_id] = idata
+    path_ids = []   # list of node_ids to search
+    for x in paths:
+        p_ids, s_ids, d_indexes = x
+        path_ids.extend(p_ids)
+        assert len(s_ids) == len(d_indexes)
+        for id_, index in zip(s_ids, d_indexes):
+            node = in_datas[index]
+            stack.append((node, id_, None))
+    path_ids = {}.fromkeys(path_ids).keys()
+
+    ## stack = []
+    ## for node in in_datas:
+    ##     data_node = node.data
+    ##     start_node_ids = bie3._find_start_nodes(network, data_node)
+    ##     assert start_node_ids, \
+    ##            '%s cannot matched to network' % data_node.datatype.name
+    ##     for start_node_id in start_node_ids:
+    ##         stack.append((node, start_node_id, None))
+    ##         #pool[start_node_id] = idata
             
     # Keep track of nodes that have already been generated.
-    pool = {}      # dict of node_id -> IdentifiedDataNode
+    pool = {}      # dict of node_id -> IdentifiedDataNode or ModuleNode
     pipeline = []  # list of the names of the modules run.
     next_node = None
     # Keep track of the number of times a module can't be run because
@@ -109,6 +122,7 @@ def run_pipeline(
             num_failures = 0
         elif isinstance(node, bie3.ModuleNode):
             # Run this module.
+            pool[node_id] = node
             pipeline.append(node.name)
             antecedent_ids = more_info
             assert len(node.in_datatypes) == len(antecedent_ids)

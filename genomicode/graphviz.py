@@ -20,7 +20,7 @@ def make_graph(
     # which nodes are connected.  node2attributes is a dictionary
     # where the key is the name of the node and the value is a
     # dictionary of attributes.  edge2attributes is a dictionary where
-    # the key is a tuple in edges, and the value is a dictionary of
+    # the key is a tuple from edges, and the value is a dictionary of
     # attributes.  prog is typically "neato" or "dot".  subgraph is
     # dictionary where the key is the name of the subgraph and value
     # is the list of nodes in that subgraph.  rank is to set
