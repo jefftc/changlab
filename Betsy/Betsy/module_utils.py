@@ -779,6 +779,16 @@ def find_fastq_files(path):
     # Return a list of the FASTQ files (full filenames) under path.
     import os
     from genomicode import filelib
+
+    fastq_suffix = [".fq", ".fastq"]
+    compress_suffix = [".gz", ".bz2", ".xz", ".zip"]
+    
+    all_suffixes = []
+    all_suffixes.extend(fastq_suffix)
+    for s1 in fastq_suffix:
+        for s2 in compress_suffix:
+            x = s1+s2
+            all_suffixes.append(x)
     
     filenames = filelib.list_files_in_path(path)
     # Filter out the fastq files.
@@ -788,9 +798,13 @@ def find_fastq_files(path):
         f_l = f.lower()
         if f.startswith("."):
             del filenames[i]
-        elif f_l.find(".fq") >= 0:
-            i += 1
-        elif f_l.find(".fastq") >= 0:
+            continue
+        found = False
+        for s in all_suffixes:
+            if f_l.endswith(s):
+                found = True
+                break
+        if found:
             i += 1
         else:
             del filenames[i]
@@ -923,7 +937,7 @@ def read_sample_group_file(file_or_handle):
         handle = filelib.openfh(handle)
         
     data = []
-    for d in filelib.read_row(handle, header=1):
+    for d in filelib.read_row(handle, header=1, pad_cols=""):
         pair = d.Pair.strip()
         assert pair in ["", "1", "2"], "Invalid pair: %s" % d.Pair
         x = d.Filename, d.Sample, pair
@@ -1057,10 +1071,14 @@ def check_inpath(path):
     
 
 def get_user_option(
-    user_options, name, not_empty=False, allowed_values=None):
+    user_options, name, not_empty=False, allowed_values=None, type=None,
+    check_file=False):
     # not_empty means I will make sure the value is not an empty value.
     # required means the user must supply a value (even if default given).
     # allowed_values is a list of the allowed values of this option.
+    # type should be a function that converts the type.
+    import os
+    
     assert name in user_options, "Missing option: %s" % name
     value = user_options[name]
     if not_empty:
@@ -1068,5 +1086,9 @@ def get_user_option(
     if allowed_values:
         assert value in allowed_values, "Invalid option for %s: %s" % (
             name, value)
+    if value and type is not None:
+        value = type(value)
+    if value and check_file:
+        assert os.path.exists(value), "File not found: %s" % value
     return value
     

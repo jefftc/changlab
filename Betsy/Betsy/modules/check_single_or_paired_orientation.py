@@ -85,7 +85,7 @@ def copy_fastq(in_filename, out_filename, MAX_READS=None):
 
 def get_paired_orientation(
     reference_genome, filename1, filename2, outpath=None):
-    # Return None, "ff", "fr", or "rf".  None means unstranded.
+    # Return None, "ff", "fr", or "rf".  None means not stranded.
     import os
     import shutil
     import tempfile
@@ -116,9 +116,11 @@ def get_paired_orientation(
         sam_ff = os.path.join(path, "orient_ff.sam")
         sam_fr = os.path.join(path, "orient_fr.sam")
         sam_rf = os.path.join(path, "orient_rf.sam")
+        sam_ns = os.path.join(path, "orient_ns.sam")
         log_ff = os.path.join(path, "orient_ff.log")
         log_fr = os.path.join(path, "orient_fr.log")
         log_rf = os.path.join(path, "orient_rf.log")
+        log_ns = os.path.join(path, "orient_ns.log")
 
         x1 = alignlib.make_bowtie2_command(
             reference_genome, fastq_file1=filename1,
@@ -132,10 +134,15 @@ def get_paired_orientation(
             reference_genome, fastq_file1=filename1,
             fastq_file2=filename2, sam_file=sam_rf, orientation="rf",
             max_reads=NUM_READS)
+        x4 = alignlib.make_bowtie2_command(
+            reference_genome, fastq_file1=filename1,
+            fastq_file2=filename2, sam_file=sam_ns, orientation=None,
+            max_reads=NUM_READS)
         x1 += " >& %s" % log_ff
         x2 += " >& %s" % log_fr
         x3 += " >& %s" % log_rf
-        commands = [x1, x2, x3]
+        x4 += " >& %s" % log_ns
+        commands = [x1, x2, x3, x4]
 
         shell.parallel(commands)
 
@@ -143,23 +150,32 @@ def get_paired_orientation(
         output_ff = alignlib.parse_bowtie2_output(log_ff)
         output_fr = alignlib.parse_bowtie2_output(log_fr)
         output_rf = alignlib.parse_bowtie2_output(log_rf)
+        output_ns = alignlib.parse_bowtie2_output(log_ns)
 
         reads_ff = output_ff["concordant_reads"]
         reads_fr = output_fr["concordant_reads"]
         reads_rf = output_rf["concordant_reads"]
+        reads_ns = output_ns["concordant_reads"]
+        assert type(reads_ff) is type(0)
 
         orient = [
             (reads_ff, "ff"),
             (reads_fr, "fr"),
             (reads_rf, "rf"),
+            (reads_ns, None),
             ]
         orient.sort()
 
-        # If all are within 10%, then it's probably un-stranded.
-        cutoff = int(output_ff["reads_processed"] * 0.10)
-        if orient[2][0] - orient[0][0] <= cutoff:
+        # Debug:
+        if False:
+            print orient
+            raise AssertionError
+
+        # If highest is within 10% of the un-stranded one, then it's
+        cutoff = reads_ns * 0.10
+        if reads_ns >= orient[3][0] - reads_ns*0.10:
             return None
-        return orient[2][-1]
+        return orient[3][-1]
     finally:
         if tempdir is not None and os.path.exists(tempdir):
             shutil.rmtree(tempdir)

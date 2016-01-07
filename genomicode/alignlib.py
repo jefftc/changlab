@@ -19,6 +19,8 @@ make_bwa_aln_command
 make_rsem_command
 find_rsem_result_files
 
+make_htseq_count_command
+
 """
 
 class ReferenceGenome:
@@ -643,3 +645,46 @@ def find_reference_stem(ref_fasta):
     stem, ext = os.path.splitext(ref_fasta)
     assert ext in [".fa", ".fasta"]
     return stem
+
+
+def make_htseq_count_command(
+    bam_file, gtf_file, sort_order, stranded, mode=None):
+    # sort_order should be "name" or "pos".
+    # stranded should be "yes", "no", "reverse".
+    import os
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import shell
+
+    assert sort_order in ["name", "pos"]
+    assert stranded in ["yes", "no", "reverse"]
+    assert mode is None or mode in \
+           ["union", "intersection-strict", "intersection-nonempty"]
+
+    assert os.path.exists(bam_file)
+    assert os.path.exists(gtf_file)
+
+    # htseq-count [options] <alignment_file> <gff_file>
+    # -f <format>    bam
+    # -r <order>     name (default), pos.  How sorted.
+    # -s <stranded>  yes, no, reverse
+    # -t <feature type>
+    # -m <mode>
+    htseq_count = filelib.which_assert(config.htseq_count)
+
+    sq = shell.quote
+    cmd = [
+        sq(htseq_count),
+        "-f", "bam",
+        "-r", sort_order,
+        "-s", stranded,
+        ]
+    if mode:
+        cmd += ["-m", mode]
+    cmd += [
+        bam_file,
+        gtf_file,
+        ]
+    return " ".join(cmd)
+
+

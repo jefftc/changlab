@@ -332,10 +332,9 @@ all_modules = [
 
         Constraint("reads_merged", MUST_BE, "no", 0),
         Consequence("reads_merged", SET_TO, "yes"),
-        
-        Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION, 1),
-        #Consequence("orientation", SAME_AS_CONSTRAINT),
-        
+
+        # Bug: why does this cause the RSEM pipeline to not work?
+        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION, 1),
         ),
     ModuleNode(
         "check_single_or_paired_orientation",
@@ -585,7 +584,7 @@ all_modules = [
         #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19", "mm9", "dm3"]),
         #Consequence("ref", SAME_AS_CONSTRAINT),
         #help="generate algiment in SaiFile to SamFile"
-        help="bwa aln for reads < 70 bp",
+        help="bwa aln for reads < 70 bp.  Generally not used anymore.",
         ),
     ModuleNode(
         "align_with_bwa_mem",
@@ -604,7 +603,7 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
 
         Consequence("aligner", SET_TO, "bwa_mem"),
-        help="bwa mem for reads >= 70 bp",
+        help="bwa mem for reads >= 70 bp.  Now preferred",
         ),
     ModuleNode(
         "convert_sai_to_sam_folder",
@@ -673,15 +672,15 @@ all_modules = [
         help="index bam folder",
         ),
     # Sorting.
+    # coordinate -> name -> contig.
     # Sorting by contig must be last, because RNA-SeQC needs it.
     # Don't allow sorting by contig -> coordinate.  This prevents a cycle.
     ModuleNode(
         "sort_bam_folder_by_coordinate",
-        #[BamFolder, ReferenceGenome], BamFolder,
         BamFolder, BamFolder,
         Constraint("indexed", MUST_BE, "no", 0),
         Consequence("indexed", SAME_AS_CONSTRAINT),
-        Constraint("sorted", CAN_BE_ANY_OF, ["no", "name"], 0),
+        Constraint("sorted", CAN_BE_ANY_OF, ["no"], 0),
         Consequence("sorted", SET_TO, "coordinate"),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Consequence("contents", SAME_AS_CONSTRAINT),
@@ -691,6 +690,16 @@ all_modules = [
         #Consequence("has_header", SAME_AS_CONSTRAINT),
         #Consequence("recalibrated", SAME_AS_CONSTRAINT),
         #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        ),
+    ModuleNode(
+        "sort_bam_folder_by_name",
+        BamFolder, BamFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("sorted", CAN_BE_ANY_OF, ["no", "coordinate"]),
+        Consequence("sorted", SET_TO, "name"),
+        Constraint("indexed", MUST_BE, "no"),
+        Consequence("indexed", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
         "sort_bam_folder_by_contig",

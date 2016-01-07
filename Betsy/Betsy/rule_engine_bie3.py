@@ -25,7 +25,7 @@ def run_pipeline(
     # in_datas         List of IdentifiedDataNodes.
     # user_attributes  From --dattr.  AttributeDef
     # user_options     From --mattr.  OptionDef
-    # paths            List of (node_ids, start_ids, indexes into in_datas).
+    # paths            List of (node_ids, start_ids).
     global DEBUG_POOL
     
     import os
@@ -45,22 +45,26 @@ def run_pipeline(
     LOG_FILENAME = os.path.join(output_path, 'traceback.txt')
     logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
 
-    
-    # Each member of the stack can be a tuple of:
+    # Make a list of the valid node_ids in the pipeline.
+    path_ids = []   # list of node_ids in the pipeline.
+    for x in paths:
+        p_ids, s_ids, d_indexes = x
+        path_ids.extend(p_ids)
+    path_ids = {}.fromkeys(path_ids)
+
+    # Add the start_ids to the stack.  Each member of the stack can be
+    # a tuple of:
     # 1.  (IdentifiedDataNode, node_id, None)
     # 2.  (ModuleNode, node_id, None)
     # 3.  (ModuleNode, node_id, antecedent_ids)
     #     Keep track of which set of antecedents to run.
     stack = []
-    path_ids = []   # list of node_ids to search
     for x in paths:
         p_ids, s_ids, d_indexes = x
-        path_ids.extend(p_ids)
         assert len(s_ids) == len(d_indexes)
         for id_, index in zip(s_ids, d_indexes):
             node = in_datas[index]
             stack.append((node, id_, None))
-    path_ids = {}.fromkeys(path_ids).keys()
 
     ## stack = []
     ## for node in in_datas:
@@ -86,6 +90,8 @@ def run_pipeline(
         assert num_failures < len(stack), \
                "Inference error: No more nodes to run."
         node, node_id, more_info = stack.pop()
+        if node_id not in path_ids:  # ignore if not in pipeline
+            continue
         if node_id == 0:
             pool[node_id] = node
             success = True
@@ -109,7 +115,8 @@ def run_pipeline(
             all_antecedent_ids = _get_available_input_combinations(
                 network, node_id, user_attributes, pool)
             if not all_antecedent_ids:
-                # Put back to the bottom of the stack.
+                # No sets of inputs are ready to run.  Put back to the
+                # bottom of the stack and try again later.
                 stack.insert(0, (node, node_id, more_info))
                 num_failures += 1
                 continue
@@ -201,6 +208,7 @@ def run_module(
     import random
 
     from genomicode import filelib
+    from genomicode import parselib
     from Betsy import config
     from Betsy import module_utils
     from Betsy import bie3
@@ -335,15 +343,20 @@ def run_module(
             x = "ran instantly"
         else:
             x = "took %s" % run_time
-        print "[%s]  %s (CACHED, previously %s)" % (
-            time.strftime('%I:%M %p'), module_name, x)
+        parselib.print_split(
+            "[%s]  %s (CACHED, previously %s)" % (
+                time.strftime('%I:%M %p'), module_name, x),
+            prefixn=2)
+        sys.stdout.flush()
         #x = " "*12
         #print "%sRetrieved from cache.  Previously took %s." % (
         #    x, params["elapsed_pretty"])
         return out_identified_data_node, next_id
 
     # Running this module now.
-    print "[%s]  %s" % (time.strftime('%I:%M %p'), module_name)
+    parselib.print_split(
+        "[%s]  %s" % (time.strftime('%I:%M %p'), module_name),
+        prefixn=2)
     sys.stdout.flush()
 
     # Run the module in a temporary directory.
@@ -380,9 +393,12 @@ def run_module(
         # Move files to the real directory.  If someone else is
         # currently copying files to the exact same directory, then
         # wait for them to finish.
+        success_file = os.path.join(result_dir, "stdout.txt")
         copy_files = True
         if os.path.exists(result_dir):
             # Define MODULE_TIMEOUT
+            # BUG: This will fail if it takes longer than
+            # MODULE_TIMEOUT to copy the files.
             timeout = int(config.MODULE_TIMEOUT)
             # Add a random factor, so two processes that were started
             # at the same time won't collide.

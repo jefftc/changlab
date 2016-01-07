@@ -11,7 +11,11 @@ which         Find full path of executable program or return None
 which_assert  Find full path or raise AssertionError.
 exists        Whether a filename exists.  Also checks for .gz and .bz2.
 exists_nz     Whether a filename exists and has non-zero size.
+exists_nz_many
+assert_exists_nz
+assert_exists_nz_many
 fp_exists_nz  Whether a file or directory exists and is not empty.
+
 
 list_files_in_path         Return all files under a path.
 get_file_or_path_size      Get size of all files in a directory.
@@ -404,8 +408,8 @@ class RowIterator:
     # _header      Name of each column.  From header, format, then index.
     # _nheader     Normalized names.
 
-    def __init__(self, file_or_handle, delimiter, strip, skip, header, 
-                 format=None, *obj_convert_fns):
+    def __init__(self, file_or_handle, delimiter, strip, skip, pad_cols,
+                 header, format=None, *obj_convert_fns):
         if skip:
             file_or_handle = openfh(file_or_handle)
             for i in range(skip):
@@ -444,6 +448,7 @@ class RowIterator:
         self._convert_fns = convert_fns
         self._fn_cols = fn_cols
         self._strip_cols = strip_cols
+        self._pad_cols = pad_cols
 
     def _parse_line(self, file, delimiter="\t"):
         import csv
@@ -466,9 +471,12 @@ class RowIterator:
 
         if len(data) != len(self._format):
             dlen, flen = len(data), len(self._format)
-            s = "data(%d)/format(%d) are different lengths\n%r\n%r" % (
-                dlen, flen, self._format, data)
-            raise AssertionError, s
+            if dlen < flen and self._pad_cols is not None:
+                data = data + [self._pad_cols]*(flen-dlen)
+            else:
+                s = "data(%d)/format(%d) are different lengths\n%r\n%r" % (
+                    dlen, flen, self._format, data)
+                raise AssertionError, s
         for i in self._fn_cols:
             data[i] = self._convert_fns[i](data[i])
         for i in self._strip_cols:
@@ -502,8 +510,9 @@ class RowIterator:
 # read_row(filename, "name:s number:i")
 # read_row(filename, "col1:O col2:O", convert_fn, convert_fn)
 # read_row(filename, header=1)
-#   delimiter   Character used for the delimiter.  default "\t".
-#   skip        Number of lines to skip at the beginning.
+#   delimiter  Character used for the delimiter.  default "\t".
+#   skip       Number of lines to skip at the beginning.
+#   pad_cols   If not enough columns in a row, pad with this value.
 def read_row(file_or_handle, *args, **keywds):
     """Iterate over each line of a tab-delimited file.  The iterator
     object contains the following member variables:
@@ -545,14 +554,16 @@ def read_row(file_or_handle, *args, **keywds):
     format string is provided, then will just skip the header.
 
     """
-    known_params = ["delimiter", "strip", "skip", "header"]
+    known_params = ["delimiter", "strip", "skip", "pad_cols", "header"]
     for key in keywds:
         assert key in known_params, "Unknown parameter: %s" % key
     delimiter = keywds.get("delimiter", "\t")
     strip = keywds.get("strip", False)
     skip = keywds.get("skip", 0)
+    pad_cols = keywds.get("pad_cols", None)
     header = keywds.get("header", False)
-    return RowIterator(file_or_handle, delimiter, strip, skip, header, *args)
+    return RowIterator(
+        file_or_handle, delimiter, strip, skip, pad_cols, header, *args)
 
 def write_row(file_or_handle, data, format=None, *obj_convert_fns):
     """Write one row of a table into file_or_handle.  data should be a
@@ -648,7 +659,7 @@ def safe_mkdir(path):
 
 def list_files_in_path(file_or_path, endswith=None, case_insensitive=False):
     # Return a list of the files.  Returns full paths.
-    assert os.path.exists(file_or_path)
+    assert os.path.exists(file_or_path), "Not found: %s" % file_or_path
 
     # If this is a file, return this file.
     if not os.path.isdir(file_or_path):
