@@ -67,6 +67,8 @@
 # select_row_numeric_annotation
 # select_row_nonempty
 # select_row_maxvalue
+# filter_row_minvalue
+# filter_row_maxvalue
 # select_row_mean_value
 # select_row_mean_var
 # select_row_missing_values
@@ -1836,6 +1838,36 @@ def select_row_maxvalue(MATRIX, maxvalue):
     return I
 
 
+def filter_row_minvalue(MATRIX, minvalue):
+    if minvalue is None:
+        return None
+    minvalue = float(minvalue)
+    assert minvalue >= 0 and minvalue < 50000
+
+    I = []  # indexes to keep.
+    for i in range(len(MATRIX._X)):
+        x = [x for x in MATRIX._X[i] if x is not None]
+        # Keep if all samples >= minvalue.
+        if min(x) >= minvalue:
+            I.append(i)
+    return I
+
+
+def filter_row_maxvalue(MATRIX, maxvalue):
+    if maxvalue is None:
+        return None
+    maxvalue = float(maxvalue)
+    assert maxvalue >= 0 and maxvalue < 50000
+
+    I = []  # indexes to keep.
+    for i in range(len(MATRIX._X)):
+        x = [x for x in MATRIX._X[i] if x is not None]
+        # Keep if all samples < maxvalue
+        if max(x) < maxvalue:
+            I.append(i)
+    return I
+
+
 def select_row_mean_value(MATRIX, mean_value):
     from genomicode import jmath
     
@@ -3431,6 +3463,16 @@ def main():
         "E.g. if '5.0' is given, then keep the rows with at least one value "
         "greater than 5.")
     group.add_argument(
+        "--filter_row_minvalue", default=None, type=float,
+        help="Remove the rows where at least one sample has a value less "
+        "than this.  E.g. if '5.0' is given, then remove the rows where "
+        "any sample is less than 5.")
+    group.add_argument(
+        "--filter_row_maxvalue", default=None, type=float,
+        help="Remove the rows where at least one sample has a value more "
+        "than this.  E.g. if '500.0' is given, then remove the rows where "
+        "any sample is more than 500.")
+    group.add_argument(
         "--select_row_genesets", default=[], action="append",
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...].  (MULTI)")
@@ -3613,20 +3655,22 @@ def main():
     I08 = _intersect_indexes(*x)
     I09 = select_row_nonempty(MATRIX, args.select_row_nonempty)
     I10 = select_row_maxvalue(MATRIX, args.select_row_maxvalue)
-    I11 = select_row_mean_value(MATRIX, args.select_row_mean_value)
-    I12 = select_row_mean_var(
+    I11 = filter_row_minvalue(MATRIX, args.filter_row_minvalue)
+    I12 = filter_row_maxvalue(MATRIX, args.filter_row_maxvalue)
+    I13 = select_row_mean_value(MATRIX, args.select_row_mean_value)
+    I14 = select_row_mean_var(
         MATRIX, args.filter_row_by_mean, args.filter_row_by_var)
-    I13 = select_row_var(MATRIX, args.select_row_var)
-    I14 = select_row_delta(MATRIX, args.select_row_delta)
-    I15 = select_row_fc(MATRIX, args.select_row_fc)
-    I16 = select_row_num_samples_fc(
+    I15 = select_row_var(MATRIX, args.select_row_var)
+    I16 = select_row_delta(MATRIX, args.select_row_delta)
+    I17 = select_row_fc(MATRIX, args.select_row_fc)
+    I18 = select_row_num_samples_fc(
         MATRIX, args.select_row_num_samples_fc_mean, use_median=False)
-    I17 = select_row_num_samples_fc(
+    I19 = select_row_num_samples_fc(
         MATRIX, args.select_row_num_samples_fc_median, use_median=True)
-    I18 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I20 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
         I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13,
-        I14, I15, I16, I17, I18)
+        I14, I15, I16, I17, I18, I19, I20)
 
     I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)

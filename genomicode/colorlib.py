@@ -33,6 +33,7 @@ hsl2rgb
 
 """
 
+
 def _matrix2color(matrix, pos):
     # Make sure matrix is sorted from low to high.
     matrix = sorted(matrix)
@@ -325,6 +326,19 @@ def brewer_spectral_div(n):
     return x
 
 
+def hex2rgb(h):
+    assert h.startswith("0x") or h.startswith("#")
+    if h.startswith("0x"):
+        h = h[2:]
+    if h.startswith("#"):
+        h = h[1:]
+    assert len(h) == 6
+    r, g, b = h[:2], h[2:4], h[4:]
+    r, g, b = int(r, 16), int(g, 16), int(b, 16)
+    r, g, b = r/255.0, g/255.0, b/255.0
+    return r, g, b
+
+
 def rgb2hex(c):
     # red, green, blue values from 0-1.
     r, g, b = c
@@ -442,3 +456,17 @@ def hsl2rgb(col):
     G = _hsl2rgb_h(H, temp1, temp2, H)
     B = _hsl2rgb_h(H, temp1, temp2, H-1.0/3.0)
     return R, G, B
+
+
+
+BREWER_QUALITATIVE_SET1 = [
+    hex2rgb("#D23329"),  # red
+    hex2rgb("#467CB4"),  # blue
+    hex2rgb("#69AD59"),  # green
+    hex2rgb("#8F559D"),  # purple
+    hex2rgb("#E97F32"),  # orange
+    hex2rgb("#FBFD60"),  # yellow
+    hex2rgb("#975C2C"),  # brown
+    hex2rgb("#E383BA"),  # pink
+    ]
+

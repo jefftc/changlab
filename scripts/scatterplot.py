@@ -69,6 +69,7 @@ def main():
     group = parser.add_argument_group(title="Plot Labels")
     group.add_argument("--title", help="Put a title on the plot.")
     group.add_argument("--xlab", help="Label the X-axis.")
+    group.add_argument("--ylab", help="Label the Y-axis.")
 
     group = parser.add_argument_group(title="Margins and Sizes")
     group.add_argument(
@@ -81,6 +82,9 @@ def main():
     group.add_argument(
         "--mar_bottom", default=1.0, type=float,
         help="Scale margin at bottom of plot.  Default 1.0.")
+    group.add_argument(
+        "--scale_points", default=1.0, type=float,
+        help="Scale the size of the points.  Default 1.0")
     #group.add_argument(
     #    "--xlabel_size", default=1.0, type=float,
     #    help="Scale the size of the labels on X-axis.  Default 1.0.")
@@ -127,8 +131,12 @@ def main():
     if args.xlab:
         xlab = args.xlab
     ylab = args.y_header
+    if args.xlab:
+        ylab = args.ylab
+    
     
     lwd = 2
+    cex = 1 * args.scale_points
     cex_lab = 1.5
     cex_main = 2.0
     cex_sub = 1.5
@@ -152,7 +160,7 @@ def main():
 
     jmath.R_fn(
         "plot", jmath.R_var("X"), jmath.R_var("Y"),
-        main=main, xlab="", ylab="",
+        main=main, xlab="", ylab="", pch=19, cex=cex, 
         axes=jmath.R_var("FALSE"), RETVAL="x")
     # Make plot area solid white.
     #jmath.R('usr <- par("usr")')

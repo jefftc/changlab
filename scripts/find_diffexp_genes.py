@@ -25,6 +25,21 @@ def choose_gene_names(MATRIX):
             genename_header = header
             
     return geneid_header, genename_header
+
+
+def _write_matrix(outhandle, header, DATA_py):
+    if type(outhandle) is type(""):
+        outhandle = open(outhandle, 'w')
+
+    print >>outhandle, "\t".join(header)
+    for x in DATA_py:
+        assert len(x) == len(header)
+        # Convert None to "".
+        for i in range(len(x)):
+            if x[i] is None:
+                x[i] = ""
+        print >>outhandle, "\t".join(map(str, x))
+    outhandle.flush()
     
     
 def find_diffexp_genes(
@@ -181,39 +196,16 @@ def find_diffexp_genes(
         tDATA_py.append(col_py)
     DATA_py = jmath.transpose(tDATA_py)
 
+    #handle = open('test01.txt', 'w')
+    #for x in DATA_py:
+    #    print >>handle, "\t".join(map(str, x))
+
     # Convert NA to None.
     for i in range(len(DATA_py)):
         for j in range(len(DATA_py[i])):
             if type(DATA_py[i][j]) in [
                 rinterface.NACharacterType, rinterface.NARealType]:
                 DATA_py[i][j] = None
-
-    # Filter based on user criteria.
-    if fold_change is not None:
-        log_2_fc = math.log(fold_change, 2)
-        name = "Log_2 Fold Change"
-        assert name in header, 'I could not find the "%s" column.' % name
-        I = header.index(name)
-        DATA_py = [x for x in DATA_py
-                   if x[I] is not None and abs(x[I]) >= log_2_fc]
-    if p_cutoff is not None:
-        name  = "p.value"
-        assert name in header, 'I could not find the "%s" column.' % name
-        I = header.index(name)
-        DATA_py = [x for x in DATA_py
-                   if x[I] is not None and float(x[I]) < p_cutoff]
-    if fdr_cutoff is not None:
-        name  = "FDR"
-        assert name in header, 'I could not find the "%s" column.' % name
-        I = header.index(name)
-        DATA_py = [x for x in DATA_py
-                   if x[I] is not None and float(x[I]) < fdr_cutoff]
-    if bonf_cutoff is not None:
-        name  = "Bonf"
-        assert name in header, 'I could not find the "%s" column.' % name
-        I = header.index(name)
-        DATA_py = [x for x in DATA_py
-                   if x[I] is not None and float(x[I]) < bonf_cutoff]
 
     # Sort by increasing p-value, then decreasing fold change.
     name  = "p.value"
@@ -237,29 +229,44 @@ def find_diffexp_genes(
     schwartz.sort()
     DATA_py = [x[-1] for x in schwartz]
 
-    # Convert None to "".
-    for i in range(len(DATA_py)):
-        for j in range(len(DATA_py[i])):
-            if DATA_py[i][j] is None:
-                DATA_py[i][j] = ""
+    # Filter based on user criteria.
+    if fold_change is not None:
+        log_2_fc = math.log(fold_change, 2)
+        name = "Log_2 Fold Change"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and abs(x[I]) >= log_2_fc]
+    if p_cutoff is not None:
+        name  = "p.value"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < p_cutoff]
+    if fdr_cutoff is not None:
+        name  = "FDR"
+        # This might be missing if all the genes have already been
+        # filtered.
+        #assert name in header, 'I could not find the "%s" column.' % name
+        if name in header:
+            I = header.index(name)
+            DATA_py = [x for x in DATA_py
+                       if x[I] is not None and float(x[I]) < fdr_cutoff]
+    if bonf_cutoff is not None:
+        name  = "Bonf"
+        assert name in header, 'I could not find the "%s" column.' % name
+        I = header.index(name)
+        DATA_py = [x for x in DATA_py
+                   if x[I] is not None and float(x[I]) < bonf_cutoff]
 
     ## If no significant genes, then don't produce any output.
     ##if not DATA_py:
     ##    return
 
     # Write to the outhandle.
-    outhandle = outfile
-    if type(outhandle) is type(""):
-        outhandle = open(outfile, 'w')
-    print >>outhandle, "\t".join(header)
-    outhandle.flush()
-    for x in DATA_py:
-        assert len(x) == len(header)
-        print >>outhandle, "\t".join(map(str, x))
-        outhandle.flush()
+    _write_matrix(outfile, header, DATA_py)
     # Don't close someone else's file handle.
     #outhandle.close()
-
 
     # Write out the gene sets in GMT format, if requested.
     if not gmt_file:
@@ -313,19 +320,20 @@ def find_diffexp_genes(
 
 
 def _run_forked(
-    gmt_file, algorithm, paired, MATRIX,
+    outfile, gmt_file, algorithm, paired, MATRIX,
     geneid_header, genename_header, genename_delim,
-    name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+    name1, name2, classes,
+    fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
     sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
     import os
     import sys
     import tempfile
 
-    outfile = pid = None
+    tmpfile = pid = None
     try:
-        x, outfile = tempfile.mkstemp(dir="."); os.close(x)
-        if os.path.exists(outfile):
-            os.unlink(outfile)
+        x, tmpfile = tempfile.mkstemp(dir="."); os.close(x)
+        if os.path.exists(tmpfile):
+            os.unlink(tmpfile)
 
         # Fork a subprocess, because some R libraries generate garbage
         # to the screen.
@@ -336,17 +344,23 @@ def _run_forked(
             r = os.fdopen(r)
             for line in r:
                 sys.stdout.write(line)   # output from R library
+            sys.stdout.flush()
             os.waitpid(pid, 0)
 
-            assert os.path.exists(outfile), "failed"
-            for line in open(outfile):
-                sys.stdout.write(line)
+            assert os.path.exists(tmpfile), "File not found: %s" % tmpfile
+            if outfile is None:
+                outfile = sys.stdout
+            elif type(outfile) is type(""):
+                outfile = open(outfile, 'w')
+            for line in open(tmpfile):
+                outfile.write(line)
+            outfile.flush()
         else:     # Child
             os.close(r)
             w = os.fdopen(w, 'w')
             os.dup2(w.fileno(), sys.stdout.fileno())
             find_diffexp_genes(
-                outfile, gmt_file, algorithm, paired, 
+                tmpfile, gmt_file, algorithm, paired, 
                 MATRIX, geneid_header, genename_header, genename_delim,
                 name1, name2, classes,
                 fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
@@ -354,34 +368,36 @@ def _run_forked(
             sys.exit(0)
     finally:
         if pid:
-            if outfile and os.path.exists(outfile):
-                os.unlink(outfile)
+            if tmpfile and os.path.exists(tmpfile):
+                os.unlink(tmpfile)
     
 
 def _run_not_forked(
-        gmt_file, algorithm, paired, MATRIX, geneid_header, genename_header,
-        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
-        sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
+    outfile, gmt_file, algorithm, paired, MATRIX,
+    geneid_header, genename_header, genename_delim,
+    name1, name2, classes,
+    fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+    sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
     import sys
-    outfile = sys.stdout
 
+    outfile = outfile or sys.stdout
     find_diffexp_genes(
         outfile, gmt_file, algorithm, paired, 
-        MATRIX, geneid_header, genename_header, 
-        name1, name2, classes,
-        fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        MATRIX, geneid_header, genename_header, genename_delim, 
+        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
         sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
         
 
 def main():
     import os
+    import sys
     import argparse
-    from collections import Counter
+    #from collections import Counter
 
     import arrayio
     from genomicode import arraysetlib
-    from genomicode import binreg
-    from genomicode import jmath
+    #from genomicode import binreg
+    #from genomicode import jmath
     
     parser = argparse.ArgumentParser(
         description="Find differentially expressed genes.")
@@ -409,6 +425,8 @@ def main():
         help="This number of columns are headers.  If not given, will guess.")
     parser.add_argument(
         "--gmt_file", help="Save the results in GMT format.")
+    parser.add_argument(
+        "--unfiltered_file", help="Save unfiltered results.")
     parser.add_argument(
         "--genename_delim",
         help="When writing gmt file, separate gene names based on this "
@@ -550,17 +568,34 @@ def main():
             args.name1, args.name2)
         name1, name2, classes = x
 
+    # Doesn't work.  Some algorithms need to do the filtering, because
+    # it can change the multiple hypothesis correction.
+    #args.unfiltered_file = None
 
     # Run the analysis
-    args = (
-        args.gmt_file, args.algorithm, args.paired, MATRIX,
+    #fn = _run_forked
+    fn = _run_not_forked  # for debugging
+    params = (
+        sys.stdout, args.gmt_file, 
+        args.algorithm, args.paired, MATRIX,
         args.geneid_header, args.genename_header, args.genename_delim, 
         name1, name2, classes,
         args.fold_change, args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
         args.sam_delta, args.sam_qq_file, args.edger_tagwise_dispersion,
         args.num_procs)
-    _run_forked(*args)
-    #_run_not_forked(*args)  # for debugging
+    fn(*params)
+    if args.unfiltered_file:
+        params = (
+            args.unfiltered_file, None, 
+            args.algorithm, args.paired, MATRIX,
+            args.geneid_header, args.genename_header, args.genename_delim, 
+            name1, name2, classes,
+            None, None, None, None, 
+            args.sam_delta, args.sam_qq_file, args.edger_tagwise_dispersion,
+            args.num_procs)
+        fn(*params)
+        
+    
         
 
 if __name__ == '__main__':

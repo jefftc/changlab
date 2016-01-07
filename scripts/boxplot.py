@@ -8,6 +8,8 @@ def main():
     import arrayio
     from genomicode import config
     from genomicode import jmath
+    from genomicode import pcalib
+    from genomicode import colorlib
 
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("expression_file", help="Gene expression file.")
@@ -48,7 +50,16 @@ def main():
     group.add_argument(
         "--xlabel_off", default=False, action="store_true",
         help="Turn off the X labels.")
-    
+
+    group = parser.add_argument_group(title="Coloring")
+    group.add_argument(
+        "-c", "--cluster", default=[], action="append",
+        help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
+    group.add_argument(
+        "--indexes_include_headers", "--iih", action="store_true",
+        help="If not given (default), then index 1 is the first column "
+        "with data.  If given, then index 1 is the very first column "
+        "in the file, including the headers.")
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -65,13 +76,18 @@ def main():
     assert args.mar_bottom > 0 and args.mar_bottom < 10
     assert args.mar_left > 0 and args.mar_left < 10
     assert args.xlabel_size > 0 and args.xlabel_size < 10
-        
     height = args.height or 1600
     width = args.width or 1600
 
     MATRIX = arrayio.read(args.expression_file, hcols=args.num_header_cols)
     assert MATRIX.nrow() and MATRIX.ncol(), "Empty matrix."
 
+    cluster = None
+    if args.cluster:
+        import pcaplot
+        cluster = pcaplot._parse_cluster(
+            args.cluster, args.indexes_include_headers, MATRIX)
+        
     # Start R and set up the environment.
     R = jmath.start_R()
     path = config.changlab_Rlib
@@ -86,7 +102,13 @@ def main():
     xlab = ""
     ylab = "Gene Expression"
     labels = jmath.R_var("FALSE")
+
     col = jmath.R_var("NULL")
+    if cluster is not None:
+        x = pcalib.choose_colors(cluster)
+        x = [colorlib.rgb2hex(x) for x in x]
+        x = [x.replace("0x", "#") for x in x]
+        col = x
 
     if not args.xlabel_off:
         labels = MATRIX.col_names(arrayio.COL_ID)
@@ -123,7 +145,7 @@ def main():
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    x = 5*1.2*args.mar_bottom, 4*1.2*args.mar_left, 4, 2
+    x = 5*2.0*args.mar_bottom, 4*1.2*args.mar_left, 4, 2
     mar = [x+0.1 for x in x]
     jmath.R_fn("par", mar=mar, RETVAL="op")
         

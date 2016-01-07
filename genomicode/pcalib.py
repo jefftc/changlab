@@ -36,6 +36,7 @@ def svd_project_cols(X, K):
 def choose_colors(group):
     # group should be a list of 0-based integers.  Can be None if no
     # group is assigned to a sample.
+    # Return list of (r, g, b) for the color for each group.
     import colorlib
 
     group_clean = [x for x in group if x is not None]
@@ -46,12 +47,17 @@ def choose_colors(group):
     # that group, leaving the others black.
     if max(group_clean) == 0:
         pass
-    # Use the middle range of the colorbar, because the colors at the
-    # end are dark.
-    # Doesn't work.  Middle colors are too pastel.
-    #color_fn = colorlib.matlab_colors
-    color_fn = colorlib.bild_colors
-    palette = color_fn(max(group_clean)+1)
+    num_groups = max(group_clean)+1
+    if num_groups <= len(colorlib.BREWER_QUALITATIVE_SET1):
+        # Use the brewer palette.
+        palette = colorlib.BREWER_QUALITATIVE_SET1[:num_groups]
+    else:
+        # Use the middle range of the colorbar, because the colors at the
+        # end are dark.
+        # Doesn't work.  Middle colors are too pastel.
+        #color_fn = colorlib.matlab_colors
+        color_fn = colorlib.bild_colors
+        palette = color_fn(num_groups)
     color = [None] * len(group)
     for i in range(len(group)):
         if group[i] is None:

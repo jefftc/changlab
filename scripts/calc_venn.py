@@ -1,19 +1,69 @@
 #!/usr/bin/env python
 
+def _calc_p(combo2common, name1, name2, total_items):
+    from genomicode import jmath
+    
+    #             not set 2  in set 2
+    # not set 1      x11       x12       x1d
+    # in set 1       x21       x22       x2d
+    #                xd1       xd2       xdd
+    xdd = total_items
+    x2d = len(combo2common[(name1, name1)])
+    xd2 = len(combo2common[(name2, name2)])
+    x22 = len(combo2common[(name1, name2)])
+    x21 = x2d - x22
+    x12 = xd2 - x22
+    x11 = xdd - x12 - x21 - x22
+
+    p = jmath.fisher_test(x11, x12, x21, x22)
+    return p
+
+
+def _name_replace(name_replace, all_names, name2genes):
+    if not name_replace:
+        return all_names, name2genes
+    replace = []  # list of (from, no)
+    for x in name_replace:
+        x = x.split(",", 1)
+        assert len(x) == 2
+        from_, to = x
+        replace.append((from_, to))
+    new_all_names = []
+    new_name2genes = {}
+    for name in all_names:
+        new_name = name
+        for (from_, to) in replace:
+            new_name = new_name.replace(from_, to)
+        assert new_name not in new_all_names, "dup"
+        new_all_names.append(new_name)
+        new_name2genes[new_name] = name2genes[name]
+    return new_all_names, new_name2genes
+
+
 def product_genesets(all_names, num_to_compare):
     import itertools
     
     x = [all_names] * num_to_compare
+
     for combo in itertools.product(*x):
         assert len(combo) == num_to_compare
-        uniq_combo = {}.fromkeys(combo).keys()
+        # Need to preserve order.
+        #uniq_combo = {}.fromkeys(combo).keys()
+        uniq_combo = []
+        for x in combo:
+            if x not in uniq_combo:
+                uniq_combo.append(x)
         yield tuple(uniq_combo)
 
 
-def match_gene_sets(genesets):
+def match_gene_sets(genesets, delimiter):
     # Return a tuple.  First element is list of genesets where the _UP
     # and _DN (_DOWN) are combined.  Second element are the pretty
     # names.  Preserve the order of the gene sets.
+
+    # Make sure delimiter is not already used.
+    for x in genesets:
+        assert delimiter not in x, "Error: bad delimiter"
     
     pretty_names = genesets[:]
     i = 0
@@ -24,7 +74,7 @@ def match_gene_sets(genesets):
             ugs1 = ugs1[:-5] + "_DN"
         
         # If there is already a positive and negative, skip it.
-        if gs1.find(",") >= 0:
+        if gs1.find(delimiter) >= 0:
             i += 1
             continue
 
@@ -46,7 +96,7 @@ def match_gene_sets(genesets):
         if not match:
             i += 1
             continue
-        x = "%s,%s" % (gs1, gs2)
+        x = "%s%s%s" % (gs1, delimiter, gs2)
         genesets[i] = x
         del genesets[j]
         x = gs1
@@ -59,7 +109,7 @@ def match_gene_sets(genesets):
 
 
 def draw_venn(
-    filename, all_names, name2genes,
+    filename, all_names, name2genes, 
     args_margin, args_label_size, args_count_size):
     import sys
     import StringIO
@@ -236,6 +286,18 @@ def main():
     group.add_argument(
         "--count_size", default=1.0, type=float,
         help="Increase or decrease the font for the counts.")
+    group.add_argument(
+        "--name_replace", default=[], action="append",
+        help="For the plot, replace a string in the geneset name with "
+        "another string.  Format: <from>,<to>  (MULTI)")
+
+    group = parser.add_argument_group(title="Statistics")
+    #group.add_argument(
+    #    "--calc_p", action="store_true",
+    #    help="Calculate a p-value for significance of overlap.")
+    group.add_argument(
+        "--p_num_items", default=0, type=int,
+        help="Total number of items in the set.")
 
     args = parser.parse_args()
     assert os.path.exists(args.geneset_file), \
@@ -251,6 +313,8 @@ def main():
         assert len(args.geneset) > 1, "Must compare multiple gene sets."
         assert len(args.geneset) >= args.num_to_compare
 
+    assert args.p_num_items >= 0
+
     name2genes = {}
     all_names = []  # preserve order of gene sets
     for x in genesetlib.read_genesets(args.geneset_file):
@@ -259,16 +323,29 @@ def main():
         all_names.append(name)
 
     if args.automatch:
-        all_names, pretty_names = match_gene_sets(all_names)
+        DELIMITERS = [",", ";", "-"]
+        delimiter = None
+        for delim in DELIMITERS:
+            for x in all_names:
+                if delim in x:
+                    break
+            else:
+                delimiter = delim
+                break
+        assert delimiter, "I could not find a delimiter"
+        all_names, pretty_names = match_gene_sets(all_names, delimiter)
         # Merge the gene sets.
         merged = {}
         for name, pretty_name in zip(all_names, pretty_names):
-            x = name.split(",")
-            assert len(x) == 2
-            n1, n2 = x
-            g1, g2 = name2genes[n1], name2genes[n2]
-            x = g1 + g2
-            genes = sorted({}.fromkeys(x))
+            if delimiter not in name:  # not automatched
+                genes = name2genes[name]
+            else:
+                x = name.split(delimiter)
+                assert len(x) == 2, "Bad split: %s %s" % (name, delimiter)
+                n1, n2 = x
+                g1, g2 = name2genes[n1], name2genes[n2]
+                x = g1 + g2
+                genes = sorted({}.fromkeys(x))
             merged[pretty_name] = genes
         name2genes = merged
         all_names = pretty_names
@@ -305,6 +382,21 @@ def main():
             print "\t".join(map(str, x))
     else:
         print "No matrix for comparing %d gene sets." % args.num_to_compare
+    print
+
+    # Write out the statistics.
+    if args.p_num_items > 0:
+        if args.num_to_compare != 2:
+            raise NotImplementedError, "Can't calc p-values with > 2 groups."
+        for name1 in all_names:
+            for name2 in all_names:
+                if name1 == name2:
+                    continue
+                if name1 > name2:
+                    continue
+                p = _calc_p(combo2common, name1, name2, args.p_num_items)
+                print "%s %s p=%s" % (name1, name2, p)
+        
 
     # Write to an output file.
     if args.outfile:
@@ -327,6 +419,8 @@ def main():
         write_fn(args.outfile, genesets)
 
     if args.plotfile:
+        x = _name_replace(args.name_replace, all_names, name2genes)
+        all_names, name2genes = x
         draw_venn(
             args.plotfile, all_names, name2genes, 
             args.margin, args.label_size, args.count_size)

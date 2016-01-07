@@ -274,6 +274,8 @@ make.output.table <- function(IN, p.values, fdr, bonf, filter.p05) {
   for(i in 1:IN$g)
     x3 <- c(x3, colnames(IN$X.i[[i]]))
   x <- c(x1, x2, x3)
+  # If DATA is empty, make sure it has the right number of columns.
+  DATA <- matrix(DATA, ncol=length(x))
   colnames(DATA) <- x
   DATA <- matrix2dataframe(DATA)
   # Make sure Gene ID and Gene Names don't get converted to numbers
