@@ -14,7 +14,7 @@ BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
 DEBUG_POOL = {}
 def run_pipeline(
-    network, in_datas, user_attributes, user_options, paths, user=None,
+    network, in_datas, custom_attributes, user_options, paths, user=None,
     job_name='', clean_up=True, num_cores=8):
     # Run the pipeline that is indicated by the network.  Returns a
     # tuple of (dictionary of node_id -> IdentifiedDataNode, output
@@ -46,40 +46,31 @@ def run_pipeline(
     logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
 
     # Make a list of the valid node_ids in the pipeline.
-    path_ids = []   # list of node_ids in the pipeline.
-    for x in paths:
-        p_ids, s_ids, d_indexes = x
-        path_ids.extend(p_ids)
-    path_ids = {}.fromkeys(path_ids)
+    x = [x.node_ids for x in paths]
+    x = bie3._uniq(bie3._flatten(x))
+    path_ids = x    # list of node_ids in the pipeline.
 
     # Add the start_ids to the stack.  Each member of the stack can be
     # a tuple of:
-    # 1.  (IdentifiedDataNode, node_id, None)
-    # 2.  (ModuleNode, node_id, None)
-    # 3.  (ModuleNode, node_id, antecedent_ids)
+    # 1.  (IdentifiedDataNode, node_id, None, transitions)
+    # 2.  (ModuleNode, node_id, None, transitions)
+    # 3.  (ModuleNode, node_id, antecedent_ids, transitions)
     #     Keep track of which set of antecedents to run.
+    # transitions is a dictionary of (node_id, next_node_id) -> 1
     stack = []
-    for x in paths:
-        p_ids, s_ids, d_indexes = x
-        assert len(s_ids) == len(d_indexes)
-        for id_, index in zip(s_ids, d_indexes):
+    for p in paths:
+        for index, id_ in enumerate(p.start_ids):
+            assert id_ is not None
             node = in_datas[index]
-            stack.append((node, id_, None))
+            x = node, id_, None, {}
+            if x not in stack:
+                stack.append(x)
 
-    ## stack = []
-    ## for node in in_datas:
-    ##     data_node = node.data
-    ##     start_node_ids = bie3._find_start_nodes(network, data_node)
-    ##     assert start_node_ids, \
-    ##            '%s cannot matched to network' % data_node.datatype.name
-    ##     for start_node_id in start_node_ids:
-    ##         stack.append((node, start_node_id, None))
-    ##         #pool[start_node_id] = idata
-            
     # Keep track of nodes that have already been generated.
-    pool = {}      # dict of node_id -> IdentifiedDataNode or ModuleNode
-    pipeline = []  # list of the names of the modules run.
+    pool = {}         # dict of node_id -> IdentifiedDataNode or ModuleNode
+    pipeline = []     # list of the names of the modules run.
     next_node = None
+    
     # Keep track of the number of times a module can't be run because
     # it doesn't have enough input data.  If this exceeds the total
     # number of modules, then quit.
@@ -89,7 +80,7 @@ def run_pipeline(
         DEBUG_POOL = pool
         assert num_failures < len(stack), \
                "Inference error: No more nodes to run."
-        node, node_id, more_info = stack.pop()
+        node, node_id, more_info, transitions = stack.pop()
         if node_id not in path_ids:  # ignore if not in pipeline
             continue
         if node_id == 0:
@@ -106,23 +97,25 @@ def run_pipeline(
                 assert isinstance(next_node, bie3.ModuleNode)
                 if next_id in on_stack:
                     continue
-                stack.append((next_node, next_id, None))
+                # Module updates the transitions based on which set of
+                # antecedent IDs are used.
+                stack.append((next_node, next_id, None, transitions))
             # If I've added new modules, then reset the failures counter.
             num_failures = 0
         elif isinstance(node, bie3.ModuleNode) and more_info is None:
             # If the input data for this module doesn't exist, then
             # just try it again later.
             all_antecedent_ids = _get_available_input_combinations(
-                network, node_id, user_attributes, pool)
+                network, node_id, custom_attributes, pool)
             if not all_antecedent_ids:
                 # No sets of inputs are ready to run.  Put back to the
                 # bottom of the stack and try again later.
-                stack.insert(0, (node, node_id, more_info))
+                stack.insert(0, (node, node_id, more_info, transitions))
                 num_failures += 1
                 continue
             for antecedent_ids in all_antecedent_ids:
                 assert len(node.in_datatypes) == len(antecedent_ids)
-                x = node, node_id, antecedent_ids
+                x = node, node_id, antecedent_ids, transitions
                 stack.append(x)
             # If I've added new analyses to run, then reset the
             # failures counter.
@@ -151,21 +144,11 @@ def run_pipeline(
             #    success = True
             #    break
             assert next_id is not None
-            stack.append((next_node, next_id, None))
-            
-            #flag = False
-            #if not out_nodes:
-            #    break
-            #for x in out_nodes:
-            #    next_node, next_id = x
-            #    if next_id == 0:
-            #        flag = True
-            #        break
-            #    elif next_id is None:
-            #        raise ValueError('cannot match the output node')
-            #    stack.append((next_node, next_id))
-            #if flag:
-            #    break
+            trans = transitions.copy()
+            for x in antecedent_ids:
+                trans[(x, node_id)] = 1
+            trans[(node_id, next_id)] = 1
+            stack.append((next_node, next_id, None, trans))
         else:
             raise AssertionError
 
@@ -175,7 +158,7 @@ def run_pipeline(
         #print next_node.identifier
         #sys.stdout.flush()
         assert next_node
-        return pool, next_node.identifier
+        return pool, transitions, next_node.identifier
     print "This pipeline has completed unsuccessfully."
     return None
 
@@ -263,7 +246,7 @@ def run_module(
     # Create a list of all the output nodes that can be generated by
     # this set of inputs.
     x = [x.data for x in in_identified_data_nodes]
-    out_data_nodes = bie3._forwardchain_to_outputs(module_node, x)
+    out_data_nodes = bie3._fc_to_outputs(module_node, x)
     # Make sure the DataTypes are the same.
     assert out_data_nodes
     x = sorted([x.datatype for x in out_data_nodes])
@@ -301,7 +284,7 @@ def run_module(
         next_node = network.nodes[next_id]
         for out_data_node in out_data_nodes:
             # out_attributes should be subset of next_data.attributes.
-            if not bie3._is_data_compatible_with(out_data_node, next_node):
+            if not bie3._is_data_compatible(out_data_node, next_node):
                 continue
             compatible.append((out_data_node, next_id))
     # If there are no compatible out nodes, then return None.
@@ -348,15 +331,11 @@ def run_module(
                 time.strftime('%I:%M %p'), module_name, x),
             prefixn=2)
         sys.stdout.flush()
-        #x = " "*12
-        #print "%sRetrieved from cache.  Previously took %s." % (
-        #    x, params["elapsed_pretty"])
         return out_identified_data_node, next_id
 
     # Running this module now.
     parselib.print_split(
-        "[%s]  %s" % (time.strftime('%I:%M %p'), module_name),
-        prefixn=2)
+        "[%s]  %s" % (time.strftime('%I:%M %p'), module_name), prefixn=2)
     sys.stdout.flush()
 
     # Run the module in a temporary directory.
@@ -452,22 +431,20 @@ def _is_module_output_complete(path):
 
 
 def _get_available_input_combinations(
-    network, module_id, user_attributes, pool):
+    network, module_id, custom_attributes, pool):
     # Return a list of tuples indicating the node_ids that are:
     # 1.  Valid sets of input data.
     # 2.  Available in the pool.
     # node_ids are in the same order as the module.datatypes.
     import bie3
 
-    module = network.nodes[module_id]
-
     # Make a list of every possible combination of inputs that goes
     # into this module.
-    prev_ids = network.points_to(module_id)
-    all_input_ids = bie3._get_valid_input_combinations(
-        network, module_id, prev_ids, user_attributes)
+    x = bie3._bc_to_input_ids(network, module_id, custom_attributes)
+    all_input_ids = x
 
     # See if we have the data to run this module.
+    module = network.nodes[module_id]
     available = []
     for input_ids in all_input_ids:
         assert len(module.in_datatypes) == len(input_ids)
@@ -512,60 +489,6 @@ def _get_available_input_combinations(
 ##             result.append((out_object, out_id))
 ##             #result.append((out_node, out_id, outfile))
 ##     return result
-
-
-## def compare_two_dict(dict_A, dict_B):
-##     if len(dict_A) != len(dict_B):
-##         return False
-##     if set(dict_A) - set(dict_B):
-##         return False
-##     for key in dict_A:
-##         setA = dict_A[key]
-##         setB = dict_B[key]
-##         if isinstance(setA, str):
-##             setA = [setA]
-##         if isinstance(setB, str):
-##             setB = [setB]
-##         if (not set(setA).issubset(set(setB)) and
-##             not set(setB).issubset(set(setA))):
-##             return False
-##     return True
-
-
-## def copy_result_folder(working_dir, temp_dir, temp_outfile):
-##     """copy result files in temp folder to result folder,
-##       if fails, delete result folder"""
-##     import os
-##     import shutil
-    
-##     if not os.path.exists(working_dir):
-##         os.mkdir(working_dir)
-##     try:
-##         shutil.copyfile(os.path.join(temp_dir, 'Betsy_parameters.txt'),
-##                         os.path.join(working_dir, 'Betsy_parameters.txt'))
-##         if os.path.isdir(os.path.join(temp_dir, temp_outfile)):
-##             shutil.copytree(os.path.join(temp_dir, temp_outfile),
-##                             os.path.join(working_dir, temp_outfile))
-##         else:
-##             #change to copy other files
-##             all_files = os.listdir(temp_dir)
-##             extra_files = list(set(all_files) - set(
-##                 [temp_outfile, 'Betsy_parameters.txt', 'stdout.txt']))
-##             shutil.copyfile(os.path.join(temp_dir, temp_outfile),
-##                             os.path.join(working_dir, temp_outfile))
-##             for extra_file in extra_files:
-##                 if os.path.isfile(os.path.join(temp_dir, extra_file)):
-##                     shutil.copyfile(os.path.join(temp_dir, extra_file),
-##                                     os.path.join(working_dir, extra_file))
-##                 elif os.path.isdir(os.path.join(temp_dir, extra_file)):
-##                     shutil.copytree(os.path.join(temp_dir, extra_file),
-##                                     os.path.join(working_dir, extra_file))
-##         shutil.copyfile(os.path.join(temp_dir, 'stdout.txt'),
-##                         os.path.join(working_dir, 'stdout.txt'))
-##     finally:
-##         if not os.path.isfile(os.path.join(working_dir, 'stdout.txt')):
-##             shutil.rmtree(working_dir)
-##             raise ValueError('copy fails')
 
 
 def _pretty_time_delta(delta):

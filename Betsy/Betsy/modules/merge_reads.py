@@ -64,6 +64,7 @@ def merge_or_symlink_files(in_filenames, out_filename):
     # If only 1 file, then just symlink it rather than copy.
     # out_filename must not exist.
     import os
+    from genomicode import filelib
     
     CHUNK_SIZE = 1024*1024
     assert not os.path.exists(out_filename)

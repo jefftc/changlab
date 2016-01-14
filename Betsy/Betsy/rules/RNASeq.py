@@ -47,7 +47,8 @@ HTSeqCountResults = DataType(
 
 HTSeqCountSummary = DataType(
     "HTSeqCountSummary",
-    help="Summarizes the results from htseq-count.",
+    help="Contains a summary of the results from htseq-count as a "
+    "tab-delimited text file.",
     )
 
 
@@ -147,12 +148,18 @@ all_modules = [
         Constraint("contents", SAME_AS, 0, 1),
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         
-        help="Use RSEM to estimate TPM or FPKM.",
+        help="Use RSEM to estimate TPM or FPKM.  name sorting the BAM file "
+        "is better.  Otherwise, may run into error related to buffer size.",
         ),
 
     ModuleNode(
         "extract_htseq_count_signal",
         HTSeqCountResults, GXP.UnprocessedSignalFile,
+        OptionDef(
+            "ignore_htseq_count_errors", default="no",
+            help='Whether to ignore errors in the files.  '
+            'Should be "yes" or "no".',
+            ),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         

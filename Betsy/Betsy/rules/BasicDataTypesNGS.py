@@ -138,7 +138,7 @@ FastqFolder = DataType(
         "adapters_trimmed", ["yes", "no"], "no", "no",
         help="Whether the adapters are trimmed."),
     AttributeDef(
-        "reads_merged", ["yes", "no"], "no", "no",
+        "reads_merged", ["yes", "no"], "no", "yes",
         help="Whether reads for a sample are merged into one file."),
     #AttributeDef(
     #    "orientation", ORIENTATION, "unknown", "unknown",
@@ -262,7 +262,7 @@ Bowtie2AlignmentSummary = DataType(
 
 AlignedReadsSummary = DataType(
     "AlignedReadsSummary",
-    help="Summarizes the number of aligned reads.",
+    help="Summarizes the number of aligned reads (.xls file).",
     )
 
 CoverageSummary = DataType(
@@ -272,7 +272,7 @@ CoverageSummary = DataType(
 
 TrimmomaticSummary = DataType(
     "TrimmomaticSummary",
-    help="Summarizes the results from trimmomatic.",
+    help="Summarizes the results from trimmomatic in an Excel .xls file.",
     )
 
 
@@ -471,7 +471,7 @@ all_modules = [
         SamFolder,
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, ["no", "yes"], 0),
         Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("bowtie1_indexed", MUST_BE, "yes", 2),
         
@@ -520,7 +520,8 @@ all_modules = [
         #    ),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 2),
         
@@ -568,7 +569,8 @@ all_modules = [
         
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, ["no", "yes"], 0),
         Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("bwa_indexed", MUST_BE, "yes", 2),
         
@@ -595,7 +597,8 @@ all_modules = [
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, ["no", "yes"], 0),
         Constraint("bwa_indexed", MUST_BE, "yes", 2),
         
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -627,6 +630,7 @@ all_modules = [
     ModuleNode(
         "summarize_aligned_reads",
         BamFolder, AlignedReadsSummary,
+        Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS),
         Constraint("indexed", MUST_BE, "yes"),
         help="Summarize the alignment, e.g. number of reads aligned.",
         ),

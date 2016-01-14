@@ -2,6 +2,7 @@
 
 Classes:
 ReferenceGenome
+HTSeqCountOutput
 
 Methods:
 create_reference_genome
@@ -20,6 +21,7 @@ make_rsem_command
 find_rsem_result_files
 
 make_htseq_count_command
+parse_htseq_count_output
 
 """
 
@@ -688,3 +690,79 @@ def make_htseq_count_command(
     return " ".join(cmd)
 
 
+class HTSeqCountOutput:
+    def __init__(
+        self, counts, no_feature, ambiguous, too_low_aQual,
+        not_aligned, alignment_not_unique, warnings, errors):
+        # counts is a dictionary of gene_id -> count.
+        # warnings is a list of warning lines
+        # errors is a list of error lines
+        self.counts = counts.copy()
+        self.no_feature = no_feature        # count not be assigned to feature
+        self.ambiguous = ambiguous          # multiple features
+        self.too_low_aQual = too_low_aQual  # low quality
+        self.not_aligned = not_aligned      # no alignment in SAM file
+        self.alignment_not_unique = alignment_not_unique  # multiple alignment
+        self.warnings = warnings[:]
+        self.errors = errors[:]
+
+
+def parse_htseq_count_output(file_or_handle):
+    # Return an HTSeqCountResults object.
+    import os
+
+    #filename = None
+    handle = file_or_handle
+    if type(file_or_handle) is type(""):
+        #filename = file_or_handle
+        assert os.path.exists(file_or_handle)
+        handle = open(file_or_handle)
+
+    counts = {}
+    meta = {}
+    warnings = []
+    errors = []
+
+    # Default values, in case there are warnings or errors.
+        # __no_feature    343859
+        # __ambiguous     279435
+        # __too_low_aQual 247071
+        # __not_aligned   9744
+        # __alignment_not_unique  0
+
+    
+    for line in handle:
+        # 100000 GFF lines processed.
+        if line.rstrip().endswith("processed."):
+            continue
+        # Warning: Mate records missing for 128 records; first such
+        # record: <SAM_Alignment object: Paired-end read
+        # 'SRR988443.108873869' aligned to MT:[11627,11677)/->.
+        if line.startswith("Warning:"):
+            warnings.append(line.strip())
+            continue
+        #err_msg = line.strip()
+        #if filename:
+        #    err_msg = "%s: %s" % line.strip()
+        #assert not line.startswith("Error occured"), err_msg
+        if line.startswith("Error"):
+            errors.append(line.strip())
+            continue
+        x = line.rstrip("\r\n").split("\t")
+        assert len(x) == 2, "Unrecognized line: %s" % repr(line.rstrip("\r\n"))
+        gene_id, count = x
+        gene_id, count = gene_id.strip(), int(count)
+        # __no_feature    343859
+        # __ambiguous     279435
+        # __too_low_aQual 247071
+        # __not_aligned   9744
+        # __alignment_not_unique  0
+        if gene_id.startswith("__"):
+            name = gene_id[2:]
+            meta[name] = count
+            continue
+        counts[gene_id] = count
+    assert len(meta) == 5
+
+    x = HTSeqCountOutput(counts, warnings=warnings, errors=errors, **meta)
+    return x

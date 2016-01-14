@@ -384,6 +384,7 @@ def write_Betsy_report_parameters_file(
 def plot_line_keywds(filename, keywords, outfile):
     import arrayio
     from genomicode import mplgraph
+    from genomicode import filelib
 
     M = arrayio.read(filename)
     header = M.row_names()
@@ -435,12 +436,13 @@ def plot_line_keywds(filename, keywords, outfile):
     for img, offset_h in zip(imgs, offset_h_list):
         background.paste(img, (offset_w, offset_h))
     background.save(outfile)
-    assert exists_nz(outfile), 'the plot_line_keywds fails'
+    assert filelib.exists_nz(outfile), 'the plot_line_keywds fails'
 
 
 def plot_line_keywd(filename, keyword, outfile):
     import arrayio
     from genomicode import mplgraph
+    from genomicode import filelib
 
     M = arrayio.read(filename)
     header = M.row_names()
@@ -467,7 +469,7 @@ def plot_line_keywd(filename, keyword, outfile):
         }
     fig = mplgraph.lineplot(*lines, **params)
     fig.savefig(outfile)
-    assert exists_nz(outfile), 'the plot_line_keywd fails'
+    assert filelib.exists_nz(outfile), 'the plot_line_keywd fails'
 
 
 def renew_parameters(parameters, key_list):
@@ -635,6 +637,7 @@ def convert_to_same_platform(filename1, filename2, platform=None):
     import subprocess
     from genomicode import config
     from genomicode import arrayplatformlib
+    from genomicode import filelib
 
     M1 = arrayio.read(filename1)
     platform1 = arrayplatformlib.identify_platform_of_matrix(M1)
@@ -644,7 +647,7 @@ def convert_to_same_platform(filename1, filename2, platform=None):
         return filename1, filename2
 
     Annot_path = config.annotate_matrix
-    Annot_BIN = which(Annot_path)
+    Annot_BIN = filelib.which(Annot_path)
     assert Annot_BIN, 'cannot find the %s' % Annot_path
     if platform1 == platform:
         filename = filename2
@@ -667,7 +670,7 @@ def convert_to_same_platform(filename1, filename2, platform=None):
             raise ValueError(error_message)
         #assert module_utils.exists_nz('tmp'), (
         #    'the platform conversion fails')
-        assert exists_nz('tmp'), 'the platform conversion fails'
+        assert filelib.exists_nz('tmp'), 'the platform conversion fails'
     return newfilename1, newfilename2
 
 

@@ -16,11 +16,16 @@ PeakSeqResults = DataType(
     "PeakSeqResults",
     help="Run a peakseq analysis and save the results in this folder.",
     )
+SPPResults = DataType(
+    "SPPResults",
+    help="Run an SPP analysis and save the results in this folder.",
+    )
 
 all_data_types = [
     MACS14Results,
     MACS21Results,
     PeakSeqResults,
+    SPPResults,
     ]
 
 all_modules = [
@@ -94,5 +99,18 @@ all_modules = [
             ),
         
         Constraint("sorted", MUST_BE, "coordinate", 0),
+        ),
+    ModuleNode(
+        "run_spp",
+        [NGS.BamFolder, NGS.SampleGroupFile], SPPResults,
+        OptionDef(
+            "treatment_sample", 
+            help="Name of the sample to analyze.",
+            ),
+        OptionDef(
+            "control_sample", 
+            help="Name of the sample for background.",
+            ),
+        #Constraint("sorted", MUST_BE, "coordinate", 0),
         ),
     ]
