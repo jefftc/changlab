@@ -485,6 +485,7 @@ def build_pipelines(
 
 def check_attributes_complete(
     network, user_options, paths, network_png, verbose):
+    # user_options is dict of name to value
     import sys
     from genomicode import parselib
     from Betsy import bie3
@@ -497,10 +498,9 @@ def check_attributes_complete(
     assert paths
     
     all_missing = {}
+    all_extra = []
     good_paths = []
     for p in paths:
-        #path, start_ids, data_indexes = x
-        #assert len(start_ids) == len(data_indexes)
         module_ids = [
             x for x in p.node_ids if
             isinstance(network.nodes[x], bie3.ModuleNode)]
@@ -513,11 +513,19 @@ def check_attributes_complete(
         for on in x:
             for mn in opt2mods[on]:
                 missing[(mn, on)] = 1
+        extra = [x for x in user_options if x not in opt2mods]
         if not missing:
             good_paths.append(p)
-            #x = path, start_ids, data_indexes
-            #good_paths.append(x)
         all_missing.update(missing)
+        all_extra.extend(extra)
+    all_extra = {}.fromkeys(all_extra)
+
+    if all_extra:
+        names = sorted(all_extra)
+        x = parselib.pretty_list(names)
+        x = ("The following --mattr options were provided, but may not "
+             "be needed: %s" % x)
+        parselib.print_split(x, prefixn=2)
 
     if good_paths:
         if len(good_paths) < len(paths):
@@ -571,11 +579,14 @@ def prune_pipelines(network, custom_attributes, paths):
 
     # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)
     # pruning.
+    # Just try different orders until I find the fastest.
     paths = _prune_by_custom_attributes(
         network, custom_attributes, paths, nodeid2parents)
-    paths = _prune_superset_pipelines(network, paths)
-    paths = _prune_alternate_attributes(
+    paths = _prune_alternate_attributes2(
         network, custom_attributes, paths, nodeid2parents)
+    paths = _prune_alternate_attributes1(
+        network, custom_attributes, paths, nodeid2parents)
+    paths = _prune_superset_pipelines(network, paths)
     paths = _prune_parallel_pipelines(network, paths, nodeid2parents)
     
     # Convert node_ids back to lists.
@@ -605,7 +616,8 @@ def prune_pipelines(network, custom_attributes, paths):
 
 def _prune_by_custom_attributes(network, custom_attributes, paths,
                                 nodeid2parents):
-    # custom_attributes is a list of Attribute objects.
+    # Keep only the paths that match the attributes desired by the
+    # user.  custom_attributes is a list of Attribute objects.
     from Betsy import bie3
     if not custom_attributes:
         return paths
@@ -786,7 +798,7 @@ def _is_valid_output_from_input_and_module_ids(
     return True
 
 
-def _prune_alternate_attributes(
+def _prune_alternate_attributes1(
     network, custom_attributes, paths, nodeid2parents):
     # If there is an object with an attribute that can take several
     # different values, then pipelines may be generated that can
@@ -820,7 +832,7 @@ def _prune_alternate_attributes(
     for i in range(len(network.nodes)):
         if not isinstance(network.nodes[i], bie3.DataNode):
             continue
-        x = _list_alternate_attributes(network, i, nodeid2parents)
+        x = _list_alternate_attributes1(network, i, nodeid2parents)
         dataid2alts[i] = x
 
     # Only check pathways that has a data node in dataid2alts.
@@ -920,7 +932,7 @@ def _prune_alternate_attributes(
     return paths
 
 
-def _list_alternate_attributes(network, data_id, nodeid2parents):
+def _list_alternate_attributes1(network, data_id, nodeid2parents):
     # Return list of (data_id, parent_ids, attr_name, attr_values).
     # align_with_bowtie1 -> SamFolder (bowtie1)
     # align_with_bowtie2 -> SamFolder (bowtie2)
@@ -1051,6 +1063,182 @@ def _intlist2bits(int_list):
     for i in int_list:
         bits = bits | (1<<i)
     return bits
+
+
+def _prune_alternate_attributes2(
+    network, custom_attributes, paths, nodeid2parents):
+    # If a module takes DataNodes with several values, then we only
+    # need to calculate one value.
+    from Betsy import bie3
+
+    # Fastq.trimmed=no                              -> align
+    # Fastq.trimmed=no -> trim -> Fastq.trimmed=yes -> align
+    # 
+    # 1.  Look in two pipelines for:
+    #     - Same ModuleNode.
+    #     - Different DataNodes can go into that Node.
+    #     - One DataNode is upstream of the other DataNode.
+    # 2.  Keep the pipeline that is shorter (or found in
+    #     custom_attributes).
+    # 3.  Print a message showing which value was chosen.
+
+    path_ids = {}
+    transitions = {}
+    for path in paths:
+        path_ids.update(path.node_ids)
+        transitions.update(path.transitions)
+
+    # Find module nodes that can take DataNodes with different
+    # attributes.
+    alternates = []
+    for i in range(len(network.nodes)):
+        if not isinstance(network.nodes[i], bie3.ModuleNode):
+            continue
+        x = _list_alternate_attributes2(
+            network, i, custom_attributes, path_ids, transitions,
+            nodeid2parents)
+        alternates.extend(x)
+
+    # For each of the alternates, select the desired transition and
+    # rule out the others.
+    desired_alternates = [None] * len(alternates)
+    for i, x in enumerate(alternates):
+        module_id, parent_ids, attr_name, attr_values = x
+        # If there is a value specified in the custom attribute, use
+        # that one.
+        for x in custom_attributes:
+            if x.datatype != network.nodes[parent_ids[0]].datatype:
+                continue
+            if x.name != attr_name:
+                continue
+            if value in attr_values:
+                desired_alternates[i] = attr_values.index(value)
+                break
+        if desired_alternates[i]:
+            continue
+        # Hack: If the options are "no" and "yes", choose "no".
+        if sorted(attr_values) == ["no", "yes"]:
+            desired_alternates[i] = attr_values.index("no")
+        if desired_alternates[i]:
+            continue
+        # Choose the one that comes first in the alphabet.
+        x = sorted(attr_values)[0]
+        desired_alternates[i] = attr_values.index(x)
+
+    # Make a list of the transitions to avoid in the network.
+    to_prune = {}  # transitions to avoid
+    for i, x in enumerate(alternates):
+        module_id, parent_ids, attr_name, attr_values = x
+        for j, id_ in enumerate(parent_ids):
+            if j == desired_alternates[i]:
+                continue
+            to_prune[(parent_ids[j], module_id)] = 1
+
+    # Find the paths to prune.
+    delete = {}
+    for i, path in enumerate(paths):
+        p = False
+        for parent_id, child_id in to_prune:
+            if child_id in path.transitions.get(parent_id, []):
+                p = True
+                break
+        if p:
+            delete[i] = 1
+    
+    paths = [x for (i, x) in enumerate(paths) if i not in delete]
+    return paths
+
+
+def _list_alternate_attributes2(
+    network, module_id, custom_attributes, path_ids, transitions,
+    nodeid2parents):
+    # Return list of (module_id, parent_ids, attr_name, attr_values).
+    import itertools
+    from Betsy import bie3
+    
+    # Fastq.trimmed=no                              -> align
+    # Fastq.trimmed=no -> trim -> Fastq.trimmed=yes -> align
+
+    # At least 2 DataNodes of the same DataType must transition
+    # into this ModuleNode.
+    x = nodeid2parents[module_id]
+    if len(x) < 2:
+        return []
+    x = [x for x in x if x in path_ids]
+    if len(x) < 2:
+        return []
+    x = [x for x in x if module_id in transitions.get(x, [])]
+    if len(x) < 2:
+        return []
+    parent_ids = x
+
+    # Keep only if there are at least two nodes with the same datatype.
+    datatype_names = [network.nodes[x].datatype.name for x in parent_ids]
+    counts = {}
+    for n in datatype_names:
+        counts[n] = counts.get(n, 0) + 1
+    x = [x for (i, x) in enumerate(parent_ids)
+         if counts[datatype_names[i]] >= 2]
+    parent_ids = x
+    if len(parent_ids) < 2:
+        return []
+
+    # Previous DataNodes must be in different combinations.
+    inputnum2parentids = {}  # which input to module -> list of parent IDs
+    combos = bie3._bc_to_input_ids(
+        network, module_id, custom_attributes, nodeid2parents=nodeid2parents)
+    for x in itertools.product(combos, parent_ids):
+        combo, parentid = x
+        if parentid not in combo:
+            continue
+        input_num = combo.index(parentid)
+        if input_num not in inputnum2parentids:
+            inputnum2parentids[input_num] = []
+        inputnum2parentids[input_num].append(parentid)
+
+    # Previous DataNodes must have different attribute values.
+    alt_attributes = []
+    for input_num, parent_ids in inputnum2parentids.iteritems():
+        if len(parent_ids) < 2:
+            continue
+        id_1 = parent_ids[0]
+        node_1 = network.nodes[id_1]
+        attr_names = []
+        for id_2 in parent_ids[1:]:
+            node_2 = network.nodes[id_2]
+            x, x, diff_attrs = bie3._score_same_data(node_1, node_2)
+            # How to handle multiple different attributes?
+            if len(diff_attrs) != 1:
+                continue
+            attr_names.append(diff_attrs[0])
+        # Must have all the same different attributes.
+        if len(attr_names) != len(parent_ids)-1:
+            continue
+        all_same = True
+        for i in range(1, len(attr_names)):
+            if attr_names[i] != attr_names[0]:
+                all_same = False
+                break
+        if not all_same:
+            continue
+        name = attr_names[0]
+
+        # Make sure the attribute is not SAME_AS_CONSTRAINT.  Module
+        # should not be passing the value of this attribute along.
+        # Not sure whether BASED_ON_DATA should be ignored too?
+        module_passes_attr = False
+        for cons in network.nodes[module_id].consequences:
+            if cons.name == name and \
+                   cons.behavior in [bie3.SAME_AS_CONSTRAINT]:
+                module_passes_attr = True
+                break
+        if module_passes_attr:
+            continue
+        
+        values = [network.nodes[x].attributes[name] for x in parent_ids]
+        x = module_id, parent_ids, name, values
+        alt_attributes.append(x)
+    return alt_attributes
 
 
 def _prune_superset_pipelines(network, paths):
@@ -2253,7 +2441,7 @@ def main():
         return
     # DEBUG: Print out each of the pipelines.
     #plot_pipelines(
-    #    "pipeline", network, paths, user_options, max_pipelines=16,
+    #    "pipeline", network, paths, user_options, max_pipelines=32,
     #    verbose=True)
         
     # Step 8: Look for input files.
