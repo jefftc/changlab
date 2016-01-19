@@ -1041,7 +1041,7 @@ def divide_two_annots(MATRIX, divide_annots):
 
 
 def divide_many_annots(MATRIX, divide_annots):
-    # Format: list of <numerator indexes>;<denominator index.  Each
+    # Format: list of <numerator indexes>;<denominator index>.  Each
     # are 1-based indexes.
     if not divide_annots:
         return MATRIX
@@ -1108,6 +1108,29 @@ def average_same_header(MATRIX, average):
         headers.append(header)
         header2annots[header] = x
     return AnnotationMatrix.AnnotationMatrix(headers, headers, header2annots)
+
+
+def round_annots(MATRIX, round_annots):
+    # Format: list of <index>.  1-based indexes.
+    if not round_annots:
+        return MATRIX
+    
+    indexes = []  # list of 0-based indexes
+    for x in round_annots:
+        I = parse_indexes(MATRIX, x)
+        for i in I:
+            assert i >= 0 and i < len(MATRIX.headers)
+        indexes.extend(I)
+    indexes = sorted({}.fromkeys(indexes))
+
+    MATRIX = MATRIX.copy()
+    for index in indexes:
+        header_h = MATRIX.headers_h[index]
+        x = MATRIX.header2annots[header_h]
+        x = [int(round(x)) for x in x]
+        MATRIX.header2annots[header_h] = x
+    
+    return MATRIX
 
 
 def main():
@@ -1294,6 +1317,10 @@ def main():
     group.add_argument(
         "--average_same_header", action="store_true",
         help="Average the annotations that have the same header.")
+    group.add_argument(
+        "--round", default=[], action="append",
+        help="Round the values of a column to integers.  "
+        "Format: <index>.  All indexes should be 1-based.  (MULTI)")
     
 
     args = parser.parse_args()
@@ -1358,6 +1385,7 @@ def main():
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
     MATRIX = divide_many_annots(MATRIX, args.divide_many_annots)
     MATRIX = average_same_header(MATRIX, args.average_same_header)
+    MATRIX = round_annots(MATRIX, args.round)
 
     # Write the matrix back out.
     AnnotationMatrix.write(sys.stdout, MATRIX)
