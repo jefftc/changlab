@@ -12,11 +12,20 @@ MACS21Results = DataType(
     "MACS21Results",
     help="Run a MACS 2.1 analysis and save the results in this folder.",
     )
-
+PeakSeqResults = DataType(
+    "PeakSeqResults",
+    help="Run a peakseq analysis and save the results in this folder.",
+    )
+SPPResults = DataType(
+    "SPPResults",
+    help="Run an SPP analysis and save the results in this folder.",
+    )
 
 all_data_types = [
     MACS14Results,
     MACS21Results,
+    PeakSeqResults,
+    SPPResults,
     ]
 
 all_modules = [
@@ -68,5 +77,40 @@ all_modules = [
             help='Set to "yes" to do paired analysis.',
             ),
         Constraint("sorted", MUST_BE, "coordinate", 0),
+        ),
+    ModuleNode(
+        "run_peakseq",
+        [NGS.BamFolder, NGS.SampleGroupFile], PeakSeqResults,
+        OptionDef(
+            "treatment_sample", 
+            help="Name of the sample to analyze.",
+            ),
+        OptionDef(
+            "control_sample", 
+            help="Name of the sample for background.",
+            ),
+        OptionDef(
+            "fragment_length", 
+            help="Average length of the fragments.",
+            ),
+        OptionDef(
+            "mappability_file", 
+            help="Mappability file.  See peakseq documentation.",
+            ),
+        
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        ),
+    ModuleNode(
+        "run_spp",
+        [NGS.BamFolder, NGS.SampleGroupFile], SPPResults,
+        OptionDef(
+            "treatment_sample", 
+            help="Name of the sample to analyze.",
+            ),
+        OptionDef(
+            "control_sample", 
+            help="Name of the sample for background.",
+            ),
+        #Constraint("sorted", MUST_BE, "coordinate", 0),
         ),
     ]

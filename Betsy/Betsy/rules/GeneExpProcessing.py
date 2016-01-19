@@ -41,7 +41,8 @@ PREPROCESS = [
     #"RSEM",
     "tpm",
     "fpkm",
-    "read_counts",
+    "counts",
+    "cpm",
     
     # Not sure why this is here.
     #'RSEM_genes',

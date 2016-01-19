@@ -4,9 +4,6 @@ import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 import GeneExpProcessing as GXP
 
-# TODO: Should move out modules that aren"t specifically for RNA-Seq.
-# E.g. is_sam_folder.
-
 #RNASeqFile = DataType(
 #    "RNASeqFile",
 #    AttributeDef("contents", BDT.CONTENTS,
@@ -41,11 +38,29 @@ RSEMResults = DataType(
     help="Results from an rsem-calculate-expression analysis.",
     )
 
+HTSeqCountResults = DataType(
+    "HTSeqCountResults",
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+    help="Results from HTSeq-Count.",
+    )
+
+HTSeqCountSummary = DataType(
+    "HTSeqCountSummary",
+    help="Contains a summary of the results from htseq-count as a "
+    "tab-delimited text file.",
+    )
+
+
 all_data_types = [
     RSEMReferenceGenome,
     #FullyIndexedRSEMReferenceGenome,
     RSEMResults,
+    HTSeqCountResults,
+    HTSeqCountSummary,
     ]
+
+
 all_modules = [
     ModuleNode(
         "is_rsemreference_rsem_indexed",
@@ -108,6 +123,66 @@ all_modules = [
         Consequence("logged", SET_TO, "no"),
         # What is this for?
         #Consequence("predataset", SET_TO, "no"),
+        Consequence("format", SET_TO, "tdf"),
+        ),
+
+    ModuleNode(
+        "count_with_htseq_count",
+        [NGS.BamFolder, NGS.SampleGroupFile], HTSeqCountResults,
+        OptionDef(
+            "gtf_file", 
+            help="Gene annotations in GTF format.",
+            ),
+        OptionDef(
+            "htseq_count_mode", default="union",
+            help="union, intersection-strict, or intersection-nonempty.  "
+            "See htseq-count documentation.  union is recommended.",
+            ),
+        Constraint("sorted", CAN_BE_ANY_OF, ["name", "coordinate"], 0),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
+        #Constraint("aligner", MUST_BE, "bwa_backtrack", 0),
+        Constraint(
+            "orientation", CAN_BE_ANY_OF,
+            ["single", "paired", "paired_fr", "paired_rf"], 1),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        
+        help="Use RSEM to estimate TPM or FPKM.  name sorting the BAM file "
+        "is better.  Otherwise, may run into error related to buffer size.",
+        ),
+
+    ModuleNode(
+        "extract_htseq_count_signal",
+        HTSeqCountResults, GXP.UnprocessedSignalFile,
+        OptionDef(
+            "ignore_htseq_count_errors", default="no",
+            help='Whether to ignore errors in the files.  '
+            'Should be "yes" or "no".',
+            ),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        
+        Consequence("preprocess", SET_TO, "counts"),
+        Consequence("logged", SET_TO, "no"),
+        Consequence("format", SET_TO, "tdf"),
+        ),
+
+    ModuleNode(
+        "summarize_htseq_count",
+        HTSeqCountResults, HTSeqCountSummary,
+        ),
+
+    ModuleNode(
+        "convert_counts_to_cpm",
+        GXP.UnprocessedSignalFile, GXP.UnprocessedSignalFile,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+
+        Constraint("preprocess", MUST_BE, "counts"),
+        Consequence("preprocess", SET_TO, "cpm"),
+        Constraint("logged", MUST_BE, "no"),
+        Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("format", SET_TO, "tdf"),
         ),
     ]

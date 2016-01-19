@@ -66,10 +66,8 @@ class Module(AbstractModule):
         shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
-        for x in jobs:
-            in_filename, out_filename = x
-            assert filelib.exists_nz(out_filename), \
-                   "Missing: %s" % out_filename
+        out_filenames = [x[1] for x in jobs]
+        filelib.assert_exists_nz_many(out_filenames)
 
     
     def name_outfile(self, antecedents, user_options):

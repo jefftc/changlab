@@ -32,6 +32,7 @@
 #
 # _list_differences_in_nodelists
 # _merge_nodelists
+# _uniq
 # _parse_dattr
 # _parse_args                 Parse the arguments from the user.
 
@@ -438,7 +439,24 @@ def build_pipelines(
         inputs_used.update({}.fromkeys(used))
     has_unused_inputs = len(inputs_used) != len(in_data_nodes)
 
+    ## # Filter for no missing IDs.  Also, convert the start_ids to
+    ## # start_ids and data_indexes.
+    ## good_paths = []
+    ## for p in paths:
+    ##     #path, start_ids, missing_ids = x
+    ##     if p.missing_ids:
+    ##         continue
+    ##     sids = []
+    ##     indexes = []
+    ##     for i, sid in enumerate(p.start_ids):
+    ##         if sid is None:
+    ##             continue
+    ##         sids.append(sid)
+    ##         indexes.append(i)
+    ##     x = path, sids, indexes
+    ##     good_paths.append(x)
     good_paths = [x for x in paths if not x.missing_ids]
+
     if good_paths and not has_unused_inputs:
         print "Found %d possible pipelines." % len(good_paths)
         return good_paths
@@ -483,9 +501,255 @@ def build_pipelines(
     return []
 
 
+## def check_datatypes_complete(
+##     network, user_attributes, user_options, in_data_nodes, network_png,
+##     verbose):
+##     # Return list of (path, start_ids).  Empty list means no paths
+##     # found.
+##     import sys
+##     from Betsy import bie3
+
+##     print "Searching the network for pipelines that use --input data types."
+##     sys.stdout.flush()
+##     # Make a list of the names of data types for start nodes.
+##     assert in_data_nodes
+##     start_dtype_names = [x.data.datatype.name for x in in_data_nodes]
+
+##     complete = []    # list of (path, start, missing)
+##     incomplete = []  # list of (path, start, missing)
+##     for i, x in enumerate(bie3.find_paths_by_datatypes(
+##             network, user_attributes, start_dtype_names)):
+##         path, start_ids, missing_ids = x
+
+##         # Ignore paths that don't contain any of the requested data types.
+##         if not start_ids:
+##             continue
+##         # Ignore paths with too many missing data types.
+##         if len(missing_ids) > 5:
+##             continue
+        
+##         x = path, start_ids, missing_ids
+##         if not missing_ids:
+##             assert len(start_ids) <= len(in_data_nodes)
+##             complete.append(x)
+##         else:
+##             incomplete.append(x)
+
+##         ## # DEBUG: print out interesting paths.
+##         ## if 0 and len(missing_ids) == 0:
+##         ##     filename = "path-%d.png" % i
+##         ##     plot_network(
+##         ##         filename, network, user_options=user_options,
+##         ##         bold=path, highlight_green=start_ids,
+##         ##         highlight_purple=missing_ids, verbose=True)
+
+##     if complete:
+##         print "Found %d possible pipelines." % len(complete)
+##         x = [tuple(x[:2]) for x in complete]
+##         return x
+
+##     # Print a diagnostic message.
+##     print "No pipelines found."
+##     if not incomplete:
+##         print "Please check network and provide more --inputs."
+##     else:
+##         print "Possible --inputs to add:"
+##         seen = {}
+##         index = 1
+##         for x in incomplete:
+##             path, start_ids, missing_ids = x
+
+##             # Convert IDs to datatype names.
+##             #x = start_ids
+##             #x = [network.nodes[x].datatype.name for x in x]
+##             #x = tuple(sorted(x))
+##             #start_names = x
+##             x = missing_ids
+##             x = [network.nodes[x].datatype.name for x in x]
+##             x = tuple(sorted(x))
+##             missing_names = x
+
+##             if missing_names in seen:
+##                 continue
+##             seen[missing_names] = 1
+
+##             #x1 = ", ".join(start_names)
+##             x = ", ".join(missing_names)
+##             print "%d.  %s" % (index, x)
+##             index += 1
+##         print
+##     sys.stdout.flush()
+
+##     # Make a list of all possible start_ids.
+##     start_ids = []
+##     for i, x in enumerate(incomplete):
+##         path, sids, mids = x
+##         start_ids.extend(sids)
+##     start_ids = _uniq(start_ids)
+##     plot_network(
+##         network_png, network, user_options=user_options,
+##         highlight_green=start_ids, verbose=verbose)
+##     return []
+
+
+## def check_inputs_complete(
+##     network, user_options, in_data_nodes, paths, network_png, verbose):
+##     # Return list of 
+##     # paths is a list of (path, start_ids).
+##     import sys
+##     from Betsy import bie3
+
+##     print "Assigning --input's to nodes in the network."
+##     sys.stdout.flush()
+
+##     data_nodes = [x.data for x in in_data_nodes]
+##     # index of data_nodes -> list of compatible node_ids
+##     #node2ids = [bie3._find_start_nodes(network, x) for x in data_nodes]
+
+##     # For each path, map data_nodes to start_ids.
+##     complete = []    # list of path, start_ids, data_indexes
+##     incomplete = []  # list of path, start_ids, data_indexes
+##     for x in paths:
+##         path, start_ids = x
+##         assert len(start_ids) <= len(in_data_nodes)
+##         x = _assign_data_nodes_to_start_ids(network, data_nodes, start_ids)
+##         for x in x:
+##             score, data_indexes = x
+##             x = path, start_ids, data_indexes
+##             if score == 0:
+##                 # May have duplicates if user gives redundant inputs.
+##                 if x not in complete:
+##                     complete.append(x)
+##             else:
+##                 if x not in incomplete:
+##                     incomplete.append(x)
+
+##     if complete:
+##         print "%d pipelines can use these inputs." % len(complete)
+##         return complete
+##     print "I cannot find a pipeline given the current --input's."
+
+##     if not incomplete:
+##         # No good assignments.
+##         print "Cannot find inputs in the network with the right data types."
+##         print "Please verify the data types carefully."
+##     else:
+##         pipeline2scores = []
+##         for x in incomplete:
+##             path, start_ids, data_indexes = x
+##             assert len(start_ids) == len(data_indexes)
+##             scores = []
+##             for j in range(len(start_ids)):
+##                 data_index = data_indexes[j]
+##                 start_id = start_ids[j]
+##                 x = bie3._score_start_nodes(
+##                     network, data_nodes[data_index], good_ids=[start_id])
+##                 scores.extend(x)
+##             pipeline2scores.append(scores)
+
+##         # Print out incompatibilities seen in all pipelines.
+##         _print_global_incompatibilities(network, pipeline2scores)
+        
+##         # Print out incompatibilities between the data nodes and
+##         # network nodes for each pipeline.
+##         print
+##         for i, scores in enumerate(pipeline2scores):
+##             print "Pipeline %d." % (i+1)
+##             _print_node_score_table(network, scores)
+##             print
+
+##     # Make a list of all possible start_ids.
+##     start_ids = []
+##     for i, x in enumerate(incomplete):
+##         path, sids, inds = x
+##         start_ids.extend(sids)
+##     start_ids = _uniq(start_ids)
+##     plot_network(
+##         network_png, network, user_options=user_options,
+##         highlight_green=start_ids, verbose=verbose)
+##     return []
+
+
+## def _assign_data_nodes_to_start_ids(network, data_nodes, start_ids):
+##     # Try every combination and return the one with the lowest score.
+##     # Return list of (score, list of indexes of data_nodes parallel to
+##     # start_ids).  Low scores is better match.  0 is exact match.
+##     import itertools
+##     from Betsy import bie3
+
+##     assert len(start_ids) <= len(data_nodes)
+##     data_indexes = range(len(data_nodes))
+
+##     # Score each of the data nodes against each of the start_ids.
+##     score_cache = {}   # (data_index, start_id) -> score
+##     for index in data_indexes:
+##         scores = bie3._score_start_nodes(
+##             network, data_nodes[index], good_ids=start_ids)
+##         for start_id in start_ids:
+##             x = [x for x in scores if x[1] == start_id]
+##             x = [x[0] for x in x]
+##             if not x:  # wrong data type
+##                 continue
+##             score_cache[(index, start_id)] = min(x)
+
+##     scored_combos = []
+##     for x in itertools.permutations(data_indexes):
+##         indexes = x[:len(start_ids)]  # assignment
+
+##         compatible = True
+##         total = 0
+##         for i in range(len(indexes)):
+##             data_index = indexes[i]
+##             start_id = start_ids[i]
+##             if (data_index, start_id) not in score_cache:
+##                 compatible = False
+##                 break
+##             score = score_cache[(data_index, start_id)]
+##             total += score
+##         if not compatible:  # mismatched data types
+##             continue
+##         x = total, indexes
+##         scored_combos.append(x)
+##     return scored_combos
+
+
+## def _print_global_incompatibilities(network, pipeline2scores):
+##     # If there is an incompatibility seen across all pipelines, print
+##     # it out.
+##     # scores from bie3._score_start_nodes
+
+##     incompatibility = {}  # (datatype_name, attr_name, network_value) -> count
+##     for scores in pipeline2scores:
+##         seen = {}  # only count once for each pipeline
+##         for x in scores:
+##             score, node_id, user_data, attr_values = x
+##             dt_name = network.nodes[node_id].datatype.name
+##             for name, netw_value, user_value in attr_values:
+##                 if type(netw_value) is type([]):
+##                     netw_value = tuple(netw_value)
+##                 x = dt_name, name, netw_value
+##                 if x in seen:
+##                     continue
+##                 seen[x] = 1
+##                 incompatibility[x] = incompatibility.get(x, 0) + 1
+##     printed = False
+##     for (x, count) in incompatibility.iteritems():
+##         if count < len(pipeline2scores):
+##             continue
+##         dt_name, attr_name, netw_value = x
+##         prefix = ""
+##         if not printed:
+##             prefix = "Given these inputs, "
+##             printed = True
+##         x = netw_value
+##         if type(x) is type(""):
+##             x = '"%s"' % x
+##         # If netw_value is a tuple, then don't do any special formatting.
+##         print '%s%s.%s needs to be %s.' % (prefix, dt_name, attr_name, x)
+
+
 def check_attributes_complete(
     network, user_options, paths, network_png, verbose):
-    # user_options is dict of name to value
     import sys
     from genomicode import parselib
     from Betsy import bie3
@@ -498,9 +762,10 @@ def check_attributes_complete(
     assert paths
     
     all_missing = {}
-    all_extra = []
     good_paths = []
     for p in paths:
+        #path, start_ids, data_indexes = x
+        #assert len(start_ids) == len(data_indexes)
         module_ids = [
             x for x in p.node_ids if
             isinstance(network.nodes[x], bie3.ModuleNode)]
@@ -513,19 +778,11 @@ def check_attributes_complete(
         for on in x:
             for mn in opt2mods[on]:
                 missing[(mn, on)] = 1
-        extra = [x for x in user_options if x not in opt2mods]
         if not missing:
             good_paths.append(p)
+            #x = path, start_ids, data_indexes
+            #good_paths.append(x)
         all_missing.update(missing)
-        all_extra.extend(extra)
-    all_extra = {}.fromkeys(all_extra)
-
-    if all_extra:
-        names = sorted(all_extra)
-        x = parselib.pretty_list(names)
-        x = ("The following --mattr options were provided, but may not "
-             "be needed: %s" % x)
-        parselib.print_split(x, prefixn=2)
 
     if good_paths:
         if len(good_paths) < len(paths):
@@ -549,6 +806,11 @@ def check_attributes_complete(
     x = bie3._uniq(bie3._flatten(x))
     x = [x for x in x if x is not None]
     start_ids = x
+    #start_ids = []
+    #for x in paths:
+    #    path, sids, inds = x
+    #    start_ids.extend(sids)
+    #start_ids = _uniq(start_ids)
     plot_network(
         network_png, network, user_options=user_options,
         highlight_green=start_ids, verbose=verbose)
@@ -579,14 +841,11 @@ def prune_pipelines(network, custom_attributes, paths):
 
     # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)
     # pruning.
-    # Just try different orders until I find the fastest.
     paths = _prune_by_custom_attributes(
         network, custom_attributes, paths, nodeid2parents)
-    paths = _prune_alternate_attributes2(
-        network, custom_attributes, paths, nodeid2parents)
-    paths = _prune_alternate_attributes1(
-        network, custom_attributes, paths, nodeid2parents)
     paths = _prune_superset_pipelines(network, paths)
+    paths = _prune_alternate_attributes(
+        network, custom_attributes, paths, nodeid2parents)
     paths = _prune_parallel_pipelines(network, paths, nodeid2parents)
     
     # Convert node_ids back to lists.
@@ -616,8 +875,7 @@ def prune_pipelines(network, custom_attributes, paths):
 
 def _prune_by_custom_attributes(network, custom_attributes, paths,
                                 nodeid2parents):
-    # Keep only the paths that match the attributes desired by the
-    # user.  custom_attributes is a list of Attribute objects.
+    # custom_attributes is a list of Attribute objects.
     from Betsy import bie3
     if not custom_attributes:
         return paths
@@ -798,7 +1056,7 @@ def _is_valid_output_from_input_and_module_ids(
     return True
 
 
-def _prune_alternate_attributes1(
+def _prune_alternate_attributes(
     network, custom_attributes, paths, nodeid2parents):
     # If there is an object with an attribute that can take several
     # different values, then pipelines may be generated that can
@@ -832,7 +1090,7 @@ def _prune_alternate_attributes1(
     for i in range(len(network.nodes)):
         if not isinstance(network.nodes[i], bie3.DataNode):
             continue
-        x = _list_alternate_attributes1(network, i, nodeid2parents)
+        x = _list_alternate_attributes(network, i, nodeid2parents)
         dataid2alts[i] = x
 
     # Only check pathways that has a data node in dataid2alts.
@@ -932,7 +1190,7 @@ def _prune_alternate_attributes1(
     return paths
 
 
-def _list_alternate_attributes1(network, data_id, nodeid2parents):
+def _list_alternate_attributes(network, data_id, nodeid2parents):
     # Return list of (data_id, parent_ids, attr_name, attr_values).
     # align_with_bowtie1 -> SamFolder (bowtie1)
     # align_with_bowtie2 -> SamFolder (bowtie2)
@@ -973,6 +1231,9 @@ def _list_alternate_attributes1(network, data_id, nodeid2parents):
 def _find_alternate_attributes(network, path_1, path_2, dataid2alts):
     from Betsy import bie3
     
+    #node_ids_1, start_ids_1, data_indexes_1 = path_1
+    #node_ids_2, start_ids_2, data_indexes_2 = path_2
+
     shared_ids = [x for x in path_1.node_ids if x in path_2.node_ids]
     unique_ids_1 = [x for x in path_1.node_ids if x not in path_2.node_ids]
     unique_ids_2 = [x for x in path_2.node_ids if x not in path_1.node_ids]
@@ -1019,9 +1280,108 @@ def _find_alternate_attributes(network, path_1, path_2, dataid2alts):
     return None
 
 
+## def _find_alternate_attributes_old(network, nodeid2previds, path_1, path_2):
+##     from Betsy import bie3
+    
+##     node_ids_1, start_ids_1, data_indexes_1 = path_1
+##     node_ids_2, start_ids_2, data_indexes_2 = path_2
+
+##     shared_ids = [x for x in node_ids_1 if x in node_ids_2]
+##     unique_ids_1 = [x for x in node_ids_1 if x not in node_ids_2]
+##     unique_ids_2 = [x for x in node_ids_2 if x not in node_ids_1]
+
+##     # Look for a DataNode that is shared between the two pathways.
+##     data_ids = [
+##         x for x in shared_ids if isinstance(network.nodes[x], bie3.DataNode)]
+##     # Must have at least two parents.
+##     data_ids = [
+##         x for x in data_ids if len(nodeid2previds.get(x, [])) >= 2]
+##     if not data_ids:
+##         return None
+    
+##     # Look for ModuleNodes that are unique for each pathway.
+##     module_ids_1 = [x for x in unique_ids_1
+##                     if isinstance(network.nodes[x], bie3.ModuleNode)]
+##     module_ids_2 = [x for x in unique_ids_2
+##                     if isinstance(network.nodes[x], bie3.ModuleNode)]
+##     # This is slower.
+##     #module_ids_1 = [x for x in node_ids_1 if x not in shared_ids and 
+##     #                isinstance(network.nodes[x], bie3.ModuleNode)]
+##     #module_ids_2 = [x for x in node_ids_2 if x not in shared_ids and 
+##     #                isinstance(network.nodes[x], bie3.ModuleNode)]
+##     if not module_ids_1 or not module_ids_2:
+##         return None
+
+##     # Check each data_id carefully.
+##     for data_id in data_ids:
+##         prev_ids = nodeid2previds[data_id]
+
+##         # These parents must be unique to one of the pathways.
+##         prev_ids = [
+##             x for x in prev_ids if x in module_ids_1 or x in module_ids_2]
+##         if len(prev_ids) < 2:
+##             continue
+        
+##         # 2 parents must have Consequences SET_TO to the same
+##         # attribute.
+##         attr2values = {}  # name -> list of values to set to
+##         for prev_id in prev_ids:
+##             module_node = network.nodes[prev_id]
+##             for cons in module_node.consequences:
+##                 if cons.behavior != bie3.SET_TO:
+##                     continue
+##                 n, v = cons.name, cons.arg1
+##                 assert v is not None
+##                 if n not in attr2values:
+##                     attr2values[n] = []
+##                 if v not in attr2values[n]:
+##                     attr2values[n].append(v)
+##         # List of attributes with at least 2 values.
+##         attrs = [n for (n, v) in attr2values.iteritems() if len(v) >= 2]
+##         if not attrs:
+##             continue
+
+##         # Look for an attribute with parents from different pathways.
+##         for name in attrs:
+##             # Look for the modules that SET_TO this attribute.
+##             good_prev_ids = []
+##             for prev_id in prev_ids:
+##                 module_node = network.nodes[prev_id]
+##                 found = False
+##                 for cons in module_node.consequences:
+##                     if cons.behavior != bie3.SET_TO:
+##                         continue
+##                     if cons.name != name:
+##                         continue
+##                     found = True
+##                     break
+##                 if found:
+##                     good_prev_ids.append(prev_id)
+##             good_1 = [x for x in good_prev_ids if x in module_ids_1]
+##             good_2 = [x for x in good_prev_ids if x in module_ids_2]
+##             if not good_1 or not good_2:
+##                 continue
+            
+##             # Found one!
+##             module_id_1 = good_1[0]
+##             module_id_2 = good_2[0]
+##             # Get the values of the attributes set by each module.
+##             module_1 = network.nodes[module_id_1]
+##             module_2 = network.nodes[module_id_2]
+##             x1 = [x for x in module_1.consequences if x.name == name]
+##             x2 = [x for x in module_2.consequences if x.name == name]
+##             assert len(x1) == 1
+##             assert len(x2) == 1
+##             attr_value_1 = x1[0].arg1
+##             attr_value_2 = x2[0].arg1
+##             x = name, module_id_1, attr_value_1, \
+##                 module_id_2, attr_value_2, data_id
+##             return x
+##     return None
+
+
 def _print_attributes_pruned(pruned_attributes):
     # Print out a message about what was deleted.
-    from Betsy import bie3
     from genomicode import parselib
     
     attr2values = {}
@@ -1045,7 +1405,7 @@ def _print_attributes_pruned(pruned_attributes):
             attr2user[name] = user
         
     for name in sorted(attr2values):
-        all_values = sorted(bie3._uniq(attr2values[name]))
+        all_values = sorted(_uniq(attr2values[name]))
         kept_values = [x for x in all_values if x not in attr2deleted[name]]
         assert len(kept_values) == 1
         kept_value = kept_values[0]
@@ -1065,186 +1425,14 @@ def _intlist2bits(int_list):
     return bits
 
 
-def _prune_alternate_attributes2(
-    network, custom_attributes, paths, nodeid2parents):
-    # If a module takes DataNodes with several values, then we only
-    # need to calculate one value.
-    from Betsy import bie3
-
-    # Fastq.trimmed=no                              -> align
-    # Fastq.trimmed=no -> trim -> Fastq.trimmed=yes -> align
-    # 
-    # 1.  Look in two pipelines for:
-    #     - Same ModuleNode.
-    #     - Different DataNodes can go into that Node.
-    #     - One DataNode is upstream of the other DataNode.
-    # 2.  Keep the pipeline that is shorter (or found in
-    #     custom_attributes).
-    # 3.  Print a message showing which value was chosen.
-
-    path_ids = {}
-    transitions = {}
-    for path in paths:
-        path_ids.update(path.node_ids)
-        transitions.update(path.transitions)
-
-    # Find module nodes that can take DataNodes with different
-    # attributes.
-    alternates = []
-    for i in range(len(network.nodes)):
-        if not isinstance(network.nodes[i], bie3.ModuleNode):
-            continue
-        x = _list_alternate_attributes2(
-            network, i, custom_attributes, path_ids, transitions,
-            nodeid2parents)
-        alternates.extend(x)
-
-    # For each of the alternates, select the desired transition and
-    # rule out the others.
-    desired_alternates = [None] * len(alternates)
-    for i, x in enumerate(alternates):
-        module_id, parent_ids, attr_name, attr_values = x
-        # If there is a value specified in the custom attribute, use
-        # that one.
-        for x in custom_attributes:
-            if x.datatype != network.nodes[parent_ids[0]].datatype:
-                continue
-            if x.name != attr_name:
-                continue
-            if value in attr_values:
-                desired_alternates[i] = attr_values.index(value)
-                break
-        if desired_alternates[i]:
-            continue
-        # Hack: If the options are "no" and "yes", choose "no".
-        if sorted(attr_values) == ["no", "yes"]:
-            desired_alternates[i] = attr_values.index("no")
-        if desired_alternates[i]:
-            continue
-        # Choose the one that comes first in the alphabet.
-        x = sorted(attr_values)[0]
-        desired_alternates[i] = attr_values.index(x)
-
-    # Make a list of the transitions to avoid in the network.
-    to_prune = {}  # transitions to avoid
-    for i, x in enumerate(alternates):
-        module_id, parent_ids, attr_name, attr_values = x
-        for j, id_ in enumerate(parent_ids):
-            if j == desired_alternates[i]:
-                continue
-            to_prune[(parent_ids[j], module_id)] = 1
-
-    # Find the paths to prune.
-    delete = {}
-    for i, path in enumerate(paths):
-        p = False
-        for parent_id, child_id in to_prune:
-            if child_id in path.transitions.get(parent_id, []):
-                p = True
-                break
-        if p:
-            delete[i] = 1
-    
-    paths = [x for (i, x) in enumerate(paths) if i not in delete]
-    return paths
-
-
-def _list_alternate_attributes2(
-    network, module_id, custom_attributes, path_ids, transitions,
-    nodeid2parents):
-    # Return list of (module_id, parent_ids, attr_name, attr_values).
-    import itertools
-    from Betsy import bie3
-    
-    # Fastq.trimmed=no                              -> align
-    # Fastq.trimmed=no -> trim -> Fastq.trimmed=yes -> align
-
-    # At least 2 DataNodes of the same DataType must transition
-    # into this ModuleNode.
-    x = nodeid2parents[module_id]
-    if len(x) < 2:
-        return []
-    x = [x for x in x if x in path_ids]
-    if len(x) < 2:
-        return []
-    x = [x for x in x if module_id in transitions.get(x, [])]
-    if len(x) < 2:
-        return []
-    parent_ids = x
-
-    # Keep only if there are at least two nodes with the same datatype.
-    datatype_names = [network.nodes[x].datatype.name for x in parent_ids]
-    counts = {}
-    for n in datatype_names:
-        counts[n] = counts.get(n, 0) + 1
-    x = [x for (i, x) in enumerate(parent_ids)
-         if counts[datatype_names[i]] >= 2]
-    parent_ids = x
-    if len(parent_ids) < 2:
-        return []
-
-    # Previous DataNodes must be in different combinations.
-    inputnum2parentids = {}  # which input to module -> list of parent IDs
-    combos = bie3._bc_to_input_ids(
-        network, module_id, custom_attributes, nodeid2parents=nodeid2parents)
-    for x in itertools.product(combos, parent_ids):
-        combo, parentid = x
-        if parentid not in combo:
-            continue
-        input_num = combo.index(parentid)
-        if input_num not in inputnum2parentids:
-            inputnum2parentids[input_num] = []
-        inputnum2parentids[input_num].append(parentid)
-
-    # Previous DataNodes must have different attribute values.
-    alt_attributes = []
-    for input_num, parent_ids in inputnum2parentids.iteritems():
-        if len(parent_ids) < 2:
-            continue
-        id_1 = parent_ids[0]
-        node_1 = network.nodes[id_1]
-        attr_names = []
-        for id_2 in parent_ids[1:]:
-            node_2 = network.nodes[id_2]
-            x, x, diff_attrs = bie3._score_same_data(node_1, node_2)
-            # How to handle multiple different attributes?
-            if len(diff_attrs) != 1:
-                continue
-            attr_names.append(diff_attrs[0])
-        # Must have all the same different attributes.
-        if len(attr_names) != len(parent_ids)-1:
-            continue
-        all_same = True
-        for i in range(1, len(attr_names)):
-            if attr_names[i] != attr_names[0]:
-                all_same = False
-                break
-        if not all_same:
-            continue
-        name = attr_names[0]
-
-        # Make sure the attribute is not SAME_AS_CONSTRAINT.  Module
-        # should not be passing the value of this attribute along.
-        # Not sure whether BASED_ON_DATA should be ignored too?
-        module_passes_attr = False
-        for cons in network.nodes[module_id].consequences:
-            if cons.name == name and \
-                   cons.behavior in [bie3.SAME_AS_CONSTRAINT]:
-                module_passes_attr = True
-                break
-        if module_passes_attr:
-            continue
-        
-        values = [network.nodes[x].attributes[name] for x in parent_ids]
-        x = module_id, parent_ids, name, values
-        alt_attributes.append(x)
-    return alt_attributes
-
-
 def _prune_superset_pipelines(network, paths):
     # Remove pipelines that are just supersets of another pipeline.
     import itertools
 
+    #path2length = [None] * len(paths)
+    #for i, x in enumerate(paths):
+    #    node_ids, start_ids, data_indexes = x
+    #    path2length[i] = len(node_ids)
     path2length = [len(x.node_ids) for x in paths]
 
     # Convert node_ids to bitwise numbers for faster superset
@@ -1275,6 +1463,9 @@ def _is_superset_pipeline(network, path_1, path_2):
     # processing steps that are not necessary in path_2.
     from Betsy import bie3
     
+    #node_ids_1, start_ids_1, data_indexes_1 = path_1
+    #node_ids_2, start_ids_2, data_indexes_2 = path_2
+
     # If they're superset, then the start nodes must be different.
     # Actually, this is not true.  They can have the same start nodes,
     # but different internal paths.
@@ -1655,6 +1846,7 @@ def _is_parallel_pipeline3(
     return 1
 
 
+# Should optimize this function.
 def _compare_paths(network, path_1, path_2):
     from Betsy import bie3
     
@@ -1882,6 +2074,7 @@ def _build_subpath_h(network, paths, path_id, sub_node_ids, nodeid2parents):
         network, path.node_ids, path.transitions, sub_node_ids, nodeid2parents)
 
 
+
 def check_input_files(network, in_data_nodes, user_options, paths,
                       network_png, verbose):
     import os
@@ -1924,6 +2117,266 @@ def manually_verify_network(
         verbose=verbose)
     return False
     
+
+## def print_input_nodes(
+##     network, required_datatypes, excluded_datatypes, custom_attributes,
+##     max_inputs=None, outhandle=None):
+##     # required_datatypes is a list of the names of datatypes that must
+##     # be in this combination.
+##     import sys
+##     from genomicode import parselib
+##     from Betsy import bie3
+
+##     outhandle = outhandle or sys.stdout
+
+##     ps = parselib.print_split
+
+##     print >>outhandle, "Possible Inputs"
+##     outhandle.flush()
+
+##     inputs = bie3.get_input_nodes(
+##         network, user_attributes, skip_datatypes=excluded_datatypes,
+##         skip_private_datatypes=True, max_inputs=max_inputs)
+##     dt2inputs = bie3.group_nodes_by_datatype(network, inputs)
+
+##     # Make a list of the datatypes to show.
+##     datatype_combos = dt2inputs.keys()  # list of datatypes
+
+##     ## # Remove any that contain "private" datatypes.
+##     ## i = 0
+##     ## while i < len(datatype_combos):
+##     ##     has_private = False
+##     ##     for x in datatype_combos[i]:
+##     ##         if x.name.startswith("_"):
+##     ##             has_private = True
+##     ##             break
+##     ##     if has_private:
+##     ##         del datatype_combos[i]
+##     ##     else:
+##     ##         i += 1
+
+
+##     # Remove any that do not contain all of the required_datatypes.
+##     # Also remove those that contain datatypes not in
+##     # required_datatypes.
+##     s_required_datatypes = sorted(_uniq(required_datatypes))
+##     i = 0
+##     while i < len(datatype_combos):
+##         combo = datatype_combos[i]
+##         names = [x.name for x in combo]
+##         x = sorted(_uniq(names))
+##         if x != s_required_datatypes:
+##             del datatype_combos[i]
+##         else:
+##             i += 1
+##     # Sort by number of datatypes, then names.
+##     schwartz = []
+##     for dt in datatype_combos:
+##         x1 = len(dt)
+##         x2 = [x.name for x in dt]
+##         schwartz.append((x1, x2, dt))
+##     schwartz.sort()
+##     datatype_combos = [x[-1] for x in schwartz]
+
+##     if not datatype_combos:
+##         print >>outhandle, "None"
+##         return
+##     for i, combo in enumerate(datatype_combos):
+##         x = [x.name for x in combo]
+##         ps("%d.  INPUTS: %s" % (i+1, ", ".join(x)), outhandle=outhandle)
+
+##         # node_id_combos a list of list of node_ids.  node_combos is
+##         # a list of list of nodes, all with the same combination of
+##         # types.
+##         # E.g. [
+##         #   [AgilentFiles, ClassLabelFile],
+##         #   [AgilentFiles, ClassLabelFile],
+##         # ]
+##         node_id_combos = dt2inputs[combo]
+##         node_combos = [None] * len(node_id_combos)
+##         for i, id_combo in enumerate(node_id_combos):
+##             # id_combo is a list of node_ids.  node_combo is a list of
+##             # DataNodes.
+##             node_combo = [network.nodes[x] for x in id_combo]
+##             # Sort the DataNodes by datatype name, then attributes.
+##             schwartz = []
+##             for id_, n in zip(id_combo, node_combo):
+##                 x1 = n.datatype.name
+##                 x2 = n.attributes
+##                 schwartz.append((x1, x2, id_, n))
+##             schwartz.sort()
+##             node_id_combos[i] = [x[-2] for x in schwartz]
+##             node_combos[i] = [x[-1] for x in schwartz]
+
+##         # DEBUG: Make sure no IDs occur more than once
+##         #for x in node_id_combos:
+##         #    y = {}.fromkeys(x).keys()
+##         #    assert len(x) == len(y)
+
+##         # Merge the node_combos with very similar attributes.  Do this
+##         # with a greedy algorithm.  Take each node_combo, and make a
+##         # group of other node_combos to merge.  Every member of the
+##         # node_combo must vary by at most one attribute (and must be
+##         # the same attribute).
+##         j = 0
+##         while j < len(node_combos)-1:
+##             # Indexes of node_combos to merge, not including this
+##             # combo.
+##             group = []
+
+##             # Find other nodes that fit into this group.
+##             diff = None
+##             for k in range(j+1, len(node_combos)):
+##                 combo1, combo2 = node_combos[j], node_combos[k]
+##                 x = _list_differences_in_nodelists(combo1, combo2)
+##                 if len(x) > 1:
+##                     continue
+##                 if not x:
+##                     # Sometimes can have no differences.  Just merge
+##                     # them.
+##                     pass
+##                 elif diff is None:
+##                     diff = x
+##                 elif x != diff:
+##                     continue
+##                 group.append(k)
+##             if not group:
+##                 j += 1
+##                 continue
+##             # Merge every combo in this group, and delete the unmerged
+##             # combinations.
+##             node_combo = node_combos[j]
+##             for k in group:
+##                 node_combo = _merge_nodelists(node_combo, node_combos[k])
+##             node_combos[j] = node_combo
+##             node_combos = [
+##                 node_combos[k] for k in range(len(node_combos))
+##                 if k not in group]
+
+##         # Print out each combination.
+##         for j, node_combo in enumerate(node_combos):
+##             # Print one node.
+##             for k, node in enumerate(node_combo):
+##                 assert isinstance(node, bie3.DataNode)
+##                 #x = "- %s: %s" % (node.datatype.name, node.datatype.help)
+##                 x = "- %s" % node.datatype.name
+##                 ps(x, prefix1=4, prefixn=8, outhandle=outhandle)
+
+##                 # Print the attributes.
+##                 for name in sorted(node.attributes):
+##                     value = node.attributes[name]
+##                     # To save space, don't print the ones with default
+##                     # values.
+##                     attrdef = node.datatype.attribute_defs[name]
+##                     if attrdef.default_in == value:
+##                         continue
+##                     #if type(value) is type([]) and \
+##                     #       attrdef.default_in in value:
+##                     #    continue
+##                     x = "%s=%s" % (name, value)
+##                     ps(x, prefix1=8, prefixn=10, outhandle=outhandle)
+##             print >>outhandle  # space between each combination.
+##             outhandle.flush()
+##         print >>outhandle      # two spaces at end of this set of combos.
+
+
+## def print_diagnose(network, start_nodes, missing, outhandle=None):
+##     # start_nodes is a list of DataNode objects.  missing is a list of
+##     # the indexes of start_nodes that cannot be found in the network.
+##     from genomicode import parselib
+##     from Betsy import bie3
+
+##     x = [start_nodes[i] for i in missing]
+##     x = [str(x) for x in x]
+##     node_or_nodes = "node"
+##     if len(x) > 1:
+##         node_or_nodes = "nodes"
+##     x = "Input %s not found:\n%s" % (node_or_nodes, "\n".join(x))
+##     parselib.print_split(x, outhandle=outhandle)
+##     parselib.print_split(
+##         "Possible reasons are:", outhandle=outhandle)
+##     parselib.print_split(
+##         "- There is an incompatibility in the attributes somewhere.",
+##         prefix1=4, outhandle=outhandle)
+##     parselib.print_split(
+##         "- It is not needed for this pipeline.", prefix1=4,
+##         outhandle=outhandle)
+##     print >>outhandle
+    
+##     #bie3.diagnose_start_node(network, start_nodes, outhandle=outhandle)
+##     results = bie3._score_start_nodes(network, start_nodes)
+
+##     # This can happen if the network doesn't contain any of the same
+##     # datatypes as start_nodes.  This can be if the network is really
+##     # small, e.g. if there's no way at all to generate the desired out
+##     # data type.
+##     if not results:
+##         node_or_nodes = "node"
+##         if len(network.nodes) > 1:
+##             node_or_nodes = "nodes"
+##         print >>outhandle, \
+##               "The network (%d %s) contains no matching data types." % (
+##             len(network.nodes), node_or_nodes)
+##         return
+
+##     # Make an output table.
+##     table = []
+##     header = [
+##         "Node", "D", "Datatype", "Attribute", "Network", "User"]
+##     table.append(header)
+##     for x in results:
+##         score, node_id, user_data, attr_values = x
+##         dt_name = network.nodes[node_id].datatype.name
+##         if not attr_values:
+##             x = node_id, score, dt_name, "", "", ""
+##             assert len(x) == len(header)
+##             table.append(x)
+##         for name, netw_value, user_value in attr_values:
+##             x = node_id, score, dt_name, name, netw_value, user_value
+##             assert len(x) == len(header)
+##             table.append(x)
+    
+##     # Figure out the maximum lengths of each column.
+##     num_cols = len(header)
+##     col_lengths = []
+##     for i in range(num_cols):
+##         x = [x[i] for x in table]     # Get values in column.
+##         x = [len(str(x)) for x in x]  # calculate lengths.
+##         x = max(x)
+##         col_lengths.append(x)
+
+##     # Set a maximum limit for Datatype and Attribute columns.
+##     # Should be max 79 columns long, including 5 for spaces.
+##     # Column      MIN  MAX  Notes
+##     # Node         4     4  As short as possible.
+##     # Delta        1     5  As short as possible.
+##     # Datatype     8    18  Datatype name.
+##     # Attribute    9    19  Attribute name.
+##     # Network      7    22  Might be long.  Lots of values.
+##     # User         4    10  Can be long.  But usually short.
+##     max_lengths = [4, 1, 18, 19, 22, 10]
+##     assert len(col_lengths) == len(max_lengths)
+##     col_lengths = max_lengths
+##     #for i in range(len(col_lengths)):
+##     #    col_lengths[i] = min(col_lengths[i], max_lengths[i])
+##     # Just use the maximum lengths.
+##     # Make sure the values aren't too long.
+##     for i in range(len(table)):
+##         row = list(table[i])
+##         for j in range(len(row)):
+##             x = row[j]
+##             x = str(x)
+##             x = x.rstrip()
+##             if len(x) > col_lengths[j]:
+##                 x = x[:col_lengths[j]-3] + "..."
+##             row[j] = x
+##         table[i] = row
+
+##     fmt = "{!s:^%ds} {!s:^%ds} {:<%ds} {:<%ds} {:<%ds} {:<%ds}" % \
+##           tuple(col_lengths)
+##     for x in table:
+##         print >>outhandle, fmt.format(*x)
+
 
 def plot_network_show_pipelines(filename, network, paths, **keywds):
     from Betsy import bie3
@@ -1980,6 +2433,28 @@ def plot_pipelines(filestem, network, paths, user_options, max_pipelines=None,
             verbose=verbose)
 
 
+## def is_complete_input(network, user_attributes, start_node_ids):
+##     # Return a boolean indicating whether this is a valid set of start
+##     # nodes.  (SLOW).
+##     from Betsy import bie3
+
+##     start_node_ids = sorted(start_node_ids)
+##     inputs = bie3.get_inputs(network, user_attributes)
+##     for input_ in inputs:
+##         # Bug: should check if input_ is subset of start_node_ids.
+##         if start_node_ids == sorted(input_):
+##             return True
+##     return False
+##     #dt2inputs = bie3.group_inputs_by_datatype(network, inputs)
+##     #for i, dt in enumerate(sorted(dt2inputs)):
+##     #    x = [x.name for x in dt]
+##     #    for j, dtinput in enumerate(dt2inputs[dt]):
+##     #        required = sorted(list(set(dtinput)))
+##     #        if start_node_ids == required:
+##     #            return True
+##     #return False
+
+
 def get_all_option_names():
     # Return a list of the names for all OptionDef objects in the
     # rulebase.
@@ -2006,6 +2481,70 @@ def get_required_option_names(modules):
                 option2modules[on] = []
             option2modules[on].append(mn)
     return option2modules
+
+
+## def _delete_input_nodes(
+##     network, wanted_dt_names, unwanted_dt_names, user_attributes):
+##     # Only one of wanted_dt_names and unwanted_dt_names should be given.
+##     from Betsy import bie3
+
+##     assert not (wanted_dt_names and unwanted_dt_names)
+
+##     wanted_dt_names = wanted_dt_names or []
+##     unwanted_dt_names = unwanted_dt_names or []
+##     wanted_dict = {}.fromkeys(wanted_dt_names)
+##     unwanted_dict = {}.fromkeys(unwanted_dt_names)
+
+##     while True:
+##         # Keep all the internal IDs.  These are the nodes that someone
+##         # points to.
+##         keep_ids = {}
+##         for next_ids in network.transitions.values():
+##             x = {}.fromkeys(next_ids)
+##             keep_ids.update(x)
+##         # Everything else is a start ID.
+##         start_ids = [x for x in range(len(network.nodes)) if x not in keep_ids]
+##         if wanted_dict:
+##             # Keep all the start_ids that is in a wanted datatype.
+##             x = [
+##                 x for x in start_ids
+##                 if network.nodes[x].datatype.name in wanted_dict]
+##         elif unwanted_dict:
+##             # Keep all the start_ids that is not in the unwanted
+##             # datatype.
+##             x = [
+##                 x for x in start_ids
+##                 if network.nodes[x].datatype.name not in unwanted_dict]
+##         x = {}.fromkeys(x)
+##         keep_ids.update(x)
+
+##         # Remove every node not in keep_ids.
+##         remove_ids = [
+##             x for x in range(len(network.nodes)) if x not in keep_ids]
+##         if not remove_ids:
+##             break
+##         network = network.delete_nodes(remove_ids)
+##         network = bie3._OptimizeNoDanglingNodes().optimize(
+##             network, user_attributes)
+##         assert network.nodes, "Empty network"
+##     network = bie3.optimize_network(network, user_attributes)
+##     return network
+
+
+## def _remove_unwanted_input_nodes(network, unwanted_datatypes, user_attributes):
+##     # Remove all the input nodes that aren't one of these wanted
+##     # datatypes.
+##     # unwanted_datatypes is a list of names.
+##     return _delete_input_nodes(
+##         network, None, unwanted_datatypes, user_attributes)
+
+
+## def _keep_wanted_input_nodes(network, wanted_datatypes, user_attributes):
+##     # Keep only the input nodes that represents one of these wanted
+##     # datatypes.
+##     # wanted_datatypes is a list of names.
+##     return _delete_input_nodes(
+##         network, wanted_datatypes, None, user_attributes)
 
 
 def _list_differences_in_nodelists(nodes1, nodes2):
@@ -2066,6 +2605,11 @@ def _merge_nodelists(nodes1, nodes2):
         n = bie3.DataNode(n1.datatype, **attr)
         merged.append(n)
     return merged
+
+
+def _uniq(seq):
+    # Should merge with bie3.
+    return {}.fromkeys(seq).keys()
 
 
 def _parse_dattr(dattr_str):
@@ -2245,6 +2789,10 @@ def main():
         help="By default, if an --mattr option looks like a filename, "
         "will convert to full path so that modules can find them.  "
         "This will turn off that feature.")
+    #group.add_argument(
+    #    "--prune_other_inputs", action="store_true",
+    #    help="There should be no other input data types in this network.  "
+    #    "(For optimization)")
 
     group.add_argument(
         '--output',  help='Desired DataType for the output.')
@@ -2263,9 +2811,13 @@ def main():
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
         '--network_png', help='generate the output network png file')
+    #group.add_argument(
+    #    '--unpruned_network_png', help='generate the output network png file')
     group.add_argument(
         '--sparse_network_png', action="store_true",
         help="Leave out details in network plot.")
+    #group.add_argument(
+    #    '--unpruned_network_text', help='')
     #group.add_argument(
     #    '--network_text', help='generate the output network text file')
     group.add_argument(
@@ -2273,6 +2825,9 @@ def main():
     #parser.add_argument(
     #    '--clobber', action='store_const', const=True, default=False,
     #    help='overwrite the output_data if it already exists')
+    #parser.add_argument(
+    #    '--dry_run',  action='store_const', const=True, default=False,
+    #    help='generate the network, do not run the network')
 
     print "Starting rule engine."
     sys.stdout.flush()
@@ -2306,6 +2861,8 @@ def main():
         os.mkdir(config.OUTPUTPATH)
 
     # Make sure files exist.
+    #if input_list or args.output_file:
+    #    print "Looking for files."
     for x in input_list:
         intype, identifier, attributes = x
         if identifier:
@@ -2318,6 +2875,8 @@ def main():
             assert args.clobber, "Output already exists: %s" % args.output_file
 
     # Making the IdentifiedDataNode objects.
+    #if input_list:
+    #    print "Parsing input options."
     # List of identified data nodes.
     in_data_nodes = []
     for x in input_list:
@@ -2338,6 +2897,8 @@ def main():
     # test outtype and build the list of custom_attributes.
     custom_attributes = []  # List of bie3.Attribute objects.
     if outtype:
+        #print "Parsing output options."
+
         # Get the custom_attributes.  These are the attributes from the
         # output data (out_attributes), plus the attributes from the
         # input data (to guide the inferencing engine).
@@ -2390,13 +2951,25 @@ def main():
             x = os.path.realpath(value)
             user_options[key] = x
     
+
+    # Cases:   OBSOLETE
+    # 1.  No inputs and no outputs.
+    #     Show the whole rulebase.
+    # 2.  No inputs and has output.  (requires network)
+    #     Show the input datatypes.
+    # 3.  Input and no outputs.
+    #     ERROR
+    # 4.  Input and output.  (requires network)
+    #     Show the input nodes.
+    #     Run the analysis.
+
     # Step 1: Make sure there's an output provided.
     #         If not, show the rulebase.
     # Step 2: Generate network that produces this output.
     # Step 3: Make sure there are inputs provided.
     #         If not, show the input datatypes.
     # Step 4: Make sure the inputs can be found in the network.
-    # Step 5: Create the pipelines.
+    # Step 5: Make sure the inputs can generate a pipeline.
     # Step 6: Make sure required attributes are given.
     # Step 7: Prune redundant pipelines.
     # Step 8: Make sure input files exist.
@@ -2426,6 +2999,19 @@ def main():
         args.max_inputs, args.network_png, verbose)
     if not paths:
         return
+    ## # Step 4: Make sure the data types provided will generate a viable
+    ## # path through the network.
+    ## paths = check_datatypes_complete(
+    ##     network, user_attributes, user_options,
+    ##     in_data_nodes, args.network_png, verbose)
+    ## if not paths:
+    ##     return
+    ## # Step 5: Make sure the inputs can generate a path through the
+    ## # network.
+    ## paths = check_inputs_complete(
+    ##     network, user_options, in_data_nodes, paths, args.network_png, verbose)
+    ## if not paths:
+    ##     return
     # Step 6: Make sure required attributes are given.
     paths = check_attributes_complete(
         network, user_options, paths, args.network_png, verbose)
@@ -2441,7 +3027,7 @@ def main():
         return
     # DEBUG: Print out each of the pipelines.
     #plot_pipelines(
-    #    "pipeline", network, paths, user_options, max_pipelines=32,
+    #    "pipeline", network, paths, user_options, max_pipelines=16,
     #    verbose=True)
         
     # Step 8: Look for input files.
@@ -2476,6 +3062,7 @@ def main():
     except AssertionError, x:
         if str(x).startswith("Inference error"):
             node_ids = rule_engine_bie3.DEBUG_POOL.keys()
+            # Show transitions
             plot_network(
                 args.network_png, network, user_options=user_options,
                 highlight_green=node_ids, verbose=verbose)

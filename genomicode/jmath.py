@@ -211,6 +211,16 @@ def sum_matrix(X, byrow=1):
 def mysum(X, byrow=1):
     return _dispatch(X, None, sum_list, _fn(sum_matrix, byrow=byrow))
 
+def prod_list(X):
+    total = 1
+    for x in X:
+        total = total * x
+    return total
+
+def prod(X, byrow=1):
+    return _dispatch(X, None, sum_list, None)
+
+
 def mean_list(X):
     assert len(X) > 0
     return float(sum(X)) / len(X)
