@@ -4,34 +4,57 @@
 # parse_indexes
 #
 # indexes_matrix
-# flip01_matrix
-#
-# rename_duplicate_headers
-# rename_header
-# rename_header_i
-# replace_header
-# replace_header_re
-# prepend_to_headers
-#
+# select_cols_str
+# select_cols_substr
 # add_column
 # copy_column
 # 
-# copy_value_if_empty
-# copy_value_if_empty_header
-# copy_value_if_empty_same_header
+# add_header_line
+# fill_empty_headers
+# remove_header_line
+# reorder_headers_alphabetical
+# upper_headers
+# hash_headers
+# rename_duplicate_headers
+# rename_header
+# rename_header_i
+# prepend_to_headers
+# replace_header
+# replace_header_re
+#
 # strip_all_annots
 # upper_annots
 # lower_annots
-# replace_annots
+# set_value_if_empty
+# copy_value_if_empty
+# copy_value_if_empty_header
+# copy_value_if_empty_same_header
 # replace_whole_annot
+# replace_annots
 # prepend_to_annots
 # apply_re_to_annots
+# merge_annots
 #
+# _add_annots
+# _subtract_annots
+# _divide_annots
+# _calc_two_annots
+# 
+# flip01_matrix
+# all_same
+# min_annots
+# max_annots
+# multiply_by
+# log_base
 # add_two_annots
 # subtract_two_annots
 # divide_two_annots
 # divide_many_annots
 # average_same_header
+# round_annots
+#
+# subtract_two_bed_lists
+# subtract_value_from_bed_list
 
 
 def parse_indexes(MATRIX, indexes_str, allow_duplicates=False):
@@ -1042,7 +1065,7 @@ def divide_two_annots(MATRIX, divide_annots):
 
 
 def divide_many_annots(MATRIX, divide_annots):
-    # Format: list of <numerator indexes>;<denominator index.  Each
+    # Format: list of <numerator indexes>;<denominator index>.  Each
     # are 1-based indexes.
     if not divide_annots:
         return MATRIX
@@ -1110,6 +1133,28 @@ def average_same_header(MATRIX, average):
         header2annots[header] = x
     return AnnotationMatrix.AnnotationMatrix(headers, headers, header2annots)
 
+
+def round_annots(MATRIX, round_annots):
+    # Format: list of <index>.  1-based indexes.
+    if not round_annots:
+        return MATRIX
+    
+    indexes = []  # list of 0-based indexes
+    for x in round_annots:
+        I = parse_indexes(MATRIX, x)
+        for i in I:
+            assert i >= 0 and i < len(MATRIX.headers)
+        indexes.extend(I)
+    indexes = sorted({}.fromkeys(indexes))
+
+    MATRIX = MATRIX.copy()
+    for index in indexes:
+        header_h = MATRIX.headers_h[index]
+        x = MATRIX.header2annots[header_h]
+        x = [int(round(x)) for x in x]
+        MATRIX.header2annots[header_h] = x
+    
+    return MATRIX
 
 
 def subtract_two_bed_lists(MATRIX, subtract_two_bed_lists):
@@ -1452,6 +1497,10 @@ def main():
     group.add_argument(
         "--average_same_header", action="store_true",
         help="Average the annotations that have the same header.")
+    group.add_argument(
+        "--round", default=[], action="append",
+        help="Round the values of a column to integers.  "
+        "Format: <index>.  All indexes should be 1-based.  (MULTI)")
     
 
     group = parser.add_argument_group(title="Application-Specific Stuff")
@@ -1541,6 +1590,7 @@ def main():
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
     MATRIX = divide_many_annots(MATRIX, args.divide_many_annots)
     MATRIX = average_same_header(MATRIX, args.average_same_header)
+    MATRIX = round_annots(MATRIX, args.round)
 
     # Application-specific stuff
     #MATRIX = calc_blockSizes(MATRIX, args.calc_blockSizes)

@@ -380,6 +380,22 @@ def main():
             x = [name1] + x
             assert len(x) == len(header)
             print "\t".join(map(str, x))
+
+        # Print out percentages
+        print
+        header = ["Count"] + all_names
+        print "\t".join(header)
+        for name1 in all_names:
+            row = [name1]
+            for name2 in all_names:
+                num = len(combo2common[(name1, name2)])
+                x1 = len(combo2common[(name1, name1)])
+                x2 = len(combo2common[(name2, name2)])
+                den = min(x1, x2)
+                perc = float(num)/den
+                row.append(perc)
+            assert len(row) == len(header)
+            print "\t".join(map(str, row))
     else:
         print "No matrix for comparing %d gene sets." % args.num_to_compare
     print
