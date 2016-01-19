@@ -211,7 +211,6 @@ def hash_headers(MATRIX, hash_headers):
 
 def add_header_line(filename, header_list, is_csv=False):
     # header_list is a list of a comma-separated list of headers.
-    import StringIO
     from genomicode import AnnotationMatrix
     from genomicode import filelib
     from genomicode import jmath
