@@ -84,7 +84,14 @@ def parallel(commands, max_procs=None, path=None):
     
 
 
-def quote(s):
-    return "'" + s.replace("'", "'\\''") + "'"
-
-
+def quote(s, always_quote=False):
+    BAD_CHARS = " \\"
+    needs_quote = False
+    if not always_quote:
+        for x in BAD_CHARS:
+            if x in s:
+                needs_quote = True
+                break
+    if always_quote or needs_quote:
+        s = "'" + s.replace("'", "'\\''") + "'"
+    return s

@@ -256,7 +256,7 @@ def exists_nz(filename):
 
 
 def assert_exists_nz(filename):
-    assert exists_nz(filename), "File not found: %s" % filename
+    assert exists_nz(filename), "File not found or empty: %s" % filename
     
 
 def exists_nz_many(filenames):
@@ -276,12 +276,13 @@ def assert_exists_nz_many(filenames):
     if not missing:
         return
     if len(missing) == 1:
-        msg = "File not found: %s" % missing[0]
+        msg = "File not found or empty: %s" % missing[0]
     elif len(missing) < 5:
-        msg = "Files not found: %s" % ", ".join(missing)
+        msg = "Files not found or empty: %s" % ", ".join(missing)
     else:
         x = missing[:5] + ["..."]
-        msg = "Files (%d) not found: %s" % (len(missing), ", ".join(x))
+        msg = "Files (%d) not found or empty: %s" % (
+            len(missing), ", ".join(x))
     assert not missing, msg
 
 

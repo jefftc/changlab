@@ -7,6 +7,7 @@
 # BamFolder
 # SaiFolder                  # from BWA Backtrack
 # VcfFolder
+# TophatAlignmentFolder
 #
 # Bowtie1AlignmentSummary
 # Bowtie2AlignmentSummary
@@ -36,6 +37,11 @@
 # index_reference_bowtie2
 # align_with_bowtie2
 # summarize_bowtie2_alignment
+
+# align_with_tophat                Tophat
+# summarize_tophat_alignment
+
+
 # is_reference_bwa_indexed         BWA
 # index_reference_bwa              
 # align_with_bwa_aln
@@ -63,7 +69,8 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
 
-ALIGNERS = ["unknown", "bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem"]
+ALIGNERS = [
+    "unknown", "bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem", "tophat"]
 ##REFERENCE_GENOMES = ["hg18", "hg19", "mm9", "dm3"]
 
 COMPRESSION = ["unknown", "no", "gz", "bz2", "xz"]
@@ -275,6 +282,13 @@ TrimmomaticSummary = DataType(
     help="Summarizes the results from trimmomatic in an Excel .xls file.",
     )
 
+TophatAlignmentFolder = DataType(
+    "TophatAlignmentFolder",
+    AttributeDef(
+        "contents", BDT.CONTENTS,
+        "unspecified", "unspecified", help="contents"),
+    help="A folder that contains alignments from Tophat.",
+    )
 
 all_data_types = [
     ReferenceGenome,
@@ -285,6 +299,7 @@ all_data_types = [
     BamFolder,
     SaiFolder,
     VcfFolder,
+    TophatAlignmentFolder,
 
     #Bowtie1IndexedGenome,
     #Bowtie2IndexedGenome,
@@ -544,6 +559,32 @@ all_modules = [
         # the SAM files.
         ),
         
+    ModuleNode(
+        "align_with_tophat",
+        [FastqFolder, SampleGroupFile, ReferenceGenome],
+        TophatAlignmentFolder,
+        OptionDef(
+            "tophat_gtf_file", default="",
+            help="GTF file containing the gene information.",
+            ),
+        OptionDef(
+            "tophat_transcriptome_fa", default="",
+            help="FASTA file for Transcriptome, e.g. "
+            "hg19.knownGene.fa.  Must be indexed by tophat."
+            "Either this or tophat_gtf_file must be given."
+            ),
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
+        Constraint("bowtie2_indexed", MUST_BE, "yes", 2),
+        
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        
+        help="Align to a reference genome with tophat.",
+        ),
     ModuleNode(
         "is_reference_bwa_indexed",
         ReferenceGenome, ReferenceGenome,

@@ -51,12 +51,12 @@ class Module(AbstractModule):
 
         files = [
             "binding.positions.txt",
-            "broadPeak",
+            #"broadPeak",
             "crosscorrelation.pdf",
             "density.wig",
             "enrichment.estimates.wig",
             "enrichment.wig",
-            "narrowPeak",
+            #"narrowPeak",   # might be empty if no peaks found
             log_file,
             ]
         filenames = [os.path.join(out_path, x) for x in files]

@@ -20,12 +20,22 @@ SPPResults = DataType(
     "SPPResults",
     help="Run an SPP analysis and save the results in this folder.",
     )
+HOMERTagDirectory = DataType(
+    "HOMERTagDirectory",
+    help="Create a tag directory for use in HOMER analysis.",
+    )
+HOMERResults = DataType(
+    "HOMERResults",
+    help="Run a HOMER analysis and save the results in this folder.",
+    )
 
 all_data_types = [
     MACS14Results,
     MACS21Results,
     PeakSeqResults,
     SPPResults,
+    HOMERTagDirectory,
+    HOMERResults,
     ]
 
 all_modules = [
@@ -90,7 +100,7 @@ all_modules = [
             help="Name of the sample for background.",
             ),
         OptionDef(
-            "fragment_length", 
+            "peakseq_fragment_length", 
             help="Average length of the fragments.",
             ),
         OptionDef(
@@ -112,5 +122,22 @@ all_modules = [
             help="Name of the sample for background.",
             ),
         #Constraint("sorted", MUST_BE, "coordinate", 0),
+        ),
+    ModuleNode(
+        "make_homer_tag_directory",
+        NGS.BamFolder, HOMERTagDirectory,
+        ),
+    ModuleNode(
+        "run_homer",
+        [HOMERTagDirectory, NGS.SampleGroupFile], HOMERResults,
+        OptionDef(
+            "treatment_sample", 
+            help="Name of the sample to analyze.",
+            ),
+        OptionDef(
+            "control_sample", default="",
+            help="(OPTIONAL) Name of the sample for background.",
+            ),
+        # Not implemented: other styles (broad peaks, etc).
         ),
     ]

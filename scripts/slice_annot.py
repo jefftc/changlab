@@ -34,7 +34,7 @@
 # average_same_header
 
 
-def parse_indexes(MATRIX, indexes_str):
+def parse_indexes(MATRIX, indexes_str, allow_duplicates=False):
     # Takes 1-based indexes and returns a list of 0-based indexes.
     # 
     # Example inputs:
@@ -51,12 +51,13 @@ def parse_indexes(MATRIX, indexes_str):
         s, e = s - 1, min(e, max_index)
         I.extend(range(s, e))
 
-    # Remove duplicated indexes.  Need to preserve order.
-    nodup = []
-    for i in I:
-        if i not in nodup:
-            nodup.append(i)
-    I = nodup
+    if not allow_duplicates:
+        # Remove duplicated indexes.  Need to preserve order.
+        nodup = []
+        for i in I:
+            if i not in nodup:
+                nodup.append(i)
+        I = nodup
 
     return I
 
@@ -70,7 +71,7 @@ def indexes_matrix(MATRIX, indexes_list):
         return MATRIX
     I = []
     for indexes in indexes_list:
-        x = parse_indexes(MATRIX, indexes)
+        x = parse_indexes(MATRIX, indexes, allow_duplicates=True)
         I.extend(x)
     x = AnnotationMatrix.colslice(MATRIX, I)
     return x
@@ -399,7 +400,7 @@ def add_column(MATRIX, add_column):
     last_index = -1
     for x in add_column:
         x = x.split(",", 2)
-        assert len(x) == 3
+        assert len(x) == 3, "Format should be: <index>,<header>,<value>"
         index, header, default_value = x
         if index == "END":
             x = max(last_index+1, MATRIX.num_headers())
@@ -1110,6 +1111,162 @@ def average_same_header(MATRIX, average):
     return AnnotationMatrix.AnnotationMatrix(headers, headers, header2annots)
 
 
+
+def subtract_two_bed_lists(MATRIX, subtract_two_bed_lists):
+    # Format: <annot 1>,<annot 2>,<dest>.  Each are 1-based
+    # indexes.  <annot 1> is comma-separated list of numbers.  May end
+    # in an extra comma.
+    if not subtract_two_bed_lists:
+        return MATRIX
+
+    # same as calcBlocksizes, but order of annots is reversed.  Should
+    # we keep both?
+
+    x = subtract_two_bed_lists.split(",")
+    assert len(x) == 3, "format should be: <annot1>,<annot2>,<dest>"
+    i_1, i_2, i_dest = x
+    i_1, i_2, i_dest = int(i_1), int(i_2), int(i_dest)
+    # Convert to 0-based index.
+    i_1, i_2, i_dest = i_1-1, i_2-1, i_dest-1
+    assert i_1 >= 0 and i_1 < len(MATRIX.headers)
+    assert i_2 >= 0 and i_2 < len(MATRIX.headers)
+    assert i_dest >= 0 and i_dest < len(MATRIX.headers)
+
+    MATRIX = MATRIX.copy()
+    h_1 = MATRIX.headers_h[i_1]
+    h_2 = MATRIX.headers_h[i_2]
+    h_dest = MATRIX.headers_h[i_dest]
+
+    annots_1 = MATRIX.header2annots[h_1]
+    annots_2 = MATRIX.header2annots[h_2]
+    assert len(annots_1) == len(annots_2)
+    annots_dest = [""] * len(annots_1)
+    for i in range(len(annots_1)):
+        a1 = annots_1[i]
+        a2 = annots_2[i]
+        if not a1.strip() or not a2.strip():
+            continue
+        ends_with_comma = False
+        a1 = a1.split(",")
+        a2 = a2.split(",")
+        assert len(a1) == len(a2), "Unequal lengths"
+        if a1[-1] == "" or a2[-1] == "":
+            ends_with_comma = True
+        if ends_with_comma:
+            assert a1[-1] == ""
+            assert a2[-1] == ""
+            a1 = a1[:-1]
+            a2 = a2[:-1]
+        a1 = [int(x) for x in a1]
+        a2 = [int(x) for x in a2]
+        d = [(a1[j]-a2[j]) for j in range(len(a1))]
+        d = ",".join(map(str, d))
+        if ends_with_comma:
+            d = d + ","
+        annots_dest[i] = d
+    MATRIX.header2annots[h_dest] = annots_dest
+    return MATRIX
+
+                            
+def subtract_value_from_bed_list(MATRIX, subtract_value_from_bed_list):
+    # Format: <annot 1>,<annot 2>,<dest>.  Each are 1-based
+    # indexes.  <annot 1> is comma-separated list of numbers.  May end
+    # in an extra comma.  <annot 2> is single value.
+    if not subtract_value_from_bed_list:
+        return MATRIX
+
+    x = subtract_value_from_bed_list.split(",")
+    assert len(x) == 3, "format should be: <annot1>,<annot2>,<dest>"
+    i_1, i_2, i_dest = x
+    i_1, i_2, i_dest = int(i_1), int(i_2), int(i_dest)
+    # Convert to 0-based index.
+    i_1, i_2, i_dest = i_1-1, i_2-1, i_dest-1
+    assert i_1 >= 0 and i_1 < len(MATRIX.headers)
+    assert i_2 >= 0 and i_2 < len(MATRIX.headers)
+    assert i_dest >= 0 and i_dest < len(MATRIX.headers)
+
+    MATRIX = MATRIX.copy()
+    h_1 = MATRIX.headers_h[i_1]
+    h_2 = MATRIX.headers_h[i_2]
+    h_dest = MATRIX.headers_h[i_dest]
+
+    annots_1 = MATRIX.header2annots[h_1]
+    annots_2 = MATRIX.header2annots[h_2]
+    assert len(annots_1) == len(annots_2)
+    annots_dest = [""] * len(annots_1)
+    for i in range(len(annots_1)):
+        a1 = annots_1[i]
+        a2 = annots_2[i]
+        if not a1.strip() or not a2.strip():
+            continue
+        ends_with_comma = False
+        a1 = a1.split(",")
+        if a1[-1] == "":
+            ends_with_comma = True
+            a1 = a1[:-1]
+        a1 = [int(x) for x in a1]
+        a2 = int(a2)
+        d = [x-a2 for x in a1]
+        d = ",".join(map(str, d))
+        if ends_with_comma:
+            d = d + ","
+        annots_dest[i] = d
+    MATRIX.header2annots[h_dest] = annots_dest
+    return MATRIX
+
+
+## def calc_blockSizes(MATRIX, calc_blockSizes):
+##     # Format: <annot 1>,<annot 2>,<dest>.  Each are 1-based
+##     # indexes.  <annot 1> is comma-separated list of numbers.  May end
+##     # in an extra comma.
+##     if not calc_blockSizes:
+##         return MATRIX
+
+##     x = calc_blockSizes.split(",")
+##     assert len(x) == 3, "format should be: <annot1>,<annot2>,<dest>"
+##     i_1, i_2, i_dest = x
+##     i_1, i_2, i_dest = int(i_1), int(i_2), int(i_dest)
+##     # Convert to 0-based index.
+##     i_1, i_2, i_dest = i_1-1, i_2-1, i_dest-1
+##     assert i_1 >= 0 and i_1 < len(MATRIX.headers)
+##     assert i_2 >= 0 and i_2 < len(MATRIX.headers)
+##     assert i_dest >= 0 and i_dest < len(MATRIX.headers)
+
+##     MATRIX = MATRIX.copy()
+##     h_1 = MATRIX.headers_h[i_1]
+##     h_2 = MATRIX.headers_h[i_2]
+##     h_dest = MATRIX.headers_h[i_dest]
+
+##     annots_1 = MATRIX.header2annots[h_1]
+##     annots_2 = MATRIX.header2annots[h_2]
+##     assert len(annots_1) == len(annots_2)
+##     annots_dest = [""] * len(annots_1)
+##     for i in range(len(annots_1)):
+##         a1 = annots_1[i]
+##         a2 = annots_2[i]
+##         if not a1.strip() or not a2.strip():
+##             continue
+##         ends_with_comma = False
+##         a1 = a1.split(",")
+##         a2 = a2.split(",")
+##         if a1[-1] == "" or a2[-1] == "":
+##             ends_with_comma = True
+##         if ends_with_comma:
+##             assert a1[-1] == ""
+##             assert a2[-1] == ""
+##             a1 = a1[:-1]
+##             a2 = a2[:-1]
+##         a1 = [int(x) for x in a1]
+##         a2 = [int(x) for x in a2]
+##         d = [(a2[j]-a1[j]) for j in range(len(a1))]
+##         d = ",".join(map(str, d))
+##         if ends_with_comma:
+##             d = d + ","
+##         annots_dest[i] = d
+##     MATRIX.header2annots[h_dest] = annots_dest
+##     return MATRIX
+
+
 def main():
     import sys
     import argparse
@@ -1280,6 +1437,7 @@ def main():
         "--subtract_two_annots", default=[], action="append",
         help="Subtract column 2 from column 1 and save to a third column.  "
         "Format: <index 1>,<index 2>,<index dest>.  "
+        "<index dest> = <index 1> - <index 2>.  "
         "All indexes should be 1-based.  (MULTI)")
     group.add_argument(
         "--divide_two_annots", default=[], action="append",
@@ -1295,6 +1453,31 @@ def main():
         "--average_same_header", action="store_true",
         help="Average the annotations that have the same header.")
     
+
+    group = parser.add_argument_group(title="Application-Specific Stuff")
+    ## group.add_argument(
+    ##     "--calc_blockSizes", 
+    ##     help="For BED files, calculate blockSizes from blockStarts and "
+    ##     "blockEnds.  "
+    ##     "Format: <blockStarts index>,<blockEnds index>,<index dest>.  "
+    ##     "All indexes should be 1-based.")
+    group.add_argument(
+        "--subtract_two_bed_lists", 
+        help="For BED files, subtract column 2 (comma-separated values) "
+        "from column 1 (comma-separated values) and save to a third "
+        "column (comma-separated values).  "
+        "Format: <index 1>,<index 2>,<index dest>.  "
+        "<index dest> = <index 1> - <index 2>.  "
+        "All indexes should be 1-based.")
+    group.add_argument(
+        "--subtract_value_from_bed_list", 
+        help="For BED files, subtract column 2 (one value) "
+        "from column 1 (comma-separated values) and save to a third "
+        "column (comma-separated values).  "
+        "Format: <index 1>,<index 2>,<index dest>.  "
+        "<index dest> = <index 1> - <index 2>.  "
+        "All indexes should be 1-based.")
+
 
     args = parser.parse_args()
     assert len(args.filename) == 1
@@ -1358,6 +1541,12 @@ def main():
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
     MATRIX = divide_many_annots(MATRIX, args.divide_many_annots)
     MATRIX = average_same_header(MATRIX, args.average_same_header)
+
+    # Application-specific stuff
+    #MATRIX = calc_blockSizes(MATRIX, args.calc_blockSizes)
+    MATRIX = subtract_two_bed_lists(MATRIX, args.subtract_two_bed_lists)
+    MATRIX = subtract_value_from_bed_list(
+        MATRIX, args.subtract_value_from_bed_list)
 
     # Write the matrix back out.
     AnnotationMatrix.write(sys.stdout, MATRIX)

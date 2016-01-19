@@ -533,12 +533,12 @@ def check_attributes_complete(
             assert all_missing
             if len(all_missing) == 1:
                 mn, on = all_missing.keys()[0]
-                x = ("Pruned %d pathways because --mattr option %r was "
+                x = ("Removed %d pathways because --mattr option %r was "
                      "not provided." % (num_removed, on))
             else:
                 names = sorted([x[1] for x in all_missing.keys()])
                 x = parselib.pretty_list(names)
-                x = ("Pruned %d pathways because the following --mattr "
+                x = ("Removed %d pathways because the following --mattr "
                      "options were not provided: %s" % (num_removed, x))
             parselib.print_split(x, prefixn=2)
         return good_paths

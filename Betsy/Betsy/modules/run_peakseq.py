@@ -25,7 +25,7 @@ class Module(AbstractModule):
         control_sample = module_utils.get_user_option(
             user_options, "control_sample")
         fragment_length = module_utils.get_user_option(
-            user_options, "fragment_length", not_empty=True, type=int)
+            user_options, "peakseq_fragment_length", not_empty=True, type=int)
         mappability_file = module_utils.get_user_option(
             user_options, "mappability_file", not_empty=True, check_file=True)
         assert fragment_length > 0 and fragment_length < 1000

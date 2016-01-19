@@ -20,12 +20,13 @@ class Module(AbstractModule):
             in_path, endswith=".bam", case_insensitive=True)
         assert in_filenames, "No .bam files."
 
-        jobs = []  # list of (in_filename, out_filename)
+        jobs = []  # list of (in_filename, temp_prefix, out_filename)
         for in_filename in in_filenames:
             p, f = os.path.split(in_filename)
             out_filename = os.path.join(out_path, f)
+            temp_prefix = "temp_%s" % f
             assert in_filename != out_filename
-            x = in_filename, out_filename
+            x = in_filename, temp_prefix, out_filename
             jobs.append(x)
 
         # Make a list of samtools commands.
@@ -33,7 +34,7 @@ class Module(AbstractModule):
         sq = shell.quote
         commands = []
         for x in jobs:
-            in_filename, out_filename = x
+            in_filename, temp_prefix, out_filename = x
 
             # samtools sort -n <in_filename> <out_filestem>
             # .bam automatically added to <out_filestem>, so don't
@@ -45,7 +46,9 @@ class Module(AbstractModule):
             
             x = [
                 samtools,
-                "sort", "-n", 
+                "sort", "-n",
+                "-O", "bam", 
+                "-T", temp_prefix,
                 sq(in_filename),
                 sq(out_filestem),
                 ]

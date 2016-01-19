@@ -14,6 +14,8 @@ parse_bowtie1_output
 make_bowtie2_command
 parse_bowtie2_output
 
+make_tophat_command
+
 make_bwa_mem_command
 make_bwa_aln_command
 
@@ -119,7 +121,8 @@ def _create_reference_genome_path(path, name=None):
     names = x
     assert fasta_files, "No fasta files found."
     if name is None:
-        assert len(names) == 1, "Multiple fasta files found."
+        uniq_names = {}.fromkeys(names).keys()
+        assert len(uniq_names) == 1, "Multiple fasta files found."
         name = names[0]
     assert name in names, "Reference genome not found: %s" % name
     i = names.index(name)
@@ -210,7 +213,7 @@ def create_reference_genome(file_or_path, name=None):
 
     # If file_or_path is a file, then find the path of this file.
     path = file_or_path
-    if os.path.isfile(path):
+    if not os.path.isdir(path):
         p, f = os.path.split(file_or_path)
         path = p
     return _create_reference_genome_path(path, name=name)
@@ -452,6 +455,88 @@ def parse_bowtie2_output(filename):
         results["concordant_reads"] = concordant_1 + concordant_more
     return results
 
+
+def make_tophat_command(
+    reference_fa, out_path, fastq_file1, fastq_file2=None,
+    gtf_file=None, transcriptome_fa=None, orientation=None,
+    num_threads=None):
+    # reference_fa is the full path to the fasta file.
+    # transcriptome_fa should be tophat indexed fasta file of
+    # transcriptome.
+    # Orientation must be None, "ff", "fr", "rf"
+    import os
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import shell
+    
+    assert os.path.exists(fastq_file1)
+    if fastq_file2:
+        assert os.path.exists(fastq_file2)
+    if gtf_file:
+        assert os.path.exists(gtf_file)
+    transcriptome_index = None
+    if transcriptome_fa:
+        # Make sure seems reasonable and bowtie indexed.
+        p, f = os.path.split(transcriptome_fa)
+        f, ext = os.path.splitext(f)
+        name = f
+        ref = create_reference_genome(transcriptome_fa, name=name)
+        assert ref.bowtie2_indexes, \
+               "transcriptome index must be indexed with bowtie2"
+        x = ref.fasta_file_full
+        if x.endswith(".fa"):
+            x = x[:-3]
+        elif x.endswith(".fasta"):
+            x = x[:-6]
+        else:
+            raise AssertionError, "Unknown fasta extension: %s" % \
+                  ref.fasta_file
+        transcriptome_index = x
+        
+    assert gtf_file or transcriptome_index, \
+           "Either gtf_file or transcriptome_index must be provided."
+    if orientation:
+        assert orientation in ["ff", "fr", "rf"]
+    if num_threads is not None:
+        assert num_threads >= 1 and num_threads < 100
+
+    tophat = filelib.which_assert(config.tophat)
+
+    assert orientation != "ff", "Not handled."
+    orientation2ltype = {
+        "fr" : "fr-firststrand",
+        "rf" : "fr-secondstrand",
+        }
+
+    # tophat [options]* <stem> <reads_1.fq> [<reads_2.fa>]
+    # --bowtie1  Use bowtie1 instead of bowtie2.
+    # -o <outdir>
+    # -r <inner dict>
+    # -p <num_threads>
+    # --library-type fr-unstranded, fr-firststrand, fr-secondstrand
+
+    sq = shell.quote
+    cmd = [
+        sq(tophat),
+        "-o", sq(out_path),
+        ]
+    if gtf_file:
+        cmd += ["--GTF", sq(gtf_file)]
+    if transcriptome_index:
+        cmd += ["--transcriptome-index", sq(transcriptome_index)]
+    if num_threads:
+        cmd += ["-p", str(num_threads)]
+    if orientation:
+        ltype = orientation2ltype[orientation]
+        cmd += ["--library-type", ltype]
+        
+    stem = find_reference_stem(reference_fa)
+    cmd += [sq(stem)]
+    cmd += [sq(fastq_file1)]
+    if fastq_file2:
+        cmd += [sq(fastq_file2)]
+    return " ".join(cmd)
+    
 
 def make_bwa_mem_command(
     reference_fa, sam_filename, err_filename, fastq_file1,

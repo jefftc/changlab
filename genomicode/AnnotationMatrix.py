@@ -76,6 +76,7 @@ def read(filename, is_csv=False):
 
         all_headers.append(name)
         all_annots.append(annots)
+    assert all_headers, "Empty file: %s" % filename
 
     headers_h = uniquify_headers(all_headers)
     header2annots = {}
@@ -105,12 +106,14 @@ def write(handle_or_file, annot_matrix):
 def colslice(MATRIX, I):
     for i in I:
         assert i >= 0 and i < len(MATRIX.headers_h)
-    headers = [MATRIX.headers[i] for i in I]
-    headers_h = [MATRIX.headers_h[i] for i in I]
+    new_headers = [MATRIX.headers[i] for i in I]
+    old_headers_h = [MATRIX.headers_h[i] for i in I]
+    new_headers_h = uniquify_headers(new_headers)
     header2annots = {}
-    for header_h in headers_h:
-        header2annots[header_h] = MATRIX.header2annots[header_h]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    for i in range(len(old_headers_h)):
+        oh, nh = old_headers_h[i], new_headers_h[i]
+        header2annots[nh] = MATRIX.header2annots[oh]
+    return AnnotationMatrix(new_headers, new_headers_h, header2annots)
 
 
 def uniquify_headers(headers):

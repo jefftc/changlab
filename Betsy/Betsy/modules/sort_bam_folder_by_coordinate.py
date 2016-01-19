@@ -23,18 +23,19 @@ class Module(AbstractModule):
 
         samtools = filelib.which_assert(config.samtools)
 
-        jobs = []  # list of (in_filename, out_filename)
+        jobs = []  # list of (in_filename, temp_prefix, out_filename)
         for in_filename in in_filenames:
             p, f = os.path.split(in_filename)
             out_filename = os.path.join(out_path, f)
-            x = in_filename, out_filename
+            temp_prefix = "temp_%s" % f
+            x = in_filename, temp_prefix, out_filename
             jobs.append(x)
         
         # Make a list of samtools commands.
         sq = shell.quote
         commands = []
         for x in jobs:
-            in_filename, out_filename = x
+            in_filename, temp_prefix, out_filename = x
 
             # samtools sort <in_filename> <out_filestem>
             # .bam automatically added to <out_filestem>, so don't
@@ -47,6 +48,8 @@ class Module(AbstractModule):
             x = [
                 samtools,
                 "sort",
+                "-O", "bam",
+                "-T", temp_prefix,
                 sq(in_filename),
                 sq(out_filestem),
                 ]
@@ -56,10 +59,8 @@ class Module(AbstractModule):
         shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
-        for x in jobs:
-            in_filename, out_filename = x
-            assert filelib.exists_nz(out_filename), \
-                   "Missing: %s" % out_filename
+        out_filenames = [x[-1] for x in jobs]
+        filelib.assert_exists_nz_many(out_filenames)
 
     
     def name_outfile(self, antecedents, user_options):
