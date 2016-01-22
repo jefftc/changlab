@@ -37,13 +37,14 @@ class Module(AbstractModule):
         for x in jobs:
             in_filename, temp_prefix, out_filename = x
 
+            # Usage has changed.  Below no longer valid.
             # samtools sort <in_filename> <out_filestem>
             # .bam automatically added to <out_filestem>, so don't
             # need it.
-            x = out_filename
-            assert x.endswith(".bam")
-            x = x[:-4]
-            out_filestem = x
+            #x = out_filename
+            #assert x.endswith(".bam")
+            #x = x[:-4]
+            #out_filestem = x
             
             x = [
                 samtools,
@@ -51,11 +52,11 @@ class Module(AbstractModule):
                 "-O", "bam",
                 "-T", temp_prefix,
                 sq(in_filename),
-                sq(out_filestem),
+                "-o", sq(out_filename),
                 ]
             x = " ".join(x)
             commands.append(x)
-            
+
         shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.

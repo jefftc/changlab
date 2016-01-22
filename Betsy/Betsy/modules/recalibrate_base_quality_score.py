@@ -6,60 +6,76 @@ class Module(AbstractModule):
 
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
-        outfile):
+        out_path):
         import os
-        import subprocess
+        from genomicode import filelib
+        from genomicode import shell
+        from genomicode import alignlib
         from Betsy import module_utils
-        from genomicode import config
-        in_data = antecedents
-        GATK_path = config.Gatk
-        assert GATK_path, 'cannot find the %s' % GATK_path
-        species = out_attributes['ref']
-        if species == 'hg18':
-            ref_file = config.hg18_ref
-            dbsnp_file = config.hg18_dbsnp
-            indels_file = config.hg18_indels
-        elif species == 'hg19':
-            ref_file = config.hg19_ref
-            dbsnp_file = config.hg19_dbsnp
-            indels_file = config.hg19_indels
-        else:
-            raise ValueError('we cannot process %s' % species)
-    
-        
-        assert os.path.exists(ref_file), 'the ref file %s does not exsits' % ref_file
-        assert os.path.exists(
-            dbsnp_file), 'the dbsnp file %s does not exsits' % dbsnp_file
-        assert os.path.exists(
-            indels_file), 'the indels file %s does not exsits' % indels_file
-        command = ['java', '-jar', GATK_path, '-T', 'BaseRecalibrator', '-R',
-                   ref_file, '-I', in_data.identifier, '-knownSites', dbsnp_file,
-                   '-knownSites', indels_file, '-o', 'recal.bam']
-        process = subprocess.Popen(command,
-                                   shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        #error_message = process.communicate()[1]
-        #if 'error' in error_message:
-        #    raise ValueError(error_message)
-        process.wait()
-        command = ['java', '-jar', GATK_path, '-T', 'PrintReads', '-R', ref_file,
-                   '-BQSR', 'recal.bam', '-I', in_data.identifier, '-o', outfile]
-        process = subprocess.Popen(command,
-                                   shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        process.wait()
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for base_quality_score_recalibration does not exist'
-            % outfile)
 
+        bam_node, ref_node, report_node = antecedents
+        bam_filenames = module_utils.find_bam_files(bam_node.identifier)
+        assert bam_filenames, "No .bam files."
+        report_filenames = filelib.list_files_in_path(
+            report_node.identifier, endswith=".grp")
+        assert report_filenames, "No .grp files."
+        ref = alignlib.create_reference_genome(ref_node.identifier)
+        filelib.safe_mkdir(out_path)
 
+        assert len(bam_filenames) == len(report_filenames), \
+               "Should have a .grp file for each .bam file."
+        sample2bamfilename = {}
+        for filename in bam_filenames:
+            p, f = os.path.split(filename)
+            sample, ext = os.path.splitext(f)
+            assert sample not in sample2bamfilename
+            sample2bamfilename[sample] = filename
+        sample2reportfilename = {}
+        for filename in report_filenames:
+            p, f = os.path.split(filename)
+            sample, ext = os.path.splitext(f)
+            assert sample not in sample2reportfilename
+            sample2reportfilename[sample] = filename
+        assert len(sample2bamfilename) == len(sample2reportfilename)
+
+        missing = [
+            x for x in sample2bamfilename if x not in sample2reportfilename]
+        assert not missing, "Missing grp files for %d bam files." % \
+               len(missing)
+
+        jobs = []  # list of (bam_filename, report_filename, out_filename)
+        for sample in sample2bamfilename:
+            bam_filename = sample2bamfilename[sample]
+            report_filename = sample2reportfilename[sample]
+            
+            p, f = os.path.split(bam_filename)
+            sample, ext = os.path.splitext(f)
+            out_filename = os.path.join(out_path, "%s.bam" % sample)
+            x = bam_filename, report_filename, out_filename
+            jobs.append(x)
+
+        # java -jar GenomeAnalysisTK.jar \
+        #   -T PrintReads \
+        #   -R reference.fasta \
+        #   -BQSR recalibration_report.grp \
+        #   -I input.bam -o output.bam
+
+        # Make a list of commands.
+        commands = []
+        for x in jobs:
+            in_filename, report_filename, out_filename = x
+            x = alignlib.make_GATK_command(
+                T="PrintReads", R=ref.fasta_file_full,
+                BQSR=report_filename, I=in_filename, o=out_filename)
+            commands.append(x)
+
+        shell.parallel(commands, max_procs=num_cores)
+
+        # Make sure the analysis completed successfully.
+        out_filenames = [x[-1] for x in jobs]
+        filelib.assert_exists_nz_many(out_filenames)
 
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'base_quality_score_recalibration_' + original_file + '.bam'
-        return filename
+        return "recalibrated.bam"
 

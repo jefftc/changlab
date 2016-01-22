@@ -14,10 +14,11 @@ class Module(AbstractModule):
         from Betsy import module_utils
 
         #picard_jar = module_utils.find_picard_jar("CreateSequenceDictionary")
-        picard_jar = module_utils.find_picard_jar("picard")
+        picard_jar = alignlib.find_picard_jar("picard")
         ref = alignlib.standardize_reference_genome(
             in_data.identifier, out_path, use_symlinks=True)
-        out_file = "%s.dict" % ref.fasta_file
+        #out_file = "%s.dict" % ref.fasta_file
+        out_file = "%s.dict" % ref.name
 
         # java -Xmx5g -jar /usr/local/bin/picard/CreateSequenceDictionary.jar \
         #   R=erdman.fa O=erdman.dict

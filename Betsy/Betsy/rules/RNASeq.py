@@ -4,17 +4,6 @@ import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 import GeneExpProcessing as GXP
 
-#RNASeqFile = DataType(
-#    "RNASeqFile",
-#    AttributeDef("contents", BDT.CONTENTS,
-#                 "unspecified", "unspecified", help="contents"),
-#    AttributeDef(
-#        "format_type",
-#        ["unknown", "not_fastqfolder", "not_samfolder", "not_bamfolder",
-#         "samfolder", "bamfolder", "fastqfolder"],
-#        "unknown", "unknown", help="format type"),
-#    help="RNA Seq File"
-#    )
 
 RSEMReferenceGenome = DataType(
     "RSEMReferenceGenome",
@@ -26,10 +15,6 @@ RSEMReferenceGenome = DataType(
         "rsem_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
     help="Indexed for rsem.",
     )
-#FullyIndexedRSEMReferenceGenome = DataType(
-#    "FullyIndexedReferenceGenome",
-#    help="Used only for indexing a new reference genome."
-#    )
 
 RSEMResults = DataType(
     "RSEMResults",

@@ -1053,19 +1053,6 @@ def assert_sample_group_file(filename, fastq_path):
     #    assert file in all_filenames, "Not in sample group file: %s" % file
 
 
-def find_picard_jar(jar_name):
-    # jar_name should not include ".jar",
-    # e.g. "AddOrReplaceReadGroups".
-    import os
-    from genomicode import config
-    
-    picard_path = config.picard
-    assert os.path.exists(picard_path)
-    jar_filename = os.path.join(picard_path, "%s.jar" % jar_name)
-    assert os.path.exists(jar_filename), "File not found: %s" % jar_filename
-    return jar_filename
-
-
 def check_inpath(path):
     import os
     assert os.path.exists(path)

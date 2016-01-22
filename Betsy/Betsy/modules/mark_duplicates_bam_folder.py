@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import shell
+        from genomicode import alignlib
         from Betsy import module_utils
         
         filelib.safe_mkdir(out_path)
@@ -25,7 +26,7 @@ class Module(AbstractModule):
         #   METRICS_FILE=metricsFile CREATE_INDEX=true 
         #   VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
         #picard_jar = module_utils.find_picard_jar("MarkDuplicates")
-        picard_jar = module_utils.find_picard_jar("picard")
+        picard_jar = alignlib.find_picard_jar("picard")
 
         jobs = []  # list of (in_filename, out_filename)
         for in_filename in in_filenames:
@@ -57,17 +58,11 @@ class Module(AbstractModule):
         shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
-        for x in jobs:
-            in_filename, out_filename = x
-            assert filelib.exists_nz(out_filename), \
-                   "Missing: %s" % out_filename
+        out_filenames = [x[-1] for x in jobs]
+        filelib.assert_exists_nz_many(out_filenames)
 
     
     def name_outfile(self, antecedents, user_options):
-        #from Betsy import module_utils
-        #original_file = module_utils.get_inputid(antecedents.identifier)
-        #filename = 'bamFiles_sorted' + original_file
-        #return filename
         return "bam"
 
 

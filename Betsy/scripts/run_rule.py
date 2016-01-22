@@ -351,6 +351,20 @@ def check_inputs_in_network(
 
 def _print_node_score_table(network, scores):
     # scores from bie3._score_compat_data
+
+    # Figure out the score cutoff for each data type.
+    dt2scores = {}
+    for x in scores:
+        score, node_id, user_data, attr_values = x
+        dtname = network.nodes[node_id].datatype.name
+        if dtname not in dt2scores:
+            dt2scores[dtname] = []
+        dt2scores[dtname].append(score)
+    # Score cutoff is minimum score + 2
+    score_cutoffs = {}  # dtname -> max score to print
+    for dtname, score in dt2scores.iteritems():
+        score_cutoffs[dtname] = min(score) + 2
+
     
     # Make an output table.
     table = []
@@ -368,6 +382,8 @@ def _print_node_score_table(network, scores):
         for name, netw_value, user_value in attr_values:
             x = node_id, score, dt_name, name, user_value, netw_value
             assert len(x) == len(header)
+            if score > score_cutoffs[dt_name]:
+                continue
             table.append(x)
 
     # Figure out the maximum lengths of each column.
@@ -433,7 +449,6 @@ def build_pipelines(
     # indicate a problem.
     inputs_used = {}  # list of indexes of --inputs that are used
     for p in paths:
-        #path, start_ids, missing_ids = x
         used = [i for (i, x) in enumerate(p.start_ids) if x is not None]
         inputs_used.update({}.fromkeys(used))
     has_unused_inputs = len(inputs_used) != len(in_data_nodes)
@@ -456,8 +471,6 @@ def build_pipelines(
             
     if not good_paths:
         print "No pipelines found.  Examine network to diagnose."
-        
-        print
         print "Make sure that no --input is missing."
         x = [x.data.datatype.name for x in in_data_nodes]
         _print_input_datatypes(
@@ -496,7 +509,7 @@ def check_attributes_complete(
     sys.stdout.flush()
 
     assert paths
-    
+
     all_missing = {}
     all_extra = []
     good_paths = []
@@ -508,8 +521,7 @@ def check_attributes_complete(
 
         missing = {}
         opt2mods = get_required_option_names(modules)
-        x = opt2mods.keys()
-        x = [x for x in x if x not in user_options]
+        x = [x for x in opt2mods if x not in user_options]
         for on in x:
             for mn in opt2mods[on]:
                 missing[(mn, on)] = 1
@@ -576,7 +588,6 @@ def prune_pipelines(network, custom_attributes, paths):
         for key, value in p.transitions.iteritems():
             p.transitions[key] = set(value)
 
-
     # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)
     # pruning.
     # Just try different orders until I find the fastest.
@@ -594,7 +605,7 @@ def prune_pipelines(network, custom_attributes, paths):
         p.node_ids = p.node_ids.keys()
         for key, value in p.transitions.iteritems():
             p.transitions[key] = list(value)
-
+            
     if not paths:
         print "All pipelines pruned.  This can happen if:"
         print "  1.  A --mattr option is missing."
@@ -1086,7 +1097,10 @@ def _prune_alternate_attributes2(
     transitions = {}
     for path in paths:
         path_ids.update(path.node_ids)
-        transitions.update(path.transitions)
+        for node_id, next_ids in path.transitions.iteritems():
+            x = transitions.get(node_id, set()).union(next_ids)
+            transitions[node_id] = x
+    ancestors = bie3._make_ancestor_dict(network)
 
     # Find module nodes that can take DataNodes with different
     # attributes.
@@ -1111,15 +1125,23 @@ def _prune_alternate_attributes2(
                 continue
             if x.name != attr_name:
                 continue
-            if value in attr_values:
-                desired_alternates[i] = attr_values.index(value)
+            if x.value in attr_values:
+                desired_alternates[i] = attr_values.index(x.value)
                 break
-        if desired_alternates[i]:
+        if desired_alternates[i] is not None:
             continue
         # Hack: If the options are "no" and "yes", choose "no".
         if sorted(attr_values) == ["no", "yes"]:
             desired_alternates[i] = attr_values.index("no")
-        if desired_alternates[i]:
+        if desired_alternates[i] is not None:
+            continue
+        # If one is an ancestor of the other, choose the ancestor.
+        if len(parent_ids) == 2:
+            if parent_ids[0] in ancestors.get(parent_ids[1], []):
+                desired_alternates[i] = 0
+            elif parent_ids[1] in ancestors.get(parent_ids[0], []):
+                desired_alternates[i] = 1
+        if desired_alternates[i] is not None:
             continue
         # Choose the one that comes first in the alphabet.
         x = sorted(attr_values)[0]
@@ -1637,7 +1659,8 @@ def _is_parallel_pipeline3(
         return False
 
     # Any attributes based on data should be the same.
-    bod1, bod2 = subpath_1.based_on_data, subpath_2.based_on_data
+    bod1 = subpath_1.based_on_data
+    bod2 = subpath_2.based_on_data
     if sorted(bod1) != sorted(bod2):
         return False
     for name in bod1:
@@ -1839,6 +1862,7 @@ class PathSubset:
             node = self._network.nodes[node_id]
             if not isinstance(node, bie3.ModuleNode):
                 continue
+            # Make a list of the attributes that are BASED_ON_DATA.
             x = [
                 x for x in node.consequences if
                 x.behavior == bie3.BASED_ON_DATA]
@@ -2424,6 +2448,9 @@ def main():
     paths = build_pipelines(
         network, user_options, in_data_nodes, data_node_ids, custom_attributes,
         args.max_inputs, args.network_png, verbose)
+    #plot_pipelines(
+    #    "pipeline", network, paths[:1], user_options, max_pipelines=16,
+    #    verbose=True)
     if not paths:
         return
     # Step 6: Make sure required attributes are given.
@@ -2433,7 +2460,7 @@ def main():
         return
     # DEBUG: Print out each of the pipelines.
     #plot_pipelines(
-    #    "pipeline", network, paths, user_options, max_pipelines=16,
+    #    "pipeline", network, paths[:1], user_options, max_pipelines=16,
     #    verbose=True)
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(network, custom_attributes, paths)

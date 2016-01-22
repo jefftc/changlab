@@ -44,8 +44,10 @@
 # all_same
 # min_annots
 # max_annots
+# add_to
 # multiply_by
 # log_base
+# neg_log_base
 # add_two_annots
 # subtract_two_annots
 # divide_two_annots
@@ -986,6 +988,34 @@ def max_annots(MATRIX, max_annots):
     return MATRIX
 
 
+def add_to(MATRIX, add_to):
+    # format: list of <index 1-based>,<number>
+    if not add_to:
+        return MATRIX
+    
+    jobs = []  # list of (0-based index, number)
+    for x in add_to:
+        x = x.split(",")
+        assert len(x) == 2, "format should be: <index>,<number>"
+        index, number = x
+        index = int(index)
+        number = _int_or_float(number)
+        x = index-1, number
+        jobs.append(x)
+    
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        index, number = x
+        assert index < len(MATRIX.headers_h)
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+        for i in range(len(annots)):
+            x = _int_or_float(annots[i])
+            x = x + number
+            annots[i] = str(x)
+    return MATRIX
+
+
 def multiply_by(MATRIX, multiply_by):
     # format: list of <index 1-based>,<number>
     if not multiply_by:
@@ -1041,6 +1071,38 @@ def log_base(MATRIX, log_base):
             x = float(annots[i])
             x = max(x, MIN)
             x = math.log(x, base)
+            annots[i] = str(x)
+    return MATRIX
+
+
+def neg_log_base(MATRIX, log_base):
+    # format: list of <index 1-based>,<base>
+    if not log_base:
+        return MATRIX
+    import math
+    
+    jobs = []  # list of (0-based index, base)
+    for x in log_base:
+        x = x.split(",")
+        assert len(x) == 2, "format should be: <index>,<base>"
+        index, base = x
+        index = int(index)
+        base = float(base)
+        x = index-1, base
+        jobs.append(x)
+
+    MIN = 1E-100
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        index, base = x
+        assert index < len(MATRIX.headers_h)
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+        for i in range(len(annots)):
+            x = float(annots[i])
+            x = max(x, MIN)
+            x = math.log(x, base)
+            x = x * -1
             annots[i] = str(x)
     return MATRIX
 
@@ -1150,7 +1212,7 @@ def round_annots(MATRIX, round_annots):
     for index in indexes:
         header_h = MATRIX.headers_h[index]
         x = MATRIX.header2annots[header_h]
-        x = [int(round(x)) for x in x]
+        x = [int(round(float(x))) for x in x]
         MATRIX.header2annots[header_h] = x
     
     return MATRIX
@@ -1310,6 +1372,18 @@ def subtract_value_from_bed_list(MATRIX, subtract_value_from_bed_list):
 ##     MATRIX.header2annots[h_dest] = annots_dest
 ##     return MATRIX
 
+def _int_or_float(x):
+    EPS = 1E-10
+    x1 = float(x)
+    try:
+        x2 = int(x)
+    except ValueError, x:
+        return x1
+    x = x1
+    if (x1-x2) < EPS:
+        x = x2
+    return x
+
 
 def main():
     import sys
@@ -1463,6 +1537,11 @@ def main():
         help="Calculate the maximum value across a set of annotations.  "
         "Format: <indexes>;<index dest>.  All indexes should be 1-based.")
     group.add_argument(
+        "--add_to", default=[], action="append",
+        help="Add a number to a column.  "
+        "Format: <index>,<number>.  "
+        "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
         "--multiply_by", default=[], action="append",
         help="Multiply a column by a number.  "
         "Format: <index>,<number>.  "
@@ -1470,6 +1549,11 @@ def main():
     group.add_argument(
         "--log_base", default=[], action="append",
         help="Log a column with a specific base.  "
+        "Format: <index>,<base>.  "
+        "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
+        "--neg_log_base", default=[], action="append",
+        help="Log a column with a specific base and multiply by -1.  "
         "Format: <index>,<base>.  "
         "All indexes should be 1-based.  (MULTI)")
     group.add_argument(
@@ -1583,6 +1667,8 @@ def main():
     MATRIX = min_annots(MATRIX, args.min_annots)
     MATRIX = max_annots(MATRIX, args.max_annots)
     MATRIX = log_base(MATRIX, args.log_base)
+    MATRIX = neg_log_base(MATRIX, args.neg_log_base)
+    MATRIX = add_to(MATRIX, args.add_to)
     MATRIX = multiply_by(MATRIX, args.multiply_by)
     MATRIX = add_two_annots(MATRIX, args.add_two_annots)
     MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)

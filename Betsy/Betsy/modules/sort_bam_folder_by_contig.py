@@ -23,7 +23,7 @@ class Module(AbstractModule):
 
         # java -Xmx5g -jar /usr/local/bin/picard/picard.jar ReorderSam \
         #   I=<input.bam> O=<output.bam> REFERENCE=ucsc.hg19.fasta
-        picard_jar = module_utils.find_picard_jar("picard")
+        picard_jar = alignlib.find_picard_jar("picard")
 
         jobs = []  # list of (in_filename, out_filename)
         for in_filename in in_filenames:

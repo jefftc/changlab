@@ -256,7 +256,13 @@ def exists_nz(filename):
 
 
 def assert_exists_nz(filename):
-    assert exists_nz(filename), "File not found or empty: %s" % filename
+    import os
+    x = exists_nz(filename), "File not found or empty: %s" % filename
+    if x:
+        return
+    if not os.path.exists(filename):
+        raise AssertionError, "File not found: %s" % filename
+    raise AssertionError, "File empty: %s" % filename
     
 
 def exists_nz_many(filenames):

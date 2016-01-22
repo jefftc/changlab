@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import shell
+        from genomicode import alignlib
         from Betsy import module_utils
         
         filelib.safe_mkdir(out_path)
@@ -25,7 +26,7 @@ class Module(AbstractModule):
         #   I=<input.sam or .bam> O=<output.bam> ID=<group ID>
         #   LB=<group library> PU=<platform unit> SM=<group sample name>
         #   PL=<platform> CREATE_INDEX=true VALIDATION_STRINGENCY=LENIENT
-        add_groups_jar = module_utils.find_picard_jar("picard")
+        add_groups_jar = alignlib.find_picard_jar("picard")
 
         gid = "group1"
         library = "library"
@@ -33,19 +34,20 @@ class Module(AbstractModule):
         sample = "sample"
         platform = "illumina"
 
-
-        jobs = []  # list of (in_filename, out_filename)
+        jobs = []  # list of (in_filename, out_filename, log_filename)
         for in_filename in in_filenames:
             p, f = os.path.split(in_filename)
+            s, ext = os.path.splitext(f)
+            log_filename = os.path.join(out_path, "%s.log" % s)
             out_filename = os.path.join(out_path, f)
-            x = in_filename, out_filename
+            x = in_filename, out_filename, log_filename
             jobs.append(x)
         
         # Make a list of commands.
         sq = shell.quote
         commands = []
         for x in jobs:
-            in_filename, out_filename = x
+            in_filename, out_filename, log_filename = x
 
             x = [
                 "java", "-Xmx5g",
@@ -62,7 +64,13 @@ class Module(AbstractModule):
                 "VALIDATION_STRINGENCY=LENIENT",
                 ]
             x = " ".join(x)
+            x = "%s >& %s" % (x, log_filename)
             commands.append(x)
+
+        for x in commands[:5]:
+            print x
+        import sys; sys.exit(0)
+            
         shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.

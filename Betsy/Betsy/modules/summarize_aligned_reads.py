@@ -10,6 +10,8 @@ class Module(AbstractModule):
         import os
         from genomicode import parselib
         from genomicode import filelib
+        from genomicode import config
+        from genomicode import shell
 
         bam_path = in_data.identifier
         assert os.path.exists(bam_path)
@@ -53,8 +55,8 @@ class Module(AbstractModule):
             print >>handle, "\t".join(x)
         handle.close()
 
-        # XXX txt2xls config
-        os.system("txt2xls -b %s > %s" % (TXT_FILE, outfile))
+        txt2xls = filelib.which_assert(config.txt2xls)
+        os.system("%s -b %s > %s" % (shell.quote(txt2xls), TXT_FILE, outfile))
             
         
     def name_outfile(self, antecedents, user_options):

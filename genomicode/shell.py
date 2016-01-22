@@ -86,6 +86,9 @@ def parallel(commands, max_procs=None, path=None):
 
 def quote(s, always_quote=False):
     BAD_CHARS = " \\"
+
+    if type(s) in [type(0), type(0.0)]:
+        s = str(s)
     needs_quote = False
     if not always_quote:
         for x in BAD_CHARS:

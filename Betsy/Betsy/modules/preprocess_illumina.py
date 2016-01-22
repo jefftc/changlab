@@ -115,7 +115,7 @@ class Module(AbstractModule):
         return filename
 
 
-# XXX Move this to a library.
+# TODO: Move this to a library.
 def zip_directory(dir, zip_file):
     import os
     import zipfile

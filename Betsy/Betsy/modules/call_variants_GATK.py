@@ -6,44 +6,51 @@ class Module(AbstractModule):
 
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
-        outfile):
+        out_path):
         import os
-        import subprocess
-        from genomicode import config
+        from genomicode import filelib
+        from genomicode import shell
+        from genomicode import alignlib
         from Betsy import module_utils
-        in_data = antecedents
-        GATK_path = config.Gatk
-        #GATK_BIN = module_utils.which(GATK_path)
-        assert os.path.exists(GATK_path), ('cannot find the %s' % GATK_path)
-        species = out_attributes['ref']
-        if species == 'hg18':
-            ref_file = config.hg18_ref
-        elif species == 'hg19':
-            ref_file = config.hg19_ref
-        elif species == 'dm3':
-            ref_file = config.dm3_ref
-        elif species == 'mm9':
-            ref_file = config.mm9_ref
-    
+
+        bam_node, ref_node = antecedents
+        bam_filenames = module_utils.find_bam_files(bam_node.identifier)
+        assert bam_filenames, "No .bam files."
+        ref = alignlib.create_reference_genome(ref_node.identifier)
+        filelib.safe_mkdir(out_path)
+
+        jobs = []  # list of (in_filename, log_filename, out_filename)
+        for in_filename in bam_filenames:
+            p, f = os.path.split(in_filename)
+            sample, ext = os.path.splitext(f)
+            out_filename = os.path.join(out_path, "%s.vcf" % sample)
+            log_filename = os.path.join(out_path, "%s.log" % sample)
+            x = in_filename, log_filename, out_filename
+            jobs.append(x)
         
-        assert os.path.exists(ref_file), 'the ref file %s does not exsits' % ref_file
-        command = ['java', '-jar', GATK_path, '-T', 'UnifiedGenotyper', '-R',
-                   ref_file, '-I', in_data.identifier, '-o', outfile, '-rf',
-                   'BadCigar', '-stand_call_conf', '50.0', '-stand_emit_conf',
-                   '10.0']
-        process = subprocess.Popen(
-            command, shell=False, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        #process.wait()
-        error_message = process.communicate()[1]
-        #print error_message
-        if 'error' in error_message:
-            raise ValueError(error_message)
+        # java -Xmx5g -jar /usr/local/bin/GATK/GenomeAnalysisTK.jar
+        #   -T HaplotypeCaller -R ucsc.hg19.fasta
+        #   -dontUseSoftClippedBases -stand_call_conf 20.0
+        #   -stand_emit_conf 20.0 -I $i -o $j
+               
+        # Make a list of commands.
+        commands = []
+        for x in jobs:
+            in_filename, log_filename, out_filename = x
+            x = alignlib.make_GATK_command(
+                T="HaplotypeCaller", R=ref.fasta_file_full,
+                dontUseSoftClippedBases=None, stand_call_conf=20.0,
+                stand_emit_conf=20.0, I=in_filename, o=out_filename)
+            x = "%s >& %s" % (x, log_filename)
+            commands.append(x)
+
+        shell.parallel(commands, max_procs=num_cores)
+
+        # Make sure the analysis completed successfully.
+        out_filenames = [x[-1] for x in jobs]
+        filelib.assert_exists_nz_many(out_filenames)
 
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'GATK_' + original_file + '.vcf'
-        return filename
+        return "GATK.vcf"
 

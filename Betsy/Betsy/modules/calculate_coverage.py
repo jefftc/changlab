@@ -10,25 +10,23 @@ class Module(AbstractModule):
         out_path):
         import os
         import math
-        
         from genomicode import shell
         from genomicode import filelib
         from genomicode import ngslib
+        from Betsy import module_utils
 
         bam_node, reference_node = antecedents
+        bam_filenames = filelib.list_files_in_path(
+            bam_node.identifier, endswith=".bam")
+        reference_file = reference_node.identifier
         filelib.safe_mkdir(out_path)
 
-        bam_path = bam_node.identifier
-        reference_file = reference_node.identifier
-        
-        assert os.path.exists(bam_path)
-        assert os.path.isdir(bam_path)
         assert os.path.exists(reference_file)
 
-        bam_filenames = filelib.list_files_in_path(bam_path, endswith=".bam")
-
-        # XXX
-        user_options.get("features_bed")
+        features_bed = module_utils.get_user_option(
+            user_options, "features_bed", check_file)
+        if features_bed:
+            raise NotImplementedError, "features_bed not implemented"
 
         # Set up bedtools genomecov jobs.
         jobs = []   # list of sample, bam_filename, coverage_filename

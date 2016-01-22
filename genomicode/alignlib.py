@@ -15,6 +15,7 @@ make_bowtie2_command
 parse_bowtie2_output
 
 make_tophat_command
+parse_tophat_align_summary
 
 make_bwa_mem_command
 make_bwa_aln_command
@@ -24,6 +25,9 @@ find_rsem_result_files
 
 make_htseq_count_command
 parse_htseq_count_output
+
+find_picard_jar
+make_picard_command
 
 """
 
@@ -81,7 +85,8 @@ def _create_reference_genome_path(path, name=None):
 
     # Files:
     # <path>/<name>.[fa|fasta]       Fasta file.
-    # <path>/<name>.[fa|fasta].dict  dict file
+    ## <path>/<name>.[fa|fasta].dict  dict file (GATK wants <path>/<name>.dict)
+    # <path>/<name>.dict             dict file (GATK wants this)
     # <path>/<name>.[fa|fasta].fai   Samtools index.
     # <path>/<name>.[1234].ebwt      Bowtie1 index.
     # <path>/<name>.rev.[12].ebwt
@@ -112,7 +117,7 @@ def _create_reference_genome_path(path, name=None):
     # Find the fasta files.
     x = [x for x in files
          if x.lower().endswith(".fa") or x.lower().endswith(".fasta")]
-    # Filter out the known RSEM index files.
+    # Filter out the known RSEM index files with ".fa" extensions.
     x = [x for x in x if not x.lower().endswith(".idx.fa")]
     x = [x for x in x if not x.lower().endswith(".transcripts.fa")]
     fasta_files = x
@@ -125,6 +130,10 @@ def _create_reference_genome_path(path, name=None):
         assert len(uniq_names) == 1, "Multiple fasta files found."
         name = names[0]
     assert name in names, "Reference genome not found: %s" % name
+
+    # May have multiple fasta_files if same file ends with ".fa" and
+    # ".fasta".  This might be necessary because different software
+    # have different requirements.
     i = names.index(name)
     fasta_file = fasta_files[i]
     fasta_file_full = os.path.join(path, fasta_file)
@@ -138,14 +147,14 @@ def _create_reference_genome_path(path, name=None):
         "%s.1.bt2" % name, "%s.2.bt2" % name, "%s.3.bt2" % name,
         "%s.4.bt2" % name,  "%s.rev.1.bt2" % name,  "%s.rev.2.bt2" % name,
         ]
-    all_bwa = [
-        "%s.amb" % fasta_file, "%s.ann" % fasta_file, "%s.bwt" % fasta_file,
-        "%s.pac" % fasta_file, "%s.sa" % fasta_file,
-        ]
     all_rsem = [
         "%s.chrlist" % name, "%s.grp" % name, "%s.idx.fa" % name,
         "%s.n2g.idx.fa" % name, "%s.seq" % name, "%s.ti" % name,
         "%s.transcripts.fa" % name,
+        ]
+    all_bwa = [
+        "%s.amb" % fasta_file, "%s.ann" % fasta_file, "%s.bwt" % fasta_file,
+        "%s.pac" % fasta_file, "%s.sa" % fasta_file,
         ]
 
     # Identify each one of the files.
@@ -166,7 +175,8 @@ def _create_reference_genome_path(path, name=None):
         #    continue
         if file_ == fasta_file:
             continue
-        elif file_ == "%s.dict" % fasta_file:
+        #elif file_ == "%s.dict" % fasta_file:
+        elif file_ == "%s.dict" % name:
             assert dict_file is None
             dict_file = file_
         elif file_ == "%s.fai" % fasta_file:
@@ -206,6 +216,11 @@ def _create_reference_genome_path(path, name=None):
         name, fasta_file_full, dict_file, samtools_index, bowtie1_indexes,
         bowtie2_indexes, bwa_indexes, rsem_indexes, other_files)
     return x
+
+
+def _is_subset(small_list, full_list):
+    # Return whether small_list is a subset of full_list.
+    return set(small_list).issubset(full_list)
 
 
 def create_reference_genome(file_or_path, name=None):
@@ -536,6 +551,60 @@ def make_tophat_command(
     if fastq_file2:
         cmd += [sq(fastq_file2)]
     return " ".join(cmd)
+
+
+def parse_tophat_align_summary(filename):
+    # Return a dictionary with keys:
+    # reads_processed
+    # aligned_reads
+    from genomicode import filelib
+    filelib.assert_exists_nz(filename)
+
+    # This parses a paired end read file.  Have not implemented a
+    # parser for single end results.
+    # Format for paired end reads: (Spacing not preserved.)
+    # Left reads:
+    #   Input     :  78337847
+    #   Mapped   :  78243095 (99.9% of input)
+    #     of these:   6068262 ( 7.8%) have multiple alignments (83814 have >20)
+    # Right reads:
+    #   Input     :  78337847
+    #   Mapped   :  77663143 (99.1% of input)
+    #     of these:   5987549 ( 7.7%) have multiple alignments (83425 have >20)
+    # 99.5% overall read mapping rate.
+    #
+    # Aligned pairs:  77575761
+    #  of these:   5980080 ( 7.7%) have multiple alignments
+    #              4017526 ( 5.2%) are discordant alignments
+    # 93.9% concordant pair alignment rate.
+
+    # Pull out just the aligned pairs, and concordant pair alignment
+    # rate.
+    aligned_pairs = None
+    concordant_pair_alignment_rate = None
+    for line in filelib.openfh(filename):
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("Aligned pairs:"):
+            x = line.split()
+            assert len(x) == 3, repr(x)
+            aligned_pairs = int(x[-1])
+        elif line.find("concordant pair alignment rate") >= 0:
+            x = line.split()
+            assert len(x) == 5
+            x = x[0]
+            assert x.endswith("%")
+            x = x[:-1]
+            concordant_pair_alignment_rate = float(x)
+    assert aligned_pairs, "Not found: Aligned pair"
+    assert concordant_pair_alignment_rate, "Not found: alignment rate"
+
+    results = {}
+    results["reads_processed"] = aligned_pairs
+    x = int(round(aligned_pairs*concordant_pair_alignment_rate/100.0))
+    results["aligned_reads"] = x
+    return results
     
 
 def make_bwa_mem_command(
@@ -851,3 +920,48 @@ def parse_htseq_count_output(file_or_handle):
 
     x = HTSeqCountOutput(counts, warnings=warnings, errors=errors, **meta)
     return x
+
+
+def find_picard_jar(jar_name):
+    # jar_name should not include ".jar",
+    # e.g. "AddOrReplaceReadGroups".
+    import os
+    from genomicode import config
+    
+    picard_path = config.picard
+    assert os.path.exists(picard_path)
+    jar_filename = os.path.join(picard_path, "%s.jar" % jar_name)
+    assert os.path.exists(jar_filename), "File not found: %s" % jar_filename
+    return jar_filename
+
+
+def make_GATK_command(**params):
+    # Special key:
+    # _UNHASHABLE  list of (key, value) tuples
+    import os
+    from genomicode import config
+    from genomicode import shell
+
+    UNHASHABLE = "_UNHASHABLE"
+    
+    gatk_jar = config.gatk_jar
+    assert os.path.exists(gatk_jar)
+
+    sq = shell.quote
+    cmd = [
+        "java",
+        "-Xmx5g",
+        "-jar", sq(gatk_jar),
+        ]
+    x1 = params.get(UNHASHABLE, [])
+    x2 = list(params.iteritems())
+    all_params = x1 + x2
+    
+    for (key, value) in all_params:
+        if key == UNHASHABLE:
+            continue
+        if value is None:
+            cmd.append("-%s" % key)
+        else:
+            cmd.extend(["-%s" % key, sq(value)])
+    return " ".join(cmd)

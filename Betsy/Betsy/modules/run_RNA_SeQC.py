@@ -69,11 +69,8 @@ class Module(AbstractModule):
             cmd = "%s >& %s" % (x, log_filename)
             commands.append(cmd)
 
-        # XXX
-        for cmd in commands:
-            print cmd
-        import sys; sys.exit(0)
-        
+        # Gets lots of errors.
+
         x = shell.parallel(commands, max_procs=num_cores)
         run_log = os.path.join(out_path, "run.log")
         open(run_log, 'w').write(x)

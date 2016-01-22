@@ -14,17 +14,30 @@ class Module(AbstractModule):
         from genomicode import config
         from genomicode import shell
 
-        log_filenames = _find_output_logs(in_data.identifier)
-        assert log_filenames
+        align_node = in_data
+        x = filelib.list_files_in_path(
+            align_node.identifier, endswith="align_summary.txt")
+        align_filenames = x
+        assert align_filenames, "Missing align_summary.txt"
 
         results = {}  # dict of sample -> dictionary of output
-        for filename in log_filenames:
-            # <path>/<sample>.log
-            path, file_ = os.path.split(filename)
-            f, e = os.path.splitext(file_)
-            assert e == ".log"
-            sample = f
-            results[sample] = alignlib.parse_bowtie1_output(filename)
+        for filename in align_filenames:
+            # Names must in the format:
+            # <path>/<sample>.tophat/alignment_summary.txt
+            # full_path   <path>/<sample>.tophat
+            # path        <path>
+            # tophat_dir  <sample>.tophat
+            # file_       accepted_hits.bam
+            # sample      <sample>
+            
+            full_path, file_ = os.path.split(filename)
+            path, tophat_dir = os.path.split(full_path)
+            assert file_ == "align_summary.txt"
+            assert tophat_dir.endswith(".tophat")
+            sample = tophat_dir[:-7]
+
+            x = alignlib.parse_tophat_align_summary(filename)
+            results[sample] = x
 
         # Make table where the rows are the samples and the columns
         # are the statistics.
@@ -56,14 +69,4 @@ class Module(AbstractModule):
             
         
     def name_outfile(self, antecedents, user_options):
-        return "bowtie1_summary.xls"
-
-
-def _find_output_logs(path):
-    from genomicode import filelib
-    
-    # Should be a folder of results from bowtie1.  STDOUT should
-    # be sent to ".log" files.
-    x = filelib.list_files_in_path(path)
-    x = [x for x in x if x.endswith(".log")]
-    return x
+        return "tophat_summary.xls"

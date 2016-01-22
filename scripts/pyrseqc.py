@@ -5,6 +5,7 @@ ARG_FASTA_FILE = "PYRSEQC_ARG___FASTA_FILE"
 ARG_OUT_PREFIX = "PYRSEQC_ARG___OUTPUT_PREFIX"
 ARG_READ_LENGTH = "PYRSEQC_ARG___READ_LENGTH"
 ARG_REF_GENE_MODEL = "PYRSEQC_ARG___REF_GENE_MODEL"
+ARG_HOUSEKEEPING_GENE_MODEL = "PYRSEQC_ARG___HOUSEKEEPING_GENE_MODEL"
 
 
 class Module:
@@ -79,6 +80,9 @@ def main():
     parser.add_argument("fasta_file", help="FASTA version of the bam_file.")
     parser.add_argument("read_length", help="Length of reads.")
     parser.add_argument("ref_gene_model", help="Gene model, in BED format.")
+    parser.add_argument(
+        "housekeeping_gene_model",
+        help="Gene model for housekeeping genes, in BED format.")
     parser.add_argument("outpath", help="Directory to store the results.")
 
     parser.add_argument(
@@ -94,13 +98,14 @@ def main():
 
     args = parser.parse_args()
 
-    assert os.path.exists(args.bam_file)
-    assert os.path.exists(args.fasta_file)
+    filelib.assert_exists_nz(args.bam_file)
+    filelib.assert_exists_nz(args.fasta_file)
     assert args.read_length is not None, "--read_length must be provided."
     args.read_length = int(args.read_length)
     assert args.read_length >= 10 and args.read_length <= 1000, \
            "Invalid --read_length: %d" % args.read_length
     assert os.path.exists(args.ref_gene_model)
+    assert os.path.exists(args.housekeeping_gene_model)
 
     assert args.num_procs >= 1 and args.num_procs < 100, \
            "Please specify between 1 and 100 processes."
@@ -131,7 +136,7 @@ def main():
         #    "-l", ARG_READ_LENGTH)),
         #M("geneBody_coverage.py", (
         #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-        #    "-r", ARG_REF_GENE_MODEL)),
+        #    "-r", ARG_HOUSEKEEPING_GENE_MODEL)),
         #M("infer_experiment.py", (
         #    "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL),
         #  "infer_experiment.txt"),
@@ -152,20 +157,23 @@ def main():
         #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
         #M("RNA_fragment_size.py", (
         #    "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL), "fragment.txt"),
-        # XXX RPKM_saturation.  Needs pairedness info
+
+        # TODO: Fix the modules below.
         # Not working
         #M("tin.py", (
         #    "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL, "-c", 1), "tin.txt"),
-
+        # Not implemented
+        # RPKM_saturation.  Needs pairedness info
+        
         # Splicing stuff.
         # Not working.
-        M("junction_annotation.py", (
-            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-            "-r", ARG_REF_GENE_MODEL)),
+        #M("junction_annotation.py", (
+        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+        #    "-r", ARG_REF_GENE_MODEL)),
         # Not working.
-        M("junction_saturation.py", (
-            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-            "-r", ARG_REF_GENE_MODEL)),
+        #M("junction_saturation.py", (
+        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+        #    "-r", ARG_REF_GENE_MODEL)),
         ]
 
     commands = []
@@ -191,7 +199,6 @@ def main():
     p("%s\n" % x3)
     x = shell.parallel(commands, max_procs=args.num_procs)
     print "HERE 2", x
-
 
     p("Done.\n")
     

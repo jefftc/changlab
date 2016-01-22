@@ -21,6 +21,7 @@ class Module(AbstractModule):
         from genomicode import alignlib
 
         ref = alignlib.create_reference_genome(in_data.identifier)
+        
         is_indexed = "yes"
         if not ref.samtools_index:
             is_indexed = "no"
