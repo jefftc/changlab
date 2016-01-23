@@ -557,24 +557,22 @@ def check_attributes_complete(
     for (mn, on) in all_missing:
         print 'Missing --mattr: %s requires attribute "%s".' % (mn, on)
 
-    x = [x.start_ids for x in paths]
-    x = bie3._uniq(bie3._flatten(x))
-    x = [x for x in x if x is not None]
-    start_ids = x
-    plot_network(
-        network_png, network, user_options=user_options,
-        highlight_green=start_ids, verbose=verbose)
+    plot_network_show_pipelines(
+        network_png, network, paths, user_options=user_options,
+        verbose=verbose)
     return []
 
 
-def prune_pipelines(network, custom_attributes, paths):
+def prune_pipelines(
+    network, user_options, custom_attributes, paths, network_png, verbose):
     # Any any pipelines look weird, then remove them.
     import sys
     from Betsy import bie3
 
     print "Pruning redundant pipelines."
     sys.stdout.flush()
-    num_paths_orig = len(paths)
+    paths_orig = paths[:]
+    
 
     nodeid2parents = bie3._make_parents_dict(network)
     
@@ -612,9 +610,12 @@ def prune_pipelines(network, custom_attributes, paths):
         print "  2.  There is a bug in the network generation."
         print "  3.  There is a bug in the pipeline pruning."
         print "Please review the network and --mattr options."
+        plot_network_show_pipelines(
+            network_png, network, paths_orig, user_options=user_options,
+            verbose=verbose)
         return paths
     
-    num_pruned = num_paths_orig - len(paths)
+    num_pruned = len(paths_orig) - len(paths)
     if not num_pruned:
         print "No redundant pipelines found.  %d left." % len(paths)
     else:
@@ -640,18 +641,30 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
         dname2attrs[x.datatype.name][x.name] = x.value
 
     # If a module's input datatype is different from the output
-    # datatype, then the attributes of that input datatype should
-    # match the user attributes.
+    # datatype, and it has has no descendents with the same datatype,
+    # then the attributes of that input datatype should match the user
+    # attributes.
+
 
     # Search through the network for data nodes that might be subject
     # to custom_attributes.
     all_node_ids = {}
     for x in paths:
-        #node_ids, start_ids, data_indexes = x
-        #all_node_ids.update(node_ids)
         all_node_ids.update(x.node_ids)
-    module_ids = [x for x in all_node_ids
-                  if isinstance(network.nodes[x], bie3.ModuleNode)]
+
+    descendents = bie3._make_descendent_dict(network)
+    ## Only care about the descendents that are in this network.
+    #desc = {}
+    #for (node_id, next_ids) in descendents.iteritems():
+    #    if node_id not in all_node_ids:
+    #        continue
+    #    next_ids = [x for x in next_ids if x in all_node_ids]
+    #    desc[node_id] = next_ids
+    #descendents = desc
+    
+    module_ids = [
+        x for x in all_node_ids
+        if isinstance(network.nodes[x], bie3.ModuleNode)]
     data_node_ids = []
     for module_id in module_ids:
         module = network.nodes[module_id]
@@ -671,12 +684,26 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
         x = [x for x in in_dtype_names if x in dname2attrs]
         if not x:
             continue
-
         # This should be a converting module.
-        # Find the data_node_ids that match a user attribute.
+
+        # Find the node_ids that match a user attribute.
         x = nodeid2parents.get(module_id, [])
         x = [x for x in x if network.nodes[x].datatype.name in dname2attrs]
-        data_node_ids.extend(x)
+        node_ids = x
+
+        # Make sure these node_ids don't have any descendents of the
+        # same type.
+        good_ids = []
+        for node_id in node_ids:
+            x = descendents.get(node_id, [])
+            x = [x for x in x if x in all_node_ids]
+            x = [x for x in x if isinstance(network.nodes[x], bie3.DataNode)]
+            x = [network.nodes[x].datatype.name for x in x]
+            if network.nodes[node_id].datatype.name not in x:
+                good_ids.append(node_id)
+        node_ids = good_ids
+
+        data_node_ids.extend(node_ids)
     data_node_ids = {}.fromkeys(data_node_ids)
 
     # List the node_ids that either don't match the user attributes,
@@ -1514,7 +1541,7 @@ def _is_parallel_pipeline2(network, path_1, path_2, nodeid2parents):
     # 
     # Parallel:
     # BAM (no) -> sort -> BAM (sort=y) -> addgroup ->  BAM (sort=y, group=y)
-    # BAM (no) -> addgroup -> BAM (group=y) -> sort -> BAM (sort=y, group=y)
+    #          -> addgroup -> BAM (group=y) -> sort ->
     from Betsy import bie3
 
     # If they're parallel, then they have the same number of nodes.
@@ -1613,19 +1640,17 @@ def _is_parallel_pipeline3(
     # Test if path_1 is parallel to path_2.  If not parallel, returns
     # False.  Otherwise, returns a 1 or 2 indicating which one should
     # be pruned.
+    # More careful and slower version of _is_parallel_pipeline3.
     # 
     # Parallel:
     # DataNode -> sort_coord -> mark_dup -> add_read_group -> DataNode
     #          -> add_read_group -> sort_coord -> mark_dup ->
     from Betsy import bie3
     
-    ## If they're parallel, they should have the same number of nodes.
-    ## The number of parallel nodes should be the same.
-    # No.  One of them could have extra steps.
-
     path_1, path_2 = paths[path_id_1], paths[path_id_2]
     x = _compare_paths(network, path_1, path_2)
     shared_ids, unique_ids_1, unique_ids_2 = x
+    # shared_ids is almost always a very long list.
     
     # For downstream tests, calculate some useful variables describing
     # the networks.
@@ -2398,7 +2423,7 @@ def main():
         #print "Parsing module attributes."
         all_mattrs = get_all_option_names()
     for x in args.mattr:
-        assert '=' in x, "--mattr should be in format: <option>=<value>"
+        assert '=' in x, "--mattr should be in format: <option>=<value>\n%s" %x
         key, value = x.split('=', 1)
         assert key in all_mattrs, "Unknown module attribute: %s" % key
         user_options[key] = value
@@ -2463,7 +2488,9 @@ def main():
     #    "pipeline", network, paths[:1], user_options, max_pipelines=16,
     #    verbose=True)
     # Step 7: Prune undesired pipelines.
-    paths = prune_pipelines(network, custom_attributes, paths)
+    paths = prune_pipelines(
+        network, user_options, custom_attributes, paths, args.network_png,
+        verbose)
     if not paths:
         return
     # DEBUG: Print out each of the pipelines.

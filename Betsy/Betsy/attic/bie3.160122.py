@@ -61,15 +61,17 @@ debug_print
 #     InData(s) -> Module -> OutData
 # _bc_to_modules       Module <- OutData
 # _bc_to_inputs        InDatas <- Module <- OutData            INFERENCE
-# _bc_to_one_input     InDatas[i] <- Module <- OutData         INFERENCE
+# _bc_to_one_input     InDatas[i] <- Module <- OutData         INFERENCE XXX
 #                      DO NOT CALL.  Helper for _bc_to_inputs.
 # _bc_to_input_ids     InDatas IDs <- Module ID <- OutData ID
 # _fc_to_outputs       InDatas -> Module -> OutData            INFERENCE
 # _fc_to_output_ids    InDatas IDs -> Module ID -> OutData ID
 # _resolve_constraint
 #
-# _is_valid_inputs          InDatas (?) -> Module ID -> OutData
-# _is_valid_input_i         InData_i (?) -> Module ID -> OutData
+# _is_valid_inputs          InDatas (?) -> Module -> OutData
+# _is_valid_input_i         InData_i (?) -> Module -> OutData
+# _is_valid_inputs_net      InDatas (?) -> Module ID -> OutData (in network)
+# _is_valid_input_i_net     InData_i (?) -> Module ID -> OutData (in network)
 # _is_valid_input_ids       InData IDs (?) -> Module ID -> OutData ID
 # _is_valid_output          Module -> OutData (?)              INFERENCE
 # _is_valid_output_id_path  path -> OutData ID (?)
@@ -1175,21 +1177,20 @@ def _init_network(moduledb, out_data, custom_attributes):
         out_data = out_data.output()
     assert isinstance(out_data, DataNode)
 
-    #nodes = []  # list of DataNode or ModuleNode objects.
-    #transitions = {}  # list of index -> list of indexes
+    nodes = []  # list of DataNode or ModuleNode objects.
+    transitions = {}  # list of index -> list of indexes
 
-    network = Network([], {})
-    network.nodes.append(out_data)
+    nodes.append(out_data)
     stack = [0]
     seen = {}
     while stack:
-        assert len(network.nodes) < MAX_NETWORK_SIZE, "network too large"
+        assert len(nodes) < MAX_NETWORK_SIZE, "network too large"
         #_print_network(Network(nodes, transitions))
 
         # Pop the next node off the stack.
         node_id = stack.pop()
-        assert node_id < len(network.nodes)
-        node = network.nodes[node_id]
+        assert node_id < len(nodes)
+        node = nodes[node_id]
 
         # If I've already seen this node, then don't process it again.
         if node_id in seen:
@@ -1200,35 +1201,35 @@ def _init_network(moduledb, out_data, custom_attributes):
             # Backwards chain to the previous module.
             modules = _bc_to_modules(moduledb, node)
             for m in modules:
-                network.nodes.append(m)
-                m_id = len(network.nodes) - 1
+                nodes.append(m)
+                m_id = len(nodes) - 1
                 stack.append(m_id)
-                network.transitions[m_id] = network.transitions.get(m_id, [])
-                network.transitions[m_id].append(node_id)
+                transitions[m_id] = transitions.get(m_id, [])
+                transitions[m_id].append(node_id)
         elif isinstance(node, ModuleNode):
-            x = [_bc_to_inputs(network, node_id, x, custom_attributes)
-                 for x in network.transitions[node_id]]
+            x = [_bc_to_inputs(node, nodes[x], custom_attributes)
+                 for x in transitions[node_id]]
             all_inputs = _uniq(_flatten(x))
-            # Why only one chain back from one data node?
+            # XXX Why only one chain back from one data node?
             #cons_id = transitions[node_id][0]
             #all_inputs = _bc_to_inputs(
             #    node, nodes[cons_id], custom_attributes)
             for d in all_inputs:
-                d_id = _find_same_data(network.nodes, d)
+                d_id = _find_same_data(nodes, d)
                 if d_id == -1:
-                    network.nodes.append(d)
-                    d_id = len(network.nodes) - 1
+                    nodes.append(d)
+                    d_id = len(nodes) - 1
                 stack.append(d_id)
-                network.transitions[d_id] = network.transitions.get(d_id, [])
-                network.transitions[d_id].append(node_id)
+                transitions[d_id] = transitions.get(d_id, [])
+                transitions[d_id].append(node_id)
         else:
             raise AssertionError, "Unknown node type: %s" % node
 
     # Remove the duplicates from transitions.
-    for nid, next_ids in network.transitions.iteritems():
-        network.transitions[nid] = _uniq(next_ids)
+    for nid, next_ids in transitions.iteritems():
+        transitions[nid] = _uniq(next_ids)
 
-    #network = Network(nodes, transitions)
+    network = Network(nodes, transitions)
     return network
 
 
@@ -1840,9 +1841,10 @@ class _OptimizeMergeData1:
                 if in_data_ids[i] in [node_id1, node_id2]:
                     in_datas[i] = merged_data
                     break
+            module = network.nodes[module_id]
+            out_data = network.nodes[out_data_id]
             if not _is_valid_inputs(
-                network, module_id, in_datas, custom_attributes,
-                out_data_ids=[out_data_id]):
+                module, in_datas, out_data, custom_attributes):
                 return False
         return True
 
@@ -2814,17 +2816,14 @@ def _bc_to_modules(moduledb, out_data):
 
 
 def _bc_to_inputs(
-    network, module_id, out_data_id, custom_attributes,
+    module, out_data, custom_attributes,
     force_default_input_attribute_to_be_all_values=False):
-    module = network.nodes[module_id]
-    out_data = network.nodes[out_data_id]
-    
     all_attributes = []
     all_attrsource = []
     force = force_default_input_attribute_to_be_all_values
     for in_num in range(len(module.in_datatypes)):
         x = _bc_to_one_input(
-            network, module_id, in_num, out_data_id, custom_attributes, 
+            module, in_num, out_data, custom_attributes, 
             force_default_input_attribute_to_be_all_values=force)
         attributes, attrsource = x
         all_attributes.append(attributes)
@@ -2886,9 +2885,8 @@ def _bc_to_inputs(
     return all_inputs
 
 
-def _bc_to_one_input(
-    network, module_id, in_num, out_data_id, custom_attributes, 
-    force_default_input_attribute_to_be_all_values=False):
+def _bc_to_one_input(module, in_num, out_data, custom_attributes, 
+                     force_default_input_attribute_to_be_all_values=False):
     # Given a module and output_data, return the input_data object
     # that can generate the output.  This should only be called by
     # _bc_to_inputs.  The SAME_AS constraint is handled
@@ -2899,11 +2897,10 @@ def _bc_to_one_input(
     # when checking for the possibility that an input node can go into
     # a module.  However, it should be False when generating the
     # network to prevent combinatorial explosion.
-    module = network.nodes[module_id]
-    out_data = network.nodes[out_data_id]
     assert in_num < len(module.in_datatypes)
 
     in_datatype = module.in_datatypes[in_num]
+    #out_datatype = out_data.datatype
 
     # Can't generate debug messages here because the SAME_AS
     # constraints aren't handled in this function.
@@ -2971,31 +2968,23 @@ def _bc_to_one_input(
     # data object, then use the attribute provided by the user.
     # Only applies for lowest time this data object is seen in the
     # network (see above).
-    attrs = {}
+    # XXX NOT IMPLEMENTED YET!
+    #attrs = {}
     x = [x for x in module.default_attributes_from if x.input_index == in_num]
     if not x:
         # Look for relevant user attributes.
-        for attr in custom_attributes:
-            # Ignore attributes for other data types.
-            if attr.datatype.name != in_datatype.name:
-                continue
-            attrs[attr.name] = attr.value
-        ## Set values from user attributes.
         #for attr in custom_attributes:
         #    # Ignore attributes for other data types.
         #    if attr.datatype.name != in_datatype.name:
         #        continue
-        #    attributes[attr.name] = attr.value
-        #    attrsource[attr.name] = "user"
-        
-    # Found potentially relevant custom attributes.  Apply them if
-    # there are no descendents with the same data type.
-    if attrs and not \
-           _has_descendent_of_datatype(network, module_id, in_datatype.name):
-        for name, value in attrs.iteritems():
-            attributes[name] = value
-            attrsource[name] = "user"
-        
+        #    attrs[attr.name] = attr.value
+        # Set values from user attributes.
+        for attr in custom_attributes:
+            # Ignore attributes for other data types.
+            if attr.datatype.name != in_datatype.name:
+                continue
+            attributes[attr.name] = attr.value
+            attrsource[attr.name] = "user"
 
     # Case 2.  Set the attributes based on the constraints.
     for constraint in module.constraints:
@@ -3102,21 +3091,6 @@ def _bc_to_one_input(
     return attributes, attrsource
 
 
-def _has_descendent_of_datatype(network, node_id, datatype_name):
-    stack = [node_id]
-    seen = {}
-    while stack:
-        node_id = stack.pop()
-        if node_id in seen:
-            continue
-        seen[node_id] = 1
-        node = network.nodes[node_id]
-        if isinstance(node, DataNode) and node.datatype.name == datatype_name:
-            return True
-        stack.extend(network.transitions.get(node_id, []))
-    return False
-
-
 def _bc_to_input_ids(
     network, module_id, custom_attributes,
     all_input_ids=None, all_output_ids=None, nodeid2parents=None):
@@ -3154,7 +3128,7 @@ def _bc_to_input_ids(
     if len(args) > 1:
         for i in range(len(args)):
             x = args[i]
-            x = [x for x in x if _is_valid_input_i(
+            x = [x for x in x if _is_valid_input_i_net(
                 network, module_id, i, network.nodes[x], custom_attributes)]
             args[i] = x
 
@@ -3191,7 +3165,7 @@ def _bc_to_input_ids(
 
         # Make sure the inputs are compatible with the module.
         input_datas = [network.nodes[x] for x in input_ids]
-        if not _is_valid_inputs(
+        if not _is_valid_inputs_net(
             network, module_id, input_datas, custom_attributes):
             continue
 
@@ -3350,30 +3324,43 @@ def _resolve_constraint(constraint, all_constraints):
     return const
 
 
-def _is_valid_inputs(network, module_id, in_datas, custom_attributes,
-                     out_data_ids=None):
+def _is_valid_inputs(module, in_datas, out_data, custom_attributes):
+    # Return True/False if a module can take in_datas (list of
+    # DataNode nodes) as input.
+
+    assert len(in_datas) == len(module.in_datatypes)
+    all_inputs = _bc_to_inputs(
+        module, out_data, custom_attributes,
+        force_default_input_attribute_to_be_all_values=True)
+    for i in range(len(in_datas)):
+        if not _is_data_compatible(in_datas[i], all_inputs[i]):
+            return False
+    return True
+
+
+def _is_valid_input_i(module, input_num, in_data, out_data, custom_attributes):
+    assert input_num < len(module.in_datatypes)
+    all_inputs = _bc_to_inputs(
+        module, out_data, custom_attributes,
+        force_default_input_attribute_to_be_all_values=True)
+    return _is_data_compatible(in_data, all_inputs[input_num])
+
+
+def _is_valid_inputs_net(network, module_id, in_datas, custom_attributes):
+    module = network.nodes[module_id]
     # If in_datas is compatible with any of the out_datas, then return
     # True.
-    module = network.nodes[module_id]
-    assert len(in_datas) == len(module.in_datatypes)
-    if out_data_ids is None:
-        out_data_ids = network.transitions.get(module_id, [])
-    for out_data_id in out_data_ids:
-        all_inputs = _bc_to_inputs(
-            network, module_id, out_data_id, custom_attributes,
-            force_default_input_attribute_to_be_all_values=True)
-        for i in range(len(in_datas)):
-            if not _is_data_compatible(in_datas[i], all_inputs[i]):
-                break
-        else:
+    out_data_ids = network.transitions.get(module_id, [])
+    out_datas = [network.nodes[x] for x in out_data_ids]
+    for out_data in out_datas:
+        if _is_valid_inputs(module, in_datas, out_data, custom_attributes):
             return True
     return False
 
 
-def _is_valid_input_i(
+def _is_valid_input_i_net(
     network, module_id, input_num, in_data, custom_attributes):
     module = network.nodes[module_id]
-    assert input_num < len(module.in_datatypes)
     # If in_datas is compatible with any of the out_datas, then return
     # True.
 
@@ -3386,11 +3373,10 @@ def _is_valid_input_i(
     ## cannot take this input.
     ## Solution: merge the outputs when possible.
     out_data_ids = network.transitions.get(module_id, [])
-    for out_data_id in out_data_ids:
-        all_inputs = _bc_to_inputs(
-            network, module_id, out_data_id, custom_attributes,
-            force_default_input_attribute_to_be_all_values=True)
-        if _is_data_compatible(in_data, all_inputs[input_num]):
+    out_datas = [network.nodes[x] for x in out_data_ids]
+    for out_data in out_datas:
+        if _is_valid_input_i(
+            module, input_num, in_data, out_data, custom_attributes):
             return True
     return False
 

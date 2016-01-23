@@ -1,4 +1,17 @@
-#Calling_variants_rule
+# DataTypes:
+# VCFFolder
+# VCFRecalibrationReport
+# AnnovarFolder
+#
+# Modules:
+# call_variants_mpileup
+# call_variants_GATK
+#
+# 
+# Recalibrate variant scores with GATK.
+# https://www.broadinstitute.org/gatk/guide/article?id=2805
+    
+
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
@@ -13,36 +26,28 @@ VCFFolder = DataType(
         help="Which variant caller was used."),
 
     AttributeDef(
-        "recalibrated", ["no", "yes"], "no", "yes",
-        help="Whether quality scores are ready for filtering."),
-    AttributeDef(
-        "vartype", ["both", "snp", "indel"], "both", "both",
+        "vartype", ["both", "snp", "indel"], "both", "snp",
         help="What kind of variants are held in this file."),
-
-    
-    #AttributeDef(
-    #    "base_recalibrated", ["yes", "no"], "no", "no",
-    #    help="recalibrated or not"),
-    #AttributeDef(
-    #    "indel_realigned", ["yes", "no"], "no", "no",
-    #    help="realigned or not"),
-    #AttributeDef(
-    #    "read", ["single", "paired"], "single", "single",
-    #    help="single or pair read"),
-    #AttributeDef(
-    #    "vcf_filter", ["yes", "no"], "no", "no", help="filter VcfFile or not"),
-    #AttributeDef(
-    #    "reheader", ["standard", "bcftool"], "standard", "standard",
-    #    help="method to convert to VcfFile"),
-    #AttributeDef(
-    #    "vcf_annotate", ["yes", "no"], "no", "no",
-    #    help="annotate VcfFile or not"),
-    help="VCF file"
+    AttributeDef(
+        "vcf_recalibrated", ["no", "yes"], "no", "yes",
+        help="Whether quality scores are ready for filtering."),
     )
 
+VCFRecalibrationReport = DataType(
+    "VCFRecalibrationReport",
+    AttributeDef(
+        "vartype", ["snp", "indel"], "snp", "snp",
+        help="What kind of variants are held in this file."),
+    )
+
+AnnovarFolder = DataType(
+    "AnnovarFolder",
+    )
 
 all_data_types=[
     VCFFolder,
+    VCFRecalibrationReport,
+    AnnovarFolder,
     ]
 
 all_modules = [
@@ -50,16 +55,14 @@ all_modules = [
         "call_variants_mpileup",
         NGS.BamFolder, VCFFolder,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("duplicates_marked", MUST_BE, "yes"),
         Constraint("has_read_groups", MUST_BE, "yes"),
-        #Constraint("recalibrated", CAN_BE_ANY_OF, ["yes", "no"]),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        
         Consequence("caller", SET_TO, "mpileup"),
-        #Consequence("vcf_filter", SET_TO, "no"),
-        #Consequence("reheader", SET_TO, "bcftool"),
-        #Consequence("vcf_annotate", SET_TO, "no"),
-        #Consequence("recalibrated", SAME_AS_CONSTRAINT),
+        Consequence("vcf_recalibrated", SET_TO, "yes"),
+        Consequence("vartype", SET_TO, "snp"),
         help="use mpileup to call variants"),
     ModuleNode(
         "call_variants_GATK",
@@ -69,29 +72,47 @@ all_modules = [
         # recalibrate -> call variants
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
-        Constraint("base_recalibrated", MUST_BE, "yes", 0),
+        Constraint("base_recalibrated", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint("dict_added", MUST_BE, "yes", 1),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
         
         Consequence("caller", SET_TO, "gatk"),
-        Consequence("recalibrated", SET_TO, "no"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO, "both"),
-        help="use GATK to call variants"),
-    ## ModuleNode(
-    ##     "filter_vcf_folder",
-    ##     NGS.VcfFolder, NGS.VcfFolder,
-    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-    ##     Constraint("base_recalibrated", CAN_BE_ANY_OF, ["yes", "no"]),
-    ##     Constraint("vcf_annotate", MUST_BE, "no"),
-    ##     Constraint("vcf_filter", MUST_BE, "no"),
-    ##     Constraint("reheader", MUST_BE, "bcftool"),
-    ##     Consequence("contents", SAME_AS_CONSTRAINT),
-    ##     Consequence("vcf_filter", SET_TO, "yes"),
-    ##     Consequence("reheader", SAME_AS_CONSTRAINT),
-    ##     Consequence("vcf_annotate", SAME_AS_CONSTRAINT),
-    ##     Consequence("base_recalibrated", SAME_AS_CONSTRAINT),
-    ##     help="filter vcf file"),
+        help="Use GATK HaplotypeCaller to call variants."),
+    ModuleNode(
+        "make_vcf_recalibration_report_snp",
+        [VCFFolder, NGS.ReferenceGenome], VCFRecalibrationReport,
+        OptionDef("vcf_recal_dbsnp"),
+        OptionDef("vcf_recal_mills_indels"),
+        OptionDef("vcf_recal_1kg_indels"),
+        OptionDef("vcf_recal_omni"),
+        Constraint("vcf_recalibrated", MUST_BE, "no", 0),
+        Constraint("vartype", CAN_BE_ANY_OF, ["both", "snp"], 0),
+        Consequence("vartype", SET_TO, "snp"),
+        help="VariantRecalibrator",
+        ),
+    ModuleNode(
+        "recalibrate_variants_snp",
+        [VCFFolder, NGS.ReferenceGenome, VCFRecalibrationReport], VCFFolder,
+        Constraint("vcf_recalibrated", MUST_BE, "no", 0),
+        Consequence("vcf_recalibrated", SET_TO, "yes"),
+        Constraint("vartype", CAN_BE_ANY_OF, ["both", "snp"], 0),
+        Constraint("vartype", MUST_BE, "snp", 2),
+        Consequence("vartype", SAME_AS_CONSTRAINT, 2),
+        help="ApplyRecalibration",
+        ),
+    ModuleNode(
+        "annotate_with_annovar",
+        VCFFolder, AnnovarFolder,
+        OptionDef("buildver", help="E.g. hg19.  See annovar docs."),
+        ),
+
+    
     ## ModuleNode(
     ##     "annotate_vcf_folder",
     ##     NGS.VcfFolder, NGS.VcfFolder,

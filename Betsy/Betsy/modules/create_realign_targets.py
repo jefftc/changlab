@@ -20,14 +20,16 @@ class Module(AbstractModule):
         ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
 
-        jobs = []  # list of (in_filename, out_filename)
+        jobs = []  # list of (in_filename, log_filename, out_filename)
         for in_filename in in_filenames:
             p, f = os.path.split(in_filename)
             f, ext = os.path.splitext(f)
+            log_filename = os.path.join(out_path, "%s.log" % f)
             out_filename = os.path.join(out_path, "%s.intervals" % f)
-            x = in_filename, out_filename
+            x = in_filename, log_filename, out_filename
             jobs.append(x)
-        
+
+
         known_sites = []
         x1 = module_utils.get_user_option(
             user_options, "realign_known_sites1", check_file=True)
@@ -40,22 +42,20 @@ class Module(AbstractModule):
         known_sites = x
         assert known_sites
 
-        # java -Xmx5g -jar /usr/local/bin/GATK/GenomeAnalysisTK.jar -nt 4 \
-        #   -T RealignerTargetCreator -R ../genome.idx/erdman.fa -I $i -o $j "
+        # java -Xmx5g -jar /usr/local/bin/GATK/GenomeAnalysisTK.jar -nt 4
+        #   -T RealignerTargetCreator -R ../genome.idx/erdman.fa -I $i -o $j
+        #   --known <known_vcf_file>
 
         # Make a list of commands.
         commands = []
         for x in jobs:
-            in_filename, out_filename = x
-            x = [("knownSites", x) for x in known_sites]
+            in_filename, log_filename, out_filename = x
+            x = [("-known", x) for x in known_sites]
             x = alignlib.make_GATK_command(
                 nt=4, T="RealignerTargetCreator", R=ref.fasta_file_full,
                 I=in_filename, o=out_filename, _UNHASHABLE=x)
+            x = "%s >& %s" % (x, log_filename)
             commands.append(x)
-
-        #for x in commands:
-        #    print x
-        #import sys; sys.exit(0)
 
         shell.parallel(commands, max_procs=num_cores)
 

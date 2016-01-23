@@ -44,7 +44,8 @@ class Module(AbstractModule):
         assert not missing, "Missing interval files for %d bam files." % \
                len(missing)
 
-        jobs = []  # list of (bam_filename, target_filename, out_filename)
+        # list of (bam_filename, target_filename, log_filename, out_filename)
+        jobs = []
         for sample in sample2bamfilename:
             bam_filename = sample2bamfilename[sample]
             target_filename = sample2targetfilename[sample]
@@ -52,7 +53,8 @@ class Module(AbstractModule):
             p, f = os.path.split(bam_filename)
             sample, ext = os.path.splitext(f)
             out_filename = os.path.join(out_path, "%s.bam" % sample)
-            x = bam_filename, target_filename, out_filename
+            log_filename = os.path.join(out_path, "%s.log" % sample)
+            x = bam_filename, target_filename, log_filename, out_filename
             jobs.append(x)
 
         known_sites = []
@@ -74,12 +76,13 @@ class Module(AbstractModule):
         # Make a list of commands.
         commands = []
         for x in jobs:
-            bam_filename, target_filename, out_filename = x
-            x = [("knownSites", x) for x in known_sites]
+            bam_filename, target_filename, log_filename, out_filename = x
+            x = [("known", x) for x in known_sites]
             x = alignlib.make_GATK_command(
                 T="IndelRealigner", R=ref.fasta_file_full,
                 I=bam_filename, targetIntervals=target_filename,
                 o=out_filename, _UNHASHABLE=x)
+            x = "%s >& %s" % (x, log_filename)
             commands.append(x)
 
         #for x in commands:

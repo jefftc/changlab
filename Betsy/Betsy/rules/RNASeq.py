@@ -123,7 +123,10 @@ all_modules = [
             help="union, intersection-strict, or intersection-nonempty.  "
             "See htseq-count documentation.  union is recommended.",
             ),
-        Constraint("sorted", CAN_BE_ANY_OF, ["name", "coordinate"], 0),
+        # Get error when using coordinate sorting:
+        # Maximum alignment buffer size exceeded while pairing SAM alignments.
+        #Constraint("sorted", CAN_BE_ANY_OF, ["name", "coordinate"], 0),
+        Constraint("sorted", MUST_BE, "name", 0),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         #Constraint("aligner", MUST_BE, "bwa_backtrack", 0),
         Constraint(

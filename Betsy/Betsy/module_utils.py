@@ -48,6 +48,7 @@ fix_sample_group_filenames
 assert_sample_group_file
 
 check_inpath
+make_filename
 
 """
 # _find_ids_that_pass_filters
@@ -1082,3 +1083,7 @@ def get_user_option(
         assert os.path.exists(value), "File not found: %s" % value
     return value
     
+
+#def make_filename(sample_filename, *args):
+#    # Create a new filename using information from a sample.
+#    # <PATH>/<ROOT>.<EXT>

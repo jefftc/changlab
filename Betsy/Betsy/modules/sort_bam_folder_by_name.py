@@ -20,13 +20,16 @@ class Module(AbstractModule):
             in_path, endswith=".bam", case_insensitive=True)
         assert in_filenames, "No .bam files."
 
-        jobs = []  # list of (in_filename, temp_prefix, out_filename)
+        # list of (in_filename, temp_prefix, log_filename, out_filename)
+        jobs = []
         for in_filename in in_filenames:
             p, f = os.path.split(in_filename)
+            s, ext = os.path.splitext(f)
             out_filename = os.path.join(out_path, f)
             temp_prefix = "temp_%s" % f
+            log_filename = os.path.join(out_path, "%s.log" % s)
             assert in_filename != out_filename
-            x = in_filename, temp_prefix, out_filename
+            x = in_filename, temp_prefix, log_filename, out_filename
             jobs.append(x)
 
         # Make a list of samtools commands.
@@ -34,7 +37,7 @@ class Module(AbstractModule):
         sq = shell.quote
         commands = []
         for x in jobs:
-            in_filename, temp_prefix, out_filename = x
+            in_filename, temp_prefix, log_filename, out_filename = x
 
             # samtools sort -n <in_filename> <out_filestem>
             # .bam automatically added to <out_filestem>, so don't
@@ -49,10 +52,10 @@ class Module(AbstractModule):
                 "sort", "-n",
                 "-O", "bam", 
                 "-T", temp_prefix,
+                "-o", sq(out_filename), 
                 sq(in_filename),
-                sq(out_filestem),
                 ]
-            x = " ".join(x)
+            x = "%s >& %s" % (" ".join(x), sq(log_filename))
             commands.append(x)
             
         shell.parallel(commands, max_procs=num_cores)

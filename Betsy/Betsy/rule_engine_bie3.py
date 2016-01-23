@@ -154,7 +154,8 @@ def run_pipeline(
 
     if success:
         msg = "Completed"
-        print "[%s]  %s" % (time.strftime('%I:%M %p'), msg)
+        #print "[%s]  %s" % (time.strftime('%I:%M %p'), msg)
+        print "[%s]  %s" % (time.strftime('%a %I:%M %p'), msg)
         #print next_node.identifier
         #sys.stdout.flush()
         assert next_node
@@ -316,6 +317,10 @@ def run_module(
     out_identified_data_node = module_utils.IdentifiedDataNode(
         out_data_node, full_outfile)
 
+    
+    #time_str = "[%s]" % time.strftime('%I:%M %p')
+    time_str = "[%s]" % time.strftime('%a %I:%M %p')
+    
     # Check if this has already been run.
     if _is_module_output_complete(result_dir):
         filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
@@ -326,16 +331,16 @@ def run_module(
             x = "ran instantly"
         else:
             x = "took %s" % run_time
-        parselib.print_split(
-            "[%s]  %s (CACHED, previously %s)" % (
-                time.strftime('%I:%M %p'), module_name, x),
-            prefixn=2)
+        x = "%s  %s (CACHED, previously %s)" % (time_str, module_name, x)
+        #parselib.print_split(x, prefixn=2)
+        print x
         sys.stdout.flush()
         return out_identified_data_node, next_id
 
     # Running this module now.
-    parselib.print_split(
-        "[%s]  %s" % (time.strftime('%I:%M %p'), module_name), prefixn=2)
+    x = "%s  %s" % (time_str, module_name)
+    #parselib.print_split(x, prefixn=2)
+    print x
     sys.stdout.flush()
 
     # Run the module in a temporary directory.
@@ -452,43 +457,6 @@ def _get_available_input_combinations(
         if len(x) == len(input_ids):
             available.append(x)
     return available
-
-
-## def get_out_node(
-##     working_dir, network, module_id, module_file, parameters, pool,
-##     user_options, user_attributes):
-##     # Returns a list of tuples (out_node, out_id, out_identifier).
-##     import os
-##     from Betsy import bie3
-##     from Betsy import rulebase
-##     from Betsy import module_utils
-
-##     # Need to change directory because find_antecedents checks for the
-##     # existence of the file.  Assumes the files are in the current
-##     # directory.  Should fix this by making the identifiers for
-##     # DataObject the full path name.
-##     current_dir = os.getcwd()
-##     try:
-##         os.chdir(working_dir)
-##         data_node = module_file.find_antecedents(
-##             network, module_id, parameters, user_attributes, pool)
-##         outfile = module_file.name_outfile(data_node, user_options)
-##     finally:
-##         os.chdir(current_dir)
-##     next_possible_ids = network.transitions[module_id]
-##     fn = getattr(
-##         rulebase, network.nodes[next_possible_ids[0]].datatype.name)
-##     out_node = bie3.DataNode(fn, **parameters)
-##     out_object = module_utils.IdentifiedDataNode(
-##         out_node, os.path.join(working_dir, outfile))
-##     out_id = None
-##     result = []
-##     for next_id in next_possible_ids:
-##         if compare_two_dict(parameters, network.nodes[next_id].attributes):
-##             out_id = next_id
-##             result.append((out_object, out_id))
-##             #result.append((out_node, out_id, outfile))
-##     return result
 
 
 def _pretty_time_delta(delta):

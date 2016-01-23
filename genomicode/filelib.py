@@ -664,8 +664,10 @@ def safe_mkdir(path):
         os.mkdir(path)
 
 
-def list_files_in_path(file_or_path, endswith=None, case_insensitive=False):
+def list_files_in_path(
+    file_or_path, endswith=None, case_insensitive=False, not_empty=False):
     # Return a list of the files.  Returns full paths.
+    # not_empty means will make sure some files are found.
     assert os.path.exists(file_or_path), "Not found: %s" % file_or_path
 
     # If this is a file, return this file.
@@ -686,7 +688,12 @@ def list_files_in_path(file_or_path, endswith=None, case_insensitive=False):
         else:
             x = [x for x in x if x.endswith(endswith)]
     filenames = x
-        
+
+    if not_empty:
+        msg = "No files found."
+        if endswith:
+            msg = "No %s files found." % endswith
+        assert filenames, msg
     return filenames
 
 

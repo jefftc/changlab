@@ -960,8 +960,9 @@ def make_GATK_command(**params):
     for (key, value) in all_params:
         if key == UNHASHABLE:
             continue
+        #assert key[0] in "A-Za-z_-", "Possibly bad name: %s" % key
         if value is None:
             cmd.append("-%s" % key)
         else:
             cmd.extend(["-%s" % key, sq(value)])
-    return " ".join(cmd)
+    return " ".join(map(str, cmd))

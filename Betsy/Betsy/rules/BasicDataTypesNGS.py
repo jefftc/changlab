@@ -211,10 +211,16 @@ BamFolder = DataType(
 
 RealignTargetFolder = DataType(
     "RealignTargetFolder",
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
     )
 
 RecalibrationReport = DataType(
     "RecalibrationReport",
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
     )
 
 SaiFolder = DataType(
@@ -797,10 +803,15 @@ all_modules = [
             ),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        #Constraint("base_recalibrated", MUST_BE, "no", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
-        help="Find the intervals to target for realignment.",
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
+        help="Find the intervals to target for realignment "
+        "(RealignerTargetCreator).",
         ),
     ModuleNode(
         "realign_indels_bam_folder",
@@ -827,9 +838,12 @@ all_modules = [
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
+        Constraint("aligner", SAME_AS, 0, 2),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Consequence("indexed", SET_TO, "no"),
         Consequence("base_recalibrated", SET_TO, "no"),
-        help="Realign indels."
+        help="Realign indels (IndelRealigner)."
         ),
     ModuleNode(
         "make_base_recalibration_report",
@@ -846,12 +860,17 @@ all_modules = [
             "recal_known_sites3", default="",
             help="(OPTIONAL).",
             ),
+        Constraint("base_recalibrated", MUST_BE, "no", 0),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("sorted", MUST_BE, "coordinate"),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
-        help="Calculate the statistics for base recalibration.",
+        help="Calculate the statistics for base recalibration "
+        "(BaseRecalibrator).",
         ),
     ModuleNode(
         "recalibrate_base_quality_score",
@@ -860,19 +879,24 @@ all_modules = [
         Constraint("base_recalibrated", MUST_BE, "no", 0),
         Consequence("base_recalibrated", SET_TO, "yes"),
         #Constraint("sorted", MUST_BE, "contig", 0),
-        #Consequence("sorted", SAME_AS_CONSTRAINT),
+        
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Consequence("contents", SAME_AS_CONSTRAINT),
-        
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Consequence("sorted", SAME_AS_CONSTRAINT),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Consequence("has_read_groups", SAME_AS_CONSTRAINT),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
         Consequence("indel_realigned", SAME_AS_CONSTRAINT),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
+        Constraint("aligner", SAME_AS, 0, 2),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         
         Consequence("indexed", SET_TO, "no"),
+        help="PrintReads",
         ),
     ]
