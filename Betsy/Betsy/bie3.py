@@ -1182,7 +1182,9 @@ def _init_network(moduledb, out_data, custom_attributes):
     network.nodes.append(out_data)
     stack = [0]
     seen = {}
+    nit = -1
     while stack:
+        nit += 1
         assert len(network.nodes) < MAX_NETWORK_SIZE, "network too large"
         #_print_network(Network(nodes, transitions))
 
@@ -1224,9 +1226,17 @@ def _init_network(moduledb, out_data, custom_attributes):
         else:
             raise AssertionError, "Unknown node type: %s" % node
 
+        # DEBUG: Check for cycles.
+        #plot_network_gv("cycle-%02d.png" % nit, network, verbose=True)
+        #_make_ancestor_dict(network)
+
     # Remove the duplicates from transitions.
     for nid, next_ids in network.transitions.iteritems():
         network.transitions[nid] = _uniq(next_ids)
+
+    # Check for cycles here.  Will not be able to make ancestor dict
+    # if there is a cycle.
+    _make_ancestor_dict(network)
 
     #network = Network(nodes, transitions)
     return network
@@ -4022,7 +4032,10 @@ def _make_ancestor_dict_h(network):
     niter = 0
     while all_nodes:
         niter += 1
-        assert niter < 1E6, "cycle in network"
+        errmsg = (
+            "Cycle in network.  This can be cause by a problem in the rules "
+            "or a bug in the inferencing code.")
+        assert niter < 1E6, errmsg
         node_id = all_nodes.pop(0)
         parents = node2parents.get(node_id, [])
 

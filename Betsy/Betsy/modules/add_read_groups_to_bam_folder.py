@@ -67,9 +67,9 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
 
-        for x in commands[:5]:
-            print x
-        import sys; sys.exit(0)
+        #for x in commands[:5]:
+        #    print x
+        #import sys; sys.exit(0)
             
         shell.parallel(commands, max_procs=num_cores)
 

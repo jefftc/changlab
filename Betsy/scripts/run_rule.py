@@ -273,8 +273,12 @@ def _print_input_datatypes(
     x = x4 + x5
     ps(x, prefixn=0, outhandle=outhandle)
     for i, combo in enumerate(datatype_combos):
-        x = [x.name for x in combo]
-        ps("%3d.  %s" % (i+1, ", ".join(x)), prefixn=6, outhandle=outhandle)
+        names = [x.name for x in combo]
+        for j in range(len(names)):
+            if names[j] not in required_datatypes:
+                names[j] = "%s*" % names[j]
+        ps("%3d.  %s" % (
+            i+1, ", ".join(names)), prefixn=6, outhandle=outhandle)
 
 
 def check_inputs_in_network(
@@ -473,6 +477,7 @@ def build_pipelines(
         print "No pipelines found.  Examine network to diagnose."
         print "Make sure that no --input is missing."
         x = [x.data.datatype.name for x in in_data_nodes]
+        print "HERE 1", x
         _print_input_datatypes(
             network, x, custom_attributes, max_inputs=max_inputs)
         print
@@ -1993,10 +1998,11 @@ def plot_network_show_pipelines(filename, network, paths, **keywds):
         for node_id, next_ids in path.transitions.iteritems():
             for next_id in next_ids:
                 transitions[(node_id, next_id)] = 1
+    x = [x for x in all_node_ids if x not in all_start_ids]
     plot_network(
         filename, network, bold=all_node_ids,
         bold_transitions=transitions, highlight_green=all_start_ids,
-        highlight_purple=all_node_ids, **keywds)
+        highlight_yellow=x, **keywds)
 
 
 def plot_network(

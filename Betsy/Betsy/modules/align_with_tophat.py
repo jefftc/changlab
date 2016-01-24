@@ -34,9 +34,9 @@ class Module(AbstractModule):
             user_options, "tophat_gtf_file", check_file=True)
         transcriptome_fa = module_utils.get_user_option(
             user_options, "tophat_transcriptome_fa", check_file=True)
-        assert gtf_file or transcriptome_fa, \
-               ("Either tophat_gtf_file or tophat_transcriptome_index must be "
-                "provided.")
+        assert gtf_file or transcriptome_fa, (
+            "Either tophat_gtf_file or tophat_transcriptome_fa (preferred) "
+            "must be provided.")
 
         # Make a list of the jobs to run.
         jobs = []

@@ -27,7 +27,9 @@ make_htseq_count_command
 parse_htseq_count_output
 
 find_picard_jar
-make_picard_command
+make_GATK_command
+
+make_platypus_command
 
 """
 
@@ -965,4 +967,37 @@ def make_GATK_command(**params):
             cmd.append("-%s" % key)
         else:
             cmd.extend(["-%s" % key, sq(value)])
+    return " ".join(map(str, cmd))
+
+
+def make_platypus_command(
+    bam_file, ref_file, log_file=None, out_file=None, num_cores=None):
+    import os
+    from genomicode import config
+    from genomicode import shell
+    from genomicode import filelib
+
+    if num_cores is not None:
+        assert num_cores >= 1 and num_cores < 256
+
+    # /usr/local/bin/Platypus/Platypus.py callVariants 
+    #   --bamFiles $i
+    #   --refFile ../index/erdman.fa
+    #   --output $j
+    #   --logFileName <filename>
+    platypus = filelib.which_assert(config.platypus)
+
+    sq = shell.quote
+    cmd = [
+        sq(platypus),
+        "callVariants",
+        "--bamFiles", sq(bam_file),
+        "--refFile", sq(ref_file),
+        ]
+    if log_file:
+        cmd += ["--logFileName", log_file]
+    if out_file:
+        cmd += ["--output", out_file]
+    if num_cores:
+        cmd += ["--nCPU", num_cores]
     return " ".join(map(str, cmd))
