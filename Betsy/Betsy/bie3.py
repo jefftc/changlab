@@ -85,7 +85,10 @@ debug_print
 # _is_attribute_compatible
 # _merge_data_nodes
 # _merge_attribute_values
-# 
+#
+# _merge_start_ids         Should only be called by find_paths_by_start_ids
+# _does_based_on_data_conflict_with_out_data    Only by find_paths_by_start_ids
+#
 # _get_attribute_type
 # _assign_case_by_type
 # 
@@ -101,7 +104,10 @@ debug_print
 # _intersect
 # _is_subset
 # _flatten
+# _flatten1_intlist
 # _uniq
+# _uniq_intlist
+# _uniq_flatten1_intlist
 #
 # _print_nothing
 # _print_string
@@ -1232,7 +1238,7 @@ def _init_network(moduledb, out_data, custom_attributes):
 
     # Remove the duplicates from transitions.
     for nid, next_ids in network.transitions.iteritems():
-        network.transitions[nid] = _uniq(next_ids)
+        network.transitions[nid] = _uniq_intlist(next_ids)
 
     # Check for cycles here.  Will not be able to make ancestor dict
     # if there is a cycle.
@@ -1396,14 +1402,14 @@ def _complete_network(network, custom_attributes):
             anc.extend(added)
             for id_ in added:
                 anc.extend(ancestors.get(id_, []))
-            ancestors[node_id] = _uniq(anc)
+            ancestors[node_id] = _uniq_intlist(anc)
 
         # All the added nodes inherit the descendents of the Module.
         for id_ in added:
             desc = descendents[id_]
             desc.append(module_id)
             desc.extend(descendents.get(module_id, []))
-            descendents[id_] = _uniq(desc)
+            descendents[id_] = _uniq_intlist(desc)
 
     return network
 
@@ -2112,13 +2118,46 @@ def find_paths_by_datatypes(network, custom_attributes, datatype_names):
 
 class Pathway:
     def __init__(self, node_ids, transitions, start_ids, missing_ids):
-        assert type(node_ids) is type([])
+        assert type(node_ids) is type(frozenset())
+        assert type(missing_ids) is type(frozenset())
         # Debug: Check for duplicates in node_ids.
         #assert sorted(_uniq(node_ids)) == sorted(node_ids)
-        self.node_ids = node_ids[:]
+        #self.node_ids = node_ids[:]
+        self.node_ids = node_ids
         self.transitions = transitions.copy()
         self.start_ids = start_ids[:]
-        self.missing_ids = missing_ids[:]
+        #self.missing_ids = missing_ids[:]
+        self.missing_ids = missing_ids
+        self._hash = None
+    def __hash__(self):
+        if self._hash is None:
+            # Optimization: pre-hash this pathway for fast comparisons.
+            # This function takes a lot of time.  Still need to
+            # optimize this further, somehow.
+            #t_hash = []
+            #for x in sorted(self.transitions):
+            #    t_hash.append((x, frozenset(self.transitions[x])))
+            #t_hash = tuple(t_hash)
+            # Much faster.
+            #t_hash = {}
+            #for k, v in self.transitions.iteritems():
+            #    t_hash[k] = frozenset(v)
+            #t_hash = frozenset(t_hash.items())
+            #x = (
+            #    frozenset(self.node_ids), t_hash, tuple(self.start_ids),
+            #    frozenset(self.missing_ids))
+            t_hash = frozenset(self.transitions.items())
+            x = (
+                self.node_ids, t_hash, tuple(self.start_ids), self.missing_ids)
+            self._hash = hash(x)
+        return self._hash
+    def __eq__(self, other):
+        if not self._hash:
+            hash(self)
+        if not other._hash:
+            hash(other)
+        return self._hash == other._hash
+        #return hash(self) == hash(other)
     def __cmp__(self, other):
         if not isinstance(other, Pathway):
             return cmp(id(self), id(other))
@@ -2128,6 +2167,8 @@ class Pathway:
             other.node_ids, other.transitions, other.start_ids,
             other.missing_ids]
         return cmp(x1, x2)
+        # Compare the hashes.  Order of pathways is meaningless.
+        #return cmp(self._hash, other._hash)
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
@@ -2140,7 +2181,6 @@ class Pathway:
         return x
 
 
-
 def _find_paths_by_start_ids_hh(
     network, node_id, custom_attributes, node2startids, nodeid2parents,
     depth, cache):
@@ -2149,33 +2189,39 @@ def _find_paths_by_start_ids_hh(
     assert node_id < len(network.nodes), "%s %d" % (
         repr(node_id), len(network.nodes))
     node = network.nodes[node_id]
-    prev_ids = nodeid2parents.get(node_id, [])
 
-    paths = []
+    all_paths = {}
+    #has_missing = True  # Optimization
     if isinstance(node, DataNode):
         # If this node matches one of the node2startids, then this can
         # be an input.
         for i, start_ids in enumerate(node2startids):
-            if node_id in start_ids:
-                sids = [None] * len(node2startids)
-                sids[i] = node_id
-                paths.append(Pathway([node_id], {}, sids, []))
+            if node_id not in start_ids:
+                continue
+            sids = [None] * len(node2startids)
+            sids[i] = node_id
+            p = Pathway(frozenset([node_id]), {}, sids, frozenset([]))
+            all_paths[p] = 1
+            #has_missing = False
         # If this doesn't match any nodes, then this branch may be
         # missing.
-        if not paths:
+        if not all_paths:
             sids = [None] * len(node2startids)
-            paths.append(Pathway([node_id], {}, sids, [node_id]))
+            p = Pathway(frozenset([node_id]), {}, sids, frozenset([node_id]))
+            all_paths[p] = 1
         # Search each of the parents for inputs.
-        combos = []
-        for prev_id in prev_ids:
-            combos.append((prev_id,))
+        combos = [(x,) for x in nodeid2parents.get(node_id, [])]
     elif isinstance(node, ModuleNode):
         # Find some combination of inputs that works.
         combos = _bc_to_input_ids(
             network, node_id, custom_attributes, nodeid2parents=nodeid2parents)
 
-    for combo in combos:
+    checked_pathway = {}
+    for cnum, combo in enumerate(combos):
         # combo is a list of node_ids.
+        # Some combos will be seen twice, but the vast majority of the
+        # time, each combo is evaluated only once.
+        
         # Each branch is a list of Pathway objects.
         branch2info = [
             _find_paths_by_start_ids_h(
@@ -2185,39 +2231,104 @@ def _find_paths_by_start_ids_hh(
 
         # Make sure there aren't too many combinations to search.
         MAX_COMBINATIONS = 1E4
-        x = [len(x) for x in branch2info]
-        total = jmath.prod(x)
+        branchlen = [len(x) for x in branch2info]
+        total = jmath.prod(branchlen)
         assert total < MAX_COMBINATIONS, "Too many paths (%d)" % total
 
         # No branches indicate an error somewhere.
         assert total > 0
-        
+
+        # Optimization: If there is already a possibility with
+        # nomissing, then don't even consider the paths that will
+        # introduce a missing node.
+        # This happens occasionally, but not very often.  Does not
+        # speed things up.
+        #if not has_missing:
+        #    has_empty_branch = False
+        #    for i in range(len(branch2info)):
+        #        x = [x for x in branch2info[i] if not x.missing_ids]
+        #        branch2info[i] = x
+        #        if not x:
+        #            has_empty_branch = True
+        #            break
+        #    if has_empty_branch:
+        #        continue
+
+        # To reduce the effect of combinatorial explosion, merge two
+        # nodes at a time.
+        # This only speeds up by 5%.
+        #merge_cache = {}   # may be None if start IDs conflict
+        #merge_i1 = merge_i2 = None
+        #if len(branch2info) >= 3:
+        #    # Pre-merge the two shortest branchlens.
+        #    x = [(branchlen[i], i) for i in range(len(branchlen))]
+        #    x = sorted(x)
+        #    x = [x[-1] for x in x]
+        #    merge_i1 = x[0]   # shortest
+        #    merge_i2 = x[1]   # second shortest
+        #
+        #    key = [None] * len(branch2info)
+        #    for j in range(branchlen[merge_i1]):
+        #        key[merge_i1] = j
+        #        for k in range(branchlen[merge_i2]):
+        #            key[merge_i2] = k
+        #            b1 = branch2info[merge_i1][j]
+        #            b2 = branch2info[merge_i2][k]
+        #            x = _merge_paths([b1, b2])
+        #            node_ids, transitions, missing_ids = x
+        #
+        #            p = None
+        #            conflict = _does_based_on_data_conflict_with_out_data(
+        #                network, node_ids, transitions)
+        #            # There's a conflict 8% of the time.
+        #            sids = None
+        #            if not conflict:
+        #                sids = _merge_start_ids([b1, b2])
+        #            if sids:
+        #                p = Pathway(node_ids, transitions, sids, missing_ids)
+        #            merge_cache[tuple(key)] = p
+
         # Try different combinations of paths for each branch.
-        for branches in itertools.product(*branch2info):
-            assert branches
+        for bnum, branches in enumerate(itertools.product(*branch2info)):
+        #x = [range(x) for x in branchlen]
+        #for bnum, branches_i in enumerate(itertools.product(*x)):
+        #    branches = [
+        #        branch2info[i][branches_i[i]] for i in range(len(branches_i))]
 
-            # Merge the node_ids.  It may have duplicates if different
-            # branches converge upstream.
-            x = [x.node_ids for x in branches]
-            node_ids = _uniq(_flatten(x))
+            # This _merge_paths is called 99.999% of the time.
+            #if merge_cache:
+            #    key = [None] * len(branch2info)
+            #    key[merge_i1] = branches_i[merge_i1]
+            #    key[merge_i2] = branches_i[merge_i2]
+            #    x = merge_cache[tuple(key)]
+            #    if x is not None:
+            #        x1 = [x]
+            #        x2 = [branches[i] for i in range(len(branches))
+            #              if i not in [merge_i1, merge_i2]]
+            #        x = _merge_paths(x1+x2)
+            #else:
+            #    x = _merge_paths(branches)
+            #if x is None:
+            #    continue
+            #node_ids, transitions, missing_ids = x
+            node_ids, transitions, missing_ids = _merge_paths(branches)
+            
+            # Optimization: If there's already a nomissing path, then
+            # skip all paths with missing_ids.
+            # Actually, this never happens.
+            #if not has_missing and missing_ids:
+            #    continue
+
+            # Add node_id to this set of node_ids.
             assert node_id not in node_ids
-
-            # Merge the transitions.
-            transitions = {}
-            for p in branches:
-                for n1, n2 in p.transitions.iteritems():
-                    transitions[n1] = _uniq(transitions.get(n1, []) + n2)
+            node_ids = node_ids.union([node_id])
             # Add transitions to this node.
             for x in combo:
                 if x not in transitions:
-                    transitions[x] = []
-                if node_id not in transitions:
-                    transitions[x].append(node_id)
+                    transitions[x] = frozenset([node_id])
+                else:
+                    transitions[x] = transitions[x].union([node_id])
 
-            # Merge the missing_ids.
-            x = [x.missing_ids for x in branches]
-            missing_ids = _uniq(_flatten(x))
-            
 
             # See if these paths conflict.  Paths may conflict if:
             # 1.  Different data nodes are used for the same start_id.
@@ -2232,57 +2343,36 @@ def _find_paths_by_start_ids_hh(
 
             # Case 1.  See if there are conflicting start_ids.
             # (As a side effect, also merge the start_ids).
-            conflicting_start_ids = False
-            start_ids = branches[0].start_ids
-            for p in branches[1:]:
-                assert len(start_ids) == len(p.start_ids)
-                for i in range(len(start_ids)):
-                    if p.start_ids[i] is None:
-                        continue
-                    if start_ids[i] is not None and \
-                           start_ids[i] != p.start_ids[i]:
-                        conflicting_start_ids = True
-                        break
-                    start_ids[i] = p.start_ids[i]
-            if conflicting_start_ids:
+            start_ids = _merge_start_ids(branches)
+            if start_ids is None:
+                # This almost never happens.
                 continue
+
+            # Optimization: If this pathway has already been checked,
+            # then don't check it again.
+            path = Pathway(node_ids, transitions, start_ids, missing_ids)
+            if path in checked_pathway:
+                # This happens very often.  This can happen if there
+                # are multiple equivalent routes through a network
+                # (e.g. steps done in different order).  Branches take
+                # different combinations of routes, but when you merge
+                # them, they end up the same.
+                continue
+            checked_pathway[path] = 1
 
             # Case 2.  Look for modules with a BASED_ON_DATA
             # consequence.  Then, make sure the attribute values of
             # the data are the same.
 
-            # Make a list of the module_node_ids in any of these
-            # branches with BASED_ON_DATA consequences.
-            based_on_data_1 = []  # list of (module_node_id, cons name)
-            module_node_ids = [x for x in node_ids
-                 if isinstance(network.nodes[x], ModuleNode)]
-            for module_id in module_node_ids:
-                x = network.nodes[module_id].consequences
-                x = [x for x in x if x.behavior == BASED_ON_DATA]
-                x = [(module_id, x.name) for x in x]
-                based_on_data_1.extend(x)
-            # list of (module_node_id, attribute_name, data_node_id, value)
-            based_on_data_2 = []
-            for (module_id, name) in based_on_data_1:
-                for data_id in transitions.get(module_id, []):
-                    node = network.nodes[data_id]
-                    assert name in node.attributes
-                    value = node.attributes[name]
-                    x = module_id, name, data_id, value
-                    based_on_data_2.append(x)
-            # Make sure there are no conflicts.
-            based_on_data_2.sort()
-            conflict = False
-            for i in range(len(based_on_data_2)-1):
-                module_id1, name1, data_id1, value1 = based_on_data_2[i]
-                module_id2, name2, data_id2, value2 = based_on_data_2[i+1]
-                if module_id1 != module_id2 or name1 != name2:
+            # If there are missing_ids, there may be lots of conflicts
+            # because everything's merged.  So only examine this if
+            # there are no missing_ids.
+            if not missing_ids:
+                conflict = _does_based_on_data_conflict_with_out_data(
+                    network, node_ids, transitions)
+                if conflict and not missing_ids:
+                    # This happens 60% of the time.
                     continue
-                if value1 != value2:
-                    conflict = True
-                    break
-            if conflict and not missing_ids:
-                continue
                     
             # If this is a DataNode, the transition from prev_id (a
             # ModuleNode) to node_id may be invalid.  e.g.
@@ -2296,45 +2386,39 @@ def _find_paths_by_start_ids_hh(
                 if not _is_valid_output_id_path(
                     network, node_ids, node_id, custom_attributes,
                     nodeid2parents):
+                    # This happens 3% of the time.
                     continue
-            x = node_ids + [node_id]
-            paths.append(Pathway(x, transitions, start_ids, missing_ids))
+            #if not path.missing_ids and has_missing:
+            #    has_missing = False
+            assert path not in all_paths
+            all_paths[path] = 1
 
-    # Return the working paths.  If any of the paths have no missing
-    # nodes, then remove all paths with missing nodes.
-    no_missing = [x for x in paths if not x.missing_ids]
+    # If any of the paths have no missing nodes, then remove all paths
+    # with missing nodes.
+    no_missing = [x for x in all_paths if not x.missing_ids]
     if no_missing:
         paths = no_missing
-
-    # If there are no working paths, then merge the paths by
-    # start_ids.
-    # Be careful not to do this with working paths.  Otherwise, this
-    # may end up merging alternate routes through the network.
-    # Fastq.compress (unknown) -> is_compressed -> Fastq.compress (yes)
-    #                                           -> Fastq.compress (no)
-    schwartz = sorted([(x.start_ids, x) for x in paths])
-    paths = [x[-1] for x in schwartz]
-    i = 0
-    while i < len(paths)-1:
-        p1, p2 = paths[i], paths[i+1]
-        if paths[i] == paths[i+1]:
-            del paths[i+1]
-        elif not paths[i].missing_ids or not paths[i].missing_ids:
-            i += 1
-            continue
-        elif p1.start_ids == p2.start_ids:
-            n1, n2 = p1.node_ids, p2.node_ids
-            m1, m2 = p1.missing_ids, p2.missing_ids
-            node_ids = {}.fromkeys(n1+n2).keys()
-            missing_ids = {}.fromkeys(m1+m2).keys()
-            transitions = p1.transitions.copy()
-            for n1, n2 in p2.transitions.iteritems():
-                transitions[n1] = _uniq(transitions.get(n1, []) + n2)
-            paths[i] = Pathway(
-                node_ids, transitions, p1.start_ids, missing_ids)
-            del paths[i+1]
-        else:
-            i += 1
+    else:
+        # If there are no working paths, then merge the paths by
+        # start_ids.
+        # Can not this with working paths.  Otherwise, this may end up
+        # merging alternate routes through the network.
+        # Fastq.compress (unknown) -> is_compressed -> Fastq.compress (yes)
+        #                                           -> Fastq.compress (no)
+        sids2paths = {}  # start_ids -> list of paths
+        for path in all_paths:
+            sids = tuple(path.start_ids)
+            if sids not in sids2paths:
+                sids2paths[sids] = []
+            sids2paths[sids].append(path)
+        paths = []
+        for ps in sids2paths.itervalues():
+            p = ps[0]
+            if len(ps) > 1:
+                node_ids, transitions, missing_ids = _merge_paths(ps)
+                p = Pathway(
+                    node_ids, transitions, ps[0].start_ids, missing_ids)
+            paths.append(p)
 
     return paths
 
@@ -2349,26 +2433,79 @@ def _find_paths_by_start_ids_h(
         cache[node_id] = x
     return cache[node_id]
 
+
 def find_paths_by_start_ids(network, custom_attributes, node2startids):
     # node2startids should be a list of lists indicating the possible
     # start_ids for each input node.
     # 
     # This function will search through the network for pipelines that
-    # start from this and return a list of tuples:
+    # start from this and return a list of Pathway objects.
+    # 
     # node_ids     list of node IDs in this path.
-    # transitions  node_id -> list of next node IDs
+    # transitions  node_id -> tuple of next node IDs
     # start_ids    list of node IDs, parallel to node2startids
     # missing_ids  list of node IDs
     #
     # node_ids is only provided if there are no missing_ids.
+
+    # Pre-calculate the parents.
     nodeid2parents = _make_parents_dict(network)
     
+    # Pre-calculate which node IDs have BASED_ON_DATA consequences.
+    # No. Does not save much time.
+    #moduleid2bod = {}  # module_id -> list of attrs that are BASED_ON_DATA
+    #for module_id in range(len(network.nodes)):
+    #    if not isinstance(network.nodes[module_id], ModuleNode):
+    #        continue
+    #    x = network.nodes[module_id].consequences
+    #    x = [x for x in x if x.behavior == BASED_ON_DATA]
+    #    x = [x.name for x in x]
+    #    if x:
+    #        moduleid2bod[module_id] = x
+    
     x = _find_paths_by_start_ids_h(
-        network, 0, custom_attributes, node2startids, nodeid2parents, [], {})
+        network, 0, custom_attributes, node2startids, nodeid2parents,
+        [], {})
     # One of these may be a trivial pathway [0].  Remove this.
     #x = [x for x in x if x[0] != [0]]
     x = [x for x in x if x.node_ids != [0]]
     return x
+
+
+def _merge_paths(paths):
+    # Merge a list of paths and return a tuple of (node_ids,
+    # transitions, missing_ids).  start_ids are handled separately.
+
+    # Originally:
+    #   2% of time have 1 path.
+    #   3% of time have 2 paths.
+    # Now that we pre-cache pairs of paths:
+    #   99% of time have 2 paths.
+    # Writing code specifically for the 2 path case doesn't speed things up.
+    # Caching the previously calculated transitions doesn't speed things up.
+    
+    # Merge the node_ids and missing_ids.
+    x1 = [x.node_ids for x in paths]
+    x2 = [x.missing_ids for x in paths]
+    node_ids = frozenset().union(*x1)
+    missing_ids = frozenset().union(*x2)
+    # 76% of time is spent merging the transitions.
+    transitions = _merge_transitions(paths)
+    return node_ids, transitions, missing_ids
+
+
+def _merge_transitions(paths):
+    # Merge the transitions.
+    transitions = paths[0].transitions.copy()
+    for p in paths[1:]:
+        for k, v in p.transitions.iteritems():
+            if k not in transitions:
+                transitions[k] = v
+            elif transitions[k] != v:
+                # 90% of the time, there are only 2 values.
+                # This union called 6x more than the ones above.
+                transitions[k] = transitions[k].union(v)
+    return transitions
 
 
 def get_input_nodes(
@@ -3945,6 +4082,59 @@ def _merge_attribute_values(values1, values2):
     raise AssertionError, "How did I get here?"
 
 
+def _merge_start_ids(paths):
+    # Return a list of start IDs.  Return None if there are conflicts.
+    start_ids = paths[0].start_ids[:]
+    for p in paths[1:]:
+        assert len(start_ids) == len(p.start_ids)
+        for i in range(len(start_ids)):
+            if p.start_ids[i] is None:
+                pass  # no start ID.  ignore
+            elif start_ids[i] == p.start_ids[i]:
+                pass  # Same.  ignore.
+            elif start_ids[i] is not None:
+                return None  # Conflict.  Not None, not the same.
+            else:
+                start_ids[i] = p.start_ids[i]
+    return start_ids
+
+
+def _does_based_on_data_conflict_with_out_data(network, node_ids, transitions):
+    # Make a list of the module_node_ids in any of these
+    # branches with BASED_ON_DATA consequences.
+    
+    based_on_data = []  # list of (module_node_id, cons name)
+    # Precalculating based_on_data for the whole network
+    # does not save much time.
+    #for module_id in node_ids:
+    #    x = [(module_id, x)
+    #         for x in moduleid2bod.get(module_id, [])]
+    #    if x:
+    #        based_on_data_1.extend(x)
+    module_node_ids = [x for x in node_ids
+         if isinstance(network.nodes[x], ModuleNode)]
+    for module_id in module_node_ids:
+        x = network.nodes[module_id].consequences
+        x = [x for x in x if x.behavior == BASED_ON_DATA]
+        x = [(module_id, x.name) for x in x]
+        based_on_data.extend(x)
+
+    # Make sure there are no conflicts.
+    conflict = False
+    values = {}  # (module_id, name) -> value
+    for (module_id, name) in based_on_data:
+        key = module_id, name
+        for data_id in transitions.get(module_id, []):
+            node = network.nodes[data_id]
+            assert name in node.attributes
+            value = node.attributes[name]
+            if key not in values:
+                values[key] = value
+            elif values[key] != value:
+                return True
+    return False
+
+
 import types
 def _get_attribute_type(value):
     t = type(value)
@@ -4064,7 +4254,7 @@ def _make_ancestor_dict_h(network):
         nodes = parents[:]
         for parent_id in parents:
             nodes.extend(ancestors[parent_id])
-        nodes = _uniq(nodes)
+        nodes = _uniq_intlist(nodes)
         ancestors[node_id] = nodes
 
     return ancestors
@@ -4123,7 +4313,7 @@ def _make_descendent_dict(network):
         nodes = children[:]
         for child_id in children:
             nodes.extend(descendents[child_id])
-        nodes = _uniq(nodes)
+        nodes = _uniq_intlist(nodes)
         descendents[node_id] = nodes
 
     return descendents
@@ -4210,8 +4400,22 @@ def _flatten(l, ltypes=(list, tuple)):
     return ltype(l)
 
 
+def _flatten1_intlist(l):
+    # Flatten integer lists, nested at most 1 level.
+    return _flatten(l)
+
+
 def _uniq(seq):
     return {}.fromkeys(seq).keys()
+
+
+def _uniq_intlist(seq):
+    return _uniq(seq)
+
+
+def _uniq_flatten1_intlist(seq):
+    #return _uniq(_flatten(seq))
+    return _uniq_intlist(_flatten1_intlist(seq))
 
 
 def _print_nothing(s):

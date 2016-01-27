@@ -21,8 +21,6 @@ class Module(AbstractModule):
         in_filenames = x
         assert in_filenames, "No .bam files."
 
-        samtools = filelib.which_assert(config.samtools)
-
         jobs = []  # list of (in_filename, temp_prefix, out_filename)
         for in_filename in in_filenames:
             p, f = os.path.split(in_filename)
@@ -31,6 +29,8 @@ class Module(AbstractModule):
             x = in_filename, temp_prefix, out_filename
             jobs.append(x)
         
+        samtools = filelib.which_assert(config.samtools)
+
         # Make a list of samtools commands.
         sq = shell.quote
         commands = []
@@ -47,7 +47,7 @@ class Module(AbstractModule):
             #out_filestem = x
             
             x = [
-                samtools,
+                sq(samtools),
                 "sort",
                 "-O", "bam",
                 "-T", temp_prefix,

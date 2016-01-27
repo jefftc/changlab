@@ -60,6 +60,7 @@
 # 
 # add_read_groups_to_bam_folder
 # mark_duplicates_bam_folder
+# split_n_trim_bam_folder
 # create_realign_targets
 # realign_indels_bam_folder
 # recalibrate_base_quality_score
@@ -75,7 +76,8 @@ from Betsy.bie3 import *
 import BasicDataTypes as BDT
 
 ALIGNERS = [
-    "unknown", "bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem", "tophat"]
+    "unknown", "bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem", "tophat",
+    "star"]
 ##REFERENCE_GENOMES = ["hg18", "hg19", "mm9", "dm3"]
 
 COMPRESSION = ["unknown", "no", "gz", "bz2", "xz"]
@@ -184,6 +186,9 @@ BAM_ATTRIBUTES = SAM_ATTRIBUTES + [
     AttributeDef(
         "duplicates_marked", ["yes", "no"], "no", "no",
         help="mark duplicate or not"),
+    AttributeDef(
+        "split_n_trim", ["yes", "no"], "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
     AttributeDef(
         "base_recalibrated", ["yes", "no"], "no", "no",
         help="recalibrated or not"),
@@ -787,6 +792,23 @@ all_modules = [
         help="mark duplicates in SamFile"
         ),
     ModuleNode(
+        "split_n_trim_bam_folder",
+        [BamFolder, ReferenceGenome], BamFolder,
+        Constraint("split_n_trim", MUST_BE, "no", 0),
+        Consequence("split_n_trim", SET_TO, "yes"),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Consequence("indexed", SET_TO, "no"),
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Consequence("sorted", SET_TO, "no"),
+        Constraint("has_read_groups", MUST_BE, "yes", 0),
+        Consequence("has_read_groups", SAME_AS_CONSTRAINT),
+        Constraint("dict_added", MUST_BE, "yes", 1),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Consequence("indel_realigned", SET_TO, "no"),
+        Consequence("base_recalibrated", SET_TO, "no"),
+        help="Run SplitNCigarReads (for variant calling in RNA-Seq)",
+        ),
+    ModuleNode(
         "create_realign_targets",
         [BamFolder, ReferenceGenome], RealignTargetFolder,
         OptionDef(
@@ -806,10 +828,10 @@ all_modules = [
         #Constraint("base_recalibrated", MUST_BE, "no", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("sorted", MUST_BE, "coordinate"),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
-        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
-        Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Find the intervals to target for realignment "
         "(RealignerTargetCreator).",
         ),

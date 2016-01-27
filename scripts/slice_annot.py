@@ -231,12 +231,18 @@ def add_header_line(filename, header_list, is_csv=False):
 
     header_str = ",".join(header_list)
     x = header_str.split(",")
-    assert len(x) == len(X), "Matrix has %d columns, but %d headers given." % (
+    assert len(x) >= len(X), "Matrix has %d columns, but %d headers given." % (
         len(X), len(x))
+    # If there are more headers than columns, then fill the rest with
+    # blanks.
     headers = x
     headers_h = AnnotationMatrix.uniquify_headers(headers)
     header2annots = {}
-    for (header_h, annots) in zip(headers_h, X):
+    for i, header_h in enumerate(headers_h):
+        header_h = headers_h[i]
+        annots = [""] * len(X[0])
+        if i < len(X):
+            annots = X[i]
         header2annots[header_h] = annots
     return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 

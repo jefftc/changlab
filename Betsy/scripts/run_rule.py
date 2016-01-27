@@ -477,7 +477,6 @@ def build_pipelines(
         print "No pipelines found.  Examine network to diagnose."
         print "Make sure that no --input is missing."
         x = [x.data.datatype.name for x in in_data_nodes]
-        print "HERE 1", x
         _print_input_datatypes(
             network, x, custom_attributes, max_inputs=max_inputs)
         print
@@ -881,7 +880,6 @@ def _prune_alternate_attributes1(
     # Only check pathways that has a data node in dataid2alts.
     has_alts = []
     for i, p in enumerate(paths):
-        #node_ids, start_ids, data_indexes = x
         x = [x for x in p.node_ids if dataid2alts.get(x, [])]
         if x:
             has_alts.append(i)
@@ -1015,7 +1013,8 @@ def _list_alternate_attributes1(network, data_id, nodeid2parents):
 
 def _find_alternate_attributes(network, path_1, path_2, dataid2alts):
     from Betsy import bie3
-    
+
+    # To Do (optimization): Should change this to use set operations.
     shared_ids = [x for x in path_1.node_ids if x in path_2.node_ids]
     unique_ids_1 = [x for x in path_1.node_ids if x not in path_2.node_ids]
     unique_ids_2 = [x for x in path_2.node_ids if x not in path_1.node_ids]
@@ -1110,8 +1109,9 @@ def _intlist2bits(int_list):
 
 def _prune_alternate_attributes2(
     network, custom_attributes, paths, nodeid2parents):
-    # If a module takes DataNodes with several values, then we only
-    # need to calculate one value.
+    
+    # If a module takes DataNodes that set an attribute to different
+    # values, choose one value and don't calculate the other.
     from Betsy import bie3
 
     # Fastq.trimmed=no                              -> align
@@ -1713,6 +1713,7 @@ def _compare_paths(network, path_1, path_2):
     
     # If a node occurs in only one pathway, then it is unique for
     # sure.
+    # To Do (optimization): Should change this to use set operations.
     unique_ids_1 = _dict_diff(path_1.node_ids, path_2.node_ids, _as_dict=True)
     unique_ids_2 = _dict_diff(path_2.node_ids, path_1.node_ids, _as_dict=True)
     shared_ids = _dict_diff(path_1.node_ids, unique_ids_1, _as_dict=True)

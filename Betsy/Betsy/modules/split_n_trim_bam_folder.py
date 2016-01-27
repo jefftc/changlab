@@ -5,23 +5,19 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, in_data, out_attributes, user_options, num_cores,
+        self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
         from genomicode import filelib
         from genomicode import shell
         from genomicode import alignlib
         from Betsy import module_utils
-        
-        bam_filenames = module_utils.find_bam_files(in_data.identifier)
-        assert bam_filenames, "No .bam files."
-        filelib.safe_mkdir(out_path)
 
-        #in_path = module_utils.unzip_if_zip(in_data.identifier)
-        #x = filelib.list_files_in_path(in_path)
-        #x = [x for x in x if x.lower().endswith(".bam")]
-        #in_filenames = x
-        #assert in_filenames, "No .bam files."
+        bam_node, ref_node = antecedents
+        bam_filenames = module_utils.find_bam_files(bam_node.identifier)
+        assert bam_filenames, "No .bam files."
+        ref = alignlib.create_reference_genome(ref_node.identifier)
+        filelib.safe_mkdir(out_path)
 
         jobs = []  # list of (in_filename, log_filename, out_filename)
         for in_filename in bam_filenames:
@@ -31,36 +27,25 @@ class Module(AbstractModule):
             out_filename = os.path.join(out_path, f)
             x = in_filename, log_filename, out_filename
             jobs.append(x)
-            
         
-        # java -Xmx5g -jar MarkDuplicates.jar
-        #   I=<input.sam or .bam> O=<output.bam> 
-        #   METRICS_FILE=metricsFile CREATE_INDEX=true 
-        #   VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
-        #picard_jar = module_utils.find_picard_jar("MarkDuplicates")
-        picard_jar = alignlib.find_picard_jar("picard")
+        # java -Xmx5g -jar /usr/local/bin/GATK/GenomeAnalysisTK.jar
+        #   -T SplitNCigarReads -R ../hg19.fa -I $i -o $j
+        #   -rf ReassignOneMappingQuality -RMQF 255 -RMQT 60
+        #   -U ALLOW_N_CIGAR_READS
 
         # Make a list of commands.
         sq = shell.quote
         commands = []
         for x in jobs:
             in_filename, log_filename, out_filename = x
-
-            x = [
-                "java", "-Xmx5g",
-                "-jar", sq(picard_jar),
-                "MarkDuplicates",
-                "I=%s" % sq(in_filename),
-                "O=%s" % sq(out_filename),
-                "METRICS_FILE=metricsFile",
-                #"CREATE_INDEX=true",
-                "VALIDATION_STRINGENCY=LENIENT",
-                "REMOVE_DUPLICATES=true",
-                ]
-            x = " ".join(x)
+            x = alignlib.make_GATK_command(
+                T="SplitNCigarReads", R=sq(ref.fasta_file_full),
+                I=sq(in_filename), o=sq(out_filename),
+                rf="ReassignOneMappingQuality", RMQF=255, RMQT=60,
+                U="ALLOW_N_CIGAR_READS")
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
-            
+
         shell.parallel(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
@@ -69,6 +54,6 @@ class Module(AbstractModule):
 
     
     def name_outfile(self, antecedents, user_options):
-        return "dups.bam"
+        return "split_n_trim.bam"
 
 
