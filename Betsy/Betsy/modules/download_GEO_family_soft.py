@@ -8,15 +8,14 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         """given a GEOID  get the family soft file"""
+        from genomicode import filelib
         from Betsy import module_utils
         #in_data = antecedents
         GSEID = user_options['GSEID']
 
         assert GSEID.startswith('GSE'), 'GSEID %s is not correct' % GSEID
         download_series_family(GSEID, 300, open(outfile, 'w'))
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for download_GEO_family_soft fails' % outfile
-        )
+        filelib.assert_exists_nz(outfile)
 
 
     def name_outfile(self, antecedents, user_options):
@@ -24,6 +23,7 @@ class Module(AbstractModule):
         original_file = module_utils.get_inputid(user_options['GSEID'])
         filename = original_file + '_family.soft.gz'
         return filename
+
 
 def download_series_family(GSEID, DELAY, outhandle):
     import urllib
