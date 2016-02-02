@@ -476,47 +476,34 @@ def add_column(MATRIX, add_column):
 
 
 def copy_column(MATRIX, copy_column):
-    # copy_column is in format of: <index>,<new_header>.
+    # copy_column is a list of: <index>,<new_header>.
     if not copy_column:
         return MATRIX
     from genomicode import AnnotationMatrix
 
-    x = copy_column.split(",", 1)
-    assert len(x) == 2
-    index, new_header = x
-    index = int(index)
-    assert index >= 1 and index <= len(MATRIX.headers)
-    index -= 1  # convert to 0-based
+    jobs = []  # list of (0-based index, new_header)
+    for x in copy_column:
+        x = x.split(",", 1)
+        assert len(x) == 2
+        index, new_header = x
+        index = int(index)
+        assert index >= 1 and index <= len(MATRIX.headers)
+        index -= 1  # convert to 0-based
+        x = index, new_header
+        jobs.append(x)
 
-    # Since the hashed header names might change, keep track of the
-    # indexes for each header.
-    h_indexes = [("OLD", i) for i in range(len(MATRIX.headers))]
-    assert index >= 0 and index < len(h_indexes)
-    h_indexes.insert(index+1, ("NEW", 0))
+    headers = MATRIX.headers[:]
+    all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+    for x in jobs:
+        index, new_header = x
+        headers.append(new_header)
+        all_annots.append(all_annots[index][:])
 
-    headers = []
-    for (which_one, i) in h_indexes:
-        if which_one == "OLD":
-            headers.append(MATRIX.headers[i])
-        elif which_one == "NEW":
-            headers.append(new_header)
-        else:
-            raise AssertionError
     headers_h = AnnotationMatrix.uniquify_headers(headers)
-
+    assert len(headers_h) == len(all_annots)
     header2annots = {}
-    for i_new, (which_one, i_old) in enumerate(h_indexes):
-        if which_one == "OLD":
-            old_header_h = MATRIX.headers_h[i_old]
-            new_header_h = headers_h[i_new]
-            header2annots[new_header_h] = MATRIX.header2annots[old_header_h]
-        elif which_one == "NEW":
-            annots = MATRIX.header2annots[MATRIX.headers_h[index]]
-            new_header_h = headers_h[i_new]
-            header2annots[new_header_h] = annots
-        else:
-            raise AssertionError
-
+    for (header_h, annots) in zip(headers_h, all_annots):
+        header2annots[header_h] = annots
     return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 
 
@@ -1424,8 +1411,8 @@ def main():
         'the new first column.  If <index> is "END", this will be '
         "the last column.  (MULTI)")
     group.add_argument(
-        "--copy_column", 
-        help="Copy a column.  Format: <index>,<new_header>.")
+        "--copy_column", default=[], action="append",
+        help="Copy a column.  Format: <index>,<new_header>.  (MULTI)")
     
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
