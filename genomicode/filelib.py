@@ -676,7 +676,7 @@ def list_files_in_path(
         return [x]
 
     filenames = []
-    for x in os.walk(file_or_path):
+    for x in os.walk(file_or_path, followlinks=True):
         dirpath, dirnames, files = x
         x = [os.path.join(dirpath, x) for x in files]
         filenames.extend(x)

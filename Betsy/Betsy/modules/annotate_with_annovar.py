@@ -20,13 +20,14 @@ class Module(AbstractModule):
         assert vcf_filenames, "No .vcf files."
         filelib.safe_mkdir(out_path)
 
-        jobs = []  # list of (in_filename, out_filestem)
+        jobs = []  # list of (in_filename, log_filename, out_filestem)
         for in_filename in vcf_filenames:
             # Annovar takes a filestem, without the ".vcf".
             p, f = os.path.split(in_filename)
             f, exp = os.path.splitext(f)
+            log_filename = os.path.join(out_path, "%s.log" % f)
             out_filestem = os.path.join(out_path, f)
-            x = in_filename, out_filestem
+            x = in_filename, log_filename, out_filestem
             jobs.append(x)
             
         buildver = module_utils.get_user_option(
@@ -58,7 +59,7 @@ class Module(AbstractModule):
         sq = shell.quote
         commands = []
         for x in jobs:
-            in_filename, out_filestem = x
+            in_filename, log_filename, out_filestem = x
 
             x1 = [x[0] for x in protocols]
             x2 = [x[1] for x in protocols]
@@ -75,6 +76,7 @@ class Module(AbstractModule):
                 sq(annodb),
                 ]
             x = " ".join(x)
+            x = "%s >& %s" % (x, log_filename)
             commands.append(x)
             
         #for x in commands:

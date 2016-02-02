@@ -580,15 +580,15 @@ def prune_pipelines(
 
     nodeid2parents = bie3._make_parents_dict(network)
     
-    # Optimizations:
-    # 1.  Convert node_ids to dictionaries.
-    # 2.  Convert the transitions to sets for easier comparison.
-    for i, p in enumerate(paths):
-        # Not much more efficient.
-        #p.node_ids_set = set(p.node_ids)
-        p.node_ids = {}.fromkeys(p.node_ids)
-        for key, value in p.transitions.iteritems():
-            p.transitions[key] = set(value)
+    ## Optimizations:
+    ## 1.  Convert node_ids to dictionaries.
+    ## 2.  Convert the transitions to sets for easier comparison.
+    #for i, p in enumerate(paths):
+    #    # Not much more efficient.
+    #    #p.node_ids_set = set(p.node_ids)
+    #    p.node_ids = {}.fromkeys(p.node_ids)
+    #    for key, value in p.transitions.iteritems():
+    #        p.transitions[key] = set(value)
 
     # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)
     # pruning.
@@ -602,11 +602,11 @@ def prune_pipelines(
     paths = _prune_superset_pipelines(network, paths)
     paths = _prune_parallel_pipelines(network, paths, nodeid2parents)
     
-    # Convert node_ids back to lists.
-    for i, p in enumerate(paths):
-        p.node_ids = p.node_ids.keys()
-        for key, value in p.transitions.iteritems():
-            p.transitions[key] = list(value)
+    ## Convert node_ids back to lists.
+    #for i, p in enumerate(paths):
+    #    p.node_ids = p.node_ids.keys()
+    #    for key, value in p.transitions.iteritems():
+    #        p.transitions[key] = list(value)
             
     if not paths:
         print "All pipelines pruned.  This can happen if:"
@@ -652,9 +652,11 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
 
     # Search through the network for data nodes that might be subject
     # to custom_attributes.
-    all_node_ids = {}
-    for x in paths:
-        all_node_ids.update(x.node_ids)
+    x = [x.node_ids for x in paths]
+    all_node_ids = x[0].union(*x[1:])
+    #all_node_ids = {}
+    #for x in paths:
+    #    all_node_ids.update(x.node_ids)
 
     descendents = bie3._make_descendent_dict(network)
     ## Only care about the descendents that are in this network.
@@ -669,7 +671,8 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     module_ids = [
         x for x in all_node_ids
         if isinstance(network.nodes[x], bie3.ModuleNode)]
-    data_node_ids = []
+    #data_node_ids = []
+    data_node_ids = set()
     for module_id in module_ids:
         module = network.nodes[module_id]
         
@@ -707,14 +710,15 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
                 good_ids.append(node_id)
         node_ids = good_ids
 
-        data_node_ids.extend(node_ids)
-    data_node_ids = {}.fromkeys(data_node_ids)
+        #data_node_ids.extend(node_ids)
+        data_node_ids = data_node_ids.union(node_ids)
+    #data_node_ids = {}.fromkeys(data_node_ids)
 
     # List the node_ids that either don't match the user attributes,
     # or are ambiguous, e.g.
     # Fastq.adapters = [no, yes]; user wants no
-    mismatch_node_ids = {}
-    ambiguous_node_ids = {}
+    mismatch_node_ids = set()
+    ambiguous_node_ids = set()
     for node_id in data_node_ids:
         node = network.nodes[node_id]
         attrs = dname2attrs[node.datatype.name]
@@ -724,10 +728,10 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
             dtype = bie3._get_attribute_type(dvalue)
             assert utype == bie3.TYPE_ATOM
             if dtype == bie3.TYPE_ENUM:
-                ambiguous_node_ids[node_id] = 1
+                ambiguous_node_ids.add(node_id)
                 continue
             if dvalue != uvalue:
-                mismatch_node_ids[node_id] = 1
+                mismatch_node_ids.add(node_id)
 
     if not mismatch_node_ids and not ambiguous_node_ids:
         return paths
@@ -741,14 +745,16 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     for (i, p) in enumerate(paths):
         #node_ids, start_ids, data_indexes = x
         # If there's a mismatch, delete this path.
-        x = [x for x in mismatch_node_ids if x in p.node_ids]
-        if x:
+        #x = [x for x in mismatch_node_ids if x in p.node_ids]
+        #if x:
+        if not p.node_ids.intersection(mismatch_node_ids):
             delete[i] = 1
             continue
 
         # If there's no ambiguity, then keep this path.
-        x = [x for x in ambiguous_node_ids if x in p.node_ids]
-        if not x:
+        #x = [x for x in ambiguous_node_ids if x in p.node_ids]
+        #if not x:
+        if not p.node_ids.intersection(ambiguous_node_ids):
             continue
         check_ids = x
 
@@ -1014,10 +1020,12 @@ def _list_alternate_attributes1(network, data_id, nodeid2parents):
 def _find_alternate_attributes(network, path_1, path_2, dataid2alts):
     from Betsy import bie3
 
-    # To Do (optimization): Should change this to use set operations.
-    shared_ids = [x for x in path_1.node_ids if x in path_2.node_ids]
-    unique_ids_1 = [x for x in path_1.node_ids if x not in path_2.node_ids]
-    unique_ids_2 = [x for x in path_2.node_ids if x not in path_1.node_ids]
+    #shared_ids = [x for x in path_1.node_ids if x in path_2.node_ids]
+    #unique_ids_1 = [x for x in path_1.node_ids if x not in path_2.node_ids]
+    #unique_ids_2 = [x for x in path_2.node_ids if x not in path_1.node_ids]
+    shared_ids = path_1.node_ids.intersection(path_2.node_ids)
+    unique_ids_1 = path_1.node_ids.difference(path_2.node_ids)
+    unique_ids_2 = path_2.node_ids.difference(path_1.node_ids)
 
     # Look for a DataNode with alternates that is shared in both pathways.
     data_ids = [x for x in shared_ids if dataid2alts.get(x, [])]
@@ -1125,13 +1133,15 @@ def _prune_alternate_attributes2(
     #     custom_attributes).
     # 3.  Print a message showing which value was chosen.
 
-    path_ids = {}
-    transitions = {}
-    for path in paths:
-        path_ids.update(path.node_ids)
-        for node_id, next_ids in path.transitions.iteritems():
-            x = transitions.get(node_id, set()).union(next_ids)
-            transitions[node_id] = x
+    #path_ids = {}
+    #transitions = {}
+    #for path in paths:
+    #    path_ids.update(path.node_ids)
+    #    for node_id, next_ids in path.transitions.iteritems():
+    #        x = transitions.get(node_id, set()).union(next_ids)
+    #        transitions[node_id] = x
+    x = bie3._merge_paths(paths)
+    path_ids, transitions, x = x
     ancestors = bie3._make_ancestor_dict(network)
 
     # Find module nodes that can take DataNodes with different
@@ -1713,10 +1723,16 @@ def _compare_paths(network, path_1, path_2):
     
     # If a node occurs in only one pathway, then it is unique for
     # sure.
-    # To Do (optimization): Should change this to use set operations.
-    unique_ids_1 = _dict_diff(path_1.node_ids, path_2.node_ids, _as_dict=True)
-    unique_ids_2 = _dict_diff(path_2.node_ids, path_1.node_ids, _as_dict=True)
-    shared_ids = _dict_diff(path_1.node_ids, unique_ids_1, _as_dict=True)
+    shared_ids = path_1.node_ids.intersection(path_2.node_ids)
+    unique_ids_1 = path_1.node_ids.difference(path_2.node_ids)
+    unique_ids_2 = path_2.node_ids.difference(path_1.node_ids)
+    shared_ids = set(shared_ids)
+    unique_ids_1 = set(unique_ids_1)
+    unique_ids_2 = set(unique_ids_2)
+    ## To Do (optimization): Should change this to use set operations.
+    #unique_ids_1 = _dict_diff(path_1.node_ids, path_2.node_ids, _as_dict=True)
+    #unique_ids_2 = _dict_diff(path_2.node_ids, path_1.node_ids, _as_dict=True)
+    #shared_ids = _dict_diff(path_1.node_ids, unique_ids_1, _as_dict=True)
 
     # If a Module occurs in both pathways, it might be unique if it
     # has different transitions.
@@ -1738,9 +1754,15 @@ def _compare_paths(network, path_1, path_2):
         #if sorted(children_1) == sorted(children_2):
         if children_1 == children_2:
             continue
-        del shared_ids[node_id]
-        unique_ids_1[node_id] = 1
-        unique_ids_2[node_id] = 1
+        shared_ids.remove(node_id)
+        unique_ids_1.add(node_id)
+        unique_ids_2.add(node_id)
+        #del shared_ids[node_id]
+        #unique_ids_1[node_id] = 1
+        #unique_ids_2[node_id] = 1
+    shared_ids = frozenset(shared_ids)
+    unique_ids_1 = frozenset(unique_ids_1)
+    unique_ids_2 = frozenset(unique_ids_2)
     return shared_ids, unique_ids_1, unique_ids_2
 
 
@@ -1784,8 +1806,8 @@ class PathSubset:
         self, network, path_node_ids, path_transitions, sub_node_ids,
         nodeid2parents):
         # Make sure these are dicts, or will be really slow.
-        assert type(path_node_ids) is type({})
-        assert type(sub_node_ids) is type({})
+        assert type(path_node_ids) in [type({}), frozenset, set]
+        assert type(sub_node_ids) in [type({}), frozenset, set]
 
         self._network = network
         self._nodeid2parents = nodeid2parents

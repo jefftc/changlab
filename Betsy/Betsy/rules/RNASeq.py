@@ -23,6 +23,18 @@ RSEMResults = DataType(
     help="Results from an rsem-calculate-expression analysis.",
     )
 
+STARReferenceGenome = DataType(
+    "STARReferenceGenome",
+    help="Indexed for STAR.",
+    )
+
+STARAlignmentFolder = DataType(
+    "STARAlignmentFolder",
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+    help="Results from a STAR alignment.  Includes SAM files and other stuff.",
+    )
+
 HTSeqCountResults = DataType(
     "HTSeqCountResults",
     AttributeDef(
@@ -41,6 +53,8 @@ all_data_types = [
     RSEMReferenceGenome,
     #FullyIndexedRSEMReferenceGenome,
     RSEMResults,
+    STARReferenceGenome,
+    STARAlignmentFolder,
     HTSeqCountResults,
     HTSeqCountSummary,
     ]
@@ -109,6 +123,41 @@ all_modules = [
         # What is this for?
         #Consequence("predataset", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
+        ),
+
+    ModuleNode(
+        "index_reference_star",
+        NGS.ReferenceGenome, STARReferenceGenome,
+        OptionDef(
+            "gtf_file", 
+            help="Gene annotations in GTF format.",
+            ),
+        ),
+
+    ModuleNode(
+        "align_with_star",
+        [NGS.FastqFolder, NGS.SampleGroupFile, STARReferenceGenome],
+        STARAlignmentFolder,
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint(
+            "orientation", CAN_BE_ANY_OF, NGS.ORIENTATION_NOT_UNKNOWN, 1),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        help="Align to a reference genome with star.  "
+        "Running with too many processors will kill the machine.  8 is "
+        "pretty safe."
+        ),
+
+    ModuleNode(
+        "extract_star_samfolder",
+        STARAlignmentFolder, NGS.SamFolder,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        Consequence("aligner", SET_TO, "star"),
+        help="Pull out the SAM files from the STAR results folder.",
         ),
 
     ModuleNode(

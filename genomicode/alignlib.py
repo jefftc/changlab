@@ -971,12 +971,20 @@ def make_GATK_command(**params):
 
 
 def make_platypus_command(
-    bam_file, ref_file, log_file=None, out_file=None, num_cores=None):
+    bam_file, ref_file, log_file=None, out_file=None, buffer_size=None,
+    max_reads=None):
     import os
     from genomicode import config
     from genomicode import shell
     from genomicode import filelib
 
+    if max_reads is not None:
+        assert max_reads > 2 and max_reads < 1E10
+    if buffer_size is not None:
+        assert buffer_size > 1E4 and buffer_size < 1E8
+
+    # nCPU command seems to be broken.  May cut off last line.
+    num_cores = None
     if num_cores is not None:
         assert num_cores >= 1 and num_cores < 256
 
@@ -1000,4 +1008,8 @@ def make_platypus_command(
         cmd += ["--output", out_file]
     if num_cores:
         cmd += ["--nCPU", num_cores]
+    if buffer_size:
+        cmd += ["--bufferSize", buffer_size]
+    if max_reads:
+        cmd += ["--maxReads", max_reads]
     return " ".join(map(str, cmd))

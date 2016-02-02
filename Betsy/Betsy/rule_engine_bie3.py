@@ -48,10 +48,11 @@ def run_pipeline(
     LOG_FILENAME = os.path.join(output_path, 'traceback.txt')
     logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
 
-    # Make a list of the valid node_ids in the pipeline.
-    x = [x.node_ids for x in paths]
-    x = bie3._uniq(bie3._flatten(x))
-    path_ids = x    # list of node_ids in the pipeline.
+    # Make a list of the valid node_ids and transitions in the pipeline.
+    x = bie3._merge_paths(paths)
+    path_ids, path_transitions, x = x
+    
+    
 
     # Add the start_ids to the stack.  Each member of the stack can be
     # a tuple of:
@@ -109,7 +110,7 @@ def run_pipeline(
             # If the input data for this module doesn't exist, then
             # just try it again later.
             all_antecedent_ids = _get_available_input_combinations(
-                network, node_id, custom_attributes, pool)
+                network, node_id, custom_attributes, pool, path_transitions)
             if not all_antecedent_ids:
                 # No sets of inputs are ready to run.  Put back to the
                 # bottom of the stack and try again later.
@@ -120,7 +121,7 @@ def run_pipeline(
                 assert len(node.in_datatypes) == len(antecedent_ids)
                 x = node, node_id, antecedent_ids, transitions
                 stack.append(x)
-            # If I've added new analyses to run, then reset the
+            # If I've added new analysis to run, then reset the
             # failures counter.
             num_failures = 0
         elif isinstance(node, bie3.ModuleNode):
@@ -439,7 +440,7 @@ def _is_module_output_complete(path):
 
 
 def _get_available_input_combinations(
-    network, module_id, custom_attributes, pool):
+    network, module_id, custom_attributes, pool, valid_transitions):
     # Return a list of tuples indicating the node_ids that are:
     # 1.  Valid sets of input data.
     # 2.  Available in the pool.
@@ -456,9 +457,19 @@ def _get_available_input_combinations(
     available = []
     for input_ids in all_input_ids:
         assert len(module.in_datatypes) == len(input_ids)
+        # Make sure all these input_ids are available.
         x = [x for x in input_ids if x in pool]
-        if len(x) == len(input_ids):
-            available.append(x)
+        if len(x) != len(input_ids):
+            continue
+        # Make sure all transitions are valid.
+        valid = True
+        for x in input_ids:
+            if module_id not in valid_transitions.get(x, []):
+                valid = False
+                break
+        if not valid:
+            continue
+        available.append(input_ids)
     return available
 
 

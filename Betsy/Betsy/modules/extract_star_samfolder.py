@@ -9,32 +9,21 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from Betsy import module_utils
 
-        align_node = in_data
-        x = module_utils.find_bam_files(align_node.identifier)
-        x = [x for x in x if x.endswith("accepted_hits.bam")]
-        bam_filenames = x
-        assert bam_filenames, "No accepted_hits.bam files."
+        x = filelib.list_files_in_path(
+            in_data.identifier, endswith=".Aligned.out.sam")
+        sam_filenames = x
+        assert sam_filenames, "No .Aligned.out.sam files."
         filelib.safe_mkdir(out_path)
 
         jobs = []  # list of (in_filename, out_filename)
-        for in_filename in bam_filenames:
-            # Names must in the format:
-            # <path>/<sample>.tophat/accepted_hits.bam
-            # full_path   <path>/<sample>.tophat
-            # path        <path>
-            # tophat_dir  <sample>.tophat
-            # file_       accepted_hits.bam
-            # sample      <sample>
-            
-            full_path, file_ = os.path.split(in_filename)
-            path, tophat_dir = os.path.split(full_path)
-
-            assert file_ == "accepted_hits.bam"
-            assert tophat_dir.endswith(".tophat")
-            sample = tophat_dir[:-7]
-            out_filename = os.path.join(out_path, "%s.bam" % sample)
+        for in_filename in sam_filenames:
+            # in_filename has format:
+            # <path>/<sample>.Aligned.out.sam
+            path, x = os.path.split(in_filename)
+            sample, x = x.split(".", 1)
+            assert x == "Aligned.out.sam"
+            out_filename = os.path.join(out_path, "%s.sam" % sample)
             assert in_filename != out_filename
             jobs.append((in_filename, out_filename))
 
@@ -53,5 +42,5 @@ class Module(AbstractModule):
 
 
     def name_outfile(self, antecedents, user_options):
-        return "tophat.bam"
+        return "star.sam"
 

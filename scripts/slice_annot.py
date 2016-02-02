@@ -15,6 +15,7 @@
 # reorder_headers_alphabetical
 # upper_headers
 # hash_headers
+# remove_duplicate_headers
 # rename_duplicate_headers
 # rename_header
 # rename_header_i
@@ -29,6 +30,7 @@
 # copy_value_if_empty
 # copy_value_if_empty_header
 # copy_value_if_empty_same_header
+# copy_value_if_empty_same_header_all
 # replace_whole_annot
 # replace_annots
 # prepend_to_annots
@@ -54,6 +56,8 @@
 # divide_many_annots
 # average_same_header
 # round_annots
+#
+# vcf_standardize
 #
 # subtract_two_bed_lists
 # subtract_value_from_bed_list
@@ -261,6 +265,21 @@ def remove_header_line(filename, read_as_csv):
     for x in matrix:
         print "\t".join(map(str, x))
     
+
+def remove_duplicate_headers(MATRIX, remove_dups):
+    if not remove_dups:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    I = []
+    seen = {}
+    for i, h in enumerate(MATRIX.headers):
+        if h in seen:
+            continue
+        seen[h] = 1
+        I.append(i)
+    return AnnotationMatrix.colslice(MATRIX, I)
+
 
 def rename_duplicate_headers(MATRIX, rename_dups):
     if not rename_dups:
@@ -651,6 +670,21 @@ def copy_value_if_empty_same_header(MATRIX, copy_values):
                 if not annots_dst[i].strip() and annots_src[i].strip():
                     annots_dst[i] = annots_src[i]
     return MATRIX
+
+
+def copy_value_if_empty_same_header_all(MATRIX, copy_values):
+    # copy_values is boolean
+    if not copy_values:
+        return MATRIX
+
+    dup = []
+    seen = {}
+    for h in MATRIX.headers:
+        if h in seen:
+            dup.append(h)
+        seen[h] = 1
+    dup = {}.fromkeys(dup)
+    return copy_value_if_empty_same_header(MATRIX, dup)
 
 
 def strip_all_annots(MATRIX, strip):
@@ -1224,6 +1258,160 @@ def round_annots(MATRIX, round_annots):
     return MATRIX
 
 
+def convert_percent_to_decimal(MATRIX, convert):
+    # Format: list of <index>.  1-based indexes.
+    if not convert:
+        return MATRIX
+    
+    indexes = []  # list of 0-based indexes
+    for x in convert:
+        I = parse_indexes(MATRIX, x)
+        for i in I:
+            assert i >= 0 and i < len(MATRIX.headers)
+        indexes.extend(I)
+    indexes = sorted({}.fromkeys(indexes))
+
+    MATRIX = MATRIX.copy()
+    for index in indexes:
+        header_h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[header_h]
+        for i in range(len(annots)):
+            x = annots[i]
+            x = x.strip()
+            if not x:
+                continue
+            if x.endswith("%"):
+                x = x[:-1]
+            x = float(x) / 100
+            annots[i] = x
+        MATRIX.header2annots[header_h] = annots
+    return MATRIX
+
+
+def vcf_standardize(MATRIX, vcf_standardize):
+    if not vcf_standardize:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    # List of tuples:
+    # - header name
+    # - list of possible original headers
+    COLUMNS = [
+        ("chrom", ["chrom"]),
+        ("start", ["start"]),
+        ("end", ["end"]),
+        ("ref_allele", ["ref_allele"]),
+        ("alt_allele", ["alt_allele"]),
+        ("gene", ["gene"]),
+        ("entrez_gene_id", ["entrez_gene_id"]),
+        ("func", ["func"]),
+        ("exonicfunc", ["exonicfunc"]),
+        ("aachange", ["aachange"]),
+        ("num_ref", ["num_ref", "t_ref_count"]),
+        ("num_alt", ["num_alt", "t_alt_count"]),
+        # total_reads    calculated
+        # vaf            calculated
+        ]
+
+    headers = []
+    all_annots = []  # list of lists
+
+    for (dst_header, src_headers) in COLUMNS:
+        header_i = None
+        for h in src_headers:
+            if h in MATRIX.headers:
+                header_i = MATRIX.headers.index(h)
+                break
+        assert header_i is not None, "Missing column: %s" % dst_header
+        h = MATRIX.headers_h[header_i]
+        annots = MATRIX.header2annots[h]
+        
+        headers.append(dst_header)
+        all_annots.append(annots)
+
+    # Calculate the total reads and VAF.
+    x1 = headers.index("num_ref")
+    x2 = headers.index("num_alt")
+    num_ref = all_annots[x1]
+    num_alt = all_annots[x2]
+    total_reads = [None] * len(num_ref)
+    vaf = [None] * len(num_ref)
+    for i in range(len(num_ref)):
+        total_reads[i] = int(num_ref[i]) + int(num_alt[i])
+        vaf[i] = float(num_alt[i]) / total_reads[i]
+    headers.append("total_reads")
+    headers.append("vaf")
+    vaf = ["%.6f" % x for x in vaf]
+    all_annots.append(total_reads)
+    all_annots.append(vaf)
+
+    # Strip all annots.
+    for i in range(len(all_annots)):
+        for j in range(len(all_annots[i])):
+            all_annots[i][j] = str(all_annots[i][j]).strip()
+
+    headers_h = AnnotationMatrix.uniquify_headers(headers)
+    assert len(headers_h) == len(all_annots)
+    header2annots = {}
+    for (header_h, annots) in zip(headers_h, all_annots):
+        header2annots[header_h] = annots
+    return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
+
+
+def vcf_extract_format_values(MATRIX, vcf_format):
+    # Format: <header of col with values>,<value>[,value].
+    if not vcf_format:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    x = vcf_format.split(",")
+    x = [x.strip() for x in x]
+    assert len(x) >= 2, "Format: <header>,<value>[,<value>...]"
+
+    header = x[0]
+    value_headers = x[1:]
+
+    assert "FORMAT" in MATRIX.headers, "Missing header: FORMAT"
+    assert header in MATRIX.headers, "Missing header: %s" % header
+    # Assume no duplicates.  Just use the first one.
+
+    h_f = MATRIX.headers_h[MATRIX.headers.index("FORMAT")]
+    h_v = MATRIX.headers_h[MATRIX.headers.index(header)]
+    annots_f = MATRIX.header2annots[h_f]  # list of strings
+    annots_v = MATRIX.header2annots[h_v]  # list of strings
+    assert len(annots_f) == len(annots_v)
+
+    # Parse out the annotations into a matrix.
+    annots_f = [x.split(":") for x in annots_f]
+    annots_v = [x.split(":") for x in annots_v]
+
+    headers = MATRIX.headers[:]
+    all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+    for value_header in value_headers:
+        values = [""] * len(annots_f)
+        for i in range(len(annots_f)):
+            fmt = annots_f[i]
+            vals = annots_v[i]
+            # Sometimes len(vals) < len(fmt).
+            # GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
+            # ./.:.:1
+            #assert len(fmt) == len(vals)
+            assert value_header in fmt, \
+                   "Missing value for: %s" % value_header
+            j = fmt.index(value_header)
+            if j < len(vals):
+                values[i] = vals[j]
+        headers.append(value_header)
+        all_annots.append(values)
+                       
+    headers_h = AnnotationMatrix.uniquify_headers(headers)
+    assert len(headers_h) == len(all_annots)
+    header2annots = {}
+    for (header_h, annots) in zip(headers_h, all_annots):
+        header2annots[header_h] = annots
+    return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
+
+
 def subtract_two_bed_lists(MATRIX, subtract_two_bed_lists):
     # Format: <annot 1>,<annot 2>,<dest>.  Each are 1-based
     # indexes.  <annot 1> is comma-separated list of numbers.  May end
@@ -1449,6 +1637,10 @@ def main():
         "--hash_headers", action="store_true",
         help="Hash the names of the headers.")
     group.add_argument(
+        "--remove_duplicate_headers", action="store_true",
+        help="If a matrix contains columns with the same header, "
+        "keep only the first column.")
+    group.add_argument(
         "--rename_duplicate_headers", action="store_true",
         help="Make all the headers unique.")
     group.add_argument(
@@ -1503,6 +1695,11 @@ def main():
         help="Fill empty annotations with values from other columns "
         "that share this header.  Gets the value from the left-most non-empty "
         "column with the same header.  (MULTI)")
+    group.add_argument(
+        "--copy_value_if_empty_same_header_all", action="store_true",
+        help="Fill empty annotations with values from other columns "
+        "that share the same header.  Do for all columns that share the same "
+        "header.")
     group.add_argument(
         "--rename_annot", default=[], action="append",
         help="Replace one whole annotation (not a substring) with another.  "
@@ -1590,7 +1787,22 @@ def main():
         "--round", default=[], action="append",
         help="Round the values of a column to integers.  "
         "Format: <index>.  All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
+        "--convert_percent_to_decimal", default=[], action="append",
+        help='Remove "%%" (if necessary) and divide by 100.  '
+        "Format: <index>.  All indexes should be 1-based.  (MULTI)")
     
+
+    group = parser.add_argument_group(title="VCF files")
+    group.add_argument(
+        "--vcf_standardize", action="store_true",
+        help="Take a VCF file (possibly annotated by ANNOVAR) and put "
+        "into a standard format.  ACTUALLY, NOT VCF.")
+    group.add_argument(
+        "--vcf_extract_format_values", 
+        help="Take a VCF file and extract the values from the corresponding "
+        "FORMAT column.  Format: <header of col with values>,<value>[,value]."
+        "  Example: Sample1,RD,AD,DP,FREQ")
 
     group = parser.add_argument_group(title="Application-Specific Stuff")
     ## group.add_argument(
@@ -1644,6 +1856,7 @@ def main():
         MATRIX, args.reorder_headers_alphabetical)
     MATRIX = upper_headers(MATRIX, args.upper_headers)
     MATRIX = hash_headers(MATRIX, args.hash_headers)
+    MATRIX = remove_duplicate_headers(MATRIX, args.remove_duplicate_headers)
     MATRIX = rename_duplicate_headers(MATRIX, args.rename_duplicate_headers)
     MATRIX = rename_header(MATRIX, args.rename_header)
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)
@@ -1661,6 +1874,8 @@ def main():
         MATRIX, args.copy_value_if_empty_header)
     MATRIX = copy_value_if_empty_same_header(
         MATRIX, args.copy_value_if_empty_same_header)
+    MATRIX = copy_value_if_empty_same_header_all(
+        MATRIX, args.copy_value_if_empty_same_header_all)
     MATRIX = replace_annot(MATRIX, args.replace_annot)
     MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
@@ -1682,6 +1897,12 @@ def main():
     MATRIX = divide_many_annots(MATRIX, args.divide_many_annots)
     MATRIX = average_same_header(MATRIX, args.average_same_header)
     MATRIX = round_annots(MATRIX, args.round)
+    MATRIX = convert_percent_to_decimal(
+        MATRIX, args.convert_percent_to_decimal)
+
+    # VCF
+    MATRIX = vcf_standardize(MATRIX, args.vcf_standardize)
+    MATRIX = vcf_extract_format_values(MATRIX, args.vcf_extract_format_values)
 
     # Application-specific stuff
     #MATRIX = calc_blockSizes(MATRIX, args.calc_blockSizes)
