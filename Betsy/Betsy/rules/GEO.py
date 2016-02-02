@@ -1,8 +1,18 @@
+# GEOSeries                    Marker representing a GEO Series.
+# GEOSeriesMatrixFile          From GEO.  Contains expression data and sample.
+# GEOFamilySoftFile            From GEO.  Has gene annotations.
+#
+# GEOSignalFile                Signal values submitted by the author.
+# GEOSampleMetadata            Data about samples.
+# GEOPlatformAnnotationFile    Annotations for a platform, from family soft
+
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
+import GeneExpProcessing as GXP
 
-# TODO: Need code to extract _SignalFile_Postprocess from series
-# matrix file.
+
+
+
 
 GEOSeries = DataType(
     "GEOSeries",
@@ -11,13 +21,6 @@ GEOSeries = DataType(
         'unspecified', 'unspecified', help="contents"),
     help="GEOID to download from the GEO database")
 
-GEOFamilySoftFile = DataType(
-    "GEOFamilySoftFile",
-    AttributeDef(
-        "contents", BDT.CONTENTS,
-        'unspecified', 'unspecified',help="contents"),
-    help="Family soft file from the GEO database.")
-
 GEOSeriesMatrixFile = DataType(
     "GEOSeriesMatrixFile",
     AttributeDef(
@@ -25,15 +28,41 @@ GEOSeriesMatrixFile = DataType(
         help="contents"),
     help="GEO matrix series file download from the GEO database")
 
+GEOFamilySoftFile = DataType(
+    "GEOFamilySoftFile",
+    AttributeDef(
+        "contents", BDT.CONTENTS,
+        "unspecified", "unspecified", help="contents"),
+    help="Family soft file from the GEO database.",
+    )
+
+GEOSignalFile = DataType(
+    "GEOSignalFile",
+    AttributeDef(
+        "contents", BDT.CONTENTS,
+        "unspecified", "unspecified", help="contents"),
+    help="Signal values uploaded by the author.",
+    )
+
 GEOSampleMetadata = DataType(
     "GEOSampleMetadata",
-    help="Metadata for the samples in a GEO data set.")
+    help="Metadata for the samples in a GEO data set.",
+    )
+
+GEOPlatformAnnotationFile = DataType(
+    "GEOPlatformAnnotationFile",
+    help="Contains the Gene IDs and annotations for this platform.",
+    )
+
 
 all_data_types = [
     GEOSeries,
-    GEOFamilySoftFile,
     GEOSeriesMatrixFile,
+    GEOFamilySoftFile,
+
+    GEOSignalFile,
     GEOSampleMetadata,
+    GEOPlatformAnnotationFile,
     ]
 
 all_modules = [
@@ -62,6 +91,27 @@ all_modules = [
         help="Download the supplemental expression files from GEO.",
         ),
 
+    ModuleNode(
+        "extract_geo_signal",
+        #GEOSeriesMatrixFile, GXP.UnprocessedSignalFile,
+        GEOSeriesMatrixFile, GEOSignalFile,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        #Consequence("format", SET_TO, "tdf"),
+        ),
+
+    ModuleNode(
+        "extract_platform_annotations",
+        GEOFamilySoftFile, GEOPlatformAnnotationFile,
+        ),
+
+    ModuleNode(
+        "convert_geo_to_signal_file",
+        [GEOSignalFile, GEOPlatformAnnotationFile], GXP.UnprocessedSignalFile,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        ),
+
     #ModuleNode(
     #    "acquire_geo_expression_files",
     #    [BDT.ExpressionFiles, GEOSeriesMatrixFile],
@@ -87,16 +137,19 @@ all_modules = [
         ),
 
     ModuleNode(
-        "get_geo_sample_metadata", GEOSeriesMatrixFile, GEOSampleMetadata,
+        "get_geo_sample_metadata",
+        GEOSeriesMatrixFile, GEOSampleMetadata,
         OptionDef("set_NA_to", "NA", help='Convert "NA" to another value.'),
         help="Get the metadata for the samples for a GEO data set.",
         ),
 
     ModuleNode(
-        'convert_family_soft_to_rename', GEOFamilySoftFile, BDT.RenameFile,
+        'convert_family_soft_to_rename',
+        GEOFamilySoftFile, BDT.RenameFile,
         OptionDef("GSEID", help='GSEID for download family_soft file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("labels_from", SET_TO_ONE_OF, ["title","description"]),
-        help="convert famliy soft file to RenameFile"),
+        help="convert famliy soft file to RenameFile",
+        ),
     ]

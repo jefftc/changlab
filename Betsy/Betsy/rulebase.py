@@ -25,6 +25,8 @@ def import_rules():
     x = [x for x in x if not x.startswith('._')]
     x = [x for x in x if not x.startswith('__init__')]
     x = [x for x in x if not x.startswith('.DS_Store')]
+    x = [x for x in x if not x.startswith(".")]
+    x = [x for x in x if not x.startswith("#")]
     #x = [x for x in x if x.endswith("_rule")]        # Must end with _rule.
     #x = [x for x in x if x.endswith(".py")]        # Must end with _rule.
     module_names = x
