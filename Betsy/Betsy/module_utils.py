@@ -50,6 +50,8 @@ assert_sample_group_file
 check_inpath
 make_filename
 
+calc_max_procs_from_ram
+
 """
 # _find_ids_that_pass_filters
 
@@ -1087,3 +1089,25 @@ def get_user_option(
 #def make_filename(sample_filename, *args):
 #    # Create a new filename using information from a sample.
 #    # <PATH>/<ROOT>.<EXT>
+
+
+def calc_max_procs_from_ram(gb_per_proc, buffer=8):
+    # Given the number of gigabytes each processor will need,
+    # calculate the maximum number of processes that should be run
+    # concurrently.
+    # buffer is the number of gb to leave for other processes.
+    total_bytes = get_physical_memory()
+    total_gb = total_bytes/(1024*1024*1024)
+    max_procs = (total_gb-buffer)/gb_per_proc
+    max_procs = max(max_procs, 1)
+    return max_procs
+
+
+def get_physical_memory():
+    # Return the amount of RAM in this machine in bytes.
+    import os
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    num_pages = os.sysconf("SC_PHYS_PAGES")
+    return page_size * num_pages
+
+    

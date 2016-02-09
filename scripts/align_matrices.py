@@ -30,12 +30,70 @@
 import os
 import sys
 
+def _handle_annot_path(sys_argv, args):
+    # Check if --annot_path requested.
+    if not args.annot_path:
+        return sys_argv, args
 
-## # TODO: Use the AnnotationMatrix in genomicode.  More robust.
-## class AnnotationMatrix:
-##     def __init__(self, name2annots, name_order):
-##         self.name2annots = name2annots.copy()
-##         self.name_order = name_order[:]
+    # Make sure --annot_file and --express_file is not given.
+    assert not args.annot_file, \
+           "--annot_file and --annot_path cannot both be used."
+    assert not args.express_file, \
+           "--annot_file and --annot_path cannot both be used."
+
+    # Make sure --header is still given.
+    assert args.header, "--header required"
+    assert len(args.header) == 1, "Only one --header allowed with --annot_path"
+
+    # Make sure only one outfile.
+    assert args.outfile, "Missing: outfile"
+    assert len(args.outfile) == 1, "Only one outfile if --annot_file is given"
+    outpath = args.outfile[0]
+    # Make sure outfile is a path.
+    if os.path.exists(outpath) and os.path.isfile(outpath):
+        if args.clobber:
+            os.unlink(outpath)
+        else:
+            raise AssertionError, "File exists: %s" % outpath
+    if not os.path.exists(outpath):
+        os.mkdir(outpath)
+
+    # Get a list of all the annotation files in the annot_path.
+    files = os.listdir(args.annot_path)
+    assert files, "No files found in %s" % args.annot_path
+
+    # Find the file that contains the header.
+    header = args.header[0]
+    has_header = None
+    for i, x in enumerate(files):
+        x = open(os.path.join(args.annot_path, x)).readline()
+        x = x.rstrip("\r\n").split("\t")
+        if header in x:
+            has_header = i
+            break
+    assert has_header is not None, "Missing header: %s" % header
+    files = [files.pop(has_header)] + files
+    
+    annot_files = [os.path.join(args.annot_path, x) for x in files]
+    outfiles = [os.path.join(outpath, x) for x in files]
+    args.annot_file = annot_files
+    args.outfile = outfiles
+
+    # Edit sys_argv.  Add --header, --annot_file, and outfile.
+    sys_argv = sys_argv[:]
+    assert outpath in sys_argv
+    sys_argv.pop(sys_argv.index(outpath))
+    assert "--header" in sys_argv
+    i = sys_argv.index("--header")
+    sys_argv.pop(i)  # delete --header
+    sys_argv.pop(i)  # delete the argument
+    sys_argv.extend(["--annot_file", annot_files[0]])
+    sys_argv.extend(["--header", header])
+    for annot_file in annot_files[1:]:
+        sys_argv.extend(["--annot_file", annot_file])
+    sys_argv.extend(outfiles)
+
+    return sys_argv, args
 
 
 def list_all_samples(matrix_data, case_insensitive, hash_samples,
@@ -121,9 +179,10 @@ def peek_samples_hint(matrix_data):
             infile, outfile, matrix, header = matrix_data[0][:4]
             if header is None:
                 continue
-            assert header in matrix.header2annots, "Missing header: %s\n%s" % (
-                repr(header), sorted(matrix.header2annots))
-            samples_hint = matrix.header2annots[header]
+            assert header in matrix.headers, "Missing header: %s\n%s" % (
+                repr(header), sorted(matrix.headers))
+            h = matrix.normalize_header(header)
+            samples_hint = matrix.header2annots[h]
             break
         assert samples_hint is not None, \
                "Please specify at least one --header."
@@ -432,6 +491,7 @@ def add_missing_samples(matrix_data, null_string):
     for x in matrix_data:
         infile, outfile, matrix, header, samples = x
 
+        header = matrix.normalize_header(header)
         if isinstance(matrix, AM.AnnotationMatrix):
             samples = matrix.header2annots[header]
         else:
@@ -450,7 +510,7 @@ def add_missing_samples(matrix_data, null_string):
 
 
 def get_samples(
-    matrix, header_hint, samples_hint, case_insensitive, hash_samples,
+    matrix, header, samples_hint, headers_hint, case_insensitive, hash_samples,
     ignore_nonalnum):
     # Return (header, samples) from the matrix.  Since in principle
     # anything in the annotation file can be a sample, need to give it
@@ -460,8 +520,8 @@ def get_samples(
 
     if isinstance(matrix, AM.AnnotationMatrix):
         return get_annot_samples(
-            matrix, header_hint, samples_hint, case_insensitive, hash_samples,
-            ignore_nonalnum)
+            matrix, header, samples_hint, headers_hint,
+            case_insensitive, hash_samples, ignore_nonalnum)
     return get_express_samples(matrix)
 
 
@@ -476,12 +536,13 @@ def get_express_samples(matrix):
     return name, x
 
 
-def get_annot_samples(matrix, header_hint, samples_hint,
+def get_annot_samples(matrix, header, samples_hint, headers_hint,
                       case_insensitive, hash_samples, ignore_nonalnum):
-    if header_hint:
-        assert header_hint in matrix.header2annots
-        return header_hint, matrix.header2annots[header_hint]
+    if header:
+        h = matrix.normalize_header(header)
+        return header, matrix.header2annots[h]
 
+    # Find the column that contains the most matches.
     all_matches = []  # list of (num_matches, name, matches)
     for name, annots in matrix.header2annots.iteritems():
         x = intersect_samples(
@@ -495,9 +556,18 @@ def get_annot_samples(matrix, header_hint, samples_hint,
     all_matches = sorted(all_matches)
     x = all_matches[-1]
     num_matches, name, x = x
-    if not num_matches:
-        return None
-    return name, matrix.header2annots[name]
+    if num_matches:
+        return name, matrix.header2annots[name]
+
+    # If nothing has any matches, look for headers that were used for
+    # other files.
+    for header in headers_hint:
+        h = matrix.normalize_header(header)
+        if h:
+            return header, matrix.header2annots[h]
+        
+    # Couldn't find anything.
+    return None
 
 
 def cmp_sample(x, y,
@@ -701,7 +771,15 @@ def main():
         "--annot_file", default=[], action="append", help="")
     parser.add_argument(
         "--header", default=[], action="append",
-        help="Specify the header for an annotation file.")
+        help="Specify the header for an annotation file.  Should come "
+        "after the --annot_file that it refers to.")
+    parser.add_argument(
+        "--annot_path",
+        help="Align all the annotation files in a path.  "
+        "If using this argument, no --annot_file or --express_file should "
+        'be given.  --header is still required.  Only one "outfile" should be '
+        "given, and it should refer to a path in which to store the "
+        "aligned files.")
     #parser.add_argument(
     #    "--first_annot_header", help="If only aligning annotation files, "
     #    "find the samples to be matched under this header in the first "
@@ -752,8 +830,11 @@ def main():
         help="If a matrix does not have a sample, don't fill in the value "
         "from another matrix.")
 
-
     args = parser.parse_args()
+    # If the user specified an --annot_path, revise args to
+    # contain --annot_files instead.
+    sys.argv, args = _handle_annot_path(sys.argv, args)
+
     ni, no = len(args.express_file)+len(args.annot_file), len(args.outfile)
     assert ni == no, "Mismatch: %d inputs and %d outputs" % (ni, no)
         
@@ -827,9 +908,10 @@ def main():
     samples_hint = peek_samples_hint(matrix_data)
     for x in matrix_data:
         infile, outfile, matrix, header = x
+        headers_hint = [x for x in headers if x]
         x = get_samples(
-            matrix, header, samples_hint, args.case_insensitive, args.hash,
-            args.ignore_nonalnum)
+            matrix, header, samples_hint, headers_hint,
+            args.case_insensitive, args.hash, args.ignore_nonalnum)
         assert x, "I could not find the samples for %s" % infile
         header, samples = x
         x = infile, outfile, matrix, header, samples

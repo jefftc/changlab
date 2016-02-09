@@ -73,7 +73,11 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores, path=out_path)
+        # STAR takes 27 Gb per process.  Make sure we don't use up
+        # more memory than is available on the machine.
+        max_procs = module_utils.calc_max_procs_from_ram(30)
+        nc = min(num_cores, max_procs)
+        shell.parallel(commands, max_procs=nc, path=out_path)
 
         # Make sure the analysis completed successfully.
         x = [x[-2] for x in jobs]  # out_prefix

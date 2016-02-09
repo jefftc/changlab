@@ -199,7 +199,7 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
 
 
 def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
-             delimiter="\t"):
+             delimiter="\t", ignore_lines_startswith=None):
     # yield name, description (always ""), list of genes.
     # preserve_spaces determines whether to remove blank annotations.
     # allow_duplicates determines whether to remove duplicate
@@ -207,12 +207,27 @@ def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
     import filelib
 
     matrix = [x for x in filelib.read_cols(filename, delimiter=delimiter)]
+    if ignore_lines_startswith:
+        # BUG: Will not work if this contains the delimiter.
+        assert ignore_lines_startswith.find(delimiter) < 0
+        matrix = [
+            x for x in matrix if not x[0].startswith(ignore_lines_startswith)]
+    
+    # Make sure the header row is as long as the longest row.
+    # Otherwise, _transpose_gmx will cut off the columns at the end.
+    x = [len(x) for x in matrix]
+    if len(x) >= 2:
+        header_len = x[0]
+        row_len = max(x[1:])
+        if header_len < row_len:
+            x = [""] * (row_len-header_len)
+            matrix[0] = matrix[0] + x
+        
     t_matrix = _transpose_gmx(matrix)
     if not matrix:
         return
 
-    # For the TDF file, each of the rows should be exactly the same
-    # length.  Make sure they are the same length.
+    # Make sure the matrix is not empty.
     maxlen = max([len(x) for x in t_matrix]) - 1
     assert maxlen >= 0
 

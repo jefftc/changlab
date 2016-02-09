@@ -58,7 +58,7 @@
 # sort_bam_folder_by_name
 # sort_bam_folder_by_contig
 # 
-# add_read_groups_to_bam_folder
+# add_read_groups_to_bam_folder       GATK variant calling pipeline
 # mark_duplicates_bam_folder
 # split_n_trim_bam_folder
 # create_realign_targets
@@ -811,6 +811,10 @@ all_modules = [
     ModuleNode(
         "create_realign_targets",
         [BamFolder, ReferenceGenome], RealignTargetFolder,
+        OptionDef(
+            "filter_reads_with_N_cigar", default="no",
+            help="Do for RNA-Seq data.",
+            ),
         OptionDef(
             "realign_known_sites1", 
             help="For filtering out known SNPs.",

@@ -7,6 +7,8 @@ Classes:
 AnnotationMatrix
 
 Functions:
+create_from_annot_matrix
+
 uniquify_headers
 replace_headers
 
@@ -14,7 +16,6 @@ colslice   Slice the columns based on a list of indexes.
 
 read
 write
-
 
 """
 
@@ -51,9 +52,49 @@ class AnnotationMatrix:
     def copy(self):
         return AnnotationMatrix(
             self.headers, self.headers_h, self.header2annots)
+    def normalize_header(self, header, index_base1=False):
+        # Return the hashed header.  header may be either a header,
+        # hashed header, or a 0-based index.  If index_base1 is True,
+        # then indexes will be interpreted as 1-based.  If header
+        # cannot be found, return None.
+        if header in self.headers:
+            i = self.headers.index(header)
+            return self.headers_h[i]
+        if header in self.headers_h:
+            return header
+        header_i = None
+        try:
+            header_i = int(header)
+        except ValueError, x:
+            pass
+        if header_i is not None:
+            if index_base1:
+                header_i = head_i - 1
+            assert header_i >= 0 and header_i < len(self.headers)
+            return self.headers_h[i]
+        return None
+        #raise KeyError, header
 
 
-def read(filename, is_csv=False):
+def create_from_annotations(headers, all_annots):
+    # headers is a list of headers.
+    # all_annots is a list (parallel to headers) that contain the
+    # annotations.
+    assert headers
+    assert len(headers) == len(all_annots)
+    num_annots = len(all_annots[0])
+    for x in all_annots[1:]:
+        assert len(x) == num_annots
+    
+    headers_h = uniquify_headers(headers)
+    assert len(headers_h) == len(all_annots)
+    header2annots = {}
+    for (header_h, annots) in zip(headers_h, all_annots):
+        header2annots[header_h] = annots
+    return AnnotationMatrix(headers, headers_h, header2annots)
+    
+
+def read(filename, is_csv=False, ignore_lines_startswith=None):
     # Everything are strings.  No numeric conversion.
     import re
     from genomicode import genesetlib
@@ -62,17 +103,22 @@ def read(filename, is_csv=False):
     if is_csv:
         delimiter = ","
 
+    # re.sub takes a lot of time (25% of all running time!).  Compile
+    # it.
+    re_naive = re.compile("na\\W+ve")
+
     all_headers, all_annots = [], []
     for x in genesetlib.read_tdf(
         filename, preserve_spaces=True, allow_duplicates=True,
-        delimiter=delimiter):
+        delimiter=delimiter, ignore_lines_startswith=ignore_lines_startswith):
         name, description, annots = x
 
         # Hack: Some files contain special characters, which mess up
         # alignment. Fix this here.
         # na\xc3\xafve-WIBR3.5 hESC
         # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
-        annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
+        #annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
+        annots = [re_naive.sub("naive", x) for x in annots]
 
         all_headers.append(name)
         all_annots.append(annots)

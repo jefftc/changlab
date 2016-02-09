@@ -938,6 +938,8 @@ def find_picard_jar(jar_name):
 
 
 def make_GATK_command(**params):
+    # value of None means no argument.
+    # A dash is prepended to each key.
     # Special key:
     # _UNHASHABLE  list of (key, value) tuples
     import os

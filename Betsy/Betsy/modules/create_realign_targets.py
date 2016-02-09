@@ -29,6 +29,9 @@ class Module(AbstractModule):
             x = in_filename, log_filename, out_filename
             jobs.append(x)
 
+        filter_reads_with_N_cigar = module_utils.get_user_option(
+            user_options, "filter_reads_with_N_cigar",
+            allowed_values=["no", "yes"])
 
         known_sites = []
         x1 = module_utils.get_user_option(
@@ -50,10 +53,14 @@ class Module(AbstractModule):
         commands = []
         for x in jobs:
             in_filename, log_filename, out_filename = x
+            
             x = [("-known", x) for x in known_sites]
+            if filter_reads_with_N_cigar == "yes":
+                x.append(("-filter_reads_with_N_cigar", None))
             x = alignlib.make_GATK_command(
                 nt=4, T="RealignerTargetCreator", R=ref.fasta_file_full,
-                I=in_filename, o=out_filename, _UNHASHABLE=x)
+                I=in_filename, o=out_filename,
+                _UNHASHABLE=x)
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
 
