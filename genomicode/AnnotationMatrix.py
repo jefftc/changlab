@@ -7,24 +7,24 @@ Classes:
 AnnotationMatrix
 
 Functions:
-create_from_annot_matrix
-
-uniquify_headers
+create_from_annotations
+colslice            Slice the columns based on a list of indexes.
 replace_headers
+uniquify_headers
 
-colslice   Slice the columns based on a list of indexes.
 
 read
 write
 
 """
-
 class AnnotationMatrix:
-    def __init__(self, headers, headers_h, header2annots):
+    def __init__(self, headers, headers_h, header2annots, headerlines=[]):
         # headers is a list of the original headers.
         # headers_h are the headers, hashed to ensure uniqueness.
         # headers2annots is a dictionary of hashed headers to the list
-        # of annotations.
+        # of annotations.  headerlines is a list of lines that occur
+        # at the front of the file.  These might be the comment lines
+        # that make up the "header" of VCF files.
         assert headers
         assert headers_h
         assert len(headers) == len(headers_h)
@@ -34,14 +34,13 @@ class AnnotationMatrix:
         self.headers = headers[:]
         self.headers_h = headers_h[:]
         self.header2annots = header2annots.copy()
-    def get_annots(self, header):
-        # Return a list of the annotations for this header.
-        I = [i for i in range(len(self.headers)) if self.headers[i] == header]
-        assert I, "header not found: %s" % header
-        assert len(I) == 1, "Multiple headers match: %s" % header
-        i = I[0]
-        h = self.headers_h[i]
-        return self.header2annots[h]
+        self.headerlines = headerlines[:]
+    #def get_annots(self, header):
+    #    # Return a list of the annotations for this header.
+    #    h = self.normalize_header(header)
+    #    if annots is None:
+    #        raise KeyError, header
+    #    return self.header2annots[h]
     def num_headers(self):
         return len(self.headers)
     def num_annots(self):
@@ -51,23 +50,39 @@ class AnnotationMatrix:
         return len(self.header2annots[h])
     def copy(self):
         return AnnotationMatrix(
-            self.headers, self.headers_h, self.header2annots)
+            self.headers, self.headers_h, self.header2annots, self.headerlines)
+    def __getitem__(self, header):
+        # Return a list of the annotations for this header.
+        h = self.normalize_header(header)
+        if h is None:
+            raise KeyError, header
+        return self.header2annots[h]
     def normalize_header(self, header, index_base1=False):
         # Return the hashed header.  header may be either a header,
         # hashed header, or a 0-based index.  If index_base1 is True,
         # then indexes will be interpreted as 1-based.  If header
         # cannot be found, return None.
-        if header in self.headers:
-            i = self.headers.index(header)
-            return self.headers_h[i]
+
+        # header can be:
+        # 1.  Unique match to headers.
+        # 2.  Unique match to headers_h.
+        # 3.  Index.
+
+        # Case 1.
+        I = [i for i in range(len(self.headers)) if self.headers[i] == header]
+        if len(I) == 1:
+            return self.headers_h[I[0]]
+
+        # Case 2.
         if header in self.headers_h:
             return header
-        header_i = None
+
+        # Case 3.
         try:
             header_i = int(header)
         except ValueError, x:
             pass
-        if header_i is not None:
+        else:
             if index_base1:
                 header_i = head_i - 1
             assert header_i >= 0 and header_i < len(self.headers)
@@ -76,7 +91,7 @@ class AnnotationMatrix:
         #raise KeyError, header
 
 
-def create_from_annotations(headers, all_annots):
+def create_from_annotations(headers, all_annots, headerlines=[]):
     # headers is a list of headers.
     # all_annots is a list (parallel to headers) that contain the
     # annotations.
@@ -91,63 +106,10 @@ def create_from_annotations(headers, all_annots):
     header2annots = {}
     for (header_h, annots) in zip(headers_h, all_annots):
         header2annots[header_h] = annots
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    x = AnnotationMatrix(
+        headers, headers_h, header2annots, headerlines=headerlines)
+    return x
     
-
-def read(filename, is_csv=False, ignore_lines_startswith=None):
-    # Everything are strings.  No numeric conversion.
-    import re
-    from genomicode import genesetlib
-
-    delimiter = "\t"
-    if is_csv:
-        delimiter = ","
-
-    # re.sub takes a lot of time (25% of all running time!).  Compile
-    # it.
-    re_naive = re.compile("na\\W+ve")
-
-    all_headers, all_annots = [], []
-    for x in genesetlib.read_tdf(
-        filename, preserve_spaces=True, allow_duplicates=True,
-        delimiter=delimiter, ignore_lines_startswith=ignore_lines_startswith):
-        name, description, annots = x
-
-        # Hack: Some files contain special characters, which mess up
-        # alignment. Fix this here.
-        # na\xc3\xafve-WIBR3.5 hESC
-        # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
-        #annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
-        annots = [re_naive.sub("naive", x) for x in annots]
-
-        all_headers.append(name)
-        all_annots.append(annots)
-    assert all_headers, "Empty file: %s" % filename
-
-    headers_h = uniquify_headers(all_headers)
-    header2annots = {}
-    for (header_h, annots) in zip(headers_h, all_annots):
-        header2annots[header_h] = annots
-    return AnnotationMatrix(all_headers, headers_h, header2annots)
-
-
-def write(handle_or_file, annot_matrix):
-    from genomicode import jmath
-    matrix = []
-    for i, header_h in enumerate(annot_matrix.headers_h):
-        header = annot_matrix.headers[i]
-        annots = annot_matrix.header2annots[header_h]
-        x = [header] + annots
-        matrix.append(x)
-    # Transpose the matrix.
-    matrix = jmath.transpose(matrix)
-
-    handle = handle_or_file
-    if type(handle) is type(""):
-        handle = open(handle, 'w')
-    for x in matrix:
-        print >>handle, "\t".join(map(str, x))
-
 
 def colslice(MATRIX, I):
     for i in I:
@@ -159,7 +121,23 @@ def colslice(MATRIX, I):
     for i in range(len(old_headers_h)):
         oh, nh = old_headers_h[i], new_headers_h[i]
         header2annots[nh] = MATRIX.header2annots[oh]
-    return AnnotationMatrix(new_headers, new_headers_h, header2annots)
+    x = AnnotationMatrix(
+        new_headers, new_headers_h, header2annots, MATRIX.headerlines)
+    return x
+
+
+def replace_headers(MATRIX, headers):
+    # Return a new AnnotationMatrix with these headers.
+    assert len(headers) == len(MATRIX.headers)
+    headers_h = uniquify_headers(headers)
+    header2annots = {}
+    for header_old in MATRIX.header2annots:
+        # Use the index to get the hashed header.
+        i = MATRIX.headers_h.index(header_old)
+        header_new = headers_h[i]
+        header2annots[header_new] = MATRIX.header2annots[header_old]
+    x = AnnotationMatrix(headers, headers_h, header2annots, MATRIX.headerlines)
+    return x
 
 
 def uniquify_headers(headers):
@@ -179,14 +157,63 @@ def uniquify_headers(headers):
     return nodup
 
 
-def replace_headers(MATRIX, headers):
-    # Return a new AnnotationMatrix with these headers.
-    assert len(headers) == len(MATRIX.headers)
-    headers_h = uniquify_headers(headers)
+def read(filename, is_csv=False, header_char=None):
+    # Everything are strings.  No numeric conversion.
+    import re
+    from genomicode import genesetlib
+
+    delimiter = "\t"
+    if is_csv:
+        delimiter = ","
+
+    # re.sub takes a lot of time (25% of all running time!).  Compile
+    # it.
+    re_naive = re.compile("na\\W+ve")
+
+    all_headers, all_annots = [], []
+    all_comments = []
+    for x in genesetlib.read_tdf(
+        filename, preserve_spaces=True, allow_duplicates=True,
+        delimiter=delimiter, yield_lines_startswith=header_char):
+        if type(x) is type(""):
+            all_comments.append(x)
+            continue
+        name, description, annots = x
+
+        # Hack: Some files contain special characters, which mess up
+        # alignment. Fix this here.
+        # na\xc3\xafve-WIBR3.5 hESC
+        # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
+        #annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
+        annots = [re_naive.sub("naive", x) for x in annots]
+
+        all_headers.append(name)
+        all_annots.append(annots)
+    assert all_headers, "Empty file: %s" % filename
+
+    headers_h = uniquify_headers(all_headers)
     header2annots = {}
-    for header_old in MATRIX.header2annots:
-        # Use the index to get the hashed header.
-        i = MATRIX.headers_h.index(header_old)
-        header_new = headers_h[i]
-        header2annots[header_new] = MATRIX.header2annots[header_old]
-    return AnnotationMatrix(headers, headers_h, header2annots)
+    for (header_h, annots) in zip(headers_h, all_annots):
+        header2annots[header_h] = annots
+    return AnnotationMatrix(
+        all_headers, headers_h, header2annots, headerlines=all_comments)
+
+
+def write(handle_or_file, annot_matrix):
+    from genomicode import jmath
+    matrix = []
+    for i, header_h in enumerate(annot_matrix.headers_h):
+        header = annot_matrix.headers[i]
+        annots = annot_matrix.header2annots[header_h]
+        x = [header] + annots
+        matrix.append(x)
+    # Transpose the matrix.
+    matrix = jmath.transpose(matrix)
+
+    handle = handle_or_file
+    if type(handle) is type(""):
+        handle = open(handle, 'w')
+    for x in annot_matrix.headerlines:
+        print >>handle, x
+    for x in matrix:
+        print >>handle, "\t".join(map(str, x))

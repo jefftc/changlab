@@ -367,8 +367,9 @@ def run_module(
             raise
         end_time = time.localtime()
 
-        # Write stdout.txt to indicate success.
+        # Make sure the module generated the requested file.
         assert filelib.fp_exists_nz(temp_outfile), "no file generated"
+        # Write stdout.txt to indicate success.
         success_file = os.path.join(temp_dir, 'stdout.txt')
         open(success_file, 'w').write('success\n')
 

@@ -680,6 +680,7 @@ all_modules = [
     ModuleNode(
         "summarize_aligned_reads",
         BamFolder, AlignedReadsSummary,
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS),
         Constraint("indexed", MUST_BE, "yes"),
         help="Summarize the alignment, e.g. number of reads aligned.",
@@ -700,6 +701,7 @@ all_modules = [
             "e.g. for looking at coverage of exons.",
             ),
         Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
         help="Calculate the coverage for an alignment.",
         ),
     ModuleNode(

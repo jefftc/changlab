@@ -1111,3 +1111,7 @@ def get_physical_memory():
     return page_size * num_pages
 
     
+def get_config(name):
+    from genomicode import filelib
+    from genomicode import config
+    return filelib.which_assert(getattr(config, name))

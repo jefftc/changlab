@@ -33,7 +33,8 @@ class Module(AbstractModule):
         else:
             raise NotImplementedError
 
-        # list of (in_filename, tmp1_filename, tmp2_filename, out_filename)
+        # list of (sample, in_filename, tmp1_filename, tmp2_filename,
+        #          out_filename)
         jobs = []
         for in_filename in vcf_filenames:
             p, f = os.path.split(in_filename)
@@ -41,7 +42,7 @@ class Module(AbstractModule):
             tmp1_filename = os.path.join(out_path, "%s.tmp1" % sample)
             tmp2_filename = os.path.join(out_path, "%s.tmp2" % sample)
             out_filename = os.path.join(out_path, "%s.vcf" % sample)
-            x = in_filename, tmp1_filename, tmp2_filename, out_filename
+            x = sample, in_filename, tmp1_filename, tmp2_filename, out_filename
             jobs.append(x)
 
         # VarScan will generate a "Parsing Exception" if there are 0
@@ -49,12 +50,12 @@ class Module(AbstractModule):
         sq = shell.quote
         commands = []
         for x in jobs:
-            in_filename, tmp1_filename, tmp2_filename, out_filename = x
+            sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
             x = "awk -F'\t' '$4 != 0 {print}' %s > %s" % (
                 in_filename, tmp1_filename)
             commands.append(x)
         shell.parallel(commands, max_procs=num_cores)
-        x = [x[1] for x in jobs]
+        x = [x[2] for x in jobs]
         filelib.assert_exists_nz_many(x)
         
 
@@ -66,7 +67,7 @@ class Module(AbstractModule):
         # Make a list of commands.
         commands = []
         for x in jobs:
-            in_filename, tmp1_filename, tmp2_filename, out_filename = x
+            sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
             x = [
                 "java", "-jar", sq(varscan),
                 "mpileup2cns",
@@ -88,23 +89,25 @@ class Module(AbstractModule):
         #import sys; sys.exit(0)
 
         shell.parallel(commands, max_procs=num_cores)
-        x = [x[2] for x in jobs]
+        x = [x[3] for x in jobs]
         filelib.assert_exists_nz_many(x)
 
         # Clean up the VCF files.  VarScan leaves extraneous lines
         # there.
         for x in jobs:
-            in_filename, tmp1_filename, tmp2_filename, out_filename = x
-            clean_varscan_vcf(tmp2_filename, out_filename)
+            sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
+            clean_varscan_vcf(sample, tmp2_filename, out_filename)
         x = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(x)
 
 
     def name_outfile(self, antecedents, user_options):
-        return "platypus.vcf"
+        return "varscan.vcf"
 
 
-def clean_varscan_vcf(in_filename, out_filename):
+def clean_varscan_vcf(sample, in_filename, out_filename):
+    from genomicode import hashlib
+
     BAD_LINES = [
         "Min coverage:",
         "Min reads2:",
@@ -117,7 +120,13 @@ def clean_varscan_vcf(in_filename, out_filename):
         "were failed by the strand-filter",
         "variant positions reported",
         ]
-    
+
+    # Varscan calls each sample "Sample1".  Doesn't have the read
+    # group info from the BAM file.  Change this to the proper sample
+    # name.
+    # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT Sample1
+    sample_h = hashlib.hash_var(sample)
+
     outhandle = open(out_filename, 'w')
     for line in open(in_filename):
         found = False
@@ -127,5 +136,7 @@ def clean_varscan_vcf(in_filename, out_filename):
                 break
         if found:
             continue
+        if line.startswith("#CHROM") and line.find("Sample1") >= 0:
+            line = line.replace("Sample1", sample_h)
         outhandle.write(line)
     outhandle.close()

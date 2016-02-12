@@ -24,7 +24,7 @@ class Module(AbstractModule):
         assert os.path.exists(reference_file)
 
         features_bed = module_utils.get_user_option(
-            user_options, "features_bed", check_file)
+            user_options, "features_bed", check_file=True)
         if features_bed:
             raise NotImplementedError, "features_bed not implemented"
 
@@ -48,7 +48,7 @@ class Module(AbstractModule):
                 bam_filename, reference_file, cov_filename)
             commands.append(x)
 
-        shell.run_parallel(commands, max_procs=num_cores)
+        shell.parallel(commands, max_procs=num_cores)
         
         # Make sure the analysis completed successfully.
         for x in jobs:
