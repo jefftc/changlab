@@ -1433,21 +1433,34 @@ def vcf_standardize(MATRIX, vcf_standardize):
     # SDP  Raw read depth
     # DP   Quality adjusted read depth
     # 
-    #                   IACS    samtools   Platypus       GATK
-    # entrez_gene_id            missing     missing    missing
-    # num_ref                   FORMAT:RD      calc  FORMAT:AD
-    # num_alt                   FORMAT:AD   INFO:TR  FORMAT:AD
-    # total_reads       calc    FORMAT:DP   INFO:TC  FORMAT:DP
+    #                   IACS    samtools   Platypus       GATK   NextGene
+    # entrez_gene_id            missing     missing    missing    missing
+    # num_ref                   FORMAT:RD      calc  FORMAT:AD  SGCOUNTREF_F/R
+    # num_alt                   FORMAT:AD   INFO:TR  FORMAT:AD  SGCOUNTALT_F/R
+    # total_reads       calc    FORMAT:DP   INFO:TC  FORMAT:DP  FORMAT:DP
     # vaf               calc    FORMAT:FREQ    calc       calc
     # * If DP is missing, then try SDP.
     # * Sometimes DP is missing for samtools.  Can use INFO:ADP if
     #   only 1 sample.
+    
+    # NextGene
+    # Comma means different (simulatenous) interpretations of
+    # alternate alignments.  Allele frequency can be either.
+    # SGCOUNTREF_F  3277
+    # SGCOUNTREF_R  2675
+    # SGCOUNTALT_F  1500,522
+    # SGCOUNTALT_R  1761,515
+    # AF            0.353,0.112
+    # SGACOV        3261,1037   Sum of ALT reads.
+    # DP            9232
 
     x = vcf_standardize.split(",")
     assert len(x) == 3, "Format: <info_header>,<format_header>,<values_header>"
     info_header, format_header, values_header = x
     info_dict = format_annots = values_annots = None
     format_dict = None
+    if values_header == "__LASTCOL__":
+        values_header = MATRIX.headers_h[-1]
 
     info_header = _header_or_index(MATRIX, info_header)
     format_header = _header_or_index(MATRIX, format_header)
@@ -1553,15 +1566,18 @@ def vcf_standardize(MATRIX, vcf_standardize):
         annots = [""] * MATRIX.num_annots()
         header2annots[header] = annots
 
-    # If NUM_REF is missing, see if I can get it from the FORMAT RD.
+    # If NUM_REF is missing, see if I can get it from the FORMAT RD or
+    # SGCOUNTREF.
     if NUM_REF in missing and format_dict:
         annots = [""] * MATRIX.num_annots()
         found = False
         for i, d in enumerate(format_dict):
-            if "RD" not in d:
-                continue
-            annots[i] = d["RD"]
-            found = True
+            if "RD" in d:
+                annots[i] = d["RD"]
+                found = True
+            elif "SGCOUNTREF_F" in d and "SGCOUNTREF_R" in d:
+                annots[i] = int(d["SGCOUNTREF_F"]) + int(d["SGCOUNTREF_R"])
+                found = True
         if found:
             header2annots[NUM_REF] = annots
             missing.pop(missing.index(NUM_REF))
@@ -1585,13 +1601,33 @@ def vcf_standardize(MATRIX, vcf_standardize):
             header2annots[NUM_REF] = annots
             missing.pop(missing.index(NUM_REF))
 
-    # If NUM_ALT is missing, see if I can get it from the FORMAT AD
-    # (if AD is format <ref>,<alt>).
+    # If NUM_ALT is missing, see if I can get it from the FORMAT
+    # SGCOUNTREF.
+    if NUM_ALT in missing and format_dict:
+        annots = [""] * MATRIX.num_annots()
+        found = False
+        for i, d in enumerate(format_dict):
+            if "SGCOUNTALT_F" in d and "SGCOUNTALT_R" in d:
+                x1 = d["SGCOUNTALT_F"]
+                x2 = d["SGCOUNTALT_R"]
+                x1 = x1.split(",")
+                x2 = x2.split(",")
+                x1 = x1[0]  # Arbitrarily take the first one
+                x2 = x2[0]  # Arbitrarily take the first one
+                annots[i] = int(x1) + int(x2)
+                found = True
+        if found:
+            header2annots[NUM_ALT] = annots
+            missing.pop(missing.index(NUM_ALT))
+
+
+    # If NUM_ALT is missing, see if I can get it from the FORMAT AD.
     if NUM_ALT in missing and format_dict:
         x = [d.get("AD", "") for d in format_dict]
         x = [x for x in x if x]
         has_comma = [y for y in x if y.find(",") >= 0]
         no_comma = [y for y in x if y.find(",") < 0]
+        # If AD is format <ref>,<alt>.
         if has_comma and not no_comma:
             annots = [""] * MATRIX.num_annots()
             for i, d in enumerate(format_dict):
@@ -1600,17 +1636,11 @@ def vcf_standardize(MATRIX, vcf_standardize):
                 x = d["AD"]
                 x = x.split(",")
                 x = map(int, x)
-                annots[i] = sum(x[1:])
+                #annots[i] = sum(x[1:])
+                annots[i] = x[1]  # Arbitratily take the first one.
             header2annots[NUM_ALT] = annots
             missing.pop(missing.index(NUM_ALT))
-
-    # If NUM_ALT is missing, see if I can get it from the FORMAT AD
-    # (if AD is format <alt>).
-    if NUM_ALT in missing and format_dict:
-        x = [d.get("AD", "") for d in format_dict]
-        x = [x for x in x if x]
-        has_comma = [y for y in x if y.find(",") >= 0]
-        no_comma = [y for y in x if y.find(",") < 0]
+        # If AD is format <alt>.
         if not has_comma and no_comma:
             annots = [""] * MATRIX.num_annots()
             for i, d in enumerate(format_dict):
@@ -1619,7 +1649,7 @@ def vcf_standardize(MATRIX, vcf_standardize):
                 annots[i] = d["AD"]
             header2annots[NUM_ALT] = annots
             missing.pop(missing.index(NUM_ALT))
-
+            
     # If NUM_ALT is missing, see if I can get it from the INFO line.
     if NUM_ALT in missing and format_dict:
         annots = [""] * MATRIX.num_annots()
@@ -2487,7 +2517,8 @@ def main():
         "--vcf_standardize", 
         help="Take a VCF file (from IACS, Platypus, or GATK) and put into "
         "a standard format.  "
-        "Format:<info_header>,<format_header>,<values_header>")
+        "Format:<info_header>,<format_header>,<values_header>.  "
+        'If <values_header> is "__LASTCOL__", then will use the last column.')
     group.add_argument(
         "--vcf_remove_bad_coords", action="store_true",
         help="Somve VCF files contain bad start or end positions, "
