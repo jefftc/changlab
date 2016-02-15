@@ -3,7 +3,7 @@
 Methods:
 make_bedtools_coverage_command
 make_bedtools_genomecov_command
-parse_bedtools_genomecov_results(filename)
+parse_bedtools_genomecov_results
 
 """
 
@@ -56,7 +56,7 @@ def make_bedtools_genomecov_command(
     return " ".join(x)
 
 
-def _parse_bedtools_genomecov_results(filename):
+def parse_bedtools_genomecov_results(filename):
     # Return list of (chromosome or "genome", coverage, bases with
     # coverage, size of chromosome, perc bases with coverage).
     # genome  0       18413   4392353 0.00419206

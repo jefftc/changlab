@@ -1393,108 +1393,81 @@ def convert_percent_to_decimal(MATRIX, convert):
     return MATRIX
 
 
-def _header_or_index(MATRIX, header):
-    # header may be either a header or a 1-based index.  Return the
-    # hashed header.
-    if not header:
-        return None
-    if header in MATRIX.headers:
-        i = MATRIX.headers.index(header)
-        return MATRIX.headers_h[i]
-    if header in MATRIX.headers_h:
-        return header
-    header_i = None
-    try:
-        header_i = int(header)
-    except ValueError, x:
-        pass
-    if header_i is not None:
-        assert header_i >= 1 and header_i <= len(MATRIX.headers)
-        i = header_i - 1
-        return MATRIX.headers_h[i]
-    raise AssertionError, "Unknown header: %s" % header
+## def _header_or_index(MATRIX, header):
+##     # header may be either a header or a 1-based index.  Return the
+##     # hashed header.
+##     if not header:
+##         return None
+##     if header in MATRIX.headers:
+##         i = MATRIX.headers.index(header)
+##         return MATRIX.headers_h[i]
+##     if header in MATRIX.headers_h:
+##         return header
+##     header_i = None
+##     try:
+##         header_i = int(header)
+##     except ValueError, x:
+##         pass
+##     if header_i is not None:
+##         assert header_i >= 1 and header_i <= len(MATRIX.headers)
+##         i = header_i - 1
+##         return MATRIX.headers_h[i]
+##     raise AssertionError, "Unknown header: %s" % header
 
 
 def vcf_standardize(MATRIX, vcf_standardize):
     if not vcf_standardize:
         return MATRIX
     from genomicode import AnnotationMatrix
+    from genomicode import vcflib
 
-    # Format: <info_header>,<format_header>,<values_header>
-    # Might be blank if not present in this file.
-
-    # INFO      ADP=28;WT=0;HET=1;HOM=0;NC=0
-    # FORMAT    GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
-    # <values>  0/1:12:28:28:24:4:14.29%:5.5746E-2:37:36:14:10:3:1
-    #
-    # ADP            Average depth across samples.
-    # WT/HET/HOM/NC  number of samples WT/HET/HOM/NC (not called).
-    #
-    # SDP  Raw read depth
-    # DP   Quality adjusted read depth
-    # 
-    #                   IACS    samtools   Platypus       GATK   NextGene
-    # entrez_gene_id            missing     missing    missing    missing
-    # num_ref                   FORMAT:RD      calc  FORMAT:AD  SGCOUNTREF_F/R
-    # num_alt                   FORMAT:AD   INFO:TR  FORMAT:AD  SGCOUNTALT_F/R
-    # total_reads       calc    FORMAT:DP   INFO:TC  FORMAT:DP  FORMAT:DP
-    # vaf               calc    FORMAT:FREQ    calc       calc
-    # * If DP is missing, then try SDP.
-    # * Sometimes DP is missing for samtools.  Can use INFO:ADP if
-    #   only 1 sample.
-    
-    # NextGene
-    # Comma means different (simulatenous) interpretations of
-    # alternate alignments.  Allele frequency can be either.
-    # SGCOUNTREF_F  3277
-    # SGCOUNTREF_R  2675
-    # SGCOUNTALT_F  1500,522
-    # SGCOUNTALT_R  1761,515
-    # AF            0.353,0.112
-    # SGACOV        3261,1037   Sum of ALT reads.
-    # DP            9232
+    # Format: <info_header>,<format_header>[,<genotype_header>]
 
     x = vcf_standardize.split(",")
-    assert len(x) == 3, "Format: <info_header>,<format_header>,<values_header>"
-    info_header, format_header, values_header = x
-    info_dict = format_annots = values_annots = None
-    format_dict = None
-    if values_header == "__LASTCOL__":
-        values_header = MATRIX.headers_h[-1]
+    assert len(x) >= 2, \
+           "Format: <info_header>,<format_header>,<genotype_header>"
+    info_header, format_header = x[:2]
+    genotype_headers = x[2:]
 
-    info_header = _header_or_index(MATRIX, info_header)
-    format_header = _header_or_index(MATRIX, format_header)
-    values_header = _header_or_index(MATRIX, values_header)
+    info_header_n = MATRIX.normalize_header(info_header)
+    format_header_n = MATRIX.normalize_header(format_header)
+    assert info_header_n, "Missing header: %s" % info_header
+    assert format_header_n, "Missing header: %s" % format_header
 
-    if info_header:
-        annots = MATRIX.header2annots[info_header]
-        # Format: BRF=0.89;FR=1.0000;HP=2;HapScore=1;...
-        # Make list of dictionaries.
-        parsed = []
-        for x in annots:
-            x = x.split(";")
-            d = {}
-            for x in x:
-                x = x.split("=")
-                assert len(x) == 2
-                key, value = x
-                d[key] = value
-            parsed.append(d)
-        info_dict = parsed
-    if format_header:
-        annots = MATRIX.header2annots[format_header]
-        format_annots = [x.split(":") for x in annots]
-    if values_header:
-        annots = MATRIX.header2annots[values_header]
-        values_annots = [x.split(":") for x in annots]
-    if format_annots and values_annots:
-        format_dict = []
-        for (fmt, values) in zip(format_annots, values_annots):
-            d = {}
-            for k, v in zip(fmt, values):
-                d[k] = v
-            format_dict.append(d)
-                
+    if not genotype_headers:
+        # Find the genotype headers at the end of the file.
+        i1 = MATRIX.headers_h.index(info_header_n)
+        i2 = MATRIX.headers_h.index(format_header_n)
+        i_start = max(i1, i2) + 1
+        assert i_start < len(MATRIX.headers), "No columns at end of file."
+        for i in range(len(MATRIX.headers)-1, i_start-1, -1):
+            # See if every row is either blank or contains some colons.
+            h = MATRIX.headers_h[i]
+            annots = MATRIX.header2annots[h]
+            x = [x for x in annots if not x.strip() or x.find(":") >= 0]
+            if len(x) != len(annots):
+                break
+        i_geno = i+1
+        genotype_headers = MATRIX.headers[i_geno:]
+    assert genotype_headers, "No genotype headers found."
+
+    # Create a VCF object.
+    samples = genotype_headers
+    # Parse the info line.
+    x = MATRIX.header2annots[info_header_n]
+    more_info = [vcflib._parse_info_dict(x) for x in x]
+    # Parse the genotype data.
+    format_strings = MATRIX.header2annots[format_header_n]
+    genotypes = {}
+    for sample in genotype_headers:
+        genotype_strings = MATRIX[sample]
+        geno_dicts = [
+            vcflib._parse_genotype_dict(fs, gs)
+            for (fs, gs) in zip(format_strings, genotype_strings)]
+        genotypes[sample] = geno_dicts
+    vcf = vcflib.VCFFile(MATRIX, samples, more_info, genotypes)
+    
+
     CHROM = "chrom"
     START = "start"
     END = "end"
@@ -1507,6 +1480,7 @@ def vcf_standardize(MATRIX, vcf_standardize):
     NUM_ALT = "num_alt"
     TOTAL = "total_reads"
     VAF = "vaf"
+    CALL = "call"
 
     # If I can't find these, then just fill with blank spaces.
     # This can happen if the file is not annotated.
@@ -1515,7 +1489,7 @@ def vcf_standardize(MATRIX, vcf_standardize):
     # List of tuples:
     # - header name
     # - list of possible original headers
-    COLUMNS = [
+    COMMON_COLUMNS = [
         (CHROM, ["chrom", "contig", "Chr", "CHROM", "#CHROM"]),
         (START, ["start", "position", "Start", "POS", "pos"]),
         (END, ["end", "End"]),
@@ -1526,30 +1500,65 @@ def vcf_standardize(MATRIX, vcf_standardize):
         (FUNC, ["func", "Func", "Func.refGene"]),
         (EXONICFUNC, ["exonicfunc", "ExonicFunc", "ExonicFunc.refGene"]),
         (AACHANGE, ["aachange", "AAChange", "AAChange.refGene"]),
-        (NUM_REF, ["num_ref", "t_ref_count"]),
-        (NUM_ALT, ["num_alt", "t_alt_count"]),
-        (TOTAL, ["total_reads"]),
-        (VAF, ["vaf"]),
+        ]
+    # Sample specific columns.
+    SPECIFIC_COLUMNS = [
+        (NUM_REF, ["num_ref", "t_ref_count"], "num_ref"),
+        (NUM_ALT, ["num_alt", "t_alt_count"], "num_alt"),
+        (TOTAL, ["total_reads"], "total_reads"),
+        (VAF, ["vaf"], "vaf"),
+        (CALL, [], "call"),
         ]
 
+    headers = []
     header2annots = {}  # should contain no duplicates
     missing = []
-
-    for (dst_header, src_headers) in COLUMNS:
+ 
+    # Set the common columns.
+    for (dst_header, src_headers) in COMMON_COLUMNS:
         header_i = None
         for h in src_headers:
             if h in MATRIX.headers:
                 header_i = MATRIX.headers.index(h)
                 break
+        headers.append(dst_header)
         if header_i is None:
             missing.append(dst_header)
             continue
-        
+        assert dst_header not in header2annots
         h = MATRIX.headers_h[header_i]
         annots = MATRIX.header2annots[h]
-            
-        assert dst_header not in header2annots
         header2annots[dst_header] = annots
+
+    # Set the sample-specific columns.
+    for sample in genotype_headers:
+        info_list = [
+            vcflib.parse_info(vcf, sample, i)
+            for i in range(MATRIX.num_annots())]
+        for (dst_header, src_headers, info_member) in SPECIFIC_COLUMNS:
+            if len(genotype_headers) > 1:
+                dst_header = "%s %s" % (sample, dst_header)
+            
+            # If there is only one sample, look for the src_headers.
+            if len(genotype_headers) == 1:
+                header_i = None
+                for h in src_headers:
+                    if h in MATRIX.headers:
+                        header_i = MATRIX.headers.index(h)
+                        break
+                if header_i:
+                    headers.append(dst_header)
+                    assert dst_header not in header2annots
+                    h = MATRIX.headers_h[header_i]
+                    annots = MATRIX.header2annots[h]
+                    header2annots[dst_header] = annots
+                    continue
+            # Pull the information out the the info_list.
+            headers.append(dst_header)
+            assert dst_header not in header2annots
+            x = [getattr(x, info_member) for x in info_list]
+            x = [vcflib._fmt_vcf_value(x) for x in x]
+            header2annots[dst_header] = x
 
     # If I can't find "end", and I could find the "start", then make
     # it the same as start.
@@ -1566,264 +1575,16 @@ def vcf_standardize(MATRIX, vcf_standardize):
         annots = [""] * MATRIX.num_annots()
         header2annots[header] = annots
 
-    # If NUM_REF is missing, see if I can get it from the FORMAT RD or
-    # SGCOUNTREF.
-    if NUM_REF in missing and format_dict:
-        annots = [""] * MATRIX.num_annots()
-        found = False
-        for i, d in enumerate(format_dict):
-            if "RD" in d:
-                annots[i] = d["RD"]
-                found = True
-            elif "SGCOUNTREF_F" in d and "SGCOUNTREF_R" in d:
-                annots[i] = int(d["SGCOUNTREF_F"]) + int(d["SGCOUNTREF_R"])
-                found = True
-        if found:
-            header2annots[NUM_REF] = annots
-            missing.pop(missing.index(NUM_REF))
-
-    # If NUM_REF is missing, see if I can get it from the FORMAT AD.
-    # (if AD is format <ref>,<alt>).
-    if NUM_REF in missing and format_dict:
-        x = [d.get("AD", "") for d in format_dict]
-        x = [x for x in x if x]
-        has_comma = [y for y in x if y.find(",") >= 0]
-        no_comma = [y for y in x if y.find(",") < 0]
-        if has_comma and not no_comma:
-            annots = [""] * MATRIX.num_annots()
-            for i, d in enumerate(format_dict):
-                if "AD" not in d:
-                    continue
-                x = d["AD"]
-                x = x.split(",")
-                x = map(int, x)
-                annots[i] = x[0]
-            header2annots[NUM_REF] = annots
-            missing.pop(missing.index(NUM_REF))
-
-    # If NUM_ALT is missing, see if I can get it from the FORMAT
-    # SGCOUNTREF.
-    if NUM_ALT in missing and format_dict:
-        annots = [""] * MATRIX.num_annots()
-        found = False
-        for i, d in enumerate(format_dict):
-            if "SGCOUNTALT_F" in d and "SGCOUNTALT_R" in d:
-                x1 = d["SGCOUNTALT_F"]
-                x2 = d["SGCOUNTALT_R"]
-                x1 = x1.split(",")
-                x2 = x2.split(",")
-                x1 = x1[0]  # Arbitrarily take the first one
-                x2 = x2[0]  # Arbitrarily take the first one
-                annots[i] = int(x1) + int(x2)
-                found = True
-        if found:
-            header2annots[NUM_ALT] = annots
-            missing.pop(missing.index(NUM_ALT))
-
-
-    # If NUM_ALT is missing, see if I can get it from the FORMAT AD.
-    if NUM_ALT in missing and format_dict:
-        x = [d.get("AD", "") for d in format_dict]
-        x = [x for x in x if x]
-        has_comma = [y for y in x if y.find(",") >= 0]
-        no_comma = [y for y in x if y.find(",") < 0]
-        # If AD is format <ref>,<alt>.
-        if has_comma and not no_comma:
-            annots = [""] * MATRIX.num_annots()
-            for i, d in enumerate(format_dict):
-                if "AD" not in d:
-                    continue
-                x = d["AD"]
-                x = x.split(",")
-                x = map(int, x)
-                #annots[i] = sum(x[1:])
-                annots[i] = x[1]  # Arbitratily take the first one.
-            header2annots[NUM_ALT] = annots
-            missing.pop(missing.index(NUM_ALT))
-        # If AD is format <alt>.
-        if not has_comma and no_comma:
-            annots = [""] * MATRIX.num_annots()
-            for i, d in enumerate(format_dict):
-                if "AD" not in d:
-                    continue
-                annots[i] = d["AD"]
-            header2annots[NUM_ALT] = annots
-            missing.pop(missing.index(NUM_ALT))
-            
-    # If NUM_ALT is missing, see if I can get it from the INFO line.
-    if NUM_ALT in missing and format_dict:
-        annots = [""] * MATRIX.num_annots()
-        found = False
-        for i, d in enumerate(info_dict):
-            if "TR" not in d:
-                continue
-            # If there are multiple possible ALT alleles, Platypus
-            # will include reads for both.
-            # 168,117
-            # Just use the biggest one.
-            x = d["TR"]
-            x = x.split(",")
-            x = map(int, x)
-            x = max(x)
-            annots[i] = x
-            found = True
-        if found:
-            header2annots[NUM_ALT] = annots
-            missing.pop(missing.index(NUM_ALT))
-
-    
-    # If TOTAL is missing, see if I can get it from the FORMAT.
-    if TOTAL in missing and format_dict:
-        annots = [""] * MATRIX.num_annots()
-        found = False
-        for i, d in enumerate(format_dict):
-            if "DP" in d:
-                annots[i] = d["DP"]
-                found = True
-            elif "SDP" in d:
-                annots[i] = d["SDP"]
-                found = True
-        if found:
-            header2annots[TOTAL] = annots
-            missing.pop(missing.index(TOTAL))
-
-    # If TOTAL is missing, see if I can get it from the INFO line.
-    if TOTAL in missing and info_dict:
-        annots = [""] * MATRIX.num_annots()
-        found = False
-        for i, d in enumerate(info_dict):
-            if "TC" not in d:
-                continue
-            annots[i] = d["TC"]
-            found = True
-        if found:
-            header2annots[TOTAL] = annots
-            missing.pop(missing.index(TOTAL))
-
-    # If NUM_REF is missing, see if I can calculate it from TOTAL and
-    # NUM_ALT.
-    if NUM_REF in missing and TOTAL not in missing and NUM_ALT not in missing:
-        num_alt = header2annots[NUM_ALT]
-        total = header2annots[TOTAL]
-        num_ref = [None] * len(total)
-        for i in range(len(num_ref)):
-            num_ref[i] = int(total[i]) - int(num_alt[i])
-        header2annots[NUM_REF] = num_ref
-        missing.pop(missing.index(NUM_REF))
-    
-    # If TOTAL is missing, see if I can calculate it from num_ref and
-    # num_alt.
-    if TOTAL in missing and NUM_REF not in missing and NUM_ALT not in missing:
-        num_alt = header2annots[NUM_ALT]
-        num_ref = header2annots[NUM_REF]
-        total_reads = [None] * len(num_ref)
-        for i in range(len(num_ref)):
-            total_reads[i] = int(num_ref[i]) + int(num_alt[i])
-        header2annots[TOTAL] = total_reads
-        missing.pop(missing.index(TOTAL))
-
-
-    # If VAF is missing, see if I can get it from the FORMAT.
-    if VAF in missing and format_dict:
-        annots = [""] * MATRIX.num_annots()
-        found = False
-        for i, d in enumerate(format_dict):
-            if "FREQ" not in d:
-                continue
-            annots[i] = d["FREQ"]
-            found = True
-        if found:
-            header2annots[VAF] = annots
-            missing.pop(missing.index(VAF))
-
-    # If VAF is missing, see if I can calculate it from num_ref and
-    # num_alt.
-    if VAF in missing and NUM_REF not in missing and NUM_ALT not in missing:
-        num_alt = header2annots[NUM_ALT]
-        num_ref = header2annots[NUM_REF]
-        vaf = [""] * len(num_ref)
-        for i in range(len(num_ref)):
-            if num_ref[i] == "" or num_alt[i] == "":
-                continue
-            total = int(num_ref[i]) + int(num_alt[i])
-            if total == 0:
-                continue
-            vaf[i] = int(num_alt[i]) / float(total)
-        header2annots[VAF] = vaf
-        missing.pop(missing.index(VAF))
-
-
-    # For some rows, samtools skips the values.  If this happens, try
-    # to guess the values based on the INFO column.
-    # Only do this imputation if NUM_REF and NUM_ALT are not in
-    # missing.  This should only happen in a minority of the cases.
-    # INFO    ADP=16;WT=1;HET=0;HOM=0;NC=0
-    # FORMAT  GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
-    # VALUES  ./.:.:16
-    if info_dict and (TOTAL not in missing) and (NUM_REF not in missing) and \
-           (NUM_ALT not in missing) and (VAF not in missing):
-        num_ref = header2annots[NUM_REF]
-        num_alt = header2annots[NUM_ALT]
-        total = header2annots[TOTAL]
-        vaf = header2annots[VAF]
-        found = False
-        for i, d in enumerate(info_dict):
-            if num_ref[i] or num_alt[i]:
-                continue
-            x = d.get("WT"), d.get("HET"), d.get("HOM"), d.get("NC")
-            wt, het, hom, nc = x
-            if wt is None or het is None or hom is None or nc is None:
-                continue
-            wt, het, hom, nc = int(wt), int(het), int(hom), int(nc)
-            # Must have one sample.
-            if wt + het + hom + nc != 1:
-                continue
-            if wt:
-                num_ref[i] = total[i]
-                num_alt[i] = 0
-                vaf[i] = 0
-                found = True
-            elif hom:
-                num_ref[i] = 0
-                num_alt[i] = total[i]
-                vaf[i] = 1
-                found = True
-        if found:
-            header2annots[NUM_REF] = num_ref
-            header2annots[NUM_ALT] = num_alt
-    
-
     # Make sure nothing is missing.
     assert not missing, "Not found: %s" % ", ".join(map(str, missing))
 
-    # If the VAF is provided as a percent, convert it to decimal.
-    # e.g. 14.29% -> 0.1429
-    stype = type("")
-    x = header2annots[VAF]
-    x = [x for x in x if x not in [None, ""]]
-    x = [x for x in x if type(x) is stype]
-    # Look for "%" at the end.
-    x = [x for x in x if x.endswith("%")]
-    if x:
-        # Change in place.
-        annots = header2annots[VAF]
-        for i in range(len(annots)):
-            x = annots[i]
-            if not x:
-                continue
-            if type(x) is not stype:
-                continue
-            if x.endswith("%"):
-                x = x[:-1]
-            x = float(x) / 100
-            annots[i] = x
-
-    headers = [x[0] for x in COLUMNS]
     all_annots = [header2annots.get(x) for x in headers]
 
-    # Strip all annots.
+    # Clean up all annots.
     for i in range(len(all_annots)):
         for j in range(len(all_annots[i])):
+            if all_annots[i][j] is None:
+                all_annots[i][j] = ""
             all_annots[i][j] = str(all_annots[i][j]).strip()
 
     return AnnotationMatrix.create_from_annotations(headers, all_annots)
@@ -2517,8 +2278,10 @@ def main():
         "--vcf_standardize", 
         help="Take a VCF file (from IACS, Platypus, or GATK) and put into "
         "a standard format.  "
-        "Format:<info_header>,<format_header>,<values_header>.  "
-        'If <values_header> is "__LASTCOL__", then will use the last column.')
+        "Format:<info_header>,<format_header>[,<genotype_header>].  "
+        "<genotype_header> is a list of optional headers for the genotype "
+        "information.  If not given, will use the last-most columns in "
+        "the file.")
     group.add_argument(
         "--vcf_remove_bad_coords", action="store_true",
         help="Somve VCF files contain bad start or end positions, "

@@ -35,6 +35,7 @@ make_network
 
 find_paths
 find_paths_by_start_ids
+prune_paths
 
 get_input_nodes           Show all possible input nodes for the network.
 get_input_datatypes       Show all combinations of datatype that can be inputs.
@@ -53,10 +54,29 @@ write_network
 debug_print
 
 """
+# Classes:
+# PathSubset
+# 
 # Functions:
 # _init_network
 # _split_network
 # _complete_network
+#
+# _prune_by_custom_attributes     Should organize these into classes.
+# _prune_alternate_attributes1
+# _list_alternate_attributes1
+# _find_alternate_attributes
+# _prune_alternate_attributes2
+# _list_alternate_attributes2
+# _prune_superset_pipelines
+# _is_superset_pipeline
+# _does_path_go_through
+# _prune_parallel_pipelines
+# _is_parallel_pipeline1
+# _is_parallel_pipeline2
+# _is_parallel_pipeline3
+# _compare_paths
+# _build_subpath
 #
 #     InData(s) -> Module -> OutData
 # _bc_to_modules       Module <- OutData
@@ -64,6 +84,7 @@ debug_print
 # _bc_to_one_input     InDatas[i] <- Module <- OutData         INFERENCE
 #                      DO NOT CALL.  Helper for _bc_to_inputs.
 # _bc_to_input_ids     InDatas IDs <- Module ID <- OutData ID
+# _bc_to_input_and_module_ids
 # _fc_to_outputs       InDatas -> Module -> OutData            INFERENCE
 # _fc_to_output_ids    InDatas IDs -> Module ID -> OutData ID
 # _resolve_constraint
@@ -73,13 +94,14 @@ debug_print
 # _is_valid_input_ids       InData IDs (?) -> Module ID -> OutData ID
 # _is_valid_output          Module -> OutData (?)              INFERENCE
 # _is_valid_output_id_path  path -> OutData ID (?)
-# 
+# _is_valid_output_from_input_and_module_ids
+#
 # _find_same_data          Find a DataNode that is an exact match.
 # _find_compat_data        Find a DataNode that is compatible.
 #                          WAS _find_start_node
-# _score_same_data       
+# _score_same_data
 # _score_compat_data       WAS _score_start_nodes.
-# _is_data_same 
+# _is_data_same
 # _is_data_compatible
 # _is_attribute_same
 # _is_attribute_compatible
@@ -91,9 +113,9 @@ debug_print
 #
 # _get_attribute_type
 # _assign_case_by_type
-# 
+#
 # _get_parents_of          WAS _backchain_to_ids
-# _get_children_of          
+# _get_children_of
 # _make_parents_dict       WAS _make_backchain_dict
 # _make_ancestor_dict
 # _make_descendent_dict
@@ -108,6 +130,7 @@ debug_print
 # _uniq
 # _uniq_intlist
 # _uniq_flatten1_intlist
+# _intlist2bits
 #
 # _print_nothing
 # _print_string
@@ -116,6 +139,7 @@ debug_print
 #
 # _fix_node_id_pairs_after_merge
 # _fix_node_id_dict_after_merge
+# _fix_ancestor_dict_after_merge
 # _product_network
 # _product_and_chain
 #
@@ -591,7 +615,7 @@ class DataType:
         #x = self.name, tuple(self.attribute_defs), self.help
         #return hash(x)
         return self.hash_
-    
+
     def _resolve_attributes(self, attribute_dict, is_input):
         # Make a dictionary of all the attributes.  The values given
         # by the caller take precedence.  Anything else should be set
@@ -1136,10 +1160,10 @@ class Network:
 
 def make_network(moduledb, out_data, custom_attributes):
     import copy
-    
+
     # Clean up this code.
     network = _init_network(moduledb, out_data, custom_attributes)
-    
+
     # Split the data nodes so that everything is TYPE_ATOM.  Fixes
     # problems in the inference, and also makes the other steps easier
     # to handle.  Carefully build the network back up.
@@ -1252,13 +1276,13 @@ def _split_network(network):
     # Inferencing can lead to a situation where a ModuleNode points to
     # DataNode that it can't generate.  E.g.
     # trim_adapters -> Fastq.trimmed=["no", "yes"]  (should only be "yes")
-    # 
+    #
     # Solution: split Fastq into multiple objects.
     # _OptimizeNoInvalidOutputs will remove the bad links.
     import itertools
-    
+
     nodeid2parents = _make_parents_dict(network)
-    
+
     to_delete = []
     for node_id in range(len(network.nodes)):
         node = network.nodes[node_id]
@@ -1659,9 +1683,9 @@ class _OptimizeNoDuplicateModules:
                 network = network.merge_nodes(
                     [n1, n2], nodeid2parents=nodeid2parents)
                 duplicates = _fix_node_id_pairs_after_merge(duplicates, n1, n2)
-                ancestors = _fix_node_id_dict_after_merge(ancestors, n1, n2)
                 nodeid2parents = _fix_node_id_dict_after_merge(
                     nodeid2parents, n1, n2)
+                ancestors = _fix_ancestor_dict_after_merge(ancestors, n1, n2)
                 changed = True
             if not changed:
                 # No duplicates merged.  Either no more duplicates, or
@@ -1683,7 +1707,7 @@ class _OptimizeNoDuplicateModules:
             for (i, j) in _iter_upper_diag(len(next_ids)):
                 node_id1, node_id2 = next_ids[i], next_ids[j]
                 pairs[(node_id1, node_id2)] = 1
-                    
+
         dups = []
         for (id1, id2) in pairs:
             node_1 = network.nodes[id1]
@@ -1714,12 +1738,14 @@ class _OptimizeNoDuplicateData:
                 # will happen if one node is an ancestor of the other.
                 if n2 in ancestors.get(n1, []) or n1 in ancestors.get(n2, []):
                     continue
+                
                 network = network.merge_nodes(
                     [n1, n2], nodeid2parents=nodeid2parents)
                 duplicates = _fix_node_id_pairs_after_merge(duplicates, n1, n2)
-                ancestors = _fix_node_id_dict_after_merge(ancestors, n1, n2)
                 nodeid2parents = _fix_node_id_dict_after_merge(
                     nodeid2parents, n1, n2)
+                ancestors = _fix_ancestor_dict_after_merge(ancestors, n1, n2)
+
                 changed = True
             if not changed:
                 break
@@ -1734,7 +1760,7 @@ class _OptimizeNoDuplicateData:
         data_node_ids = [
             node_id for (node_id, node) in enumerate(network.nodes)
             if isinstance(node, DataNode)]
-        
+
         duplicates = []
         for (i, j) in _iter_upper_diag(len(data_node_ids)):
             node_id1, node_id2 = data_node_ids[i], data_node_ids[j]
@@ -1791,7 +1817,7 @@ class _OptimizeMergeData1:
                     nodeid2parents, fc_cache):
                     similar.append((node_id1, node_id2))
         return similar
-    
+
     def _are_nodes_similar(
         self, network, node_id1, node_id2, custom_attributes,
         nodeid2parents, fc_cache):
@@ -1801,7 +1827,7 @@ class _OptimizeMergeData1:
         # The data type must be the same.
         if node_1.datatype.name != node_2.datatype.name:
             return False
-        
+
         # They must share the same children.
         c1 = network.transitions.get(node_id1, [])
         c2 = network.transitions.get(node_id2, [])
@@ -1815,7 +1841,7 @@ class _OptimizeMergeData1:
         # align_bowtie2 -> SamFolder.aligner (bowtie2)
         # Merge to:
         # align_bowtie1 -> SamFolder.aligner (bowtie1, bowtie2)
-        # align_bowtie2 -> 
+        # align_bowtie2 ->
         ## They must share the same parents.
         ##p1 = nodeid2parents.get(node_id1, [])
         ##p2 = nodeid2parents.get(node_id2, [])
@@ -1845,7 +1871,7 @@ class _OptimizeMergeData1:
         # Make sure the input data does include both node_id1 and node_id2.
         paths = [x for x in paths
                  if not (node_id1 in x[0] and node_id2 in x[0])]
-            
+
         # The combined data node must be able to generate all these
         # out data nodes.
         merged_data = _merge_data_nodes(node_1, node_2)
@@ -1921,7 +1947,7 @@ class _OptimizeMergeData2:
                     network, node_id1, node_id2, nodeid2parents):
                     similar.append((node_id1, node_id2))
         return similar
-    
+
     def _are_nodes_similar(self, network, node_id1, node_id2,
                            nodeid2parents):
         node_1 = network.nodes[node_id1]
@@ -1930,7 +1956,7 @@ class _OptimizeMergeData2:
         # The data type must be the same.
         if node_1.datatype.name != node_2.datatype.name:
             return False
-        
+
         # They must share the same children.
         c1 = network.transitions.get(node_id1, [])
         c2 = network.transitions.get(node_id2, [])
@@ -2054,7 +2080,7 @@ def _find_paths_by_datatypes_h(
         #        depth+[node_id])
         #    x = list(x)
         #    branch2info.append(x)
-        
+
         # Try different combinations of paths for each branch.
         for x in itertools.product(*branch2info):
             # Merge the information from each branch.
@@ -2108,7 +2134,7 @@ def find_paths_by_datatypes(network, custom_attributes, datatype_names):
     # missing_ids  list of node_ids not in datatype_names
 
     nodeid2parents = _make_parents_dict(network)
-    
+
     # Recursively check if this set of datatype_names can be inputs to
     # this network.
     x = _find_paths_by_datatypes_h(
@@ -2186,6 +2212,9 @@ def _find_paths_by_start_ids_hh(
     depth, cache):
     import itertools
     from genomicode import jmath
+
+    PRUNE_PATHS = True
+    
     assert node_id < len(network.nodes), "%s %d" % (
         repr(node_id), len(network.nodes))
     node = network.nodes[node_id]
@@ -2221,7 +2250,7 @@ def _find_paths_by_start_ids_hh(
         # combo is a list of node_ids.
         # Some combos will be seen twice, but the vast majority of the
         # time, each combo is evaluated only once.
-        
+
         # Each branch is a list of Pathway objects.
         branch2info = [
             _find_paths_by_start_ids_h(
@@ -2230,14 +2259,15 @@ def _find_paths_by_start_ids_hh(
             for x in combo]
 
         # Make sure there aren't too many combinations to search.
-        MAX_COMBINATIONS = 1E4
+        MAX_COMBINATIONS = 5E4
         branchlen = [len(x) for x in branch2info]
         total = jmath.prod(branchlen)
         assert total < MAX_COMBINATIONS, "Too many paths (%d)" % total
 
-        # No branches indicate an error somewhere.
-        assert total > 0
-
+        if not PRUNE_PATHS:
+            # No branches indicate an error somewhere.
+            assert total > 0
+        
         # Optimization: If there is already a possibility with
         # nomissing, then don't even consider the paths that will
         # introduce a missing node.
@@ -2312,7 +2342,7 @@ def _find_paths_by_start_ids_hh(
             #    continue
             #node_ids, transitions, missing_ids = x
             node_ids, transitions, missing_ids = _merge_paths(branches)
-            
+
             # Optimization: If there's already a nomissing path, then
             # skip all paths with missing_ids.
             # Actually, this never happens.
@@ -2373,7 +2403,7 @@ def _find_paths_by_start_ids_hh(
                 if conflict and not missing_ids:
                     # This happens 60% of the time.
                     continue
-                    
+
             # If this is a DataNode, the transition from prev_id (a
             # ModuleNode) to node_id may be invalid.  e.g.
             # FastqFold (trimmed=no)  -> merge_reads -> FastqFold (trimmed=no)
@@ -2401,8 +2431,8 @@ def _find_paths_by_start_ids_hh(
     else:
         # If there are no working paths, then merge the paths by
         # start_ids.
-        # Can not this with working paths.  Otherwise, this may end up
-        # merging alternate routes through the network.
+        # Can not do this with working paths.  Otherwise, this may end
+        # up merging alternate routes through the network.
         # Fastq.compress (unknown) -> is_compressed -> Fastq.compress (yes)
         #                                           -> Fastq.compress (no)
         sids2paths = {}  # start_ids -> list of paths
@@ -2419,6 +2449,18 @@ def _find_paths_by_start_ids_hh(
                 p = Pathway(
                     node_ids, transitions, ps[0].start_ids, missing_ids)
             paths.append(p)
+
+    # Only prune working paths.
+    if no_missing and PRUNE_PATHS:
+        # Can't prune by custom attributes here.  Because paths aren't
+        # finished, we don't know which are the bottom-mode nodes to
+        # apply the attributes to.
+        # Also don't prune by superset pipelines.  Can't be sure if
+        # the pipelines aren't finished yet.
+        #orig_paths = paths
+        paths = prune_paths(
+            paths, network, custom_attributes,
+            prune_custom_attributes=False, prune_superset=False)
 
     return paths
 
@@ -2437,10 +2479,10 @@ def _find_paths_by_start_ids_h(
 def find_paths_by_start_ids(network, custom_attributes, node2startids):
     # node2startids should be a list of lists indicating the possible
     # start_ids for each input node.
-    # 
+    #
     # This function will search through the network for pipelines that
     # start from this and return a list of Pathway objects.
-    # 
+    #
     # node_ids     list of node IDs in this path.
     # transitions  node_id -> tuple of next node IDs
     # start_ids    list of node IDs, parallel to node2startids
@@ -2450,7 +2492,7 @@ def find_paths_by_start_ids(network, custom_attributes, node2startids):
 
     # Pre-calculate the parents.
     nodeid2parents = _make_parents_dict(network)
-    
+
     # Pre-calculate which node IDs have BASED_ON_DATA consequences.
     # No. Does not save much time.
     #moduleid2bod = {}  # module_id -> list of attrs that are BASED_ON_DATA
@@ -2462,7 +2504,7 @@ def find_paths_by_start_ids(network, custom_attributes, node2startids):
     #    x = [x.name for x in x]
     #    if x:
     #        moduleid2bod[module_id] = x
-    
+
     x = _find_paths_by_start_ids_h(
         network, 0, custom_attributes, node2startids, nodeid2parents,
         [], {})
@@ -2483,7 +2525,7 @@ def _merge_paths(paths):
     #   99% of time have 2 paths.
     # Writing code specifically for the 2 path case doesn't speed things up.
     # Caching the previously calculated transitions doesn't speed things up.
-    
+
     # Merge the node_ids and missing_ids.
     x1 = [x.node_ids for x in paths]
     x2 = [x.missing_ids for x in paths]
@@ -2508,6 +2550,1240 @@ def _merge_transitions(paths):
     return transitions
 
 
+def prune_paths(paths, network, custom_attributes,
+                prune_custom_attributes=True, prune_superset=True):
+    nodeid2parents = _make_parents_dict(network)
+
+    # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)
+    # pruning.
+    # Just try different orders until I find the fastest.
+    if prune_custom_attributes:
+        paths = _prune_by_custom_attributes(
+            network, custom_attributes, paths, nodeid2parents)
+    paths = _prune_alternate_attributes2(
+        network, custom_attributes, paths, nodeid2parents)
+    paths = _prune_alternate_attributes1(
+        network, custom_attributes, paths, nodeid2parents)
+    if prune_superset:
+        paths = _prune_superset_pipelines(network, paths)
+    paths = _prune_parallel_pipelines(network, paths, nodeid2parents)
+    return paths
+
+
+def _prune_by_custom_attributes(network, custom_attributes, paths,
+                                nodeid2parents):
+    # Keep only the paths that match the attributes desired by the
+    # user.  custom_attributes is a list of Attribute objects.
+    if not custom_attributes:
+        return paths
+    
+    dname2attrs = {}  # datatype name -> attr name -> value
+    for x in custom_attributes:
+        if x.datatype.name not in dname2attrs:
+            dname2attrs[x.datatype.name] = {}
+        dname2attrs[x.datatype.name][x.name] = x.value
+
+    # If a module's input datatype is different from the output
+    # datatype, and it has has no descendents with the same datatype,
+    # then the attributes of that input datatype should match the user
+    # attributes.
+
+
+    # Search through the network for data nodes that might be subject
+    # to custom_attributes.
+    x = [x.node_ids for x in paths]
+    all_node_ids = x[0].union(*x[1:])
+    #all_node_ids = {}
+    #for x in paths:
+    #    all_node_ids.update(x.node_ids)
+
+    descendents = _make_descendent_dict(network)
+    ## Only care about the descendents that are in this network.
+    #desc = {}
+    #for (node_id, next_ids) in descendents.iteritems():
+    #    if node_id not in all_node_ids:
+    #        continue
+    #    next_ids = [x for x in next_ids if x in all_node_ids]
+    #    desc[node_id] = next_ids
+    #descendents = desc
+    
+    module_ids = [
+        x for x in all_node_ids
+        if isinstance(network.nodes[x], ModuleNode)]
+    #data_node_ids = []
+    data_node_ids = set()
+    for module_id in module_ids:
+        module = network.nodes[module_id]
+        
+        # If the module takes only one kind of datatype and produces
+        # the same kind, then this won't work.
+        if len(module.in_datatypes) == 1 and \
+           module.out_datatype == module.in_datatypes[0]:
+            continue
+
+        # Make sure at least one input datatype (that is not
+        # DefaultAttributesFrom) has a user attribute.
+        daf = [x.input_index for x in module.default_attributes_from]
+        in_dtype_names = [
+            x.name for (i, x) in enumerate(module.in_datatypes)
+            if i not in daf]
+        x = [x for x in in_dtype_names if x in dname2attrs]
+        if not x:
+            continue
+        # This should be a converting module.
+
+        # Find the node_ids that match a user attribute.
+        x = nodeid2parents.get(module_id, [])
+        x = [x for x in x if network.nodes[x].datatype.name in dname2attrs]
+        node_ids = x
+
+        # Make sure these node_ids don't have any descendents of the
+        # same type.
+        good_ids = []
+        for node_id in node_ids:
+            x = descendents.get(node_id, [])
+            x = [x for x in x if x in all_node_ids]
+            x = [x for x in x if isinstance(network.nodes[x], DataNode)]
+            x = [network.nodes[x].datatype.name for x in x]
+            if network.nodes[node_id].datatype.name not in x:
+                good_ids.append(node_id)
+        node_ids = good_ids
+
+        #data_node_ids.extend(node_ids)
+        data_node_ids = data_node_ids.union(node_ids)
+    #data_node_ids = {}.fromkeys(data_node_ids)
+
+    # List the node_ids that either don't match the user attributes,
+    # or are ambiguous, e.g.
+    # Fastq.adapters = [no, yes]; user wants no
+    mismatch_node_ids = set()
+    ambiguous_node_ids = set()
+    for node_id in data_node_ids:
+        node = network.nodes[node_id]
+        attrs = dname2attrs[node.datatype.name]
+        for name, uvalue in attrs.iteritems():
+            dvalue = node.attributes[name]
+            utype = _get_attribute_type(uvalue)
+            dtype = _get_attribute_type(dvalue)
+            assert utype == TYPE_ATOM
+            if dtype == TYPE_ENUM:
+                ambiguous_node_ids.add(node_id)
+                continue
+            if dvalue != uvalue:
+                mismatch_node_ids.add(node_id)
+
+    if not mismatch_node_ids and not ambiguous_node_ids:
+        return paths
+
+    # For each pathway, see if it contains a delete or ambiguous node.
+    bc_cache = {}
+    fc_cache = {}
+    path_cache = {}
+    
+    delete = {}
+    for (i, p) in enumerate(paths):
+        #node_ids, start_ids, data_indexes = x
+        # If there's a mismatch, delete this path.
+        #x = [x for x in mismatch_node_ids if x in p.node_ids]
+        #if x:
+        if not p.node_ids.intersection(mismatch_node_ids):
+            delete[i] = 1
+            continue
+
+        # If there's no ambiguity, then keep this path.
+        #x = [x for x in ambiguous_node_ids if x in p.node_ids]
+        #if not x:
+        if not p.node_ids.intersection(ambiguous_node_ids):
+            continue
+        check_ids = x
+
+        # See if this pathway can produce a node that has a proper
+        # attribute.
+        check_paths = []
+        for out_data_id in check_ids:
+            x = _bc_to_input_and_module_ids(
+                network, out_data_id, custom_attributes, p.node_ids,
+                nodeid2parents, bc_cache)
+            check_paths.extend(x)
+        assert check_paths
+
+        # Each node ID in check_ids needs to match.
+        match = {}  # node_id -> 1
+        for x in check_paths:
+            in_data_ids, module_id, out_data_id = x
+            if out_data_id in match:
+                continue
+            name = network.nodes[out_data_id].datatype.name
+            attrs = dname2attrs[name]
+            key = module_id, in_data_ids, out_data_id
+            if key not in path_cache:
+                x = _is_valid_output_from_input_and_module_ids(
+                    network, module_id, in_data_ids, out_data_id,
+                    attrs, fc_cache)
+                path_cache[key] = x
+            if path_cache[key]:
+                match[out_data_id] = 1
+            if len(match) == len(check_ids):
+                break
+        if len(match) != len(check_ids):
+            delete[i] = 1
+
+    paths = [x for (i, x) in enumerate(paths) if i not in delete]
+    return paths
+
+
+def _prune_alternate_attributes1(
+    network, custom_attributes, paths, nodeid2parents):
+    # If there is an object with an attribute that can take several
+    # different values, then pipelines may be generated that can
+    # create each value.  This causes unnecessary computation, because
+    # only one value needs to be used.  Arbitrarily choose one, and
+    # delete the other pipelines.
+    # 
+    # align_with_bowtie1 -> SamFolder (bowtie1)
+    # align_with_bowtie2 -> SamFolder (bowtie2)
+    # align_with_bwa_aln -> SamFolder (bwa_backtrack)
+    # align_with_bwa_mem -> SamFolder (bwa_mem)
+    #from genomicode import parselib
+
+    # 1.  Look in two pipelines for:
+    #     - Same DataObject.
+    #     - Different Modules pointing to that DataObject.
+    #     - Modules have Consequence SET_TO to different values in the
+    #       same attribute.
+    #     - That attribute is TYPE_ENUM in the DataObject.
+    # 2.  Keep the pipeline with the Module that generates the value
+    #     that comes first alphabetically.
+    # 3.  Print a message showing which value was chosen.
+
+    if not paths:
+        return []
+
+    # List of (datatype name, attr name, kept value, deleted value)
+    deleted = []
+    paths = paths[:]
+
+    # For each data node, list the alternate attributes.
+    dataid2alts = {}
+    for i in range(len(network.nodes)):
+        if not isinstance(network.nodes[i], DataNode):
+            continue
+        x = _list_alternate_attributes1(network, i, nodeid2parents)
+        dataid2alts[i] = x
+
+    # Only check pathways that has a data node in dataid2alts.
+    has_alts = []
+    for i, p in enumerate(paths):
+        x = [x for x in p.node_ids if dataid2alts.get(x, [])]
+        if x:
+            has_alts.append(i)
+    has_alts = {}.fromkeys(has_alts)
+
+    ## Convert node_ids to bitwise numbers for faster superset
+    ## comparison.
+    #paths_node_ids_bit = [_intlist2bits(x[0]) for x in paths]
+
+    seen = {}  # (path_i, path_j) -> 1
+    while True:
+        found = None
+        # Actually more efficient to restart this loop after deleting
+        # paths than to run through it without deleting anything.
+        # After deleting paths, leads to overall fewer calls to
+        # _find_alternate_attributes.  O(N*N) growth.
+        for i in range(len(paths)-1):
+            if not has_alts.get(i):
+                continue
+            for j in range(i+1, len(paths)):
+                if not has_alts.get(j):
+                    continue
+                if (i, j) in seen:
+                    continue
+                # Almost all time spent in this function.
+                x = _find_alternate_attributes(
+                    network, paths[i], paths[j], dataid2alts)
+                seen[(i, j)] = 1
+                if x:
+                    found = i, j, x
+                    break
+            if found:
+                break
+        if not found:
+            break
+
+        path_1, path_2, x = found
+        attr_name, module_id_1, attr_value_1, \
+                   module_id_2, attr_value_2, data_id = x
+        assert attr_value_1 != attr_value_2
+        datatype_name = network.nodes[data_id].datatype.name
+
+        # Figure out which path to delete.
+        path_to_delete = None
+        # Look in custom_attributes to see if one of them is requested
+        # by the user.
+        user_request = None  # value requested by user
+        for x in custom_attributes:
+            if x.datatype.name != datatype_name:
+                continue
+            if x.name != attr_name:
+                continue
+            assert user_request is None, "Multiple custom_attributes."
+            user_request = x.value
+        deleted_based_on_user = True
+        if user_request:
+            if user_request == attr_value_2:
+                path_to_delete = 1
+            elif user_request == attr_value_1:
+                path_to_delete = 2
+        if path_to_delete is None:
+            # Keep the one that comes first alphabetically.
+            path_to_delete = 1
+            if attr_value_1 < attr_value_2:
+                path_to_delete = 2
+            deleted_based_on_user = False
+
+        # Delete the appropriate path.
+        assert path_to_delete in [1, 2]
+        if path_to_delete == 1:
+            del paths[path_1]
+            #del paths_node_ids_bit[path_1]
+            p1, p2 = path_2, path_1
+            v1, v2 = attr_value_2, attr_value_1
+        else:
+            del paths[path_2]
+            #del paths_node_ids_bit[path_2]
+            p1, p2 = path_1, path_2
+            v1, v2 = attr_value_1, attr_value_2
+
+        # Fix the indexes of the seen variable.
+        x = seen.keys()
+        x = _fix_node_id_pairs_after_merge(x, p1, p2)
+        seen = {}.fromkeys(x)
+            
+        x = datatype_name, attr_name, v1, v2, deleted_based_on_user
+        deleted.append(x)
+
+    #_print_attributes_pruned(deleted)
+    return paths
+
+
+def _list_alternate_attributes1(network, data_id, nodeid2parents):
+    # Return list of (data_id, parent_ids, attr_name, attr_values).
+    # align_with_bowtie1 -> SamFolder (bowtie1)
+    # align_with_bowtie2 -> SamFolder (bowtie2)
+    # align_with_bwa_aln -> SamFolder (bwa_backtrack)
+    # align_with_bwa_mem -> SamFolder (bwa_mem)
+    if data_id not in nodeid2parents:
+        return []
+    prev_ids = nodeid2parents[data_id]
+
+    # 2 parents must have Consequences SET_TO to the same
+    # attribute.
+    attr2values = {}     # name -> list of values to set to
+    attr2moduleids = {}  # name -> list of module_ids
+    for prev_id in prev_ids:
+        module_node = network.nodes[prev_id]
+        for cons in module_node.consequences:
+            if cons.behavior != SET_TO:
+                continue
+            n, v = cons.name, cons.arg1
+            assert v is not None
+            if n not in attr2values:
+                attr2values[n] = []
+                attr2moduleids[n] = []
+            if v not in attr2values[n]:
+                attr2values[n].append(v)
+                attr2moduleids[n].append(prev_id)
+    # List of attributes with at least 2 values.
+    attrs = [n for (n, v) in attr2values.iteritems() if len(v) >= 2]
+    retvals = []
+    for attr_name in attrs:
+        x = data_id, attr2moduleids, attr_name, attr2values[attr_name]
+        retvals.append(x)
+    return retvals
+
+
+def _find_alternate_attributes(network, path_1, path_2, dataid2alts):
+    #shared_ids = [x for x in path_1.node_ids if x in path_2.node_ids]
+    #unique_ids_1 = [x for x in path_1.node_ids if x not in path_2.node_ids]
+    #unique_ids_2 = [x for x in path_2.node_ids if x not in path_1.node_ids]
+    shared_ids = path_1.node_ids.intersection(path_2.node_ids)
+    unique_ids_1 = path_1.node_ids.difference(path_2.node_ids)
+    unique_ids_2 = path_2.node_ids.difference(path_1.node_ids)
+
+    # Look for a DataNode with alternates that is shared in both pathways.
+    data_ids = [x for x in shared_ids if dataid2alts.get(x, [])]
+    if not data_ids:
+        return None
+
+    # Look for ModuleNodes that are unique for each pathway.
+    module_ids_1 = [x for x in unique_ids_1
+                    if isinstance(network.nodes[x], ModuleNode)]
+    module_ids_2 = [x for x in unique_ids_2
+                    if isinstance(network.nodes[x], ModuleNode)]
+    # This is slower.
+    #module_ids_1 = [x for x in node_ids_1 if x not in shared_ids and 
+    #                isinstance(network.nodes[x], bie3.ModuleNode)]
+    #module_ids_2 = [x for x in node_ids_2 if x not in shared_ids and 
+    #                isinstance(network.nodes[x], bie3.ModuleNode)]
+    if not module_ids_1 or not module_ids_2:
+        return None
+
+    # Check each data_id carefully.
+    for data_id in data_ids:
+        for x in dataid2alts[data_id]:
+            x, parent_ids, attr_name, attr_values = x
+
+            # Look for parent_ids that are in different pathways.
+            good_1 = [x for x in parent_ids if x in module_ids_1]
+            good_2 = [x for x in parent_ids if x in module_ids_2]
+            if not good_1 or not good_2:
+                continue
+            
+            # Found one!
+            module_id_1 = good_1[0]
+            module_id_2 = good_2[0]
+            i = parent_ids.index(module_id_1)
+            j = parent_ids.index(module_id_2)
+            attr_value_1 = attr_values[i]
+            attr_value_2 = attr_values[j]
+            x = attr_name, module_id_1, attr_value_1, \
+                module_id_2, attr_value_2, data_id
+            return x
+    return None
+
+
+def _prune_alternate_attributes2(
+    network, custom_attributes, paths, nodeid2parents):
+    # If a module takes DataNodes that set an attribute to different
+    # values, choose one value and don't calculate the other.
+    #
+    # Fastq.trimmed=no                              -> align
+    # Fastq.trimmed=no -> trim -> Fastq.trimmed=yes -> align
+    # 
+    # 1.  Look in two pipelines for:
+    #     - Same ModuleNode.
+    #     - Different DataNodes can go into that Node.
+    #     - One DataNode is upstream of the other DataNode.
+    # 2.  Keep the pipeline that is shorter (or found in
+    #     custom_attributes).
+    # 3.  Print a message showing which value was chosen.
+
+    if not paths:
+        return []
+    
+    #path_ids = {}
+    #transitions = {}
+    #for path in paths:
+    #    path_ids.update(path.node_ids)
+    #    for node_id, next_ids in path.transitions.iteritems():
+    #        x = transitions.get(node_id, set()).union(next_ids)
+    #        transitions[node_id] = x
+    x = _merge_paths(paths)
+    path_ids, transitions, x = x
+    ancestors = _make_ancestor_dict(network)
+
+    # Find module nodes that can take DataNodes with different
+    # attributes.
+    alternates = []
+    for i in range(len(network.nodes)):
+        if not isinstance(network.nodes[i], ModuleNode):
+            continue
+        x = _list_alternate_attributes2(
+            network, i, custom_attributes, path_ids, transitions,
+            nodeid2parents)
+        alternates.extend(x)
+
+    # For each of the alternates, select the desired transition and
+    # rule out the others.
+    desired_alternates = [None] * len(alternates)
+    for i, x in enumerate(alternates):
+        module_id, parent_ids, attr_name, attr_values = x
+        # If there is a value specified in the custom attribute, use
+        # that one.
+        for x in custom_attributes:
+            if x.datatype != network.nodes[parent_ids[0]].datatype:
+                continue
+            if x.name != attr_name:
+                continue
+            if x.value in attr_values:
+                desired_alternates[i] = attr_values.index(x.value)
+                break
+        if desired_alternates[i] is not None:
+            continue
+        # Hack: If the options are "no" and "yes", choose "no".
+        if sorted(attr_values) == ["no", "yes"]:
+            desired_alternates[i] = attr_values.index("no")
+        if desired_alternates[i] is not None:
+            continue
+        # If one is an ancestor of the other, choose the ancestor.
+        if len(parent_ids) == 2:
+            if parent_ids[0] in ancestors.get(parent_ids[1], []):
+                desired_alternates[i] = 0
+            elif parent_ids[1] in ancestors.get(parent_ids[0], []):
+                desired_alternates[i] = 1
+        if desired_alternates[i] is not None:
+            continue
+        # Choose the one that comes first in the alphabet.
+        x = sorted(attr_values)[0]
+        desired_alternates[i] = attr_values.index(x)
+
+    # Make a list of the transitions to avoid in the network.
+    to_prune = {}  # transitions to avoid
+    for i, x in enumerate(alternates):
+        module_id, parent_ids, attr_name, attr_values = x
+        for j, id_ in enumerate(parent_ids):
+            if j == desired_alternates[i]:
+                continue
+            to_prune[(parent_ids[j], module_id)] = 1
+
+    # Find the paths to prune.
+    delete = {}
+    for i, path in enumerate(paths):
+        p = False
+        for parent_id, child_id in to_prune:
+            if child_id in path.transitions.get(parent_id, []):
+                p = True
+                break
+        if p:
+            delete[i] = 1
+    
+    paths = [x for (i, x) in enumerate(paths) if i not in delete]
+    return paths
+
+
+def _list_alternate_attributes2(
+    network, module_id, custom_attributes, path_ids, transitions,
+    nodeid2parents):
+    # Return list of (module_id, parent_ids, attr_name, attr_values).
+    import itertools
+    
+    # Fastq.trimmed=no                              -> align
+    # Fastq.trimmed=no -> trim -> Fastq.trimmed=yes -> align
+
+    # At least 2 DataNodes of the same DataType must transition
+    # into this ModuleNode.
+    x = nodeid2parents[module_id]
+    if len(x) < 2:
+        return []
+    x = [x for x in x if x in path_ids]
+    if len(x) < 2:
+        return []
+    x = [x for x in x if module_id in transitions.get(x, [])]
+    if len(x) < 2:
+        return []
+    parent_ids = x
+
+    # Keep only if there are at least two nodes with the same datatype.
+    datatype_names = [network.nodes[x].datatype.name for x in parent_ids]
+    counts = {}
+    for n in datatype_names:
+        counts[n] = counts.get(n, 0) + 1
+    x = [x for (i, x) in enumerate(parent_ids)
+         if counts[datatype_names[i]] >= 2]
+    parent_ids = x
+    if len(parent_ids) < 2:
+        return []
+
+    # Previous DataNodes must be in different combinations.
+    inputnum2parentids = {}  # which input to module -> list of parent IDs
+    combos = _bc_to_input_ids(
+        network, module_id, custom_attributes, nodeid2parents=nodeid2parents)
+    for x in itertools.product(combos, parent_ids):
+        combo, parentid = x
+        if parentid not in combo:
+            continue
+        input_num = combo.index(parentid)
+        if input_num not in inputnum2parentids:
+            inputnum2parentids[input_num] = []
+        inputnum2parentids[input_num].append(parentid)
+
+    # Previous DataNodes must have different attribute values.
+    alt_attributes = []
+    for input_num, parent_ids in inputnum2parentids.iteritems():
+        if len(parent_ids) < 2:
+            continue
+        id_1 = parent_ids[0]
+        node_1 = network.nodes[id_1]
+        attr_names = []
+        for id_2 in parent_ids[1:]:
+            node_2 = network.nodes[id_2]
+            x, x, diff_attrs = _score_same_data(node_1, node_2)
+            # How to handle multiple different attributes?
+            if len(diff_attrs) != 1:
+                continue
+            attr_names.append(diff_attrs[0])
+        # Must have all the same different attributes.
+        if len(attr_names) != len(parent_ids)-1:
+            continue
+        all_same = True
+        for i in range(1, len(attr_names)):
+            if attr_names[i] != attr_names[0]:
+                all_same = False
+                break
+        if not all_same:
+            continue
+        name = attr_names[0]
+
+        # Make sure the attribute is not SAME_AS_CONSTRAINT.  Module
+        # should not be passing the value of this attribute along.
+        # Not sure whether BASED_ON_DATA should be ignored too?
+        module_passes_attr = False
+        for cons in network.nodes[module_id].consequences:
+            if cons.name == name and \
+                   cons.behavior in [SAME_AS_CONSTRAINT]:
+                module_passes_attr = True
+                break
+        if module_passes_attr:
+            continue
+        
+        values = [network.nodes[x].attributes[name] for x in parent_ids]
+        x = module_id, parent_ids, name, values
+        alt_attributes.append(x)
+    return alt_attributes
+
+
+def _prune_superset_pipelines(network, paths):
+    # Remove pipelines that are just supersets of another pipeline.
+    import itertools
+
+    path2length = [len(x.node_ids) for x in paths]
+
+    # Convert node_ids to bitwise numbers for faster superset
+    # comparison.
+    paths_node_ids_bit = [_intlist2bits(x.node_ids) for x in paths]
+
+    superset = []
+    for (i, j) in itertools.product(range(len(paths)), range(len(paths))):
+        if i == j:
+            continue
+        # Optimization: Check for length here to avoid function call.
+        if path2length[i] <= path2length[j]:
+            continue
+        # Optimization: Check for superset here.
+        #if not set(node_ids_1).issuperset(node_ids_2):
+        b1, b2 = paths_node_ids_bit[i], paths_node_ids_bit[j]
+        if (b1 | b2) != b1:
+            continue
+        if _is_superset_pipeline(network, paths[i], paths[j]):
+            superset.append(i)
+    superset = {}.fromkeys(superset)
+    paths = [x for (i, x) in enumerate(paths) if i not in superset]
+    return paths
+
+
+def _is_superset_pipeline(network, path_1, path_2):
+    # Test if path_1 is superset, given path_2.  I.e. path_1 has more
+    # processing steps that are not necessary in path_2.
+    
+    # If they're superset, then the start nodes must be different.
+    # Actually, this is not true.  They can have the same start nodes,
+    # but different internal paths.
+    #if sorted(start_ids_1) == sorted(start_ids_2):
+    #    return False
+
+    # Comparisons now done in calling function.
+    ## If they're superset, path_1 must be a superset of path_2.
+    #if len(node_ids_1) <= len(node_ids_2):
+    #    # Returns from here ~60% of the time.
+    #    return False
+    ## Takes about 50% of the time in this function.
+    #if not set(node_ids_1).issuperset(node_ids_2):
+    #    return False
+
+    # At least one of the extra nodes must be a start node.
+    # Actually, this is not true.  They can have the same start nodes,
+    # but different internal paths.
+    #x = list(set(node_ids_1).difference(node_ids_2))
+    #x = [x for x in x if x in start_ids_1]
+    #super_start_ids_1 = x
+    #if not super_start_ids_1:
+    #    return False
+
+    # All paths starting from start_ids_1 must go through one of
+    # start_ids_2.
+    start_ids_1 = [x for x in path_1.start_ids if x is not None]
+    start_ids_2 = [x for x in path_2.start_ids if x is not None]
+    for start_id in start_ids_1:
+        if not _does_path_go_through(
+            network, start_id, path_1.node_ids, start_ids_2):
+            return False
+
+    # Looks like a superset, but it's not.
+    # is_compressed -> Fastq (yes) -> uncompress -> Fastq (no)
+    # is_compressed                              -> Fastq (no)
+    super_ids = [x for x in path_1.node_ids if x not in path_2.node_ids]
+    assert super_ids
+    # If any of the nodes in the super_ids list is downstream of a
+    # Module with a BASED_ON_DATA Consequence, then this is not a
+    # superset.
+    for (node_id, node) in enumerate(network.nodes):
+        if node_id in super_ids: # ignore if this is part of the superset
+            continue
+        if not isinstance(node, ModuleNode):
+            continue
+        x = [x for x in node.consequences if x.behavior == BASED_ON_DATA]
+        if not x:
+            continue
+        next_ids = network.transitions.get(node_id, [])
+        x = [x for x in next_ids if x in super_ids]
+        if x:
+            return False
+    return True
+
+
+def _does_path_go_through(network, start_id, good_ids, intermediate_ids):
+    # Do all paths starting from start_id go through intermediate_ids?
+    stack = [start_id]
+    while stack:
+        node_id = stack.pop(0)
+        if node_id in intermediate_ids:
+            continue
+        x = network.transitions.get(node_id, [])
+        next_ids = [x for x in x if x in good_ids]
+        if not next_ids:
+            # Goes to end of network.  Did not encounter intermediate_ids.
+            return False
+        stack.extend(next_ids)
+    return True
+
+
+def _prune_parallel_pipelines(network, paths, nodeid2parents):
+    # Remove pipelines that are parallel to another pipeline.
+    global SUBPATH_CACHE   # for optimization
+
+    SUBPATH_CACHE = {}
+
+    #plot_pipelines(
+    #    "pipeline", network, paths, {}, max_pipelines=16, verbose=True)
+
+    path_lengths = [len(x.node_ids) for x in paths]
+
+    # Prune parallel pipelines with the same lengths first to get a
+    # smaller set of pipelines.  Then, do the more complex pruning.
+    prune = {}
+    for i in range(len(paths)-1):
+        for j in range(i+1, len(paths)):
+            if i in prune and j in prune:
+                continue
+            
+            # Optimization: Don't check if the lengths are not the
+            # same.
+            if path_lengths[i] != path_lengths[j]:
+                continue
+            p = _is_parallel_pipeline1(
+                network, paths[i], paths[j], nodeid2parents)
+            if not p:
+                p = _is_parallel_pipeline2(
+                    network, paths[i], paths[j], nodeid2parents)
+            #if not p:
+            #    p = _is_parallel_pipeline3(
+            #        network, paths, i, j, nodeid2parents)
+            if not p:
+                continue
+            if p == 1:
+                prune[i] = 1
+            else:
+                prune[j] = 1
+    #orig_path_ids = [
+    #    x for (i, x) in enumerate(range(len(paths))) if i not in prune]
+    paths = [x for (i, x) in enumerate(paths) if i not in prune]
+    path_lengths = [x for (i, x) in enumerate(path_lengths) if i not in prune]
+
+    # Now do the more computationally expensive pruning.
+    prune = {}
+    for i in range(len(paths)-1):
+        for j in range(i+1, len(paths)):
+            if i in prune and j in prune:
+                continue
+            p = _is_parallel_pipeline3(
+                network, paths, i, j, nodeid2parents)
+            if not p:
+                continue
+            if p == 1:
+                prune[i] = 1
+            else:
+                prune[j] = 1
+                
+    paths = [x for (i, x) in enumerate(paths) if i not in prune]
+    return paths
+
+
+def _is_parallel_pipeline1(network, path_1, path_2, nodeid2parents):
+    # Test if path_1 is parallel to path_2.  If not parallel, returns
+    # False.  Otherwise, returns a 1 or 2 indicating which one should
+    # be pruned.
+    # 
+    # Parallel:
+    # BAM (no) -> sort by name  -> BAM (name)  -> count_htseq
+    # BAM (no) -> sort by coord -> BAM (coord) -> count_htseq
+    # Different from:
+    # FASTQ (unknown) -> is_compress                              -> FASTQ (no)
+    # FASTQ (unknown) -> is_compress -> FASTQ (yes) -> uncompress -> FASTQ (no)
+
+    #node_ids_1, start_ids_1, data_indexes_1 = path_1
+    #node_ids_2, start_ids_2, data_indexes_2 = path_2
+
+    # If they're parallel, then they have the same number of nodes.
+    if len(path_1.node_ids) != len(path_2.node_ids):
+        return False
+    # They differ by only two nodes.
+    unique_ids_1 = [x for x in path_1.node_ids if x not in path_2.node_ids]
+    if len(unique_ids_1) != 2:
+        return False
+    unique_ids_2 = [x for x in path_2.node_ids if x not in path_1.node_ids]
+    if len(unique_ids_2) != 2:
+        return False
+    # The module node is upstream of the data node.
+    module_id_1, data_id_1 = unique_ids_1
+    module_id_2, data_id_2 = unique_ids_2
+    if isinstance(network.nodes[module_id_1], DataNode):
+        module_id_1, data_id_1 = data_id_1, module_id_1
+    if isinstance(network.nodes[module_id_2], DataNode):
+        module_id_2, data_id_2 = data_id_2, module_id_2
+    if not isinstance(network.nodes[module_id_1], ModuleNode):
+        return False
+    if not isinstance(network.nodes[data_id_1], DataNode):
+        return False
+    if not isinstance(network.nodes[module_id_2], ModuleNode):
+        return False
+    if not isinstance(network.nodes[data_id_2], DataNode):
+        return False
+    if data_id_1 not in network.transitions.get(module_id_1, []):
+        return False
+    if data_id_2 not in network.transitions.get(module_id_2, []):
+        return False
+    # The module nodes have the same parent.
+    parent_ids_1 = nodeid2parents.get(module_id_1, [])
+    parent_ids_2 = nodeid2parents.get(module_id_2, [])
+    common_ids = [x for x in parent_ids_1 if x in parent_ids_2]
+    if not common_ids:
+        return False
+    # The data nodes have the same child.
+    child_ids_1 = network.transitions.get(data_id_1, [])
+    child_ids_2 = network.transitions.get(data_id_2, [])
+    common_ids = [x for x in child_ids_1 if x in child_ids_2]
+    if not common_ids:
+        return False
+    # The data nodes have the same type.
+    data_1 = network.nodes[data_id_1]
+    data_2 = network.nodes[data_id_2]
+    if data_1.datatype != data_2.datatype:
+        return False
+    # The data nodes differ by only one attribute.
+    assert sorted(data_1.attributes) == sorted(data_2.attributes)
+    diff = [x for x in data_1.attributes
+            if data_1.attributes[x] != data_2.attributes[x]]
+    if len(diff) != 1:
+        return False
+    # Prune the one whose value comes later in the alphabet.
+    name = diff[0]
+    value_1 = data_1.attributes[name]
+    value_2 = data_2.attributes[name]
+    if value_1 < value_2:
+        return 2
+    return 1
+
+
+def _is_parallel_pipeline2(network, path_1, path_2, nodeid2parents):
+    # Test if path_1 is parallel to path_2.  If not parallel, returns
+    # False.  Otherwise, returns a 1 or 2 indicating which one should
+    # be pruned.
+    # 
+    # Parallel:
+    # BAM (no) -> sort -> BAM (sort=y) -> addgroup ->  BAM (sort=y, group=y)
+    #          -> addgroup -> BAM (group=y) -> sort ->
+
+    # If they're parallel, then they have the same number of nodes.
+    if len(path_1.node_ids) != len(path_2.node_ids):
+        return False
+    # They differ by only three nodes.
+    unique_ids_1 = [x for x in path_1.node_ids if x not in path_2.node_ids]
+    if len(unique_ids_1) != 3:
+        return False
+    unique_ids_2 = [x for x in path_2.node_ids if x not in path_1.node_ids]
+    if len(unique_ids_2) != 3:
+        return False
+    
+    # The module node is upstream of the data node.
+    top_id_1, data_id_1, bottom_id_1 = unique_ids_1
+    top_id_2, data_id_2, bottom_id_2 = unique_ids_2
+    if isinstance(network.nodes[top_id_1], DataNode):
+        top_id_1, data_id_1 = data_id_1, top_id_1
+    if isinstance(network.nodes[bottom_id_1], DataNode):
+        bottom_id_1, data_id_1 = data_id_1, bottom_id_1
+    if data_id_1 in network.transitions[bottom_id_1]:
+        top_id_1, bottom_id_1 = bottom_id_1, top_id_1
+    if isinstance(network.nodes[top_id_2], DataNode):
+        top_id_2, data_id_2 = data_id_2, top_id_2
+    if isinstance(network.nodes[bottom_id_2], DataNode):
+        bottom_id_2, data_id_2 = data_id_2, bottom_id_2
+    if data_id_2 in network.transitions[bottom_id_2]:
+        top_id_2, bottom_id_2 = bottom_id_2, top_id_2
+
+    # Make sure the node types are correct.
+    if not isinstance(network.nodes[top_id_1], ModuleNode):
+        return False
+    if not isinstance(network.nodes[data_id_1], DataNode):
+        return False
+    if not isinstance(network.nodes[bottom_id_1], ModuleNode):
+        return False
+    if not isinstance(network.nodes[top_id_2], ModuleNode):
+        return False
+    if not isinstance(network.nodes[data_id_2], DataNode):
+        return False
+    if not isinstance(network.nodes[bottom_id_2], ModuleNode):
+        return False
+
+    # Make sure the connections are correct.
+    if data_id_1 not in path_1.transitions.get(top_id_1, []):
+        return False
+    if bottom_id_1 not in path_1.transitions.get(data_id_1, []):
+        return False
+    if data_id_2 not in path_2.transitions.get(top_id_2, []):
+        return False
+    if bottom_id_2 not in path_2.transitions.get(data_id_2, []):
+        return False
+
+    # The top nodes have the same parent.
+    parent_ids_1 = nodeid2parents.get(top_id_1, [])
+    parent_ids_2 = nodeid2parents.get(top_id_2, [])
+    x = [x for x in parent_ids_1 if x in parent_ids_2]
+    x = [x for x in x if x in path_1.node_ids and x in path_2.node_ids]
+    common_ids = x
+    if not common_ids:
+        return False
+    
+    # The bottom nodes have the same child.
+    child_ids_1 = network.transitions.get(bottom_id_1, [])
+    child_ids_2 = network.transitions.get(bottom_id_2, [])
+    x = [x for x in child_ids_1 if x in child_ids_2]
+    x = [x for x in x if x in path_1.node_ids and x in path_2.node_ids]
+    common_ids = x
+    if not common_ids:
+        return False
+    
+    # The data nodes have the same type.
+    data_1 = network.nodes[data_id_1]
+    data_2 = network.nodes[data_id_2]
+    if data_1.datatype != data_2.datatype:
+        return False
+    
+    # The data nodes differ by two attributes.
+    assert sorted(data_1.attributes) == sorted(data_2.attributes)
+    diff = [x for x in data_1.attributes
+            if data_1.attributes[x] != data_2.attributes[x]]
+    if len(diff) != 2:
+        return False
+    
+    # Prune the one whose value comes later in the alphabet.
+    name = sorted(diff)[0]
+    value_1 = data_1.attributes[name]
+    value_2 = data_2.attributes[name]
+    if value_1 < value_2:
+        return 2
+    return 1
+
+
+def _is_parallel_pipeline3(
+    network, paths, path_id_1, path_id_2, nodeid2parents):
+    # Test if path_1 is parallel to path_2.  If not parallel, returns
+    # False.  Otherwise, returns a 1 or 2 indicating which one should
+    # be pruned.
+    # More careful and slower version of _is_parallel_pipeline3.
+    # 
+    # Parallel:
+    # DataNode -> sort_coord -> mark_dup -> add_read_group -> DataNode
+    #          -> add_read_group -> sort_coord -> mark_dup ->
+    
+    path_1, path_2 = paths[path_id_1], paths[path_id_2]
+    x = _compare_paths(network, path_1, path_2)
+    shared_ids, unique_ids_1, unique_ids_2 = x
+    # shared_ids is almost always a very long list.
+    
+    # For downstream tests, calculate some useful variables describing
+    # the networks.
+    x1 = _build_subpath(
+        network, paths, path_id_1, unique_ids_1, nodeid2parents)
+    x2 = _build_subpath(
+        network, paths, path_id_2, unique_ids_2, nodeid2parents)
+    subpath_1, subpath_2 = x1, x2
+
+    # There should only be 1 top and 1 bottom node.  This test removes
+    # 95% of the possibilities.  The others don't filter as much.
+    if len(subpath_1.top_node_ids) != 1 or len(subpath_1.bottom_node_ids) != 1:
+        return False
+    if len(subpath_2.top_node_ids) != 1 or len(subpath_2.bottom_node_ids) != 1:
+        return False
+
+    # The top should be modules.  The bottom might be a DataNode if
+    # the last step is the same.
+    # path1 -> BamFolder.sorted=name  -> sort_by_contig
+    # path2 -> BamFolder.sorted=coord -> sort_by_contig
+    x = [subpath_1.top_node_ids[0], subpath_2.top_node_ids[0]]
+    for x in x:
+        if not isinstance(network.nodes[x], ModuleNode):
+            return False
+
+    # The parents of top and children of bottom should be the same.
+    if sorted(subpath_1.parents_of_top) != sorted(subpath_2.parents_of_top):
+        return False
+    if sorted(subpath_1.children_of_bottom) != \
+           sorted(subpath_2.children_of_bottom):
+        return False
+
+    # Any attributes based on data should be the same.
+    bod1 = subpath_1.based_on_data
+    bod2 = subpath_2.based_on_data
+    if sorted(bod1) != sorted(bod2):
+        return False
+    for name in bod1:
+        if bod1[name] != bod2[name]:
+            return False
+
+    # Be sure to always take the same parallel pipeline.  Use the one
+    # whose module name comes first in the alphabet.
+    id_1, id_2 = subpath_1.top_node_ids[0], subpath_2.top_node_ids[0]
+    node_1, node_2 = network.nodes[id_1], network.nodes[id_2]
+    value_1, value_2 = node_1.name, node_2.name
+    # Prune the one whose value comes later in the alphabet.
+    if value_1 < value_2:
+        return 2
+    return 1
+
+
+def _compare_paths(network, path_1, path_2):
+    # If a node occurs in only one pathway, then it is unique for
+    # sure.
+    shared_ids = path_1.node_ids.intersection(path_2.node_ids)
+    unique_ids_1 = path_1.node_ids.difference(path_2.node_ids)
+    unique_ids_2 = path_2.node_ids.difference(path_1.node_ids)
+    shared_ids = set(shared_ids)
+    unique_ids_1 = set(unique_ids_1)
+    unique_ids_2 = set(unique_ids_2)
+    ## To Do (optimization): Should change this to use set operations.
+    #unique_ids_1 = _dict_diff(path_1.node_ids, path_2.node_ids, _as_dict=True)
+    #unique_ids_2 = _dict_diff(path_2.node_ids, path_1.node_ids, _as_dict=True)
+    #shared_ids = _dict_diff(path_1.node_ids, unique_ids_1, _as_dict=True)
+
+    # If a Module occurs in both pathways, it might be unique if it
+    # has different transitions.
+    # sort_by_contig -> BamFolder.readgroups (no)
+    # sort_by_contig -> BamFolder.readgroups (yes)
+    # i.e same module, but different uses
+    
+    for node_id in list(shared_ids):
+        if not isinstance(network.nodes[node_id], ModuleNode):
+            continue
+
+        # Can happen if the path is not finished yet, and pruning
+        # while building pipelines.
+        if node_id not in path_1.transitions:
+            continue
+        if node_id not in path_2.transitions:
+            continue
+        
+        #assert node_id in path_1.transitions
+        #assert node_id in path_2.transitions
+        children_1 = path_1.transitions[node_id]
+        children_2 = path_2.transitions[node_id]
+        # Actually takes more time to compare lengths first.  Sorted
+        # pretty fast.
+        #if len(children_1) != len(children_2):
+        #    continue
+        #if sorted(children_1) == sorted(children_2):
+        if children_1 == children_2:
+            continue
+        shared_ids.remove(node_id)
+        unique_ids_1.add(node_id)
+        unique_ids_2.add(node_id)
+        #del shared_ids[node_id]
+        #unique_ids_1[node_id] = 1
+        #unique_ids_2[node_id] = 1
+    shared_ids = frozenset(shared_ids)
+    unique_ids_1 = frozenset(unique_ids_1)
+    unique_ids_2 = frozenset(unique_ids_2)
+    return shared_ids, unique_ids_1, unique_ids_2
+
+
+
+class PathSubset:
+    # Have a network that includes all nodes.
+    # A subset of those nodes comprises a path through the network.
+    # A subset of the path comprises a subpath
+    #
+    # path_node_ids
+    # sub_node_ids
+    # path_transitions
+    # 
+    # top_node_ids         list of sub node IDs (no parents in subpath)
+    # bottom_node_ids      list of sub node IDs (no children in subpath)
+    # parents_of_top       list of path node IDs (above top_node_ids)
+    # children_of_bottom   list of path node IDs (below top_node_ids)
+    #
+    # sub_parents      dict of sub_node_id -> ids of parents in subpath
+    # sub_children     dict of sub_node_id -> ids of children in subpath
+    # path_parents     dict of sub_node_id -> ids of parents not in subpath
+    # path_children    dict of sub_node_id -> ids of children not in subpath
+    #
+    # based_on_data    dict of attrname -> value; from subpath
+    # 
+    # Since this is very expensive computationally, calculate these
+    # variables on demand.
+    def __init__(
+        self, network, path_node_ids, path_transitions, sub_node_ids,
+        nodeid2parents):
+        # Make sure these are dicts, or will be really slow.
+        assert type(path_node_ids) in [type({}), frozenset, set]
+        assert type(sub_node_ids) in [type({}), frozenset, set]
+
+        self._network = network
+        self._nodeid2parents = nodeid2parents
+        self.path_node_ids = path_node_ids
+        self.path_transitions = path_transitions
+        self.sub_node_ids = sub_node_ids
+    def __getattr__(self, name):
+        var2info = {
+            "sub_parents" : (
+                "_sub_parents", self._calc_sub_parents_and_top_nodes),
+            "sub_children" : (
+                "_sub_children", self._calc_sub_children_and_bottom_nodes),
+            "path_parents" : ("_path_parents", self._calc_path_parents),
+            "path_children" : ("_path_children", self._calc_path_children),
+            "top_node_ids" : (
+                "_top_node_ids", self._calc_sub_parents_and_top_nodes),
+            "bottom_node_ids" : (
+                "_bottom_node_ids", self._calc_sub_children_and_bottom_nodes),
+            "parents_of_top" : ("_parents_of_top", self._calc_parents_of_top),
+            "children_of_bottom" : (
+                "_children_of_bottom", self._calc_children_of_bottom),
+            "based_on_data" : ("_based_on_data", self._calc_based_on_data),
+            }
+        if name not in var2info:
+            raise AttributeError, name
+        x = var2info[name]
+        member_name, fn = x
+        if not hasattr(self, member_name):
+            fn()
+            assert hasattr(self, member_name)
+            #setattr(self, member_name, fn())
+        return getattr(self, member_name)
+    def _calc_sub_parents_and_top_nodes(self):
+        pars = {}
+        top_node_ids = []
+        for node_id in self.sub_node_ids:
+            x = self._nodeid2parents.get(node_id, [])
+            x = [x for x in x if x in self.sub_node_ids]
+            if x:
+                pars[node_id] = x
+            else:
+                top_node_ids.append(node_id)
+        self._sub_parents = pars
+        self._top_node_ids = top_node_ids
+    def _calc_sub_children_and_bottom_nodes(self):
+        children = {}
+        bottom_node_ids = []
+        for node_id in self.sub_node_ids:
+            x = self.path_transitions.get(node_id, [])
+            x = [x for x in x if x in self.sub_node_ids]
+            if x:
+                children[node_id] = x
+            else:
+                bottom_node_ids.append(node_id)
+        self._sub_children = children
+        self._bottom_node_ids = bottom_node_ids
+    def _calc_path_parents(self):
+        pars = {}
+        for node_id in self.sub_node_ids:
+            x = self._nodeid2parents.get(node_id, [])
+            x = [x for x in x if x not in self.sub_node_ids]
+            if x:
+                pars[node_id] = x
+        self._path_parents = pars
+    def _calc_path_children(self):
+        pars = {}
+        for node_id in self.sub_node_ids:
+            x = self.path_transitions.get(node_id, [])
+            x = [x for x in x if x not in self.sub_node_ids]
+            if x:
+                pars[node_id] = x
+        self._path_children = pars
+    #def _calc_top_node_ids(self):
+    #    sub_parents = self.sub_parents
+    #    x = [x for x in self.sub_node_ids if not sub_parents.get(x)]
+    #    self._top_node_ids = x
+    #def _calc_bottom_node_ids(self):
+    #    sub_children = self.sub_children
+    #    x = [x for x in self.sub_node_ids if not sub_children.get(x)]
+    #    self._bottom_node_ids = x
+    def _calc_parents_of_top(self):
+        parents_of_top = {}
+        for node_id in self.top_node_ids:
+            x = [x for x in self._nodeid2parents.get(node_id, [])]
+            # Is this right?
+            x = [x for x in x if x in self.path_node_ids]
+            for x in x:
+                parents_of_top[x] = 1
+        self._parents_of_top = parents_of_top.keys()
+    def _calc_children_of_bottom(self):
+        children_of_bottom = {}
+        for node_id in self.bottom_node_ids:
+            x = [x for x in self.path_transitions.get(node_id, [])]
+            x = [x for x in x if x in self.path_node_ids]
+            for x in x:
+                children_of_bottom[x] = 1
+        self._children_of_bottom = children_of_bottom.keys()
+    def _calc_based_on_data(self):
+        # For all the nodes in the subpath, get the values of the
+        # attributes that are set based on data.
+        based_on_data = {}
+        for node_id in self.sub_node_ids:
+            node = self._network.nodes[node_id]
+            if not isinstance(node, ModuleNode):
+                continue
+            # Make a list of the attributes that are BASED_ON_DATA.
+            x = [
+                x for x in node.consequences if
+                x.behavior == BASED_ON_DATA]
+            attr_names = [x.name for x in x]
+            if not attr_names:
+                continue
+
+            # Find the values of the attributes in the children.
+            x = self.path_transitions.get(node_id, [])
+            # Is this necessary?
+            child_ids = [x for x in x if x in self.path_node_ids]
+            for name in attr_names:
+                for node_id in child_ids:
+                    node = self._network.nodes[node_id]
+                    if name not in node.attributes:
+                        continue
+                    value = node.attributes[name]
+                    assert name not in based_on_data
+                    based_on_data[name] = value
+                    #if name not in based_on_data:
+                    #    based_on_data[name] = []
+                    #based_on_data[name].append(value)
+        self._based_on_data = based_on_data
+
+
+
+SUBPATH_CACHE = {}  # (path_id, sub_node_ids) -> PathSubset
+def _build_subpath(network, paths, path_id, sub_node_ids, nodeid2parents):
+    global SUBPATH_CACHE
+    key = path_id, tuple(sorted(sub_node_ids))
+    if key not in SUBPATH_CACHE:
+        x = _build_subpath_h(
+            network, paths, path_id, sub_node_ids, nodeid2parents)
+        SUBPATH_CACHE[key] = x
+    return SUBPATH_CACHE[key]
+
+    
+def _build_subpath_h(network, paths, path_id, sub_node_ids, nodeid2parents):
+    path = paths[path_id]
+    return PathSubset(
+        network, path.node_ids, path.transitions, sub_node_ids, nodeid2parents)
+
+
 def get_input_nodes(
     network, custom_attributes, skip_datatypes=None,
     skip_private_datatypes=False, max_inputs=None):
@@ -2519,7 +3795,7 @@ def get_input_nodes(
     # This means that the set of nodes 1 and 5 would make a valid input
     # to this network.  Or, node 8 by itself would also be a valid
     # input.
-    
+
     # Should be list of names of datatypes to ignore.
     skip_datatypes = skip_datatypes or []
 
@@ -2562,7 +3838,7 @@ def get_input_datatypes(
     #   [(UnprocessedSignalFile, ClassLabelFile), (UnprocessedSignalFile,)]
 
     # Should be list of names of datatypes to ignore.
-    skip_datatypes = skip_datatypes or []    
+    skip_datatypes = skip_datatypes or []
 
     data_node_ids = [
         node_id for (node_id, node) in enumerate(network.nodes)
@@ -2644,7 +3920,7 @@ def group_nodes_by_datatype(network, inputs):
     all_datatypes = sorted(name2datatype)
     for i, dt in enumerate(all_datatypes):
         datatype2id[dt] = i
-    
+
     # Figure out the datatype for each node.
     # Really fast.
     nodeid2dtid = {}
@@ -2759,14 +4035,16 @@ def print_network(network, outhandle=None):
 
 def _format_datanode_gv(node, node_id):
     from genomicode import parselib
-    
+
+    title_size = 32
+
     node_name = "%s [%d]" % (node.datatype.name, node_id)
 
     LINE_WIDTH = 60
-    
+
     lines = []
     w = lines.append
-    w("<B>%s</B>" % node_name)
+    w('<FONT POINT-SIZE="%d"><B>%s</B></FONT>' % (title_size, node_name))
 
     if node.attributes:
         w('<BR/>')
@@ -2783,14 +4061,16 @@ def _format_datanode_gv(node, node_id):
 
 
 def _format_modulenode_gv(node, node_id, options):
+    title_size = 32
+    
     node_name = "%s [%d]" % (node.name, node_id)
-
+    
     if options is None:
         options = {}
 
     lines = []
     w = lines.append
-    w("<B>%s</B>" % node_name)
+    w('<FONT POINT-SIZE="%d"><B>%s</B></FONT>' % (title_size, node_name))
     if node.option_defs:
         w('<BR/>')
         w('<BR/>')
@@ -2801,7 +4081,7 @@ def _format_modulenode_gv(node, node_id, options):
         value = options.get(name)
         if value is None:
             value = option.default
-        
+
         if value is None:
             x = ' <B><FONT COLOR="RED">MISSING</FONT></B>'
         elif value:
@@ -2874,7 +4154,7 @@ def plot_network_gv(
             node2attr["fillcolor"] = data_color
             if verbose:
                 node2attr["label"] = _format_datanode_gv(node, node_id)
-            
+
         elif node.__class__.__name__ == "ModuleNode":
             name = node.name
             node2attr["shape"] = "box"
@@ -2943,7 +4223,7 @@ def write_network(file_or_handle, network):
 
 def debug_print(s):
     from genomicode import parselib
-    
+
     if not DEBUG:
         return
     parselib.print_split(s)
@@ -2965,13 +4245,13 @@ def _bc_to_inputs(
     force_default_input_attribute_to_be_all_values=False):
     module = network.nodes[module_id]
     out_data = network.nodes[out_data_id]
-    
+
     all_attributes = []
     all_attrsource = []
     force = force_default_input_attribute_to_be_all_values
     for in_num in range(len(module.in_datatypes)):
         x = _bc_to_one_input(
-            network, module_id, in_num, out_data_id, custom_attributes, 
+            network, module_id, in_num, out_data_id, custom_attributes,
             force_default_input_attribute_to_be_all_values=force)
         attributes, attrsource = x
         all_attributes.append(attributes)
@@ -3034,7 +4314,7 @@ def _bc_to_inputs(
 
 
 def _bc_to_one_input(
-    network, module_id, in_num, out_data_id, custom_attributes, 
+    network, module_id, in_num, out_data_id, custom_attributes,
     force_default_input_attribute_to_be_all_values=False):
     # Given a module and output_data, return the input_data object
     # that can generate the output.  This should only be called by
@@ -3069,7 +4349,7 @@ def _bc_to_one_input(
     # attribute or default value is a part of the constraint,
     # (e.g. one of many options), then we can refine it with the user
     # attribute (or default).
-    # 
+    #
     # The user attribute also only applies to the first time this node
     # is generated.  E.g.
     # Bam_1.recal=no -> create_targets -> RealignTarget ->
@@ -3134,7 +4414,7 @@ def _bc_to_one_input(
         #        continue
         #    attributes[attr.name] = attr.value
         #    attrsource[attr.name] = "user"
-        
+
     # Found potentially relevant custom attributes.  Apply them if
     # there are no descendents with the same data type.
     if attrs and not \
@@ -3142,7 +4422,7 @@ def _bc_to_one_input(
         for name, value in attrs.iteritems():
             attributes[name] = value
             attrsource[name] = "user"
-        
+
 
     # Case 2.  Set the attributes based on the constraints.
     for constraint in module.constraints:
@@ -3294,7 +4574,7 @@ def _bc_to_input_ids(
         x = [x for x in all_input_ids
              if network.nodes[x].datatype.name == datatype.name]
         args.append(x)
-        
+
     # If there are many in_datatypes, then this could cause a
     # combinatorial explosion of possibilities.  Optimize by throwing
     # out data objects that fail a constraint.
@@ -3316,7 +4596,7 @@ def _bc_to_input_ids(
     #    ids = nodeid2parents.get(module_id, [])
     #    x = [(x, ) for x in ids]
     #    valid.extend(x)
-    
+
     # The multiple in_datatypes case is harder, because we don't know
     # the order of the inputs.
     for input_ids in itertools.product(*args):
@@ -3330,7 +4610,7 @@ def _bc_to_input_ids(
         # the same data type twice.  Usually, this is a bug in the
         # rules, but we should allow it.
         # Why allow it?
-        
+
         # No duplicated IDs.
         x = {}.fromkeys(input_ids)
         if len(x) != len(input_ids):
@@ -3355,6 +4635,30 @@ def _bc_to_input_ids(
         # Passes all the tests.
         valid.append(input_ids)
     return valid
+
+
+def _bc_to_input_and_module_ids(
+    network, out_id, custom_attributes, allowed_ids, nodeid2parents, cache):
+    paths = []
+    module_ids = nodeid2parents.get(out_id, [])
+    module_ids = [x for x in module_ids if x in allowed_ids]
+    for module_id in module_ids:
+        key = module_id, out_id
+        if key not in cache:
+            x = _bc_to_input_ids(
+                network, module_id, custom_attributes, all_output_ids=[out_id],
+                nodeid2parents=nodeid2parents)
+            cache[key] = x
+        combos = cache[key]
+        for in_ids in combos:
+            assert module_id in allowed_ids
+            assert out_id in allowed_ids
+            x = [x for x in in_ids if x in allowed_ids]
+            if len(x) != len(in_ids):
+                continue
+            x = in_ids, module_id, out_id
+            paths.append(x)
+    return paths
 
 
 def _fc_to_outputs(module, in_datas):
@@ -3555,7 +4859,7 @@ def _is_valid_input_ids(
         all_output_ids=[out_id], nodeid2parents=nodeid2parents):
         return True
     return False
-            
+
 
 def _is_valid_output(module, data):
     # Return whether this module can produce this data object.
@@ -3869,6 +5173,31 @@ def _is_valid_output_id_path(network, path, out_id, custom_attributes,
     return False
 
 
+def _is_valid_output_from_input_and_module_ids(
+    network, module_id, in_data_ids, out_data_id, user_attrs, cache):
+    in_datas = [network.nodes[x] for x in in_data_ids]
+    module = network.nodes[module_id]
+
+    key = module_id, in_data_ids
+    if key not in cache:
+        x = _fc_to_outputs(module, in_datas)
+        cache[key] = x
+    out_datas = cache[key]
+
+    name = network.nodes[out_data_id].datatype.name
+    for out_data in out_datas:
+        assert out_data.datatype.name == name
+        for name, uvalue in user_attrs.iteritems():
+            dvalue = out_data.attributes[name]
+            utype = _get_attribute_type(uvalue)
+            dtype = _get_attribute_type(dvalue)
+            assert utype == TYPE_ATOM
+            assert dtype == TYPE_ATOM
+            if uvalue != dvalue:
+                return False
+    return True
+
+
 def _find_same_data(nodes, node):
     # All values need to be exactly equal.  Return index into nodes.
     # -1 if not found.
@@ -3917,7 +5246,7 @@ def _score_same_data(node1, node2):
         V1 = node1.attributes[name]
         V2 = node2.attributes[name]
         if not _is_attribute_same(V1, V2):
-            attrs.append(name)            
+            attrs.append(name)
     return (len(attrs), True, attrs)
 
 
@@ -3926,7 +5255,7 @@ def _score_compat_data(network, data_node, ids_to_score=None):
     # value in network node, value in user_data).  Sorted by
     # increasing score.  ids_to_score is a list of node IDs in the
     # network to score.  If None, will score them all.
-    
+
     # Look for the nodes in the network that are compatible with
     # user_data.
     results = []
@@ -3954,7 +5283,7 @@ def _score_compat_data(network, data_node, ids_to_score=None):
             attr_values.append(x)
         x = len(attrs), node_id, data_node, attr_values
         results.append(x)
-            
+
     return sorted(results)
 
 
@@ -4102,7 +5431,7 @@ def _merge_start_ids(paths):
 def _does_based_on_data_conflict_with_out_data(network, node_ids, transitions):
     # Make a list of the module_node_ids in any of these
     # branches with BASED_ON_DATA consequences.
-    
+
     based_on_data = []  # list of (module_node_id, cons name)
     # Precalculating based_on_data for the whole network
     # does not save much time.
@@ -4120,7 +5449,7 @@ def _does_based_on_data_conflict_with_out_data(network, node_ids, transitions):
         based_on_data.extend(x)
 
     # Make sure there are no conflicts.
-    conflict = False
+    #conflict = False
     values = {}  # (module_id, name) -> value
     for (module_id, name) in based_on_data:
         key = module_id, name
@@ -4148,7 +5477,7 @@ def _get_attribute_type(value):
     #    return TYPE_ATOM
     #elif type(name) in [type([]), type(())]:
     #    return TYPE_ENUM
-    raise AssertionError, "Unknown attribute type: %s" % str(name)
+    raise AssertionError, "Unknown attribute type: %s" % str(value)
 
 
 def _assign_case_by_type(type1, type2):
@@ -4206,15 +5535,19 @@ def _make_parents_dict(network):
         x2 = nodeid2parents_cache
         BACKCHAIN_CACHE = x1, x2
     return nodeid2parents_cache
-    
+
 
 def _make_ancestor_dict_h(network):
     # Return a dictionary of node_id -> all node_ids that are
     # ancestors of node_id.
+    from genomicode import parselib
     if not network.nodes:
         return {}
 
     node2parents = _make_parents_dict(network)
+
+    # Usually see ~1000 iterations.
+    MAX_ITER = 1E5
 
     # Very inefficient algorithm.
     ancestors = {}  # node id -> list of parent node ids.
@@ -4222,21 +5555,52 @@ def _make_ancestor_dict_h(network):
     niter = 0
     while all_nodes:
         niter += 1
-        errmsg = (
-            "Cycle in network.  This can be cause by a problem in the rules "
-            "or a bug in the inferencing code.")
-        assert niter < 1E6, errmsg
+        if not (niter < MAX_ITER):
+            errmsg = (
+                "Cycle in network.  This can be caused by a problem in the "
+                "rules or a bug in the inferencing code.")
+            # Try to diagnose the cycle.
+            nid = all_nodes[0]
+            cycle = [nid]
+            while True:
+                nid = cycle[-1]
+                x1 = node2parents.get(nid, [])
+                x2 = [x for x in x1 if x in all_nodes]
+                x3 = [x for x in x2 if x not in cycle]
+                if not x3:
+                    # Add last node.
+                    assert x2
+                    cycle.append(x2[0])
+                    break
+                cycle.append(x3[0])
+            lines = []
+            for nid in cycle:
+                node = network.nodes[nid]
+                if isinstance(node, DataNode):
+                    name = node.datatype.name
+                else:
+                    name = node.name
+                x = "%s[%d]" % (name, nid)
+                lines.append(x)
+            x = " <- ".join(lines)
+            x = parselib.linesplit(x)
+            x = "\n".join(x)
+            x = "%s\n%s" % (errmsg, x)
+            #assert niter < MAX_ITER, errmsg
+            plot_network_gv(
+                "test.png", network, verbose=True, highlight_green=cycle)
+            assert niter < MAX_ITER, x
         node_id = all_nodes.pop(0)
         parents = node2parents.get(node_id, [])
 
-        # If there are no parents, then it has no ancestors.
+        # If this node has no parents, then it has no ancestors.
         if not parents:
             ancestors[node_id] = []
             continue
 
         # If I haven't found the ancestors of all my parents, try
         # again later.
-        # BUG: This will generate an infinite loop if there are
+        # BUG: This will result in an infinite loop if there are
         # cycles.  If there is a cycle, there will never be a node
         # with no parents.
         all_found = True
@@ -4264,7 +5628,7 @@ ANCESTOR_CACHE = None  # tuple of (network, ancestor_dict)
 def _make_ancestor_dict(network):
     global ANCESTOR_CACHE
     import copy
-    
+
     network_cache = ancestor_cache = None
     if ANCESTOR_CACHE is not None:
         network_cache, ancestor_cache = ANCESTOR_CACHE
@@ -4363,7 +5727,7 @@ def _iter_upper_diag(n):
         x = list(_iter_upper_diag_h(n))
         ITER_UPPER_DIAG_CACHE[n] = x
     return ITER_UPPER_DIAG_CACHE[n]
-    
+
 
 def _iter_upper_diag_h(n):
     for i in range(n - 1):
@@ -4416,6 +5780,13 @@ def _uniq_intlist(seq):
 def _uniq_flatten1_intlist(seq):
     #return _uniq(_flatten(seq))
     return _uniq_intlist(_flatten1_intlist(seq))
+
+
+def _intlist2bits(int_list):
+    bits = 0
+    for i in int_list:
+        bits = bits | (1<<i)
+    return bits
 
 
 def _print_nothing(s):
@@ -4499,12 +5870,12 @@ def _fix_node_id_pairs_after_merge(node_id_pairs, merge_id1, merge_id2):
             d1 = n1
         elif d1 > n2:
             d1 -= 1
-            
+
         if d2 == n2:
             d2 = n1
         elif d2 > n2:
             d2 -= 1
-            
+
         if d1 != d2:
             pairs.append((d1, d2))
     return pairs
@@ -4512,8 +5883,8 @@ def _fix_node_id_pairs_after_merge(node_id_pairs, merge_id1, merge_id2):
 
 def _fix_node_id_dict_after_merge(node_id_dict, merge_id1, merge_id2):
     # node_id_dict is node_id -> list of node_ids
-    # n2 was merged into n1.
-    # n2 doesn't exist anymore.
+    # merge_id2 was merged into merge_id1.
+    # merge_id2 doesn't exist anymore.
     assert merge_id1 != merge_id2
     n1, n2 = merge_id1, merge_id2
     if n1 > n2:   # make sure n1 < n2, for convenience.
@@ -4540,14 +5911,31 @@ def _fix_node_id_dict_after_merge(node_id_dict, merge_id1, merge_id2):
         if key_id in fixed_dict:
             # happens when merging n2 into n1
             value_ids = value_ids + fixed_dict[key_id]
-            # no duplicates in value_ids
-            value_ids = {}.fromkeys(value_ids).keys()
         # key_id should not be in value_ids
         assert key_id not in value_ids
+        # no duplicates in value_ids
+        value_ids = {}.fromkeys(value_ids).keys()
         #if key_id in value_ids:
         #    del value_ids[key]
         fixed_dict[key_id] = value_ids
     return fixed_dict
+
+
+def _fix_ancestor_dict_after_merge(ancestors, merge_id1, merge_id2):
+    # 1.  Merge the ancestors of n1 and n2.
+    # 2.  Every node that includes n1 or n2 as an ancestor
+    #     now inherits all these ancestors.
+    ancestors = ancestors.copy()
+    x = ancestors[merge_id1] + ancestors[merge_id2]
+    ancs = {}.fromkeys(x).keys()
+    ancestors[merge_id1] = ancs
+    ancestors[merge_id2] = ancs
+    for n in ancestors:
+        if merge_id1 in ancestors[n] or merge_id2 in ancestors[n]:
+            x = ancestors[n] + ancs
+            ancestors[n] = {}.fromkeys(x).keys()
+    ancestors = _fix_node_id_dict_after_merge(ancestors, merge_id1, merge_id2)
+    return ancestors
 
 
 def _product_network(network, custom_attributes, max_nodes=None,
@@ -4677,10 +6065,10 @@ def _product_and_chain(lists_of_tuples, max_length):
     # Flatten the tuples.
     #x = [_flatten(x) for x in x]
     assert lists_of_tuples
-    
+
     if max_length is None:
         max_length = 1E6  # shouldn't be network this big
-        
+
     product = {}
     for x in lists_of_tuples[0]:
         if len(x) <= max_length:
@@ -4755,7 +6143,7 @@ except ImportError:
     pass
 else:
     this_module = sys.modules[__name__]
-    for name in cbie3.__dict__.keys():
-        if name.startswith("__"):
+    for name_ in cbie3.__dict__.keys():
+        if name_.startswith("__"):
             continue
-        this_module.__dict__[name] = cbie3.__dict__[name]
+        this_module.__dict__[name_] = cbie3.__dict__[name_]

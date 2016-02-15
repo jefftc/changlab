@@ -14,10 +14,12 @@ class Module(AbstractModule):
         from genomicode import filelib
         from Betsy import module_utils
         
-        bam_node, ref_node = antecedents
+        bam_node, ref_node, pos_node = antecedents
         bam_filenames = module_utils.find_bam_files(bam_node.identifier)
         assert bam_filenames, "No .bam files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
+        positions_filename = pos_node.identifier
+        filelib.assert_exists_nz(positions_filename)
         filelib.safe_mkdir(out_path)
 
         # list of (in_filename, err_filename, out_filename)
@@ -30,9 +32,9 @@ class Module(AbstractModule):
             x = in_filename, err_filename, out_filename
             jobs.append(x)
 
-        # Get possible positions file.
-        positions_filename = module_utils.get_user_option(
-            user_options, "positions_file", check_file=True)
+        ## Get possible positions file.
+        #positions_filename = module_utils.get_user_option(
+        #    user_options, "positions_file", check_file=True)
         
         # Figure out whether the purpose is to get coverage.  Change
         # the parameters if it is.

@@ -199,11 +199,15 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
 
 
 def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
-             delimiter="\t", ignore_lines_startswith=None):
+             delimiter="\t", ignore_lines_startswith=None,
+             yield_lines_startswith=None):
     # yield name, description (always ""), list of genes.
     # preserve_spaces determines whether to remove blank annotations.
     # allow_duplicates determines whether to remove duplicate
-    # annotations.
+    # annotations.  If ignore_lines_startswith is not None, then will
+    # drop all lines that start with this substring.  If
+    # yield_lines_startswith is not None, then will yield these lines
+    # as a single string (not a tuple).
     import filelib
 
     matrix = [x for x in filelib.read_cols(filename, delimiter=delimiter)]
@@ -212,6 +216,15 @@ def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
         assert ignore_lines_startswith.find(delimiter) < 0
         matrix = [
             x for x in matrix if not x[0].startswith(ignore_lines_startswith)]
+    if yield_lines_startswith:
+        assert yield_lines_startswith.find(delimiter) < 0
+        to_yield = [
+            x for x in matrix if x[0].startswith(yield_lines_startswith)]
+        to_yield = [delimiter.join(x) for x in to_yield]
+        matrix = [
+            x for x in matrix if not x[0].startswith(yield_lines_startswith)]
+        for x in to_yield:
+            yield x
     
     # Make sure the header row is as long as the longest row.
     # Otherwise, _transpose_gmx will cut off the columns at the end.

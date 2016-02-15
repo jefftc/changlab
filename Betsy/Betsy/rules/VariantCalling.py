@@ -1,8 +1,16 @@
+# TODO: Make a constant for ["yes", "no"]
+
 # DataTypes:
-# BCFFolder                  # from samtools mpileup
 # VCFFolder
 # VCFRecalibrationReport
-# AnnovarFolder
+# AnnotatedVCFFolder
+# MultiVCFFile
+# AnnotatedMultiVCFFile
+#
+# BackfillMultiVCFFile
+#
+# PileupSummary
+# PositionsFile
 #
 # Modules:
 # summarize_variants_mpileup
@@ -11,7 +19,9 @@
 # make_vcf_recalibration_report_snp
 # recalibrate_variants_snp
 # call_variants_platypus
-# call_variants_varscan
+# call_variants_varscan        # not fully implemented
+#
+# filter_snps_only_multivcf
 # annotate_with_annovar
 #
 # 
@@ -24,6 +34,8 @@ import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 
 CALLERS = ["none", "mpileup", "gatk", "platypus", "varscan"]
+VARTYPES = ["all", "snp", "indel", "consensus"]
+VARTYPE_NOT_CONSENSUS = [x for x in VARTYPES if x != "consensus"]
 
 ## BCFFolder = DataType(
 ##     "BCFFolder",
@@ -40,8 +52,6 @@ CALLERS = ["none", "mpileup", "gatk", "platypus", "varscan"]
 ##     )
 
 
-VARTYPES = ["all", "snp", "indel", "consensus"]
-
 VCFFolder = DataType(
     "VCFFolder",
     AttributeDef(
@@ -51,9 +61,9 @@ VCFFolder = DataType(
         "caller", CALLERS, "none", "mpileup",
         help="Which variant caller was used."),
 
-    AttributeDef(
-        "mpileup_summary", ["no", "yes"], "no", "no",
-        help="Whether this is just summary information from mpileup."),
+    #AttributeDef(
+    #    "mpileup_summary", ["no", "yes"], "no", "no",
+    #    help="Whether this is just summary information from mpileup."),
     AttributeDef(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
@@ -72,35 +82,83 @@ VCFRecalibrationReport = DataType(
         help="Which variant caller was used."),
     )
 
-AnnovarFolder = DataType(
-    "AnnovarFolder",
+AnnotatedVCFFolder = DataType(
+    "AnnotatedVCFFolder",
     )
+
+MultiVCFFile = DataType(
+    "MultiVCFFile",
+    # Headers are:
+    # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT [Samples...]
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    AttributeDef(
+        "caller", CALLERS, "none", "mpileup",
+        help="Which variant caller was used."),
+    AttributeDef(
+        "vartype", VARTYPES, "snp", "snp",
+        help="What kind of variants are held in this file."),
+    AttributeDef(
+        "backfilled", ["no", "yes"], "no", "no",
+        help="Whether the mutations are backfilled."),
+    )
+
+AnnotatedMultiVCFFile = DataType(
+    "AnnotatedMultiVCFFile",
+    AttributeDef(
+        "backfilled", ["no", "yes"], "no", "no",
+        help="Whether the mutations are backfilled."),
+    )
+
+PileupSummary = DataType(
+    "PileupSummary",
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    AttributeDef(
+        "vartype", VARTYPES, "snp", "snp",
+        help="What kind of variants are held in this file."),
+    )
+
+# For samtools.  Two columns (no header):
+# <chrom>  <pos 0-based>  
+PositionsFile = DataType(
+    "PositionsFile",
+    AttributeDef(
+        "vartype", VARTYPES, "snp", "snp",
+        help="What kind of variants are held in this file."),
+    )
+
 
 all_data_types=[
     VCFFolder,
     VCFRecalibrationReport,
-    AnnovarFolder,
+    AnnotatedVCFFolder,
+    MultiVCFFile,
+    AnnotatedMultiVCFFile,
+    
+    PileupSummary,
+    PositionsFile,
     ]
 
 all_modules = [
     ModuleNode(
-        "summarize_variants_mpileup",
-        [NGS.BamFolder, NGS.ReferenceGenome], VCFFolder,
-        OptionDef("positions_file", default=""),
-
+        "backfill_variants_mpileup",
+        [NGS.BamFolder, NGS.ReferenceGenome, PositionsFile], PileupSummary,
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("has_read_groups", MUST_BE, "yes"),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Constraint("indexed", CAN_BE_ANY_OF, ["no", "yes"], 0),
 
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
-        Consequence("caller", SET_TO, "mpileup"),
-        #Consequence("vcf_recalibrated", SET_TO, "yes"),
-        Consequence("mpileup_summary", SET_TO, "yes"),
-        Consequence("vartype", SET_TO_ONE_OF, ["all", "consensus"]),
-        #Consequence("vartype", SET_TO, "consensus"),
-        #Consequence("get_coverage", SET_TO_ONE_OF, ["no", "yes"]),
+        #Consequence("caller", SET_TO, "mpileup"),
+        #Consequence("mpileup_summary", SET_TO, "yes"),
+        #Consequence("vartype", SET_TO_ONE_OF, ["all", "consensus"]),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPE_NOT_CONSENSUS, 2),
+        Consequence("vartype", SET_TO, "consensus"),
 
         help="Use mpileup to call variants"),
     ModuleNode(
@@ -131,6 +189,9 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Consequence("caller", SET_TO, "platypus"),
@@ -140,18 +201,15 @@ all_modules = [
 
     ModuleNode(
         "call_variants_varscan",
-        [VCFFolder, NGS.ReferenceGenome], VCFFolder,
+        [PileupSummary, NGS.ReferenceGenome], VCFFolder,
         
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Consequence("contents", SAME_AS_CONSTRAINT),
-        Constraint("mpileup_summary", MUST_BE, "yes", 0),
-        Consequence("mpileup_summary", SET_TO, "no"),
-        Constraint("caller", MUST_BE, "mpileup"),
-        Consequence("caller", SET_TO, "varscan"),
+        Constraint("vartype", CAN_BE_ANY_OF, ["all", "consensus"], 0),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
-         
+        Consequence("caller", SET_TO, "varscan"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
-        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "consensus"]),
         help="Use Varscan to call variants."),
 
     ModuleNode(
@@ -181,25 +239,56 @@ all_modules = [
         Consequence("vartype", SAME_AS_CONSTRAINT, 2),
         help="GATK ApplyRecalibration",
         ),
+    
+    ModuleNode(
+        "filter_snps_only_multivcf",
+        MultiVCFFile, MultiVCFFile,
+        Constraint("vartype", MUST_BE, "all"),
+        Consequence("vartype", SET_TO, "snp"),
+        ),
+
     ModuleNode(
         "annotate_with_annovar",
-        VCFFolder, AnnovarFolder,
+        VCFFolder, AnnotatedVCFFolder,
         OptionDef("buildver", help="E.g. hg19.  See annovar docs."),
         ),
 
+    ModuleNode(
+        "merge_vcf_folder",
+        VCFFolder, MultiVCFFile,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("caller", CAN_BE_ANY_OF, CALLERS),
+        Consequence("caller", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        Consequence("backfilled", SET_TO, "no"),
+        ),
     
-    ## ModuleNode(
-    ##     "annotate_vcf_folder",
-    ##     NGS.VcfFolder, NGS.VcfFolder,
-    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-    ##     Constraint("recalibrated", CAN_BE_ANY_OF, ["yes", "no"]),
-    ##     Constraint("vcf_annotate", MUST_BE, "no"),
-    ##     Constraint("vcf_filter", MUST_BE, "yes"),
-    ##     Constraint("reheader", CAN_BE_ANY_OF, ["bcftool", "standard"]),
-    ##     Consequence("contents", SAME_AS_CONSTRAINT),
-    ##     Consequence("vcf_filter", SAME_AS_CONSTRAINT),
-    ##     Consequence("reheader", SAME_AS_CONSTRAINT),
-    ##     Consequence("vcf_annotate", SET_TO, "yes"),
-    ##     Consequence("recalibrated", SAME_AS_CONSTRAINT),
-    ##     help="annotate vcf file"),
+    ModuleNode(
+        "annotate_multivcf_annovar",
+        MultiVCFFile, AnnotatedMultiVCFFile,
+        OptionDef("buildver", help="E.g. hg19.  See annovar docs."),
+        ),
+    
+    ModuleNode(
+        "extract_positions_from_multivcf_file",
+        MultiVCFFile, PositionsFile,
+        Constraint("backfilled", MUST_BE, "no"),
+        Constraint("caller", CAN_BE_ANY_OF, CALLERS),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        ),
+
+    ModuleNode(
+        "backfill_multivcf_file",
+        [AnnotatedMultiVCFFile, MultiVCFFile],
+        AnnotatedMultiVCFFile,
+        DefaultAttributesFrom(0),
+        Constraint("backfilled", MUST_BE, "no", 0),
+        Consequence("backfilled", SET_TO, "yes"),
+        Constraint("vartype", MUST_BE, "consensus", 1),
+        Constraint("caller", MUST_BE, "varscan", 1),
+        ),
+
     ]

@@ -11,27 +11,29 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import shell
         from genomicode import alignlib
+        from genomicode import hashlib
         from Betsy import module_utils
         
         bam_filenames = module_utils.find_bam_files(in_data.identifier)
         assert bam_filenames, "No .bam files."
         filelib.safe_mkdir(out_path)
         
-        gid = "group1"
-        library = "library"
-        platform_unit = "platform"
-        sample = "sample"
-        platform = "illumina"
-
-        jobs = []  # list of (in_filename, log_filename, out_filename)
+        jobs = []  # list of (in_filename, sample, log_filename, out_filename)
         for in_filename in bam_filenames:
             p, f = os.path.split(in_filename)
             s, ext = os.path.splitext(f)
+            sample = hashlib.hash_var(s)
             log_filename = os.path.join(out_path, "%s.log" % s)
             out_filename = os.path.join(out_path, f)
-            x = in_filename, log_filename, out_filename
+            x = in_filename, sample, log_filename, out_filename
             jobs.append(x)
         
+        gid = "group1"
+        library = "library"
+        platform_unit = "platform"
+        #sample = "sample"
+        platform = "illumina"
+
         # java -Xmx5g -jar AddOrReplaceReadGroups.jar
         #   I=<input.sam or .bam> O=<output.bam> ID=<group ID>
         #   LB=<group library> PU=<platform unit> SM=<group sample name>
@@ -42,7 +44,7 @@ class Module(AbstractModule):
         sq = shell.quote
         commands = []
         for x in jobs:
-            in_filename, log_filename, out_filename = x
+            in_filename, sample, log_filename, out_filename = x
             x = [
                 "java", "-Xmx5g",
                 "-jar", sq(picard_jar),
