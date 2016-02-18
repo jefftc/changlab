@@ -89,6 +89,12 @@ class AnnotationMatrix:
             return self.headers_h[i]
         return None
         #raise KeyError, header
+    def normalize_header_i(self, header, index_base1=False):
+        # Return the 0-based index.  Same arguments as normalize_header.
+        h = self.normalize_header(header, index_base1=index_base1)
+        if h is None:
+            return None
+        return self.headers_h.index(h)
 
 
 def create_from_annotations(headers, all_annots, headerlines=[]):

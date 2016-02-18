@@ -1185,7 +1185,7 @@ def max_annots(MATRIX, max_annots):
 
 
 def add_to(MATRIX, add_to):
-    # format: list of <index 1-based>,<number>
+    # format: list of <header or index 1-based>,<number>
     if not add_to:
         return MATRIX
     
@@ -1193,10 +1193,11 @@ def add_to(MATRIX, add_to):
     for x in add_to:
         x = x.split(",")
         assert len(x) == 2, "format should be: <index>,<number>"
-        index, number = x
-        index = int(index)
+        header, number = x
+        index = MATRIX.normalize_header_i(header, index_base1=True)
+        assert index is not None, "Unknown header or index: %s" % header
         number = _int_or_float(number)
-        x = index-1, number
+        x = index, number
         jobs.append(x)
     
     MATRIX = MATRIX.copy()
@@ -2279,8 +2280,8 @@ def main():
     group.add_argument(
         "--add_to", default=[], action="append",
         help="Add a number to a column.  "
-        "Format: <index>,<number>.  "
-        "All indexes should be 1-based.  (MULTI)")
+        "Format: <header>,<number>.  "
+        "Header can be the name of the header or a 1-based index.  (MULTI)")
     group.add_argument(
         "--multiply_by", default=[], action="append",
         help="Multiply a column by a number.  "
