@@ -200,7 +200,11 @@ BAM_ATTRIBUTES = SAM_ATTRIBUTES + [
     #    help="fix header or not"),
     AttributeDef(
         "has_read_groups", ["yes", "no"], "no", "no",
-        help="Whether the file contains read groups.",
+        help="Whether the files contain read groups.",
+        ),
+    AttributeDef(
+        "has_md_tags", ["yes", "no"], "no", "no",
+        help="Whether the files have MD tags.",
         ),
     ]
 
@@ -717,6 +721,7 @@ all_modules = [
         Consequence("duplicates_marked", SET_TO, "no"),
         Consequence("base_recalibrated", SET_TO, "no"),
         Consequence("indel_realigned", SET_TO, "no"),
+        Consequence("has_md_tags", SET_TO, "no"),
         #help="Convert SAM to BAM files.",
         ),
     ModuleNode(
@@ -776,6 +781,16 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate"),
         Consequence("sorted", SAME_AS_CONSTRAINT),
         Constraint("indexed", MUST_BE, "no"),
+        Consequence("indexed", SAME_AS_CONSTRAINT),
+        ),
+    ModuleNode(
+        "add_md_tags_to_bam_folder",
+        [BamFolder, ReferenceGenome], BamFolder,
+        Constraint("has_md_tags", MUST_BE, "no"),
+        Consequence("has_md_tags", SET_TO, "yes"),
+        Constraint("sorted", MUST_BE, "yes"),
+        Consequence("sorted", SAME_AS_CONSTRAINT),
+        Constraint("indexed", MUST_BE, "yes"),
         Consequence("indexed", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(

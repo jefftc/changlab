@@ -913,12 +913,25 @@ def _parse_args(args):
             out_parameters.append((datatype, key, value))
         elif arg == "--dattr":
             raise AssertionError, "--dattr before --input or --output"
-        elif arg == '--input_file':
+        elif arg == "--input_file":
+            # Possible formats:
+            # 1.  --input_file fastq01
+            # 2.  --input_file=fastq01
             assert input_or_output == "--input", \
                    "--input_file must be after --input and before --output"
             assert len(args) >= i+1
             filename = args[i+1]
             i += 2
+            index = len(inputs) - 1
+            assert index not in in_identifiers, \
+                   "only one --input_file per --input"
+            in_identifiers[index] = filename
+        elif arg.startswith("--input_file"):
+            x = arg.split("=")
+            assert len(x) == 2, "Invalid arg: %s" % arg
+            assert x[0] == "--input_file"
+            filename = x[1]
+            i += 1
             index = len(inputs) - 1
             assert index not in in_identifiers, \
                    "only one --input_file per --input"
@@ -929,6 +942,14 @@ def _parse_args(args):
             assert len(args) >= i+1
             filename = args[i+1]
             i += 2
+            assert not out_identifier
+            out_identifier = filename
+        elif arg.startswith("--output_file"):
+            x = arg.split("=")
+            assert len(x) == 2, "Invalid arg: %s" % arg
+            assert x[0] == "--output_file"
+            filename = x[1]
+            i += 1
             assert not out_identifier
             out_identifier = filename
         else:
@@ -1207,7 +1228,7 @@ def main():
         network, user_options, in_data_nodes, data_node_ids, custom_attributes,
         args.max_inputs, args.network_png, verbose)
     #plot_pipelines(
-    #    "pipeline", network, paths[:1], user_options, max_pipelines=16,
+    #    "pipeline", network, paths, user_options, max_pipelines=16,
     #    verbose=True)
     if not paths:
         return
