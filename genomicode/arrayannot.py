@@ -39,7 +39,7 @@ def convert_gene_ids(
     # No duplicates.
     x = {}.fromkeys(x).keys()
     gene_ids_c = x
-
+    
     in2out = None
     if in_platform == "Entrez_Symbol_human" and \
        out_platform in ("Entrez_Symbol_human", "Entrez_ID_human"):
@@ -75,6 +75,21 @@ def _clean_genes_for_biomart(gene_ids):
 
 
 def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
+    # Maximum number of genes to request at a time.
+    MAX_GENES = 25000
+
+    in2out = {}
+    while gene_ids:
+        batch = gene_ids[:MAX_GENES]
+        gene_ids = gene_ids[MAX_GENES:]
+        
+        x = _convert_gene_ids_biomart_h(
+            gene_ids, in_platform, out_platform, no_na):
+        in2out.update(x)
+    return in2out
+
+
+def _convert_gene_ids_biomart_h(gene_ids, in_platform, out_platform, no_na):
     # Return a dictionary of gene_id -> list of converted_ids, or None
     # if these platforms cannot be converted.
     from genomicode import jmath
@@ -255,6 +270,8 @@ def _clean_id(gene_id, delimiter, in_platform):
     x = [x.strip() for x in x]
     # No empty IDs.
     x = [x for x in x if x]
+    # Ignore "---".
+    x = [x for x in x if x != "---"]
     # Hack: Remove version numbers from RefSeq IDs.
     if in_platform.lower().find("refseq") >= 0:
         x = [_remove_refseq_version(x) for x in x]

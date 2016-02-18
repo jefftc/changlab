@@ -983,6 +983,57 @@ def split_annots(MATRIX, split_annots):
     return MATRIX
 
 
+def split_chr_start_end(MATRIX, arg):
+    # list of strings in format of: <header>
+    if not arg:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    jobs = []   # list of (index 0-based,)
+    for x in arg:
+        h = MATRIX.normalize_header(x, index_base1=True)
+        assert h is not None, "Unknown header: %s" % x
+        i = MATRIX.headers_h.index(h)
+        jobs.append((i,))
+
+
+    headers = MATRIX.headers[:]
+    all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+    for x in jobs:
+        index, = x
+
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+        all_chrom = [""] * len(annots)
+        all_start = [""] * len(annots)
+        all_end = [""] * len(annots)
+        for i, x in enumerate(annots):
+            # chr1:320117-320142
+            x = x.strip()
+            if not x:
+                continue
+            x = x.split(":")
+            assert len(x) == 2, "Bad format: %s" % annots[i]
+            chrom, pos = x
+            x = pos.split("-")
+            assert len(x) == 2, "Bad format: %s" % annots[i]
+            start, end = x
+            start, end = int(start), int(end)
+            assert end >= start
+            all_chrom[i] = chrom
+            all_start[i] = start
+            all_end[i] = end
+
+        h = MATRIX.headers[index]
+        x1 = "%s chr" % h
+        x2 = "%s start" % h
+        x3 = "%s end" % h
+        headers.extend([x1, x2, x3])
+        all_annots.extend([all_chrom, all_start, all_end])
+
+    return AnnotationMatrix.create_from_annotations(headers, all_annots)
+
+
 def _add_annots(a1, a2):
     return a1 + a2
 
@@ -2200,6 +2251,12 @@ def main():
         help="Split an annotation across columns.  "
         "Format: <src index>;<dst indexes>;<split char>.  "
         "There should be at least one dst index for each item split.  (MULTI)")
+    group.add_argument(
+        "--split_chr_start_end", default=[], action="append",
+        help='Split a chromosome location string (e.g. "chr1:320117-320142") '
+        "into separate colummns: <chrom> <start> <end>.  "
+        "Format: <header>.  <header> may be the name of the header, "
+        "or a 1-based index.  (MULTI)")
     
     group = parser.add_argument_group(title="Mathematical Operations")
     group.add_argument(
@@ -2395,6 +2452,7 @@ def main():
     MATRIX = merge_annots(MATRIX, args.merge_annots)
     MATRIX = merge_annots_to_new_col(MATRIX, args.merge_annots_to_new_col)
     MATRIX = split_annots(MATRIX, args.split_annots)
+    MATRIX = split_chr_start_end(MATRIX, args.split_chr_start_end)
 
     # Math operations.
     MATRIX = flip01_matrix(MATRIX, args.flip01)

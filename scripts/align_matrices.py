@@ -491,16 +491,16 @@ def add_missing_samples(matrix_data, null_string):
     for x in matrix_data:
         infile, outfile, matrix, header, samples = x
 
-        header = matrix.normalize_header(header)
         if isinstance(matrix, AM.AnnotationMatrix):
-            samples = matrix.header2annots[header]
+            header_n = matrix.normalize_header(header)
+            samples = matrix.header2annots[header_n]
         else:
             samples = matrix.col_names(header)
         for i in range(len(samples)):
             if samples[i] == null_string:
                 samples[i] = complete_samples[i]
         if isinstance(matrix, AM.AnnotationMatrix):
-            matrix.header2annots[header] = samples
+            matrix.header2annots[header_n] = samples
         else:
             matrix._col_names[header] = samples
         x = infile, outfile, matrix, header, samples
