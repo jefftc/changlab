@@ -35,11 +35,11 @@
 # FORMAT  GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
 # VALUES  ./.:.:16
 #
-#                   samtools   Platypus     GATK  IACS
-# num_ref           GENO:RD        calc  GENO:AD
-# num_alt           GENO:AD     INFO:TR  GENO:AD
-# total_reads       GENO:DP     INFO:TC  GENO:DP  calc
-# vaf               GENO:FREQ      calc     calc  calc
+#                   samtools   Platypus     GATK  IACS  NextGene
+# num_ref           GENO:RD              GENO:AD        GENO:SGCOUNTREF_F/R
+# num_alt           GENO:AD     INFO:TR  GENO:AD        GENO:SGCOUNTALT_F/R
+# total_reads       GENO:DP     INFO:TC  GENO:DP  calc  GENO:DP
+# vaf               GENO:FREQ
 # call              GENO:GT     GENO:GT  GENO:GT   ???
 # * GENO:AD    For GATK, includes REF.  REF,ALT1,ALT2 etc.
 #   GENO:FREQ  For samtools, is a percent, e.g. 100%.
@@ -47,6 +47,17 @@
 # * If DP is missing, then try SDP.
 # * Sometimes DP is missing for samtools.  Can use INFO:ADP if
 #   only 1 sample.
+# * NextGene
+#   Comma means different (simulatenous) interpretations of
+#   alternate alignments.  Allele frequency can be either.
+#   SGCOUNTREF_F  3277
+#   SGCOUNTREF_R  2675
+#   SGCOUNTALT_F  1500,522
+#   SGCOUNTALT_R  1761,515
+#   AF            0.353,0.112
+#   SGACOV        3261,1037   Sum of ALT reads.
+#   DP            9232
+
 
 
 class VCFFile:
@@ -153,6 +164,17 @@ def parse_info(vcf, sample, variant_num):
     
     if "RD" in geno_dict:
         num_ref = _safe_int(geno_dict["RD"])
+    if "SGCOUNTREF_F" in geno_dict:
+        x1 = _safe_int(geno_dict["SGCOUNTREF_F"])
+        x2 = _safe_int(geno_dict["SGCOUNTREF_R"])
+        num_ref = _safe_add(x1, x2)
+    if "SGCOUNTALT_F" in geno_dict:
+        x1 = geno_dict["SGCOUNTALT_F"].split(",")
+        x2 = geno_dict["SGCOUNTALT_R"].split(",")
+        assert len(x1) == len(x2)
+        x1 = [_safe_int(x) for x in x1]
+        x2 = [_safe_int(x) for x in x2]
+        num_alt = [_safe_add(x, y) for (x, y) in zip(x1, x2)]
     if "AD" in geno_dict:
         # ALT   AD
         # C,T    2
@@ -280,6 +302,9 @@ def update_info(vcf, sample, variant_num, info):
         GD["AD"] = _fmt_vcf_value(info.num_alt)
         GD["DP"] = _fmt_vcf_value(info.total_reads)
         GD["GT"] = info.call
+    elif "SGCOUNTREF_F" in GD:
+        # NextGene
+        raise NotImplementedError, "NextGene not implemented yet."
     else:
         raise AssertionError, "Unknown VCF format."
 
@@ -380,3 +405,14 @@ def _parse_genotype_dict(format_str, genotype_str):
         d[n] = v
     return d
 
+
+def _safe_add(x1, x2):
+    # Add two numbers.  x1 and x2 should be integers or None.  If both
+    # are None, return None.  If only 1 is None, interpret it as 0.
+    if x1 is None and x2 is None:
+        return None
+    if x1 is None:
+        x1 = 0
+    if x2 is None:
+        x2 = 0
+    return x1 + x2
