@@ -84,7 +84,7 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
         gene_ids = gene_ids[MAX_GENES:]
         
         x = _convert_gene_ids_biomart_h(
-            gene_ids, in_platform, out_platform, no_na):
+            batch, in_platform, out_platform, no_na)
         in2out.update(x)
     return in2out
 
@@ -95,6 +95,8 @@ def _convert_gene_ids_biomart_h(gene_ids, in_platform, out_platform, no_na):
     from genomicode import jmath
     from genomicode import arrayplatformlib
 
+    if not gene_ids:
+        return {}
     R_fn, R_var = jmath.R_fn, jmath.R_var
 
     # An attribute is the biomart name for the platform.

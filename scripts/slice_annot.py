@@ -83,6 +83,7 @@ def parse_indexes(MATRIX, indexes_str, allow_duplicates=False,
     from genomicode import parselib
 
     max_index = len(MATRIX.headers)
+    indexes_str = indexes_str.replace("END", str(max_index))
 
     I = []
     for s, e in parselib.parse_ranges(indexes_str):

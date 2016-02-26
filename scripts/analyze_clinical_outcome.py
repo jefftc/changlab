@@ -17,8 +17,10 @@
 # read_expression_or_geneset_scores
 # read_clinical_annotations
 # align_matrix_with_clinical_data
-# get_gene_id
-# get_gene_name
+# 
+# describe_gene
+# format_gene_name
+# pretty_gene_name
 #
 # calc_association
 # calc_km
@@ -254,11 +256,13 @@ def read_geneset_scores(filename):
         data, row_names=row_names, col_names=col_names, synonyms=synonyms)
     return M
 
-def read_expression_or_geneset_scores(genes, gene_sets, filename):
-    assert not (genes and gene_sets)
-    assert genes or gene_sets
+def read_expression_or_geneset_scores(genes, all_genes, gene_sets, filename):
+    assert genes or all_genes or gene_sets
+    assert not (genes and all_genes)
+    has_genes = genes or all_genes
+    assert not (has_genes and gene_sets)
 
-    if genes:
+    if genes or all_genes:
         # If genes were specified, then the input should be a gene
         # expression data file.
         M = read_gene_expression(filename)
@@ -348,26 +352,50 @@ def discretize_scores(
     return group_names, groups
 
 
-def get_gene_id(MATRIX, gene_i):
-    # gene_i is index of gene in this MATRIX.
+def describe_gene(MATRIX, gene_i):
+    # Return tuple of (probe_id, gene_id, gene_symbol, gene_index).
+    # If any of these cannot be found, then will be None.  gene_index
+    # is just based on the index of the gene.
     from genomicode import arrayplatformlib as apl
 
     probe_id = gene_id = gene_symbol = None
 
-    # Try finding a gene symbol.
+    # probe_id
+    header = apl.find_header(MATRIX, apl.PROBE_ID)
+    if header is not None:
+        probe_id = MATRIX.row_names(header)[gene_i]
+
+    # gene_symbol
     header = apl.find_header(MATRIX, apl.GENE_SYMBOL)
     if header is not None:
         gene_symbol = MATRIX.row_names(header)[gene_i]
 
-    # Try finding the gene ID.
+    # gene_id
     header = apl.find_header(MATRIX, apl.GENE_ID)
     if header is not None:
         gene_id = MATRIX.row_names(header)[gene_i]
 
-    # Just use a probe ID.
-    header = apl.find_header(MATRIX, apl.PROBE_ID)
-    if header is not None:
-        probe_id = MATRIX.row_names(header)[gene_i]
+    gene_index = "Gene %04d" % gene_i
+
+    return probe_id, gene_id, gene_symbol, gene_index
+
+
+def format_gene_name(MATRIX, gene_headers, gene_i):
+    # Return a string describing this gene that can be used as part of
+    # a filename.
+
+    # Use the gene set name.
+    if len(MATRIX.row_names()) == 1:
+        x = MATRIX.row_names()[0]
+        return MATRIX.row_names(x)[gene_i]
+    
+    if gene_headers:
+        x = [MATRIX.row_names(x)[gene_i] for x in gene_headers]
+        x = "_".join(x)
+        return x
+
+    x = describe_gene(MATRIX, gene_i)
+    probe_id, gene_id, gene_symbol, gene_index = x
 
     if probe_id and gene_symbol:
         return "%s_%s" % (gene_symbol, probe_id)
@@ -375,27 +403,30 @@ def get_gene_id(MATRIX, gene_i):
         return probe_id
     if gene_symbol:
         return gene_symbol
+    return gene_index
 
+
+def pretty_gene_name(MATRIX, gene_headers, gene_i):
     # Use the gene set name.
     if len(MATRIX.row_names()) == 1:
         x = MATRIX.row_names()[0]
         return MATRIX.row_names(x)[gene_i]
     
-    # Just return the index of the gene
-    return "Gene %04d" % gene_i
-
-
-def get_gene_name(M, gene_headers, gene_i):
-    from genomicode import hashlib
-    
     if gene_headers:
-        x = [M.row_names(x)[gene_i] for x in gene_headers]
-        gene_name = "_".join(x)
-    else:
-        x = get_gene_id(M, gene_i)
-        x = hashlib.hash_var(x)
-        gene_name = x
-    return gene_name
+        x = [MATRIX.row_names(x)[gene_i] for x in gene_headers]
+        x = " ".join(x)
+        return x
+
+    x = describe_gene(MATRIX, gene_i)
+    probe_id, gene_id, gene_symbol, gene_index = x
+
+    if probe_id and gene_symbol:
+        return "%s (%s)" % (gene_symbol, probe_id)
+    if probe_id:
+        return probe_id
+    if gene_symbol:
+        return gene_symbol
+    return gene_index
 
 
 def calc_association(
@@ -533,7 +564,7 @@ def calc_km(survival, dead, group):
     assert len(survival) == len(group)
 
     # At least two samples must be dead.
-    x0 = [x for x in dead if x == 0]
+    #x0 = [x for x in dead if x == 0]
     x1 = [x for x in dead if x == 1]
     # It is OK if no samples are alive.
     #assert len(x0) >= 2, "At least two samples must have dead=0."
@@ -675,7 +706,7 @@ def plot_km(
     subtitle_size, mar_subtitle, xlab, ylab, legend_size, x_legend=None,
     colors=None):
     from genomicode import colorlib
-    from genomicode.jmath import R_equals, R_fn, R_var
+    from genomicode.jmath import R_fn, R_var
     
     R = start_and_init_R()
     
@@ -848,9 +879,9 @@ def plot_groups(filename, scores, group_names, groups, unlog):
     
 
 def write_km_group_file(filename, scores, group_names, groups, unlog):
-    from genomicode import colorlib
+    #from genomicode import colorlib
     from genomicode.jmath import R_fn, R_equals, R_var
-    from genomicode import jmath
+    #from genomicode import jmath
     
     assert len(scores) == len(groups)
     if unlog:
@@ -936,7 +967,8 @@ def _make_filename(M, gene_i,
         assert h in M.row_names()
 
     # Figure out the gene_name.
-    gene_name = get_gene_name(M, gene_headers, gene_i)
+    x = format_gene_name(M, gene_headers, gene_i)
+    gene_name = hashlib.hash_var(x)
     #if gene_headers:
     #    x = [M.row_names(x)[gene_i] for x in gene_headers]
     #    gene_name = "_".join(x)
@@ -957,7 +989,7 @@ def main():
     import sys
     import argparse
     import itertools
-    from genomicode import hashlib
+    #from genomicode import hashlib
 
     parser = argparse.ArgumentParser(
         description='Associate gene expression patterns with outcomes.')
@@ -1133,7 +1165,7 @@ def main():
 
     # Read the input files.
     M = read_expression_or_geneset_scores(
-        genes, gene_sets, args.expression_file)
+        genes, False, gene_sets, args.expression_file)
     x = read_clinical_annotations(M, args.outcome_file)
     M, clinical_annots = x
 
@@ -1179,7 +1211,7 @@ def main():
                 expression_or_score, args.ignore_unscored_genesets)
         except AssertionError, x:
             # Provide a better error message.
-            type, value, tb = sys.exc_info()
+            type_, value, tb = sys.exc_info()
             x = str(x)
             if filestem:
                 fs = filestem
@@ -1269,7 +1301,7 @@ def main():
         filename = _make_filename(
             M, gene_i, filestem, time_header, args.gene_header, "km", "png")
         #gene_id = get_gene_name(M, gene_i)
-        gene_id = get_gene_name(M, args.gene_header, gene_i)
+        gene_id = format_gene_name(M, args.gene_header, gene_i)
         plot_km(
             filename, SURV["survival"], SURV["dead"], SURV["groups"],
             SURV["p_value"], gene_id, SURV["group_names"], 
