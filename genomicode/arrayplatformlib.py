@@ -65,7 +65,8 @@ class Platform:
         #
         # To list valid attributes:
         # library(biomaRt)
-        # x <- useMart("ensembl", "hsapiens_gene_ensembl")
+        # x <- useMart("ENSEMBL_MART_ENSEMBL", "hsapiens_gene_ensembl",
+        #   host="www.ensembl.org")
         # y <- listAttributes(x)
         # y$name
         self.bm_attribute = bm_attribute
@@ -375,17 +376,15 @@ def score_platform_of_annotations(annotations):
 def _parse_matrix_annotations(annots, delim):
     # No blank annotations.
     x = annots
+    if delim:
+        parsed = []
+        for x in x:
+            x = x.split(delim)
+            parsed.extend(x)
+        x = parsed
     x = [x.strip() for x in x]
     x = [x for x in x if x]
-    annots = x
-
-    if delim is None:
-        return annots
-    parsed = []
-    for annot in annots:
-        x = annot.split(delim)
-        parsed.extend(x)
-    return parsed
+    return x
 
 
 def score_all_platforms_of_matrix(DATA, annot_delim=None):

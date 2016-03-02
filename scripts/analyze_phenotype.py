@@ -5,11 +5,14 @@
 # parse_phenotypes
 # parse_groups
 # parse_ignore_samples
-# 
+#
 # ignore_samples
 # calc_association
 # center_scores
-
+#
+# write_prism_file
+# plot_boxplot
+# plot_waterfall
 
 def parse_phenotypes(phenotypes):
     # list of phenotypes.
@@ -215,100 +218,100 @@ def write_prism_file(filename, scores, phenotypes, group_names):
         print >>handle, "\t".join(map(str, x))
 
 
-def plot_boxplot(
-    filename, scores, phenotypes, group_names, p_value, gene_id,
-    mar_bottom, mar_left, mar_top):
-    import os
-    from genomicode import jmath
-    from genomicode.jmath import R_fn, R_var, R_equals
-    from genomicode import config
+## def plot_boxplot(
+##     filename, scores, phenotypes, group_names, p_value, gene_id,
+##     mar_bottom, mar_left, mar_top):
+##     import os
+##     from genomicode import jmath
+##     from genomicode.jmath import R_fn, R_var, R_equals
+##     from genomicode import config
 
-    xlabel_size = 1.0
-    height = 1600
-    width = 1600
+##     xlabel_size = 1.0
+##     height = 1600
+##     width = 1600
 
-    pheno2scores = {}
-    for pheno, score in zip(phenotypes, scores):
-        if pheno not in pheno2scores:
-            pheno2scores[pheno] = []
-        pheno2scores[pheno].append(score)
+##     pheno2scores = {}
+##     for pheno, score in zip(phenotypes, scores):
+##         if pheno not in pheno2scores:
+##             pheno2scores[pheno] = []
+##         pheno2scores[pheno].append(score)
 
-    R = jmath.start_R()
-    path = config.changlab_Rlib
-    plotlib = os.path.join(path, "plotlib.R")
-    assert os.path.exists(plotlib), "I cannot find: %s" % plotlib
-    R_fn("source", plotlib)
+##     R = jmath.start_R()
+##     path = config.changlab_Rlib
+##     plotlib = os.path.join(path, "plotlib.R")
+##     assert os.path.exists(plotlib), "I cannot find: %s" % plotlib
+##     R_fn("source", plotlib)
 
-    #main = R_var("NA")
-    main = gene_id
-    #sub = ""
-    sub = "%.2g" % p_value
-    xlab = ""
-    ylab = "Gene Expression"
-    labels = group_names
-    col = R_var("NULL")
+##     #main = R_var("NA")
+##     main = gene_id
+##     #sub = ""
+##     sub = "%.2g" % p_value
+##     xlab = ""
+##     ylab = "Gene Expression"
+##     labels = group_names
+##     col = R_var("NULL")
 
-    lwd = 2
-    las = 3   # vertical labels
-    at = R_var("NULL")
-    if labels:
-        at = range(1, len(labels)+1)
-    cex_labels = 1.25*xlabel_size
-    #cex_legend = 1
-    #cex_lab = 1.5
-    cex_xlab = 2.0
-    cex_ylab = 2.0
-    cex_sub = 1.5
+##     lwd = 2
+##     las = 3   # vertical labels
+##     at = R_var("NULL")
+##     if labels:
+##         at = range(1, len(labels)+1)
+##     cex_labels = 1.25*xlabel_size
+##     #cex_legend = 1
+##     #cex_lab = 1.5
+##     cex_xlab = 2.0
+##     cex_ylab = 2.0
+##     cex_sub = 1.5
 
-    R_equals(labels, "labels")
-    R_equals(at, "at")
-    R("X <- list()")
-    for i, n in enumerate(group_names):
-        s = pheno2scores.get(n, [])
-        R_equals(s, "s")
-        R("X[[%d]] <- s" % (i+1))
+##     R_equals(labels, "labels")
+##     R_equals(at, "at")
+##     R("X <- list()")
+##     for i, n in enumerate(group_names):
+##         s = pheno2scores.get(n, [])
+##         R_equals(s, "s")
+##         R("X[[%d]] <- s" % (i+1))
 
-    bm_type = "png16m"
-    if filename.lower().endswith(".pdf"):
-        bm_type = "pdfwrite"
-    R_fn(
-        "bitmap", filename, type=bm_type,
-        height=height, width=width, units="px", res=300)
+##     bm_type = "png16m"
+##     if filename.lower().endswith(".pdf"):
+##         bm_type = "pdfwrite"
+##     R_fn(
+##         "bitmap", filename, type=bm_type,
+##         height=height, width=width, units="px", res=300)
     
-    # Set the margins.
-    x = 10*mar_bottom, 5*mar_left, 4*mar_top, 2
-    mar = [x+0.1 for x in x]
-    R_fn("par", mar=mar, RETVAL="op")
+##     # Set the margins.
+##     # default is 5.1, 4.1, 4.1, 2.1
+##     x = 10*mar_bottom, 5*mar_left, 4*mar_top, 2
+##     mar = [x+0.1 for x in x]
+##     R_fn("par", mar=mar, RETVAL="op")
         
-    R_fn(
-        "boxplot", R_var("X"), col=col, main="", xlab="", ylab="",
-        axes=R_var("FALSE"), pch=19, cex=1, ylim=R_var("NULL"))
-    # Make plot area solid white.
-    jmath.R('usr <- par("usr")')
-    jmath.R('rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF")')
-    R_fn(
-        "boxplot", R_var("X"), col=col, main="", xlab="", ylab="",
-        axes=R_var("FALSE"), pch=19, cex=1, ylim=R_var("NULL"),
-        add=R_var("TRUE"))
+##     R_fn(
+##         "boxplot", R_var("X"), col=col, main="", xlab="", ylab="",
+##         axes=R_var("FALSE"), pch=19, cex=1, ylim=R_var("NULL"))
+##     # Make plot area solid white.
+##     jmath.R('usr <- par("usr")')
+##     jmath.R('rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF")')
+##     R_fn(
+##         "boxplot", R_var("X"), col=col, main="", xlab="", ylab="",
+##         axes=R_var("FALSE"), pch=19, cex=1, ylim=R_var("NULL"),
+##         add=R_var("TRUE"))
     
-    R_fn("box", lwd=lwd)
-    R_fn(
-        "axis", 1, lwd=lwd, labels=R_var("labels"),
-        at=R_var("at"), las=las, **{ "cex.axis" : cex_labels })
-    R_fn(
-        "axis", 2, lwd=lwd, **{ "cex.axis" : 1.5 })
-    R_fn(
-        "title", main=main, sub=sub, xlab=xlab, ylab=ylab,
-        **{ "cex.lab" : cex_xlab, "cex.main" : 2.0, "cex.sub" : cex_sub,
-            "col.sub" : "#A60400" })
-    R("par(op)")
-    R_fn("dev.off")
-
+##     R_fn("box", lwd=lwd)
+##     R_fn(
+##         "axis", 1, lwd=lwd, labels=R_var("labels"),
+##         at=R_var("at"), las=las, **{ "cex.axis" : cex_labels })
+##     R_fn(
+##         "axis", 2, lwd=lwd, **{ "cex.axis" : 1.5 })
+##     R_fn(
+##         "title", main=main, sub=sub, xlab=xlab, ylab=ylab,
+##         **{ "cex.lab" : cex_xlab, "cex.main" : 2.0, "cex.sub" : cex_sub,
+##             "col.sub" : "#A60400" })
+##     R("par(op)")
+##     R_fn("dev.off")
 
 
 def plot_waterfall(
     filename, scores, phenotypes, group_names, sample_names, p_value, gene_id,
-    mar_bottom, mar_left, mar_top):
+    mar_bottom, mar_left, mar_top, xlabel_off):
     import os
     from genomicode import jmath
     from genomicode.jmath import R_fn, R_var, R_equals
@@ -330,11 +333,9 @@ def plot_waterfall(
         x = [aco.colortuple2hex(*x) for x in x]
         colors = x
 
-
     xlabel_size = 1.0
     height = 1600
     width = 1600
-
 
     R = jmath.start_R()
     path = config.changlab_Rlib
@@ -379,7 +380,11 @@ def plot_waterfall(
         height=height, width=width, units="px", res=300)
     
     # Set the margins.
-    x = 10*mar_bottom, 5*mar_left, 4*mar_top, 2
+    xlabel_bottom = 2.0
+    if xlabel_off:
+        R_equals(R_var("FALSE"), "labels")
+        xlabel_bottom = 0.5
+    x = 5*mar_bottom*xlabel_bottom, 5*mar_left, 4*mar_top, 2
     mar = [x+0.1 for x in x]
     R_fn("par", mar=mar, RETVAL="op")
     
@@ -421,6 +426,7 @@ def main():
 
     import arrayio
     import analyze_clinical_outcome as aco
+    import boxplot
     #from genomicode import hashlib
 
     parser = argparse.ArgumentParser(
@@ -450,6 +456,9 @@ def main():
         'expression_file.  '
         'You can use this parameter multiple times to search more genes.')
     group.add_argument(
+        "--all_genes", action="store_true",
+        help="Run analysis on all genes in this file.")
+    group.add_argument(
         '--geneset', default=[], action='append',
         help='Name of the geneset to analyze. To specify multiple gene sets, '
         'use this parameter multiple times.')
@@ -468,8 +477,9 @@ def main():
         help='Prefix used to name files.  e.g. "myanalysis".')
     group.add_argument(
         "--gene_header", action="append", default=[],
-        help="Header of gene name to include in the name of the output file "
-        "(MULTI).  By default, will try to find the gene symbol.")
+        help="When naming the output file, use the gene name(s) under this "
+        "Header (MULTI).  If not given, will try to use a combination of the "
+        "probe ID and gene symbol.")
 
     group = parser.add_argument_group(title='Formatting the boxplot')
     group.add_argument(
@@ -490,6 +500,9 @@ def main():
     group.add_argument(
         "--water_mar_top", default=1.0, type=float,
         help="Scale margin at top of plot.  Default 1.0 (no scaling).")
+    group.add_argument(
+        "--water_xlabel_off", action="store_true",
+        help="Do not label the X axis on the waterfall plot.")
 
     ## group.add_argument(
     ##     '--km_title', default=None, help='Title for the Kaplan-Meier plot.')
@@ -522,15 +535,17 @@ def main():
         'Please specify a gene expression or gene set score file.')
     assert os.path.exists(args.expression_file), "File not found: %s" % \
            args.expression_file
-    assert args.phenotype_file, (
-        'Please specify a phenotype file.')
+    assert args.phenotype_file, 'Please specify a phenotype file.'
     assert os.path.exists(args.phenotype_file), "File not found: %s" % \
            args.phenotype_file
     
     assert args.phenotype, 'Please specify the phenotype to analyze.'
-    assert args.gene or args.geneset, 'Please specify a gene or gene set.'
-    assert not (args.gene and args.geneset), (
-        'Please specify either a gene or a gene set, not both.')
+    assert args.gene or args.geneset or args.all_genes, \
+           'Please specify a gene or gene set.'
+    assert not (args.gene and args.all_genes)
+    has_gene = args.gene or args.all_genes
+    assert not (has_gene and args.geneset), \
+        'Please specify either a gene or a gene set, not both.'
 
     assert args.box_mar_bottom > 0 and args.box_mar_bottom < 10
     assert args.box_mar_left > 0 and args.box_mar_left < 10
@@ -558,7 +573,7 @@ def main():
 
     # Read the input files.
     M = aco.read_expression_or_geneset_scores(
-        genes, gene_sets, args.expression_file)
+        genes, args.all_genes, gene_sets, args.expression_file)
     x = aco.read_clinical_annotations(M, args.phenotype_file)
     M, clinical_annots = x
 
@@ -569,12 +584,14 @@ def main():
 
     # Make sure at least one of the phenotypes are in the clinical
     # annotations.
-    phenotypes = [x for x in phenotypes if x in clinical_annots]
-    assert phenotypes, "No phenotypes found."
+    x = [x for x in phenotypes if x in clinical_annots]
+    assert x, "Could not find phenotypes: %s" % ", ".join(phenotypes)
+    phenotypes = x
 
     # Select the genes or gene sets of interest.
-    x = genes or gene_sets
-    M = M.matrix(row=x)
+    if not args.all_genes:
+        x = genes or gene_sets
+        M = M.matrix(row=x)
     assert M.nrow(), "I could not find any of the genes or gene sets."
 
     # Make sure the batch information is valid.
@@ -654,14 +671,10 @@ def main():
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))
 
-
         # Write out plots.
-        gene_id = aco.get_gene_name(M, None, gene_i)
-        #gene_id_h = hashlib.hash_var(gene_id)
+        gene_id = aco.format_gene_name(M, None, gene_i)
         sample_names = M.col_names(arrayio.COL_ID)
         if filestem:
-            #filename = "%s%s.%s.prism.txt" % (
-            #    filestem, pheno_header, gene_id_h)
             filename = aco._make_filename(
                 M, gene_i, filestem, pheno_header, args.gene_header,
                 "prism", "txt")
@@ -670,16 +683,31 @@ def main():
                 SCORE["group_names"])
 
         if filestem:
-            #filename = "%s%s.%s.boxplot.png" % (
-            #    filestem, pheno_header, gene_id_h)
             filename = aco._make_filename(
                 M, gene_i, filestem, pheno_header, args.gene_header,
                 "boxplot", "png")
-            plot_boxplot(
-                filename, SCORE["scores"], SCORE["phenotypes"],
-                SCORE["group_names"], SCORE["p_value"], gene_id,
-                args.box_mar_bottom, args.box_mar_left, args.box_mar_top,
-                )
+            pretty_gene = aco.pretty_gene_name(M, args.gene_header, gene_i)
+
+            group_names = SCORE["group_names"]
+            pheno2scores = {}
+            for pheno, score in zip(SCORE["phenotypes"], SCORE["scores"]):
+                if pheno not in pheno2scores:
+                    pheno2scores[pheno] = []
+                pheno2scores[pheno].append(score)
+            p_value = "p=%.2g" % SCORE["p_value"]
+            boxplot.plot_boxplot(
+                filename, group_names, pheno2scores,
+                height=1600, width=1600, title=pretty_gene, 
+                subtitle=p_value, subtitle_col="#A60400", subtitle_size=1.2,
+                subtitle_line=0.5,
+                ylab="Gene Expression",
+                mar_bottom=args.box_mar_bottom, mar_left=args.box_mar_left,
+                mar_top=1.25)
+            #plot_boxplot(
+            #    filename, SCORE["scores"], SCORE["phenotypes"],
+            #    SCORE["group_names"], SCORE["p_value"], pretty,
+            #    args.box_mar_bottom, args.box_mar_left, args.box_mar_top,
+            #    )
             
         if filestem:
             #filename = "%s%s.%s.waterfall.png" % (
@@ -687,10 +715,12 @@ def main():
             filename = aco._make_filename(
                 M, gene_i, filestem, pheno_header, args.gene_header,
                 "waterfall", "png")
+            pretty = aco.pretty_gene_name(M, args.gene_header, gene_i)
             plot_waterfall(
                 filename, SCORE["scores"], SCORE["phenotypes"],
-                SCORE["group_names"], sample_names, SCORE["p_value"], gene_id,
+                SCORE["group_names"], sample_names, SCORE["p_value"], pretty,
                 args.water_mar_bottom, args.water_mar_left, args.water_mar_top,
+                args.water_xlabel_off,
                 )
 
             

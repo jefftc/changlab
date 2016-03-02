@@ -182,7 +182,8 @@ def convert_matrix(
     DATA = arrayio.read(filename)
 
     if header:
-        gene_ids = DATA.row_names(header)
+        x = DATA.row_names(header)
+        gene_ids = arrayplatformlib._parse_matrix_annotations(x, in_delim)
         x = arrayplatformlib.score_platform_of_annotations(gene_ids)
         assert x, "I could not identify the platform for %s." % header
         in_platform, score = x
@@ -191,7 +192,8 @@ def convert_matrix(
         assert len(x) == 2
         header, in_platform = x
         score = 1.0
-        gene_ids = DATA.row_names(header)
+        x = DATA.row_names(header)
+        gene_ids = arrayplatformlib._parse_matrix_annotations(x, in_delim)
         assert arrayplatformlib.find_platform_by_name(in_platform), \
                "Unknown platform: %s" % in_platform
     else:

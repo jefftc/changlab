@@ -146,11 +146,11 @@ def main():
         "--xlabel_size", default=1.0, type=float,
         help="Scale the size of the labels on X-axis.  Default 1.0.")
     group.add_argument(
-        "--xlabels_off", action="store_true", help="Do not label the X axis.")
+        "--xlabel_off", action="store_true", help="Do not label the X axis.")
     group.add_argument(
-        "--ylabels_off", action="store_true", help="Do not label the Y axis.")
+        "--ylabel_off", action="store_true", help="Do not label the Y axis.")
     group.add_argument(
-        "--xtick_labels_off", action="store_true",
+        "--xtick_label_off", action="store_true",
         help="Do not draw the tick labels on the X axis.")
 
     group = parser.add_argument_group(title="Colors")
@@ -223,11 +223,11 @@ def main():
     xtick_labels = jmath.R_var("TRUE")
     ytick_labels = jmath.R_var("TRUE")
 
-    if args.xlabels_off:
+    if args.xlabel_off:
         xlab = ""
-    if args.ylabels_off:
+    if args.ylabel_off:
         ylab = ""
-    if args.xtick_labels_off:
+    if args.xtick_label_off:
         xtick_labels = jmath.R_var("FALSE")
 
     breaks = "Sturges"

@@ -1526,8 +1526,10 @@ def _calc_colorbar_size(
     # and also the size of the boxes in the heatmap.
     #
     # MAX_BOXES of 100 is too big for signature heatmap from pybinreg.
-    BAR_LONG = 0.50     # the long dimension, relative to heatmap
-    BAR_SHORT = 0.075   # short dimension, relative to long_ratio
+    #BAR_LONG = 0.50     # the long dimension, relative to heatmap
+    #BAR_SHORT = 0.075   # short dimension, relative to long_ratio
+    BAR_LONG = 0.75     # the long dimension, relative to heatmap
+    BAR_SHORT = 0.15    # short dimension, relative to long_ratio
     MAX_BOXES = 50      # Maximum boxes in the long dimension.
     MIN_BOXES = 1       # Minimum boxes in the short dimension.
 
