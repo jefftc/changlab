@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import hashlib
         from genomicode import filelib
         from Betsy import module_utils
@@ -61,7 +61,7 @@ class Module(AbstractModule):
             genome_size=genome_size, save_bedgraph_file=True, name=name,
             normalize_read_counts=True, paired=is_paired,
             broad_peak_calling=broad_peaks)
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         files = [
             "%s_peaks.xls" % name,
@@ -79,7 +79,7 @@ def make_macs2_command(
     normalize_read_counts=False, paired=False):
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert genome_size in ["hs", "mm", "ce", "dm"]
 
@@ -100,7 +100,7 @@ def make_macs2_command(
     # --SPMR          Normalize coverage plot by millions of reads.
     macs2 = filelib.which_assert(config.macs2)
     
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(macs2),
         "callpeak",

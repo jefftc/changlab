@@ -11,7 +11,7 @@ class Module(AbstractModule):
         from genomicode import parselib
         from genomicode import filelib
         from genomicode import config
-        from genomicode import shell
+        from genomicode import parallel
 
         bam_path = in_data.identifier
         assert os.path.exists(bam_path)
@@ -56,7 +56,8 @@ class Module(AbstractModule):
         handle.close()
 
         txt2xls = filelib.which_assert(config.txt2xls)
-        os.system("%s -b %s > %s" % (shell.quote(txt2xls), TXT_FILE, outfile))
+        os.system("%s -b %s > %s" % (
+            parallel.quote(txt2xls), TXT_FILE, outfile))
             
         
     def name_outfile(self, antecedents, user_options):
@@ -69,12 +70,12 @@ def count_mapped_reads(bam_filename):
     import os
     import StringIO
     from genomicode import config
-    from genomicode import shell
+    from genomicode import parallel
     from genomicode import filelib
 
     assert os.path.exists(bam_filename)
     
-    sq = shell.quote
+    sq = parallel.quote
     samtools = filelib.which_assert(config.samtools)
     cmd = [
         sq(samtools),
@@ -82,7 +83,7 @@ def count_mapped_reads(bam_filename):
         sq(bam_filename),
         ]
     # How to check if this is broken?
-    x = shell.single(cmd)
+    x = parallel.sshell(cmd)
     handle = StringIO.StringIO(x)
     total_mapped = total_unmapped = 0
     for x in filelib.read_cols(handle):

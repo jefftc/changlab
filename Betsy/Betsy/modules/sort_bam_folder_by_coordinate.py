@@ -10,16 +10,12 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from Betsy import module_utils
         
-        filelib.safe_mkdir(out_path)
-
-        in_path = module_utils.unzip_if_zip(in_data.identifier)
-        x = filelib.list_files_in_path(in_path)
-        x = [x for x in x if x.lower().endswith(".bam")]
-        in_filenames = x
+        in_filenames = module_utils.find_bam_files(in_data.identifier)
         assert in_filenames, "No .bam files."
+        filelib.safe_mkdir(out_path)
 
         jobs = []  # list of (in_filename, temp_prefix, out_filename)
         for in_filename in in_filenames:
@@ -32,7 +28,8 @@ class Module(AbstractModule):
         samtools = filelib.which_assert(config.samtools)
 
         # Make a list of samtools commands.
-        sq = shell.quote
+        # Takes ~1 Gb per process.
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, temp_prefix, out_filename = x
@@ -57,7 +54,7 @@ class Module(AbstractModule):
             x = " ".join(x)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]
@@ -69,6 +66,6 @@ class Module(AbstractModule):
         #original_file = module_utils.get_inputid(antecedents.identifier)
         #filename = 'bamFiles_sorted' + original_file
         #return filename
-        return "bam"
+        return "sorted.coord.bam"
 
 

@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from Betsy import module_utils
 
         filelib.safe_mkdir(out_path)
@@ -18,7 +18,7 @@ class Module(AbstractModule):
 
         commands = ["fastqc --outdir=%s %s" % (out_path, x) for x in filenames]
         #commands = ["ls > %s" % x for x in filenames]
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Fastqc generates files:
         # <file>_fastqc/

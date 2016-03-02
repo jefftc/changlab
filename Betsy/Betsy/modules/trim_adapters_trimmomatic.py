@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from Betsy import module_utils
 
         fastq_node, sample_node = antecedents
@@ -50,7 +50,7 @@ class Module(AbstractModule):
                 unpaired1, unpaired2, log_filename
             jobs.append(x)
 
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, trimmed1, trimmed2, unpaired1, unpaired2, \
@@ -62,7 +62,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
         
         # Make sure the analysis completed successfully.
         for x in jobs:
@@ -88,7 +88,7 @@ def _make_trimmomatic_cmd(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert filelib.exists_nz(adapters_filename)
     if num_threads is not None:
@@ -113,7 +113,7 @@ def _make_trimmomatic_cmd(
         assert pair2 and trimmed2 and unpaired1 and unpaired2
 
     trimmomatic = filelib.which_assert(config.trimmomatic_jar)
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         "java",
         "-jar", sq(trimmomatic),

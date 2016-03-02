@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import config
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
         from Betsy import module_utils
@@ -67,7 +67,7 @@ class Module(AbstractModule):
                 ref.fasta_file_full, fastq_filename, sai_filename,
                 log_filename, num_threads=nc)
             commands.append(x)
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:

@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
 
         vcf_node, ref_node, report_node = antecedents
@@ -92,7 +92,7 @@ class Module(AbstractModule):
         #   -o recalibrated_snps_raw_indels.vcf
 
         # Make a list of commands.
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, recal_filename, tranches_filename, log_filename, \
@@ -105,7 +105,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]

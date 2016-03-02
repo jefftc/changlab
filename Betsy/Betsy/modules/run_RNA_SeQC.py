@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from genomicode import hashlib
         from Betsy import module_utils
@@ -49,7 +49,7 @@ class Module(AbstractModule):
                 sample, log_filename
             jobs.append(x)
 
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             (in_filename, out_path_rna_seqc, ref_filename, gtf_filename, \
@@ -71,7 +71,7 @@ class Module(AbstractModule):
 
         # Gets lots of errors.
 
-        x = shell.parallel(commands, max_procs=num_cores)
+        x = parallel.pshell(commands, max_procs=num_cores)
         run_log = os.path.join(out_path, "run.log")
         open(run_log, 'w').write(x)
 

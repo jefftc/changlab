@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         
         bowtie2_build = filelib.which_assert(config.bowtie2_build)
@@ -22,13 +22,13 @@ class Module(AbstractModule):
         # <output_stem>.[1234].bt2
         # <output_stem>.rev.[12].bt2
 
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             sq(bowtie2_build),
             sq(ref.fasta_file_full),
             ref.name,
             ]
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         # Check to make sure index was created successfully.
         f = os.path.join(out_path, "%s.1.bt2" % ref.name)

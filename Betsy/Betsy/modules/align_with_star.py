@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import config
         from Betsy import module_utils
@@ -54,7 +54,7 @@ class Module(AbstractModule):
         # TODO: Play around with runThreadN parameter.
 
         # Make the commands.
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, out_prefix, log_filename = x
@@ -77,7 +77,7 @@ class Module(AbstractModule):
         # more memory than is available on the machine.
         max_procs = module_utils.calc_max_procs_from_ram(30)
         nc = min(num_cores, max_procs)
-        shell.parallel(commands, max_procs=nc, path=out_path)
+        parallel.pshell(commands, max_procs=nc, path=out_path)
 
         # Make sure the analysis completed successfully.
         x = [x[-2] for x in jobs]  # out_prefix

@@ -13,7 +13,7 @@ def make_bedtools_coverage_command(
     
     import config
     import filelib
-    import shell
+    import parallel
 
     # XXX Generates a histogram of the counts for each read depth.
     # bedtools coverage [OPTIONS] -abam <align.bam> -b <features.bed>
@@ -21,7 +21,7 @@ def make_bedtools_coverage_command(
     assert os.path.exists(bam_filename)
     assert os.path.exists(features_bed)
 
-    sq = shell.quote
+    sq = parallel.quote
     x = [
         sq(bedtools),
         "coverage",
@@ -37,7 +37,7 @@ def make_bedtools_genomecov_command(
     import os
     import config
     import filelib
-    import shell
+    import parallel
 
     # Generates a histogram of the counts for each read depth.
     # bedtools genomecov [OPTIONS] -ibam <align.bam> -g <ref.fa>
@@ -45,7 +45,7 @@ def make_bedtools_genomecov_command(
     assert os.path.exists(bam_filename)
     assert os.path.exists(reference_file)
 
-    sq = shell.quote
+    sq = parallel.quote
     x = [
         sq(bedtools),
         "genomecov",

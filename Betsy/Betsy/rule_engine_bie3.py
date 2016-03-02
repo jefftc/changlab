@@ -10,6 +10,14 @@ run_module
 # _pretty_time_delta
 # _write_parameter_file
 # _read_parameter_file
+# _hash_module
+
+# TODO: Add hash values to BETSY parameter file
+# TODO: more description of hash values.  (e.g. where values come from)
+# TODO: calculate total time for pipeline
+# TODO: Add metadata from modules to BETSY parameter file
+# TODO: better description of pipeline in the parameter file
+    
 
 VERSION = 5
 
@@ -52,7 +60,6 @@ def run_pipeline(
     x = bie3._merge_paths(paths)
     path_ids, path_transitions, x = x
     
-    
 
     # Add the start_ids to the stack.  Each member of the stack can be
     # a tuple of:
@@ -74,6 +81,7 @@ def run_pipeline(
     pool = {}         # dict of node_id -> IdentifiedDataNode or ModuleNode
     pipeline = []     # list of the names of the modules run.
     next_node = None
+    total_time = 0
     
     # Keep track of the number of times a module can't be run because
     # it doesn't have enough input data.  If this exceeds the total
@@ -141,7 +149,7 @@ def run_pipeline(
                 # not count as a failure.
                 #num_failures += 1
                 continue
-            next_node, next_id = x
+            next_node, next_id, run_time = x
             # Successfully completed this module.  Reset num_failures.
             num_failures = 0
             #if next_id == 0:
@@ -153,19 +161,18 @@ def run_pipeline(
                 trans[(x, node_id)] = 1
             trans[(node_id, next_id)] = 1
             stack.append((next_node, next_id, None, trans))
+            total_time += run_time
         else:
             raise AssertionError
 
-    if success:
-        msg = "Completed"
-        #print "[%s]  %s" % (time.strftime('%I:%M %p'), msg)
-        print "[%s]  %s" % (time.strftime('%a %I:%M %p'), msg)
-        #print next_node.identifier
-        #sys.stdout.flush()
-        assert next_node
-        return pool, transitions, next_node.identifier
-    print "This pipeline has completed unsuccessfully."
-    return None
+    if not success:
+        print "This pipeline has completed unsuccessfully."
+        return None
+
+    assert next_node
+    x = _pretty_time_delta(total_time)
+    print "[%s]  Completed (total %s)" % (time.strftime('%a %I:%M %p'), x)
+    return pool, transitions, next_node.identifier
 
     #if flag and next_node and module_utils.exists_nz(next_node.identifier):
     #if next_node and module_utils.exists_nz(next_node.identifier):
@@ -196,7 +203,7 @@ def run_module(
     import random
 
     from genomicode import filelib
-    from genomicode import parselib
+    #from genomicode import parselib
     from Betsy import config
     from Betsy import module_utils
     from Betsy import bie3
@@ -220,6 +227,7 @@ def run_module(
     
     # If module is missing, will raise ImportError with decent error
     # message.
+    # TODO: Use importlib here.
     x = __import__(
         'modules.'+module_name, globals(), locals(), [module_name], -1)
     module = x.Module()
@@ -303,7 +311,7 @@ def run_module(
     # Unfortunately, can't use timestamp in pathname, or else this
     # will never re-use prior analyses.  Have to be more clever about
     # this.
-    h = module.hash_input(
+    h = _hash_module(
         module_name, antecedents, out_data_node.attributes, user_options)
     ## Get milliseconds.
     #x = time.time()
@@ -330,6 +338,7 @@ def run_module(
         filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
         assert os.path.exists(filename)
         params = _read_parameter_file(filename)
+        elapsed = params["elapsed"]
         run_time = params["elapsed_pretty"]
         if run_time == "instant":
             x = "ran instantly"
@@ -339,7 +348,7 @@ def run_module(
         #parselib.print_split(x, prefixn=2)
         print x
         sys.stdout.flush()
-        return out_identified_data_node, next_id
+        return out_identified_data_node, next_id, elapsed
 
     # Running this module now.
     x = "%s  %s" % (time_str, module_name)
@@ -366,6 +375,7 @@ def run_module(
             logging.exception("Exception in module: %s" % module_name)
             raise
         end_time = time.localtime()
+        elapsed = time.mktime(end_time) - time.mktime(start_time)
 
         # Make sure the module generated the requested file.
         assert filelib.fp_exists_nz(temp_outfile), "no file generated"
@@ -410,7 +420,7 @@ def run_module(
             if clean_up or completed_successfully:
                 shutil.rmtree(temp_dir)
 
-    return out_identified_data_node, next_id
+    return out_identified_data_node, next_id, elapsed
 
 
 def _is_module_output_complete(path):
@@ -533,3 +543,40 @@ def _write_parameter_file(
 def _read_parameter_file(filename):
     import json
     return json.loads(open(filename).read())
+
+
+def _hash_module(module_name, antecedents, out_attributes, user_options):
+    # Return a hash that uniquely describes the input to this
+    # module.  This is used so that the module won't be re-run on
+    # the same data.
+    # 
+    # out_attributes has already been updated with
+    # set_out_attributes.
+    # user_options is a dictionary of the options for this module.
+    import hashlib
+    import operator
+    from Betsy import bhashlib
+
+    if not operator.isSequenceType(antecedents):
+        antecedents = [antecedents]
+
+    tohash = []   # what to hash.
+    tohash.append(module_name)
+    # Hash the checksum of the inputs.
+    for data_node in antecedents:
+        x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
+        tohash.append(x)
+    # Hash the outputs.
+    attrs = out_attributes.copy()
+    attrs.update(user_options)
+    for key in sorted(attrs):
+        tohash.append(key)
+        x = attrs[key]
+        if type(x) is not type("") and operator.isSequenceType(x):
+            x = ",".join(x)
+        tohash.append(str(x))
+    
+    hasher = hashlib.md5()
+    for x in tohash:
+        hasher.update(x)
+    return hasher.hexdigest()

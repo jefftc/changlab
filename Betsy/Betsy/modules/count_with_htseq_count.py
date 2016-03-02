@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
         from Betsy import module_utils
@@ -67,7 +67,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, out_file)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores, path=out_path)
+        parallel.pshell(commands, max_procs=num_cores, path=out_path)
 
         # Make sure the analysis completed successfully.
         x = [x[1] for x in jobs]

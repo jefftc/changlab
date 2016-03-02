@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
         from Betsy import module_utils
@@ -52,7 +52,7 @@ class Module(AbstractModule):
                 fastq_file2=pair2, num_threads=nc)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:

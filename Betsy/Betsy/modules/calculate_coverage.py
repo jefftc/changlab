@@ -10,7 +10,7 @@ class Module(AbstractModule):
         out_path):
         import os
         import math
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import ngslib
         from Betsy import module_utils
@@ -48,7 +48,7 @@ class Module(AbstractModule):
                 bam_filename, reference_file, cov_filename)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
         
         # Make sure the analysis completed successfully.
         for x in jobs:
@@ -119,7 +119,7 @@ class Module(AbstractModule):
             print >>handle, "\t".join(x)
         handle.close()
 
-        sq = shell.quote
+        sq = parallel.quote
         os.system("txt2xls -b %s > %s" % (sq(TXT_FILE), sq(XLS_FILE)))
             
         # TODO: 

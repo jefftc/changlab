@@ -9,7 +9,7 @@ class Module(AbstractModule):
         outfile):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import config
 
         signal_node = in_data
@@ -18,7 +18,7 @@ class Module(AbstractModule):
         
         slice_matrix = filelib.which_assert(config.slice_matrix)
 
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             sq(slice_matrix),
             "--cpm",
@@ -27,7 +27,7 @@ class Module(AbstractModule):
         cmd = " ".join(cmd)
         cmd = "%s >& %s" % (cmd, outfile)
 
-        shell.single(cmd)
+        parallel.sshell(cmd)
         filelib.assert_exists_nz(outfile)
 
 

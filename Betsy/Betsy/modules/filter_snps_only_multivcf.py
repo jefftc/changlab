@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         import shutil
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import config
 
         in_filename = in_data.identifier
@@ -32,7 +32,7 @@ class Module(AbstractModule):
         # Should create file <out_stem>.recode.vcf
         outfile = "%s.recode.vcf" % out_stem
 
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             sq(vcftools),
             "--vcf", sq(in_filename),
@@ -43,7 +43,7 @@ class Module(AbstractModule):
             ]
         cmd = " ".join(cmd)
         cmd = "%s >& %s" % (cmd, log_filename)
-        shell.single(cmd)
+        parallel.sshell(cmd)
 
         filelib.assert_exists_nz(outfile)
         shutil.copy2(outfile, out_filename)

@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from Betsy import module_utils
 
         in_path = in_data.identifier
@@ -34,7 +34,7 @@ class Module(AbstractModule):
 
         # Make a list of samtools commands.
         samtools = filelib.which_assert(config.samtools)
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, temp_prefix, log_filename, out_filename = x
@@ -58,7 +58,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (" ".join(x), sq(log_filename))
             commands.append(x)
             
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]

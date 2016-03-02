@@ -91,7 +91,7 @@ def get_paired_orientation(
     import tempfile
     from genomicode import genomelib
     from genomicode import alignlib
-    from genomicode import shell
+    from genomicode import parallel
 
     # Strategy: run bowtie2 in all orientations.  Return the one with
     # most reads aligned.  Do with a subset of the data, so this
@@ -144,7 +144,7 @@ def get_paired_orientation(
         x4 += " >& %s" % log_ns
         commands = [x1, x2, x3, x4]
 
-        shell.parallel(commands)
+        parallel.pshell(commands)
 
         # Read the results.
         output_ff = alignlib.parse_bowtie2_output(log_ff)

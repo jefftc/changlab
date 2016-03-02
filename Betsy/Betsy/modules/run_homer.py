@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import hashlib
         from genomicode import filelib
         from genomicode import config
@@ -53,7 +53,7 @@ class Module(AbstractModule):
         log_file = "%s.log" % experiment_name
         peak_file = "%s.peaks.txt" % experiment_name
 
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             sq(find_peaks),
             sq(treat_path),
@@ -63,7 +63,7 @@ class Module(AbstractModule):
             cmd += ["-i", control_path]
         cmd = " ".join(cmd)
         cmd = "%s 2> %s 1> %s" % (cmd, log_file, peak_file)
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         x = os.path.join(out_path, peak_file)
         filelib.assert_exists_nz(x)

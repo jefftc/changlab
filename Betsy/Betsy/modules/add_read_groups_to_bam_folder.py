@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from genomicode import hashlib
         from Betsy import module_utils
@@ -41,7 +41,7 @@ class Module(AbstractModule):
         picard_jar = alignlib.find_picard_jar("picard")
 
         # Make a list of commands.
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, sample, log_filename, out_filename = x
@@ -67,7 +67,7 @@ class Module(AbstractModule):
         #    print x
         #import sys; sys.exit(0)
             
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]

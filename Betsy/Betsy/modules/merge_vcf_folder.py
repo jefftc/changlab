@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         import shutil
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from Betsy import module_utils
 
         vcf_node = in_data
@@ -21,7 +21,7 @@ class Module(AbstractModule):
         bgzip = module_utils.get_config("bgzip")
         tabix = module_utils.get_config("tabix")
         bcftools = module_utils.get_config("bcftools")
-        sq = shell.quote
+        sq = parallel.quote
         
         tmp_path = "indexed.vcf"
         tmp_path = os.path.realpath(tmp_path)
@@ -49,7 +49,7 @@ class Module(AbstractModule):
             in_filename, tmp_filename = x
             x = "%s %s" % (sq(bgzip), sq(tmp_filename))
             commands.append(x)
-        shell.parallel(commands, max_procs=num_cores, path=tmp_path)
+        parallel.pshell(commands, max_procs=num_cores, path=tmp_path)
         x = ["%s.gz" % x[-1] for x in jobs]
         filelib.assert_exists_nz_many(x)
 
@@ -60,7 +60,7 @@ class Module(AbstractModule):
             in_filename, tmp_filename = x
             x = "%s -p vcf %s.gz" % (sq(tabix), sq(tmp_filename))
             commands.append(x)
-        shell.parallel(commands, max_procs=num_cores, path=tmp_path)
+        parallel.pshell(commands, max_procs=num_cores, path=tmp_path)
         x = ["%s.gz.tbi" % x[-1] for x in jobs]
         filelib.assert_exists_nz_many(x)
         
@@ -75,7 +75,7 @@ class Module(AbstractModule):
             in_filename, tmp_filename = x
             cmd.append("%s.gz" % tmp_filename)
         x = " ".join(cmd)
-        shell.single(x)
+        parallel.sshell(x)
         filelib.assert_exists_nz(out_filename)
 
 

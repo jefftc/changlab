@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import config
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from genomicode import filelib
         from Betsy import module_utils
@@ -60,7 +60,7 @@ class Module(AbstractModule):
         else:
             raise NotImplementedError
 
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, err_filename, out_filename = x
@@ -81,7 +81,7 @@ class Module(AbstractModule):
         #for x in commands:
         #    print x
             
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         x = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(x)

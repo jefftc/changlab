@@ -35,6 +35,8 @@ GENE_ORDER = [
     ]
 GENE_ORDER_not_none = [x for x in GENE_ORDER if x != "none"]
 
+YESNO = ["yes", "no"]
+
 
 
 RenameFile = DataType(
@@ -60,7 +62,7 @@ ExpressionFiles = DataType(
 GeneListFile=DataType(
     "GeneListFile",
     AttributeDef(
-        "filtered", ["no", "yes"], "no", "no",
+        "filtered", YESNO, "no", "no",
         help="Whether this gene list has been filtered."),
     AttributeDef(
         "gene_order", GENE_ORDER, "none", "none",

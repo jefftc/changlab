@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         
         samtools = filelib.which_assert(config.samtools)
@@ -36,13 +36,13 @@ class Module(AbstractModule):
         # Makes files:
         # <ref>.fa.fai
 
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             sq(samtools),
             "faidx",
             sq(ref.fasta_file_full),
             ]
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
         
         # Check to make sure index was created successfully.
         f = "%s.fai" % ref.fasta_file_full

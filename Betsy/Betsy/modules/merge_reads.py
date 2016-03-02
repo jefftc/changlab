@@ -12,6 +12,9 @@ class Module(AbstractModule):
         from genomicode import parallel
         from Betsy import module_utils
 
+        # This this is I/O heavy, don't use so many cores.
+        MAX_CORES = 2
+
         fastq_node, group_node = antecedents
         fastq_path = fastq_node.identifier
         sample_group_file = group_node.identifier
@@ -54,10 +57,11 @@ class Module(AbstractModule):
             x = merge_or_symlink_files, args, keywds
             commands.append(x)
 
-        parallel.run(commands, num_cores)
+        nc = min(MAX_CORES, num_cores)
+        parallel.pyfun(commands, nc)
 
     def name_outfile(self, antecedents, user_options):
-        return "fastq_merged"
+        return "merged.fastq"
 
 
 def merge_or_symlink_files(in_filenames, out_filename):

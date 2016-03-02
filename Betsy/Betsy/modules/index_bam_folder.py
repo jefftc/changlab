@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
 
         bam_path = in_data.identifier
         assert os.path.exists(bam_path)
@@ -35,7 +35,7 @@ class Module(AbstractModule):
             os.symlink(in_filename, out_filename)
 
         # Index each of the files.
-        sq = shell.quote
+        sq = parallel.quote
         samtools = filelib.which_assert(config.samtools)
         commands = []
         for x in jobs:
@@ -48,12 +48,13 @@ class Module(AbstractModule):
             x = " ".join(cmd)
             commands.append(x)
         
-        shell.parallel(commands, max_procs=num_cores, path=out_path)
+        parallel.pshell(commands, max_procs=num_cores, path=out_path)
     
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'bamFolder_' + original_file
-        return filename
+        #from Betsy import module_utils
+        #original_file = module_utils.get_inputid(antecedents.identifier)
+        #filename = 'bamFolder_' + original_file
+        #return filename
+        return "indexed.bam"
 

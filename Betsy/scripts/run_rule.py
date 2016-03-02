@@ -358,16 +358,15 @@ def _print_node_score_table(network, scores):
         if dtname not in dt2scores:
             dt2scores[dtname] = []
         dt2scores[dtname].append(score)
-    # Score cutoff is minimum score + 2
+    # Score cutoff is minimum score + 1
     score_cutoffs = {}  # dtname -> max score to print
     for dtname, score in dt2scores.iteritems():
-        score_cutoffs[dtname] = min(score) + 2
+        score_cutoffs[dtname] = min(score) + 1
 
     
     # Make an output table.
     table = []
-    header = [
-        "Node", "S", "Datatype", "Attribute", "Yours", "Network"]
+    header = ["Node", "D", "Datatype", "Attribute", "Yours", "Network"]
     table.append(header)
 
     for x in scores:
@@ -475,6 +474,11 @@ def build_pipelines(
             network, x, custom_attributes, max_inputs=max_inputs)
         print
 
+        # DEBUG
+        for i, path in enumerate(paths):
+            print "%2d.  %s %s" % (i, path.start_ids, path.missing_ids)
+        
+
         # For each in_data_node, see if it might be a better match to
         # another node.
         scores = []
@@ -490,12 +494,12 @@ def build_pipelines(
     # Plot out the network.
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
-        verbose=verbose)
+        prune=prune_network, verbose=verbose)
     return []
 
 
 def check_attributes_complete(
-    network, user_options, paths, network_png, verbose):
+    network, user_options, paths, network_png, prune_network, verbose):
     # user_options is dict of name to value
     import sys
     from genomicode import parselib
@@ -543,12 +547,12 @@ def check_attributes_complete(
             assert all_missing
             if len(all_missing) == 1:
                 mn, on = all_missing.keys()[0]
-                x = ("Removed %d pathways because --mattr option %r was "
+                x = ("Removed %d pipelines because --mattr option %r was "
                      "not provided." % (num_removed, on))
             else:
                 names = sorted([x[1] for x in all_missing.keys()])
                 x = parselib.pretty_list(names)
-                x = ("Removed %d pathways because the following --mattr "
+                x = ("Removed %d pipelines because the following --mattr "
                      "options were not provided: %s" % (num_removed, x))
             parselib.print_split(x, prefixn=2)
         return good_paths
@@ -557,12 +561,13 @@ def check_attributes_complete(
 
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
-        verbose=verbose)
+        prune=prune_network, verbose=verbose)
     return []
 
 
 def prune_pipelines(
-    network, user_options, custom_attributes, paths, network_png, verbose):
+    network, user_options, custom_attributes, paths, network_png,
+    prune_network, verbose):
     # Any any pipelines look weird, then remove them.
     import sys
     from Betsy import bie3
@@ -597,7 +602,7 @@ def prune_pipelines(
         print "Please review the network and --mattr options."
         plot_network_show_pipelines(
             network_png, network, paths_orig, user_options=user_options,
-            verbose=verbose)
+            prune=prune_network, verbose=verbose)
         return paths
     
     num_pruned = len(paths_orig) - len(paths)
@@ -664,7 +669,7 @@ def _dict_diff(dict1, dict2, _as_dict=False):
 
 
 def check_input_files(network, in_data_nodes, user_options, paths,
-                      network_png, verbose):
+                      network_png, prune_network, verbose):
     import os
     import sys
 
@@ -686,12 +691,12 @@ def check_input_files(network, in_data_nodes, user_options, paths,
 
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
-        verbose=verbose)
+        prune=prune_network, verbose=verbose)
     return []
 
 
 def manually_verify_network(
-    network, user_options, paths, run, network_png, verbose):
+    network, user_options, paths, run, network_png, prune_network, verbose):
     import sys
     if run:
         return True
@@ -702,17 +707,21 @@ def manually_verify_network(
 
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
-        verbose=verbose)
+        prune=prune_network, verbose=verbose)
     return False
     
 
 def plot_network_show_pipelines(filename, network, paths, **keywds):
+    # Pass keywds through to plot_network.
     from Betsy import bie3
 
     x1 = [x.node_ids for x in paths]
     # Hack: For optimization, sometimes node_ids is dict.
     if x1 and type(x1[0]) is type({}):
         x1 = [x.keys() for x in x1]
+    # Hack: For optimization, sometimes node_ids is frozenset.
+    if x1 and type(x1[0]) is frozenset:
+        x1 = [list(x) for x in x1]
     x2 = [x.start_ids for x in paths]
     x1 = bie3._uniq(bie3._flatten(x1))
     x2 = bie3._uniq(bie3._flatten(x2))
@@ -725,17 +734,24 @@ def plot_network_show_pipelines(filename, network, paths, **keywds):
         for node_id, next_ids in path.transitions.iteritems():
             for next_id in next_ids:
                 transitions[(node_id, next_id)] = 1
-    x = [x for x in all_node_ids if x not in all_start_ids]
+                
+    highlight_yellow = None
+    if not keywds.get("prune"):
+        not_start_ids = [x for x in all_node_ids if x not in all_start_ids]
+        highlight_yellow = not_start_ids
+
     plot_network(
         filename, network, bold=all_node_ids,
         bold_transitions=transitions, highlight_green=all_start_ids,
-        highlight_yellow=x, **keywds)
+        highlight_yellow=highlight_yellow, **keywds)
 
 
 def plot_network(
     filename, network, user_options=None, bold=[], bold_transitions=[], 
     highlight_green=[], highlight_orange=[], highlight_purple=[],
-    highlight_yellow=[], verbose=False):
+    highlight_yellow=[], prune=False, verbose=False):
+    # If show_node_ids is not None, should be a list of dict of the
+    # node_ids to include.
     import sys
     from Betsy import bie3
 
@@ -743,12 +759,30 @@ def plot_network(
         return
     print "Plotting network to %s." % filename
     sys.stdout.flush()
+
+    show_node_ids = None
+    if prune:
+        x = set()
+        if bold:
+            x.update(bold)
+        if highlight_green:
+            x.update(highlight_green)
+        if highlight_orange:
+            x.update(highlight_orange)
+        if highlight_purple:
+            x.update(highlight_purple)
+        if highlight_yellow:
+            x.update(highlight_yellow)
+        for (y, z) in bold_transitions:
+            x.update([y, z])
+        show_node_ids = x
+    
     bie3.plot_network_gv(
         filename, network, options=user_options, bold=bold,
-        bold_transitions=bold_transitions, 
+        bold_transitions=bold_transitions,
         highlight_green=highlight_green, highlight_orange=highlight_orange,
         highlight_purple=highlight_purple, highlight_yellow=highlight_yellow,
-        verbose=verbose)
+        show_node_ids=show_node_ids, verbose=verbose)
 
 
 def plot_pipelines(filestem, network, paths, user_options, max_pipelines=None,
@@ -851,27 +885,36 @@ def _merge_nodelists(nodes1, nodes2):
 
 
 def _parse_dattr(dattr_str):
-    # Format: <datatype>.<key>=<value>
-    # Return <datatype>, <key>, <value>.
+    # Format: <datatype>[*].<key>=<value>
+    # Return <datatype>, <key>, <value>, <all_nodes>.
 
-    err_msg = "--dattr should be <datatype>.<key>=<value>"
+    #err_msg = "--dattr should be <datatype>.<key>=<value>[.<next_id>]"
+    err_msg = "--dattr should be <datatype>[*].<key>=<value>"
     x = dattr_str.split(".", 1)
     assert len(x) == 2, err_msg
-    datatype, x = x
-    x = x.split("=", 1)
+    #assert len(x) in [2, 3], err_msg
+    datatype, kv = x[:2]
+    #next_id = None
+    #if len(x) == 3:
+    #    next_id = int(x[2])
+    x = kv.split("=", 1)
     assert len(x) == 2, err_msg
     key, value = x
-    return datatype, key, value
+    all_nodes = False
+    if datatype.endswith("*"):
+        datatype = datatype[:-1]
+        all_nodes = True
+    return datatype, key, value, all_nodes
 
 
 def _parse_args(args):
     inputs = []            # list of names of datatypes
-    in_parameters = {}     # index (into inputs) -> list of (key, value)
     in_identifiers = {}    # index (into inputs) -> identifier (e.g. filename)
+    in_parameters = {}     # index (into inputs) -> list of (key, value)
 
     output = None          # name of datatype
-    out_parameters = []    # list of (key, value)
     out_identifier = None  # identifier
+    out_parameters = []    # list of (datatype, key, value, all_nodes)
 
     input_or_output = None
     i = 0
@@ -893,7 +936,9 @@ def _parse_args(args):
             assert len(args) >= i+1
             dattr = args[i+1]
             i += 2
-            datatype, key, value = _parse_dattr(dattr)
+            datatype, key, value, all_nodes = _parse_dattr(dattr)
+            #assert next_id is None
+            assert not all_nodes
             index = len(inputs) - 1
             assert datatype == inputs[index], (
                 "Datatype mismatch: --dattr %s and --input %s.  Wrong "
@@ -909,8 +954,8 @@ def _parse_args(args):
             assert len(args) >= i+1
             dattr = args[i+1]
             i += 2
-            datatype, key, value = _parse_dattr(dattr)
-            out_parameters.append((datatype, key, value))
+            datatype, key, value, all_nodes = _parse_dattr(dattr)
+            out_parameters.append((datatype, key, value, all_nodes))
         elif arg == "--dattr":
             raise AssertionError, "--dattr before --input or --output"
         elif arg == "--input_file":
@@ -1067,6 +1112,10 @@ def main():
     group.add_argument(
         '--network_png', help='generate the output network png file')
     group.add_argument(
+        '--prune_network', action="store_true",
+        help="Prune nodes that are not included in any pipeline.  "
+        "Mostly for debugging.")
+    group.add_argument(
         '--sparse_network_png', action="store_true",
         help="Leave out details in network plot.")
     #group.add_argument(
@@ -1144,19 +1193,20 @@ def main():
         # Get the custom_attributes.  These are the attributes from the
         # output data (out_attributes), plus the attributes from the
         # input data (to guide the inferencing engine).
-        attrs = []  # list of (datatype, key, value)
+        attrs = []  # list of (datatype, key, value, all_nodes)
         for x in input_list:
             intype, identifier, attributes = x
             for k, v in attributes:
-                attrs.append((intype, k, v))
+                attrs.append((intype, k, v, None))
         attrs.extend(out_attributes)
         #for x in out_attributes:
         for x in attrs:
-            datatype, key, value = x
+            datatype, key, value, all_nodes = x
             assert hasattr(rulebase, datatype), \
                    "Unknown datatype: %s" % datatype
             fn = getattr(rulebase, datatype)
-            custom_attributes.append(bie3.Attribute(fn, key, value))
+            x = bie3.CustomAttribute(fn, key, value, all_nodes)
+            custom_attributes.append(x)
 
     # Cache the files in the user's directory.  Don't depend on the
     # user keeping the file in the same place.  Needed for the first
@@ -1234,7 +1284,8 @@ def main():
         return
     # Step 6: Make sure required attributes are given.
     paths = check_attributes_complete(
-        network, user_options, paths, args.network_png, verbose)
+        network, user_options, paths, args.network_png, args.prune_network,
+        verbose)
     if not paths:
         return
     # DEBUG: Print out each of the pipelines.
@@ -1244,7 +1295,7 @@ def main():
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(
         network, user_options, custom_attributes, paths, args.network_png,
-        verbose)
+        args.prune_network, verbose)
     if not paths:
         return
     # DEBUG: Print out each of the pipelines.
@@ -1255,7 +1306,7 @@ def main():
     # Step 8: Look for input files.
     if not check_input_files(
         network, in_data_nodes, user_options, paths, args.network_png,
-        verbose):
+        args.prune_network, verbose):
         return
 
     #print "The network (%d nodes) is complete." % len(network.nodes)
@@ -1267,7 +1318,8 @@ def main():
         args.num_cores, x)
     # Step 9: Manual verification of the network.
     if not manually_verify_network(
-        network, user_options, paths, args.run, args.network_png, verbose):
+        network, user_options, paths, args.run,
+        args.network_png, args.prune_network, verbose):
         return
 
     print "Running the analysis."
@@ -1289,10 +1341,11 @@ def main():
                 highlight_green=node_ids, verbose=verbose)
         raise
 
-    # Draw out the network.
+    # Draw the final network.
     node_ids = []
     if node_dict:
         node_ids = node_dict.keys()
+        
     plot_network(
         args.network_png, network, user_options=user_options,
         bold=node_ids, bold_transitions=transitions,

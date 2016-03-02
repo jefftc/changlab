@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         import shutil
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from Betsy import module_utils
 
@@ -32,7 +32,7 @@ class Module(AbstractModule):
 
         cmd = alignlib.make_annovar_command(
             in_filename, log_filename, out_filestem, buildver)
-        shell.single(cmd)
+        parallel.sshell(cmd)
 
         # Make sure the analysis completed successfully.
         x = "%s.%s_multianno.vcf" % (out_filestem, buildver)

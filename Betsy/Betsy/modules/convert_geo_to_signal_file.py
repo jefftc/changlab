@@ -10,7 +10,7 @@ class Module(AbstractModule):
         outfile):
         import itertools
         from genomicode import config
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
 
         signal_node, annotation_node = antecedents
@@ -30,7 +30,7 @@ class Module(AbstractModule):
         annot_align_file = "annot.aligned.txt"
 
         # First, align the two files.
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             sq(align_matrices),
             "--annot_file", signal_filename,
@@ -40,7 +40,7 @@ class Module(AbstractModule):
             signal_align_file, annot_align_file,
             ]
         cmd = " ".join(cmd)
-        shell.single(cmd)
+        parallel.sshell(cmd)
 
         # Now merge them.  Take the first column of the expression
         # file (should be ID_REF), the whole annotation file, then the
