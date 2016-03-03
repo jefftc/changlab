@@ -719,10 +719,12 @@ all_modules = [
 
     ModuleNode(
         "count_aligned_reads",
-        BamFolder, NumAlignedReads,
-        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
-        Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS),
-        Constraint("indexed", MUST_BE, "yes"),
+        [FastqFolder, SampleGroupFile, BamFolder], NumAlignedReads,
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 2),
+        Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS, 2),
+        Constraint("indexed", MUST_BE, "yes", 2),
         help="Summarize the alignment, e.g. number of reads aligned.",
         ),
 

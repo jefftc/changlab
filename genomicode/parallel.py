@@ -9,7 +9,7 @@ quote
 
 """
     
-def sshell(command, path=None):
+def sshell(command, path=None, ignore_nonzero_exit=False):
     # command is a string or list (see subprocess) for a single
     # command.  If path is not None, will run in this path and return
     # to the current working directory when done.  Return the output
@@ -22,13 +22,13 @@ def sshell(command, path=None):
             if not os.path.exists(path):
                 os.mkdir(path)
             os.chdir(path)
-        x = _sshell_h(command)
+        x = _sshell_h(command, ignore_nonzero_exit)
     finally:
         os.chdir(cwd)
     return x
     
 
-def _sshell_h(command):
+def _sshell_h(command, ignore_nonzero_exit):
     import subprocess
     if type(command) != type(""):
         command = " ".join(command)
@@ -39,8 +39,11 @@ def _sshell_h(command):
         x1 = "Non-zero exit status [%d]:" % x.returncode
         x2 = command
         x3 = x.output
-        msg = "\n".join([x1, x2, x3])
-        raise AssertionError, msg
+        if ignore_nonzero_exit:
+            x = x3
+        else:
+            msg = "\n".join([x1, x2, x3])
+            raise AssertionError, msg
     return x
 
 
@@ -48,6 +51,8 @@ def pshell(commands, max_procs=None, path=None):
     # commands is a list of shell commands to run.  Return the output
     # as a single string.
     import os
+
+    assert type(commands) is not type("")
 
     cwd = os.getcwd()
     try:

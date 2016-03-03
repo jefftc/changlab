@@ -11,12 +11,16 @@ class Module(AbstractModule):
         from genomicode import config
         from genomicode import filelib
         from genomicode import parallel
+        from genomicode import alignlib
         from Betsy import module_utils
         
         in_filenames = module_utils.find_bam_files(in_data.identifier)
         assert in_filenames, "No .bam files."
         filelib.safe_mkdir(out_path)
 
+        metadata = {}
+        metadata["tool"] = "samtools %s" % alignlib.get_samtools_version()
+        
         jobs = []  # list of (in_filename, temp_prefix, out_filename)
         for in_filename in in_filenames:
             p, f = os.path.split(in_filename)
@@ -53,12 +57,15 @@ class Module(AbstractModule):
                 ]
             x = " ".join(x)
             commands.append(x)
+        metadata["commands"] = commands
 
         parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(out_filenames)
+        
+        return metadata
 
     
     def name_outfile(self, antecedents, user_options):

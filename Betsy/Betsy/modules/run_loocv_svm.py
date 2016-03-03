@@ -7,9 +7,9 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
-        from Betsy import rule_engine_bie3
         import os
         import arrayio
+        from Betsy import bie3
         from Betsy import rulebase
         from Betsy import read_label_file
         from Betsy import module_utils
@@ -46,15 +46,15 @@ class Module(AbstractModule):
             read_label_file.write(test_label, second_line, y_test[0])
             merge_node = rulebase.SignalFile.output(format='gct',
                                                     contents='class0,class1,test')
-            merge_data = rule_engine_bie3.IdentifiedDataNode(merge_node,
-                                                     identifier=merge_file)
+            merge_data = bie3.IdentifiedDataNode(
+                merge_node, identifier=merge_file)
             train_label_node = rulebase.ClassLabelFile.output(
                 contents='class0,class1')
-            train_label_data = rule_engine_bie3.IdentifiedDataNode(train_label_node,
-                                                           identifier=train_label)
+            train_label_data = bie3.IdentifiedDataNode(
+                train_label_node, identifier=train_label)
             test_label_node = rulebase.ClassLabelFile.output(contents='test')
-            test_label_data = rule_engine_bie3.IdentifiedDataNode(test_label_node,
-                                                          identifier=test_label)
+            test_label_data = bie3.IdentifiedDataNode(
+                test_label_node, identifier=test_label)
             new_parameters = out_attributes.copy()
             del new_parameters['loocv']
             del new_parameters['actual_label']

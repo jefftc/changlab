@@ -731,6 +731,16 @@ class DataNode(object):
         return inst
 
 
+# DataNode + identifier.
+class IdentifiedDataNode:
+    def __init__(self, data, identifier=""):
+        self.data = data
+        self.identifier = identifier
+    def __repr__(self):
+        x = str(self.data) + ' identifier:' + self.identifier
+        return x
+
+
 class ModuleNode:
     def __init__(self, name, in_datatypes, out_datatype, *params, **keywds):
         # params is a list of Constraint, Consequence, and OptionDef.
@@ -2656,7 +2666,7 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     # List the node_ids that don't have any descendents of the same
     # type.
     no_desc = set()
-    for node_id in node_ids:
+    for node_id in data_node_ids:
         x = descendents.get(node_id, [])
         x = [x for x in x if x in path_node_ids]
         x = [x for x in x if isinstance(network.nodes[x], DataNode)]

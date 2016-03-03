@@ -10,18 +10,16 @@ run_module
 # _pretty_time_delta
 # _write_parameter_file
 # _read_parameter_file
+# _make_hash_units
 # _hash_module
 
-# TODO: Add hash values to BETSY parameter file
-# TODO: more description of hash values.  (e.g. where values come from)
-# TODO: calculate total time for pipeline
 # TODO: Add metadata from modules to BETSY parameter file
-# TODO: better description of pipeline in the parameter file
     
 
-VERSION = 5
-
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
+VERSION = 6
+TIME_FMT = "%a %b %d %H:%M:%S %Y"
+
 
 DEBUG_POOL = {}
 def run_pipeline(
@@ -46,7 +44,6 @@ def run_pipeline(
 
     from Betsy import bie3
     from Betsy import config
-    from Betsy import module_utils
 
     user = user or getpass.getuser()
     output_path = config.OUTPUTPATH
@@ -79,7 +76,7 @@ def run_pipeline(
 
     # Keep track of nodes that have already been generated.
     pool = {}         # dict of node_id -> IdentifiedDataNode or ModuleNode
-    pipeline = []     # list of the names of the modules run.
+    #pipeline = []     # list of the names of the modules run.
     next_node = None
     total_time = 0
     
@@ -99,7 +96,7 @@ def run_pipeline(
             pool[node_id] = node
             success = True
             break
-        elif isinstance(node, module_utils.IdentifiedDataNode):
+        elif isinstance(node, bie3.IdentifiedDataNode):
             pool[node_id] = node
             assert node_id != 0
             # Add the next modules into the stack, if not already there.
@@ -134,13 +131,15 @@ def run_pipeline(
             num_failures = 0
         elif isinstance(node, bie3.ModuleNode):
             # Run this module.
-            pool[node_id] = node
-            pipeline.append(node.name)
             antecedent_ids = more_info
             assert len(node.in_datatypes) == len(antecedent_ids)
+            #x = run_module(
+            #    network, pipeline, node_id, antecedent_ids,
+            #    user_options, pool, user, job_name, clean_up=clean_up,
+            #    num_cores=num_cores)
             x = run_module(
-                network, pipeline, node_id, antecedent_ids,
-                user_options, pool, user, job_name, clean_up=clean_up,
+                network, node_id, antecedent_ids, user_options,
+                pool, transitions, user, job_name, clean_up=clean_up,
                 num_cores=num_cores)
             if x is None:
                 # Can happen if this module has already been run.  It
@@ -150,16 +149,19 @@ def run_pipeline(
                 #num_failures += 1
                 continue
             next_node, next_id, run_time = x
-            # Successfully completed this module.  Reset num_failures.
-            num_failures = 0
             #if next_id == 0:
             #    success = True
             #    break
             assert next_id is not None
+            # Successfully completed this module.  Reset num_failures.
+            num_failures = 0
+            # Update the pool, transitions.
+            pool[node_id] = node
             trans = transitions.copy()
             for x in antecedent_ids:
                 trans[(x, node_id)] = 1
             trans[(node_id, next_id)] = 1
+            #pipeline.append(node.name)
             stack.append((next_node, next_id, None, trans))
             total_time += run_time
         else:
@@ -188,8 +190,8 @@ def run_pipeline(
 
 
 def run_module(
-    network, pipeline, module_id, input_ids, 
-    all_user_options, pool, user, job_name='', clean_up=True, num_cores=8):
+    network, module_id, input_ids, all_user_options, pool, transitions,
+    user, job_name='', clean_up=True, num_cores=8):
     # Return tuple of (IdentifiedDataNode, node_id) for the node that
     # was created.  Returns None if this module fails (no compatible
     # output nodes, or all output nodes already generated).
@@ -205,7 +207,6 @@ def run_module(
     from genomicode import filelib
     #from genomicode import parselib
     from Betsy import config
-    from Betsy import module_utils
     from Betsy import bie3
 
     assert user
@@ -326,7 +327,7 @@ def run_module(
     # module has been run.
     full_outfile = os.path.join(result_dir, outfile)
     #x = bie3.DataNode(network.nodes[next_id].datatype, **out_data.attributes)
-    out_identified_data_node = module_utils.IdentifiedDataNode(
+    out_identified_data_node = bie3.IdentifiedDataNode(
         out_data_node, full_outfile)
 
     
@@ -366,7 +367,7 @@ def run_module(
         temp_outfile = os.path.join(temp_dir, outfile)
         start_time = time.localtime()
         try:
-            module.run(
+            metadata = module.run(
                 network, antecedents, out_data_node.attributes, user_options,
                 num_cores, temp_outfile)
         except (SystemError, KeyboardInterrupt, MemoryError), x:
@@ -386,8 +387,9 @@ def run_module(
         # Write parameters.
         x = os.path.join(temp_dir, BETSY_PARAMETER_FILE)
         _write_parameter_file(
-            x, pipeline, antecedents, out_data_node.attributes, user_options,
-            outfile, start_time, end_time, user, job_name)
+            x, network, module_name, antecedents, out_data_node.attributes,
+            user_options, transitions, outfile, start_time, end_time, metadata,
+            user, job_name)
 
         # Move files to the real directory.  If someone else is
         # currently copying files to the exact same directory, then
@@ -492,7 +494,9 @@ def _pretty_time_delta(delta):
     if not days and not hours and not minutes and seconds < 1:
         return "instant"
     if not days and not hours and not minutes:
-        return "%d s" % seconds
+        if seconds == 1:
+            return "1 sec"
+        return "%d secs" % seconds
     if not days and not hours:
         x = minutes + seconds/60.
         return "%.1f mins" % x
@@ -507,42 +511,140 @@ def _pretty_time_delta(delta):
     return "%d %s, %.1f hours" % (days, day_or_days, x)
 
 
+def _get_node_name(network, node_id):
+    from Betsy import bie3
+    
+    assert node_id >= 0 and node_id < len(network.nodes)
+    node = network.nodes[node_id]
+    
+    if isinstance(node, bie3.DataNode):
+        return node.datatype.name
+    elif isinstance(node, bie3.ModuleNode):
+        return node.name
+    raise AssertionError
+
+
+def _format_pipeline(network, transitions):
+    # List of transitions (in_node_id, in_name, out_node_id, out_name).
+    # Make a list of all node IDs.
+    node2next = {}  # node_id -> list of next_ids
+    for (node_id, next_id) in transitions:
+        if node_id not in node2next:
+            node2next[node_id] = []
+        node2next[node_id].append(next_id)
+    
+    all_next_ids = {}
+    for node_id, next_id in transitions:
+        all_next_ids[next_id] = 1
+
+    # Start with all node IDs without a parent, and do a depth-first
+    # search across all nodes.
+    node_ids = [x for x in node2next if x not in all_next_ids]
+    pipeline = []
+    while node_ids:
+        node_id = node_ids.pop()
+        next_ids = node2next.get(node_id, [])
+        if not next_ids:
+            continue
+        # Add next_id to the pipeline.
+        next_id = next_ids.pop()
+        node2next[node_id] = next_ids
+        
+        name1 = _get_node_name(network, node_id)
+        name2 = _get_node_name(network, next_id)
+        x = node_id, name1, next_id, name2
+        pipeline.append(x)
+
+        if next_ids:
+            node_ids.append(node_id)
+        node_ids.append(next_id)
+    return pipeline
+
+
 def _write_parameter_file(
-    parameter_file, pipeline, antecedents, out_attributes, user_options,
-    outfile, start_time, end_time, user, job_name):
+    filename, network, module_name, antecedents, out_attributes, user_options,
+    transitions, outfile, start_time, end_time, metadata, user, job_name):
+    # metadata is a dictionary containing whatever the module wants to
+    # save to the parameter files.  Typically, it saves things like
+    # the version number of the software used, for reproducibility.
+    # Can be None if no metadata or not implemented.
     import json
     import time
     import operator
 
-    # Time format.
-    FMT = "%a %b %d %H:%M:%S %Y"
-
-    elapsed = time.mktime(end_time) - time.mktime(start_time)
-
     params = {}
-    params["pipeline"] = pipeline
+    params["module_name"] = module_name
     if not operator.isSequenceType(antecedents):
         antecedents = [antecedents]
     ante = [(x.data.datatype.name, x.identifier) for x in antecedents]
     params["antecedents"] = ante
     params["out_attributes"] = out_attributes
     params["user_options"] = user_options
+    params["pipeline"] = _format_pipeline(network, transitions)
     params["outfile"] = outfile
-    params["start_time"] = time.strftime(FMT, start_time)
-    params["end_time"] = time.strftime(FMT, end_time)
+    params["start_time"] = time.strftime(TIME_FMT, start_time)
+    params["end_time"] = time.strftime(TIME_FMT, end_time)
+    elapsed = time.mktime(end_time) - time.mktime(start_time)
     params["elapsed"] = elapsed
     params["elapsed_pretty"] = _pretty_time_delta(elapsed)
+
+    if metadata is None:
+        metadata = {}
+    params["metadata"] = metadata
+
     params["user"] = user
     params["job_name"] = job_name
+    hu = _make_hash_units(
+        module_name, antecedents, out_attributes, user_options)
+    params["hash"] = hu
         
     x = json.dumps(params, sort_keys=True, indent=4)
     x = x + "\n"
-    open(parameter_file, 'w').write(x)
+    open(filename, 'w').write(x)
 
 
 def _read_parameter_file(filename):
     import json
     return json.loads(open(filename).read())
+
+
+def _make_hash_units(module_name, antecedents, out_attributes, user_options):
+    # Return list of tuples (name, value).  The values are used to
+    # uniquely hash the results of this module.
+    import operator
+
+    from Betsy import bhashlib
+    
+    if not operator.isSequenceType(antecedents):
+        antecedents = [antecedents]
+
+    hash_units = []
+    hash_units.append(("module name", module_name))
+    # Hash the checksum of the inputs.
+    for data_node in antecedents:
+        x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
+        x = "file checksum", x
+        hash_units.append(x)
+    # Hash the outputs.
+    for key in sorted(out_attributes):
+        value = out_attributes[key]
+        if type(value) is not type("") and operator.isSequenceType(value):
+            value = ",".join(value)
+        x = "%s=%s" % (key, value)
+        x = "out_attributes", x
+        hash_units.append(x)
+    
+    attrs = out_attributes.copy()
+    attrs.update(user_options)
+    for key in sorted(user_options):
+        value = user_options[key]
+        if type(value) is not type("") and operator.isSequenceType(value):
+            value = ",".join(value)
+        x = "%s=%s" % (key, value)
+        x = "user_options", x
+        hash_units.append(x)
+        
+    return hash_units
 
 
 def _hash_module(module_name, antecedents, out_attributes, user_options):
@@ -554,27 +656,10 @@ def _hash_module(module_name, antecedents, out_attributes, user_options):
     # set_out_attributes.
     # user_options is a dictionary of the options for this module.
     import hashlib
-    import operator
-    from Betsy import bhashlib
 
-    if not operator.isSequenceType(antecedents):
-        antecedents = [antecedents]
-
-    tohash = []   # what to hash.
-    tohash.append(module_name)
-    # Hash the checksum of the inputs.
-    for data_node in antecedents:
-        x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
-        tohash.append(x)
-    # Hash the outputs.
-    attrs = out_attributes.copy()
-    attrs.update(user_options)
-    for key in sorted(attrs):
-        tohash.append(key)
-        x = attrs[key]
-        if type(x) is not type("") and operator.isSequenceType(x):
-            x = ",".join(x)
-        tohash.append(str(x))
+    x = _make_hash_units(
+        module_name, antecedents, out_attributes, user_options)
+    tohash = [x[1] for x in x]
     
     hasher = hashlib.md5()
     for x in tohash:

@@ -1,3 +1,18 @@
+INSTALLATION
+
+graphviz
+pygraphviz
+Configure .betsyrc
+Configure .genomicoderc
+openpyxl
+xlrd
+
+NGS Specific Tools
+bowtie
+bowtie2
+
+
+
 Preprocess Usage
 
 1)Betsy can preprocess with rma or mas5 for Affymetrix cel data. 

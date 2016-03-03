@@ -21,6 +21,9 @@ class Module(AbstractModule):
         ref = alignlib.create_reference_genome(reference_node.identifier)
         filelib.safe_mkdir(out_path)
 
+        metadata = {}
+        metadata["tool"] = "bwa %s" % alignlib.get_bwa_version()
+
         #reference_fa = module_utils.find_bwa_reference(index_path)
 
         # Find the merged fastq files.
@@ -58,6 +61,7 @@ class Module(AbstractModule):
 
         # Calculate the number of cores per job.
         nc = max(1, num_cores/len(jobs))
+        metadata["num cores"] = nc
 
         # Make the bwa commands.
         commands = []
@@ -67,6 +71,7 @@ class Module(AbstractModule):
                 ref.fasta_file_full, fastq_filename, sai_filename,
                 log_filename, num_threads=nc)
             commands.append(x)
+        metadata["commands"] = commands
         parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
@@ -74,6 +79,7 @@ class Module(AbstractModule):
             in_filename, sai_filename, log_filename = x
             assert filelib.exists_nz(sai_filename), \
                    "Missing: %s" % sai_filename
+        return metadata
 
         
     def name_outfile(self, antecedents, user_options):

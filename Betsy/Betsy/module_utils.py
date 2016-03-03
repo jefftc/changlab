@@ -1,9 +1,4 @@
 """
-Objects:
-IdentifiedDataNode
-
-Functions:
-
 # Network and Nodes
 get_inputid
 high_light_path     Does something to network.
@@ -52,191 +47,6 @@ calc_max_procs_from_ram
 
 """
 #FMT = "%a %b %d %H:%M:%S %Y"
-
-# DataNode + identifier.
-class IdentifiedDataNode:
-    def __init__(self, data, identifier=""):
-        self.data = data
-        self.identifier = identifier
-    def __repr__(self):
-        x = str(self.data) + ' identifier:' + self.identifier
-        return x
-
-
-## class AntecedentFilter:
-##     def __init__(self, datatype_name=None, contents=None, **attributes):
-##         self.datatype_name = datatype_name
-##         self.contents = contents
-##         self.attributes = attributes
-##         self.mismatch_reason = None
-##     def matches_node(self, node):
-##         if self.datatype_name and self.datatype_name != node.datatype.name:
-##             self.mismatch_reason = "datatype_name"
-##             return False
-##         if self.contents and node.attributes.get("contents") != self.contents:
-##             self.mismatch_reason = "contents"
-##             return False
-##         for (key, value) in self.attributes.iteritems():
-##             if node.attributes.get(key) != value:
-##                 self.mismatch_reason = "attributes: %s" % key
-##                 return False
-##         self.mismatch_reason = None
-##         return True
-##     def __str__(self):
-##         return self.__repr__()
-##     def __repr__(self):
-##         x = [self.datatype_name, repr(self.contents)]
-##         for name, value in self.attributes.iteritems():
-##             # Bug: strings should be hashed.
-##             x.append("%s=%s" % (name, value))
-##         x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
-##         return x
-
-
-## def _find_ids_that_pass_filters(network, node_ids, filters):
-##     # For each of the filters, pick out one of the nodes.  Return a
-##     # list of nodes parallel to filters, or None if not found
-
-##     matches = []
-##     for f in filters:
-##         for id_ in node_ids:
-##             if id_ in matches:  # don't reuse nodes
-##                 continue
-##             if f.matches_node(network.nodes[id_]):
-##                 matches.append(id_)
-##                 break
-##         else:
-##             return None
-##     assert len(matches) == len(filters)
-##     return matches
-
-
-## def find_antecedents(network, module_id, user_attributes, pool, *filters):
-##     # filters should be AntecedentFilter objects.  Return either a
-##     # IdentifiedDataNode (if 0 or 1 filters), or a list of
-##     # IdentifiedDataNodes parallel to filters.  Raises an exception if
-##     # no antecedents could be found.
-##     import os
-##     import bie3
-
-##     module_name = network.nodes[module_id].name
-
-##     # Make a list of every possible combination of inputs that goes
-##     # into this module.
-##     prev_ids = []
-##     for id_ in network.transitions:
-##         if module_id in network.transitions[id_]:
-##             prev_ids.append(id_)
-##     all_input_ids = bie3._get_valid_input_combinations(
-##         network, module_id, prev_ids, user_attributes)
-
-##     # Filter for just the combinations in which all input nodes have
-##     # been run.
-##     filtered = []
-##     for input_ids in all_input_ids:
-##         # If not all the input nodes have been run, then ignore this
-##         # combination.
-##         x = [x for x in input_ids if x in pool]
-##         if len(x) != len(input_ids):
-##             continue
-##         filtered.append(x)
-##     all_input_ids = filtered
-
-##     # Filter based on the user criteria.
-##     ids = None
-##     if not filters:
-##         # If no filters given, then just return the first id found.
-##         assert all_input_ids
-##         assert all_input_ids[0]
-##         ids = [all_input_ids[0][0]]
-##     else:
-##         for input_ids in all_input_ids:
-##             ids = _find_ids_that_pass_filters(network, input_ids, filters)
-##             if ids is not None:
-##                 break
-##     assert ids, "antecedents not found: %s" % module_name
-##     for id_ in ids:
-##         if not pool[id_].identifier:
-##             continue
-##         assert os.path.exists(pool[id_].identifier), (
-##             "File not found: %s" % pool[id_].identifier)
-##     objs = [pool[x] for x in ids]
-##     assert not filters or len(objs) == len(filters)
-##     # Return a single IdentifiedDataNode if 0 or 1 filters given.
-##     if len(objs) <= 1:
-##         objs = objs[0]
-##     return objs
-
-
-## def get_identifier(
-##     network, module_id, pool, user_attributes, datatype=None, contents=None,
-##     optional_key=None, optional_value=None, second_key=None, second_value=None,
-##     **param):
-##     # Returns a single IdentifiedDataNode that goes into this module.  What is
-##     # this used for?
-##     import os
-##     import bie3
-
-##     assert not (optional_key and not optional_value)
-##     assert not (optional_value and not optional_key)
-##     assert not (second_key and not second_value)
-##     assert not (second_value and not second_key)
-
-##     # Make a list of every possible combination of inputs that goes
-##     # into this module.
-##     prev_ids = []
-##     for id_ in network.transitions:
-##         if module_id in network.transitions[id_]:
-##             prev_ids.append(id_)
-##     all_input_ids = bie3._get_valid_input_combinations(
-##         network, module_id, prev_ids, user_attributes)
-
-##     # Filter for just the all_input_ids in which all input nodes have
-##     # been run.
-##     filtered = []
-##     for input_ids in all_input_ids:
-##         # If not all the input nodes have been run, then ignore this
-##         # combination.
-##         x = [x for x in input_ids if x in pool]
-##         if len(x) != len(input_ids):
-##             continue
-##         filtered.append(x)
-##     all_input_ids = filtered
-
-##     # Filter based on the user criteria.
-##     ids = []
-##     for input_ids in all_input_ids:
-##         for id_ in input_ids:
-##             if id_ in ids:
-##                 continue
-##             node = network.nodes[id_]
-##             if datatype and node.datatype.name != datatype:
-##                 continue
-##             if contents and node.attributes.get("contents") != contents:
-##                 continue
-##             if optional_key and \
-##                    node.attributes.get(optional_key) != optional_value:
-##                 continue
-##             if second_key and \
-##                    node.attributes.get(second_key) != second_value:
-##                 continue
-##             all_found = True
-##             for key in param:
-##                 if node.attributes.get(key) != param[key]:
-##                     all_found = False
-##             if not all_found:
-##                 continue
-##             ids.append(id_)
-
-##     assert ids, 'cannot find node that match for %s' % \
-##                network.nodes[module_id].name)
-##     for id_ in ids:
-##         if pool[i].identifier:
-##             assert os.path.exists(pool[i].identifier), (
-##                 'the input file %s for %s does not exist' %
-##                 (pool[i].identifier, network.nodes[module_id].name))
-##     id_ = ids[0]
-##     return pool[id_]
 
 
 # Not sure exactly what this does.  Looks like it takes some sort of
@@ -846,30 +656,23 @@ def find_fasta_files(path):
 
 def find_bam_files(path):
     # Return a list of the .bam files (full filenames) under path.
-    import os
     from genomicode import filelib
-    
-    filenames = filelib.list_files_in_path(path)
-    # Filter out the bam files.
-    i = 0
-    while i < len(filenames):
-        p, f = os.path.split(filenames[i])
-        f_l = f.lower()
-        if f.startswith("."):
-            del filenames[i]
-        elif f_l.endswith(".bam"):
-            i += 1
-        else:
-            del filenames[i]
-    return filenames
+
+    assert dir_exists(path)
+    return filelib.list_files_in_path(
+        path, endswith=".bam", case_insensitive=True)
 
 
-def find_merged_fastq_files(sample_group_filename, fastq_path):
+def find_merged_fastq_files(sample_group_filename, fastq_path, as_dict=False):
     # Read the sample group file.  Return a list of (sample,
     # pair1.fastq, pair2.fastq).  pair2.fastq will be None for single
     # end reads.  Both files are full paths.
+    # If as_dict is True, then returns a dictionary of sample ->
+    # (pair1.fastq, pair2.fastq).
     import os
-    
+
+    assert file_exists_nz(sample_group_filename)
+    assert dir_exists(fastq_path)
     sample_groups = read_sample_group_file(sample_group_filename)
     x = [x[1] for x in sample_groups]
     x = sorted({}.fromkeys(x))
@@ -906,7 +709,13 @@ def find_merged_fastq_files(sample_group_filename, fastq_path):
     x1 = [x[0] for x in fastq_files]
     x2 = {}.fromkeys(x1).keys()
     assert len(x1) == len(x2), "dup sample"
-        
+
+    if as_dict:
+        sample2fastq = {}
+        for (sample, pair1, pair2) in fastq_files:
+            assert sample not in sample2fastq
+            sample2fastq[sample] = pair1, pair2
+        fastq_files = sample2fastq
     return fastq_files
 
 
@@ -1111,3 +920,56 @@ def get_config(name):
     from genomicode import filelib
     from genomicode import config
     return filelib.which_assert(getattr(config, name))
+
+
+def file_exists_nz(filename):
+    from genomicode import filelib
+    return filelib.exists_nz(filename)
+
+
+def dir_exists(path):
+    import os
+    if not os.path.isdir(path):
+        return False
+    if not os.path.exists(path):
+        return False
+    return True
+
+
+def splitpath(path):
+    # Return tuple of <directory>, <root>, <ext>.
+    # <directory>/<root><ext>
+    # <ext> includes the dot.  If there is no extension (no dot), then
+    # <ext> will be an empty string.
+    # 
+    # Examples:
+    # path           directory  root  ext
+    # /etc/rc.conf   /etc       rc    .conf
+    # /etc/rc.conf   /etc       rc
+    # /usr/etc       /usr       etc
+    # /usr/etc/      /usr/etc
+    # /              /
+    import os
+    
+    dir_, f = os.path.split(path)
+    root, ext = os.path.splitext(f)
+    return dir_, root, ext
+
+
+def findbin(name, quote=False):
+    from genomicode import config
+    from genomicode import filelib
+    
+    assert hasattr(config, name), "Not found in configuration: %s" % name
+    x = getattr(config, name)
+    x = filelib.which_assert(x)
+    if quote:
+        x = sq(x)
+    return x
+
+
+def sq(name):
+    # quote for a shell command.
+    from genomicode import parallel
+    return parallel.quote(name)
+    

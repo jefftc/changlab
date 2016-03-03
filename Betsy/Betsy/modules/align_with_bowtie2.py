@@ -18,11 +18,12 @@ class Module(AbstractModule):
         ref = alignlib.create_reference_genome(reference_node.identifier)
         filelib.safe_mkdir(out_path)
 
-        reference_path = reference_node.identifier
-
         assert os.path.exists(fastq_path)
         assert os.path.exists(ref.fasta_file_full)
         assert os.path.isdir(fastq_path)
+
+        metadata = {}
+        metadata["tool"] = "bowtie2 %s" % alignlib.get_bowtie2_version()
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -59,7 +60,7 @@ class Module(AbstractModule):
                 orientation=orientation, sam_file=sam_filename, num_threads=nc)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
-
+        metadata["commands"] = commands
         parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
@@ -67,12 +68,9 @@ class Module(AbstractModule):
             sample, pair1, pair2, sam_filename, log_filename = x
             assert filelib.exists_nz(sam_filename), \
                    "Missing: %s" % sam_filename
+            
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):
-        #from Betsy import module_utils
-        #data_node, group_node = antecedents
-        #original_file = module_utils.get_inputid(data_node.identifier)
-        #filename = 'Samfolder_' + original_file
-        #return filename
         return "alignments.bowtie2"
