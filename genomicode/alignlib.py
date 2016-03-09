@@ -14,18 +14,25 @@ get_bowtie1_version
 make_bowtie1_command
 parse_bowtie1_output
 
+get_bowtie2_version
 make_bowtie2_command
 parse_bowtie2_output
 
+get_tophat_version
 make_tophat_command
 parse_tophat_align_summary
 
+get_bwa_version
 make_bwa_mem_command
 make_bwa_aln_command
-get_bwa_version
 
+get_rsem_version
 make_rsem_command
 find_rsem_result_files
+
+find_reference_stem
+
+get_STAR_version
 
 make_htseq_count_command
 parse_htseq_count_output
@@ -37,7 +44,13 @@ make_platypus_command
 
 make_annovar_command
 
+find_rseqc_script
+
+gtf_to_bed
+
 """
+# _create_reference_genome_path
+# _is_subset
 
 class ReferenceGenome:
     # Contains information about a ReferenceGenome.
@@ -524,19 +537,35 @@ def parse_bowtie2_output(filename):
     return results
 
 
-def make_tophat_command(
-    reference_fa, out_path, fastq_file1, fastq_file2=None,
-    gtf_file=None, transcriptome_fa=None, orientation=None,
-    num_threads=None):
-    # reference_fa is the full path to the fasta file.
-    # transcriptome_fa should be tophat indexed fasta file of
-    # transcriptome.
-    # Orientation must be None, "ff", "fr", "rf"
-    import os
+def get_tophat_version():
+    import re
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
     
+    tophat = filelib.which_assert(config.tophat)
+    x = parallel.sshell("%s --version" % tophat, ignore_nonzero_exit=True)
+    x = x.strip()
+    # TopHat v2.0.13
+    m = re.search(r"TopHat v([\w\.]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
+def make_tophat_command(
+    reference_fa, out_path, fastq_file1, fastq_file2=None,
+    gtf_file=None, transcriptome_fa=None, library_type=None,
+    num_threads=None):
+    # reference_fa is the full path to the fasta file.
+    # transcriptome_fa should be tophat indexed fasta file of
+    # transcriptome.
+    # library_type must be None, "fr-unstranded", "fr-firststrand", or
+    # "fr-secondstrand".
+    import os
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+
     assert os.path.exists(fastq_file1)
     if fastq_file2:
         assert os.path.exists(fastq_file2)
@@ -560,21 +589,14 @@ def make_tophat_command(
             raise AssertionError, "Unknown fasta extension: %s" % \
                   ref.fasta_file
         transcriptome_index = x
-        
     assert gtf_file or transcriptome_index, \
            "Either gtf_file or transcriptome_index must be provided."
-    if orientation:
-        assert orientation in ["ff", "fr", "rf"]
+    assert library_type in [
+        None, "fr-unstranded", "fr-firststrand", "fr-secondstrand"]
     if num_threads is not None:
         assert num_threads >= 1 and num_threads < 100
-
+        
     tophat = filelib.which_assert(config.tophat)
-
-    assert orientation != "ff", "Not handled."
-    orientation2ltype = {
-        "fr" : "fr-firststrand",
-        "rf" : "fr-secondstrand",
-        }
 
     # tophat [options]* <stem> <reads_1.fq> [<reads_2.fa>]
     # --bowtie1  Use bowtie1 instead of bowtie2.
@@ -594,9 +616,8 @@ def make_tophat_command(
         cmd += ["--transcriptome-index", sq(transcriptome_index)]
     if num_threads:
         cmd += ["-p", str(num_threads)]
-    if orientation:
-        ltype = orientation2ltype[orientation]
-        cmd += ["--library-type", ltype]
+    if library_type:
+        cmd += ["--library-type", library_type]
         
     stem = find_reference_stem(reference_fa)
     cmd += [sq(stem)]
@@ -660,6 +681,21 @@ def parse_tophat_align_summary(filename):
     return results
     
 
+def get_bwa_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    bwa = filelib.which_assert(config.bwa)
+    x = parallel.sshell(bwa, ignore_nonzero_exit=True)
+    x = x.strip()
+    # Version: 0.7.12-r1039
+    m = re.search(r"Version: ([\w\.-]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
 def make_bwa_mem_command(
     reference_fa, sam_filename, err_filename, fastq_file1,
     fastq_file2=None, num_threads=None):
@@ -721,21 +757,6 @@ def make_bwa_aln_command(
     return " ".join(cmd)
 
 
-def get_bwa_version():
-    import re
-    from genomicode import config
-    from genomicode import filelib
-    from genomicode import parallel
-    
-    bwa = filelib.which_assert(config.bwa)
-    x = parallel.sshell(bwa, ignore_nonzero_exit=True)
-    x = x.strip()
-    # Version: 0.7.12-r1039
-    m = re.search(r"Version: ([\w\.-]+)", x)
-    assert m, "Missing version string"
-    return m.group(1)
-
-
 ## def find_rsem_reference(search_path):
 ##     # Find the indexed reference genome at:
 ##     # <search_path> should be:
@@ -773,12 +794,26 @@ def get_bwa_version():
 ##     return index_stem
 
 
+def get_rsem_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    rsem = filelib.which_assert(config.rsem_calculate)
+    x = parallel.sshell("%s --version" % rsem, ignore_nonzero_exit=True)
+    x = x.strip()
+    # Current version is RSEM v1.2.19
+    m = re.search(r"RSEM v([\w\.]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
 def make_rsem_command(
     reference_fa, sample_name, fastq_file1, fastq_file2=None,
     num_threads=None):
     # <sample_name> is prefix for all output files,
     #   e.g. <sample_name>.genes.results
-    # Orientation must be None, "ff", "fr", "rf"
     import os
     from genomicode import config
     from genomicode import filelib
@@ -869,6 +904,23 @@ def find_reference_stem(ref_fasta):
     stem, ext = os.path.splitext(ref_fasta)
     assert ext in [".fa", ".fasta"]
     return stem
+
+
+def get_STAR_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    star = filelib.which_assert(config.STAR)
+    x = parallel.sshell(star, ignore_nonzero_exit=True)
+    x = x.strip()
+    # ### versions
+    # versionSTAR             020201
+    # int>0: STAR release numeric ID. Please do not change this value!
+    m = re.search(r"versionSTAR\s+([\w\. \(\)-]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
 
 
 def make_htseq_count_command(
@@ -1041,7 +1093,6 @@ def make_GATK_command(**params):
 def make_platypus_command(
     bam_file, ref_file, log_file=None, out_file=None, buffer_size=None,
     max_reads=None):
-    import os
     from genomicode import config
     from genomicode import parallel
     from genomicode import filelib
@@ -1132,3 +1183,39 @@ def make_annovar_command(in_filename, log_filename, out_filestem, buildver):
     x = " ".join(x)
     x = "%s >& %s" % (x, log_filename)
     return x
+
+
+def find_rseqc_script(name):
+    # example name "infer_experiment.py"
+    import os
+    from genomicode import config
+    from genomicode import filelib
+    
+    rseqc_path = filelib.which_assert(config.rseqc_path)
+    filename = os.path.join(rseqc_path, name)
+    filelib.assert_exists_nz(filename)
+    return filename
+
+
+def gtf_to_bed(gtf_filename, bed_filename):
+    # Convert a GTF file to a BED file.  Currently only exports exons.
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+
+    filelib.assert_exists_nz(gtf_filename)
+    gtfutils = filelib.which_assert(config.gtfutils)
+
+    sq = parallel.quote
+    cmd = [
+        sq(gtfutils), "tobed",
+        "-exons",
+        sq(gtf_filename),
+        ]
+    cmd = " ".join(cmd)
+    cmd = "%s > %s" % (cmd, sq(bed_filename))
+    parallel.sshell(cmd)
+
+    filelib.assert_exists_nz(bed_filename)
+
+

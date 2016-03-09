@@ -81,6 +81,31 @@ class Module(AbstractModule):
         return "sample_group%s" % ext
 
 
+def get_paired_orientation_rseqc(reference_bed, bam_filename):
+    from genomicode import alignlib
+    from genomicode import filelib
+    from genomicode import parallel
+    from Betsy import module_lib as mlib
+
+    script = alignlib.find_rseqc_script("infer_experiment.py")
+    filelib.assert_exists_nz(reference_bed)
+    filelib.assert_exists_nz(bam_filename)
+
+    # RSeQC scripts use #!/usr/bin/python, which may not be the right
+    # one.  Use the python on the path.
+    cmd = [
+        "python",
+        mlib.sq(script),
+        "-r", mlib.sq(reference_bed)
+        "-i", mlib.sq(bam_filename)
+        ]
+    cmd = " ".join(cmd)
+    x = parallel.sshell(cmd)
+
+    print x
+    import sys; sys.exit(0)
+
+
 def copy_fastq(in_filename, out_filename, MAX_READS=None):
     from genomicode import genomelib
 
@@ -96,7 +121,7 @@ def copy_fastq(in_filename, out_filename, MAX_READS=None):
         genomelib.write_fastq(*x, **{"handle" : out_handle})
 
 
-def get_paired_orientation(
+def get_paired_orientation_bowtie2(
     reference_genome, filename1, filename2, outpath=None):
     # Return tuple of ("ff", "fr", or "rf"; reads_ns; reads_fr;
     # reads_rf; reads_ff).
@@ -210,4 +235,3 @@ def get_paired_orientation(
     #if reads_ns >= orient[3][0] - reads_ns*0.10:
     #    return None
     return orient[0][-1], reads_ns, reads_fr, reads_rf, reads_ff
-            

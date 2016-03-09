@@ -152,8 +152,8 @@ all_modules = [
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Constraint("indexed", CAN_BE_ANY_OF, ["no", "yes"], 0),
 
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
         #Consequence("caller", SET_TO, "mpileup"),
         #Consequence("mpileup_summary", SET_TO, "yes"),
         #Consequence("vartype", SET_TO_ONE_OF, ["all", "consensus"]),
@@ -167,8 +167,8 @@ all_modules = [
         
         # Pipeline: read groups -> sort -> mark dups -> realign ->
         # recalibrate -> call variants
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
@@ -185,8 +185,8 @@ all_modules = [
         "call_variants_platypus",
         [NGS.BamFolder, NGS.ReferenceGenome], VCFFolder,
         
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),

@@ -255,16 +255,18 @@ def _print_input_datatypes(
         return
 
     x1 = "These are"
-    x2 = "combinations"
+    x2 = ""
+    x3 = "combinations"
     if len(datatype_combos) == 1:
         x1 = "This is"
-        x2 = "combination"
-    x3 = ""
+        x2 = "only "
+        x3 = "combination"
+    x4 = ""
     if max_inputs is not None:
-        x3 += " (up to %d)" % max_inputs
-    x4 = "%s the acceptable %s of --input DataTypes%s.  " % (x1, x2, x3)
-    x5 = "The exact number of each DataType needed is not shown."
-    x = x4 + x5
+        x4 += " (up to %d)" % max_inputs
+    x5 = "%s the %sacceptable %s of --input DataTypes%s.  " % (x1, x2, x3, x4)
+    x6 = "The exact number of each DataType needed is not shown."
+    x = x5 + x6
     ps(x, prefixn=0, outhandle=outhandle)
     for i, combo in enumerate(datatype_combos):
         names = [x.name for x in combo]
@@ -438,10 +440,9 @@ def build_pipelines(
 
     # data_node_ids is parallel to in_data_nodes.  Each element is a
     # list of the node_ids that that data node can map onto.
-
     paths = bie3.find_paths_by_start_ids(
         network, custom_attributes, data_node_ids)
-    
+
     # Make sure all the --inputs are needed.  Any unnecessary ones may
     # indicate a problem.
     inputs_used = {}  # list of indexes of --inputs that are used
@@ -595,10 +596,12 @@ def prune_pipelines(
             
     if not paths:
         print "All pipelines pruned.  This can happen if:"
-        print "  1.  A --mattr option is missing."
-        print "  2.  There is a bug in the network generation."
-        print "  3.  There is a bug in the pipeline pruning."
-        print "Please review the network and --mattr options."
+        print "  1.  A custom attribute specifies a pipeline that can't " \
+              "be created."
+        print "  2.  A --mattr option is missing."
+        print "  3.  There is a bug in the network generation."
+        print "  4.  There is a bug in the pipeline pruning."
+        print "Please review the network, attributes, and --mattr options."
         plot_network_show_pipelines(
             network_png, network, paths_orig, user_options=user_options,
             prune=prune_network, verbose=verbose)
@@ -728,6 +731,29 @@ def plot_network_show_pipelines(filename, network, paths, **keywds):
     all_node_ids = x1
     all_start_ids = x2
 
+    # Pull out the missing IDs from the pathways.
+    x = [x.missing_ids for x in paths]
+    if x and type(x[0]) is type({}):
+        x = [x.keys() for x in x]
+    elif x and type(x[0]) is frozenset:
+        x = [list(x) for x in x]
+    x = bie3._uniq(bie3._flatten(x))
+    missing_ids = x
+
+    if not missing_ids:
+        # Find nodes with no parents in the network that aren't start_ids.
+        nodeid2parents = bie3._make_parents_dict(network)
+        no_parents = {}
+        for node_id in all_node_ids:
+            x = nodeid2parents.get(node_id, [])
+            x = [x for x in x if x in all_node_ids]
+            if not x:
+                no_parents[node_id] = 1
+        x = all_node_ids
+        x = [x for x in x if x in no_parents]   # no parents
+        x = [x for x in x if x not in all_start_ids]  # not start id
+        missing_ids = x
+
     transitions = {}
     for path in paths:
         for node_id, next_ids in path.transitions.iteritems():
@@ -736,13 +762,16 @@ def plot_network_show_pipelines(filename, network, paths, **keywds):
                 
     highlight_yellow = None
     if not keywds.get("prune"):
-        not_start_ids = [x for x in all_node_ids if x not in all_start_ids]
-        highlight_yellow = not_start_ids
+        x = all_node_ids
+        x = [x for x in x if x not in all_start_ids]  # not start_ids
+        x = [x for x in x if x not in missing_ids]
+        highlight_yellow = x
 
     plot_network(
         filename, network, bold=all_node_ids,
         bold_transitions=transitions, highlight_green=all_start_ids,
-        highlight_yellow=highlight_yellow, **keywds)
+        highlight_orange=missing_ids, highlight_yellow=highlight_yellow,
+        **keywds)
 
 
 def plot_network(
@@ -756,7 +785,7 @@ def plot_network(
 
     if filename is None:
         return
-    print "Plotting network to %s." % filename
+    print "Plotting (%d node) network to %s." % (len(network.nodes), filename)
     sys.stdout.flush()
 
     show_node_ids = None
@@ -1045,14 +1074,14 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Hi!  I'm BETSY, and I'm here to do bioinformatics.\n\n"
         "Workflow:\n%s\n\n" % WORKFLOW)
+    #parser.add_argument(
+    #    "--inputs_complete", action="store_const", const=True,
+    #    help="Have finished specifying --input DataTypes.")
+    #parser.add_argument(
+    #    "--attrs_complete", action="store_const", const=True,
+    #    help="Have finished configuring --dattr attributes.")
     parser.add_argument(
-        "--inputs_complete",  action="store_const", const=True,
-        help="Have finished specifying --input DataTypes.")
-    parser.add_argument(
-        "--attrs_complete",  action="store_const", const=True,
-        help="Have finished configuring --dattr attributes.")
-    parser.add_argument(
-        "--run",  action="store_const", const=True,
+        "--run",  action="store_true", 
         help="Perform the analysis.")
     parser.add_argument(
         '--user', default=getpass.getuser(),
@@ -1062,7 +1091,7 @@ def main():
     parser.add_argument(
         '--num_cores', default=4, type=int,
         help='number of cores used in the processing')
-    DEFAULT_MAX_INPUTS = 5
+    DEFAULT_MAX_INPUTS = 6
     parser.add_argument(
         '--max_inputs', default=DEFAULT_MAX_INPUTS, type=int,
         help="Maximum number of inputs to be shown (default %d).  "
@@ -1139,15 +1168,19 @@ def main():
 
     args.clobber = True
     assert args.num_cores > 0, "num_cores should be greater than 0"
-    assert args.max_inputs > 0 and args.max_inputs < 20
-    if args.inputs_complete or args.attrs_complete or args.run:
-        if args.run:
-            x = "--run"
-        elif args.attrs_complete:
-            x = "--attrs_complete"
-        else:
-            x = "--inputs_complete"
-        assert input_list, "%s given, but no --input." % x
+    assert args.max_inputs > 0 and args.max_inputs <= 20
+    #if args.inputs_complete or args.attrs_complete or args.run:
+    #    if args.run:
+    #        x = "--run"
+    #    elif args.attrs_complete:
+    #        x = "--attrs_complete"
+    #    else:
+    #        x = "--inputs_complete"
+    #    assert input_list, "%s given, but no --input." % x
+
+    #if args.run:
+    #    x = "--run"
+    #    assert input_list, "%s given, but no --input." % x
     ## TODO: Make sure args.exclude_input is valid.
     ## args.exclude_input
 

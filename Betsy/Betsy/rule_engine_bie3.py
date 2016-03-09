@@ -7,7 +7,6 @@ run_module
 """
 # _is_module_output_complete
 # _get_available_input_combinations
-# _pretty_time_delta
 # _write_parameter_file
 # _read_parameter_file
 # _make_hash_units
@@ -42,6 +41,7 @@ def run_pipeline(
     import logging
     import time
 
+    from genomicode import parselib
     from Betsy import bie3
     from Betsy import config
 
@@ -172,7 +172,7 @@ def run_pipeline(
         return None
 
     assert next_node
-    x = _pretty_time_delta(total_time)
+    x = parselib.pretty_time_delta(total_time)
     print "[%s]  Completed (total %s)" % (time.strftime('%a %I:%M %p'), x)
     return pool, transitions, next_node.identifier
 
@@ -486,31 +486,6 @@ def _get_available_input_combinations(
     return available
 
 
-def _pretty_time_delta(delta):
-    days, x = divmod(delta, 60*60*24)
-    hours, x = divmod(x, 60*60)
-    minutes, seconds = divmod(x, 60)
-
-    if not days and not hours and not minutes and seconds < 1:
-        return "instant"
-    if not days and not hours and not minutes:
-        if seconds == 1:
-            return "1 sec"
-        return "%d secs" % seconds
-    if not days and not hours:
-        x = minutes + seconds/60.
-        return "%.1f mins" % x
-    if not days:
-        x = hours + minutes/60. + seconds/3600.
-        return "%.1f hrs" % x
-
-    day_or_days = "day"
-    if days > 1:
-        day_or_days = "days"
-    x = hours + minutes/60. + seconds/3600.
-    return "%d %s, %.1f hours" % (days, day_or_days, x)
-
-
 def _get_node_name(network, node_id):
     from Betsy import bie3
     
@@ -571,6 +546,7 @@ def _write_parameter_file(
     import json
     import time
     import operator
+    from genomicode import parselib
 
     params = {}
     params["module_name"] = module_name
@@ -586,7 +562,7 @@ def _write_parameter_file(
     params["end_time"] = time.strftime(TIME_FMT, end_time)
     elapsed = time.mktime(end_time) - time.mktime(start_time)
     params["elapsed"] = elapsed
-    params["elapsed_pretty"] = _pretty_time_delta(elapsed)
+    params["elapsed_pretty"] = parselib.pretty_time_delta(elapsed)
 
     if metadata is None:
         metadata = {}

@@ -18,7 +18,7 @@ class Module(AbstractModule):
         sample2fastq = mlib.find_merged_fastq_files(
             sample_node.identifier, fastq_node.identifier, as_dict=True)
 
-        #metadata = {}
+        metadata = {}
 
         jobs = []  # list of (sample, bam_file, fastq_file)
         for filename in bam_filenames:
@@ -84,6 +84,7 @@ class Module(AbstractModule):
 
         txt2xls = mlib.findbin("txt2xls", quote=True)
         parallel.sshell("%s -b %s > %s" % (txt2xls, TXT_FILE, outfile))
+        return metadata
             
         
     def name_outfile(self, antecedents, user_options):
@@ -134,7 +135,8 @@ def count_alignments(bam_filename):
     aligned_reads = {}
     for line in r:
         # M03807:17:000000000-AHGYH:1:2108:11122:14861 99 1 14172 0 12S128...
-        x = line.split()
+        # ST-J00106:110:H5NY5BBXX:4:1101:1702:1209 2:N:0:NTCACG   141     *
+        x = line.split("\t")
         assert len(x) >= 11, "SAM format"
         qname, flag = x[:2]
         flag = int(flag)

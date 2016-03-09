@@ -8,8 +8,10 @@ openpyxl
 xlrd
 
 NGS Specific Tools
+samtools
 bowtie
 bowtie2
+STAR
 
 
 
