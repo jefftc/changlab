@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import hashlib
         from genomicode import filelib
         from Betsy import module_utils
@@ -47,7 +47,7 @@ class Module(AbstractModule):
             treat_filename, control_filename, out_path, num_procs=num_cores)
         log_file = "%s.log" % experiment_name
         cmd = "%s >& %s" % (cmd, log_file)
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         files = [
             "binding.positions.txt",
@@ -71,7 +71,7 @@ def make_pyspp_command(treat_filename, control_filename, outpath,
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert num_procs is None or (num_procs >= 1 and num_procs < 256)
 
@@ -82,7 +82,7 @@ def make_pyspp_command(treat_filename, control_filename, outpath,
     assert os.path.exists(treat_filename)
     assert os.path.exists(control_filename)
     
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(pyspp),
         ]

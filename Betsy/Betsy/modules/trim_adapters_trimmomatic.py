@@ -9,29 +9,19 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
-        from Betsy import module_utils
+        from genomicode import parallel
+        from Betsy import module_utils as mlib
 
         fastq_node, sample_node = antecedents
-
-        fastq_path = fastq_node.identifier
-        assert os.path.exists(fastq_path)
-        assert os.path.isdir(fastq_path)
-
-        adapters_filename = user_options.get("adapters_fasta")
-        assert adapters_filename, "MISSING: adapters_fasta"
-        assert filelib.exists_nz(adapters_filename), \
-               "Not found: %s" % adapters_filename
-               #"Not found: %s" % os.path.realpath(adapters_filename)
-        
-        filelib.safe_mkdir(out_path)
-
-        # Find the merged fastq files.
-        x = module_utils.find_merged_fastq_files(
-            sample_node.identifier, fastq_path)
-        fastq_files = x
+        fastq_files = mlib.find_merged_fastq_files(
+            sample_node.identifier, fastq_node.identifier)
         assert fastq_files, "I could not find any FASTQ files."
+        filelib.safe_mkdir(out_path)
+        metadata = {}
 
+        adapters_filename = mlib.get_user_option(
+            user_options, "adapters_fasta", not_empty=True, check_file=True)
+        
         jobs = []
         for x in fastq_files:
             sample, pair1, pair2 = x
@@ -50,7 +40,7 @@ class Module(AbstractModule):
                 unpaired1, unpaired2, log_filename
             jobs.append(x)
 
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, trimmed1, trimmed2, unpaired1, unpaired2, \
@@ -61,8 +51,8 @@ class Module(AbstractModule):
                 adapters_filename, num_threads=nc)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
-
-        shell.parallel(commands, max_procs=num_cores)
+        metadata["commands"] = commands
+        parallel.pshell(commands, max_procs=num_cores)
         
         # Make sure the analysis completed successfully.
         for x in jobs:
@@ -76,6 +66,7 @@ class Module(AbstractModule):
                        "Missing: %s" % trimmed2
             x = open(log_filename).read()
             assert not x.startswith("Usage:"), "usage problem"
+        return metadata
 
         
     def name_outfile(self, antecedents, user_options):
@@ -88,7 +79,7 @@ def _make_trimmomatic_cmd(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert filelib.exists_nz(adapters_filename)
     if num_threads is not None:
@@ -113,7 +104,7 @@ def _make_trimmomatic_cmd(
         assert pair2 and trimmed2 and unpaired1 and unpaired2
 
     trimmomatic = filelib.which_assert(config.trimmomatic_jar)
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         "java",
         "-jar", sq(trimmomatic),

@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
         from Betsy import module_utils
@@ -20,6 +20,9 @@ class Module(AbstractModule):
         ref = alignlib.create_reference_genome(reference_node.identifier)
         filelib.safe_mkdir(out_path)
         #reference_fa = module_utils.find_bwa_reference(index_path)
+
+        metadata = {}
+        metadata["tool"] = "bwa %s" % alignlib.get_bwa_version()
 
         # Find the merged fastq files.
         x = module_utils.find_merged_fastq_files(
@@ -42,6 +45,7 @@ class Module(AbstractModule):
 
         # Calculate the number of cores per job.
         nc = max(1, num_cores/len(jobs))
+        metadata["num cores"] = nc
         
         # Make the bwa commands.
         commands = []
@@ -52,7 +56,8 @@ class Module(AbstractModule):
                 fastq_file2=pair2, num_threads=nc)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores)
+        metadata["commands"] = commands
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:
@@ -60,6 +65,7 @@ class Module(AbstractModule):
             assert filelib.exists_nz(sam_filename), \
                    "Missing: %s" % sam_filename
             # TODO: Should also check log file.
+        return metadata
 
         
     def name_outfile(self, antecedents, user_options):

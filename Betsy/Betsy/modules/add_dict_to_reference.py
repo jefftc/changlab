@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from Betsy import module_utils
 
@@ -24,7 +24,7 @@ class Module(AbstractModule):
         #   R=erdman.fa O=erdman.dict
         # <out>.dict
 
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             "java", "-Xmx5g", "-jar", sq(picard_jar),
             "CreateSequenceDictionary",
@@ -32,7 +32,7 @@ class Module(AbstractModule):
             "R=%s" % ref.fasta_file_full,
             "O=%s" % out_file,
             ]
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         # Make sure file was created successfully.
         x = os.path.join(out_path, out_file)

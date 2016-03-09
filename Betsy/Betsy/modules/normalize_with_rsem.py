@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import alignlib
-        from genomicode import shell
+        from genomicode import parallel
         from Betsy import module_utils
         
         fastq_node, sample_node, reference_node = antecedents
@@ -34,7 +34,7 @@ class Module(AbstractModule):
             x = sample, pair1, pair2, log_filename
             jobs.append(x)
         
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, log_filename = x
@@ -46,7 +46,7 @@ class Module(AbstractModule):
             commands.append(x)
 
         # Need to run in out_path.  Otherwise, files will be everywhere.
-        shell.parallel(commands, max_procs=num_cores, path=out_path)
+        parallel.pshell(commands, max_procs=num_cores, path=out_path)
 
         # Make sure the analysis completed successfully.
         for x in jobs:

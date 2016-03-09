@@ -11,7 +11,7 @@ class Module(AbstractModule):
         from genomicode import parselib
         from genomicode import filelib
         from genomicode import config
-        from genomicode import shell
+        from genomicode import parallel
 
         log_filenames = find_trimmomatic_logs(in_data.identifier)
         assert log_filenames
@@ -51,7 +51,8 @@ class Module(AbstractModule):
         handle.close()
 
         txt2xls = filelib.which_assert(config.txt2xls)
-        os.system("%s -b %s > %s" % (shell.quote(txt2xls), TXT_FILE, outfile))
+        os.system("%s -b %s > %s" % (
+            parallel.quote(txt2xls), TXT_FILE, outfile))
             
         
     def name_outfile(self, antecedents, user_options):

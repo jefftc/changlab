@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
         from Betsy import module_utils
@@ -58,7 +58,7 @@ class Module(AbstractModule):
         x = sample_node.data.attributes["orientation"]
         orientation = attr2orient[x]
 
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             sample, pair1, pair2, tophat_path, log_filename = x
@@ -70,7 +70,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         x = [x[3] for x in jobs]  # out_path

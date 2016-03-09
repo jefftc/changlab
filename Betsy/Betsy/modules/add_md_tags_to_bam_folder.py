@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from Betsy import module_utils
 
@@ -33,7 +33,7 @@ class Module(AbstractModule):
         # Make a list of samtools commands.
         # Takes ~200 Mb per process, so should not be a big issue.
         samtools = filelib.which_assert(config.samtools)
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, out_filename = x
@@ -48,7 +48,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (" ".join(x), sq(out_filename))
             commands.append(x)
             
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         x = [x[-1] for x in jobs]

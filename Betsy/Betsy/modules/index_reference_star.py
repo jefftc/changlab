@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from Betsy import module_utils
 
@@ -26,7 +26,7 @@ class Module(AbstractModule):
         #   --genomeFastaFiles <file.fasta> \
         #   --sjdbGTFfile $GTF
 
-        sq = shell.quote
+        sq = parallel.quote
         x = [
             sq(STAR),
             "--runThreadN", num_cores,
@@ -36,7 +36,7 @@ class Module(AbstractModule):
             "--sjdbGTFfile", sq(gtf_file),
             ]
         x = "%s >& out.txt" % " ".join(map(str, x))
-        shell.single(x, path=out_path)
+        parallel.sshell(x, path=out_path)
 
         # Check to make sure index was created successfully.
         files = [

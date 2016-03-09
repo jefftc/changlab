@@ -673,13 +673,13 @@ def list_files_in_path(
     # If this is a file, return this file.
     if not os.path.isdir(file_or_path):
         x = os.path.realpath(file_or_path)
-        return [x]
-
-    filenames = []
-    for x in os.walk(file_or_path, followlinks=True):
-        dirpath, dirnames, files = x
-        x = [os.path.join(dirpath, x) for x in files]
-        filenames.extend(x)
+        filenames = [x]
+    else:
+        filenames = []
+        for x in os.walk(file_or_path, followlinks=True):
+            dirpath, dirnames, files = x
+            x = [os.path.join(dirpath, x) for x in files]
+            filenames.extend(x)
 
     x = filenames
     if endswith is not None:

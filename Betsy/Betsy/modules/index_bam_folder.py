@@ -10,12 +10,16 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
+        from genomicode import alignlib
 
         bam_path = in_data.identifier
         assert os.path.exists(bam_path)
         assert os.path.isdir(bam_path)
         filelib.safe_mkdir(out_path)
+
+        metadata = {}
+        metadata["tool"] = "samtools %s" % alignlib.get_samtools_version()
 
         # Find all the BAM files.
         bam_filenames = filelib.list_files_in_path(
@@ -35,7 +39,7 @@ class Module(AbstractModule):
             os.symlink(in_filename, out_filename)
 
         # Index each of the files.
-        sq = shell.quote
+        sq = parallel.quote
         samtools = filelib.which_assert(config.samtools)
         commands = []
         for x in jobs:
@@ -47,13 +51,18 @@ class Module(AbstractModule):
                 ]
             x = " ".join(cmd)
             commands.append(x)
+        metadata["commands"] = commands
+        parallel.pshell(commands, max_procs=num_cores, path=out_path)
+
+        # TODO: Check for output files.
         
-        shell.parallel(commands, max_procs=num_cores, path=out_path)
+        return metadata
     
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'bamFolder_' + original_file
-        return filename
+        #from Betsy import module_utils
+        #original_file = module_utils.get_inputid(antecedents.identifier)
+        #filename = 'bamFolder_' + original_file
+        #return filename
+        return "indexed.bam"
 

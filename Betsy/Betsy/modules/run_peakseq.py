@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import hashlib
         from genomicode import filelib
         from Betsy import module_utils
@@ -56,7 +56,7 @@ class Module(AbstractModule):
             out_path, experiment_name, fragment_length, mappability_file)
         log_file = "%s.log" % experiment_name
         cmd = "%s >& %s" % (cmd, log_file)
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         files = [
             "config.dat",
@@ -78,7 +78,7 @@ def make_peakseq_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     # pypeakseq.py --experiment_name EXPERIMENT_NAME
     #   --fragment_length FRAGMENT_LENGTH
@@ -90,7 +90,7 @@ def make_peakseq_command(
     assert os.path.exists(mappability_file)
     assert fragment_length > 0 and fragment_length < 100000
     
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(pypeakseq),
         "--experiment_name", experiment_name,

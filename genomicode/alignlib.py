@@ -8,6 +8,9 @@ Methods:
 create_reference_genome
 standardize_reference_genome
 
+get_samtools_version
+
+get_bowtie1_version
 make_bowtie1_command
 parse_bowtie1_output
 
@@ -19,6 +22,7 @@ parse_tophat_align_summary
 
 make_bwa_mem_command
 make_bwa_aln_command
+get_bwa_version
 
 make_rsem_command
 find_rsem_result_files
@@ -263,6 +267,36 @@ def standardize_reference_genome(
     return x
 
 
+def get_samtools_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    samtools = filelib.which_assert(config.samtools)
+    x = parallel.sshell(samtools, ignore_nonzero_exit=True)
+    x = x.strip()
+    # Version: 1.2 (using htslib 1.2.1)
+    m = re.search(r"Version: ([\w\. \(\)-]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
+def get_bowtie1_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    bowtie = filelib.which_assert(config.bowtie)
+    x = parallel.sshell("%s --version" % bowtie, ignore_nonzero_exit=True)
+    x = x.strip()
+    # bowtie version 1.1.1
+    m = re.search(r"version ([\w\.]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
 def make_bowtie1_command(
     reference_fa, sam_file, fastq_file1, fastq_file2=None,
     orientation=None, num_threads=None):
@@ -271,7 +305,7 @@ def make_bowtie1_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert os.path.exists(fastq_file1)
     if fastq_file2:
@@ -288,7 +322,7 @@ def make_bowtie1_command(
     # bowtie --sam --fr -p <nthreads> <reference_base> -1 <sample_1.fq> -2
     #   <sample_2.fq> <sample.sam>
 
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(bowtie1),
         "--sam",
@@ -346,6 +380,21 @@ def parse_bowtie1_output(filename):
     return results
 
 
+def get_bowtie2_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    bowtie = filelib.which_assert(config.bowtie2)
+    x = parallel.sshell("%s --version" % bowtie, ignore_nonzero_exit=True)
+    x = x.strip()
+    # /usr/local/bin/bowtie2-align-s version 2.2.4
+    m = re.search(r"version ([\w\.]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
 def make_bowtie2_command(
     reference_fa, fastq_file1, fastq_file2=None, orientation=None,
     sam_file=None, num_threads=None, skip_reads=None, max_reads=None):
@@ -353,7 +402,7 @@ def make_bowtie2_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert os.path.exists(fastq_file1)
     if fastq_file2:
@@ -374,7 +423,7 @@ def make_bowtie2_command(
     # bowtie2 -p <nthreads> -x <reference_base> -1 <sample_1.fq>
     #   -2 <sample_2.fq> --fr -S <sample.sam>
 
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(bowtie2),
         ]
@@ -486,7 +535,7 @@ def make_tophat_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
     
     assert os.path.exists(fastq_file1)
     if fastq_file2:
@@ -534,7 +583,7 @@ def make_tophat_command(
     # -p <num_threads>
     # --library-type fr-unstranded, fr-firststrand, fr-secondstrand
 
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(tophat),
         "-o", sq(out_path),
@@ -617,7 +666,7 @@ def make_bwa_mem_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert os.path.exists(reference_fa)
     assert os.path.exists(fastq_file1)
@@ -629,7 +678,7 @@ def make_bwa_mem_command(
     bwa = filelib.which_assert(config.bwa)
 
     # bwa mem -t <num_cores> ref.fa read1.fq read2.fq > aln-pe.sam
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [sq(bwa), "mem"]
     if num_threads:
         cmd += ["-t", str(num_threads)]
@@ -650,7 +699,7 @@ def make_bwa_aln_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert os.path.exists(reference_fa)
     assert os.path.exists(fastq_filename)
@@ -659,7 +708,7 @@ def make_bwa_aln_command(
     bwa = filelib.which_assert(config.bwa)
 
     # bwa aln -t <num_cores> <reference.fa> <input.fastq> > <output.sai>
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [sq(bwa), "aln"]
     if num_threads:
         cmd += ["-t", str(num_threads)]
@@ -670,6 +719,21 @@ def make_bwa_aln_command(
         "2>", sq(err_filename),
         ]
     return " ".join(cmd)
+
+
+def get_bwa_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    bwa = filelib.which_assert(config.bwa)
+    x = parallel.sshell(bwa, ignore_nonzero_exit=True)
+    x = x.strip()
+    # Version: 0.7.12-r1039
+    m = re.search(r"Version: ([\w\.-]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
 
 
 ## def find_rsem_reference(search_path):
@@ -718,7 +782,7 @@ def make_rsem_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     # rsem-calculate-expression -p <num_cores> --output-genome-bam
     #   --paired-end <file1.fastq> <file2.fastq>
@@ -735,7 +799,7 @@ def make_rsem_command(
 
     rsem_calculate = filelib.which_assert(config.rsem_calculate)
 
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(rsem_calculate),
         ]
@@ -814,7 +878,7 @@ def make_htseq_count_command(
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert sort_order in ["name", "pos"]
     assert stranded in ["yes", "no", "reverse"]
@@ -832,7 +896,7 @@ def make_htseq_count_command(
     # -m <mode>
     htseq_count = filelib.which_assert(config.htseq_count)
 
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(htseq_count),
         "-f", "bam",
@@ -946,14 +1010,14 @@ def make_GATK_command(**params):
     # _UNHASHABLE  list of (key, value) tuples
     import os
     from genomicode import config
-    from genomicode import shell
+    from genomicode import parallel
 
     UNHASHABLE = "_UNHASHABLE"
     
     gatk_jar = config.gatk_jar
     assert os.path.exists(gatk_jar)
 
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         "java",
         "-Xmx5g",
@@ -979,7 +1043,7 @@ def make_platypus_command(
     max_reads=None):
     import os
     from genomicode import config
-    from genomicode import shell
+    from genomicode import parallel
     from genomicode import filelib
 
     if max_reads is not None:
@@ -999,7 +1063,7 @@ def make_platypus_command(
     #   --logFileName <filename>
     platypus = filelib.which_assert(config.platypus)
 
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(platypus),
         "callVariants",
@@ -1025,7 +1089,7 @@ def make_annovar_command(in_filename, log_filename, out_filestem, buildver):
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     # list of (name, operation).
     # These are just for buildver hg19.
@@ -1051,7 +1115,7 @@ def make_annovar_command(in_filename, log_filename, out_filestem, buildver):
     assert os.path.exists(annodb)
     assert os.path.isdir(annodb)
 
-    sq = shell.quote
+    sq = parallel.quote
     x1 = [x[0] for x in protocols]
     x2 = [x[1] for x in protocols]
     x = [

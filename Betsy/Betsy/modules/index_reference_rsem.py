@@ -11,7 +11,7 @@ class Module(AbstractModule):
         import shutil
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         
         rsem_prepare = filelib.which_assert(config.rsem_prepare)
@@ -35,7 +35,7 @@ class Module(AbstractModule):
         # <reference_name>.seq
         # <reference_name>.ti
         # <reference_name>.transcripts.fa
-        sq = shell.quote
+        sq = parallel.quote
         # TODO: Need to test what happens if bowtie or bowtie2
         # can't be found.
         cmd = [
@@ -46,7 +46,7 @@ class Module(AbstractModule):
             sq(ref.fasta_file_full),
             ref.name,
             ]
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         # Copy the GTF file into the output path.
         shutil.copy2(gtf_file, out_path)

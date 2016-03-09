@@ -305,6 +305,12 @@ class Attribute:
         return x
 
 
+class CustomAttribute(Attribute):
+    def __init__(self, datatype, name, value, all_nodes=None):
+        Attribute.__init__(self, datatype, name, value)
+        self.all_nodes = all_nodes
+
+
 class OptionDef:
     def __init__(self, name, default=None, help=None):
         assert type(name) is type("")
@@ -723,6 +729,16 @@ class DataNode(object):
         assert 'attributes' in args
         inst = DataNode(args['datatype'], **args['attributes'])
         return inst
+
+
+# DataNode + identifier.
+class IdentifiedDataNode:
+    def __init__(self, data, identifier=""):
+        self.data = data
+        self.identifier = identifier
+    def __repr__(self):
+        x = str(self.data) + ' identifier:' + self.identifier
+        return x
 
 
 class ModuleNode:
@@ -2573,29 +2589,35 @@ def prune_paths(paths, network, custom_attributes,
 def _prune_by_custom_attributes(network, custom_attributes, paths,
                                 nodeid2parents):
     # Keep only the paths that match the attributes desired by the
-    # user.  custom_attributes is a list of Attribute objects.
+    # user.  custom_attributes is a list of CustomAttribute objects.
     if not custom_attributes:
         return paths
-    
-    dname2attrs = {}  # datatype name -> attr name -> value
-    for x in custom_attributes:
-        if x.datatype.name not in dname2attrs:
-            dname2attrs[x.datatype.name] = {}
-        dname2attrs[x.datatype.name][x.name] = x.value
 
-    # If a module's input datatype is different from the output
-    # datatype, and it has has no descendents with the same datatype,
-    # then the attributes of that input datatype should match the user
-    # attributes.
+    # The attributes of that input datatype should match the user
+    # attributes if:
+    # 1.  A module's input datatype is different from the output
+    #     datatype, and it has has no descendents with the same
+    #     datatype
+    # 2.  A module's input datatype is different from the output
+    #     datatype
+    dname2attrs1 = {}  # datatype name -> attr name -> value
+    dname2attrs2 = {}
+    for x in custom_attributes:
+        d2a = dname2attrs1
+        if x.all_nodes:
+            d2a = dname2attrs2
+        if x.datatype.name not in d2a:
+            d2a[x.datatype.name] = {}
+        d2a[x.datatype.name][x.name] = x.value
+    x1 = dname2attrs1.keys()
+    x2 = dname2attrs2.keys()
+    all_dnames = {}.fromkeys(x1 + x2)  # for convenience
 
 
     # Search through the network for data nodes that might be subject
     # to custom_attributes.
     x = [x.node_ids for x in paths]
-    all_node_ids = x[0].union(*x[1:])
-    #all_node_ids = {}
-    #for x in paths:
-    #    all_node_ids.update(x.node_ids)
+    path_node_ids = x[0].union(*x[1:])
 
     descendents = _make_descendent_dict(network)
     ## Only care about the descendents that are in this network.
@@ -2606,9 +2628,10 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     #    next_ids = [x for x in next_ids if x in all_node_ids]
     #    desc[node_id] = next_ids
     #descendents = desc
-    
+
+    # List all the data node IDs that get converted to something else.
     module_ids = [
-        x for x in all_node_ids
+        x for x in path_node_ids
         if isinstance(network.nodes[x], ModuleNode)]
     #data_node_ids = []
     data_node_ids = set()
@@ -2622,45 +2645,56 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
             continue
 
         # Make sure at least one input datatype (that is not
-        # DefaultAttributesFrom) has a user attribute.
+        # DefaultAttributesFrom) that matches a user attribute.
         daf = [x.input_index for x in module.default_attributes_from]
         in_dtype_names = [
             x.name for (i, x) in enumerate(module.in_datatypes)
             if i not in daf]
-        x = [x for x in in_dtype_names if x in dname2attrs]
+        x = [x for x in in_dtype_names if x in all_dnames]
         if not x:
             continue
         # This should be a converting module.
-
+        
         # Find the node_ids that match a user attribute.
         x = nodeid2parents.get(module_id, [])
-        x = [x for x in x if network.nodes[x].datatype.name in dname2attrs]
+        x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
+        x = [x for x in x if x in path_node_ids]
         node_ids = x
-
-        # Make sure these node_ids don't have any descendents of the
-        # same type.
-        good_ids = []
-        for node_id in node_ids:
-            x = descendents.get(node_id, [])
-            x = [x for x in x if x in all_node_ids]
-            x = [x for x in x if isinstance(network.nodes[x], DataNode)]
-            x = [network.nodes[x].datatype.name for x in x]
-            if network.nodes[node_id].datatype.name not in x:
-                good_ids.append(node_id)
-        node_ids = good_ids
-
-        #data_node_ids.extend(node_ids)
+        
         data_node_ids = data_node_ids.union(node_ids)
-    #data_node_ids = {}.fromkeys(data_node_ids)
+
+    # List the node_ids that don't have any descendents of the same
+    # type.
+    no_desc = set()
+    for node_id in data_node_ids:
+        x = descendents.get(node_id, [])
+        x = [x for x in x if x in path_node_ids]
+        x = [x for x in x if isinstance(network.nodes[x], DataNode)]
+        x = [network.nodes[x].datatype.name for x in x]
+        if network.nodes[node_id].datatype.name not in x:
+            no_desc.add(node_id)
+
+    # Match the node_ids to the attributes.
+    nodeid2attrs = {}   # node_id -> attr name -> value
+    for node_id in data_node_ids:
+        node = network.nodes[node_id]
+        # no_desc takes precedence over all_nodes.
+        attrs = None
+        if node_id in no_desc:
+            attrs = dname2attrs1.get(node.datatype.name)
+        if attrs is None:
+            attrs = dname2attrs2.get(node.datatype.name)
+        if not attrs:
+            continue
+        nodeid2attrs[node_id] = attrs
 
     # List the node_ids that either don't match the user attributes,
     # or are ambiguous, e.g.
     # Fastq.adapters = [no, yes]; user wants no
     mismatch_node_ids = set()
     ambiguous_node_ids = set()
-    for node_id in data_node_ids:
+    for (node_id, attrs) in nodeid2attrs.iteritems():
         node = network.nodes[node_id]
-        attrs = dname2attrs[node.datatype.name]
         for name, uvalue in attrs.iteritems():
             dvalue = node.attributes[name]
             utype = _get_attribute_type(uvalue)
@@ -2675,46 +2709,49 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     if not mismatch_node_ids and not ambiguous_node_ids:
         return paths
 
-    # For each pathway, see if it contains a delete or ambiguous node.
+    # For each pathway, see if it contains a mismatch or ambiguous node.
     bc_cache = {}
     fc_cache = {}
     path_cache = {}
     
     delete = {}
     for (i, p) in enumerate(paths):
-        #node_ids, start_ids, data_indexes = x
-        # If there's a mismatch, delete this path.
-        #x = [x for x in mismatch_node_ids if x in p.node_ids]
-        #if x:
-        if not p.node_ids.intersection(mismatch_node_ids):
+        # If this path contains a node that does not match custom
+        # attributes, then delete this path.
+        if p.node_ids.intersection(mismatch_node_ids):
             delete[i] = 1
             continue
 
-        # If there's no ambiguity, then keep this path.
-        #x = [x for x in ambiguous_node_ids if x in p.node_ids]
-        #if not x:
-        if not p.node_ids.intersection(ambiguous_node_ids):
+        # Make a list of the ambiguous node IDs in this path.  If this
+        # path does not contain any ambiguous nodes, then keep this
+        # path.
+        ambig_ids = p.node_ids.intersection(ambiguous_node_ids)
+        if not ambig_ids:
             continue
-        check_ids = x
 
-        # See if this pathway can produce a node that has a proper
-        # attribute.
+        # See if this pathway can produce a node that has an attribute
+        # that matches the custom_attribute.
+
+        # Make a list of all the sub-pathways that generate this
+        # ambiguous node.
         check_paths = []
-        for out_data_id in check_ids:
+        for out_data_id in ambig_ids:
             x = _bc_to_input_and_module_ids(
                 network, out_data_id, custom_attributes, p.node_ids,
                 nodeid2parents, bc_cache)
             check_paths.extend(x)
         assert check_paths
 
-        # Each node ID in check_ids needs to match.
+        # Make a list of all the node IDs from ambig_ids that matches
+        # the custom attribute.
         match = {}  # node_id -> 1
         for x in check_paths:
             in_data_ids, module_id, out_data_id = x
             if out_data_id in match:
                 continue
-            name = network.nodes[out_data_id].datatype.name
-            attrs = dname2attrs[name]
+            #name = network.nodes[out_data_id].datatype.name
+            #attrs = dname2attrs[name]
+            attrs = nodeid2attrs[out_data_id]
             key = module_id, in_data_ids, out_data_id
             if key not in path_cache:
                 x = _is_valid_output_from_input_and_module_ids(
@@ -2723,9 +2760,11 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
                 path_cache[key] = x
             if path_cache[key]:
                 match[out_data_id] = 1
-            if len(match) == len(check_ids):
+            if len(match) == len(ambig_ids):
                 break
-        if len(match) != len(check_ids):
+        # If we cannot generate all ambiguous nodes (based on the
+        # custom attributes), then delete this pathway.
+        if len(match) != len(ambig_ids):
             delete[i] = 1
 
     paths = [x for (i, x) in enumerate(paths) if i not in delete]
@@ -4096,13 +4135,28 @@ def _format_modulenode_gv(node, node_id, options):
 def plot_network_gv(
     filename, network, options=None, bold=[], bold_transitions=[],
     highlight_green=[], highlight_orange=[], highlight_purple=[],
-    highlight_yellow=[],
-    verbose=False):
+    highlight_yellow=[], show_node_ids=None, verbose=False):
     # bold              List of node IDs to bold.
     # highlight[1-2]    List of node IDs to highlight.
     # bold_transitions  List of tuples (node_id1, node_id2)
+    # show_node_ids     If not None, then show only the node ids in this list.
     from genomicode import graphviz
 
+    if show_node_ids is None:
+        show_node_ids = {}.fromkeys(range(len(network.nodes)))
+    if bold is None:
+        bold = []
+    if bold_transitions is None:
+        bold_transitions = []
+    if highlight_green is None:
+        highlight_green = []
+    if highlight_orange is None:
+        highlight_orange = []
+    if highlight_purple is None:
+        highlight_purple = []
+    if highlight_yellow is None:
+        highlight_yellow = []
+        
     gv_nodes = []
     gv_edges = []
     gv_node2attr = {}
@@ -4143,6 +4197,8 @@ def plot_network_gv(
 
     id2name = {}
     for node_id, node in enumerate(network.nodes):
+        if node_id not in show_node_ids:
+            continue
         node2attr = {}
         node2attr["style"] = "filled"
         node2attr["penwidth"] = "1"
@@ -4184,7 +4240,11 @@ def plot_network_gv(
         gv_node2attr[node_name] = node2attr
 
     for node_id, next_ids in network.transitions.iteritems():
+        if node_id not in show_node_ids:
+            continue
         for next_id in next_ids:
+            if next_id not in show_node_ids:
+                continue
             edge2attr = {}
             x1 = id2name[node_id]
             x2 = id2name[next_id]
@@ -4339,7 +4399,7 @@ def _bc_to_one_input(
     # decreasing priority):
     # 1.  Consequence (i.e. SAME_AS_CONSTRAINT).
     # 2.  Constraint.
-    # 3.  user attribute
+    # 3.  custom attribute
     # 4.  out_data              (default_attributes_from)
     # 5.  default output value of input datatype
     #
@@ -4396,17 +4456,23 @@ def _bc_to_one_input(
 
     # Case 3.  If the input data object does not proceed to the output
     # data object, then use the attribute provided by the user.
-    # Only applies for lowest time this data object is seen in the
-    # network (see above).
-    attrs = {}
+    # Applies:
+    # 1.  Only the the first (lowest) time this data type is seen in
+    #     the network.
+    # 2.  Every time.
+    attrs1 = {}
+    attrs2 = {}
     x = [x for x in module.default_attributes_from if x.input_index == in_num]
     if not x:
-        # Look for relevant user attributes.
+        # Look for relevant custom attributes.
         for attr in custom_attributes:
             # Ignore attributes for other data types.
             if attr.datatype.name != in_datatype.name:
                 continue
-            attrs[attr.name] = attr.value
+            if not attr.all_nodes:
+                attrs1[attr.name] = attr.value
+            else:
+                attrs2[attr.name] = attr.value
         ## Set values from user attributes.
         #for attr in custom_attributes:
         #    # Ignore attributes for other data types.
@@ -4417,12 +4483,16 @@ def _bc_to_one_input(
 
     # Found potentially relevant custom attributes.  Apply them if
     # there are no descendents with the same data type.
-    if attrs and not \
+    if attrs1 and not \
            _has_descendent_of_datatype(network, module_id, in_datatype.name):
-        for name, value in attrs.iteritems():
+        for name, value in attrs1.iteritems():
             attributes[name] = value
             attrsource[name] = "user"
-
+    # Set values that should apply to every node in the network.
+    for name, value in attrs2.iteritems():
+        attributes[name] = value
+        attrsource[name] = "user"
+    
 
     # Case 2.  Set the attributes based on the constraints.
     for constraint in module.constraints:
@@ -5581,6 +5651,11 @@ def _make_ancestor_dict_h(network):
                 else:
                     name = node.name
                 x = "%s[%d]" % (name, nid)
+                # DEBUG
+                a = "mouse_reads_subtracted"
+                if isinstance(node, DataNode) and a in node.attributes:
+                    x += " %s=%s" % (a, node.attributes[a])
+                
                 lines.append(x)
             x = " <- ".join(lines)
             x = parselib.linesplit(x)

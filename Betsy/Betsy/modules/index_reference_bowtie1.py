@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
 
         ref = alignlib.standardize_reference_genome(
@@ -22,13 +22,13 @@ class Module(AbstractModule):
         # <name>.[1234].ebwt
         # <name>.rev.[12].ebwt
 
-        sq = shell.quote
+        sq = parallel.quote
         cmd = [
             sq(bowtie_build),
             sq(ref.fasta_file_full),
             ref.name,
             ]
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         # Check to make sure index was created successfully.
         f = os.path.join(out_path, "%s.1.ebwt" % ref.name)

@@ -8,7 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import hashlib
         from genomicode import filelib
         from genomicode import config
@@ -57,14 +57,14 @@ class Module(AbstractModule):
             treat_filename, control_filename, name=name,
             genome_size=genome_size, shiftsize=shiftsize,
             save_bedgraph_file=True)
-        shell.single(cmd, path=out_path)
+        parallel.sshell(cmd, path=out_path)
 
         # Run Rscript on the model, if one was generated.
         model_file = os.path.join(out_path, "%s_model.r" % name)
         if os.path.exists(model_file):
             Rscript = filelib.which_assert(config.Rscript)
-            cmd = [shell.quote(Rscript), model_file]
-            shell.single(cmd, path=out_path)
+            cmd = [parallel.quote(Rscript), model_file]
+            parallel.sshell(cmd, path=out_path)
 
         files = [
             "%s_peaks.xls" % name,
@@ -84,7 +84,7 @@ def make_macs14_command(
     save_bedgraph_file=False, call_subpeaks=False):
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert genome_size in ["hs", "mm", "ce", "dm"]
     if call_subpeaks:
@@ -111,7 +111,7 @@ def make_macs14_command(
     # Often fragment size is 150-200 for ChIP-Seq.
     macs14 = filelib.which_assert(config.macs14)
     
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(macs14),
         "-t", sq(treat_filename),

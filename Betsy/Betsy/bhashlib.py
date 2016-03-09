@@ -1,27 +1,10 @@
 # Functions:
-# checksum_file_or_path
-# checksum_file
-# checksum_path
-# 
-# checksum_file_or_path_smart
+# checksum_file    Checksum a file.  If fast, just use size and creation date.
+# checksum_path    Checksum each file in the path.  BUG: what about path names?
+# checksum_file_or_path         Checksum either a file or path.
+# checksum_file_or_path_smart   Will do fast checksum if files are too big.
 
 CHUNK_SIZE = 1024*1024
-
-def checksum_path(path, fast=False):
-    import os
-    from hashlib import md5
-    from genomicode import filelib
-    
-    hasher = md5()
-
-    # Checksum each file.
-    filenames = filelib.list_files_in_path(path)
-    for filename in filenames:
-        x = checksum_file(filename, fast=fast)
-        hasher.update(x)
-        
-    return hasher.hexdigest()
-
 
 def checksum_file(filename, fast=False):
     import os
@@ -48,6 +31,22 @@ def checksum_file(filename, fast=False):
         if not x:
             break
         hasher.update(x)
+    return hasher.hexdigest()
+
+
+def checksum_path(path, fast=False):
+    import os
+    from hashlib import md5
+    from genomicode import filelib
+    
+    hasher = md5()
+
+    # Checksum each file.
+    filenames = filelib.list_files_in_path(path)
+    for filename in filenames:
+        x = checksum_file(filename, fast=fast)
+        hasher.update(x)
+        
     return hasher.hexdigest()
 
 

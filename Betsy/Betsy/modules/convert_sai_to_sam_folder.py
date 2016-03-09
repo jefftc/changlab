@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import config
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
         from Betsy import module_utils
@@ -94,7 +94,7 @@ class Module(AbstractModule):
         assert orientation in ["single", "paired_fr", "paired_rf"]
 
         # Make a list of bwa commands.
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             sample, pair1_fq, pair1_sai, pair2_fq, pair2_sai, \
@@ -139,7 +139,7 @@ class Module(AbstractModule):
             x = " ".join(x)
             commands.append(x)
             
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:

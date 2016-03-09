@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from Betsy import module_utils
 
@@ -33,7 +33,7 @@ class Module(AbstractModule):
             jobs.append(x)
         
         # Make a list of commands.
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, out_filename = x
@@ -49,7 +49,7 @@ class Module(AbstractModule):
             x = " ".join(x)
             commands.append(x)
             
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
         for x in jobs:
@@ -62,6 +62,6 @@ class Module(AbstractModule):
         #original_file = module_utils.get_inputid(antecedents.identifier)
         #filename = 'bamFiles_sorted' + original_file
         #return filename
-        return "bam"
+        return "sorted.contig.bam"
 
 

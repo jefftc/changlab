@@ -55,52 +55,6 @@ class AbstractModule:
         #                 e.g. the GEO ID.
         raise AssertionError, "No name_outfile function provided."
 
-
-    def hash_input(
-        self, module_name, antecedents, out_attributes, user_options):
-        # Return a hash that uniquely describes the input to this
-        # module.  This is used so that the module won't be re-run on
-        # the same data.
-        # 
-        # out_attributes has already been updated with
-        # set_out_attributes.
-        # user_options is a dictionary of the options for this module.
-        import hashlib
-        import operator
-        from Betsy import bhashlib
-
-        if not operator.isSequenceType(antecedents):
-            antecedents = [antecedents]
-
-        hasher = hashlib.md5()
-
-        # Hash the module name.
-        hasher.update(module_name)
-            
-        # Hash the inputs.
-        for data_node in antecedents:
-            # Hash the hash of the input files.
-            x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
-            hasher.update(x)
-            #identifier = data_node.identifier
-            #hasher.update(identifier)
-            ## Shortcut: don't actually hash the whole file.
-            #size = os.path.getsize(identifier)
-            #hasher.update(str(size))
-            #hasher.update(bhashlib.checksum_file_or_path(identifier))
-            
-        # Hash the outputs.
-        attrs = out_attributes.copy()
-        attrs.update(user_options)
-        for key in sorted(attrs):
-            hasher.update(key)
-            x = attrs[key]
-            if type(x) is not type("") and operator.isSequenceType(x):
-                x = ",".join(x)
-            hasher.update(str(x))
-        return hasher.hexdigest()
-
-
     def set_out_attributes(self, antecedents, out_attributes):
         # Return the out_attributes that describes the output data.  This
         # is needed when the module looks at the data and sets some value,

@@ -32,6 +32,9 @@ STARAlignmentFolder = DataType(
     "STARAlignmentFolder",
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+    AttributeDef(
+        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        help="For subtracting mouse reads from PDX models of FastqFolder"),
     help="Results from a STAR alignment.  Includes SAM files and other stuff.",
     )
 
@@ -141,11 +144,14 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
         Constraint(
             "orientation", CAN_BE_ANY_OF, NGS.ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Constraint("contents", SAME_AS, 0, 1),
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        
         help="Align to a reference genome with star.  "
         "Running with too many processors will kill the machine.  8 is "
         "pretty safe."
@@ -157,6 +163,8 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Consequence("aligner", SET_TO, "star"),
+        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, ["no", "yes"]),
+        Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         help="Pull out the SAM files from the STAR results folder.",
         ),
 

@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import config
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
 
         in_path = in_data.identifier
         filelib.safe_mkdir(out_path)
@@ -41,7 +41,7 @@ class Module(AbstractModule):
         assert filelib.exists_nz(x)
         make_tag_directory = x
         
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             in_filename, tag_dir, log_file = x
@@ -56,7 +56,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, log_file)
             commands.append(x)
 
-        shell.parallel(commands, max_procs=num_cores, path=out_path)
+        parallel.pshell(commands, max_procs=num_cores, path=out_path)
 
         # Make sure the analysis completed successfully.
         x = [x[-1] for x in jobs]

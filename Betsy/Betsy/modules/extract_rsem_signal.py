@@ -44,8 +44,8 @@ class Module(AbstractModule):
         gene_id = transcript_id = None
         # Pull out the gene and transcript IDs.
         for matrix in sample2matrix.itervalues():
-            x1 = matrix.get_annots("gene_id")
-            x2 = matrix.get_annots("transcript_id(s)")
+            x1 = matrix["gene_id"]
+            x2 = matrix["transcript_id(s)"]
             if gene_id is None:
                 gene_id = x1
             if transcript_id is None:
@@ -66,7 +66,7 @@ class Module(AbstractModule):
         samples = []
         for sample in sorted(sample2matrix):
             matrix = sample2matrix[sample]
-            exp = matrix.get_annots(header)
+            exp = matrix[header]
             assert len(exp) == len(gene_id)
             t_data.append(exp)
             samples.append(sample)

@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import shell
+        from genomicode import parallel
         from genomicode import alignlib
         from genomicode import config
         from Betsy import module_utils
@@ -47,14 +47,14 @@ class Module(AbstractModule):
 
         # VarScan will generate a "Parsing Exception" if there are 0
         # reads in a location.  Filter those out.
-        sq = shell.quote
+        sq = parallel.quote
         commands = []
         for x in jobs:
             sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
             x = "awk -F'\t' '$4 != 0 {print}' %s > %s" % (
                 in_filename, tmp1_filename)
             commands.append(x)
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
         x = [x[2] for x in jobs]
         filelib.assert_exists_nz_many(x)
         
@@ -88,7 +88,7 @@ class Module(AbstractModule):
         #    print x
         #import sys; sys.exit(0)
 
-        shell.parallel(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=num_cores)
         x = [x[3] for x in jobs]
         filelib.assert_exists_nz_many(x)
 

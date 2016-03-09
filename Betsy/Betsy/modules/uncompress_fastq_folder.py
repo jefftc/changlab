@@ -12,6 +12,9 @@ class Module(AbstractModule):
         from genomicode import parallel
         from Betsy import module_utils
 
+        # This this is I/O heavy, don't use so many cores.
+        MAX_CORES = 2
+
         filelib.safe_mkdir(out_path)
         filenames = module_utils.find_fastq_files(in_data.identifier)
         assert filenames, "I could not find any FASTQ files."
@@ -33,11 +36,13 @@ class Module(AbstractModule):
             keywds = {}
             x = uncompress_file, args, keywds
             commands.append(x)
-        parallel.run(commands, num_cores)
+            
+        nc = min(MAX_CORES, num_cores)
+        parallel.pyfun(commands, num_procs=nc)
 
         
     def name_outfile(self, antecedents, user_options):
-        return "fastq_uncompressed"
+        return "uncompressed.fastq"
 
 
 def uncompress_file(in_filename, out_filename):
