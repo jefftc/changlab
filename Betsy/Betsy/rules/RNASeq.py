@@ -81,16 +81,16 @@ all_modules = [
         ),
     ModuleNode(
         "index_reference_rsem",
-        RSEMReferenceGenome, RSEMReferenceGenome,
+        ReferenceGenome, RSEMReferenceGenome,
         OptionDef(
             "gtf_file", 
             help="Gene annotations in GTF format.",
             ),
-        Constraint("rsem_indexed", MUST_BE, "no"),
+        #Constraint("rsem_indexed", MUST_BE, "no"),
         Consequence("rsem_indexed", SET_TO, "yes"),
-        Constraint("bowtie1_indexed", MUST_BE, "no"),
+        #Constraint("bowtie1_indexed", MUST_BE, "no"),
         Consequence("bowtie1_indexed", SET_TO, "yes"),
-        Constraint("bowtie2_indexed", MUST_BE, "no"),
+        #Constraint("bowtie2_indexed", MUST_BE, "no"),
         Consequence("bowtie2_indexed", SET_TO, "yes"),
         ),
     
