@@ -14,7 +14,7 @@ class Module(AbstractModule):
 
         # This this is I/O heavy, don't use so many cores.  Also,
         # takes 4-5 Gb RAM per process.
-        MAX_CORES = 2
+        MAX_CORES = module_utils.calc_max_procs_from_ram(5, upper_max=4)
 
         fastq_node, sample_node, summary_node = antecedents
         fastq_path = fastq_node.identifier
@@ -26,6 +26,7 @@ class Module(AbstractModule):
             summary_node.identifier, endswith=".matches.txt")
         assert summary_filenames, "No .matches.txt files."
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
         sample2summary = {}  # sample -> summary_filename
         for filename in summary_filenames:
@@ -73,7 +74,8 @@ class Module(AbstractModule):
         nc = min(MAX_CORES, num_cores)
         results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.5)
         assert len(results) == len(jobs2)
-
+        metadata["num cores"] = nc
+        
         # Make sure the fastq files were generated.
         x1 = [x[4] for x in jobs]
         x2 = [x[5] for x in jobs]
@@ -81,6 +83,8 @@ class Module(AbstractModule):
         x = [x for x in x if x]
         # BUG: If all reads were removed, then this will fail incorrectly.
         filelib.assert_exists_nz_many(x)
+
+        return metadata
             
     
     def name_outfile(self, antecedents, user_options):

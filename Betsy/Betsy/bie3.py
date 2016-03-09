@@ -107,6 +107,9 @@ debug_print
 # _is_attribute_compatible
 # _merge_data_nodes
 # _merge_attribute_values
+# _is_data_node_atomic
+# _make_data_node_atomic
+# _is_network_atomic
 #
 # _merge_start_ids         Should only be called by find_paths_by_start_ids
 # _does_based_on_data_conflict_with_out_data    Only by find_paths_by_start_ids
@@ -145,6 +148,7 @@ debug_print
 #
 # _object_to_dict           Use for writing and reading json file
 # _dict_to_object           Use for writing and reading json file
+
 
 # These are also used in cbie3module.c.  If these values change, you
 # need to change that file too!
@@ -731,6 +735,16 @@ class DataNode(object):
         return inst
 
 
+# DataNode + identifier.
+class IdentifiedDataNode:
+    def __init__(self, data, identifier=""):
+        self.data = data
+        self.identifier = identifier
+    def __repr__(self):
+        x = str(self.data) + ' identifier:' + self.identifier
+        return x
+
+
 class ModuleNode:
     def __init__(self, name, in_datatypes, out_datatype, *params, **keywds):
         # params is a list of Constraint, Consequence, and OptionDef.
@@ -843,10 +857,13 @@ class ModuleNode:
 
         assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF, SAME_AS]
         if constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]:
+            assert in_datatype.is_valid_attribute_name(constraint.name), \
+                ("%r: Invalid attribute %r for datatype %r." %
+                 (name, constraint.name, in_datatype.name))
             assert in_datatype.is_valid_attribute_value(
-                constraint.name,
-                constraint.arg1), ("%r: Invalid value %r for attribute %r." %
-                                   (name, constraint.arg1, constraint.name))
+                constraint.name, constraint.arg1), \
+                ("%r: Invalid value %r for attribute %r." %
+                 (name, constraint.arg1, constraint.name))
         elif constraint.behavior == SAME_AS:
             # Make sure the datatype has this attribute.
             dt = in_datatypes[constraint.arg1]
@@ -1170,10 +1187,14 @@ def make_network(moduledb, out_data, custom_attributes):
     # Clean up this code.
     network = _init_network(moduledb, out_data, custom_attributes)
 
+    # The inferencing engine should generate DataNodes whose
+    # attributes are all atomic.
+    assert _is_network_atomic(network)
+
     # Split the data nodes so that everything is TYPE_ATOM.  Fixes
     # problems in the inference, and also makes the other steps easier
     # to handle.  Carefully build the network back up.
-    network = _split_network(network)
+    #network = _split_network(network)
 
     optimizers = [
         # There should not be any cycles.
@@ -1227,13 +1248,13 @@ def _init_network(moduledb, out_data, custom_attributes):
         # Pop the next node off the stack.
         node_id = stack.pop()
         assert node_id < len(network.nodes)
-        node = network.nodes[node_id]
 
         # If I've already seen this node, then don't process it again.
         if node_id in seen:
             continue
         seen[node_id] = 1
 
+        node = network.nodes[node_id]
         if isinstance(node, DataNode):
             # Backwards chain to the previous module.
             modules = _bc_to_modules(moduledb, node)
@@ -1244,13 +1265,16 @@ def _init_network(moduledb, out_data, custom_attributes):
                 network.transitions[m_id] = network.transitions.get(m_id, [])
                 network.transitions[m_id].append(node_id)
         elif isinstance(node, ModuleNode):
-            x = [_bc_to_inputs(network, node_id, x, custom_attributes)
-                 for x in network.transitions[node_id]]
-            all_inputs = _uniq(_flatten(x))
-            # Why only one chain back from one data node?
-            #cons_id = transitions[node_id][0]
-            #all_inputs = _bc_to_inputs(
-            #    node, nodes[cons_id], custom_attributes)
+            # Networks generated may not be identical.  Nodes can be
+            # added onto the stack in different orders, leading to
+            # differences in how the network grows.
+            all_inputs = {}
+            for x in network.transitions[node_id]:
+                combos = _bc_to_inputs(network, node_id, x, custom_attributes)
+                for combo in combos:
+                    for x in combo:
+                        all_inputs[x] = 1
+
             for d in all_inputs:
                 d_id = _find_same_data(network.nodes, d)
                 if d_id == -1:
@@ -1878,6 +1902,7 @@ class _OptimizeMergeData1:
         paths = [x for x in paths
                  if not (node_id1 in x[0] and node_id2 in x[0])]
 
+        
         # The combined data node must be able to generate all these
         # out data nodes.
         merged_data = _merge_data_nodes(node_1, node_2)
@@ -2220,10 +2245,15 @@ def _find_paths_by_start_ids_hh(
     from genomicode import jmath
 
     PRUNE_PATHS = True
-    
+
     assert node_id < len(network.nodes), "%s %d" % (
         repr(node_id), len(network.nodes))
     node = network.nodes[node_id]
+    # For debugging.
+    #if isinstance(node, DataNode):
+    #    node_name = node.datatype.name
+    #else:
+    #    node_name = node.name
 
     all_paths = {}
     #has_missing = True  # Optimization
@@ -2250,7 +2280,7 @@ def _find_paths_by_start_ids_hh(
         # Find some combination of inputs that works.
         combos = _bc_to_input_ids(
             network, node_id, custom_attributes, nodeid2parents=nodeid2parents)
-
+        
     checked_pathway = {}
     for cnum, combo in enumerate(combos):
         # combo is a list of node_ids.
@@ -2609,6 +2639,7 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     x = [x.node_ids for x in paths]
     path_node_ids = x[0].union(*x[1:])
 
+    nodeid2parents = None
     descendents = _make_descendent_dict(network)
     ## Only care about the descendents that are in this network.
     #desc = {}
@@ -2635,7 +2666,7 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
             continue
 
         # Make sure at least one input datatype (that is not
-        # DefaultAttributesFrom) that matches a user attribute.
+        # DefaultAttributesFrom) has a custom attrkbute.
         daf = [x.input_index for x in module.default_attributes_from]
         in_dtype_names = [
             x.name for (i, x) in enumerate(module.in_datatypes)
@@ -2644,19 +2675,32 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
         if not x:
             continue
         # This should be a converting module.
-        
-        # Find the node_ids that match a user attribute.
-        x = nodeid2parents.get(module_id, [])
-        x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
-        x = [x for x in x if x in path_node_ids]
-        node_ids = x
-        
-        data_node_ids = data_node_ids.union(node_ids)
+
+        # Find the node_ids that match a custom attribute.
+        if nodeid2parents is None:
+            nodeid2parents = _make_parents_dict(network)
+        combos = _bc_to_input_ids(
+            network, module_id, custom_attributes,
+            nodeid2parents=nodeid2parents)
+        for node_ids in combos:
+            x = node_ids
+            # Ignore daf.
+            x = [x for (i, x) in enumerate(node_ids) if i not in daf]
+            x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
+            x = [x for x in x if x in path_node_ids]
+            node_ids = x
+            data_node_ids = data_node_ids.union(node_ids)
+
+        #x = nodeid2parents.get(module_id, [])
+        #x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
+        #x = [x for x in x if x in path_node_ids]
+        #$node_ids = x
+        #data_node_ids = data_node_ids.union(node_ids)
 
     # List the node_ids that don't have any descendents of the same
     # type.
     no_desc = set()
-    for node_id in node_ids:
+    for node_id in data_node_ids:
         x = descendents.get(node_id, [])
         x = [x for x in x if x in path_node_ids]
         x = [x for x in x if isinstance(network.nodes[x], DataNode)]
@@ -4239,6 +4283,8 @@ def plot_network_gv(
             x1 = id2name[node_id]
             x2 = id2name[next_id]
             #if node_id in bold and next_id in bold:
+            #if (node_id, next_id) in bold_transitions or \
+            #       (next_id, node_id) in bold_transitions:
             if (node_id, next_id) in bold_transitions:
                 edge2attr["penwidth"] = bold_width
                 edge2attr["color"] = bold_color
@@ -4255,20 +4301,24 @@ def plot_network_gv(
 
 def read_network(file_or_handle):
     import json
+    from genomicode import alignlib
+    
     handle = file_or_handle
     if type(handle) is type(""):
         handle = open(file_or_handle, 'r')
     text = handle.read()
-    network = json.loads(text, object_hook=_dict_to_object)
+    network = json.loads(text, object_hook=alignlib._dict_to_object)
     return network
 
 
 def write_network(file_or_handle, network):
     import json
+    from genomicode import alignlib
+    
     handle = file_or_handle
     if type(handle) is type(""):
         handle = open(file_or_handle, 'w')
-    json.dump(network, handle, default=_object_to_dict, indent=2)
+    json.dump(network, handle, default=alignlib._object_to_dict, indent=2)
 
 
 def debug_print(s):
@@ -4293,6 +4343,15 @@ def _bc_to_modules(moduledb, out_data):
 def _bc_to_inputs(
     network, module_id, out_data_id, custom_attributes,
     force_default_input_attribute_to_be_all_values=False):
+    # Return a list of tuples of input objects.
+    import itertools
+    # If INPUTs have ENUM, can lead to cycles.
+    # subtract_mouse_reads -> Fastq.sub=[yes,no] -> align -> CIGAR ->
+    #   subtract_mouse_reads
+    # If this is True, will generate inputs that do not have ENUM.
+    inputs_have_atomic_attribute_values = True
+    #inputs_have_atomic_attribute_values = False
+    
     module = network.nodes[module_id]
     out_data = network.nodes[out_data_id]
 
@@ -4346,8 +4405,23 @@ def _bc_to_inputs(
         attributes = all_attributes[in_num]
         attrsource = all_attrsource[in_num]
 
-        x = in_datatype.output(**attributes)
-        all_inputs.append(x)
+        if inputs_have_atomic_attribute_values:
+            attr_names = sorted(attributes)
+            attr_values = [attributes[x] for x in attr_names]
+            for i in range(len(attr_values)):
+                if type(attr_values[i]) is type(""):
+                    attr_values[i] = [attr_values[i]]
+            inputs_i = []
+            for x in itertools.product(*attr_values):
+                d = {}
+                for key, value in zip(attr_names, x):
+                    d[key] = value
+                x = in_datatype.output(**d)
+                inputs_i.append(x)
+            all_inputs.append(inputs_i)
+        else:
+            x = in_datatype.output(**attributes)
+            all_inputs.append([x])
 
         # Optimization: Don't call debug_print and sorted.
         if not DEBUG:
@@ -4360,7 +4434,9 @@ def _bc_to_inputs(
             debug_print("  %s=%s (%s)" %
                         (name, attributes[name], attrsource[name]))
 
-    return all_inputs
+    combos = [tuple(x) for x in itertools.product(*all_inputs)]
+    #return all_inputs
+    return combos
 
 
 def _bc_to_one_input(
@@ -4626,6 +4702,7 @@ def _bc_to_input_ids(
     # In about 97% of the cases, the module only has 1 datatype.  In
     # ~90% of the cases, there are 2 input IDs.
     module = network.nodes[module_id]
+    assert isinstance(module, ModuleNode)
 
     # For each in_datatype, find all the data objects that match this
     # type.
@@ -4682,15 +4759,22 @@ def _bc_to_input_ids(
             network, module_id, input_datas, custom_attributes):
             continue
 
-        # Make sure the outputs are compatible with the module.
-        # Can't use _fc_to_output_ids--recursive.
+        # Can't use _fc_to_output_ids -- recursive.
         output_datas = _fc_to_outputs(module, input_datas)
-        for x in itertools.product(all_output_ids, output_datas):
-            out_id, output_data = x
-            if _is_data_compatible(output_data, network.nodes[out_id]):
-                break
-        else:
+        num_found = 0
+        for output_data in output_datas:
+            for out_id in all_output_ids:
+                if _is_data_compatible(output_data, network.nodes[out_id]):
+                    num_found += 1
+                    break
+        # Make sure at least one of the outputs generated by this
+        # module can be found in the network.
+        if not num_found:
             continue
+        ## Make sure all of the outputs generated by this module are
+        ## found in the network.
+        #if num_found < len(output_datas):
+        #    continue
 
         # Passes all the tests.
         valid.append(input_ids)
@@ -4726,7 +4810,7 @@ def _fc_to_outputs(module, in_datas):
     # module and in_datas.  Multiple objects can be generated because
     # the consequences can vary.  E.g. center_genes can set
     # gene_center to either "mean" or "median".  It can be either, but
-    # must be one of them.
+    # must be one of them.  Each of the DataNodes are atomic.
     import itertools
 
     # Check the input variables.
@@ -4764,8 +4848,7 @@ def _fc_to_outputs(module, in_datas):
         for attrdef in datatype.attribute_defs.itervalues():
             attributes[attrdef.name] = attrdef.default_in
 
-    # Set the constraints.
-    # Set the attributes based on the consequences of the module.
+    # Handle the consequences.
     possibilities = {}
     for cons in module.consequences:
         if cons.behavior == SET_TO:
@@ -4795,14 +4878,17 @@ def _fc_to_outputs(module, in_datas):
     for values in itertools.product(*args):
         for key, value in zip(names, values):
             attributes[key] = value
-            # Optimization: DataNode.__init__ is very expensive
-            # because of all the checks.  Skip the checks and
-            # instantiate the class directly.
-            #x = DataNode(datatype, **attributes)
-            x = DataNode.__new__(DataNode)
-            x.datatype = datatype
-            x.attributes = attributes.copy()
-            outputs.append(x)
+        # Optimization: DataNode.__init__ is very expensive
+        # because of all the checks.  Skip the checks and
+        # instantiate the class directly.
+        #x = DataNode(datatype, **attributes)
+        x = DataNode.__new__(DataNode)
+        x.datatype = datatype
+        x.attributes = attributes.copy()
+        outputs.append(x)
+
+    for x in outputs:
+        assert _is_data_node_atomic(x)
 
     return outputs
 
@@ -4810,7 +4896,6 @@ def _fc_to_outputs(module, in_datas):
 def _fc_to_output_ids(
     network, module_id, custom_attributes,
     all_input_ids=None, all_output_ids=None, nodeid2parents=None):
-    import itertools
     # Return a list of (in_data_ids, module_id, out_data_id) that can be
     # generated by this module.
     combos = _bc_to_input_ids(
@@ -4825,12 +4910,19 @@ def _fc_to_output_ids(
         if all_output_ids is not None:
             output_data_ids = [
                 x for x in output_data_ids if x in all_output_ids]
+        # output_datas should be atomic.
         output_datas = _fc_to_outputs(network.nodes[module_id], in_datas)
-        for x in itertools.product(output_data_ids, output_datas):
-            out_data_id, output_data = x
-            if _is_data_compatible(network.nodes[out_data_id], output_data):
+        for out_data_id in output_data_ids:
+            out_node = network.nodes[out_data_id]
+            found = False
+            for output_data in output_datas:
+                if _is_data_compatible(output_data, out_node):
+                    found = True
+                    break
+            if found:
                 x = in_data_ids, module_id, out_data_id
                 paths.append(x)
+                break
     return paths
 
 
@@ -4865,19 +4957,39 @@ def _is_valid_inputs(network, module_id, in_datas, custom_attributes,
                      out_data_ids=None):
     # If in_datas is compatible with any of the out_datas, then return
     # True.
+
+    # in_datas is a list of DataNodes.  The DataNodes may contain ENUM
+    # attributes, which are hard to compare.  Split them up into
+    # atomic values.
+    # List of lists of DataNodes.
+    atomic_in_datas = [_make_data_node_atomic(x) for x in in_datas]
+    
     module = network.nodes[module_id]
     assert len(in_datas) == len(module.in_datatypes)
     if out_data_ids is None:
         out_data_ids = network.transitions.get(module_id, [])
     for out_data_id in out_data_ids:
-        all_inputs = _bc_to_inputs(
-            network, module_id, out_data_id, custom_attributes,
-            force_default_input_attribute_to_be_all_values=True)
-        for i in range(len(in_datas)):
-            if not _is_data_compatible(in_datas[i], all_inputs[i]):
+        # Make list of all the inputs that can lead to this
+        # out_data_id.
+        combos = _bc_to_inputs(
+            network, module_id, out_data_id, custom_attributes)
+        # If each of the in_datas is compatible with the corresponding
+        # data nodes in the combos, then, this is compatible.
+        for i in range(len(atomic_in_datas)):
+            nodes_user = atomic_in_datas[i]
+            nodes_bc = [x[i] for x in combos]
+            if not _is_atomic_data_compatible(nodes_user, nodes_bc):
                 break
         else:
             return True
+        #all_inputs = _bc_to_inputs(
+        #    network, module_id, out_data_id, custom_attributes,
+        #    force_default_input_attribute_to_be_all_values=True)
+        #for i in range(len(in_datas)):
+        #    if not _is_data_compatible(in_datas[i], all_inputs[i]):
+        #        break
+        #else:
+        #    return True
     return False
 
 
@@ -4896,13 +5008,28 @@ def _is_valid_input_i(
     ## a superset of each output, will erroneously say that module
     ## cannot take this input.
     ## Solution: merge the outputs when possible.
+
+    # List of data nodes.
+    atomic_in_data = _make_data_node_atomic(in_data)
+
     out_data_ids = network.transitions.get(module_id, [])
     for out_data_id in out_data_ids:
-        all_inputs = _bc_to_inputs(
-            network, module_id, out_data_id, custom_attributes,
-            force_default_input_attribute_to_be_all_values=True)
-        if _is_data_compatible(in_data, all_inputs[input_num]):
+        combos = _bc_to_inputs(
+            network, module_id, out_data_id, custom_attributes)
+        nodes_bc = [x[input_num] for x in combos]
+        if _is_atomic_data_compatible(atomic_in_data, nodes_bc):
             return True
+        #all_inputs = _bc_to_inputs(
+        #    network, module_id, out_data_id, custom_attributes,
+        #    force_default_input_attribute_to_be_all_values=True)
+        #if _is_data_compatible(in_data, all_inputs[input_num]):
+        #    return True
+
+        #all_inputs = _bc_to_inputs(
+        #    network, module_id, out_data_id, custom_attributes,
+        #    force_default_input_attribute_to_be_all_values=True)
+        #if _is_data_compatible(in_data, all_inputs[input_num]):
+        #    return True
     return False
 
 
@@ -4914,6 +5041,7 @@ def _is_valid_input_ids(
     #next_ids = network.transitions.get(module_id, [])
     #if len(next_ids) <= 1:
     #    return True
+    assert type(out_id) is type(0)
     if _bc_to_input_ids(
         network, module_id, custom_attributes, all_input_ids=in_data_ids,
         all_output_ids=[out_id], nodeid2parents=nodeid2parents):
@@ -4947,8 +5075,9 @@ def _is_valid_output(module, data):
     # If this module doesn't produce the same data type, then it can't
     # produce this data object.
     if module.out_datatype.name != data.datatype.name:
-        #debug_print(
-        #    "ModuleNode can't generate data type: %s." % data.datatype.name)
+        debug_print(
+            "ModuleNode %s can't generate data type: %s." %
+            (module.name, data.datatype.name))
         return False
 
     debug_print("Testing if module %s can produce data %s." %
@@ -5369,6 +5498,21 @@ def _is_data_compatible(data_specific, data_general):
     return True
 
 
+def _is_atomic_data_compatible(datas_specific, datas_general):
+    # Return boolean indicating whether datas_specific is compatible
+    # with datas_general.  datas_specific and datas_general are lists
+    # of DataNodes that are all atomic.
+
+    # Each of the datas_specific must be found in datas_general.
+    for d_s in datas_specific:
+        for d_g in datas_general:
+            if _is_data_compatible(d_s, d_g):
+                break
+        else:
+            return False
+    return True
+
+
 def _is_attribute_same(values1, values2):
     # CASE   N1_TYPE    N2_TYPE    RESULT
     #   1      ATOM       ATOM     OK if ATOM equal.
@@ -5469,6 +5613,57 @@ def _merge_attribute_values(values1, values2):
         x = [x for x in values1 if x not in values2]
         return x + values2
     raise AssertionError, "How did I get here?"
+
+
+def _is_data_node_atomic(node):
+    # Return whether the attributes of this data node are all
+    # TYPE_ATOM.
+    assert isinstance(node, DataNode)
+    for name, value in node.attributes.iteritems():
+        x = _get_attribute_type(value)
+        if x != TYPE_ATOM:
+            return False
+    return True
+
+
+def _make_data_node_atomic(node):
+    # Return a list of DataNodes that are all atomic.
+    import itertools
+    
+    assert isinstance(node, DataNode)
+
+    # Optimization
+    if _is_data_node_atomic(node):
+        return [node]
+
+    # Get all the attributes.
+    attr_names = []   # list of attribute names
+    attr_values = []  # list of list of attribute values
+    for name, values in node.attributes.iteritems():
+        if _get_attribute_type(values) == TYPE_ATOM:
+            values = [values]
+        attr_names.append(name)
+        attr_values.append(values)
+
+    # Make new DataNodes.
+    atomic_nodes = []
+    for values in itertools.product(*attr_values):
+        attrs = {}
+        for name, value in zip(attr_names, values):
+            attrs[name] = value
+        x = DataNode(node.datatype, **attrs)
+        atomic_nodes.append(x)
+    return atomic_nodes
+
+
+def _is_network_atomic(network):
+    # Return whether all data nodes in this network are atomic.
+    for node in network.nodes:
+        if not isinstance(node, DataNode):
+            continue
+        if not _is_data_node_atomic(node):
+            return False
+    return True
 
 
 def _merge_start_ids(paths):
@@ -5622,6 +5817,7 @@ def _make_ancestor_dict_h(network):
             # Try to diagnose the cycle.
             nid = all_nodes[0]
             cycle = [nid]
+            transitions = []
             while True:
                 nid = cycle[-1]
                 x1 = node2parents.get(nid, [])
@@ -5631,8 +5827,13 @@ def _make_ancestor_dict_h(network):
                     # Add last node.
                     assert x2
                     cycle.append(x2[0])
+                    transitions.append((x2[0], nid))
                     break
                 cycle.append(x3[0])
+                transitions.append((x3[0], nid))
+            plot_network_gv(
+                "cycle.png", network, verbose=True, highlight_green=cycle,
+                bold_transitions=transitions, show_node_ids=cycle)
             lines = []
             for nid in cycle:
                 node = network.nodes[nid]
@@ -5642,18 +5843,15 @@ def _make_ancestor_dict_h(network):
                     name = node.name
                 x = "%s[%d]" % (name, nid)
                 # DEBUG
-                a = "mouse_reads_subtracted"
-                if isinstance(node, DataNode) and a in node.attributes:
-                    x += " %s=%s" % (a, node.attributes[a])
-                
+                #a = "mouse_reads_subtracted"
+                #if isinstance(node, DataNode) and a in node.attributes:
+                #    x += " %s=%s" % (a, node.attributes[a])
                 lines.append(x)
             x = " <- ".join(lines)
             x = parselib.linesplit(x)
             x = "\n".join(x)
             x = "%s\n%s" % (errmsg, x)
             #assert niter < MAX_ITER, errmsg
-            plot_network_gv(
-                "test.png", network, verbose=True, highlight_green=cycle)
             assert niter < MAX_ITER, x
         node_id = all_nodes.pop(0)
         parents = node2parents.get(node_id, [])

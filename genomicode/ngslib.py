@@ -1,11 +1,28 @@
 """Miscellaneous next generation sequencing tools.
 
-Methods:
+Functions:
+get_bedtools_version
 make_bedtools_coverage_command
 make_bedtools_genomecov_command
 parse_bedtools_genomecov_results
 
 """
+
+def get_bedtools_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    bedtools = filelib.which_assert(config.bedtools)
+    x = parallel.sshell("%s --version" % bedtools, ignore_nonzero_exit=True)
+    x = x.strip()
+    # bedtools v2.23.0
+    # Version: 1.2 (using htslib 1.2.1)
+    m = re.search(r"v([\w\. ]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
 
 def make_bedtools_coverage_command(
     bam_filename, features_bed, cov_filename):

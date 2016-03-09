@@ -5,7 +5,7 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, in_data, out_attributes, user_options, num_cores,
+        self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
         import shutil
@@ -13,14 +13,13 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
-        
+
+        ref_node, gene_node = antecedents
         rsem_prepare = filelib.which_assert(config.rsem_prepare)
         ref = alignlib.standardize_reference_genome(
-            in_data.identifier, out_path, use_symlinks=True)
-
-        gtf_file = user_options.get("gtf_file")
-        assert gtf_file
-        assert filelib.exists_nz(gtf_file), "File not found: %s" % gtf_file
+            ref_node.identifier, out_path, use_symlinks=True)
+        gtf_file = gene_node.identifier
+        filelib.assert_exists_nz(gtf_file)
 
         # rsem-prepare-reference --bowtie --bowtie2 --gtf gtf02.gtf
         #   <reference.fa> <reference_name>

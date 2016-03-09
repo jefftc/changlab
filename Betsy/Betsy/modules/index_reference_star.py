@@ -5,22 +5,22 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, in_data, out_attributes, user_options, num_cores,
+        self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
         from genomicode import config
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
-        from Betsy import module_utils
 
+        ref_node, gene_node = antecedents
         ref = alignlib.standardize_reference_genome(
-            in_data.identifier, out_path, use_symlinks=True)
+            ref_node.identifier, out_path, use_symlinks=True)
         filelib.safe_mkdir(out_path)
 
         STAR = filelib.which_assert(config.STAR)
-        gtf_file = module_utils.get_user_option(
-            user_options, "gtf_file", check_file=True)
+        gtf_file = gene_node.identifier
+        filelib.assert_exists_nz(gtf_file)
        
         # STAR --runThreadN 40 --runMode genomeGenerate --genomeDir test05 \
         #   --genomeFastaFiles <file.fasta> \

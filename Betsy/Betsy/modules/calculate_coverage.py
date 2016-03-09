@@ -1,6 +1,5 @@
 from Module import AbstractModule
 
-
 class Module(AbstractModule):
     def __init__(self):
         AbstractModule.__init__(self)
@@ -13,17 +12,18 @@ class Module(AbstractModule):
         from genomicode import parallel
         from genomicode import filelib
         from genomicode import ngslib
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
 
         bam_node, reference_node = antecedents
-        bam_filenames = filelib.list_files_in_path(
-            bam_node.identifier, endswith=".bam")
+        bam_filenames = mlib.find_bam_files(bam_node.identifier)
         reference_file = reference_node.identifier
+        assert filelib.exists_nz(reference_file)
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
-        assert os.path.exists(reference_file)
+        metadata["tool"] = "bedtools %s" % ngslib.get_bedtools_version()
 
-        features_bed = module_utils.get_user_option(
+        features_bed = mlib.get_user_option(
             user_options, "features_bed", check_file=True)
         if features_bed:
             raise NotImplementedError, "features_bed not implemented"
@@ -32,10 +32,8 @@ class Module(AbstractModule):
         jobs = []   # list of sample, bam_filename, coverage_filename
         for bam_filename in bam_filenames:
             # <path>/<sample>.bam
-            in_path, file_ = os.path.split(bam_filename)
-            f, e = os.path.splitext(file_)
-            assert e == ".bam"
-            sample = f
+            in_path, sample, ext = mlib.splitpath(bam_filename)
+            assert ext == ".bam"
             coverage_filename = os.path.join(
                 out_path, "%s.coverage.txt" % sample)
             jobs.append((sample, bam_filename, coverage_filename))
@@ -47,14 +45,12 @@ class Module(AbstractModule):
             x = ngslib.make_bedtools_genomecov_command(
                 bam_filename, reference_file, cov_filename)
             commands.append(x)
-
+        metadata["commands"] = commands
         parallel.pshell(commands, max_procs=num_cores)
         
         # Make sure the analysis completed successfully.
-        for x in jobs:
-            sample, bam_filename, cov_filename = x
-            assert filelib.exists_nz(cov_filename), \
-                   "Missing: %s" % cov_filename
+        x = [x[-1] for x in jobs]
+        filelib.assert_exists_nz_many(x)
 
         results = {}  # sample -> bedtools results
         for x in jobs:
@@ -121,9 +117,14 @@ class Module(AbstractModule):
 
         sq = parallel.quote
         os.system("txt2xls -b %s > %s" % (sq(TXT_FILE), sq(XLS_FILE)))
+
+        filelib.assert_exists_nz(XLS_FILE)
+        os.unlink(TXT_FILE)
             
         # TODO: 
         # Make plots showing the histogram of the read depths.
+        
+        return metadata
 
         
     def name_outfile(self, antecedents, user_options):

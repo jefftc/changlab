@@ -5,25 +5,27 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
+        self, network, in_data, out_attributes, user_options, num_cores,
         out_path):
         import os
-        import shutil
-        from genomicode import filelib
-        from Betsy import module_utils
+        #import shutil
+        #from genomicode import filelib
+        #from Betsy import module_utils
 
-        filelib.safe_mkdir(out_path)
+        os.symlink(in_data.identifier, out_path)
 
-        filenames = module_utils.find_fastq_files(antecedents.identifier)
-        assert filenames, "I could not find any FASTQ files."
+        #filelib.safe_mkdir(out_path)
+
+        #filenames = module_utils.find_fastq_files(antecedents.identifier)
+        #assert filenames, "I could not find any FASTQ files."
 
         # Symlink the files to the new directory.
-        for in_filename in filenames:
-            in_path, in_file = os.path.split(in_filename)
-            out_filename = os.path.join(out_path, in_file)
-            assert not os.path.exists(out_filename)
-            os.symlink(in_filename, out_filename)
-            #shutil.copyfile(in_filename, out_filename)
+        #for in_filename in filenames:
+        #    in_path, in_file = os.path.split(in_filename)
+        #    out_filename = os.path.join(out_path, in_file)
+        #    assert not os.path.exists(out_filename)
+        #    os.symlink(in_filename, out_filename)
+        #    #shutil.copyfile(in_filename, out_filename)
 
         
     def set_out_attributes(self, antecedents, out_attributes):

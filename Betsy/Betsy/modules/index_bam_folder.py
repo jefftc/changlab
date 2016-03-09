@@ -11,11 +11,15 @@ class Module(AbstractModule):
         from genomicode import config
         from genomicode import filelib
         from genomicode import parallel
+        from genomicode import alignlib
 
         bam_path = in_data.identifier
         assert os.path.exists(bam_path)
         assert os.path.isdir(bam_path)
         filelib.safe_mkdir(out_path)
+
+        metadata = {}
+        metadata["tool"] = "samtools %s" % alignlib.get_samtools_version()
 
         # Find all the BAM files.
         bam_filenames = filelib.list_files_in_path(
@@ -47,8 +51,12 @@ class Module(AbstractModule):
                 ]
             x = " ".join(cmd)
             commands.append(x)
-        
+        metadata["commands"] = commands
         parallel.pshell(commands, max_procs=num_cores, path=out_path)
+
+        # TODO: Check for output files.
+        
+        return metadata
     
 
     def name_outfile(self, antecedents, user_options):

@@ -11,6 +11,8 @@ pretty_range
 pretty_pvalue
 pretty_date
 pretty_list
+pretty_time_delta
+pretty_filesize
 
 linesplit              Split one long string into lines.
 print_split
@@ -214,6 +216,52 @@ def pretty_list(items):
         return "%s and %s" % (items[0], items[1])
     x = ", ".join(items[:-1])
     return "%s, and %s" % (x, items[-1])
+
+
+def pretty_time_delta(delta):
+    # Delta is difference in time in seconds.
+    assert delta >= 0
+    days, x = divmod(delta, 60*60*24)
+    hours, x = divmod(x, 60*60)
+    minutes, seconds = divmod(x, 60)
+
+    if not days and not hours and not minutes and seconds < 1:
+        return "instant"
+    if not days and not hours and not minutes:
+        if seconds == 1:
+            return "1 sec"
+        return "%d secs" % seconds
+    if not days and not hours:
+        x = minutes + seconds/60.
+        return "%.1f mins" % x
+    if not days:
+        x = hours + minutes/60. + seconds/3600.
+        return "%.1f hrs" % x
+
+    day_or_days = "day"
+    if days > 1:
+        day_or_days = "days"
+    x = hours + minutes/60. + seconds/3600.
+    return "%d %s, %.1f hours" % (days, day_or_days, x)
+
+
+def pretty_filesize(size):
+    # size is the size in bytes.
+    assert size >= 0
+    bytes = size
+    kbytes, bytes = divmod(bytes, 1024)
+    mbytes, kbytes = divmod(kbytes, 1024)
+    gbytes, mbytes = divmod(mbytes, 1024)
+    tbytes, gbytes = divmod(gbytes, 1024)
+    if tbytes:
+        return "%.2f Tb" % (tbytes + gbytes/1024.)
+    if gbytes:
+        return "%.2f Gb" % (gbytes + mbytes/1024.)
+    if mbytes:
+        return "%.2f Mb" % (mbytes + kbytes/1024.)
+    if kbytes:
+        return "%.2f kb" % (kbytes + bytes/1024.)
+    return "%d b" % bytes
 
 
 def linesplit(one_long_line, prefix1=0, prefixn=4, width=72):

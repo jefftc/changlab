@@ -11,23 +11,18 @@ class Module(AbstractModule):
         from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
 
-        fastq_node, sample_node, reference_node = antecedents
-        fastq_path = fastq_node.identifier
+        fastq_node, sample_node, orient_node, reference_node = antecedents
+        fastq_files = mlib.find_merged_fastq_files(
+            sample_node.identifier, fastq_node.identifier)
         ref = alignlib.create_reference_genome(reference_node.identifier)
+        assert os.path.exists(ref.fasta_file_full)
+        orient = mlib.read_orientation(orient_node.identifier)
         filelib.safe_mkdir(out_path)
 
-        reference_path = reference_node.identifier
-
-        assert os.path.exists(fastq_path)
-        assert os.path.exists(ref.fasta_file_full)
-        assert os.path.isdir(fastq_path)
-
-        # Find the merged fastq files.
-        x = module_utils.find_merged_fastq_files(
-            sample_node.identifier, fastq_path)
-        fastq_files = x
+        metadata = {}
+        metadata["tool"] = "bowtie2 %s" % alignlib.get_bowtie2_version()
 
         # Make a list of the jobs to run.
         jobs = []
@@ -41,13 +36,13 @@ class Module(AbstractModule):
         # Generate bowtie2 commands for each of the files.
         attr2orient = {
             "single" : None,
-            "paired" : None,
-            "paired_ff" : "ff",
             "paired_fr" : "fr",
             "paired_rf" : "rf",
+            "paired_ff" : "ff",
             }
-        x = sample_node.data.attributes["orientation"]
-        orientation = attr2orient[x]
+        orientation = attr2orient[orient.orientation]
+        #x = sample_node.data.attributes["orientation"]
+        #orientation = attr2orient[x]
 
         sq = parallel.quote
         commands = []
@@ -59,20 +54,15 @@ class Module(AbstractModule):
                 orientation=orientation, sam_file=sam_filename, num_threads=nc)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
-
+        metadata["commands"] = commands
         parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
-        for x in jobs:
-            sample, pair1, pair2, sam_filename, log_filename = x
-            assert filelib.exists_nz(sam_filename), \
-                   "Missing: %s" % sam_filename
+        x = [x[-2] for x in jobs]
+        filelib.assert_exists_nz_many(x)
+            
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):
-        #from Betsy import module_utils
-        #data_node, group_node = antecedents
-        #original_file = module_utils.get_inputid(data_node.identifier)
-        #filename = 'Samfolder_' + original_file
-        #return filename
         return "alignments.bowtie2"
