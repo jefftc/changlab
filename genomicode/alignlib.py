@@ -866,7 +866,7 @@ class HTSeqCountOutput:
 
 
 def parse_htseq_count_output(file_or_handle):
-    # Return an HTSeqCountResults object.
+    # Return an HTSeqCountOutput object.
     import os
 
     #filename = None

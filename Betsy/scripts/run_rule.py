@@ -475,9 +475,8 @@ def build_pipelines(
         print
 
         # DEBUG
-        for i, path in enumerate(paths):
-            print "%2d.  %s %s" % (i, path.start_ids, path.missing_ids)
-        
+        #for i, path in enumerate(paths):
+        #    print "%2d.  %s %s" % (i, path.start_ids, path.missing_ids)
 
         # For each in_data_node, see if it might be a better match to
         # another node.
@@ -494,7 +493,7 @@ def build_pipelines(
     # Plot out the network.
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
-        prune=prune_network, verbose=verbose)
+        verbose=verbose)
     return []
 
 
