@@ -12,7 +12,6 @@ run_module
 # _make_hash_units
 # _hash_module
 
-# TODO: Add metadata from modules to BETSY parameter file
     
 
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"

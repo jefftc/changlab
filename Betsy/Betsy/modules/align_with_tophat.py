@@ -55,6 +55,7 @@ class Module(AbstractModule):
                stranded.stranded
         library_type = s2ltype[stranded.stranded]
 
+        # Takes ~3 Gb per process.
         sq = parallel.quote
         commands = []
         for x in jobs:

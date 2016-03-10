@@ -43,7 +43,7 @@ RSEMResults = DataType(
     "RSEMResults",
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified"),
-    help="Results from an rsem-calculate-expression analysis.",
+    help="A folder of results from an rsem-calculate-expression analysis.",
     )
 
 STARReferenceGenome = DataType(
@@ -123,20 +123,16 @@ all_modules = [
     
     ModuleNode(
         "normalize_with_rsem",
-        [NGS.FastqFolder, NGS.SampleGroupFile, RSEMReferenceGenome],
-        #GXP.UnprocessedSignalFile,
+        [NGS.FastqFolder, NGS.SampleGroupFile, NGS.ReadStrandedness,
+         RSEMReferenceGenome],
         RSEMResults,
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", MUST_BE, "yes", 0),
-        #Constraint(
-        #    "orientation", CAN_BE_ANY_OF, NGS.ORIENTATION_NOT_UNKNOWN, 0),
-        Constraint("rsem_indexed", MUST_BE, "yes", 2),
-        
+        Constraint("rsem_indexed", MUST_BE, "yes", 3),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        
         help="Use RSEM to estimate TPM or FPKM.",
         ),
 
@@ -144,7 +140,6 @@ all_modules = [
         "extract_rsem_signal", RSEMResults, GXP.UnprocessedSignalFile,
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        
         Consequence("preprocess", SET_TO_ONE_OF, ["tpm", "fpkm"]),
         Consequence("logged", SET_TO, "no"),
         # What is this for?
@@ -157,10 +152,6 @@ all_modules = [
         [NGS.FastqFolder, NGS.SampleGroupFile, NGS.ReadStrandedness,
          NGS.ReferenceGenome, NGS.GTFGeneModel],
         TophatAlignmentFolder,
-        #OptionDef(
-        #    "tophat_gtf_file", default="",
-        #    help="GTF file containing the gene information.",
-        #    ),
         OptionDef(
             "tophat_transcriptome_fa", default="",
             help="FASTA file for Transcriptome, e.g. "
@@ -170,10 +161,7 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint(
-        #    "orientation", CAN_BE_ANY_OF, NGS.ORIENTATION_NOT_UNKNOWN, 0),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 3),
-        
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
@@ -197,10 +185,6 @@ all_modules = [
     ModuleNode(
         "index_reference_star",
         [NGS.ReferenceGenome, NGS.GTFGeneModel], STARReferenceGenome,
-        #OptionDef(
-        #    "gtf_file", 
-        #    help="Gene annotations in GTF format.",
-        #    ),
         ),
 
     ModuleNode(

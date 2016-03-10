@@ -811,7 +811,7 @@ def get_rsem_version():
 
 def make_rsem_command(
     reference_fa, sample_name, fastq_file1, fastq_file2=None,
-    num_threads=None):
+    forward_prob=None, num_threads=None):
     # <sample_name> is prefix for all output files,
     #   e.g. <sample_name>.genes.results
     import os
@@ -823,14 +823,15 @@ def make_rsem_command(
     #   --paired-end <file1.fastq> <file2.fastq>
     #   <index_stem> <sample_name> >& <sample_name>.log"
     # For strand-specific:
-    #   --forward-prob 1.0
-    #   --forward-prob 0.0
+    #   --forward-prob 1.0 (upstream from forward strand; secondstrand)
+    #   --forward-prob 0.0 (upstream from reverse strand; firststrand)
 
     assert os.path.exists(fastq_file1)
     if fastq_file2:
         assert os.path.exists(fastq_file2)
     if num_threads is not None:
         assert num_threads >= 1 and num_threads < 100
+    assert forward_prob in [None, 0.0, 0.5, 1.0]
 
     rsem_calculate = filelib.which_assert(config.rsem_calculate)
 
@@ -841,6 +842,8 @@ def make_rsem_command(
     if num_threads:
         cmd += ["-p", str(num_threads)]
     cmd += ["--output-genome-bam"]
+    if forward_prob is not None:
+        cmd += ["--forward-prob", str(forward_prob)]
     if not fastq_file2:
         cmd += [sq(fastq_file1)]
     else:
