@@ -71,9 +71,9 @@ class Module(AbstractModule):
             commands.append(x)
         metadata["commands"] = commands
 
-        # STAR takes 27 Gb per process.  Make sure we don't use up
+        # STAR takes 28 Gb per process.  Make sure we don't use up
         # more memory than is available on the machine.
-        nc = mlib.calc_max_procs_from_ram(30, upper_max=num_cores)
+        nc = mlib.calc_max_procs_from_ram(35, upper_max=num_cores)
         metadata["num cores"] = nc
         parallel.pshell(commands, max_procs=nc, path=out_path)
 
