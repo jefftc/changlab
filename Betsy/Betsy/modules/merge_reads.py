@@ -19,6 +19,7 @@ class Module(AbstractModule):
         fastq_path = fastq_node.identifier
         sample_group_file = group_node.identifier
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
         module_utils.assert_sample_group_file(sample_group_file, fastq_path)
         x = module_utils.read_sample_group_file(group_node.identifier)
@@ -59,6 +60,9 @@ class Module(AbstractModule):
 
         nc = min(MAX_CORES, num_cores)
         parallel.pyfun(commands, nc)
+        metadata["num_cores"] = nc
+        
+        return metadata
 
     def name_outfile(self, antecedents, user_options):
         return "merged.fastq"
