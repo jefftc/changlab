@@ -321,6 +321,9 @@ SaiFolder = DataType(
         "is_subset", YESNO, "no", "no",
         help="Generate a small sample file with a limited number of reads."
         ),
+    AttributeDef(
+        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        help="For subtracting mouse reads from PDX models of FastqFolder"),
     #AttributeDef(
     #    "contents", BDT.CONTENTS,
     #    "unspecified", "unspecified", help="contents"),
@@ -663,6 +666,8 @@ all_modules = [
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
+        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
@@ -714,6 +719,8 @@ all_modules = [
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
+        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
 
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
@@ -768,6 +775,10 @@ all_modules = [
         #Constraint("is_subset", MUST_BE, "no", 0),
         Constraint("is_subset", SAME_AS, 0, 1),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
+
+        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
+        Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
         #Constraint("contents", SAME_AS, 0, 3),
