@@ -56,58 +56,73 @@ def run_pipeline(
     x = bie3._merge_paths(paths)
     path_ids, path_transitions, x = x
     
-
-    # Add the start_ids to the stack.  Each member of the stack can be
-    # a tuple of:
-    # 1.  (IdentifiedDataNode, node_id, None, transitions)
-    # 2.  (ModuleNode, node_id, None, transitions)
-    # 3.  (ModuleNode, node_id, antecedent_ids, transitions)
-    #     Keep track of which set of antecedents to run.
-    # transitions is a dictionary of (node_id, next_node_id) -> 1
-    stack = []
+    # Make a list of all the nodes provided by the user.
+    start_nodes = []  # list of (node_id, IdentifiedDataNode).
     for p in paths:
         for index, id_ in enumerate(p.start_ids):
             # id_ may be None if it's just not used in this pipeline.
             # Ignore it.
             if id_ is None:
                 continue
-            assert id_ is not None
             node = in_datas[index]
-            x = node, id_, None, {}
-            if x not in stack:
-                stack.append(x)
+            x = id_, node
+            if x not in start_nodes:
+                start_nodes.append(x)
+
+    # Create a stack with all the start nodes.  Each member of the
+    # stack can be a tuple of:
+    # 1.  (IdentifiedDataNode, node_id, None, transitions)
+    # 2.  (ModuleNode, node_id, None, transitions)
+    # 3.  (ModuleNode, node_id, antecedent_ids, transitions)
+    #     Keep track of which set of antecedents to run.
+    # transitions is a dictionary of (node_id, next_node_id) -> 1
+    stack = []
+    for (node_id, node) in start_nodes:
+        x = node, node_id, None, {}
+        stack.append(x)
 
     # Keep track of nodes that have already been generated.
-    pool = {}         # dict of node_id -> IdentifiedDataNode or ModuleNode
-    #pipeline = []     # list of the names of the modules run.
-    next_node = None
+    # BUG: The values should technically be a list.  Since the nodes
+    # in the network may not be atomic, it is possible that multiple
+    # different atomic DataNodes can be assigned to the same node_id.
+    # But usually, we expect just 1.
+    pool = {}         # dict of node_id -> IdentifiedDataNode
+
+    # Cache the module node_ids that aren't ready to be run.  If all
+    # modules on the stack are not ready, then something is wrong and
+    # quit.  Otherwise, we would be stuck in an infinite loop.
+    not_ready = {}
+
+    # Track the total analysis time.
     total_time = 0
     
-    # Keep track of the number of times a module can't be run because
-    # it doesn't have enough input data.  If this exceeds the total
-    # number of modules, then quit.
-    num_failures = 0
-    success = False
     while stack:
         DEBUG_POOL = pool
-        assert num_failures < len(stack), \
-               "Inference error: No more nodes to run."
-        x = [x[1] for x in stack]
+
+        # Make sure we're not stuck in an infinite loop.
+        # 1.  Only modules on the stack.  AND
+        # 2.  They are all not_ready.
+        x = [x for x in stack if isinstance(x[0], bie3.ModuleNode)]
+        if len(x) == len(stack):  # only modules.
+            # Make sure there are modules ready to be checked.
+            x = [x for x in x if x[1] not in not_ready]
+            assert x, "Inference error: No more nodes to run."
         
         node, node_id, more_info, transitions = stack.pop()
         if node_id not in path_ids:  # ignore if not in pipeline
             continue
 
+        # If this is the last node, then we're done.
         if node_id == 0:
             pool[node_id] = node
-            success = True
             break
-        elif node_id in pool:
-            # If this has already been run, then skip it.
+        # If this node has already been run, ignore.
+        if node_id in pool:
             continue
-        elif isinstance(node, bie3.IdentifiedDataNode):
+        
+        if isinstance(node, bie3.IdentifiedDataNode):
+            # Add to the pool.
             pool[node_id] = node
-            assert node_id != 0
             # Add the next modules into the stack, if not already there.
             on_stack = [x[1] for x in stack]
             for next_id in network.transitions[node_id]:
@@ -118,8 +133,6 @@ def run_pipeline(
                 # Module updates the transitions based on which set of
                 # antecedent IDs are used.
                 stack.append((next_node, next_id, None, transitions))
-            # If I've added new modules, then reset the failures counter.
-            num_failures = 0
         elif isinstance(node, bie3.ModuleNode) and more_info is None:
             # If the input data for this module doesn't exist, then
             # just try it again later.
@@ -129,24 +142,16 @@ def run_pipeline(
                 # No sets of inputs are ready to run.  Put back to the
                 # bottom of the stack and try again later.
                 stack.insert(0, (node, node_id, more_info, transitions))
-                num_failures += 1
-                continue
-            for antecedent_ids in all_antecedent_ids:
-                assert len(node.in_datatypes) == len(antecedent_ids)
-                x = node, node_id, antecedent_ids, transitions
-                stack.append(x)
-            # If I've added new analysis to run, then reset the
-            # failures counter.
-            num_failures = 0
+            else:
+                for antecedent_ids in all_antecedent_ids:
+                    assert len(node.in_datatypes) == len(antecedent_ids)
+                    x = node, node_id, antecedent_ids, transitions
+                    stack.append(x)
         elif isinstance(node, bie3.ModuleNode):
             # Run this module.
             antecedent_ids = more_info
             assert len(node.in_datatypes) == len(antecedent_ids)
 
-            #x = run_module(
-            #    network, pipeline, node_id, antecedent_ids,
-            #    user_options, pool, user, job_name, clean_up=clean_up,
-            #    num_cores=num_cores)
             x = run_module(
                 network, node_id, antecedent_ids, user_options,
                 pool, transitions, user, job_name, clean_up=clean_up,
@@ -154,37 +159,32 @@ def run_pipeline(
             if x is None:
                 # Can happen if this module has already been run.  It
                 # might've gotten added to the stack because there are
-                # many input nodes that can go into this.  This should
-                # not count as a failure.
-                #num_failures += 1
+                # many input nodes that can go into this.
                 continue
+            # Successfully completed this module.
             next_node, next_id, run_time = x
-            #if next_id == 0:
-            #    success = True
-            #    break
             assert next_id is not None
-            # Successfully completed this module.  Reset num_failures.
-            num_failures = 0
             # Update the pool, transitions.
             pool[node_id] = node
             trans = transitions.copy()
             for x in antecedent_ids:
                 trans[(x, node_id)] = 1
             trans[(node_id, next_id)] = 1
-            #pipeline.append(node.name)
             stack.append((next_node, next_id, None, trans))
             total_time += run_time
+            # Since new nodes are added to the stack, more modules may
+            # be ready now.
+            not_ready = {}
         else:
             raise AssertionError
 
-    if not success:
+    if 0 not in pool:
         print "This pipeline has completed unsuccessfully."
         return None
 
-    assert next_node
     x = parselib.pretty_time_delta(total_time)
     print "[%s]  Completed (total %s)" % (time.strftime('%a %I:%M %p'), x)
-    return pool, transitions, next_node.identifier
+    return pool, transitions
 
     #if flag and next_node and module_utils.exists_nz(next_node.identifier):
     #if next_node and module_utils.exists_nz(next_node.identifier):

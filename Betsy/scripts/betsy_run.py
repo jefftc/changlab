@@ -1136,6 +1136,11 @@ def main():
         "given after the --output.  Format: <datatype>.<key>=<value>.")
     group.add_argument(
         '--output_file', help='file or folder of output result')
+    group.add_argument(
+        '--also_save', action="append",
+        help="Will save the contents of other nodes.  "
+        "Format: <datatype>,<filename>.  Will save the bottom-most "
+        "node with this datatype.")
 
     group = parser.add_argument_group(title="Outfiles")
     group.add_argument(
@@ -1358,14 +1363,14 @@ def main():
     print "Running the analysis."
     sys.stdout.flush()
     clean_up = not args.save_failed_data
-    node_dict = output_file = None
+    node_dict = transitions = None
     try:
         x = rule_engine_bie3.run_pipeline(
             network, in_data_nodes, custom_attributes, user_options, paths,
             user=args.user, job_name=args.job_name, clean_up=clean_up,
             num_cores=args.num_cores)
         if x:
-            node_dict, transitions, output_file = x
+            node_dict, transitions = x
     except AssertionError, x:
         if str(x).startswith("Inference error"):
             node_ids = rule_engine_bie3.DEBUG_POOL.keys()
@@ -1390,11 +1395,52 @@ def main():
     #    print "Writing detailed network: %s." % args.network_text
     #    bie3.print_network(network, outhandle=args.network_text)
 
-    if output_file and args.output_file:
-        print "Saving results at %s." % args.output_file
+    if args.output_file and 0 in node_dict:
+        print "Saving output %s to %s." % (outtype, args.output_file)
         sys.stdout.flush()
+        output_file = node_dict[0].identifier
         reportlib.copy_file_or_path(output_file, args.output_file)
+
+    # See what else to save.
+    for also_save in args.also_save:
+        # Format: <datatype>,<file_or_path>
+        x = also_save.split(",", 1)
+        assert len(x) == 2, "Invalid also_save: %s" % also_save
+        dname, out_filename = x
+        node_id = _find_lowest_datatype(network, dname, node_dict.keys())
+        assert node_id, "Unable to find: %s" % dname
+        in_filename = node_dict[node_id].identifier
+        print "Saving %s to %s." % (dname, out_filename)
+        reportlib.copy_file_or_path(in_filename, out_filename)
+        
     print "Done."
+
+
+def _find_lowest_datatype(network, datatype_name, allowed_node_ids):
+    # Return a node_id or None if not found.
+    from Betsy import bie3
+
+    x = allowed_node_ids
+    x = [x for x in x if isinstance(network.nodes[x], bie3.DataNode)]
+    x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
+    node_ids = x
+
+    if not node_ids:
+        return None
+    if len(node_ids) == 1:
+        return node_ids[0]
+    descendents = bie3._make_descendent_dict(network)
+    good_node_ids = []
+    for nid in node_ids:
+        x = descendents.get(nid, [])
+        x = [x for x in x if isinstance(network.nodes[x], DataNode)]
+        x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
+        x = [x for x in x if x in allowed_node_ids]
+        if not x:
+            good_node_ids.append(nid)
+    if len(good_node_ids) == 1:
+        return good_node_ids[0]
+    return None
 
 
 if __name__ == '__main__':
