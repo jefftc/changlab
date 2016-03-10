@@ -67,6 +67,10 @@ def run_pipeline(
     stack = []
     for p in paths:
         for index, id_ in enumerate(p.start_ids):
+            # id_ may be None if it's just not used in this pipeline.
+            # Ignore it.
+            if id_ is None:
+                continue
             assert id_ is not None
             node = in_datas[index]
             x = node, id_, None, {}

@@ -615,6 +615,7 @@ def prune_pipelines(
         if num_pruned >= 2:
             x = "s"
         print "Pruned %d pipeline%s.  %d left." % (num_pruned, x, len(paths))
+
     return paths
 
 
