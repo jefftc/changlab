@@ -88,13 +88,19 @@ def run_pipeline(
         DEBUG_POOL = pool
         assert num_failures < len(stack), \
                "Inference error: No more nodes to run."
+        x = [x[1] for x in stack]
+        
         node, node_id, more_info, transitions = stack.pop()
         if node_id not in path_ids:  # ignore if not in pipeline
             continue
+
         if node_id == 0:
             pool[node_id] = node
             success = True
             break
+        elif node_id in pool:
+            # If this has already been run, then skip it.
+            continue
         elif isinstance(node, bie3.IdentifiedDataNode):
             pool[node_id] = node
             assert node_id != 0
@@ -132,6 +138,7 @@ def run_pipeline(
             # Run this module.
             antecedent_ids = more_info
             assert len(node.in_datatypes) == len(antecedent_ids)
+
             #x = run_module(
             #    network, pipeline, node_id, antecedent_ids,
             #    user_options, pool, user, job_name, clean_up=clean_up,

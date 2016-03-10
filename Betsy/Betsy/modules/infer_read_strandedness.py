@@ -9,6 +9,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         from genomicode import filelib
+        from genomicode import alignlib
         from Betsy import module_utils as mlib
 
         bam_node, gene_node = antecedents
@@ -23,9 +24,8 @@ class Module(AbstractModule):
         bed_file = "%s.bed" % r
 
         # Make bed file.
-        # XXX
-        #alignlib.gtf_to_bed(gtf_file, bed_file)
-        bed_file = "/data/jchang/biocore/gtf02.txt"
+        alignlib.gtf_to_bed(gtf_file, bed_file)
+        #bed_file = "/data/jchang/biocore/gtf02.txt"
 
         # Figure out the orientation.
         x = get_paired_stranded_rseqc(bed_file, bam_filenames[0])
@@ -64,10 +64,21 @@ def parse_rseqc_infer_experiment(output):
     # Fraction of reads failed to determine: 0.0170
     # Fraction of reads explained by "++,--": 0.9669
     # Fraction of reads explained by "+-,-+": 0.0161
+
+    # MISSING FILE ERROR:
+    # /data/jchang/biocore/gtf02.txt does NOT exists.
+    
     x = output.split("\n")
     x = [x.strip() for x in x]
     x = [x for x in x if x]
     lines = x
+
+    # Look for missing file error.
+    for x in lines:
+        if x.find("does NOT exists") >= 0:
+            raise AssertionError, "RSeQC Error: %s" % x.strip()
+    
+    # Might be correct.  Do more checks.
     assert len(lines) >= 4
 
     # Look for the "This is" line.
