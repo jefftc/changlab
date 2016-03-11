@@ -68,7 +68,7 @@ def main():
         metadata = params.get("metadata", {})
 
         # Format the time.
-        time_str = time.strftime("%a %I:%M %p", start_time)
+        time_str = time.strftime("%a %m/%d %I:%M %p", start_time)
         run_time = params.get("elapsed_pretty")
         assert run_time, "Missing: elapsed_pretty"
         if run_time == "instant":

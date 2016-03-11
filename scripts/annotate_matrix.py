@@ -7,99 +7,11 @@ import os
 import sys
 
 
-## def convert_gene_ids(
-##     gene_ids, in_platform, out_platform, in_delim, out_delim,
-##     keep_dups, keep_emptys, no_na):
-##     # gene_ids is a list of the gene IDs, one per row of the matrix,
-##     # from the in_platform.  Each of the gene_ids may contain multiple
-##     # IDs separated by in_delim.  in_delim is either None (no multiple
-##     # IDs) or a character indicating the delimiter used to separate
-##     # the IDs.
-##     #
-##     # Return a list parallel to gene_ids that is the IDs in the
-##     # out_platform.
-##     from genomicode import jmath
-##     from genomicode import arrayplatformlib
-
-##     R_fn, R_var = jmath.R_fn, jmath.R_var
-
-##     # Make a cleaned up version of the gene_ids to convert.
-##     x = []
-##     for gene_id in gene_ids:
-##         x.extend(_clean_id(gene_id, in_delim, in_platform))
-##     # No duplicates.
-##     x = {}.fromkeys(x).keys()
-##     gene_ids_c = x
-
-##     # An attribute is the biomart name for the platform.
-##     in_attribute = arrayplatformlib.get_bm_attribute(in_platform)
-##     out_attribute = arrayplatformlib.get_bm_attribute(out_platform)
-##     assert in_attribute, "Bad platform: %s" % in_platform
-##     assert out_attribute, "Bad platform: %s" % out_platform
-##     in_mart = arrayplatformlib.get_bm_organism(in_platform)
-##     out_mart = arrayplatformlib.get_bm_organism(out_platform)
-
-##     R = start_R()
-##     jmath.R_equals_vector(gene_ids_c, 'gene_ids')
-
-##     # Select the BioMart dataset to use.
-##     R_fn("useMart", "ensembl", in_mart, RETVAL="in_dataset")
-##     R_fn("useMart", "ensembl", out_mart, RETVAL="out_dataset")
-
-##     # Link two data sets and retrieve information from the linked datasets.
-##     R_fn(
-##         "getLDS", attributes=in_attribute, filters=in_attribute,
-##         values=R_var("gene_ids"), mart=R_var("in_dataset"),
-##         attributesL=out_attribute, martL=R_var("out_dataset"),
-##         RETVAL="homolog")
-    
-##     homolog = R['homolog']
-##     # homolog is DataFrame with two parallel rows:
-##     # <in_ids>
-##     # <out_ids>
-##     assert len(homolog) == 2, \
-##            "BioMart returned no results mapping from %s to %s." % (
-##         in_mart, out_mart)
-
-##     in_ids = [str(x) for x in homolog[0]]
-##     out_ids = [str(x) for x in homolog[1]]
-
-##     # Sometimes BioMart will generate "NA" if something is missing.
-##     if no_na:
-##         for i in range(len(out_ids)):
-##             if out_ids[i].upper() == "NA":
-##                 out_ids[i] = ""
-    
-##     in2out = {}
-##     for x, y in zip(in_ids, out_ids):
-##         if not y.strip():
-##             continue
-##         val = in2out.get(x, [])
-##         val.append(y)
-##         in2out[x] = sorted(val)
-
-##     # Make a parallel list of the output IDs.
-##     output_ids = []
-##     for gene_id in gene_ids:
-##         in_ids = _clean_id(gene_id, in_delim, in_platform)
-##         out_ids = []
-##         for x in in_ids:
-##             x = in2out.get(x, [""])
-##             out_ids.extend(x)
-##         if not keep_emptys:
-##             out_ids = [x for x in out_ids if x]
-##         if not keep_dups:
-##             out_ids = _remove_dups(out_ids)
-##         x = out_delim.join(out_ids)
-##         output_ids.append(x)
-##     return output_ids
-
-
 def convert_geneset(
     filename, in_delim, keep_dups, keep_emptys, no_na, 
     in_genesets, all_genesets, out_platforms, out_format):
     from genomicode import genesetlib
-    from genomicode import arrayplatformlib
+    from genomicode import arrayplatformlib as apl
     from genomicode import arrayannot
 
     # NOT IMPLEMENTED:
@@ -126,9 +38,10 @@ def convert_geneset(
     for x in sorted(name2geneset.values()):
         name, description, in_ids = x
         
-        x = arrayplatformlib.score_platform_of_annotations(in_ids)
+        x = apl.score_annotations(in_ids, min_score=0.50)
         assert x, "Unknown platform: %s" % name
-        in_platform, score = x
+        best_score = x[0]
+        in_platform = best_score.platform_name
 
         # Convert to each of the out platformss.
         for out_platform in out_platforms:
@@ -170,12 +83,14 @@ def convert_geneset(
     
 def convert_matrix(
     filename, header, header_and_platform, in_delim, out_delim,
-    keep_dups, keep_emptys, no_na, 
-    out_platforms, min_match_score):
+    keep_dups, keep_emptys, no_na, out_platforms, min_match_score, debug):
     import arrayio
     from genomicode import Matrix
-    from genomicode import arrayplatformlib
+    from genomicode import arrayplatformlib as apl
     from genomicode import arrayannot
+
+    MIN_SCORE = 0.80
+    REMOVE_VERSION = True
 
     assert not (header and header_and_platform)
 
@@ -183,28 +98,54 @@ def convert_matrix(
 
     if header:
         x = DATA.row_names(header)
-        gene_ids = arrayplatformlib._parse_matrix_annotations(x, in_delim)
-        x = arrayplatformlib.score_platform_of_annotations(gene_ids)
+        gene_ids = apl.normalize_ids(
+            x, delimiter=in_delim, remove_version_number=REMOVE_VERSION)
+        x = apl.score_annotations(gene_ids, min_score=0.5)
         assert x, "I could not identify the platform for %s." % header
-        in_platform, score = x
+        best_score = x[0]
+        in_platform, score = best_score.platform_name, best_score.max_score
     elif header_and_platform:
         x = header_and_platform.split(",", 1)
         assert len(x) == 2
         header, in_platform = x
         score = 1.0
         x = DATA.row_names(header)
-        gene_ids = arrayplatformlib._parse_matrix_annotations(x, in_delim)
-        assert arrayplatformlib.find_platform_by_name(in_platform), \
+        gene_ids = apl.normalize_ids(
+            x, delimiter=in_delim, remove_version_number=REMOVE_VERSION)
+        assert apl.find_platform_by_name(in_platform), \
                "Unknown platform: %s" % in_platform
     else:
         # Take the platform with the highest match score.
-        platforms = arrayplatformlib.score_all_platforms_of_matrix(
-            DATA, annot_delim=in_delim)
-        assert platforms, "No platforms found"
-        schwartz = [(-x[-1], x) for x in platforms]
-        schwartz.sort()
-        platforms = [x[-1] for x in schwartz]
-        header, in_platform, score = platforms[0]
+        scores = apl.score_matrix(
+            DATA, annot_delim=in_delim, min_score=None,
+            remove_version=REMOVE_VERSION)
+        best_score = 0
+        if scores:
+            best_score = scores[0].max_score
+        if best_score < MIN_SCORE and debug and scores:
+            header = (
+                "Header", "Platform", "Score",
+                "Matrix Only", "Plat Only", "Shared",
+                "Matrix Only", "Plat Only", "Shared")
+            print "\t".join(header)
+            for s in scores:
+                x1 = sorted(s.mine_only)[:3]
+                x2 = sorted(s.platform_only)[:3]
+                x3 = sorted(s.shared)[:3]
+                x1 = ", ".join(x1)
+                x2 = ", ".join(x2)
+                x3 = ", ".join(x3)
+                x = (
+                    s.header, s.platform_name, s.max_score, 
+                    len(s.mine_only), len(s.platform_only), len(s.shared),
+                    x1, x2, x3)
+                assert len(x) == len(header)
+                print "\t".join(map(str, x))
+        assert best_score >= MIN_SCORE, "No platforms found"
+        best_score = scores[0]
+        header = best_score.header
+        in_platform = best_score.platform_name
+        score = best_score = best_score.max_score
     err = "I could not find any platforms.  The best was %s (%g)." % (
         in_platform, score)
     assert score >= min_match_score, err
@@ -245,36 +186,41 @@ def convert_matrix(
 def main():
     import argparse
     
-    from genomicode import arrayplatformlib
+    from genomicode import arrayplatformlib as apl
 
     parser = argparse.ArgumentParser(
         description='Annotate a matrix or a geneset.')
     parser.add_argument("infile")
     
-    all_platforms = [platform.name for platform in arrayplatformlib.PLATFORMS]
+    all_platforms = [platform.name for platform in apl.PLATFORMS]
     x = ", ".join(all_platforms)
     parser.add_argument(
         '--platform', default=[], action='append',
         help="Which platform to add to the matrix.  Options: %s" % x)
-
     parser.add_argument(
+        "--debug", action="store_true",
+        help="If having trouble identifying the platform for the matrix, "
+        "this will print out extra information.")
+
+    group = parser.add_argument_group(title="Platform Match")
+    group.add_argument(
         '--min_match_score', default=0.80, type=float,
         help="When trying to identify the rows of a matrix or geneset, "
         "require at least this portion of the IDs to be recognized.")
-    parser.add_argument(
+    group.add_argument(
         '--in_delim', 
         help="If a row contains multiple annotations (or gene names), they "
         "are separated by this delimiter, e.g. E2F1,E2F3")
-    parser.add_argument(
+    group.add_argument(
         '--out_delim', default=" /// ",
         help="Delimiter to use for the converted gene IDs.")
-    parser.add_argument(
+    group.add_argument(
         '--keep_dups', default=False, action="store_true",
         help="Keep duplicate IDs (e.g. to preserve alignment).")
-    parser.add_argument(
+    group.add_argument(
         '--keep_emptys', default=False, action="store_true",
         help="Keep empty IDs (e.g. to preserve alignment).")
-    parser.add_argument(
+    group.add_argument(
         '--no_na', default=False, action="store_true",
         help="If any annotations are NA (e.g. missing), convert to empty "
         "string.")
@@ -334,7 +280,7 @@ def main():
             args.infile, args.header, args.header_and_platform,
             args.in_delim, args.out_delim,
             args.keep_dups, args.keep_emptys, args.no_na, args.platform,
-            args.min_match_score)
+            args.min_match_score, args.debug)
             
             
 if __name__=='__main__':

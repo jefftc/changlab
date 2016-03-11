@@ -4,7 +4,7 @@
 def choose_gene_names(MATRIX):
     # Return tuple of (header for gene_id, header for gene_names).
     # Either of the headers can be None.
-    from genomicode import arrayplatformlib
+    from genomicode import arrayplatformlib as apl
 
     if not MATRIX.row_names():
         return None, None
@@ -17,13 +17,12 @@ def choose_gene_names(MATRIX):
     geneid_header, genename_header = MATRIX.row_names()[:2]
 
     # If I can find a better header for the annotation, then use it.
-    x = arrayplatformlib.score_all_platforms_of_matrix(MATRIX)
-    for header, platform, score in x:
-        if score < 0.5:
-            continue
-        if platform in ["entrez_ID_symbol_human", "entrez_ID_symbol_mouse"]:
-            genename_header = header
-            
+    x = apl.score_matrix(MATRIX, min_score=0.5)
+    for score in x:
+        # TODO: Use categories.
+        if score.platform_name in [
+            "Entrez_Symbol_human", "Entrez_Symbol_mouse"]:
+            genename_header = score.header
     return geneid_header, genename_header
 
 

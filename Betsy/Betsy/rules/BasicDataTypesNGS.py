@@ -7,6 +7,7 @@
 # ReadStrandedness           # Contains strandedness of reads
 # 
 # FastqFolder
+# FastaFolder
 # SamFolder
 # BamFolder
 # SaiFolder                  # from BWA Backtrack
@@ -204,11 +205,11 @@ FastqFolder = DataType(
         "compressed", COMPRESSION, "unknown", "no",
         help="Whether the files are compressed (gz, bz2, xz)."),
     AttributeDef(
-        "adapters_trimmed", ["yes", "no"], "no", "no",
-        help="Whether the adapters are trimmed."),
-    AttributeDef(
         "reads_merged", ["yes", "no"], "no", "yes",
         help="Whether reads for a sample are merged into one file."),
+    AttributeDef(
+        "adapters_trimmed", ["yes", "no"], "no", "no",
+        help="Whether the adapters are trimmed."),
     AttributeDef(
         "mouse_reads_subtracted", ["yes", "no"], "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
@@ -222,6 +223,21 @@ FastqFolder = DataType(
         help="Generate a small sample file with a limited number of reads."
         ),
     help="A folder containing FASTQ files."
+    )
+
+
+FastaFolder = DataType(
+    "FastaFolder",
+    AttributeDef(
+        "compressed", COMPRESSION, "unknown", "no",
+        help="Whether the files are compressed (gz, bz2, xz)."),
+    AttributeDef(
+        "reads_merged", ["yes", "no"], "no", "yes",
+        help="Whether reads for a sample are merged into one file."),
+    #AttributeDef(
+    #    "adapters_trimmed", ["yes", "no"], "no", "no",
+    #    help="Whether the adapters are trimmed."),
+    help="A folder containing FASTA files."
     )
 
 
@@ -1122,6 +1138,13 @@ all_modules = [
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("is_subset", MUST_BE, "yes", 0),
+        ),
+
+    ModuleNode(
+        "extract_fasta_folder",
+        BamFolder, FastaFolder,
+        Consequence("compressed", SET_TO, "no"),
+        Consequence("reads_merged", SET_TO, "yes"),
         ),
 
     ## ModuleNode(

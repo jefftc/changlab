@@ -1,10 +1,34 @@
-#RNASeq
-
-# TophatAlignmentFolder
-# TophatAlignmentSummary
-
-# align_with_tophat                Tophat
+# DataTypes:
+# TophatAlignmentFolder      Tophat
+# TophatAlignmentSummary     
+# RSEMReferenceGenome        RSEM
+# RSEMResults
+# STARReferenceGenome        STAR
+# STARAlignmentFolder
+# HTSeqCountResults          HTSeqCount
+# HTSeqCountSummary
+#
+#
+# Modules:
+# index_reference_rsem               rsem
+# is_rsemreference_rsem_indexed       
+# is_rsemreference_bowtie1_indexed
+# is_rsemreference_bowtie2_indexed
+# normalize_with_rsem
+# extract_rsem_signal
+# 
+# align_with_tophat                  Tophat
 # extract_tophat_bamfolder
+# summarize_tophat_alignment
+# 
+# index_reference_star               Star
+# align_with_star
+# extract_star_samfolder
+# 
+# count_with_htseq_count             HTSeq-Count
+# summarize_htseq_count
+# extract_htseq_count_signal
+# convert_counts_to_cpm
 
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
@@ -12,7 +36,6 @@ import BasicDataTypesNGS as NGS
 import GeneExpProcessing as GXP
 
 YESNO = BDT.YESNO  # for convenience
-
 
 
 TophatAlignmentSummary = DataType(
@@ -95,6 +118,14 @@ all_data_types = [
 
 all_modules = [
     ModuleNode(
+        "index_reference_rsem",
+        [RSEMReferenceGenome, NGS.GTFGeneModel], RSEMReferenceGenome,
+        Constraint("rsem_indexed", MUST_BE, "no", 0),
+        Consequence("rsem_indexed", SET_TO, "yes"),
+        Consequence("bowtie1_indexed", SET_TO, "yes"),
+        Consequence("bowtie2_indexed", SET_TO, "yes"),
+        ),
+    ModuleNode(
         "is_rsemreference_rsem_indexed",
         RSEMReferenceGenome, RSEMReferenceGenome,
         Constraint("rsem_indexed", MUST_BE, "unknown"),
@@ -111,14 +142,6 @@ all_modules = [
         RSEMReferenceGenome, RSEMReferenceGenome,
         Constraint("bowtie2_indexed", MUST_BE, "unknown"),
         Consequence("bowtie2_indexed", BASED_ON_DATA, ["no", "yes"]),
-        ),
-    ModuleNode(
-        "index_reference_rsem",
-        [RSEMReferenceGenome, NGS.GTFGeneModel], RSEMReferenceGenome,
-        Constraint("rsem_indexed", MUST_BE, "no", 0),
-        Consequence("rsem_indexed", SET_TO, "yes"),
-        Consequence("bowtie1_indexed", SET_TO, "yes"),
-        Consequence("bowtie2_indexed", SET_TO, "yes"),
         ),
     
     ModuleNode(
@@ -168,11 +191,6 @@ all_modules = [
         help="Align to a reference genome with tophat.",
         ),
     ModuleNode(
-        "summarize_tophat_alignment",
-        TophatAlignmentFolder, TophatAlignmentSummary,
-        help="Summarize the alignment, e.g. number of reads aligned.",
-        ),
-    ModuleNode(
         "extract_tophat_bamfolder",
         TophatAlignmentFolder, NGS.BamFolder,
 
@@ -181,12 +199,16 @@ all_modules = [
         Consequence("aligner", SET_TO, "tophat"),
         help="Pull the BAM files out of the Tophat result folders."
         ),
+    ModuleNode(
+        "summarize_tophat_alignment",
+        TophatAlignmentFolder, TophatAlignmentSummary,
+        help="Summarize the alignment, e.g. number of reads aligned.",
+        ),
 
     ModuleNode(
         "index_reference_star",
         [NGS.ReferenceGenome, NGS.GTFGeneModel], STARReferenceGenome,
         ),
-
     ModuleNode(
         "align_with_star",
         [NGS.FastqFolder, NGS.SampleGroupFile, NGS.ReadStrandedness,
@@ -210,7 +232,6 @@ all_modules = [
         "Running with too many processors will kill the machine.  8 is "
         "pretty safe."
         ),
-
     ModuleNode(
         "extract_star_samfolder",
         STARAlignmentFolder, NGS.SamFolder,
@@ -257,7 +278,10 @@ all_modules = [
         help="Use RSEM to estimate TPM or FPKM.  name sorting the BAM file "
         "is better.  Otherwise, may run into error related to buffer size.",
         ),
-
+    ModuleNode(
+        "summarize_htseq_count",
+        HTSeqCountResults, HTSeqCountSummary,
+        ),
     ModuleNode(
         "extract_htseq_count_signal",
         HTSeqCountResults, GXP.UnprocessedSignalFile,
@@ -273,12 +297,6 @@ all_modules = [
         Consequence("logged", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
         ),
-
-    ModuleNode(
-        "summarize_htseq_count",
-        HTSeqCountResults, HTSeqCountSummary,
-        ),
-
     ModuleNode(
         "convert_counts_to_cpm",
         GXP.UnprocessedSignalFile, GXP.UnprocessedSignalFile,
@@ -291,5 +309,4 @@ all_modules = [
         Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("format", SET_TO, "tdf"),
         ),
-    
     ]

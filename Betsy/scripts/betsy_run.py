@@ -1137,7 +1137,7 @@ def main():
     group.add_argument(
         '--output_file', help='file or folder of output result')
     group.add_argument(
-        '--also_save', action="append",
+        '--also_save', default=[], action="append",
         help="Will save the contents of other nodes.  "
         "Format: <datatype>,<filename>.  Will save the bottom-most "
         "node with this datatype.")

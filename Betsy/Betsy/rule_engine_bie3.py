@@ -5,14 +5,18 @@ run_pipeline
 run_module
 
 """
-# _is_module_output_complete
+# _make_file_refresher
+# 
 # _get_available_input_combinations
+# _hash_module
+# _make_hash_units
+# _is_module_output_complete
+# _format_pipeline
+# _get_node_name
+# 
 # _write_parameter_file
 # _read_parameter_file
-# _make_hash_units
-# _hash_module
 
-    
 
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 VERSION = 6
@@ -209,10 +213,8 @@ def run_module(
     import os
     import sys
     import time
-    import tempfile
     import shutil
     import logging
-    import random
 
     from genomicode import filelib
     #from genomicode import parselib
@@ -367,19 +369,112 @@ def run_module(
     print x
     sys.stdout.flush()
 
-    # Run the module in a temporary directory.
+    # Run the analysis.  If someone else is currently running the
+    # same analysis, then wait for them to finish.  However, if
+    # they have somehow failed, then overwrite the incomplete
+    # results.
+    #
+    # 1.  Create directory.
+    # 2.  Write in_progress.txt.
+    # 3.  Run the analysis.  Refresh in_progress.txt every 5 sec.
+    # 4.  Write finished.txt.
+    # 5.  Stop refreshing in_progress.txt.
+    # 
+    # copying.txt  stdout.txt  RESULT
+    #    missing    missing    Starting analysis?  Wait 5 sec, check again.
+    #                          If everything still missing, then overwrite.
+    #    missing    present    Complete analysis.
+    # <5 sec old    missing    Still copying.  Wait.
+    # <5 sec old    present    Finishing up.  Consider complete.
+    # >5 sec old    missing    Abandoned.  Overwrite.
+    # >5 sec old    present    Should not happen.  rm copying.txt, check
+    #                          after 5 sec.  If missing, consider
+    #                          complete.  If back, consider error.
+    REFRESH = 3  # number of seconds to refresh copying.txt file.
+    success_file = os.path.join(result_dir, "stdout.txt")
+    copying_file = os.path.join(result_dir, "in_progress.txt")
+
+    # Try to make the result_dir.  If I make it, then I should run the
+    # analysis.  Otherwise, someone else has priority.  Let them run
+    # the analysis.
+    i_made_dir = False
+    try:
+        os.mkdir(result_dir)
+        i_made_dir = True
+    except OSError, x:
+        pass
+
+    exists = os.path.exists
+    i_run_analysis = None
+    while True:
+        if i_made_dir:
+            i_run_analysis = True
+            break
+
+        last_refresh = None
+        if exists(copying_file):
+            last_refresh = time.time() - os.path.getctime(copying_file)
+
+        if not exists(copying_file) and not exists(success_file):
+            time.sleep(REFRESH)
+            if not exists(copying_file) and not exists(success_file):
+                # Abandoned.  I run.
+                i_run_analysis = True
+                break
+        elif not exists(copying_file) and exists(success_file):
+            i_run_analysis = False
+            break
+        # copying_file should exist.
+        elif last_refresh < REFRESH*2 and not exists(success_file):
+            time.sleep(REFRESH)
+        elif last_refresh < REFRESH*2 and exists(success_file):
+            i_run_analysis = False
+            break
+        elif last_refresh >= REFRESH*2 and not exists(success_file):
+            i_run_analysis = True
+            break
+        elif last_refresh >= REFRESH*2 and exists(success_file):
+            os.unlink(copying_file)
+            time.sleep(REFRESH*2)
+            # Should not be coming back if analysis has already
+            # completed successfully.
+            assert not exists(copying_file), "Zombie in progress file"
+            i_run_analysis = False
+            break
+    assert i_run_analysis is not None
+
+    if not i_run_analysis:
+        filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
+        assert os.path.exists(filename)
+        params = _read_parameter_file(filename)
+        elapsed = params["elapsed"]
+        return out_identified_data_node, next_id, elapsed
+
+    # Run the module.
     completed_successfully = False
     cwd = os.getcwd()
+    refresher = None
     try:
-        temp_dir = tempfile.mkdtemp(dir=output_path)
-        assert temp_dir != result_dir
-        os.chdir(temp_dir)
-        temp_outfile = os.path.join(temp_dir, outfile)
+        # Start refreshing the copying file.
+        refresher = _make_file_refresher(copying_file, interval=REFRESH)
+        os.chdir(result_dir)
+
+        # Clear out any old files in the directory.
+        x = os.listdir(result_dir)
+        x = [os.path.join(result_dir, x) for x in x]
+        x = [os.path.realpath(x) for x in x]
+        x = [x for x in x if x != os.path.realpath(copying_file)]
+        for x in x:
+            if os.path.isdir(x):
+                shutil.rmtree(x)
+            else:
+                os.unlink(x)
+        
         start_time = time.localtime()
         try:
             metadata = module.run(
                 network, antecedents, out_data_node.attributes, user_options,
-                num_cores, temp_outfile)
+                num_cores, full_outfile)
         except (SystemError, KeyboardInterrupt, MemoryError), x:
             raise
         except Exception, x:
@@ -389,77 +484,83 @@ def run_module(
         elapsed = time.mktime(end_time) - time.mktime(start_time)
 
         # Make sure the module generated the requested file.
-        assert filelib.fp_exists_nz(temp_outfile), "no file generated"
-        # Write stdout.txt to indicate success.
-        success_file = os.path.join(temp_dir, 'stdout.txt')
-        open(success_file, 'w').write('success\n')
+        assert filelib.fp_exists_nz(full_outfile), "no file generated"
 
         # Write parameters.
-        x = os.path.join(temp_dir, BETSY_PARAMETER_FILE)
+        x = os.path.join(result_dir, BETSY_PARAMETER_FILE)
         _write_parameter_file(
             x, network, module_name, antecedents, out_data_node.attributes,
             user_options, transitions, outfile, start_time, end_time, metadata,
             user, job_name)
-
-        # Move files to the real directory.  If someone else is
-        # currently copying files to the exact same directory, then
-        # wait for them to finish.
-        success_file = os.path.join(result_dir, "stdout.txt")
-        copy_files = True
-        if os.path.exists(result_dir):
-            # Define MODULE_TIMEOUT
-            # BUG: This will fail if it takes longer than
-            # MODULE_TIMEOUT to copy the files.
-            timeout = int(config.MODULE_TIMEOUT)
-            # Add a random factor, so two processes that were started
-            # at the same time won't collide.
-            end_wait = time.time() + timeout + random.randint(0, 59)
-            while time.time() < end_wait:
-                if os.path.isfile(success_file):
-                    # Other process finished. Don't copy.
-                    copy_files = False
-                    break
-                time.sleep(1)
-        if copy_files:
-            if os.path.exists(result_dir):
-                shutil.rmtree(result_dir)
-            #shutil.copytree(temp_dir, result_dir)
-            shutil.move(temp_dir, result_dir)
         completed_successfully = True
+        open(success_file, 'w').write("success")
     finally:
+        if refresher is not None:
+            refresher.stop()
         os.chdir(cwd)
-        if os.path.exists(temp_dir):
-            if clean_up or completed_successfully:
-                shutil.rmtree(temp_dir)
+        if not completed_successfully and clean_up:
+            if os.path.exists(result_dir):
+                # This can fail if the stop file was deleted in the
+                # middle.
+                shutil.rmtree(result_dir)
 
     return out_identified_data_node, next_id, elapsed
 
 
-def _is_module_output_complete(path):
-    # Return a True or False indicating whether path contains the
-    # complete results of a previously run module.
+class FileRefresher:
+    def __init__(self, stop_filename):
+        self.stop_filename = stop_filename
+        self.stopped = False
+    def stop(self):
+        if not self.stopped:
+            open(self.stop_filename, 'w')
+            self.stopped = True
+    def __del__(self):
+        self.stop()
+        
+
+def _make_file_refresher(filename, interval=None):
+    # Will refresh <filename> every <interval> seconds.  Returns an
+    # object with one method: stop.  Calling stop will stop refreshing
+    # the file and delete it.
     import os
+    import time
 
-    if not os.path.exists(path):
-        return False
+    # interval is the number of seconds before refreshing the file.
+    MAX_INTERVAL = 60*60*24  # 24 hours
+    if interval is None:
+        interval = 5
+    assert interval > 0 and interval <= MAX_INTERVAL
 
-    # Make sure "stdout.txt" exists.
-    x = os.path.join(path, "stdout.txt")
-    if not os.path.exists(x):
-        return False
-    # Make sure BETSY_PARAMETER_FILE exists.
-    x = os.path.join(path, BETSY_PARAMETER_FILE)
-    if not os.path.exists(x):
-        return False
-    # Make sure no broken symlinks.
-    for x in os.walk(path, followlinks=True):
-        dirpath, dirnames, filenames = x
-        for x in dirnames + filenames:
-            x = os.path.join(dirpath, x)
-            # Returns False for broken links.
-            if not os.path.exists(x):
-                return False
-    return True
+    # Make sure I can write to this file.
+    filename = os.path.realpath(filename)
+    path = os.path.split(filename)[0]
+    assert os.path.exists(path)
+
+    # Make sure the stop file doesn't already exist.
+    stop_filename = "%s.stop" % filename
+    if os.path.exists(stop_filename):
+        os.unlink(stop_filename)
+        
+    pid = os.fork()
+    if pid == 0:  # child
+        # Keep on refreshing filename until I see <filename>.stop
+        try:
+            while not os.path.exists(stop_filename):
+                # Someone might have deleted this path (and exited the
+                # program) while I was sleeping.
+                if not os.path.exists(path):
+                    break
+                open(filename, 'w')
+                time.sleep(interval)
+        finally:
+            if os.path.exists(stop_filename):
+                os.unlink(stop_filename)
+            if os.path.exists(filename):
+                os.unlink(filename)
+        os._exit(0)
+    
+    return FileRefresher(stop_filename)
 
 
 def _get_available_input_combinations(
@@ -496,17 +597,90 @@ def _get_available_input_combinations(
     return available
 
 
-def _get_node_name(network, node_id):
-    from Betsy import bie3
+def _hash_module(module_name, antecedents, out_attributes, user_options):
+    # Return a hash that uniquely describes the input to this
+    # module.  This is used so that the module won't be re-run on
+    # the same data.
+    # 
+    # out_attributes has already been updated with
+    # set_out_attributes.
+    # user_options is a dictionary of the options for this module.
+    import hashlib
+
+    x = _make_hash_units(
+        module_name, antecedents, out_attributes, user_options)
+    tohash = [x[1] for x in x]
     
-    assert node_id >= 0 and node_id < len(network.nodes)
-    node = network.nodes[node_id]
+    hasher = hashlib.md5()
+    for x in tohash:
+        hasher.update(x)
+    return hasher.hexdigest()
+
+
+def _make_hash_units(module_name, antecedents, out_attributes, user_options):
+    # Return list of tuples (name, value).  The values are used to
+    # uniquely hash the results of this module.
+    import operator
+
+    from Betsy import bhashlib
     
-    if isinstance(node, bie3.DataNode):
-        return node.datatype.name
-    elif isinstance(node, bie3.ModuleNode):
-        return node.name
-    raise AssertionError
+    if not operator.isSequenceType(antecedents):
+        antecedents = [antecedents]
+
+    hash_units = []
+    hash_units.append(("module name", module_name))
+    # Hash the checksum of the inputs.
+    for data_node in antecedents:
+        x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
+        x = "file checksum", x
+        hash_units.append(x)
+    # Hash the outputs.
+    for key in sorted(out_attributes):
+        value = out_attributes[key]
+        if type(value) is not type("") and operator.isSequenceType(value):
+            value = ",".join(value)
+        x = "%s=%s" % (key, value)
+        x = "out_attributes", x
+        hash_units.append(x)
+    
+    attrs = out_attributes.copy()
+    attrs.update(user_options)
+    for key in sorted(user_options):
+        value = user_options[key]
+        if type(value) is not type("") and operator.isSequenceType(value):
+            value = ",".join(value)
+        x = "%s=%s" % (key, value)
+        x = "user_options", x
+        hash_units.append(x)
+        
+    return hash_units
+
+
+def _is_module_output_complete(path):
+    # Return a True or False indicating whether path contains the
+    # complete results of a previously run module.
+    import os
+
+    if not os.path.exists(path):
+        return False
+
+    # Make sure "stdout.txt" exists.
+    x = os.path.join(path, "stdout.txt")
+    if not os.path.exists(x):
+        return False
+    # Make sure BETSY_PARAMETER_FILE exists.
+    x = os.path.join(path, BETSY_PARAMETER_FILE)
+    if not os.path.exists(x):
+        return False
+    # Make sure no broken symlinks.
+    for x in os.walk(path, followlinks=True):
+        dirpath, dirnames, filenames = x
+        for x in dirnames + filenames:
+            x = os.path.join(dirpath, x)
+            # Returns False for broken links.
+            if not os.path.exists(x):
+                return False
+    return True
 
 
 def _format_pipeline(network, transitions):
@@ -544,6 +718,19 @@ def _format_pipeline(network, transitions):
             node_ids.append(node_id)
         node_ids.append(next_id)
     return pipeline
+
+
+def _get_node_name(network, node_id):
+    from Betsy import bie3
+    
+    assert node_id >= 0 and node_id < len(network.nodes)
+    node = network.nodes[node_id]
+    
+    if isinstance(node, bie3.DataNode):
+        return node.datatype.name
+    elif isinstance(node, bie3.ModuleNode):
+        return node.name
+    raise AssertionError
 
 
 def _write_parameter_file(
@@ -592,62 +779,3 @@ def _write_parameter_file(
 def _read_parameter_file(filename):
     import json
     return json.loads(open(filename).read())
-
-
-def _make_hash_units(module_name, antecedents, out_attributes, user_options):
-    # Return list of tuples (name, value).  The values are used to
-    # uniquely hash the results of this module.
-    import operator
-
-    from Betsy import bhashlib
-    
-    if not operator.isSequenceType(antecedents):
-        antecedents = [antecedents]
-
-    hash_units = []
-    hash_units.append(("module name", module_name))
-    # Hash the checksum of the inputs.
-    for data_node in antecedents:
-        x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
-        x = "file checksum", x
-        hash_units.append(x)
-    # Hash the outputs.
-    for key in sorted(out_attributes):
-        value = out_attributes[key]
-        if type(value) is not type("") and operator.isSequenceType(value):
-            value = ",".join(value)
-        x = "%s=%s" % (key, value)
-        x = "out_attributes", x
-        hash_units.append(x)
-    
-    attrs = out_attributes.copy()
-    attrs.update(user_options)
-    for key in sorted(user_options):
-        value = user_options[key]
-        if type(value) is not type("") and operator.isSequenceType(value):
-            value = ",".join(value)
-        x = "%s=%s" % (key, value)
-        x = "user_options", x
-        hash_units.append(x)
-        
-    return hash_units
-
-
-def _hash_module(module_name, antecedents, out_attributes, user_options):
-    # Return a hash that uniquely describes the input to this
-    # module.  This is used so that the module won't be re-run on
-    # the same data.
-    # 
-    # out_attributes has already been updated with
-    # set_out_attributes.
-    # user_options is a dictionary of the options for this module.
-    import hashlib
-
-    x = _make_hash_units(
-        module_name, antecedents, out_attributes, user_options)
-    tohash = [x[1] for x in x]
-    
-    hasher = hashlib.md5()
-    for x in tohash:
-        hasher.update(x)
-    return hasher.hexdigest()

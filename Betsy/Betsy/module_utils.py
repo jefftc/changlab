@@ -634,7 +634,8 @@ def find_fastq_files(path):
     return filenames
 
 
-def find_merged_fastq_files(sample_group_filename, fastq_path, as_dict=False):
+def find_merged_fastq_files(sample_group_filename, fastq_path,
+                            as_dict=False, find_fasta=False):
     # Read the sample group file.  Return a list of (sample,
     # pair1.fastq, pair2.fastq).  pair2.fastq will be None for single
     # end reads.  Both files are full paths.
@@ -654,13 +655,25 @@ def find_merged_fastq_files(sample_group_filename, fastq_path, as_dict=False):
     # <fastq_path>/<sample>.fastq          # if single end
     # <fastq_path>/<sample>_<Pair>.fastq   # if paired end
 
+    opj = os.path.join
     fastq_files = []
     for sample in all_samples:
         # Look for single or paired end fastq files.
         pair1 = pair2 = None
-        se_file = os.path.join(fastq_path, "%s.fastq" % sample)
-        pe_file1 = os.path.join(fastq_path, "%s_1.fastq" % sample)
-        pe_file2 = os.path.join(fastq_path, "%s_2.fastq" % sample)
+        se_file = opj(fastq_path, "%s.fastq" % sample)
+        pe_file1 = opj(fastq_path, "%s_1.fastq" % sample)
+        pe_file2 = opj(fastq_path, "%s_2.fastq" % sample)
+        if find_fasta:
+            se_file = opj(fastq_path, "%s.fasta" % sample)
+            pe_file1 = opj(fastq_path, "%s_1.fasta" % sample)
+            pe_file2 = opj(fastq_path, "%s_2.fasta" % sample)
+        if find_fasta and not os.path.exists(se_file):
+            se_file = opj(fastq_path, "%s.fa" % sample)
+        if find_fasta and not os.path.exists(pe_file1):
+            pe_file1 = opj(fastq_path, "%s_1.fa" % sample)
+        if find_fasta and not os.path.exists(pe_file2):
+            pe_file2 = opj(fastq_path, "%s_2.fa" % sample)
+            
         if os.path.exists(se_file):
             pair1 = se_file
             assert not os.path.exists(pe_file1)
