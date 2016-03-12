@@ -13,7 +13,7 @@ class Module(AbstractModule):
         from Betsy import module_utils
 
         # This this is I/O heavy, don't use so many cores.
-        MAX_CORES = 2
+        MAX_CORES = 4
 
         filelib.safe_mkdir(out_path)
         filenames = module_utils.find_fastq_files(in_data.identifier)

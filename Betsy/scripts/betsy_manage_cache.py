@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 # TODO:
-# - handle "tmp..." files
+# - Should detect version
+# - Figure out if files are in progress or completed.
 
 def main():
     import os

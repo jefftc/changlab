@@ -26,6 +26,7 @@
 #
 # _list_differences_in_nodelists
 # _merge_nodelists
+# _find_lowest_datatype
 # _parse_dattr
 # _parse_args                 Parse the arguments from the user.
 
@@ -435,7 +436,7 @@ def build_pipelines(
     import sys
     from Betsy import bie3
 
-    print "Building pipelines that use --input data types."
+    print "Constructing pipelines that use --input data types."
     sys.stdout.flush()
 
     # data_node_ids is parallel to in_data_nodes.  Each element is a
@@ -913,6 +914,33 @@ def _merge_nodelists(nodes1, nodes2):
     return merged
 
 
+def _find_lowest_datatype(network, datatype_name, allowed_node_ids):
+    # Return a node_id or None if not found.
+    from Betsy import bie3
+
+    x = allowed_node_ids
+    x = [x for x in x if isinstance(network.nodes[x], bie3.DataNode)]
+    x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
+    node_ids = x
+
+    if not node_ids:
+        return None
+    if len(node_ids) == 1:
+        return node_ids[0]
+    descendents = bie3._make_descendent_dict(network)
+    good_node_ids = []
+    for nid in node_ids:
+        x = descendents.get(nid, [])
+        x = [x for x in x if isinstance(network.nodes[x], bie3.DataNode)]
+        x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
+        x = [x for x in x if x in allowed_node_ids]
+        if not x:
+            good_node_ids.append(nid)
+    if len(good_node_ids) == 1:
+        return good_node_ids[0]
+    return None
+
+
 def _parse_dattr(dattr_str):
     # Format: <datatype>[*].<key>=<value>
     # Return <datatype>, <key>, <value>, <all_nodes>.
@@ -1044,7 +1072,6 @@ def main():
     import getpass
 
     from Betsy import config
-    from Betsy import module_utils
     from Betsy import rule_engine_bie3
     from Betsy import userfile
     from Betsy import reportlib
@@ -1326,6 +1353,12 @@ def main():
         verbose)
     if not paths:
         return
+    # DEBUG: pickle objects so don't have to regenerate.
+    #import pickle
+    #open("network.txt", 'w').write(pickle.dumps(network))
+    #open("paths.txt", 'w').write(pickle.dumps(paths))
+    #network = pickle.loads(open("network.txt").read())
+    #paths = pickle.loads(open("paths.txt").read())
     # DEBUG: Print out each of the pipelines.
     #plot_pipelines(
     #    "pipeline", network, paths[:1], user_options, max_pipelines=16,
@@ -1414,33 +1447,6 @@ def main():
         reportlib.copy_file_or_path(in_filename, out_filename)
         
     print "Done."
-
-
-def _find_lowest_datatype(network, datatype_name, allowed_node_ids):
-    # Return a node_id or None if not found.
-    from Betsy import bie3
-
-    x = allowed_node_ids
-    x = [x for x in x if isinstance(network.nodes[x], bie3.DataNode)]
-    x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
-    node_ids = x
-
-    if not node_ids:
-        return None
-    if len(node_ids) == 1:
-        return node_ids[0]
-    descendents = bie3._make_descendent_dict(network)
-    good_node_ids = []
-    for nid in node_ids:
-        x = descendents.get(nid, [])
-        x = [x for x in x if isinstance(network.nodes[x], DataNode)]
-        x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
-        x = [x for x in x if x in allowed_node_ids]
-        if not x:
-            good_node_ids.append(nid)
-    if len(good_node_ids) == 1:
-        return good_node_ids[0]
-    return None
 
 
 if __name__ == '__main__':
