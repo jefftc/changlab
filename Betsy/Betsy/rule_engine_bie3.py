@@ -484,7 +484,11 @@ def run_module(
         elapsed = time.mktime(end_time) - time.mktime(start_time)
 
         # Make sure the module generated the requested file.
-        assert filelib.fp_exists_nz(full_outfile), "no file generated"
+        assert os.path.exists(full_outfile)
+        assert filelib.fp_exists_nz(full_outfile), \
+               "Module %s did not generate results: %s" % (
+            module_name, full_outfile)
+        
 
         # Write parameters.
         x = os.path.join(result_dir, BETSY_PARAMETER_FILE)

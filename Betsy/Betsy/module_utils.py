@@ -684,7 +684,21 @@ def find_merged_fastq_files(sample_group_filename, fastq_path,
             pair1 = pe_file1
             pair2 = pe_file2
         else:
-            raise AssertionError, "Not found: %s" % sample
+            # Cannot find the fastq file.
+            similar_files = []
+            for x in os.listdir(fastq_path):
+                if x.find(sample) >= 0:
+                    similar_files.append(x)
+            x = ""
+            if similar_files:
+                if len(similar_files) > 5:
+                    similar_files = similar_files[:5] + "..."
+                if len(similar_files) > 1:
+                    x = "\nSimilar files are:\n%s" % "\n".join(similar_files)
+                else:
+                    x = "A similar file is: %s" % similar_files[0]
+            raise AssertionError, "Not found in %s: %s%s" % (
+                fastq_path, sample, x)
 
         x = sample, pair1, pair2
         fastq_files.append(x)

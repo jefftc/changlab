@@ -20,7 +20,7 @@ class Module(AbstractModule):
         bam_filenames = mlib.find_bam_files(bam_node.identifier)
         orient = mlib.read_orientation(orient_node.identifier)
         filelib.safe_mkdir(out_path)
-
+        
         # TODO: Try to figure out version.
         metadata = {}
         metadata["tool"] = "RSeQC (unknown version)"
@@ -98,7 +98,9 @@ class Module(AbstractModule):
             x = " ".join(x)
             commands.append(x)
         metadata["commands"] = commands
-        parallel.pshell(commands)
+        x = parallel.pshell(commands)
+        assert x.find("Traceback") < 0, x
+        assert filelib.assert_exists_nz(out_path)
         
         return metadata
         

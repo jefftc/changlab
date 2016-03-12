@@ -107,8 +107,8 @@ def main():
     args.read_length = int(args.read_length)
     assert args.read_length >= 10 and args.read_length <= 1000, \
            "Invalid --read_length: %d" % args.read_length
-    assert os.path.exists(args.ref_gene_model)
-    assert os.path.exists(args.housekeeping_gene_model)
+    filelib.assert_exists_nz(args.ref_gene_model)
+    filelib.assert_exists_nz(args.housekeeping_gene_model)
 
     assert args.num_procs >= 1 and args.num_procs < 100, \
            "Please specify between 1 and 100 processes."
