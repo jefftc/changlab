@@ -110,6 +110,7 @@ debug_print
 # _is_data_node_atomic
 # _make_data_node_atomic
 # _is_network_atomic
+# _get_atomic_data_node_from_pathway
 #
 # _merge_start_ids         Should only be called by find_paths_by_start_ids
 # _does_based_on_data_conflict_with_out_data    Only by find_paths_by_start_ids
@@ -731,8 +732,7 @@ class DataNode(object):
     def __init_from_dict(args):
         assert 'datatype' in args
         assert 'attributes' in args
-        inst = DataNode(args['datatype'], **args['attributes'])
-        return inst
+        return DataNode(args['datatype'], **args['attributes'])
 
 
 # DataNode + identifier.
@@ -2175,6 +2175,7 @@ def find_paths_by_datatypes(network, custom_attributes, datatype_names):
 
 class Pathway:
     def __init__(self, node_ids, transitions, start_ids, missing_ids):
+        # transitions is dictionary of node_id : frozenset of next_ids
         assert type(node_ids) is type(frozenset())
         assert type(missing_ids) is type(frozenset())
         # Debug: Check for duplicates in node_ids.
@@ -2245,6 +2246,7 @@ def _find_paths_by_start_ids_hh(
     from genomicode import jmath
 
     PRUNE_PATHS = True
+    #PRUNE_PATHS = False
 
     assert node_id < len(network.nodes), "%s %d" % (
         repr(node_id), len(network.nodes))
@@ -2268,8 +2270,8 @@ def _find_paths_by_start_ids_hh(
             p = Pathway(frozenset([node_id]), {}, sids, frozenset([]))
             all_paths[p] = 1
             #has_missing = False
-        # If this doesn't match any nodes, then this branch may be
-        # missing.
+        # If this node doesn't match any start nodes, then this branch
+        # may be missing.
         if not all_paths:
             sids = [None] * len(node2startids)
             p = Pathway(frozenset([node_id]), {}, sids, frozenset([node_id]))
@@ -2280,15 +2282,15 @@ def _find_paths_by_start_ids_hh(
         # Find some combination of inputs that works.
         combos = _bc_to_input_ids(
             network, node_id, custom_attributes, nodeid2parents=nodeid2parents)
-        
+
     checked_pathway = {}
     for cnum, combo in enumerate(combos):
         # combo is a list of node_ids.
         # Some combos will be seen twice, but the vast majority of the
         # time, each combo is evaluated only once.
 
-        # Each branch is a list of Pathway objects.
-        branch2info = [
+        # For each input, get a list of the Pathway objects.
+        innum2branch = [
             _find_paths_by_start_ids_h(
                 network, x, custom_attributes, node2startids, nodeid2parents,
                 depth+[node_id], cache)
@@ -2296,7 +2298,7 @@ def _find_paths_by_start_ids_hh(
 
         # Make sure there aren't too many combinations to search.
         MAX_COMBINATIONS = 5E4
-        branchlen = [len(x) for x in branch2info]
+        branchlen = [len(x) for x in innum2branch]
         total = jmath.prod(branchlen)
         assert total < MAX_COMBINATIONS, "Too many paths (%d)" % total
 
@@ -2312,7 +2314,7 @@ def _find_paths_by_start_ids_hh(
         #if not has_missing:
         #    has_empty_branch = False
         #    for i in range(len(branch2info)):
-        #        x = [x for x in branch2info[i] if not x.missing_ids]
+         #        x = [x for x in branch2info[i] if not x.missing_ids]
         #        branch2info[i] = x
         #        if not x:
         #            has_empty_branch = True
@@ -2355,7 +2357,7 @@ def _find_paths_by_start_ids_hh(
         #            merge_cache[tuple(key)] = p
 
         # Try different combinations of paths for each branch.
-        for bnum, branches in enumerate(itertools.product(*branch2info)):
+        for bnum, branches in enumerate(itertools.product(*innum2branch)):
         #x = [range(x) for x in branchlen]
         #for bnum, branches_i in enumerate(itertools.product(*x)):
         #    branches = [
@@ -2405,6 +2407,9 @@ def _find_paths_by_start_ids_hh(
             #     already an invalid merged pipeline.
             # 3.  If data node, can't transition from previous module
             #     node.
+            # 4.  The same node is seen in different branches, but it
+            #     has different parents in each branch.
+            
             # If the paths conflict, then skip it.
 
             # Case 1.  See if there are conflicting start_ids.
@@ -2414,6 +2419,7 @@ def _find_paths_by_start_ids_hh(
                 # This almost never happens.
                 continue
 
+            # Merge each of the branches into one path.
             # Optimization: If this pathway has already been checked,
             # then don't check it again.
             path = Pathway(node_ids, transitions, start_ids, missing_ids)
@@ -2440,8 +2446,8 @@ def _find_paths_by_start_ids_hh(
                     # This happens 60% of the time.
                     continue
 
-            # If this is a DataNode, the transition from prev_id (a
-            # ModuleNode) to node_id may be invalid.  e.g.
+            # Case 3.  If this is a DataNode, the transition from
+            # prev_id (a ModuleNode) to node_id may be invalid.  e.g.
             # FastqFold (trimmed=no)  -> merge_reads -> FastqFold (trimmed=no)
             # FastqFold (trimmed=yes) ->             -> FastqFold (trimmed=yes)
             # If this is an output FastqFolder where trimmed=no, then this
@@ -2454,9 +2460,26 @@ def _find_paths_by_start_ids_hh(
                     nodeid2parents):
                     # This happens 3% of the time.
                     continue
+
+            # Case 4. If the merged branches would generate data nodes
+            # with different parents, then this conflicts.
+            if not missing_ids:
+                multiple_parents = False
+                for nid in path.node_ids:
+                    if not isinstance(network.nodes[nid], DataNode):
+                        continue
+                    x = _get_pathway_parents_of(
+                        network, path, nid, nodeid2parents=nodeid2parents)
+                    if len(x) >= 2:
+                        multiple_parents = True
+                        break
+                if multiple_parents:
+                    continue
+                
             #if not path.missing_ids and has_missing:
             #    has_missing = False
             assert path not in all_paths
+
             all_paths[path] = 1
 
     # If any of the paths have no missing nodes, then remove all paths
@@ -2593,16 +2616,39 @@ def prune_paths(paths, network, custom_attributes,
     # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)
     # pruning.
     # Just try different orders until I find the fastest.
+
+    # Track the number of pathways pruned.  For debugging.
+    pruned = []  # list of (name, num_paths_start, num_paths_end)
     if prune_custom_attributes:
+        ns = len(paths)
         paths = _prune_by_custom_attributes(
             network, custom_attributes, paths, nodeid2parents)
+        x = "_prune_by_custom_attributes", ns, len(paths)
+        pruned.append(x)
+
+    ns = len(paths)
     paths = _prune_alternate_attributes2(
         network, custom_attributes, paths, nodeid2parents)
+    x = "_prune_alternate_attributes2", ns, len(paths)
+    pruned.append(x)
+
+    ns = len(paths)
     paths = _prune_alternate_attributes1(
         network, custom_attributes, paths, nodeid2parents)
+    x = "_prune_alternate_attributes1", ns, len(paths)
+    pruned.append(x)
+
     if prune_superset:
+        ns = len(paths)
         paths = _prune_superset_pipelines(network, paths)
+        x = "_prune_superset_pipelines", ns, len(paths)
+        pruned.append(x)
+
+    ns = len(paths)
     paths = _prune_parallel_pipelines(network, paths, nodeid2parents)
+    x = "_prune_parallel_pipelines", ns, len(paths)
+    pruned.append(x)
+
     return paths
 
 
@@ -2807,136 +2853,251 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
 
 def _prune_alternate_attributes1(
     network, custom_attributes, paths, nodeid2parents):
-    # If there is an object with an attribute that can take several
-    # different values, then pipelines may be generated that can
-    # create each value.  This causes unnecessary computation, because
-    # only one value needs to be used.  Arbitrarily choose one, and
-    # delete the other pipelines.
+    # If there an object has an attribute that can take different
+    # values, then pipelines may be generated that can lead to each
+    # value.  This causes unnecessary computation, because only one
+    # value needs to be used.  Arbitrarily choose one, and delete the
+    # other pipelines.
     # 
-    # align_with_bowtie1 -> SamFolder (bowtie1)
-    # align_with_bowtie2 -> SamFolder (bowtie2)
-    # align_with_bwa_aln -> SamFolder (bwa_backtrack)
-    # align_with_bwa_mem -> SamFolder (bwa_mem)
-    #from genomicode import parselib
+    # align_with_bowtie1 -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
+    # align_with_bowtie2 -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
+    # align_with_bwa_aln -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
+    # align_with_bwa_mem -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
 
-    # 1.  Look in two pipelines for:
-    #     - Same DataObject.
+    # Approach:
+    # 1.  Look for DataObject with attribute with multiple values.
+    #     - Has attribute is TYPE_ENUM.
+    # 2.  Split up the paths based on which value is set.
     #     - Different Modules pointing to that DataObject.
     #     - Modules have Consequence SET_TO to different values in the
     #       same attribute.
-    #     - That attribute is TYPE_ENUM in the DataObject.
-    # 2.  Keep the pipeline with the Module that generates the value
-    #     that comes first alphabetically.
-    # 3.  Print a message showing which value was chosen.
+    # 3.  Choose the value arbitrarily (comes first alphabetically).
+    # 4.  Remove the pipelines that don't lead to that value.
+    #     - Be careful not to remove pipelines that do not contain the
+    #       data object.
+    # 5.  Print a message showing which value was chosen.
 
     if not paths:
         return []
-
-    # List of (datatype name, attr name, kept value, deleted value)
-    deleted = []
     paths = paths[:]
 
-    # For each data node, list the alternate attributes.
-    dataid2alts = {}
-    for i in range(len(network.nodes)):
-        if not isinstance(network.nodes[i], DataNode):
+    # Make list of all nodes that have alternate values.
+    alternates = []  # list of node_id, attr_name
+    for node_id, node in enumerate(network.nodes):
+        if not isinstance(node, DataNode):
             continue
-        x = _list_alternate_attributes1(network, i, nodeid2parents)
-        dataid2alts[i] = x
-
-    # Only check pathways that has a data node in dataid2alts.
-    has_alts = []
-    for i, p in enumerate(paths):
-        x = [x for x in p.node_ids if dataid2alts.get(x, [])]
-        if x:
-            has_alts.append(i)
-    has_alts = {}.fromkeys(has_alts)
-
-    ## Convert node_ids to bitwise numbers for faster superset
-    ## comparison.
-    #paths_node_ids_bit = [_intlist2bits(x[0]) for x in paths]
-
-    seen = {}  # (path_i, path_j) -> 1
-    while True:
-        found = None
-        # Actually more efficient to restart this loop after deleting
-        # paths than to run through it without deleting anything.
-        # After deleting paths, leads to overall fewer calls to
-        # _find_alternate_attributes.  O(N*N) growth.
-        for i in range(len(paths)-1):
-            if not has_alts.get(i):
+        for (name, value) in node.attributes.iteritems():
+            t = _get_attribute_type(value)
+            if t != TYPE_ENUM:
                 continue
-            for j in range(i+1, len(paths)):
-                if not has_alts.get(j):
-                    continue
-                if (i, j) in seen:
-                    continue
-                # Almost all time spent in this function.
-                x = _find_alternate_attributes(
-                    network, paths[i], paths[j], dataid2alts)
-                seen[(i, j)] = 1
-                if x:
-                    found = i, j, x
-                    break
-            if found:
-                break
-        if not found:
-            break
+            x = node_id, name
+            alternates.append(x)
+    if not alternates:
+        return paths
+    
+    # Only want the alternates with multiple parent nodes.
+    nodeid2parents = _make_parents_dict(network)
+    good = []
+    for (node_id, attr_name) in alternates:
+        parent_ids = nodeid2parents[node_id]
+        if len(parent_ids) > 1:
+            good.append((node_id, attr_name))
+    alternates = good
 
-        path_1, path_2, x = found
-        attr_name, module_id_1, attr_value_1, \
-                   module_id_2, attr_value_2, data_id = x
-        assert attr_value_1 != attr_value_2
-        datatype_name = network.nodes[data_id].datatype.name
-
-        # Figure out which path to delete.
-        path_to_delete = None
-        # Look in custom_attributes to see if one of them is requested
-        # by the user.
-        user_request = None  # value requested by user
-        for x in custom_attributes:
-            if x.datatype.name != datatype_name:
+    # Clean up one alternate at a time, in case there are conflicts.
+    # Don't want a situation in which one alternate leads to an
+    # impossible situation for another alternate.
+    for (node_id, name) in alternates:
+        # If this alternate is not in a pathway somewhere (either
+        # never in, or was deleted), then ignore.
+        x = [i for (i, p) in enumerate(paths) if node_id in p.node_ids]
+        if not x:
+            continue
+        
+        # Sort the pipelines based on the values.
+        value2pathids = {}  # value -> list of pathway indexes
+        for index, path in enumerate(paths):
+            if node_id not in path.node_ids:
                 continue
-            if x.name != attr_name:
-                continue
-            assert user_request is None, "Multiple custom_attributes."
-            user_request = x.value
-        deleted_based_on_user = True
-        if user_request:
-            if user_request == attr_value_2:
-                path_to_delete = 1
-            elif user_request == attr_value_1:
-                path_to_delete = 2
-        if path_to_delete is None:
-            # Keep the one that comes first alphabetically.
-            path_to_delete = 1
-            if attr_value_1 < attr_value_2:
-                path_to_delete = 2
-            deleted_based_on_user = False
-
-        # Delete the appropriate path.
-        assert path_to_delete in [1, 2]
-        if path_to_delete == 1:
-            del paths[path_1]
-            #del paths_node_ids_bit[path_1]
-            p1, p2 = path_2, path_1
-            v1, v2 = attr_value_2, attr_value_1
-        else:
-            del paths[path_2]
-            #del paths_node_ids_bit[path_2]
-            p1, p2 = path_1, path_2
-            v1, v2 = attr_value_1, attr_value_2
-
-        # Fix the indexes of the seen variable.
-        x = seen.keys()
-        x = _fix_node_id_pairs_after_merge(x, p1, p2)
-        seen = {}.fromkeys(x)
+            atomic_node = _get_atomic_data_node_from_pathway(
+                network, path, node_id, custom_attributes,
+                nodeid2parents=nodeid2parents)
+            value = atomic_node.attributes[name]
+            assert _get_attribute_type(value) == TYPE_ATOM
+            if value not in value2pathids:
+                value2pathids[value] = []
+            value2pathids[value].append(index)
+        assert value2pathids
             
-        x = datatype_name, attr_name, v1, v2, deleted_based_on_user
-        deleted.append(x)
+        # If there is only one possible value, then ignore this.
+        if len(value2pathids) == 1:
+            continue
+        
+        # Choose a value.
+        
+        chosen_value = None
+        # Look in custom_attributes to see if one is favored by the user.
+        x = custom_attributes
+        x = [x for x in x if x.name == name]
+        x = [x for x in x
+             if x.datatype.name == network.nodes[node_id].datatype.name]
+        assert len(x) <= 1, "Multiple custom_attributes."
+        if x:
+            chosen_value = x[0].value
+        if chosen_value is None:
+            if "no" in value2pathids:
+                chosen_value = "no"
+        if chosen_value is None:
+            # Choose the first one alphabetically.
+            chosen_value = sorted(value2pathids)[0]
 
+        # Ignore all the pathway IDs that does not have this value.
+        # Be sure not to delete pathways that do not include this
+        # node.
+        to_delete = []
+        for (value, path_ids) in value2pathids.iteritems():
+            if value == chosen_value:
+                continue
+            to_delete.extend(path_ids)
+        to_delete = {}.fromkeys(to_delete)
+
+        paths = [p for (i, p) in enumerate(paths) if i not in to_delete]
+        
     #_print_attributes_pruned(deleted)
     return paths
+
+
+## def _prune_alternate_attributes1(
+##     network, custom_attributes, paths, nodeid2parents):
+##     # If there an object has an attribute that can take different
+##     # values, then pipelines may be generated that can lead to each
+##     # value.  This causes unnecessary computation, because only one
+##     # value needs to be used.  Arbitrarily choose one, and delete the
+##     # other pipelines.
+##     # 
+##     # align_with_bowtie1 -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
+##     # align_with_bowtie2 -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
+##     # align_with_bwa_aln -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
+##     # align_with_bwa_mem -> SamFolder.align=[bowtie1,bowtie2,bwa_back,bwa_mem]
+
+##     # 1.  Look in two pipelines for:
+##     #     - Same DataObject.
+##     #     - Different Modules pointing to that DataObject.
+##     #     - Modules have Consequence SET_TO to different values in the
+##     #       same attribute.
+##     #     - That attribute is TYPE_ENUM in the DataObject.
+##     # 2.  Keep the pipeline with the Module that generates the value
+##     #     that comes first alphabetically.
+##     # 3.  Print a message showing which value was chosen.
+
+##     if not paths:
+##         return []
+
+##     # List of (datatype name, attr name, kept value, deleted value)
+##     deleted = []
+##     paths = paths[:]
+
+##     # For each data node, list the alternate attributes.
+##     dataid2alts = {}
+##     for i in range(len(network.nodes)):
+##         if not isinstance(network.nodes[i], DataNode):
+##             continue
+##         x = _list_alternate_attributes1(network, i, nodeid2parents)
+##         dataid2alts[i] = x
+
+##     # Only check pathways that has a data node in dataid2alts.
+##     has_alts = []
+##     for i, p in enumerate(paths):
+##         x = [x for x in p.node_ids if dataid2alts.get(x, [])]
+##         if x:
+##             has_alts.append(i)
+##     has_alts = {}.fromkeys(has_alts)
+
+##     ## Convert node_ids to bitwise numbers for faster superset
+##     ## comparison.
+##     #paths_node_ids_bit = [_intlist2bits(x[0]) for x in paths]
+
+##     seen = {}  # (path_i, path_j) -> 1
+##     while True:
+##         found = None
+##         # Actually more efficient to restart this loop after deleting
+##         # paths than to run through it without deleting anything.
+##         # After deleting paths, leads to overall fewer calls to
+##         # _find_alternate_attributes.  O(N*N) growth.
+##         for i in range(len(paths)-1):
+##             if not has_alts.get(i):
+##                 continue
+##             for j in range(i+1, len(paths)):
+##                 if not has_alts.get(j):
+##                     continue
+##                 if (i, j) in seen:
+##                     continue
+##                 # Almost all time spent in this function.
+##                 x = _find_alternate_attributes(
+##                     network, paths[i], paths[j], dataid2alts)
+##                 seen[(i, j)] = 1
+##                 if x:
+##                     found = i, j, x
+##                     break
+##             if found:
+##                 break
+##         if not found:
+##             break
+
+##         path_1, path_2, x = found
+##         attr_name, module_id_1, attr_value_1, \
+##                    module_id_2, attr_value_2, data_id = x
+##         assert attr_value_1 != attr_value_2
+##         datatype_name = network.nodes[data_id].datatype.name
+
+##         # Figure out which path to delete.
+##         path_to_delete = None
+##         # Look in custom_attributes to see if one of them is requested
+##         # by the user.
+##         user_request = None  # value requested by user
+##         for x in custom_attributes:
+##             if x.datatype.name != datatype_name:
+##                 continue
+##             if x.name != attr_name:
+##                 continue
+##             assert user_request is None, "Multiple custom_attributes."
+##             user_request = x.value
+##         deleted_based_on_user = True
+##         if user_request:
+##             if user_request == attr_value_2:
+##                 path_to_delete = 1
+##             elif user_request == attr_value_1:
+##                 path_to_delete = 2
+##         if path_to_delete is None:
+##             # Keep the one that comes first alphabetically.
+##             path_to_delete = 1
+##             if attr_value_1 < attr_value_2:
+##                 path_to_delete = 2
+##             deleted_based_on_user = False
+
+##         # Delete the appropriate path.
+##         assert path_to_delete in [1, 2]
+##         if path_to_delete == 1:
+##             del paths[path_1]
+##             #del paths_node_ids_bit[path_1]
+##             p1, p2 = path_2, path_1
+##             v1, v2 = attr_value_2, attr_value_1
+##         else:
+##             del paths[path_2]
+##             #del paths_node_ids_bit[path_2]
+##             p1, p2 = path_1, path_2
+##             v1, v2 = attr_value_1, attr_value_2
+
+##         # Fix the indexes of the seen variable.
+##         x = seen.keys()
+##         x = _fix_node_id_pairs_after_merge(x, p1, p2)
+##         seen = {}.fromkeys(x)
+            
+##         x = datatype_name, attr_name, v1, v2, deleted_based_on_user
+##         deleted.append(x)
+
+##     #_print_attributes_pruned(deleted)
+##     return paths
 
 
 def _list_alternate_attributes1(network, data_id, nodeid2parents):
@@ -3461,6 +3622,7 @@ def _is_parallel_pipeline2(network, path_1, path_2, nodeid2parents):
     # Test if path_1 is parallel to path_2.  If not parallel, returns
     # False.  Otherwise, returns a 1 or 2 indicating which one should
     # be pruned.
+    # Does a fast and sloppy check.
     # 
     # Parallel:
     # BAM (no) -> sort -> BAM (sort=y) -> addgroup ->  BAM (sort=y, group=y)
@@ -3575,6 +3737,7 @@ def _is_parallel_pipeline3(
     
     # For downstream tests, calculate some useful variables describing
     # the networks.
+    # _build_subpath is relatively fast.  No use to optimize.
     x1 = _build_subpath(
         network, paths, path_id_1, unique_ids_1, nodeid2parents)
     x2 = _build_subpath(
@@ -4301,24 +4464,22 @@ def plot_network_gv(
 
 def read_network(file_or_handle):
     import json
-    from genomicode import alignlib
     
     handle = file_or_handle
     if type(handle) is type(""):
         handle = open(file_or_handle, 'r')
     text = handle.read()
-    network = json.loads(text, object_hook=alignlib._dict_to_object)
+    network = json.loads(text, object_hook=_dict_to_object)
     return network
 
 
 def write_network(file_or_handle, network):
     import json
-    from genomicode import alignlib
     
     handle = file_or_handle
     if type(handle) is type(""):
         handle = open(file_or_handle, 'w')
-    json.dump(network, handle, default=alignlib._object_to_dict, indent=2)
+    json.dump(network, handle, default=_object_to_dict, indent=2)
 
 
 def debug_print(s):
@@ -4870,7 +5031,7 @@ def _fc_to_outputs(module, in_datas):
         x = DataNode.__new__(DataNode)
         x.datatype = datatype
         x.attributes = attributes.copy()
-        return [x]
+        return _make_data_node_atomic(x)
 
     names = sorted(possibilities)
     args = [possibilities[x] for x in names]
@@ -5651,7 +5812,10 @@ def _make_data_node_atomic(node):
         attrs = {}
         for name, value in zip(attr_names, values):
             attrs[name] = value
-        x = DataNode(node.datatype, **attrs)
+        x = DataNode.__new__(DataNode)
+        x.datatype = node.datatype
+        x.attributes = attrs
+        #x = DataNode(node.datatype, **attrs)
         atomic_nodes.append(x)
     return atomic_nodes
 
@@ -5664,6 +5828,61 @@ def _is_network_atomic(network):
         if not _is_data_node_atomic(node):
             return False
     return True
+
+
+def _get_atomic_data_node_from_pathway(
+    network, path, node_id, custom_attributes, nodeid2parents=None):
+    # Return an atomic data node.  Resolves all the TYPE_ENUM
+    # attributes based on the pathway.  node_id may not be atomic.
+    # However, since this is a pathway, only one atomic DataNode
+    # should be able to be generated.  Create it.
+    assert node_id in path.node_ids
+    node = network.nodes[node_id]
+    assert isinstance(node, DataNode)
+    if _is_data_node_atomic(node):
+        return node
+
+    if nodeid2parents is None:
+        nodeid2parents = _make_parents_dict(network)
+    x = nodeid2parents[node_id]
+    x = [x for x in x if x in path.node_ids]
+    x = [x for x in x if x in path.transitions]
+    x = [x for x in x if node_id in path.transitions[x]]
+    parent_ids = x
+    assert parent_ids, "No parents"
+    assert len(parent_ids) == 1, "Multiple parents of data"
+    module_id = parent_ids[0]
+
+    parent_ids = nodeid2parents[module_id]
+    parent_ids = [x for x in parent_ids if x in path.node_ids]
+    assert parent_ids, "No parents"
+    
+    combos = _bc_to_input_ids(
+        network, module_id, custom_attributes, all_input_ids=parent_ids,
+        all_output_ids=[node_id], nodeid2parents=nodeid2parents)
+    assert combos, "no input ids"
+    
+    # For every combination of input IDs, make the potential data types.
+    out_datas = []
+    for combo in combos:
+        module = network.nodes[module_id]
+        in_datas = [network.nodes[x] for x in combo]
+        x = _fc_to_outputs(module, in_datas)
+        out_datas.extend(x)
+    assert out_datas, "no out_datas"
+
+    # Make sure all out_datas are atomic.
+    for x in out_datas:
+        assert _is_data_node_atomic(x)
+
+    # Should only have one atomic out_data.  If there are multiple
+    # ones, try to diagnose.
+    if len(out_datas) > 1:
+        for cons in module.consequences:
+            # Cannot resolve if it is BASED_ON_DATA.
+            assert cons.behavior != BASED_ON_DATA, \
+                   "Cannot resolve: %s is BASED_ON_DATA" % cons.name
+    return out_datas[0]
 
 
 def _merge_start_ids(paths):
@@ -5744,6 +5963,33 @@ def _assign_case_by_type(type1, type2):
     assert x in types, "Unknown types: %s %s" % (type1, type2)
     i = types.index(x)
     return i + 1
+
+
+def _get_pathway_parents_of(network, pathway, node_id, nodeid2parents=None):
+    # Return a list of the IDs of the parents that are also in the
+    # pathway.
+    if nodeid2parents is None:
+        nodeid2parents = _make_parents_dict(network)
+    assert node_id in pathway.node_ids
+    x = nodeid2parents.get(node_id, [])
+    x = [x for x in x if x in pathway.node_ids]
+    x = [x for x in x if x in pathway.transitions]
+    x = [x for x in x if node_id in pathway.transitions[x]]
+    return x
+
+
+def _get_pathway_grandparents_of(
+    network, pathway, node_id, nodeid2parents=None):
+    # Return list of tuples (parent_id, list of grandparent IDs).
+    parent_ids = _get_pathway_parents_of(
+        network, pathway, node_id, nodeid2parents=nodeid2parents)
+    grandparent_ids = []
+    for parent_id in parent_ids:
+        x = _get_pathway_parents_of(
+            network, pathway, parent_id, nodeid2parents=nodeid2parents)
+        x = parent_id, x
+        grandparent_ids.append(x)
+    return grandparent_ids
 
 
 def _get_parents_of(network, node_id):
