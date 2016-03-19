@@ -2899,7 +2899,7 @@ def _prune_alternate_attributes1(
     nodeid2parents = _make_parents_dict(network)
     good = []
     for (node_id, attr_name) in alternates:
-        parent_ids = nodeid2parents[node_id]
+        parent_ids = nodeid2parents.get(node_id, [])
         if len(parent_ids) > 1:
             good.append((node_id, attr_name))
     alternates = good
