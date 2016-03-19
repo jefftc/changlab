@@ -141,7 +141,10 @@ def main():
         M("mismatch_profile.py", (
             "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
             "-l", ARG_READ_LENGTH)),
-        M("geneBody_coverage.py", (
+        #M("geneBody_coverage.py", (
+        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+        #    "-r", ARG_HOUSEKEEPING_GENE_MODEL)),
+        M("geneBody_coverage2.py", (
             "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
             "-r", ARG_HOUSEKEEPING_GENE_MODEL)),
         M("infer_experiment.py", (

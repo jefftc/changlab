@@ -913,6 +913,9 @@ def calc_max_procs_from_ram(gb_per_proc, buffer=8, upper_max=None):
     # concurrently.
     # buffer is the number of gb to leave for other processes.
     # upper_max is the absolute maximum number of processes.
+
+    # Currently uses amount of physical memory.  Should use the
+    # amount of available memory instead.
     total_bytes = get_physical_memory()
     total_gb = total_bytes/(1024*1024*1024)
     max_procs = (total_gb-buffer)/gb_per_proc

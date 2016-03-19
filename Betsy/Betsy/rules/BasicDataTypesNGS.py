@@ -829,6 +829,10 @@ all_modules = [
         "summarize_perfect_alignments",
         [FastqFolder, SampleGroupFile, AlignmentCIGARFolder],
         PerfectAlignmentSummary,
+        OptionDef(
+            "num_mismatches", default=0, help="Remove all reads with <= "
+            "this number of mismatches against the mouse genome.",
+            ),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
@@ -1101,6 +1105,10 @@ all_modules = [
         "subtract_mouse_reads",
         [FastqFolder, SampleGroupFile, AlignmentCIGARFolder],
         FastqFolder,
+        OptionDef(
+            "num_mismatches", default=0, help="Remove all reads with <= "
+            "this number of mismatches against the mouse genome.",
+            ),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
         Consequence("mouse_reads_subtracted", SET_TO, "yes"),
         Constraint("compressed", MUST_BE, "no", 0),
