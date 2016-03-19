@@ -28,6 +28,11 @@ class Module(AbstractModule):
         filelib.safe_mkdir(out_path)
         metadata = {}
 
+        num_mismatches = mlib.get_user_option(
+            user_options, "num_mismatches", type=int)
+        assert num_mismatches >= 0 and num_mismatches < 25
+        metadata["num_mismatches"] = num_mismatches
+
         sample2summary = {}  # sample -> summary_filename
         for filename in summary_filenames:
             # <sample>.matches.txt
@@ -63,11 +68,13 @@ class Module(AbstractModule):
         for x in jobs:
             sample, pair1_fastq, pair2_fastq, summary_file, \
                     out1_fastq, out2_fastq, sub1_fastq, sub2_fastq = x
-            x = summary_file, pair1_fastq, out1_fastq, sub1_fastq
+            x = summary_file, pair1_fastq, out1_fastq, sub1_fastq, \
+                num_mismatches
             x = subtract_mouse_reads, x, {}
             jobs2.append(x)
             if pair2_fastq:
-                x = summary_file, pair2_fastq, out2_fastq, sub2_fastq
+                x = summary_file, pair2_fastq, out2_fastq, sub2_fastq, \
+                    num_mismatches
                 x = subtract_mouse_reads, x, {}
                 jobs2.append(x)
 
@@ -91,15 +98,18 @@ class Module(AbstractModule):
         return "subtracted.fastq"
 
 
-def subtract_mouse_reads(summary_file, in_fastq, out_fastq, sub_fastq):
+def subtract_mouse_reads(
+    summary_file, in_fastq, out_fastq, sub_fastq, num_mismatches):
+    # Accept this as a mouse read if it contains less than or equal to
+    # num_mismatches mismatches from the mouse genome.
     from genomicode import filelib
     from genomicode import genomelib
 
-    # List the reads with perfect matches.
-    perfect_aligns = {}
+    # List the reads that look like mouse.
+    mouse_reads = {}
     for d in filelib.read_row(summary_file, header=1):
-        if int(d.NM) == 0:
-            perfect_aligns[d.query_name] = 1
+        if int(d.NM) <= num_mismatches:
+            mouse_reads[d.query_name] = 1
 
     outhandle = open(out_fastq, 'w')
     subhandle = open(sub_fastq, 'w')
@@ -109,7 +119,7 @@ def subtract_mouse_reads(summary_file, in_fastq, out_fastq, sub_fastq):
         if x.startswith("@"):
             x = x[1:]
         x = x.split()[0]  # BAM file only contains the first part.
-        if x in perfect_aligns:
+        if x in mouse_reads:
             genomelib.write_fastq(title, sequence, quality, subhandle)
         else:
             genomelib.write_fastq(title, sequence, quality, outhandle)

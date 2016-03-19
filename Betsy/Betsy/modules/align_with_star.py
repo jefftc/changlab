@@ -71,8 +71,12 @@ class Module(AbstractModule):
             commands.append(x)
         metadata["commands"] = commands
 
+
         # STAR takes 28 Gb per process.  Make sure we don't use up
         # more memory than is available on the machine.
+        # Defaults:
+        # --limitGenomeGenerateRAM   31000000000
+        # --outFilterMismatchNmax    10             Num mismatches.
         nc = mlib.calc_max_procs_from_ram(50, upper_max=num_cores)
         metadata["num cores"] = nc
         parallel.pshell(commands, max_procs=nc, path=out_path)

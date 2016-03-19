@@ -20,11 +20,16 @@ class Module(AbstractModule):
             align_node.identifier, endswith=".matches.txt")
         assert align_filenames, "No .matches.txt files."
         align_filenames.sort()
+        metadata = {}
 
         assert len(fastq_data) == len(align_filenames), \
                "Mismatch: num samples %d %d" % (
             len(fastq_data), len(align_filenames))
 
+        num_mismatches = mlib.get_user_option(
+            user_options, "num_mismatches", type=int)
+        assert num_mismatches >= 0 and num_mismatches < 25
+        metadata["num_mismatches"] = num_mismatches
 
         sample2fastqdata = {}
         for x in fastq_data:
@@ -47,7 +52,7 @@ class Module(AbstractModule):
         jobs2 = []  # list of (function, args, keywds)
         for x in jobs:
             sample, align_filename, fastq_file1, fastq_file2 = x
-            x = align_filename, fastq_file1, fastq_file2
+            x = align_filename, fastq_file1, fastq_file2, num_mismatches
             x = summarize_matches_file, x, None
             jobs2.append(x)
 
@@ -56,7 +61,7 @@ class Module(AbstractModule):
 
         # Put together the results in a table.
         handle = open(out_filename, 'w')
-        header = "sample", "perfect", "total", "perc"
+        header = "sample", "match", "total", "perc"
         print >>handle, "\t".join(header)
         for x in zip(jobs, results):
             x, d = x
@@ -65,12 +70,13 @@ class Module(AbstractModule):
                 d["perc_perfect"]
             print >>handle, "\t".join(map(str, x))
         handle.close()
+        return metadata
     
     def name_outfile(self, antecedents, user_options):
-        return "perfect_alignments.txt"
+        return "matched_alignments.txt"
 
 
-def summarize_matches_file(filename, fastq_file1, fastq_file2):
+def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches):
     # Return dictionary with keys:
     # total_alignments       int
     # perfect_alignments     int
@@ -95,7 +101,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2):
     perfect_aligns = {}
     for d in filelib.read_row(filename, header=1):
         assert d.query_name in all_aligns
-        if int(d.NM) == 0:
+        if int(d.NM) <= num_mismatches:
             perfect_aligns[d.query_name] = 1
 
     perfect = len(perfect_aligns)

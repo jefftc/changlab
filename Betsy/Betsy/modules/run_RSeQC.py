@@ -98,9 +98,14 @@ class Module(AbstractModule):
             x = " ".join(x)
             commands.append(x)
         metadata["commands"] = commands
-        x = parallel.pshell(commands)
+        # pyrseqc takes up to ~40 Gb per process.  (A single RSeQC
+        # program takes 33 Gb.)  Make sure we don't use up more memory
+        # than is available on the machine.
+        nc = mlib.calc_max_procs_from_ram(60, upper_max=num_cores)
+        metadata["num cores"] = nc
+        x = parallel.pshell(commands, max_procs=nc)
         assert x.find("Traceback") < 0, x
-        assert filelib.assert_exists_nz(out_path)
+        filelib.assert_exists_nz(out_path)
         
         return metadata
         
