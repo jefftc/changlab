@@ -917,13 +917,23 @@ def calc_max_procs_from_ram(gb_per_proc, buffer=8, upper_max=None):
     # Currently uses amount of physical memory.  Should use the
     # amount of available memory instead.
     total_bytes = get_physical_memory()
-    total_gb = total_bytes/(1024*1024*1024)
+    available_bytes = get_available_memory()
+    assert available_bytes <= total_bytes
+    #total_gb = total_bytes/(1024*1024*1024)
+    total_gb = available_bytes/(1024*1024*1024)
     max_procs = (total_gb-buffer)/gb_per_proc
     max_procs = max(max_procs, 1)
     if upper_max is not None:
         assert upper_max < 256
         max_procs = min(max_procs, upper_max)
     return max_procs
+
+
+def get_available_memory():
+    import psutil
+
+    x = psutil.virtual_memory()
+    return x.available
 
 
 def get_physical_memory():

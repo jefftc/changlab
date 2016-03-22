@@ -273,8 +273,19 @@ def exists_nz_many(filenames):
     return True
 
 
-def assert_exists_nz_many(filenames):
+
+def assert_exists_nz_many(filenames, retries=0):
     # Assert that multiple filenames exists and is non-zero.
+    import time
+    
+    DELAY = 2
+    num_tries = 0
+    while num_tries <= retries:
+        if exists_nz_many(filenames):
+            return
+        time.sleep(DELAY)
+        num_tries += 1
+    
     missing = []
     for filename in filenames:
         if not exists_nz(filename):

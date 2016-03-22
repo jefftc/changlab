@@ -77,7 +77,7 @@ class Module(AbstractModule):
         # Defaults:
         # --limitGenomeGenerateRAM   31000000000
         # --outFilterMismatchNmax    10             Num mismatches.
-        nc = mlib.calc_max_procs_from_ram(50, upper_max=num_cores)
+        nc = mlib.calc_max_procs_from_ram(50, buffer=100, upper_max=num_cores)
         metadata["num cores"] = nc
         parallel.pshell(commands, max_procs=nc, path=out_path)
 
@@ -85,7 +85,9 @@ class Module(AbstractModule):
         x = [x[-2] for x in jobs]  # out_prefix
         x = ["%sAligned.out.sam" % x for x in x]
         x = [os.path.join(out_path, x) for x in x]
-        filelib.assert_exists_nz_many(x)
+        # Sometimes, this will erroneously trigger an error.  If the
+        # files don't exist, wait a few seconds and try again.
+        filelib.assert_exists_nz_many(x, retries=3)
         return metadata
 
 
