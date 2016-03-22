@@ -18,8 +18,11 @@ run_module
 # _read_parameter_file
 
 
+VERSION = 7
+FINISHED_FILE = "finished.txt"
+IN_PROGRESS_FILE = "in_progress.txt"
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
-VERSION = 6
+
 TIME_FMT = "%a %b %d %H:%M:%S %Y"
 
 
@@ -375,10 +378,10 @@ def run_module(
     print x
     sys.stdout.flush()
 
-    # Run the analysis.  If someone else is currently running the
-    # same analysis, then wait for them to finish.  However, if
-    # they have somehow failed, then overwrite the incomplete
-    # results.
+    # Run the analysis.  If someone else is currently running the same
+    # analysis, then wait for them to finish.  However, if they have
+    # somehow failed, then delete the incomplete results and start
+    # over.
     #
     # 1.  Create directory.
     # 2.  Write in_progress.txt.
@@ -386,7 +389,7 @@ def run_module(
     # 4.  Write finished.txt.
     # 5.  Stop refreshing in_progress.txt.
     # 
-    # copying.txt  stdout.txt  RESULT
+    # IN_PROGRESS  FINISHED    INTERPRETATION
     #    missing    missing    Starting analysis?  Wait 5 sec, check again.
     #                          If everything still missing, then overwrite.
     #    missing    present    Complete analysis.
@@ -397,58 +400,63 @@ def run_module(
     #                          after 5 sec.  If missing, consider
     #                          complete.  If back, consider error.
     REFRESH = 3  # number of seconds to refresh copying.txt file.
-    success_file = os.path.join(result_dir, "stdout.txt")
-    copying_file = os.path.join(result_dir, "in_progress.txt")
-
-    # Try to make the result_dir.  If I make it, then I should run the
-    # analysis.  Otherwise, someone else has priority.  Let them run
-    # the analysis.
-    i_made_dir = False
-    try:
-        os.mkdir(result_dir)
-        i_made_dir = True
-    except OSError, x:
-        pass
-
+    success_file = os.path.join(result_dir, FINISHED_FILE)
+    copying_file = os.path.join(result_dir, IN_PROGRESS_FILE)
     exists = os.path.exists
+
     i_run_analysis = None
-    while True:
-        if i_made_dir:
+    while i_run_analysis is None:
+        # Try to make the result_dir.  If I make it, then I should run the
+        # analysis.  Otherwise, someone else has priority.  Let them run
+        # the analysis.
+
+        try:
+            os.mkdir(result_dir)
             i_run_analysis = True
             break
+        except OSError, x:
+            pass
 
         last_refresh = None
         if exists(copying_file):
             last_refresh = time.time() - os.path.getctime(copying_file)
 
         if not exists(copying_file) and not exists(success_file):
-            time.sleep(REFRESH)
+            # BUG: This doesn't work.  What if this was abandoned, but
+            # somebody else just happens to create the directory again
+            # while I'm checking?
+            # result_dir, but nothing inside it.
+            time.sleep(REFRESH*2)
             if not exists(copying_file) and not exists(success_file):
-                # Abandoned.  I run.
-                i_run_analysis = True
-                break
+                # Abandoned.  Delete the result dir and try again.
+                _rmtree_multi(result_dir)
         elif not exists(copying_file) and exists(success_file):
+            # Previous run is now finished.
             i_run_analysis = False
-            break
-        # copying_file should exist.
-        elif last_refresh < REFRESH*2 and not exists(success_file):
-            time.sleep(REFRESH)
-        elif last_refresh < REFRESH*2 and exists(success_file):
+        # From here on down, copying_file should exist.
+        elif last_refresh < REFRESH and not exists(success_file):
+            # Still copying.  Wait.
+            time.sleep(REFRESH+1)
+        elif last_refresh < REFRESH and exists(success_file):
+            # Finishing up.  Consider complete.
             i_run_analysis = False
-            break
         elif last_refresh >= REFRESH*2 and not exists(success_file):
-            i_run_analysis = True
-            break
+            # Steal the file.  This can cause a lot of problems, so
+            # don't do this unless we're sure the other process is
+            # really dead.
+            # Abandoned.  Delete the result dir and try again.
+            _rmtree_multi(result_dir)
         elif last_refresh >= REFRESH*2 and exists(success_file):
             os.unlink(copying_file)
-            time.sleep(REFRESH*2)
+            time.sleep(REFRESH*3)
             # Should not be coming back if analysis has already
             # completed successfully.
             assert not exists(copying_file), "Zombie in progress file"
+            # At this point, no copying_file, but there is a
+            # success_file.  Consider this analysis complete.
             i_run_analysis = False
-            break
     assert i_run_analysis is not None
-
+    
     if not i_run_analysis:
         filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
         assert os.path.exists(filename)
@@ -472,9 +480,9 @@ def run_module(
         x = [x for x in x if x != os.path.realpath(copying_file)]
         for x in x:
             if os.path.isdir(x):
-                shutil.rmtree(x)
+                _rmtree_multi(x)
             else:
-                os.unlink(x)
+                _unlink_multi(x)
         
         start_time = time.localtime()
         try:
@@ -509,10 +517,7 @@ def run_module(
             refresher.stop()
         os.chdir(cwd)
         if not completed_successfully and clean_up:
-            if os.path.exists(result_dir):
-                # This can fail if the stop file was deleted in the
-                # middle.
-                shutil.rmtree(result_dir)
+            _rmtree_multi(result_dir)
 
     return out_identified_data_node, next_id, elapsed
 
@@ -527,6 +532,38 @@ class FileRefresher:
             self.stopped = True
     def __del__(self):
         self.stop()
+
+
+def _unlink_multi(filename):
+    import os
+    
+    try:
+        # This can fail if files are deleted in the middle
+        # of the operation.
+        os.unlink(filename)
+    except OSError, x:
+        if str(x).find("No such file or directory"):
+            pass
+        else:
+            raise
+
+
+def _rmtree_multi(path):
+    # Delete path, when multiple other processes may be deleting it at
+    # the same time.
+    import os
+    import shutil
+    
+    while os.path.exists(path):
+        try:
+            # This can fail if files are deleted in the middle
+            # of the operation.
+            shutil.rmtree(path)
+        except OSError, x:
+            if str(x).find("No such file or directory"):
+                pass
+            else:
+                raise
         
 
 def _make_file_refresher(filename, interval=None):
@@ -674,8 +711,8 @@ def _is_module_output_complete(path):
     if not os.path.exists(path):
         return False
 
-    # Make sure "stdout.txt" exists.
-    x = os.path.join(path, "stdout.txt")
+    # Make sure completed file exists.
+    x = os.path.join(path, FINISHED_FILE)
     if not os.path.exists(x):
         return False
     # Make sure BETSY_PARAMETER_FILE exists.

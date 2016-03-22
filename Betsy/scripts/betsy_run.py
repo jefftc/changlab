@@ -1194,7 +1194,7 @@ def main():
     args = parser.parse_args()
     input_list, x = _parse_args(sys.argv)
     outtype, out_identifier, out_attributes = x
-    verbose = (not args.sparse_network_png)    
+    verbose = (not args.sparse_network_png)
 
     print "Checking parameters."
     sys.stdout.flush()
