@@ -10,10 +10,10 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import parallel
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
 
         fastq_node, sample_node, align_node = antecedents
-        fastq_data = module_utils.find_merged_fastq_files(
+        fastq_data = mlib.find_merged_fastq_files(
             sample_node.identifier, fastq_node.identifier)
         assert fastq_data, "I could not find any FASTQ files."
         align_filenames = filelib.list_files_in_path(
@@ -52,11 +52,16 @@ class Module(AbstractModule):
         jobs2 = []  # list of (function, args, keywds)
         for x in jobs:
             sample, align_filename, fastq_file1, fastq_file2 = x
-            x = align_filename, fastq_file1, fastq_file2, num_mismatches
-            x = summarize_matches_file, x, None
+            args = align_filename, fastq_file1, fastq_file2, num_mismatches
+            keywds = { "temp_path" : "." }
+            x = summarize_matches_file, args, keywds
             jobs2.append(x)
 
-        results = parallel.pyfun(jobs2, num_procs=num_cores, DELAY=0.1)
+        # Since this can take a lot of memory, do just 1 process at a
+        # time.
+        MAX_PROCS = 1
+        nc = min(MAX_PROCS, num_cores)
+        results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.1)
         assert len(results) == len(jobs2)
 
         # Put together the results in a table.
@@ -76,36 +81,64 @@ class Module(AbstractModule):
         return "matched_alignments.txt"
 
 
-def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches):
+def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
+                           temp_path=None):
     # Return dictionary with keys:
     # total_alignments       int
     # perfect_alignments     int
     # perc_perfect           float (0.0-1.0)
+    # Will create temporary files in temp_path.  These files could be
+    # big (similar in size to the fastq files), so this should
+    # ideally be a path with a lot of free space.
+    import os
+    import tempfile
+    import dbm
     from genomicode import filelib
     from genomicode import genomelib
 
+    if temp_path is None:
+        temp_path = "."
+        
     # Get the list of all possible read names from fastq_file1.
     # Title from fastq file:
     #   @ST-J00106:107:H5NK2BBXX:1:1101:1438:1173 1:N:0:NAGATC
     # From alignment file:
     #   ST-J00106:107:H5NK2BBXX:1:2218:22079:11653
-    all_aligns = {}
-    for x in genomelib.read_fastq(fastq_file1):
-        title, sequence, quality = x
-        x = title
-        if x.startswith("@"):
-            x = x[1:]
-        x = x.split()[0]  # alignment file only contains the first part.
-        all_aligns[x] = 1
-    
-    perfect_aligns = {}
-    for d in filelib.read_row(filename, header=1):
-        assert d.query_name in all_aligns
-        if int(d.NM) <= num_mismatches:
-            perfect_aligns[d.query_name] = 1
 
-    perfect = len(perfect_aligns)
-    total = len(all_aligns)
+    IN_MEMORY = False
+
+    temp_filename = None
+    try:
+        if IN_MEMORY:
+            # This can take a lot of memory.
+            all_aligns = {}
+        else:
+            # To minimize the use of memory, store in a database.
+            x, temp_filename = tempfile.mkstemp(dir=temp_path)
+            os.close(x)
+            all_aligns = dbm.open(temp_filename, 'n')
+
+        for x in genomelib.read_fastq(fastq_file1):
+            title, sequence, quality = x
+            x = title
+            if x.startswith("@"):
+                x = x[1:]
+            x = x.split()[0]  # alignment file only contains the first part.
+            all_aligns[x] = "1"
+            
+        perfect_aligns = {}
+        for d in filelib.read_row(filename, header=1):
+            assert d.query_name in all_aligns
+            if int(d.NM) <= num_mismatches:
+                perfect_aligns[d.query_name] = 1
+        perfect = len(perfect_aligns)
+        total = len(all_aligns)
+    finally:
+        if not IN_MEMORY:
+            all_aligns.close()
+        if os.path.exists(temp_filename):
+            os.unlink(temp_filename)
+    
     results = {
         "perfect_alignments" : perfect,
         "total_alignments" : total,

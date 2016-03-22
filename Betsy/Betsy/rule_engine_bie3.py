@@ -99,9 +99,13 @@ def run_pipeline(
 
     # Track the total analysis time.
     total_time = 0
-    
+
+    MAX_ITER = 10000
+    it = 0
     while stack:
         DEBUG_POOL = pool
+        it += 1
+        assert it < MAX_ITER, "Too many iterations"
 
         # Make sure we're not stuck in an infinite loop.
         # 1.  Only modules on the stack.  AND
@@ -111,7 +115,9 @@ def run_pipeline(
             # Make sure there are modules ready to be checked.
             x = [x for x in x if x[1] not in not_ready]
             assert x, "Inference error: No more nodes to run."
-        
+
+        #x = [(x[1], bie3.get_node_name(x[0])) for x in stack]
+
         node, node_id, more_info, transitions = stack.pop()
         if node_id not in path_ids:  # ignore if not in pipeline
             continue

@@ -76,14 +76,21 @@ class Module(AbstractModule):
             x = sample, bam_filename, f1, f2, outdir
             jobs.append(x)
 
+        # Some of the modules of RSeQC uses a lot of memory.  Have
+        # seen a Python process take 33 Gb, and an R process take 200
+        # Gb.  However, most of the modules use much less memory.  So
+        # run one pyrseqc at a time, and run each one of those
+        # processes in parallel.  Is probably slower than running
+        # multiple pyrseqc, but takes less memory.
         commands = []
         for x in jobs:
             sample, bam_filename, fasta_filename1, fasta_filename2, outdir = x
 
-            # pyrseqc.py --paired_end rqc11.bam rqc14.fa 76 \
+            # pyrseqc.py -j 20 --paired_end rqc11.bam rqc14.fa 76 \
             #   mod07.txt hg19.HouseKeepingGenes.bed rqc21 --dry_run
             x = [
                 mlib.sq(pyrseqc),
+                "-j", str(num_cores),
                 ]
             if is_paired:
                 x += ["--paired_end"]
@@ -101,10 +108,14 @@ class Module(AbstractModule):
         # pyrseqc takes up to ~40 Gb per process.  (A single RSeQC
         # program takes 33 Gb.)  Make sure we don't use up more memory
         # than is available on the machine.
-        nc = mlib.calc_max_procs_from_ram(60, upper_max=num_cores)
-        metadata["num cores"] = nc
-        x = parallel.pshell(commands, max_procs=nc)
-        assert x.find("Traceback") < 0, x
+        #nc = mlib.calc_max_procs_from_ram(60, upper_max=num_cores)
+        #metadata["num cores"] = nc
+        #x = parallel.pshell(commands, max_procs=nc)
+        
+        for cmd in commands:
+            x = parallel.sshell(cmd)
+            assert x.find("Traceback") < 0, x
+            
         filelib.assert_exists_nz(out_path)
         
         return metadata

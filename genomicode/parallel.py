@@ -140,6 +140,10 @@ def pyfun(jobs, num_procs=4, lock_keyword=None, DELAY=0.1,
     pool.join()
     assert len(procs) == 0 or len(procs) == len(jobs)
 
+    if not procs:
+        # num_procs is 1, didn't run multithreaded.
+        return results
+
     done = [False] * len(procs)
     while 1:
         all_done = True

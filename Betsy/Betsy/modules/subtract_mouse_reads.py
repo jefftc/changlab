@@ -10,17 +10,16 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import parallel
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
 
         # This this is I/O heavy, don't use so many cores.  Also,
         # takes 4-5 Gb RAM per process.
-        MAX_CORES = module_utils.calc_max_procs_from_ram(5, upper_max=4)
+        MAX_CORES = mlib.calc_max_procs_from_ram(5, upper_max=4)
 
         fastq_node, sample_node, summary_node = antecedents
         fastq_path = fastq_node.identifier
-        x = module_utils.find_merged_fastq_files(
+        fastq_files = mlib.find_merged_fastq_files(
             sample_node.identifier, fastq_path)
-        fastq_files = x
         assert fastq_files, "I could not find any FASTQ files."
         summary_filenames = filelib.list_files_in_path(
             summary_node.identifier, endswith=".matches.txt")

@@ -745,6 +745,16 @@ class IdentifiedDataNode:
         return x
 
 
+def get_node_name(node):
+    if isinstance(node, IdentifiedDataNode):
+        return get_node_name(node.data)
+    elif isinstance(node, DataNode):
+        return node.datatype.name
+    elif isinstance(node, ModuleNode):
+        return node.name
+    raise AssertionError, "Cannot get name of node."
+
+
 class ModuleNode:
     def __init__(self, name, in_datatypes, out_datatype, *params, **keywds):
         # params is a list of Constraint, Consequence, and OptionDef.
