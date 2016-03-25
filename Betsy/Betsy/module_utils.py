@@ -759,6 +759,7 @@ def find_bam_files(path):
 
 def read_sample_group_file(file_or_handle):
     # Return list of (filename, sample, pair).  pair is None, 1, or 2.
+    # filename is a relative path.
     # 
     # Reads can be split across multiple files (e.g. for multiple
     # lanes), or across pairs.
@@ -830,10 +831,17 @@ def read_sample_group_file(file_or_handle):
 def fix_sample_group_filenames(sample_groups, fastq_path):
     # Sometimes the file names can change, due to compression or
     # uncompression.  Try to adjust for this.
+    # In sample_groups, filename is the full path.
     import os
 
-    x = os.listdir(fastq_path)
-    fastq_files = {}.fromkeys(x)
+    x = find_fastq_files(fastq_path)
+    fastq_files = {}  # filename -> full path
+    for x in x:
+        p, f = os.path.split(x)
+        fastq_files[f] = x
+        
+    #x = os.listdir(fastq_path)
+    #fastq_files = {}.fromkeys(x)
 
     EXTENSIONS = [".gz", ".bz2", ".xz"]
 
@@ -859,14 +867,16 @@ def fix_sample_group_filenames(sample_groups, fastq_path):
         for ext in EXTENSIONS:
             x = file_ + ext
             to_try.append(x)
+        fastq_filename = None
         for test_file in to_try:
             if test_file in fastq_files:
+                fastq_filename = fastq_files[test_file]
                 break
-        else:
-            # File not found.
+        if fastq_filename is None:
+            # File not found.  Skip this.
             continue
         
-        x = test_file, sample, pair
+        x = fastq_filename, sample, pair
         sample_groups[i] = x
     return sample_groups
     
@@ -880,12 +890,14 @@ def assert_sample_group_file(filename, fastq_path):
 
     # Make sure each file can be found in the fastq folder.
     for x in sample_groups:
-        file_, sample, pair = x
-        filename = os.path.join(fastq_path, file_)
+        filename, sample, pair = x
+        #filename = os.path.join(fastq_path, file_)
         assert os.path.exists(filename), "Missing FASTQ file: %s" % file_
 
     # Make sure there are no duplicate files.
-    files = [x[0] for x in sample_groups]
+    x = [x[0] for x in sample_groups]
+    x = [os.path.split(x)[1] for x in x]
+    files = x
     file2count = {}
     for x in files:
         file2count[x] = file2count.get(x, 0) + 1

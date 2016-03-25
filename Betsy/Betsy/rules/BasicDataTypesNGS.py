@@ -447,11 +447,10 @@ all_modules = [
 
         Constraint("reads_merged", MUST_BE, "no", 0),
         Consequence("reads_merged", SET_TO, "yes"),
-        #Constraint("compressed", CAN_BE_ANY_OF, ["no", "gz", "bz2", "xz"], 0),
-        #Consequence("compressed", SET_TO, "no"),
-        # Don't deal with compression here.
-        Constraint("compressed", MUST_BE, "no", 0),
-        Consequence("compressed", SAME_AS_CONSTRAINT),
+        Constraint("compressed", CAN_BE_ANY_OF, ["no", "gz", "bz2", "xz"], 0),
+        Consequence("compressed", SET_TO, "no"),
+        #Constraint("compressed", MUST_BE, "no", 0),
+        #Consequence("compressed", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),

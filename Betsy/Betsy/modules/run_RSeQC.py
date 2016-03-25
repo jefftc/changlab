@@ -105,13 +105,16 @@ class Module(AbstractModule):
             x = " ".join(x)
             commands.append(x)
         metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
         # pyrseqc takes up to ~40 Gb per process.  (A single RSeQC
-        # program takes 33 Gb.)  Make sure we don't use up more memory
-        # than is available on the machine.
+        # program, read_distribution.py, takes 33 Gb.)  Make sure we
+        # don't use up more memory than is available on the machine.
         #nc = mlib.calc_max_procs_from_ram(60, upper_max=num_cores)
         #metadata["num cores"] = nc
         #x = parallel.pshell(commands, max_procs=nc)
-        
+
+        # Because of memory, just run one at a time, but each one, use
+        # multiple cores.
         for cmd in commands:
             x = parallel.sshell(cmd)
             assert x.find("Traceback") < 0, x

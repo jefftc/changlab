@@ -293,8 +293,6 @@ def run_module(
     # out_nodes may differ by logged value.  However, the module will
     # set all the out_nodes to the same logged value, so they'll be
     # identical.
-    # TODO: Cache this result.  Some can take a long time,
-    # e.g. finding out how paired reads are oriented.
     i = 0
     while i < len(out_data_nodes):
         out_data_node = out_data_nodes[i]
@@ -474,15 +472,7 @@ def run_module(
         os.chdir(result_dir)
 
         # Clear out any old files in the directory.
-        x = os.listdir(result_dir)
-        x = [os.path.join(result_dir, x) for x in x]
-        x = [os.path.realpath(x) for x in x]
-        x = [x for x in x if x != os.path.realpath(copying_file)]
-        for x in x:
-            if os.path.isdir(x):
-                _rmtree_multi(x)
-            else:
-                _unlink_multi(x)
+        _clear_analysis_path(result_dir, copying_file)
         
         start_time = time.localtime()
         try:
@@ -502,7 +492,6 @@ def run_module(
         assert filelib.fp_exists_nz(full_outfile), \
                "Module %s did not generate results: %s" % (
             module_name, full_outfile)
-        
 
         # Write parameters.
         x = os.path.join(result_dir, BETSY_PARAMETER_FILE)
@@ -513,25 +502,91 @@ def run_module(
         completed_successfully = True
         open(success_file, 'w').write("success")
     finally:
+        if not completed_successfully and clean_up:
+            _clear_analysis_path(result_dir, copying_file)
         if refresher is not None:
             refresher.stop()
-        os.chdir(cwd)
         if not completed_successfully and clean_up:
             _rmtree_multi(result_dir)
+        os.chdir(cwd)
 
     return out_identified_data_node, next_id, elapsed
 
 
 class FileRefresher:
     def __init__(self, stop_filename):
+        import os
         self.stop_filename = stop_filename
+        self.stop_path = os.path.split(stop_filename)[0]
         self.stopped = False
     def stop(self):
+        import os
         if not self.stopped:
-            open(self.stop_filename, 'w')
+            if os.path.exists(self.stop_path):
+                open(self.stop_filename, 'w')
             self.stopped = True
     def __del__(self):
         self.stop()
+
+
+def _make_file_refresher(filename, interval=None):
+    # Will refresh <filename> every <interval> seconds.  Returns an
+    # object with one method: stop.  Calling stop will stop refreshing
+    # the file and delete it.
+    import os
+    import time
+
+    # interval is the number of seconds before refreshing the file.
+    MAX_INTERVAL = 60*60*24  # 24 hours
+    if interval is None:
+        interval = 5
+    assert interval > 0 and interval <= MAX_INTERVAL
+
+    # Make sure I can write to this file.
+    filename = os.path.realpath(filename)
+    path = os.path.split(filename)[0]
+    assert os.path.exists(path)
+
+    # Make sure the stop file doesn't already exist.
+    stop_filename = "%s.stop" % filename
+    if os.path.exists(stop_filename):
+        os.unlink(stop_filename)
+        
+    pid = os.fork()
+    if pid == 0:  # child
+        # Repeatedly refresh filename until I see <filename>.stop, or
+        # until the directory is deleted.
+        try:
+            while not os.path.exists(stop_filename):
+                # Someone might have deleted this path (and exited the
+                # program) while I was sleeping.
+                if not os.path.exists(path):
+                    break
+                open(filename, 'w')
+                time.sleep(interval)
+        finally:
+            if os.path.exists(stop_filename):
+                _unlink_multi(stop_filename)
+            if os.path.exists(filename):
+                _unlink_multi(filename)
+        os._exit(0)
+    
+    return FileRefresher(stop_filename)
+
+
+def _clear_analysis_path(path, copying_file):
+    # Delete everything inside path, except for the copying file.
+    import os
+
+    x = os.listdir(path)
+    x = [os.path.join(path, x) for x in x]
+    x = [os.path.realpath(x) for x in x]
+    x = [x for x in x if x != os.path.realpath(copying_file)]
+    for x in x:
+        if os.path.isdir(x):
+            _rmtree_multi(x)
+        else:
+            _unlink_multi(x)
 
 
 def _unlink_multi(filename):
@@ -565,50 +620,6 @@ def _rmtree_multi(path):
             else:
                 raise
         
-
-def _make_file_refresher(filename, interval=None):
-    # Will refresh <filename> every <interval> seconds.  Returns an
-    # object with one method: stop.  Calling stop will stop refreshing
-    # the file and delete it.
-    import os
-    import time
-
-    # interval is the number of seconds before refreshing the file.
-    MAX_INTERVAL = 60*60*24  # 24 hours
-    if interval is None:
-        interval = 5
-    assert interval > 0 and interval <= MAX_INTERVAL
-
-    # Make sure I can write to this file.
-    filename = os.path.realpath(filename)
-    path = os.path.split(filename)[0]
-    assert os.path.exists(path)
-
-    # Make sure the stop file doesn't already exist.
-    stop_filename = "%s.stop" % filename
-    if os.path.exists(stop_filename):
-        os.unlink(stop_filename)
-        
-    pid = os.fork()
-    if pid == 0:  # child
-        # Keep on refreshing filename until I see <filename>.stop
-        try:
-            while not os.path.exists(stop_filename):
-                # Someone might have deleted this path (and exited the
-                # program) while I was sleeping.
-                if not os.path.exists(path):
-                    break
-                open(filename, 'w')
-                time.sleep(interval)
-        finally:
-            if os.path.exists(stop_filename):
-                os.unlink(stop_filename)
-            if os.path.exists(filename):
-                os.unlink(filename)
-        os._exit(0)
-    
-    return FileRefresher(stop_filename)
-
 
 def _get_available_input_combinations(
     network, module_id, custom_attributes, pool, valid_transitions):
@@ -699,7 +710,7 @@ def _make_hash_units(module_name, antecedents, out_attributes, user_options):
         x = "%s=%s" % (key, value)
         x = "user_options", x
         hash_units.append(x)
-        
+
     return hash_units
 
 

@@ -34,8 +34,8 @@ class Module(AbstractModule):
         # <Sample>_<Pair>.fastq   # if paired end
         jobs = []  # list of (in_filename, out_filename)
         for x in sample_groups:
-            file_, sample, pair = x
-            in_filename = os.path.join(fastq_path, file_)
+            in_filename, sample, pair = x
+            #in_filename = os.path.join(fastq_path, file_)
             assert os.path.exists(in_filename)
             
             out_file = "%s.fastq" % sample
@@ -76,12 +76,14 @@ def merge_or_symlink_files(in_filenames, out_filename):
     
     CHUNK_SIZE = 1024*1024
     assert not os.path.exists(out_filename)
-    
-    # If only one file, then just symlink it.
+
+    # If only one file, and it's not compressed, then just symlink it.
     if len(in_filenames) == 1:
         in_filename = in_filenames[0]
-        os.symlink(in_filename, out_filename)
-        return
+        x, ext = os.path.splitext(in_filename)
+        if ext.lower() in [".fa", ".fasta"]:
+            os.symlink(in_filename, out_filename)
+            return
 
     # Create an empty outfile that I can append to.
     open(out_filename, 'w')

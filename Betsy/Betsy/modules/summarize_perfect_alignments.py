@@ -57,12 +57,13 @@ class Module(AbstractModule):
             x = summarize_matches_file, args, keywds
             jobs2.append(x)
 
-        # Since this can take a lot of memory, do just 1 process at a
-        # time.
-        MAX_PROCS = 1
-        nc = min(MAX_PROCS, num_cores)
-        results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.1)
+        ## Since this can take a lot of memory, do just 1 process at a
+        ## time.
+        #MAX_PROCS = 1
+        #nc = min(MAX_PROCS, num_cores)
+        results = parallel.pyfun(jobs2, num_procs=num_cores, DELAY=0.1)
         assert len(results) == len(jobs2)
+        metadata["num_procs"] = num_cores
 
         # Put together the results in a table.
         handle = open(out_filename, 'w')
@@ -92,7 +93,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
     # ideally be a path with a lot of free space.
     import os
     import tempfile
-    import dbm
+    import gdbm
     from genomicode import filelib
     from genomicode import genomelib
 
@@ -116,7 +117,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
             # To minimize the use of memory, store in a database.
             x, temp_filename = tempfile.mkstemp(dir=temp_path)
             os.close(x)
-            all_aligns = dbm.open(temp_filename, 'n')
+            all_aligns = gdbm.open(temp_filename, "nf")
 
         for x in genomelib.read_fastq(fastq_file1):
             title, sequence, quality = x
