@@ -511,7 +511,9 @@ def run_module(
             user_options, transitions, outfile, start_time, end_time, metadata,
             user, job_name)
         completed_successfully = True
-        open(success_file, 'w').write("success")
+        handle = open(success_file, 'w')
+        handle.close()
+        time.sleep(1)   # make sure file exists before stopping the refresher
     finally:
         if refresher is not None:
             refresher.stop()
@@ -601,10 +603,8 @@ def _make_file_refresher(filename, interval=None):
                 open(filename, 'w')
                 time.sleep(interval)
         finally:
-            if os.path.exists(stop_filename):
-                os.unlink(stop_filename)
-            if os.path.exists(filename):
-                os.unlink(filename)
+            _unlink_multi(filename)
+            _unlink_multi(stop_filename)
         os._exit(0)
     
     return FileRefresher(stop_filename)
@@ -699,7 +699,7 @@ def _make_hash_units(module_name, antecedents, out_attributes, user_options):
         x = "%s=%s" % (key, value)
         x = "user_options", x
         hash_units.append(x)
-        
+
     return hash_units
 
 

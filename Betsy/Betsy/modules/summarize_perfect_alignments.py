@@ -57,11 +57,14 @@ class Module(AbstractModule):
             x = summarize_matches_file, args, keywds
             jobs2.append(x)
 
-        # Since this can take a lot of memory, do just 1 process at a
-        # time.
-        MAX_PROCS = 1
+        ## Since this can take a lot of memory, do just 1 process at a
+        ## time.
+        #MAX_PROCS = 1
+        # I/O intensive.  Don't do too many at a time.
+        MAX_PROCS = 4
         nc = min(MAX_PROCS, num_cores)
         results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.1)
+        metadata["num_cores"] = nc
         assert len(results) == len(jobs2)
 
         # Put together the results in a table.
@@ -108,6 +111,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
     IN_MEMORY = False
 
     temp_filename = None
+    all_aligns = None
     try:
         if IN_MEMORY:
             # This can take a lot of memory.
@@ -128,16 +132,29 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
             
         perfect_aligns = {}
         for d in filelib.read_row(filename, header=1):
+            # This check makes the function very slow.
             assert d.query_name in all_aligns
             if int(d.NM) <= num_mismatches:
                 perfect_aligns[d.query_name] = 1
         perfect = len(perfect_aligns)
         total = len(all_aligns)
     finally:
-        if not IN_MEMORY:
+        if all_aligns and not IN_MEMORY:
             all_aligns.close()
-        if os.path.exists(temp_filename):
-            os.unlink(temp_filename)
+        # dbm will create files:
+        # <temp_file>
+        # <temp_file>.dir
+        # <temp_file>.pag
+        # Delete them all.
+        if temp_filename is not None:
+            temp_file = os.path.split(temp_filename)[1]
+            x = os.listdir(temp_path)
+            x = [x for x in x if x.startswith(temp_file)]
+            x = [os.path.join(temp_path, x) for x in x]
+            for x in x:
+                os.unlink(x)
+        #if os.path.exists(temp_filename):
+        #    os.unlink(temp_filename)
     
     results = {
         "perfect_alignments" : perfect,

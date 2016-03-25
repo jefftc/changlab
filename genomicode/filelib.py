@@ -274,11 +274,18 @@ def exists_nz_many(filenames):
 
 
 
-def assert_exists_nz_many(filenames, retries=0):
+def assert_exists_nz_many(filenames, retries=2):
     # Assert that multiple filenames exists and is non-zero.
     import time
-    
+
+    # Number of seconds between attempts.
     DELAY = 2
+
+    assert retries >= 0
+
+    # Sometimes, if a file was just written, this will erroneously
+    # trigger an error.  If the files don't exist, wait a few seconds
+    # and try again.
     num_tries = 0
     while num_tries <= retries:
         if exists_nz_many(filenames):

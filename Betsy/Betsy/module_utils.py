@@ -748,6 +748,15 @@ def find_fasta_files(path):
     return filenames
 
 
+def find_sam_files(path):
+    # Return a list of the .sam files (full filenames) under path.
+    from genomicode import filelib
+
+    assert dir_exists(path)
+    return filelib.list_files_in_path(
+        path, endswith=".sam", case_insensitive=True)
+
+
 def find_bam_files(path):
     # Return a list of the .bam files (full filenames) under path.
     from genomicode import filelib

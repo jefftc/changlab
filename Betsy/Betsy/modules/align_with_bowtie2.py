@@ -44,6 +44,7 @@ class Module(AbstractModule):
         #x = sample_node.data.attributes["orientation"]
         #orientation = attr2orient[x]
 
+        # Takes ~4 Gb per job.
         sq = parallel.quote
         commands = []
         for x in jobs:
