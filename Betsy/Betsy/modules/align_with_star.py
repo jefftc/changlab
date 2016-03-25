@@ -78,7 +78,7 @@ class Module(AbstractModule):
         # --limitGenomeGenerateRAM   31000000000
         # --outFilterMismatchNmax    10             Num mismatches.
         nc = mlib.calc_max_procs_from_ram(50, buffer=100, upper_max=num_cores)
-        metadata["num cores"] = nc
+        metadata["num_cores"] = nc
         parallel.pshell(commands, max_procs=nc, path=out_path)
 
         # Make sure the analysis completed successfully.

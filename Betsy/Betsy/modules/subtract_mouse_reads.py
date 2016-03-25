@@ -80,7 +80,7 @@ class Module(AbstractModule):
         nc = min(MAX_CORES, num_cores)
         results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.5)
         assert len(results) == len(jobs2)
-        metadata["num cores"] = nc
+        metadata["num_cores"] = nc
         
         # Make sure the fastq files were generated.
         x1 = [x[4] for x in jobs]
