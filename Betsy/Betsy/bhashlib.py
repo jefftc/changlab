@@ -64,7 +64,9 @@ def checksum_file_or_path_smart(file_or_path):
     # checksum.
     from genomicode import filelib
 
+    MB = 1024 * 1024
+
     size = filelib.get_file_or_path_size(file_or_path)
     # Do a fast checksum if files are over 128 Mb.
-    fast = size > 1024*1024*128
+    fast = size > 128*MB
     return checksum_file_or_path(file_or_path, fast=fast)

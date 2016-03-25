@@ -500,7 +500,9 @@ def run_module(
             user_options, transitions, outfile, start_time, end_time, metadata,
             user, job_name)
         completed_successfully = True
-        open(success_file, 'w').write("success")
+        handle = open(success_file, 'w')
+        handle.close()
+        time.sleep(1)   # make sure file exists before stopping the refresher
     finally:
         if not completed_successfully and clean_up:
             _clear_analysis_path(result_dir, copying_file)

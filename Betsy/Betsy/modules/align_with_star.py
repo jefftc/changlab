@@ -85,9 +85,7 @@ class Module(AbstractModule):
         x = [x[-2] for x in jobs]  # out_prefix
         x = ["%sAligned.out.sam" % x for x in x]
         x = [os.path.join(out_path, x) for x in x]
-        # Sometimes, this will erroneously trigger an error.  If the
-        # files don't exist, wait a few seconds and try again.
-        filelib.assert_exists_nz_many(x, retries=3)
+        filelib.assert_exists_nz_many(x)
         return metadata
 
 
