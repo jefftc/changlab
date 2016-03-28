@@ -57,6 +57,7 @@ class Module(AbstractModule):
             keywds = {}
             x = merge_or_symlink_files, args, keywds
             commands.append(x)
+        commands.sort()
 
         nc = min(MAX_CORES, num_cores)
         parallel.pyfun(commands, nc)

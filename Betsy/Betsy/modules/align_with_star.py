@@ -45,21 +45,24 @@ class Module(AbstractModule):
         for x in fastq_files:
             sample, pair1, pair2 = x
             out_prefix = "%s." % sample
+            sam_filename = os.path.join(
+                out_path, "%sAligned.out.sam" % out_prefix)
             log_filename = os.path.join(out_path, "%s.log" % sample)
-            x = sample, pair1, pair2, out_prefix, log_filename
+            x = sample, pair1, pair2, out_prefix, sam_filename, log_filename
             jobs.append(x)
-
-        # TODO: Play around with runThreadN parameter.
 
         # Make the commands.
         commands = []
         for x in jobs:
-            sample, pair1, pair2, out_prefix, log_filename = x
-            
+            sample, pair1, pair2, out_prefix, sam_filename, log_filename = x
+
+            full_out_prefix = os.path.join(out_path, out_prefix)
+
             x = [
                 mlib.sq(STAR),
                 "--genomeDir", mlib.sq(reference_path),
-                "--outFileNamePrefix", out_prefix,
+                "--outFileNamePrefix", full_out_prefix,
+                "--runThreadN", num_cores,
                 ]
             if not is_stranded:
                 x += ["--outSAMstrandField", "intronMotif"]
@@ -70,22 +73,27 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
         metadata["commands"] = commands
-
+        metadata["num_cores"] = num_cores
 
         # STAR takes 28 Gb per process.  Make sure we don't use up
         # more memory than is available on the machine.
         # Defaults:
         # --limitGenomeGenerateRAM   31000000000
         # --outFilterMismatchNmax    10             Num mismatches.
-        nc = mlib.calc_max_procs_from_ram(50, buffer=100, upper_max=num_cores)
-        metadata["num_cores"] = nc
-        parallel.pshell(commands, max_procs=nc, path=out_path)
-
+        #nc = mlib.calc_max_procs_from_ram(50, buffer=100, upper_max=num_cores)
+        #metadata["num_cores"] = nc
+        #parallel.pshell(commands, max_procs=nc, path=out_path)
+        
+        # Run each job and make sure outfile exists.
+        assert len(commands) == len(jobs)
+        for i, cmd in enumerate(commands):
+            sample, pair1, pair2, out_prefix, sam_filename, log_filename = \
+                    jobs[i]
+            parallel.sshell(cmd, path=out_path)
+            filelib.assert_exists_nz(sam_filename)
         # Make sure the analysis completed successfully.
-        x = [x[-2] for x in jobs]  # out_prefix
-        x = ["%sAligned.out.sam" % x for x in x]
-        x = [os.path.join(out_path, x) for x in x]
-        filelib.assert_exists_nz_many(x)
+        #x = [x[-2] for x in jobs]  # sam_filename
+        #filelib.assert_exists_nz_many(x)
         return metadata
 
 
