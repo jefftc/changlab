@@ -57,11 +57,11 @@ class Module(AbstractModule):
             x = summarize_matches_file, args, keywds
             jobs2.append(x)
 
-        ## Since this can take a lot of memory, do just 1 process at a
-        ## time.
-        #MAX_PROCS = 1
+        # Since this can take a lot of memory (depending on the number
+        # of reads), do just 1 process at a time.
+        MAX_PROCS = 1
         # I/O intensive.  Don't do too many at a time.
-        MAX_PROCS = 4
+        #MAX_PROCS = 4
         nc = min(MAX_PROCS, num_cores)
         results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.1)
         metadata["num_cores"] = nc
@@ -108,7 +108,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
     # From alignment file:
     #   ST-J00106:107:H5NK2BBXX:1:2218:22079:11653
 
-    IN_MEMORY = False
+    IN_MEMORY = True
 
     temp_filename = None
     all_aligns = None
@@ -130,13 +130,15 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
             x = x.split()[0]  # alignment file only contains the first part.
             all_aligns[x] = "1"
             
-        perfect_aligns = {}
+        #perfect_aligns = {}
+        perfect = 0
         for d in filelib.read_row(filename, header=1):
             # This check makes the function very slow.
             assert d.query_name in all_aligns
             if int(d.NM) <= num_mismatches:
-                perfect_aligns[d.query_name] = 1
-        perfect = len(perfect_aligns)
+                perfect += 1
+                #perfect_aligns[d.query_name] = 1
+        #perfect = len(perfect_aligns)
         total = len(all_aligns)
     finally:
         if all_aligns and not IN_MEMORY:

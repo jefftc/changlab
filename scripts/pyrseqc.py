@@ -163,8 +163,9 @@ def main():
         M("read_hexamer.py", ("-i", ARG_FASTA_FILE), "hexamer.txt"),
         M("read_NVC.py", (
             "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
-        M("read_quality.py", (
-            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
+        # Doesn't work.  Uses R process that takes 100's of Gb RAM.
+        #M("read_quality.py", (
+        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
         M("RNA_fragment_size.py", (
             "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL), "fragment.txt"),
         M("tin.py", (

@@ -18,7 +18,8 @@ def main():
     parser.add_argument(
         "-v", "--verbose", default=0, action="count")
     parser.add_argument(
-        "--running", action="store_true", help="Show only running processes.")
+        "--running", "--run", action="store_true",
+        help="Show only running processes.")
     args = parser.parse_args()
 
     output_path = config.OUTPUTPATH
@@ -153,12 +154,12 @@ def main():
     # BUG: Does not account for size in tmp directories.
     total_size = sum(sizes)
     x = parselib.pretty_filesize(total_size)
-    print "Total size: %s" % x
+    print "Used: %s" % x
 
     x = os.statvfs(output_path)
     free_size = x.f_bavail*x.f_frsize
     x = parselib.pretty_filesize(free_size)
-    print "Free space: %s" % x
+    print "Free: %s" % x
     
 
 
