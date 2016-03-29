@@ -91,6 +91,7 @@ class Module(AbstractModule):
                     jobs[i]
             parallel.sshell(cmd, path=out_path)
             filelib.assert_exists_nz(sam_filename)
+            
         # Make sure the analysis completed successfully.
         #x = [x[-2] for x in jobs]  # sam_filename
         #filelib.assert_exists_nz_many(x)

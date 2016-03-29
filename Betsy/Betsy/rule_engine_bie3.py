@@ -397,7 +397,7 @@ def run_module(
     # >5 sec old    present    Should not happen.  rm copying.txt, check
     #                          after 5 sec.  If missing, consider
     #                          complete.  If back, consider error.
-    REFRESH = 3  # number of seconds to refresh copying.txt file.
+    REFRESH = 5  # number of seconds to refresh copying.txt file.
     success_file = os.path.join(result_dir, FINISHED_FILE)
     copying_file = os.path.join(result_dir, IN_PROGRESS_FILE)
     exists = os.path.exists
@@ -408,12 +408,13 @@ def run_module(
         # analysis.  Otherwise, someone else has priority.  Let them run
         # the analysis.
 
-        try:
-            os.mkdir(result_dir)
-            i_run_analysis = True
-            break
-        except OSError, x:
-            pass
+        if not os.path.exists(result_dir):
+            try:
+                os.mkdir(result_dir)
+                i_run_analysis = True
+                break
+            except OSError, x:
+                pass
 
         last_refresh = None
         if exists(copying_file):
@@ -422,8 +423,9 @@ def run_module(
         if not exists(copying_file) and not exists(success_file):
             # BUG: This doesn't work.  What if this was abandoned, but
             # somebody else just happens to create the directory again
-            # while I'm checking?
-            # result_dir, but nothing inside it.
+            # while I'm checking?  Will have result_dir, but nothing
+            # inside it.
+            # SOLUTION: Give them two cycles to create something.
             time.sleep(REFRESH*2)
             if not exists(copying_file) and not exists(success_file):
                 # Abandoned.  Delete the result dir and try again.
@@ -434,7 +436,7 @@ def run_module(
         # From here on down, copying_file should exist.
         elif last_refresh < REFRESH and not exists(success_file):
             # Still copying.  Wait.
-            time.sleep(REFRESH+1)
+            time.sleep(REFRESH)
         elif last_refresh < REFRESH and exists(success_file):
             # Finishing up.  Consider complete.
             i_run_analysis = False
@@ -446,13 +448,16 @@ def run_module(
             _rmtree_multi(result_dir)
         elif last_refresh >= REFRESH*2 and exists(success_file):
             os.unlink(copying_file)
-            time.sleep(REFRESH*3)
+            time.sleep(REFRESH)
             # Should not be coming back if analysis has already
             # completed successfully.
             assert not exists(copying_file), "Zombie in progress file"
             # At this point, no copying_file, but there is a
             # success_file.  Consider this analysis complete.
             i_run_analysis = False
+        else:
+            # Does not fit one of these.
+            time.sleep(REFRESH)
     assert i_run_analysis is not None
     
     if not i_run_analysis:
@@ -461,6 +466,9 @@ def run_module(
         params = _read_parameter_file(filename)
         elapsed = params["elapsed"]
         return out_identified_data_node, next_id, elapsed
+
+    # Make sure nobody deleted this after I created it.
+    assert os.path.exists(result_dir)
 
     # Run the module.
     completed_successfully = False
