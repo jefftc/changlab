@@ -36,7 +36,8 @@ class Module(AbstractModule):
             sample, f1, f2 = x
             sample2fastqdata[sample] = x
         
-        # list of (sample, align_filename, fastq_filename1, fastq_filename2)
+        # list of (sample, align_filename, summary_filename,
+        #   fastq_filename1, fastq_filename2)
         jobs = []
         for in_filename in align_filenames:
             p, f = os.path.split(in_filename)
@@ -45,22 +46,28 @@ class Module(AbstractModule):
             assert f.endswith(ext)
             sample = f[:-len(ext)]
             assert sample in sample2fastqdata, "Missing FASTQ: %s" % sample
+            summary_filename = "%s.summary.txt" % sample
             x, fastq_filename1, fastq_filename2 = sample2fastqdata[sample]
-            x = sample, in_filename, fastq_filename1, fastq_filename2
+            x = sample, in_filename, summary_filename, \
+                fastq_filename1, fastq_filename2
             jobs.append(x)
 
         jobs2 = []  # list of (function, args, keywds)
         for x in jobs:
-            sample, align_filename, fastq_file1, fastq_file2 = x
+            sample, align_filename, summary_filename, \
+                    fastq_file1, fastq_file2 = x
             args = align_filename, fastq_file1, fastq_file2, num_mismatches
-            keywds = { "temp_path" : "." }
+            keywds = {
+                "temp_path" : ".",
+                "outfile" : summary_filename,
+                }
             x = summarize_matches_file, args, keywds
             jobs2.append(x)
 
         # Since this can take a lot of memory (depending on the number
-        # of reads), do just 1 process at a time.
+        # of reads, can easily take 8 Gb), do just 1 process at a
+        # time.  Also, I/O intensive.  Don't do too many at a time.
         MAX_PROCS = 1
-        # I/O intensive.  Don't do too many at a time.
         #MAX_PROCS = 4
         nc = min(MAX_PROCS, num_cores)
         results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.1)
@@ -73,7 +80,8 @@ class Module(AbstractModule):
         print >>handle, "\t".join(header)
         for x in zip(jobs, results):
             x, d = x
-            sample, in_filename, fastq_filename1, fastq_filename2 = x
+            sample, in_filename, summary_filename, \
+                    fastq_filename1, fastq_filename2 = x
             x = sample, d["perfect_alignments"], d["total_alignments"], \
                 d["perc_perfect"]
             print >>handle, "\t".join(map(str, x))
@@ -85,7 +93,7 @@ class Module(AbstractModule):
 
 
 def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
-                           temp_path=None):
+                           temp_path=None, outfile=None):
     # Return dictionary with keys:
     # total_alignments       int
     # perfect_alignments     int
@@ -96,6 +104,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
     import os
     import tempfile
     import gdbm
+    import json
     from genomicode import filelib
     from genomicode import genomelib
 
@@ -116,11 +125,13 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
         if IN_MEMORY:
             # This can take a lot of memory.
             all_aligns = {}
+            value = 0
         else:
             # To minimize the use of memory, store in a database.
             x, temp_filename = tempfile.mkstemp(dir=temp_path)
             os.close(x)
             all_aligns = gdbm.open(temp_filename, "nf")
+            value = "0"
 
         for x in genomelib.read_fastq(fastq_file1):
             title, sequence, quality = x
@@ -128,15 +139,24 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
             if x.startswith("@"):
                 x = x[1:]
             x = x.split()[0]  # alignment file only contains the first part.
-            all_aligns[x] = "1"
-            
+            all_aligns[x] = value
+
+        # Keep track of the ones that I've seen before to make sure
+        # we don't double count.
         #perfect_aligns = {}
         perfect = 0
         for d in filelib.read_row(filename, header=1):
             # This check makes the function very slow.
             assert d.query_name in all_aligns
             if int(d.NM) <= num_mismatches:
-                perfect += 1
+                num_seen = int(all_aligns[d.query_name])
+                if num_seen == 0:
+                    perfect += 1
+                num_seen += 1
+                if not IN_MEMORY:
+                    num_seen = str(num_seen)
+                all_aligns[d.query_name] = num_seen
+                #perfect += 1
                 #perfect_aligns[d.query_name] = 1
         #perfect = len(perfect_aligns)
         total = len(all_aligns)
@@ -163,4 +183,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
         "total_alignments" : total,
         "perc_perfect" : float(perfect) / total,
         }
+    if outfile is not None:
+        x = json.dumps(results)
+        open(outfile, 'w').write(x)
     return results
