@@ -284,8 +284,8 @@ BAM_ATTRIBUTES = SAM_ATTRIBUTES + [
         "split_n_trim", ["yes", "no"], "no", "no",
         help="Whether SplitNCigarReads has been applied."),
     AttributeDef(
-        "base_recalibrated", ["yes", "no"], "no", "no",
-        help="recalibrated or not"),
+        "base_quality_recalibrated", ["yes", "no"], "no", "no",
+        help="base quality score recalibration"),
     AttributeDef(
         "indel_realigned", ["yes", "no"], "no", "no",
         help="realigned or not"),
@@ -315,12 +315,18 @@ BamFolder = DataType(
 RealignTargetFolder = DataType(
     "RealignTargetFolder",
     AttributeDef(
+        "duplicates_marked", ["yes", "no"], "no", "no",
+        help="Whether the duplicates are marked."),
+    AttributeDef(
         "aligner", ALIGNERS, "unknown", "bowtie2",
         help="Alignment algorithm."),
     )
 
 RecalibrationReport = DataType(
     "RecalibrationReport",
+    AttributeDef(
+        "duplicates_marked", ["yes", "no"], "no", "no",
+        help="Whether the duplicates are marked."),
     AttributeDef(
         "aligner", ALIGNERS, "unknown", "bowtie2",
         help="Alignment algorithm."),
@@ -391,7 +397,7 @@ PerfectAlignmentSummary = DataType(
 
 DepthOfCoverage = DataType(
     "DepthOfCoverage",
-    help="Count the coverage at each position.",
+    help="Count the coverage at each position.  Saves a directory of data.",
     )
 
 TrimmomaticSummary = DataType(
@@ -845,7 +851,7 @@ all_modules = [
         "calculate_coverage",
         [BamFolder, ReferenceGenome], DepthOfCoverage,
         OptionDef(
-            "ignore_coverage_below", default="",
+            "ignore_coverage_below", default="1",
             help="If given, will ignore all regions of the genome with a "
             "coverage below this value (e.g. 1) when calculating mean "
             "coverage.  Provides better estimate of WES.",
@@ -876,7 +882,7 @@ all_modules = [
         Consequence("has_read_groups", SET_TO, "no"),
         Consequence("sorted", SET_TO, "no"),
         Consequence("duplicates_marked", SET_TO, "no"),
-        Consequence("base_recalibrated", SET_TO, "no"),
+        Consequence("base_quality_recalibrated", SET_TO, "no"),
         Consequence("indel_realigned", SET_TO, "no"),
         Consequence("has_md_tags", SET_TO, "no"),
         #help="Convert SAM to BAM files.",
@@ -888,7 +894,6 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate"),
         Consequence("indexed", SET_TO, "yes"),
         Consequence("sorted", SAME_AS_CONSTRAINT),
-        help="index bam folder",
         ),
     # Sorting.
     # coordinate -> name -> contig.
@@ -962,7 +967,7 @@ all_modules = [
         Consequence("has_read_groups", SAME_AS_CONSTRAINT),
         Consequence("indexed", SET_TO, "no"),
         Consequence("indel_realigned", SET_TO, "no"),
-        Consequence("base_recalibrated", SET_TO, "no"),
+        Consequence("base_quality_recalibrated", SET_TO, "no"),
         help="mark duplicates in SamFile"
         ),
     ModuleNode(
@@ -979,7 +984,7 @@ all_modules = [
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Consequence("indel_realigned", SET_TO, "no"),
-        Consequence("base_recalibrated", SET_TO, "no"),
+        Consequence("base_quality_recalibrated", SET_TO, "no"),
         help="Run SplitNCigarReads (for variant calling in RNA-Seq)",
         ),
     ModuleNode(
@@ -1002,7 +1007,8 @@ all_modules = [
             help="(OPTIONAL).",
             ),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         #Constraint("base_recalibrated", MUST_BE, "no", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("sorted", MUST_BE, "coordinate"),
@@ -1031,8 +1037,10 @@ all_modules = [
             ),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Consequence("has_read_groups", SAME_AS_CONSTRAINT),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", SAME_AS, 0, 2),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("indel_realigned", MUST_BE, "no", 0),
         Consequence("indel_realigned", SET_TO, "yes"),
         Constraint("indexed", MUST_BE, "yes", 0),
@@ -1042,7 +1050,7 @@ all_modules = [
         Constraint("aligner", SAME_AS, 0, 2),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Consequence("indexed", SET_TO, "no"),
-        Consequence("base_recalibrated", SET_TO, "no"),
+        Consequence("base_quality_recalibrated", SET_TO, "no"),
         help="Realign indels (IndelRealigner)."
         ),
     ModuleNode(
@@ -1060,15 +1068,17 @@ all_modules = [
             "recal_known_sites3", default="",
             help="(OPTIONAL).",
             ),
-        Constraint("base_recalibrated", MUST_BE, "no", 0),
+        Constraint("base_quality_recalibrated", MUST_BE, "no", 0),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
-        #Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Calculate the statistics for base recalibration "
         "(BaseRecalibrator).",
         ),
@@ -1076,8 +1086,8 @@ all_modules = [
         "recalibrate_base_quality_score",
         [BamFolder, ReferenceGenome, RecalibrationReport], BamFolder,
         
-        Constraint("base_recalibrated", MUST_BE, "no", 0),
-        Consequence("base_recalibrated", SET_TO, "yes"),
+        Constraint("base_quality_recalibrated", MUST_BE, "no", 0),
+        Consequence("base_quality_recalibrated", SET_TO, "yes"),
         #Constraint("sorted", MUST_BE, "contig", 0),
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -1088,7 +1098,8 @@ all_modules = [
         Consequence("has_read_groups", SAME_AS_CONSTRAINT),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
         Consequence("indel_realigned", SAME_AS_CONSTRAINT),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", SAME_AS, 0, 2),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
         Constraint("aligner", SAME_AS, 0, 2),

@@ -9,6 +9,8 @@ class Module(AbstractModule):
         out_filename):
         from genomicode import filelib
         from genomicode import vcflib
+        from genomicode import parselib
+        from Betsy import module_utils as mlib
 
         in_mvcf_node, back_mvcf_node = antecedents
         filelib.assert_exists_nz(in_mvcf_node.identifier)
@@ -18,18 +20,43 @@ class Module(AbstractModule):
         in_vcf = vcflib.read(in_mvcf_node.identifier)
         back_vcf = vcflib.read(back_mvcf_node.identifier)
 
-        assert sorted(in_vcf.samples) == sorted(back_vcf.samples), \
-               "Mismatched samples"
+        common_only = mlib.get_user_option(
+            user_options, "backfill_common_only", allowed_values=["no", "yes"],
+            not_empty=True)
 
         # Make sure there are no duplicate sample names.
-        x = {}.fromkeys(in_vcf.samples).keys()
-        assert len(in_vcf.samples) == len(x), "Duplicate samples"
+        x1 = {}.fromkeys(in_vcf.samples).keys()
+        x2 = {}.fromkeys(back_vcf.samples).keys()
+        assert len(in_vcf.samples) == len(x1), "Duplicate samples"
+        assert len(back_vcf.samples) == len(x2), "Duplicate samples"
+
+        # Find the samples.
+        common = [x for x in in_vcf.samples if x in back_vcf.samples]
+        in_only = [x for x in in_vcf.samples if x not in common]
+        back_only = [x for x in back_vcf.samples if x not in common]
+        pretty_in = parselib.pretty_list(in_only, max_items=5)
+        pretty_back = parselib.pretty_list(back_only, max_items=5)
+        assert common, "No common samples."
+
+        if common_only == "no":
+            assert not (in_only and back_only), \
+                   "Extra samples in both sets:\n%s\n%s" % (
+                pretty_in, pretty_back)
+            assert not in_only, "Target VCF file has extra samples: %s" % \
+                   pretty_in
+            assert not back_only, "Source VCF file has extra samples: %s." % \
+                   pretty_back
+
+        SAMPLES = in_vcf.samples
+        if common_only == "yes":
+            SAMPLES = common
+        
 
         # Parse out the read counts from the backfill vcf.
         sample2infolist = {}  # sample -> list of Info objects
-        for sample in back_vcf.samples:
+        for sample in SAMPLES:
             x = [
-                vcflib.parse_info(back_vcf, sample, i) 
+                vcflib.parse_info(back_vcf, i, sample) 
                 for i in range(back_vcf.matrix.num_annots())]
             sample2infolist[sample] = x
 
@@ -59,7 +86,7 @@ class Module(AbstractModule):
         all_ref = in_vcf.matrix["REF"]
         all_alt = in_vcf.matrix["ALT"]
         matches = []  # List of (sample, variant_num, backfill_info).
-        for sample in in_vcf.samples:
+        for sample in SAMPLES:
             pos2info = sample2pos2info[sample]
             for i, x in enumerate(zip(all_chrom, all_pos, all_ref, all_alt)):
                 chrom, pos, ref, alt = x
@@ -68,7 +95,7 @@ class Module(AbstractModule):
                 if bf_info is None:
                     continue
                 # Skip if I already have information.
-                x = vcflib.parse_info(in_vcf, sample, i)
+                x = vcflib.parse_info(in_vcf, i, sample)
                 if not(x.num_ref is None and x.num_alt is None and 
                        x.total_reads is None and x.vaf is None):
                     continue
@@ -79,7 +106,7 @@ class Module(AbstractModule):
         # Update the read counts from annotated VCF file.
         for x in matches:
             sample, var_num, fill_info = x
-            vcflib.update_info(in_vcf, sample, var_num, fill_info)
+            vcflib.update_info(in_vcf, var_num, sample, fill_info)
 
         vcflib.write(out_filename, in_vcf)
 

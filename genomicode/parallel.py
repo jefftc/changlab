@@ -53,6 +53,8 @@ def pshell(commands, max_procs=None, path=None):
     import os
 
     assert type(commands) is not type("")
+    if not commands:
+        return
 
     cwd = os.getcwd()
     try:

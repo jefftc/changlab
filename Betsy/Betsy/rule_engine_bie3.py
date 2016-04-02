@@ -497,9 +497,11 @@ def run_module(
 
         # Make sure the module generated the requested file.
         assert os.path.exists(full_outfile)
-        assert filelib.fp_exists_nz(full_outfile), \
-               "Module %s did not generate results: %s" % (
-            module_name, full_outfile)
+        # Don't do this check.  The file may be empty, e.g. if the
+        # variant caller found no variants.
+        #assert filelib.fp_exists_nz(full_outfile), \
+        #       "Module %s did not generate results: %s" % (
+        #    module_name, full_outfile)
 
         # Write parameters.
         x = os.path.join(result_dir, BETSY_PARAMETER_FILE)

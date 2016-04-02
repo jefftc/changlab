@@ -14,12 +14,14 @@
 #
 # Modules:
 # summarize_variants_mpileup
-# call_variants_mpileup        # not implemented
+# call_variants_mpileup
 # call_variants_GATK
 # make_vcf_recalibration_report_snp
 # recalibrate_variants_snp
 # call_variants_platypus
-# call_variants_varscan        # not fully implemented
+# call_consensus_varscan
+# call_variants_varscan
+# call_variants_mutect
 #
 # filter_snps_only_multivcf
 # annotate_with_annovar
@@ -33,9 +35,10 @@ from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 
-CALLERS = ["none", "mpileup", "gatk", "platypus", "varscan"]
+CALLERS = ["none", "mpileup", "gatk", "platypus", "varscan", "mutect"]
 VARTYPES = ["all", "snp", "indel", "consensus"]
 VARTYPE_NOT_CONSENSUS = [x for x in VARTYPES if x != "consensus"]
+BACKFILLS = ["no", "yes", "consensus"]
 
 ## BCFFolder = DataType(
 ##     "BCFFolder",
@@ -70,6 +73,13 @@ VCFFolder = DataType(
     AttributeDef(
         "vcf_recalibrated", ["no", "yes"], "no", "no",
         help="Whether quality scores are ready for filtering."),
+    AttributeDef(
+        "somatic", ["no", "yes"], "no", "no",
+        help="Whether the variants here are from the somatic cancer genome "
+        "(no germline)."),
+    AttributeDef(
+        "backfilled", BACKFILLS, "no", "no",
+        help="Whether the mutations are backfilled."),
     )
 
 VCFRecalibrationReport = DataType(
@@ -77,6 +87,10 @@ VCFRecalibrationReport = DataType(
     AttributeDef(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
+    AttributeDef(
+        "somatic", ["no", "yes"], "no", "no",
+        help="Whether the variants here are from the somatic cancer genome "
+        "(no germline)."),
     AttributeDef(
         "caller", CALLERS, "none", "mpileup",
         help="Which variant caller was used."),
@@ -100,15 +114,28 @@ MultiVCFFile = DataType(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
     AttributeDef(
-        "backfilled", ["no", "yes"], "no", "no",
+        "somatic", ["no", "yes"], "no", "no",
+        help="Whether the variants here are from the somatic cancer genome "
+        "(no germline)."),
+    AttributeDef(
+        "backfilled", ["no", "yes", "consensus"],
+        # na         backfill is irrelevant for this pipeline
+        # missing    not yet backfilled
+        # filled     backfilled
+        # consensus  contains information that can be used for backfill
+        "no", "no",
+        #"backfilled", ["no", "yes"], "no", "no",
         help="Whether the mutations are backfilled."),
+    #AttributeDef(
+    #    "backfilled", ["no", "yes"], "no", "no",
+    #    help="Whether the mutations are backfilled."),
     )
 
 AnnotatedMultiVCFFile = DataType(
     "AnnotatedMultiVCFFile",
-    AttributeDef(
-        "backfilled", ["no", "yes"], "no", "no",
-        help="Whether the mutations are backfilled."),
+    #AttributeDef(
+    #    "backfilled", ["no", "yes"], "no", "no",
+    #    help="Whether the mutations are backfilled."),
     )
 
 PileupSummary = DataType(
@@ -130,6 +157,24 @@ PositionsFile = DataType(
         help="What kind of variants are held in this file."),
     )
 
+NormalCancerFile = DataType(
+    "NormalCancerFile",
+    #AttributeDef(
+    #    "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+    #    help="For subtracting mouse reads from PDX models of FastqFolder"),
+    help="File contains correspondence between tumor and normal samples.  "
+    "Should be a tab-delimited text file (or Excel file) containing two "
+    'columns with headers "Normal" and "Cancer".  The "Normal" column '
+    'contains the name of the normal sample.  The "Cancer" column '
+    "contains the name of the cancer sample.  The corresponding BAM files "
+    "should be named <sample>.bam."
+    )
+
+# To tell MuTect where to search.
+IntervalListFile = DataType(
+    "IntervalListFile",
+    help="Genomic intervals in GATK format."
+    )
 
 all_data_types=[
     VCFFolder,
@@ -137,20 +182,35 @@ all_data_types=[
     AnnotatedVCFFolder,
     MultiVCFFile,
     AnnotatedMultiVCFFile,
-    
+
+    NormalCancerFile,
     PileupSummary,
     PositionsFile,
+    IntervalListFile,
     ]
 
 all_modules = [
     ModuleNode(
-        "backfill_variants_mpileup",
+        "call_variants_mpileup",
+        [NGS.BamFolder, NGS.ReferenceGenome], VCFFolder,
+        #OptionDef("max_read_depth", default=100),
+        
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Consequence("caller", SET_TO, "mpileup"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO, "all"),
+        help="Use samtools mpileup to call variants."),
+    ModuleNode(
+        "summarize_consensus_mpileup",
         [NGS.BamFolder, NGS.ReferenceGenome, PositionsFile], PileupSummary,
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("has_read_groups", MUST_BE, "yes"),
-        Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Constraint("indexed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
 
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Consequence("contents", SAME_AS_CONSTRAINT),
@@ -159,8 +219,19 @@ all_modules = [
         #Consequence("vartype", SET_TO_ONE_OF, ["all", "consensus"]),
         Constraint("vartype", CAN_BE_ANY_OF, VARTYPE_NOT_CONSENSUS, 2),
         Consequence("vartype", SET_TO, "consensus"),
+        help="Use mpileup to summarize mapped reads."),
+    ModuleNode(
+        "summarize_reads_mpileup",
+        [NGS.BamFolder, NGS.ReferenceGenome], PileupSummary,
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("has_read_groups", MUST_BE, "yes"),
+        Constraint("indexed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        #Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 2),
+        #Consequence("vartype", SAME_AS_CONSTRAINT),
+        help="Use mpileup to summarize mapped reads."),
 
-        help="Use mpileup to call variants"),
     ModuleNode(
         "call_variants_GATK",
         [NGS.BamFolder, NGS.ReferenceGenome], VCFFolder,
@@ -173,7 +244,8 @@ all_modules = [
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
-        Constraint("base_recalibrated", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint(
+            "base_quality_recalibrated", CAN_BE_ANY_OF, ["no", "yes"], 0),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         
@@ -200,17 +272,71 @@ all_modules = [
         help="Use GATK HaplotypeCaller to call variants."),
 
     ModuleNode(
-        "call_variants_varscan",
-        [PileupSummary, NGS.ReferenceGenome], VCFFolder,
+        "call_consensus_varscan",
+        PileupSummary, VCFFolder,
         
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        Consequence("contents", SAME_AS_CONSTRAINT),
-        Constraint("vartype", CAN_BE_ANY_OF, ["all", "consensus"], 0),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("vartype", MUST_BE, "consensus"),
         Consequence("vartype", SAME_AS_CONSTRAINT),
-        Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        #Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Consequence("caller", SET_TO, "varscan"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("backfilled", SET_TO, "consensus"),
+        help="Use Varscan to generate consensus information."),
+
+    ModuleNode(
+        "call_variants_varscan",
+        PileupSummary, VCFFolder,
+        
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        #Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Consequence("caller", SET_TO, "varscan"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         help="Use Varscan to call variants."),
+
+    ModuleNode(
+        "call_somatic_varscan",
+        [PileupSummary, NormalCancerFile], VCFFolder,
+        
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        #Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Consequence("caller", SET_TO, "varscan"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("somatic", SET_TO, "yes"),
+        help="Use Varscan to call variants."),
+
+    ModuleNode(
+        "make_full_genome_intervals",
+        NGS.ReferenceGenome, IntervalListFile,
+        ),
+
+    ModuleNode(
+        "call_variants_mutect",
+        [NGS.BamFolder, NormalCancerFile, NGS.ReferenceGenome,
+         IntervalListFile], VCFFolder,
+        OptionDef("mutect_cosmic_vcf"),
+        OptionDef("mutect_dbsnp_vcf"),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("dict_added", MUST_BE, "yes", 2),
+        Constraint("samtools_indexed", MUST_BE, "yes", 2),
+        Consequence("caller", SET_TO, "mutect"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO, "snp"),
+        Consequence("somatic", SET_TO, "yes"),
+        help="Use MuTect to call variants.",
+        ),
 
     ModuleNode(
         "make_vcf_recalibration_report_snp",
@@ -222,6 +348,8 @@ all_modules = [
         Constraint("vcf_recalibrated", MUST_BE, "no", 0),
         Constraint("vartype", CAN_BE_ANY_OF, ["all", "snp"], 0),
         Consequence("vartype", SET_TO, "snp"),
+        Constraint("somatic", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Consequence("somatic", SAME_AS_CONSTRAINT),
         Constraint("caller", CAN_BE_ANY_OF, CALLERS, 0),
         Consequence("caller", SAME_AS_CONSTRAINT),
         help="VariantRecalibrator",
@@ -237,6 +365,9 @@ all_modules = [
         Constraint("vartype", CAN_BE_ANY_OF, ["all", "snp"], 0),
         Constraint("vartype", MUST_BE, "snp", 2),
         Consequence("vartype", SAME_AS_CONSTRAINT, 2),
+        Constraint("somatic", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("somatic", SAME_AS, 0, 2),
+        Consequence("somatic", SAME_AS_CONSTRAINT),
         help="GATK ApplyRecalibration",
         ),
     
@@ -262,7 +393,8 @@ all_modules = [
         Consequence("caller", SAME_AS_CONSTRAINT),
         Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
         Consequence("vartype", SAME_AS_CONSTRAINT),
-        Consequence("backfilled", SET_TO, "no"),
+        Constraint("backfilled", CAN_BE_ANY_OF, BACKFILLS),
+        Consequence("backfilled", SAME_AS_CONSTRAINT),
         ),
     
     ModuleNode(
@@ -274,7 +406,7 @@ all_modules = [
     ModuleNode(
         "extract_positions_from_multivcf_file",
         MultiVCFFile, PositionsFile,
-        Constraint("backfilled", MUST_BE, "no"),
+        #Constraint("backfilled", MUST_BE, "no"),
         Constraint("caller", CAN_BE_ANY_OF, CALLERS),
         Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
         Consequence("vartype", SAME_AS_CONSTRAINT),
@@ -282,13 +414,34 @@ all_modules = [
 
     ModuleNode(
         "backfill_multivcf_file",
-        [AnnotatedMultiVCFFile, MultiVCFFile],
-        AnnotatedMultiVCFFile,
+        # The first one will be backfilled with the information from
+        # the second.
+        [MultiVCFFile, MultiVCFFile],
+        MultiVCFFile,
+        OptionDef(
+            "backfill_common_only", default="no",
+            help="Backfill the samples that are in common.  Ignore samples "
+            'that only occur in one file.  Must be "yes" or "no".'),
         DefaultAttributesFrom(0),
         Constraint("backfilled", MUST_BE, "no", 0),
         Consequence("backfilled", SET_TO, "yes"),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPE_NOT_CONSENSUS, 0),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        Constraint("caller", CAN_BE_ANY_OF, CALLERS, 0),
+        Consequence("caller", SAME_AS_CONSTRAINT),
+        Constraint("backfilled", MUST_BE, "consensus", 1),
         Constraint("vartype", MUST_BE, "consensus", 1),
-        Constraint("caller", MUST_BE, "varscan", 1),
+        Constraint("caller", CAN_BE_ANY_OF, CALLERS, 1),
         ),
+    #ModuleNode(
+    #    "backfill_multivcf_file",
+    #    [AnnotatedMultiVCFFile, MultiVCFFile],
+    #    AnnotatedMultiVCFFile,
+    #    DefaultAttributesFrom(0),
+    #    Constraint("backfilled", MUST_BE, "no", 0),
+    #    Consequence("backfilled", SET_TO, "yes"),
+    #    Constraint("vartype", MUST_BE, "consensus", 1),
+    #    Constraint("caller", MUST_BE, "varscan", 1),
+    #    ),
 
     ]

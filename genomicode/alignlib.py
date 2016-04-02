@@ -9,6 +9,8 @@ create_reference_genome
 standardize_reference_genome
 
 get_samtools_version
+get_bcfutils_version
+get_vcfutils_version
 
 get_bowtie1_version
 make_bowtie1_command
@@ -293,6 +295,26 @@ def get_samtools_version():
     m = re.search(r"Version: ([\w\. \(\)-]+)", x)
     assert m, "Missing version string"
     return m.group(1)
+
+
+def get_bcftools_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    bcftools = filelib.which_assert(config.bcftools)
+    x = parallel.sshell(bcftools, ignore_nonzero_exit=True)
+    x = x.strip()
+    # Version: 1.2 (using htslib 1.2.1)
+    m = re.search(r"Version: ([\w\. \(\)-]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
+def get_vcfutils_version():
+    # Cannot get version.
+    raise NotImplementedError
 
 
 def get_bowtie1_version():
@@ -1058,7 +1080,7 @@ def find_picard_jar(jar_name):
     return jar_filename
 
 
-def make_GATK_command(**params):
+def _make_java_command(config_name, params, num_dashes):
     # value of None means no argument.
     # A dash is prepended to each key.
     # Special key:
@@ -1066,31 +1088,44 @@ def make_GATK_command(**params):
     import os
     from genomicode import config
     from genomicode import parallel
+    from genomicode import filelib
 
     UNHASHABLE = "_UNHASHABLE"
-    
-    gatk_jar = config.gatk_jar
-    assert os.path.exists(gatk_jar)
+    assert num_dashes >= 1 and num_dashes <= 2
+
+    jarfile = getattr(config, config_name)
+    filelib.assert_exists_nz(jarfile)
 
     sq = parallel.quote
     cmd = [
         "java",
         "-Xmx5g",
-        "-jar", sq(gatk_jar),
+        "-jar", sq(jarfile),
         ]
     x1 = params.get(UNHASHABLE, [])
+    assert type(x1) in [type([]), type(())], \
+           "%s should be list of key-value tuples" % UNHASHABLE
     x2 = list(params.iteritems())
     all_params = x1 + x2
-    
+
+    DASH = "-"*num_dashes
     for (key, value) in all_params:
         if key == UNHASHABLE:
             continue
         #assert key[0] in "A-Za-z_-", "Possibly bad name: %s" % key
         if value is None:
-            cmd.append("-%s" % key)
+            cmd.append("%s%s" % (DASH, key))
         else:
-            cmd.extend(["-%s" % key, sq(value)])
+            cmd.extend(["%s%s" % (DASH, key), sq(value)])
     return " ".join(map(str, cmd))
+
+
+def make_GATK_command(**params):
+    return _make_java_command("gatk_jar", params, 1)
+
+
+def make_MuTect_command(**params):
+    return _make_java_command("mutect_jar", params, 2)
 
 
 def make_platypus_command(
@@ -1222,3 +1257,38 @@ def gtf_to_bed(gtf_filename, bed_filename):
     filelib.assert_exists_nz(bed_filename)
 
 
+def clean_varscan_vcf(sample, in_filename, out_filename):
+    from genomicode import hashlib
+
+    BAD_LINES = [
+        "Min coverage:",
+        "Min reads2:",
+        "Min var freq:",
+        "Min avg qual:",
+        "P-value thresh:",
+        "Reading input from",
+        "bases in pileup file",
+        "variant positions",
+        "were failed by the strand-filter",
+        "variant positions reported",
+        ]
+
+    # Varscan calls each sample "Sample1".  Doesn't have the read
+    # group info from the BAM file.  Change this to the proper sample
+    # name.
+    # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT Sample1
+    sample_h = hashlib.hash_var(sample)
+
+    outhandle = open(out_filename, 'w')
+    for line in open(in_filename):
+        found = False
+        for x in BAD_LINES:
+            if line.find(x) >= 0:
+                found = True
+                break
+        if found:
+            continue
+        if line.startswith("#CHROM") and line.find("Sample1") >= 0:
+            line = line.replace("Sample1", sample_h)
+        outhandle.write(line)
+    outhandle.close()
