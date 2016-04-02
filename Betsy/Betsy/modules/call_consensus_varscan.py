@@ -12,13 +12,12 @@ class Module(AbstractModule):
         from genomicode import parallel
         from genomicode import alignlib
         from genomicode import config
-        from Betsy import module_utils as mlib
+        #from Betsy import module_utils
 
-        mpileup_node = in_data
-        mpileup_filenames = filelib.list_files_in_path(
-            mpileup_node.identifier, endswith=".mpileup")
-        assert mpileup_filenames, "No .mpileup files."
-        nc_match = mlib.read_normal_cancer_file(nc_node.identifier)
+        vcf_node = in_data
+        vcf_filenames = filelib.list_files_in_path(
+            vcf_node.identifier, endswith=".vcf")
+        assert vcf_filenames, "No .vcf files."
         #ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
 
@@ -26,17 +25,20 @@ class Module(AbstractModule):
         # the parameters if it is.
         assert "vartype" in out_attributes
         vartype = out_attributes["vartype"]
-        assert vartype in ["snp", "indel"]
-        tool = "mpileup2snp"
-        if vartype == "indel":
-            tool = "mpileup2indel"
+        assert vartype in ["all", "snp", "indel", "consensus"]
 
+        if vartype == "consensus":
+            # Figure out the consensus-specific arguments.
+            pass
+        else:
+            raise NotImplementedError
 
         # list of (sample, in_filename, tmp1_filename, tmp2_filename,
         #          out_filename)
         jobs = []
-        for in_filename in mpileup_filenames:
-            p, sample, ext = mlib.splitpath(in_filename)
+        for in_filename in vcf_filenames:
+            p, f = os.path.split(in_filename)
+            sample, ext = os.path.splitext(f)
             tmp1_filename = os.path.join(out_path, "%s.tmp1" % sample)
             tmp2_filename = os.path.join(out_path, "%s.tmp2" % sample)
             out_filename = os.path.join(out_path, "%s.vcf" % sample)
@@ -57,7 +59,9 @@ class Module(AbstractModule):
         filelib.assert_exists_nz_many(x)
         
 
-        # java -jar /usr/local/bin/VarScan.jar <tool> $i --output_vcf 1 > $j
+        # java -jar /usr/local/bin/VarScan.jar mpileup2cns $i \
+        #   --min-coverage 0 --min-reads2 0 --min-avg-qual 0 --min-var-freq 0 \
+        #   --p-value 1.0 --strand-filter 0 --output-vcf 1 > $j
         varscan = filelib.which_assert(config.varscan_jar)
         
         # Make a list of commands.
@@ -66,8 +70,14 @@ class Module(AbstractModule):
             sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
             x = [
                 "java", "-jar", sq(varscan),
-                tool,
+                "mpileup2cns",
                 tmp1_filename,
+                "--min-coverage", 0,
+                "--min-reads2", 0,
+                "--min-avg-qual", 0,
+                "--min-var-freq", 0,
+                "--p-value", 1.0,
+                "--strand-filter", 0,
                 "--output-vcf", 1,
                 ]
             x = " ".join(map(str, x))
@@ -93,5 +103,3 @@ class Module(AbstractModule):
 
     def name_outfile(self, antecedents, user_options):
         return "varscan.vcf"
-
-

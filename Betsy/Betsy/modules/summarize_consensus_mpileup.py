@@ -88,4 +88,4 @@ class Module(AbstractModule):
         
 
     def name_outfile(self, antecedents, user_options):
-        return "mpileup.vcf"
+        return "consensus.mpileup"

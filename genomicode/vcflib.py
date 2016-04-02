@@ -1,13 +1,15 @@
 # Classes:
 # VCFFile
-# Info
+# Variant
 #
 # Functions:
 # read
 # write
 # 
-# parse_info
-# update_info
+# parse_variant         Describes one variant for a specific sample.
+# update_variant        Update a VCF object with Variant object.
+# make_coverage_matrix  Return a variant x sample matrix of coverage.
+# make_vaf_matrix       Return a variant x sample matrix of allele frequencies.
 #
 # _safe_int
 # _safe_float
@@ -64,17 +66,20 @@ class VCFFile:
     def __init__(self, matrix, samples, more_info, genotypes):
         # matrix     AnnotationMatrix
         # samples    list of sample names
-        # more_info  list of dicts
-        # genotypes  dict of sample -> list of dicts
+        # more_info  list of dicts.  from INFO column.
+        # genotypes  dict of sample -> list of dicts.  from genotype columns.
         import copy
         self.matrix = copy.deepcopy(matrix)
         self.samples = samples[:]
         self.more_info = copy.deepcopy(more_info)
         self.genotypes = copy.deepcopy(genotypes)
+    def num_variants(self):
+        return self.matrix.num_annots()
+        
 
 
-class Info:
-    # Holds structured information from each sample.
+class Variant:
+    # Holds structured information for each variant.
     #
     # num_alt_alleles
     # num_ref          Can be None if data missing.
@@ -82,7 +87,6 @@ class Info:
     # total_reads      Can be list.  Each can be None.
     # vaf              Can be list.  Each can be None.
     # call             String.
-    
     def __init__(self, num_alt_alleles, num_ref, num_alt, total_reads, vaf,
                  call):
         assert num_alt_alleles >= 1
@@ -138,8 +142,10 @@ def write(handle_or_file, vcf):
     AnnotationMatrix.write(handle_or_file, vcf.matrix)
 
 
-def parse_info(vcf, sample, variant_num):
-    assert sample in vcf.samples
+def parse_variant(vcf, variant_num, sample):
+    # Return an Variant object describing a variant for a sample.
+    assert sample in vcf.samples, "Unknown sample: %s" % sample
+    assert variant_num >= 0
     assert variant_num < vcf.matrix.num_annots()
 
     info_dict = vcf.more_info[variant_num]
@@ -201,12 +207,12 @@ def parse_info(vcf, sample, variant_num):
         call = geno_dict["GT"]
 
     if num_alt is None and "TR" in info_dict:
-        x = d["TR"].split(",")
+        x = info_dict["TR"].split(",")
         x = [_safe_int(x) for x in x]
         assert len(x) == num_alt_alleles
         num_alt = x
     if total_reads is None and "TC" in info_dict:
-        x = d["TC"].split(",")
+        x = info_dict["TC"].split(",")
         x = [_safe_int(x) for x in x]
         assert len(x) == num_alt_alleles
         total_reads = x
@@ -264,11 +270,11 @@ def parse_info(vcf, sample, variant_num):
     if type(vaf) is type([]) and len(vaf) == 1:
         vaf = vaf[0]
 
-    x = Info(num_alt_alleles, num_ref, num_alt, total_reads, vaf, call)
-    return x
+    return Variant(
+        num_alt_alleles, num_ref, num_alt, total_reads, vaf, call)
 
     
-def update_info(vcf, sample, variant_num, info):
+def update_variant(vcf, variant, variant_num, sample):
     # Update the VCF with the information from the Info object.
     # Updates in place.  Will change the vcf variable.
     import copy
@@ -280,28 +286,28 @@ def update_info(vcf, sample, variant_num, info):
     # Figure out what kind of file it is.
     if "RD" in GD and "AD" in GD and "DP" in GD and "FREQ" in GD:
         # samtools
-        GD["RD"] = _fmt_vcf_value(info.num_ref)
-        GD["AD"] = _fmt_vcf_value(info.num_alt)
-        GD["DP"] = _fmt_vcf_value(info.total_reads)
+        GD["RD"] = _fmt_vcf_value(variant.num_ref)
+        GD["AD"] = _fmt_vcf_value(variant.num_alt)
+        GD["DP"] = _fmt_vcf_value(variant.total_reads)
         # Convert FREQ to percent.
-        x = info.vaf
+        x = variant.vaf
         if type(x) is not type([]):
             x = [x]
         x = [x*100.0 for x in x]
         x = ["%s%%" % x for x in x]
         GD["FREQ"] = _fmt_vcf_value(x)
-        GD["GT"] = info.call
+        GD["GT"] = variant.call
     elif "TR" in ID and "TC" in ID:
         # Platypus
-        ID["TR"] = _fmt_vcf_value(info.num_ref)
-        ID["TC"] = _fmt_vcf_value(info.total_reads)
-        GD["GT"] = info.call
+        ID["TR"] = _fmt_vcf_value(variant.num_ref)
+        ID["TC"] = _fmt_vcf_value(variant.total_reads)
+        GD["GT"] = variant.call
     elif "AD" in GD and "DP" in GD and not "RD" in GD and not "FREQ" in GD:
         # GATK
-        GD["RD"] = _fmt_vcf_value(info.num_ref)
-        GD["AD"] = _fmt_vcf_value(info.num_alt)
-        GD["DP"] = _fmt_vcf_value(info.total_reads)
-        GD["GT"] = info.call
+        GD["RD"] = _fmt_vcf_value(variant.num_ref)
+        GD["AD"] = _fmt_vcf_value(variant.num_alt)
+        GD["DP"] = _fmt_vcf_value(variant.total_reads)
+        GD["GT"] = variant.call
     elif "SGCOUNTREF_F" in GD:
         # NextGene
         raise NotImplementedError, "NextGene not implemented yet."
@@ -337,6 +343,50 @@ def update_info(vcf, sample, variant_num, info):
     annots[variant_num] = x
 
     #return vcf
+
+
+def make_coverage_matrix(vcf, samples=None):
+    # Each element in the matrix is an integer or None.
+    if samples is None:
+        samples = vcf.samples
+    for s in samples:
+        assert s in vcf.samples
+
+    num_variants = vcf.num_variants()
+    num_samples = len(samples)
+
+    matrix = []
+    for i in range(num_variants):
+        row = []
+        for s in samples:
+            var = parse_variant(vcf, i, s)
+            x = var.total_reads
+            assert type(x) in [type(None), type(0)]
+            row.append(x)
+        matrix.append(row)
+    return matrix
+            
+    
+def make_vaf_matrix(vcf, samples=None):
+    # Each element in the matrix is a float or None.
+    if samples is None:
+        samples = vcf.samples
+    for s in samples:
+        assert s in vcf.samples
+
+    num_variants = vcf.num_variants()
+    num_samples = len(samples)
+
+    matrix = []
+    for i in range(num_variants):
+        row = []
+        for s in samples:
+            var = parse_variant(vcf, i, s)
+            x = var.vaf
+            assert type(x) in [type(None), type(0.0)], x
+            row.append(x)
+        matrix.append(row)
+    return matrix
 
 
 def _safe_int(x):

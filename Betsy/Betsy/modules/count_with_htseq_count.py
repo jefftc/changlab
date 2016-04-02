@@ -80,7 +80,7 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, out_file)
             commands.append(x)
         metadata["commands"] = commands
-        metadata["num cores"] = num_cores
+        metadata["num_cores"] = num_cores
         parallel.pshell(commands, max_procs=num_cores, path=out_path)
 
         # Make sure the analysis completed successfully.

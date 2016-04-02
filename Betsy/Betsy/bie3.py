@@ -93,7 +93,8 @@ debug_print
 # _is_valid_input_i         InData_i (?) -> Module ID -> OutData
 # _is_valid_input_ids       InData IDs (?) -> Module ID -> OutData ID
 # _is_valid_output          Module -> OutData (?)              INFERENCE
-# _is_valid_output_id_path  path -> OutData ID (?)
+# _is_valid_outdata_id_path  path -> OutData ID (?)
+# _is_valid_outmodule_id_path  path -> OutData ID (?)
 # _is_valid_output_from_input_and_module_ids
 #
 # _find_same_data          Find a DataNode that is an exact match.
@@ -371,7 +372,8 @@ class Constraint(object):
         if behavior == MUST_BE:
             # name   Name of attribute.
             # arg1   Value of the attribute.
-            assert type(arg1) is type("")
+            assert type(arg1) is type(""), \
+                   "argument for MUST_BE should be string"
         elif behavior == CAN_BE_ANY_OF:
             # name   Name of attribute.
             # arg1   List of values of the attribute.
@@ -745,6 +747,34 @@ class IdentifiedDataNode:
         return x
 
 
+def _pretty_node_id(network, node_id, attributes_to_show=[]):
+    x = network.nodes[node_id]
+    x = _pretty_node(x, attributes_to_show=attributes_to_show)
+    x = "[%s] %s" % (node_id, x)
+    return x
+
+
+def _pretty_node(node, attributes_to_show=[]):
+    node_name = get_node_name(node)
+    attrs = {}
+    if isinstance(node, DataNode):
+        attrs = node.attributes
+    elif isinstance(node, IdentifiedDataNode):
+        attrs = node.data.attributes
+    attr_info = []
+    for name in attributes_to_show:
+        if name not in attrs:
+            continue
+        x = "%s=%s" % (name, attrs[name])
+        attr_info.append(x)
+    attr_info = ", ".join(attr_info)
+    if attr_info:
+        pretty = "%s (%s)" % (node_name, attr_info)
+    else:
+        pretty = node_name
+    return pretty
+
+
 def get_node_name(node):
     if isinstance(node, IdentifiedDataNode):
         return get_node_name(node.data)
@@ -851,14 +881,15 @@ class ModuleNode:
             tuple(default_attributes_from), tuple(option_defs), self.help))
 
         for x in constraints:
-            self._assert_constraint(name, in_datatypes, out_datatype,
-                                    constraints, consequences, x)
+            self._assert_constraint(
+                name, in_datatypes, out_datatype,
+                constraints, consequences, x, default_attributes_from)
         for x in consequences:
             self._assert_consequence(name, in_datatypes, out_datatype,
                                      constraints, x)
 
     def _assert_constraint(self, name, in_datatypes, out_datatype, constraints,
-                           consequences, constraint):
+                           consequences, constraint, default_attributes_from):
         # Get the input datatype that this constraint refers to.
         i = constraint.input_index
         assert i < len(in_datatypes), \
@@ -903,10 +934,15 @@ class ModuleNode:
 
         # For every constraint, there must be a consequent given.
         # Need to specify what the module does with the variable.
+        # Exception: when DefaultAttributesFrom specifies a different
+        # input node.
         if in_datatype.name == out_datatype.name:
-            x = [x for x in consequences if x.name == constraint.name]
-            assert x, "%r: constraint but no consequence for %r." % (
-                name, constraint.name)
+            assert default_attributes_from
+            daf = [x.input_index for x in default_attributes_from]
+            if constraint.input_index in daf:
+                x = [x for x in consequences if x.name == constraint.name]
+                assert x, "%r: constraint but no consequence for %r." % (
+                    name, constraint.name)
 
     def _assert_consequence(self, name, in_datatypes, out_datatype,
                             constraints, consequence):
@@ -1196,6 +1232,7 @@ def make_network(moduledb, out_data, custom_attributes):
 
     # Clean up this code.
     network = _init_network(moduledb, out_data, custom_attributes)
+    #plot_network_gv("network1.png", network, verbose=True)
 
     # The inferencing engine should generate DataNodes whose
     # attributes are all atomic.
@@ -1227,6 +1264,7 @@ def make_network(moduledb, out_data, custom_attributes):
             #    print "Optimized with %s." % opt.__class__.__name__
         it += 1
 
+    #plot_network_gv("network2.png", network, verbose=True)
     #num = 0
     #plot_network_gv("test-%02d.png" % num, network, verbose=True); num+=1
     # This makes the network really messy.  Might have to be rewritten.
@@ -2160,7 +2198,7 @@ def _find_paths_by_datatypes_h(
             # Actually, this probably isn't necessary anymore given
             # the new reasoning engine.
             if isinstance(network.nodes[node_id], DataNode):
-                if not _is_valid_output_id_path(
+                if not _is_valid_outdata_id_path(
                     network, path, node_id, custom_attributes, nodeid2parents):
                     continue
             path = path + [node_id]
@@ -2294,7 +2332,7 @@ def _find_paths_by_start_ids_hh(
             network, node_id, custom_attributes, nodeid2parents=nodeid2parents)
 
     checked_pathway = {}
-    for cnum, combo in enumerate(combos):
+    for cnum, combo_ids in enumerate(combos):
         # combo is a list of node_ids.
         # Some combos will be seen twice, but the vast majority of the
         # time, each combo is evaluated only once.
@@ -2304,7 +2342,7 @@ def _find_paths_by_start_ids_hh(
             _find_paths_by_start_ids_h(
                 network, x, custom_attributes, node2startids, nodeid2parents,
                 depth+[node_id], cache)
-            for x in combo]
+            for x in combo_ids]
 
         # Make sure there aren't too many combinations to search.
         MAX_COMBINATIONS = 5E4
@@ -2324,7 +2362,7 @@ def _find_paths_by_start_ids_hh(
         #if not has_missing:
         #    has_empty_branch = False
         #    for i in range(len(branch2info)):
-         #        x = [x for x in branch2info[i] if not x.missing_ids]
+        #        x = [x for x in branch2info[i] if not x.missing_ids]
         #        branch2info[i] = x
         #        if not x:
         #            has_empty_branch = True
@@ -2401,7 +2439,7 @@ def _find_paths_by_start_ids_hh(
             assert node_id not in node_ids
             node_ids = node_ids.union([node_id])
             # Add transitions to this node.
-            for x in combo:
+            for x in combo_ids:
                 if x not in transitions:
                     transitions[x] = frozenset([node_id])
                 else:
@@ -2417,7 +2455,9 @@ def _find_paths_by_start_ids_hh(
             #     already an invalid merged pipeline.
             # 3.  If data node, can't transition from previous module
             #     node.
-            # 4.  The same node is seen in different branches, but it
+            # 4.  If module node, can't transition from previous data
+            #     nodes.
+            # 5.  The same node is seen in different branches, but it
             #     has different parents in each branch.
             
             # If the paths conflict, then skip it.
@@ -2457,21 +2497,38 @@ def _find_paths_by_start_ids_hh(
                     continue
 
             # Case 3.  If this is a DataNode, the transition from
-            # prev_id (a ModuleNode) to node_id may be invalid.  e.g.
+            # prev_id (a ModuleNode) to node_id may be invalid.  Only
+            # follow the valid paths.
+            # Example:
             # FastqFold (trimmed=no)  -> merge_reads -> FastqFold (trimmed=no)
             # FastqFold (trimmed=yes) ->             -> FastqFold (trimmed=yes)
             # If this is an output FastqFolder where trimmed=no, then this
             # is only valid if the input FastqFolder (trimmed=no) is part
             # of the path.
-            # Only follow the valid paths.
             if isinstance(network.nodes[node_id], DataNode):
-                if not _is_valid_output_id_path(
+                if not _is_valid_outdata_id_path(
                     network, node_ids, node_id, custom_attributes,
                     nodeid2parents):
                     # This happens 3% of the time.
                     continue
 
-            # Case 4. If the merged branches would generate data nodes
+            # Case 4: If this is a ModuleNode, then make sure
+            # transition from previous nodes is valid.
+            # Example:
+            # Bam.mouse=no -> sort -> Bam.mouse=yes,no -> count_with_htseq
+            #               ReadStrandedness.mouse=yes ->
+            # count_with_htseq has constraint that mouse is the same,
+            # but value for mouse conflicts.
+            if isinstance(network.nodes[node_id], ModuleNode):
+                # This is run multiple times for similar pathways.
+                # May be able to memoize.
+                if not _is_valid_outmodule_id_path(
+                    network, path, combo_ids, node_id, custom_attributes,
+                    nodeid2parents):
+                    continue
+                    
+
+            # Case 5. If the merged branches would generate data nodes
             # with different parents, then this conflicts.
             if not missing_ids:
                 multiple_parents = False
@@ -2519,7 +2576,8 @@ def _find_paths_by_start_ids_hh(
                     node_ids, transitions, ps[0].start_ids, missing_ids)
             paths.append(p)
 
-    # Only prune working paths.
+    # Only prune working paths.  These paths start from a node, but
+    # may not end up at the bottom node yet.
     if no_missing and PRUNE_PATHS:
         # Can't prune by custom attributes here.  Because paths aren't
         # finished, we don't know which are the bottom-mode nodes to
@@ -2529,8 +2587,8 @@ def _find_paths_by_start_ids_hh(
         #orig_paths = paths
         paths = prune_paths(
             paths, network, custom_attributes,
-            prune_custom_attributes=False, prune_superset=False)
-
+            prune_custom_attributes=False, prune_superset=False,
+            ignore_incomplete_pathway=True, prune_most_inputs=False)
     return paths
 
 
@@ -2620,7 +2678,12 @@ def _merge_transitions(paths):
 
 
 def prune_paths(paths, network, custom_attributes,
-                prune_custom_attributes=True, prune_superset=True):
+                prune_custom_attributes=True, prune_superset=True,
+                ignore_incomplete_pathway=False, prune_most_inputs=True):
+    # This may be called by _find_paths_by_start_ids when the pathway
+    # is incomplete.  If this is the case, then may not be able to
+    # resolve TYPE_ENUM.  If we can't resolve because the pathway is
+    # incomplete, return None rather than raise an exception.
     nodeid2parents = _make_parents_dict(network)
 
     # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)
@@ -2629,6 +2692,23 @@ def prune_paths(paths, network, custom_attributes,
 
     # Track the number of pathways pruned.  For debugging.
     pruned = []  # list of (name, num_paths_start, num_paths_end)
+
+    ns = len(paths)
+    paths = _prune_by_generated_inputs(network, paths)
+    x = "_prune_by_generated_inputs", ns, len(paths)
+    pruned.append(x)
+
+    ns = len(paths)
+    paths = _prune_by_complete_inputs(network, paths)
+    x = "_prune_by_complete_inputs", ns, len(paths)
+    pruned.append(x)
+
+    if prune_most_inputs:
+        ns = len(paths)
+        paths = _prune_by_most_inputs(network, paths)
+        x = "_prune_by_most_inputs", ns, len(paths)
+        pruned.append(x)
+    
     if prune_custom_attributes:
         ns = len(paths)
         paths = _prune_by_custom_attributes(
@@ -2644,7 +2724,8 @@ def prune_paths(paths, network, custom_attributes,
 
     ns = len(paths)
     paths = _prune_alternate_attributes1(
-        network, custom_attributes, paths, nodeid2parents)
+        network, custom_attributes, paths, nodeid2parents,
+        ignore_incomplete_pathway)
     x = "_prune_alternate_attributes1", ns, len(paths)
     pruned.append(x)
 
@@ -2662,6 +2743,59 @@ def prune_paths(paths, network, custom_attributes,
     return paths
 
 
+def _prune_by_generated_inputs(network, paths):
+    # If a pathway contains an --input specified by the user, then
+    # there should be no modules that create this input.
+
+    to_delete = {}
+    for i, p in enumerate(paths):
+        start_ids = [x for x in p.start_ids if x is not None]
+        for next_ids in p.transitions.itervalues():
+            # If something transitions to a start_id, then delete this
+            # pipeline.
+            x = next_ids.intersection(start_ids)
+            if x:
+                to_delete[i] = 1
+                break
+    if to_delete:
+        paths = [p for (i, p) in enumerate(paths) if i not in to_delete]
+    return paths
+    
+
+def _prune_by_complete_inputs(network, paths):
+    # If one of the pathways is complete, then choose only the
+    # pathways that contain complete inputs.
+    if not paths:
+        return paths
+    complete = {}
+    for i, p in enumerate(paths):
+        if None not in p.start_ids:
+            complete[i] = i
+    if complete and len(complete) < len(paths):
+        paths = [paths[i] for i in sorted(complete)]
+    return paths
+
+    
+def _prune_by_most_inputs(network, paths):
+    if not paths:
+        return paths
+    max_inputs = None
+    for i, p in enumerate(paths):
+        x = [x for x in p.start_ids if x is not None]
+        if max_inputs is None or len(x) > max_inputs:
+            max_inputs = len(x)
+    assert max_inputs is not None
+    to_delete = {}
+    for i, p in enumerate(paths):
+        x = [x for x in p.start_ids if x is not None]
+        if len(x) < max_inputs:
+            to_delete[i] = 1
+    if to_delete:
+        paths = [p for (i, p) in enumerate(paths) if i not in to_delete]
+    return paths
+    
+
+
 def _prune_by_custom_attributes(network, custom_attributes, paths,
                                 nodeid2parents):
     # Keep only the paths that match the attributes desired by the
@@ -2672,30 +2806,43 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     # The attributes of that input datatype should match the user
     # attributes if:
     # 1.  A module's input datatype is different from the output
-    #     datatype, and it has has no descendents with the same
-    #     datatype
-    # 2.  A module's input datatype is different from the output
-    #     datatype
+    #     datatype.
+    # AND
+    # 2.  The attribute in the input datatype is not subject to a
+    #     MUST_BE constraint.
+    # AND
+    # 3.  The data node has no descendents with the same datatype.
+    
+
+    # Make a list of all the datatypes with custom attributes.  d2a1
+    # applies based on the rules above.  For d2a2, does not have to be
+    # the bottom-most node.
     dname2attrs1 = {}  # datatype name -> attr name -> value
     dname2attrs2 = {}
     for x in custom_attributes:
         d2a = dname2attrs1
-        if x.all_nodes:
+        if x.all_nodes:  # This should apply to all nodes in the network.
             d2a = dname2attrs2
         if x.datatype.name not in d2a:
             d2a[x.datatype.name] = {}
         d2a[x.datatype.name][x.name] = x.value
-    x1 = dname2attrs1.keys()
-    x2 = dname2attrs2.keys()
-    all_dnames = {}.fromkeys(x1 + x2)  # for convenience
+    # for convenience        
+    all_dnames = {}
+    for k in dname2attrs1:
+        all_dnames[k] = dname2attrs1[k]
+    for k in dname2attrs2:
+        all_dnames[k] = dname2attrs2[k]
 
 
-    # Search through the network for data nodes that might be subject
-    # to custom_attributes.
+    # Cache some values for convenience.
     x = [x.node_ids for x in paths]
     path_node_ids = x[0].union(*x[1:])
+    
+    module_ids = [
+        x for x in path_node_ids
+        if isinstance(network.nodes[x], ModuleNode)]
 
-    nodeid2parents = None
+    nodeid2parents = None  # create if needed
     descendents = _make_descendent_dict(network)
     ## Only care about the descendents that are in this network.
     #desc = {}
@@ -2706,23 +2853,25 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     #    desc[node_id] = next_ids
     #descendents = desc
 
-    # List all the data node IDs that get converted to something else.
-    module_ids = [
-        x for x in path_node_ids
-        if isinstance(network.nodes[x], ModuleNode)]
-    #data_node_ids = []
+    # Search through the network for data nodes that might be subject
+    # to custom_attributes.
     data_node_ids = set()
+
+    # Requirement 1: Data node must be converted to something else.
+    # Requirement 2: The attributes in the input datatype is not
+    # subject to a MUST_BE constraint.
     for module_id in module_ids:
         module = network.nodes[module_id]
         
-        # If the module takes only one kind of datatype and produces
-        # the same kind, then this won't work.
+        # Optimization: If the module takes only one kind of datatype
+        # and produces the same kind, then this doesn't apply.
         if len(module.in_datatypes) == 1 and \
            module.out_datatype == module.in_datatypes[0]:
             continue
 
-        # Make sure at least one input datatype (that is not
-        # DefaultAttributesFrom) has a custom attrkbute.
+        # Optimization: Make sure at least one input datatype (that is
+        # not DefaultAttributesFrom) can be subject to a custom
+        # attribute.
         daf = [x.input_index for x in module.default_attributes_from]
         in_dtype_names = [
             x.name for (i, x) in enumerate(module.in_datatypes)
@@ -2730,21 +2879,56 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
         x = [x for x in in_dtype_names if x in all_dnames]
         if not x:
             continue
-        # This should be a converting module.
 
-        # Find the node_ids that match a custom attribute.
+        # For convenience, list the MUST_BE constraints for this module.
+        cons_must_be = {}  # index -> attr name -> value
+        for cons in module.constraints:
+            if cons.behavior != MUST_BE:
+                continue
+            index = cons.input_index
+            assert type(index) is type(0)
+            if index not in cons_must_be:
+                cons_must_be[index] = {}
+            cons_must_be[index][cons.name] = cons.arg1
+
+        # Find the input node_ids that match a custom attribute.
         if nodeid2parents is None:
             nodeid2parents = _make_parents_dict(network)
+        x = nodeid2parents[module_id]
+        x = [x for x in x if x in path_node_ids]
         combos = _bc_to_input_ids(
-            network, module_id, custom_attributes,
+            network, module_id, custom_attributes, all_input_ids=x,
             nodeid2parents=nodeid2parents)
         for node_ids in combos:
-            x = node_ids
+            I = range(len(node_ids))
+            # Skip if this node ID has already been included.
+            I = [i for i in I if node_ids[i] not in data_node_ids]
             # Ignore daf.
-            x = [x for (i, x) in enumerate(node_ids) if i not in daf]
-            x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
-            x = [x for x in x if x in path_node_ids]
-            node_ids = x
+            I = [i for i in I if i not in daf]
+            # Ignore if no custom attribute for this data type.
+            I = [i for i in I
+                 if network.nodes[node_ids[i]].datatype.name in all_dnames]
+            # Ignore if there is a MUST_BE constraint on this data type.
+            j = 0
+            while j < len(I):
+                i = I[j]
+                if i not in cons_must_be:
+                    j += 1
+                    continue
+                cons_attr_names = cons_must_be[i].keys()
+                dname = network.nodes[node_ids[i]].datatype.name
+                attr_names1 = dname2attrs1.get(dname, {}).keys()
+                attr_names2 = dname2attrs2.get(dname, {}).keys()
+                attr_names = {}.fromkeys(attr_names1 + attr_names2).keys()
+                # If there is overlap between the constraints and the
+                # user attributes, then the constraint does not apply
+                # to this.
+                x = _intersect(cons_attr_names, attr_names)
+                if not x:
+                    j += 1
+                    continue
+                del I[j]
+            node_ids = [node_ids[i] for i in I]
             data_node_ids = data_node_ids.union(node_ids)
 
         #x = nodeid2parents.get(module_id, [])
@@ -2753,8 +2937,8 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
         #$node_ids = x
         #data_node_ids = data_node_ids.union(node_ids)
 
-    # List the node_ids that don't have any descendents of the same
-    # type.
+    # Requirement 3: The node_ids must not have any descendents of the
+    # same type.  (applies to dname2attrs1, but not dname2attrs2)
     no_desc = set()
     for node_id in data_node_ids:
         x = descendents.get(node_id, [])
@@ -2805,11 +2989,15 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
     path_cache = {}
     
     delete = {}
+    reason = {}  # path_i -> reason why deleted (for DEBUGGING)
     for (i, p) in enumerate(paths):
         # If this path contains a node that does not match custom
         # attributes, then delete this path.
-        if p.node_ids.intersection(mismatch_node_ids):
+        mismatch_ids = p.node_ids.intersection(mismatch_node_ids)
+        if mismatch_ids:
             delete[i] = 1
+            reason[i] = "Nodes (%s) do not match custom attribute." % \
+                        ",".join(map(str, mismatch_ids))
             continue
 
         # Make a list of the ambiguous node IDs in this path.  If this
@@ -2824,7 +3012,7 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
 
         # Make a list of all the sub-pathways that generate this
         # ambiguous node.
-        check_paths = []
+        check_paths = []  # list of (in_ids, module_id, out_id)
         for out_data_id in ambig_ids:
             x = _bc_to_input_and_module_ids(
                 network, out_data_id, custom_attributes, p.node_ids,
@@ -2837,32 +3025,41 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
         match = {}  # node_id -> 1
         for x in check_paths:
             in_data_ids, module_id, out_data_id = x
-            if out_data_id in match:
+            if out_data_id in match:  # don't check if already done
                 continue
             #name = network.nodes[out_data_id].datatype.name
             #attrs = dname2attrs[name]
             attrs = nodeid2attrs[out_data_id]
             key = module_id, in_data_ids, out_data_id
             if key not in path_cache:
+                # See if this set of attributes can be created from
+                # this module and inputs.
                 x = _is_valid_output_from_input_and_module_ids(
-                    network, module_id, in_data_ids, out_data_id,
+                    network, in_data_ids, module_id, out_data_id,
                     attrs, fc_cache)
                 path_cache[key] = x
             if path_cache[key]:
                 match[out_data_id] = 1
+            # Optimization: stop checking if we've already resolved
+            # all the ambiguous nodes.
             if len(match) == len(ambig_ids):
                 break
         # If we cannot generate all ambiguous nodes (based on the
         # custom attributes), then delete this pathway.
         if len(match) != len(ambig_ids):
             delete[i] = 1
+            x = [x for x in ambig_ids if x not in match]
+            reason[i] = \
+                      "Custom attributes can not be generated in nodes (%s)." \
+                      % ",".join(map(str, x))
 
     paths = [x for (i, x) in enumerate(paths) if i not in delete]
     return paths
 
 
 def _prune_alternate_attributes1(
-    network, custom_attributes, paths, nodeid2parents):
+    network, custom_attributes, paths, nodeid2parents,
+    ignore_incomplete_pathway):
     # If there an object has an attribute that can take different
     # values, then pipelines may be generated that can lead to each
     # value.  This causes unnecessary computation, because only one
@@ -2887,13 +3084,22 @@ def _prune_alternate_attributes1(
     #       data object.
     # 5.  Print a message showing which value was chosen.
 
+    # TODO: Make this obsolete.
+    ignore_incomplete_pathway = True
+
     if not paths:
         return []
     paths = paths[:]
 
+    # Make a list of all the node_ids in the paths.
+    x = [x.node_ids for x in paths]
+    path_node_ids = x[0].union(*x[1:])
+
     # Make list of all nodes that have alternate values.
     alternates = []  # list of node_id, attr_name
     for node_id, node in enumerate(network.nodes):
+        if node_id not in path_node_ids:
+            continue
         if not isinstance(node, DataNode):
             continue
         for (name, value) in node.attributes.iteritems():
@@ -2909,7 +3115,9 @@ def _prune_alternate_attributes1(
     nodeid2parents = _make_parents_dict(network)
     good = []
     for (node_id, attr_name) in alternates:
-        parent_ids = nodeid2parents.get(node_id, [])
+        x = nodeid2parents.get(node_id, [])
+        x = [x for x in x if x in path_node_ids]
+        parent_ids = x
         if len(parent_ids) > 1:
             good.append((node_id, attr_name))
     alternates = good
@@ -2923,23 +3131,43 @@ def _prune_alternate_attributes1(
         x = [i for (i, p) in enumerate(paths) if node_id in p.node_ids]
         if not x:
             continue
-        
+
         # Sort the pipelines based on the values.
+        dont_resolve = False
         value2pathids = {}  # value -> list of pathway indexes
         for index, path in enumerate(paths):
             if node_id not in path.node_ids:
                 continue
-            atomic_node = _get_atomic_data_node_from_pathway(
-                network, path, node_id, custom_attributes,
-                nodeid2parents=nodeid2parents)
+            # This function gets called multiple times for similar
+            # pathways.  Can find a way to optimize this.
+            try:
+                atomic_node = _get_atomic_data_node_from_pathway(
+                    network, path, node_id, custom_attributes,
+                    nodeid2parents=nodeid2parents)
+            except AssertionError, x:
+                if str(x).startswith("No parents") and \
+                       ignore_incomplete_pathway:
+                    # This can happen if the pathway isn't finished
+                    # generating, or the user has given an internal
+                    # node as an --input.
+                    dont_resolve = True
+                else:
+                    raise
+            if dont_resolve:
+                break
+                    
             value = atomic_node.attributes[name]
             assert _get_attribute_type(value) == TYPE_ATOM
             if value not in value2pathids:
                 value2pathids[value] = []
             value2pathids[value].append(index)
-        assert value2pathids
+
+        # Cannot resolve TYPE_ENUM.  Ignore this alternate.
+        if dont_resolve:
+            continue
             
         # If there is only one possible value, then ignore this.
+        assert value2pathids
         if len(value2pathids) == 1:
             continue
         
@@ -4949,6 +5177,7 @@ def _bc_to_input_ids(
 
         # Passes all the tests.
         valid.append(input_ids)
+
     return valid
 
 
@@ -4976,12 +5205,15 @@ def _bc_to_input_and_module_ids(
     return paths
 
 
-def _fc_to_outputs(module, in_datas):
+def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
     # Generate a list of DataNode objects that can be generated from
     # module and in_datas.  Multiple objects can be generated because
     # the consequences can vary.  E.g. center_genes can set
     # gene_center to either "mean" or "median".  It can be either, but
     # must be one of them.  Each of the DataNodes are atomic.
+    # If ignore_based_on_data is a true value, then will arbitrarily
+    # assign all attributes that are BASED_ON_DATA to the first value
+    # (alphabetically).
     import itertools
 
     # Check the input variables.
@@ -5028,13 +5260,14 @@ def _fc_to_outputs(module, in_datas):
             possibilities[cons.name] = cons.arg1
         elif cons.behavior == BASED_ON_DATA:
             possibilities[cons.name] = cons.arg1
+            if ignore_based_on_data:
+                possibilities[cons.name] = [cons.arg1[0]]
         elif cons.behavior == SAME_AS_CONSTRAINT:
             input_index = cons.arg1
             data = in_datas[input_index]
             attributes[cons.name] = data.attributes[cons.name]
         else:
             raise AssertionError
-
 
     # If no possibilities, then make one output variable.
     if not possibilities:
@@ -5246,9 +5479,9 @@ def _is_valid_output(module, data):
     # If this module doesn't produce the same data type, then it can't
     # produce this data object.
     if module.out_datatype.name != data.datatype.name:
-        debug_print(
-            "ModuleNode %s can't generate data type: %s." %
-            (module.name, data.datatype.name))
+        #debug_print(
+        #    "ModuleNode %s can't generate data type: %s." %
+        #    (module.name, data.datatype.name))
         return False
 
     debug_print("Testing if module %s can produce data %s." %
@@ -5514,16 +5747,19 @@ def _is_valid_output(module, data):
     return False
 
 
-def _is_valid_output_id_path(network, path, out_id, custom_attributes,
-                             nodeid2parents):
-    # Can the nodes in this pathway produce out_id.
-
-    # Find the modules that can produce out_id
+def _is_valid_outdata_id_path(network, path, out_id, custom_attributes,
+                              nodeid2parents):
+    # Can the nodes in this pathway produce out_id.  out_id must be a
+    # Data node.
+    
+    # Find the parents of out_id.
     x = nodeid2parents.get(out_id, [])
-    module_ids = [x for x in x if x in path]
-    assert module_ids
+    parent_ids = [x for x in x if x in path]
+    assert parent_ids
 
-    for module_id in module_ids:
+    assert isinstance(network.nodes[out_id], DataNode)
+    
+    for module_id in parent_ids:
         x = nodeid2parents.get(module_id, [])
         prev_ids = [x for x in x if x in path]
         if _is_valid_input_ids(
@@ -5533,12 +5769,55 @@ def _is_valid_output_id_path(network, path, out_id, custom_attributes,
     return False
 
 
+def _is_valid_outmodule_id_path(network, path, parent_ids, module_id,
+                                custom_attributes, nodeid2parents):
+    # Can the nodes in this pathway produce module_id.  out_id must be a
+    # Module node.
+    assert isinstance(network.nodes[module_id], ModuleNode)
+
+    # If these are all the same, then no need to check again.
+    # module_id, parent_ids, grandparent_ids
+    
+    # Look for conflicts in the SAME_AS constraints.
+    # Bam.mouse=no -> sort -> Bam.mouse=yes,no -> count_with_htseq
+    #               ReadStrandedness.mouse=yes ->
+    module = network.nodes[module_id]
+    x = [
+        x for x in module.constraints if x.behavior == SAME_AS]
+    same_as_cons = x
+
+    # If no SAME_AS constraints, then there are no conflicts.
+    if not same_as_cons:
+        return True
+
+    combo_nodes = [
+        _get_atomic_data_node_from_pathway(
+            network, path, x, custom_attributes,
+            ignore_based_on_data=True, nodeid2parents=nodeid2parents)
+        for x in parent_ids]
+
+    # Check if these inputs violate SAME_AS constraints.
+    for cons in same_as_cons:
+        i_src = cons.arg1
+        i_dst = cons.input_index
+        assert i_src < len(module.in_datatypes)
+        assert i_dst < len(module.in_datatypes)
+
+        attrs_src = combo_nodes[i_src].attributes
+        attrs_dst = combo_nodes[i_dst].attributes
+        a_src = attrs_src[cons.name]
+        a_dst = attrs_dst[cons.name]
+        if a_src != a_dst:
+            return False
+    return True
+
+
 def _is_valid_output_from_input_and_module_ids(
-    network, module_id, in_data_ids, out_data_id, user_attrs, cache):
+    network, in_data_ids, module_id, out_data_id, user_attrs, cache):
     in_datas = [network.nodes[x] for x in in_data_ids]
     module = network.nodes[module_id]
 
-    key = module_id, in_data_ids
+    key = in_data_ids, module_id
     if key not in cache:
         x = _fc_to_outputs(module, in_datas)
         cache[key] = x
@@ -5841,11 +6120,13 @@ def _is_network_atomic(network):
 
 
 def _get_atomic_data_node_from_pathway(
-    network, path, node_id, custom_attributes, nodeid2parents=None):
+    network, path, node_id, custom_attributes, ignore_based_on_data=False,
+    nodeid2parents=None):
     # Return an atomic data node.  Resolves all the TYPE_ENUM
     # attributes based on the pathway.  node_id may not be atomic.
     # However, since this is a pathway, only one atomic DataNode
     # should be able to be generated.  Create it.
+    
     assert node_id in path.node_ids
     node = network.nodes[node_id]
     assert isinstance(node, DataNode)
@@ -5859,13 +6140,13 @@ def _get_atomic_data_node_from_pathway(
     x = [x for x in x if x in path.transitions]
     x = [x for x in x if node_id in path.transitions[x]]
     parent_ids = x
-    assert parent_ids, "No parents"
+    assert parent_ids, "No parents 1"
     assert len(parent_ids) == 1, "Multiple parents of data"
     module_id = parent_ids[0]
 
     parent_ids = nodeid2parents[module_id]
     parent_ids = [x for x in parent_ids if x in path.node_ids]
-    assert parent_ids, "No parents"
+    assert parent_ids, "No parents 2"
     
     combos = _bc_to_input_ids(
         network, module_id, custom_attributes, all_input_ids=parent_ids,
@@ -5877,7 +6158,8 @@ def _get_atomic_data_node_from_pathway(
     for combo in combos:
         module = network.nodes[module_id]
         in_datas = [network.nodes[x] for x in combo]
-        x = _fc_to_outputs(module, in_datas)
+        x = _fc_to_outputs(
+            module, in_datas, ignore_based_on_data=ignore_based_on_data)
         out_datas.extend(x)
     assert out_datas, "no out_datas"
 

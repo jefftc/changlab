@@ -206,7 +206,9 @@ def pretty_date(ctime=None, format=None):
     time_str = time.strftime(format, ctime)
     return time_str
 
-def pretty_list(items):
+def pretty_list(items, max_items=None):
+    assert max_items is None or max_items > 2
+    
     assert len(items) >= 0
     if not items:
         return ""
@@ -214,8 +216,12 @@ def pretty_list(items):
         return items[0]
     if len(items) == 2:
         return "%s and %s" % (items[0], items[1])
-    x = ", ".join(items[:-1])
-    return "%s, and %s" % (x, items[-1])
+    if max_items is None or len(items) <= max_items:
+        x = ", ".join(items[:-1])
+        return "%s, and %s" % (x, items[-1])
+    x = items[:max_items] + ["..."]
+    x = ", ".join(x)
+    return x
 
 
 def pretty_time_delta(delta):

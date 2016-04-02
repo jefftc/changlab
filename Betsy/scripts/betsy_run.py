@@ -454,7 +454,10 @@ def build_pipelines(
 
     good_paths = [x for x in paths if not x.missing_ids]
     if good_paths and not has_unused_inputs:
-        print "Found %d possible pipelines." % len(good_paths)
+        x = "pipelines"
+        if len(good_paths) == 1:
+            x = "pipeline"
+        print "Found %d possible %s." % (len(good_paths), x)
         return good_paths
 
     # Print out --inputs that aren't used.
@@ -816,14 +819,14 @@ def plot_network(
 
 
 def plot_pipelines(filestem, network, paths, user_options, max_pipelines=None,
-                   verbose=False):
+                   prune=False, verbose=False):
     if max_pipelines is not None:
         paths = paths[:max_pipelines]
     for i, path in enumerate(paths):
         filename = "%s-%02d.png" % (filestem, i)
         plot_network_show_pipelines(
             filename, network, [path], user_options=user_options,
-            verbose=verbose)
+            prune=prune, verbose=verbose)
 
 
 def get_all_option_names():
@@ -1325,6 +1328,9 @@ def main():
         return
     # Step 2: Generate network.
     network = generate_network(rulebase, outtype, custom_attributes)
+    #plot_network(
+    #    args.network_png, network, user_options=user_options,
+    #    verbose=verbose)
     # Step 3: Make sure some inputs are provided.
     if not check_inputs_provided(
         network, in_data_nodes, custom_attributes, user_options,
@@ -1343,8 +1349,9 @@ def main():
         network, user_options, in_data_nodes, data_node_ids, custom_attributes,
         args.max_inputs, args.network_png, verbose)
     #plot_pipelines(
-    #    "pipeline", network, paths, user_options, max_pipelines=16,
-    #    verbose=True)
+    #    "pipeline", network, paths, user_options, max_pipelines=1,
+    #    prune=True, verbose=True)
+
     if not paths:
         return
     # Step 6: Make sure required attributes are given.
@@ -1353,16 +1360,21 @@ def main():
         verbose)
     if not paths:
         return
-    # DEBUG: pickle objects so don't have to regenerate.
+    # DEBUG: To debug the pruning, save the network and paths so we
+    # don't have to re-generate them each time we run.
     #import pickle
     #open("network.txt", 'w').write(pickle.dumps(network))
     #open("paths.txt", 'w').write(pickle.dumps(paths))
+    #import sys; sys.exit(0)
     #network = pickle.loads(open("network.txt").read())
     #paths = pickle.loads(open("paths.txt").read())
     # DEBUG: Print out each of the pipelines.
     #plot_pipelines(
-    #    "pipeline", network, paths[:1], user_options, max_pipelines=16,
+    #    "pipeline", network, paths, user_options, max_pipelines=16,
     #    verbose=True)
+    #plot_network_show_pipelines(
+    #    args.network_png, network, paths, user_options=user_options,
+    #    verbose=verbose)
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(
         network, user_options, custom_attributes, paths, args.network_png,
@@ -1371,7 +1383,7 @@ def main():
         return
     # DEBUG: Print out each of the pipelines.
     #plot_pipelines(
-    #    "pipeline", network, paths, user_options, max_pipelines=32,
+    #    "pipeline", network, paths, user_options, max_pipelines=16,
     #    verbose=True)
         
     # Step 8: Look for input files.

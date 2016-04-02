@@ -37,6 +37,8 @@ read_sample_group_file
 fix_sample_group_filenames
 assert_sample_group_file
 
+read_normal_cancer_file
+
 check_inpath
 calc_max_procs_from_ram
 get_physical_memory
@@ -920,6 +922,29 @@ def assert_sample_group_file(filename, fastq_path):
     #    assert file in all_filenames, "Not in sample group file: %s" % file
 
 
+def read_normal_cancer_file(file_or_handle):
+    # Return list of (normal_sample, tumor_sample).
+    import os
+    from genomicode import filelib
+    
+    handle = file_or_handle
+    if type(handle) is type(""):
+        assert os.path.exists(file_or_handle)
+        handle = filelib.openfh(handle)
+
+    data = []
+    for d in filelib.read_row(handle, header=1, pad_cols=""):
+        assert hasattr(d, "Normal"), "Missing header: Normal"
+        assert hasattr(d, "Cancer"), "Missing header: Cancer"
+        ns = d.Normal
+        ts = d.Cancer
+        ns, ts = ns.strip(), ts.strip()
+        assert ns != ts
+        x = ns, ts
+        data.append(x)
+    return data
+
+
 def check_inpath(path):
     # Rename to check_path?
     import os
@@ -928,7 +953,7 @@ def check_inpath(path):
     return path
 
 
-def calc_max_procs_from_ram(gb_per_proc, buffer=8, upper_max=None):
+def calc_max_procs_from_ram(gb_per_proc, buffer=32, upper_max=None):
     # Given the number of gigabytes each processor will need,
     # calculate the maximum number of processes that should be run
     # concurrently.
@@ -1016,6 +1041,7 @@ def get_user_option(
 
 
 def get_config(name):
+    # OBSOLETE?  Replace with findbin.
     from genomicode import filelib
     from genomicode import config
     return filelib.which_assert(getattr(config, name))
