@@ -76,14 +76,16 @@ class Module(AbstractModule):
 
         # Put together the results in a table.
         handle = open(out_filename, 'w')
-        header = "sample", "match", "total", "perc"
+        header = "sample", "match", "total", "perc", "perc mismatch"
         print >>handle, "\t".join(header)
         for x in zip(jobs, results):
             x, d = x
             sample, in_filename, summary_filename, \
                     fastq_filename1, fastq_filename2 = x
+            perc_mismatch = 1 - d["perc_perfect"]
             x = sample, d["perfect_alignments"], d["total_alignments"], \
-                d["perc_perfect"]
+                d["perc_perfect"], perc_mismatch
+            assert len(x) == len(header)
             print >>handle, "\t".join(map(str, x))
         handle.close()
         return metadata
