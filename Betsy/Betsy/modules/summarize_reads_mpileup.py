@@ -28,7 +28,7 @@ class Module(AbstractModule):
             p, f = os.path.split(in_filename)
             sample, ext = os.path.splitext(f)
             err_filename = os.path.join(out_path, "%s.log" % sample)
-            out_filename = os.path.join(out_path, "%s.mpileup" % sample)
+            out_filename = os.path.join(out_path, "%s.pileup" % sample)
             x = in_filename, err_filename, out_filename
             jobs.append(x)
 
@@ -60,4 +60,4 @@ class Module(AbstractModule):
         
 
     def name_outfile(self, antecedents, user_options):
-        return "summary.mpileup"
+        return "summary.pileup"

@@ -29,7 +29,7 @@ TIME_FMT = "%a %b %d %H:%M:%S %Y"
 DEBUG_POOL = {}
 def run_pipeline(
     network, in_datas, custom_attributes, user_options, paths, user=None,
-    job_name='', clean_up=True, num_cores=8):
+    job_name='', clean_up=True, num_cores=8, verbosity=0):
     # Run the pipeline that is indicated by the network.  Returns a
     # tuple of (dictionary of node_id -> IdentifiedDataNode, output
     # filename).  Returns None if not successful.
@@ -168,7 +168,7 @@ def run_pipeline(
             x = run_module(
                 network, node_id, antecedent_ids, user_options,
                 pool, transitions, user, job_name, clean_up=clean_up,
-                num_cores=num_cores)
+                num_cores=num_cores, verbosity=verbosity)
             if x is None:
                 # Can happen if this module has already been run.  It
                 # might've gotten added to the stack because there are
@@ -214,7 +214,7 @@ def run_pipeline(
 
 def run_module(
     network, module_id, input_ids, all_user_options, pool, transitions,
-    user, job_name='', clean_up=True, num_cores=8):
+    user, job_name='', clean_up=True, num_cores=8, verbosity=0):
     # Return tuple of (IdentifiedDataNode, node_id) for the node that
     # was created.  Returns None if this module fails (no compatible
     # output nodes, or all output nodes already generated).
@@ -367,6 +367,11 @@ def run_module(
         x = "%s  %s (CACHED, previously %s)" % (time_str, module_name, x)
         #parselib.print_split(x, prefixn=2)
         print x
+        if verbosity >= 1:
+            # Print out the output directory.
+            indent = len("[Thu 10:06 PM]  ")
+            x = os.path.split(result_dir)[1]
+            print "%s%s" % (" "*indent, x)
         sys.stdout.flush()
         return out_identified_data_node, next_id, elapsed
 
@@ -374,6 +379,11 @@ def run_module(
     x = "%s  %s" % (time_str, module_name)
     #parselib.print_split(x, prefixn=2)
     print x
+    if verbosity >= 1:
+        # Print out the output directory.
+        indent = len("[Thu 10:06 PM]  ")
+        x = os.path.split(result_dir)[1]
+        print "%s%s" % (" "*indent, x)
     sys.stdout.flush()
 
     # Run the analysis.  If someone else is currently running the same

@@ -1,21 +1,32 @@
-# Classes:
-# VCFFile
-# Variant
-#
-# Functions:
-# read
-# write
+"""
+Classes:
+VCFFile
+Variant
+Call
+
+Functions:
+read
+write
+
+get_variant   Get Variant from VCFFile.
+set_variant   Set a Variant to a VCFFile.
+get_call      Get a Call from a Variant.
+set_call      Set a Call to a Variant.
+
+make_coverage_matrix
+make_vaf_matrix
+
+"""
+# _parse_info
+# _parse_genotype
+# _format_info
+# _format_genotype
+# _format_vcf_value
 # 
-# parse_variant         Describes one variant for a specific sample.
-# update_variant        Update a VCF object with Variant object.
-# make_coverage_matrix  Return a variant x sample matrix of coverage.
-# make_vaf_matrix       Return a variant x sample matrix of allele frequencies.
-#
 # _safe_int
 # _safe_float
+# _safe_add
 # _percent_to_decimal
-# _fmt_vcf_value
-
 
 
 # VCF Format:
@@ -37,12 +48,24 @@
 # FORMAT  GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
 # VALUES  ./.:.:16
 #
-#                   samtools   Platypus     GATK  IACS  NextGene
-# num_ref           GENO:RD              GENO:AD        GENO:SGCOUNTREF_F/R
-# num_alt           GENO:AD     INFO:TR  GENO:AD        GENO:SGCOUNTALT_F/R
-# total_reads       GENO:DP     INFO:TC  GENO:DP  calc  GENO:DP
+#                   samtools   Platypus            GATK  
+# num_ref           GENO:RD                       GENO:AD  
+# num_alt           GENO:AD     GENO:NV  INFO:TR  GENO:AD  
+# total_reads       GENO:DP     GENO:NR  INFO:TC  GENO:DP  
 # vaf               GENO:FREQ
-# call              GENO:GT     GENO:GT  GENO:GT   ???
+# call              GENO:GT     GENO:GT           GENO:GT
+#
+#                   bcftools   NextGene              Backfill
+# num_ref                      GENO:SGCOUNTREF_F/R   GENO:BFILL_REF
+# num_alt                      GENO:SGCOUNTALT_F/R   GENO:BFILL_ALT
+# total_reads       INFO:DP    GENO:DP               GENO:BFILL_COV
+# vaf                                                GENO:BFILL_VAF
+# call              GENO:GT                        
+#
+# * BFILL_ format is used for backfilling reads.
+# * For multi VCF files, Platypus INFO:TR and INFO:TC just contains
+#   the info for the first sample (with reads).  For positions without
+#   calls, GENO:NV and GENO:NR are blank.
 # * GENO:AD    For GATK, includes REF.  REF,ALT1,ALT2 etc.
 #   GENO:FREQ  For samtools, is a percent, e.g. 100%.
 #   GENO:FREQ  May be "." or blank.
@@ -63,78 +86,91 @@
 
 
 class VCFFile:
-    def __init__(self, matrix, samples, more_info, genotypes):
-        # matrix     AnnotationMatrix
-        # samples    list of sample names
-        # more_info  list of dicts.  from INFO column.
-        # genotypes  dict of sample -> list of dicts.  from genotype columns.
+    def __init__(self, matrix):
+        # matrix is an AnnotationMatrix.
         import copy
+        
+        # Should start with headers, and then samples after that.
+        vcf_headers = [
+            "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
+            "INFO", "FORMAT"]
+        assert matrix.headers[:len(vcf_headers)] == vcf_headers
+        samples = matrix.headers[len(vcf_headers):]
+        
         self.matrix = copy.deepcopy(matrix)
-        self.samples = samples[:]
-        self.more_info = copy.deepcopy(more_info)
-        self.genotypes = copy.deepcopy(genotypes)
+        self.samples = samples
+
     def num_variants(self):
         return self.matrix.num_annots()
-        
 
 
 class Variant:
     # Holds structured information for each variant.
-    #
+    def __init__(
+        self, chrom, pos, id_, ref, alt, qual, filter_, info_names, infodict,
+        samples, genotype_names, sample2genodict):
+        import copy
+        self.chrom = chrom
+        self.pos = pos
+        self.id_ = id_
+        self.ref = ref
+        self.alt = alt
+        self.qual = qual
+        self.filter_ = filter_
+        self.info_names = info_names[:]
+        self.infodict = infodict.copy()
+        self.samples = samples[:]
+        self.genotype_names = genotype_names[:]
+        self.sample2genodict = copy.deepcopy(sample2genodict)
+
+
+class Call:
+    # Contains call information for a variant.
+    # 
     # num_alt_alleles
     # num_ref          Can be None if data missing.
     # num_alt          Can be list.  Each can be None.
     # total_reads      Can be list.  Each can be None.
     # vaf              Can be list.  Each can be None.
     # call             String.
+    
     def __init__(self, num_alt_alleles, num_ref, num_alt, total_reads, vaf,
                  call):
         assert num_alt_alleles >= 1
-        #if num_alt_alleles > 1:
-        #    assert len(num_alt) == num_alt_alleles
-        #    assert len(total_reads) == num_alt_alleles
-        #    assert len(vaf) == num_alt_alleles
         self.num_alt_alleles = num_alt_alleles
         self.num_ref = num_ref
         self.num_alt = num_alt
         self.total_reads = total_reads
         self.vaf = vaf
         self.call = call
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [repr(self.num_alt_alleles),
+             repr(self.num_ref),
+             repr(self.num_alt),
+             repr(self.total_reads),
+             repr(self.vaf),
+             repr(self.call),]
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
+    def __cmp__(self, other):
+        if not isinstance(other, Call):
+            return cmp(id(self), id(other))
+        x1 = [
+            self.num_alt_alleles, self.num_ref, self.num_alt, 
+            self.total_reads, self.vaf, self.call]
+        x2 = [
+            other.num_alt_alleles, other.num_ref, other.num_alt, 
+            other.total_reads, other.vaf, other.call]
+        return cmp(x1, x2)
 
 
 def read(filename):
+    # Return a VCFFile object.
     import AnnotationMatrix
-
-    info_header = "INFO"
-    format_header = "FORMAT"
-
     matrix = AnnotationMatrix.read(filename, header_char="##")
-
-    # Should start with headers, and then samples after that.
-    vcf_headers = [
-        "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
-        "INFO", "FORMAT"]
-    assert matrix.headers[:len(vcf_headers)] == vcf_headers
-    samples = matrix.headers[len(vcf_headers):]
-    assert samples
-
-    # Parse out the INFO line.
-    # Format: BRF=0.89;FR=1.0000;HP=2;HapScore=1;...
-    annots = matrix.header2annots[info_header]
-    # Make a list of dictionaries.
-    info_dicts = [_parse_info_dict(x) for x in annots]
-
-    # Parse out the genotype fields.
-    format_strings = matrix.header2annots[format_header]
-    genotypes = {}  # sample -> list of dicts
-    for sample in samples:
-        genotype_strings = matrix[sample]
-        geno_dicts = [
-            _parse_genotype_dict(fs, gs)
-            for (fs, gs) in zip(format_strings, genotype_strings)]
-        genotypes[sample] = geno_dicts
-
-    return VCFFile(matrix, samples, info_dicts, genotypes)
+    return VCFFile(matrix)
 
 
 def write(handle_or_file, vcf):
@@ -142,21 +178,74 @@ def write(handle_or_file, vcf):
     AnnotationMatrix.write(handle_or_file, vcf.matrix)
 
 
-def parse_variant(vcf, variant_num, sample):
-    # Return an Variant object describing a variant for a sample.
-    assert sample in vcf.samples, "Unknown sample: %s" % sample
-    assert variant_num >= 0
-    assert variant_num < vcf.matrix.num_annots()
+def get_variant(vcf, num):
+    # Return a Variant object.
+    assert num >= 0 and num < vcf.num_variants()
 
-    info_dict = vcf.more_info[variant_num]
-    geno_dict = vcf.genotypes[sample][variant_num]
+    chrom = vcf.matrix["#CHROM"][num]
+    pos = int(vcf.matrix["POS"][num])
+    id_ = vcf.matrix["ID"][num]
+    ref = vcf.matrix["REF"][num]
+    if ref.find(",") >= 0:
+        ref = ref.split(",")
+    alt = vcf.matrix["ALT"][num]
+    if alt.find(",") >= 0:
+        alt = alt.split(",")
+    qual = _safe_float(vcf.matrix["QUAL"][num])
+    filter_ = vcf.matrix["FILTER"][num]
+    x = _parse_info(vcf.matrix["INFO"][num])
+    info_names, infodict = x
+
+    format_str = vcf.matrix["FORMAT"][num]
+    sample2genodict = {}
+    for sample in vcf.samples:
+        geno_str = vcf.matrix[sample][num]
+        x = _parse_genotype(format_str, geno_str)
+        genotype_names, genodict = x
+        sample2genodict[sample] = genodict
+
+    return Variant(
+        chrom, pos, id_, ref, alt, qual, filter_, info_names, infodict,
+        vcf.samples, genotype_names, sample2genodict)
+    
+
+def set_variant(vcf, num, var):
+    # Update a VCFFile in place with information from Variant.
+    assert num >= 0 and num < vcf.num_variants()
+
+    vcf.matrix["#CHROM"][num] = var.chrom
+    vcf.matrix["POS"][num] = str(var.pos)
+    vcf.matrix["ID"][num] = var.id_
+    ref = var.ref
+    if type(ref) is not type(""):
+        ref = ",".join(ref)
+    vcf.matrix["REF"][num] = ref
+    alt = var.alt
+    if type(alt) is not type(""):
+        alt = ",".join(alt)
+    vcf.matrix["ALT"][num] = alt
+    qual = var.qual
+    if qual is None:
+        qual = "."
+    vcf.matrix["QUAL"][num] = str(qual)
+    vcf.matrix["FILTER"][num] = var.filter_
+    vcf.matrix["INFO"][num] = _format_info(var.info_names, var.infodict)
+    format_str = ":".join(var.genotype_names)
+    vcf.matrix["FORMAT"][num] = format_str
+    for sample in var.samples:
+        vcf.matrix[sample][num] = _format_genotype(
+            var.genotype_names, var.sample2genodict[sample])
+
+    
+def get_call(var, sample):
+    # Return a Call object from a variant.
+    assert sample in var.samples, "Unknown sample: %s" % sample
+
+    info_dict = var.infodict
+    geno_dict = var.sample2genodict[sample]
 
     # Figure out the number of ALT alleles.
-    alt_alleles = vcf.matrix["ALT"][variant_num]
-    assert alt_alleles
-    x = alt_alleles.split(",")
-    num_alt_alleles = len(x)
-
+    num_alt_alleles = len(var.alt)
     num_ref = None
     num_alt = None
     total_reads = None
@@ -164,9 +253,7 @@ def parse_variant(vcf, variant_num, sample):
     call = None
 
     # For debugging.
-    x1 = vcf.matrix["#CHROM"][variant_num]
-    x2 = vcf.matrix["POS"][variant_num]
-    pos_str = "%s %s" % (x1, x2)
+    pos_str = "%s %s" % (var.chrom, var.pos)
     
     if "RD" in geno_dict:
         num_ref = _safe_int(geno_dict["RD"])
@@ -209,12 +296,19 @@ def parse_variant(vcf, variant_num, sample):
     if num_alt is None and "TR" in info_dict:
         x = info_dict["TR"].split(",")
         x = [_safe_int(x) for x in x]
-        assert len(x) == num_alt_alleles
+        # Don't bother checking.  Hard to know what Platypus is trying
+        # to do here.  Ex:
+        # ALT  T,TTGTGTGTGTG,TTGTGTGTG,TTGTGTG,TTGTG,TTG
+        # TR   14,14
+        #assert len(x) == 1 or len(x) == num_alt_alleles, \
+        #       "Mismatch alleles: %s %d %s %d %r" % (
+        #    sample, variant_num, alt_alleles, num_alt_alleles,
+        #    info_dict["TR"])
         num_alt = x
     if total_reads is None and "TC" in info_dict:
         x = info_dict["TC"].split(",")
         x = [_safe_int(x) for x in x]
-        assert len(x) == num_alt_alleles
+        #assert len(x) == 1 or len(x) == num_alt_alleles
         total_reads = x
 
     if num_ref is None and total_reads is not None and num_alt is not None:
@@ -222,6 +316,7 @@ def parse_variant(vcf, variant_num, sample):
         # 1.  1 total reads, 1 alt.
         # 2.  1 total reads, multiple alts.
         #     Different alternative alleles.  Sum them up.
+        #     Actually, cannot sum up Platypus.  17 reads, alts: 14,14
         # 3.  multiple total reads, multiple alts.
         #     should have same number, and num_ref calculated should
         #     be the same.
@@ -233,7 +328,8 @@ def parse_variant(vcf, variant_num, sample):
         # Case 2.
         elif len(total_reads) == 1 and len(num_alt) > 1:
             x = [x for x in num_alt if x is not None]
-            num_ref = total_reads[0] - sum(x)
+            #num_ref = total_reads[0] - sum(x)
+            num_ref = max(total_reads) - max(x)
             assert num_ref >= 0, "%s: %s %s" % (pos_str, num_alt, total_reads)
         # Case 3.
         elif len(total_reads) > 1 and len(num_alt) > 1:
@@ -261,6 +357,18 @@ def parse_variant(vcf, variant_num, sample):
                 x = float(num_alt[i])/total
                 calc_v[i] = x
         vaf = calc_v
+
+    # If no other data available, then use the information from BFILL_
+    # fields.
+    if num_ref is None and "BFILL_REF" in geno_dict:
+        num_ref = _safe_int(geno_dict["BFILL_REF"])
+    if num_alt is None and "BFILL_ALT" in geno_dict:
+        num_alt = _safe_int(geno_dict["BFILL_ALT"])
+    if total_reads is None and "BFILL_COV" in geno_dict:
+        total_reads = _safe_int(geno_dict["BFILL_COV"])
+    if vaf is None and "BFILL_VAF" in geno_dict:
+        vaf = _safe_float(geno_dict["BFILL_VAF"])
+        
         
     # Convert lists to numbers.
     if type(num_alt) is type([]) and len(num_alt) == 1:
@@ -270,97 +378,79 @@ def parse_variant(vcf, variant_num, sample):
     if type(vaf) is type([]) and len(vaf) == 1:
         vaf = vaf[0]
 
-    return Variant(
+    return Call(
         num_alt_alleles, num_ref, num_alt, total_reads, vaf, call)
 
     
-def update_variant(vcf, variant, variant_num, sample):
-    # Update the VCF with the information from the Info object.
-    # Updates in place.  Will change the vcf variable.
-    import copy
-
-    assert variant_num < vcf.matrix.num_annots()
-    ID = vcf.more_info[variant_num]
-    GD = vcf.genotypes[sample][variant_num]
+def set_call(variant, sample, call):
+    # Update a Variant object in place with the information from the
+    # Call object.
+    ID = variant.infodict
+    GD = variant.sample2genodict[sample]
 
     # Figure out what kind of file it is.
-    if "RD" in GD and "AD" in GD and "DP" in GD and "FREQ" in GD:
+    if "BFILL_REF" in GD and "BFILL_ALT" in GD and "BFILL_COV" in GD and \
+       "BFILL_VAF" in GD:
+        if call.num_ref is not None:
+            GD["BFILL_REF"] = _format_vcf_value(call.num_ref)
+        if call.num_alt is not None:
+            GD["BFILL_ALT"] = _format_vcf_value(call.num_alt)
+        if call.total_reads is not None:
+            GD["BFILL_COV"] = _format_vcf_value(call.total_reads)
+        if call.vaf is not None:
+            GD["BFILL_VAF"] = _format_vcf_value(call.vaf)
+    elif "RD" in GD and "AD" in GD and "DP" in GD and "FREQ" in GD:
         # samtools
-        GD["RD"] = _fmt_vcf_value(variant.num_ref)
-        GD["AD"] = _fmt_vcf_value(variant.num_alt)
-        GD["DP"] = _fmt_vcf_value(variant.total_reads)
+        GD["RD"] = _format_vcf_value(call.num_ref)
+        GD["AD"] = _format_vcf_value(call.num_alt)
+        GD["DP"] = _format_vcf_value(call.total_reads)
         # Convert FREQ to percent.
-        x = variant.vaf
+        x = call.vaf
         if type(x) is not type([]):
             x = [x]
         x = [x*100.0 for x in x]
         x = ["%s%%" % x for x in x]
-        GD["FREQ"] = _fmt_vcf_value(x)
-        GD["GT"] = variant.call
+        GD["FREQ"] = _format_vcf_value(x)
+        GD["GT"] = call.call
     elif "TR" in ID and "TC" in ID:
         # Platypus
-        ID["TR"] = _fmt_vcf_value(variant.num_ref)
-        ID["TC"] = _fmt_vcf_value(variant.total_reads)
-        GD["GT"] = variant.call
+        ID["TR"] = _format_vcf_value(call.num_ref)
+        ID["TC"] = _format_vcf_value(call.total_reads)
+        GD["GT"] = call.call
     elif "AD" in GD and "DP" in GD and not "RD" in GD and not "FREQ" in GD:
         # GATK
-        GD["RD"] = _fmt_vcf_value(variant.num_ref)
-        GD["AD"] = _fmt_vcf_value(variant.num_alt)
-        GD["DP"] = _fmt_vcf_value(variant.total_reads)
-        GD["GT"] = variant.call
+        GD["RD"] = _format_vcf_value(call.num_ref)
+        GD["AD"] = _format_vcf_value(call.num_alt)
+        GD["DP"] = _format_vcf_value(call.total_reads)
+        GD["GT"] = call.call
+    elif "DP" in ID and "GT" in GD and not "AD" in GD:
+        # bcftools
+        ID["DP"] = _format_vcf_value(call.total_reads)
+        GD["GT"] = call.call
     elif "SGCOUNTREF_F" in GD:
         # NextGene
         raise NotImplementedError, "NextGene not implemented yet."
     else:
         raise AssertionError, "Unknown VCF format."
 
-    # Change the values in the MATRIX based on ID and GD.
-    annots = vcf.matrix["INFO"]
-    x = annots[variant_num]
-    keyvalues = x.split(";")
-    for i, kv in enumerate(keyvalues):
-        x = kv.split("=")
-        if len(x) == 1:
-            continue
-        assert len(x) == 2
-        key, value = x
-        if key in ID:
-            value = ID[key]
-        keyvalues[i] = "%s=%s" % (key, value)
-    x = ";".join(keyvalues)
-    annots[variant_num] = x
-
-    annots = vcf.matrix["FORMAT"]
-    x = annots[variant_num]
-    keys = x.split(":")
-    annots = vcf.matrix[sample]
-    x = annots[variant_num]
-    values = x.split(":")
-    for i, key in enumerate(keys):
-        if key in GD:
-            values[i] = GD[key]
-    x = ":".join(values)
-    annots[variant_num] = x
-
-    #return vcf
-
 
 def make_coverage_matrix(vcf, samples=None):
-    # Each element in the matrix is an integer or None.
+    # Make a num_variants x num_samples matrix where each element is
+    # an integer or None.
+    assert vcf.num_variants()
+
     if samples is None:
         samples = vcf.samples
     for s in samples:
         assert s in vcf.samples
 
-    num_variants = vcf.num_variants()
-    num_samples = len(samples)
-
     matrix = []
-    for i in range(num_variants):
+    for i in range(vcf.num_variants()):
         row = []
+        var = get_variant(vcf, i)
         for s in samples:
-            var = parse_variant(vcf, i, s)
-            x = var.total_reads
+            call = get_call(var, s)
+            x = call.total_reads
             assert type(x) in [type(None), type(0)]
             row.append(x)
         matrix.append(row)
@@ -369,20 +459,20 @@ def make_coverage_matrix(vcf, samples=None):
     
 def make_vaf_matrix(vcf, samples=None):
     # Each element in the matrix is a float or None.
+    assert vcf.num_variants()
+
     if samples is None:
         samples = vcf.samples
     for s in samples:
         assert s in vcf.samples
 
-    num_variants = vcf.num_variants()
-    num_samples = len(samples)
-
     matrix = []
-    for i in range(num_variants):
+    for i in range(vcf.num_variants()):
         row = []
+        var = get_variant(vcf, i)
         for s in samples:
-            var = parse_variant(vcf, i, s)
-            x = var.vaf
+            call = get_call(var, s)
+            x = call.vaf
             assert type(x) in [type(None), type(0.0)], x
             row.append(x)
         matrix.append(row)
@@ -394,12 +484,26 @@ def _safe_int(x):
         return int(x)
     return None
 
+
 def _safe_float(x):
     if x == "":
         return None
     if x != ".":
         return float(x)
     return None
+
+
+def _safe_add(x1, x2):
+    # Add two numbers.  x1 and x2 should be integers or None.  If both
+    # are None, return None.  If only 1 is None, interpret it as 0.
+    if x1 is None and x2 is None:
+        return None
+    if x1 is None:
+        x1 = 0
+    if x2 is None:
+        x2 = 0
+    return x1 + x2
+
 
 def _percent_to_decimal(x):
     # If the VAF is provided as a percent, convert it to decimal.
@@ -412,7 +516,70 @@ def _percent_to_decimal(x):
     return float(x) / 100
 
 
-def _fmt_vcf_value(value):
+def _parse_info(info_str):
+    # Return a tuple of info_names, info_dict
+    
+    # Parse out the INFO line.
+    # Format: BRF=0.89;FR=1.0000;HP=2;HapScore=1;...
+    names = []
+    d = {}
+    x = info_str.split(";")
+    for x in x:
+        x = x.split("=")
+        assert len(x) in [1, 2]
+        if len(x) == 1:
+            key = x[0]
+            value = None
+        else:
+            key, value = x
+        d[key] = value
+        names.append(key)
+    return names, d
+
+
+def _parse_genotype(format_str, genotype_str):
+    # Return tuple of format_names, genotype_dict.
+    names = format_str.split(":")
+    values = genotype_str.split(":")
+    assert len(names) == len(values), "Mismatch: %s %s" % (
+        format_str, genotype_str)
+    d = {}
+    for (n, v) in zip(names, values):
+        d[n] = v
+    return names, d
+
+
+def _format_info(info_names, info_dict):
+    not_found = [x for x in info_dict if x not in info_names]
+    assert not not_found, \
+           "Unknown names in info_dict: %s" % ", ".join(not_found)
+    
+    keyvalues = []
+    for name in info_names:
+        value = info_dict[name]
+        if value is None:
+            keyvalues.append(name)
+        else:
+            keyvalues.append("%s=%s" % (name, value))
+    return ";".join(keyvalues)
+
+
+def _format_genotype(genotype_names, genotype_dict):
+    not_found = [x for x in genotype_dict if x not in genotype_names]
+    assert not not_found, \
+           "Unknown names in genotype_dict: %s" % ", ".join(not_found)
+
+    values = []
+    for name in genotype_names:
+        if name in genotype_dict:
+            values.append(genotype_dict[name])
+        else:
+            values.append(".")
+    values = map(str, values)
+    return ":".join(values)
+
+
+def _format_vcf_value(value):
     # value can be:
     # string, int, float, None
     # list of any of these
@@ -431,38 +598,3 @@ def _fmt_vcf_value(value):
     return x
 
 
-def _parse_info_dict(info_str):
-    d = {}
-    x = info_str.split(";")
-    for x in x:
-        x = x.split("=")
-        assert len(x) in [1, 2]
-        if len(x) == 1:
-            key = x[0]
-            value = None
-        else:
-            key, value = x
-        d[key] = value
-    return d
-
-
-def _parse_genotype_dict(format_str, genotype_str):
-    names = format_str.split(":")
-    values = genotype_str.split(":")
-    assert len(names) == len(values)
-    d = {}
-    for (n, v) in zip(names, values):
-        d[n] = v
-    return d
-
-
-def _safe_add(x1, x2):
-    # Add two numbers.  x1 and x2 should be integers or None.  If both
-    # are None, return None.  If only 1 is None, interpret it as 0.
-    if x1 is None and x2 is None:
-        return None
-    if x1 is None:
-        x1 = 0
-    if x2 is None:
-        x2 = 0
-    return x1 + x2
