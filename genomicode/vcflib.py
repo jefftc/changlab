@@ -47,8 +47,8 @@
 # * If DP is missing, then try SDP.
 # * Sometimes DP is missing for samtools.  Can use INFO:ADP if
 #   only 1 sample.
-# * NextGene
-#   Comma means different (simulatenous) interpretations of
+# * NextGENe
+#   Comma means different (simultaneous) interpretations of
 #   alternate alignments.  Allele frequency can be either.
 #   SGCOUNTREF_F  3277
 #   SGCOUNTREF_R  2675

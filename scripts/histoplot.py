@@ -204,7 +204,7 @@ def main():
     assert args.header in MATRIX.headers, "header not found: %s" % args.header
 
     # Pull out the values for the histogram.
-    x = MATRIX.get_annots(args.header)
+    x = MATRIX[args.header]
     values = map(float, x)
 
     value_min = value_max = None

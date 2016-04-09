@@ -116,7 +116,7 @@ def _transpose_gmx(matrix):
             if j >= len(matrix[i]):
                 continue
             x.append(matrix[i][j])
-        assert len(x) >= 2
+        assert len(x) >= 2, "Short column %d: %s" % (j, x)
         x1 = x[:2]
         x2 = [x.strip() for x in x[2:]]
         x = x1 + x2

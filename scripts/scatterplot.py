@@ -65,13 +65,12 @@ def main():
         "plot_file", help="Name of image file, e.g. outfile.png.  "
         "Will generate PNG format by default.  If this file name ends with "
         ".pdf, will generate a PDF file instead.")
+    
 
-    group = parser.add_argument_group(title="Plot Labels")
-    group.add_argument("--title", help="Put a title on the plot.")
-    group.add_argument("--xlab", help="Label the X-axis.")
-    group.add_argument("--ylab", help="Label the Y-axis.")
-
-    group = parser.add_argument_group(title="Margins and Sizes")
+    group = parser.add_argument_group(title="General Appearance")
+    group.add_argument(
+        "--no_box", action="store_true",
+        help="Turn off the box around the plot.")
     group.add_argument(
         "--height", type=int, help="Height (in pixels) of the plot.")
     group.add_argument(
@@ -88,6 +87,27 @@ def main():
     #group.add_argument(
     #    "--xlabel_size", default=1.0, type=float,
     #    help="Scale the size of the labels on X-axis.  Default 1.0.")
+
+    group = parser.add_argument_group(title="Plot Labels")
+    group.add_argument("--title", help="Put a title on the plot.")
+    group.add_argument("--xlab", help="Label the X-axis.")
+    group.add_argument("--ylab", help="Label the Y-axis.")
+    group.add_argument(
+        "--add_regression", action="store_true",
+        help="Put a regression line on the plot.")
+
+    group = parser.add_argument_group(title="Point Labels")
+    group.add_argument(
+        "--label_header",
+        help="Label each point with the values in this column.")
+    group.add_argument(
+        "--label_size", type=float, 
+        help="Scale the size of the labels by this value.")
+    group.add_argument(
+        "--label_pos", default="top",
+        choices=["top", "bottom", "left", "right"],
+        help="Where to label the points.")
+    
     
 
     # Parse the input arguments.
@@ -113,10 +133,15 @@ def main():
            "header not found: %s" % args.x_header
     assert args.y_header in MATRIX.headers, \
            "header not found: %s" % args.y_header
+    if args.label_header:
+        assert args.label_header in MATRIX.headers, \
+               "header not found: %s" % args.label_header
+    if args.label_size is not None:
+        assert args.label_size > 0 and args.label_size <= 20
 
     # Pull out the values for the plot.
-    x1 = MATRIX.get_annots(args.x_header)
-    x2 = MATRIX.get_annots(args.y_header)
+    x1 = MATRIX[args.x_header]
+    x2 = MATRIX[args.y_header]
     x_values = map(float, x1)
     y_values = map(float, x2)
 
@@ -139,7 +164,7 @@ def main():
     cex = 1 * args.scale_points
     cex_lab = 1.5
     cex_main = 2.0
-    cex_sub = 1.5
+    cex_sub = 1.0
 
     assert x_values
     assert y_values
@@ -169,8 +194,49 @@ def main():
     #    "hist", jmath.R_var("X"), plot=jmath.R_var("FALSE"),
     #    main=main, xlab="", ylab="", axes=jmath.R_var("FALSE"),
     #    add=jmath.R_var("TRUE"))
+
+    if args.label_header:
+        cex = 1
+        if args.label_size is not None:
+            cex = args.label_size
+        pos2specifier = {
+            "top" : 3,
+            "bottom" : 1,
+            "left" : 2,
+            "right" : 4,
+            }
+        pos = pos2specifier[args.label_pos]
+        point_labels = MATRIX[args.label_header]
+        jmath.R_fn(
+            "text", jmath.R_var("X"), jmath.R_var("Y"),
+            labels=point_labels, cex=cex, pos=pos)
     
-    #jmath.R_fn("box", lwd=lwd)
+
+    # Calculate correlation, and other statistics.
+    r = jmath.R("cor(X, Y)")
+    p_value = jmath.R("cor.test(X, Y)$p.value")
+    r = r[0]
+    p_value = p_value[0]
+
+    # Add a regression line.
+    if args.add_regression:
+        jmath.R("fit <- lm(Y ~ X)")
+        coef = jmath.R("fit$coefficients")
+        assert len(coef) == 2
+        b, m = coef
+        x1 = min(x_values)
+        y1 = x1*m + b
+        x2 = max(x_values)
+        y2 = x2*m + b
+        jmath.R_fn("lines", [x1, x2], [y1, y2], lwd=3, lty=2, col="#C63F31")
+        sub = "R=%.2f (p=%.2g)" % (r, p_value)
+        header = "X", "Y", "R", "p"
+        print "\t".join(header)
+        x = xlab, ylab, r, p_value
+        print "\t".join(map(str, x))
+
+    if not args.no_box:
+        jmath.R_fn("box", lwd=lwd)
     jmath.R_fn("axis", 1, lwd=lwd, **{ "cex.axis" : 1.5 })
     jmath.R_fn("axis", 2, lwd=lwd, **{ "cex.axis" : 1.5 })
     jmath.R_fn(
