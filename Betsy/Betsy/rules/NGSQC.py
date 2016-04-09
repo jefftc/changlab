@@ -2,6 +2,8 @@ from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 
+YESNO = BDT.YESNO  # for convenience
+
 FastQCFolder = DataType(
     "FastQCFolder",
     help="Folder that holds FastQC results.",
@@ -20,11 +22,16 @@ RNASeQCSummary = DataType(
     "RNASeQCSummary",
     )
 
+RSeQCResults = DataType(
+    "RSeQCResults",
+    )
+
 all_data_types = [
     FastQCFolder,
     FastQCSummary,
     RNASeQCResults,
     RNASeQCSummary,
+    RSeQCResults,
     ]
 
 all_modules = [
@@ -69,5 +76,27 @@ all_modules = [
         "summarize_rnaseqc_results",
         RNASeQCResults, RNASeQCSummary,
         help="Summarize the results from a RNASeQC analysis.",
+        ),
+
+    ModuleNode(
+        "run_RSeQC",
+        [NGS.FastaFolder, NGS.BamFolder, NGS.SampleGroupFile,
+         NGS.ReadOrientation],
+        RSeQCResults,
+        # XXX single or paired
+        # XXX need read length
+        OptionDef(
+            "gene_model", 
+            help="What gene model to use.  Options are: hg19",
+            ),
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("sorted", MUST_BE, "coordinate", 1),
+        Constraint("indexed", MUST_BE, "yes", 1),
+        Constraint("has_md_tags", MUST_BE, "yes", 1),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
+        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
+        help="run RSeQC",
         ),
     ]

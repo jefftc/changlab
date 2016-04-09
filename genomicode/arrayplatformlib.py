@@ -1,33 +1,27 @@
 """
 
 Functions:
+score_annotations        Given annotations, score for each platform.
+score_matrix
+
+find_header              Given a category, try to find the header of a matrix.
+chipname2filename
+normalize_id             Normalize a gene name for comparison.
+normalize_ids            Normalize a list of IDs.
+
+prioritize_platforms
 find_platform_by_name    Return a Platform object with a given name.
 get_bm_attribute
 get_bm_organism
 get_priority
-prioritize_platforms
-
-find_header
-
-score_platforms                 Given annotations, score for each platform.
-score_platform_of_annotations   Return the best match only.
-score_all_platforms_of_matrix
-score_platform_of_matrix
-
-identify_platform_of_annotations
-identify_all_platforms_of_matrix
-identify_platform_of_matrix
-
-chipname2filename
-chipname2filename_illu
-chipname2filename_affy
 
 
 Classes:
-Platform           A description for a probe on a microarray.
+Platform      A description for a probe on a microarray.
+Score         Describes the similarity between annotations and platform.
 
 Variables:
-PLATFORMS          List of all known platforms.
+PLATFORMS     List of all known platforms.
 
 Constants:
 PROBE_ID
@@ -35,17 +29,24 @@ GENE_ID
 GENE_SYMBOL
 DESCRIPTION
 
-
-TODO:
-- Need a function like:
-  find_header(MATRIX, GENE_SYMBOL) -> "Gene Symbol"
-- What is a chipname?
-  What is a platform?  How are the names determined?
-  score_all_platforms_of_matrix returns entrez_ID_symbol_human.
-  Looks like a chipname.  Doesn't match the name of any Platform.
-- What are the headers at the bottom?
-
 """
+# _read_annotations
+# _normalize_annot
+#
+# _hash_chipname
+# _chipname2filename_illu
+# _chipname2filename_affy
+
+# TODO:
+# - What is a chipname?
+#   What is a platform?  How are the names determined?
+#   score_all_platforms_of_matrix returns entrez_ID_symbol_human.
+#   Looks like a chipname.  Doesn't match the name of any Platform.
+# - What are the headers at the bottom?
+# - Merge with arrayannot.py
+
+
+
 import os
 import re
 from genomicode import filelib, config
@@ -71,8 +72,10 @@ class Platform:
         # y$name
         self.bm_attribute = bm_attribute
         self.bm_organism = bm_organism
-        self.category = category  # PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION
-        self.priority = priority # order of platform priority, lower number means higher priority
+        # PROBE_ID, GENE_ID, GENE_SYMBOL, DESCRIPTION
+        self.category = category
+        # order of platform priority, lower number means higher priority
+        self.priority = priority
 
 
 def find_platform_by_name(name):
@@ -121,33 +124,32 @@ def find_header(MATRIX, category):
     #    "entrez_ID_symbol_human" : "Entrez_Symbol_human",
     #    }
 
-    scores = score_all_platforms_of_matrix(MATRIX)
+    scores = score_matrix(MATRIX)
 
+    # Filter based on a minimum score.
+    scores = [x for x in scores if x.max_score >= 0.5]
+    
     # Order by increasing platform priority, decreasing score.
     # This is not quite right.  Really want decreasing score, as long
     # as category is not too bad.
-    x = [x[1] for x in scores]
+    x = [x.platform_name for x in scores]
     all_platforms = {}.fromkeys(x)
     platform_order = prioritize_platforms(all_platforms)
-    priority = [platform_order.index(x[1]) for x in scores]
-    x = [(priority[i], -scores[i][2], scores[i])
+    priority = [platform_order.index(x.platform_name) for x in scores]
+    x = [(priority[i], -scores[i].max_score, scores[i])
          for i in range(len(scores))]
-    x = sorted(x)
+    x.sort()
     scores = [x[-1] for x in x]
-    
-    for x in scores:
-        header, platform_name, score = x
-        #platform_name = name_fix.get(platform_name, platform_name)
 
-        if score < 0.5:
-            continue
-        platform = find_platform_by_name(platform_name)
+    for score in scores:
+        platform = find_platform_by_name(score.platform_name)
         if not platform:
             continue
         if platform.category != category:
             continue
-        return header
+        return score.header
     return None
+
 
 def _hash_chipname(filename):
     # RG_U34A_annot.csv.gz                   RG_U34A
@@ -173,13 +175,13 @@ def _hash_chipname(filename):
 
 
 def chipname2filename(chipname):
-    filename = chipname2filename_affy(chipname)
+    filename = _chipname2filename_affy(chipname)
     if not filename:
-        filename = chipname2filename_illu(chipname)
+        filename = _chipname2filename_illu(chipname)
     return filename
 
 
-def chipname2filename_illu(chipname):
+def _chipname2filename_illu(chipname):
     filename = None
     path = config.annot_data_illu
     assert os.path.exists(path), "%s does not exist" % path
@@ -190,7 +192,7 @@ def chipname2filename_illu(chipname):
     return filename
 
 
-def chipname2filename_affy(chipname):
+def _chipname2filename_affy(chipname):
     path = config.annot_data_affy
     assert os.path.exists(path), "%s does not exist" % path
 
@@ -260,12 +262,24 @@ def _read_annotations():
     return ALL_PLATFORMS
 
 
+class Score:
+    def __init__(
+        self, platform_name, header,
+        min_score, max_score, mine_only, platform_only, shared):
+        # header may be None.  Only used if scoring a Matrix.
+        self.platform_name = platform_name
+        self.header = header
+        self.min_score = min_score
+        self.max_score = max_score
+        self.mine_only = list(mine_only)
+        self.platform_only = list(platform_only)
+        self.shared = list(shared)
+
+
 # list of (chip_name, case_sensitive, dict of IDs)
 ALL_PLATFORMS_CLEAN = None
-def _score_platforms_fast(annotations):
-    # Return list of (platform_name, num_my_annots, num_platform_annots,
-    # num_shared_annots, min_score, max_score).  Sorted by decreasing
-    # score.
+def score_annotations(annotations, min_score=None, remove_version=False):
+    # Return list of Scores.  Sorted by decreasing score.
     # Optimized version of the function.
     global ALL_PLATFORMS_CLEAN
 
@@ -274,12 +288,26 @@ def _score_platforms_fast(annotations):
         all_platforms = _read_annotations()
         for x in all_platforms:
             chipname, case_sensitive, ids = x
-            ids_clean = _clean_annotations(ids, case_sensitive)
+            ids_clean = normalize_ids(
+                ids, case_insensitive=(not case_sensitive),
+                remove_version_number=remove_version)
+            ids_clean = frozenset(ids_clean)
             x = chipname, case_sensitive, ids_clean
             ALL_PLATFORMS_CLEAN.append(x)
 
-    annots_clean_cs = _clean_annotations(annotations, True)
-    annots_clean_ci = _clean_annotations(annotations, False)
+    # HACK: Remove version numbers from ENSEMBL IDs.
+    for i in range(len(annotations)):
+        x = annotations[i]
+        if x.startswith("ENS"):
+            i = x.find(".")
+            if i >= 0:
+                x = x[:i]
+        annotations[i] = x
+
+    annots_clean_cs = normalize_ids(annotations, case_insensitive=False)
+    annots_clean_ci = normalize_ids(annotations, case_insensitive=True)
+    annots_clean_cs = frozenset(annots_clean_cs)
+    annots_clean_ci = frozenset(annots_clean_ci)
 
     results = []
     for x in ALL_PLATFORMS_CLEAN:
@@ -290,10 +318,13 @@ def _score_platforms_fast(annotations):
             annots1 = annots_clean_ci
         annots2 = ids
 
-        x = [x for x in annots1 if x in annots2]
-        num_shared_annots = len(x)
-        num_annots1_only = len(annots1) - num_shared_annots
-        num_annots2_only = len(annots2) - num_shared_annots
+        shared = [x for x in annots1 if x in annots2]
+        annots1_only = [x for x in annots1 if x not in annots2]
+        annots2_only = [x for x in annots2 if x not in annots1]
+        num_shared_annots = len(shared)
+        num_annots1_only = len(annots1_only)
+        num_annots2_only = len(annots2_only)
+        
         perc_shared_max = 0
         perc_shared_min = 0
         if annots1 and annots2:
@@ -302,14 +333,23 @@ def _score_platforms_fast(annotations):
             x = float(num_shared_annots)/max(len(annots1), len(annots2))
             perc_shared_min = x
 
-        x = (chipname, len(annots1), len(annots2),
-             num_shared_annots, perc_shared_min, perc_shared_max)
+        x = Score(
+            chipname, None,
+            perc_shared_min, perc_shared_max, annots1, annots2, shared)
         results.append(x)
-    results.sort(key=lambda x: (x[-1], x[-2], x[-3]),reverse=True)
+
+    if min_score is not None:
+        results = [x for x in results if x.max_score >= min_score]
+        
+    # Sort by decreasing score.
+    schwartz = [(-x.max_score, -x.min_score, x.platform_name, x)
+                for x in results]
+    schwartz.sort()
+    results = [x[-1] for x in schwartz]
     return results
 
 
-score_platforms = _score_platforms_fast
+#score_platforms = _score_platforms_fast
 ## def score_platforms(annotations):
 ##     all_platforms = _read_annotations()
 ##     results = []
@@ -322,143 +362,182 @@ score_platforms = _score_platforms_fast
 ##     return results
 
 
-def _clean_annotations(annots, case_sensitive):
-    # Return dictionary of annot -> None
-    if not case_sensitive:
-        annots = [psid.upper() for psid in annots]
-    # Ignore differences in whitespace.
-    annots = [x.strip() for x in annots]
-    # No blank annotations.
-    annots = [x for x in annots if x]
-    # No duplicate annotations.
-    annots = {}.fromkeys(annots)
-    return annots
-
-
-def _compare_annotations(annots1, annots2, case_sensitive):
-    # Return tuple of: num_shared, num_annots1_only, num_annots2_only,
-    # perc_shared.
-    if not case_sensitive:
-        annots1 = [psid.upper() for psid in annots1]
-        annots2 = [psid.upper() for psid in annots2]
-    # Ignore differences in whitespace.
-    annots1 = [x.strip() for x in annots1]
-    annots2 = [x.strip() for x in annots2]
-    # No blank annotations.
-    annots1 = [x for x in annots1 if x]
-    annots2 = [x for x in annots2 if x]
-    # No duplicate annotations.
-    annots1 = {}.fromkeys(annots1)
-    annots2 = {}.fromkeys(annots2)
-
-    x = [x for x in annots1 if x in annots2]
-    num_shared_annots = len(x)
-    num_annots1_only = len(annots1) - num_shared_annots
-    num_annots2_only = len(annots2) - num_shared_annots
-    perc_shared = 0
-    if annots1 and annots2:
-        perc_shared = float(num_shared_annots)/min(len(annots1), len(annots2))
-    x = num_shared_annots, num_annots1_only, num_annots2_only, perc_shared
-    return x
-
-
-def score_platform_of_annotations(annotations):
-    # Tuple of (platform, match score) or None if nothing matches.
-    scores = score_platforms(annotations)
-    assert scores
-    (platform, num_my_annots, num_platform_annots, num_shared_annots,
-     score_min, score_max) = scores[0]
-    if score_max <= 0:
-        return None
-    return platform, score_max
-
-
-def _parse_matrix_annotations(annots, delim):
-    # No blank annotations.
-    x = annots
-    if delim:
-        parsed = []
-        for x in x:
-            x = x.split(delim)
-            parsed.extend(x)
-        x = parsed
+def normalize_id(gene_id, case_insensitive=False, delimiter=None,
+                 remove_version_number=False):
+    # Return a list of this ID cleaned up.  gene_id might be split
+    # into multiple IDs by the delimiter.
+    x = [gene_id]
+    if delimiter:
+        x = gene_id.split(delimiter)
+    if case_insensitive:
+        x = [x.upper() for x in x]
+    # Clean up whitespace.
     x = [x.strip() for x in x]
+    # No empty IDs.
     x = [x for x in x if x]
+    # Ignore "---".
+    x = [x for x in x if x != "---"]
+    if remove_version_number:
+        # Hack: Remove version numbers from RefSeq or ENTREZ IDs.
+        x = [_remove_version(x) for x in x]
+    # No duplicates.
+    x = {}.fromkeys(x).keys()
     return x
 
 
-def score_all_platforms_of_matrix(DATA, annot_delim=None):
-    """Return a list of (header, platform name, score).  score is the
-    percentage of the IDs from header that matches the IDs in this
-    platform.  List is ordered by decreasing score.
+def normalize_ids(
+    gene_ids, case_insensitive=False, delimiter=None,
+    remove_version_number=False):
+    norm_ids = []
+    for x in gene_ids:
+        x = normalize_id(
+            x, case_insensitive=case_insensitive, delimiter=delimiter,
+            remove_version_number=remove_version_number)
+        norm_ids.extend(x)
+    return norm_ids
+
+
+def _remove_version(refseq_id):
+    i = refseq_id.find(".")
+    if i >= 0:
+        refseq_id = refseq_id[:i]
+    return refseq_id
+
+
+## def _normalize_annot(annot, case_insensitive=False, delim=None):
+##     x = annots
+##     if delim:
+##         parsed = []
+##         for x in x:
+##             parsed.extend(x.split(delim))
+##         x = parsed
+##     if case_insensitive:
+##         x = [psid.upper() for psid in x]
+##     x = [x.strip() for x in x]   # Ignore differences in whitespace.
+##     x = [x for x in x if x]      # No blank annotations.
+##     x = {}.fromkeys(x)           # No duplicates
+##     return x
+
+
+## def _compare_annotations(annots1, annots2, case_sensitive):
+##     # Return tuple of: num_shared, num_annots1_only, num_annots2_only,
+##     # perc_shared.
+##     if not case_sensitive:
+##         annots1 = [psid.upper() for psid in annots1]
+##         annots2 = [psid.upper() for psid in annots2]
+##     # Ignore differences in whitespace.
+##     annots1 = [x.strip() for x in annots1]
+##     annots2 = [x.strip() for x in annots2]
+##     # No blank annotations.
+##     annots1 = [x for x in annots1 if x]
+##     annots2 = [x for x in annots2 if x]
+##     # No duplicate annotations.
+##     annots1 = {}.fromkeys(annots1)
+##     annots2 = {}.fromkeys(annots2)
+
+##     x = [x for x in annots1 if x in annots2]
+##     num_shared_annots = len(x)
+##     num_annots1_only = len(annots1) - num_shared_annots
+##     num_annots2_only = len(annots2) - num_shared_annots
+##     perc_shared = 0
+##     if annots1 and annots2:
+##         perc_shared = float(num_shared_annots)/min(len(annots1), len(annots2))
+##     x = num_shared_annots, num_annots1_only, num_annots2_only, perc_shared
+##     return x
+
+
+## def score_platform_of_annotations(annotations):
+##     # Tuple of (platform, match score) or None if nothing matches.
+##     scores = score_platforms(annotations)
+##     assert scores
+##     (platform, num_my_annots, num_platform_annots, num_shared_annots,
+##      score_min, score_max) = scores[0]
+##     if score_max <= 0:
+##         return None
+##     return platform, score_max
+
+
+## def _parse_matrix_annotations(annots, delim):
+##     # No blank annotations.
+##     x = annots
+##     if delim:
+##         parsed = []
+##         for x in x:
+##             x = x.split(delim)
+##             parsed.extend(x)
+##         x = parsed
+##     x = [x.strip() for x in x]
+##     x = [x for x in x if x]
+##     return x
+
+
+def score_matrix(DATA, annot_delim=None, min_score=None, remove_version=False):
+    """Return a list of Score objects.  List is ordered by decreasing
+    score.
 
     """
-    scores = []  # List of (header, score_platforms results)
+    assert min_score is None or (min_score >= 0 and min_score <= 1.0)
+    
+    results = []  # List of Score objects.
     for header in DATA.row_names():
         x = DATA.row_names(header)
-        annots = _parse_matrix_annotations(x, annot_delim)
-
-        x = score_platforms(annots)
-        for s in x:
-            scores.append((header, s))
-
-    clean = []  # List of (header, platform, score_max)
-    for x in scores:
-        header, (platform, num_annots_matrix, num_annots_platform,
-                 num_shared, score_min, score_max) = x
-        x = header, platform, score_max
-        clean.append(x)
-    scores = clean
-            
-    # No 0 scores.
-    scores = [x for x in scores if x[-1] > 0]
-    
-    return scores
-
-
-
-def score_platform_of_matrix(DATA, annot_delim=None):
-    # Return the best scoring platform for this matrix.
-    platforms = score_all_platforms_of_matrix(DATA, annot_delim=annot_delim)
-    if not platforms:
-        return None, 0
+        annots = normalize_ids(
+            x, delimiter=annot_delim, remove_version_number=remove_version)
+        x = score_annotations(annots, min_score=min_score)
+        for i in range(len(x)):
+            x[i].header = header
+        results.extend(x)
 
     # Sort by decreasing score.
-    schwartz = [(-x[2], x) for x in platforms]
+    schwartz = [(-x.max_score, -x.min_score, x.platform_name, x)
+                for x in results]
     schwartz.sort()
-    platforms = [x[-1] for x in schwartz]
-
-    header, platform, score = platforms[0]
-    return platform, score
+    results = [x[-1] for x in schwartz]
+    return results
 
 
-def identify_platform_of_annotations(annotations):
-    x = score_platform_of_annotations(annotations)
-    if not x:
-        return None
-    platform, match = x
-    if match == 1:
-        return platform
-    return None
+## def score_platform_of_matrix(DATA, annot_delim=None):
+##     # Return the best scoring platform for this matrix.
+##     platforms = score_all_platforms_of_matrix(DATA, annot_delim=annot_delim)
+##     if not platforms:
+##         return None, 0
+
+##     # Sort by decreasing score.
+##     schwartz = [(-x[2], x) for x in platforms]
+##     schwartz.sort()
+##     platforms = [x[-1] for x in schwartz]
+
+##     header, platform, score = platforms[0]
+##     return platform, score
 
 
-def identify_all_platforms_of_matrix(DATA, annot_delim=None):
-    """return a list of (header, platform name) we can identify"""
-    platforms = score_all_platforms_of_matrix(DATA, annot_delim=annot_delim)
-    result = []
-    for x in platforms:
-        header, platform, match = x
-        if match == 1:
-            result.append((header, platform))
-    return result
+## def identify_platform_of_annotations(annotations):
+##     x = score_platform_of_annotations(annotations)
+##     if not x:
+##         return None
+##     platform, match = x
+##     if match == 1:
+##         return platform
+##     return None
 
 
-def identify_platform_of_matrix(DATA, annot_delim=None):
-    x = score_platform_of_matrix(DATA, annot_delim=annot_delim)
-    platform_name, match = x
-    if match == 1:
-        return platform_name
-    return None
+## def identify_all_platforms_of_matrix(DATA, annot_delim=None):
+##     """return a list of (header, platform name) we can identify"""
+##     platforms = score_all_platforms_of_matrix(DATA, annot_delim=annot_delim)
+##     result = []
+##     for x in platforms:
+##         header, platform, match = x
+##         if match == 1:
+##             result.append((header, platform))
+##     return result
+
+
+## def identify_platform_of_matrix(DATA, annot_delim=None):
+##     x = score_platform_of_matrix(DATA, annot_delim=annot_delim)
+##     platform_name, match = x
+##     if match == 1:
+##         return platform_name
+##     return None
 
 
 PLATFORMS = [

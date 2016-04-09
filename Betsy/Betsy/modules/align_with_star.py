@@ -10,80 +10,92 @@ class Module(AbstractModule):
         import os
         from genomicode import parallel
         from genomicode import filelib
-        from genomicode import config
-        from Betsy import module_utils
+        from genomicode import alignlib
+        from Betsy import module_utils as mlib
 
-        fastq_node, sample_node, reference_node = antecedents
-        fastq_path = fastq_node.identifier
+        fastq_node, sample_node, strand_node, reference_node = antecedents
+        fastq_files = mlib.find_merged_fastq_files(
+            sample_node.identifier, fastq_node.identifier)
         reference_path = reference_node.identifier
-        assert os.path.exists(fastq_path)
-        assert os.path.isdir(fastq_path)
-        assert os.path.exists(reference_path)
-        assert os.path.isdir(reference_path)
+        assert mlib.dir_exists(reference_path)
+        stranded = mlib.read_stranded(strand_node.identifier)
         filelib.safe_mkdir(out_path)
 
-        # Find the merged fastq files.
-        x = module_utils.find_merged_fastq_files(
-            sample_node.identifier, fastq_path)
-        fastq_files = x
+        metadata = {}
+        metadata["tool"] = "STAR %s" % alignlib.get_STAR_version()
 
-        # Figure out the orientation.
-        x = sample_node.data.attributes["orientation"]
-        assert x == "single" or x.startswith("paired")
-        is_paired = x.startswith("paired")
-        is_stranded = False
-        if is_paired:
-            is_stranded = (x != "paired")
+        # Do a quick check to make sure the reference is correct.
+        # Otherwise, error may be hard to disgnose.
+        x = os.path.join(reference_path, "genomeParameters.txt")
+        assert filelib.exists_nz(x), "Does not look like STAR reference: %s" %\
+               reference_path
+
+        # Figure out the strandedness.
+        is_stranded = stranded.stranded != "unstranded"
 
         # STAR --runThreadN 40 --genomeDir test05 \
         #   --readFilesIn test.fastq/test03_R1_001.fastq \
         #   test.fastq/test03_R2_001.fastq --outFileNamePrefix test06.
         # If unstranded, add --outSAMstrandField intronMotif
         
-        STAR = filelib.which_assert(config.STAR)
+        STAR = mlib.findbin("STAR")
 
         # Make a list of the jobs to run.
         jobs = []
         for x in fastq_files:
             sample, pair1, pair2 = x
             out_prefix = "%s." % sample
+            sam_filename = os.path.join(
+                out_path, "%sAligned.out.sam" % out_prefix)
             log_filename = os.path.join(out_path, "%s.log" % sample)
-            x = sample, pair1, pair2, out_prefix, log_filename
+            x = sample, pair1, pair2, out_prefix, sam_filename, log_filename
             jobs.append(x)
 
-        # TODO: Play around with runThreadN parameter.
-
         # Make the commands.
-        sq = parallel.quote
         commands = []
         for x in jobs:
-            sample, pair1, pair2, out_prefix, log_filename = x
-            
+            sample, pair1, pair2, out_prefix, sam_filename, log_filename = x
+
+            full_out_prefix = os.path.join(out_path, out_prefix)
+
             x = [
-                sq(STAR),
-                "--genomeDir", sq(reference_path),
-                "--outFileNamePrefix", out_prefix,
+                mlib.sq(STAR),
+                "--genomeDir", mlib.sq(reference_path),
+                "--outFileNamePrefix", full_out_prefix,
+                "--runThreadN", num_cores,
                 ]
             if not is_stranded:
                 x += ["--outSAMstrandField", "intronMotif"]
-            x += ["--readFilesIn", sq(pair1)]
+            x += ["--readFilesIn", mlib.sq(pair1)]
             if pair2:
-                x += [sq(pair2)]
+                x += [mlib.sq(pair2)]
             x = " ".join(map(str, x))
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
+        metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
 
-        # STAR takes 27 Gb per process.  Make sure we don't use up
+        # STAR takes 28 Gb per process.  Make sure we don't use up
         # more memory than is available on the machine.
-        max_procs = module_utils.calc_max_procs_from_ram(30)
-        nc = min(num_cores, max_procs)
-        parallel.pshell(commands, max_procs=nc, path=out_path)
-
+        # Defaults:
+        # --limitGenomeGenerateRAM   31000000000
+        # --outFilterMismatchNmax    10             Num mismatches.
+        #nc = mlib.calc_max_procs_from_ram(50, buffer=100, upper_max=num_cores)
+        #metadata["num_cores"] = nc
+        #parallel.pshell(commands, max_procs=nc, path=out_path)
+        
+        # Run each job and make sure outfile exists.
+        assert len(commands) == len(jobs)
+        for i, cmd in enumerate(commands):
+            sample, pair1, pair2, out_prefix, sam_filename, log_filename = \
+                    jobs[i]
+            parallel.sshell(cmd, path=out_path)
+            filelib.assert_exists_nz(sam_filename)
+            
         # Make sure the analysis completed successfully.
-        x = [x[-2] for x in jobs]  # out_prefix
-        x = ["%sAligned.out.sam" % x for x in x]
-        x = [os.path.join(out_path, x) for x in x]
-        filelib.assert_exists_nz_many(x)
+        #x = [x[-2] for x in jobs]  # sam_filename
+        #filelib.assert_exists_nz_many(x)
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):

@@ -61,10 +61,13 @@ class Module(AbstractModule):
         total_mapped = []
         total_fragments = []
         perc_mapped = []
+        perc_no_feature = []
+        perc_ambiguous = []
         for n in all_names:
             # Sum up the counts
             results = name2results[n]
             tm, tf, pm = "", "", ""
+            pnf, pamb = "", ""
             if not results.errors:
                 x1 = sum(results.counts.values())
                 x2 = 0
@@ -73,19 +76,29 @@ class Module(AbstractModule):
                 tm = x1
                 tf = x1+x2
                 pm = tm/float(tf)
+                pnf = results.no_feature / float(tf)
+                pamb = results.ambiguous / float(tf)
             total_mapped.append(tm)
             total_fragments.append(tf)
             perc_mapped.append(pm)
+            perc_no_feature.append(pnf)
+            perc_ambiguous.append(pamb)
 
         x1 = ["total_mapped"] + total_mapped
         x2 = ["total_fragments"] + total_fragments
         x3 = ["perc_mapped"] + perc_mapped
+        x4 = ["perc_no_feature"] + perc_no_feature
+        x5 = ["perc_ambiguous"] + perc_ambiguous
         assert len(x1) == len(header)
         assert len(x2) == len(header)
         assert len(x3) == len(header)
+        assert len(x4) == len(header)
+        assert len(x5) == len(header)
         matrix.append(map(str, x1))
         matrix.append(map(str, x2))
         matrix.append(map(str, x3))
+        matrix.append(map(str, x4))
+        matrix.append(map(str, x5))
 
         # Write the data file.
         handle = open(outfile, 'w')

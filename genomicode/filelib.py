@@ -221,6 +221,10 @@ def which_assert(binary):
     which_binary = which(binary)
     assert which_binary, "Cannot find: %s" % binary
     return which_binary
+
+
+def assert_exists(filename):
+    assert exists(filename), "File not found: %s" % filename
               
 
 def exists(filename):
@@ -257,8 +261,7 @@ def exists_nz(filename):
 
 def assert_exists_nz(filename):
     import os
-    x = exists_nz(filename), "File not found or empty: %s" % filename
-    if x:
+    if exists_nz(filename):
         return
     if not os.path.exists(filename):
         raise AssertionError, "File not found: %s" % filename
@@ -273,11 +276,49 @@ def exists_nz_many(filenames):
     return True
 
 
-def assert_exists_nz_many(filenames):
+
+def assert_exists_nz_many(filenames, retries=2):
     # Assert that multiple filenames exists and is non-zero.
+    import time
+
+    # Number of seconds between attempts.
+    DELAY = 2
+
+    assert retries >= 0
+
+    # Sometimes, if a file was just written, this will erroneously
+    # trigger an error.  If the files don't exist, wait a few seconds
+    # and try again.
+    num_tries = 0
+    while num_tries <= retries:
+        if exists_nz_many(filenames):
+            return
+        time.sleep(DELAY)
+        num_tries += 1
+    
     missing = []
     for filename in filenames:
         if not exists_nz(filename):
+            missing.append(filename)
+    if not missing:
+        return
+    if len(missing) == 1:
+        msg = "File not found or empty: %s" % missing[0]
+    elif len(missing) < 5:
+        msg = "Files not found or empty: %s" % ", ".join(missing)
+    else:
+        x = missing[:5] + ["..."]
+        msg = "Files (%d) not found or empty: %s" % (
+            len(missing), ", ".join(x))
+    assert not missing, msg
+
+
+def assert_exists_many(filenames):
+    # Assert that multiple filenames exists and is non-zero.
+
+    missing = []
+    for filename in filenames:
+        if not exists(filename):
             missing.append(filename)
     if not missing:
         return

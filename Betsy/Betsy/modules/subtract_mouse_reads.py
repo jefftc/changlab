@@ -10,22 +10,27 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import parallel
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
 
         # This this is I/O heavy, don't use so many cores.  Also,
         # takes 4-5 Gb RAM per process.
-        MAX_CORES = 2
+        MAX_CORES = mlib.calc_max_procs_from_ram(5, upper_max=4)
 
         fastq_node, sample_node, summary_node = antecedents
         fastq_path = fastq_node.identifier
-        x = module_utils.find_merged_fastq_files(
+        fastq_files = mlib.find_merged_fastq_files(
             sample_node.identifier, fastq_path)
-        fastq_files = x
         assert fastq_files, "I could not find any FASTQ files."
         summary_filenames = filelib.list_files_in_path(
             summary_node.identifier, endswith=".matches.txt")
         assert summary_filenames, "No .matches.txt files."
         filelib.safe_mkdir(out_path)
+        metadata = {}
+
+        num_mismatches = mlib.get_user_option(
+            user_options, "num_mismatches", type=int)
+        assert num_mismatches >= 0 and num_mismatches < 25
+        metadata["num_mismatches"] = num_mismatches
 
         sample2summary = {}  # sample -> summary_filename
         for filename in summary_filenames:
@@ -62,18 +67,21 @@ class Module(AbstractModule):
         for x in jobs:
             sample, pair1_fastq, pair2_fastq, summary_file, \
                     out1_fastq, out2_fastq, sub1_fastq, sub2_fastq = x
-            x = summary_file, pair1_fastq, out1_fastq, sub1_fastq
+            x = summary_file, pair1_fastq, out1_fastq, sub1_fastq, \
+                num_mismatches
             x = subtract_mouse_reads, x, {}
             jobs2.append(x)
             if pair2_fastq:
-                x = summary_file, pair2_fastq, out2_fastq, sub2_fastq
+                x = summary_file, pair2_fastq, out2_fastq, sub2_fastq, \
+                    num_mismatches
                 x = subtract_mouse_reads, x, {}
                 jobs2.append(x)
 
         nc = min(MAX_CORES, num_cores)
         results = parallel.pyfun(jobs2, num_procs=nc, DELAY=0.5)
         assert len(results) == len(jobs2)
-
+        metadata["num_cores"] = nc
+        
         # Make sure the fastq files were generated.
         x1 = [x[4] for x in jobs]
         x2 = [x[5] for x in jobs]
@@ -81,21 +89,26 @@ class Module(AbstractModule):
         x = [x for x in x if x]
         # BUG: If all reads were removed, then this will fail incorrectly.
         filelib.assert_exists_nz_many(x)
+
+        return metadata
             
     
     def name_outfile(self, antecedents, user_options):
         return "subtracted.fastq"
 
 
-def subtract_mouse_reads(summary_file, in_fastq, out_fastq, sub_fastq):
+def subtract_mouse_reads(
+    summary_file, in_fastq, out_fastq, sub_fastq, num_mismatches):
+    # Accept this as a mouse read if it contains less than or equal to
+    # num_mismatches mismatches from the mouse genome.
     from genomicode import filelib
     from genomicode import genomelib
 
-    # List the reads with perfect matches.
-    perfect_aligns = {}
+    # List the reads that look like mouse.
+    mouse_reads = {}
     for d in filelib.read_row(summary_file, header=1):
-        if int(d.NM) == 0:
-            perfect_aligns[d.query_name] = 1
+        if int(d.NM) <= num_mismatches:
+            mouse_reads[d.query_name] = 1
 
     outhandle = open(out_fastq, 'w')
     subhandle = open(sub_fastq, 'w')
@@ -105,7 +118,7 @@ def subtract_mouse_reads(summary_file, in_fastq, out_fastq, sub_fastq):
         if x.startswith("@"):
             x = x[1:]
         x = x.split()[0]  # BAM file only contains the first part.
-        if x in perfect_aligns:
+        if x in mouse_reads:
             genomelib.write_fastq(title, sequence, quality, subhandle)
         else:
             genomelib.write_fastq(title, sequence, quality, outhandle)

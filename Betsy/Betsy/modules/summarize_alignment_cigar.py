@@ -42,7 +42,15 @@ class Module(AbstractModule):
 
 
 def summarize_bam_file(in_filename, out_filename):
+    # Importing pysam is tricky.  The problem is RSeQC comes with a
+    # really old implementation of pysam that does not contain the
+    # AlignmentFile object that we need.  Thus, we need to make sure
+    # that any other implementation in sys.path is loaded first.
+    import sys
+    sys_path_old = sys.path[:]
+    sys.path = [x for x in sys.path if x.find("RSeQC") < 0]
     import pysam
+    sys.path = sys_path_old
 
     outhandle = open(out_filename, 'w')
 

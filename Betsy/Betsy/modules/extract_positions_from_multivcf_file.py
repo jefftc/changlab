@@ -7,7 +7,14 @@ class Module(AbstractModule):
     def run(
         self, network, in_data, out_attributes, user_options, num_cores,
         out_filename):
+        import os
+        import stat
         from genomicode import AnnotationMatrix
+
+        # If the file is empty, then just create an empty positions file.
+        if os.stat(in_data.identifier)[stat.ST_SIZE] == 0:
+            open(out_filename, 'w')
+            return
 
         M = AnnotationMatrix.read(in_data.identifier, header_char="##")
         

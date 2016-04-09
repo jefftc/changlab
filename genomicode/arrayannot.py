@@ -1,14 +1,16 @@
-# convert_gene_ids
-# 
+"""
+
+Functions:
+convert_gene_ids
+
+"""
 # _convert_gene_ids_biomart
 # _convert_gene_ids_local
 # _convert_entrez_symbol_to_entrez
 # _find_entrez_gene
 #
-# _clean_id
 # _clean_genes_for_biomart
 # _remove_dups
-# _remove_refseq_version
 # _start_R
 
 GLOBAL_R = None
@@ -31,11 +33,15 @@ def convert_gene_ids(
     # by out_delim.  If it is missing, then the output will be an
     # empty string.
     # in_platform and out_platform are the names of the platforms.
+    from genomicode import arrayplatformlib as apl
 
     # Make a cleaned up version of the gene_ids to convert.
-    x = []
-    for gene_id in gene_ids:
-        x.extend(_clean_id(gene_id, in_delim, in_platform))
+    remove_version = False
+    if in_platform.lower().find("refseq") >= 0 or \
+       in_platform.lower().find("ensembl") >= 0:
+        remove_version = True
+    x = apl.normalize_ids(
+        gene_ids, delimiter=in_delim, remove_version_number=remove_version)
     # No duplicates.
     x = {}.fromkeys(x).keys()
     gene_ids_c = x
@@ -55,7 +61,8 @@ def convert_gene_ids(
     # Make a parallel list of the output IDs.
     output_ids = []
     for gene_id in gene_ids:
-        in_ids = _clean_id(gene_id, in_delim, in_platform)
+        in_ids = apl.normalize_id(
+            gene_id, in_delim, remove_version_number=remove_version)
         out_ids = []
         for x in in_ids:
             y = in2out.get(x, [""])
@@ -85,6 +92,8 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
         
         x = _convert_gene_ids_biomart_h(
             batch, in_platform, out_platform, no_na)
+        assert x is not None, "Cannot convert: %s %s" % (
+            in_platform, out_platform)
         in2out.update(x)
     return in2out
 
@@ -110,9 +119,9 @@ def _convert_gene_ids_biomart_h(gene_ids, in_platform, out_platform, no_na):
     out_mart = arrayplatformlib.get_bm_organism(out_platform)
     assert in_mart, "No bm organism for platform: %s" % in_platform
 
-    R = _start_R()
     gene_ids = _clean_genes_for_biomart(gene_ids)
-    jmath.R_equals_vector(gene_ids, 'gene.ids')
+
+    R = _start_R()
     # Select the BioMart dataset to use.
     #mart = "ensembl"
     mart = "ENSEMBL_MART_ENSEMBL"  # Changed 151120.
@@ -121,12 +130,22 @@ def _convert_gene_ids_biomart_h(gene_ids, in_platform, out_platform, no_na):
     R_fn("useMart", mart, out_mart, host=host, RETVAL="out.dataset")
 
     # Link two data sets and retrieve information from the linked datasets.
+    jmath.R_equals_vector(gene_ids, 'gene.ids')
+
+
+    # ERROR:
+    #   Error in getLDS(attributes = "ensembl_gene_id", filters =
+    #   "ensembl_gene_id", : The query to the BioMart webservice
+    #   returned an invalid result: the number of columns in the result
+    #   table does not equal the number of attributes in the
+    #   query. Please report this to the mailing list.
+    # Can mean that the gene IDs are bad.  E.g. version numbers still
+    # on entrez IDs.
     R_fn(
         "getLDS", attributes=in_attribute, filters=in_attribute,
         values=R_var("gene.ids"), mart=R_var("in.dataset"),
         attributesL=out_attribute, martL=R_var("out.dataset"),
         RETVAL="homolog")
-
     homolog = R["homolog"]
     # homolog is DataFrame with two parallel rows:
     # <in_ids>
@@ -249,251 +268,9 @@ def _find_entrez_gene(gene_symbol, tax_id):
     
 
 def _remove_dups(ids):
+    # Preserve order.
     ids_c = []
     for x in ids:
         if x not in ids_c:
             ids_c.append(x)
     return ids_c
-
-def _remove_refseq_version(refseq_id):
-    i = refseq_id.find(".")
-    if i < 0:
-        return refseq_id
-    return refseq_id[:i]
-
-
-def _clean_id(gene_id, delimiter, in_platform):
-    # Return a list of this ID cleaned up.  gene_id might be split
-    # into multiple IDs by the delimiter.
-    x = [gene_id]
-    if delimiter:
-        x = gene_id.split(delimiter)
-    # Clean up whitespace.
-    x = [x.strip() for x in x]
-    # No empty IDs.
-    x = [x for x in x if x]
-    # Ignore "---".
-    x = [x for x in x if x != "---"]
-    # Hack: Remove version numbers from RefSeq IDs.
-    if in_platform.lower().find("refseq") >= 0:
-        x = [_remove_refseq_version(x) for x in x]
-    # No duplicates.
-    x = {}.fromkeys(x).keys()
-    return x
-
-
-
-## """
-
-## Functions:
-## create_annot_file_affymetrix
-## annotate_probe_affymetrix_file
-## annotate_probe_illumina_file
-## annotate_probe_biomart
-
-## annotate_probes_multiple
-## annotate_probes
-
-## read_mapping_file
-## map_probes
-
-## convert_probe_ids
-## _convert_probe_ids_local
-
-## """
-## import os
-## import subprocess
-## import tempfile
-## import arrayio
-## from genomicode import jmath, config, filelib, arrayplatformlib
-## import re
-
-
-## def create_annot_file_affymetrix(filename):
-##     slice_BIN = config.slice_matrix
-##     command = ['python', slice_BIN, '--remove_comments', '#',
-##                 '--read_as_csv', '--clean_only', filename]
-##     annot_file = None
-##     try:
-##         x,annot_file = tempfile.mkstemp(dir=".");os.close(x)
-##         f = file(annot_file, 'w')
-##         process = subprocess.Popen(command, shell=False,
-##                                stdout=f,
-##                                stderr=subprocess.PIPE)
-##         f.close()
-##         error_message = process.communicate()[1]
-##         if error_message:
-##             raise ValueError(error_message)
-##         matrix = [x for x in filelib.read_cols(annot_file)]
-##     finally:
-##         if annot_file and os.path.exists(annot_file):
-##             os.remove(annot_file)
-##     return matrix
-
-
-## def annotate_probe_affymetrix_file(probe_ids,annotation):
-##     headers = arrayplatformlib.affy_headers
-##     new_annotation = headers[annotation][0]
-##     platform = arrayplatformlib.identify_platform_of_annotations(probe_ids)
-##     filename = arrayplatformlib.chipname2filename_affy(platform)
-##     if not filename:
-##         return None
-##     matrix = create_annot_file_affymetrix(filename)
-##     header = matrix[0]
-##     matrix = jmath.transpose(matrix[1:])
-##     if new_annotation not in header:
-##         return None
-##     index = header.index('Probe Set ID')
-##     annot_index = header.index(new_annotation)
-##     result = [''] * len(probe_ids)
-##     for i in range(len(probe_ids)):
-##         gindex = matrix[index].index(probe_ids[i])
-##         result[i] = matrix[annot_index][gindex]
-##     return result
-
-
-## def annotate_probe_illumina_file(probe_ids, annotation):
-##     headers = arrayplatformlib.illu_headers
-##     new_annotation = headers[annotation][0]
-##     platform = arrayplatformlib.identify_platform_of_annotations(probe_ids)
-##     filename = arrayplatformlib.chipname2filename_illu(platform)
-##     if not filename:
-##         return None
-##     f = filelib.openfh(filename)
-##     text = f.readlines()
-##     start = text.index('[Probes]\n')
-##     end = text.index('[Controls]\n')
-##     matrix = []
-##     for i in range(start + 1, end):
-##         cols = text[i].rstrip("\r\n").split('\t')
-##         matrix.append(cols)
-##     header = matrix[0]
-##     matrix = jmath.transpose(matrix[1:])
-##     if new_annotation not in header:
-##         return None
-##     index = header.index('Probe_Id')
-##     annot_index = header.index(new_annotation)
-##     result = [''] * len(probe_ids)
-##     for i in range(len(probe_ids)):
-##         if probe_ids[i] in matrix[index]:
-##             gindex = matrix[index].index(probe_ids[i])
-##             result[i] = matrix[annot_index][gindex]
-##         else:
-##             result[i] = ' '
-##     return result
-        
-
-## def annotate_probe_biomart(probe_ids, annotation):
-##     headers = arrayplatformlib.biomart_headers
-##     new_annotations = headers[annotation]
-##     platform = arrayplatformlib.identify_platform_of_annotations(probe_ids)
-##     in_attribute = arrayplatformlib.get_bm_attribute(platform)
-##     in_mart = arrayplatformlib.get_bm_organism(platform)
-##     assert in_attribute is not None, "No BioMart attribute: %s" % platform
-##     assert in_mart is not None, "No BioMart mart: %s" % platform
-    
-##     R = jmath.start_R()
-##     jmath.R_equals_vector(probe_ids,'gene_id')
-##     R('library(biomaRt)')
-##     R('x=getOption("warn")')
-##     jmath.R_equals(in_attribute,'in_attribute')
-##     jmath.R_equals(in_attribute,'filters')
-##     jmath.R_equals(in_mart,'in_mart')
-##     R('old=useMart("ensembl",in_mart)')
-##     for new_annotation in new_annotations:
-##         try:
-##             jmath.R_equals(new_annotation, 'out_attribute')
-##             result = [''] * len(probe_ids)
-##             R('options(warn=-1)')
-##             R('homolog = getLDS(attributes=in_attribute,filters=filters,values=gene_id,mart=old,attributesL=out_attribute,martL=old)')
-##             break
-##         except:
-##             continue
-##     R('options(warn=x)')
-##     homolog=R['homolog']
-##     old_id = [str(i) for i in homolog[0]]
-##     human_id = [str(i) for i in homolog[1]]
-##     new_old_id = [old_id[i] for i in range(len(old_id)) if human_id[i]]
-##     new_human_id = [human_id[i] for i in range(len(human_id)) if human_id[i]]
-##     a = []
-##     for i in range(len(new_old_id)):
-##         gene_index = probe_ids.index(new_old_id[i])
-##         if gene_index in a:
-##             result[gene_index] = result[gene_index] + '///' + new_human_id[i] 
-##         else:
-##             result[gene_index] = new_human_id[i]
-##         a.append(gene_index)   
-##     return result
-
-
-## def annotate_probes_multiple(probe_ids, list_of_annotation):
-##     dictionary = {}
-##     for annotation in list_of_annotation:
-##         result = annotate_probes(probe_ids, annotation)
-##         dictionary[annotation] = result
-##     return dictionary
-
-
-## def annotate_probes(probe_ids, annotation):
-##     platform = arrayplatformlib.identify_platform_of_annotations(probe_ids)
-##     assert platform, 'we cannot identify the platform of the input probes'
-##     result = [''] * len(probe_ids)
-##     result = annotate_probe_affymetrix_file(probe_ids, annotation)
-##     if result is None:
-##         result = annotate_probe_illumina_file(probe_ids, annotation)
-##     if result is None:
-##         result = annotate_probe_biomart(probe_ids, annotation)
-##     return result
-
-## def read_mapping_file(mapping_file):
-##     """read the platform file and return a mapping 
-##     dictionary <probe_id: a list of new_probe_id>"""
-##     probe_map = {}
-##     f = file(mapping_file,'r')
-##     text = f.read()
-##     line1 = re.split('\r|\n', text)
-##     f.close()
-##     for line in line1[1:]:
-##         words = line.split('\t')
-##         if len(words) == 1:
-##             words.append('')
-##         if words[0] not in probe_map:
-##             probe_map[words[0]] = [words[1]]
-##         else:
-##             probe_map[words[0]] = probe_map[words[0]].append(words[1])
-##     return probe_map
-    
-## def map_probes(probe_ids, mapping_file, in_delim='///', out_delim='///'):
-##     """given a list of probe_ids and the platform_file for 
-##     mapping, return a list of probe_ids in new platform"""
-##     probe_map = read_mapping_file(mapping_file)
-##     new_probes = []
-##     for probe_id in probe_ids:
-##         multiple_in_ids = probe_id.split(in_delim)
-##         multiple_out_ids = [probe_map.get(x) for x in multiple_in_ids]
-##         multiple_out_ids = [x for x in multiple_out_ids if x]
-##         multiple_out_ids = sum(multiple_out_ids,[])
-##         multiple_out_ids = sorted({}.fromkeys(multiple_out_ids))
-##         newid = out_delim.join(multiple_out_ids)
-##         new_probes.append(newid)
-##     return new_probes
-
-
-## def convert_probe_ids(probe_ids, platform_name):
-##     new_probes = _convert_probe_ids_local(probe_ids, platform_name)
-##     if not new_probes:
-##        new_probes = annotate_probe_biomart(probe_ids, platform_name)
-##     return new_probes
-
-
-## def _convert_probe_ids_local(probe_ids, platform_name):
-##     platform_path = config.convert_platform
-##     assert os.path.exists(platform_path)
-##     old_platform = arrayplatformlib.identify_platform_of_annotations(probe_ids)
-##     filename = old_platform + '___' + platform_name + '.txt'
-##     if not os.path.exists(os.path.join(platform_path,filename)):
-##         return None
-##     new_probes = map_probes(probe_ids, os.path.join(platform_path,filename))
-##     return new_probes
-
-

@@ -53,6 +53,8 @@ def pshell(commands, max_procs=None, path=None):
     import os
 
     assert type(commands) is not type("")
+    if not commands:
+        return
 
     cwd = os.getcwd()
     try:
@@ -139,6 +141,10 @@ def pyfun(jobs, num_procs=4, lock_keyword=None, DELAY=0.1,
     # thread',) in <Finalize object, dead> ignored
     pool.join()
     assert len(procs) == 0 or len(procs) == len(jobs)
+
+    if not procs:
+        # num_procs is 1, didn't run multithreaded.
+        return results
 
     done = [False] * len(procs)
     while 1:

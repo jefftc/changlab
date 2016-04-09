@@ -138,6 +138,9 @@ def main():
     group.add_argument(
         "--breaks_seq",
         help="Set the breakpoints.  Format: <start>,<stop>,<skip>.")
+    group.add_argument(
+        "--ymax", type=int,
+        help="Set the maximum value for the Y axis.")
     
     group = parser.add_argument_group(title="Plot Labels")
     group.add_argument("--title", help="Put a title on the plot.")
@@ -195,7 +198,8 @@ def main():
     assert args.xlabel_size > 0 and args.xlabel_size < 10
     assert not (args.bar_color and args.bar_palette)
     assert not args.symmetric_palette or args.bar_palette
-        
+    assert args.ymax is None or args.ymax > 0
+
     height = args.height or 2400
     width = args.width or 3200
 
@@ -246,6 +250,9 @@ def main():
     cex_lab = 1.5
     cex_main = 2.0
     cex_sub = 1.5
+    ylim = jmath.R_var("NULL")
+    if args.ymax is not None:
+        ylim = [0, args.ymax]
 
     assert values
     jmath.R_equals(values, "X")
@@ -280,7 +287,7 @@ def main():
 
     jmath.R_fn(
         "hist", jmath.R_var("X"), breaks=breaks, main=main, xlab="", ylab="",
-        axes=jmath.R_var("FALSE"), col=col, RETVAL="x")
+        ylim=ylim, axes=jmath.R_var("FALSE"), col=col, RETVAL="x")
     # Make plot area solid white.
     #jmath.R('usr <- par("usr")')
     #jmath.R('rect(usr[1], usr[3], usr[2], usr[4], col="#FFFFFF")')

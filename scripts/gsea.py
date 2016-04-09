@@ -34,20 +34,24 @@ platform2gpplatform = {
 
 def guess_chip_platform(M, min_match_score):
     # Return the GenePattern chip.platform for this matrix.
-    from genomicode import arrayplatformlib
+    from genomicode import arrayplatformlib as apl
 
     #platform = arrayplatformlib.identify_platform_of_matrix(M)
     #assert platform, "I could not guess the platform for this file."
-    x = arrayplatformlib.score_platform_of_matrix(M)
-    platform, match = x
+    x = apl.score_matrix(M, min_score=0.01)
+    assert x, "I could not guess the platform for this file.%s" % x
+    best_score = x[0]
+    
     x = ""
-    if match > 0:
-        x = "  The closest was %s (%.2f)." % (platform, match)
-    assert match > min_match_score, \
+    if best_score.max_score > 0:
+        x = "  The closest was %s (%.2f)." % (
+            best_score.platform_name, best_score.max_score)
+    assert best_score.max_score > min_match_score, \
            "I could not guess the platform for this file.%s" % x
-    assert platform in platform2gpplatform, \
-        "I don't know how to convert %s to a GenePattern platform." % platform
-    chipname = platform2gpplatform.get(platform)
+    assert best_score.platform_name in platform2gpplatform, \
+           "I don't know how to convert %s to a GenePattern platform." % \
+           best_score.platform_name
+    chipname = platform2gpplatform.get(best_score.platform_name)
     return chipname
 
 DATABASE2GENESET = {
@@ -153,7 +157,7 @@ def fix_class_order(MATRIX, name1, name2, classes):
 def check_matrix(X):
     import re
     import arrayio
-    from genomicode import hashlib
+    #from genomicode import hashlib
 
     assert arrayio.gct_format.is_matrix(X)
 

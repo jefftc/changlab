@@ -8,20 +8,16 @@ class Module(AbstractModule):
         self, network, in_data, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import config
         from genomicode import filelib
         from genomicode import parallel
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
 
-        filelib.safe_mkdir(out_path)
-
-        in_path = module_utils.unzip_if_zip(in_data.identifier)
-        x = filelib.list_files_in_path(in_path)
-        x = [x for x in x if x.lower().endswith(".sam")]
-        sam_filenames = x
+        sam_filenames = mlib.find_sam_files(in_data.identifier)
         assert sam_filenames, "No .sam files."
+        filelib.safe_mkdir(out_path)
+        metadata = {}
 
-        samtools = filelib.which_assert(config.samtools)
+        samtools = mlib.findbin("samtools")
 
         jobs = []  # list of (sam_filename, bam_filename)
         for sam_filename in sam_filenames:
@@ -40,7 +36,7 @@ class Module(AbstractModule):
 
             # samtools view -bS -o <bam_filename> <sam_filename>
             x = [
-                samtools,
+                sq(samtools),
                 "view",
                 "-bS",
                 "-o", sq(bam_filename),
@@ -48,14 +44,14 @@ class Module(AbstractModule):
                 ]
             x = " ".join(x)
             commands.append(x)
-            
+        metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
         parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
-        for x in jobs:
-            sam_filename, bam_filename = x
-            assert filelib.exists_nz(bam_filename), \
-                   "Missing: %s" % bam_filename
+        x = [x[-1] for x in jobs]
+        filelib.assert_exists_nz_many(x)
+        return metadata
     
 
     def name_outfile(self, antecedents, user_options):

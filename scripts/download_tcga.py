@@ -3,11 +3,10 @@
 import urllib2
 import re
 import argparse
-import sys
 import os
-from genomicode import parselib, filelib,arrayannot,arrayplatformlib
+from genomicode import parselib, filelib, arrayannot
 import arrayio
-from genomicode import genefinder,timer,Matrix,matrixlib
+from genomicode import genefinder, timer, Matrix, matrixlib
 
 # retrieve_all_dates
 # retrieve_diseases
@@ -67,11 +66,11 @@ def read_url(url):
     return URL2HTML[url]
 
 def retieve_dates_from_resource(resource):
-    import pprint  ###
+    #import pprint  ###
     # Return a dictionary of the date -> url with given resource.
     #url points to an HTML page for the runs for a specific date.  It has a table of the
     # diseases and HREFs to the data for the diseases at that date.
-    download_url = None
+    #download_url = None
     url = None
     if resource == 'stddata':
         dashboard_url = (
@@ -212,7 +211,7 @@ def get_data_type_resource(disease,date,resource):
     
 def get_data_type(disease, date):
     assert len(date) == 8
-    long_date = "%s_%s_%s" % (date[:4], date[4:6], date[6:8])
+    #long_date = "%s_%s_%s" % (date[:4], date[4:6], date[6:8])
     result = []
     for resource in resources:
        result.extend(get_data_type_resource(disease,date,resource))
@@ -458,7 +457,7 @@ def annotate_firehose_methylation(filename, output):
             values = [items[i] for i in range(len(items)) if not (i-1)%4]
             symbols = Gene_symbols.split(";")
             ids = [symbol2id.get(x, "") for x in symbols]
-            gene_symbol = ";".join(symbols)
+            #gene_symbol = ";".join(symbols)
             gene_id = ";".join(map(str, ids))
             row = [probe_id,gene_id,Gene_symbols,Chormosome,Genomic_coordinate]+values
             assert len(row) == len(header)
@@ -534,10 +533,14 @@ def format_firehose_gistic(filename, output):
 
     
 def format_rsem_isoforms(txt_file, outfile):
+    from genomicode import arrayplatformlib
+    
     M = arrayio.read(txt_file)
     # detect platform
-    x = arrayplatformlib.identify_all_platforms_of_matrix(M)
-    header, platform = x[0]
+    x = arrayplatformlib.score_matrix(M, min_score=0.8)
+    assert x, "Cannot identify platform."
+    header, platform = x.header, x.platform_name
+    
     probe_ids = M.row_names(header)
     #if kg5, convert to kg7
     if platform == 'UCSC_human_hg19_kg5':

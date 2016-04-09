@@ -138,6 +138,7 @@ def read_fastqc_data(filename):
     # filtered_sequences  <int>
     # sequence_length     <str>    "205", "15-205"
     # percent_gc          <float>
+    from genomicode import parselib
 
     data = {}
     for line in open(filename):
@@ -153,11 +154,21 @@ def read_fastqc_data(filename):
         elif line.startswith("Filtered Sequences"):
             assert len(cols) == 2
             data["filtered_sequences"] = int(cols[1])
+        elif line.startswith("Sequences flagged as poor quality"):
+            # Seems to be alternative to "Filtered Sequences".
+            assert len(cols) == 2
+            data["filtered_sequences"] = int(cols[1])
         elif line.startswith("Sequence length"):
             assert len(cols) == 2
             data["sequence_length"] = cols[1]
         elif line.startswith("%GC"):
             assert len(cols) == 2
             data["percent_gc"] = float(cols[1])/100
-    assert len(data) == 4, "Error parsing: %s" % filename
+
+    expected = [
+        "total_sequences", "filtered_sequences", "sequence_length",
+        "percent_gc"]
+    x = [x for x in expected if x not in data]
+    assert not x, "Missing (%s) from fastqc_data: %s" % (
+        parselib.pretty_list(x), filename)
     return data

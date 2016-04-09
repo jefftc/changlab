@@ -15,8 +15,13 @@ class Module(AbstractModule):
         filelib.safe_mkdir(out_path)
         filenames = module_utils.find_fastq_files(in_data.identifier)
         assert filenames, "FASTQ files not found: %s" % in_data.identifier
+        metadata = {}
 
-        commands = ["fastqc --outdir=%s %s" % (out_path, x) for x in filenames]
+        commands = [
+            "fastqc --outdir=%s --extract %s" % (out_path, x)
+            for x in filenames]
+        metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
         #commands = ["ls > %s" % x for x in filenames]
         parallel.pshell(commands, max_procs=num_cores)
 

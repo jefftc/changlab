@@ -25,11 +25,11 @@ def pairedend2PESE(is_paired):
 def script2cmd(
     rseqc_path, script_name, outpath, out_prefix, outfile, args, params):
     import os
-    from genomicode import shell
+    from genomicode import parallel
 
     assert os.path.exists(outpath)
 
-    sq = shell.quote
+    sq = parallel.quote
 
     # Convert script_name to full path.
     assert os.path.exists(rseqc_path)
@@ -50,6 +50,8 @@ def script2cmd(
             x = args.read_length
         elif x == ARG_REF_GENE_MODEL:
             x = args.ref_gene_model
+        elif x == ARG_HOUSEKEEPING_GENE_MODEL:
+            x = args.housekeeping_gene_model
         if type(x) is type(""):
             assert not x.startswith("PYRSEQC_ARG"), "Unhandled: %s" % x
         x = sq(str(x))
@@ -70,9 +72,10 @@ def script2cmd(
 def main():
     import os
     import argparse
+    import shutil
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     p = filelib.tswrite
     parser = argparse.ArgumentParser(description="")
@@ -104,8 +107,8 @@ def main():
     args.read_length = int(args.read_length)
     assert args.read_length >= 10 and args.read_length <= 1000, \
            "Invalid --read_length: %d" % args.read_length
-    assert os.path.exists(args.ref_gene_model)
-    assert os.path.exists(args.housekeeping_gene_model)
+    filelib.assert_exists_nz(args.ref_gene_model)
+    filelib.assert_exists_nz(args.housekeeping_gene_model)
 
     assert args.num_procs >= 1 and args.num_procs < 100, \
            "Please specify between 1 and 100 processes."
@@ -119,49 +122,56 @@ def main():
     # Run the libraries in RSeQC.
     rseqc_path = filelib.which_assert(config.rseqc_path)
 
+    TIN_MIN_COVERAGE = 10
+
     # Set up each of the modules.
     M = Module
     MODULES = [
-        #M("clipping_profile.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-        #    "-s", pairedend2PESE(args.paired_end))),
-        #M("deletion_profile.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-        #    "-l", ARG_READ_LENGTH)),
-        #M("insertion_profile.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-        #    "-s", pairedend2PESE(args.paired_end))),
-        #M("mismatch_profile.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-        #    "-l", ARG_READ_LENGTH)),
+        M("clipping_profile.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+            "-s", pairedend2PESE(args.paired_end))),
+        M("deletion_profile.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+            "-l", ARG_READ_LENGTH)),
+        M("insertion_profile.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+            "-s", pairedend2PESE(args.paired_end))),
+        # Error: object 'A2C' not found
+        # This means BAM file doesn't have MD tags.
+        M("mismatch_profile.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+            "-l", ARG_READ_LENGTH)),
         #M("geneBody_coverage.py", (
         #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
         #    "-r", ARG_HOUSEKEEPING_GENE_MODEL)),
-        #M("infer_experiment.py", (
-        #    "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL),
-        #  "infer_experiment.txt"),
-        #M("inner_distance.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
-        #    "-r", ARG_REF_GENE_MODEL)),
-        #M("read_distribution.py", (
-        #    "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL),
-        #  "read_distribution.txt"),
-        #M("read_duplication.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
-        #M("read_GC.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
-        #M("read_hexamer.py", ("-i", ARG_FASTA_FILE), "hexamer.txt"),
-        #M("read_NVC.py", (
-        #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
+        M("geneBody_coverage2.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+            "-r", ARG_HOUSEKEEPING_GENE_MODEL)),
+        M("infer_experiment.py", (
+            "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL),
+          "infer_experiment.txt"),
+        M("inner_distance.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX,
+            "-r", ARG_REF_GENE_MODEL)),
+        M("read_distribution.py", (
+            "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL),
+          "read_distribution.txt"),
+        M("read_duplication.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
+        M("read_GC.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
+        M("read_hexamer.py", ("-i", ARG_FASTA_FILE), "hexamer.txt"),
+        M("read_NVC.py", (
+            "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
+        # Doesn't work.  Uses R process that takes 100's of Gb RAM.
         #M("read_quality.py", (
         #    "-i", ARG_BAM_FILE, "-o", ARG_OUT_PREFIX)),
-        #M("RNA_fragment_size.py", (
-        #    "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL), "fragment.txt"),
-
-        # TODO: Fix the modules below.
-        # Not working
-        #M("tin.py", (
-        #    "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL, "-c", 1), "tin.txt"),
+        M("RNA_fragment_size.py", (
+            "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL), "fragment.txt"),
+        M("tin.py", (
+            "-i", ARG_BAM_FILE, "-r", ARG_REF_GENE_MODEL,
+            "-c", TIN_MIN_COVERAGE), "tin.txt"),
+        
         # Not implemented
         # RPKM_saturation.  Needs pairedness info
         
@@ -197,8 +207,19 @@ def main():
         x2 = " on %d processors." % args.num_procs
     x3 = "Running %d command%s%s" % (len(commands), x1, x2)
     p("%s\n" % x3)
-    x = shell.parallel(commands, max_procs=args.num_procs)
-    print "HERE 2", x
+    x = parallel.pshell(commands, max_procs=args.num_procs)
+
+    # tin.py will save some files in the current directory.  Look for
+    # them and move them into the outpath.
+    x, f = os.path.split(args.bam_file)
+    f, x = os.path.splitext(f)
+    TIN_FILES = [
+        "%s.summary.txt" % f,
+        "%s.tin.xls" % f,
+        ]
+    for f in TIN_FILES:
+        if os.path.exists(f):
+            shutil.move(f, args.outpath)
 
     p("Done.\n")
     
