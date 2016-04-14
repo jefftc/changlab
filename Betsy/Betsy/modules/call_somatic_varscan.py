@@ -16,8 +16,8 @@ class Module(AbstractModule):
 
         mpileup_node, nc_node = antecedents
         mpileup_filenames = filelib.list_files_in_path(
-            mpileup_node.identifier, endswith=".mpileup")
-        assert mpileup_filenames, "No .mpileup files."
+            mpileup_node.identifier, endswith=".pileup")
+        assert mpileup_filenames, "No .pileup files."
         nc_match = mlib.read_normal_cancer_file(nc_node.identifier)
         #ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)

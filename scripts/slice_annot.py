@@ -995,7 +995,10 @@ def split_annots(MATRIX, split_annots):
         src_annots = MATRIX.header2annots[h]
         split_annots = [x.split(split_char) for x in src_annots]
         for i in range(len(split_annots)):
-            assert len(split_annots[i]) == len(dst_indexes), \
+            #assert len(split_annots[i]) == len(dst_indexes), \
+            #       "split/dst_indexes mismatch: %d %s %s" % (
+            #    i, split_annots[i], len(dst_indexes))
+            assert len(split_annots[i]) <= len(dst_indexes), \
                    "split/dst_indexes mismatch: %d %s %s" % (
                 i, split_annots[i], len(dst_indexes))
         for i in range(len(dst_indexes)):
@@ -1004,7 +1007,8 @@ def split_annots(MATRIX, split_annots):
             assert len(split_annots) == len(dst_annots)
             for j in range(len(split_annots)):
                 # change in place
-                dst_annots[j] = split_annots[j][i]
+                if i < len(split_annots[j]):
+                    dst_annots[j] = split_annots[j][i]
     return MATRIX
 
 

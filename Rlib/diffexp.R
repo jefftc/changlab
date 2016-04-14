@@ -9,8 +9,8 @@
 # find.de.genes.2cnoref.ebayes   Two color, only one type of sample.
 #
 # RNA-Seq
-# find.de.genes.deseq2     Takes raw counts.  FOLD.CHANGE not accurate.
-# find.de.genes.edgeR      Takes raw counts.  FOLD.CHANGE not accurate.
+# find.de.genes.deseq2     Takes raw counts.
+# find.de.genes.edgeR      Takes raw counts.
 
 # Input parameters:
 # X            Gene x sample matrix of logged expression values, unless
@@ -618,17 +618,33 @@ find.de.genes.deseq2 <- function(X, Y, geneid=NA, genenames=NA,
   dds <- DESeqDataSetFromMatrix(
     countData=count.data, colData=col.data, design=~condition)  
   dds.2 <- DESeq(dds)
-  res <- results(dds.2)
+  # DESeq does shrinkage, which throws off fold change.  Also look at
+  # the fold change values without shrinkage.
+  # Contains the MLE estimate of fold change.
+  # Include a column: lfcMLE
+  res <- results(dds.2, addMLE=TRUE)
   # Describes columns in res
   # mcols(res)$description
+  #print(mcols(res)$description)
+  #write.table(res, "out2.dat", col.names=TRUE)
 
   p.value <- res[["pvalue"]]
   fdr <- res[["padj"]]
   #bonf <- bonferroni.correct(p.value)
+  fold.change <- res[["log2FoldChange"]]
+  fold.change.mle <- res[["lfcMLE"]]
 
   DATA <- make.output.table(IN, p.value, fdr, c(), filter.p05)
-  DATA[["Log_2 Fold Change"]] <- abs(res[["log2FoldChange"]])
+  DATA[["Log_2 Fold Change"]] <- abs(fold.change)
+  # Insert the MLE fold change.
+  i <- which(names(DATA) == "Log_2 Fold Change")
+  if(length(i) == 0)
+    stop("could not find fold change")
+  DATA <- cbind(DATA[,1:i], abs(fold.change.mle), DATA[,(i+1):ncol(DATA)])
+  names(DATA)[i+1] <- "Log_2 Fold Change (MLE)"
   list(DATA=DATA, dds=dds.2, res=res)
+  #list(DATA=DATA, dds=dds.2, res=res, dds.noshrink=dds.2.noshrink, 
+  #  res.noshrink=res.noshrink)
 }
 
 

@@ -51,6 +51,7 @@ def find_diffexp_genes(
     import sys
     import math
     import StringIO
+    import warnings
     
     from rpy2 import rinterface
     
@@ -158,10 +159,13 @@ def find_diffexp_genes(
     old_stdout = sys.stdout
     sys.stdout = handle
 
-    # Call the proper R function.
+    # Call the proper R function.  DESeq2 throws off a lot of
+    # warnings.  Turn them off temporarily.
     fn = algorithm2function[algorithm]
     x = ", ".join(args)
-    R("x <- %s(%s)" % (fn, x))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        R("x <- %s(%s)" % (fn, x))
     R("DATA <- x$DATA")
     DATA_R = R["DATA"]
 
@@ -496,16 +500,16 @@ def main():
         assert args.fold_change >= 1E-10 and args.fold_change < 1000, \
                "Invalid fold change: %s" % args.fold_change
     if args.fdr_cutoff is not None:
-        assert args.fdr_cutoff > 0.0 and args.fdr_cutoff < 1.0
+        assert args.fdr_cutoff > 0.0 and args.fdr_cutoff <= 1.0
         assert args.p_cutoff is None, "Cannot have both FDR and p cutoff."
         assert args.bonf_cutoff is None, \
                "Cannot have both FDR and bonferroni cutoff."
     if args.p_cutoff is not None:
         assert args.bonf_cutoff is None, \
                "Cannot have both p and bonferroni cutoff."
-        assert args.p_cutoff > 0.0 and args.p_cutoff < 1.0
+        assert args.p_cutoff > 0.0 and args.p_cutoff <= 1.0
     if args.bonf_cutoff is not None:
-        assert args.bonf_cutoff > 0.0 and args.bonf_cutoff < 1.0
+        assert args.bonf_cutoff > 0.0 and args.bonf_cutoff <= 1.0
     if args.algorithm == "fold_change":
         assert not args.p_cutoff, \
                "Cannot use p-value cutoff with fold change algorithm."

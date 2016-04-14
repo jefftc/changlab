@@ -175,14 +175,14 @@ def download_file(disease, date, datatype):
         match_items = datatype_match[datatype]
     else:
         raise ValueError('cannot recognize datatype in datatype_match dict')
-    resultlinks=[]
+    resultlinks = []
     for newlink in newlinks:
         for match_item in match_items:
             if match_item in newlink and disease+'-FFPE' not in newlink:
                 data = read_url(link+newlink)
                 with open(newlink, "wb") as code:
                      code.write(data)
-                print 'finished download %s' %newlink
+                print 'finished download %s' % newlink
                 resultlinks.append(newlink)
     if resultlinks:
         return resultlinks    
@@ -262,9 +262,9 @@ def read_and_extract_urls(page):
     x = [x for x in x if x]
     return x
 
-def merge_files(input_list,outfile):
+def merge_files(input_list, outfile):
     """input two files and merge,write to the outfile"""
-    assert len(input_list)==2
+    assert len(input_list) == 2
     A_file = input_list[0]
     B_file = input_list[1]
     M_A = arrayio.read(A_file)
@@ -332,7 +332,7 @@ def extract_and_merge_files(gzfile_list, resource):
         newname=os.path.split(result[0])[-1].replace(
             'agilentg4502a_07_1__unc_edu__Level_3__unc_lowess_normalization_gene_level__data',
             'agilentg4502a_07__unc_edu__Level_3__unc_lowess_normalization_gene_level__data')
-        merge_files(result,newname)
+        merge_files(result, newname)
         return newname
     else:
         raise ValueError('extract_and_merge_files can only handle two files')
@@ -785,7 +785,8 @@ def main():
 ##            args.data,require_date,args.disease))
         
         filenames = download_file(args.disease, date, args.data)
-        txt_file = extract_and_merge_files(filenames,datatype2resource[args.data])
+        txt_file = extract_and_merge_files(
+            filenames, datatype2resource[args.data])
         process_data(args.data, txt_file, args.output)
             
 if __name__ == '__main__':

@@ -3199,7 +3199,7 @@ def main():
         "Use BLIND: most genes should not change expression across "
         "data set.")
     group.add_argument(
-        "-q", "--quantile", dest="quantile", action="store_true",
+        "-q", "--quantile", "--qnorm", dest="quantile", action="store_true",
         help="Quantile normalize the data.")
     group.add_argument(
         "--cpm", action="store_true", help="Convert raw counts for NGS data "

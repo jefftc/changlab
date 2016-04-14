@@ -22,7 +22,7 @@
 # plot_pipelines             
 # 
 # get_all_option_names       Get the names of all OptionDef in the rulebase.
-# get_required_option_names  Get the required options in a list of modules.
+# get_module_options         Get the options used in a list of modules.
 #
 # _list_differences_in_nodelists
 # _merge_nodelists
@@ -50,6 +50,9 @@ def _print_rulebase(rulebase):
 
     # Make a list of the modules
     modules = rulebase.all_modules
+
+    print "Rulebase contains %d data types and %d modules." % (
+        len(datatypes), len(modules))
 
     # Print each DataType object.
     for dt in datatypes:
@@ -519,19 +522,20 @@ def check_attributes_complete(
     all_missing = {}
     all_extra = []
     good_paths = []
-    for p in paths:
+    for i, p in enumerate(paths):
         module_ids = [
             x for x in p.node_ids if
             isinstance(network.nodes[x], bie3.ModuleNode)]
         modules = [network.nodes[x] for x in module_ids]
 
         missing = {}
-        opt2mods = get_required_option_names(modules)
-        x = [x for x in opt2mods if x not in user_options]
+        all_opt2mods = get_module_options(modules)
+        required_opt2mods = get_module_options(modules, required_only=True)
+        x = [x for x in required_opt2mods if x not in user_options]
         for on in x:
             for mn in opt2mods[on]:
                 missing[(mn, on)] = 1
-        extra = [x for x in user_options if x not in opt2mods]
+        extra = [x for x in user_options if x not in all_opt2mods]
         if not missing:
             good_paths.append(p)
         all_missing.update(missing)
@@ -841,14 +845,16 @@ def get_all_option_names():
     return sorted(names)
 
 
-def get_required_option_names(modules):
+def get_module_options(modules, required_only=False):
     # From a list of modules, return a dictionary where the keys are
     # option name and the values are a list of the modules that
-    # require it.
+    # use it.  If required_only is True, then will only return the
+    # options that are required.
     option2modules = {}
     for module in modules:
         for option in module.option_defs:
-            if option.default is not None:
+            is_required = option.default is None
+            if required_only and not is_required:
                 continue
             on, mn = option.name, module.name
             if on not in option2modules:
@@ -1134,6 +1140,9 @@ def main():
         "--cache_input_files", action="store_true",
         help="Save a copy of the input files.  "
         "Helpful for very big files.")
+    parser.add_argument(
+        "-v", "--verbose", default=0, action="count",
+        help="Give more output.")
 
     group = parser.add_argument_group(title="Input/Output Nodes")
     group.add_argument(
@@ -1197,7 +1206,7 @@ def main():
     args = parser.parse_args()
     input_list, x = _parse_args(sys.argv)
     outtype, out_identifier, out_attributes = x
-    verbose = (not args.sparse_network_png)
+    verbose_network = (not args.sparse_network_png)
 
     print "Checking parameters."
     sys.stdout.flush()
@@ -1334,12 +1343,13 @@ def main():
     # Step 3: Make sure some inputs are provided.
     if not check_inputs_provided(
         network, in_data_nodes, custom_attributes, user_options,
-        args.max_inputs, args.network_png, verbose):
+        args.max_inputs, args.network_png, verbose_network):
         return
     # Step 4: Make sure each of the input nodes match a node in the
     # network.
     x = check_inputs_in_network(
-        network, user_options, in_data_nodes, args.network_png, verbose)
+        network, user_options, in_data_nodes, args.network_png,
+        verbose_network)
     inputs_ok, data_node_ids = x
     if not inputs_ok:
         return
@@ -1347,7 +1357,7 @@ def main():
     # nodes.
     paths = build_pipelines(
         network, user_options, in_data_nodes, data_node_ids, custom_attributes,
-        args.max_inputs, args.network_png, verbose)
+        args.max_inputs, args.network_png, verbose_network)
     #plot_pipelines(
     #    "pipeline", network, paths, user_options, max_pipelines=1,
     #    prune=True, verbose=True)
@@ -1357,7 +1367,7 @@ def main():
     # Step 6: Make sure required attributes are given.
     paths = check_attributes_complete(
         network, user_options, paths, args.network_png, args.prune_network,
-        verbose)
+        verbose_network)
     if not paths:
         return
     # DEBUG: To debug the pruning, save the network and paths so we
@@ -1378,7 +1388,7 @@ def main():
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(
         network, user_options, custom_attributes, paths, args.network_png,
-        args.prune_network, verbose)
+        args.prune_network, verbose_network)
     if not paths:
         return
     # DEBUG: Print out each of the pipelines.
@@ -1389,7 +1399,7 @@ def main():
     # Step 8: Look for input files.
     if not check_input_files(
         network, in_data_nodes, user_options, paths, args.network_png,
-        args.prune_network, verbose):
+        args.prune_network, verbose_network):
         return
 
     #print "The network (%d nodes) is complete." % len(network.nodes)
@@ -1402,7 +1412,7 @@ def main():
     # Step 9: Manual verification of the network.
     if not manually_verify_network(
         network, user_options, paths, args.run,
-        args.network_png, args.prune_network, verbose):
+        args.network_png, args.prune_network, verbose_network):
         return
 
     print "Running the analysis."
@@ -1413,7 +1423,7 @@ def main():
         x = rule_engine_bie3.run_pipeline(
             network, in_data_nodes, custom_attributes, user_options, paths,
             user=args.user, job_name=args.job_name, clean_up=clean_up,
-            num_cores=args.num_cores)
+            num_cores=args.num_cores, verbosity=args.verbose)
         if x:
             node_dict, transitions = x
     except AssertionError, x:
@@ -1421,7 +1431,7 @@ def main():
             node_ids = rule_engine_bie3.DEBUG_POOL.keys()
             plot_network(
                 args.network_png, network, user_options=user_options,
-                highlight_green=node_ids, verbose=verbose)
+                highlight_green=node_ids, verbose=verbose_network)
         raise
 
     # Draw the final network.
@@ -1432,7 +1442,7 @@ def main():
     plot_network(
         args.network_png, network, user_options=user_options,
         bold=node_ids, bold_transitions=transitions,
-        highlight_green=node_ids, verbose=verbose)
+        highlight_green=node_ids, verbose=verbose_network)
     if args.network_json:
         print "Writing network in json format: %s." % args.network_json
         bie3.write_network(args.network_json, network)

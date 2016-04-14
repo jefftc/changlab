@@ -14,10 +14,9 @@ class Module(AbstractModule):
         from genomicode import config
         #from Betsy import module_utils
 
-        vcf_node = in_data
-        vcf_filenames = filelib.list_files_in_path(
-            vcf_node.identifier, endswith=".vcf")
-        assert vcf_filenames, "No .vcf files."
+        pileup_filenames = filelib.list_files_in_path(
+            in_data.identifier, endswith=".pileup")
+        assert pileup_filenames, "No .pileup files."
         #ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
 
@@ -36,7 +35,7 @@ class Module(AbstractModule):
         # list of (sample, in_filename, tmp1_filename, tmp2_filename,
         #          out_filename)
         jobs = []
-        for in_filename in vcf_filenames:
+        for in_filename in pileup_filenames:
             p, f = os.path.split(in_filename)
             sample, ext = os.path.splitext(f)
             tmp1_filename = os.path.join(out_path, "%s.tmp1" % sample)

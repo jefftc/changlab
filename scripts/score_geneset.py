@@ -15,8 +15,9 @@ import sys, os
 
 class GeneSetScore:
     # Score for a gene set on one sample.
-    def __init__(self, score, direction, pvalue):
+    def __init__(self, score, background, direction, pvalue):
         self.score = score
+        self.background = background
         self.direction = direction
         self.pvalue = pvalue
 
@@ -85,9 +86,9 @@ def _score_gene_set_h(MATRIX, matrix_name, name, pos_genes, neg_genes, lock):
         directions.append(x)
 
     geneset_scores = []
-    for x in zip(scores, directions, pvalues):
-        score, direction, pvalue = x
-        x = GeneSetScore(score, direction, pvalue)
+    for x in zip(scores, scores_bgrnd, directions, pvalues):
+        score, background, direction, pvalue = x
+        x = GeneSetScore(score, background, direction, pvalue)
         geneset_scores.append(x)
     return geneset_scores
 
@@ -437,7 +438,7 @@ def main():
 
         # Get the scores for the gene sets.
         keys = [(matrix, x, index, sample) for x in all_genesets]
-        default = GeneSetScore("", "", "")
+        default = GeneSetScore("", "", "", "")
         scores = [score_dict.get(x, default).score for x in keys]
         directs = [score_dict.get(x, default).direction for x in keys]
         pvalues = [score_dict.get(x, default).pvalue for x in keys]
