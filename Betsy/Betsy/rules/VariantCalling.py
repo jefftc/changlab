@@ -413,11 +413,10 @@ all_modules = [
         ),
 
     ModuleNode(
-        "backfill_multivcf_file",
+        "backfill_vcf_folder",
         # The first one will be backfilled with the information from
         # the second.
-        [MultiVCFFile, MultiVCFFile],
-        MultiVCFFile,
+        [VCFFolder, VCFFolder], VCFFolder,
         OptionDef(
             "backfill_common_only", default="no",
             help="Backfill the samples that are in common.  Ignore samples "

@@ -8,10 +8,12 @@ Functions:
 read
 write
 
-get_variant   Get Variant from VCFFile.
-set_variant   Set a Variant to a VCFFile.
-get_call      Get a Call from a Variant.
-set_call      Set a Call to a Variant.
+get_variant     Get Variant from VCFFile.
+set_variant     Set a Variant to a VCFFile.
+add_variant     Add a Variant to a VCFFile.
+get_call        Get a Call from a Variant.
+set_call        Set a Call to a Variant.
+is_pass_filter  Whether the variant passes a filter.
 
 make_coverage_matrix
 make_vaf_matrix
@@ -122,6 +124,23 @@ class Variant:
         self.samples = samples[:]
         self.genotype_names = genotype_names[:]
         self.sample2genodict = copy.deepcopy(sample2genodict)
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [repr(self.chrom),
+             repr(self.pos),
+             repr(self.id_),
+             repr(self.ref),
+             repr(self.alt),
+             repr(self.qual),
+             repr(self.filter_),
+             repr(self.info_names),
+             repr(self.infodict),
+             repr(self.samples),
+             repr(self.genotype_names),
+             repr(self.sample2genodict),]
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
 
 
 class Call:
@@ -235,6 +254,18 @@ def set_variant(vcf, num, var):
     for sample in var.samples:
         vcf.matrix[sample][num] = _format_genotype(
             var.genotype_names, var.sample2genodict[sample])
+
+
+def add_variant(vcf, var):
+    # Add a variant to a VCFFile in place.
+    num = vcf.num_variants()
+    # Add a row to the matrix.
+    matrix = vcf.matrix
+    for key in matrix.header2annots:
+        x = matrix.header2annots[key]
+        x = x + ["."]
+        matrix.header2annots[key] = x
+    set_variant(vcf, num, var)
 
     
 def get_call(var, sample):
@@ -434,6 +465,45 @@ def set_call(variant, sample, call):
         raise AssertionError, "Unknown VCF format."
 
 
+def is_pass_filter(var, QUAL=None, MQ=None, QD=None, 
+                   min_DP=None, max_DP=None):
+    # Return a boolean on whether a variant passes filter.
+    # <var value> > QUAL    Phred-scale quality score.  Usually 20.
+    # <var value> > MQ      Average Mapping Quality.  Usually 40.
+    # <var value> > QD      Quality by depth.  Usually 2.0.
+    # <var value> > min_DP  Minimum depth.
+    # <var value> < max_DP  Maximum depth.
+    if QUAL is not None:
+        assert var.qual is not None, "Missing QUAL: %s %d" % (
+            var.chrom, var.pos)
+        if var.qual < QUAL:
+            return False
+    if MQ is not None:
+        assert "MQ" in var.info_names, "Missing MQ: %s %d" % (
+            var.chrom, var.pos)
+        if var.infodict["MQ"] < MQ:
+            return False
+    if QD is not None:
+        assert "QD" in var.info_names, "Missing QD: %s %d" % (
+            var.chrom, var.pos)
+        if var.infodict["QD"] < QD:
+            return False
+    DP = None
+    if min_DP is not None or max_DP is not None:
+        if "DP" in var.infodict:
+            DP = var.infodict["DP"]
+    # TODO: Try other ways of getting depth.
+    if min_DP is not None:
+        assert DP is not None, "Missing DP: %s %d" % (var.chrom, var.pos)
+        if DP < min_DP:
+            return False
+    if max_DP is not None:
+        assert DP is not None, "Missing DP: %s %d" % (var.chrom, var.pos)
+        if DP > max_DP:
+            return False
+    return True
+
+
 def make_coverage_matrix(vcf, samples=None):
     # Make a num_variants x num_samples matrix where each element is
     # an integer or None.
@@ -518,6 +588,14 @@ def _percent_to_decimal(x):
 
 def _parse_info(info_str):
     # Return a tuple of info_names, info_dict
+
+    # Which elements should be int or float.
+    is_int = ["MQ0", "DP", "AN"]
+    is_float = ["FS", "QD", "SOR", "MQ"]
+    # MLEAC  2  1,1
+    # MLEAF  0.500,0.500
+    # AC     1,1
+    # AF     0.500,0.500
     
     # Parse out the INFO line.
     # Format: BRF=0.89;FR=1.0000;HP=2;HapScore=1;...
@@ -532,6 +610,10 @@ def _parse_info(info_str):
             value = None
         else:
             key, value = x
+        if key in is_int:
+            value = int(value)
+        if key in is_float:
+            value = float(value)
         d[key] = value
         names.append(key)
     return names, d
@@ -541,6 +623,16 @@ def _parse_genotype(format_str, genotype_str):
     # Return tuple of format_names, genotype_dict.
     names = format_str.split(":")
     values = genotype_str.split(":")
+
+    # Varscan sometimes generates lines like:
+    # GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
+    # ./.:.:3
+    # Detect this and fix it.
+    if len(names) > 3 and len(values) == 3 and \
+           names[:3] == ["GT", "GQ", "SDP"]:
+        x = len(names) - len(values)
+        values = values + ["."]*x
+
     assert len(names) == len(values), "Mismatch: %s %s" % (
         format_str, genotype_str)
     d = {}
