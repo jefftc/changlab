@@ -20,6 +20,7 @@
 # rename_duplicate_headers
 # rename_header
 # rename_header_i
+# append_to_headers
 # prepend_to_headers
 # replace_header
 # replace_header_re
@@ -432,6 +433,29 @@ def replace_header_re(MATRIX, replace_list):
             headers[i] = x
     x = AnnotationMatrix.replace_headers(MATRIX, headers)
     return x
+
+
+def append_to_headers(MATRIX, append_to_headers):
+    # append_to_headers is list of strings in format of: <indexes>;<postfix>.
+    if not append_to_headers:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    append_all = []  # list of (list of 0-based indexes, postfix)
+    for x in append_to_headers:
+        x = x.split(";", 1)
+        assert len(x) == 2
+        indexes_str, prefix = x
+        indexes = parse_indexes(MATRIX, indexes_str)
+        for i in indexes:
+            assert i >= 0 and i < len(MATRIX.headers)
+        append_all.append((indexes, prefix))
+
+    headers = MATRIX.headers[:]
+    for indexes, postfix in append_all:
+        for i in indexes:
+            headers[i] = "%s%s" % (headers[i], prefix)
+    return AnnotationMatrix.replace_headers(MATRIX, headers)
 
 
 def prepend_to_headers(MATRIX, prepend_to_headers):
@@ -2176,6 +2200,10 @@ def main():
         help="Rename a header.  Format: <index>,<to>.  "
         "<index> is a 1-based column index.  (MULTI)")
     group.add_argument(
+        "--append_to_headers", default=[], action="append",
+        help="Append text to one or more headers.  "
+        "Format: <indexes>;<text_to_append>.  (MULTI)")
+    group.add_argument(
         "--prepend_to_headers", default=[], action="append",
         help="Prepend text to one or more headers.  "
         "Format: <indexes>;<text_to_prepend>.  (MULTI)")
@@ -2433,6 +2461,7 @@ def main():
     MATRIX = rename_header_i(MATRIX, args.rename_header_i)
     MATRIX = replace_header(MATRIX, args.replace_header)
     MATRIX = replace_header_re(MATRIX, args.replace_header_re)
+    MATRIX = append_to_headers(MATRIX, args.append_to_headers)
     MATRIX = prepend_to_headers(MATRIX, args.prepend_to_headers)
 
     # Changing the values.
