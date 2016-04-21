@@ -50,6 +50,9 @@ find_rseqc_script
 
 gtf_to_bed
 
+clean_varscan_vcf
+clean_strelka_vcf
+
 """
 # _create_reference_genome_path
 # _is_subset
@@ -1290,5 +1293,24 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
             continue
         if line.startswith("#CHROM") and line.find("Sample1") >= 0:
             line = line.replace("Sample1", sample_h)
+        outhandle.write(line)
+    outhandle.close()
+
+
+def clean_strelka_vcf(normal_sample, cancer_sample, in_filename, out_filename):
+    from genomicode import hashlib
+
+    # Strelka calls the samples "NORMAL" and "TUMOR".  this to the
+    # proper sample name.
+    # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT NORMAL TUMOR
+    normal_sample_h = hashlib.hash_var(normal_sample)
+    cancer_sample_h = hashlib.hash_var(cancer_sample)
+
+    outhandle = open(out_filename, 'w')
+    for line in open(in_filename):
+        if line.startswith("#CHROM") and line.find("NORMAL") >= 0:
+            line = line.replace("NORMAL", normal_sample_h)
+        if line.startswith("#CHROM") and line.find("TUMOR") >= 0:
+            line = line.replace("TUMOR", cancer_sample_h)
         outhandle.write(line)
     outhandle.close()

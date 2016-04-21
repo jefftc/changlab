@@ -15,9 +15,9 @@ class Module(AbstractModule):
 
         in_vcf_node, bf_vcf_node = antecedents
         in_vcf_filenames = filelib.list_files_in_path(
-            in_vcf_node.identifier, endswith=".vcf")
+            in_vcf_node.identifier, endswith=".vcf", toplevel_only=True)
         bf_vcf_filenames = filelib.list_files_in_path(
-            bf_vcf_node.identifier, endswith=".vcf")
+            bf_vcf_node.identifier, endswith=".vcf", toplevel_only=True)
         filelib.safe_mkdir(out_path)
         metadata = {}
 

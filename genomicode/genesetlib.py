@@ -235,7 +235,17 @@ def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
         if header_len < row_len:
             x = [""] * (row_len-header_len)
             matrix[0] = matrix[0] + x
-        
+
+    # If matrix is empty, then nothing to yield.
+    if not matrix:
+        return
+    # If there is only one row, then yield the columns.
+    if len(matrix) == 1:
+        for name in matrix[0]:
+            yield name, "", []
+        return
+
+    # This will fail if there is not at least 2 rows.
     t_matrix = _transpose_gmx(matrix)
     if not matrix:
         return

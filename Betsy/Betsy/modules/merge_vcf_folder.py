@@ -15,8 +15,11 @@ class Module(AbstractModule):
         from Betsy import module_utils as mlib
 
         vcf_node = in_data
+        # Some callers, like jointsnvmix, will create vcf files for
+        # each chromosome.  To avoid picking these up, only accept
+        # .vcf files from the top level.
         vcf_filenames = filelib.list_files_in_path(
-            vcf_node.identifier, endswith=".vcf")
+            vcf_node.identifier, endswith=".vcf", toplevel_only=True)
         assert vcf_filenames, "No .vcf files."
         metadata = {}
 
@@ -113,6 +116,22 @@ class Module(AbstractModule):
         ## For VCF files from somatic calls, the germline sample will
         ## be duplicated.  Add --force-samples to make sure this is
         ## still merged.
+
+        # Since we need to append all the VCF files, it's easy to run
+        # into error:
+        # OSError: [Errno 7] Argument list too long
+        # 
+        # To reduce the chance of this, figure out the path of the
+        # tmp_filename, and run the analysis in that path so we can
+        # use relative filenames.
+        tmp_path = None
+        for x in jobs:
+            sample, in_filename, tmp_filename = x
+            path, file_ = os.path.split(tmp_filename)
+            if tmp_path is None:
+                tmp_path = path
+            assert path == tmp_path
+        
         cmd = [
             sq(bcftools),
             "merge", 
@@ -122,9 +141,11 @@ class Module(AbstractModule):
             ]
         for x in jobs:
             sample, in_filename, tmp_filename = x
-            cmd.append("%s.gz" % tmp_filename)
+            path, file_ = os.path.split(tmp_filename)
+            assert path == tmp_path
+            cmd.append("%s.gz" % file_)
         x = " ".join(cmd)
-        parallel.sshell(x)
+        parallel.sshell(x, path=tmp_path)
         filelib.assert_exists_nz(out_filename)
 
         return metadata

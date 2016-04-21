@@ -162,6 +162,7 @@ def pyfun(jobs, num_procs=4, lock_keyword=None, DELAY=0.1,
                 raise
             except Exception, x:
                 if propogate_exception:
+                    print >>sys.stderr, "job %d" % i
                     raise
                 # Should raise exception here instead?
                 print >>sys.stderr, "ERROR: %s" % str(x)

@@ -109,7 +109,7 @@ def match_gene_sets(genesets, delimiter):
 
 
 def draw_venn(
-    filename, all_names, name2genes, 
+    filename, all_names, name2genes, all_labels, 
     args_margin, args_label_size, args_count_size):
     import sys
     import StringIO
@@ -145,7 +145,8 @@ def draw_venn(
         else:
             raise NotImplementedError
         for i in range(len(all_names)):
-            n = all_names[i]
+            #n = all_names[i]
+            n = all_labels[i]
             R('names(x)[%d] <- "%s"' % (i+1, n))
         #R('names(x)[1] <- "%s"' % n1)
         #R('names(x)[2] <- "%s"' % n2)
@@ -182,19 +183,24 @@ def draw_venn(
             raise NotImplementedError
         
         params = {
-            "col" : "transparent",   # color of outer lines
-            
-            "fill" : fill,
+            #"col" : "transparent",   # color of outer lines
+            "col" : "#000000",   # color of outer lines
+            "lty" : 2,   # dashed line
+            "fill" : fill,       # color of circles
             "alpha" : 0.50,
 
             # Number of items.
             #"lty" : "blank",
             "cex" : cex,
+            "fontfamily" : 3,
             
             # Labels
             "cat.cex" : cat_cex,
-            "cat.col" : cat_col,
-            "cat.default.pos" : "text",
+            #"cat.col" : cat_col,
+            "cat.col" : "#333333",
+            "cat.fontfamily" : 3,
+            #"cat.default.pos" : "text",
+            "cat.default.pos" : "outer",
             "margin" : margin,
             }
         R_fn(
@@ -264,9 +270,13 @@ def main():
         help="Num gene sets to compare at once.  "
         "Default is 2 (pairwise comparisons).")
     parser.add_argument(
-        "--geneset", default=[], action="append",
+        "--geneset", action="append",
         help="Which gene sets to include in the VENN diagram.  "
         "If automatch, this is the name without the _UP or _DN suffix.")
+    parser.add_argument(
+        "--label", action="append",
+        help="How to label this gene set.  Should have a --label for each "
+        "--geneset")
     parser.add_argument(
         "--all_genesets", action="store_true",
         help="Calculate the intersection of all gene sets.")
@@ -312,6 +322,10 @@ def main():
     if not args.all_genesets:
         assert len(args.geneset) > 1, "Must compare multiple gene sets."
         assert len(args.geneset) >= args.num_to_compare
+    if args.label:
+        assert args.geneset, "--label requires --geneset"
+        assert len(args.label) == len(args.geneset), \
+               "--label and --geneset should be parallel"
 
     assert args.p_num_items >= 0
 
@@ -356,6 +370,11 @@ def main():
             assert x in name2genes, "Missing geneset: %s" % x
         all_names = args.geneset
 
+    all_labels = all_names
+    if args.label:
+        assert len(args.label) == len(all_names)
+        all_labels = args.label
+
     # Count all pairwise intersections.
     combo2common = {}  # (gs1, gs2[, ...]) -> list of common genes
     for combo in product_genesets(all_names, args.num_to_compare):
@@ -373,7 +392,7 @@ def main():
 
     # Write out the matrix.
     if args.num_to_compare == 2:
-        header = ["Count"] + all_names
+        header = ["Count"] + all_labels
         print "\t".join(header)
         for name1 in all_names:
             x = [len(combo2common[(name1, name2)]) for name2 in all_names]
@@ -383,7 +402,7 @@ def main():
 
         # Print out percentages
         print
-        header = ["Count"] + all_names
+        header = ["Count"] + all_labels
         print "\t".join(header)
         for name1 in all_names:
             row = [name1]
@@ -438,7 +457,7 @@ def main():
         x = _name_replace(args.name_replace, all_names, name2genes)
         all_names, name2genes = x
         draw_venn(
-            args.plotfile, all_names, name2genes, 
+            args.plotfile, all_names, name2genes, all_labels, 
             args.margin, args.label_size, args.count_size)
 
 

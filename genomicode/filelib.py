@@ -219,7 +219,7 @@ def which(program):
 def which_assert(binary):
     # Make sure a binary exists and return its realpath.
     which_binary = which(binary)
-    assert which_binary, "Cannot find: %s" % binary
+    assert which_binary, "File not found: %s" % binary
     return which_binary
 
 
@@ -706,7 +706,8 @@ def safe_mkdir(path):
 
 
 def list_files_in_path(
-    file_or_path, endswith=None, case_insensitive=False, not_empty=False):
+    file_or_path, endswith=None, case_insensitive=False, not_empty=False,
+    toplevel_only=False):
     # Return a list of the files.  Returns full paths.
     # not_empty means will make sure some files are found.
     assert os.path.exists(file_or_path), "Not found: %s" % file_or_path
@@ -715,6 +716,9 @@ def list_files_in_path(
     if not os.path.isdir(file_or_path):
         x = os.path.realpath(file_or_path)
         filenames = [x]
+    elif toplevel_only:
+        x = os.listdir(file_or_path)
+        filenames = [os.path.join(file_or_path, x) for x in x]
     else:
         filenames = []
         for x in os.walk(file_or_path, followlinks=True):

@@ -435,8 +435,10 @@ def run_module(
             # somebody else just happens to create the directory again
             # while I'm checking?  Will have result_dir, but nothing
             # inside it.
-            # SOLUTION: Give them two cycles to create something.
-            time.sleep(REFRESH*2)
+            # SOLUTION: Give them a cycle to create something.
+            # DEBUG: Skip this.
+            #i_run_analysis = True; break
+            time.sleep(REFRESH+1)
             if not exists(copying_file) and not exists(success_file):
                 # Abandoned.  Delete the result dir and try again.
                 _rmtree_multi(result_dir)
