@@ -170,7 +170,7 @@ def backfill_vcf(in_file, bf_file, out_file):
         bf_ref, bf_alt, bf_var, bf_call = bf_variants[x]
         # VarScan sets the filter_ to "PASS" for everything.  Get rid
         # of this.
-        bf_var.filter_ = "BACKFILL"
+        bf_var.filter_ = ["BACKFILL"]
         vcflib.add_variant(out_vcf, bf_var)
 
     vcflib.write(out_file, out_vcf)

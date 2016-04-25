@@ -127,128 +127,138 @@ def draw_venn(
     R_fn('library', R_var('VennDiagram'))
     sys.stdout = old_stdout
 
-    if len(all_names) in [2, 3, 5]:
-        varnames = ["A", "B", "C", "D", "E"]
-        for i in range(len(all_names)):
-            n = all_names[i]
-            R_equals(name2genes[n], varnames[i])
-        #n1, n2, n3 = all_names
-        #R_equals(name2genes[n1], "A")
-        #R_equals(name2genes[n2], "B")
-        #R_equals(name2genes[n3], "C")
-        if len(all_names) == 2:
-            R('x <- list(A=A, B=B)')
-        elif len(all_names) == 3:
-            R('x <- list(A=A, B=B, C=C)')
-        elif len(all_names) == 5:
-            R('x <- list(A=A, B=B, C=C, D=D, E=E)')
-        else:
-            raise NotImplementedError
-        for i in range(len(all_names)):
-            #n = all_names[i]
-            n = all_labels[i]
-            R('names(x)[%d] <- "%s"' % (i+1, n))
-        #R('names(x)[1] <- "%s"' % n1)
-        #R('names(x)[2] <- "%s"' % n2)
-        #R('names(x)[3] <- "%s"' % n3)
 
-        cex = 1*args_count_size         # Size of number in each circle.
-        cat_cex = 1.5*args_label_size   # Size of category labels.
-        margin = 0.05*args_margin   # Amount of space around plot.
-        # Bigger margin is smaller figure.
-
-        if len(all_names) == 2:
-            fill = ["cornflowerblue", "darkorchid1"]
-            cat_col = ["cornflowerblue", "darkorchid1"]
-            margin = 0.10*args_margin
-            cat_cex = 0.75*args_label_size
-            cex = 0.65*args_count_size
-        elif len(all_names) == 3:
-            fill = ["cornflowerblue", "green", "yellow"]
-            cat_col = ["darkblue", "darkgreen", "orange"]
-            margin = 0.10*args_margin
-            cat_cex = 0.75*args_label_size
-            cex = 0.65*args_count_size
-        elif len(all_names) == 5:
-            fill = [
-                "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
-                "orchid3"]
-            cat_col = [
-                "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
-                "orchid3"]
-            margin = 0.25*args_margin
-            cat_cex = 0.75*args_label_size
-            cex = 0.65*args_count_size
-        else:
-            raise NotImplementedError
-        
-        params = {
-            #"col" : "transparent",   # color of outer lines
-            "col" : "#000000",   # color of outer lines
-            "lty" : 2,   # dashed line
-            "fill" : fill,       # color of circles
-            "alpha" : 0.50,
-
-            # Number of items.
-            #"lty" : "blank",
-            "cex" : cex,
-            "fontfamily" : 3,
-            
-            # Labels
-            "cat.cex" : cat_cex,
-            #"cat.col" : cat_col,
-            "cat.col" : "#333333",
-            "cat.fontfamily" : 3,
-            #"cat.default.pos" : "text",
-            "cat.default.pos" : "outer",
-            "margin" : margin,
-            }
-        R_fn(
-            "venn.diagram", R_var("x"), filename=filename,
-            **params)
-        
-        ## area1 = len(name2genes[n1])
-        ## area2 = len(name2genes[n2])
-        ## area3 = len(name2genes[n3])
-        ## n12 = len(pair2common[(n1, n2)])
-        ## n23 = len(pair2common[(n2, n3)])
-        ## n13 = len(pair2common[(n1, n3)])
-        ## x1 = pair2common[(n1, n2)]
-        ## x2 = name2genes[n3]
-        ## n123 = len(set(x1).intersection(x2))
-        ## category = all_names
-        ## fontfamily = ["Helvetica"]*7
-        ## cat_fontfamily = ["Helvetica"]*3
-        ## #fill = ["blue", "red", "green"]
-        ## fill = ["cornflowerblue", "green", "yellow"]
-        ## cat_col = ["cornflowerblue", "green", "yellow"]
-        
-        ## R_fn(
-        ##     "bitmap", filename, type="png256",
-        ##     height=1600, width=1600, units="px", res=300)
-        ## params = {
-        ##     "fontfamily" : fontfamily,
-        ##     #"col" : "transparent",
-        ##     "fill" : fill,
-            
-        ##     #"lty" : "blank",
-        ##     #"cex" : 2,
-            
-        ##     # Labels
-        ##     "category" : category,
-        ##     "cat.fontfamily" : cat_fontfamily,
-        ##     #"cat.cex" : 2,
-        ##     "cat.col" : cat_col,
-        ##     }
-        ## R_fn(
-        ##     "draw.triple.venn", area1, area2, area3, n12, n23, n13, n123,
-        ##     **params)
-        ## jmath.R_fn("dev.off")
-    elif len(all_names) > 5:
-        raise AssertionError, "Can't draw venn diagram with %d circles." % \
-              len(all_names)
+    # Five is the maximum supported by package.
+    assert len(all_names) <= 5, "Can't draw venn diagram with %d circles." % \
+           len(all_names)
+    
+    varnames = ["A", "B", "C", "D", "E"]
+    for i in range(len(all_names)):
+        n = all_names[i]
+        R_equals(name2genes[n], varnames[i])
+    #n1, n2, n3 = all_names
+    #R_equals(name2genes[n1], "A")
+    #R_equals(name2genes[n2], "B")
+    #R_equals(name2genes[n3], "C")
+    if len(all_names) == 2:
+        R('x <- list(A=A, B=B)')
+    elif len(all_names) == 3:
+        R('x <- list(A=A, B=B, C=C)')
+    elif len(all_names) == 4:
+        R('x <- list(A=A, B=B, C=C, D=D)')
+    elif len(all_names) == 5:
+        R('x <- list(A=A, B=B, C=C, D=D, E=E)')
     else:
-        raise NotImplementedError, len(all_names)
+        raise NotImplementedError
+    for i in range(len(all_names)):
+        #n = all_names[i]
+        n = all_labels[i]
+        R('names(x)[%d] <- "%s"' % (i+1, n))
+    #R('names(x)[1] <- "%s"' % n1)
+    #R('names(x)[2] <- "%s"' % n2)
+    #R('names(x)[3] <- "%s"' % n3)
+
+    cex = 1*args_count_size         # Size of number in each circle.
+    cat_cex = 1.5*args_label_size   # Size of category labels.
+    margin = 0.05*args_margin   # Amount of space around plot.
+    # Bigger margin is smaller figure.
+
+    if len(all_names) == 2:
+        fill = ["cornflowerblue", "darkorchid1"]
+        cat_col = ["cornflowerblue", "darkorchid1"]
+        margin = 0.10*args_margin
+        cat_cex = 0.75*args_label_size
+        cex = 0.65*args_count_size
+    elif len(all_names) == 3:
+        fill = ["cornflowerblue", "green", "yellow"]
+        cat_col = ["darkblue", "darkgreen", "orange"]
+        margin = 0.10*args_margin
+        cat_cex = 0.75*args_label_size
+        cex = 0.65*args_count_size
+    elif len(all_names) == 4:
+        fill = [
+            "dodgerblue", "goldenrod1", "seagreen3", "orchid3"]
+        cat_col = [
+            "dodgerblue", "goldenrod1", "seagreen3", "orchid3"]
+        margin = 0.10*args_margin
+        cat_cex = 0.75*args_label_size
+        cex = 0.65*args_count_size
+    elif len(all_names) == 5:
+        fill = [
+            "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
+            "orchid3"]
+        cat_col = [
+            "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
+            "orchid3"]
+        margin = 0.25*args_margin
+        cat_cex = 0.75*args_label_size
+        cex = 0.65*args_count_size
+    else:
+        raise NotImplementedError
+
+    params = {
+        #"col" : "transparent",   # color of outer lines
+        "col" : "#000000",   # color of outer lines
+        "lty" : 2,   # dashed line
+        "fill" : fill,       # color of circles
+        "alpha" : 0.50,
+
+        # Number of items.
+        #"lty" : "blank",
+        "cex" : cex,
+        "fontfamily" : 3,
+
+        # Labels
+        "cat.cex" : cat_cex,
+        #"cat.col" : cat_col,
+        "cat.col" : "#333333",
+        "cat.fontfamily" : 3,
+        #"cat.default.pos" : "text",
+        "cat.default.pos" : "outer",
+        "margin" : margin,
+        }
+    R_fn(
+        "venn.diagram", R_var("x"), filename=filename,
+        **params)
+
+    ## area1 = len(name2genes[n1])
+    ## area2 = len(name2genes[n2])
+    ## area3 = len(name2genes[n3])
+    ## n12 = len(pair2common[(n1, n2)])
+    ## n23 = len(pair2common[(n2, n3)])
+    ## n13 = len(pair2common[(n1, n3)])
+    ## x1 = pair2common[(n1, n2)]
+    ## x2 = name2genes[n3]
+    ## n123 = len(set(x1).intersection(x2))
+    ## category = all_names
+    ## fontfamily = ["Helvetica"]*7
+    ## cat_fontfamily = ["Helvetica"]*3
+    ## #fill = ["blue", "red", "green"]
+    ## fill = ["cornflowerblue", "green", "yellow"]
+    ## cat_col = ["cornflowerblue", "green", "yellow"]
+
+    ## R_fn(
+    ##     "bitmap", filename, type="png256",
+    ##     height=1600, width=1600, units="px", res=300)
+    ## params = {
+    ##     "fontfamily" : fontfamily,
+    ##     #"col" : "transparent",
+    ##     "fill" : fill,
+
+    ##     #"lty" : "blank",
+    ##     #"cex" : 2,
+
+    ##     # Labels
+    ##     "category" : category,
+    ##     "cat.fontfamily" : cat_fontfamily,
+    ##     #"cat.cex" : 2,
+    ##     "cat.col" : cat_col,
+    ##     }
+    ## R_fn(
+    ##     "draw.triple.venn", area1, area2, area3, n12, n23, n13, n123,
+    ##     **params)
+    ## jmath.R_fn("dev.off")
+
 
 def main():
     import os
@@ -366,8 +376,8 @@ def main():
 
     # Select only the gene sets of interest.
     if args.geneset:
-        for x in args.geneset:
-            assert x in name2genes, "Missing geneset: %s" % x
+        missing = [x for x in args.geneset if x not in name2genes]
+        assert not missing, "Missing geneset: %s" % ", ".join(missing)
         all_names = args.geneset
 
     all_labels = all_names

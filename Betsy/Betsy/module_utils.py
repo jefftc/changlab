@@ -800,6 +800,7 @@ def read_sample_group_file(file_or_handle):
         
     data = []
     for d in filelib.read_row(handle, header=1, pad_cols=""):
+        assert hasattr(d, "Pair"), "Missing column: Pair"
         pair = d.Pair.strip()
         assert pair in ["", "1", "2"], "Invalid pair: %s" % d.Pair
         x = d.Filename, d.Sample, pair

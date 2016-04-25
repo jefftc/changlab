@@ -301,6 +301,7 @@ def set_variant(vcf, num, var):
     if qual is None:
         qual = "."
     vcf.matrix["QUAL"][num] = str(qual)
+    assert type(var.filter_) is type([])
     vcf.matrix["FILTER"][num] = ";".join(var.filter_)
     vcf.matrix["INFO"][num] = _format_info(var.info_names, var.infodict)
     if "FORMAT" in vcf.matrix:

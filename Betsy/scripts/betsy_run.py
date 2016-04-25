@@ -533,7 +533,7 @@ def check_attributes_complete(
         required_opt2mods = get_module_options(modules, required_only=True)
         x = [x for x in required_opt2mods if x not in user_options]
         for on in x:
-            for mn in opt2mods[on]:
+            for mn in all_opt2mods[on]:
                 missing[(mn, on)] = 1
         extra = [x for x in user_options if x not in all_opt2mods]
         if not missing:
@@ -1384,7 +1384,7 @@ def main():
     #    verbose=True)
     #plot_network_show_pipelines(
     #    args.network_png, network, paths, user_options=user_options,
-    #    verbose=verbose)
+    #    verbose=args.verbose)
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(
         network, user_options, custom_attributes, paths, args.network_png,
@@ -1414,6 +1414,10 @@ def main():
         network, user_options, paths, args.run,
         args.network_png, args.prune_network, verbose_network):
         return
+
+    #plot_network_show_pipelines(
+    #    args.network_png, network, paths, user_options=user_options,
+    #    verbose=args.verbose)
 
     print "Running the analysis."
     sys.stdout.flush()
