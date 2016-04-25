@@ -25,6 +25,35 @@ def _parse_breaks_seq(s):
     return breaks
 
 
+def _parse_cluster(options_cluster, indexes_include_headers, MATRIX):
+    # Return a vector of clusters, where each cluster is an integer
+    # from 0 to K-1.  K is the total number of clusters.  The length
+    # of the vector should be the same as the number of annotations in
+    # the matrix.
+    from genomicode import parselib
+
+    index2cluster = {}
+    for clust_i, s in enumerate(options_cluster):
+        ranges = parselib.parse_ranges(s)
+        for s, e in ranges:
+            for i in range(s-1, e):
+                # Convert from 1-based to 0-based indexes.
+                i -= 1
+                if indexes_include_headers:
+                    i -= 1  # assume 1 header
+                    #i -= len(MATRIX._row_names)
+                assert i < MATRIX.num_annots(), \
+                       "Index %d out of range" % i
+                assert i not in index2cluster, \
+                       "Index %d in multiple clusters" % i
+                index2cluster[i] = clust_i
+    #cluster = [len(options_cluster)] * MATRIX.ncol()
+    cluster = [None] * MATRIX.num_annots()
+    for i, g in index2cluster.iteritems():
+        cluster[i] = g
+    return cluster
+
+
 def write_prism_file(filename, hist):
     # hist is R list from hist function.
     from genomicode import jmath
@@ -56,6 +85,8 @@ def main():
     
     from genomicode import jmath
     from genomicode import AnnotationMatrix
+    from genomicode import colorlib
+    from genomicode import pcalib
 
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("datafile", help="Tab-delimited data file.")
@@ -87,6 +118,12 @@ def main():
     #group.add_argument(
     #    "--xlabel_size", default=1.0, type=float,
     #    help="Scale the size of the labels on X-axis.  Default 1.0.")
+    group.add_argument(
+        "--log_x", action="store_true",
+        help="Plot the X-axis on a log scale.")
+    group.add_argument(
+        "--log_y", action="store_true",
+        help="Plot the Y-axis on a log scale.")
 
     group = parser.add_argument_group(title="Plot Labels")
     group.add_argument("--title", help="Put a title on the plot.")
@@ -108,6 +145,18 @@ def main():
         choices=["top", "bottom", "left", "right"],
         help="Where to label the points.")
     
+    group = parser.add_argument_group(title="Colors")
+    group.add_argument(
+        "-c", "--cluster", action="append",
+        help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
+    group.add_argument(
+        "--indexes_include_headers", "--iih", action="store_true",
+        help="If not given (default), then index 1 is the first row "
+        "with data.  If given, then index 1 is the very first row "
+        "in the file, including the headers.")
+    group.add_argument(
+        "--default_color",
+        help="Default color of points.  Format: #000000.")
     
 
     # Parse the input arguments.
@@ -123,9 +172,6 @@ def main():
     assert args.mar_bottom > 0 and args.mar_bottom < 10
     assert args.mar_left > 0 and args.mar_left < 10
     #assert args.xlabel_size > 0 and args.xlabel_size < 10
-        
-    height = args.height or 2400
-    width = args.width or 3200
 
     MATRIX = AnnotationMatrix.read(args.datafile, False)
     assert MATRIX.num_headers() and MATRIX.num_annots(), "Empty matrix."
@@ -139,12 +185,36 @@ def main():
     if args.label_size is not None:
         assert args.label_size > 0 and args.label_size <= 20
 
+    cluster = None
+    if args.cluster:
+        cluster = _parse_cluster(
+            args.cluster, args.indexes_include_headers, MATRIX)
+    
+    height = args.height or 2400
+    width = args.width or 3200
+
     # Pull out the values for the plot.
     x1 = MATRIX[args.x_header]
     x2 = MATRIX[args.y_header]
     x_values = map(float, x1)
     y_values = map(float, x2)
+    assert len(x_values) == len(y_values)
 
+    col = "#000000"
+    if args.default_color:
+        col = args.default_color
+    assert len(col) == 7
+    assert col[0] == "#"
+    if cluster is not None:
+        col_rgb = pcalib.choose_colors(cluster)
+        col = [col] * len(col_rgb)
+        for i in range(len(col_rgb)):
+            if col_rgb[i] is None:
+                continue
+            col[i] = colorlib.rgb2hex(col_rgb[i], prefix="#")
+        assert len(col) == len(x_values)
+
+        
     # Start R and set up the environment.
     R = jmath.start_R()
 
@@ -166,6 +236,12 @@ def main():
     cex_main = 2.0
     cex_sub = 1.0
 
+    plot_log = ""
+    if args.log_x:
+        plot_log += "x"
+    if args.log_y:
+        plot_log += "y"
+
     assert x_values
     assert y_values
     jmath.R_equals(x_values, "X")
@@ -185,7 +261,8 @@ def main():
 
     jmath.R_fn(
         "plot", jmath.R_var("X"), jmath.R_var("Y"),
-        main=main, xlab="", ylab="", pch=19, cex=cex, 
+        main="", xlab="", ylab="", pch=19, cex=cex,
+        log=plot_log, col=col,
         axes=jmath.R_var("FALSE"), RETVAL="x")
     # Make plot area solid white.
     #jmath.R('usr <- par("usr")')

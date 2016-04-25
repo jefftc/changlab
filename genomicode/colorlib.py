@@ -400,8 +400,10 @@ def hex2rgb(h):
     return r, g, b
 
 
-def rgb2hex(c):
+def rgb2hex(c, prefix="0x"):
     # red, green, blue values from 0-1.
+    #if c is None:
+    #    return "%s000000" % prefix
     r, g, b = c
     NUMERIC_TYPE = [type(0.0), type(0)]
     assert type(r) in NUMERIC_TYPE
@@ -420,8 +422,8 @@ def rgb2hex(c):
         g = "0%s" % g
     if len(b) == 1:
         b = "0%s" % b
-    x = "0x%s%s%s" % (r, g, b)
-    assert len(x) == 8
+    x = "%s%s%s%s" % (prefix, r, g, b)
+    assert len(x) == 6+len(prefix)
     return x
 
 def choose_contrasting_color(col):

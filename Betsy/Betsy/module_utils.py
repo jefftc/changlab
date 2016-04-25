@@ -38,6 +38,7 @@ fix_sample_group_filenames
 assert_sample_group_file
 
 read_normal_cancer_file
+assert_normal_cancer_samples
 
 check_inpath
 calc_max_procs_from_ram
@@ -799,6 +800,7 @@ def read_sample_group_file(file_or_handle):
         
     data = []
     for d in filelib.read_row(handle, header=1, pad_cols=""):
+        assert hasattr(d, "Pair"), "Missing column: Pair"
         pair = d.Pair.strip()
         assert pair in ["", "1", "2"], "Invalid pair: %s" % d.Pair
         x = d.Filename, d.Sample, pair
@@ -903,7 +905,7 @@ def assert_sample_group_file(filename, fastq_path):
     for x in sample_groups:
         filename, sample, pair = x
         #filename = os.path.join(fastq_path, file_)
-        assert os.path.exists(filename), "Missing FASTQ file: %s" % file_
+        assert os.path.exists(filename), "Missing FASTQ file: %s" % filename
 
     # Make sure there are no duplicate files.
     x = [x[0] for x in sample_groups]
@@ -943,6 +945,25 @@ def read_normal_cancer_file(file_or_handle):
         x = ns, ts
         data.append(x)
     return data
+
+
+def assert_normal_cancer_samples(normal_cancer_data, have_samples):
+    # have_samples is a list of the samples that I already have.  (Can
+    # also be dictionary, set, or something that implements the "in"
+    # operator.)
+    from genomicode import parselib
+
+    # Make sure files exist for all the samples.
+    all_samples = []  # use a list to preserve the order of the samples.
+    for (normal_sample, cancer_sample) in normal_cancer_data:
+        if normal_sample not in all_samples:
+            all_samples.append(normal_sample)
+        if cancer_sample not in all_samples:
+            all_samples.append(cancer_sample)
+    missing = [x for x in all_samples if x not in have_samples]
+    x = parselib.pretty_list(missing, max_items=5)
+    assert not missing, "Missing samples: %s" % x
+    
 
 
 def check_inpath(path):
@@ -1040,11 +1061,21 @@ def get_user_option(
 #    # <PATH>/<ROOT>.<EXT>
 
 
-def get_config(name):
-    # OBSOLETE?  Replace with findbin.
+def get_config(name, which_assert_file=False, assert_exists=False,
+               quote=False):
     from genomicode import filelib
     from genomicode import config
-    return filelib.which_assert(getattr(config, name))
+
+    assert hasattr(config, name), "Missing configuration: %s" % name
+    x = getattr(config, name)
+    if which_assert_file:
+        x = filelib.which_assert(x)
+    elif assert_exists:
+        filelib.assert_exists(x)
+    if quote:
+        x = sq(x)
+    return x
+    
 
 
 def file_exists_nz(filename):
@@ -1059,6 +1090,17 @@ def dir_exists(path):
     if not os.path.exists(path):
         return False
     return True
+
+
+def root2filename(filenames):
+    # filenames is a list of <filename>s in format:
+    # <directory>/<root><ext>.
+    # Return a dictionary of <root> -> <filename>
+    root2filename = {}
+    for filename in filenames:
+        path, root, ext = splitpath(filename)
+        root2filename[root] = filename
+    return root2filename
 
 
 def splitpath(path):
@@ -1083,15 +1125,8 @@ def splitpath(path):
 
 def findbin(name, quote=False):
     # name is the name in the genomicode config file.
-    from genomicode import config
-    from genomicode import filelib
-    
-    assert hasattr(config, name), "Not found in configuration: %s" % name
-    x = getattr(config, name)
-    x = filelib.which_assert(x)
-    if quote:
-        x = sq(x)
-    return x
+    # DEPRECATE THIS FUNCTION.
+    return get_config(name, which_assert_file=True, quote=quote)
 
 
 def sq(name):

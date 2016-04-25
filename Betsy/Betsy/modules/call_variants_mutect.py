@@ -11,7 +11,6 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
-        from genomicode import parselib
         from Betsy import module_utils as mlib
 
         bam_node, nc_node, ref_node, interval_node = antecedents
@@ -35,21 +34,10 @@ class Module(AbstractModule):
         dbsnp_file = mlib.get_user_option(
             user_options, "mutect_dbsnp_vcf", not_empty=True, check_file=True)
 
-        sample2bamfile = {}  # sample -> bam filename
-        for filename in bam_filenames:
-            path, sample, ext = mlib.splitpath(filename)
-            sample2bamfile[sample] = filename
-
+        # sample -> bam filename
+        sample2bamfile = mlib.root2filename(bam_filenames)
         # Make sure files exist for all the samples.
-        all_samples = []
-        for (normal_sample, cancer_sample) in nc_match:
-            if normal_sample not in all_samples:
-                all_samples.append(normal_sample)
-            if cancer_sample not in all_samples:
-                all_samples.append(cancer_sample)
-        missing = [x for x in all_samples if x not in sample2bamfile]
-        x = parselib.pretty_list(missing, max_items=5)
-        assert not missing, "Missing BAM files for samples: %s" % x
+        mlib.assert_normal_cancer_samples(nc_match, sample2bamfile)
 
         # list of (cancer_sample, normal_bamfile, tumor_bamfile, call_outfile,
         #    coverage_outfile, vcf_outfile, logfile)

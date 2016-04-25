@@ -8,10 +8,13 @@ Functions:
 read
 write
 
-get_variant   Get Variant from VCFFile.
-set_variant   Set a Variant to a VCFFile.
-get_call      Get a Call from a Variant.
-set_call      Set a Call to a Variant.
+get_variant      Get Variant from VCFFile.
+set_variant      Set a Variant to a VCFFile.
+add_variant      Add a Variant to a VCFFile.
+get_call         Get a Call from a Variant.
+set_call         Set a Call to a Variant.
+is_pass_filter   Whether the variant passes a filter.
+select_variants  Select a subset of the variants.
 
 make_coverage_matrix
 make_vaf_matrix
@@ -62,6 +65,13 @@ make_vaf_matrix
 # vaf                                                GENO:BFILL_VAF
 # call              GENO:GT                        
 #
+#                   JointSNVMix
+# num_ref           INFO:TR
+# num_alt           INFO:TA
+# total_reads       
+# vaf               
+# call              
+# 
 # * BFILL_ format is used for backfilling reads.
 # * For multi VCF files, Platypus INFO:TR and INFO:TC just contains
 #   the info for the first sample (with reads).  For positions without
@@ -82,7 +92,17 @@ make_vaf_matrix
 #   AF            0.353,0.112
 #   SGACOV        3261,1037   Sum of ALT reads.
 #   DP            9232
-
+#
+#
+# FILTER
+# .
+# badReads
+# Q20;badReads
+# PASS
+#
+#
+# JoinSNVMix has a non-standard VCF file.  No "FORMAT" column, and
+# does not have information about each sample.  Everything in INFO.
 
 
 class VCFFile:
@@ -94,8 +114,16 @@ class VCFFile:
         vcf_headers = [
             "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
             "INFO", "FORMAT"]
-        assert matrix.headers[:len(vcf_headers)] == vcf_headers
-        samples = matrix.headers[len(vcf_headers):]
+        # JointSNVMix does not have FORMAT column.  This one is
+        # optional.
+        x1 = matrix.headers[:len(vcf_headers)]
+        x2 = matrix.headers[len(vcf_headers):]
+        if len(matrix.headers) == 8:
+            x1 = matrix.headers[:8]
+            x2 = []
+        assert x1 == vcf_headers[:len(x1)], "Non-standard VCF headers: %s" % (
+            " ".join(x1))
+        samples = x2
         
         self.matrix = copy.deepcopy(matrix)
         self.samples = samples
@@ -106,6 +134,20 @@ class VCFFile:
 
 class Variant:
     # Holds structured information for each variant.
+    #
+    # chrom            string
+    # pos              int
+    # id_              string
+    # ref              string or list of strings
+    # alt              string or list of strings
+    # qual             float or None
+    # filter_          list of strings
+    # info_names       list of strings
+    # infodict
+    # samples          list of strings
+    # genotype_names   list of strings.
+    #                  Can be empty list if no FORMAT (jointsnvmix).
+    # sample2genodict  Can be empty dict if no FORMAT.
     def __init__(
         self, chrom, pos, id_, ref, alt, qual, filter_, info_names, infodict,
         samples, genotype_names, sample2genodict):
@@ -122,6 +164,23 @@ class Variant:
         self.samples = samples[:]
         self.genotype_names = genotype_names[:]
         self.sample2genodict = copy.deepcopy(sample2genodict)
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [repr(self.chrom),
+             repr(self.pos),
+             repr(self.id_),
+             repr(self.ref),
+             repr(self.alt),
+             repr(self.qual),
+             repr(self.filter_),
+             repr(self.info_names),
+             repr(self.infodict),
+             repr(self.samples),
+             repr(self.genotype_names),
+             repr(self.sample2genodict),]
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
 
 
 class Call:
@@ -192,17 +251,31 @@ def get_variant(vcf, num):
     if alt.find(",") >= 0:
         alt = alt.split(",")
     qual = _safe_float(vcf.matrix["QUAL"][num])
-    filter_ = vcf.matrix["FILTER"][num]
+    filter_ = vcf.matrix["FILTER"][num].split(";")
     x = _parse_info(vcf.matrix["INFO"][num])
     info_names, infodict = x
 
-    format_str = vcf.matrix["FORMAT"][num]
+    # JoinSNVMix does not have "FORMAT".
+    genotype_names = []
     sample2genodict = {}
-    for sample in vcf.samples:
-        geno_str = vcf.matrix[sample][num]
-        x = _parse_genotype(format_str, geno_str)
-        genotype_names, genodict = x
-        sample2genodict[sample] = genodict
+    if "FORMAT" in vcf.matrix:
+        format_str = vcf.matrix["FORMAT"][num]
+        for sample in vcf.samples:
+            geno_str = vcf.matrix[sample][num]
+            try:
+                x = _parse_genotype(format_str, geno_str)
+            except AssertionError, x:
+                # Mismatch: \
+                #   GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR .
+                if str(x).startswith("Mismatch"):
+                    # Make a better error message.
+                    x = str(x).split()
+                    assert len(x) == 3
+                    raise AssertionError, "Mismatch in %s:%d %s: %s %s" % (
+                        chrom, pos, sample, x[1], x[2])
+                raise
+            genotype_names, genodict = x
+            sample2genodict[sample] = genodict
 
     return Variant(
         chrom, pos, id_, ref, alt, qual, filter_, info_names, infodict,
@@ -228,21 +301,41 @@ def set_variant(vcf, num, var):
     if qual is None:
         qual = "."
     vcf.matrix["QUAL"][num] = str(qual)
-    vcf.matrix["FILTER"][num] = var.filter_
+    assert type(var.filter_) is type([])
+    vcf.matrix["FILTER"][num] = ";".join(var.filter_)
     vcf.matrix["INFO"][num] = _format_info(var.info_names, var.infodict)
-    format_str = ":".join(var.genotype_names)
-    vcf.matrix["FORMAT"][num] = format_str
-    for sample in var.samples:
-        vcf.matrix[sample][num] = _format_genotype(
-            var.genotype_names, var.sample2genodict[sample])
+    if "FORMAT" in vcf.matrix:
+        format_str = ":".join(var.genotype_names)
+        vcf.matrix["FORMAT"][num] = format_str
+        for sample in var.samples:
+            vcf.matrix[sample][num] = _format_genotype(
+                var.genotype_names, var.sample2genodict[sample])
+    else:
+        assert not var.genotype_names, var.genotype_names
+        assert not var.samples
+
+
+def add_variant(vcf, var):
+    # Add a variant to a VCFFile in place.
+    num = vcf.num_variants()
+    # Add a row to the matrix.
+    matrix = vcf.matrix
+    for key in matrix.header2annots:
+        x = matrix.header2annots[key]
+        x = x + ["."]
+        matrix.header2annots[key] = x
+    set_variant(vcf, num, var)
 
     
 def get_call(var, sample):
     # Return a Call object from a variant.
-    assert sample in var.samples, "Unknown sample: %s" % sample
+    if sample is not None:  # may be missing (e.g. JointSNVMix)
+        assert sample in var.samples, "Unknown sample: %s" % sample
 
     info_dict = var.infodict
-    geno_dict = var.sample2genodict[sample]
+    geno_dict = {}
+    if sample is not None:  # may be missing (e.g. JointSNVMix)
+        geno_dict = var.sample2genodict[sample]
 
     # Figure out the number of ALT alleles.
     num_alt_alleles = len(var.alt)
@@ -254,7 +347,9 @@ def get_call(var, sample):
 
     # For debugging.
     pos_str = "%s %s" % (var.chrom, var.pos)
-    
+
+    # This function is a mess.  Each variable can be integers or lists
+    # or None.  Should standardize and clean this up.
     if "RD" in geno_dict:
         num_ref = _safe_int(geno_dict["RD"])
     if "SGCOUNTREF_F" in geno_dict:
@@ -285,6 +380,10 @@ def get_call(var, sample):
         x = geno_dict["DP"].split(",")
         x = [_safe_int(x) for x in x]
         total_reads = x
+    if total_reads is None and "DP" in info_dict:
+        x = info_dict["DP"]
+        assert type(x) is type(0)
+        total_reads = x
     if "FREQ" in geno_dict:
         x = geno_dict["FREQ"].split(",")
         x = [_percent_to_decimal(x) for x in x]
@@ -293,7 +392,22 @@ def get_call(var, sample):
     if "GT" in geno_dict:
         call = geno_dict["GT"]
 
+    # "TR" in info_dict means different things Platypus and
+    # JointSNVMix.  Need to be sure to interpret them correctly.
+    if num_ref is None and num_alt is None and \
+           "TR" in info_dict and "TA" in info_dict:
+        assert total_reads is None
+        x = info_dict["TR"].split(",")
+        x = [_safe_int(x) for x in x]
+        assert len(x) == 1
+        num_ref = x[0]
+        x = info_dict["TA"].split(",")
+        x = [_safe_int(x) for x in x]
+        num_alt = x
+        assert len(num_alt) == 1
+        total_reads = [num_ref + num_alt[0]]
     if num_alt is None and "TR" in info_dict:
+        assert "TA" not in info_dict
         x = info_dict["TR"].split(",")
         x = [_safe_int(x) for x in x]
         # Don't bother checking.  Hard to know what Platypus is trying
@@ -352,6 +466,7 @@ def get_call(var, sample):
         for i in range(len(num_alt)):
             if num_alt[i] is None:
                 continue
+            # Assumes that num_ref is always integer.  True?
             total = num_ref + num_alt[i]
             if total:
                 x = float(num_alt[i])/total
@@ -368,8 +483,7 @@ def get_call(var, sample):
         total_reads = _safe_int(geno_dict["BFILL_COV"])
     if vaf is None and "BFILL_VAF" in geno_dict:
         vaf = _safe_float(geno_dict["BFILL_VAF"])
-        
-        
+
     # Convert lists to numbers.
     if type(num_alt) is type([]) and len(num_alt) == 1:
         num_alt = num_alt[0]
@@ -378,6 +492,13 @@ def get_call(var, sample):
     if type(vaf) is type([]) and len(vaf) == 1:
         vaf = vaf[0]
 
+    # If total_reads is 0, then sometimes does not include the other ones.
+    if total_reads == 0 and num_ref is None and num_alt is None:
+        num_ref = 0
+        num_alt = 0
+    if total_reads == 0 and vaf is None:
+        vaf = 0.0
+        
     return Call(
         num_alt_alleles, num_ref, num_alt, total_reads, vaf, call)
 
@@ -432,6 +553,81 @@ def set_call(variant, sample, call):
         raise NotImplementedError, "NextGene not implemented yet."
     else:
         raise AssertionError, "Unknown VCF format."
+
+
+def is_pass_filter(var, QUAL=None, MQ=None, QD=None, 
+                   min_DP=None, max_DP=None, FILTER_contains=None,
+                   FILTER_doesnotcontain=None):
+    # Returns True if a variant passes all these filters.
+    # <var value> > QUAL    Phred-scale quality score.  Usually 20.
+    # <var value> > MQ      Average Mapping Quality.  Usually 40.
+    # <var value> > QD      Quality by depth.  Usually 2.0.
+    # <var value> > min_DP  Minimum depth.
+    # <var value> < max_DP  Maximum depth.
+    # FILTER has FILTER_contains (string).
+    # FILTER does not have FILTER_doesnotcontain (string).
+    
+    ## if FILTER_contains is None:
+    ##     FILTER_contains = ""
+    ## if FILTER_doesnotcontain is None:
+    ##     FILTER_doesnotcontain = ""
+    ## if type(FILTER_doesnotcontain) is type(""):
+    ##     FILTER_doesnotcontain = [FILTER_doesnotcontain]
+    ## # Make sure there's no overlap between FILTER_contains and
+    ## # FILTER_doesnotcontain.
+    ## x = [x for x in FILTER_contains if x in FILTER_doesnotcontain]
+    ## assert not x, "Overlap between FILTER_contains and FILTER_doesnotcontain"
+    
+    if QUAL is not None:
+        assert var.qual is not None, "Missing QUAL: %s %d" % (
+            var.chrom, var.pos)
+        if var.qual < QUAL:
+            return False
+    if MQ is not None:
+        assert "MQ" in var.info_names, "Missing MQ: %s %d" % (
+            var.chrom, var.pos)
+        if var.infodict["MQ"] < MQ:
+            return False
+    if QD is not None:
+        assert "QD" in var.info_names, "Missing QD: %s %d" % (
+            var.chrom, var.pos)
+        if var.infodict["QD"] < QD:
+            return False
+    DP = None
+    if min_DP is not None or max_DP is not None:
+        if "DP" in var.infodict:
+            DP = var.infodict["DP"]
+    # TODO: Try other ways of getting depth.
+    if min_DP is not None:
+        assert DP is not None, "Missing DP: %s %d" % (var.chrom, var.pos)
+        if DP < min_DP:
+            return False
+    if max_DP is not None:
+        assert DP is not None, "Missing DP: %s %d" % (var.chrom, var.pos)
+        if DP > max_DP:
+            return False
+
+    if FILTER_contains:
+        if FILTER_contains not in var.filter_:
+            return False
+    if FILTER_doesnotcontain:
+        if FILTER_doesnotcontain in var.filter_:
+            return False
+    return True
+
+
+def select_variants(vcf, is_selected_fn):
+    # is_selected_fn takes a Variant function and return a bool that
+    # indicates whether to keep this variant.  Return a VCFFile.
+    from genomicode import AnnotationMatrix
+    
+    I = []
+    for i in range(vcf.num_variants()):
+        var = get_variant(vcf, i)
+        if is_selected_fn(var):
+            I.append(i)
+    matrix = AnnotationMatrix.rowslice(vcf.matrix, I)
+    return VCFFile(matrix)
 
 
 def make_coverage_matrix(vcf, samples=None):
@@ -518,6 +714,14 @@ def _percent_to_decimal(x):
 
 def _parse_info(info_str):
     # Return a tuple of info_names, info_dict
+
+    # Which elements should be int or float.
+    is_int = ["MQ0", "DP", "AN"]
+    is_float = ["FS", "QD", "SOR", "MQ"]
+    # MLEAC  2  1,1
+    # MLEAF  0.500,0.500
+    # AC     1,1
+    # AF     0.500,0.500
     
     # Parse out the INFO line.
     # Format: BRF=0.89;FR=1.0000;HP=2;HapScore=1;...
@@ -532,6 +736,10 @@ def _parse_info(info_str):
             value = None
         else:
             key, value = x
+        if key in is_int:
+            value = int(value)
+        if key in is_float:
+            value = float(value)
         d[key] = value
         names.append(key)
     return names, d
@@ -541,6 +749,20 @@ def _parse_genotype(format_str, genotype_str):
     # Return tuple of format_names, genotype_dict.
     names = format_str.split(":")
     values = genotype_str.split(":")
+
+    # Some weird conditions to handle:
+    # - Varscan sometimes generates lines like:
+    #   GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
+    #   ./.:.:3
+    # - Another Varscan:
+    #   GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
+    #   .
+    # Detect this and fix it.
+    if len(names) > 3 and len(values) in [1, 3] and \
+           names[:3] == ["GT", "GQ", "SDP"]:
+        x = len(names) - len(values)
+        values = values + ["."]*x
+
     assert len(names) == len(values), "Mismatch: %s %s" % (
         format_str, genotype_str)
     d = {}

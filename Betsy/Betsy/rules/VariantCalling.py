@@ -22,6 +22,9 @@
 # call_consensus_varscan
 # call_variants_varscan
 # call_variants_mutect
+# call_variants_strelka
+# call_variants_somaticsniper
+# call_variants_jointsnvmix
 #
 # filter_snps_only_multivcf
 # annotate_with_annovar
@@ -35,7 +38,9 @@ from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 
-CALLERS = ["none", "mpileup", "gatk", "platypus", "varscan", "mutect"]
+CALLERS = [
+    "none", "mpileup", "gatk", "platypus", "varscan", "mutect", "strelka",
+    "somaticsniper", "jointsnvmix"]
 VARTYPES = ["all", "snp", "indel", "consensus"]
 VARTYPE_NOT_CONSENSUS = [x for x in VARTYPES if x != "consensus"]
 BACKFILLS = ["no", "yes", "consensus"]
@@ -339,6 +344,60 @@ all_modules = [
         ),
 
     ModuleNode(
+        "call_variants_strelka",
+        [NGS.BamFolder, NormalCancerFile, NGS.ReferenceGenome],
+        VCFFolder,
+        OptionDef(
+            "strelka_skip_depth_filter", default="no",
+            help='Set to "yes" for exome or other targeted sequencing.'),
+        # Not sure if the BAM files need to be sorted or indexed.
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("aligner", MUST_BE, "bwa_mem", 0),
+        Consequence("caller", SET_TO, "strelka"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
+        Consequence("somatic", SET_TO, "yes"),
+        help="Use Strelka to call variants.",
+        ),
+
+    ModuleNode(
+        "call_variants_somaticsniper",
+        [NGS.BamFolder, NormalCancerFile, NGS.ReferenceGenome],
+        VCFFolder,
+        # Not sure if the BAM files need to be sorted or indexed.
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Consequence("caller", SET_TO, "somaticsniper"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO, "snp"),
+        Consequence("somatic", SET_TO, "yes"),
+        help="Use SomaticSniper to call variants.",
+        ),
+
+    ModuleNode(
+        "call_variants_jointsnvmix",
+        [NGS.BamFolder, NormalCancerFile, NGS.ReferenceGenome],
+        VCFFolder,
+        # BAM files need to be indexed, duplicates_marked.
+        # Reference must be samtools_indexed.
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("samtools_indexed", MUST_BE, "yes", 2),
+        Consequence("caller", SET_TO, "jointsnvmix"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        Consequence("somatic", SET_TO, "yes"),
+        help="Use JointSNVMix (museq) to call variants.",
+        ),
+
+    ModuleNode(
         "make_vcf_recalibration_report_snp",
         [VCFFolder, NGS.ReferenceGenome], VCFRecalibrationReport,
         OptionDef("vcf_recal_dbsnp"),
@@ -413,11 +472,10 @@ all_modules = [
         ),
 
     ModuleNode(
-        "backfill_multivcf_file",
+        "backfill_vcf_folder",
         # The first one will be backfilled with the information from
         # the second.
-        [MultiVCFFile, MultiVCFFile],
-        MultiVCFFile,
+        [VCFFolder, VCFFolder], VCFFolder,
         OptionDef(
             "backfill_common_only", default="no",
             help="Backfill the samples that are in common.  Ignore samples "

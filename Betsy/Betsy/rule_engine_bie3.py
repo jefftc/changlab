@@ -51,6 +51,8 @@ def run_pipeline(
     from Betsy import bie3
     from Betsy import config
 
+    DEBUG_RUN_PIPELINE = False
+
     user = user or getpass.getuser()
     output_path = config.OUTPUTPATH
     if not os.path.exists(output_path):
@@ -83,6 +85,7 @@ def run_pipeline(
     # 3.  (ModuleNode, node_id, antecedent_ids, transitions)
     #     Keep track of which set of antecedents to run.
     # transitions is a dictionary of (node_id, next_node_id) -> 1
+    # indicating which transitions were taken to get to this node.
     stack = []
     for (node_id, node) in start_nodes:
         x = node, node_id, None, {}
@@ -103,11 +106,22 @@ def run_pipeline(
     # Track the total analysis time.
     total_time = 0
 
-    MAX_ITER = 10000
+    #MAX_ITER = 10000
+    MAX_ITER = len(path_ids) * 5
     it = 0
     while stack:
         DEBUG_POOL = pool
         it += 1
+        #if it >= MAX_ITER:
+        #    start_ids = [x[0] for x in start_nodes]
+        #    done_ids = [x for x in pool if x not in start_ids]
+        #    all_ids = [x for x in path_ids
+        #               if x not in done_ids and x not in start_ids]
+        #    bie3.plot_network_gv(
+        #        "broken.png", network, options=user_options, bold=path_ids,
+        #        bold_transitions=path_transitions, highlight_yellow=all_ids,
+        #        highlight_green=start_ids, highlight_orange=done_ids,
+        #        verbose=True)
         assert it < MAX_ITER, "Too many iterations"
 
         # Make sure we're not stuck in an infinite loop.
@@ -119,18 +133,31 @@ def run_pipeline(
             x = [x for x in x if x[1] not in not_ready]
             assert x, "Inference error: No more nodes to run."
 
-        #x = [(x[1], bie3.get_node_name(x[0])) for x in stack]
+        if DEBUG_RUN_PIPELINE:
+            print "[%d] Stack:" % it
+            x = [(x[1], bie3.get_node_name(x[0])) for x in stack]
+            for x in x:
+                print "    %s [%d]" % (x[1], x[0])
 
         node, node_id, more_info, transitions = stack.pop()
+        if DEBUG_RUN_PIPELINE:
+            print "Processing %s [%d]." % (bie3.get_node_name(node), node_id)
+        
         if node_id not in path_ids:  # ignore if not in pipeline
+            if DEBUG_RUN_PIPELINE:
+                print "Skipping.  Not in path."
             continue
 
         # If this is the last node, then we're done.
         if node_id == 0:
             pool[node_id] = node
+            if DEBUG_RUN_PIPELINE:
+                print "Root node.  Done."
             break
         # If this node has already been run, ignore.
         if node_id in pool:
+            if DEBUG_RUN_PIPELINE:
+                print "Already run.  Skip."
             continue
         
         if isinstance(node, bie3.IdentifiedDataNode):
@@ -146,39 +173,62 @@ def run_pipeline(
                 # Module updates the transitions based on which set of
                 # antecedent IDs are used.
                 stack.append((next_node, next_id, None, transitions))
+                if DEBUG_RUN_PIPELINE:
+                    print "Adding to stack: %s [%d]." % (
+                        bie3.get_node_name(next_node), next_id)
         elif isinstance(node, bie3.ModuleNode) and more_info is None:
             # If the input data for this module doesn't exist, then
             # just try it again later.
-            all_antecedent_ids = _get_available_input_combinations(
+            x = _get_available_input_combinations(
                 network, node_id, custom_attributes, pool, path_transitions)
+            all_antecedent_ids, not_available = x
             if not all_antecedent_ids:
                 # No sets of inputs are ready to run.  Put back to the
                 # bottom of the stack and try again later.
                 stack.insert(0, (node, node_id, more_info, transitions))
+                if DEBUG_RUN_PIPELINE:
+                    print "Not ready to run yet.  Try again later."
+                    for x in not_available:
+                        input_id, reason = x
+                        if input_id not in path_ids:
+                            continue
+                        n = bie3.get_node_name(network.nodes[input_id])
+                        print "  %s %s [%d]." % (reason, n, input_id)
             else:
                 for antecedent_ids in all_antecedent_ids:
                     assert len(node.in_datatypes) == len(antecedent_ids)
                     x = node, node_id, antecedent_ids, transitions
                     stack.append(x)
+                    if DEBUG_RUN_PIPELINE:
+                        print "Ready to run.  Adding with antecedent IDs."
         elif isinstance(node, bie3.ModuleNode):
             # Run this module.
             antecedent_ids = more_info
             assert len(node.in_datatypes) == len(antecedent_ids)
+            if DEBUG_RUN_PIPELINE:
+                print "Running."
 
             x = run_module(
-                network, node_id, antecedent_ids, user_options,
+                network, path_ids, node_id, antecedent_ids, user_options,
                 pool, transitions, user, job_name, clean_up=clean_up,
                 num_cores=num_cores, verbosity=verbosity)
             if x is None:
                 # Can happen if this module has already been run.  It
                 # might've gotten added to the stack because there are
                 # many input nodes that can go into this.
+                if DEBUG_RUN_PIPELINE:
+                    print "Got None result.  Already run."
                 continue
+            if DEBUG_RUN_PIPELINE:
+                print "Successfully complete."
             # Successfully completed this module.
             next_node, next_id, run_time = x
             assert next_id is not None
-            # Update the pool, transitions.
-            pool[node_id] = node
+            # No.  Only add data nodes to the pool.  Modules may need
+            # to be run multiple times if different antecedent IDs
+            # lead to different output IDs.
+            ## Update the pool, transitions.
+            #pool[node_id] = node
             trans = transitions.copy()
             for x in antecedent_ids:
                 trans[(x, node_id)] = 1
@@ -213,8 +263,8 @@ def run_pipeline(
 
 
 def run_module(
-    network, module_id, input_ids, all_user_options, pool, transitions,
-    user, job_name='', clean_up=True, num_cores=8, verbosity=0):
+    network, path_ids, module_id, input_ids, all_user_options, pool,
+    transitions, user, job_name='', clean_up=True, num_cores=8, verbosity=0):
     # Return tuple of (IdentifiedDataNode, node_id) for the node that
     # was created.  Returns None if this module fails (no compatible
     # output nodes, or all output nodes already generated).
@@ -311,8 +361,11 @@ def run_module(
     # Figure out which node in the network is compatible with out_node.
     compatible = []  # list of (out_data_node, next_ids)
     for next_id in network.transitions[module_id]:
-        # If this has already been run, then ignore.
+        # If this ID has already been run, then ignore.
         if next_id in pool:
+            continue
+        # If this ID is not on the path, then ignore.
+        if next_id not in path_ids:
             continue
         next_node = network.nodes[next_id]
         for out_data_node in out_data_nodes:
@@ -349,10 +402,9 @@ def run_module(
     out_identified_data_node = bie3.IdentifiedDataNode(
         out_data_node, full_outfile)
 
-    
     #time_str = "[%s]" % time.strftime('%I:%M %p')
     time_str = "[%s]" % time.strftime('%a %I:%M %p')
-    
+
     # Check if this has already been run.
     if _is_module_output_complete(result_dir):
         filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
@@ -375,6 +427,10 @@ def run_module(
         sys.stdout.flush()
         return out_identified_data_node, next_id, elapsed
 
+    #_debug_is_module_output_complete(
+    #    module_name, antecedents, out_data_node.attributes, user_options,
+    #    VERSION, h, result_dir)
+    
     # Running this module now.
     x = "%s  %s" % (time_str, module_name)
     #parselib.print_split(x, prefixn=2)
@@ -435,8 +491,10 @@ def run_module(
             # somebody else just happens to create the directory again
             # while I'm checking?  Will have result_dir, but nothing
             # inside it.
-            # SOLUTION: Give them two cycles to create something.
-            time.sleep(REFRESH*2)
+            # SOLUTION: Give them a cycle to create something.
+            # DEBUG: Skip this.
+            #i_run_analysis = True; break
+            time.sleep(REFRESH+1)
             if not exists(copying_file) and not exists(success_file):
                 # Abandoned.  Delete the result dir and try again.
                 _rmtree_multi(result_dir)
@@ -651,30 +709,55 @@ def _get_available_input_combinations(
     # node_ids are in the same order as the module.datatypes.
     import bie3
 
+    module = network.nodes[module_id]
+
     # Make a list of every possible combination of inputs that goes
     # into this module.
     x = bie3._bc_to_input_ids(network, module_id, custom_attributes)
     all_input_ids = x
 
+    # For debugging, keep track of each of the input IDs that aren't
+    # available.
+    not_available = []  # list of (input_id, reason)
+
     # See if we have the data to run this module.
-    module = network.nodes[module_id]
-    available = []
+    available_input_ids = []
     for input_ids in all_input_ids:
         assert len(module.in_datatypes) == len(input_ids)
         # Make sure all these input_ids are available.
-        x = [x for x in input_ids if x in pool]
-        if len(x) != len(input_ids):
+        available = True
+        for input_id in input_ids:
+            if input_id in pool:
+                continue
+            available = False
+            x = input_id, "Not available."
+            not_available.append(x)
+        if not available:
             continue
-        # Make sure all transitions are valid.
+        available_input_ids.append(input_ids)
+
+    # Make sure all transitions are valid.
+    valid_input_ids = []
+    for input_ids in available_input_ids:
         valid = True
         for x in input_ids:
-            if module_id not in valid_transitions.get(x, []):
-                valid = False
-                break
+            if module_id in valid_transitions.get(x, []):
+                continue
+            valid = False
+            x = input_id, "Not in path."
+            not_available.append(x)
         if not valid:
             continue
-        available.append(input_ids)
-    return available
+        valid_input_ids.append(input_ids)
+
+    x = not_available
+    x = {}.fromkeys(x).keys()
+    x = sorted(x)
+    not_available = x
+
+    # Only want the input IDs that are both available and valid.
+    x = [x for x in available_input_ids if x in valid_input_ids]
+    return x, not_available
 
 
 def _hash_module(module_name, antecedents, out_attributes, user_options):
@@ -753,15 +836,114 @@ def _is_module_output_complete(path):
     if not os.path.exists(x):
         return False
     # Make sure no broken symlinks.
+    if _has_broken_symlinks(path):
+        return False
+    return True
+
+
+def _has_broken_symlinks(path):
+    import os
     for x in os.walk(path, followlinks=True):
         dirpath, dirnames, filenames = x
         for x in dirnames + filenames:
             x = os.path.join(dirpath, x)
             # Returns False for broken links.
             if not os.path.exists(x):
-                return False
-    return True
+                return True
+    return False
 
+
+def _debug_is_module_output_complete(
+    module_name, antecedents, out_attributes, user_options,
+    version, hash_, path):
+    import os
+    import sys
+    from Betsy import config
+
+    path_exists = os.path.exists(path)
+    finish_file = os.path.join(path, FINISHED_FILE)
+    finish_file_exists = os.path.exists(finish_file)
+    success_file = os.path.join(path, BETSY_PARAMETER_FILE)
+    success_file_exists = os.path.exists(success_file)
+    
+    if path_exists:
+        print "%s exists" % path
+        if finish_file_exists:
+            print "%s exists" % finish_file
+        else:
+            print "%s does not exist" % finish_file
+        if success_file_exists:
+            print "%s exists" % success_file
+        else:
+            print "%s does not exist" % success_file
+    else:
+        print "%s does not exist" % path
+
+    if path_exists and success_file_exists:
+        if _has_broken_symlinks(path):
+            print "%s has broken symlinks" % path
+        else:
+            print "%s has no broken symlinks" % path
+
+    # Look for related paths.
+    output_path = config.OUTPUTPATH
+    assert os.path.exists(output_path)
+    for prev_path in os.listdir(output_path):
+        x = os.path.join(output_path, prev_path)
+        if not os.path.isdir(x):
+            continue
+        prev_path_full = x
+        # index_bam_folder__B006__617b92ee4d313bcd0148b1ab6a91b12f
+        x = prev_path.split("__")
+        assert len(x) == 3, prev_path
+        prev_module_name, prev_version, prev_hash_ = x
+        assert prev_version.startswith("B")  # B007
+        prev_version = int(prev_version[1:])
+        if module_name != prev_module_name:
+            continue
+        if version != prev_version:
+            continue
+        if hash_ == prev_hash_:
+            continue
+        # If not successfully completed, then skip.
+        filename = os.path.join(prev_path_full, BETSY_PARAMETER_FILE)
+        if not os.path.exists(filename):
+            print "%s not completed successfully yet." % prev_path
+            continue
+        # See why this doesn't match.
+        hash_units = _make_hash_units(
+            module_name, antecedents, out_attributes, user_options)
+        prev_params = _read_parameter_file(filename)
+        prev_hash_units = prev_params["hash"]
+        # Convert from unicode to strings.
+        for i in range(len(prev_hash_units)):
+            n, v = prev_hash_units[i]
+            prev_hash_units[i] = str(n), str(v)
+
+        # BUG: file checksum not aligned.
+        print "Checking %s" % prev_path
+        header = "NAME", "VALUE", "CACHED VALUE"
+        print "\t".join(header)
+        for (name, value) in hash_units:
+            # Find the closest match in the previous hash units.
+            v1 = v2 = None
+            if name == "out_attributes":
+                v1, v2 = value.split("=")
+            for prev_name, prev_value in prev_hash_units:
+                if prev_name != name:
+                    continue
+                pv1 = pv2 = None
+                if prev_name == "out_attributes":
+                    pv1, pv2 = prev_value.split("=")
+                if pv1 != v1:
+                    continue
+                # Found match.
+                break
+            else:
+                prev_value = ""
+            x = name, value, prev_value
+            print "\t".join(x)
+    sys.exit(0)
 
 def _format_pipeline(network, transitions):
     # List of transitions (in_node_id, in_name, out_node_id, out_name).

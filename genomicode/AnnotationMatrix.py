@@ -8,6 +8,7 @@ AnnotationMatrix
 
 Functions:
 create_from_annotations
+rowslice            Slice the rows based on a list of indexes.
 colslice            Slice the columns based on a list of indexes.
 replace_headers
 uniquify_headers
@@ -34,7 +35,7 @@ class AnnotationMatrix:
         self.headers = headers[:]
         self.headers_h = headers_h[:]
         self.header2annots = header2annots.copy()
-        self.headerlines = headerlines[:]
+        self.headerlines = headerlines[:]  # no newlines
     #def get_annots(self, header):
     #    # Return a list of the annotations for this header.
     #    h = self.normalize_header(header)
@@ -57,6 +58,10 @@ class AnnotationMatrix:
         if h is None:
             raise KeyError, header
         return self.header2annots[h]
+    def __contains__(self, header):
+        if self.normalize_header(header) is None:
+            return False
+        return True
     def normalize_header(self, header, index_base1=False):
         # Return the hashed header.  header may be either a header,
         # hashed header, or a 0-based index.  If index_base1 is True,
@@ -129,6 +134,19 @@ def colslice(MATRIX, I):
         header2annots[nh] = MATRIX.header2annots[oh]
     x = AnnotationMatrix(
         new_headers, new_headers_h, header2annots, MATRIX.headerlines)
+    return x
+
+
+def rowslice(MATRIX, I):
+    num_annots = MATRIX.num_annots()
+    for i in I:
+        assert i >= 0 and i < num_annots
+    header2annots = {}
+    for header, old_annots in MATRIX.header2annots.iteritems():
+        new_annots = [old_annots[i] for i in I]
+        header2annots[header] = new_annots
+    x = AnnotationMatrix(
+        MATRIX.headers, MATRIX.headers_h, header2annots, MATRIX.headerlines)
     return x
 
 
