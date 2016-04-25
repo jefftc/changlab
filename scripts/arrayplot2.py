@@ -72,6 +72,31 @@ MIN_FONTSIZE = 6
 MAX_MEGAPIXELS = 256  # No more than 256 megapixel plot.
 
 
+from genomicode import colorlib
+SCHEME2FN = [
+    ("red", colorlib.red_shade),
+    ("white", colorlib.white_shade),
+    ("red-green", colorlib.rg_array_colors),
+    ("blue-yellow", colorlib.by_array_colors),
+    ("red-green-soft", colorlib.red_green_soft),
+    ("red-blue-soft", colorlib.red_blue_soft),
+    ("matlab", colorlib.matlab_colors),
+    ("bild", colorlib.bild_colors),
+    ("genepattern", colorlib.broad_colors),
+    ("genespring", colorlib.genespring_colors),
+    ("yahoo", colorlib.yahoo_weather_colors),
+    ("brewer-prgn-div", colorlib.brewer_prgn_div),
+    ("brewer-rdbu-div", colorlib.brewer_rdbu_div),
+    ("brewer-rdylbu-div", colorlib.brewer_rdylbu_div),
+    ("brewer-rdylgn-div", colorlib.brewer_rdylgn_div),
+    ("brewer-spectral-div", colorlib.brewer_spectral_div),
+    ("brewer-blues-seq", colorlib.brewer_blues_seq),
+    ("brewer-greens-seq", colorlib.brewer_greens_seq),
+    ("brewer-reds-seq", colorlib.brewer_reds_seq),
+    ("brewer-ylorbr-seq", colorlib.brewer_ylorbr_seq),
+    ]
+
+
 class ClusterData:
     def __init__(
         self, gene_tree, array_tree, gene_tree_cluster, array_tree_cluster,
@@ -120,8 +145,8 @@ class PlotCoords:
 
 class HeatmapLayout:
     def __init__(
-        self, nrow, ncol, boxwidth, boxheight, scale_border, grid,
-        inverse_colors, black0, pvalue_cutoff, color_fn):
+        self, nrow, ncol, boxwidth, boxheight, scale_border,
+        grid, grid_scale, inverse_colors, black0, pvalue_cutoff, color_fn):
         # Looks OK with even 1 pixel.
         #MIN_GRID = 1
         #if boxwidth < MIN_GRID or boxheight < MIN_GRID:
@@ -135,7 +160,7 @@ class HeatmapLayout:
         self.pvalue_cutoff = pvalue_cutoff
         self.color_fn = color_fn
         self.BORDER = int(round(min(boxwidth, boxheight)*0.10) * scale_border)
-        self.GRID_SIZE = int(round(min(boxwidth, boxheight)*0.05))
+        self.GRID_SIZE = int(round(min(boxwidth, boxheight)*0.05*grid_scale))
         if not grid:
             self.GRID_SIZE = 0
         assert self.GRID_SIZE <= self.BORDER
@@ -174,7 +199,8 @@ class HeatmapLayout:
 class ColorbarLayout:
     def __init__(
         self, cb_width, cb_height, signal_0, signal_1,
-        ticks, tick_labels, label_sizes, fontsize, inverse_colors, color_fn):
+        ticks, tick_labels, label_sizes, fontsize, inverse_colors,
+        color_fn):
         TICK_SIZE = 0.15       # relative to BAR_SHORT
         TICK_BUFFER = 0.15     # relative to BAR_SHORT
 
@@ -638,37 +664,21 @@ def process_data_set(MATRIX, scale, gain, autoscale):
 
 def get_color_scheme_fn(name):
     # Choose the color scheme.
-    from genomicode import colorlib
-
-    scheme2fn = {
-        "red" : colorlib.red_shade,
-        "white" : colorlib.white_shade,
-        "red-green" : colorlib.rg_array_colors,
-        "blue-yellow" : colorlib.by_array_colors,
-        "red-green-soft" : colorlib.red_green_soft,
-        "red-blue-soft" : colorlib.red_blue_soft,
-        "matlab" : colorlib.matlab_colors,
-        "bild" : colorlib.bild_colors,
-        "genepattern" : colorlib.broad_colors,
-        "genespring" : colorlib.genespring_colors,
-        "yahoo" : colorlib.yahoo_weather_colors,
-        "brewer-prgn-div" : colorlib.brewer_prgn_div,
-        "brewer-rdbu-div" : colorlib.brewer_rdbu_div,
-        "brewer-rdylbu-div" : colorlib.brewer_rdylbu_div,
-        "brewer-rdylgn-div" : colorlib.brewer_rdylgn_div,
-        "brewer-spectral-div" : colorlib.brewer_spectral_div,
-        }
-    assert name in scheme2fn, "Unknown color scheme: %s" % name
-    color_fn = scheme2fn[name]
-    return color_fn
+    fn = None
+    for n, f in SCHEME2FN:
+        if n == name:
+            fn = f
+            break
+    assert fn, "Unknown color scheme: %s" % name
+    return fn
 
 
 def make_layout(
     MATRIX, cluster_data, plotlib,
     # User defined options:
     # Heatmap
-    boxwidth, boxheight, scale_border, grid, color_scheme, flip_colors,
-    signal_0, signal_1, black0, pvalue_cutoff,
+    boxwidth, boxheight, scale_border, grid, grid_scale, color_scheme,
+    flip_colors, signal_0, signal_1, black0, pvalue_cutoff,
     # Label
     label_genes, label_arrays, gene_label_header,
     scale_gene_labels, scale_array_labels,
@@ -679,7 +689,8 @@ def make_layout(
     gene_tree_scale, gene_tree_thickness,
     array_tree_scale, array_tree_thickness,
     # Colorbar
-    colorbar, cb_horizontal, cb_scale_height, cb_scale_width, cb_scale_font,
+    colorbar, cb_percent, cb_horizontal, cb_scale_height, cb_scale_width,
+    cb_scale_font,
     ):
     from genomicode import colorlib
 
@@ -687,7 +698,8 @@ def make_layout(
     color_fn = get_color_scheme_fn(color_scheme)
     hm_layout = HeatmapLayout(
         MATRIX.nrow(), MATRIX.ncol(), boxwidth, boxheight,
-        scale_border, grid, flip_colors, black0, pvalue_cutoff, color_fn)
+        scale_border, grid, grid_scale, flip_colors, black0, pvalue_cutoff,
+        color_fn)
 
     # Make the layout for the colorbar.
     cb_layout = None
@@ -698,11 +710,13 @@ def make_layout(
             cb_horizontal)
         width, height = x
         x = _calc_colorbar_ticks(
-            width, height, signal_0, signal_1, cb_scale_font, plotlib)
-        ticks, tick_labels, label_sizes, fontsize = x
+            width, height, signal_0, signal_1, cb_percent, cb_scale_font,
+            plotlib)
+        t_signal_0, t_signal_1, ticks, tick_labels, label_sizes, fontsize = x
         cb_layout = ColorbarLayout(
-            width, height, signal_0, signal_1,
-            ticks, tick_labels, label_sizes, fontsize, flip_colors, color_fn)
+            width, height, t_signal_0, t_signal_1,
+            ticks, tick_labels, label_sizes, fontsize,
+            flip_colors, color_fn)
 
     # Make layouts for the dendrograms.
     gd_layout = ad_layout = None
@@ -1557,7 +1571,7 @@ def _calc_colorbar_size(
 
 
 def _calc_colorbar_ticks(
-    cb_width, cb_height, signal_0, signal_1, scale_font, plotlib):
+    cb_width, cb_height, signal_0, signal_1, as_percent, scale_font, plotlib):
     import math
     from genomicode import graphlib
 
@@ -1565,6 +1579,9 @@ def _calc_colorbar_ticks(
     MAX_TICKS = 20
 
     vertical = cb_height > cb_width
+
+    if as_percent:
+        signal_0, signal_1 = signal_0*100, signal_1*100
 
     # Calculate the minimum and maximum number to label.
     assert not math.isnan(signal_0) and not math.isnan(signal_1)
@@ -1596,7 +1613,8 @@ def _calc_colorbar_ticks(
         x = [max(len(str(abs(x)%1))-2, 0) for x in ticks]
         digits = max(x)
         tick_labels = ["%.*f" % (digits, x) for x in ticks]
-
+        if as_percent:
+            tick_labels = ["%s%%" % x for x in tick_labels]
         # Calculate the sizes of the tick labels.
         label_sizes = [plotlib.get_text_size(x, fontsize) for x in tick_labels]
 
@@ -1612,7 +1630,7 @@ def _calc_colorbar_ticks(
         num_ticks = min(num_ticks, len(ticks))-1
     assert num_ticks, "I couldn't place any tick marks."
 
-    return ticks, tick_labels, label_sizes, fontsize
+    return signal_0, signal_1, ticks, tick_labels, label_sizes, fontsize
 
 
 _COLOR_CACHE = {}  # (fn, num) -> list
@@ -1838,14 +1856,8 @@ def main():
         help="Add to the Python library search path.")
     # XXX need way to save processed matrix to a file
 
-    COLOR_SCHEMES = [
-        "red", "white", "red-green", "red-green-soft", "red-blue-soft",
-        "blue-yellow", "matlab", "bild", "genepattern", "genespring",
-        "yahoo",
-        "brewer-prgn-div", "brewer-rdbu-div", "brewer-rdylbu-div",
-        "brewer-rdylgn-div", "brewer-spectral-div",
-        ]
     DEFAULT_COLOR_SCHEME = "brewer-rdylbu-div"
+    COLOR_SCHEMES = [x[0] for x in SCHEME2FN]
     assert DEFAULT_COLOR_SCHEME in COLOR_SCHEMES
 
     group = OptionGroup(parser, "Heatmap")
@@ -1892,7 +1904,10 @@ def main():
         "--grid_color",
         help="Specify the color of the grid.  "
         "Format: <R>,<G>,<B>  (e.g. 128,128,128)")
-
+    group.add_option(
+        "--scale_grid", default=1.0, type=float, 
+        help="Scale the thickness of the grid.  Default: 1.0")
+    
     group = OptionGroup(parser, "p values")
     parser.add_option_group(group)
     group.add_option(
@@ -1983,6 +1998,9 @@ def main():
     group.add_option(
         "--colorbar", action="store_true", help="Add a colorbar to the plot.")
     group.add_option(
+        "--cb_percent", action="store_true",
+        help="Label colorbar as percent.")
+    group.add_option(
         "--cb_horizontal", action="store_true",
         help="Make the colorbar horizontal.")
     group.add_option(
@@ -2043,6 +2061,7 @@ def main():
         border_color = _parse_color(options.border_color)
     if options.grid_color:
         grid_color = _parse_color(options.grid_color)
+    assert options.scale_grid > 0 and options.scale_grid < 100
 
     assert options.gene_cluster_width > 0
     assert len(options.gene_cluster_color) <= len(options.gene_cluster_file), \
@@ -2079,7 +2098,8 @@ def main():
     layout = make_layout(
         MATRIX, cluster_data, plotlib,
         # Heatmap
-        options.width, options.height, options.scale_border, options.grid,
+        options.width, options.height, options.scale_border,
+        options.grid, options.scale_grid,
         options.color_scheme, options.inverse,
         signal_0, signal_1,  options.black0,
         options.pvalue,
@@ -2094,7 +2114,7 @@ def main():
         options.gene_tree_scale, options.gene_tree_thickness,
         options.array_tree_scale, options.array_tree_thickness,
         # Colorbar
-        options.colorbar, options.cb_horizontal,
+        options.colorbar, options.cb_percent, options.cb_horizontal,
         options.cb_height, options.cb_width, options.cb_font_scale,
         )
 

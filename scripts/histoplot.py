@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 def _parse_breaks_seq(s):
     # Format: <start>,<stop>,<skip>
     x = s.split(",")
@@ -40,6 +41,11 @@ def write_prism_file(filename, hist):
     assert len(breaks) == len(density)
     assert len(breaks) == len(mids)
 
+    # density from R doesn't sum up to 1.  (e.g. sum to 2).
+    # Recalculate so that it sums to 1.
+    total = sum(counts)
+    for i in range(len(density)):
+        density[i] = counts[i] / float(total)
     header = ["Mids", "Left", "Counts", "Density"]
     x = [mids, breaks, counts, density]
     x = jmath.transpose(x)
