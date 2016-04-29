@@ -115,7 +115,7 @@ def _parse_h(handle):
     
     for line in handle:
         assert not line.startswith("Unrecognized"), line.rstrip()
-        assert "=" in line
+        assert "=" in line, line.strip()
         key, value = line.split("=", 1)
         key, value = key.strip(), value.strip()
         if not key and not value:
