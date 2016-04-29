@@ -282,8 +282,7 @@ def run_module(
 
     assert user
     output_path = config.OUTPUTPATH
-    assert os.path.exists(output_path), \
-           'the output_path %s does not exist' % output_path
+    filelib.assert_exists(output_path)
 
     # If there are no possible nodes to generate, return an empty list.
     assert network.transitions[module_id]
@@ -806,8 +805,8 @@ def _make_hash_units(module_name, antecedents, out_attributes, user_options):
         x = "out_attributes", x
         hash_units.append(x)
     
-    attrs = out_attributes.copy()
-    attrs.update(user_options)
+    #attrs = out_attributes.copy()
+    #attrs.update(user_options)
     for key in sorted(user_options):
         value = user_options[key]
         if type(value) is not type("") and operator.isSequenceType(value):

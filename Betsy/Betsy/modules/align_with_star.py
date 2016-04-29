@@ -45,16 +45,16 @@ class Module(AbstractModule):
         for x in fastq_files:
             sample, pair1, pair2 = x
             out_prefix = "%s." % sample
-            sam_filename = os.path.join(
-                out_path, "%sAligned.out.sam" % out_prefix)
+            bam_filename = os.path.join(
+                out_path, "%sAligned.out.bam" % out_prefix)
             log_filename = os.path.join(out_path, "%s.log" % sample)
-            x = sample, pair1, pair2, out_prefix, sam_filename, log_filename
+            x = sample, pair1, pair2, out_prefix, bam_filename, log_filename
             jobs.append(x)
 
         # Make the commands.
         commands = []
         for x in jobs:
-            sample, pair1, pair2, out_prefix, sam_filename, log_filename = x
+            sample, pair1, pair2, out_prefix, bam_filename, log_filename = x
 
             full_out_prefix = os.path.join(out_path, out_prefix)
 
@@ -63,6 +63,7 @@ class Module(AbstractModule):
                 "--genomeDir", mlib.sq(reference_path),
                 "--outFileNamePrefix", full_out_prefix,
                 "--runThreadN", num_cores,
+                "--outSAMtype", "BAM Unsorted",
                 ]
             if not is_stranded:
                 x += ["--outSAMstrandField", "intronMotif"]
@@ -87,10 +88,10 @@ class Module(AbstractModule):
         # Run each job and make sure outfile exists.
         assert len(commands) == len(jobs)
         for i, cmd in enumerate(commands):
-            sample, pair1, pair2, out_prefix, sam_filename, log_filename = \
+            sample, pair1, pair2, out_prefix, bam_filename, log_filename = \
                     jobs[i]
             parallel.sshell(cmd, path=out_path)
-            filelib.assert_exists_nz(sam_filename)
+            filelib.assert_exists_nz(bam_filename)
             
         # Make sure the analysis completed successfully.
         #x = [x[-2] for x in jobs]  # sam_filename

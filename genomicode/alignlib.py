@@ -435,14 +435,18 @@ def get_bowtie2_version():
 
 def make_bowtie2_command(
     reference_fa, fastq_file1, fastq_file2=None, orientation=None,
-    sam_file=None, num_threads=None, skip_reads=None, max_reads=None):
-    # Orientation must be None, "ff", "fr", "rf"
+    sam_file=None, bam_file=None, num_threads=None, skip_reads=None,
+    max_reads=None):
+    # Orientation must be None, "ff", "fr", "rf".
+    # Will save to either sam file or bam file.  Either sam_file or
+    # bam_file, or neither, must be given.
     import os
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
 
     assert os.path.exists(fastq_file1)
+    assert not (sam_file and bam_file)
     if fastq_file2:
         assert os.path.exists(fastq_file2)
     if orientation:
@@ -488,7 +492,20 @@ def make_bowtie2_command(
         cmd += [
             "-S", sq(sam_file),
             ]
-    return " ".join(cmd)
+    cmd = " ".join(cmd)
+    if bam_file:
+        # samtools view -bS -o <bam_filename> <sam_filename>
+        samtools = filelib.which_assert(config.samtools)
+        x = [
+            sq(samtools),
+            "view",
+            "-bS",
+            "-o", sq(bam_file),
+            "-",
+            ]
+        x = " ".join(x)
+        cmd = "%s | %s" % (cmd, x)
+    return cmd
 
 
 def parse_bowtie2_output(filename):
@@ -722,8 +739,8 @@ def get_bwa_version():
 
 
 def make_bwa_mem_command(
-    reference_fa, sam_filename, err_filename, fastq_file1,
-    fastq_file2=None, num_threads=None):
+    reference_fa, err_filename, fastq_file1,
+    fastq_file2=None, sam_filename=None, bam_filename=None, num_threads=None):
     import os
     from genomicode import config
     from genomicode import filelib
@@ -735,10 +752,14 @@ def make_bwa_mem_command(
         assert os.path.exists(fastq_file2)
     if num_threads is not None:
         assert num_threads >= 1 and num_threads < 100
+    assert sam_filename or bam_filename
+    assert not (sam_filename and bam_filename)
 
     bwa = filelib.which_assert(config.bwa)
 
     # bwa mem -t <num_cores> ref.fa read1.fq read2.fq > aln-pe.sam
+    # bwa mem -t <num_cores> ref.fa read1.fq read2.fq 2> <err_file>
+    #   | samtools view -bS -o aln_pe.bam -
     sq = parallel.quote
     cmd = [sq(bwa), "mem"]
     if num_threads:
@@ -747,10 +768,16 @@ def make_bwa_mem_command(
     cmd += [sq(fastq_file1)]
     if fastq_file2:
         cmd += [sq(fastq_file2)]
-    cmd += [
-        "1>", sq(sam_filename),
-        "2>", sq(err_filename),
-        ]
+    cmd += ["2>", sq(err_filename),]
+    if sam_filename:
+        cmd += ["1>", sq(sam_filename),]
+    elif bam_filename:
+        samtools = filelib.which_assert(config.samtools)
+        cmd += [
+            "|", sq(samtools), "view", "-bS", "-o", sq(bam_filename), "-",
+            ]
+    else:
+        raise AssertionError
     return " ".join(cmd)
 
 

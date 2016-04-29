@@ -1415,9 +1415,9 @@ def main():
         args.network_png, args.prune_network, verbose_network):
         return
 
-    #plot_network_show_pipelines(
-    #    args.network_png, network, paths, user_options=user_options,
-    #    verbose=args.verbose)
+    plot_network_show_pipelines(
+        args.network_png, network, paths, user_options=user_options,
+        verbose=args.verbose)
 
     print "Running the analysis."
     sys.stdout.flush()

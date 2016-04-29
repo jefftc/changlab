@@ -233,8 +233,8 @@ all_modules = [
         "pretty safe."
         ),
     ModuleNode(
-        "extract_star_samfolder",
-        STARAlignmentFolder, NGS.SamFolder,
+        "extract_star_bamfolder",
+        STARAlignmentFolder, NGS.BamFolder,
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Consequence("aligner", SET_TO, "star"),

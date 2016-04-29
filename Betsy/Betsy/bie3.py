@@ -152,6 +152,12 @@ debug_print
 # _dict_to_object           Use for writing and reading json file
 
 
+DEBUG_BC = False
+DEBUG_PRUNE_PATHS = False
+DEBUG_FIND_PATHS = False
+
+
+
 # These are also used in cbie3module.c.  If these values change, you
 # need to change that file too!
 TYPE_ATOM = 100
@@ -198,8 +204,6 @@ CONST2STR = {
     SAME_AS_CONSTRAINT: "SAME_AS_CONSTRAINT",
 }
 
-DEBUG = False
-#DEBUG = True
 
 # When backchaining, should we allow the attributes of the input data
 # to be all possible values, or fix it to the default?  All possible
@@ -782,6 +786,8 @@ def get_node_name(node):
         return node.datatype.name
     elif isinstance(node, ModuleNode):
         return node.name
+    assert type(node) is not type(0), \
+           "Cannot get name of node.  Was passed integer."
     raise AssertionError, "Cannot get name of node."
 
 
@@ -1421,7 +1427,7 @@ def _complete_network(network, custom_attributes):
     import copy
     import itertools
 
-    debug_print("Completing network.")
+    debug_print(DEBUG_BC, "Completing network.")
 
     network = copy.deepcopy(network)
     nodeid2parents = _make_parents_dict(network)
@@ -1485,6 +1491,7 @@ def _complete_network(network, custom_attributes):
             network.transitions[id_].append(module_id)
             added.append(id_)
             debug_print(
+                DEBUG_BC,
                 "Completing DataNode %s [%d] -> ModuleNode %s [%d]." % (
                     network.nodes[id_].datatype.name, id_,
                     network.nodes[module_id].name, module_id))
@@ -2305,6 +2312,10 @@ def _find_paths_by_start_ids_hh(
     #else:
     #    node_name = node.name
 
+    debug_print(
+        DEBUG_FIND_PATHS, 
+        "[%d] %s finding paths." % (node_id, get_node_name(node)))
+
     all_paths = {}
     #has_missing = True  # Optimization
     if isinstance(node, DataNode):
@@ -2336,6 +2347,10 @@ def _find_paths_by_start_ids_hh(
         # combo is a list of node_ids.
         # Some combos will be seen twice, but the vast majority of the
         # time, each combo is evaluated only once.
+        x = [get_node_name(network.nodes[x]) for x in combo_ids]
+        debug_print(
+            DEBUG_FIND_PATHS, "[%d] Backchaining to %s %s." % (
+                node_id, combo_ids, x))
 
         # For each input, get a list of the Pathway objects.
         innum2branch = [
@@ -2547,6 +2562,9 @@ def _find_paths_by_start_ids_hh(
             #    has_missing = False
             assert path not in all_paths
 
+            debug_print(
+                DEBUG_FIND_PATHS, "[%d] Adding path %s." % (node_id, path))
+
             all_paths[path] = 1
 
     # If any of the paths have no missing nodes, then remove all paths
@@ -2585,10 +2603,14 @@ def _find_paths_by_start_ids_hh(
         # Also don't prune by superset pipelines.  Can't be sure if
         # the pipelines aren't finished yet.
         #orig_paths = paths
+        debug_print(DEBUG_FIND_PATHS,
+                    "[%d] Pruning %d path(s)." % (node_id, len(paths)))
         paths = prune_paths(
             paths, network, custom_attributes,
             prune_custom_attributes=False, prune_superset=False,
             ignore_incomplete_pathway=True, prune_most_inputs=False)
+        debug_print(DEBUG_FIND_PATHS,
+                    "[%d] Final %d path(s)." % (node_id, len(paths)))
     return paths
 
 
@@ -2690,55 +2712,64 @@ def prune_paths(paths, network, custom_attributes,
     # pruning.
     # Just try different orders until I find the fastest.
 
-    # Track the number of pathways pruned.  For debugging.
-    pruned = []  # list of (name, num_paths_start, num_paths_end)
-
     ns = len(paths)
     paths = _prune_by_generated_inputs(network, paths)
-    x = "_prune_by_generated_inputs", ns, len(paths)
-    pruned.append(x)
+    name = "_prune_by_generated_inputs"
+    debug_print(
+        DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (name, ns, len(paths)))
 
     ns = len(paths)
     paths = _prune_by_complete_inputs(network, paths)
-    x = "_prune_by_complete_inputs", ns, len(paths)
-    pruned.append(x)
+    name = "_prune_by_complete_inputs"
+    debug_print(
+        DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (name, ns, len(paths)))
 
     if prune_most_inputs:
         ns = len(paths)
         paths = _prune_by_most_inputs(network, paths)
-        x = "_prune_by_most_inputs", ns, len(paths)
-        pruned.append(x)
+        name = "_prune_by_most_inputs"
+        debug_print(
+            DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (
+                name, ns, len(paths)))
     
     if prune_custom_attributes:
         ns = len(paths)
         paths = _prune_by_custom_attributes(
             network, custom_attributes, paths, nodeid2parents)
-        x = "_prune_by_custom_attributes", ns, len(paths)
-        pruned.append(x)
+        name = "_prune_by_custom_attributes"
+        debug_print(
+            DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (
+                name, ns, len(paths)))
 
     ns = len(paths)
     paths = _prune_alternate_attributes2(
         network, custom_attributes, paths, nodeid2parents)
-    x = "_prune_alternate_attributes2", ns, len(paths)
-    pruned.append(x)
+    name = "_prune_alternate_attributes2"
+    debug_print(
+        DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (name, ns, len(paths)))
 
     ns = len(paths)
     paths = _prune_alternate_attributes1(
         network, custom_attributes, paths, nodeid2parents,
         ignore_incomplete_pathway)
-    x = "_prune_alternate_attributes1", ns, len(paths)
-    pruned.append(x)
+    name = "_prune_alternate_attributes1"
+    debug_print(
+        DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (name, ns, len(paths)))
 
     if prune_superset:
         ns = len(paths)
-        paths = _prune_superset_pipelines(network, paths)
-        x = "_prune_superset_pipelines", ns, len(paths)
-        pruned.append(x)
+        paths = _prune_superset_pipelines(network, paths, nodeid2parents)
+        name = "_prune_superset_pipelines"
+        debug_print(
+            DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (
+                name, ns, len(paths)))
+
 
     ns = len(paths)
     paths = _prune_parallel_pipelines(network, paths, nodeid2parents)
-    x = "_prune_parallel_pipelines", ns, len(paths)
-    pruned.append(x)
+    name = "_prune_parallel_pipelines"
+    debug_print(
+        DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (name, ns, len(paths)))
 
     return paths
 
@@ -3527,6 +3558,7 @@ def _list_alternate_attributes2(
     network, module_id, custom_attributes, path_ids, transitions,
     nodeid2parents):
     # Return list of (module_id, parent_ids, attr_name, attr_values).
+    # attr_values can be ATOM or ENUM.
     import itertools
     
     # Fastq.trimmed=no                              -> align
@@ -3535,8 +3567,6 @@ def _list_alternate_attributes2(
     # At least 2 DataNodes of the same DataType must transition
     # into this ModuleNode.
     x = nodeid2parents[module_id]
-    if len(x) < 2:
-        return []
     x = [x for x in x if x in path_ids]
     if len(x) < 2:
         return []
@@ -3556,7 +3586,8 @@ def _list_alternate_attributes2(
     if len(parent_ids) < 2:
         return []
 
-    # Previous DataNodes must be in different combinations.
+    # Previous DataNodes must be alternates (i.e. be the same input in
+    # different combinations.
     inputnum2parentids = {}  # which input to module -> list of parent IDs
     combos = _bc_to_input_ids(
         network, module_id, custom_attributes, nodeid2parents=nodeid2parents)
@@ -3596,9 +3627,9 @@ def _list_alternate_attributes2(
             continue
         name = attr_names[0]
 
-        # Make sure the attribute is not SAME_AS_CONSTRAINT.  Module
-        # should not be passing the value of this attribute along.
-        # Not sure whether BASED_ON_DATA should be ignored too?
+        # Ignore this attribute if it is SAME_AS_CONSTRAINT.  Module
+        # does not alter the value of the attribute.
+        # Example??
         module_passes_attr = False
         for cons in network.nodes[module_id].consequences:
             if cons.name == name and \
@@ -3607,6 +3638,28 @@ def _list_alternate_attributes2(
                 break
         if module_passes_attr:
             continue
+
+        # Do not prune DataNodes whose values are BASED_ON_DATA.  It's
+        # not for this module to choose the value.
+        # FastQ -> is_compressed -> FastQ.comp=gz -> merge_reads
+        #                        -> FastQ.comp=no ->
+        based_on_data = False
+        for pid in parent_ids:
+            # Get the module that generated this DataNode.
+            x = nodeid2parents.get(pid, [])
+            x = [x for x in x if x in path_ids]
+            # No module generated this DataNode.  Must be leaf.  Thus,
+            # not BASED_ON_DATA.
+            if not x:
+                continue
+            for mid in x:
+                for cons in network.nodes[mid].consequences:
+                    if cons.name == name and \
+                           cons.behavior in [BASED_ON_DATA]:
+                        based_on_data = True
+                        break
+        if based_on_data:
+            continue
         
         values = [network.nodes[x].attributes[name] for x in parent_ids]
         x = module_id, parent_ids, name, values
@@ -3614,7 +3667,7 @@ def _list_alternate_attributes2(
     return alt_attributes
 
 
-def _prune_superset_pipelines(network, paths):
+def _prune_superset_pipelines(network, paths, nodeid2parents):
     # Remove pipelines that are just supersets of another pipeline.
     import itertools
 
@@ -3628,6 +3681,7 @@ def _prune_superset_pipelines(network, paths):
     for (i, j) in itertools.product(range(len(paths)), range(len(paths))):
         if i == j:
             continue
+        
         # Optimization: Check for length here to avoid function call.
         if path2length[i] <= path2length[j]:
             continue
@@ -3636,14 +3690,14 @@ def _prune_superset_pipelines(network, paths):
         b1, b2 = paths_node_ids_bit[i], paths_node_ids_bit[j]
         if (b1 | b2) != b1:
             continue
-        if _is_superset_pipeline(network, paths[i], paths[j]):
+        if _is_superset_pipeline(network, paths[i], paths[j], nodeid2parents):
             superset.append(i)
     superset = {}.fromkeys(superset)
     paths = [x for (i, x) in enumerate(paths) if i not in superset]
     return paths
 
 
-def _is_superset_pipeline(network, path_1, path_2):
+def _is_superset_pipeline(network, path_1, path_2, nodeid2parents):
     # Test if path_1 is superset, given path_2.  I.e. path_1 has more
     # processing steps that are not necessary in path_2.
     
@@ -3680,26 +3734,43 @@ def _is_superset_pipeline(network, path_1, path_2):
             network, start_id, path_1.node_ids, start_ids_2):
             return False
 
-    # Looks like a superset, but it's not.
-    # is_compressed -> Fastq (yes) -> uncompress -> Fastq (no)
-    # is_compressed                              -> Fastq (no)
+    # Is a superset:
+    #   is_compressed -> Fastq (yes) -> uncompress -> Fastq (no) -> merge
+    #   is_compressed -> Fastq (yes)                             -> merge
+    # Looks like a superset, but it's not:
+    #   is_compressed -> Fastq (yes) -> uncompress -> Fastq (no)
+    #   is_compressed                              -> Fastq (no)
     super_ids = [x for x in path_1.node_ids if x not in path_2.node_ids]
     assert super_ids
     # If any of the nodes in the super_ids list is downstream of a
     # Module with a BASED_ON_DATA Consequence, then this is not a
     # superset.
-    for (node_id, node) in enumerate(network.nodes):
-        if node_id in super_ids: # ignore if this is part of the superset
+    for node_id in super_ids:
+        if not isinstance(network.nodes[node_id], DataNode):
             continue
-        if not isinstance(node, ModuleNode):
-            continue
-        x = [x for x in node.consequences if x.behavior == BASED_ON_DATA]
+        x = nodeid2parents.get(node_id, [])
+        x = [x for x in x if x in path_1.node_ids]
+        x = [x for x in x if node_id in path_1.transitions[x]]
         if not x:
             continue
-        next_ids = network.transitions.get(node_id, [])
-        x = [x for x in next_ids if x in super_ids]
-        if x:
-            return False
+        for mid in x:
+            node = network.nodes[mid]
+            x = [x for x in node.consequences if x.behavior == BASED_ON_DATA]
+            if x:
+                return False
+    
+    #for (node_id, node) in enumerate(network.nodes):
+    #    if node_id in super_ids: # ignore if this is part of the superset
+    #        continue
+    #    if not isinstance(node, ModuleNode):
+    #        continue
+    #    x = [x for x in node.consequences if x.behavior == BASED_ON_DATA]
+    #    if not x:
+    #        continue
+    #    next_ids = network.transitions.get(node_id, [])
+    #    x = [x for x in next_ids if x in super_ids]
+    #    if x:
+    #        return False
     return True
 
 
@@ -4720,10 +4791,10 @@ def write_network(file_or_handle, network):
     json.dump(network, handle, default=_object_to_dict, indent=2)
 
 
-def debug_print(s):
+def debug_print(print_, s):
     from genomicode import parselib
 
-    if not DEBUG:
+    if not print_:
         return
     parselib.print_split(s)
 
@@ -4823,15 +4894,17 @@ def _bc_to_inputs(
             all_inputs.append([x])
 
         # Optimization: Don't call debug_print and sorted.
-        if not DEBUG:
+        if not DEBUG_BC:
             continue
         debug_print(
+            DEBUG_BC,
             "Backchaining %s (input=%d) -> %s -> %s." %
             (in_datatype.name, in_num, module.name, out_datatype.name))
-        #debug_print("Generating a %s with attributes:" % in_datatype.name)
         for name in sorted(attributes):
-            debug_print("  %s=%s (%s)" %
-                        (name, attributes[name], attrsource[name]))
+            debug_print(
+                DEBUG_BC,
+                "  %s=%s (%s)" %
+                (name, attributes[name], attrsource[name]))
 
     combos = [tuple(x) for x in itertools.product(*all_inputs)]
     #return all_inputs
@@ -5484,7 +5557,7 @@ def _is_valid_output(module, data):
         #    (module.name, data.datatype.name))
         return False
 
-    debug_print("Testing if module %s can produce data %s." %
+    debug_print(DEBUG_BC, "Testing if module %s can produce data %s." %
                 (repr(module.name), str(data)))
     # If any of the consequences conflict, then the module can't produce
     # this data object.
@@ -5542,23 +5615,26 @@ def _is_valid_output(module, data):
                 msg = ("Consequence '%s' requires '%s', "
                        "but data contains '%s'." %
                        (consequence.name, outc_value, data_value))
-                debug_print(msg)
+                debug_print(DEBUG_BC, msg)
                 return False
         elif case == 2:
             # ModuleNode can produce any of a list of values.  Check
             # if the data's value can be produced by the module.
             if data_value not in outc_value:
-                debug_print("Consequence %s conflicts." % consequence.name)
+                debug_print(
+                    DEBUG_BC, "Consequence %s conflicts." % consequence.name)
                 return False
         elif case == 3:
             # ModuleNode produces a specific value.  DataNode could be
             # one of many values.
             if outc_value not in data_value:
-                debug_print("Consequence %s conflicts." % consequence.name)
+                debug_print(
+                    DEBUG_BC, "Consequence %s conflicts." % consequence.name)
                 return False
         elif case == 4:
             if not _intersect(data_value, outc_value):
-                debug_print("Consequence %s conflicts." % consequence.name)
+                debug_print(
+                    DEBUG_BC, "Consequence %s conflicts." % consequence.name)
                 return False
         else:
             raise AssertionError
@@ -5609,12 +5685,14 @@ def _is_valid_output(module, data):
     # the (in) defaults from the output data type.
     if not module.default_attributes_from:
         debug_print(
+            DEBUG_BC,
             "ModuleNode converts datatype.  Checking default attributes.")
         consequence_names = [x.name for x in module.consequences]
         for attrdef in module.out_datatype.attribute_defs.itervalues():
             # Ignore the attributes that have consequences.
             if attrdef.name in consequence_names:
                 debug_print(
+                    DEBUG_BC,
                     "Attr %r: Skipping--has consequence." % attrdef.name)
                 continue
             assert attrdef.name in data.attributes
@@ -5624,24 +5702,26 @@ def _is_valid_output(module, data):
 
             if data_type == TYPE_ATOM:
                 if attrdef.default_in != data_value:
-                    debug_print("Attr %r: Conflicts (module %r, data %r)." %
-                                (attrdef.name, attrdef.default_in, data_value))
+                    debug_print(
+                        DEBUG_BC, "Attr %r: Conflicts (module %r, data %r)." %
+                        (attrdef.name, attrdef.default_in, data_value))
                     return False
             elif data_type == TYPE_ENUM:
                 if attrdef.default_in not in data_value:
-                    debug_print("Attr %r: Conflicts (module %r, data %r)." %
-                                (attrdef.name, attrdef.default_in, data_value))
+                    debug_print(
+                        DEBUG_BC, "Attr %r: Conflicts (module %r, data %r)." %
+                        (attrdef.name, attrdef.default_in, data_value))
                     return False
             else:
                 raise AssertionError
-            debug_print("Attr %r: matches defaults." % attrdef.name)
+            debug_print(DEBUG_BC, "Attr %r: matches defaults." % attrdef.name)
 
     # TESTING.
     # If the module converts the datatype, the consequences don't
     # conflict, and the default attributes don't conflict, then this
     # should match.
     if not module.default_attributes_from:
-        debug_print("Match because of converting datatype.")
+        debug_print(DEBUG_BC, "Match because of converting datatype.")
         return True
 
     # At this point, the module produces this datatype and there are
@@ -5654,7 +5734,8 @@ def _is_valid_output(module, data):
             continue
 
         if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
-            debug_print("Consequence '%s' matches." % consequence.name)
+            debug_print(
+                DEBUG_BC, "Consequence '%s' matches." % consequence.name)
             return True
 
         assert consequence.behavior == SAME_AS_CONSTRAINT
@@ -5719,31 +5800,35 @@ def _is_valid_output(module, data):
         assert const2.behavior in [MUST_BE, CAN_BE_ANY_OF]
         if (const1.behavior, const2.behavior) == (MUST_BE, MUST_BE):
             if const1.arg1 != const2.arg1:
-                debug_print("Consequence '%s' matches." % consequence.name)
+                debug_print(
+                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
                 return True
         elif (const1.behavior, const2.behavior) == (MUST_BE, CAN_BE_ANY_OF):
             if const1.arg1 not in const2.arg1:
-                debug_print("Consequence '%s' matches." % consequence.name)
+                debug_print(
+                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
                 return True
         elif (const1.behavior, const2.behavior) == (CAN_BE_ANY_OF, MUST_BE):
             if const2.arg1 not in const1.arg1:
-                debug_print("Consequence '%s' matches." % consequence.name)
+                debug_print(
+                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
                 return True
         elif (const1.behavior, const2.behavior) == \
                  (CAN_BE_ANY_OF, CAN_BE_ANY_OF):
             if not _intersect(const1.arg1, const2.arg1):
-                debug_print("Consequence '%s' matches." % consequence.name)
+                debug_print(
+                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
                 return True
         else:
             raise AssertionError
 
     # No conflicts, and the module has no consequences.
     if not module.consequences:
-        debug_print("Match because there are no consequences.")
+        debug_print(DEBUG_BC, "Match because there are no consequences.")
         return True
 
     # No consequences match.
-    debug_print("No consequences match.")
+    debug_print(DEBUG_BC, "No consequences match.")
     return False
 
 

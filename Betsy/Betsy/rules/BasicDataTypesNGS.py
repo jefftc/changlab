@@ -671,7 +671,7 @@ all_modules = [
     ModuleNode(
         "align_with_bowtie2",
         [FastqFolder, SampleGroupFile, ReadOrientation, ReferenceGenome],
-        SamFolder,
+        BamFolder,
         #OptionDef(
         #    "orientation", default="fr",
         #    help="Which orientation.  See bowtie2 manual.  "
@@ -759,7 +759,7 @@ all_modules = [
     ModuleNode(
         "align_with_bwa_mem",
         [FastqFolder, SampleGroupFile, ReferenceGenome],
-        SamFolder,
+        BamFolder,
 
         # bwa mem figures out the orientation itself.
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),

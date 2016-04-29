@@ -35,12 +35,12 @@ class Module(AbstractModule):
         assert len(x1) == len(x2), "dup sample"
 
         # Make a list of all the jobs to do.
-        jobs = []   # list of (sample, pair1, pair2, sam_filename)
+        jobs = []   # list of (sample, pair1, pair2, bam_filename)
         for x in grouped_fastq_files:
             sample, pair1, pair2 = x
-            sam_filename = os.path.join(out_path, "%s.sam" % sample)
+            bam_filename = os.path.join(out_path, "%s.bam" % sample)
             log_filename = os.path.join(out_path, "%s.log" % sample)
-            x = sample, pair1, pair2, sam_filename, log_filename
+            x = sample, pair1, pair2, bam_filename, log_filename
             jobs.append(x)
 
         # Calculate the number of cores per job.
@@ -50,23 +50,21 @@ class Module(AbstractModule):
         # Make the bwa commands.
         commands = []
         for x in jobs:
-            sample, pair1, pair2, sam_filename, log_filename = x
+            sample, pair1, pair2, bam_filename, log_filename = x
             x = alignlib.make_bwa_mem_command(
-                ref.fasta_file_full, sam_filename, log_filename, pair1,
-                fastq_file2=pair2, num_threads=nc)
+                ref.fasta_file_full, log_filename, pair1,
+                fastq_file2=pair2, bam_filename=bam_filename, num_threads=nc)
             commands.append(x)
 
         metadata["commands"] = commands
         parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
-        for x in jobs:
-            sample, pair1, pair2, sam_filename, log_filename = x
-            assert filelib.exists_nz(sam_filename), \
-                   "Missing: %s" % sam_filename
-            # TODO: Should also check log file.
+        x1 = [x[-2] for x in jobs]
+        x2 = [x[-1] for x in jobs]
+        filelib.assert_exists_nz_many(x1 + x2)
         return metadata
 
         
     def name_outfile(self, antecedents, user_options):
-        return "alignments.bwa_mem"
+        return "bwa_mem.bam"

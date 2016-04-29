@@ -896,16 +896,32 @@ def fix_sample_group_filenames(sample_groups, fastq_path):
 
 def assert_sample_group_file(filename, fastq_path):
     import os
+    from genomicode import filelib
     
     x = read_sample_group_file(filename)
     x = fix_sample_group_filenames(x, fastq_path)
     sample_groups = x
 
     # Make sure each file can be found in the fastq folder.
-    for x in sample_groups:
-        filename, sample, pair = x
-        #filename = os.path.join(fastq_path, file_)
-        assert os.path.exists(filename), "Missing FASTQ file: %s" % filename
+    # If not all found, see if it's possible the files are already merged.
+    all_found = True
+    filenames = [x[0] for x in sample_groups]
+    for x in filenames:
+        if not os.path.exists(x):
+            all_found = False
+            break
+    if not all_found:
+        possible_merged_filenames = []
+        for x in sample_groups:
+            filename, sample, pair = x
+            ms = os.path.join(fastq_path, "%s.fastq" % sample)
+            mp1 = os.path.join(fastq_path, "%s_1.fastq" % sample)
+            mp2 = os.path.join(fastq_path, "%s_2.fastq" % sample)
+            possible_merged_filenames += [ms, mp1, mp2]
+        x = [x for x in possible_merged_filenames if os.path.exists(x)]
+        if x:
+            print "Fastq files may already be merged."
+    filelib.assert_exists_nz_many(filenames)
 
     # Make sure there are no duplicate files.
     x = [x[0] for x in sample_groups]

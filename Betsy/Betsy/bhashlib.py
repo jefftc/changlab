@@ -43,6 +43,9 @@ def checksum_path(path, fast=False):
 
     # Checksum each file.
     filenames = filelib.list_files_in_path(path)
+    # Need to checksum files in a standard order, or the checksums may
+    # change.
+    filenames = sorted(filenames)
     for filename in filenames:
         x = checksum_file(filename, fast=fast)
         hasher.update(x)
