@@ -680,23 +680,11 @@ def make_group_names(cutoffs, expression_or_score):
 
 def make_zscore_names(cutoffs, expression_or_score):
     assert len(cutoffs) >= 1
-    if len(cutoffs) == 1:
-        # Just low vs high.
-        # [0, <cutoff>, 1]
-        x = ["Low %s" % expression_or_score, "High %s" % expression_or_score]
-        return x
-
-    cutoffs = [0] + cutoffs + [1]  # for convenience
     names = []
+    names.append("z < %g" % cutoffs[0])
     for i in range(len(cutoffs)-1):
-        x1 = "Middle"
-        if i == 0:
-            x1 = "Lowest"
-        elif i == len(cutoffs)-2:
-            x1 = "Highest"
-        x2 = "%g - %g" % (cutoffs[i], cutoffs[i+1])
-        x = "%s %s %s" % (x1, x2, expression_or_score)
-        names.append(x)
+        names.append("%g <= z < %g" % (cutoffs[i], cutoffs[i+1]))
+    names.append("z >= %s" % cutoffs[-1])
     return names
 
 
