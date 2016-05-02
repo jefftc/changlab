@@ -298,9 +298,10 @@ class Attribute:
         #x = [x for x in datatype.attribute_defs if x.name == name]
         assert len(x) == 1, "datatype %r does not have attribute %r." % (
             datatype.name, name)
-        #attr = x[0]
+        attr = datatype.attribute_defs[x[0]]
         assert datatype.is_valid_attribute_value(name, value), \
-               "Invalid value %r for attribute %r." % (value, name)
+               "Invalid value %r for attribute %r.  Valid values are: %s" % (
+            value, name, ", ".join(attr.values))
 
         self.datatype = datatype
         self.name = name
