@@ -44,7 +44,9 @@ def main():
         p, f = os.path.split(path)
         # index_bam_folder__B006__617b92ee4d313bcd0148b1ab6a91b12f
         x = f.split("__")
-        assert len(x) == 3, path
+        if len(x) != 3:
+            print "Unrecognized path: %s" % path
+            continue
         module_name, version, hash_ = x
 
         # Format the directory size.

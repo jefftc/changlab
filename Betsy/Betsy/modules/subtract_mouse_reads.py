@@ -107,6 +107,8 @@ def subtract_mouse_reads(
     # List the reads that look like mouse.
     mouse_reads = {}
     for d in filelib.read_row(summary_file, header=1):
+        if not d.NM:  # ignore missing alignments
+            continue
         if int(d.NM) <= num_mismatches:
             mouse_reads[d.query_name] = 1
 

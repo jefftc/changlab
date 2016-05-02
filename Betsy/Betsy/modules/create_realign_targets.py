@@ -11,11 +11,10 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
         
         bam_node, ref_node = antecedents
-
-        in_filenames = module_utils.find_bam_files(bam_node.identifier)
+        in_filenames = mlib.find_bam_files(bam_node.identifier)
         assert in_filenames, "No .bam files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
@@ -29,16 +28,16 @@ class Module(AbstractModule):
             x = in_filename, log_filename, out_filename
             jobs.append(x)
 
-        filter_reads_with_N_cigar = module_utils.get_user_option(
+        filter_reads_with_N_cigar = mlib.get_user_option(
             user_options, "filter_reads_with_N_cigar",
             allowed_values=["no", "yes"])
 
         known_sites = []
-        x1 = module_utils.get_user_option(
+        x1 = mlib.get_user_option(
             user_options, "realign_known_sites1", check_file=True)
-        x2 = module_utils.get_user_option(
+        x2 = mlib.get_user_option(
             user_options, "realign_known_sites2", check_file=True)
-        x3 = module_utils.get_user_option(
+        x3 = mlib.get_user_option(
             user_options, "realign_known_sites3", check_file=True)
         x = [x1, x2, x3]
         x = [x for x in x if x]
@@ -63,12 +62,17 @@ class Module(AbstractModule):
                 _UNHASHABLE=x)
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
+        metadata["commands"] = commands
 
-        parallel.pshell(commands, max_procs=num_cores)
+        # RealignerTargetCreator takes ~10Gb per process.
+        nc = mlib.calc_max_procs_from_ram(15, upper_max=num_cores)
+        parallel.pshell(commands, max_procs=nc)
+        metadata["num_procs"] = nc
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(out_filenames)
+        return metadata
 
     
     def name_outfile(self, antecedents, user_options):
