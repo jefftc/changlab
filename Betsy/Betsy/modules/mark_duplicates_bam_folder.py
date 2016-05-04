@@ -16,6 +16,7 @@ class Module(AbstractModule):
         bam_filenames = module_utils.find_bam_files(in_data.identifier)
         assert bam_filenames, "No .bam files."
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
         #in_path = module_utils.unzip_if_zip(in_data.identifier)
         #x = filelib.list_files_in_path(in_path)
@@ -56,16 +57,22 @@ class Module(AbstractModule):
                 #"CREATE_INDEX=true",
                 "VALIDATION_STRINGENCY=LENIENT",
                 "REMOVE_DUPLICATES=true",
+                "TMP_DIR=%s" % sq(out_path),
                 ]
             x = " ".join(x)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
-            
+
+        # Takes ~2 Gb per process.
         parallel.pshell(commands, max_procs=num_cores)
+        metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(out_filenames)
+
+        return metadata
 
     
     def name_outfile(self, antecedents, user_options):
