@@ -100,7 +100,10 @@ def revcomp(seq):
     from Bio import Seq
     return Seq.Seq(seq).reverse_complement().tostring()
 
+
 def get_gene_coords(gene_symbol, gene_file=None):
+    # gene_file is a knownGene file.
+    # 
     # Return a list of objects with members:
     # kg_id
     # genbank_id
@@ -109,12 +112,12 @@ def get_gene_coords(gene_symbol, gene_file=None):
     # gene_symbol
     # chrom          1, 2, 3, ..., X, Y, M, (string)
     # strand
-    # txn_start
+    # txn_start      0-based
     # txn_length
     # tss
-    # cds_start
+    # cds_start      0-based
     # cds_length
-    # exon_starts
+    # exon_starts    0-based
     # exon_lengths
     #
     # Will return multiple objects if this gene has different
