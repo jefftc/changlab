@@ -3,9 +3,10 @@
 # DataTypes:
 # VCFFolder
 # VCFRecalibrationReport
-# AnnotatedVCFFolder
+# AnnotatedVCFFolder      # No.  Not VCF files.  Need to clean this up.
 # MultiVCFFile
-# AnnotatedMultiVCFFile
+# AnnotatedMultiVCFFile   # No.  Not VCF files.  Need to clean this up.
+# MultiVCFFolder          # folder of VCFFolder's, from different callers
 #
 # BackfillMultiVCFFile
 #
@@ -16,8 +17,6 @@
 # summarize_variants_mpileup
 # call_variants_mpileup
 # call_variants_GATK
-# make_vcf_recalibration_report_snp
-# recalibrate_variants_snp
 # call_variants_platypus
 # call_consensus_varscan
 # call_variants_varscan
@@ -25,9 +24,16 @@
 # call_variants_strelka
 # call_variants_somaticsniper
 # call_variants_jointsnvmix
+# call_variants_all_somatic
 #
+# make_vcf_recalibration_report_snp
+# recalibrate_variants_snp
 # filter_snps_only_multivcf
 # annotate_with_annovar
+# merge_vcf_folder
+# annotate_multivcf_annovar
+# extract_positions_from_multivcf_file
+# backfill_vcf_folder
 #
 # 
 # Recalibrate variant scores with GATK.
@@ -181,12 +187,18 @@ IntervalListFile = DataType(
     help="Genomic intervals in GATK format."
     )
 
+MultiVCFFolder = DataType(
+    "MultiVCFFolder",
+    )
+
+
 all_data_types=[
     VCFFolder,
     VCFRecalibrationReport,
     AnnotatedVCFFolder,
     MultiVCFFile,
     AnnotatedMultiVCFFile,
+    MultiVCFFolder,
 
     NormalCancerFile,
     PileupSummary,
@@ -395,6 +407,34 @@ all_modules = [
         Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
         Consequence("somatic", SET_TO, "yes"),
         help="Use JointSNVMix (museq) to call variants.",
+        ),
+
+    ModuleNode(
+        "call_variants_all_somatic",
+        [
+            VCFFolder, # MuTect
+            VCFFolder, # Varscan
+            VCFFolder, # Strelka
+            VCFFolder, # SomaticSniper
+            VCFFolder, # JointSNVMix
+            ],
+        MultiVCFFolder,
+        Constraint("caller", MUST_BE, "mutect", 0),
+        Constraint("vartype", MUST_BE, "snp", 0),
+        Constraint("somatic", MUST_BE, "yes", 0),
+        Constraint("caller", MUST_BE, "varscan", 1),
+        Constraint("vartype", MUST_BE, "snp", 1),
+        Constraint("somatic", MUST_BE, "yes", 1),
+        Constraint("caller", MUST_BE, "strelka", 2),
+        Constraint("vartype", MUST_BE, "snp", 2),
+        Constraint("somatic", MUST_BE, "yes", 2),
+        Constraint("caller", MUST_BE, "somaticsniper", 3),
+        Constraint("vartype", MUST_BE, "snp", 3),
+        Constraint("somatic", MUST_BE, "yes", 3),
+        Constraint("caller", MUST_BE, "jointsnvmix", 4),
+        Constraint("vartype", MUST_BE, "snp", 4),
+        Constraint("somatic", MUST_BE, "yes", 4),
+        help="Call variants with all implemented somatic variant callers.",
         ),
 
     ModuleNode(

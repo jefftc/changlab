@@ -152,6 +152,15 @@ debug_print
 # _dict_to_object           Use for writing and reading json file
 
 
+# Rules:
+# - A single DataNode cannot go into a ModuleNode as different inputs
+#   simultaneously.  E.g.
+#   VCFFolder.caller=mutect   -> call_variants_all
+#   VCFFolder.caller=varscan  ->
+#   The VCFFolders must be separate DataNodes.
+
+
+
 DEBUG_BC = False
 DEBUG_PRUNE_PATHS = False
 DEBUG_FIND_PATHS = False
@@ -1865,6 +1874,12 @@ class _OptimizeMergeData1:
     # Node1                   Node2
     # preprocess="unknown"    preprocess=<everything else>
     #
+    # Exception:
+    # If separate nodes are needed for the module, then don't merge
+    # them.  It makes the pipeline machinery more complicated.
+    # VCFFolder.caller=mutect   ->  call_variants_all
+    # VCFFolder.caller=varscan  ->
+    #
     # If this happens, merge them to simplify the network.
     def __init__(self):
         pass
@@ -1872,10 +1887,24 @@ class _OptimizeMergeData1:
     def optimize(self, network, custom_attributes):
         import copy
         network = copy.deepcopy(network)
+        
         while True:
-            similar = self._find_similar_nodes(network, custom_attributes)
+            nodeid2parents = _make_parents_dict(network)
+            similar = self._find_similar_nodes(
+                network, custom_attributes, nodeid2parents)
+            # Make sure these similar nodes are not separate inputs to
+            # the same module.
+            i = 0
+            while i < len(similar):
+                n1, n2 = similar[i]
+                if self._is_separate_inputs(
+                    network, custom_attributes, nodeid2parents, n1, n2):
+                    del similar[i]
+                else:
+                    i += 1
             if not similar:
                 break
+            
             # Merge the similar nodes.
             while similar:
                 n1, n2 = similar.pop()
@@ -1883,10 +1912,25 @@ class _OptimizeMergeData1:
                 similar = _fix_node_id_pairs_after_merge(similar, n1, n2)
         return network
 
-    def _find_similar_nodes(self, network, custom_attributes):
-        # Return a list of (node_id1, node_id2).  Can be empty.
-        nodeid2parents = _make_parents_dict(network)
+    def _is_separate_inputs(
+        self, network, custom_attributes, nodeid2parents, node_id1, node_id2):
+        # Find the common modules for both these nodes.
+        children1 = _get_children_of(network, node_id1)
+        children2 = _get_children_of(network, node_id2)
+        module_ids = [x for x in children1 if x in children2]
+        assert module_ids
+        for module_id in module_ids:
+            combos = _bc_to_input_ids(
+                network, module_id, custom_attributes,
+                nodeid2parents=nodeid2parents)
+            for combo in combos:
+                if node_id1 in combo and node_id2 in combo:
+                    return True
+        return False
 
+
+    def _find_similar_nodes(self, network, custom_attributes, nodeid2parents):
+        # Return a list of (node_id1, node_id2).  Can be empty.
         data_node_ids = [
             node_id for (node_id, node) in enumerate(network.nodes)
             if isinstance(node, DataNode)]

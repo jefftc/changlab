@@ -43,6 +43,7 @@ class Module(AbstractModule):
             x = sample, pair1, pair2, bam_filename, log_filename
             jobs.append(x)
 
+        # Uses ~6 Gb per process.
         # Calculate the number of cores per job.
         nc = max(1, num_cores/len(jobs))
         metadata["num cores"] = nc

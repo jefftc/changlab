@@ -18,6 +18,7 @@ class Module(AbstractModule):
         assert in_filenames, "No .bam files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
         jobs = []  # list of (in_filename, log_filename, out_filename)
         for in_filename in in_filenames:
