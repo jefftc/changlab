@@ -294,6 +294,8 @@ def main():
     p_value = jmath.R("cor.test(X, Y)$p.value")
     r = r[0]
     p_value = p_value[0]
+    print "R = %.2f" % r
+    print "p = %.2g" % p_value
 
     # Add a regression line.
     if args.add_regression:

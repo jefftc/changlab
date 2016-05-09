@@ -55,6 +55,8 @@ def guess_chip_platform(M, min_match_score):
     return chipname
 
 DATABASE2GENESET = {
+    # Go to GenePattern in Broad institute.
+    # Look at values under "gene sets database" option.
     ## "positional" : "c1.all.v3.0.symbols.gmt",
     ## "curated" : "c2.all.v3.0.symbols.gmt",
     ## "curated:canonical" : "c2.cp.v3.0.symbols.gmt",
@@ -79,17 +81,29 @@ DATABASE2GENESET = {
     ## "gene_ontology" : "c5.all.v4.0.symbols.gmt",
     ## "gene_ontology:process" : "c5.bp.v4.0.symbols.gmt",
     
-    "positional" : "c1.all.v5.0.symbols.gmt",
-    "curated" : "c2.all.v5.0.symbols.gmt",
-    "curated:canonical" : "c2.cp.v5.0.symbols.gmt",
-    "curated:biocarta" : "c2.cp.biocarta.v5.0.symbols.gmt",
-    "curated:kegg" : "c2.cp.kegg.v5.0.symbols.gmt",
-    "curated:reactome" : "c2.cp.reactome.v5.0.symbols.gmt",
-    "motif" : "c3.all.v5.0.symbols.gmt",
-    "motif:tfactor" : "c3.tft.v5.0.symbols.gmt",
-    "computational" : "c4.all.v5.0.symbols.gmt",
-    "gene_ontology" : "c5.all.v5.0.symbols.gmt",
-    "gene_ontology:process" : "c5.bp.v5.0.symbols.gmt",
+    ## "positional" : "c1.all.v5.0.symbols.gmt",
+    ## "curated" : "c2.all.v5.0.symbols.gmt",
+    ## "curated:canonical" : "c2.cp.v5.0.symbols.gmt",
+    ## "curated:biocarta" : "c2.cp.biocarta.v5.0.symbols.gmt",
+    ## "curated:kegg" : "c2.cp.kegg.v5.0.symbols.gmt",
+    ## "curated:reactome" : "c2.cp.reactome.v5.0.symbols.gmt",
+    ## "motif" : "c3.all.v5.0.symbols.gmt",
+    ## "motif:tfactor" : "c3.tft.v5.0.symbols.gmt",
+    ## "computational" : "c4.all.v5.0.symbols.gmt",
+    ## "gene_ontology" : "c5.all.v5.0.symbols.gmt",
+    ## "gene_ontology:process" : "c5.bp.v5.0.symbols.gmt",
+
+    "positional" : "c1.all.v5.1.symbols.gmt",
+    "curated" : "c2.all.v5.1.symbols.gmt",
+    "curated:canonical" : "c2.cp.v5.1.symbols.gmt",
+    "curated:biocarta" : "c2.cp.biocarta.v5.1.symbols.gmt",
+    "curated:kegg" : "c2.cp.kegg.v5.1.symbols.gmt",
+    "curated:reactome" : "c2.cp.reactome.v5.1.symbols.gmt",
+    "motif" : "c3.all.v5.1.symbols.gmt",
+    "motif:tfactor" : "c3.tft.v5.1.symbols.gmt",
+    "computational" : "c4.all.v5.1.symbols.gmt",
+    "gene_ontology" : "c5.all.v5.1.symbols.gmt",
+    "gene_ontology:process" : "c5.bp.v5.1.symbols.gmt",
     }
 DEFAULT_DATABASE = "gene_ontology:process"
 
@@ -129,7 +143,7 @@ def fix_class_order(MATRIX, name1, name2, classes):
             c = int(c)
         elif c in [name1, name2]:
             c = int(c == name2)
-        assert c in [0, 1], "Unknown class: %s" % c
+        assert c in [0, 1, None], "Unknown class: %s" % c
         clean.append(c)
     classes = clean
 
@@ -140,6 +154,8 @@ def fix_class_order(MATRIX, name1, name2, classes):
     
     indexes0, indexes1 = [], []
     for i, c in enumerate(classes):
+        if c is None:  # sample not used.  Ignore it.
+            continue
         assert c in [0, 1]
         if c == 0:
             indexes0.append(i)
@@ -242,7 +258,11 @@ def main():
     group.add_argument(
         "--indexes1", default=None,
         help="Which columns in group 1, E.g. 1-5,8 (1-based, "
-        "inclusive).  All other samples will be in group 2.")
+        "inclusive).")
+    group.add_argument(
+        "--indexes2", default=None,
+        help="(OPTIONAL) Which columns in group 2.  If not given, then "
+        "will use any sample not included in --indexes1.")
     group.add_argument(
         "--indexes_include_headers", "--iih", action="store_true",
         help="If not given (default), then column 1 is the first column "
@@ -298,6 +318,9 @@ def main():
         "Must provide either CLS file or the indexes for one group.")
     assert not (args.cls_file and args.indexes1), (
         "Cannot provide both a CLS file and the indexes.")
+    assert not (args.cls_file and args.indexes2), (
+        "Cannot provide both a CLS file and the indexes.")
+    assert not (args.indexes2 and not args.indexes1)
     if args.cls_file:
         assert os.path.exists(args.cls_file), \
             "File not found: %s" % args.cls_file
@@ -319,7 +342,7 @@ def main():
         name1, name2 = names
     else:
         x = arraysetlib.resolve_classes(
-            MATRIX, args.indexes1, None, args.indexes_include_headers,
+            MATRIX, args.indexes1, args.indexes2, args.indexes_include_headers,
             args.name1, args.name2)
         name1, name2, classes = x
 
