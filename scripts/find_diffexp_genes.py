@@ -44,7 +44,9 @@ def _write_matrix(outhandle, header, DATA_py):
 def find_diffexp_genes(
     outfile, gmt_file, algorithm, paired,
     MATRIX, geneid_header, genename_header, genename_delim,
-    name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff, 
+    name1, name2, classes,
+    filter_fold_change,
+    fold_change, p_cutoff, fdr_cutoff, bonf_cutoff, 
     sam_DELTA, sam_qq_file, edger_tagwise_dispersion, num_procs):
     # classes must be 0, 1, None.
     import os
@@ -141,8 +143,8 @@ def find_diffexp_genes(
         args.append("genenames=genenames")
     # Pass the fold change to the algorithm, because it can affect the
     # multiple hypothesis correction.
-    if fold_change is not None:
-        args.append("FOLD.CHANGE=%g" % fold_change)
+    if filter_fold_change is not None:
+        args.append("FOLD.CHANGE=%g" % filter_fold_change)
     if algorithm in ["ttest", "deseq2"]:
         args.append("NPROCS=%d" % num_procs)  # t-test only
     #if show_all_genes and algorithm != "sam":
@@ -283,15 +285,19 @@ def find_diffexp_genes(
 
     # "Higher in <name1>"
     # "Higher in <name2>"
-    possible_directions = ["Higher in %s" % name1, "Higher in %s" % name2]
+    # "SAME"
+    possible_directions = [
+        "Higher in %s" % name1, "Higher in %s" % name2, "SAME"]
     direction = [x[I_direction] for x in DATA_py]
     for x in direction:
-        assert x.startswith("Higher in ")
+        assert x.startswith("Higher in ") or x == "SAME"
         assert x in possible_directions
     samples = [x.replace("Higher in ", "") for x in direction]
 
     genesets = []  # list of (<SAMPLE>, [UP|DN])
     for s in samples:
+        if s == "SAME":
+            continue
         assert s in [name1, name2]
         # Make genesets relative to name2.  (Assume name1 is control).
         d = "UP"
@@ -326,7 +332,7 @@ def _run_forked(
     outfile, gmt_file, algorithm, paired, MATRIX,
     geneid_header, genename_header, genename_delim,
     name1, name2, classes,
-    fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+    filter_fold_change, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
     sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
     import os
     import sys
@@ -366,6 +372,7 @@ def _run_forked(
                 tmpfile, gmt_file, algorithm, paired, 
                 MATRIX, geneid_header, genename_header, genename_delim,
                 name1, name2, classes,
+                filter_fold_change,
                 fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
                 sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
             sys.exit(0)
@@ -379,7 +386,7 @@ def _run_not_forked(
     outfile, gmt_file, algorithm, paired, MATRIX,
     geneid_header, genename_header, genename_delim,
     name1, name2, classes,
-    fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+    filter_fold_change, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
     sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs):
     import sys
 
@@ -387,7 +394,9 @@ def _run_not_forked(
     find_diffexp_genes(
         outfile, gmt_file, algorithm, paired, 
         MATRIX, geneid_header, genename_header, genename_delim, 
-        name1, name2, classes, fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
+        name1, name2, classes,
+        filter_fold_change,
+        fold_change, p_cutoff, fdr_cutoff, bonf_cutoff,
         sam_delta, sam_qq_file, edger_tagwise_dispersion, num_procs)
         
 
@@ -454,10 +463,15 @@ def main():
     group.add_argument("--name1", default=None, help="Name for class 1.")
     group.add_argument("--name2", default=None, help="Name for class 2.")
 
-    group = parser.add_argument_group(title="Cutoffs")
+    group = parser.add_argument_group(title="Filters (before calculations)")
+    group.add_argument(
+        "--filter_fold_change", type=float, default=None,
+        help="Remove genes with this fold change as independent filter.")
+
+    group = parser.add_argument_group(title="Cutoffs (after calculations)")
     group.add_argument(
         "--fold_change", type=float, default=None,
-        help="Minimum change in gene expression (without log).  ")
+        help="Minimum change in gene expression (without log).")
     group.add_argument(
         "--p_cutoff", default=None, type=float,
         help="Only keep genes with p-value less than this value.")
@@ -496,6 +510,10 @@ def main():
     if args.num_header_cols is not None:
         assert args.num_header_cols > 0 and args.num_header_cols < 100
     assert args.num_procs >= 1 and args.num_procs < 100
+    if args.filter_fold_change is not None:
+        assert args.filter_fold_change >= 1E-10 and \
+               args.filter_fold_change < 1000, \
+               "Invalid fold change: %s" % args.filter_fold_change
     if args.fold_change is not None:
         assert args.fold_change >= 1E-10 and args.fold_change < 1000, \
                "Invalid fold change: %s" % args.fold_change
@@ -583,7 +601,8 @@ def main():
         args.algorithm, args.paired, MATRIX,
         args.geneid_header, args.genename_header, args.genename_delim, 
         name1, name2, classes,
-        args.fold_change, args.p_cutoff, args.fdr_cutoff, args.bonf_cutoff,
+        args.filter_fold_change, args.fold_change, args.p_cutoff,
+        args.fdr_cutoff, args.bonf_cutoff,
         args.sam_delta, args.sam_qq_file, args.edger_tagwise_dispersion,
         args.num_procs)
     fn(*params)
@@ -593,7 +612,7 @@ def main():
             args.algorithm, args.paired, MATRIX,
             args.geneid_header, args.genename_header, args.genename_delim, 
             name1, name2, classes,
-            None, None, None, None, 
+            args.filter_fold_change, None, None, None, None, 
             args.sam_delta, args.sam_qq_file, args.edger_tagwise_dispersion,
             args.num_procs)
         fn(*params)

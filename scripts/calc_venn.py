@@ -109,8 +109,9 @@ def match_gene_sets(genesets, delimiter):
 
 
 def draw_venn(
-    filename, all_names, name2genes, all_labels, 
-    args_margin, args_label_size, args_count_size):
+    filename, all_names, name2genes, all_labels, args_margin,
+    args_title, args_title_size, args_title_y,
+    args_label_size, args_count_size):
     import sys
     import StringIO
     from genomicode import jmath
@@ -133,8 +134,8 @@ def draw_venn(
            len(all_names)
     
     varnames = ["A", "B", "C", "D", "E"]
-    for i in range(len(all_names)):
-        n = all_names[i]
+    for i in range(len(all_labels)):
+        n = all_labels[i]
         R_equals(name2genes[n], varnames[i])
     #n1, n2, n3 = all_names
     #R_equals(name2genes[n1], "A")
@@ -158,31 +159,26 @@ def draw_venn(
     #R('names(x)[2] <- "%s"' % n2)
     #R('names(x)[3] <- "%s"' % n3)
 
-    cex = 1*args_count_size         # Size of number in each circle.
-    cat_cex = 1.5*args_label_size   # Size of category labels.
-    margin = 0.05*args_margin   # Amount of space around plot.
+    #cex = 1*args_count_size         # Size of number in each circle.
+    #cat_cex = 1.5*args_label_size   # Size of category labels.
+    #margin = 0.05*args_margin   # Amount of space around plot.
+    
     # Bigger margin is smaller figure.
+    margin = 0.10*args_margin
+    cat_cex = 0.75*args_label_size
+    cex = 0.65*args_count_size
 
     if len(all_names) == 2:
         fill = ["cornflowerblue", "darkorchid1"]
         cat_col = ["cornflowerblue", "darkorchid1"]
-        margin = 0.10*args_margin
-        cat_cex = 0.75*args_label_size
-        cex = 0.65*args_count_size
     elif len(all_names) == 3:
         fill = ["cornflowerblue", "green", "yellow"]
         cat_col = ["darkblue", "darkgreen", "orange"]
-        margin = 0.10*args_margin
-        cat_cex = 0.75*args_label_size
-        cex = 0.65*args_count_size
     elif len(all_names) == 4:
         fill = [
             "dodgerblue", "goldenrod1", "seagreen3", "orchid3"]
         cat_col = [
             "dodgerblue", "goldenrod1", "seagreen3", "orchid3"]
-        margin = 0.10*args_margin
-        cat_cex = 0.75*args_label_size
-        cex = 0.65*args_count_size
     elif len(all_names) == 5:
         fill = [
             "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
@@ -190,36 +186,48 @@ def draw_venn(
         cat_col = [
             "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
             "orchid3"]
-        margin = 0.25*args_margin
-        cat_cex = 0.75*args_label_size
-        cex = 0.65*args_count_size
     else:
         raise NotImplementedError
 
+    # main.pos
+    # (0, 0) is lower left.
+    # (1, 1) is upper right.
+    # (0.5, 1) is middle top.
+    main = R_var("NULL")
+    if args_title:
+        main = args_title
+    main_cex = 2.0 * args_title_size
+
+    font_family = "Helvetica"
+
     params = {
         #"col" : "transparent",   # color of outer lines
+        "main" : main,
+        "main.pos" : (0.5, args_title_y),
+        "main.fontfamily" : font_family,
+        "main.cex" : main_cex,
         "col" : "#000000",   # color of outer lines
         "lty" : 2,   # dashed line
         "fill" : fill,       # color of circles
         "alpha" : 0.50,
 
         # Number of items.
-        #"lty" : "blank",
         "cex" : cex,
-        "fontfamily" : 3,
+        #"fontfamily" : 3,
+        "fontfamily" : font_family,
 
-        # Labels
+        # Category labels
         "cat.cex" : cat_cex,
         #"cat.col" : cat_col,
         "cat.col" : "#333333",
-        "cat.fontfamily" : 3,
+        #"cat.fontfamily" : 3,
+        "cat.fontfamily" : font_family,
         #"cat.default.pos" : "text",
         "cat.default.pos" : "outer",
         "margin" : margin,
         }
     R_fn(
-        "venn.diagram", R_var("x"), filename=filename,
-        **params)
+        "venn.diagram", R_var("x"), filename=filename, **params)
 
     ## area1 = len(name2genes[n1])
     ## area2 = len(name2genes[n2])
@@ -272,40 +280,52 @@ def main():
     parser.add_argument(
         "-o", dest="outfile", help="Save the intersection to this "
         "(GMX or GMT) file.")
+    parser.add_argument(
+        "--plotfile", help="Save a TIFF plot to this file.")
+
+    group = parser.add_argument_group(title="Gene Sets")
     #parser.add_argument(
     #    "--upper_diagonal", action="store_true",
     #    help="Calculate upper diagonal only.")
-    parser.add_argument(
+    group.add_argument(
         "--num_to_compare", type=int, default=2, 
         help="Num gene sets to compare at once.  "
         "Default is 2 (pairwise comparisons).")
-    parser.add_argument(
+    group.add_argument(
         "--geneset", action="append",
         help="Which gene sets to include in the VENN diagram.  "
         "If automatch, this is the name without the _UP or _DN suffix.")
-    parser.add_argument(
+    group.add_argument(
         "--label", action="append",
         help="How to label this gene set.  Should have a --label for each "
         "--geneset")
-    parser.add_argument(
+    group.add_argument(
         "--all_genesets", action="store_true",
         help="Calculate the intersection of all gene sets.")
-    parser.add_argument(
+    group.add_argument(
         "--automatch", action="store_true", 
         help="Will match _UP with _DN (or _DOWN).")
 
     group = parser.add_argument_group(title="Plot")
     group.add_argument(
-        "--plotfile", help="Save a TIFF plot to this file.")
+        "--title", 
+        help="Add a title to the plot.")
+    group.add_argument(
+        "--title_size", default=1.0, type=float,
+        help="Increase or decrease the font size of the title.")
+    group.add_argument(
+        "--title_y", default=0.85, type=float,
+        help="Where to put the title.  0 is bottom, 1 is top.")
+    
     group.add_argument(
         "--margin", default=1.0, type=float,
         help="Increase or decrease the margin.")
     group.add_argument(
         "--label_size", default=1.0, type=float,
-        help="Increase or decrease the font for the labels.")
+        help="Increase or decrease the font size of the labels.")
     group.add_argument(
         "--count_size", default=1.0, type=float,
-        help="Increase or decrease the font for the counts.")
+        help="Increase or decrease the font size of the counts.")
     group.add_argument(
         "--name_replace", default=[], action="append",
         help="For the plot, replace a string in the geneset name with "
@@ -325,8 +345,10 @@ def main():
     assert args.num_to_compare >= 2 and args.num_to_compare <= 5
 
     assert args.margin > 0 and args.margin < 100
+    assert args.title_size > 0 and args.title_size < 10
     assert args.label_size > 0 and args.label_size < 10
     assert args.count_size > 0 and args.count_size < 10
+    assert args.title_y >= 0 and args.title_y <= 1
 
     assert not (args.geneset and args.all_genesets)
     if not args.all_genesets:
@@ -464,11 +486,12 @@ def main():
         write_fn(args.outfile, genesets)
 
     if args.plotfile:
-        x = _name_replace(args.name_replace, all_names, name2genes)
-        all_names, name2genes = x
+        x = _name_replace(args.name_replace, all_labels, name2genes)
+        all_labels, name2genes = x
         draw_venn(
-            args.plotfile, all_names, name2genes, all_labels, 
-            args.margin, args.label_size, args.count_size)
+            args.plotfile, all_names, name2genes, all_labels, args.margin,
+            args.title, args.title_size, args.title_y, 
+            args.label_size, args.count_size)
 
 
 if __name__ == '__main__':
