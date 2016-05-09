@@ -94,10 +94,30 @@ class Module(AbstractModule):
         parallel.pshell(commands, max_procs=nc)
         metadata["num_cores"] = nc
         metadata["commands"] = commands
-        
+
+        # Make sure output VCF files exist.
         x = [x[5] for x in jobs]
         filelib.assert_exists_many(x)
-        
+
+        # Make sure log files have no errors.
+        # ##### ERROR -------------------------------------------------------
+        # ##### ERROR A GATK RUNTIME ERROR has occurred (version 2.2-25-g2a68
+        # ##### ERROR
+        # ##### ERROR Please visit the wiki to see if this is a known problem
+        # ##### ERROR If not, please post the error, with stack trace, to the
+        # ##### ERROR Visit our website and forum for extensive documentation
+        # ##### ERROR commonly asked questions http://www.broadinstitute.org/
+        # ##### ERROR
+        # ##### ERROR MESSAGE: java.lang.IllegalArgumentException: Comparison
+        # ##### ERROR -------------------------------------------------------
+        for x in jobs:
+            cancer_sample, normal_bamfile, cancer_bamfile, \
+                call_outfile, cov_outfile, vcf_outfile, log_outfile = x
+            # Pull out the error lines.
+            x = [x for x in open(log_outfile)]
+            x = [x for x in x if x.startswith("##### ERROR")]
+            msg = "MuTect error [%s]:\n%s" % (cancer_sample, "".join(x))
+            assert not x, msg
         return metadata
 
 

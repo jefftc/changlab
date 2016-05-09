@@ -4,11 +4,17 @@
 # - Should detect version
 # - Figure out if files are in progress or completed.
 
+S_DONE = "DONE"
+S_RUNNING = "RUNNING"
+S_BROKEN = "BROKEN?"
+
+
 def main():
     import os
     import sys
     import time
     import argparse
+    import shutil
     from genomicode import parselib
     from Betsy import config
     from Betsy import rule_engine_bie3
@@ -20,6 +26,10 @@ def main():
     parser.add_argument(
         "--running", "--run", action="store_true",
         help="Show only running processes.")
+    parser.add_argument(
+        "--clean_broken", action="store_true",
+        help="Remove all broken analyses.")
+
     args = parser.parse_args()
 
     output_path = config.OUTPUTPATH
@@ -83,34 +93,34 @@ def main():
                 x = "ran instantly"
             else:
                 x = "took %s" % run_time
-            status = "DONE"
+            status = S_DONE
         elif IN_PROGRESS:
             # Get time that path was created.
             create_time = os.path.getctime(path)
             x = time.localtime(create_time)
             time_str = time.strftime("%a %m/%d %I:%M %p", x)
-            status = "RUNNING"
+            status = S_RUNNING
         else:
             # Get time that path was created.
             create_time = os.path.getctime(path)
             x = time.localtime(create_time)
             time_str = time.strftime("%a %m/%d %I:%M %p", x)
-            status = "BROKEN?"
+            status = S_BROKEN
 
-        if status == "DONE":
+        if status == S_DONE:
             x = "[%s]  %s (%s; %s) %s" % (
                 time_str, module_name, size_str, run_time, hash_)
-        elif status == "RUNNING":
+        elif status == S_RUNNING:
             x = "[%s]  %s (%s; %s) %s" % (
                 time_str, module_name, size_str, "RUNNING", hash_)
-        elif status == "BROKEN?":
+        elif status == S_BROKEN:
             x = "[%s]  %s (%s; %s) %s" % (
                 time_str, module_name, size_str, "BROKEN?", hash_)
         else:
             raise AssertionError
         parselib.print_split(x, prefixn=2)
 
-        if status == "RUNNING" and args.verbose >= 1:
+        if status == S_RUNNING and args.verbose >= 1:
             # Print out the files in the directory.
             for x in os.walk(path):
                 dirpath, dirnames, filenames = x
@@ -149,6 +159,10 @@ def main():
                 x = "COMMAND: %s" % x
                 parselib.print_split(x, prefix1=2, prefixn=4)
                 #print "  %s" % x
+
+        if status == S_BROKEN and args.clean_broken:
+            shutil.rmtree(path)
+                
         sys.stdout.flush()
 
     print
