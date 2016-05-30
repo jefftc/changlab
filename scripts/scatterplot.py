@@ -1,5 +1,20 @@
 #!/usr/bin/env python
 
+
+def _parse_series(MATRIX, args_series):
+    # args_series should be a list of <x_header>;<y_header>.  Return a
+    # list of tuples (<x_header>, <y_header>).
+    series = []
+    for s in args_series:
+        x = s.split(";")
+        assert len(x) == 2, "--series should be: <x_header>;<y_header>"
+        x_header, y_header = x
+        assert x_header in MATRIX.headers, "header not found: %s" % x_header
+        assert y_header in MATRIX.headers, "header not found: %s" % y_header
+        series.append(x)
+    return series
+
+
 def _parse_breaks_seq(s):
     # Format: <start>,<stop>,<skip>
     from genomicode import jmath
@@ -35,13 +50,17 @@ def _parse_cluster(options_cluster, indexes_include_headers, MATRIX):
     index2cluster = {}
     for clust_i, s in enumerate(options_cluster):
         ranges = parselib.parse_ranges(s)
+        clean = []
         for s, e in ranges:
-            for i in range(s-1, e):
-                # Convert from 1-based to 0-based indexes.
-                i -= 1
-                if indexes_include_headers:
-                    i -= 1  # assume 1 header
-                    #i -= len(MATRIX._row_names)
+            # Ranges are 1-based, inclusive.  Convert to 0-based exclusive.
+            s = s - 1
+            if indexes_include_headers:
+                s, e = s-1, e-1  # assume 1 header
+                #i -= len(MATRIX._row_names)
+            clean.append((s, e))
+        # Set the clusters.
+        for s, e in clean:
+            for i in range(s, e):
                 assert i < MATRIX.num_annots(), \
                        "Index %d out of range" % i
                 assert i not in index2cluster, \
@@ -90,13 +109,18 @@ def main():
 
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("datafile", help="Tab-delimited data file.")
-    parser.add_argument("x_header", help="Which column for X values.")
-    parser.add_argument("y_header", help="Which column for Y values.")
+    #parser.add_argument("x_header", help="Which column for X values.")
+    #parser.add_argument("y_header", help="Which column for Y values.")
     parser.add_argument(
         "plot_file", help="Name of image file, e.g. outfile.png.  "
         "Will generate PNG format by default.  If this file name ends with "
         ".pdf, will generate a PDF file instead.")
     
+    group = parser.add_argument_group(title="Data Series")
+    group.add_argument(
+        "--series", action="append",
+        help="Add a data series to the plot.  At least one series must be "
+        "plotted.  Format: <x_header>;<y_header>")
 
     group = parser.add_argument_group(title="General Appearance")
     group.add_argument(
@@ -112,9 +136,6 @@ def main():
     group.add_argument(
         "--mar_bottom", default=1.0, type=float,
         help="Scale margin at bottom of plot.  Default 1.0.")
-    group.add_argument(
-        "--scale_points", default=1.0, type=float,
-        help="Scale the size of the points.  Default 1.0")
     #group.add_argument(
     #    "--xlabel_size", default=1.0, type=float,
     #    help="Scale the size of the labels on X-axis.  Default 1.0.")
@@ -133,7 +154,23 @@ def main():
         "--add_regression", action="store_true",
         help="Put a regression line on the plot.")
 
-    group = parser.add_argument_group(title="Point Labels")
+    group = parser.add_argument_group(title="Legend")
+    group.add_argument(
+        "--add_legend", action="store_true", help="Add a legend to the plot.")
+    group.add_argument(
+        "--legend_inset", type=float, default=0.05,
+        help="")
+    LEGEND_LOCATIONS = [
+        "bottomright", "bottom", "bottomleft", "left", "topleft", "top",
+        "topright", "right", "center",]
+    group.add_argument(
+        "--legend_loc", choices=LEGEND_LOCATIONS, 
+        help="Where to draw the legend.")
+    
+    group = parser.add_argument_group(title="Point Appearance")
+    group.add_argument(
+        "--scale_points", default=1.0, type=float,
+        help="Scale the size of the points.  Default 1.0")
     group.add_argument(
         "--label_header",
         help="Label each point with the values in this column.")
@@ -145,10 +182,18 @@ def main():
         choices=["top", "bottom", "left", "right"],
         help="Where to label the points.")
     
+    group = parser.add_argument_group(title="Line Appearance")
+    group.add_argument(
+        "--add_lines", action="store_true",
+        help="Add lines that connect the points.")
+    group.add_argument(
+        "--scale_lines", default=1.0, type=float,
+        help="Scale the thickness of the lines.  Default 1.0")
+
     group = parser.add_argument_group(title="Colors")
     group.add_argument(
         "-c", "--cluster", action="append",
-        help="Group samples into a cluster (e.g. -c 1-5); 1-based.")
+        help="Group samples into a cluster (e.g. -c 1-5); 1-based, inclusive.")
     group.add_argument(
         "--indexes_include_headers", "--iih", action="store_true",
         help="If not given (default), then index 1 is the first row "
@@ -173,41 +218,84 @@ def main():
     assert args.mar_left > 0 and args.mar_left < 10
     #assert args.xlabel_size > 0 and args.xlabel_size < 10
 
+    assert args.legend_inset >= 0 and args.legend_inset < 10
+    if args.legend_loc is None:
+        args.legend_loc = "bottomright"
+
+    if args.default_color:
+        assert len(args.default_color) == 7
+        assert args.default_color[0] == "#"
+
     MATRIX = AnnotationMatrix.read(args.datafile, False)
     assert MATRIX.num_headers() and MATRIX.num_annots(), "Empty matrix."
-    assert args.x_header in MATRIX.headers, \
-           "header not found: %s" % args.x_header
-    assert args.y_header in MATRIX.headers, \
-           "header not found: %s" % args.y_header
+    assert args.series, "Need to add a data --series to plot."
+    #assert len(args.series) <= 1, "Not implemented."
+    #assert args.x_header in MATRIX.headers, \
+    #       "header not found: %s" % args.x_header
+    #assert args.y_header in MATRIX.headers, \
+    #       "header not found: %s" % args.y_header
     if args.label_header:
         assert args.label_header in MATRIX.headers, \
                "header not found: %s" % args.label_header
     if args.label_size is not None:
         assert args.label_size > 0 and args.label_size <= 20
+    assert args.scale_points > 0 and args.scale_points < 20
+    assert args.scale_lines > 0 and args.scale_lines < 20
 
+    series = _parse_series(MATRIX, args.series)
     cluster = None
     if args.cluster:
         cluster = _parse_cluster(
             args.cluster, args.indexes_include_headers, MATRIX)
+
+    if len(series) > 1:
+        assert not cluster, "Series and cluster not implemented."
     
     height = args.height or 2400
     width = args.width or 3200
 
-    # Pull out the values for the plot.
-    x1 = MATRIX[args.x_header]
-    x2 = MATRIX[args.y_header]
-    x_values = map(float, x1)
-    y_values = map(float, x2)
-    assert len(x_values) == len(y_values)
-
-    col = "#000000"
+    # Pull out the values and colors for the plot.
+    default_color = "#000000"
     if args.default_color:
-        col = args.default_color
-    assert len(col) == 7
-    assert col[0] == "#"
+        default_color = args.default_color
+        
+    assert len(series) < len(colorlib.BREWER_QUALITATIVE_SET1)
+    series_data = []  # list of (x_values, y_values, col) for each series
+    for i in range(len(series)):
+        x_header, y_header = series[i]
+        x = MATRIX[x_header]
+        y = MATRIX[y_header]
+        I1 = [j for (j, a) in enumerate(x) if a]
+        I2 = [j for (j, a) in enumerate(y) if a]
+        I = [j for j in I1 if j in I2]
+        x = [x[j] for j in I]
+        y = [y[j] for j in I]
+        x = map(float, x)
+        y = map(float, y)
+        assert len(x) == len(y)
+        c = default_color
+        if len(series) > 1:
+            rgb = colorlib.BREWER_QUALITATIVE_SET1[i]
+            c = colorlib.rgb2hex(rgb, prefix="#")
+        c = [c] * len(x)
+        x = x, y, c
+        series_data.append(x)
+
+    # Merge all the data point for each series.
+    x_values = []
+    y_values = []
+    col = []
+    for (x, y, c) in series_data:
+        x_values.extend(x)
+        y_values.extend(y)
+        #c = [c] * len(x)
+        col.extend(c)
+    assert len(x_values) == len(y_values)
+    assert len(x_values) == len(col)
+
     if cluster is not None:
         col_rgb = pcalib.choose_colors(cluster)
-        col = [col] * len(col_rgb)
+        col = [default_color] * len(col_rgb)
         for i in range(len(col_rgb)):
             if col_rgb[i] is None:
                 continue
@@ -215,6 +303,10 @@ def main():
         assert len(col) == len(x_values)
 
         
+    #for i in range(len(x_values)):
+    #    x = x_values[i], y_values[i], cluster[i], col[i]
+    #    print "\t".join(map(str, x))
+
     # Start R and set up the environment.
     R = jmath.start_R()
 
@@ -222,16 +314,22 @@ def main():
     if args.title:
         main = args.title
     sub = ""
-    xlab = args.x_header
+    xlab = ""
+    if len(series) == 1:
+        xlab = x_header
     if args.xlab:
         xlab = args.xlab
-    ylab = args.y_header
+    ylab = ""
+    if len(series) == 1:
+        ylab = y_header
     if args.xlab:
         ylab = args.ylab
     
     
-    lwd = 2
-    cex = 1 * args.scale_points
+    lwd_box = 2
+    lwd_axis = 2
+    lwd_regr = 3
+    cex = 1.0 * args.scale_points
     cex_lab = 1.5
     cex_main = 2.0
     cex_sub = 1.0
@@ -272,6 +370,39 @@ def main():
     #    main=main, xlab="", ylab="", axes=jmath.R_var("FALSE"),
     #    add=jmath.R_var("TRUE"))
 
+    if args.add_lines:
+        lwd = 4 * args.scale_lines
+        i = 0
+        for (x, y, c) in series_data:
+            # Cannot use c for the color.  It might've been changed by
+            # --cluster.
+            assert col and i < len(col)
+            c = col[i:i+len(x)]
+            i += len(x)
+
+            # The "lines" function takes a scalar for col (except for
+            # type=h, histogram vertical lines).  If there are
+            # multiple colors, then split up the points based on the
+            # colors.
+            l_x, l_y, l_c = [], [], None
+            for j in range(len(x)):
+                if c[j] != l_c:
+                    if l_x:
+                        jmath.R_fn("lines", l_x, l_y, lwd=lwd, col=l_c)
+                    # Add the previous point so that the points will
+                    # connect.
+                    if l_x:
+                        l_x = [l_x[-1]]
+                        l_y = [l_y[-1]]
+                    else:
+                        l_x, l_y, l_c = [], [], None
+                l_x.append(x[j])
+                l_y.append(y[j])
+                l_c = c[j]
+            if l_x:
+                jmath.R_fn("lines", l_x, l_y, lwd=lwd, col=l_c)
+            
+
     if args.label_header:
         cex = 1
         if args.label_size is not None:
@@ -288,8 +419,8 @@ def main():
             "text", jmath.R_var("X"), jmath.R_var("Y"),
             labels=point_labels, cex=cex, pos=pos)
     
-
     # Calculate correlation, and other statistics.
+    # TODO: Should calculate this for each series.
     r = jmath.R("cor(X, Y)")
     p_value = jmath.R("cor.test(X, Y)$p.value")
     r = r[0]
@@ -307,17 +438,27 @@ def main():
         y1 = x1*m + b
         x2 = max(x_values)
         y2 = x2*m + b
-        jmath.R_fn("lines", [x1, x2], [y1, y2], lwd=3, lty=2, col="#C63F31")
+        jmath.R_fn(
+            "lines", [x1, x2], [y1, y2], lwd=lwd_regr, lty=2, col="#C63F31")
         sub = "R=%.2f (p=%.2g)" % (r, p_value)
         header = "X", "Y", "R", "p"
         print "\t".join(header)
         x = xlab, ylab, r, p_value
         print "\t".join(map(str, x))
 
+    if args.add_legend:
+        leg = [x[1] for x in series]
+        fill = [x[-1] for x in series_data]
+        #jmath.R("x <- rgb(0.5, 0.5, 0.5, 0.5)")
+        # alpha does not seem to be supported here.
+        jmath.R_fn(
+            "legend", args.legend_loc, legend=leg, fill=fill,
+            inset=args.legend_inset)
+
     if not args.no_box:
-        jmath.R_fn("box", lwd=lwd)
-    jmath.R_fn("axis", 1, lwd=lwd, **{ "cex.axis" : 1.5 })
-    jmath.R_fn("axis", 2, lwd=lwd, **{ "cex.axis" : 1.5 })
+        jmath.R_fn("box", lwd=lwd_box)
+    jmath.R_fn("axis", 1, lwd=lwd_axis, **{ "cex.axis" : 1.5 })
+    jmath.R_fn("axis", 2, lwd=lwd_axis, **{ "cex.axis" : 1.5 })
     jmath.R_fn(
         "title", main=main, sub=sub, xlab=xlab, ylab=ylab,
         **{ "cex.lab" : cex_lab, "cex.main" : cex_main, "cex.sub" : cex_sub })

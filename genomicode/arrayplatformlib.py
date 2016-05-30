@@ -116,14 +116,13 @@ def prioritize_platforms(platform_names):
     return prioritized_names
 
 
-def find_header(MATRIX, category):
-    # Returns a header from MATRIX that matches this category or None.
-
+def categorize_headers(MATRIX):
+    # Return a dictionary of category -> header.
+    
     #name_fix = {
     #    "entrez_ID_human" : "Entrez_ID_human",
     #    "entrez_ID_symbol_human" : "Entrez_Symbol_human",
     #    }
-
     scores = score_matrix(MATRIX)
 
     # Filter based on a minimum score.
@@ -141,14 +140,22 @@ def find_header(MATRIX, category):
     x.sort()
     scores = [x[-1] for x in x]
 
+    cat2header = {}
     for score in scores:
         platform = find_platform_by_name(score.platform_name)
         if not platform:
             continue
-        if platform.category != category:
+        if platform.category in cat2header:
             continue
-        return score.header
-    return None
+        cat2header[platform.category] = score.header
+    return cat2header
+
+
+def find_header(MATRIX, category):
+    # Returns a header from MATRIX that matches this category or None.
+
+    cat2header = categorize_headers(MATRIX)
+    return cat2header.get(category)
 
 
 def _hash_chipname(filename):
@@ -471,11 +478,7 @@ def _remove_version(refseq_id):
 ##     return x
 
 
-def score_matrix(DATA, annot_delim=None, min_score=None, remove_version=False):
-    """Return a list of Score objects.  List is ordered by decreasing
-    score.
-
-    """
+def _score_matrix_h(DATA, annot_delim, min_score, remove_version):
     assert min_score is None or (min_score >= 0 and min_score <= 1.0)
     
     results = []  # List of Score objects.
@@ -494,6 +497,23 @@ def score_matrix(DATA, annot_delim=None, min_score=None, remove_version=False):
     schwartz.sort()
     results = [x[-1] for x in schwartz]
     return results
+
+
+SCORE_MATRIX_CACHE = {}
+def score_matrix(
+    DATA, annot_delim=None, min_score=None, remove_version=False):
+    """Return a list of Score objects.  List is ordered by decreasing
+    score.
+
+    """
+    global SCORE_MATRIX_CACHE
+    if len(SCORE_MATRIX_CACHE) > 5:
+        SCORE_MATRIX_CACHE = {}
+    key = id(DATA), annot_delim, min_score, remove_version
+    if key not in SCORE_MATRIX_CACHE:
+        value = _score_matrix_h(DATA, annot_delim, min_score, remove_version)
+        SCORE_MATRIX_CACHE[key] = value
+    return SCORE_MATRIX_CACHE[key]
 
 
 ## def score_platform_of_matrix(DATA, annot_delim=None):

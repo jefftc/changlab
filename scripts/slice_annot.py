@@ -52,6 +52,7 @@
 # max_annots
 # add_to
 # multiply_by
+# normalize_to_max
 # log_base
 # neg_log_base
 # add_two_annots
@@ -81,10 +82,21 @@ def parse_indexes(MATRIX, indexes_str, allow_duplicates=False,
     # 5
     # 1,5,10
     # 1-99,215-300
+    # Sample,2-5      # Also takes headers.
+    import re
     from genomicode import parselib
 
     max_index = len(MATRIX.headers)
     indexes_str = indexes_str.replace("END", str(max_index))
+
+    # Replace headers with 1-based indexes.
+    parts = indexes_str.split(",")
+    for i in range(len(parts)):
+        if re.search("[^0-9-]", parts[i]):
+            # Returns 0-based index.
+            p = MATRIX.normalize_header_i(parts[i])
+            parts[i] = str(p+1)  # want 1-based index
+    indexes_str = ",".join(parts)
 
     I = []
     for s, e in parselib.parse_ranges(indexes_str):
@@ -553,10 +565,12 @@ def copy_column(MATRIX, copy_column):
     for x in copy_column:
         x = x.split(",", 1)
         assert len(x) == 2
-        index, new_header = x
-        index = int(index)
-        assert index >= 1 and index <= len(MATRIX.headers)
-        index -= 1  # convert to 0-based
+        x, new_header = x
+        index = MATRIX.normalize_header_i(x, index_base1=True)
+        assert index is not None
+        #index = int(index)
+        #assert index >= 1 and index <= len(MATRIX.headers)
+        #index -= 1  # convert to 0-based
         x = index, new_header
         jobs.append(x)
 
@@ -839,6 +853,35 @@ def replace_whole_annot(MATRIX, replace_annot):
     return MATRIX
 
 
+def rename_duplicate_annot(MATRIX, args):
+    # <indexes>
+    if not args:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    indexes = parse_indexes(MATRIX, args)
+    MATRIX = MATRIX.copy()
+    for index in indexes:
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+
+        name2I = {}  # name -> list of indexes
+        for i, name in enumerate(annots):
+            if name not in name2I:
+                name2I[name] = []
+            name2I[name].append(i)
+
+        nodup = annots[:]
+        for (name, I) in name2I.iteritems():
+            if len(I) < 2:
+                continue
+            for i in range(len(I)):
+                nodup[I[i]] = "%s_%d" % (name, i+1)
+        MATRIX.header2annots[h] = nodup
+
+    return MATRIX
+
+
 def prepend_to_annots(MATRIX, prepend_annot):
     # list of strings in format of: <indexes 1-based>;<text to prepend>
     if not prepend_annot:
@@ -1020,9 +1063,8 @@ def split_chr_start_end(MATRIX, arg):
 
     jobs = []   # list of (index 0-based,)
     for x in arg:
-        h = MATRIX.normalize_header(x, index_base1=True)
+        h = MATRIX.normalize_header_i(x, index_base1=True)
         assert h is not None, "Unknown header: %s" % x
-        i = MATRIX.headers_h.index(h)
         jobs.append((i,))
 
 
@@ -1267,6 +1309,32 @@ def multiply_by(MATRIX, multiply_by):
             x = float(annots[i])
             x = x * number
             annots[i] = str(x)
+    return MATRIX
+
+
+def normalize_to_max(MATRIX, args):
+    # format: list of <header>
+    if not args:
+        return MATRIX
+    
+    jobs = []  # list of headers
+    for x in args:
+        h = MATRIX.normalize_header(x, index_base1=True)
+        assert h is not None, "Unknown header: %s" % x
+        jobs.append(h)
+    
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        header = x
+        annots = MATRIX.header2annots[header]
+        annots = [float(x) for x in annots]
+        norm = max(annots)
+        if not norm:
+            continue
+        for i in range(len(annots)):
+            x = float(annots[i])/norm
+            annots[i] = str(x)
+        MATRIX.header2annots[header] = annots
     return MATRIX
 
 
@@ -2162,7 +2230,8 @@ def main():
         "the last column.  (MULTI)")
     group.add_argument(
         "--copy_column", default=[], action="append",
-        help="Copy a column.  Format: <index>,<new_header>.  (MULTI)")
+        help="Copy a column.  Format: <old_header_or_index>,<new_header>.  "
+        "(MULTI)")
     
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
@@ -2265,6 +2334,10 @@ def main():
         help="Replace a substring of an annotation with another substring.  "
         "Format: <indexes>;<src>;<dst>.  (MULTI)")
     group.add_argument(
+        "--rename_duplicate_annot", 
+        help="If an annotation is duplicated, then rename them with unique "
+        "names.  Format: <indexes>")
+    group.add_argument(
         "--prepend_to_annots", default=[], action="append",
         help="Prepend text to the values in one or more columns.  "
         "Format: <indexes>;<text_to_prepend>.  (MULTI)")
@@ -2320,6 +2393,11 @@ def main():
         help="Multiply a column by a number.  "
         "Format: <index>,<number>.  "
         "All indexes should be 1-based.  (MULTI)")
+    group.add_argument(
+        "--normalize_to_max", default=[], action="append",
+        help="Normalize all values in this column to the maximum value.  "
+        "Format: <name>.  (MULTI)")
+    
     group.add_argument(
         "--log_base", default=[], action="append",
         help="Log a column with a specific base.  "
@@ -2482,6 +2560,7 @@ def main():
         MATRIX, args.copy_value_if_empty_same_header_all)
     MATRIX = replace_annot(MATRIX, args.replace_annot)
     MATRIX = replace_whole_annot(MATRIX, args.rename_annot)
+    MATRIX = rename_duplicate_annot(MATRIX, args.rename_duplicate_annot)
     MATRIX = prepend_to_annots(MATRIX, args.prepend_to_annots)
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
     MATRIX = merge_annots(MATRIX, args.merge_annots)
@@ -2498,6 +2577,7 @@ def main():
     MATRIX = neg_log_base(MATRIX, args.neg_log_base)
     MATRIX = add_to(MATRIX, args.add_to)
     MATRIX = multiply_by(MATRIX, args.multiply_by)
+    MATRIX = normalize_to_max(MATRIX, args.normalize_to_max)
     MATRIX = add_two_annots(MATRIX, args.add_two_annots)
     MATRIX = subtract_two_annots(MATRIX, args.subtract_two_annots)
     MATRIX = divide_two_annots(MATRIX, args.divide_two_annots)
