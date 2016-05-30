@@ -8,6 +8,7 @@
 # select_cols_substr
 # add_column
 # copy_column
+# add_desc_for_gmx
 # 
 # add_header_line
 # fill_empty_headers
@@ -587,6 +588,17 @@ def copy_column(MATRIX, copy_column):
     for (header_h, annots) in zip(headers_h, all_annots):
         header2annots[header_h] = annots
     return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
+
+
+def add_desc_for_gmx(MATRIX, arg):
+    if not arg:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    MATRIX = MATRIX.copy()
+    for h, annots in MATRIX.header2annots.iteritems():
+        annots.insert(0, "na")
+    return MATRIX
 
 
 def set_value_if_empty(MATRIX, params):
@@ -2232,6 +2244,9 @@ def main():
         "--copy_column", default=[], action="append",
         help="Copy a column.  Format: <old_header_or_index>,<new_header>.  "
         "(MULTI)")
+    group.add_argument(
+        "--add_desc_for_gmx", action="store_true",
+        help='Add "na" to each column to turn this into a GMX file.')
     
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
@@ -2529,6 +2544,7 @@ def main():
     MATRIX = select_cols_substr(MATRIX, args.select_cols_substr)
     MATRIX = add_column(MATRIX, args.add_column)
     MATRIX = copy_column(MATRIX, args.copy_column)
+    MATRIX = add_desc_for_gmx(MATRIX, args.add_desc_for_gmx)
 
     # Changing the headers.
     MATRIX = fill_empty_headers(MATRIX, args.fill_empty_headers)
