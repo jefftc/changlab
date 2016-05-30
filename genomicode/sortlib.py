@@ -13,3 +13,11 @@ def sort_natural(L):
     schwartz.sort()
     x = [x[-1] for x in schwartz]
     return x
+
+def sort_int(L):
+    # Take a list of strings and sort as integers.
+    x = [int(x) for x in L]
+    x.sort()
+    x = [str(x) for x in x]
+    return x
+    
