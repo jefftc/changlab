@@ -360,18 +360,20 @@ def describe_gene(MATRIX, gene_i):
 
     probe_id = gene_id = gene_symbol = None
 
+    cat2header = apl.categorize_headers(MATRIX)
+
     # probe_id
-    header = apl.find_header(MATRIX, apl.PROBE_ID)
+    header = cat2header.get(apl.PROBE_ID)
     if header is not None:
         probe_id = MATRIX.row_names(header)[gene_i]
 
     # gene_symbol
-    header = apl.find_header(MATRIX, apl.GENE_SYMBOL)
+    header = cat2header.get(apl.GENE_SYMBOL)
     if header is not None:
         gene_symbol = MATRIX.row_names(header)[gene_i]
 
     # gene_id
-    header = apl.find_header(MATRIX, apl.GENE_ID)
+    header = cat2header.get(apl.GENE_ID)
     if header is not None:
         gene_id = MATRIX.row_names(header)[gene_i]
 

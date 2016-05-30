@@ -292,7 +292,7 @@ def main():
     jmath.R_fn("par", mar=mar, RETVAL="op")
 
     jmath.R_fn(
-        "hist", jmath.R_var("X"), breaks=breaks, main=main, xlab="", ylab="",
+        "hist", jmath.R_var("X"), breaks=breaks, main="", xlab="", ylab="",
         ylim=ylim, axes=jmath.R_var("FALSE"), col=col, RETVAL="x")
     # Make plot area solid white.
     #jmath.R('usr <- par("usr")')

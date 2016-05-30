@@ -94,7 +94,7 @@ def _pshell_h(commands, max_procs):
 
 
 def pyfun(jobs, num_procs=4, lock_keyword=None, DELAY=0.1,
-        propogate_exception=True):
+          propogate_exception=True):
     # Each job is a tuple of (function, args, keywds).
     # args and keywds can be None.
     # If lock_keyword is provided, then I will make a lock and pass it

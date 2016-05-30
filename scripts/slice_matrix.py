@@ -8,6 +8,7 @@
 # transpose_matrix
 # transpose_nonmatrix
 # correlate_matrix
+# correlate_against_matrix
 # calc_mean
 # calc_sd
 # calc_range
@@ -319,6 +320,65 @@ def correlate_matrix(MATRIX, correlate):
     col_names = {
         col_order[0] : MATRIX.col_names(const.COL_ID),
         }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_cor = Matrix.InMemoryMatrix(
+        X_cor, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_cor
+
+
+def correlate_against_matrix(MATRIX, correlate):
+    from genomicode import jmath
+    from genomicode import Matrix
+    from genomicode import hashlib
+    from arrayio import const
+    import arrayio
+
+    if not correlate:
+        return MATRIX
+
+    MATRIX2 = arrayio.read(correlate)
+
+    assert MATRIX.nrow() == MATRIX2.nrow()
+    assert MATRIX.ncol() == MATRIX2.ncol()
+
+    # Correlate each of the rows.
+    cors = [""] * MATRIX.nrow()
+    for i in range(MATRIX.nrow()):
+        x = MATRIX._X[i]
+        y = MATRIX2._X[i]
+        # Ignore None.
+        I1 = [j for (j, a) in enumerate(x) if a is not None]
+        I2 = [j for (j, a) in enumerate(y) if a is not None]
+        I = [j for j in I1 if j in I2]
+        if not I:
+            continue
+        x = [x[j] for j in I]
+        y = [y[j] for j in I]
+        cors[i] = jmath.cor_list(x, y, safe=1)
+    X_cor = []
+    for x in cors:
+        X_cor.append([x])
+
+    x = MATRIX.row_names() + MATRIX2.row_names()
+    x = hashlib.uniquify_by_num(x)
+    
+    row_order = x
+    col_order = [MATRIX.col_names()[0]]
+    # XXX need to be unique.
+    row_names = {}
+    for i, rn in enumerate(MATRIX.row_names()):
+        row_names[row_order[i]] = MATRIX.row_names(rn)
+    for i, rn in enumerate(MATRIX2.row_names()):
+        i += len(MATRIX.row_names())
+        row_names[row_order[i]] = MATRIX2.row_names(rn)
+    col_names = {
+        col_order[0] : ["Correlation"]
+        }
+
     synonyms = {
         const.ROW_ID : row_order[0],
         const.COL_ID : col_order[0],
@@ -3140,6 +3200,12 @@ def main():
         "--correlate", action="store_true",
         help="Calculate the pairwise correlation of the columns.")
     group.add_argument(
+        "--correlate_against",
+        help="The argument should be the name of another matrix file.  "
+        "Correlate each row of this matrix to the row of the matrix "
+        "in filename.  "
+        "Each of the rows and columns should be aligned.")
+    group.add_argument(
         "--calc_mean", action="store_true",
         help="Calculate the mean of each row.")
     group.add_argument(
@@ -3628,6 +3694,7 @@ def main():
 
     MATRIX = transpose_matrix(MATRIX, args.transpose)
     MATRIX = correlate_matrix(MATRIX, args.correlate)
+    MATRIX = correlate_against_matrix(MATRIX, args.correlate_against)
     MATRIX = calc_mean(MATRIX, args.calc_mean)
     MATRIX = calc_sd(MATRIX, args.calc_sd)
     MATRIX = calc_range(MATRIX, args.calc_range)

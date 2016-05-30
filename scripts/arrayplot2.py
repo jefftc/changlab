@@ -94,6 +94,7 @@ SCHEME2FN = [
     ("brewer-greens-seq", colorlib.brewer_greens_seq),
     ("brewer-reds-seq", colorlib.brewer_reds_seq),
     ("brewer-ylorbr-seq", colorlib.brewer_ylorbr_seq),
+    ("brewer-qual-set1", colorlib.brewer_qual_set1),
     ]
 
 

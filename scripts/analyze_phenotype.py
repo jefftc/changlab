@@ -73,6 +73,7 @@ def calc_association(phenotypes, scores):
     # n                    Number of samples.
     # m                    Number of groups.
     # scores               n-list of <float>
+    # delta                None or <float>
     # phenotypes           n-list of <string>
     # groups               n-list of <int>  [0, length(group_names)-1]
     # group_names          m-list of <string>  (unique list of pheno)
@@ -127,6 +128,11 @@ def calc_association(phenotypes, scores):
     mean_score = {}
     for n in group2scores:
         mean_score[n] = jmath.mean(group2scores[n])
+    # If there are exactly 2 groups, then find the difference between
+    # the two groups.
+    delta = None   # list of deltas
+    if len(group_names) == 2:
+        delta = mean_score[1] - mean_score[0]
 
     # Figure out the relationship.
     relationship = ""
@@ -150,6 +156,7 @@ def calc_association(phenotypes, scores):
     SCORE["group_names"] = group_names
     SCORE["num_samples"] = num_samples
     SCORE["mean_score"] = mean_score
+    SCORE["delta"] = delta
     SCORE["p_value"] = p_value
     SCORE["relationship"] = relationship
     return SCORE
@@ -427,7 +434,7 @@ def main():
     import arrayio
     import analyze_clinical_outcome as aco
     import boxplot
-    #from genomicode import hashlib
+    from genomicode import parallel
 
     parser = argparse.ArgumentParser(
         description="Associate gene expression patterns with a "
@@ -444,6 +451,9 @@ def main():
         "--ignore_samples", help="Ignore the samples where an annotation "
         "(a column in the phenotype file) matches a specific value.  "
         "Format:<header>,<value>")
+    parser.add_argument(
+        "-j", dest="num_procs", type=int, default=1,
+        help="Number of processors to use.")
     
     group = parser.add_argument_group(title='Analysis')
     group.add_argument(
@@ -538,6 +548,7 @@ def main():
     assert args.phenotype_file, 'Please specify a phenotype file.'
     assert os.path.exists(args.phenotype_file), "File not found: %s" % \
            args.phenotype_file
+    assert args.num_procs >= 1 and args.num_procs < 100
     
     assert args.phenotype, 'Please specify the phenotype to analyze.'
     assert args.gene or args.geneset or args.all_genes, \
@@ -646,13 +657,12 @@ def main():
     # Figure out the header for the table.
     header = M.row_names() + [
         "Phenotype", "Groups", "Num Samples", "Average Expression",
-        "Relationship", "p-value"]
+        "Delta", "Relationship", "p-value"]
     print >>outhandle, "\t".join(header)
 
     # Write out each row of the table.
     for x in itertools.product(phenotypes, range(M.nrow())):
         pheno_header, gene_i = x
-
         SCORE = gene_phenotype_scores[(pheno_header, gene_i)]
 
         gene_names = [M.row_names(x)[gene_i] for x in M.row_names()]
@@ -661,68 +671,92 @@ def main():
         I = range(len(group_names))
         num_samples = [SCORE["num_samples"][x] for x in I]
         mean_score = [SCORE["mean_score"][x] for x in I]
+        delta = ""
+        if len(group_names) == 2:
+            delta = SCORE["delta"]
         relationship = SCORE["relationship"]
         p_value = SCORE["p_value"]
 
         _fmt = aco._format_list
         x = gene_names + [
             phenotype, _fmt(group_names), _fmt(num_samples), _fmt(mean_score),
-            relationship, p_value]
+            delta, relationship, p_value]
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))
+    if filestem:
+        outhandle.close()
 
-        # Write out plots.
+    # Write out other files.
+    if not filestem:
+        return
+
+    
+
+    jobs = []  # list of (fn, args, keywds)
+    for x in itertools.product(phenotypes, range(M.nrow())):
+        pheno_header, gene_i = x
+        SCORE = gene_phenotype_scores[(pheno_header, gene_i)]
+        
+        # Write the PRISM file.
         gene_id = aco.format_gene_name(M, None, gene_i)
         sample_names = M.col_names(arrayio.COL_ID)
-        if filestem:
-            filename = aco._make_filename(
-                M, gene_i, filestem, pheno_header, args.gene_header,
-                "prism", "txt")
-            write_prism_file(
-                filename, SCORE["scores"], SCORE["phenotypes"],
-                SCORE["group_names"])
+        filename = aco._make_filename(
+            M, gene_i, filestem, pheno_header, args.gene_header,
+            "prism", "txt")
+        x1 = (filename,
+                SCORE["scores"], SCORE["phenotypes"], SCORE["group_names"])
+        x = write_prism_file, x1, {}
+        jobs.append(x)
 
-        if filestem:
-            filename = aco._make_filename(
-                M, gene_i, filestem, pheno_header, args.gene_header,
-                "boxplot", "png")
-            pretty_gene = aco.pretty_gene_name(M, args.gene_header, gene_i)
+        
+        # Make a boxplot.
+        filename = aco._make_filename(
+            M, gene_i, filestem, pheno_header, args.gene_header,
+            "boxplot", "png")
+        pretty_gene = aco.pretty_gene_name(M, args.gene_header, gene_i)
 
-            group_names = SCORE["group_names"]
-            pheno2scores = {}
-            for pheno, score in zip(SCORE["phenotypes"], SCORE["scores"]):
-                if pheno not in pheno2scores:
-                    pheno2scores[pheno] = []
-                pheno2scores[pheno].append(score)
-            p_value = "p=%.2g" % SCORE["p_value"]
-            boxplot.plot_boxplot(
-                filename, group_names, pheno2scores,
-                height=1600, width=1600, title=pretty_gene, 
-                subtitle=p_value, subtitle_col="#A60400", subtitle_size=1.2,
-                subtitle_line=0.5,
-                ylab="Gene Expression",
-                mar_bottom=args.box_mar_bottom, mar_left=args.box_mar_left,
-                mar_top=1.25)
-            #plot_boxplot(
-            #    filename, SCORE["scores"], SCORE["phenotypes"],
-            #    SCORE["group_names"], SCORE["p_value"], pretty,
-            #    args.box_mar_bottom, args.box_mar_left, args.box_mar_top,
-            #    )
+        group_names = SCORE["group_names"]
+        pheno2scores = {}
+        for pheno, score in zip(SCORE["phenotypes"], SCORE["scores"]):
+            if pheno not in pheno2scores:
+                pheno2scores[pheno] = []
+            pheno2scores[pheno].append(score)
+        p_value = "p=%.2g" % SCORE["p_value"]
+        x1 = (filename, group_names, pheno2scores)
+        x2 = {
+            "height" : 1600,
+            "width" : 1600,
+            "title" : pretty_gene,
+            "subtitle" : p_value,
+            "subtitle_col" : "#A60400",
+            "subtitle_size" : 1.2,
+            "subtitle_line" : 0.5,
+            "ylab" : "Gene Expression",
+            "mar_bottom" : args.box_mar_bottom,
+            "mar_left" : args.box_mar_left,
+            "mar_top" : 1.25,
+            }
+        x = boxplot.plot_boxplot, x1, x2
+        jobs.append(x)
             
-        if filestem:
-            #filename = "%s%s.%s.waterfall.png" % (
-            #    filestem, pheno_header, gene_id_h)
-            filename = aco._make_filename(
-                M, gene_i, filestem, pheno_header, args.gene_header,
-                "waterfall", "png")
-            pretty = aco.pretty_gene_name(M, args.gene_header, gene_i)
-            plot_waterfall(
-                filename, SCORE["scores"], SCORE["phenotypes"],
-                SCORE["group_names"], sample_names, SCORE["p_value"], pretty,
-                args.water_mar_bottom, args.water_mar_left, args.water_mar_top,
-                args.water_xlabel_off,
-                )
+        # Make a waterfall plot.
+        #filename = "%s%s.%s.waterfall.png" % (
+        #    filestem, pheno_header, gene_id_h)
+        filename = aco._make_filename(
+            M, gene_i, filestem, pheno_header, args.gene_header,
+            "waterfall", "png")
+        pretty = aco.pretty_gene_name(M, args.gene_header, gene_i)
+        x1 = (
+            filename, SCORE["scores"], SCORE["phenotypes"],
+            SCORE["group_names"], sample_names, SCORE["p_value"], pretty,
+            args.water_mar_bottom, args.water_mar_left, args.water_mar_top,
+            args.water_xlabel_off)
+        x = plot_waterfall, x1, {}
+        jobs.append(x)
+    parallel.pyfun(jobs, num_procs=args.num_procs)
 
             
 if __name__ == '__main__':
+    #import profile
+    #profile.run("main()")
     main()

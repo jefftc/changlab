@@ -22,8 +22,10 @@ brewer_rdylbu_div
 brewer_rdylgn_div
 brewer_spectral_div
 brewer_blues_seq
-
-
+brewer_greens_seq
+brewer_reds_seq
+brewer_ylorbr_seq
+brewer_qual_set1
 
 choose_contrasting_color
 choose_contrasting_bw
@@ -387,6 +389,16 @@ def brewer_ylorbr_seq(n):
     return x
 
 
+def brewer_qual_set1(n):
+    # Works best when n == 8.
+    ns = len(BREWER_QUALITATIVE_SET1)
+    color_matrix = [
+        (1.0-1.0/(ns-1)*i, 255*x[0], 255*x[1], 255*x[2])
+        for i, x in enumerate(BREWER_QUALITATIVE_SET1)]
+    x = _colors(color_matrix, n)
+    return x
+
+
 def hex2rgb(h):
     assert h.startswith("0x") or h.startswith("#")
     if h.startswith("0x"):
@@ -532,4 +544,3 @@ BREWER_QUALITATIVE_SET1 = [
     hex2rgb("#975C2C"),  # brown
     hex2rgb("#E383BA"),  # pink
     ]
-
