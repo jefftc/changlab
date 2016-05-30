@@ -21,15 +21,12 @@ def convert_geneset(
 
     # Search for the gene sets to convert.
     name2geneset = {}   # name -> (name, description, gene_ids)
-    print "HERE 2", filename
     for x in genesetlib.read_genesets(filename):
         name, description, gene_ids = x
-        print "HERE 6", name, in_genesets
         if not all_genesets and name not in in_genesets:
             continue
         assert name not in name2geneset, "Duplicate gene set: %s" % name
         name2geneset[name] = x
-        print "HERE 1", name
 
     # Make sure all the desired gene sets were found.
     for name in in_genesets:
@@ -274,13 +271,11 @@ def main():
     assert args.min_match_score <= 1.0, "min_match_score too high"
 
     if annotate_geneset:
-        print "HERE 3"
         convert_geneset(
             args.infile, args.in_delim,  args.keep_dups, args.keep_emptys,
             args.no_na,  args.geneset, args.all_genesets, args.platform,
             args.out_geneset_format)
     else:
-        print "HERE 4"
         convert_matrix(
             args.infile, args.header, args.header_and_platform,
             args.in_delim, args.out_delim,
