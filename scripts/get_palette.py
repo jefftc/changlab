@@ -16,9 +16,10 @@ def main():
     parser.add_argument(
         "--color", dest="color_scheme", 
         default=DEFAULT_COLOR_SCHEME, choices=COLOR_SCHEMES,
-        help="Choose the color scheme to use.")
+        help="Choose the color scheme to use.  "
+        "brewer_qual_set1 works best when n is 8.")
     parser.add_argument(
-        "-n", "--num_colors", default=10, type=int,
+        "-n", "--num_colors", default=8, type=int,
         help="Number of colors to get.")
 
     # Parse the input arguments.

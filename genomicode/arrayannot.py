@@ -26,8 +26,8 @@ def _start_R():
 
 
 def convert_gene_ids(
-    gene_ids, in_platform, out_platform, in_delim, out_delim,
-    keep_dups, keep_emptys, no_na):
+    gene_ids, in_platform, out_platform, in_delim=" /// ", out_delim=" /// ",
+    keep_dups=True, keep_emptys=True, no_na=True):
     # Return a list of the output IDs, parallel to gene_ids.  If a
     # gene ID to multiple output IDs, the output IDs will be separated
     # by out_delim.  If it is missing, then the output will be an
@@ -181,7 +181,7 @@ def _convert_gene_ids_local(in_platform, out_platform):
     from genomicode import config
     from genomicode import filelib
 
-    assert os.path.exists(config.convert_platform)
+    filelib.assert_exists_nz(config.convert_platform)
     x = "%s___%s.txt" % (in_platform, out_platform)
     filename = os.path.join(config.convert_platform, x)
     if not os.path.exists(filename):

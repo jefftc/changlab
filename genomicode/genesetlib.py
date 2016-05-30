@@ -504,41 +504,38 @@ def detect_format(filename):
     # pattern of empty strings and filled strings to distinguish GMX
     # or GMT.
     
-    # if there are spaces in the middle of the row.  E.g. gene <space>
-    # gene.
+    # If there are spaces in the middle of the row, then the genes are
+    # not left aligned.  E.g. gene <space> gene.
     genes_left_aligned = True
     for i in range(nrow):
-        is_left_aligned = True
-        found_space = False
-        row = matrix[i]
-        for x in row[2:]:
-            if x == "":
-                found_space = True
-            elif found_space:
-                is_left_aligned = False
-        if not is_left_aligned:
+        row = matrix[i][2:]
+        I_space = [i for (i, x) in enumerate(row) if not x.strip()]
+        I_char = [i for (i, x) in enumerate(row) if x.strip()]
+        if not I_space or not I_char:
+            continue
+        if I_space[0] < I_char[-1]:
             genes_left_aligned = False
+            break
+    # Same, but with columns.
     genes_top_aligned = True
     for i in range(ncol):
-        is_top_aligned = True
-        found_space = False
-        col = [x[i] for x in matrix]
-        for x in col[2:]:
-            if x == "":
-                found_space = True
-            elif found_space:
-                is_top_aligned = False
-        if not is_top_aligned:
+        col = [x[i] for x in matrix[2:]]
+        I_space = [i for (i, x) in enumerate(col) if not x.strip()]
+        I_char = [i for (i, x) in enumerate(col) if x.strip()]
+        if not I_space or not I_char:
+            continue
+        if I_space[0] < I_char[-1]:
             genes_top_aligned = False
+            break
     if not genes_top_aligned and not genes_left_aligned:
         DEBUG = "detect_format alignment"
         return None
     if genes_top_aligned and not genes_left_aligned:
         DEBUG = "detect_format alignment (top)"
-        return GMT
+        return GMX
     if genes_left_aligned and not genes_top_aligned:
         DEBUG = "detect_format alignment (top left)"
-        return GMX
+        return GMT
 
     # Check the descriptions to see if they match up.
     row2 = matrix[1]
