@@ -91,6 +91,17 @@ def sort_genes(genesets, arg):
     return genesets
 
 
+def sort_genesets(genesets, arg):
+    from genomicode import sortlib
+    if not arg:
+        return genesets
+
+    x = [x.name for x in genesets]
+    O = sortlib.order_natural(x)
+    genesets = [genesets[i] for i in O]
+    return genesets
+
+
 def _parse_file_gs(geneset):
     # Parse a geneset specified by the user.  geneset is in the format
     # of <filename>[,<geneset>,<geneset>,...].  Return a tuple of
@@ -133,6 +144,7 @@ def main():
         help="Append to the name of these gene sets.  "
         "Format: <text_to_append>.")
     group.add_argument("--sort_genes", action="store_true")
+    group.add_argument("--sort_genesets", action="store_true")
 
     args = parser.parse_args()
     assert args.geneset
@@ -167,6 +179,7 @@ def main():
     genesets = clean_excel(genesets, args.clean_excel)
     genesets = append_to_name(genesets, args.append_to_name)
     genesets = sort_genes(genesets, args.sort_genes)
+    genesets = sort_genesets(genesets, args.sort_genesets)
 
 
     if args.format == "gmt":
@@ -181,5 +194,3 @@ if __name__ == '__main__':
     main()
     #import cProfile as profile
     #profile.runctx("main()", globals(), locals()
-
-

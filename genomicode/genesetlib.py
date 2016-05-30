@@ -503,7 +503,7 @@ def detect_format(filename):
     # set.  This will lead to there being empty strings.  Check for a
     # pattern of empty strings and filled strings to distinguish GMX
     # or GMT.
-    
+
     # If there are spaces in the middle of the row, then the genes are
     # not left aligned.  E.g. gene <space> gene.
     genes_left_aligned = True
