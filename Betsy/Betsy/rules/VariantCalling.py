@@ -24,7 +24,7 @@
 # call_variants_strelka
 # call_variants_somaticsniper
 # call_variants_jointsnvmix
-# call_variants_all_somatic
+# merge_somatic_variants
 #
 # make_vcf_recalibration_report_snp
 # recalibrate_variants_snp
@@ -410,7 +410,7 @@ all_modules = [
         ),
 
     ModuleNode(
-        "call_variants_all_somatic",
+        "merge_somatic_variants",
         [
             VCFFolder, # MuTect
             VCFFolder, # Varscan
