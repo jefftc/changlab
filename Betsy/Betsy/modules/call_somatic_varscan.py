@@ -83,6 +83,10 @@ class Module(AbstractModule):
         # java -jar VarScan.jar somatic [normal_pileup] [tumor_pileup]
         #   [output] OPTIONS
         varscan = mlib.findbin("varscan_jar")
+
+        # Use parameters from:
+        # Using VarScan 2 for Germline Variant Calling and Somatic
+        # Mutation Detection
         
         # Make a list of commands.
         commands = []
@@ -94,7 +98,13 @@ class Module(AbstractModule):
                 "java", "-jar", sq(varscan),
                 "somatic",
                 sq(tmp1_normal), sq(tmp1_cancer),
-                sample, 
+                sample,
+                "--min-coverage", 10,
+                "--min-avg-qual", 15,
+                "--min-normal-coverage", 10,
+                "--min-tumor-coverage", 10,
+                "--min-var-freq", 0.05,
+                "--somatic-p-value", 0.05,
                 "--output-vcf", 1,
                 ]
             x = " ".join(map(str, x))
