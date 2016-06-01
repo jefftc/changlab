@@ -197,7 +197,7 @@ def main():
         parser.error("File not found: %s" % args.datafile)
     assert not (args.breaks_seq and args.num_breaks)
     if args.num_breaks:
-        assert args.num_breaks >= 2 and args.num_breaks <= 100
+        assert args.num_breaks >= 2 and args.num_breaks <= 1000
     if args.width is not None:
         assert args.width > 10, "too small"
         assert args.width < 4096*16, "width too big"
