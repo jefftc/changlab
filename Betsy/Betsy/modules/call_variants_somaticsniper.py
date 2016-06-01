@@ -41,7 +41,7 @@ class Module(AbstractModule):
                 vcf_outfile
             jobs.append(x)
 
-        # bam-somaticsniper -q 1 -G -L -F vcf \
+        # bam-somaticsniper -q 1 -Q 15 -G -L -F vcf \
         #   -f genomes/Broad.hg19/Homo_sapiens_assembly19.fa \
         #   test31/tumor.bam test31/normal.bam test41.vcf
         somaticsniper = mlib.get_config(
@@ -57,6 +57,7 @@ class Module(AbstractModule):
             x = [
                 sq(somaticsniper),
                 "-q", 1,
+                "-Q", 15,
                 "-G",
                 "-L",
                 "-F", "vcf",

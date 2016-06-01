@@ -45,7 +45,7 @@ def convert_gene_ids(
     # No duplicates.
     x = {}.fromkeys(x).keys()
     gene_ids_c = x
-    
+
     in2out = None
     if in_platform == "Entrez_Symbol_human" and \
        out_platform in ("Entrez_Symbol_human", "Entrez_ID_human"):
@@ -62,7 +62,7 @@ def convert_gene_ids(
     output_ids = []
     for gene_id in gene_ids:
         in_ids = apl.normalize_id(
-            gene_id, in_delim, remove_version_number=remove_version)
+            gene_id, delimiter=in_delim, remove_version_number=remove_version)
         out_ids = []
         for x in in_ids:
             y = in2out.get(x, [""])

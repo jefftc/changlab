@@ -2,14 +2,14 @@
 
 def _convert_type(x):
     try:
-        x = float(x)
+        x = int(x)
     except ValueError:
         pass
     else:
         return x
     
     try:
-        x = int(x)
+        x = float(x)
     except ValueError:
         pass
     else:
@@ -22,6 +22,8 @@ def main():
     import os
     import sys
     import argparse
+    import copy
+    
     import xlwt
     from genomicode import filelib
 
@@ -29,8 +31,11 @@ def main():
     parser.add_argument(
         "filename", help="Tab-delimited text file to convert.")
     parser.add_argument(
-        "-b", "--bold_row1", default=False, action="store_true",
+        "-b", "--bold_row1", action="store_true",
         help="Make the first row bold.")
+    #parser.add_argument(
+    #    "--xlsx", action="store_true",
+    #    help="Save in .xlsx format instead of .xls.")
     args = parser.parse_args()
 
     assert args.filename
@@ -48,35 +53,82 @@ def main():
     int_style.num_format_str = "general"
     float_style = xlwt.XFStyle()
     float_style.num_format_str = "general"
+    int_with_comma_style = xlwt.XFStyle()
+    # Format : Cells : Number : Custom
+    int_with_comma_style.num_format_str = "#,##0"
 
     type2style = {
         type(0) : int_style,
         type(0.0) : float_style,
         }
     
-    wb = xlwt.Workbook()
-    ws = wb.add_sheet(sheetname)
-    
     matrix = [x for x in filelib.read_cols(args.filename)]
     # Clean up unicode stuff.
     for i in range(len(matrix)):
         for j in range(len(matrix[i])):
             matrix[i][j] = matrix[i][j].decode("utf-8")
-    
+
+    # Convert each value to the proper type.
     for i in range(len(matrix)):
         for j in range(len(matrix[i])):
             matrix[i][j] = _convert_type(matrix[i][j])
 
+    # Set the styles.
+    style_matrix = []
+    for i in range(len(matrix)):
+        x = [None] * len(matrix[i])
+        style_matrix.append(x)
     for i in range(len(matrix)):
         for j in range(len(matrix[i])):
             style = type2style.get(type(matrix[i][j]), default_style)
-            #print matrix[i][j], type(matrix[i][j]), style.num_format_str
-            old_font = style.font
-            if args.bold_row1 and i == 0:
+            if i == 0 and args.bold_row1:
+                style = copy.deepcopy(style)
                 style.font = bold_font
-            ws.write(i, j, matrix[i][j], style)
-            style.font = old_font
-    
+            style_matrix[i][j] = style
+
+    # Set the number with comma style.
+    # If a column has numbers, and the maximum number if > 1000000,
+    # then make every number in that column a comma style.
+    num_cols = 0
+    if matrix:
+        num_cols = len(matrix[0])
+    to_change = []
+    for j in range(num_cols):
+        max_number = None
+        num_numbers = 0
+        for i in range(1, len(matrix)):  # ignore header
+            if len(matrix[i]) < j:
+                continue
+            if style_matrix[i][j] != int_style:
+                continue
+            num_numbers += 1
+            if max_number is None or matrix[i][j] >= max_number:
+                max_number = matrix[i][j]
+        if num_numbers >= 5 and max_number >= 1000000:
+            to_change.append(j)
+    for j in to_change:
+        for i in range(1, len(matrix)):
+            if len(matrix[i]) < j:
+                continue
+            if style_matrix[i][j] is not int_style:
+                continue
+            style_matrix[i][j] = int_with_comma_style
+
+    # Write out the matrix.
+    wb = xlwt.Workbook()
+    ws = wb.add_sheet(sheetname)
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            ws.write(i, j, matrix[i][j], style_matrix[i][j])
+    #for i in range(len(matrix)):
+    #    for j in range(len(matrix[i])):
+    #        style = type2style.get(type(matrix[i][j]), default_style)
+    #        #print matrix[i][j], type(matrix[i][j]), style.num_format_str
+    #        old_font = style.font
+    #        if args.bold_row1 and i == 0:
+    #            style.font = bold_font
+    #        ws.write(i, j, matrix[i][j], style)
+    #        style.font = old_font
     wb.save(sys.stdout)
 
     

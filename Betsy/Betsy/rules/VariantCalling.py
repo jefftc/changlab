@@ -38,6 +38,16 @@
 # 
 # Recalibrate variant scores with GATK.
 # https://www.broadinstitute.org/gatk/guide/article?id=2805
+
+
+#                 SNP   INDEL  NOTES
+# mutect           Y      N    SNP caller only.
+# varscan          Y      Y    Makes separate files.
+# strelka          Y      Y    Makes separate files.
+# somaticsniper    Y      N    SNP caller only.
+# jointsnvmix      Y      Y    Makes file with both.  Can filter out.
+        
+
     
 
 from Betsy.bie3 import *
@@ -189,6 +199,9 @@ IntervalListFile = DataType(
 
 MultiVCFFolder = DataType(
     "MultiVCFFolder",
+    AttributeDef(
+        "vartype", ["snp", "indel"], "snp", "snp",
+        help="What kind of variants are held in this file."),
     )
 
 
@@ -246,7 +259,7 @@ all_modules = [
         Constraint("indexed", CAN_BE_ANY_OF, ["no", "yes"], 0),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         #Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 2),
-        #Consequence("vartype", SAME_AS_CONSTRAINT),
+        Consequence("vartype", SET_TO, "all"),
         help="Use mpileup to summarize mapped reads."),
 
     ModuleNode(
@@ -308,8 +321,10 @@ all_modules = [
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT),
-        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
-        Consequence("vartype", SAME_AS_CONSTRAINT),
+        #Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        #Consequence("vartype", SAME_AS_CONSTRAINT),
+        Constraint("vartype", MUST_BE, "all"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
         #Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Consequence("caller", SET_TO, "varscan"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
@@ -321,8 +336,10 @@ all_modules = [
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT),
-        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
-        Consequence("vartype", SAME_AS_CONSTRAINT),
+        Constraint("vartype", MUST_BE, "all", 0),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
+        #Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
+        #Consequence("vartype", SAME_AS_CONSTRAINT),
         #Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Consequence("caller", SET_TO, "varscan"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
@@ -410,7 +427,7 @@ all_modules = [
         ),
 
     ModuleNode(
-        "merge_somatic_variants",
+        "merge_somatic_variants_snp",
         [
             VCFFolder, # MuTect
             VCFFolder, # Varscan
@@ -434,6 +451,28 @@ all_modules = [
         Constraint("caller", MUST_BE, "jointsnvmix", 4),
         Constraint("vartype", MUST_BE, "snp", 4),
         Constraint("somatic", MUST_BE, "yes", 4),
+        Consequence("vartype", SET_TO, "snp"),
+        help="Call variants with all implemented somatic variant callers.",
+        ),
+
+    ModuleNode(
+        "merge_somatic_variants_indel",
+        [
+            VCFFolder, # Varscan
+            VCFFolder, # Strelka
+            VCFFolder, # JointSNVMix
+            ],
+        MultiVCFFolder,
+        Constraint("caller", MUST_BE, "varscan", 0),
+        Constraint("vartype", MUST_BE, "indel", 0),
+        Constraint("somatic", MUST_BE, "yes", 0),
+        Constraint("caller", MUST_BE, "strelka", 1),
+        Constraint("vartype", MUST_BE, "indel", 1),
+        Constraint("somatic", MUST_BE, "yes", 1),
+        Constraint("caller", MUST_BE, "jointsnvmix", 2),
+        Constraint("vartype", MUST_BE, "indel", 2),
+        Constraint("somatic", MUST_BE, "yes", 2),
+        Consequence("vartype", SET_TO, "indel"),
         help="Call variants with all implemented somatic variant callers.",
         ),
 

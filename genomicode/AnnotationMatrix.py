@@ -71,7 +71,7 @@ class AnnotationMatrix:
         # header can be:
         # 1.  Unique match to headers.
         # 2.  Unique match to headers_h.
-        # 3.  Index.
+        # 3.  Index.  (may be actual int or str)
 
         # Case 1.
         I = [i for i in range(len(self.headers)) if self.headers[i] == header]
