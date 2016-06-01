@@ -27,7 +27,7 @@ def _start_R():
 
 def convert_gene_ids(
     gene_ids, in_platform, out_platform, in_delim=" /// ", out_delim=" /// ",
-    keep_dups=True, keep_emptys=True, no_na=True):
+    keep_dups=False, keep_emptys=False, no_na=True):
     # Return a list of the output IDs, parallel to gene_ids.  If a
     # gene ID to multiple output IDs, the output IDs will be separated
     # by out_delim.  If it is missing, then the output will be an
