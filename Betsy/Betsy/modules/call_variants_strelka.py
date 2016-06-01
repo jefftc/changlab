@@ -39,6 +39,16 @@ class Module(AbstractModule):
         # Make sure files exist for all the samples.
         mlib.assert_normal_cancer_samples(nc_match, sample2bamfile)
 
+        # Make sure each cancer sample is unique.  Otherwise, the
+        # analysis directories will conflict.
+        tumor_samples = [x[-1] for x in nc_match]
+        dups = {}
+        for i in range(1, len(tumor_samples)):
+            if tumor_samples[i] in tumor_samples[:i]:
+                dups[tumor_samples[i]] = 1
+        assert not dups, "NormalCancerFile contains multiple instances of: %s"\
+               % ", ".join(sorted(dups))
+
         # list of (normal_sample, cancer_sample, normal_bamfile, tumor_bamfile,
         #          config_file, output_dir
         opj = os.path.join

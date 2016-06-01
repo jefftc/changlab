@@ -1082,7 +1082,7 @@ def get_config(name, which_assert_file=False, assert_exists=False,
     from genomicode import filelib
     from genomicode import config
 
-    assert hasattr(config, name), "Missing configuration: %s" % name
+    assert hasattr(config, name), "Not configured for genomicode: %s" % name
     x = getattr(config, name)
     if which_assert_file:
         x = filelib.which_assert(x)
