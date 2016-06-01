@@ -145,6 +145,8 @@ def main():
         "--breaks_seq",
         help="Set the breakpoints.  Format: <start>,<stop>,<skip>.")
     group.add_argument(
+        "--num_breaks", type=int, help="Number of breakpoints.")
+    group.add_argument(
         "--ymax", type=int,
         help="Set the maximum value for the Y axis.")
     
@@ -193,6 +195,9 @@ def main():
     args = parser.parse_args()
     if not os.path.exists(args.datafile):
         parser.error("File not found: %s" % args.datafile)
+    assert not (args.breaks_seq and args.num_breaks)
+    if args.num_breaks:
+        assert args.num_breaks >= 2 and args.num_breaks <= 1000
     if args.width is not None:
         assert args.width > 10, "too small"
         assert args.width < 4096*16, "width too big"
@@ -205,6 +210,7 @@ def main():
     assert not (args.bar_color and args.bar_palette)
     assert not args.symmetric_palette or args.bar_palette
     assert args.ymax is None or args.ymax > 0
+
 
     height = args.height or 2400
     width = args.width or 3200
@@ -246,6 +252,8 @@ def main():
         value_min, value_max = min(breaks), max(breaks)
         jmath.R_equals(breaks, "breaks")
         breaks = jmath.R_var("breaks")
+    if args.num_breaks:
+        breaks = args.num_breaks
 
     if value_min is not None:
         values = [x for x in values if x >= value_min]
