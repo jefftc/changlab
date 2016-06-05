@@ -64,7 +64,7 @@ class Module(AbstractModule):
         #   --input_file:normal <normal.bam>
         #   --input_file:tumor <tumor.bam>
         #   --out <call_stats.out>
-        #   --coverage_file <coverage.wig.txt> 
+        #   --coverage_file <coverage.wig.txt>
 
         # Generate the commands.
         sq = mlib.sq
@@ -90,14 +90,11 @@ class Module(AbstractModule):
                 )
             x = "%s >& %s" % (x, log_outfile)
             commands.append(x)
+        assert len(commands) == len(jobs)
         nc = mlib.calc_max_procs_from_ram(15, upper_max=num_cores)
         parallel.pshell(commands, max_procs=nc)
         metadata["num_cores"] = nc
         metadata["commands"] = commands
-
-        # Make sure output VCF files exist.
-        x = [x[5] for x in jobs]
-        filelib.assert_exists_many(x)
 
         # Make sure log files have no errors.
         # ##### ERROR -------------------------------------------------------
@@ -110,14 +107,21 @@ class Module(AbstractModule):
         # ##### ERROR
         # ##### ERROR MESSAGE: java.lang.IllegalArgumentException: Comparison
         # ##### ERROR -------------------------------------------------------
-        for x in jobs:
+        for i, x in enumerate(jobs):
             cancer_sample, normal_bamfile, cancer_bamfile, \
                 call_outfile, cov_outfile, vcf_outfile, log_outfile = x
             # Pull out the error lines.
             x = [x for x in open(log_outfile)]
             x = [x for x in x if x.startswith("##### ERROR")]
-            msg = "MuTect error [%s]:\n%s" % (cancer_sample, "".join(x))
+            x = "".join(x)
+            msg = "MuTect error [%s]:\n%s\n%s" % (
+                cancer_sample, commands[i], x)
             assert not x, msg
+
+        # Make sure output VCF files exist.
+        x = [x[5] for x in jobs]
+        filelib.assert_exists_many(x)
+
         return metadata
 
 

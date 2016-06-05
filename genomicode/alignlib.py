@@ -1110,7 +1110,7 @@ def find_picard_jar(jar_name):
     return jar_filename
 
 
-def _make_java_command(config_name, params, num_dashes):
+def _make_java_command(config_name, params, num_dashes, java_path=None):
     # value of None means no argument.
     # A dash is prepended to each key.
     # Special key:
@@ -1122,13 +1122,18 @@ def _make_java_command(config_name, params, num_dashes):
 
     UNHASHABLE = "_UNHASHABLE"
     assert num_dashes >= 1 and num_dashes <= 2
+    sq = parallel.quote
 
     jarfile = getattr(config, config_name)
     filelib.assert_exists_nz(jarfile)
 
-    sq = parallel.quote
+    java = "java"
+    if java_path is not None:
+        filelib.which_assert(java_path)
+        java = sq(java_path)
+
     cmd = [
-        "java",
+        java,
         "-Xmx5g",
         "-jar", sq(jarfile),
         ]
@@ -1155,7 +1160,13 @@ def make_GATK_command(**params):
 
 
 def make_MuTect_command(**params):
-    return _make_java_command("mutect_jar", params, 2)
+    from genomicode import config
+
+    name = "mutect_java"
+    assert hasattr(config, name), "Missing from genomicode config: %s" % name
+    java_path = getattr(config, name)
+    
+    return _make_java_command("mutect_jar", params, 2, java_path=java_path)
 
 
 def make_platypus_command(
