@@ -1,17 +1,21 @@
-# TODO: Make a constant for ["yes", "no"]
-
 # DataTypes:
-# VCFFolder
-# VCFRecalibrationReport
-# AnnotatedVCFFolder      # No.  Not VCF files.  Need to clean this up.
-# MultiVCFFile
-# AnnotatedMultiVCFFile   # No.  Not VCF files.  Need to clean this up.
-# MultiVCFFolder          # folder of VCFFolder's, from different callers
+# VCFFolder             # Folder of vcf files (one caller) of many samples.
+# ManySampleVCFFile     # One VCF file with many samples.
+# ManyCallerVCFFolders  # Multiple VCFFolders, one for each caller.
 #
-# BackfillMultiVCFFile
+# SimpleVariantFile     # File with calls. Can hold many samples, many callers.
 #
+# VCFRecalibrationReport  # For GATK VariantRecalibrator.
 # PileupSummary
 # PositionsFile
+# NormalCancerFile
+# IntervalListFile
+#
+# NEED TO RENAME.  NOT VCF FOLDER
+# AnnotatedVCFFolder      # No.  Not VCF files.  Need to clean this up.
+# AnnotatedMultiVCFFile   # No.  Not VCF files.  Need to clean this up.
+
+#
 #
 # Modules:
 # summarize_variants_mpileup
@@ -24,18 +28,21 @@
 # call_variants_strelka
 # call_variants_somaticsniper
 # call_variants_jointsnvmix
-# merge_somatic_variants
+# merge_somatic_variants_snp
 #
 # make_vcf_recalibration_report_snp
 # recalibrate_variants_snp
 # filter_snps_only_multivcf
-# annotate_with_annovar
+# annotate_with_annovar_vcffolder
 # merge_vcf_folder
 # annotate_multivcf_annovar
 # extract_positions_from_multivcf_file
 # backfill_vcf_folder
 #
-# 
+# DEPRECATED:
+# XXX
+
+
 # Recalibrate variant scores with GATK.
 # https://www.broadinstitute.org/gatk/guide/article?id=2805
 
@@ -47,6 +54,8 @@
 # somaticsniper    Y      N    SNP caller only.
 # jointsnvmix      Y      Y    Makes file with both.  Can filter out.
         
+
+# TODO: Make a constant for ["yes", "no"]
 
     
 
@@ -121,8 +130,8 @@ AnnotatedVCFFolder = DataType(
     "AnnotatedVCFFolder",
     )
 
-MultiVCFFile = DataType(
-    "MultiVCFFile",
+ManySampleVCFFile = DataType(
+    "ManySampleVCFFile",
     # Headers are:
     # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT [Samples...]
     AttributeDef(
@@ -197,26 +206,39 @@ IntervalListFile = DataType(
     help="Genomic intervals in GATK format."
     )
 
-MultiVCFFolder = DataType(
-    "MultiVCFFolder",
+ManyCallerVCFFolders = DataType(
+    "ManyCallerVCFFolders",
     AttributeDef(
         "vartype", ["snp", "indel"], "snp", "snp",
         help="What kind of variants are held in this file."),
     )
 
+SimpleVariantFile = DataType(
+    "SimpleVariantFile",
+    AttributeDef(
+        "vartype", ["snp", "indel"], "snp", "snp",
+        help="What kind of variants are held in this file."),
+    AttributeDef(
+        "filtered", ["no", "yes"], "no", "no",
+        help="Whether these variants are filtered."),
+    )
+
 
 all_data_types=[
     VCFFolder,
-    VCFRecalibrationReport,
-    AnnotatedVCFFolder,
-    MultiVCFFile,
-    AnnotatedMultiVCFFile,
-    MultiVCFFolder,
+    ManySampleVCFFile,
+    ManyCallerVCFFolders,
+    SimpleVariantFile,
 
-    NormalCancerFile,
+    VCFRecalibrationReport,
     PileupSummary,
     PositionsFile,
+    NormalCancerFile,
     IntervalListFile,
+
+    # DEPRECATED
+    AnnotatedVCFFolder,
+    AnnotatedMultiVCFFile,
     ]
 
 all_modules = [
@@ -435,7 +457,7 @@ all_modules = [
             VCFFolder, # SomaticSniper
             VCFFolder, # JointSNVMix
             ],
-        MultiVCFFolder,
+        ManyCallerVCFFolders,
         Constraint("caller", MUST_BE, "mutect", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
@@ -456,13 +478,39 @@ all_modules = [
         ),
 
     ModuleNode(
+        "merge_manycallervcffolders_snp",
+        ManyCallerVCFFolders, SimpleVariantFile,
+        Constraint("vartype", MUST_BE, "snp"),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        ),
+
+    ModuleNode(
+        "filter_simplevariantfile_snp",
+        SimpleVariantFile, SimpleVariantFile,
+        OptionDef(
+            "remove_sample", default="",
+            help="Comma-separated list of samples to be removed."),
+        OptionDef(
+            "apply_filter", default="no",
+            help='Whether to remove variants according to "Filter" column.'),
+        OptionDef(
+            "filter_by_min_reads", default="0",
+            help="Remove variants with less than this number of reads."),
+        
+        Constraint("vartype", MUST_BE, "snp"),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        Constraint("filtered", MUST_BE, "no"),
+        Consequence("filtered", SET_TO, "yes"),
+        ),
+
+    ModuleNode(
         "merge_somatic_variants_indel",
         [
             VCFFolder, # Varscan
             VCFFolder, # Strelka
             VCFFolder, # JointSNVMix
             ],
-        MultiVCFFolder,
+        ManyCallerVCFFolders,
         Constraint("caller", MUST_BE, "varscan", 0),
         Constraint("vartype", MUST_BE, "indel", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
@@ -511,20 +559,20 @@ all_modules = [
     
     ModuleNode(
         "filter_snps_only_multivcf",
-        MultiVCFFile, MultiVCFFile,
+        ManySampleVCFFile, ManySampleVCFFile,
         Constraint("vartype", MUST_BE, "all"),
         Consequence("vartype", SET_TO, "snp"),
         ),
 
     ModuleNode(
-        "annotate_with_annovar",
+        "annotate_with_annovar_vcffolder",
         VCFFolder, AnnotatedVCFFolder,
         OptionDef("buildver", help="E.g. hg19.  See annovar docs."),
         ),
 
     ModuleNode(
         "merge_vcf_folder",
-        VCFFolder, MultiVCFFile,
+        VCFFolder, ManySampleVCFFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("caller", CAN_BE_ANY_OF, CALLERS),
@@ -537,13 +585,13 @@ all_modules = [
     
     ModuleNode(
         "annotate_multivcf_annovar",
-        MultiVCFFile, AnnotatedMultiVCFFile,
+        ManySampleVCFFile, AnnotatedMultiVCFFile,
         OptionDef("buildver", help="E.g. hg19.  See annovar docs."),
         ),
     
     ModuleNode(
         "extract_positions_from_multivcf_file",
-        MultiVCFFile, PositionsFile,
+        ManySampleVCFFile, PositionsFile,
         #Constraint("backfilled", MUST_BE, "no"),
         Constraint("caller", CAN_BE_ANY_OF, CALLERS),
         Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
@@ -580,5 +628,4 @@ all_modules = [
     #    Constraint("vartype", MUST_BE, "consensus", 1),
     #    Constraint("caller", MUST_BE, "varscan", 1),
     #    ),
-
     ]

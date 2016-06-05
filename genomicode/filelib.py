@@ -412,7 +412,9 @@ def read_cols(file_or_handle, delimiter="\t", skip=0):
 
     # Read each line.
     handle = csv.reader(handle, delimiter=delimiter)
-    for row in handle:
+    for i, row in enumerate(handle):
+        #if i > 5000:   # For debugging
+        #    break
         yield row
     #for line in handle:
     #    cols = line.rstrip("\r\n").split(delimiter)

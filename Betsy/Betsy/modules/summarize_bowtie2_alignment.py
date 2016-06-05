@@ -18,7 +18,7 @@ class Module(AbstractModule):
 
         log_filenames = summarize_bowtie1_alignment._find_output_logs(
             in_data.identifier)
-        assert log_filenames
+        assert log_filenames, "Missing log files: %s" % in_data.identifier
 
         results = {}  # dict of sample -> dictionary of output
         for filename in log_filenames:

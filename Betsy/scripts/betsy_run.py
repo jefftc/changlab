@@ -1454,7 +1454,7 @@ def main():
     #    print "Writing detailed network: %s." % args.network_text
     #    bie3.print_network(network, outhandle=args.network_text)
 
-    if args.output_file and 0 in node_dict:
+    if args.output_file and node_dict and 0 in node_dict:
         print "Saving output %s to %s." % (outtype, args.output_file)
         sys.stdout.flush()
         output_file = node_dict[0].identifier

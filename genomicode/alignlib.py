@@ -50,8 +50,11 @@ find_rseqc_script
 
 gtf_to_bed
 
+clean_mutect_vcf
 clean_varscan_vcf
 clean_strelka_vcf
+
+identify_caller     Figure out caller of a VCF file.
 
 """
 # _create_reference_genome_path
@@ -150,7 +153,7 @@ def _create_reference_genome_path(path, name=None):
     # Find the names of the fasta files.
     x = [os.path.splitext(x)[0] for x in fasta_files]
     names = x
-    assert fasta_files, "No fasta files found."
+    assert fasta_files, "No fasta files found: %s" % path
     if name is None:
         uniq_names = {}.fromkeys(names).keys()
         assert len(uniq_names) == 1, "Multiple fasta files found."
@@ -771,8 +774,8 @@ def make_bwa_mem_command(
     cmd += ["2>", sq(err_filename),]
     if sam_filename:
         cmd += ["1>", sq(sam_filename),]
-    elif bam_filename:
-        samtools = filelib.which_assert(config.samtools)
+    elif samtools:
+        bam_filename = filelib.which_assert(config.samtools)
         cmd += [
             "|", sq(samtools), "view", "-bS", "-o", sq(bam_filename), "-",
             ]
@@ -1287,6 +1290,76 @@ def gtf_to_bed(gtf_filename, bed_filename):
     filelib.assert_exists_nz(bed_filename)
 
 
+
+def _get_samtools_SM(filename):
+    # @RG
+    # ID:Q-Zhang-QZ-Cap475-PM78-NA-Cap475-5983-19_141209-SN746-0319-AC5K...
+    # PL:Illumina_HiSeq_2000
+    # PU:141209_SN746_0319_AC5KJFACXX
+    # LB:Cap475-5983-19
+    # SM:Cap475-5983-19
+    # CN:IACS-GM
+
+    from genomicode import config
+    from genomicode import parallel
+    from genomicode import filelib
+
+    samtools = filelib.which_assert(config.samtools)
+    
+    # samtools view -H <filename>
+    sq = parallel.quote
+    cmd = [
+        sq(samtools),
+        "view",
+        "-H",
+        sq(filename),
+        ]
+    cmd = " ".join(cmd)
+    x = parallel.sshell(cmd)
+    lines = x.split("\n")
+    x = [x for x in lines if x.startswith("@RG")]
+    assert x, "I could not find the @RG header."
+    assert len(x) == 1, "Multiple @RG lines."
+    rg_line = x[0]
+
+    x = rg_line.split("\t")
+    info = {}
+    for x in x:
+        if x == "@RG":
+            continue
+        key, value = x.split(":", 1)
+        info[key] = value
+    assert "SM" in info, "Misssing SM: %s" % rg_line.strip()
+
+    return info["SM"]
+        
+
+def clean_mutect_vcf(
+    normal_bam, cancer_bam, normal_sample, cancer_sample,
+    in_filename, out_filename):
+    from genomicode import hashlib
+
+    # MuTect uses the SM field from the BAM file header.  Change this
+    # to the name of the samples given by the user.
+    # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT <normal> <tumor>
+
+    normal_sm = _get_samtools_SM(normal_bam)
+    cancer_sm = _get_samtools_SM(cancer_bam)
+
+    # Not sure why hashing this?  Other callers don't hash.
+    #normal_sample_h = hashlib.hash_var(normal_sample)
+    #cancer_sample_h = hashlib.hash_var(cancer_sample)
+
+    outhandle = open(out_filename, 'w')
+    for line in open(in_filename):
+        if line.startswith("#CHROM") and line.find(normal_sm) >= 0:
+            line = line.replace(normal_sm, normal_sample)
+        if line.startswith("#CHROM") and line.find(cancer_sm) >= 0:
+            line = line.replace(cancer_sm, cancer_sample)
+        outhandle.write(line)
+    outhandle.close()
+
+
 def clean_varscan_vcf(sample, in_filename, out_filename):
     from genomicode import hashlib
 
@@ -1307,7 +1380,9 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
     # group info from the BAM file.  Change this to the proper sample
     # name.
     # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT Sample1
-    sample_h = hashlib.hash_var(sample)
+
+    # Not sure why hashing this?  Other callers don't hash.
+    #sample_h = hashlib.hash_var(sample)
 
     outhandle = open(out_filename, 'w')
     for line in open(in_filename):
@@ -1319,7 +1394,8 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
         if found:
             continue
         if line.startswith("#CHROM") and line.find("Sample1") >= 0:
-            line = line.replace("Sample1", sample_h)
+            #line = line.replace("Sample1", sample_h)
+            line = line.replace("Sample1", sample)
         outhandle.write(line)
     outhandle.close()
 
@@ -1327,8 +1403,8 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
 def clean_strelka_vcf(normal_sample, cancer_sample, in_filename, out_filename):
     from genomicode import hashlib
 
-    # Strelka calls the samples "NORMAL" and "TUMOR".  this to the
-    # proper sample name.
+    # Strelka calls the samples "NORMAL" and "TUMOR".  Change this to
+    # the proper sample name.
     # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT NORMAL TUMOR
     normal_sample_h = hashlib.hash_var(normal_sample)
     cancer_sample_h = hashlib.hash_var(cancer_sample)
@@ -1341,3 +1417,5 @@ def clean_strelka_vcf(normal_sample, cancer_sample, in_filename, out_filename):
             line = line.replace("TUMOR", cancer_sample_h)
         outhandle.write(line)
     outhandle.close()
+
+

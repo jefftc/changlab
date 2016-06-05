@@ -49,10 +49,12 @@ class Module(AbstractModule):
             path, sample, ext = mlib.splitpath(cancer_bamfile)
             call_outfile = opj(out_path, "%s.call_stats.out" % sample)
             cov_outfile = opj(out_path, "%s.coverage.wig.txt" % sample)
+            raw_vcf_outfile = opj(out_path, "%s.raw.vcf" % sample)
             vcf_outfile = opj(out_path, "%s.vcf" % sample)
             log_outfile = opj(out_path, "%s.log" % sample)
-            x = cancer_sample, normal_bamfile, cancer_bamfile, \
-                call_outfile, cov_outfile, vcf_outfile, log_outfile
+            x = normal_sample, cancer_sample, normal_bamfile, cancer_bamfile, \
+                call_outfile, cov_outfile, raw_vcf_outfile, vcf_outfile, \
+                log_outfile
             jobs.append(x)
 
         # java -Xmx2g -jar muTect.jar
@@ -70,8 +72,9 @@ class Module(AbstractModule):
         sq = mlib.sq
         commands = []
         for x in jobs:
-            cancer_sample, normal_bamfile, cancer_bamfile, \
-                call_outfile, cov_outfile, vcf_outfile, log_outfile = x
+            normal_sample, cancer_sample, normal_bamfile, cancer_bamfile, \
+                call_outfile, cov_outfile, raw_vcf_outfile, vcf_outfile, \
+                log_outfile = x
 
             UNHASHABLE = [
                 ("input_file:normal", sq(normal_bamfile)),
@@ -85,7 +88,7 @@ class Module(AbstractModule):
                 intervals=sq(interval_node.identifier),
                 out=sq(call_outfile),
                 coverage_file=sq(cov_outfile),
-                vcf=sq(vcf_outfile),
+                vcf=sq(raw_vcf_outfile),
                 _UNHASHABLE=UNHASHABLE,
                 )
             x = "%s >& %s" % (x, log_outfile)
@@ -95,11 +98,9 @@ class Module(AbstractModule):
         metadata["num_cores"] = nc
         metadata["commands"] = commands
 
-        # Make sure output VCF files exist.
-        x = [x[5] for x in jobs]
-        filelib.assert_exists_many(x)
-
-        # Make sure log files have no errors.
+        # Make sure log files have no errors.  Check the log files
+        # before the VCF files.  If there's an error, the VCF files
+        # may not be created.
         # ##### ERROR -------------------------------------------------------
         # ##### ERROR A GATK RUNTIME ERROR has occurred (version 2.2-25-g2a68
         # ##### ERROR
@@ -111,13 +112,27 @@ class Module(AbstractModule):
         # ##### ERROR MESSAGE: java.lang.IllegalArgumentException: Comparison
         # ##### ERROR -------------------------------------------------------
         for x in jobs:
-            cancer_sample, normal_bamfile, cancer_bamfile, \
-                call_outfile, cov_outfile, vcf_outfile, log_outfile = x
+            normal_sample, cancer_sample, normal_bamfile, cancer_bamfile, \
+                call_outfile, cov_outfile, raw_vcf_outfile, vcf_outfile, \
+                log_outfile = x
             # Pull out the error lines.
             x = [x for x in open(log_outfile)]
             x = [x for x in x if x.startswith("##### ERROR")]
             msg = "MuTect error [%s]:\n%s" % (cancer_sample, "".join(x))
             assert not x, msg
+
+        # Make sure output VCF files exist.
+        x = [x[6] for x in jobs]
+        filelib.assert_exists_many(x)
+
+        for x in jobs:
+            normal_sample, cancer_sample, normal_bamfile, cancer_bamfile, \
+                call_outfile, cov_outfile, raw_vcf_outfile, vcf_outfile, \
+                log_outfile = x
+            alignlib.clean_mutect_vcf(
+                normal_bamfile, cancer_bamfile, normal_sample, cancer_sample,
+                raw_vcf_outfile, vcf_outfile)
+            
         return metadata
 
 
