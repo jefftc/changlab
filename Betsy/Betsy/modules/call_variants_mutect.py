@@ -49,7 +49,7 @@ class Module(AbstractModule):
             path, sample, ext = mlib.splitpath(cancer_bamfile)
             call_outfile = opj(out_path, "%s.call_stats.out" % sample)
             cov_outfile = opj(out_path, "%s.coverage.wig.txt" % sample)
-            raw_vcf_outfile = opj(out_path, "%s.raw.vcf" % sample)
+            raw_vcf_outfile = opj(out_path, "%s.vcf.raw" % sample)
             vcf_outfile = opj(out_path, "%s.vcf" % sample)
             log_outfile = opj(out_path, "%s.log" % sample)
             x = normal_sample, cancer_sample, normal_bamfile, cancer_bamfile, \

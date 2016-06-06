@@ -136,7 +136,7 @@ class JointSNVMixCaller(Caller):
     # FORMAT:RD   Depth for ref in tumor sample  (TR+TA)
     # FORMAT:AD   Depth for alt in tumor sample
     def is_caller(self, vcf):
-        if not has_all_info(vcf, ["TR", "TA", "NR", "NA"])
+        if not has_all_info(vcf, ["TR", "TA", "NR", "NA"]):
             return False
         if not has_all_format(vcf, ["RD", "AD"]):
             return False

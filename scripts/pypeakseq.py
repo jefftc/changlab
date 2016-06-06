@@ -3,12 +3,12 @@
 def make_peakseq_preproc_command(bam_file, out_path):
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     # samtools view bam11.bam | PeakSeq -preprocess SAM stdin bam12
     samtools = filelib.which_assert(config.samtools)
     peakseq = filelib.which_assert(config.peakseq)
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(samtools),
         "view", sq(bam_file),
@@ -25,14 +25,14 @@ def make_peakseq_run_command(config_file):
     import os
     from genomicode import config
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     assert os.path.exists(config_file)
     config_file = os.path.realpath(config_file)
 
     # PeakSeq -peak_select <config_file>
     peakseq = filelib.which_assert(config.peakseq)
-    sq = shell.quote
+    sq = parallel.quote
     cmd = [
         sq(peakseq),
         "-peak_select", config_file,
@@ -107,7 +107,7 @@ def main():
     import shutil
     import argparse
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     p = filelib.tswrite
     parser = argparse.ArgumentParser(description="")
@@ -149,7 +149,7 @@ def main():
     x1 = make_peakseq_preproc_command(
         args.treatment_bam, treatment_preproc_path)
     x2 = make_peakseq_preproc_command(args.control_bam, control_preproc_path)
-    x = shell.parallel([x1, x2])
+    x = parallel.pshell([x1, x2])
     print x
     # Make sure expected files exist.
     x1 = os.path.join(treatment_preproc_path, "chr_ids.txt")
@@ -169,7 +169,7 @@ def main():
     # Run PeakSeq.
     p("Running PeakSeq in %s.\n" % args.outpath)
     cmd = make_peakseq_run_command(config_file)
-    x = shell.single(cmd, path=args.outpath)
+    x = parallel.sshell(cmd, path=args.outpath)
     print x
 
     p("Done.\n")
