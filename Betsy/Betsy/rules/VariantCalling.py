@@ -3,7 +3,18 @@
 # ManySampleVCFFile     # One VCF file with many samples.
 # ManyCallerVCFFolders  # Multiple VCFFolders, one for each caller.
 #
-# SimpleVariantFile     # File with calls. Can hold many samples, many callers.
+# SimpleVariantFile     # File with variants. many samples, many callers.
+# SimpleVariantMatrix   # Summarizes variants in a matrix.
+# SimpleCallMatrix      # Makes the calls based on SimpleVariantMatrix
+#
+# Pipeline:
+# 1.  ManyCallerCVFFolders               Calls for all variant callers.
+# 2.  SimpleVariantFile.filtered=no      One file, merge from all folders.
+# 3.  SimpleVariantFile.filtered=yes     Filter based on the FILTER VCF column.
+# 4.  SimpleVariantMatrix.annotated=no   Compact Matrix format.
+# 5.  SimpleVariantMatrix.filtered=no    Annotated with Annovar.
+# 6.  SimpleVariantMatrix.filtered=yes   Filter on reads, exons, etc.
+# 7.  SimpleCallMatrix                   Final file with calls.
 #
 # VCFRecalibrationReport  # For GATK VariantRecalibrator.
 # PileupSummary
@@ -38,9 +49,6 @@
 # annotate_multivcf_annovar
 # extract_positions_from_multivcf_file
 # backfill_vcf_folder
-#
-# DEPRECATED:
-# XXX
 
 
 # Recalibrate variant scores with GATK.
@@ -223,12 +231,36 @@ SimpleVariantFile = DataType(
         help="Whether these variants are filtered."),
     )
 
+SimpleVariantMatrix = DataType(
+    "SimpleVariantMatrix",
+    AttributeDef(
+        "vartype", ["snp", "indel"], "snp", "snp",
+        help="What kind of variants are held in this file."),
+    AttributeDef(
+        "annotated", ["no", "yes"], "no", "no",
+        help="Whether these variants are annotated with Annovar."),
+    AttributeDef(
+        "filtered", ["no", "yes"], "no", "no",
+        help="Whether these variants are filtered."),
+    )
+
+
+SimpleCallMatrix = DataType(
+    "SimpleCallMatrix",
+    AttributeDef(
+        "vartype", ["snp", "indel"], "snp", "snp",
+        help="What kind of variants are held in this file."),
+    help="Contains variant calls."
+    )
+
 
 all_data_types=[
     VCFFolder,
     ManySampleVCFFile,
     ManyCallerVCFFolders,
     SimpleVariantFile,
+    SimpleVariantMatrix,
+    SimpleCallMatrix,
 
     VCFRecalibrationReport,
     PileupSummary,
@@ -480,29 +512,90 @@ all_modules = [
     ModuleNode(
         "merge_manycallervcffolders_snp",
         ManyCallerVCFFolders, SimpleVariantFile,
-        Constraint("vartype", MUST_BE, "snp"),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
         ),
 
     ModuleNode(
-        "filter_simplevariantfile_snp",
+        "filter_simplevariantfile",
         SimpleVariantFile, SimpleVariantFile,
         OptionDef(
             "remove_sample", default="",
             help="Comma-separated list of samples to be removed."),
         OptionDef(
-            "apply_filter", default="no",
+            "apply_filter", default="yes",
             help='Whether to remove variants according to "Filter" column.'),
-        OptionDef(
-            "filter_by_min_reads", default="0",
-            help="Remove variants with less than this number of reads."),
         
-        Constraint("vartype", MUST_BE, "snp"),
-        Consequence("vartype", SAME_AS_CONSTRAINT),
         Constraint("filtered", MUST_BE, "no"),
         Consequence("filtered", SET_TO, "yes"),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
         ),
 
+    ModuleNode(
+        "convert_simplevariantfile_to_matrix",
+        SimpleVariantFile, SimpleVariantMatrix,
+        Constraint("filtered", MUST_BE, "yes"),
+        Consequence("filtered", SET_TO, "no"),
+        Consequence("annotated", SET_TO, "no"),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        ),
+
+    ModuleNode(
+        "annotate_simplevariantmatrix",
+        SimpleVariantMatrix, SimpleVariantMatrix,
+        OptionDef("annovar_buildver", help="E.g. hg19.  See annovar docs."),
+        Constraint("annotated", MUST_BE, "no"),
+        Consequence("annotated", SET_TO, "yes"),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        ),
+
+    ModuleNode(
+        # TODO: Make this work for indel, too.
+        "filter_simplevariantmatrix",
+        SimpleVariantMatrix, SimpleVariantMatrix,
+        OptionDef(
+            "filter_by_min_alt_reads", default="0",
+            help="Remove variants with less than this number of ALT reads.  "
+            "Does not work for Strelka because it doesn't report ALT reads."),
+        OptionDef(
+            "filter_by_min_total_reads", default="0",
+            help="Remove variants with less than this number of reads."),
+        OptionDef(
+            "nonsynonymous_and_stopgain_only", 
+            help="Keep only non-synonymous and stopgain variants.  "
+            '"yes" or "no".'),
+        #OptionDef(
+        #    "filter_by_min_GQ", default="0",
+        #    help="Remove variants with GQ less than this number.  "
+        #    "SomaticSniper provides this.  "
+        #    "JointSNVMix, Strelka don't use this.  "
+        #    "MuTect and VarScan has it in the header, but doesn't actually "
+        #    "generate any values."
+        #    ),
+        Constraint("filtered", MUST_BE, "no"),
+        Consequence("filtered", SET_TO, "yes"),
+        Constraint("annotated", MUST_BE, "yes"),
+        Consequence("annotated", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        ),
+
+    ModuleNode(
+        "convert_simplevariantmatrix_to_simplecallmatrix",
+        SimpleVariantMatrix, SimpleCallMatrix,
+        OptionDef(
+            "num_callers", 
+            help="Minimum number of callers that need to call a position."),
+        Constraint("filtered", MUST_BE, "yes"),
+        Constraint("annotated", MUST_BE, "yes"),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        ),
+
+    
     ModuleNode(
         "merge_somatic_variants_indel",
         [

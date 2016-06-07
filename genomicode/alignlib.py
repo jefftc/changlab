@@ -1216,7 +1216,8 @@ def make_platypus_command(
     return " ".join(map(str, cmd))
 
 
-def make_annovar_command(in_filename, log_filename, out_filestem, buildver):
+def make_annovar_command(
+    in_filename, log_filename, out_filestem, buildver, vcf_input=True):
     # in_filename is an input VCF file.  out_filestem is just the file
     # with no extension.  buildver, e.g. "hg19"
     import os
@@ -1238,7 +1239,7 @@ def make_annovar_command(in_filename, log_filename, out_filestem, buildver):
 
     # P1=refGene,cytoBand,genomicSuperDups
     # P2=esp6500siv2_all,snp138,ljb26_all
-    #P3=1000g2015aug_all,1000g2015aug_afr,1000g2015aug_eas,1000g2015aug_eur
+    # P3=1000g2015aug_all,1000g2015aug_afr,1000g2015aug_eas,1000g2015aug_eur
     # table_annovar.pl -buildver hg19 -remove -vcfinput
     #   -protocol $P1,$P2,$P3 -operation g,r,r,f,f,f,f,f,f,f
     #   -out $j $i humandb/
@@ -1255,7 +1256,10 @@ def make_annovar_command(in_filename, log_filename, out_filestem, buildver):
         sq(table_annovar),
         "-buildver", buildver,
         "-remove",
-        "-vcfinput",
+        ]
+    if vcf_input:
+        x += ["-vcfinput"]
+    x += [
         "-protocol", ",".join(x1),
         "-operation", ",".join(x2),
         "-out", sq(out_filestem),

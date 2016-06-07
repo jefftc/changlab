@@ -888,10 +888,12 @@ def _format_genotype(genotype_names, genotype_dict):
     return ":".join(values)
 
 
-def _format_vcf_value(value):
+def _format_vcf_value(value, char_for_None="."):
     # value can be:
     # string, int, float, None
     # list of any of these
+    # char_for_None is what character for missing values.  Default for
+    # VCF format is ".".
 
     # Make a list for consistency.
     if type(value) is not type([]):
@@ -899,7 +901,7 @@ def _format_vcf_value(value):
     for i in range(len(value)):
         x = value[i]
         if x is None:
-            x = "."
+            x = char_for_None
         elif type(x) in [type(0), type(0.0)]:
             x = str(x)
         value[i] = x

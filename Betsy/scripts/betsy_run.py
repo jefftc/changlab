@@ -950,6 +950,33 @@ def _find_lowest_datatype(network, datatype_name, allowed_node_ids):
     return None
 
 
+def _find_highest_datatype(network, datatype_name, allowed_node_ids):
+    # Return a node_id or None if not found.
+    from Betsy import bie3
+
+    x = allowed_node_ids
+    x = [x for x in x if isinstance(network.nodes[x], bie3.DataNode)]
+    x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
+    node_ids = x
+
+    if not node_ids:
+        return None
+    if len(node_ids) == 1:
+        return node_ids[0]
+    ancestors = bie3._make_ancestor_dict(network)
+    good_node_ids = []
+    for nid in node_ids:
+        x = ancestors.get(nid, [])
+        x = [x for x in x if isinstance(network.nodes[x], bie3.DataNode)]
+        x = [x for x in x if network.nodes[x].datatype.name == datatype_name]
+        x = [x for x in x if x in allowed_node_ids]
+        if not x:
+            good_node_ids.append(nid)
+    if len(good_node_ids) == 1:
+        return good_node_ids[0]
+    return None
+
+
 def _parse_dattr(dattr_str):
     # Format: <datatype>[*].<key>=<value>
     # Return <datatype>, <key>, <value>, <all_nodes>.
@@ -1176,9 +1203,14 @@ def main():
     group.add_argument(
         '--output_file', help='file or folder of output result')
     group.add_argument(
-        '--also_save', default=[], action="append",
+        '--also_save_lowest', default=[], action="append",
         help="Will save the contents of other nodes.  "
         "Format: <datatype>,<filename>.  Will save the bottom-most "
+        "node with this datatype.")
+    group.add_argument(
+        '--also_save_highest', default=[], action="append",
+        help="Will save the contents of other nodes.  "
+        "Format: <datatype>,<filename>.  Will save the top-most "
         "node with this datatype.")
 
     group = parser.add_argument_group(title="Outfiles")
@@ -1461,12 +1493,20 @@ def main():
         reportlib.copy_file_or_path(output_file, args.output_file)
 
     # See what else to save.
-    for also_save in args.also_save:
+    also_save = []  # list of (arg, "lowest" or "highest")
+    for arg in args.also_save_lowest:
+        also_save.append((arg, "lowest"))
+    for arg in args.also_save_highest:
+        also_save.append((arg, "highest"))
+    for arg, which_one in also_save:
         # Format: <datatype>,<file_or_path>
-        x = also_save.split(",", 1)
-        assert len(x) == 2, "Invalid also_save: %s" % also_save
+        x = arg.split(",", 1)
+        assert len(x) == 2, "Invalid also_save: %s" % arg
         dname, out_filename = x
-        node_id = _find_lowest_datatype(network, dname, node_dict.keys())
+        if which_one == "lowest":
+            node_id = _find_lowest_datatype(network, dname, node_dict.keys())
+        else:
+            node_id = _find_highest_datatype(network, dname, node_dict.keys())
         assert node_id, "Unable to find: %s" % dname
         in_filename = node_dict[node_id].identifier
         print "Saving %s to %s." % (dname, out_filename)
