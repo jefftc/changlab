@@ -113,7 +113,7 @@ def create_from_annotations(headers, all_annots, headerlines=[]):
     assert len(headers) == len(all_annots)
     num_annots = len(all_annots[0])
     for x in all_annots[1:]:
-        assert len(x) == num_annots
+        assert len(x) == num_annots, "Inconsistent annot lengths"
     
     headers_h = uniquify_headers(headers)
     assert len(headers_h) == len(all_annots)

@@ -556,6 +556,35 @@ def add_column(MATRIX, add_column):
     return AnnotationMatrix.AnnotationMatrix(headers, headers_h, header2annots)
 
 
+def add_uid_column(MATRIX, arg):
+    # Format: <index>,<header>,<prefix>
+    if not arg:
+        return MATRIX
+    import math
+    from genomicode import AnnotationMatrix
+
+    num_annots = MATRIX.num_annots()
+
+    x = arg.split(",", 2)
+    assert len(x) == 3, "Format should be: <index>,<header>,<prefix>"
+    index, header, prefix = x
+    if index == "END":
+        index = MATRIX.num_headers() + 1
+    index = int(index) - 1
+    assert index >= 0 and index <= MATRIX.num_headers()
+
+    ndigits = int(math.ceil(math.log(num_annots, 10)))
+    ndigits = max(ndigits, 1)  # math.log(1, 10) is 0
+    uid_annots = ["%s%0*d" % (prefix, ndigits, i) for i in range(num_annots)]
+
+    headers = MATRIX.headers[:]
+    all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+    headers.insert(index, header)
+    all_annots.insert(index, uid_annots)
+    
+    return AnnotationMatrix.create_from_annotations(headers, all_annots)
+
+
 def copy_column(MATRIX, copy_column):
     # copy_column is a list of: <index>,<new_header>.
     if not copy_column:
@@ -593,7 +622,6 @@ def copy_column(MATRIX, copy_column):
 def add_desc_for_gmx(MATRIX, arg):
     if not arg:
         return MATRIX
-    from genomicode import AnnotationMatrix
 
     MATRIX = MATRIX.copy()
     for h, annots in MATRIX.header2annots.iteritems():
@@ -602,7 +630,7 @@ def add_desc_for_gmx(MATRIX, arg):
 
 
 def set_value_if_empty(MATRIX, params):
-    # list of strings in format of: <index 1-based>,<value>
+    # list of strings in format of: <indexes 1-based>,<value>
     if not params:
         return MATRIX
 
@@ -610,13 +638,10 @@ def set_value_if_empty(MATRIX, params):
     for x in params:
         x = x.split(",")
         assert len(x) == 2, "format should be: <index 1-based>,<value>"
-        index, value = x
-        index = int(index)
-        # Should be 1-based indexes.
-        assert index >= 1 and index <= len(MATRIX.headers)
-        # Convert to 0-based indexes.
-        index = index - 1
-        jobs.append((index, value))
+        indexes, value = x
+        I = parse_indexes(MATRIX, indexes)
+        for i in I:
+            jobs.append((i, value))
 
     MATRIX = MATRIX.copy()
     for x in jobs:
@@ -704,7 +729,6 @@ def copy_value_if_empty_header(MATRIX, copy_values):
 
 def copy_value_if_empty_same_header(MATRIX, copy_values):
     # copy_values is list of header names.
-    import itertools
     if not copy_values:
         return MATRIX
 
@@ -718,7 +742,6 @@ def copy_value_if_empty_same_header(MATRIX, copy_values):
 
     MATRIX = MATRIX.copy()
     # Clean up the data.
-    seen = {}
     all_indexes = []
     for I in copy_indexes:
         all_indexes.extend(I)
@@ -869,7 +892,6 @@ def rename_duplicate_annot(MATRIX, args):
     # <indexes>
     if not args:
         return MATRIX
-    from genomicode import AnnotationMatrix
 
     indexes = parse_indexes(MATRIX, args)
     MATRIX = MATRIX.copy()
@@ -1075,10 +1097,9 @@ def split_chr_start_end(MATRIX, arg):
 
     jobs = []   # list of (index 0-based,)
     for x in arg:
-        h = MATRIX.normalize_header_i(x, index_base1=True)
-        assert h is not None, "Unknown header: %s" % x
+        i = MATRIX.normalize_header_i(x, index_base1=True)
+        assert i is not None, "Unknown header: %s" % x
         jobs.append((i,))
-
 
     headers = MATRIX.headers[:]
     all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
@@ -1754,7 +1775,6 @@ def vcf_standardize(MATRIX, vcf_standardize):
 def vcf_remove_bad_coords(MATRIX, vcf_remove_bad_coords):
     if not vcf_remove_bad_coords:
         return MATRIX
-    from genomicode import AnnotationMatrix
 
     # Column names must be standardized.
     START = "start"
@@ -1787,7 +1807,6 @@ def vcf_remove_bad_coords(MATRIX, vcf_remove_bad_coords):
 def vcf_remove_multicalls(MATRIX, vcf_remove_multicalls):
     if not vcf_remove_multicalls:
         return MATRIX
-    from genomicode import AnnotationMatrix
 
     # Column names must be standardized.
     CHROM = "chrom"
@@ -2247,6 +2266,13 @@ def main():
     group.add_argument(
         "--add_desc_for_gmx", action="store_true",
         help='Add "na" to each column to turn this into a GMX file.')
+    group.add_argument(
+        "--add_uid_column", 
+        help="Add a column that contains unique IDs.  "
+        "Format: <index>,<header>,<prefix>.  The column will be "
+        "added before <index> (1-based).  If <index> is 1, this will be "
+        'the new first column.  If <index> is "END", this will be '
+        "the last column.  Unique IDs will be <prefix><num>.")
     
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
@@ -2545,6 +2571,7 @@ def main():
     MATRIX = add_column(MATRIX, args.add_column)
     MATRIX = copy_column(MATRIX, args.copy_column)
     MATRIX = add_desc_for_gmx(MATRIX, args.add_desc_for_gmx)
+    MATRIX = add_uid_column(MATRIX, args.add_uid_column)
 
     # Changing the headers.
     MATRIX = fill_empty_headers(MATRIX, args.fill_empty_headers)
