@@ -15,7 +15,7 @@ def main():
     import os
     import argparse
     from genomicode import filelib
-    from genomicode import shell
+    from genomicode import parallel
 
     p = filelib.tswrite
     parser = argparse.ArgumentParser(description="")
@@ -46,13 +46,13 @@ def main():
 
     # Run SPP.
     p("Running spp in %s.\n" % args.outpath)
-    sq = shell.quote
+    sq = parallel.quote
     sppscript = find_sppscript()
     x = sq(args.treatment_bam), sq(args.control_bam), args.fdr_cutoff, \
         args.num_procs
     x = " ".join(map(str, x))
     cmd = "cat %s | R --vanilla %s" % (sppscript, x)
-    x = shell.single(cmd, path=args.outpath)
+    x = parallel.sshell(cmd, path=args.outpath)
     print x
 
     p("Done.\n")

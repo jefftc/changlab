@@ -28,13 +28,16 @@ class AnnotationMatrix:
         # that make up the "header" of VCF files.
         assert headers
         assert headers_h
-        assert len(headers) == len(headers_h)
+        assert len(headers) == len(headers_h), "%d %d" % (
+            len(headers), len(headers_h))
         assert sorted(headers_h) == sorted(header2annots)
         for x in headers_h[1:]:
             assert len(header2annots[x]) == len(header2annots[headers_h[0]])
         self.headers = headers[:]
         self.headers_h = headers_h[:]
         self.header2annots = header2annots.copy()
+        for x in headerlines:
+            assert type(x) is type("")
         self.headerlines = headerlines[:]  # no newlines
     #def get_annots(self, header):
     #    # Return a list of the annotations for this header.
@@ -110,7 +113,7 @@ def create_from_annotations(headers, all_annots, headerlines=[]):
     assert len(headers) == len(all_annots)
     num_annots = len(all_annots[0])
     for x in all_annots[1:]:
-        assert len(x) == num_annots
+        assert len(x) == num_annots, "Inconsistent annot lengths"
     
     headers_h = uniquify_headers(headers)
     assert len(headers_h) == len(all_annots)

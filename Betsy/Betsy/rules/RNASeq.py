@@ -12,8 +12,6 @@
 # Modules:
 # index_reference_rsem               rsem
 # is_rsemreference_rsem_indexed       
-# is_rsemreference_bowtie1_indexed
-# is_rsemreference_bowtie2_indexed
 # normalize_with_rsem
 # extract_rsem_signal
 # 
@@ -53,10 +51,10 @@ TophatAlignmentFolder = DataType(
 
 RSEMReferenceGenome = DataType(
     "RSEMReferenceGenome",
-    AttributeDef(
-        "bowtie1_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
-    AttributeDef(
-        "bowtie2_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
+    #AttributeDef(
+    #    "bowtie1_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
+    #AttributeDef(
+    #    "bowtie2_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
     AttributeDef(
         "rsem_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
     help="Indexed for rsem.",
@@ -122,8 +120,8 @@ all_modules = [
         [RSEMReferenceGenome, NGS.GTFGeneModel], RSEMReferenceGenome,
         Constraint("rsem_indexed", MUST_BE, "no", 0),
         Consequence("rsem_indexed", SET_TO, "yes"),
-        Consequence("bowtie1_indexed", SET_TO, "yes"),
-        Consequence("bowtie2_indexed", SET_TO, "yes"),
+        #Consequence("bowtie1_indexed", SET_TO, "yes"),
+        #Consequence("bowtie2_indexed", SET_TO, "yes"),
         ),
     ModuleNode(
         "is_rsemreference_rsem_indexed",
@@ -131,18 +129,18 @@ all_modules = [
         Constraint("rsem_indexed", MUST_BE, "unknown"),
         Consequence("rsem_indexed", BASED_ON_DATA, ["no", "yes"]),
         ),
-    ModuleNode(
-        "is_rsemreference_bowtie1_indexed",
-        RSEMReferenceGenome, RSEMReferenceGenome,
-        Constraint("bowtie1_indexed", MUST_BE, "unknown"),
-        Consequence("bowtie1_indexed", BASED_ON_DATA, ["no", "yes"]),
-        ),
-    ModuleNode(
-        "is_rsemreference_bowtie2_indexed",
-        RSEMReferenceGenome, RSEMReferenceGenome,
-        Constraint("bowtie2_indexed", MUST_BE, "unknown"),
-        Consequence("bowtie2_indexed", BASED_ON_DATA, ["no", "yes"]),
-        ),
+    #ModuleNode(
+    #    "is_rsemreference_bowtie1_indexed",
+    #    RSEMReferenceGenome, RSEMReferenceGenome,
+    #    Constraint("bowtie1_indexed", MUST_BE, "unknown"),
+    #    Consequence("bowtie1_indexed", BASED_ON_DATA, ["no", "yes"]),
+    #    ),
+    #ModuleNode(
+    #    "is_rsemreference_bowtie2_indexed",
+    #    RSEMReferenceGenome, RSEMReferenceGenome,
+    #    Constraint("bowtie2_indexed", MUST_BE, "unknown"),
+    #    Consequence("bowtie2_indexed", BASED_ON_DATA, ["no", "yes"]),
+    #    ),
     
     ModuleNode(
         "normalize_with_rsem",

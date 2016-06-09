@@ -1,7 +1,18 @@
 from Betsy.bie3 import *
 #import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
-#import GeneExpProcessing
+
+# TF Caller:
+# MACS 1.4
+# MACS 2.1
+# PeakSeq
+# SPP
+# HOMER
+#
+# Broad Peak Callers:
+# MACS 1.4    XXX
+# MACS 2.1    broad_peaks=yes
+# SICER/epic  (not implemented here)
 
 
 MACS14Results = DataType(

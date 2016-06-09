@@ -699,8 +699,9 @@ all_modules = [
         ),
     ModuleNode(
         "summarize_bowtie2_alignment",
-        SamFolder, Bowtie2AlignmentSummary,
+        BamFolder, Bowtie2AlignmentSummary,
         Constraint("aligner", MUST_BE, "bowtie2"),
+        Constraint("sorted", MUST_BE, "no"),
         help="Summarize the alignment, e.g. number of reads aligned.",
         # This rule isn't quite right.  Actually requires the "log"
         # files saved by bowtie, not the SAM files.  So this might

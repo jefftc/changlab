@@ -65,6 +65,5 @@ def _find_output_logs(path):
     
     # Should be a folder of results from bowtie1.  STDOUT should
     # be sent to ".log" files.
-    x = filelib.list_files_in_path(path)
-    x = [x for x in x if x.endswith(".log")]
+    x = filelib.list_files_in_path(path, endswith=".log")
     return x

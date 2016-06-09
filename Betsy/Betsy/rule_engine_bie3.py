@@ -52,6 +52,7 @@ def run_pipeline(
     from Betsy import config
 
     DEBUG_RUN_PIPELINE = False
+    #DEBUG_RUN_PIPELINE = True
 
     user = user or getpass.getuser()
     output_path = config.OUTPUTPATH
@@ -122,7 +123,7 @@ def run_pipeline(
         #        bold_transitions=path_transitions, highlight_yellow=all_ids,
         #        highlight_green=start_ids, highlight_orange=done_ids,
         #        verbose=True)
-        assert it < MAX_ITER, "Too many iterations"
+        assert it < MAX_ITER, "Too many iterations: %d" % it
 
         # Make sure we're not stuck in an infinite loop.
         # 1.  Only modules on the stack.  AND

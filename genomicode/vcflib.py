@@ -8,6 +8,11 @@ Functions:
 read
 write
 
+has_info
+has_all_info
+has_format
+has_all_format
+
 get_variant      Get Variant from VCFFile.
 set_variant      Set a Variant to a VCFFile.
 add_variant      Add a Variant to a VCFFile.
@@ -25,7 +30,7 @@ make_vaf_matrix
 # _format_info
 # _format_genotype
 # _format_vcf_value
-# 
+#
 # _safe_int
 # _safe_float
 # _safe_add
@@ -51,10 +56,10 @@ make_vaf_matrix
 # FORMAT  GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
 # VALUES  ./.:.:16
 #
-#                   samtools   Platypus            GATK  
-# num_ref           GENO:RD                       GENO:AD  
-# num_alt           GENO:AD     GENO:NV  INFO:TR  GENO:AD  
-# total_reads       GENO:DP     GENO:NR  INFO:TC  GENO:DP  
+#                   samtools    Platypus          GATK
+# num_ref           GENO:RD                       GENO:AD
+# num_alt           GENO:AD     GENO:NV  INFO:TR  GENO:AD
+# total_reads       GENO:DP     GENO:NR  INFO:TC  GENO:DP
 # vaf               GENO:FREQ
 # call              GENO:GT     GENO:GT           GENO:GT
 #
@@ -63,15 +68,15 @@ make_vaf_matrix
 # num_alt                      GENO:SGCOUNTALT_F/R   GENO:BFILL_ALT
 # total_reads       INFO:DP    GENO:DP               GENO:BFILL_COV
 # vaf                                                GENO:BFILL_VAF
-# call              GENO:GT                        
+# call              GENO:GT
 #
-#                   JointSNVMix
-# num_ref           INFO:TR
-# num_alt           INFO:TA
-# total_reads       
-# vaf               
-# call              
-# 
+#                   JointSNVMix  SomaticSniper
+# num_ref           INFO:TR      GENO:DP4
+# num_alt           INFO:TA      GENO:DP4
+# total_reads                    GENO:DP
+# vaf
+# call
+#
 # * BFILL_ format is used for backfilling reads.
 # * For multi VCF files, Platypus INFO:TR and INFO:TC just contains
 #   the info for the first sample (with reads).  For positions without
@@ -105,11 +110,55 @@ make_vaf_matrix
 # does not have information about each sample.  Everything in INFO.
 
 
+# Callers.
+#SAMTOOLS = 0
+#BCFTOOLS = 1
+#GATK = 2
+#PLATYPUS = 3
+#JOINTSNVMIX = 4
+#SOMATICSNIPER = 5
+#STRELKA = 6
+#VARSCAN = 7
+#NEXTGENE = 8
+#BACKFILL = 9
+
+class Caller:
+    def is_caller(self, vcf):
+        raise NotImplementedError
+    def get_call(self, var, sample):
+        raise NotImplementedError
+
+class JointSNVMixCaller(Caller):
+    # INFO:TR     tumor num_ref
+    # INFO:TA     tumor num_alt
+    # INFO:NR     normal num_ref
+    # INFO:NA     normal num_alt
+    # FORMAT:RD   Depth for ref in tumor sample  (TR+TA)
+    # FORMAT:AD   Depth for alt in tumor sample
+    def is_caller(self, vcf):
+        if not has_all_info(vcf, ["TR", "TA", "NR", "NA"]):
+            return False
+        if not has_all_format(vcf, ["RD", "AD"]):
+            return False
+        return True
+    def get_call(self, var, sample):
+        num_alt_alleles = 1
+        num_ref = int(var.infodict["TR"])
+        num_alt = int(var.infodict["TA"])
+        total_reads = num_ref + num_alt
+        vaf = num_alt / float(total_reads)
+        call = None
+        return Call(1, num_ref, num_alt, total_reads, vaf, call)
+
+# TODO: Implement all the other callers.
+
+
+
 class VCFFile:
     def __init__(self, matrix):
         # matrix is an AnnotationMatrix.
         import copy
-        
+
         # Should start with headers, and then samples after that.
         vcf_headers = [
             "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
@@ -124,12 +173,14 @@ class VCFFile:
         assert x1 == vcf_headers[:len(x1)], "Non-standard VCF headers: %s" % (
             " ".join(x1))
         samples = x2
-        
+
         self.matrix = copy.deepcopy(matrix)
         self.samples = samples
 
     def num_variants(self):
         return self.matrix.num_annots()
+
+
 
 
 class Variant:
@@ -185,16 +236,17 @@ class Variant:
 
 class Call:
     # Contains call information for a variant.
-    # 
+    #
     # num_alt_alleles
-    # num_ref          Can be None if data missing.
+    # num_ref          None, int.
     # num_alt          Can be list.  Each can be None.
     # total_reads      Can be list.  Each can be None.
     # vaf              Can be list.  Each can be None.
-    # call             String.
-    
+    # call             String or None
+
     def __init__(self, num_alt_alleles, num_ref, num_alt, total_reads, vaf,
                  call):
+        assert num_ref is None or num_ref >= 0, "Invalid num_ref: %s" % num_ref
         assert num_alt_alleles >= 1
         self.num_alt_alleles = num_alt_alleles
         self.num_ref = num_ref
@@ -217,10 +269,10 @@ class Call:
         if not isinstance(other, Call):
             return cmp(id(self), id(other))
         x1 = [
-            self.num_alt_alleles, self.num_ref, self.num_alt, 
+            self.num_alt_alleles, self.num_ref, self.num_alt,
             self.total_reads, self.vaf, self.call]
         x2 = [
-            other.num_alt_alleles, other.num_ref, other.num_alt, 
+            other.num_alt_alleles, other.num_ref, other.num_alt,
             other.total_reads, other.vaf, other.call]
         return cmp(x1, x2)
 
@@ -245,17 +297,22 @@ def get_variant(vcf, num):
     pos = int(vcf.matrix["POS"][num])
     id_ = vcf.matrix["ID"][num]
     ref = vcf.matrix["REF"][num]
+    # VarScan2 REF and ALT can be separated by slashes, e.g. C/T  .
     if ref.find(",") >= 0:
         ref = ref.split(",")
+    elif ref.find("/") >= 0:
+        ref = ref.split("/")
     alt = vcf.matrix["ALT"][num]
     if alt.find(",") >= 0:
         alt = alt.split(",")
+    elif alt.find("/") >= 0:
+        alt = alt.split("/")
     qual = _safe_float(vcf.matrix["QUAL"][num])
     filter_ = vcf.matrix["FILTER"][num].split(";")
     x = _parse_info(vcf.matrix["INFO"][num])
     info_names, infodict = x
 
-    # JoinSNVMix does not have "FORMAT".
+    # JoinSNVMix can be missing "FORMAT".
     genotype_names = []
     sample2genodict = {}
     if "FORMAT" in vcf.matrix:
@@ -280,7 +337,7 @@ def get_variant(vcf, num):
     return Variant(
         chrom, pos, id_, ref, alt, qual, filter_, info_names, infodict,
         vcf.samples, genotype_names, sample2genodict)
-    
+
 
 def set_variant(vcf, num, var):
     # Update a VCFFile in place with information from Variant.
@@ -326,7 +383,7 @@ def add_variant(vcf, var):
         matrix.header2annots[key] = x
     set_variant(vcf, num, var)
 
-    
+
 def get_call(var, sample):
     # Return a Call object from a variant.
     if sample is not None:  # may be missing (e.g. JointSNVMix)
@@ -339,23 +396,25 @@ def get_call(var, sample):
 
     # Figure out the number of ALT alleles.
     num_alt_alleles = len(var.alt)
-    num_ref = None
-    num_alt = None
-    total_reads = None
-    vaf = None
+    # Each is a list of values.
+    num_ref = []
+    num_alt = []
+    total_reads = []
+    vaf = []
+    # Call is None or a string.
     call = None
 
     # For debugging.
     pos_str = "%s %s" % (var.chrom, var.pos)
 
-    # This function is a mess.  Each variable can be integers or lists
-    # or None.  Should standardize and clean this up.
+    # This function is a mess.  Should have separate functions for
+    # each caller.
     if "RD" in geno_dict:
-        num_ref = _safe_int(geno_dict["RD"])
+        num_ref = [_safe_int(geno_dict["RD"])]
     if "SGCOUNTREF_F" in geno_dict:
         x1 = _safe_int(geno_dict["SGCOUNTREF_F"])
         x2 = _safe_int(geno_dict["SGCOUNTREF_R"])
-        num_ref = _safe_add(x1, x2)
+        num_ref = [_safe_add(x1, x2)]
     if "SGCOUNTALT_F" in geno_dict:
         x1 = geno_dict["SGCOUNTALT_F"].split(",")
         x2 = geno_dict["SGCOUNTALT_R"].split(",")
@@ -368,22 +427,43 @@ def get_call(var, sample):
         # C,T    2
         # C    2,2   First is REF, second is ALT.
         x = geno_dict["AD"].split(",")
-        if "RD" not in geno_dict:
-            # No RD means both AD and RD are merged together.
-            if len(x) == num_alt_alleles+1:
-                x = x[1:]
         x = [_safe_int(x) for x in x]
-        #assert len(x) == num_alt_alleles, "Bad AD: %s %d %s" % (
-        #    pos_str, num_alt_alleles, geno_dict["AD"])
-        num_alt = x
-    if "DP" in geno_dict:
+        # Look for situation where first is REF and second is ALT.
+        # No RD means both AD and RD are merged together.
+        if "RD" not in geno_dict and len(x) == num_alt_alleles+1:
+            assert not num_ref
+            num_ref, num_alt = [x[0]], x[1:]
+
+            # Inconsistent read depths (AD and DP) from MuTect may
+            # lead to negative num_ref:
+            # GT:AD:BQ:DP:FA  0:92,179:.:140:0.661
+            # AD is actual depth, and DP is filtered for quality.
+            # If this is the case, then set total_reads based on AD,
+            # rather than DP.
+            total_reads = [num_ref[0]+x for x in num_alt]
+        else:
+            #assert len(x) == num_alt_alleles, "Bad AD: %s %d %s" % (
+            #    pos_str, num_alt_alleles, geno_dict["AD"])
+            num_alt = x
+    if not total_reads and "DP" in geno_dict:
         x = geno_dict["DP"].split(",")
         x = [_safe_int(x) for x in x]
         total_reads = x
-    if total_reads is None and "DP" in info_dict:
+
+    # SomaticSniper.
+    if not num_ref and not num_alt and "DP4" in geno_dict:
+        x = geno_dict["DP4"].split(",")
+        x = [_safe_int(x) for x in x]
+        assert len(x) == 4
+        ref_fwd, ref_rev, alt_fwd, alt_rev = x
+        num_ref = [ref_fwd + ref_rev]
+        num_alt = [alt_fwd + alt_rev]
+        
+
+    if not total_reads and "DP" in info_dict:
         x = info_dict["DP"]
         assert type(x) is type(0)
-        total_reads = x
+        total_reads = [x]
     if "FREQ" in geno_dict:
         x = geno_dict["FREQ"].split(",")
         x = [_percent_to_decimal(x) for x in x]
@@ -391,22 +471,22 @@ def get_call(var, sample):
         vaf = x
     if "GT" in geno_dict:
         call = geno_dict["GT"]
+        assert type(call) is type("")
 
     # "TR" in info_dict means different things Platypus and
     # JointSNVMix.  Need to be sure to interpret them correctly.
-    if num_ref is None and num_alt is None and \
-           "TR" in info_dict and "TA" in info_dict:
-        assert total_reads is None
+    if not num_ref and not num_alt and "TR" in info_dict and "TA" in info_dict:
+        assert not total_reads
         x = info_dict["TR"].split(",")
         x = [_safe_int(x) for x in x]
         assert len(x) == 1
-        num_ref = x[0]
+        num_ref = x
         x = info_dict["TA"].split(",")
         x = [_safe_int(x) for x in x]
+        assert len(x) == 1
         num_alt = x
-        assert len(num_alt) == 1
-        total_reads = [num_ref + num_alt[0]]
-    if num_alt is None and "TR" in info_dict:
+        total_reads = [num_ref[0] + num_alt[0]]
+    if not num_alt and "TR" in info_dict:
         assert "TA" not in info_dict
         x = info_dict["TR"].split(",")
         x = [_safe_int(x) for x in x]
@@ -419,13 +499,13 @@ def get_call(var, sample):
         #    sample, variant_num, alt_alleles, num_alt_alleles,
         #    info_dict["TR"])
         num_alt = x
-    if total_reads is None and "TC" in info_dict:
+    if not total_reads and "TC" in info_dict:
         x = info_dict["TC"].split(",")
         x = [_safe_int(x) for x in x]
         #assert len(x) == 1 or len(x) == num_alt_alleles
         total_reads = x
 
-    if num_ref is None and total_reads is not None and num_alt is not None:
+    if not num_ref and total_reads and num_alt:
         # Possibilities:
         # 1.  1 total reads, 1 alt.
         # 2.  1 total reads, multiple alts.
@@ -434,11 +514,13 @@ def get_call(var, sample):
         # 3.  multiple total reads, multiple alts.
         #     should have same number, and num_ref calculated should
         #     be the same.
-        
+
         # Case 1.
         if len(total_reads) == 1 and len(num_alt) == 1:
             if total_reads[0] is not None and num_alt[0] is not None:
                 num_ref = total_reads[0] - num_alt[0]
+                assert num_ref >= 0, "%s: %s %s" % (
+                    pos_str, num_alt[0], total_reads[0])
         # Case 2.
         elif len(total_reads) == 1 and len(num_alt) > 1:
             x = [x for x in num_alt if x is not None]
@@ -461,13 +543,13 @@ def get_call(var, sample):
         else:
             raise AssertionError, "%s: %s %s" % (pos_str, num_alt, total_reads)
 
-    if vaf is None and num_ref is not None and num_alt is not None:
+    if not vaf and num_ref and num_alt:
         calc_v = [None] * len(num_alt)
         for i in range(len(num_alt)):
             if num_alt[i] is None:
                 continue
-            # Assumes that num_ref is always integer.  True?
-            total = num_ref + num_alt[i]
+            assert len(num_ref) == 1   # Is this true?
+            total = num_ref[0] + num_alt[i]
             if total:
                 x = float(num_alt[i])/total
                 calc_v[i] = x
@@ -475,14 +557,19 @@ def get_call(var, sample):
 
     # If no other data available, then use the information from BFILL_
     # fields.
-    if num_ref is None and "BFILL_REF" in geno_dict:
-        num_ref = _safe_int(geno_dict["BFILL_REF"])
-    if num_alt is None and "BFILL_ALT" in geno_dict:
-        num_alt = _safe_int(geno_dict["BFILL_ALT"])
-    if total_reads is None and "BFILL_COV" in geno_dict:
-        total_reads = _safe_int(geno_dict["BFILL_COV"])
-    if vaf is None and "BFILL_VAF" in geno_dict:
-        vaf = _safe_float(geno_dict["BFILL_VAF"])
+    if not num_ref and "BFILL_REF" in geno_dict:
+        num_ref = [_safe_int(geno_dict["BFILL_REF"])]
+    if not num_alt and "BFILL_ALT" in geno_dict:
+        num_alt = [_safe_int(geno_dict["BFILL_ALT"])]
+    if not total_reads and "BFILL_COV" in geno_dict:
+        total_reads = [_safe_int(geno_dict["BFILL_COV"])]
+    if not vaf and "BFILL_VAF" in geno_dict:
+        vaf = [_safe_float(geno_dict["BFILL_VAF"])]
+
+    assert type(num_ref) is type([])
+    assert type(num_alt) is type([])
+    assert type(total_reads) is type([])
+    assert type(vaf) is type([])
 
     # Convert lists to numbers.
     if type(num_alt) is type([]) and len(num_alt) == 1:
@@ -493,16 +580,16 @@ def get_call(var, sample):
         vaf = vaf[0]
 
     # If total_reads is 0, then sometimes does not include the other ones.
-    if total_reads == 0 and num_ref is None and num_alt is None:
+    if total_reads == 0 and not num_ref and not num_alt:
         num_ref = 0
         num_alt = 0
-    if total_reads == 0 and vaf is None:
+    if total_reads == 0 and not vaf:
         vaf = 0.0
-        
+
     return Call(
         num_alt_alleles, num_ref, num_alt, total_reads, vaf, call)
 
-    
+
 def set_call(variant, sample, call):
     # Update a Variant object in place with the information from the
     # Call object.
@@ -555,7 +642,7 @@ def set_call(variant, sample, call):
         raise AssertionError, "Unknown VCF format."
 
 
-def is_pass_filter(var, QUAL=None, MQ=None, QD=None, 
+def is_pass_filter(var, QUAL=None, MQ=None, QD=None,
                    min_DP=None, max_DP=None, FILTER_contains=None,
                    FILTER_doesnotcontain=None):
     # Returns True if a variant passes all these filters.
@@ -566,7 +653,7 @@ def is_pass_filter(var, QUAL=None, MQ=None, QD=None,
     # <var value> < max_DP  Maximum depth.
     # FILTER has FILTER_contains (string).
     # FILTER does not have FILTER_doesnotcontain (string).
-    
+
     ## if FILTER_contains is None:
     ##     FILTER_contains = ""
     ## if FILTER_doesnotcontain is None:
@@ -577,7 +664,7 @@ def is_pass_filter(var, QUAL=None, MQ=None, QD=None,
     ## # FILTER_doesnotcontain.
     ## x = [x for x in FILTER_contains if x in FILTER_doesnotcontain]
     ## assert not x, "Overlap between FILTER_contains and FILTER_doesnotcontain"
-    
+
     if QUAL is not None:
         assert var.qual is not None, "Missing QUAL: %s %d" % (
             var.chrom, var.pos)
@@ -620,7 +707,7 @@ def select_variants(vcf, is_selected_fn):
     # is_selected_fn takes a Variant function and return a bool that
     # indicates whether to keep this variant.  Return a VCFFile.
     from genomicode import AnnotationMatrix
-    
+
     I = []
     for i in range(vcf.num_variants()):
         var = get_variant(vcf, i)
@@ -651,8 +738,8 @@ def make_coverage_matrix(vcf, samples=None):
             row.append(x)
         matrix.append(row)
     return matrix
-            
-    
+
+
 def make_vaf_matrix(vcf, samples=None):
     # Each element in the matrix is a float or None.
     assert vcf.num_variants()
@@ -722,7 +809,7 @@ def _parse_info(info_str):
     # MLEAF  0.500,0.500
     # AC     1,1
     # AF     0.500,0.500
-    
+
     # Parse out the INFO line.
     # Format: BRF=0.89;FR=1.0000;HP=2;HapScore=1;...
     names = []
@@ -757,7 +844,7 @@ def _parse_genotype(format_str, genotype_str):
     # - Another Varscan:
     #   GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
     #   .
-    # Detect this and fix it.
+    # Detect this and fix it by padding with ".".
     if len(names) > 3 and len(values) in [1, 3] and \
            names[:3] == ["GT", "GQ", "SDP"]:
         x = len(names) - len(values)
@@ -775,7 +862,7 @@ def _format_info(info_names, info_dict):
     not_found = [x for x in info_dict if x not in info_names]
     assert not not_found, \
            "Unknown names in info_dict: %s" % ", ".join(not_found)
-    
+
     keyvalues = []
     for name in info_names:
         value = info_dict[name]
@@ -801,18 +888,20 @@ def _format_genotype(genotype_names, genotype_dict):
     return ":".join(values)
 
 
-def _format_vcf_value(value):
+def _format_vcf_value(value, char_for_None="."):
     # value can be:
     # string, int, float, None
     # list of any of these
-    
+    # char_for_None is what character for missing values.  Default for
+    # VCF format is ".".
+
     # Make a list for consistency.
     if type(value) is not type([]):
         value = [value]
     for i in range(len(value)):
         x = value[i]
         if x is None:
-            x = "."
+            x = char_for_None
         elif type(x) in [type(0), type(0.0)]:
             x = str(x)
         value[i] = x
@@ -820,3 +909,84 @@ def _format_vcf_value(value):
     return x
 
 
+def identify_caller(vcf_file):
+    # Returns:
+    # "MuTect"
+    # "VarScan2"
+    # "mutationSeq"  # JointSNVMix
+    # "SomaticSniper"
+    # "Strelka"
+    # None        If I can't figure out the caller.
+    from genomicode import filelib
+
+    # Use the header lines to figure out the format.
+    header_lines = []
+    for line in filelib.openfh(vcf_file):
+        if not line.startswith("##"):
+            break
+        header_lines.append(line)
+
+    # MuTect
+    # ##GATKCommandLine=<ID=MuTect,Version=3.1-0-g72492bb,Date="Sun
+    x = [x for x in header_lines if x.startswith("##GATKCommandLine")]
+    x = [x for x in x if x.find("MuTect") >= 0]
+    if x:
+        return "MuTect"
+    # VarScan2
+    # ##source=VarScan2
+    x = [x for x in header_lines if x.startswith("##source=VarScan2")]
+    if x:
+        return "VarScan2"
+    # mutationSeq
+    # ##source=mutationSeq_4.3.6
+    x = [x for x in header_lines if x.startswith("##source=mutationSeq")]
+    if x:
+        return "mutationSeq"
+    # SomaticSniper
+    # ##FORMAT=<ID=SSC,Number=1,Type=Integer,Description="Somatic Score">
+    x = [x for x in header_lines if x.startswith("##FORMAT=<ID=SSC")]
+    x = [x for x in header_lines if x.find("Somatic Score") >= 0]
+    if x:
+        return "SomaticSniper"
+    # Strelka
+    # ##source=strelka
+    x = [x for x in header_lines if x.startswith("##source=strelka")]
+    if x:
+        return "Strelka"
+    return None
+
+
+
+def has_info(vcf, name, num=None):
+    if num is None:
+        num = 0
+    assert num >= 0 and num < vcf.num_variants()
+    var = get_variant(vcf, num)
+    if name in var.infodict:
+        return True
+    return False
+
+
+def has_all_info(vcf, names, num=None):
+    for name in names:
+        if not has_info(vcf, name, num=num):
+            return False
+    return True
+
+def has_format(vcf, name, num=None, sample=None):
+    # JointSNVMix sometimes does not have any samples.
+    if not vcf.samples:
+        return False
+    if sample is None:
+        sample = vcf.samples[0]
+    var = get_variant(vcf, num)
+    genodict = var.sample2genodict[sample]
+    if name in genodict:
+        return True
+    return False
+
+def has_all_format(vcf, names, num=None, sample=None):
+    for name in names:
+        if not has_format(vcf, name, num=num, sample=sample):
+            return False
+    return True

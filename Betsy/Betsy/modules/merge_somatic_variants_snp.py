@@ -51,7 +51,7 @@ class Module(AbstractModule):
             samples = sorted(samples)
             if comp_samples is None:
                 comp_samples = samples
-            assert comp_samples == samples
+            assert comp_samples == samples, "%s %s" % (comp_samples, samples)
 
         for x in jobs:
             sample, caller, out_vcf_path, in_vcf_file, out_vcf_file = x
