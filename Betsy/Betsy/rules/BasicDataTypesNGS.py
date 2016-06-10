@@ -54,7 +54,7 @@
 # infer_read_strandedness
 # 
 # summarize_aligned_reads
-# calculate_coverage
+# calculate_coverage_old
 # 
 # convert_sam_to_bam_folder
 # index_bam_folder
@@ -397,7 +397,7 @@ PerfectAlignmentSummary = DataType(
 
 DepthOfCoverage = DataType(
     "DepthOfCoverage",
-    help="Count the coverage at each position.  Saves a directory of data.",
+    help="Count the average coverage.  Saves a directory of files.",
     )
 
 TrimmomaticSummary = DataType(
@@ -859,12 +859,13 @@ all_modules = [
             ),
         OptionDef(
             "features_bed", default="",
-            help="A bed file for the regions of the genome to include.  "
-            "e.g. for looking at coverage of exons.",
+            help="A BED6 file for the regions of the genome to include.  "
+            "e.g. for looking at coverage of exons.  Should have:  "
+            "chrom chromStart (0-based) chromEnd name score strand.",
             ),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
-        help="Calculate the coverage for an alignment.",
+        help="Summarize the distribution of coverage across the genome.",
         ),
     ModuleNode(
         "convert_sam_to_bam_folder",
