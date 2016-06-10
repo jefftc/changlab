@@ -46,7 +46,9 @@
 # _subtract_annots
 # _divide_annots
 # _calc_two_annots
-# 
+#
+# select_if_annot_is
+#
 # flip01_matrix
 # all_same
 # min_annots
@@ -166,6 +168,36 @@ def select_cols_substr(MATRIX, cols_substr):
         if found:
             I.append(i)
     return AnnotationMatrix.colslice(MATRIX, I)
+
+
+def select_if_annot_is(MATRIX, arg):
+    if not arg:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+    
+    x = arg.split(",")
+    assert len(x) == 2, "Format: <header>,<value>"
+    header, value = x
+
+    annots = MATRIX[header]
+    I = [i for (i, x) in enumerate(annots) if x == value]
+    MATRIX_s = AnnotationMatrix.rowslice(MATRIX, I)
+    return MATRIX_s
+
+
+def select_if_annot_startswith(MATRIX, arg):
+    if not arg:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+    
+    x = arg.split(",")
+    assert len(x) == 2, "Format: <header>,<value>"
+    header, value = x
+
+    annots = MATRIX[header]
+    I = [i for (i, x) in enumerate(annots) if x.startswith(value)]
+    MATRIX_s = AnnotationMatrix.rowslice(MATRIX, I)
+    return MATRIX_s
 
 
 def flip01_matrix(MATRIX, indexes):
@@ -351,6 +383,8 @@ def rename_header(MATRIX, rename_list):
     rename_all = []  # list of (from_str, to_str)
     for rename_str in rename_list:
         x = rename_str.split(",")
+        if len(x) > 2 or len(x) == 1:
+            x = rename_str.split(";")
         assert len(x) == 2, "format should be: <from>,<to>"
         from_str, to_str = x
         rename_all.append((from_str, to_str))
@@ -2308,7 +2342,9 @@ def main():
     group.add_argument(
         "--rename_header", default=[], action="append",
         help="Rename a header.  Format: <from>,<to>.  "
-        "<from> will be replaced with <to>.  (MULTI)")
+        "<from> will be replaced with <to>.  "
+        "If there are already commas in the header names, can use ; instead.  "
+        "(MULTI)")
     group.add_argument(
         "--rename_header_i", default=[], action="append",
         help="Rename a header.  Format: <index>,<to>.  "
@@ -2406,6 +2442,16 @@ def main():
         "Format: <header>.  <header> may be the name of the header, "
         "or a 1-based index.  (MULTI)")
     
+    group = parser.add_argument_group(title="Select by annotation")
+    group.add_argument(
+        "--select_if_annot_is",
+        help="Keep the rows where an annotation is a specific value.  "
+        "Format: <header>,<value>")
+    group.add_argument(
+        "--select_if_annot_startswith",
+        help="Keep the rows where an annotation starts with a specific value."
+        "  Format: <header>,<value>")
+
     group = parser.add_argument_group(title="Mathematical Operations")
     group.add_argument(
         "--flip01",
@@ -2610,6 +2656,11 @@ def main():
     MATRIX = merge_annots_to_new_col(MATRIX, args.merge_annots_to_new_col)
     MATRIX = split_annots(MATRIX, args.split_annots)
     MATRIX = split_chr_start_end(MATRIX, args.split_chr_start_end)
+
+    # Selection by annotation.
+    MATRIX = select_if_annot_is(MATRIX, args.select_if_annot_is)
+    MATRIX = select_if_annot_startswith(
+        MATRIX, args.select_if_annot_startswith)
 
     # Math operations.
     MATRIX = flip01_matrix(MATRIX, args.flip01)
