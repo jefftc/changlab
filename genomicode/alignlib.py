@@ -774,8 +774,8 @@ def make_bwa_mem_command(
     cmd += ["2>", sq(err_filename),]
     if sam_filename:
         cmd += ["1>", sq(sam_filename),]
-    elif samtools:
-        bam_filename = filelib.which_assert(config.samtools)
+    elif bam_filename:
+        samtools = filelib.which_assert(config.samtools)
         cmd += [
             "|", sq(samtools), "view", "-bS", "-o", sq(bam_filename), "-",
             ]

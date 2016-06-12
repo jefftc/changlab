@@ -132,10 +132,10 @@ def draw_venn(
     # Five is the maximum supported by package.
     assert len(all_names) <= 5, "Can't draw venn diagram with %d circles." % \
            len(all_names)
-    
+
     varnames = ["A", "B", "C", "D", "E"]
     for i in range(len(all_labels)):
-        n = all_labels[i]
+        n = all_names[i]
         R_equals(name2genes[n], varnames[i])
     #n1, n2, n3 = all_names
     #R_equals(name2genes[n1], "A")
