@@ -1,5 +1,4 @@
 from Betsy.bie3 import *
-#import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 
 # TF Caller:

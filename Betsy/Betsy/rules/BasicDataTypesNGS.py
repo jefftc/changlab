@@ -177,9 +177,9 @@ SampleGroupFile = DataType(
     #    "contents", BDT.CONTENTS,
     #    "unspecified", "unspecified", help="contents"),
     # Needed to prevent cycles.
-    AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
-        help="For subtracting mouse reads from PDX models of FastqFolder"),
+    #AttributeDef(
+    #    "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+    #    help="For subtracting mouse reads from PDX models of FastqFolder"),
     help="File contains sample group infomation"
     )
 
@@ -460,7 +460,7 @@ all_modules = [
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
+        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
@@ -824,6 +824,7 @@ all_modules = [
         "summarize_alignment_cigar",
         BamFolder, AlignmentCIGARFolder,
         Constraint("mouse_reads_subtracted", MUST_BE, "no"),
+        Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("has_md_tags", MUST_BE, "yes"),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS),
@@ -843,7 +844,7 @@ all_modules = [
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
+        Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         help="Summarize the fraction of reads with perfect alignments.",
         ),
@@ -1122,6 +1123,7 @@ all_modules = [
             "this number of mismatches against the mouse genome.",
             ),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SET_TO, "yes"),
         Constraint("compressed", MUST_BE, "no", 0),
         Consequence("compressed", SAME_AS_CONSTRAINT),
@@ -1142,7 +1144,7 @@ all_modules = [
         Constraint("bowtie2_indexed", MUST_BE, "yes", 2),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
+        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         ),
 

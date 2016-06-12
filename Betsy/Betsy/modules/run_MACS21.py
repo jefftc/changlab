@@ -57,7 +57,7 @@ class Module(AbstractModule):
             assert control_filename, "Missing bam file for %s" % control_sample
 
         cmd = make_macs2_command(
-            treat_filename, control_filename, 
+            treat_filename, control_filename=control_filename, 
             genome_size=genome_size, save_bedgraph_file=True, name=name,
             normalize_read_counts=True, paired=is_paired,
             broad_peak_calling=broad_peaks)

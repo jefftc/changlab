@@ -79,6 +79,23 @@ def append_to_name(genesets, arg):
     return genesets
 
 
+def nodup(genesets, arg):
+    if not arg:
+        return genesets
+    genesets = genesets[:]
+
+    for gs in genesets:
+        seen = {}
+        genes = []
+        for g in gs.genes:
+            if g in seen:
+                continue
+            seen[g] = 1
+            genes.append(g)
+        gs.genes = genes
+    return genesets
+
+
 def sort_genes(genesets, arg):
     from genomicode import genesetlib
     from genomicode import sortlib
@@ -143,6 +160,8 @@ def main():
         "--append_to_name", 
         help="Append to the name of these gene sets.  "
         "Format: <text_to_append>.")
+    group.add_argument(
+        "--nodup", action="store_true", help="Remove duplicate genes.")
     group.add_argument("--sort_genes", action="store_true")
     group.add_argument("--sort_genesets", action="store_true")
 
@@ -178,6 +197,7 @@ def main():
     genesets = intersect_genesets(genesets, args.intersect)
     genesets = clean_excel(genesets, args.clean_excel)
     genesets = append_to_name(genesets, args.append_to_name)
+    genesets = nodup(genesets, args.nodup)
     genesets = sort_genes(genesets, args.sort_genes)
     genesets = sort_genesets(genesets, args.sort_genesets)
 

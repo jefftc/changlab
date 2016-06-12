@@ -48,6 +48,7 @@
 # _calc_two_annots
 #
 # select_if_annot_is
+# select_if_annot_startswith
 #
 # flip01_matrix
 # all_same
@@ -170,17 +171,25 @@ def select_cols_substr(MATRIX, cols_substr):
     return AnnotationMatrix.colslice(MATRIX, I)
 
 
-def select_if_annot_is(MATRIX, arg):
-    if not arg:
+def select_if_annot_is(MATRIX, args):
+    if not args:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
-    x = arg.split(",")
-    assert len(x) == 2, "Format: <header>,<value>"
-    header, value = x
 
-    annots = MATRIX[header]
-    I = [i for (i, x) in enumerate(annots) if x == value]
+    jobs = []
+    for arg in args:
+        x = arg.split(",")
+        assert len(x) == 2, "Format: <header>,<value>"
+        header, value = x
+        jobs.append((header, value))
+
+    I = range(MATRIX.num_annots())
+    for x in jobs:
+        header, value = x
+        annots = MATRIX[header]
+        x = [i for (i, x) in enumerate(annots) if x == value]
+        x = {}.fromkeys(x)
+        I = [i for i in I if i in x]
     MATRIX_s = AnnotationMatrix.rowslice(MATRIX, I)
     return MATRIX_s
 
@@ -2299,7 +2308,7 @@ def main():
         "(MULTI)")
     group.add_argument(
         "--add_desc_for_gmx", action="store_true",
-        help='Add "na" to each column to turn this into a GMX file.')
+        help='Add "na" to each column to turn this into a GMX geneset file.')
     group.add_argument(
         "--add_uid_column", 
         help="Add a column that contains unique IDs.  "
@@ -2444,9 +2453,9 @@ def main():
     
     group = parser.add_argument_group(title="Select by annotation")
     group.add_argument(
-        "--select_if_annot_is",
+        "--select_if_annot_is", action="append",
         help="Keep the rows where an annotation is a specific value.  "
-        "Format: <header>,<value>")
+        "Format: <header>,<value>.  (MULTI)")
     group.add_argument(
         "--select_if_annot_startswith",
         help="Keep the rows where an annotation starts with a specific value."
