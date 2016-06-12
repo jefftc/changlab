@@ -45,7 +45,7 @@ class Module(AbstractModule):
         assert not missing, "Missing BAM files for samples: %s" % x
 
         # list of (sample, normal_pileup, cancer_pileup,
-        #          tmp1_normal, tmp1_cancer, tmp2_filename, out_filename)
+        #          tmp1_normal, tmp1_cancer, log_filename, out_filename)
         opj = os.path.join
         jobs = []
         for (normal_sample, cancer_sample) in nc_match:
@@ -54,11 +54,11 @@ class Module(AbstractModule):
             p, sample, ext = mlib.splitpath(cancer_pileup)
             tmp1_normal = opj(out_path, "%s.normal.tmp1" % sample)
             tmp1_cancer = opj(out_path, "%s.cancer.tmp1" % sample)
-            tmp2_filename = opj(out_path, "%s.tmp2" % sample)
+            log_filename = opj(out_path, "%s.log" % sample)
             out_filename = opj(out_path, "%s.vcf" % sample)
             x = sample, normal_sample, cancer_sample, \
                 normal_pileup, cancer_pileup, \
-                tmp1_normal, tmp1_cancer, tmp2_filename, out_filename
+                tmp1_normal, tmp1_cancer, log_filename, out_filename
             jobs.append(x)
 
         # VarScan will generate a "Parsing Exception" if there are 0
@@ -69,7 +69,7 @@ class Module(AbstractModule):
         for x in jobs:
             sample, normal_sample, cancer_sample, \
                     normal_pileup, cancer_pileup, \
-                    tmp1_normal, tmp1_cancer, tmp2_filename, out_filename = x
+                    tmp1_normal, tmp1_cancer, log_filename, out_filename = x
             x1 = "awk -F'\t' '$4 >= 1 {print}' %s > %s" % (
                 normal_pileup, tmp1_normal)
             x2 = "awk -F'\t' '$4 >= 1 {print}' %s > %s" % (
@@ -93,7 +93,7 @@ class Module(AbstractModule):
         for x in jobs:
             sample, normal_sample, cancer_sample, \
                     normal_pileup, cancer_pileup, \
-                    tmp1_normal, tmp1_cancer, tmp2_filename, out_filename = x
+                    tmp1_normal, tmp1_cancer, log_filename, out_filename = x
             x = [
                 "java", "-jar", sq(varscan),
                 "somatic",
@@ -108,18 +108,31 @@ class Module(AbstractModule):
                 "--output-vcf", 1,
                 ]
             x = " ".join(map(str, x))
-            x = "%s >& %s" % (x, tmp2_filename)
+            x = "%s >& %s" % (x, log_filename)
             commands.append(x)
 
         parallel.pshell(commands, max_procs=num_cores)
         x = [x[5] for x in jobs]
         filelib.assert_exists_nz_many(x)
 
+        # Files in out_path can get very big.  Clean them up.
+        # <sample>.normal.tmp1    Very big (10's Gb).
+        # <sample>.cancer.tmp1    Very big (10's to 100 Gb).
+        for x in jobs:
+            sample, normal_sample, cancer_sample, \
+                    normal_pileup, cancer_pileup, \
+                    tmp1_normal, tmp1_cancer, log_filename, out_filename = x
+            if os.path.exists(tmp1_normal):
+                os.unlink(tmp1_normal)
+            if os.path.exists(tmp1_cancer):
+                os.unlink(tmp1_cancer)
+
+
         # Copy the final file to the right place.
         for x in jobs:
             sample, normal_sample, cancer_sample, \
                     normal_pileup, cancer_pileup, \
-                    tmp1_normal, tmp1_cancer, tmp2_filename, out_filename = x
+                    tmp1_normal, tmp1_cancer, log_filename, out_filename = x
             # Will be written in current directory.
             varscan_out = "%s.snp.vcf" % sample
             if vartype == "indel":
@@ -132,7 +145,7 @@ class Module(AbstractModule):
         for x in jobs:
             sample, normal_sample, cancer_sample, \
                     normal_pileup, cancer_pileup, \
-                    tmp1_normal, tmp1_cancer, tmp2_filename, out_filename = x
+                    tmp1_normal, tmp1_cancer, log_filename, out_filename = x
             _fix_normal_cancer_names(
                 out_filename, normal_sample, cancer_sample)
 

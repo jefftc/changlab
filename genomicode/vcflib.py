@@ -410,7 +410,13 @@ def get_call(var, sample):
     # This function is a mess.  Should have separate functions for
     # each caller.
     if "RD" in geno_dict:
-        num_ref = [_safe_int(geno_dict["RD"])]
+        x = geno_dict["RD"]
+        # Previously, there was bug in _format_genotype that led to a
+        # list being formatted here.  Detect this bug and account for
+        # it.
+        if x.startswith("[") and x.endswith("]"):
+            x = x[1:-1]
+        num_ref = [_safe_int(x)]
     if "SGCOUNTREF_F" in geno_dict:
         x1 = _safe_int(geno_dict["SGCOUNTREF_F"])
         x2 = _safe_int(geno_dict["SGCOUNTREF_R"])
@@ -881,7 +887,10 @@ def _format_genotype(genotype_names, genotype_dict):
     values = []
     for name in genotype_names:
         if name in genotype_dict:
-            values.append(genotype_dict[name])
+            x = genotype_dict[name]
+            if type(x) in [type([]), type(())]:
+                x = ",".join(map(str, x))
+            values.append(x)
         else:
             values.append(".")
     values = map(str, values)

@@ -42,37 +42,13 @@ class Module(AbstractModule):
         jobs = []
         for x in vcf_files:
             caller, filestem, filename = x
+
             args = filename, caller, filestem, header, TEMPFILE
             x = summarize_vcf_file, args, {}
             jobs.append(x)
         parallel.pyfun(jobs, num_procs=num_cores, lock_keyword="lock")
         metadata["num_cores"] = num_cores
 
-
-        ## # Make a list of each of the variant positions.
-        ## variants = {}  # (chrom, pos, ref, alt) -> 1
-        ## assert len(vcf_files) == len(vcf_filtered)
-        ## for j in range(len(vcf_files)):
-        ##     caller, sample, filename = vcf_files[j]
-        ##     vcf = vcf_filtered[j]
-        ##     for i in range(vcf.num_variants()):
-        ##         var = vcflib.get_variant(vcf, i)
-
-        ##         assert type(var.ref) is type(""), "Multiple ref: %s %s %s %d" \
-        ##                % (caller, sample, var.chrom, var.pos)
-        ##         #assert type(var.alt) is type(""), "Multiple alt: %s %s %s %d"\
-        ##         #       % (caller, sample, var.chrom, var.pos)
-
-        ##         # Alt may be a list of possible alternatives.
-        ##         alt = var.alt
-        ##         if type(var.alt) is type([]):
-        ##             alt = tuple(alt)
-        ##         x = var.chrom, var.pos, var.ref, alt
-        ##         variants[x] = 1
-
-
-        ## # Make sure there are no conflicting positions.
-        ## variants = sorted(variants)
         shutil.move(TEMPFILE, out_filename)
 
         return metadata
@@ -85,7 +61,7 @@ class Module(AbstractModule):
 def summarize_vcf_file(filename, caller, filestem, header, outfilename, lock):
     from genomicode import hashlib
     from genomicode import vcflib
-    
+
     CALLER2FILTERFN = {
         "MuTect" : get_filter_mutect,
         "VarScan2" : get_filter_varscan,
