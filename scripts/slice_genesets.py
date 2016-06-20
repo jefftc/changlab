@@ -69,13 +69,36 @@ def clean_excel(genesets, clean):
     
 
 def append_to_name(genesets, arg):
-    from genomicode import genesetlib
     if not arg:
         return genesets
+    from genomicode import genesetlib
     genesets = genesets[:]
 
     for gs in genesets:
         gs.name = gs.name + arg
+    return genesets
+
+
+def rename(genesets, args):
+    # args is a list of strings in format of: <from>,<to>.
+    if not args:
+        return genesets
+    from genomicode import genesetlib
+
+    rename_all = []  # list of (from_str, to_str)
+    for rename_str in args:
+        x = rename_str.split(",")
+        if len(x) > 2 or len(x) == 1:
+            x = rename_str.split(";")
+        assert len(x) == 2, "format is not <from>,<to>: %s" % rename_str
+        from_str, to_str = x
+        rename_all.append((from_str, to_str))
+
+    genesets = genesets[:]
+    for gs in genesets:
+        for from_str, to_str in rename_all:
+            if gs.name == from_str:
+                gs.name = to_str
     return genesets
 
 
@@ -161,6 +184,12 @@ def main():
         help="Append to the name of these gene sets.  "
         "Format: <text_to_append>.")
     group.add_argument(
+        "--rename",  action="append",
+        help="Change the name of a gene set.  Format: <from>,<to>.  "
+        "<from> will be replaced with <to>.  "
+        "If there are already commas in the header names, can use ; instead.  "
+        "(MULTI)")
+    group.add_argument(
         "--nodup", action="store_true", help="Remove duplicate genes.")
     group.add_argument("--sort_genes", action="store_true")
     group.add_argument("--sort_genesets", action="store_true")
@@ -197,6 +226,7 @@ def main():
     genesets = intersect_genesets(genesets, args.intersect)
     genesets = clean_excel(genesets, args.clean_excel)
     genesets = append_to_name(genesets, args.append_to_name)
+    genesets = rename(genesets, args.rename)
     genesets = nodup(genesets, args.nodup)
     genesets = sort_genes(genesets, args.sort_genes)
     genesets = sort_genesets(genesets, args.sort_genesets)

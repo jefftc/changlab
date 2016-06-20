@@ -1160,9 +1160,9 @@ def main():
         '--max_inputs', default=DEFAULT_MAX_INPUTS, type=int,
         help="Maximum number of inputs to be shown (default %d).  "
         "(For optimization)" % DEFAULT_MAX_INPUTS)
-    parser.add_argument(
-        "--save_failed_data", action="store_true",
-        help="If a module failed, do not clean up its working files.")
+    #parser.add_argument(
+    #    "--save_failed_data", action="store_true",
+    #    help="If a module failed, do not clean up its working files.")
     parser.add_argument(
         "--cache_input_files", action="store_true",
         help="Save a copy of the input files.  "
@@ -1246,6 +1246,7 @@ def main():
     args.clobber = True
     assert args.num_cores > 0, "num_cores should be greater than 0"
     assert args.max_inputs > 0 and args.max_inputs <= 20
+    args.save_failed_data = True   # Always save now.
     #if args.inputs_complete or args.attrs_complete or args.run:
     #    if args.run:
     #        x = "--run"
