@@ -21,6 +21,7 @@
 # PositionsFile
 # NormalCancerFile
 # IntervalListFile
+# PositionSpecificDepthOfCoverage   # Depth of coverage for specific position.
 #
 # NEED TO RENAME.  NOT VCF FOLDER
 # AnnotatedVCFFolder      # No.  Not VCF files.  Need to clean this up.
@@ -214,6 +215,12 @@ IntervalListFile = DataType(
     help="Genomic intervals in GATK format."
     )
 
+PositionSpecificDepthOfCoverage = DataType(
+    "PositionSpecificDepthOfCoverage",
+    help="The amount of sequencing coverage at specific positions.",
+    )
+
+
 ManyCallerVCFFolders = DataType(
     "ManyCallerVCFFolders",
     AttributeDef(
@@ -267,6 +274,7 @@ all_data_types=[
     PositionsFile,
     NormalCancerFile,
     IntervalListFile,
+    PositionSpecificDepthOfCoverage,
 
     # DEPRECATED
     AnnotatedVCFFolder,
@@ -721,4 +729,13 @@ all_modules = [
     #    Constraint("vartype", MUST_BE, "consensus", 1),
     #    Constraint("caller", MUST_BE, "varscan", 1),
     #    ),
+
+    ModuleNode(
+        "summarize_coverage_at_positions",
+        VCFFolder, 
+        PositionSpecificDepthOfCoverage,
+        Constraint("backfilled", MUST_BE, "consensus"),
+        Constraint("caller", MUST_BE, "varscan"),
+        Constraint("vartype", MUST_BE, "consensus"),
+        ),
     ]
