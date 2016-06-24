@@ -20,6 +20,28 @@ class Module(AbstractModule):
             #if len(ds) > 50000:  # DEBUG
             #    break
 
+        # MuSE sometimes has alternates.
+        # Alt       A,C
+        # Num_Alt  13,0
+        # VAF      0.19,0.0
+        # Detect this and fix it.  Take the alternate with the highest VAF.
+        for d in ds:
+            if d.Num_Alt.find(",") < 0:
+                continue
+            x1 = d.Num_Alt.split(",")
+            x2 = d.VAF.split(",")
+            assert len(x1) == len(x2)
+            x1 = map(int, x1)
+            x2 = map(float, x2)
+            max_vaf = max_i = None
+            for i in range(len(x2)):
+                if max_vaf is None or x2[i] > max_vaf:
+                    max_vaf = x2[i]
+                    max_i = i
+            assert max_i is not None
+            d.Num_Alt = str(x1[max_i])
+            d.VAF = str(x2[max_i])
+
         # Make a list of all the positions.
         positions = {}  # (Chrom, Pos) -> 1
         for d in ds:
@@ -44,7 +66,7 @@ class Module(AbstractModule):
             x = d.Chrom, int(d.Pos), d.Ref, d.Alt
             coord_data[x] = 1
         coord_data = sorted(coord_data)
-            
+
         call_data = []
         for d in ds:
             num_ref = num_alt = vaf = None

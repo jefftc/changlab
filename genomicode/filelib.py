@@ -12,8 +12,10 @@ which_assert  Find full path or raise AssertionError.
 exists        Whether a filename exists.  Also checks for .gz and .bz2.
 exists_nz     Whether a filename exists and has non-zero size.
 exists_nz_many
+assert_exists_many
 assert_exists_nz
 assert_exists_nz_many
+assert_exists_z_many
 fp_exists_nz  Whether a file or directory exists and is not empty.
 
 
@@ -311,6 +313,29 @@ def assert_exists_nz_many(filenames, retries=2):
         msg = "Files (%d) not found or empty: %s" % (
             len(missing), ", ".join(x))
     assert not missing, msg
+
+
+def assert_exists_z_many(filenames):
+    # Assert that multiple filenames exists and are zero.
+    import stat
+    assert_exists_many(filenames)
+
+    # Make sure they're all 0.
+    nonzero = []
+    for filename in filenames:
+        if os.stat(filename)[stat.ST_SIZE] != 0:
+            nonzero.append(filename)
+    if not nonzero:
+        return
+    if len(nonzero) == 1:
+        msg = "File not empty: %s" % nonzero[0]
+    elif len(nonzero) < 5:
+        msg = "Files not empty: %s" % ", ".join(nonzero)
+    else:
+        x = nonzero[:5] + ["..."]
+        msg = "Files (%d) not found or empty: %s" % (
+            len(nonzero), ", ".join(x))
+    assert not nonzero, msg
 
 
 def assert_exists_many(filenames):

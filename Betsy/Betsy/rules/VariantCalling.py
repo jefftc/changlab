@@ -40,6 +40,7 @@
 # call_variants_strelka
 # call_variants_somaticsniper
 # call_variants_jointsnvmix
+# call_variants_muse
 # merge_somatic_variants_snp
 #
 # make_vcf_recalibration_report_snp
@@ -57,11 +58,12 @@
 
 
 #                 SNP   INDEL  NOTES
-# mutect           Y      N    SNP caller only.
+# mutect           Y      N
 # varscan          Y      Y    Makes separate files.
 # strelka          Y      Y    Makes separate files.
-# somaticsniper    Y      N    SNP caller only.
+# somaticsniper    Y      N
 # jointsnvmix      Y      Y    Makes file with both.  Can filter out.
+# muse             Y      N
         
 
 # TODO: Make a constant for ["yes", "no"]
@@ -74,7 +76,7 @@ import BasicDataTypesNGS as NGS
 
 CALLERS = [
     "none", "mpileup", "gatk", "platypus", "varscan", "mutect", "strelka",
-    "somaticsniper", "jointsnvmix"]
+    "somaticsniper", "jointsnvmix", "muse", "radia"]
 VARTYPES = ["all", "snp", "indel", "consensus"]
 VARTYPE_NOT_CONSENSUS = [x for x in VARTYPES if x != "consensus"]
 BACKFILLS = ["no", "yes", "consensus"]
@@ -217,7 +219,7 @@ IntervalListFile = DataType(
 
 PositionSpecificDepthOfCoverage = DataType(
     "PositionSpecificDepthOfCoverage",
-    help="The amount of sequencing coverage at specific positions.",
+    help="The amount of sequencing coverage at specific positions (0-based).",
     )
 
 
@@ -236,6 +238,7 @@ SimpleVariantFile = DataType(
     AttributeDef(
         "filtered", ["no", "yes"], "no", "no",
         help="Whether these variants are filtered."),
+    help="1-based coordinates"
     )
 
 SimpleVariantMatrix = DataType(
@@ -249,6 +252,7 @@ SimpleVariantMatrix = DataType(
     AttributeDef(
         "filtered", ["no", "yes"], "no", "no",
         help="Whether these variants are filtered."),
+    help="Contains information about variants.  Coordinates are 1-based."
     )
 
 
@@ -257,7 +261,7 @@ SimpleCallMatrix = DataType(
     AttributeDef(
         "vartype", ["snp", "indel"], "snp", "snp",
         help="What kind of variants are held in this file."),
-    help="Contains variant calls."
+    help="Contains variant calls.  Coordinates are 1-based."
     )
 
 
@@ -489,6 +493,60 @@ all_modules = [
         ),
 
     ModuleNode(
+        "call_variants_muse",
+        [NGS.BamFolder, NormalCancerFile, NGS.ReferenceGenome],
+        VCFFolder,
+        OptionDef("wgs_or_wes", help='Should be "wgs" or "wes".'),
+        OptionDef(
+            "muse_dbsnp_vcf", help="bgzip and indexed VCF file for dbsnp"),
+        # Reference must be samtools_indexed.
+        # BAM files need to be indexed, duplicates_marked.
+        # Normal/Cancer should be re-aligned jointly.  How??
+        # dbSNP VCF file must be bgzip compressed, tabix indexed.
+        # Recommended aligners: bwa_mem.
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("samtools_indexed", MUST_BE, "yes", 2),
+        Consequence("caller", SET_TO, "muse"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO, "snp"),
+        Consequence("somatic", SET_TO, "yes"),
+        help="Use MuSE to call variants.",
+        ),
+
+    ModuleNode(
+        "call_variants_radia_with_rna",
+        [NGS.BamFolder, NGS.BamFolder, NormalCancerFile, NGS.ReferenceGenome],
+        VCFFolder,
+        # XXX
+        # Reference must be samtools_indexed.
+        # BAM files need to be indexed.
+        
+        # DNA BamFolder
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint(
+            "aligner", CAN_BE_ANY_OF,
+            ["bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem"], 0),
+        # RNA BamFolder
+        Constraint("sorted", MUST_BE, "coordinate", 1),
+        Constraint("indexed", MUST_BE, "yes", 1),
+        Constraint(
+            "aligner", CAN_BE_ANY_OF, ["tophat", "star"], 1),
+        Constraint("samtools_indexed", MUST_BE, "yes", 3),
+        Consequence("caller", SET_TO, "radia"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        # XXX NOT SURE?
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        Consequence("somatic", SET_TO, "yes"),
+        help="Use Radia to call variants using DNA and RNA.",
+        ),
+
+    ModuleNode(
         "merge_somatic_variants_snp",
         [
             VCFFolder, # MuTect
@@ -496,6 +554,7 @@ all_modules = [
             VCFFolder, # Strelka
             VCFFolder, # SomaticSniper
             VCFFolder, # JointSNVMix
+            VCFFolder, # MuSE
             ],
         ManyCallerVCFFolders,
         Constraint("caller", MUST_BE, "mutect", 0),
@@ -513,6 +572,9 @@ all_modules = [
         Constraint("caller", MUST_BE, "jointsnvmix", 4),
         Constraint("vartype", MUST_BE, "snp", 4),
         Constraint("somatic", MUST_BE, "yes", 4),
+        Constraint("caller", MUST_BE, "muse", 5),
+        Constraint("vartype", MUST_BE, "snp", 5),
+        Constraint("somatic", MUST_BE, "yes", 5),
         Consequence("vartype", SET_TO, "snp"),
         help="Call variants with all implemented somatic variant callers.",
         ),
@@ -533,6 +595,9 @@ all_modules = [
         OptionDef(
             "apply_filter", default="yes",
             help='Whether to remove variants according to "Filter" column.'),
+        OptionDef(
+            "wgs_or_wes",
+            help='Should be "wgs" or "wes".  Used for filtering MuSE calls.'),
         
         Constraint("filtered", MUST_BE, "no"),
         Consequence("filtered", SET_TO, "yes"),
@@ -561,7 +626,6 @@ all_modules = [
         ),
 
     ModuleNode(
-        # TODO: Make this work for indel, too.
         "filter_simplevariantmatrix",
         SimpleVariantMatrix, SimpleVariantMatrix,
         OptionDef(

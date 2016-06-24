@@ -6,6 +6,7 @@
 #   _pretty_print_datatype
 #   _pretty_print_module
 # generate_network           Step 2.
+# check_more_than_one_node_network    Step 2.5.
 # check_inputs_provided      Step 3: Make sure any --inputs are provided.
 #   _print_input_datatypes   To help select input DataType(s).
 # check_inputs_in_network    Step 4.
@@ -142,13 +143,16 @@ def generate_network(rulebase, outtype, custom_attributes):
     sys.stdout.flush()
 
     # Get the out_datatype.
+    # BUG: Should separate the custom attributes for the out_datatype.
     assert hasattr(rulebase, outtype), "Unknown datatype: %s" % outtype
     out_datatype = getattr(rulebase, outtype)
     attrs = {}
-    for attr in custom_attributes:
-        if attr.datatype.name != out_datatype.name:
+    for cattr in custom_attributes:
+        if cattr.datatype.name != out_datatype.name:
             continue
-        attrs[attr.name] = attr.value
+        for x in cattr.attributes:
+            assert x.name not in attrs
+            attrs[x.name] = x.value
     out_data = out_datatype.output(**attrs)
 
     # There may be a bug in here somehow where impossible networks can
@@ -171,8 +175,27 @@ def generate_network(rulebase, outtype, custom_attributes):
     ##         print "Remove %d data types as inputs." % len(exclude_input)
     ##     network = _remove_unwanted_input_nodes(
     ##         network, exclude_input, user_attributes)
-    print "Made a network with %d nodes." % len(network.nodes)
+    x = "nodes"
+    if len(network.nodes) == 1:
+        x = "node"
+    print "Made a network with %d %s." % (len(network.nodes), x)
     return network
+
+
+def check_more_than_one_node_network(network):
+    if len(network.nodes) > 1:
+        return True
+    
+    # Print out the node.
+    node = network.nodes[0]
+    print "I have no rules that generate node:"
+    print node.datatype.name
+    for x in node.attributes.iteritems():
+        name, value = x
+        x = "  %s=%s" % (name, value)
+        print x
+    print "This is most likely due to an incompatibility in the attributes."
+    return False
 
 
 def check_inputs_provided(
@@ -604,8 +627,7 @@ def prune_pipelines(
             
     if not paths:
         print "All pipelines pruned.  This can happen if:"
-        print "  1.  A custom attribute specifies a pipeline that can't " \
-              "be created."
+        print "  1.  The pipeline can't be created due to a data attribute."
         print "  2.  A --mattr option is missing."
         print "  3.  There is a bug in the network generation."
         print "  4.  There is a bug in the pipeline pruning."
@@ -1048,6 +1070,12 @@ def _parse_args(args):
             dattr = args[i+1]
             i += 2
             datatype, key, value, all_nodes = _parse_dattr(dattr)
+            assert output
+            # This check won't work.  out_parameters also includes
+            # attributes for other data types in the network.
+            #assert datatype == output, \
+            #       "Datatype mismatch: --dattr %s and --output %s." % (
+            #    datatype, output)
             out_parameters.append((datatype, key, value, all_nodes))
         elif arg == "--dattr":
             raise AssertionError, "--dattr before --input or --output"
@@ -1106,6 +1134,7 @@ def main():
     import sys
     import argparse
     import getpass
+    import itertools
 
     from Betsy import config
     from Betsy import rule_engine_bie3
@@ -1298,24 +1327,47 @@ def main():
         in_data_nodes.append(x)
 
     # test outtype and build the list of custom_attributes.
-    custom_attributes = []  # List of bie3.Attribute objects.
+    custom_attributes = []  # List of bie3.CustomAttributes objects.
     if outtype:
         # Get the custom_attributes.  These are the attributes from the
         # output data (out_attributes), plus the attributes from the
         # input data (to guide the inferencing engine).
-        attrs = []  # list of (datatype, key, value, all_nodes)
+        attrs = []  # list of (datatype, list of (key, value), all_nodes)
         for x in input_list:
             intype, identifier, attributes = x
-            for k, v in attributes:
-                attrs.append((intype, k, v, None))
-        attrs.extend(out_attributes)
-        #for x in out_attributes:
+            x = intype, attributes, False
+            attrs.append(x)
+        # out_attributes contains attributes for the output node, as
+        # well as other nodes in the network. Just group them by
+        # datatype.
+        # Since there's only one output, it should be put into the
+        # same CustomAttributes object.
+        # out_attributes is a list of (datatype, key, value, all_nodes)
+        if out_attributes:
+            x1 = [x[0] for x in out_attributes]  # datatype
+            x2 = [x[3] for x in out_attributes]  # all_nodes
+            x1 = sorted({}.fromkeys(x1))
+            x2 = sorted({}.fromkeys(x2))
+            for x in itertools.product(x1, x2):
+                datatype, all_nodes = x
+                out_attrs = [x for x in out_attributes
+                         if x[0] == datatype and x[3] == all_nodes]
+                if not out_attrs:
+                    continue
+                attributes = [(x[1], x[2]) for x in out_attrs]
+                x = datatype, attributes, all_nodes
+                attrs.append(x)
+        
         for x in attrs:
-            datatype, key, value, all_nodes = x
+            datatype, attributes, all_nodes = x
+            if not attributes:
+                continue
             assert hasattr(rulebase, datatype), \
                    "Unknown datatype: %s" % datatype
             fn = getattr(rulebase, datatype)
-            x = bie3.CustomAttribute(fn, key, value, all_nodes)
+            x = [bie3.Attribute(fn, name, value)
+                 for (name, value) in attributes]
+            x = bie3.CustomAttributes(x, all_nodes)
             custom_attributes.append(x)
 
     # Cache the files in the user's directory.  Don't depend on the
@@ -1373,6 +1425,11 @@ def main():
     #plot_network(
     #    args.network_png, network, user_options=user_options,
     #    verbose=verbose)
+
+    # Step 2.5: Make sure network has more than one node.
+    if not check_more_than_one_node_network(network):
+        return
+    
     # Step 3: Make sure some inputs are provided.
     if not check_inputs_provided(
         network, in_data_nodes, custom_attributes, user_options,

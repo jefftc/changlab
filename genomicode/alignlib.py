@@ -46,6 +46,8 @@ make_platypus_command
 
 make_annovar_command
 
+get_muse_version
+
 find_rseqc_script
 
 gtf_to_bed
@@ -53,8 +55,9 @@ gtf_to_bed
 clean_mutect_vcf
 clean_varscan_vcf
 clean_strelka_vcf
+clean_muse_vcf
 
-identify_caller     Figure out caller of a VCF file.
+# identify_caller     Figure out caller of a VCF file.
 
 """
 # _create_reference_genome_path
@@ -1118,7 +1121,6 @@ def _make_java_command(config_name, params, num_dashes, java_path=None):
     # A dash is prepended to each key.
     # Special key:
     # _UNHASHABLE  list of (key, value) tuples
-    import os
     from genomicode import config
     from genomicode import parallel
     from genomicode import filelib
@@ -1352,7 +1354,7 @@ def _get_samtools_SM(filename):
 def clean_mutect_vcf(
     normal_bam, cancer_bam, normal_sample, cancer_sample,
     in_filename, out_filename):
-    from genomicode import hashlib
+    #from genomicode import hashlib
 
     # MuTect uses the SM field from the BAM file header.  Change this
     # to the name of the samples given by the user.
@@ -1376,7 +1378,7 @@ def clean_mutect_vcf(
 
 
 def clean_varscan_vcf(sample, in_filename, out_filename):
-    from genomicode import hashlib
+    #from genomicode import hashlib
 
     BAD_LINES = [
         "Min coverage:",
@@ -1416,13 +1418,16 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
 
 
 def clean_strelka_vcf(normal_sample, cancer_sample, in_filename, out_filename):
-    from genomicode import hashlib
+    #from genomicode import hashlib
 
     # Strelka calls the samples "NORMAL" and "TUMOR".  Change this to
     # the proper sample name.
     # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT NORMAL TUMOR
-    normal_sample_h = hashlib.hash_var(normal_sample)
-    cancer_sample_h = hashlib.hash_var(cancer_sample)
+    #normal_sample_h = hashlib.hash_var(normal_sample)
+    #cancer_sample_h = hashlib.hash_var(cancer_sample)
+    # Why need hashing?
+    normal_sample_h = normal_sample
+    cancer_sample_h = cancer_sample
 
     outhandle = open(out_filename, 'w')
     for line in open(in_filename):
@@ -1434,3 +1439,38 @@ def clean_strelka_vcf(normal_sample, cancer_sample, in_filename, out_filename):
     outhandle.close()
 
 
+def clean_muse_vcf(normal_sample, cancer_sample, in_filename, out_filename):
+    #from genomicode import hashlib
+
+    # MuSE calls the samples "NORMAL" and "TUMOR".  Change this to
+    # the proper sample name.
+    # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT TUMOR NORMAL
+    #normal_sample_h = hashlib.hash_var(normal_sample)
+    #cancer_sample_h = hashlib.hash_var(cancer_sample)
+    # Why need hashing?
+    normal_sample_h = normal_sample
+    cancer_sample_h = cancer_sample
+
+    outhandle = open(out_filename, 'w')
+    for line in open(in_filename):
+        if line.startswith("#CHROM") and line.find("NORMAL") >= 0:
+            line = line.replace("NORMAL", normal_sample_h)
+        if line.startswith("#CHROM") and line.find("TUMOR") >= 0:
+            line = line.replace("TUMOR", cancer_sample_h)
+        outhandle.write(line)
+    outhandle.close()
+
+
+def get_muse_version():
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+    
+    muse = filelib.which_assert(config.muse)
+    x = parallel.sshell(muse, ignore_nonzero_exit=True)
+    x = x.strip()
+    # Version: v1.0rc    
+    m = re.search(r"Version: ([\w\.]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)

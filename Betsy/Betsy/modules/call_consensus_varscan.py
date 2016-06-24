@@ -96,6 +96,15 @@ class Module(AbstractModule):
         for x in jobs:
             sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
             alignlib.clean_varscan_vcf(sample, tmp2_filename, out_filename)
+
+        # Files in out_path can get very big.  Clean them up.
+        for x in jobs:
+            sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
+            if os.path.exists(tmp1_filename):
+                os.unlink(tmp1_filename)
+            if os.path.exists(tmp2_filename):
+                os.unlink(tmp2_filename)
+
         x = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(x)
 
