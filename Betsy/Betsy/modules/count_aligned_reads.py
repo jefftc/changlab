@@ -151,26 +151,10 @@ def count_alignments(bam_filename):
 def count_mapped_reads(bam_filename):
     # Return a tuple of (mapped, unmapped).
     # bam file must be indexed.
-    import os
-    import StringIO
-    from genomicode import config
-    from genomicode import parallel
-    from genomicode import filelib
+    from genomicode import alignlib
 
-    assert os.path.exists(bam_filename)
-    
-    sq = parallel.quote
-    samtools = filelib.which_assert(config.samtools)
-    cmd = [
-        sq(samtools),
-        "idxstats",
-        sq(bam_filename),
-        ]
-    # How to check if this is broken?
-    x = parallel.sshell(cmd)
-    handle = StringIO.StringIO(x)
     total_mapped = total_unmapped = 0
-    for x in filelib.read_cols(handle):
+    for x in alignlib.call_samtools_idxstats(bam_filename):
         seqname, length, mapped, unmapped = x
         total_mapped += int(mapped)
         total_unmapped += int(unmapped)

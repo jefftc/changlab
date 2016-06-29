@@ -27,6 +27,9 @@ def main():
         "--running", "--run", action="store_true",
         help="Show only running processes.")
     parser.add_argument(
+        "--broken", action="store_true",
+        help="Show only broken processes.")
+    parser.add_argument(
         "--clean_broken", action="store_true",
         help="Remove all broken analyses.")
 
@@ -70,6 +73,7 @@ def main():
 
         if args.running and not IN_PROGRESS:
             continue
+        
 
         # Read the parameter file.
         params = {}
@@ -106,6 +110,9 @@ def main():
             x = time.localtime(create_time)
             time_str = time.strftime("%a %m/%d %I:%M %p", x)
             status = S_BROKEN
+
+        if args.broken and status != S_BROKEN:
+            continue
 
         if status == S_DONE:
             x = "[%s]  %s (%s; %s) %s" % (

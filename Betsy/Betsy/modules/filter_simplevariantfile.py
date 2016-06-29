@@ -15,10 +15,16 @@ class Module(AbstractModule):
         simple_file = in_data.identifier
         metadata = {}
 
-        x = mlib.get_user_option(user_options, "remove_sample")
+        x = mlib.get_user_option(user_options, "remove_samples")
         x = x.split(",")
         x = [x.strip() for x in x]
         remove_samples = x
+
+        x = mlib.get_user_option(
+            user_options, "remove_radia_rna_samples",
+            allowed_values=["no", "yes"])
+        remove_radia_rna_samples = (x == "yes")
+
 
         x = mlib.get_user_option(
             user_options, "apply_filter", allowed_values=["no", "yes"])
@@ -45,6 +51,9 @@ class Module(AbstractModule):
             # remove_sample
             if d.Sample in remove_samples:
                 continue
+            if remove_radia_rna_samples and d.Sample.endswith("_RNA"):
+                continue
+            
 
             # apply_filter
             if apply_filter:

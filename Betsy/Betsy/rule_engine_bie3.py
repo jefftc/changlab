@@ -23,6 +23,12 @@ FINISHED_FILE = "finished.txt"
 IN_PROGRESS_FILE = "in_progress.txt"
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
+# When running a module, whether to make sure it starts running in an
+# empty directory.  Can turn off for debugging.
+#CLEAN_UP_PATH_FOR_NEW_MODULE = True
+CLEAN_UP_PATH_FOR_NEW_MODULE = False   # DEBUGGING ONLY!
+
+
 TIME_FMT = "%a %b %d %H:%M:%S %Y"
 
 
@@ -482,6 +488,12 @@ def run_module(
             except OSError, x:
                 pass
 
+        # For debugging.  If I want to re-run the module over
+        # the old one, then just keep this directory.
+        if not CLEAN_UP_PATH_FOR_NEW_MODULE:
+            i_run_analysis = True
+            break
+
         last_refresh = None
         if exists(copying_file):
             last_refresh = time.time() - os.path.getctime(copying_file)
@@ -497,7 +509,8 @@ def run_module(
             time.sleep(REFRESH+1)
             if not exists(copying_file) and not exists(success_file):
                 # Abandoned.  Delete the result dir and try again.
-                _rmtree_multi(result_dir)
+                if CLEAN_UP_PATH_FOR_NEW_MODULE:
+                    _rmtree_multi(result_dir)
         elif not exists(copying_file) and exists(success_file):
             # Previous run is now finished.
             i_run_analysis = False
@@ -513,7 +526,8 @@ def run_module(
             # don't do this unless we're sure the other process is
             # really dead.
             # Abandoned.  Delete the result dir and try again.
-            _rmtree_multi(result_dir)
+            if CLEAN_UP_PATH_FOR_NEW_MODULE:
+                _rmtree_multi(result_dir)
         elif last_refresh >= REFRESH*2 and exists(success_file):
             os.unlink(copying_file)
             time.sleep(REFRESH)
@@ -548,7 +562,8 @@ def run_module(
         os.chdir(result_dir)
 
         # Clear out any old files in the directory.
-        _clear_analysis_path(result_dir, copying_file)
+        if CLEAN_UP_PATH_FOR_NEW_MODULE:
+            _clear_analysis_path(result_dir, copying_file)
         
         start_time = time.localtime()
         try:

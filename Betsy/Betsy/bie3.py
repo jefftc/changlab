@@ -3329,6 +3329,8 @@ def _prune_alternate_attributes1(
         # Choose a value.
         chosen_value = None
         # Look in custom_attributes to see if one is favored by the user.
+        # Not sure if this is correct.  Need to look carefully to make
+        # sure right value goes to right node?
         values = _get_custom_values(
             custom_attributes, network.nodes[node_id].datatype.name, name)
         assert len(values) <= 1, "Multiple custom_attributes."
@@ -5031,6 +5033,13 @@ def _bc_to_inputs(
     return combos
 
 
+## # Sources of attribute values.
+## SRC_CONSEQUENCE = "consequence"
+## SRC_CONSTRAINT = "constraint"
+## SRC_CUSTOM = "custom"
+## SRC_OUT = "out"
+## SRC_DEFAULT = "default"
+
 def _bc_to_one_input(
     network, module_id, in_num, out_data_id, custom_attributes,
     force_default_input_attribute_to_be_all_values=False):
@@ -5057,8 +5066,8 @@ def _bc_to_one_input(
     # decreasing priority):
     # 1.  Consequence (i.e. SAME_AS_CONSTRAINT).
     # 2.  Constraint.
-    # 3.  custom attribute
-    # 4.  out_data              (default_attributes_from)
+    # 3.  custom attribute    (only if it doesn't conflict with #1 or #2)
+    # 4.  out_data            (default_attributes_from)
     # 5.  default output value of input datatype
     #
     # If the user attribute conflicts with a Constraint, the
@@ -5087,8 +5096,121 @@ def _bc_to_one_input(
     # Keep track of the source of the attribute, for debugging.
     attrsource = {}  # attribute name -> source
 
-    # Set the attributes in increasing order of priority.  Higher
-    # priority overwrites lower priority.
+    # Case 1.  Set the attributes based on the consequences.  If there
+    # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
+    # should be determined by the out_data.  e.g.
+    # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+    # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
+    #
+    # The module takes anything, produces the same value.  So the
+    # backchainer needs to preserve the value from the out_data.
+
+    # Set values based on SAME_AS_CONSTRAINT.
+    # Nothing to do for SET_TO, SET_TO_ONE_OF, BASED_ON_DATA.  (Does
+    # not affect input nodes.)
+    x = [x for x in module.consequences if x.behavior == SAME_AS_CONSTRAINT]
+    # Get the consequences that are based on this datatype.
+    x = [x for x in x if x.arg1 == in_num]
+    consequences = x
+    for consequence in consequences:
+        # Copy the value from the output data.
+        attributes[consequence.name] = out_data.attributes[consequence.name]
+        attrsource[consequence.name] = "consequence"
+
+    
+    # Case 2.  Set the attributes based on the constraints.
+    x = [x for x in module.constraints if x.input_index == in_num]
+    constraints = x
+    for constraint in constraints:
+        name = constraint.name
+
+        if constraint.behavior == SAME_AS:
+            constraint = _resolve_constraint(constraint, module.constraints)
+        assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]
+        
+        if name not in attributes:
+            attributes[name] = constraint.arg1
+            attrsource[name] = "constraint"
+            continue
+
+        cons_value = constraint.arg1
+        attr_value = attributes[name]
+        attr_type = _get_attribute_type(attributes[name]) # type of attr_value
+        
+        # Since more values may be allowed in the consequence,
+        # further refine based on the constraint.  E.g.:
+        # Consequence [A, B, C, D]     Case 1
+        # Constraint  [A, B]           Case 2
+
+        if constraint.behavior == MUST_BE:
+            # cons_value must be TYPE_ATOM
+            if attr_type == TYPE_ATOM:
+                assert attr_value == cons_value
+            elif attr_type == TYPE_ENUM:
+                assert cons_value in attr_value
+                attributes[name] = cons_value
+                attrsource[name] = "consequence+constraint"
+            else:
+                raise AssertionError
+        elif constraint.behavior == CAN_BE_ANY_OF:
+            # cons_value must be TYPE_ENUM
+            if attr_type == TYPE_ATOM:
+                assert attr_value in cons_value  # don't do anything
+            elif attr_type == TYPE_ENUM:
+                common = _intersect(attr_value, cons_value)
+                assert common
+                attributes[name] = cons_value
+                attrsource[name] = "consequence+constraint"
+            else:
+                raise AssertionError
+                                                               
+
+    # Case 3.  If the input data object does not proceed to the output
+    # data object, then use the attribute provided by the user.
+    x = [x for x in module.default_attributes_from if x.input_index == in_num]
+    if not x:
+        # Look for relevant custom attributes.
+        found = False
+        for cattrs in custom_attributes:
+            # Ignore attributes for other data types.
+            if _does_custom_attribute_apply(
+                cattrs, network, module_id, in_datatype, attributes):
+                found = True
+                break
+        if found:
+            for custom in cattrs.attributes:
+                # If the attribute is already set by a constraint,
+                # then refine the value by the custom attribute.
+                if attrsource.get(custom.name) == "constraint":
+                    attr_value = attributes[custom.name]
+                    attr_type = _get_attribute_type(attributes[custom.name])
+                    cust_type = _get_attribute_type(custom.value)
+                    if attr_type == TYPE_ENUM:
+                        if cust_type == TYPE_ATOM:
+                            if custom.value in attr_value:
+                                attributes[custom.name] = custom.value
+                                attrsource[custom.name] = "constraint,custom"
+                        elif cust_type == TYPE_ENUM:
+                            x = _intersect(attr_value, custom.value)
+                            if x:
+                                attributes[custom.name] = x
+                                attrsource[custom.name] = "constraint,custom"
+                        else:
+                            raise AssertionError
+                
+                if custom.name not in attributes:
+                    attributes[custom.name] = custom.value
+                    attrsource[custom.name] = "default"
+                
+    
+    # Case 4.  If default_attributes_from is the same as in_num, then
+    # fill with the same values as the out_data.
+    indexes = [x.input_index for x in module.default_attributes_from]
+    if in_num in indexes:
+        for name, value in out_data.attributes.iteritems():
+            if name not in attributes:
+                attributes[name] = value
+                attrsource[name] = "out"
 
     # Case 5.  Set values from defaults.
     #
@@ -5101,165 +5223,230 @@ def _bc_to_one_input(
         if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES or \
                force_default_input_attribute_to_be_all_values:
             default = attrdef.values
-        attributes[attrdef.name] = default
-        attrsource[attrdef.name] = "default"
 
-    # Case 4.  If default_attributes_from is the same as in_num, then
-    # fill with the same values as the out_data.
-    indexes = [x.input_index for x in module.default_attributes_from]
-    if in_num in indexes:
-        for name, value in out_data.attributes.iteritems():
-            attributes[name] = value
-            attrsource[name] = "out_data"
-
-    # Case 3.  If the input data object does not proceed to the output
-    # data object, then use the attribute provided by the user.
-    # Applies:
-    # 1.  Only the the first (lowest) time this data type is seen in
-    #     the network.
-    # 2.  Every time.
-    attrs1 = {}
-    attrs2 = {}
-    x = [x for x in module.default_attributes_from if x.input_index == in_num]
-    if not x:
-        # Look for relevant custom attributes.
-        for cattrs in custom_attributes:
-            # Ignore attributes for other data types.
-            if cattrs.datatype.name != in_datatype.name:
-                continue
-            attrs = attrs1
-            if cattrs.all_nodes:
-                attrs = attrs2
-            for x in cattrs.attributes:
-                attrs[x.name] = x.value
-            #if not cattr.all_nodes:
-            #    attrs1[attr.name] = attr.value
-            #else:
-            #    attrs2[attr.name] = attr.value
-        ## Set values from user attributes.
-        #for attr in custom_attributes:
-        #    # Ignore attributes for other data types.
-        #    if attr.datatype.name != in_datatype.name:
-        #        continue
-        #    attributes[attr.name] = attr.value
-        #    attrsource[attr.name] = "user"
-
-    # Found potentially relevant custom attributes.  Apply them if
-    # there are no descendents with the same data type.
-    if attrs1 and not \
-           _has_descendent_of_datatype(network, module_id, in_datatype.name):
-        for name, value in attrs1.iteritems():
-            attributes[name] = value
-            attrsource[name] = "user"
-    # Set values that should apply to every node in the network.
-    for name, value in attrs2.iteritems():
-        attributes[name] = value
-        attrsource[name] = "user"
-    
-
-    # Case 2.  Set the attributes based on the constraints.
-    for constraint in module.constraints:
-        if constraint.input_index != in_num:
-            continue
-
-        if constraint.behavior == MUST_BE:
-            attributes[constraint.name] = constraint.arg1
-            attrsource[constraint.name] = "constraint"
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            value = constraint.arg1
-            source = "constraint"
-
-            # If the user specified an attribute, then refine by it.
-            # Refine by default value?
-            # o If YES: network may suggest that only the default for
-            #   an attribute is acceptable, when other values would
-            #   work.
-            # o If NO: may generate large network.
-
-            #if attrsource.get(constraint.name) in ["user", "default"]:
-            if attrsource.get(constraint.name) in ["user"]:
-                x = _get_attribute_type(attributes[constraint.name])
-                if x == TYPE_ATOM:
-                    if attributes[constraint.name] in value:
-                        value = attributes[constraint.name]
-                        source = "constraint,%s" % attrsource[constraint.name]
-                elif x == TYPE_ENUM:
-                    x = _intersect(attributes[constraint.name], value)
+        # If the attribute is set by a constraint, and the default is
+        # a subset of this, should I refine the constraint by the
+        # default?
+        # o YES: network may suggest that only the default for an
+        #   attribute is acceptable, when other values would work.
+        # o NO: more correct, but may generate large network.
+        if False and attrsource.get(attrdef.name) == "constraint":
+            attr_value = attributes[attrdef.name]
+            attr_type = _get_attribute_type(attributes[attrdef.name])
+            def_type = _get_attribute_type(default)
+            if attr_type == TYPE_ENUM:
+                if def_type == TYPE_ATOM:
+                    if default in attr_value:
+                        attributes[attrdef.name] = default
+                        attrsource[attrdef.name] = "constraint,default"
+                elif def_type == TYPE_ENUM:
+                    x = _intersect(attr_value, default)
                     if x:
-                        value = x
-                        source = "constraint,%s" % attrsource[constraint.name]
+                        attributes[attrdef.name] = x
+                        attrsource[attrdef.name] = "constraint,default"
                 else:
                     raise AssertionError
-            attributes[constraint.name] = value
-            attrsource[constraint.name] = source
-        elif constraint.behavior == SAME_AS:
-            # Handled in _bc_to_inputs.
-            pass
-        else:
-            raise AssertionError
 
-    # Case 1.  Set the attributes based on the consequences.  If there
-    # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
-    # should be determined by the out_data.  e.g.
-    # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
-    # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
-    #
-    # The module takes anything, produces the same value.  So the
-    # backchainer needs to preserve the value from the out_data.
+        if attrdef.name not in attributes:
+            attributes[attrdef.name] = default
+            attrsource[attrdef.name] = "default"
 
-    # Get SAME_AS_CONSTRAINT.  Nothing to do for SET_TO,
-    # SET_TO_ONE_OF, BASED_ON_DATA.
-    x = [x for x in module.consequences if x.behavior == SAME_AS_CONSTRAINT]
-    # Get the consequences that are based on this datatype.
-    x = [x for x in x if x.arg1 == in_num]
-    consequences = x
-    for consequence in consequences:
-        n = consequence.name
-        source = "consequence"
 
-        # Copy the value from the output data.
-        data_value = out_data.attributes[n]
-        data_type = _get_attribute_type(data_value)
+    ## # Start with empty attributes.
+    ## attributes = {}
 
-        # Since more values may be allowed in the consequence,
-        # further refine based on the constraint.  E.g.:
-        # Constraint  [A, B]
-        # Consequence [A, B, C, D]
-        x = [x for x in module.constraints if x.name == n]
-        x = [x for x in x if x.input_index == in_num]
-        assert len(x) > 0
-        assert len(x) == 1
-        constraint = x[0]
-        if constraint.behavior == SAME_AS:
-            constraint = _resolve_constraint(constraint, module.constraints)
-        if constraint.behavior == MUST_BE:
-            # constraint.arg1  <value>
-            if data_type == TYPE_ATOM:
-                assert constraint.arg1 == data_value
-            elif data_type == TYPE_ENUM:
-                assert constraint.arg1 in data_value
-                data_value = constraint.arg1
-                source = "consequence+constraint"
-            else:
-                raise AssertionError
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            # constraint.arg1  list of <values>
-            if data_type == TYPE_ATOM:
-                assert data_value in constraint.arg1
-            elif data_type == TYPE_ENUM:
-                common = _intersect(constraint.arg1, data_value)
-                assert common
-                data_value = common
-                source = "consequence+constraint"
-            else:
-                raise AssertionError
-        else:
-            raise AssertionError
+    ## # Keep track of the source of the attribute, for debugging.
+    ## attrsource = {}  # attribute name -> source
 
-        attributes[n] = data_value
-        attrsource[n] = source
+    ## # Set the attributes in increasing order of priority.  Higher
+    ## # priority overwrites lower priority.
+
+    ## # Case 5.  Set values from defaults.
+    ## #
+    ## # Using default attributes makes things a lot simpler and
+    ## # mitigates combinatorial explosion.  However, it can close up
+    ## # some possibilities.  What if the value should be something other
+    ## # than the default?
+    ## for attrdef in in_datatype.attribute_defs.itervalues():
+    ##     default = attrdef.default_out
+    ##     if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES or \
+    ##            force_default_input_attribute_to_be_all_values:
+    ##         default = attrdef.values
+    ##     attributes[attrdef.name] = default
+    ##     attrsource[attrdef.name] = "default"
+
+    ## # Case 4.  If default_attributes_from is the same as in_num, then
+    ## # fill with the same values as the out_data.
+    ## indexes = [x.input_index for x in module.default_attributes_from]
+    ## if in_num in indexes:
+    ##     for name, value in out_data.attributes.iteritems():
+    ##         attributes[name] = value
+    ##         attrsource[name] = "out_data"
+
+    ## # Do Case 3 last, so can see if it conflicts with Case 1 or Case 2.
+
+    ## # Case 2.  Set the attributes based on the constraints.
+    ## for constraint in module.constraints:
+    ##     if constraint.input_index != in_num:
+    ##         continue
+
+    ##     if constraint.behavior == MUST_BE:
+    ##         attributes[constraint.name] = constraint.arg1
+    ##         attrsource[constraint.name] = "constraint"
+    ##     elif constraint.behavior == CAN_BE_ANY_OF:
+    ##         value = constraint.arg1
+    ##         source = "constraint"
+
+    ##         # If the user specified an attribute, then refine by it.
+    ##         # Refine by default value?
+    ##         # o If YES: network may suggest that only the default for
+    ##         #   an attribute is acceptable, when other values would
+    ##         #   work.
+    ##         # o If NO: may generate large network.
+
+    ##         #if attrsource.get(constraint.name) in ["user", "default"]:
+    ##         if attrsource.get(constraint.name) in ["user"]:
+    ##             x = _get_attribute_type(attributes[constraint.name])
+    ##             if x == TYPE_ATOM:
+    ##                 if attributes[constraint.name] in value:
+    ##                     value = attributes[constraint.name]
+    ##                     source = "constraint,%s" % attrsource[constraint.name]
+    ##             elif x == TYPE_ENUM:
+    ##                 x = _intersect(attributes[constraint.name], value)
+    ##                 if x:
+    ##                     value = x
+    ##                     source = "constraint,%s" % attrsource[constraint.name]
+    ##             else:
+    ##                 raise AssertionError
+    ##         attributes[constraint.name] = value
+    ##         attrsource[constraint.name] = source
+    ##     elif constraint.behavior == SAME_AS:
+    ##         # Handled in _bc_to_inputs.
+    ##         pass
+    ##     else:
+    ##         raise AssertionError
+
+    ## # Case 1.  Set the attributes based on the consequences.  If there
+    ## # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
+    ## # should be determined by the out_data.  e.g.
+    ## # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+    ## # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
+    ## #
+    ## # The module takes anything, produces the same value.  So the
+    ## # backchainer needs to preserve the value from the out_data.
+
+    ## # Get SAME_AS_CONSTRAINT.  Nothing to do for SET_TO,
+    ## # SET_TO_ONE_OF, BASED_ON_DATA.
+    ## x = [x for x in module.consequences if x.behavior == SAME_AS_CONSTRAINT]
+    ## # Get the consequences that are based on this datatype.
+    ## x = [x for x in x if x.arg1 == in_num]
+    ## consequences = x
+    ## for consequence in consequences:
+    ##     n = consequence.name
+    ##     source = "consequence"
+
+    ##     # Copy the value from the output data.
+    ##     data_value = out_data.attributes[n]
+    ##     data_type = _get_attribute_type(data_value)
+
+    ##     # Since more values may be allowed in the consequence,
+    ##     # further refine based on the constraint.  E.g.:
+    ##     # Constraint  [A, B]
+    ##     # Consequence [A, B, C, D]
+    ##     x = [x for x in module.constraints if x.name == n]
+    ##     x = [x for x in x if x.input_index == in_num]
+    ##     assert len(x) > 0
+    ##     assert len(x) == 1
+    ##     constraint = x[0]
+    ##     if constraint.behavior == SAME_AS:
+    ##         constraint = _resolve_constraint(constraint, module.constraints)
+    ##     if constraint.behavior == MUST_BE:
+    ##         # constraint.arg1  <value>
+    ##         if data_type == TYPE_ATOM:
+    ##             assert constraint.arg1 == data_value
+    ##         elif data_type == TYPE_ENUM:
+    ##             assert constraint.arg1 in data_value
+    ##             data_value = constraint.arg1
+    ##             source = "consequence+constraint"
+    ##         else:
+    ##             raise AssertionError
+    ##     elif constraint.behavior == CAN_BE_ANY_OF:
+    ##         # constraint.arg1  list of <values>
+    ##         if data_type == TYPE_ATOM:
+    ##             assert data_value in constraint.arg1
+    ##         elif data_type == TYPE_ENUM:
+    ##             common = _intersect(constraint.arg1, data_value)
+    ##             assert common
+    ##             data_value = common
+    ##             source = "consequence+constraint"
+    ##         else:
+    ##             raise AssertionError
+    ##     else:
+    ##         raise AssertionError
+
+    ##     attributes[n] = data_value
+    ##     attrsource[n] = source
+
+    ## # Case 3.  If the input data object does not proceed to the output
+    ## # data object, then use the attribute provided by the user.
+    ## # Applies:
+    ## # 1.  Only the the first (lowest) time this data type is seen in
+    ## #     the network.
+    ## # 2.  Every time.
+    ## attrs1 = {}
+    ## attrs2 = {}
+    ## x = [x for x in module.default_attributes_from if x.input_index == in_num]
+    ## if not x:
+    ##     # A constraint may refine a custom attributes.
+        
+    ##     # Look for relevant custom attributes.
+    ##     for cattrs in custom_attributes:
+    ##         # Ignore attributes for other data types.
+    ##         _does_custom_attribute_apply(
+    ##             cattrs, network, module_id, in_datatype,
+    ##             attributes, attrsource)
+    ##         if cattrs.datatype.name != in_datatype.name:
+    ##             continue
+    ##         attrs = attrs1
+    ##         if cattrs.all_nodes:
+    ##             attrs = attrs2
+    ##         for x in cattrs.attributes:
+    ##             attrs[x.name] = x.value
+
+    ## # Found potentially relevant custom attributes.  Apply them if
+    ## # there are no descendents with the same data type.
+    ## if attrs1 and not \
+    ##        _has_descendent_of_datatype(network, module_id, in_datatype.name):
+    ##     for name, value in attrs1.iteritems():
+    ##         attributes[name] = value
+    ##         attrsource[name] = "user"
+    ## # Set values that should apply to every node in the network.
+    ## for name, value in attrs2.iteritems():
+    ##     attributes[name] = value
+    ##     attrsource[name] = "user"
+    
 
     return attributes, attrsource
+
+
+def _does_custom_attribute_apply(
+    cattrs, network, module_id, in_datatype, attributes):
+    # Should only be called by:
+    #   _bc_to_one_input
+    if cattrs.datatype.name != in_datatype.name:
+        return False
+    if not cattrs.all_nodes and _has_descendent_of_datatype(
+        network, module_id, in_datatype.name):
+        return False
+    # If there are conflicts with any of the higher priority
+    # attributes, then it doesn't apply.
+    for attr in cattrs.attributes:
+        value = attributes.get(attr.name)
+        if value is None:
+            continue
+        if not _is_attribute_compatible(attr.value, value):
+            return False
+    return True
 
 
 def _has_descendent_of_datatype(network, node_id, datatype_name):
@@ -6756,12 +6943,6 @@ def _get_custom_values(custom_attributes, datatype_name, attribute_name):
             if attr.value not in values:
                 values.append(attr.value)
     return values
-
-
-def _get_custom_attrdict(custom_attributes, datatype_name, all_nodes):
-    assert all_nodes in [True, False]
-    
-    pass
 
 
 # THIS FUNCTION IS REALLY SLOW.  DO NOT USE.

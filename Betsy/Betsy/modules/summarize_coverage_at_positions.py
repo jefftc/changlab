@@ -7,6 +7,8 @@ class Module(AbstractModule):
     def run(
         self, network, in_data, out_attributes, user_options,
         num_cores, outfile):
+        import os
+        import stat
         from genomicode import filelib
         from genomicode import vcflib
         from Betsy import module_utils as mlib
@@ -26,6 +28,13 @@ class Module(AbstractModule):
         vcf_objects = []
         for x in jobs:
             filestem, vcf_filename = x
+            # There might be an empty VCF file if there are no calls
+            # (e.g. from call_consensus_varscan).  If this is the
+            # case, then ignore the file.
+            if os.stat(vcf_filename)[stat.ST_SIZE] < 256:
+                x = open(vcf_filename).read()
+                if not x.strip():
+                    continue
             vcf = vcflib.read(vcf_filename)
             vcf_objects.append(vcf)
 
@@ -72,7 +81,7 @@ class Module(AbstractModule):
                 if not call:
                     continue
                 coverage[i] = vcflib._format_vcf_value(
-                    call.total_reads, char_for_None="")
+                    call.total_reads, None_char="")
             
             x = [chrom, pos_f] + coverage
             assert len(x) == len(header)

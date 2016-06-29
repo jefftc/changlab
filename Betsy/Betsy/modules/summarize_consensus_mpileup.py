@@ -18,9 +18,22 @@ class Module(AbstractModule):
         bam_filenames = module_utils.find_bam_files(bam_node.identifier)
         assert bam_filenames, "No .bam files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
-        positions_filename = pos_node.identifier
-        filelib.assert_exists_nz(positions_filename)
         filelib.safe_mkdir(out_path)
+        metadata = {}
+
+        # Positions file has 0-based coordinates (like BAM files).
+        # But samtools requires 1-based coordinates.  Convert to
+        # 1-based coordinates.
+        positions_filename = "positions.txt"
+        outhandle = open(positions_filename, 'w')
+        for x in filelib.read_cols(pos_node.identifier):
+            assert len(x) == 2
+            chrom, pos = x
+            pos = int(pos) + 1  # convert from 0- to 1-based coords.
+            x = chrom, pos
+            print >>outhandle, "\t".join(map(str, x))
+        outhandle.close()
+        
 
         # list of (in_filename, err_filename, out_filename)
         jobs = []
@@ -80,11 +93,14 @@ class Module(AbstractModule):
 
         #for x in commands:
         #    print x
-            
         parallel.pshell(commands, max_procs=num_cores)
+        metadata["commands"] = commands
+                
 
+        # File may be empty if there are no reads.
         x = [x[-1] for x in jobs]
-        filelib.assert_exists_nz_many(x)
+        filelib.assert_exists_many(x)
+        return metadata
         
 
     def name_outfile(self, antecedents, user_options):

@@ -963,7 +963,8 @@ def read_normal_cancer_file(file_or_handle):
     return data
 
 
-def assert_normal_cancer_samples(normal_cancer_data, have_samples):
+def assert_normal_cancer_samples(normal_cancer_data, have_samples,
+                                 ignore_normal_sample=False):
     # have_samples is a list of the samples that I already have.  (Can
     # also be dictionary, set, or something that implements the "in"
     # operator.)
@@ -972,8 +973,9 @@ def assert_normal_cancer_samples(normal_cancer_data, have_samples):
     # Make sure files exist for all the samples.
     all_samples = []  # use a list to preserve the order of the samples.
     for (normal_sample, cancer_sample) in normal_cancer_data:
-        if normal_sample not in all_samples:
-            all_samples.append(normal_sample)
+        if not ignore_normal_sample:
+            if normal_sample not in all_samples:
+                all_samples.append(normal_sample)
         if cancer_sample not in all_samples:
             all_samples.append(cancer_sample)
     missing = [x for x in all_samples if x not in have_samples]
@@ -1110,7 +1112,7 @@ def dir_exists(path):
 
 def root2filename(filenames):
     # filenames is a list of <filename>s in format:
-    # <directory>/<root><ext>.
+    # <directory>/<root><ext>
     # Return a dictionary of <root> -> <filename>
     root2filename = {}
     for filename in filenames:

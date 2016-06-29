@@ -8,6 +8,7 @@ class Module(AbstractModule):
         self, network, in_data, out_attributes, user_options, num_cores,
         out_path):
         import os
+        import stat
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
@@ -54,14 +55,26 @@ class Module(AbstractModule):
                 in_filename, tmp1_filename)
             commands.append(x)
         parallel.pshell(commands, max_procs=num_cores)
+        # Some files may be empty if there are no reads.
         x = [x[2] for x in jobs]
-        filelib.assert_exists_nz_many(x)
-        
+        filelib.assert_exists_many(x)
 
         # java -jar /usr/local/bin/VarScan.jar mpileup2cns $i \
         #   --min-coverage 0 --min-reads2 0 --min-avg-qual 0 --min-var-freq 0 \
         #   --p-value 1.0 --strand-filter 0 --output-vcf 1 > $j
         varscan = filelib.which_assert(config.varscan_jar)
+
+        # If there are no reads in the pileup file, then just generate
+        # an empty file and don't call varscan.
+        i = 0
+        while i < len(jobs):
+            x = jobs[i]
+            sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
+            if os.stat(in_filename)[stat.ST_SIZE] == 0:
+                open(out_filename, 'w')
+                del jobs[i]
+            else:
+                i += 1
         
         # Make a list of commands.
         commands = []

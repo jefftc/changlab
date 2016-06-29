@@ -11,6 +11,9 @@ standardize_reference_genome
 get_samtools_version
 get_bcfutils_version
 get_vcfutils_version
+get_radia_version
+
+call_samtools_idxstats
 
 get_bowtie1_version
 make_bowtie1_command
@@ -31,7 +34,6 @@ make_bwa_aln_command
 get_rsem_version
 make_rsem_command
 find_rsem_result_files
-
 find_reference_stem
 
 get_STAR_version
@@ -56,6 +58,7 @@ clean_mutect_vcf
 clean_varscan_vcf
 clean_strelka_vcf
 clean_muse_vcf
+clean_radia_vcf
 
 # identify_caller     Figure out caller of a VCF file.
 
@@ -291,6 +294,31 @@ def standardize_reference_genome(
     return x
 
 
+def get_radia_version():
+    import os
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+
+    opj = os.path.join
+    sq = parallel.quote
+    python = filelib.which_assert(config.python)
+    radia_path = filelib.which_assert(config.radia_path)
+    radia_py = opj(radia_path, "scripts", "radia.py")
+    filelib.assert_exists_nz(radia_py)
+    
+    x = [
+        sq(python),
+        sq(radia_py),
+        "--version",
+        ]
+    x = " ".join(x)
+    x = parallel.sshell(x)
+    x = x.strip()
+    # v1.1.3
+    return x
+    
+    
 def get_samtools_version():
     import re
     from genomicode import config
@@ -324,6 +352,38 @@ def get_bcftools_version():
 def get_vcfutils_version():
     # Cannot get version.
     raise NotImplementedError
+
+
+def call_samtools_idxstats(bam_filename):
+    # Return list of (seqname, length, mapped, unmapped).
+    import StringIO
+    
+    import parallel
+    import filelib
+    import config
+
+    # BAM file should be indexed for maximum performance.
+    filelib.assert_exists_nz(bam_filename)
+    
+    sq = parallel.quote
+    samtools = filelib.which_assert(config.samtools)
+    cmd = [
+        sq(samtools),
+        "idxstats",
+        sq(bam_filename),
+        ]
+    # How to check if this is broken?
+    x = parallel.sshell(cmd)
+    handle = StringIO.StringIO(x)
+    data = []
+    for x in filelib.read_cols(handle):
+        seqname, length, mapped, unmapped = x
+        length = int(length)
+        mapped = int(mapped)
+        unmapped = int(unmapped)
+        x = seqname, length, mapped, unmapped
+        data.append(x)
+    return data
 
 
 def get_bowtie1_version():
@@ -1391,6 +1451,7 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
         "variant positions",
         "were failed by the strand-filter",
         "variant positions reported",
+        "Input file was not ready after 100 5-second cycles!",
         ]
 
     # Varscan calls each sample "Sample1".  Doesn't have the read
@@ -1457,6 +1518,30 @@ def clean_muse_vcf(normal_sample, cancer_sample, in_filename, out_filename):
             line = line.replace("NORMAL", normal_sample_h)
         if line.startswith("#CHROM") and line.find("TUMOR") >= 0:
             line = line.replace("TUMOR", cancer_sample_h)
+        outhandle.write(line)
+    outhandle.close()
+
+
+def clean_radia_vcf(normal_sample, cancer_sample, in_filename, out_filename):
+    # Rename the samples:
+    # DNA_NORMAL   <normal_sample>
+    # DNA_TUMOR    <cancer_sample>
+    # RNA_TUMOR    <cancer_sample>_RNA
+
+    normal_name = normal_sample
+    dna_tumor_name = cancer_sample
+    rna_tumor_name = "%s_RNA" % cancer_sample
+    
+    # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT DNA_NORMAL
+    # DNA_TUMOR RNA_TUMOR
+    outhandle = open(out_filename, 'w')
+    for line in open(in_filename):
+        if line.startswith("#CHROM") and line.find("DNA_NORMAL") >= 0:
+            line = line.replace("DNA_NORMAL", normal_name)
+        if line.startswith("#CHROM") and line.find("DNA_TUMOR") >= 0:
+            line = line.replace("DNA_TUMOR", dna_tumor_name)
+        if line.startswith("#CHROM") and line.find("RNA_TUMOR") >= 0:
+            line = line.replace("RNA_TUMOR", rna_tumor_name)
         outhandle.write(line)
     outhandle.close()
 

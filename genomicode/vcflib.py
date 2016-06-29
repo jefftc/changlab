@@ -5,6 +5,10 @@ Variant
 Call
 
 Caller
+NextGENeCaller
+samtoolsCaller
+GATKCaller
+PlatypusCaller
 MuTectCaller
 VarScan2Caller
 SomaticSniperCaller
@@ -847,6 +851,60 @@ class MuSECaller(Caller):
         if wgs_or_wes == "wes" and filter_str == "Tier5":
             return True
         return False
+
+
+class RadiaCaller(Caller):
+    # INFO:DP     Total read depth for all samples.
+    # INFO:AF     Allele frequency for each ALT allele.
+    # INFO:FA     Fraction of reads supporting ALT.
+    # INFO:VT     Variant type.  SNP, INS, or DEL.
+    # FORMAT:DP   Read depth at this position in the sample.
+    # FORMAT:AD   Depth of reads supporting alleles
+    # FORMAT:AF   Fraction of reads supporting alleles
+    # FORMAT:SS   Variant status: 0=WT, 1=germ, 2=somatic, 3=LOH, 4=unk, 5=edit
+    def __init__(self):
+        Caller.__init__(self, "Radia")
+    def is_caller(self, header_lines):
+        # ##source="RADIA pipeline v1.1.3"
+        x = [x for x in header_lines if x.startswith('##source="RADIA')]
+        if x:
+            return True
+        return False
+    def get_call(self, var, sample):
+        assert sample in var.sample2genodict, "Unknown sample: %s" % sample
+        genodict = var.sample2genodict[sample]
+        total_reads = None
+        x = _parse_vcf_value(genodict["DP"], to_int=1, len_exactly=1)
+        if x:
+            total_reads = x[0]
+        num_ref, num_alt = None, []
+        x = _parse_vcf_value(genodict["AD"], to_int=1, len_at_least=2)
+        if x:
+            num_ref = x[0]
+            num_alt = x[1:]
+        vaf = []
+        if total_reads:
+            vaf = [float(x)/total_reads for x in num_alt]
+        call = None
+        x = _parse_vcf_value(genodict["GT"], len_exactly=1)
+        if x:
+            call = x[0]
+        return Call(num_ref, num_alt, total_reads, vaf, call)
+    def get_filter(self, var):
+        # Return:
+        # FILTER from original file.  PASS, or other things.
+        #
+        # pbias   fails positional bias
+        # multi   Multiple ALT alleles across all samples
+        # dnmtb   dna normal total bases is below cutoff
+        # ntr     Does not overlap TCGA target region
+        # blck    Overlaps 1000 genomes
+        # [...]
+        #
+        # PASS
+        return ",".join(var.filter_)
+    def is_pass(self, filter_str):
+        return filter_str == "PASS"
     
 
 # List of classes
@@ -862,6 +920,7 @@ CALLERS = [
     StrelkaCaller,
     JointSNVMixCaller,
     MuSECaller,
+    RadiaCaller,
     ]
 
 # TODO:
@@ -877,6 +936,7 @@ def read(filename):
     import AnnotationMatrix
 
     caller = get_caller(filename)
+    assert caller, "Unknown caller: %s" % filename
     matrix = AnnotationMatrix.read(filename, header_char="##")
     return VCFFile(matrix, caller)
 
@@ -1499,11 +1559,16 @@ def _parse_genotype(format_str, genotype_str):
     # - Another Varscan:
     #   GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
     #   .
+    # - Radia:
+    #   GT:DP:INDEL:START:STOP:AD:AF:BQ:SB
+    #   .
     # Detect this and fix it by padding with ".".
     if len(names) > 3 and len(values) in [1, 3] and \
            names[:3] == ["GT", "GQ", "SDP"]:
         x = len(names) - len(values)
         values = values + ["."]*x
+    if len(values) == 1 and values[0] == "." and len(names) > 1:
+        values = ["."] * len(names)
 
     assert len(names) == len(values), "Mismatch: %s %s" % (
         format_str, genotype_str)

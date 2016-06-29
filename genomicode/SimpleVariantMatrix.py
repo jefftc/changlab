@@ -95,8 +95,9 @@ class SparseCallMatrix:
                 coord2samplecaller2call[coord] = {}
             # This can happen if the same sample was called in
             # multiple files (e.g. germline sample).
+            x = "Possible that this sample was called in multiple files."
             assert sc not in coord2samplecaller2call[coord], \
-                   "Duplicate: %s %s %s" % (coord, sample, caller)
+                   "Duplicate: %s %s %s\n%s" % (caller, sample, coord, x)
             coord2samplecaller2call[coord][sc] = call
         self.coord2samplecaller2call = coord2samplecaller2call
     def has_call(self, chrom, pos, ref, alt, sample, caller):

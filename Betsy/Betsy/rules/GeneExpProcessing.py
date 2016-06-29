@@ -434,10 +434,12 @@ SignalFile= DataType(
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
-    AttributeDef("logged", ["no", "yes"], "yes", "yes", help="logged or not"),
+    AttributeDef(
+        "logged", ["no", "yes"], "yes", "yes", help="logged or not"),
     AttributeDef("format", ["tdf", "gct"], "tdf", "tdf", help="file format"),
     help="The SignalFile after SignalFile_Filter, the attributes are the "
-    "same as SignalFile_Filter.")
+    "same as SignalFile_Filter.  Should not be specified by user.  "
+    "Data provided by user should be provided as UnprocessedSignalFile.")
 
 
 all_modules = [

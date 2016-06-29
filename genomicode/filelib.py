@@ -221,7 +221,7 @@ def which(program):
 def which_assert(binary):
     # Make sure a binary exists and return its realpath.
     which_binary = which(binary)
-    assert which_binary, "File not found: %s" % binary
+    assert which_binary, "Executable not found: %s" % binary
     return which_binary
 
 
@@ -333,7 +333,7 @@ def assert_exists_z_many(filenames):
         msg = "Files not empty: %s" % ", ".join(nonzero)
     else:
         x = nonzero[:5] + ["..."]
-        msg = "Files (%d) not found or empty: %s" % (
+        msg = "Files (%d) not empty: %s" % (
             len(nonzero), ", ".join(x))
     assert not nonzero, msg
 

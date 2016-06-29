@@ -9,23 +9,27 @@ class Module(AbstractModule):
         out_path):
         import os
         #import shutil
-        #from genomicode import filelib
-        #from Betsy import module_utils
+        from genomicode import filelib
+        from Betsy import module_utils
 
-        os.symlink(in_data.identifier, out_path)
+        # Don't just link the whole folder.  Otherwise, all following
+        # modules will need to implement code to search a path for
+        # fastq files.  Just go ahead and place all files in the top
+        # directory.
+        #os.symlink(in_data.identifier, out_path)
 
-        #filelib.safe_mkdir(out_path)
+        filelib.safe_mkdir(out_path)
 
-        #filenames = module_utils.find_fastq_files(antecedents.identifier)
-        #assert filenames, "I could not find any FASTQ files."
+        filenames = module_utils.find_fastq_files(in_data.identifier)
+        assert filenames, "I could not find any FASTQ files."
 
         # Symlink the files to the new directory.
-        #for in_filename in filenames:
-        #    in_path, in_file = os.path.split(in_filename)
-        #    out_filename = os.path.join(out_path, in_file)
-        #    assert not os.path.exists(out_filename)
-        #    os.symlink(in_filename, out_filename)
-        #    #shutil.copyfile(in_filename, out_filename)
+        for in_filename in filenames:
+            in_path, in_file = os.path.split(in_filename)
+            out_filename = os.path.join(out_path, in_file)
+            assert not os.path.exists(out_filename)
+            os.symlink(in_filename, out_filename)
+            #shutil.copyfile(in_filename, out_filename)
 
         
     def set_out_attributes(self, antecedents, out_attributes):
