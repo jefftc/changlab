@@ -625,6 +625,7 @@ all_modules = [
         ),
 
     ModuleNode(
+        # TODO: remove _snp from the name.
         "merge_manycallervcffolders_snp",
         ManyCallerVCFFolders, SimpleVariantFile,
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),

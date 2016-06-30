@@ -151,7 +151,7 @@ def generate_network(rulebase, outtype, custom_attributes):
         if cattr.datatype.name != out_datatype.name:
             continue
         for x in cattr.attributes:
-            assert x.name not in attrs
+            #assert x.name not in attrs
             attrs[x.name] = x.value
     out_data = out_datatype.output(**attrs)
 

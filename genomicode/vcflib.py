@@ -116,13 +116,6 @@ make_vaf_matrix
 #   DP            9232
 #
 #
-# FILTER
-# .
-# badReads
-# Q20;badReads
-# PASS
-#
-#
 # JoinSNVMix has a non-standard VCF file.  No "FORMAT" column, and
 # does not have information about each sample.  Everything in INFO.
 
@@ -539,14 +532,29 @@ class VarScan2Caller(Caller):
     #        return False
     #    return True
     def get_call(self, var, sample):
+        # GENO  GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR
+        #       ./.:.:1
+
+        num_ref = None
+        num_alt = []
+        vaf = []
+        total_reads = None
+        call = None
+
+        # Sometimes these values are blank.
         assert sample in var.sample2genodict, "Unknown sample: %s" % sample
         genodict = var.sample2genodict[sample]
-        num_ref = _parse_vcf_value(genodict["RD"], to_int=1, len_exactly=1)[0]
+        x = _parse_vcf_value(genodict["RD"], to_int=1, len_exactly=1)
+        if x:
+            num_ref = x[0]
         num_alt = _parse_vcf_value(genodict["AD"], to_int=1, len_exactly=1)
         vaf = _parse_vcf_value(genodict["FREQ"], perc_to_dec=1, len_exactly=1)
-        total_reads = _parse_vcf_value(
-            genodict["DP"], to_int=1, len_exactly=1)[0]
-        call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
+        x = _parse_vcf_value(genodict["DP"], to_int=1, len_exactly=1)
+        if x:
+            total_reads = x[0]
+        x = _parse_vcf_value(genodict["GT"], len_exactly=1)
+        if x:
+            call = x[0]
         return Call(num_ref, num_alt, total_reads, vaf, call)
     def get_filter(self, var):
         # Returns PASS, REFERENCE, GERMLINE, LOH, or UNKNOWN.
@@ -854,6 +862,9 @@ class MuSECaller(Caller):
 
 
 class RadiaCaller(Caller):
+    # Generates really detailed output that includes a lot of
+    # information about bad calls.
+    # 
     # INFO:DP     Total read depth for all samples.
     # INFO:AF     Allele frequency for each ALT allele.
     # INFO:FA     Fraction of reads supporting ALT.
@@ -862,6 +873,7 @@ class RadiaCaller(Caller):
     # FORMAT:AD   Depth of reads supporting alleles
     # FORMAT:AF   Fraction of reads supporting alleles
     # FORMAT:SS   Variant status: 0=WT, 1=germ, 2=somatic, 3=LOH, 4=unk, 5=edit
+    #             For SNPs: 0,3,4 not seen.
     def __init__(self):
         Caller.__init__(self, "Radia")
     def is_caller(self, header_lines):
@@ -892,7 +904,8 @@ class RadiaCaller(Caller):
         return Call(num_ref, num_alt, total_reads, vaf, call)
     def get_filter(self, var):
         # Return:
-        # FILTER from original file.  PASS, or other things.
+        # PASS, REFERENCE, GERMLINE, LOH, UNKNOWN, or one of the
+        # error conditions found in FILTER.
         #
         # pbias   fails positional bias
         # multi   Multiple ALT alleles across all samples
@@ -900,8 +913,24 @@ class RadiaCaller(Caller):
         # ntr     Does not overlap TCGA target region
         # blck    Overlaps 1000 genomes
         # [...]
-        #
-        # PASS
+        assert var.filter_
+        if len(var.filter_) != 1 or var.filter_[0] != "PASS":
+            return ",".join(var.filter_)
+        assert "SS" in var.infodict
+        SS = var.infodict["SS"]
+        assert SS in ["0", "1", "2", "3", "4", "5"]
+        if SS == "2":
+            return "PASS"
+        elif SS == "0":
+            return "REFERENCE"
+        elif SS == "1":
+            return "GERMLINE"
+        elif SS == "3":
+            return "LOH"
+        elif SS == "5":
+            return "EDIT"
+        return "UNKNOWN"
+        
         return ",".join(var.filter_)
     def is_pass(self, filter_str):
         return filter_str == "PASS"
@@ -922,13 +951,6 @@ CALLERS = [
     MuSECaller,
     RadiaCaller,
     ]
-
-# TODO:
-# Platypus
-# samtools
-# GATK
-# bcftools
-# NextGene
 
 
 def read(filename):

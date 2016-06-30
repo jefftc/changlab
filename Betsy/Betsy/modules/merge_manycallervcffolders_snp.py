@@ -29,7 +29,7 @@ class Module(AbstractModule):
         vcf_files = find_vcf_files(vcf_folder.identifier)
         metadata = {}
 
-        TEMPFILE = "temp.vcf"
+        TEMPFILE = "temp.txt"
         handle = open(TEMPFILE, 'w')
         header = (
             "Caller", "File", "Sample", "Chrom", "Pos",
