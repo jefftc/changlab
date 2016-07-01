@@ -22,6 +22,8 @@ read
 write
 
 """
+# TODO: Use AnnotationMatrix as underlying representation.  Implement
+# special read and write functions to handle the header.
 
 class SimpleVariantMatrix:
     def __init__(self, samples, callers,

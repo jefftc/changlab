@@ -721,6 +721,8 @@ all_modules = [
         Consequence("filtered", SAME_AS_CONSTRAINT),
         Constraint("annotated", MUST_BE, "yes", 0),
         Consequence("annotated", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
         Constraint("logged", MUST_BE, "yes", 1),
         Constraint("preprocess", MUST_BE, "tpm", 1),
         ),
@@ -735,7 +737,26 @@ all_modules = [
         Consequence("filtered", SAME_AS_CONSTRAINT),
         Constraint("annotated", MUST_BE, "yes", 0),
         Consequence("annotated", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
         Constraint("coordinates_from", MUST_BE, "simplevariantmatrix", 1),
+        ),
+
+    ModuleNode(
+        "add_cancer_genes_to_simplevariantmatrix",
+        SimpleVariantMatrix, SimpleVariantMatrix,
+        OptionDef(
+            "cancer_genes_file",
+            help='Has "Gene ID", "Gene Symbol", '
+            "followed by cancer gene sets."),
+        Constraint("with_cancer_genes", MUST_BE, "no"),
+        Consequence("with_cancer_genes", SET_TO, "yes"),
+        Constraint("annotated", MUST_BE, "yes"),
+        Consequence("annotated", SAME_AS_CONSTRAINT),
+        Constraint("filtered", MUST_BE, "yes"),
+        Consequence("filtered", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
         ),
 
     #ModuleNode(

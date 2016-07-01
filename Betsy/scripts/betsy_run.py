@@ -30,6 +30,7 @@
 # _find_lowest_datatype
 # _parse_dattr
 # _parse_args                 Parse the arguments from the user.
+# _make_custom_attr
 
 
 def check_output_provided(rulebase, output_file):
@@ -131,7 +132,8 @@ def _pretty_print_module(module, handle=None):
             print >>handle, line
 
 
-def generate_network(rulebase, outtype, custom_attributes):
+def generate_network(rulebase, outtype,
+                     custom_attributes, out_custom_attribute):
     import sys
     from Betsy import bie3
 
@@ -145,15 +147,20 @@ def generate_network(rulebase, outtype, custom_attributes):
     # Get the out_datatype.
     # BUG: Should separate the custom attributes for the out_datatype.
     assert hasattr(rulebase, outtype), "Unknown datatype: %s" % outtype
-    out_datatype = getattr(rulebase, outtype)
     attrs = {}
-    for cattr in custom_attributes:
-        if cattr.datatype.name != out_datatype.name:
-            continue
-        for x in cattr.attributes:
-            #assert x.name not in attrs
+    if out_custom_attribute:
+        assert out_custom_attribute.datatype.name == outtype
+        for x in out_custom_attribute.attributes:
+            assert x.name not in attrs
             attrs[x.name] = x.value
-    out_data = out_datatype.output(**attrs)
+    #out_datatype = getattr(rulebase, outtype)
+    #for cattr in custom_attributes:
+    #    if cattr.datatype.name != out_datatype.name:
+    #        continue
+    #    for x in cattr.attributes:
+    #        assert x.name not in attrs
+    #        attrs[x.name] = x.value
+    out_data = out_custom_attribute.datatype.output(**attrs)
 
     # There may be a bug in here somehow where impossible networks can
     # be created.  e.g. FastqFolder:orientation="unknown" ->
@@ -1129,6 +1136,17 @@ def _parse_args(args):
     return in_results, out_result
 
 
+def _make_custom_attr(rulebase, datatype, attributes, all_nodes):
+    from Betsy import bie3
+    
+    assert attributes
+    assert hasattr(rulebase, datatype), "Unknown datatype: %s" % datatype
+    fn = getattr(rulebase, datatype)
+    x = [bie3.Attribute(fn, name, value) for (name, value) in attributes]
+    x = bie3.CustomAttributes(x, all_nodes)
+    return x
+
+
 def main():
     import os
     import sys
@@ -1328,15 +1346,25 @@ def main():
 
     # test outtype and build the list of custom_attributes.
     custom_attributes = []  # List of bie3.CustomAttributes objects.
+    out_custom_attribute = None  # bie3.CustomAttributes
     if outtype:
         # Get the custom_attributes.  These are the attributes from the
         # output data (out_attributes), plus the attributes from the
         # input data (to guide the inferencing engine).
+
+        # Get the custom attributes for the input nodes.
         attrs = []  # list of (datatype, list of (key, value), all_nodes)
         for x in input_list:
             intype, identifier, attributes = x
+            if not attributes:
+                continue
             x = intype, attributes, False
             attrs.append(x)
+        for x in attrs:
+            datatype, attributes, all_nodes = x
+            x = _make_custom_attr(rulebase, datatype, attributes, all_nodes)
+            custom_attributes.append(x)
+
         # out_attributes contains attributes for the output node, as
         # well as other nodes in the network. Just group them by
         # datatype.
@@ -1348,28 +1376,40 @@ def main():
             x2 = [x[3] for x in out_attributes]  # all_nodes
             x1 = sorted({}.fromkeys(x1))
             x2 = sorted({}.fromkeys(x2))
-            for x in itertools.product(x1, x2):
-                datatype, all_nodes = x
-                out_attrs = [x for x in out_attributes
+            assert len(x1) == 1
+            assert len(x2) == 1
+            datatype = x1[0]
+            all_nodes = x2[0]
+            out_attrs = [x for x in out_attributes
                          if x[0] == datatype and x[3] == all_nodes]
-                if not out_attrs:
-                    continue
+            if out_attrs:
                 attributes = [(x[1], x[2]) for x in out_attrs]
-                x = datatype, attributes, all_nodes
-                attrs.append(x)
-        
-        for x in attrs:
-            datatype, attributes, all_nodes = x
-            if not attributes:
-                continue
-            assert hasattr(rulebase, datatype), \
-                   "Unknown datatype: %s" % datatype
-            fn = getattr(rulebase, datatype)
-            x = [bie3.Attribute(fn, name, value)
-                 for (name, value) in attributes]
-            x = bie3.CustomAttributes(x, all_nodes)
-            custom_attributes.append(x)
+                x = _make_custom_attr(
+                    rulebase, datatype, attributes, all_nodes)
+                out_custom_attribute = x
 
+        
+        ## # out_attributes contains attributes for the output node, as
+        ## # well as other nodes in the network. Just group them by
+        ## # datatype.
+        ## # Since there's only one output, it should be put into the
+        ## # same CustomAttributes object.
+        ## # out_attributes is a list of (datatype, key, value, all_nodes)
+        ## if out_attributes:
+        ##     x1 = [x[0] for x in out_attributes]  # datatype
+        ##     x2 = [x[3] for x in out_attributes]  # all_nodes
+        ##     x1 = sorted({}.fromkeys(x1))
+        ##     x2 = sorted({}.fromkeys(x2))
+        ##     for x in itertools.product(x1, x2):
+        ##         datatype, all_nodes = x
+        ##         out_attrs = [x for x in out_attributes
+        ##                  if x[0] == datatype and x[3] == all_nodes]
+        ##         if not out_attrs:
+        ##             continue
+        ##         attributes = [(x[1], x[2]) for x in out_attrs]
+        ##         x = datatype, attributes, all_nodes
+        ##         attrs.append(x)
+        
     # Cache the files in the user's directory.  Don't depend on the
     # user keeping the file in the same place.  Needed for the first
     # module.
@@ -1421,7 +1461,8 @@ def main():
     if not check_output_provided(rulebase, args.output):
         return
     # Step 2: Generate network.
-    network = generate_network(rulebase, outtype, custom_attributes)
+    network = generate_network(
+        rulebase, outtype, custom_attributes, out_custom_attribute)
     #plot_network(
     #    args.network_png, network, user_options=user_options,
     #    verbose=verbose)

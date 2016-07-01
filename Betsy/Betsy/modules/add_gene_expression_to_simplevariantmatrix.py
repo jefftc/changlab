@@ -84,7 +84,8 @@ class Module(AbstractModule):
                     # then pick the one with the maximum expression.
                     x = max(x)
                     values.append(x)
-                x = ",".join(map(str, values))
+                values = [_pretty_gxp(x) for x in values]
+                x = ",".join(values)
                 matrix[i][j] = x
 
         # Add the matrix back to the simple variant matrix.
@@ -118,3 +119,11 @@ class Module(AbstractModule):
                     
     def name_outfile(self, antecedents, user_options):
         return "matrix.txt"
+
+
+def _pretty_gxp(value):
+    # Format a gene expression value.
+    if value < 1E-5:  # Don't have values like 0.0.
+        return "0"
+    return "%.3f" % value
+    

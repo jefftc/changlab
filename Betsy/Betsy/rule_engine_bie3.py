@@ -25,8 +25,8 @@ BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
 # When running a module, whether to make sure it starts running in an
 # empty directory.  Can turn off for debugging.
-#CLEAN_UP_PATH_FOR_NEW_MODULE = True
-CLEAN_UP_PATH_FOR_NEW_MODULE = False   # DEBUGGING ONLY!
+CLEAN_UP_PATH_FOR_NEW_MODULE = True
+#CLEAN_UP_PATH_FOR_NEW_MODULE = False   # DEBUGGING ONLY!
 
 
 TIME_FMT = "%a %b %d %H:%M:%S %Y"
