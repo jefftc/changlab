@@ -24,7 +24,7 @@ class Module(AbstractModule):
         POS = AM["Pos"]
         POS = [int(x) for x in POS]
 
-        # Read the position matrix.
+        # Read the coverage matrix.
         # Chrom  Pos  <Sample>  [<Sample> ...]
         # Pos is 1-based.
         coord2sample2cov = {}  # (chrom, pos) -> sample -> coverage
@@ -68,20 +68,32 @@ class Module(AbstractModule):
             matrix[i] = x
 
         # Add the matrix back to the simple variant matrix.
-        x = ["%s Cov" % x for x in SVM.samples]
-        headers = AM.headers + x
+        headers = SVM.samples
         all_annots = []
-        for h in AM.headers_h:
-            all_annots.append(AM.header2annots[h])
-        for i in range(len(SVM.samples)):
-            x = [x[i] for x in matrix]
-            assert len(x) == AM.num_annots()
+        for j in range(len(headers)):
+            x = [matrix[i][j] for i in range(len(matrix))]
             all_annots.append(x)
-        assert not AM.headerlines
         x = AnnotationMatrix.create_from_annotations(headers, all_annots)
-        x = SimpleVariantMatrix.SimpleVariantMatrix(
-            SVM.samples, SVM.callers, x, SVM.call_matrix)
-        SimpleVariantMatrix.write(out_filename, x)
+        SVM.named_matrices.append(("Coverage", x))
+
+        # Write to file.
+        SimpleVariantMatrix.write(out_filename, SVM)
+
+        
+        #x = ["%s Cov" % x for x in SVM.samples]
+        #headers = AM.headers + x
+        #all_annots = []
+        #for h in AM.headers_h:
+        #    all_annots.append(AM.header2annots[h])
+        #for i in range(len(SVM.samples)):
+        #    x = [x[i] for x in matrix]
+        #    assert len(x) == AM.num_annots()
+        #    all_annots.append(x)
+        #assert not AM.headerlines
+        #x = AnnotationMatrix.create_from_annotations(headers, all_annots)
+        #x = SimpleVariantMatrix.SimpleVariantMatrix(
+        #    SVM.samples, SVM.callers, x, SVM.call_matrix)
+        #SimpleVariantMatrix.write(out_filename, x)
                     
                     
     def name_outfile(self, antecedents, user_options):

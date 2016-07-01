@@ -51,6 +51,13 @@ class Module(AbstractModule):
         filelib.assert_exists_nz(log_filename)
         filelib.assert_exists_nz(multianno_file)
 
+        matrix = SimpleVariantMatrix.read(summary_filename)
+        annot_matrix = matrix.annot_matrix
+        #headers = annot_matrix.headers + anno_header[5:]
+        chrom, pos = annot_matrix["Chrom"], annot_matrix["Pos"]
+        ref, alt = annot_matrix["Ref"], annot_matrix["Alt"]
+        pos = [int(x) for x in pos]
+
         # Read in the multianno output file.
         pos2d = {}  # (chrom, start, ref, alt) -> d
         anno_header = None
@@ -62,23 +69,16 @@ class Module(AbstractModule):
                 anno_header = d._header
         assert anno_header
 
-        matrix = SimpleVariantMatrix.read(summary_filename)
-
         # Multianno starts with:
         # Chr Start End Ref Alt
         # Ignore these.
         assert anno_header[:5] == ["Chr", "Start", "End", "Ref", "Alt"]
-        annot_matrix = matrix.annot_matrix
-        headers = annot_matrix.headers + anno_header[5:]
+        headers = anno_header[5:]
         
-        chrom, pos = annot_matrix["Chrom"], annot_matrix["Pos"]
-        ref, alt = annot_matrix["Ref"], annot_matrix["Alt"]
-        pos = [int(x) for x in pos]
-
         all_annots = []
-        for h in annot_matrix.headers_h:
-            x = annot_matrix.header2annots[h]
-            all_annots.append(x)
+        #for h in annot_matrix.headers_h:
+        #    x = annot_matrix.header2annots[h]
+        #    all_annots.append(x)
         for i in range(5, len(anno_header)):
             annots = []
             for coord in zip(chrom, pos, ref, alt):
@@ -89,7 +89,7 @@ class Module(AbstractModule):
                 annots.append(x)
             all_annots.append(annots)
         x = AnnotationMatrix.create_from_annotations(headers, all_annots)
-        matrix.annot_matrix = x
+        matrix.named_matrices.append(("Annovar", x))
         
         SimpleVariantMatrix.write(out_filename, matrix)
         

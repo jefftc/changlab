@@ -1,9 +1,14 @@
 """Human readable format for variants.
 
 Format:
-Sample                                       <Sample>
-Caller                                       <Caller>      <Caller>
-Chrom  Pos  Ref  Alt  [Annovar Annotations]  Ref/Alt/VAF   Ref/Alt/VAF
+                      Annovar          Coverage       <Sample>
+                                                      <Caller>     <Caller>
+Chrom  Pos  Ref  Alt  [Annovar Annots] <Samp> <Samp>  Ref/Alt/VAF  Ref/Alt/VAF
+
+
+annot_matrix  Chrom, Pos, Annovar Annots, potentially other annotations.
+named_matrix  Tuple of (<name>, AnnotationMatrix).  e.g., Coverage.
+call_matrix   SparseCallMatrix.
 
 
 Classes:
@@ -19,15 +24,18 @@ write
 """
 
 class SimpleVariantMatrix:
-    def __init__(self, samples, callers, annot_matrix, call_matrix):
+    def __init__(self, samples, callers,
+                 annot_matrix, named_matrices, call_matrix):
         # annot_matrix is an AnnotationMatrix.  It contains the
         # information for Chrom, Pos, Ref, Alt, and any Annovar
         # annotations.
         # call_matrix is a SparseCallMatrix that contains the Calls.
-        #import copy
         from genomicode import AnnotationMatrix
         
         assert isinstance(annot_matrix, AnnotationMatrix.AnnotationMatrix)
+        for name, matrix in named_matrices:
+            assert isinstance(matrix, AnnotationMatrix.AnnotationMatrix)
+            assert matrix.num_annots() == annot_matrix.num_annots()
         assert isinstance(call_matrix, SparseCallMatrix)
 
         # Figure out which column for sample and caller.
@@ -59,17 +67,10 @@ class SimpleVariantMatrix:
         #self.annot_matrix = copy.deepcopy(annot_matrix)
         #self.call_matrix = copy.deepcopy(call_matrix)
         self.annot_matrix = annot_matrix
+        self.named_matrices = named_matrices[:]
         self.call_matrix = call_matrix
-        #self.matrix = copy.copy(matrix)
-        #self.samplecaller2i = samplecaller2i
     def num_variants(self):
         return self.annot_matrix.num_annots()
-    #def has_call(self, chrom, pos, sample, caller):
-    #    return self.call_matrix.has_call(chrom, pos, sample, caller)
-    #def get_call(self, chrom, pos, sample, caller):
-    #    return self.call_matrix.get_call(chrom, pos, sample, caller)
-    #def set_call(self, chrom, pos, sample, caller):
-    #    return self.call_matrix.set_call(chrom, pos, sample, caller)
 
 
 class SparseCallMatrix:
@@ -147,10 +148,12 @@ class Call:
         self.total = total
 
 
-def make_matrix(samples, callers, annot_header, annot_data, call_data):
-    # annot_header is a list of headers for annot_data.
-    # annot_data is a list of tuples:  chrom, pos, ref, alt[, more]
-    # call_data is a list of tuples: chrom, pos, ref, alt, sample, caller, call
+def make_matrix(samples, callers, annot_header, annot_data,
+                named_data, call_data):
+    # annot_header  list of headers for annot_data.
+    # annot_data    list of tuples:  chrom, pos, ref, alt[, more]
+    # named_data    list of (name, headers, all_annots)
+    # call_data     list of tuples: chrom, pos, ref, alt, sample, caller, call
     # chrom   string
     # pos     int
     # ref     string
@@ -158,7 +161,6 @@ def make_matrix(samples, callers, annot_header, annot_data, call_data):
     # sample  string
     # caller  string
     # call    Call object
-    #import itertools
     from genomicode import AnnotationMatrix
 
     # Make sure there's no duplicates.
@@ -181,80 +183,20 @@ def make_matrix(samples, callers, annot_header, annot_data, call_data):
     annot_matrix = AnnotationMatrix.create_from_annotations(
         headers, all_annots)
 
+    # Make named matrices.
+    named_matrices = []
+    for x in named_data:
+        name, headers, all_annots = x
+        matrix = AnnotationMatrix.create_from_annotations(
+            headers, all_annots)
+        x = name, matrix
+        named_matrices.append(x)
+
     # Make call matrix.
     call_matrix = SparseCallMatrix(call_data)
     
-    return SimpleVariantMatrix(samples, callers, annot_matrix, call_matrix)
-
-    ## positions = {}  # (chrom, pos) -> (ref, alt)
-    ## for x in coord_data:
-    ##     chrom, pos, ref, alt = x
-    ##     assert type(pos) is type(0)
-    ##     positions[(chrom, pos)] = (ref, alt)
-
-    ## position2data = {}   # (chrom, pos) -> list of (sample, caller, Call)
-    ## for x in call_data:
-    ##     chrom, pos, sample, caller, call = x
-    ##     assert type(pos) is type(0)
-    ##     key = chrom, pos
-    ##     value = sample, caller, call
-    ##     if key not in position2data:
-    ##         position2data[key] = []
-    ##     position2data[key].append(value)
-
-    ## matrix = []
-    ## header1 = ["Sample", "", "", ""]
-    ## header2 = ["Caller", "", "", ""]
-    ## header3 = ["Chrom", "Pos", "Ref", "Alt"]
-    ## for sample in samples:
-    ##     #x2 = ["Num Ref", "Num Alt", "VAF"]
-    ##     #x1 = ["%s - %s" % (sample, caller)] + [""]*(len(x2)-1)
-    ##     x1 = [sample] + [""]*(len(callers)-1)
-    ##     x2 = callers
-    ##     x3 = ["Ref/Alt/VAF"]*len(callers)
-    ##     header1 += x1
-    ##     header2 += x2
-    ##     header3 += x3
-    ## assert len(header1) == len(header2)
-    ## assert len(header1) == len(header3)
-    ## matrix.append(header1)
-    ## matrix.append(header2)
-    ## matrix.append(header3)
-
-    ## for x in sorted(positions):
-    ##     chrom, pos = x
-    ##     ref, alt = positions[x]
-    ##     assert x in position2data
-    ##     data = position2data[x]
-
-    ##     row = [chrom, pos, ref, alt]
-    ##     for (sample, caller) in itertools.product(samples, callers):
-    ##         # Look for the right object data lines.
-    ##         for x in data:
-    ##             s, c, call = x
-    ##             if s == sample and c == caller:
-    ##                 break
-    ##         else:
-    ##             call = None
-    ##             row.append("")
-    ##             continue
-    ##         x = _format_call(call)
-    ##         row.append(x)
-    ##     assert len(row) == len(header1)
-    ##     matrix.append(row)
-
-    ## # Convert matrix to an AnnotationMatrix.
-    ## headerlines = []
-    ## headerlines.append("\t".join(matrix[0]))
-    ## headerlines.append("\t".join(matrix[1]))
-    ## headers = matrix[2]
-    ## all_annots = []
-    ## for i in range(len(headers)):
-    ##     x = [x[i] for x in matrix[3:]]
-    ##     all_annots.append(x)
-    ## matrix = AnnotationMatrix.create_from_annotations(
-    ##     headers, all_annots, headerlines)
-    ## return SimpleVariantMatrix(samples, callers, matrix)
+    return SimpleVariantMatrix(
+        samples, callers, annot_matrix, named_matrices, call_matrix)
 
     
 def read(filename, is_csv=False):
@@ -271,60 +213,92 @@ def read(filename, is_csv=False):
         matrix.append(x)
         #if len(matrix) > 50000:  # DEBUG
         #    break
-    assert len(matrix) >= 3
+    assert len(matrix) >= 3      # at least 3 rows for the header
     for i in range(1, len(matrix)):
         assert len(matrix[i]) == len(matrix[0])
-    assert len(matrix[0]) >= 5
+    assert len(matrix[0]) >= 4   # Chrom, Pos, Ref, Alt
+    assert len(matrix[0]) >= 5, "No calls"
+    
     header0 = matrix[0]
     header1 = matrix[1]
     header2 = matrix[2]
-    assert header0[0] == "Sample"
-    assert header1[0] == "Caller"
+    #assert header0[0] == "Sample"
+    #assert header1[0] == "Caller"
     assert header2[:4] == ["Chrom", "Pos", "Ref", "Alt"]
 
     # Make a list of all samples.
-    x = header0[1:]
+    I = [i for (i, x) in enumerate(header2) if x == "Ref/Alt/VAF"]
+    assert I
+    x = [header0[i] for i in I]
+    #x = header0[1:]
     x = [x for x in x if x]
     # Get rid of duplicates, preserving order.
     x = [x[i] for (i, y) in enumerate(x) if y not in x[:i]]
     samples = x
 
     # Make a list of all callers.
-    x = header1[1:]
+    x = [header1[i] for i in I]
+    #x = header1[1:]
     x = [x for x in x if x]
     # Get rid of duplicates, preserving order.
     x = [x[i] for (i, y) in enumerate(x) if y not in x[:i]]
     callers = x
 
-    # Figure out where the annotations end and the calls start.
+    # Figure out where the annotations end.
     for i in range(1, len(header0)):
         if header0[i]:
             break
     else:
         raise AssertionError, "No calls"
-    call_start = i
+    annot_end = i
 
     # Make the annotation matrix.
-    annot_header = header2[:call_start]
-    annot_data = [x[:call_start] for x in matrix[3:]]
+    annot_header = header2[:annot_end]
+    annot_data = [x[:annot_end] for x in matrix[3:]]
+
+    # Find the start coordinates of the named matrices.
+    x = [i for (i, x) in enumerate(header0) if x]
+    x = [i for i in x if i not in I]
+    I_named = x  # list of start index of the named matrices.
+    I_coord = []  # list of (start, end) of named matrices.
+    for i in range(len(I_named)):
+        i_start = I_named[i]
+        if i+1 < len(I_named):
+            i_end = I_named[i+1]
+        else:
+            i_end = I[0]
+        I_coord.append((i_start, i_end))
+    # Make the named matrices.
+    named_data = []  # list of (name, named_header, named_annots)
+    for (i_start, i_end) in I_coord:
+        name = header0[i_start]
+        assert name
+        named_header = header2[i_start:i_end]
+        M = [x[i_start:i_end] for x in matrix[3:]]
+        named_annots = []
+        for j in range(len(named_header)):
+            x = [M[i][j] for i in range(len(M))]
+            named_annots.append(x)
+        x = name, named_header, named_annots
+        named_data.append(x)
 
     # Make the call_data.
     call_data = []
     header_samples = [None] * len(header0)
-    for i in range(call_start, len(header0)):
+    for i in I:
         if header0[i]:
             header_samples[i] = header0[i]
         else:
             header_samples[i] = header_samples[i-1]
         assert header_samples[i]
     header_callers = [None] * len(header1)
-    for i in range(call_start, len(header1)):
+    for i in I:
         header_callers[i] = header1[i]
         assert header_callers[i]
     for i in range(3, len(matrix)):
         chrom, pos, ref, alt = matrix[i][:4]
         pos = int(pos)
-        for j in range(call_start, len(header0)):
+        for j in I:
             sample, caller = header_samples[j], header_callers[j]
             if not matrix[i][j]:
                 continue
@@ -332,7 +306,8 @@ def read(filename, is_csv=False):
             x = chrom, pos, ref, alt, sample, caller, call
             call_data.append(x)
 
-    return make_matrix(samples, callers, annot_header, annot_data, call_data)
+    return make_matrix(
+        samples, callers, annot_header, annot_data, named_data, call_data)
     
 
 def write(handle_or_file, variant_matrix):
@@ -344,10 +319,23 @@ def write(handle_or_file, variant_matrix):
 
     annot_matrix = variant_matrix.annot_matrix
     call_matrix = variant_matrix.call_matrix
-    
+
+    # Make the headers for the annotations.
     header2 = annot_matrix.headers[:]
-    header0 = ["Sample"] + [""] * (len(header2)-1)
-    header1 = ["Caller"] + [""] * (len(header2)-1)
+    #header0 = ["Sample"] + [""] * (len(header2)-1)
+    #header1 = ["Caller"] + [""] * (len(header2)-1)
+    header0 = [""] * len(header2)
+    header1 = [""] * len(header2)
+    # Make the headers for the named matrices.
+    for (name, matrix) in variant_matrix.named_matrices:
+        x0 = [name] + [""]*(len(matrix.headers)-1)
+        x1 = [""]*len(matrix.headers)
+        x2 = matrix.headers
+        header0 += x0
+        header1 += x1
+        header2 += x2
+
+    # Make the headers for the calls.
     for sample in variant_matrix.samples:
         #x2 = ["Num Ref", "Num Alt", "VAF"]
         #x1 = ["%s - %s" % (sample, caller)] + [""]*(len(x2)-1)
@@ -357,6 +345,8 @@ def write(handle_or_file, variant_matrix):
         header0 += x0
         header1 += x1
         header2 += x2
+
+    # Print out the headers.
     assert len(header0) == len(header1)
     assert len(header0) == len(header2)
     print >>handle, "\t".join(header0)
@@ -364,32 +354,37 @@ def write(handle_or_file, variant_matrix):
     print >>handle, "\t".join(header2)
 
     # Cache for convenience.
-    j2annots = {}
-    for j, h in enumerate(annot_matrix.headers_h):
-        annots = annot_matrix.header2annots[h]
-        j2annots[j] = annots
-    num_annots = len(j2annots)
     num_calls = len(variant_matrix.samples) * len(variant_matrix.callers)
-
     sc2j = {}
     for j, (sample, caller) in enumerate(itertools.product(
         variant_matrix.samples, variant_matrix.callers)):
         sc2j[(sample, caller)] = j
     
     for i in range(annot_matrix.num_annots()):
-        row0 = [None] * num_annots
-        for j in range(num_annots):
-            row0[j] = j2annots[j][i]
-        row1 = [""] * num_calls
+        # Get the data from annot_matrix.
+        row0 = []
+        for h in annot_matrix.headers_h:
+            row0.append(annot_matrix.header2annots[h][i])
+        # Get the data from the named matrices.
+        row1 = []
+        for (name, matrix) in variant_matrix.named_matrices:
+            for h in matrix.headers_h:
+                row1.append(matrix.header2annots[h][i])
+        # Get the data from the calls.
+        row2 = [""] * num_calls
         chrom, pos, ref, alt = row0[:4]
         pos = int(pos)
         coord = chrom, pos, ref, alt
         sc2call = call_matrix.coord2samplecaller2call.get(coord, {})
         for sc, call in sc2call.iteritems():
+            sample, caller = sc
+            assert sample in variant_matrix.samples, sample
+            assert caller in variant_matrix.callers, caller
             assert call
             j = sc2j[sc]
-            row1[j] = _format_call(call)
-        row = row0 + row1
+            row2[j] = _format_call(call)
+        # Assemble the data.
+        row = row0 + row1 + row2
         assert len(row) == len(header0)
         print >>handle, "\t".join(map(str, row))
 

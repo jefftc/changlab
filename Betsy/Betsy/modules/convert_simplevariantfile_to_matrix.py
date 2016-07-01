@@ -82,9 +82,33 @@ class Module(AbstractModule):
             x = d.Chrom, int(d.Pos), d.Ref, d.Alt, d.Sample, d.Caller, call
             call_data.append(x)
 
+        # Make a named matrix that shows the number of callers that
+        # called a variant at each position for each sample.
+        named_data = []
+        samp2coord2nc = {}  # sample -> chrom, pos, ref, alt -> num_callers
+        for x in call_data:
+            chrom, pos, ref, alt, sample, caller, call = x
+            coord = chrom, pos, ref, alt
+            if sample not in samp2coord2nc:
+                samp2coord2nc[sample] = {}
+            nc = samp2coord2nc[sample].get(coord, 0) + 1
+            samp2coord2nc[sample][coord] = nc
+        headers = samples
+        all_annots = []
+        for sample in samples:
+            annots = []
+            for coord in coord_data:
+                nc = samp2coord2nc.get(sample, {}).get(coord, "")
+                annots.append(nc)
+            all_annots.append(annots)
+        if headers:
+            x = "Num Callers", headers, all_annots
+            named_data.append(x)
+
         annot_header = ["Chrom", "Pos", "Ref", "Alt"]
         matrix = SimpleVariantMatrix.make_matrix(
-            samples, callers, annot_header, coord_data, call_data)
+            samples, callers, annot_header, coord_data, named_data,
+            call_data)
         SimpleVariantMatrix.write(out_filename, matrix)
 
         return metadata

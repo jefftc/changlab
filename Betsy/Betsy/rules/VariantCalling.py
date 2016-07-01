@@ -5,7 +5,6 @@
 #
 # SimpleVariantFile     # File with variants. many samples, many callers.
 # SimpleVariantMatrix   # Summarizes variants in a matrix.
-# SimpleCallMatrix      # Makes the calls based on SimpleVariantMatrix
 #
 # Pipeline:
 # 1.  ManyCallerCVFFolders               Calls for all variant callers.
@@ -14,7 +13,6 @@
 # 4.  SimpleVariantMatrix.annotated=no   Compact Matrix format.
 # 5.  SimpleVariantMatrix.filtered=no    Annotated with Annovar.
 # 6.  SimpleVariantMatrix.filtered=yes   Filter on reads, exons, etc.
-# 7.  SimpleCallMatrix                   Final file with calls.
 #
 # VCFRecalibrationReport  # For GATK VariantRecalibrator.
 # PileupSummary
@@ -278,19 +276,20 @@ SimpleVariantMatrix = DataType(
     AttributeDef(
         "with_coverage", ["no", "yes"], "no", "no",
         help="Whether this file contains the coverage at each position."),
+    AttributeDef(
+        "with_cancer_genes", ["no", "yes"], "no", "no",
+        help="Whether each gene is a known cancer gene."),
     help="Contains information about variants.  Coordinates are 1-based."
     )
 
 
-
-
-SimpleCallMatrix = DataType(
-    "SimpleCallMatrix",
-    AttributeDef(
-        "vartype", ["snp", "indel"], "snp", "snp",
-        help="What kind of variants are held in this file."),
-    help="Contains variant calls.  Coordinates are 1-based."
-    )
+#SimpleCallMatrix = DataType(
+#    "SimpleCallMatrix",
+#    AttributeDef(
+#        "vartype", ["snp", "indel"], "snp", "snp",
+#        help="What kind of variants are held in this file."),
+#    help="Contains variant calls.  Coordinates are 1-based."
+#    )
 
 
 all_data_types=[
@@ -299,7 +298,7 @@ all_data_types=[
     ManyCallerVCFFolders,
     SimpleVariantFile,
     SimpleVariantMatrix,
-    SimpleCallMatrix,
+    #SimpleCallMatrix,
 
     VCFRecalibrationReport,
     PileupSummary,
@@ -739,17 +738,17 @@ all_modules = [
         Constraint("coordinates_from", MUST_BE, "simplevariantmatrix", 1),
         ),
 
-    ModuleNode(
-        "convert_simplevariantmatrix_to_simplecallmatrix",
-        SimpleVariantMatrix, SimpleCallMatrix,
-        OptionDef(
-            "num_callers", 
-            help="Minimum number of callers that need to call a position."),
-        Constraint("filtered", MUST_BE, "yes"),
-        Constraint("annotated", MUST_BE, "yes"),
-        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
-        Consequence("vartype", SAME_AS_CONSTRAINT),
-        ),
+    #ModuleNode(
+    #    "convert_simplevariantmatrix_to_simplecallmatrix",
+    #    SimpleVariantMatrix, SimpleCallMatrix,
+    #    OptionDef(
+    #        "num_callers", 
+    #        help="Minimum number of callers that need to call a position."),
+    #    Constraint("filtered", MUST_BE, "yes"),
+    #    Constraint("annotated", MUST_BE, "yes"),
+    #    Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+    #    Consequence("vartype", SAME_AS_CONSTRAINT),
+    #    ),
 
     
     ModuleNode(

@@ -17,10 +17,9 @@ class Module(AbstractModule):
         filelib.assert_exists_nz(signal_node.identifier)
 
         # Read the variant file.
-        GENE_H = "Gene.refGene"
         SVM = SimpleVariantMatrix.read(simple_node.identifier)
-        AM = SVM.annot_matrix
-        assert GENE_H in AM.headers
+        #AM = SVM.annot_matrix
+        #assert GENE_H in AM.headers
 
         # Read the gene expression file.
         GXP = arrayio.read(signal_node.identifier)
@@ -39,8 +38,17 @@ class Module(AbstractModule):
             len(missing), ", ".join(x))
         assert not missing, msg
 
+        # Find the genes in each row.
+        GENE_H = "Gene.refGene"
+        annovar_matrix = None
+        for (name, matrix) in SVM.named_matrices:
+            if GENE_H in matrix.headers:
+                annovar_matrix = matrix
+                break
+        assert annovar_matrix, "Missing annotation: %s" % GENE_H
+        GENES = annovar_matrix[GENE_H]
+
         # Make a list of the genes to get gene expression values for.
-        GENES = AM[GENE_H]
         genes = {}
         for i, gene in enumerate(GENES):
             # Format of genes:
@@ -73,27 +81,39 @@ class Module(AbstractModule):
                     if not x:
                         continue
                     # If there are multiple instances of this gene,
-                    # then pick the maximum one.
+                    # then pick the one with the maximum expression.
                     x = max(x)
                     values.append(x)
                 x = ",".join(map(str, values))
                 matrix[i][j] = x
 
         # Add the matrix back to the simple variant matrix.
-        x = ["%s Exp" % x for x in SVM.samples]
-        headers = AM.headers + x
+        headers = SVM.samples
         all_annots = []
-        for h in AM.headers_h:
-            all_annots.append(AM.header2annots[h])
-        for i in range(len(SVM.samples)):
-            x = [x[i] for x in matrix]
-            assert len(x) == AM.num_annots()
+        for j in range(len(headers)):
+            x = [matrix[i][j] for i in range(len(matrix))]
             all_annots.append(x)
-        assert not AM.headerlines
         x = AnnotationMatrix.create_from_annotations(headers, all_annots)
-        x = SimpleVariantMatrix.SimpleVariantMatrix(
-            SVM.samples, SVM.callers, x, SVM.call_matrix)
-        SimpleVariantMatrix.write(out_filename, x)
+        SVM.named_matrices.append(("Gene Expression", x))
+
+        # Write to file.
+        SimpleVariantMatrix.write(out_filename, SVM)
+
+        
+        ## x = ["%s Exp" % x for x in SVM.samples]
+        ## headers = AM.headers + x
+        ## all_annots = []
+        ## for h in AM.headers_h:
+        ##     all_annots.append(AM.header2annots[h])
+        ## for i in range(len(SVM.samples)):
+        ##     x = [x[i] for x in matrix]
+        ##     assert len(x) == AM.num_annots()
+        ##     all_annots.append(x)
+        ## assert not AM.headerlines
+        ## x = AnnotationMatrix.create_from_annotations(headers, all_annots)
+        ## x = SimpleVariantMatrix.SimpleVariantMatrix(
+        ##     SVM.samples, SVM.callers, x, SVM.call_matrix)
+        ## SimpleVariantMatrix.write(out_filename, x)
                     
                     
     def name_outfile(self, antecedents, user_options):
