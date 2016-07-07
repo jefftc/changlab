@@ -28,6 +28,7 @@
 # discretize_scores
 # discretize_by_value
 # discretize_by_zscore
+# find_best_groups
 # make_group_names
 # make_zscore_names
 #
@@ -382,6 +383,44 @@ def describe_gene(MATRIX, gene_i):
     return probe_id, gene_id, gene_symbol, gene_index
 
 
+def find_best_groups(scores, survival, dead):
+    assert len(scores) == len(survival)
+    assert len(scores) == len(dead)
+
+    scores_o = sorted({}.fromkeys(scores))
+    best_p = best_cutoff = None
+    for i in range(2, len(scores_o)-2):
+        # Keep only values with score >= scores_o[i].
+        groups = [0] * len(scores)
+        for j in range(len(scores)):
+            if scores[j] >= scores_o[i]:
+                groups[j] = 1
+        uniq_groups = sorted({}.fromkeys(groups))
+        if len(uniq_groups) < 2:
+            continue
+        surv = calc_km(survival, dead, groups)
+        if best_p is None or surv["p_value"] < best_p:
+            best_p = surv["p_value"]
+            best_cutoff = scores_o[i]
+
+        # Print out all possible scores.
+        rank = float(i) / len(scores_o)
+        x = rank, surv["p_value"]
+        print "\t".join(map(str, x))
+            
+    assert best_p is not None
+
+
+    # Make the groups based on the best cutoff.
+    groups = [0] * len(scores)
+    for j in range(len(scores)):
+        if scores[j] >= best_cutoff:
+            groups[j] = 1
+
+    group_names = ["Low", "High"]
+    return group_names, groups
+
+
 def format_gene_name(MATRIX, gene_headers, gene_i):
     # Return a string describing this gene that can be used as part of
     # a filename.
@@ -432,8 +471,8 @@ def pretty_gene_name(MATRIX, gene_headers, gene_i):
 
 
 def calc_association(
-    survival, dead, scores, rank_cutoffs, zscore_cutoffs, expression_or_score,
-    ignore_unscored_genesets):
+    survival, dead, scores, rank_cutoffs, zscore_cutoffs, best_cutoff,
+    expression_or_score, ignore_unscored_genesets):
     # Return a dictionary with keys:
     # survival             list of <float>
     # dead                 list of <int>
@@ -473,16 +512,20 @@ def calc_association(
     scores = [scores[i] for i in I]
 
     # Figure out the groupings.
-    x = discretize_scores(
-        scores, rank_cutoffs, zscore_cutoffs, expression_or_score)
-    group_names, groups = x
+    if best_cutoff:
+        # Figure out the best way to discretize the scores.
+        x = find_best_groups(scores, survival, dead)
+        group_names, groups = x
+    else:
+        x = discretize_scores(
+            scores, rank_cutoffs, zscore_cutoffs, expression_or_score)
+        group_names, groups = x
 
     # May not have two groups, e.g. if there are no outliers.  If this
     # happens, then return None.
     uniq_groups = sorted({}.fromkeys(groups))
     if len(uniq_groups) < 2:
         return None
-
 
     # Calculate the KM model.
     surv = calc_km(survival, dead, groups)
@@ -515,8 +558,6 @@ def calc_association(
         mean_score[group] = m
     surv["mean_score"] = mean_score
 
-    # XXX rank_cutoffs, zscore
-    
     # Figure out relationship.
     MAX_SURV = 1E10
     # Compare the time to 50% survival for the low and high scoring
@@ -560,6 +601,8 @@ def calc_km(survival, dead, group):
     # num_samples     dict of <group> : <int>
     # surv50          dict of <group> : <float> or None
     # surv90          dict of <group> : <float> or None
+    #
+    # group is a list of ints indicating group membership, starting from 0.
     from genomicode import jmath
 
     assert len(survival) == len(dead)
@@ -1035,14 +1078,17 @@ def main():
         'be detected with a specific z-score cutoff.'
         )
     group.add_argument(
-        '--rank_cutoff', default=None,
+        '--rank_cutoff', 
         help='Comma-separated list of breakpoints (between 0 and 1), '
         'e.g. 0.25,0.50,0.75.  Default is to use cutoff of 0.50.  '
         'I will use this strategy unless a --zscore_cutoff is given.')
     group.add_argument(
-        '--zscore_cutoff', default=None, 
+        '--zscore_cutoff', 
         help='Comma-separated list of breakpoints, e.g. n1,1 '
         '(can use n for negative sign).')
+    group.add_argument(
+        '--best_cutoff', action="store_true",
+        help="Try every cutoff and use the best one.")
 
     group = parser.add_argument_group(title='Output')
     group.add_argument(
@@ -1124,8 +1170,15 @@ def main():
 
     if args.rank_cutoff:
         assert not args.zscore_cutoff
+        assert not args.best_cutoff
+    elif args.zscore_cutoff:
+        assert not args.rank_cutoff
+        assert not args.best_cutoff
+    elif args.best_cutoff:
+        assert not args.rank_cutoff
+        assert not args.zscore_cutoff
     if not args.rank_cutoff and not args.zscore_cutoff:
-        args.rank_cutoff = "0.50"
+        args.best_cutoff = True
 
     assert args.km_mar_bottom > 0 and args.km_mar_bottom < 10
     assert args.km_mar_left > 0 and args.km_mar_left < 10
@@ -1197,7 +1250,8 @@ def main():
 
         try:
             x = calc_association(
-                survival, dead, scores, rank_cutoffs, zscore_cutoffs,
+                survival, dead, scores,
+                rank_cutoffs, zscore_cutoffs, args.best_cutoff,
                 expression_or_score, args.ignore_unscored_genesets)
         except AssertionError, x:
             # Provide a better error message.
