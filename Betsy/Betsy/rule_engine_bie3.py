@@ -23,6 +23,12 @@ FINISHED_FILE = "finished.txt"
 IN_PROGRESS_FILE = "in_progress.txt"
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
+# When running a module, whether to make sure it starts running in an
+# empty directory.  Can turn off for debugging.
+CLEAN_UP_PATH_FOR_NEW_MODULE = True
+#CLEAN_UP_PATH_FOR_NEW_MODULE = False   # DEBUGGING ONLY!
+
+
 TIME_FMT = "%a %b %d %H:%M:%S %Y"
 
 
@@ -113,16 +119,18 @@ def run_pipeline(
     while stack:
         DEBUG_POOL = pool
         it += 1
-        #if it >= MAX_ITER:
-        #    start_ids = [x[0] for x in start_nodes]
-        #    done_ids = [x for x in pool if x not in start_ids]
-        #    all_ids = [x for x in path_ids
-        #               if x not in done_ids and x not in start_ids]
-        #    bie3.plot_network_gv(
-        #        "broken.png", network, options=user_options, bold=path_ids,
-        #        bold_transitions=path_transitions, highlight_yellow=all_ids,
-        #        highlight_green=start_ids, highlight_orange=done_ids,
-        #        verbose=True)
+        if DEBUG_RUN_PIPELINE and it >= MAX_ITER:
+            debug_file = "broken.png"
+            print "Saving network: %s" % debug_file
+            start_ids = [x[0] for x in start_nodes]
+            done_ids = [x for x in pool if x not in start_ids]
+            all_ids = [x for x in path_ids
+                       if x not in done_ids and x not in start_ids]
+            bie3.plot_network_gv(
+                debug_file, network, options=user_options, bold=path_ids,
+                bold_transitions=path_transitions, highlight_yellow=all_ids,
+                highlight_green=start_ids, highlight_orange=done_ids,
+                verbose=True)
         assert it < MAX_ITER, "Too many iterations: %d" % it
 
         # Make sure we're not stuck in an infinite loop.
@@ -482,6 +490,12 @@ def run_module(
             except OSError, x:
                 pass
 
+        # For debugging.  If I want to re-run the module over
+        # the old one, then just keep this directory.
+        if not CLEAN_UP_PATH_FOR_NEW_MODULE:
+            i_run_analysis = True
+            break
+
         last_refresh = None
         if exists(copying_file):
             last_refresh = time.time() - os.path.getctime(copying_file)
@@ -497,7 +511,8 @@ def run_module(
             time.sleep(REFRESH+1)
             if not exists(copying_file) and not exists(success_file):
                 # Abandoned.  Delete the result dir and try again.
-                _rmtree_multi(result_dir)
+                if CLEAN_UP_PATH_FOR_NEW_MODULE:
+                    _rmtree_multi(result_dir)
         elif not exists(copying_file) and exists(success_file):
             # Previous run is now finished.
             i_run_analysis = False
@@ -513,7 +528,8 @@ def run_module(
             # don't do this unless we're sure the other process is
             # really dead.
             # Abandoned.  Delete the result dir and try again.
-            _rmtree_multi(result_dir)
+            if CLEAN_UP_PATH_FOR_NEW_MODULE:
+                _rmtree_multi(result_dir)
         elif last_refresh >= REFRESH*2 and exists(success_file):
             os.unlink(copying_file)
             time.sleep(REFRESH)
@@ -548,7 +564,8 @@ def run_module(
         os.chdir(result_dir)
 
         # Clear out any old files in the directory.
-        _clear_analysis_path(result_dir, copying_file)
+        if CLEAN_UP_PATH_FOR_NEW_MODULE:
+            _clear_analysis_path(result_dir, copying_file)
         
         start_time = time.localtime()
         try:

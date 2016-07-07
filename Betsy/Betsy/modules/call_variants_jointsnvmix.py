@@ -135,6 +135,7 @@ def filter_by_vartype(vartype, infile, outfile):
 
     if vartype == "all":
         shutil.copy2(infile, outfile)
+        return
     vcf = vcflib.read(infile)
     fn = is_snp
     if vartype == "indel":

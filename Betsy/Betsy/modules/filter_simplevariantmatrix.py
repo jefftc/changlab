@@ -40,6 +40,13 @@ class Module(AbstractModule):
         call_matrix = var_matrix.call_matrix
         annot_matrix = var_matrix.annot_matrix
 
+        annovar_matrix = None
+        for (name, matrix) in var_matrix.named_matrices:
+            if "ExonicFunc.refGene" in matrix.headers:
+                annovar_matrix = matrix
+                break
+        assert annovar_matrix, "Missing annotation: ExonicFunc.refGene"
+
         # copy.deepcopy is very slow.  Try to avoid it.
         # Strategy:
         # 1.  Make a list of the changes to be made.
@@ -52,8 +59,8 @@ class Module(AbstractModule):
         # Filter out synonymous variants.
         if nonsynonymous_and_stopgain_only:
             # Make sure annotated with Annovar.
-            assert "ExonicFunc.refGene" in annot_matrix.headers
-            exonic_func = annot_matrix["ExonicFunc.refGene"]
+            assert "ExonicFunc.refGene" in annovar_matrix.headers
+            exonic_func = annovar_matrix["ExonicFunc.refGene"]
             for i, efunc in enumerate(exonic_func):
                 efunc = exonic_func[i]
                 assert efunc in [
@@ -107,11 +114,18 @@ class Module(AbstractModule):
 
         # Make a matrix of the discarded rows.
         old_annot_matrix = var_matrix.annot_matrix
+        old_named_matrices = var_matrix.named_matrices
         filtered_matrix = var_matrix
         x = AnnotationMatrix.rowslice(var_matrix.annot_matrix, I_remove)
         filtered_matrix.annot_matrix = x
+        named_matrices = []
+        for (name, matrix) in var_matrix.named_matrices:
+            matrix = AnnotationMatrix.rowslice(matrix, I_remove)
+            named_matrices.append((name, matrix))
+        filtered_matrix.named_matrices = named_matrices
         SimpleVariantMatrix.write("discarded.txt", filtered_matrix)
         var_matrix.annot_matrix = old_annot_matrix
+        var_matrix.named_matrices = old_named_matrices
         
         # Remove the calls.
         for coord in call_remove:
@@ -123,9 +137,14 @@ class Module(AbstractModule):
         # Which rows to keep.
         I_keep = [
             i for i in range(var_matrix.num_variants()) if i not in I_remove]
-
+        # Filter annotation matrix
         var_matrix.annot_matrix = AnnotationMatrix.rowslice(
             var_matrix.annot_matrix, I_keep)
+        # Filter named matrices.
+        for i, (name, matrix) in enumerate(var_matrix.named_matrices):
+            matrix = AnnotationMatrix.rowslice(matrix, I_keep)
+            var_matrix.named_matrices[i] = (name, matrix)
+        
         SimpleVariantMatrix.write(out_filename, var_matrix)
 
         return metadata

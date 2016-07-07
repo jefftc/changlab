@@ -118,7 +118,7 @@ debug_print
 #
 # _get_attribute_type
 # _assign_case_by_type
-#
+# 
 # _get_parents_of          WAS _backchain_to_ids
 # _get_children_of
 # _make_parents_dict       WAS _make_backchain_dict
@@ -126,6 +126,8 @@ debug_print
 # _make_descendent_dict
 # _can_reach_by_bc
 # _can_reach_by_fc
+#
+# _get_custom_values
 #
 # _iter_upper_diag
 # _intersect
@@ -159,6 +161,19 @@ debug_print
 #   VCFFolder.caller=varscan  ->
 #   The VCFFolders must be separate DataNodes.
 
+
+
+# Problem in the way custom attributes are currently handled.  They
+# are now provided as a list of Attribute objects.  There is no way to
+# distinguish attributes for multiple objects of the same data type.
+# E.g.
+# BamFolder
+#   aligner=star
+#   sorted=coordinate
+#   indexed=yes
+# BamFolder
+#   aligner=bwa_mem
+# Not possible to indicate that the start aligned BamFolder is sorted.
 
 
 DEBUG_BC = False
@@ -325,10 +340,24 @@ class Attribute:
         return x
 
 
-class CustomAttribute(Attribute):
-    def __init__(self, datatype, name, value, all_nodes=None):
-        Attribute.__init__(self, datatype, name, value)
+class CustomAttributes:
+    def __init__(self, attributes, all_nodes):
+        # attributes is a list of Attribute objects.
+        # all_nodes must be True or False
+        assert attributes, "Missing: %s" % repr(attributes)
+        assert all_nodes in [True, False], "Invalid all_nodes: %s" % all_nodes
+        datatype = attributes[0].datatype
+        for i in range(1, len(attributes)):
+            assert attributes[i].datatype == datatype
+        self.datatype = datatype
+        self.attributes = attributes[:]
         self.all_nodes = all_nodes
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        x = [repr(self.datatype), repr(self.attributes), str(self.all_nodes)]
+        x = "%s(%s)" % (self.__class__.__name__, ", ".join(x))
+        return x
 
 
 class OptionDef:
@@ -2785,6 +2814,8 @@ def prune_paths(paths, network, custom_attributes,
         debug_print(
             DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (
                 name, ns, len(paths)))
+        # If len(paths) == 0, suggests that there's a problem with
+        # custom attributes.
 
     ns = len(paths)
     paths = _prune_alternate_attributes2(
@@ -2872,92 +2903,134 @@ def _prune_by_most_inputs(network, paths):
     
 
 
-def _prune_by_custom_attributes(network, custom_attributes, paths,
-                                nodeid2parents):
+def _prune_by_custom_attributes(
+    network, custom_attributes, paths, nodeid2parents):
     # Keep only the paths that match the attributes desired by the
     # user.  custom_attributes is a list of CustomAttribute objects.
     if not custom_attributes:
         return paths
 
-    # The attributes of that input datatype should match the user
-    # attributes if:
-    # 1.  A module's input datatype is different from the output
-    #     datatype.
+    # A module's input node is subject to the user's attributes if:
+    # 1.  The input datatype is different from the output datatype.
     # AND
-    # 2.  The attribute in the input datatype is not subject to a
-    #     MUST_BE constraint.
+    # 2.  The input datatype has at least one custom attribute that
+    #     is not subject to a MUST_BE constraint.  The ones that are
+    #     subject to a MUST_BE constraint must match the custom
+    #     attribute.
     # AND
     # 3.  The data node has no descendents with the same datatype.
+    #     Must be bottom-most of that type.
+
+    # Strategy to generate nodes that should be subject to custom
+    # attributes.
+    # 1.  Start with pathway node IDs.
+    # 2.  Only node IDs with a datatype subject to a custom attribute.
+    # 3.  Make a list of the module IDs that these data nodes can go
+    #     through.
+    # 4.  Calculate the inputs node IDs into each of the modules.
+    #     Variable is called sub_pathways.
+    # 5.  Only want sub_pathways where the input datatype is different
+    #     from the output datatype.
+    # 6.  Assign each of the custom attributes to each of the nodes.
+    # 7.  Make sure the attribute does not conflict with a MUST_BE
+    #     constraint.
+    # 8.  Make sure the data node is bottom-most data node of that
+    #     type.  (for custom_attributes where all_nodes=False)
     
 
-    # Make a list of all the datatypes with custom attributes.  d2a1
-    # applies based on the rules above.  For d2a2, does not have to be
-    # the bottom-most node.
-    dname2attrs1 = {}  # datatype name -> attr name -> value
-    dname2attrs2 = {}
-    for x in custom_attributes:
-        d2a = dname2attrs1
-        if x.all_nodes:  # This should apply to all nodes in the network.
-            d2a = dname2attrs2
-        if x.datatype.name not in d2a:
-            d2a[x.datatype.name] = {}
-        d2a[x.datatype.name][x.name] = x.value
-    # for convenience        
+    # First, cache some variables for convenience.
+    # Cache names of data types with custom attributes.
     all_dnames = {}
-    for k in dname2attrs1:
-        all_dnames[k] = dname2attrs1[k]
-    for k in dname2attrs2:
-        all_dnames[k] = dname2attrs2[k]
-
-
-    # Cache some values for convenience.
+    for x in custom_attributes:
+        all_dnames[x.datatype.name] = 1
+    # Cache node IDs that belong in a path.
     x = [x.node_ids for x in paths]
     path_node_ids = x[0].union(*x[1:])
-    
-    module_ids = [
-        x for x in path_node_ids
-        if isinstance(network.nodes[x], ModuleNode)]
-
-    nodeid2parents = None  # create if needed
+    # Cache some network related dictionaries.
+    nodeid2parents = _make_parents_dict(network)
     descendents = _make_descendent_dict(network)
-    ## Only care about the descendents that are in this network.
-    #desc = {}
-    #for (node_id, next_ids) in descendents.iteritems():
-    #    if node_id not in all_node_ids:
-    #        continue
-    #    next_ids = [x for x in next_ids if x in all_node_ids]
-    #    desc[node_id] = next_ids
-    #descendents = desc
 
-    # Search through the network for data nodes that might be subject
-    # to custom_attributes.
-    data_node_ids = set()
 
-    # Requirement 1: Data node must be converted to something else.
-    # Requirement 2: The attributes in the input datatype is not
-    # subject to a MUST_BE constraint.
+    # Step 1: Start with a list of all data node IDs.
+    x = path_node_ids
+    x = [x for x in x if isinstance(network.nodes[x], DataNode)]
+    data_node_ids = x
+
+    # Step 2: Only node IDs with a datatype subject to a custom
+    # attribute.
+    x = data_node_ids
+    x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
+    data_node_ids = set(x)
+
+    # Step 3: Make a list of the module IDs that these data nodes can
+    # go through.
+    module_ids = []
+    for node_id in data_node_ids:
+        x = network.transitions.get(node_id, [])
+        module_ids.extend(x)
+    module_ids = [x for x in module_ids if x in path_node_ids]
+    module_ids = set(module_ids)
+
+    # Step 4: Calculate the inputs node IDs into each of the modules.
+    # list of (combo_ids, module_id, data_node_id, i_combo)
+    # combo_ids     list of node_ids that are the inputs to this module
+    # data_node_id  node_id that may be subject to a custom attribute
+    # i_combo       index of data_node_id into combo_ids 
+    sub_pathways = []
     for module_id in module_ids:
         module = network.nodes[module_id]
-        
-        # Optimization: If the module takes only one kind of datatype
-        # and produces the same kind, then this doesn't apply.
+    
+        x = nodeid2parents[module_id]
+        x = [x for x in x if x in path_node_ids]
+        combos = _bc_to_input_ids(
+            network, module_id, custom_attributes, all_input_ids=x,
+            nodeid2parents=nodeid2parents)
+        for combo_ids in combos:
+            for i, node_id in enumerate(combo_ids):
+                if node_id not in data_node_ids:
+                    continue
+                x = combo_ids, module_id, node_id, i
+                sub_pathways.append(x)
+
+    # Step 5: Only want sub_pathways where the input datatype is
+    # different from the output datatype.
+    good = []
+    for (combo_ids, module_id, data_node_id, i_combo) in sub_pathways:
+        module = network.nodes[module_id]
+
+        # If the module takes only one kind of datatype and produces
+        # the same kind, then this doesn't apply.
         if len(module.in_datatypes) == 1 and \
            module.out_datatype == module.in_datatypes[0]:
             continue
 
-        # Optimization: Make sure at least one input datatype (that is
-        # not DefaultAttributesFrom) can be subject to a custom
-        # attribute.
+        # Make sure the input datatype is not DefaultAttributesFrom.
         daf = [x.input_index for x in module.default_attributes_from]
-        in_dtype_names = [
-            x.name for (i, x) in enumerate(module.in_datatypes)
-            if i not in daf]
-        x = [x for x in in_dtype_names if x in all_dnames]
-        if not x:
+        if i_combo in daf:
             continue
+        good.append((combo_ids, module_id, data_node_id, i_combo))
+    sub_pathways = good
 
+    # Step 6: Assign each of the custom attributes to each of the
+    # nodes.  Make sure the data types match.
+    good = []
+    for (combo_ids, module_id, data_node_id, i_combo) in sub_pathways:
+        node = network.nodes[data_node_id]
+        for cattrs in custom_attributes:
+            if cattrs.datatype.name != node.datatype.name:
+                continue
+            x = combo_ids, module_id, data_node_id, i_combo, cattrs
+            good.append(x)
+    sub_pathways = good
+
+    # Step 7: Make sure the attribute does not conflict with a MUST_BE
+    # constraint.
+    good = []
+    for (combo_ids, module_id, data_node_id, i_combo, cattrs) in sub_pathways:
+        module = network.nodes[module_id]
+    
         # For convenience, list the MUST_BE constraints for this module.
-        cons_must_be = {}  # index -> attr name -> value
+        cons_must_be = {}  # input index -> attr name -> value
         for cons in module.constraints:
             if cons.behavior != MUST_BE:
                 continue
@@ -2967,54 +3040,23 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
                 cons_must_be[index] = {}
             cons_must_be[index][cons.name] = cons.arg1
 
-        # Find the input node_ids that match a custom attribute.
-        if nodeid2parents is None:
-            nodeid2parents = _make_parents_dict(network)
-        x = nodeid2parents[module_id]
-        x = [x for x in x if x in path_node_ids]
-        combos = _bc_to_input_ids(
-            network, module_id, custom_attributes, all_input_ids=x,
-            nodeid2parents=nodeid2parents)
-        for node_ids in combos:
-            I = range(len(node_ids))
-            # Skip if this node ID has already been included.
-            I = [i for i in I if node_ids[i] not in data_node_ids]
-            # Ignore daf.
-            I = [i for i in I if i not in daf]
-            # Ignore if no custom attribute for this data type.
-            I = [i for i in I
-                 if network.nodes[node_ids[i]].datatype.name in all_dnames]
-            # Ignore if there is a MUST_BE constraint on this data type.
-            j = 0
-            while j < len(I):
-                i = I[j]
-                if i not in cons_must_be:
-                    j += 1
-                    continue
-                cons_attr_names = cons_must_be[i].keys()
-                dname = network.nodes[node_ids[i]].datatype.name
-                attr_names1 = dname2attrs1.get(dname, {}).keys()
-                attr_names2 = dname2attrs2.get(dname, {}).keys()
-                attr_names = {}.fromkeys(attr_names1 + attr_names2).keys()
-                # If there is overlap between the constraints and the
-                # user attributes, then the constraint does not apply
-                # to this.
-                x = _intersect(cons_attr_names, attr_names)
-                if not x:
-                    j += 1
-                    continue
-                del I[j]
-            node_ids = [node_ids[i] for i in I]
-            data_node_ids = data_node_ids.union(node_ids)
+        # If the custom attributes conflict with this constraint,
+        # then don't use it.
+        cons_attrs = cons_must_be.get(i_combo, {})
+        conflict = False
+        for attr in cattrs.attributes:
+            if attr.name in cons_attrs and attr.value != cons_attrs[attr.name]:
+                conflict = True
+                break
+        if conflict:
+            continue
+        good.append((combo_ids, module_id, data_node_id, i_combo, cattrs))
+    sub_pathways = good
 
-        #x = nodeid2parents.get(module_id, [])
-        #x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
-        #x = [x for x in x if x in path_node_ids]
-        #$node_ids = x
-        #data_node_ids = data_node_ids.union(node_ids)
+    # Step 8: Make sure the data node is bottom-most data node of that
+    # type.
 
-    # Requirement 3: The node_ids must not have any descendents of the
-    # same type.  (applies to dname2attrs1, but not dname2attrs2)
+    # Cache the node IDs that don't have any descendents.
     no_desc = set()
     for node_id in data_node_ids:
         x = descendents.get(node_id, [])
@@ -3023,39 +3065,70 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
         x = [network.nodes[x].datatype.name for x in x]
         if network.nodes[node_id].datatype.name not in x:
             no_desc.add(node_id)
+            
+    good = []
+    for (combo_ids, module_id, data_node_id, i_combo, cattrs) in sub_pathways:
+        node = network.nodes[data_node_id]
 
-    # Match the node_ids to the attributes.
-    nodeid2attrs = {}   # node_id -> attr name -> value
-    for node_id in data_node_ids:
-        node = network.nodes[node_id]
-        # no_desc takes precedence over all_nodes.
-        attrs = None
-        if node_id in no_desc:
-            attrs = dname2attrs1.get(node.datatype.name)
-        if attrs is None:
-            attrs = dname2attrs2.get(node.datatype.name)
-        if not attrs:
+        if data_node_id not in no_desc and not cattrs.all_nodes:
             continue
-        nodeid2attrs[node_id] = attrs
+        good.append((combo_ids, module_id, data_node_id, i_combo, cattrs))
+    sub_pathways = good
 
-    # List the node_ids that either don't match the user attributes,
-    # or are ambiguous, e.g.
-    # Fastq.adapters = [no, yes]; user wants no
-    mismatch_node_ids = set()
-    ambiguous_node_ids = set()
-    for (node_id, attrs) in nodeid2attrs.iteritems():
-        node = network.nodes[node_id]
-        for name, uvalue in attrs.iteritems():
-            dvalue = node.attributes[name]
+
+    # At this point, we have a list of all the nodes that are subject
+    # to custom_attributes, as well as an assignment to the proper
+    # custom_attribute.  List the node_ids that either conflict with
+    # the custom attributes, or are ambiguous, e.g.
+    #     Fastq.adapters = [no, yes]; user wants no
+    # If the values are all the same, then ignore.
+    match_node_ids = {}      # node_id -> CustomAttributes
+    mismatch_node_ids = {}   # node_id -> CustomAttributes
+    ambiguous_node_ids = {}  # node_id -> CustomAttributes
+    for (combo_ids, module_id, data_node_id, i_combo, cattrs) in sub_pathways:
+        node = network.nodes[data_node_id]
+        
+        # If the custom attributes conflict with this data node, then
+        # don't use it.
+        conflict = False    # any attribute conflicts
+        ambiguous = False   # any attribute is ambiguous
+        for attr in cattrs.attributes:
+            assert attr.name in node.attributes
+            uvalue = attr.value                    # user value
+            dvalue = node.attributes[attr.name]    # network value
             utype = _get_attribute_type(uvalue)
             dtype = _get_attribute_type(dvalue)
-            assert utype == TYPE_ATOM
-            if dtype == TYPE_ENUM:
-                ambiguous_node_ids.add(node_id)
-                continue
-            if dvalue != uvalue:
-                mismatch_node_ids.add(node_id)
 
+            # CASE   USER   NETWORK   RESULT
+            #   1    ATOM    ATOM     CONFLICT if items aren't equal.
+            #   2    ATOM    ENUM     AMBIG if ATOM in ENUM.  else CONFLICT.
+            #   3    ENUM    ATOM     error
+            #   4    ENUM    ENUM     error
+            assert utype is TYPE_ATOM
+            if dtype == TYPE_ATOM:
+                if uvalue != dvalue:
+                    conflict = True
+            elif dtype == TYPE_ENUM:
+                if uvalue in dvalue:
+                    ambiguous = True
+                else:
+                    conflict = True
+            else:
+                raise AssertionError
+        if conflict:
+            mismatch_node_ids[data_node_id] = cattrs
+        elif ambiguous:
+            ambiguous_node_ids[data_node_id] = cattrs
+        else:
+            match_node_ids[data_node_id] = cattrs
+
+    # If a node matches a custom attribute (or is ambiguous), then
+    # don't make it a mismatch to another.
+    x = match_node_ids.keys() + ambiguous_node_ids.keys()
+    for node_id in x:
+        if node_id in mismatch_node_ids:
+            del mismatch_node_ids[node_id]
+    
     if not mismatch_node_ids and not ambiguous_node_ids:
         return paths
 
@@ -3103,9 +3176,15 @@ def _prune_by_custom_attributes(network, custom_attributes, paths,
             in_data_ids, module_id, out_data_id = x
             if out_data_id in match:  # don't check if already done
                 continue
+
+            cattrs = ambiguous_node_ids[out_data_id]
+            attrs = {}
+            for x in cattrs.attributes:
+                attrs[x.name] = x.value
+            
             #name = network.nodes[out_data_id].datatype.name
             #attrs = dname2attrs[name]
-            attrs = nodeid2attrs[out_data_id]
+            #attrs = nodeid2attrs[out_data_id]
             key = module_id, in_data_ids, out_data_id
             if key not in path_cache:
                 # See if this set of attributes can be created from
@@ -3248,16 +3327,15 @@ def _prune_alternate_attributes1(
             continue
         
         # Choose a value.
-        
         chosen_value = None
         # Look in custom_attributes to see if one is favored by the user.
-        x = custom_attributes
-        x = [x for x in x if x.name == name]
-        x = [x for x in x
-             if x.datatype.name == network.nodes[node_id].datatype.name]
-        assert len(x) <= 1, "Multiple custom_attributes."
-        if x:
-            chosen_value = x[0].value
+        # Not sure if this is correct.  Need to look carefully to make
+        # sure right value goes to right node?
+        values = _get_custom_values(
+            custom_attributes, network.nodes[node_id].datatype.name, name)
+        assert len(values) <= 1, "Multiple custom_attributes."
+        if values:
+            chosen_value = values[0]
         if chosen_value is None:
             if "no" in value2pathids:
                 chosen_value = "no"
@@ -3548,13 +3626,12 @@ def _prune_alternate_attributes2(
         module_id, parent_ids, attr_name, attr_values = x
         # If there is a value specified in the custom attribute, use
         # that one.
-        for x in custom_attributes:
-            if x.datatype != network.nodes[parent_ids[0]].datatype:
-                continue
-            if x.name != attr_name:
-                continue
-            if x.value in attr_values:
-                desired_alternates[i] = attr_values.index(x.value)
+        values = _get_custom_values(
+            custom_attributes, network.nodes[parent_ids[0]].datatype.name,
+            attr_name)
+        for value in values:
+            if value in attr_values:
+                desired_alternates[i] = attr_values.index(value)
                 break
         if desired_alternates[i] is not None:
             continue
@@ -4956,6 +5033,13 @@ def _bc_to_inputs(
     return combos
 
 
+## # Sources of attribute values.
+## SRC_CONSEQUENCE = "consequence"
+## SRC_CONSTRAINT = "constraint"
+## SRC_CUSTOM = "custom"
+## SRC_OUT = "out"
+## SRC_DEFAULT = "default"
+
 def _bc_to_one_input(
     network, module_id, in_num, out_data_id, custom_attributes,
     force_default_input_attribute_to_be_all_values=False):
@@ -4982,8 +5066,8 @@ def _bc_to_one_input(
     # decreasing priority):
     # 1.  Consequence (i.e. SAME_AS_CONSTRAINT).
     # 2.  Constraint.
-    # 3.  custom attribute
-    # 4.  out_data              (default_attributes_from)
+    # 3.  custom attribute    (only if it doesn't conflict with #1 or #2)
+    # 4.  out_data            (default_attributes_from)
     # 5.  default output value of input datatype
     #
     # If the user attribute conflicts with a Constraint, the
@@ -5012,8 +5096,121 @@ def _bc_to_one_input(
     # Keep track of the source of the attribute, for debugging.
     attrsource = {}  # attribute name -> source
 
-    # Set the attributes in increasing order of priority.  Higher
-    # priority overwrites lower priority.
+    # Case 1.  Set the attributes based on the consequences.  If there
+    # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
+    # should be determined by the out_data.  e.g.
+    # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+    # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
+    #
+    # The module takes anything, produces the same value.  So the
+    # backchainer needs to preserve the value from the out_data.
+
+    # Set values based on SAME_AS_CONSTRAINT.
+    # Nothing to do for SET_TO, SET_TO_ONE_OF, BASED_ON_DATA.  (Does
+    # not affect input nodes.)
+    x = [x for x in module.consequences if x.behavior == SAME_AS_CONSTRAINT]
+    # Get the consequences that are based on this datatype.
+    x = [x for x in x if x.arg1 == in_num]
+    consequences = x
+    for consequence in consequences:
+        # Copy the value from the output data.
+        attributes[consequence.name] = out_data.attributes[consequence.name]
+        attrsource[consequence.name] = "consequence"
+
+    
+    # Case 2.  Set the attributes based on the constraints.
+    x = [x for x in module.constraints if x.input_index == in_num]
+    constraints = x
+    for constraint in constraints:
+        name = constraint.name
+
+        if constraint.behavior == SAME_AS:
+            constraint = _resolve_constraint(constraint, module.constraints)
+        assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]
+        
+        if name not in attributes:
+            attributes[name] = constraint.arg1
+            attrsource[name] = "constraint"
+            continue
+
+        cons_value = constraint.arg1
+        attr_value = attributes[name]
+        attr_type = _get_attribute_type(attributes[name]) # type of attr_value
+        
+        # Since more values may be allowed in the consequence,
+        # further refine based on the constraint.  E.g.:
+        # Consequence [A, B, C, D]     Case 1
+        # Constraint  [A, B]           Case 2
+
+        if constraint.behavior == MUST_BE:
+            # cons_value must be TYPE_ATOM
+            if attr_type == TYPE_ATOM:
+                assert attr_value == cons_value
+            elif attr_type == TYPE_ENUM:
+                assert cons_value in attr_value
+                attributes[name] = cons_value
+                attrsource[name] = "consequence+constraint"
+            else:
+                raise AssertionError
+        elif constraint.behavior == CAN_BE_ANY_OF:
+            # cons_value must be TYPE_ENUM
+            if attr_type == TYPE_ATOM:
+                assert attr_value in cons_value  # don't do anything
+            elif attr_type == TYPE_ENUM:
+                common = _intersect(attr_value, cons_value)
+                assert common
+                attributes[name] = cons_value
+                attrsource[name] = "consequence+constraint"
+            else:
+                raise AssertionError
+                                                               
+
+    # Case 3.  If the input data object does not proceed to the output
+    # data object, then use the attribute provided by the user.
+    x = [x for x in module.default_attributes_from if x.input_index == in_num]
+    if not x:
+        # Look for relevant custom attributes.
+        found = False
+        for cattrs in custom_attributes:
+            # Ignore attributes for other data types.
+            if _does_custom_attribute_apply(
+                cattrs, network, module_id, in_datatype, attributes):
+                found = True
+                break
+        if found:
+            for custom in cattrs.attributes:
+                # If the attribute is already set by a constraint,
+                # then refine the value by the custom attribute.
+                if attrsource.get(custom.name) == "constraint":
+                    attr_value = attributes[custom.name]
+                    attr_type = _get_attribute_type(attributes[custom.name])
+                    cust_type = _get_attribute_type(custom.value)
+                    if attr_type == TYPE_ENUM:
+                        if cust_type == TYPE_ATOM:
+                            if custom.value in attr_value:
+                                attributes[custom.name] = custom.value
+                                attrsource[custom.name] = "constraint,custom"
+                        elif cust_type == TYPE_ENUM:
+                            x = _intersect(attr_value, custom.value)
+                            if x:
+                                attributes[custom.name] = x
+                                attrsource[custom.name] = "constraint,custom"
+                        else:
+                            raise AssertionError
+                
+                if custom.name not in attributes:
+                    attributes[custom.name] = custom.value
+                    attrsource[custom.name] = "default"
+                
+    
+    # Case 4.  If default_attributes_from is the same as in_num, then
+    # fill with the same values as the out_data.
+    indexes = [x.input_index for x in module.default_attributes_from]
+    if in_num in indexes:
+        for name, value in out_data.attributes.iteritems():
+            if name not in attributes:
+                attributes[name] = value
+                attrsource[name] = "out"
 
     # Case 5.  Set values from defaults.
     #
@@ -5026,160 +5223,230 @@ def _bc_to_one_input(
         if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES or \
                force_default_input_attribute_to_be_all_values:
             default = attrdef.values
-        attributes[attrdef.name] = default
-        attrsource[attrdef.name] = "default"
 
-    # Case 4.  If default_attributes_from is the same as in_num, then
-    # fill with the same values as the out_data.
-    indexes = [x.input_index for x in module.default_attributes_from]
-    if in_num in indexes:
-        for name, value in out_data.attributes.iteritems():
-            attributes[name] = value
-            attrsource[name] = "out_data"
-
-    # Case 3.  If the input data object does not proceed to the output
-    # data object, then use the attribute provided by the user.
-    # Applies:
-    # 1.  Only the the first (lowest) time this data type is seen in
-    #     the network.
-    # 2.  Every time.
-    attrs1 = {}
-    attrs2 = {}
-    x = [x for x in module.default_attributes_from if x.input_index == in_num]
-    if not x:
-        # Look for relevant custom attributes.
-        for attr in custom_attributes:
-            # Ignore attributes for other data types.
-            if attr.datatype.name != in_datatype.name:
-                continue
-            if not attr.all_nodes:
-                attrs1[attr.name] = attr.value
-            else:
-                attrs2[attr.name] = attr.value
-        ## Set values from user attributes.
-        #for attr in custom_attributes:
-        #    # Ignore attributes for other data types.
-        #    if attr.datatype.name != in_datatype.name:
-        #        continue
-        #    attributes[attr.name] = attr.value
-        #    attrsource[attr.name] = "user"
-
-    # Found potentially relevant custom attributes.  Apply them if
-    # there are no descendents with the same data type.
-    if attrs1 and not \
-           _has_descendent_of_datatype(network, module_id, in_datatype.name):
-        for name, value in attrs1.iteritems():
-            attributes[name] = value
-            attrsource[name] = "user"
-    # Set values that should apply to every node in the network.
-    for name, value in attrs2.iteritems():
-        attributes[name] = value
-        attrsource[name] = "user"
-    
-
-    # Case 2.  Set the attributes based on the constraints.
-    for constraint in module.constraints:
-        if constraint.input_index != in_num:
-            continue
-
-        if constraint.behavior == MUST_BE:
-            attributes[constraint.name] = constraint.arg1
-            attrsource[constraint.name] = "constraint"
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            value = constraint.arg1
-            source = "constraint"
-
-            # If the user specified an attribute, then refine by it.
-            # Refine by default value?
-            # o If YES: network may suggest that only the default for
-            #   an attribute is acceptable, when other values would
-            #   work.
-            # o If NO: may generate large network.
-
-            #if attrsource.get(constraint.name) in ["user", "default"]:
-            if attrsource.get(constraint.name) in ["user"]:
-                x = _get_attribute_type(attributes[constraint.name])
-                if x == TYPE_ATOM:
-                    if attributes[constraint.name] in value:
-                        value = attributes[constraint.name]
-                        source = "constraint,%s" % attrsource[constraint.name]
-                elif x == TYPE_ENUM:
-                    x = _intersect(attributes[constraint.name], value)
+        # If the attribute is set by a constraint, and the default is
+        # a subset of this, should I refine the constraint by the
+        # default?
+        # o YES: network may suggest that only the default for an
+        #   attribute is acceptable, when other values would work.
+        # o NO: more correct, but may generate large network.
+        if False and attrsource.get(attrdef.name) == "constraint":
+            attr_value = attributes[attrdef.name]
+            attr_type = _get_attribute_type(attributes[attrdef.name])
+            def_type = _get_attribute_type(default)
+            if attr_type == TYPE_ENUM:
+                if def_type == TYPE_ATOM:
+                    if default in attr_value:
+                        attributes[attrdef.name] = default
+                        attrsource[attrdef.name] = "constraint,default"
+                elif def_type == TYPE_ENUM:
+                    x = _intersect(attr_value, default)
                     if x:
-                        value = x
-                        source = "constraint,%s" % attrsource[constraint.name]
+                        attributes[attrdef.name] = x
+                        attrsource[attrdef.name] = "constraint,default"
                 else:
                     raise AssertionError
-            attributes[constraint.name] = value
-            attrsource[constraint.name] = source
-        elif constraint.behavior == SAME_AS:
-            # Handled in _bc_to_inputs.
-            pass
-        else:
-            raise AssertionError
 
-    # Case 1.  Set the attributes based on the consequences.  If there
-    # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
-    # should be determined by the out_data.  e.g.
-    # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
-    # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
-    #
-    # The module takes anything, produces the same value.  So the
-    # backchainer needs to preserve the value from the out_data.
+        if attrdef.name not in attributes:
+            attributes[attrdef.name] = default
+            attrsource[attrdef.name] = "default"
 
-    # Get SAME_AS_CONSTRAINT.  Nothing to do for SET_TO,
-    # SET_TO_ONE_OF, BASED_ON_DATA.
-    x = [x for x in module.consequences if x.behavior == SAME_AS_CONSTRAINT]
-    # Get the consequences that are based on this datatype.
-    x = [x for x in x if x.arg1 == in_num]
-    consequences = x
-    for consequence in consequences:
-        n = consequence.name
-        source = "consequence"
 
-        # Copy the value from the output data.
-        data_value = out_data.attributes[n]
-        data_type = _get_attribute_type(data_value)
+    ## # Start with empty attributes.
+    ## attributes = {}
 
-        # Since more values may be allowed in the consequence,
-        # further refine based on the constraint.  E.g.:
-        # Constraint  [A, B]
-        # Consequence [A, B, C, D]
-        x = [x for x in module.constraints if x.name == n]
-        x = [x for x in x if x.input_index == in_num]
-        assert len(x) > 0
-        assert len(x) == 1
-        constraint = x[0]
-        if constraint.behavior == SAME_AS:
-            constraint = _resolve_constraint(constraint, module.constraints)
-        if constraint.behavior == MUST_BE:
-            # constraint.arg1  <value>
-            if data_type == TYPE_ATOM:
-                assert constraint.arg1 == data_value
-            elif data_type == TYPE_ENUM:
-                assert constraint.arg1 in data_value
-                data_value = constraint.arg1
-                source = "consequence+constraint"
-            else:
-                raise AssertionError
-        elif constraint.behavior == CAN_BE_ANY_OF:
-            # constraint.arg1  list of <values>
-            if data_type == TYPE_ATOM:
-                assert data_value in constraint.arg1
-            elif data_type == TYPE_ENUM:
-                common = _intersect(constraint.arg1, data_value)
-                assert common
-                data_value = common
-                source = "consequence+constraint"
-            else:
-                raise AssertionError
-        else:
-            raise AssertionError
+    ## # Keep track of the source of the attribute, for debugging.
+    ## attrsource = {}  # attribute name -> source
 
-        attributes[n] = data_value
-        attrsource[n] = source
+    ## # Set the attributes in increasing order of priority.  Higher
+    ## # priority overwrites lower priority.
+
+    ## # Case 5.  Set values from defaults.
+    ## #
+    ## # Using default attributes makes things a lot simpler and
+    ## # mitigates combinatorial explosion.  However, it can close up
+    ## # some possibilities.  What if the value should be something other
+    ## # than the default?
+    ## for attrdef in in_datatype.attribute_defs.itervalues():
+    ##     default = attrdef.default_out
+    ##     if DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES or \
+    ##            force_default_input_attribute_to_be_all_values:
+    ##         default = attrdef.values
+    ##     attributes[attrdef.name] = default
+    ##     attrsource[attrdef.name] = "default"
+
+    ## # Case 4.  If default_attributes_from is the same as in_num, then
+    ## # fill with the same values as the out_data.
+    ## indexes = [x.input_index for x in module.default_attributes_from]
+    ## if in_num in indexes:
+    ##     for name, value in out_data.attributes.iteritems():
+    ##         attributes[name] = value
+    ##         attrsource[name] = "out_data"
+
+    ## # Do Case 3 last, so can see if it conflicts with Case 1 or Case 2.
+
+    ## # Case 2.  Set the attributes based on the constraints.
+    ## for constraint in module.constraints:
+    ##     if constraint.input_index != in_num:
+    ##         continue
+
+    ##     if constraint.behavior == MUST_BE:
+    ##         attributes[constraint.name] = constraint.arg1
+    ##         attrsource[constraint.name] = "constraint"
+    ##     elif constraint.behavior == CAN_BE_ANY_OF:
+    ##         value = constraint.arg1
+    ##         source = "constraint"
+
+    ##         # If the user specified an attribute, then refine by it.
+    ##         # Refine by default value?
+    ##         # o If YES: network may suggest that only the default for
+    ##         #   an attribute is acceptable, when other values would
+    ##         #   work.
+    ##         # o If NO: may generate large network.
+
+    ##         #if attrsource.get(constraint.name) in ["user", "default"]:
+    ##         if attrsource.get(constraint.name) in ["user"]:
+    ##             x = _get_attribute_type(attributes[constraint.name])
+    ##             if x == TYPE_ATOM:
+    ##                 if attributes[constraint.name] in value:
+    ##                     value = attributes[constraint.name]
+    ##                     source = "constraint,%s" % attrsource[constraint.name]
+    ##             elif x == TYPE_ENUM:
+    ##                 x = _intersect(attributes[constraint.name], value)
+    ##                 if x:
+    ##                     value = x
+    ##                     source = "constraint,%s" % attrsource[constraint.name]
+    ##             else:
+    ##                 raise AssertionError
+    ##         attributes[constraint.name] = value
+    ##         attrsource[constraint.name] = source
+    ##     elif constraint.behavior == SAME_AS:
+    ##         # Handled in _bc_to_inputs.
+    ##         pass
+    ##     else:
+    ##         raise AssertionError
+
+    ## # Case 1.  Set the attributes based on the consequences.  If there
+    ## # is a Consequence that is SAME_AS_CONSTRAINT, then the attribute
+    ## # should be determined by the out_data.  e.g.
+    ## # Constraint("quantile_norm", CAN_BE_ANY_OF, ["no", "yes"])
+    ## # Consequence("quantile_norm", SAME_AS_CONSTRAINT)
+    ## #
+    ## # The module takes anything, produces the same value.  So the
+    ## # backchainer needs to preserve the value from the out_data.
+
+    ## # Get SAME_AS_CONSTRAINT.  Nothing to do for SET_TO,
+    ## # SET_TO_ONE_OF, BASED_ON_DATA.
+    ## x = [x for x in module.consequences if x.behavior == SAME_AS_CONSTRAINT]
+    ## # Get the consequences that are based on this datatype.
+    ## x = [x for x in x if x.arg1 == in_num]
+    ## consequences = x
+    ## for consequence in consequences:
+    ##     n = consequence.name
+    ##     source = "consequence"
+
+    ##     # Copy the value from the output data.
+    ##     data_value = out_data.attributes[n]
+    ##     data_type = _get_attribute_type(data_value)
+
+    ##     # Since more values may be allowed in the consequence,
+    ##     # further refine based on the constraint.  E.g.:
+    ##     # Constraint  [A, B]
+    ##     # Consequence [A, B, C, D]
+    ##     x = [x for x in module.constraints if x.name == n]
+    ##     x = [x for x in x if x.input_index == in_num]
+    ##     assert len(x) > 0
+    ##     assert len(x) == 1
+    ##     constraint = x[0]
+    ##     if constraint.behavior == SAME_AS:
+    ##         constraint = _resolve_constraint(constraint, module.constraints)
+    ##     if constraint.behavior == MUST_BE:
+    ##         # constraint.arg1  <value>
+    ##         if data_type == TYPE_ATOM:
+    ##             assert constraint.arg1 == data_value
+    ##         elif data_type == TYPE_ENUM:
+    ##             assert constraint.arg1 in data_value
+    ##             data_value = constraint.arg1
+    ##             source = "consequence+constraint"
+    ##         else:
+    ##             raise AssertionError
+    ##     elif constraint.behavior == CAN_BE_ANY_OF:
+    ##         # constraint.arg1  list of <values>
+    ##         if data_type == TYPE_ATOM:
+    ##             assert data_value in constraint.arg1
+    ##         elif data_type == TYPE_ENUM:
+    ##             common = _intersect(constraint.arg1, data_value)
+    ##             assert common
+    ##             data_value = common
+    ##             source = "consequence+constraint"
+    ##         else:
+    ##             raise AssertionError
+    ##     else:
+    ##         raise AssertionError
+
+    ##     attributes[n] = data_value
+    ##     attrsource[n] = source
+
+    ## # Case 3.  If the input data object does not proceed to the output
+    ## # data object, then use the attribute provided by the user.
+    ## # Applies:
+    ## # 1.  Only the the first (lowest) time this data type is seen in
+    ## #     the network.
+    ## # 2.  Every time.
+    ## attrs1 = {}
+    ## attrs2 = {}
+    ## x = [x for x in module.default_attributes_from if x.input_index == in_num]
+    ## if not x:
+    ##     # A constraint may refine a custom attributes.
+        
+    ##     # Look for relevant custom attributes.
+    ##     for cattrs in custom_attributes:
+    ##         # Ignore attributes for other data types.
+    ##         _does_custom_attribute_apply(
+    ##             cattrs, network, module_id, in_datatype,
+    ##             attributes, attrsource)
+    ##         if cattrs.datatype.name != in_datatype.name:
+    ##             continue
+    ##         attrs = attrs1
+    ##         if cattrs.all_nodes:
+    ##             attrs = attrs2
+    ##         for x in cattrs.attributes:
+    ##             attrs[x.name] = x.value
+
+    ## # Found potentially relevant custom attributes.  Apply them if
+    ## # there are no descendents with the same data type.
+    ## if attrs1 and not \
+    ##        _has_descendent_of_datatype(network, module_id, in_datatype.name):
+    ##     for name, value in attrs1.iteritems():
+    ##         attributes[name] = value
+    ##         attrsource[name] = "user"
+    ## # Set values that should apply to every node in the network.
+    ## for name, value in attrs2.iteritems():
+    ##     attributes[name] = value
+    ##     attrsource[name] = "user"
+    
 
     return attributes, attrsource
+
+
+def _does_custom_attribute_apply(
+    cattrs, network, module_id, in_datatype, attributes):
+    # Should only be called by:
+    #   _bc_to_one_input
+    if cattrs.datatype.name != in_datatype.name:
+        return False
+    if not cattrs.all_nodes and _has_descendent_of_datatype(
+        network, module_id, in_datatype.name):
+        return False
+    # If there are conflicts with any of the higher priority
+    # attributes, then it doesn't apply.
+    for attr in cattrs.attributes:
+        value = attributes.get(attr.name)
+        if value is None:
+            continue
+        if not _is_attribute_compatible(attr.value, value):
+            return False
+    return True
 
 
 def _has_descendent_of_datatype(network, node_id, datatype_name):
@@ -6646,6 +6913,36 @@ def _can_reach_by_fc(network, node_id, good_ids=None):
         ids = network.transitions.get(nid, [])
         stack.extend(ids)
     return reachable_ids
+
+
+def _get_custom_names(custom_attributes, datatype_name):
+    # Return a list of the attribute names for this datatype.
+    names = []
+    for cattr in custom_attributes:
+        if cattr.datatype.name != datatype_name:
+            continue
+        for attr in cattr.attributes:
+            # Names might be duplicated, if multiple nodes have
+            # custom attributes for the same attribute.
+            #assert attr.name not in names, "Duplicate: %s" % attr.name
+            if attr.name not in names:
+                names.append(attr.name)
+    return names
+
+
+def _get_custom_values(custom_attributes, datatype_name, attribute_name):
+    # Return a list of values specified for this datatype and
+    # attribute name.
+    values = []
+    for cattr in custom_attributes:
+        if cattr.datatype.name != datatype_name:
+            continue
+        for attr in cattr.attributes:
+            if attr.name != attribute_name:
+                continue
+            if attr.value not in values:
+                values.append(attr.value)
+    return values
 
 
 # THIS FUNCTION IS REALLY SLOW.  DO NOT USE.

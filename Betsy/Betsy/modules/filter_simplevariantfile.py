@@ -9,60 +9,58 @@ class Module(AbstractModule):
         out_filename):
         import shutil
         from genomicode import filelib
+        from genomicode import vcflib
         from Betsy import module_utils as mlib
 
         simple_file = in_data.identifier
         metadata = {}
 
-        x = mlib.get_user_option(user_options, "remove_sample")
+        x = mlib.get_user_option(user_options, "remove_samples")
         x = x.split(",")
         x = [x.strip() for x in x]
         remove_samples = x
 
         x = mlib.get_user_option(
+            user_options, "remove_radia_rna_samples",
+            allowed_values=["no", "yes"])
+        remove_radia_rna_samples = (x == "yes")
+
+
+        x = mlib.get_user_option(
             user_options, "apply_filter", allowed_values=["no", "yes"])
         apply_filter = (x == "yes")
 
-        ## min_total_reads = mlib.get_user_option(
-        ##     user_options, "filter_by_min_total_reads", not_empty=True,
-        ##     type=int)
-        ## assert min_total_reads >= 0 and min_total_reads < 10000
-        
-        ## min_alt_reads = mlib.get_user_option(
-        ##     user_options, "filter_by_min_alt_reads", not_empty=True,
-        ##     type=int)
-        ## assert min_alt_reads >= 0 and min_alt_reads < 10000
-
-        ## min_gq = mlib.get_user_option(
-        ##     user_options, "filter_by_min_GQ", not_empty=True, type=float)
-        ## assert min_gq >= 0 and min_gq < 1000
-
-        ## assert remove_samples or min_total_reads or min_alt_reads or min_gq, \
-        ##        "No filter"
-        
-        CALLER2PASSFN = {
-            "MuTect" : is_pass_mutect,
-            "VarScan2" : is_pass_varscan,
-            "Strelka" : is_pass_strelka,
-            "SomaticSniper" : is_pass_somaticsniper,
-            "mutationSeq" : is_pass_jointsnvmix,
-            }
+        wgs_or_wes = mlib.get_user_option(
+            user_options, "wgs_or_wes", not_empty=True,
+            allowed_values=["wgs", "wes"])
 
         TEMPFILE = "temp.txt"
         handle = open(TEMPFILE, 'w')
         it = filelib.read_row(simple_file, header=1)
         print >>handle, "\t".join(it._header)
         for d in it:
+
+            # Find the caller.
+            for caller in vcflib.CALLERS:
+                caller = caller()
+                if caller.name == d.Caller:
+                    break
+            else:
+                raise AssertionError, "Unknown caller: %s" % caller.name
+            
             # remove_sample
             if d.Sample in remove_samples:
                 continue
+            if remove_radia_rna_samples and d.Sample.endswith("_RNA"):
+                continue
+            
 
             # apply_filter
             if apply_filter:
-                assert d.Caller in CALLER2PASSFN, \
-                       "Unknown caller: %s" % d.Caller
-                is_pass_fn = CALLER2PASSFN[d.Caller]
-                if not is_pass_fn(d):
+                args = d.Filter,
+                if d.Caller == "MuSE":
+                    args = d.Filter, wgs_or_wes
+                if not caller.is_pass(*args):
                     continue
 
             ## # filter_by_min_alt_reads
@@ -103,77 +101,3 @@ class Module(AbstractModule):
     
     def name_outfile(self, antecedents, user_options):
         return "variants.txt"
-
-
-def is_pass_mutect(d):
-    # FILTER:
-    # PASS
-    # REJECT
-
-    # Keep FILTER==PASS
-    assert d.Filter in ["PASS", "REJECT"]
-    if d.Filter == "REJECT":
-        return False
-    return True
-
-
-def is_pass_varscan(d):
-    # FILTER:
-    # PASS
-    # indelError
-    #
-    # Same for SNP and indel.
-
-    # Keep FILTER==PASS
-    assert d.Filter in [
-        "PASS", "indelError", "REFERENCE", "GERMLINE", "LOH", "UNKNOWN"]
-    if d.Filter == "PASS":
-        return True
-    return False
-
-
-def is_pass_strelka(d):
-    # FILTER:
-    # PASS
-    # BCNoise
-    # BCNoise;DP
-    # BCNoise;QSS_ref
-    # BCNoise;QSS_ref;DP
-    # BCNoise;QSS_ref;SpanDel
-    # DP
-    # DP;SpanDel
-    # QSS_ref
-    # QSS_ref;DP
-    # QSS_ref;DP;SpanDel
-    # QSS_ref;SpanDel
-    # 
-    # Same for SNP and indels
-    #
-    # While VCF file is semicolon separated, SimpleVariantFile is
-    # comma separated.
-
-    assert d.Filter.find(";") < 0
-    filters = d.Filter.split(",")
-    if len(filters) > 1:
-        return False
-    if filters[0] != "PASS":
-        return False
-    return True
-
-
-def is_pass_somaticsniper(d):
-    # FILTER:
-    # .
-    # Changed by merging code.
-    assert d.Filter in [
-        "PASS", "WILDTYPE", "GERMLINE", "LOH", "UNKNOWN"]
-    if d.Filter == "PASS":
-        return True
-    return False
-
-
-def is_pass_jointsnvmix(d):
-    # FILTER:
-    # PASS  (for snp)
-    # INDL  (for indel)
-    return True

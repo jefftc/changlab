@@ -20,8 +20,8 @@
 # TrimmomaticSummary
 # 
 # NumAlignedReads
-# DepthOfCoverage
-# AlignmentCIGARFolder   # Summarizes each alignment.  CIGAR, edit distance
+# DepthOfCoverage          # Average sequencing depth.
+# AlignmentCIGARFolder     # Summarizes each alignment.  CIGAR, edit distance
 # PerfectAlignmentSummary  # How many alignments have no mismatches
 #
 #

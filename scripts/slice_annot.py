@@ -30,6 +30,7 @@
 # upper_annots
 # lower_annots
 # set_value_if_empty
+# set_value_if_not_empty
 # copy_value_if_empty
 # copy_value_if_empty_header
 # copy_value_if_empty_same_header
@@ -40,6 +41,7 @@
 # apply_re_to_annots
 # merge_annots
 # merge_annots_to_new_col
+# merge_annots_to_new_col_skip_empty
 # split_annots
 #
 # _add_annots
@@ -699,6 +701,33 @@ def set_value_if_empty(MATRIX, params):
     return MATRIX
 
 
+def set_value_if_not_empty(MATRIX, params):
+    # list of strings in format of: <indexes 1-based>,<value>
+    if not params:
+        return MATRIX
+
+    jobs = []    # list of (index 0-based, value)
+    for x in params:
+        x = x.split(",")
+        assert len(x) == 2, "format should be: <index 1-based>,<value>"
+        indexes, value = x
+        I = parse_indexes(MATRIX, indexes)
+        for i in I:
+            jobs.append((i, value))
+
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        index, value = x
+        h = MATRIX.headers_h[index]
+        
+        # Change the annotations in place.
+        annots = MATRIX.header2annots[h]
+        for i in range(len(annots)):
+            if annots[i].strip():
+                annots[i] = value
+    return MATRIX
+
+
 def copy_value_if_empty(MATRIX, copy_values):
     # copy_values is list of strings in format of: <dst>,<src 1>[,<src
     # 2>...].
@@ -1081,6 +1110,46 @@ def merge_annots_to_new_col(MATRIX, merge_annots):
         dst_annots = [""] * MATRIX.num_annots()
         for i in range(len(dst_annots)):
             x = [x[i] for x in src_annots]
+            x = merge_char.join(x)
+            dst_annots[i] = x
+        headers.append(dst_name)
+        all_annots.append(dst_annots)
+
+    return AnnotationMatrix.create_from_annotations(headers, all_annots)
+
+
+def merge_annots_to_new_col_skip_empty(MATRIX, merge_annots):
+    # list of strings in format of:
+    # <src indexes 1-based>;<dst col name>;<char>
+    if not merge_annots:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    jobs = []   # list of (src indexes 0-based, dst_name, char)
+    for fmt in merge_annots:
+        x = fmt.split(";")
+        assert len(x) == 3, \
+               "format should be: <src indexes>;<dst name>;<char>.  Got %s" % \
+               fmt
+        src_indexes_str, dst_name, merge_char = x
+        src_indexes = parse_indexes(MATRIX, src_indexes_str)
+        jobs.append((src_indexes, dst_name, merge_char))
+
+    headers = MATRIX.headers[:]
+    all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+    
+    for x in jobs:
+        src_indexes, dst_name, merge_char = x
+
+        src_annots = []
+        for i in src_indexes:
+            h = MATRIX.headers_h[i]
+            x = MATRIX.header2annots[h]
+            src_annots.append(x)
+        dst_annots = [""] * MATRIX.num_annots()
+        for i in range(len(dst_annots)):
+            x = [x[i] for x in src_annots]
+            x = [x for x in x if x]  # only if not empty
             x = merge_char.join(x)
             dst_annots[i] = x
         headers.append(dst_name)
@@ -2387,7 +2456,11 @@ def main():
         help="Convert annotations to lower case.  Format: 1-based indexes.")
     group.add_argument(
         "--set_value_if_empty", default=[], action="append",
-        help="If the column is empty, set with this value.  "
+        help="If an annotation is empty, set with this value.  "
+        "Format: <index 1-based>,<value>.  (MULTI)")
+    group.add_argument(
+        "--set_value_if_not_empty", default=[], action="append",
+        help="If an annotation is not empty, set with this value.  "
         "Format: <index 1-based>,<value>.  (MULTI)")
     group.add_argument(
         "--copy_value_if_empty", default=[], action="append",
@@ -2438,6 +2511,11 @@ def main():
     group.add_argument(
         "--merge_annots_to_new_col", default=[], action="append",
         help="Merge a multiple annotations into one string.  "
+        "Format: <src indexes>;<dst name>;<merge char>.  (MULTI)")
+    group.add_argument(
+        "--merge_annots_to_new_col_skip_empty", default=[], action="append",
+        help="Merge a multiple annotations into one string.  "
+        "Ignores annotations that are blank.  "
         "Format: <src indexes>;<dst name>;<merge char>.  (MULTI)")
     group.add_argument(
         "--split_annots", default=[], action="append",
@@ -2649,6 +2727,7 @@ def main():
     MATRIX = upper_annots(MATRIX, args.upper_annots)
     MATRIX = lower_annots(MATRIX, args.lower_annots)
     MATRIX = set_value_if_empty(MATRIX, args.set_value_if_empty)
+    MATRIX = set_value_if_not_empty(MATRIX, args.set_value_if_not_empty)
     MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
     MATRIX = copy_value_if_empty_header(
         MATRIX, args.copy_value_if_empty_header)
@@ -2663,6 +2742,8 @@ def main():
     MATRIX = apply_re_to_annots(MATRIX, args.apply_re_to_annots)
     MATRIX = merge_annots(MATRIX, args.merge_annots)
     MATRIX = merge_annots_to_new_col(MATRIX, args.merge_annots_to_new_col)
+    MATRIX = merge_annots_to_new_col_skip_empty(
+        MATRIX, args.merge_annots_to_new_col_skip_empty)
     MATRIX = split_annots(MATRIX, args.split_annots)
     MATRIX = split_chr_start_end(MATRIX, args.split_chr_start_end)
 
