@@ -72,7 +72,7 @@ def summarize_vcf_file(filename, filestem, header, outfilename, lock):
         ref = var.ref
         alt = ",".join(var.alt)
         filter_str = vcf.caller.get_filter(var)
-        
+
         for sample in var.samples:
             # If sample begins with an integer, there may be a
             # "X" pre-pended to it.  Try to detect this case

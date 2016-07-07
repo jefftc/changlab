@@ -664,8 +664,10 @@ class StrelkaCaller(Caller):
 
     # For INDEL calls.
     # FORMAT:TAR   reads for alternate alleles in tiers 1,2
+    #              means reference and any other conflicting candidate indels
     # FORMAT:TIR   reads for indel allele in tiers 1,2
     # FORMAT:TOR   other reads for tiers 1,2
+    #              other are alleles that cannot be distinguished
     
     def __init__(self):
         Caller.__init__(self, "Strelka")
@@ -684,11 +686,11 @@ class StrelkaCaller(Caller):
     def get_call(self, var, sample):
         assert sample in var.sample2genodict, "Unknown sample: %s" % sample
         genodict = var.sample2genodict[sample]
-        total_reads = _parse_vcf_value(
-            genodict["DP"], to_int=1, len_exactly=1)[0]
 
         # For SNPs.
         if "AU" in genodict:
+            total_reads = _parse_vcf_value(
+                genodict["DP"], to_int=1, len_exactly=1)[0]
             # Includes values for two tiers.  Use tier 1 data.
             au = _parse_vcf_value(genodict["AU"], to_int=1, len_exactly=2)
             cu = _parse_vcf_value(genodict["CU"], to_int=1, len_exactly=2)
@@ -712,8 +714,11 @@ class StrelkaCaller(Caller):
                     raise AssertionError, "Unknown alt: %s" % alt
         # For INDELs.
         else:
+            tar = _parse_vcf_value(genodict["TAR"], to_int=1, len_exactly=2)
             tir = _parse_vcf_value(genodict["TIR"], to_int=1, len_exactly=2)
+            tor = _parse_vcf_value(genodict["TOR"], to_int=1, len_exactly=2)
             # Use Tier1 results for indel reads.
+            total_reads = tar[0] + tir[0] + tor[0]
             num_alt = [tir[0]]
             
         num_ref = total_reads - sum(num_alt)

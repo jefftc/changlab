@@ -1227,6 +1227,8 @@ def make_GATK_command(**params):
 def make_MuTect_command(**params):
     from genomicode import config
 
+    # Mutect 1.1.4 only works with Java 6.
+    # Mutect 1.1.7 (from Github) only works with Java 7.
     name = "mutect_java"
     assert hasattr(config, name), "Missing from genomicode config: %s" % name
     java_path = getattr(config, name)

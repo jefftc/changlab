@@ -119,16 +119,18 @@ def run_pipeline(
     while stack:
         DEBUG_POOL = pool
         it += 1
-        #if it >= MAX_ITER:
-        #    start_ids = [x[0] for x in start_nodes]
-        #    done_ids = [x for x in pool if x not in start_ids]
-        #    all_ids = [x for x in path_ids
-        #               if x not in done_ids and x not in start_ids]
-        #    bie3.plot_network_gv(
-        #        "broken.png", network, options=user_options, bold=path_ids,
-        #        bold_transitions=path_transitions, highlight_yellow=all_ids,
-        #        highlight_green=start_ids, highlight_orange=done_ids,
-        #        verbose=True)
+        if DEBUG_RUN_PIPELINE and it >= MAX_ITER:
+            debug_file = "broken.png"
+            print "Saving network: %s" % debug_file
+            start_ids = [x[0] for x in start_nodes]
+            done_ids = [x for x in pool if x not in start_ids]
+            all_ids = [x for x in path_ids
+                       if x not in done_ids and x not in start_ids]
+            bie3.plot_network_gv(
+                debug_file, network, options=user_options, bold=path_ids,
+                bold_transitions=path_transitions, highlight_yellow=all_ids,
+                highlight_green=start_ids, highlight_orange=done_ids,
+                verbose=True)
         assert it < MAX_ITER, "Too many iterations: %d" % it
 
         # Make sure we're not stuck in an infinite loop.

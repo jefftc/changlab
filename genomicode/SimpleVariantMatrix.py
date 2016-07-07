@@ -21,6 +21,9 @@ make_matrix
 read
 write
 
+read_as_am      Return an AnnotationMatrix with samples and callers members.
+write_from_am
+
 """
 # TODO: Use AnnotationMatrix as underlying representation.  Implement
 # special read and write functions to handle the header.
@@ -429,3 +432,105 @@ def _parse_call(call_str):
 ##             I.append(i)
 ##     assert I
 ##     return I
+
+
+def write_from_am(handle_or_file, svm_matrix):
+    from genomicode import jmath
+
+    headers0 = [None] * len(svm_matrix.headers)
+    headers1 = [None] * len(svm_matrix.headers)
+    headers2 = [None] * len(svm_matrix.headers)
+    for i, header in enumerate(svm_matrix.headers):
+        x = header.split("___")
+        assert len(x) == 3
+        headers0[i] = x[0]
+        headers1[i] = x[1]
+        headers2[i] = x[2]
+
+    # Clean up the headers.
+    for i in range(len(headers0)-1, -1, -1):
+        if headers0[i] == headers0[i-1]:
+            headers0[i] = ""
+        if headers1[i] == headers1[i-1]:
+            headers1[i] = ""
+    
+    matrix = []
+    for i, header_h in enumerate(svm_matrix.headers_h):
+        h0 = headers0[i]
+        h1 = headers1[i]
+        h2 = headers2[i]
+        annots = svm_matrix.header2annots[header_h]
+        x = [h0, h1, h2] + annots
+        matrix.append(x)
+    # Transpose the matrix.
+    matrix = jmath.transpose(matrix)
+
+    handle = handle_or_file
+    if type(handle) is type(""):
+        handle = open(handle, 'w')
+    for x in svm_matrix.headerlines:
+        print >>handle, x
+    for x in matrix:
+        print >>handle, "\t".join(map(str, x))
+
+
+def read_as_am(filename, is_csv=False):
+    from genomicode import filelib
+    from genomicode import AnnotationMatrix
+    
+    delimiter = "\t"
+    if is_csv:
+        delimiter = ","
+
+    matrix = []
+    for x in filelib.read_cols(filename, delimiter=delimiter):
+        matrix.append(x)
+    assert len(matrix) >= 3      # at least 3 rows for the header
+    for i in range(1, len(matrix)):
+        assert len(matrix[i]) == len(matrix[0])
+    assert len(matrix[0]) >= 4   # Chrom, Pos, Ref, Alt
+    assert len(matrix[0]) >= 5, "No calls"
+
+    header0 = matrix[0]
+    header1 = matrix[1]
+    header2 = matrix[2]
+    assert header2[:4] == ["Chrom", "Pos", "Ref", "Alt"]
+
+    # Fill in the blanks for header1.
+    for i in range(1, len(header1)):
+        # if header0[i], then this block over.
+        if not header1[i] and not header0[i]:
+            header1[i] = header1[i-1]
+    # Fill in the blanks for header0.
+    for i in range(1, len(header0)):
+        if not header0[i]:
+            header0[i] = header0[i-1]
+
+    # Make a list of all samples.
+    I = [i for (i, x) in enumerate(header2) if x == "Ref/Alt/VAF"]
+    assert I
+    x = [header0[i] for i in I]
+    x = [x for x in x if x]
+    # Get rid of duplicates, preserving order.
+    x = [x[i] for (i, y) in enumerate(x) if y not in x[:i]]
+    samples = x
+
+    # Make a list of all callers.
+    x = [header1[i] for i in I]
+    x = [x for x in x if x]
+    # Get rid of duplicates, preserving order.
+    x = [x[i] for (i, y) in enumerate(x) if y not in x[:i]]
+    callers = x
+
+    headers = []
+    for x in zip(header0, header1, header2):
+        x = "___".join(x)
+        headers.append(x)
+    all_annots = []
+    for j in range(len(headers)):
+        annots = [x[j] for x in matrix[3:]]
+        all_annots.append(annots)
+    matrix = AnnotationMatrix.create_from_annotations(headers, all_annots)
+    matrix.samples = samples
+    matrix.callers = callers
+    return matrix

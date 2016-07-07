@@ -15,7 +15,7 @@
 # 6.  SimpleVariantMatrix.filtered=yes   Filter on reads, exons, etc.
 #
 # VCFRecalibrationReport  # For GATK VariantRecalibrator.
-# PileupSummary
+# PileupSummary                     Used for VarScan calling.
 # PositionsFile                     0-based coords
 # NormalCancerFile
 # IntervalListFile
@@ -68,6 +68,16 @@
 
 # TODO: Make a constant for ["yes", "no"]
 
+# Calculate the consensus reads at specific positions.
+# PositionsFile -> summarize_consensus_mpileup -> PileupSummary
+#   -> call_consensus_varscan
+# coordinates_from is either "unknown" or "simplevariantmatrix".
+#
+# Summarize the reads across the genome.
+# summarize_reads_mpileup -> PileupSummary -> call_variants_varscan
+#                                          -> call_somatic_varscan
+# coordinate_from is "whole_genome".
+
     
 
 from Betsy.bie3 import *
@@ -78,11 +88,11 @@ import GeneExpProcessing as GXP
 CALLERS = [
     "none", "mpileup", "gatk", "platypus", "varscan", "mutect", "strelka",
     "somaticsniper", "jointsnvmix", "muse", "radia"]
-VARTYPES = ["all", "snp", "indel", "consensus"]
-VARTYPE_NOT_CONSENSUS = [x for x in VARTYPES if x != "consensus"]
+VARTYPES = ["all", "snp", "indel"]
+#VARTYPE_NOT_CONSENSUS = [x for x in VARTYPES if x != "consensus"]
 BACKFILLS = ["no", "yes", "consensus"]
 
-COORDINATES_FROM = ["unknown", "simplevariantmatrix"]
+COORDINATES_FROM = ["unknown", "simplevariantmatrix", "whole_genome"]
 
 
 
@@ -113,6 +123,9 @@ VCFFolder = DataType(
     #AttributeDef(
     #    "mpileup_summary", ["no", "yes"], "no", "no",
     #    help="Whether this is just summary information from mpileup."),
+    AttributeDef(
+        "is_consensus", ["no", "yes"], "no", "no",
+        help="Whether this is a consensus call."),
     AttributeDef(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
@@ -195,6 +208,7 @@ PileupSummary = DataType(
     AttributeDef(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
+    # Always consensus
     AttributeDef(
         "coordinates_from", COORDINATES_FROM, "unknown", "unknown",
         help="Where do these coordinates come from."),
@@ -237,6 +251,9 @@ PositionSpecificDepthOfCoverage = DataType(
     AttributeDef(
         "coordinates_from", COORDINATES_FROM, "unknown", "unknown",
         help="Where do these coordinates come from."),
+    AttributeDef(
+        "vartype", VARTYPES, "snp", "snp",
+        help="What kind of variants are held in this file."),
     help="The amount of sequencing coverage at specific positions (0-based).",
     )
 
@@ -342,8 +359,11 @@ all_modules = [
         #Consequence("caller", SET_TO, "mpileup"),
         #Consequence("mpileup_summary", SET_TO, "yes"),
         #Consequence("vartype", SET_TO_ONE_OF, ["all", "consensus"]),
-        Constraint("vartype", CAN_BE_ANY_OF, VARTYPE_NOT_CONSENSUS, 2),
-        Consequence("vartype", SET_TO, "consensus"),
+        #Constraint("vartype", CAN_BE_ANY_OF, VARTYPE_NOT_CONSENSUS, 2),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES, 2),
+        #Constraint("vartype", SAME_AS, 0, 2),
+        Consequence("vartype", SAME_AS_CONSTRAINT, 2),
+        #Consequence("vartype", SET_TO, "consensus"),
         help="Use mpileup to summarize mapped reads."),
     ModuleNode(
         "summarize_reads_mpileup",
@@ -355,6 +375,7 @@ all_modules = [
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         #Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 2),
         Consequence("vartype", SET_TO, "all"),
+        Consequence("coordinates_from", SET_TO, "whole_genome"),
         help="Use mpileup to summarize mapped reads."),
 
     ModuleNode(
@@ -402,8 +423,10 @@ all_modules = [
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT),
-        Constraint("vartype", MUST_BE, "consensus"),
+        #Constraint("vartype", MUST_BE, "consensus"),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
         Consequence("vartype", SAME_AS_CONSTRAINT),
+        Consequence("is_consensus", SET_TO, "yes"),
         #Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Consequence("caller", SET_TO, "varscan"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
@@ -420,6 +443,7 @@ all_modules = [
         #Consequence("contents", SAME_AS_CONSTRAINT),
         #Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         #Consequence("vartype", SAME_AS_CONSTRAINT),
+        Constraint("coordinates_from", MUST_BE, "whole_genome"),
         Constraint("vartype", MUST_BE, "all"),
         Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
         #Constraint("samtools_indexed", MUST_BE, "yes", 1),
@@ -433,6 +457,7 @@ all_modules = [
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("coordinates_from", MUST_BE, "whole_genome"),
         Constraint("vartype", MUST_BE, "all", 0),
         Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
         #Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
@@ -599,6 +624,7 @@ all_modules = [
             VCFFolder, # SomaticSniper
             VCFFolder, # JointSNVMix
             VCFFolder, # MuSE
+            VCFFolder, # Radia
             ],
         ManyCallerVCFFolders,
         Constraint("caller", MUST_BE, "mutect", 0),
@@ -619,13 +645,15 @@ all_modules = [
         Constraint("caller", MUST_BE, "muse", 5),
         Constraint("vartype", MUST_BE, "snp", 5),
         Constraint("somatic", MUST_BE, "yes", 5),
+        Constraint("caller", MUST_BE, "radia", 6),
+        Constraint("vartype", MUST_BE, "snp", 6),
+        Constraint("somatic", MUST_BE, "yes", 6),
         Consequence("vartype", SET_TO, "snp"),
         help="Call variants with all implemented somatic variant callers.",
         ),
 
     ModuleNode(
-        # TODO: remove _snp from the name.
-        "merge_manycallervcffolders_snp",
+        "merge_manycallervcffolders",
         ManyCallerVCFFolders, SimpleVariantFile,
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
@@ -879,12 +907,17 @@ all_modules = [
         DefaultAttributesFrom(0),
         Constraint("backfilled", MUST_BE, "no", 0),
         Consequence("backfilled", SET_TO, "yes"),
-        Constraint("vartype", CAN_BE_ANY_OF, VARTYPE_NOT_CONSENSUS, 0),
+        #Constraint("vartype", CAN_BE_ANY_OF, VARTYPE_NOT_CONSENSUS, 0),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES, 0),
+        Constraint("vartype", SAME_AS, 0, 1),
         Consequence("vartype", SAME_AS_CONSTRAINT),
         Constraint("caller", CAN_BE_ANY_OF, CALLERS, 0),
         Consequence("caller", SAME_AS_CONSTRAINT),
         Constraint("backfilled", MUST_BE, "consensus", 1),
-        Constraint("vartype", MUST_BE, "consensus", 1),
+        Constraint("is_consensus", MUST_BE, "no", 0),
+        Constraint("is_consensus", MUST_BE, "yes", 1),
+        Consequence("is_consensus", SAME_AS_CONSTRAINT, 1),
+        #Constraint("vartype", MUST_BE, "consensus", 1),
         Constraint("caller", CAN_BE_ANY_OF, CALLERS, 1),
         ),
     #ModuleNode(
@@ -903,7 +936,10 @@ all_modules = [
         VCFFolder, PositionSpecificDepthOfCoverage,
         Constraint("backfilled", MUST_BE, "consensus"),
         Constraint("caller", MUST_BE, "varscan"),
-        Constraint("vartype", MUST_BE, "consensus"),
+        Constraint("is_consensus", MUST_BE, "yes"),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        #Constraint("vartype", MUST_BE, "consensus"),
         Constraint("coordinates_from", CAN_BE_ANY_OF, COORDINATES_FROM),
         Consequence("coordinates_from", SAME_AS_CONSTRAINT),
         ),

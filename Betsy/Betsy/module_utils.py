@@ -980,8 +980,10 @@ def assert_normal_cancer_samples(normal_cancer_data, have_samples,
             all_samples.append(cancer_sample)
     missing = [x for x in all_samples if x not in have_samples]
     x = parselib.pretty_list(missing, max_items=5)
-    assert not missing, "Missing samples: %s" % x
-    
+    s = "samples"
+    if len(x) == 1:
+        s = "sample"
+    assert not missing, "Missing %s [%d]: %s" % (s, len(missing), x)
 
 
 def check_inpath(path):

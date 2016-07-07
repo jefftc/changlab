@@ -15,6 +15,7 @@ class Module(AbstractModule):
 
         CALLERS = [
             "mutect", "varscan", "strelka", "somaticsniper", "jointsnvmix",
+            "muse", "radia",
             ]
         vcf_paths = [x.identifier for x in antecedents]
         assert len(CALLERS) == len(vcf_paths)
