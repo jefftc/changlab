@@ -14,7 +14,7 @@ class Module(AbstractModule):
         from Betsy import module_utils as mlib
 
         # For debugging.
-        RUN_VARIANT_CALLING = False
+        RUN_VARIANT_CALLING = True
         FILTER_CALLS = True
         MERGE_CALLS = True
         FIX_VCF_FILES = True
@@ -520,5 +520,5 @@ def _run_filterRadia_with_restart(cmd, cancer_sample, chrom, logfile):
             continue
         # Otherwise, the process failed for some other reason.  Raise
         # an exception.
-        raise AssertionError, "Problem filtering: %s %s" % (
-            cancer_sample, chrom)
+        raise AssertionError, "Problem filtering: %s %s\n%s" % (
+            cancer_sample, chrom, log)

@@ -1072,16 +1072,21 @@ all_modules = [
             help="(OPTIONAL).",
             ),
         Constraint("base_quality_recalibrated", MUST_BE, "no", 0),
+        # BamFolder attributes should match those in
+        # recalibrate_base_quality_scores.  Otherwise, the BamFolder
+        # used for mkaing the recalibration report may be different
+        # from the one whose scores are recalibrated.
+        
+        Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
-        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("indel_realigned", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("indexed", MUST_BE, "yes", 0),
-        Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
-        Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Calculate the statistics for base recalibration "
         "(BaseRecalibrator).",
         ),
@@ -1102,6 +1107,7 @@ all_modules = [
         Constraint("indel_realigned", MUST_BE, "yes", 0),
         Consequence("indel_realigned", SAME_AS_CONSTRAINT),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", SAME_AS, 0, 2),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
