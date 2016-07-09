@@ -31,8 +31,12 @@ class Module(AbstractModule):
         
         samtools = filelib.which_assert(config.samtools)
 
+        # Calculate the number of threads per process.
+        nc = module_utils.calc_max_procs_from_ram(4, upper_max=num_cores)
+        num_threads = max(nc/len(jobs), 1)
+
         # Make a list of samtools commands.
-        # Takes ~1 Gb per process.
+        # Without -m, takes ~1 Gb per process.
         sq = parallel.quote
         commands = []
         for x in jobs:
@@ -52,14 +56,20 @@ class Module(AbstractModule):
                 "sort",
                 "-O", "bam",
                 "-T", temp_prefix,
+                "-m", "4G",    # Crashing, so try increasing memory.
                 sq(in_filename),
                 "-o", sq(out_filename),
                 ]
-            x = " ".join(x)
+            if num_threads > 1:
+                x += ["-@", num_threads]
+            x = " ".join(map(str, x))
             commands.append(x)
         metadata["commands"] = commands
+        metadata["num_cores"] = nc
 
-        parallel.pshell(commands, max_procs=num_cores)
+        parallel.pshell(commands, max_procs=nc)
+        #for cmd in commands:
+        #    parallel.sshell(cmd)
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]

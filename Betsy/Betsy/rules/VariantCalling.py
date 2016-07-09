@@ -766,6 +766,7 @@ all_modules = [
         Constraint("annotated", MUST_BE, "yes", 0),
         Consequence("annotated", SAME_AS_CONSTRAINT),
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
+        Constraint("vartype", SAME_AS, 0, 1),
         Consequence("vartype", SAME_AS_CONSTRAINT),
         Constraint("coordinates_from", MUST_BE, "simplevariantmatrix", 1),
         ),
