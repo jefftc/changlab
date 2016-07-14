@@ -9,6 +9,7 @@ class Module(AbstractModule):
         out_filename):
         from genomicode import filelib
         from genomicode import SimpleVariantMatrix
+        from genomicode import AnnotationMatrix
 
         simple_file = in_data.identifier
         metadata = {}
@@ -67,8 +68,13 @@ class Module(AbstractModule):
             coord_data[x] = 1
         coord_data = sorted(coord_data)
 
+
+        # Make a list of all DNA calls.
         call_data = []
         for d in ds:
+            assert d.Source in ["DNA", "RNA"]
+            if d.Source != "DNA":
+                continue
             num_ref = num_alt = vaf = None
             if d.Num_Ref:
                 num_ref = int(d.Num_Ref)
@@ -81,10 +87,22 @@ class Module(AbstractModule):
             call = SimpleVariantMatrix.Call(num_ref, num_alt, vaf)
             x = d.Chrom, int(d.Pos), d.Ref, d.Alt, d.Sample, d.Caller, call
             call_data.append(x)
+            
+        # sample -> caller -> chrom, pos, ref, alt -> call
+        samp2caller2coord2call = {}
+        for x in call_data:
+            chrom, pos, ref, alt, sample, caller, call = x
+            coord = chrom, pos, ref, alt
+            if sample not in samp2caller2coord2call:
+                samp2caller2coord2call[sample] = {}
+            caller2coord2call = samp2caller2coord2call[sample]
+            if caller not in caller2coord2call:
+                caller2coord2call[caller] = {}
+            coord2call = caller2coord2call[caller]
+            coord2call[coord] = call
 
-        # Make a named matrix that shows the number of callers that
-        # called a variant at each position for each sample.
-        named_data = []
+        # Count the number of callers that called a variant at each
+        # position for each sample.
         samp2coord2nc = {}  # sample -> chrom, pos, ref, alt -> num_callers
         for x in call_data:
             chrom, pos, ref, alt, sample, caller, call = x
@@ -93,23 +111,73 @@ class Module(AbstractModule):
                 samp2coord2nc[sample] = {}
             nc = samp2coord2nc[sample].get(coord, 0) + 1
             samp2coord2nc[sample][coord] = nc
-        headers = samples
+
+        # Format everything into an annotation matrix.
+        headers0 = []
+        headers1 = []
+        headers2 = []
         all_annots = []
+
+        # Add the positions.
+        headers0 += ["", "", "", ""]
+        headers1 += ["", "", "", ""]
+        headers2 += ["Chrom", "Pos", "Ref", "Alt"]
+        for i in range(4):
+            x = [x[i] for x in coord_data]
+            x = [str(x) for x in x]
+            all_annots.append(x)
+
+        # Add the number of callers information.
+        headers0 += ["Num Callers"] * len(samples)
+        headers1 += [""] * len(samples)
+        headers2 += samples
         for sample in samples:
             annots = []
             for coord in coord_data:
                 nc = samp2coord2nc.get(sample, {}).get(coord, "")
                 annots.append(nc)
             all_annots.append(annots)
-        if headers:
-            x = "Num Callers", headers, all_annots
-            named_data.append(x)
 
-        annot_header = ["Chrom", "Pos", "Ref", "Alt"]
-        matrix = SimpleVariantMatrix.make_matrix(
-            samples, callers, annot_header, coord_data, named_data,
-            call_data)
-        SimpleVariantMatrix.write(out_filename, matrix)
+        # Add information about calls.
+        for sample in samples:
+            caller2coord2call = samp2caller2coord2call.get(sample, {})
+            for i, caller in enumerate(callers):
+                h0 = ""
+                if not i:
+                    h0 = sample
+                h1 = caller
+                h2 = "Ref/Alt/VAF"
+                headers0.append(h0)
+                headers1.append(h1)
+                headers2.append(h2)
+                
+                coord2call = caller2coord2call.get(caller, {})
+                annots = []
+                for coord in coord_data:
+                    x = ""
+                    call = coord2call.get(coord)
+                    if call:
+                        x = SimpleVariantMatrix._format_call(call)
+                    annots.append(x)
+                all_annots.append(annots)
+
+
+        # Set the headers.
+        assert len(headers0) == len(headers1)
+        assert len(headers0) == len(headers2)
+        assert len(headers0) == len(all_annots)
+        headers = [None] * len(headers0)
+        for i, x in enumerate(zip(headers0, headers1, headers2)):
+            x = "___".join(x)
+            headers[i] = x
+        matrix = AnnotationMatrix.create_from_annotations(headers, all_annots)
+        SimpleVariantMatrix.write_from_am(out_filename, matrix)
+        
+        #annot_header = ["Chrom", "Pos", "Ref", "Alt"]
+        #matrix = SimpleVariantMatrix.make_matrix(
+        #    samples, callers, annot_header, coord_data, named_data,
+        #    call_data)
+        #SimpleVariantMatrix.write(out_filename, matrix)
 
         return metadata
 

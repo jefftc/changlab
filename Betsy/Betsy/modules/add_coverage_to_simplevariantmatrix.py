@@ -15,6 +15,15 @@ class Module(AbstractModule):
         filelib.assert_exists_nz(simple_node.identifier)
         filelib.assert_exists_nz(coverage_node.identifier)
 
+        # Figure out if I'm adding coverage data from DNA or RNA.
+        in_attrs = simple_node.data.attributes
+        out_attrs = out_attributes
+        name = "with_rna_coverage"
+        assert name in in_attrs and name in out_attrs
+        is_rna_cov = False
+        if in_attrs[name] == "no" and out_attrs[name] == "yes":
+            is_rna_cov = True
+            
         # Read the variant file.
         SVM = SimpleVariantMatrix.read(simple_node.identifier)
         AM = SVM.annot_matrix
@@ -27,7 +36,7 @@ class Module(AbstractModule):
         # Read the coverage matrix.
         # Chrom  Pos  <Sample>  [<Sample> ...]
         # Pos is 1-based.
-        coord2sample2cov = {}  # (chrom, pos) -> sample -> coverage
+        coord2sample2cov = {}  # (chrom, pos) -> sample -> ref/alt/vaf
         cov_samples = {}
         for d in filelib.read_row(coverage_node.identifier, header=1):
             coord = d.Chrom, int(d.Pos)
@@ -38,7 +47,8 @@ class Module(AbstractModule):
                 cov = d._cols[i]
                 if not cov:
                     continue
-                coord2sample2cov[coord][sample] = int(cov)
+                #coord2sample2cov[coord][sample] = int(cov)
+                coord2sample2cov[coord][sample] = cov
                 cov_samples[sample] = 1
 
         # Make sure the samples from the variant matrix can be found
@@ -64,7 +74,7 @@ class Module(AbstractModule):
             coord = CHROM[i], POS[i]
             sample2cov = coord2sample2cov.get(coord, {})
             x = [sample2cov.get(x, "") for x in SVM.samples]
-            x = map(str, x)
+            #x = map(str, x)
             matrix[i] = x
 
         # Add the matrix back to the simple variant matrix.
@@ -73,8 +83,13 @@ class Module(AbstractModule):
         for j in range(len(headers)):
             x = [matrix[i][j] for i in range(len(matrix))]
             all_annots.append(x)
+        name = "Coverage"
+        # If this is being used to add RNA coverage, use a different
+        # name.
+        if is_rna_cov:
+            name = "RNA Coverage"
         x = AnnotationMatrix.create_from_annotations(headers, all_annots)
-        SVM.named_matrices.append(("Coverage", x))
+        SVM.named_matrices.append((name, x))
 
         # Write to file.
         SimpleVariantMatrix.write(out_filename, SVM)

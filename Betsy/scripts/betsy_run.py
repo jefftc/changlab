@@ -153,14 +153,14 @@ def generate_network(rulebase, outtype,
         for x in out_custom_attribute.attributes:
             assert x.name not in attrs
             attrs[x.name] = x.value
-    #out_datatype = getattr(rulebase, outtype)
+    out_datatype = getattr(rulebase, outtype)
+    out_data = out_datatype.output(**attrs)
     #for cattr in custom_attributes:
     #    if cattr.datatype.name != out_datatype.name:
     #        continue
     #    for x in cattr.attributes:
     #        assert x.name not in attrs
     #        attrs[x.name] = x.value
-    out_data = out_custom_attribute.datatype.output(**attrs)
 
     # There may be a bug in here somehow where impossible networks can
     # be created.  e.g. FastqFolder:orientation="unknown" ->
@@ -1465,7 +1465,7 @@ def main():
         rulebase, outtype, custom_attributes, out_custom_attribute)
     #plot_network(
     #    args.network_png, network, user_options=user_options,
-    #    verbose=verbose)
+    #    verbose=verbose_network)
 
     # Step 2.5: Make sure network has more than one node.
     if not check_more_than_one_node_network(network):
