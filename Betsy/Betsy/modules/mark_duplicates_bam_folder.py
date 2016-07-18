@@ -11,9 +11,9 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
         
-        bam_filenames = module_utils.find_bam_files(in_data.identifier)
+        bam_filenames = mlib.find_bam_files(in_data.identifier)
         assert bam_filenames, "No .bam files."
         filelib.safe_mkdir(out_path)
         metadata = {}
@@ -57,16 +57,23 @@ class Module(AbstractModule):
                 #"CREATE_INDEX=true",
                 "VALIDATION_STRINGENCY=LENIENT",
                 "REMOVE_DUPLICATES=true",
+                # BAM files should be sorted.
+                # Actuallly, DEPRECATED now.
+                #"ASSUME_SORTED=true",
                 "TMP_DIR=%s" % sq(out_path),
                 ]
             x = " ".join(x)
             x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
 
-        # Takes ~2 Gb per process.
-        parallel.pshell(commands, max_procs=num_cores)
+        # java may use additional threads for garbage collection.
+        # https://sourceforge.net/p/picard/wiki/Main_Page/
+
+        # Takes ~10 Gb per process.
+        nc = mlib.calc_max_procs_from_ram(20, upper_max=num_cores)
+        parallel.pshell(commands, max_procs=nc)
         metadata["commands"] = commands
-        metadata["num_cores"] = num_cores
+        metadata["num_cores"] = nc
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]

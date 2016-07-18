@@ -50,11 +50,16 @@ def _print_rulebase(rulebase):
     x = [x for x in x if isinstance(x, bie3.DataType)]
     datatypes = x
 
+    # Count the attributes.
+    num_attributes = 0
+    for dt in datatypes:
+        num_attributes += len(dt.attribute_defs)
+
     # Make a list of the modules
     modules = rulebase.all_modules
 
-    print "Rulebase contains %d data types and %d modules." % (
-        len(datatypes), len(modules))
+    print "Rulebase contains %d data types, %d attributes, and %d modules." % (
+        len(datatypes), num_attributes, len(modules))
 
     # Print each DataType object.
     for dt in datatypes:
@@ -153,14 +158,14 @@ def generate_network(rulebase, outtype,
         for x in out_custom_attribute.attributes:
             assert x.name not in attrs
             attrs[x.name] = x.value
-    #out_datatype = getattr(rulebase, outtype)
+    out_datatype = getattr(rulebase, outtype)
+    out_data = out_datatype.output(**attrs)
     #for cattr in custom_attributes:
     #    if cattr.datatype.name != out_datatype.name:
     #        continue
     #    for x in cattr.attributes:
     #        assert x.name not in attrs
     #        attrs[x.name] = x.value
-    out_data = out_custom_attribute.datatype.output(**attrs)
 
     # There may be a bug in here somehow where impossible networks can
     # be created.  e.g. FastqFolder:orientation="unknown" ->
@@ -1037,6 +1042,8 @@ def _parse_args(args):
     output = None          # name of datatype
     out_identifier = None  # identifier
     out_parameters = []    # list of (datatype, key, value, all_nodes)
+    # out_parameters can refer to output, or other internal nodes in
+    # the network.
 
     input_or_output = None
     i = 0
@@ -1079,7 +1086,8 @@ def _parse_args(args):
             datatype, key, value, all_nodes = _parse_dattr(dattr)
             assert output
             # This check won't work.  out_parameters also includes
-            # attributes for other data types in the network.
+            # attributes for internal nodes in the network that might
+            # have different data types.
             #assert datatype == output, \
             #       "Datatype mismatch: --dattr %s and --output %s." % (
             #    datatype, output)
@@ -1348,11 +1356,13 @@ def main():
     custom_attributes = []  # List of bie3.CustomAttributes objects.
     out_custom_attribute = None  # bie3.CustomAttributes
     if outtype:
-        # Get the custom_attributes.  These are the attributes from the
-        # output data (out_attributes), plus the attributes from the
-        # input data (to guide the inferencing engine).
+        # Pull out the custom_attributes.  These attributes can refer
+        # to:
+        # 1.  The input data (to guide the inferencing engine).
+        # 2.  The output data (out_attributes).
+        # 3.  Internal nodes (out_attributes, different data type).
 
-        # Get the custom attributes for the input nodes.
+        # Case 1.  Get the custom attributes for the input nodes.
         attrs = []  # list of (datatype, list of (key, value), all_nodes)
         for x in input_list:
             intype, identifier, attributes = x
@@ -1365,29 +1375,33 @@ def main():
             x = _make_custom_attr(rulebase, datatype, attributes, all_nodes)
             custom_attributes.append(x)
 
-        # out_attributes contains attributes for the output node, as
-        # well as other nodes in the network. Just group them by
-        # datatype.
-        # Since there's only one output, it should be put into the
-        # same CustomAttributes object.
+        # Case 2 and 3.  out_attributes contains attributes for both
+        # output and internal nodes.  Group them by datatype.
         # out_attributes is a list of (datatype, key, value, all_nodes)
-        if out_attributes:
-            x1 = [x[0] for x in out_attributes]  # datatype
-            x2 = [x[3] for x in out_attributes]  # all_nodes
-            x1 = sorted({}.fromkeys(x1))
-            x2 = sorted({}.fromkeys(x2))
-            assert len(x1) == 1
-            assert len(x2) == 1
-            datatype = x1[0]
-            all_nodes = x2[0]
-            out_attrs = [x for x in out_attributes
-                         if x[0] == datatype and x[3] == all_nodes]
-            if out_attrs:
-                attributes = [(x[1], x[2]) for x in out_attrs]
-                x = _make_custom_attr(
-                    rulebase, datatype, attributes, all_nodes)
-                out_custom_attribute = x
+        x = [x[0] for x in out_attributes]
+        x = sorted({}.fromkeys(x))
+        datatypes = x
+        assert datatypes
+        for dt in datatypes:
+            # Since there's only one output object, all attributes for
+            # that data type should be put into the same
+            # CustomAttributes object.
 
+            # Get all_nodes for this data type.  Should all be the same.
+            x = [x[3] for x in out_attributes if x[0] == dt]  # all_nodes
+            x = sorted({}.fromkeys(x))
+            assert len(x) == 1
+            all_nodes = x[0]
+            out_attrs = [x for x in out_attributes
+                         if x[0] == dt and x[3] == all_nodes]
+            assert out_attrs
+            attributes = [(x[1], x[2]) for x in out_attrs]
+            x = _make_custom_attr(
+                rulebase, dt, attributes, all_nodes)
+            if dt == outtype:
+                out_custom_attribute = x
+            else:
+                custom_attributes.append(x)
         
         ## # out_attributes contains attributes for the output node, as
         ## # well as other nodes in the network. Just group them by
@@ -1465,7 +1479,7 @@ def main():
         rulebase, outtype, custom_attributes, out_custom_attribute)
     #plot_network(
     #    args.network_png, network, user_options=user_options,
-    #    verbose=verbose)
+    #    verbose=verbose_network)
 
     # Step 2.5: Make sure network has more than one node.
     if not check_more_than_one_node_network(network):

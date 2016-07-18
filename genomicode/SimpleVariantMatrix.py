@@ -135,9 +135,12 @@ class SparseCallMatrix:
         if coord not in self.coord2samplecaller2call:
             self.coord2samplecaller2call[coord] = {}
         self.coord2samplecaller2call[coord][sc] = call
-            
+
 
 class Call:
+    # num_ref   int or None
+    # num_alt   int or None
+    # vaf       float or None
     def __init__(self, num_ref, num_alt, vaf):
         assert num_ref is None or type(num_ref) is type(0)
         assert num_alt is None or type(num_alt) is type(0)
@@ -395,6 +398,7 @@ def write(handle_or_file, variant_matrix):
 
 
 def _format_call(call):
+    # <ref>/<alt>/<vaf>
     # Some callers do not provide VAF.
     if not call:
         return ""
@@ -475,6 +479,9 @@ def write_from_am(handle_or_file, svm_matrix):
 
 
 def read_as_am(filename, is_csv=False):
+    # Header format:  <header0>___<header1>___<header2>
+    # "blanks" are filled in.  E.g. "Annovar" occurs in each Annovar
+    # column in header0.
     from genomicode import filelib
     from genomicode import AnnotationMatrix
     

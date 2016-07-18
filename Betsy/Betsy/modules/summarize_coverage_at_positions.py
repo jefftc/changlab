@@ -1,5 +1,11 @@
 from Module import AbstractModule
 
+# Chrom  Pos  <Sample>  [<Sample> ...]
+# 
+# Each value in the matrix is:
+# <ref>/<alt>/<vaf>
+
+
 class Module(AbstractModule):
     def __init__(self):
         AbstractModule.__init__(self)
@@ -11,6 +17,7 @@ class Module(AbstractModule):
         import stat
         from genomicode import filelib
         from genomicode import vcflib
+        from genomicode import SimpleVariantMatrix
         from Betsy import module_utils as mlib
 
         vcf_node = in_data
@@ -46,7 +53,7 @@ class Module(AbstractModule):
                 all_samples.append(sample)
 
         # Make a list of all the positions.
-        # sample name -> (chrom, pos) -> call
+        # sample name -> (chrom, pos) -> SimpleVariantMatrix.call
         sample2coord2call = {}
         for vcf in vcf_objects:
             for i in range(vcf.num_variants()):
@@ -56,8 +63,21 @@ class Module(AbstractModule):
                     coord2call = sample2coord2call.get(sample, {})
                     coord = var.chrom, var.pos
                     call = vcflib.get_call(var, sample)
+                    # convert to SimpleVariantMatrix.call
+                    call = vcflib.simplify_call(call)
+                    num_alt = None
+                    if call.num_alt:
+                        num_alt = call.num_alt[0]
+                    vaf = None
+                    if call.vaf:
+                        vaf = call.vaf[0]
+                    if call.num_ref is None and num_alt is None and \
+                           vaf is None:
+                        continue
+                    scall = SimpleVariantMatrix.Call(
+                        call.num_ref, num_alt, vaf)
                     assert coord not in coord2call
-                    coord2call[coord] = call
+                    coord2call[coord] = scall
                     sample2coord2call[sample] = coord2call
 
         all_coord = {}
@@ -80,8 +100,9 @@ class Module(AbstractModule):
                 call = coord2call.get(coord, None)
                 if not call:
                     continue
-                coverage[i] = vcflib._format_vcf_value(
-                    call.total_reads, None_char="")
+                coverage[i] = SimpleVariantMatrix._format_call(call)
+                #coverage[i] = vcflib._format_vcf_value(
+                #    call.total_reads, None_char="")
             
             x = [chrom, pos_f] + coverage
             assert len(x) == len(header)

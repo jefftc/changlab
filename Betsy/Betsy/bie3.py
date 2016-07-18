@@ -47,6 +47,7 @@ check_moduledb
 print_modules
 print_network
 plot_network_gv
+get_node_name
 
 read_network
 write_network
@@ -179,6 +180,7 @@ debug_print
 DEBUG_BC = False
 DEBUG_PRUNE_PATHS = False
 DEBUG_FIND_PATHS = False
+DEBUG_PRUNE_CUSTOM_ATTRIBUTES = False
 
 
 
@@ -1018,7 +1020,9 @@ class ModuleNode:
             assert len(x) > 0, (
                 "%r: I could not find a constraint on %r for input "
                 "datatype %d." % (name, consequence.name, index))
-            assert len(x) == 1
+            assert len(x) == 1, (
+                "%r: Multiple constraints for %r for input "
+                "datatype %d." % (name, consequence.name, index))
             cons = x[0]
 
             # Make sure the values of this constraint are allowed in
@@ -1289,7 +1293,7 @@ def make_network(moduledb, out_data, custom_attributes):
     #network = _split_network(network)
 
     optimizers = [
-        # There should not be any cycles.
+        # There should not be any cycles.  This is not needed.
         #_OptimizeNoCycles(),
         _OptimizeNoInvalidOutputs(),
         _OptimizeNoDuplicateModules(),
@@ -1821,16 +1825,49 @@ class _OptimizeNoDuplicateModules:
         # Return a list of (node_id1, node_id2) for modules that are
         # duplicated.  If no duplicates found, return an empty list.
 
-        # DEFINITION: If the same data node points to two of the same
-        # module nodes, then those modules are duplicated.
+        node2parents = _make_parents_dict(network)
+
+        # Duplicated modules:
+
+        # CASE 1: If two modules of the same name have the same
+        #         parents, then those modules are duplicated.
+        # CASE 2: If two modules of the same name point to the same
+        #         children, then those modules are duplicated.
         pairs = {}
-        for node_id, next_ids in network.iterate(node_class=DataNode):
-            if len(next_ids) < 2:
+        for node_id1 in range(len(network.nodes)-1):
+            node1 = network.nodes[node_id1]
+            if not isinstance(node1, ModuleNode):
                 continue
-            next_ids = sorted(next_ids)
-            for (i, j) in _iter_upper_diag(len(next_ids)):
-                node_id1, node_id2 = next_ids[i], next_ids[j]
-                pairs[(node_id1, node_id2)] = 1
+            children1 = sorted(network.transitions.get(node_id1, []))
+            parents1 = sorted(node2parents.get(node_id1, []))
+            for node_id2 in range(node_id1+1, len(network.nodes)):
+                node2 = network.nodes[node_id2]
+                if not isinstance(node2, ModuleNode):
+                    continue
+                if node1.name != node2.name:
+                    continue
+                children2 = sorted(network.transitions.get(node_id2, []))
+                parents2 = node2parents.get(node_id2, [])
+                if children1 and children1 == sorted(children2):
+                    pairs[(node_id1, node_id2)] = 1
+                if parents1 and parents1 == sorted(parents2):
+                    pairs[(node_id1, node_id2)] = 1
+        
+        ## pairs = {}
+        ## for node_id, next_ids in network.iterate(node_class=DataNode):
+        ##     next_ids = sorted(next_ids)
+        ##     prev_ids = sorted(node2parents.get(node_id, []))
+
+        ##     for (i, j) in _iter_upper_diag(len(next_ids)):
+        ##         node_id1, node_id2 = next_ids[i], next_ids[j]
+        ##         pairs[(node_id1, node_id2)] = 1
+
+        ##     # Not sure if this is good, so leave out for now.
+        ##     # DEFINITION: If two of the same module nodes points to
+        ##     # the same data node, then those modules are duplicated.
+        ##     #for (i, j) in _iter_upper_diag(len(prev_ids)):
+        ##     #    node_id1, node_id2 = prev_ids[i], prev_ids[j]
+        ##     #    pairs[(node_id1, node_id2)] = 1
 
         dups = []
         for (id1, id2) in pairs:
@@ -1908,6 +1945,14 @@ class _OptimizeMergeData1:
     # them.  It makes the pipeline machinery more complicated.
     # VCFFolder.caller=mutect   ->  call_variants_all
     # VCFFolder.caller=varscan  ->
+    #
+    # Don't merge PileupSum because they go to different modules.  If
+    # merge, then cannot specify different PileupSum as inputs.
+    # Don't merge sum_cons_mpileup because they have different
+    # children and parents.
+    # Don't merge Bam because they go to different modules.
+    # Bam.aligner=bwa -> sum_cons_mpileup -> PileupSum.aligner=bwa -> dna_cov
+    # Bam.aligner=star -> sum_cons_mpileup -> PileupSum.aligner=star -> rna_cov
     #
     # If this happens, merge them to simplify the network.
     def __init__(self):
@@ -2936,7 +2981,6 @@ def _prune_by_custom_attributes(
     #     constraint.
     # 8.  Make sure the data node is bottom-most data node of that
     #     type.  (for custom_attributes where all_nodes=False)
-    
 
     # First, cache some variables for convenience.
     # Cache names of data types with custom attributes.
@@ -2955,12 +2999,19 @@ def _prune_by_custom_attributes(
     x = path_node_ids
     x = [x for x in x if isinstance(network.nodes[x], DataNode)]
     data_node_ids = x
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d data_node_ids (all)" %
+        len(data_node_ids))
 
     # Step 2: Only node IDs with a datatype subject to a custom
     # attribute.
     x = data_node_ids
     x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
     data_node_ids = set(x)
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d data_node_ids (same datatype as custom attribute)" %
+        len(data_node_ids))
 
     # Step 3: Make a list of the module IDs that these data nodes can
     # go through.
@@ -2970,9 +3021,14 @@ def _prune_by_custom_attributes(
         module_ids.extend(x)
     module_ids = [x for x in module_ids if x in path_node_ids]
     module_ids = set(module_ids)
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d module_ids" % len(module_ids))
 
     # Step 4: Calculate the inputs node IDs into each of the modules.
     # list of (combo_ids, module_id, data_node_id, i_combo)
+    #
+    # combo_ids (including data_node_id) -> module_id
+    #
     # combo_ids     list of node_ids that are the inputs to this module
     # data_node_id  node_id that may be subject to a custom attribute
     # i_combo       index of data_node_id into combo_ids 
@@ -2991,6 +3047,8 @@ def _prune_by_custom_attributes(
                     continue
                 x = combo_ids, module_id, node_id, i
                 sub_pathways.append(x)
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d sub_pathways" % len(sub_pathways))
 
     # Step 5: Only want sub_pathways where the input datatype is
     # different from the output datatype.
@@ -3010,6 +3068,9 @@ def _prune_by_custom_attributes(
             continue
         good.append((combo_ids, module_id, data_node_id, i_combo))
     sub_pathways = good
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (input and output different)" % len(sub_pathways))
 
     # Step 6: Assign each of the custom attributes to each of the
     # nodes.  Make sure the data types match.
@@ -3022,6 +3083,9 @@ def _prune_by_custom_attributes(
             x = combo_ids, module_id, data_node_id, i_combo, cattrs
             good.append(x)
     sub_pathways = good
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (matched to custom attributes)" % len(sub_pathways))
 
     # Step 7: Make sure the attribute does not conflict with a MUST_BE
     # constraint.
@@ -3052,6 +3116,9 @@ def _prune_by_custom_attributes(
             continue
         good.append((combo_ids, module_id, data_node_id, i_combo, cattrs))
     sub_pathways = good
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (no MUST_BE conflicts)" % len(sub_pathways))
 
     # Step 8: Make sure the data node is bottom-most data node of that
     # type.
@@ -3074,6 +3141,9 @@ def _prune_by_custom_attributes(
             continue
         good.append((combo_ids, module_id, data_node_id, i_combo, cattrs))
     sub_pathways = good
+    debug_print(
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (bottom-most)" % len(sub_pathways))
 
 
     # At this point, we have a list of all the nodes that are subject
@@ -3087,6 +3157,16 @@ def _prune_by_custom_attributes(
     ambiguous_node_ids = {}  # node_id -> CustomAttributes
     for (combo_ids, module_id, data_node_id, i_combo, cattrs) in sub_pathways:
         node = network.nodes[data_node_id]
+
+        # Print out the nodes.
+        debug_print(
+            DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "[%d] %s (%d) -> [%d] %s" % (
+                data_node_id, get_node_name(node), i_combo,
+                module_id, get_node_name(network.nodes[module_id])))
+        for attr in sorted(cattrs.attributes):
+            debug_print(
+                DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "  %s=%s (node is %s)" % (
+                    attr.name, attr.value, node.attributes[attr.name]))
         
         # If the custom attributes conflict with this data node, then
         # don't use it.
@@ -3117,10 +3197,13 @@ def _prune_by_custom_attributes(
                 raise AssertionError
         if conflict:
             mismatch_node_ids[data_node_id] = cattrs
+            debug_print(DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "conflict")
         elif ambiguous:
             ambiguous_node_ids[data_node_id] = cattrs
+            debug_print(DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "ambiguous")
         else:
             match_node_ids[data_node_id] = cattrs
+            debug_print(DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "good")
 
     # If a node matches a custom attribute (or is ambiguous), then
     # don't make it a mismatch to another.
@@ -3140,6 +3223,9 @@ def _prune_by_custom_attributes(
     delete = {}
     reason = {}  # path_i -> reason why deleted (for DEBUGGING)
     for (i, p) in enumerate(paths):
+        debug_print(
+            DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "Checking path %d." % i)
+
         # If this path contains a node that does not match custom
         # attributes, then delete this path.
         mismatch_ids = p.node_ids.intersection(mismatch_node_ids)
@@ -3147,6 +3233,8 @@ def _prune_by_custom_attributes(
             delete[i] = 1
             reason[i] = "Nodes (%s) do not match custom attribute." % \
                         ",".join(map(str, mismatch_ids))
+            debug_print(
+                DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d.  %s" % (i, reason[i]))
             continue
 
         # Make a list of the ambiguous node IDs in this path.  If this
@@ -3181,7 +3269,7 @@ def _prune_by_custom_attributes(
             attrs = {}
             for x in cattrs.attributes:
                 attrs[x.name] = x.value
-            
+
             #name = network.nodes[out_data_id].datatype.name
             #attrs = dname2attrs[name]
             #attrs = nodeid2attrs[out_data_id]
@@ -3207,6 +3295,8 @@ def _prune_by_custom_attributes(
             reason[i] = \
                       "Custom attributes can not be generated in nodes (%s)." \
                       % ",".join(map(str, x))
+            debug_print(
+                DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d.  %s" % (i, reason[i]))
 
     paths = [x for (i, x) in enumerate(paths) if i not in delete]
     return paths
@@ -6211,6 +6301,8 @@ def _is_valid_outmodule_id_path(network, path, parent_ids, module_id,
 
 def _is_valid_output_from_input_and_module_ids(
     network, in_data_ids, module_id, out_data_id, user_attrs, cache):
+    # See if user_attrs matches any of the outputs from:
+    # in_data_ids -> module_id
     in_datas = [network.nodes[x] for x in in_data_ids]
     module = network.nodes[module_id]
 
@@ -6220,9 +6312,12 @@ def _is_valid_output_from_input_and_module_ids(
         cache[key] = x
     out_datas = cache[key]
 
-    name = network.nodes[out_data_id].datatype.name
+    num_outputs_matched = 0
+    dt_name = network.nodes[out_data_id].datatype.name
     for out_data in out_datas:
-        assert out_data.datatype.name == name
+        assert out_data.datatype.name == dt_name, "Bad: %s %s" % (
+            out_data.datatype.name, dt_name)
+        match = True
         for name, uvalue in user_attrs.iteritems():
             dvalue = out_data.attributes[name]
             utype = _get_attribute_type(uvalue)
@@ -6230,8 +6325,10 @@ def _is_valid_output_from_input_and_module_ids(
             assert utype == TYPE_ATOM
             assert dtype == TYPE_ATOM
             if uvalue != dvalue:
-                return False
-    return True
+                match = False
+        if match:
+            num_outputs_matched += 1
+    return (num_outputs_matched > 0)
 
 
 def _find_same_data(nodes, node):
@@ -6538,7 +6635,9 @@ def _get_atomic_data_node_from_pathway(
     x = [x for x in x if node_id in path.transitions[x]]
     parent_ids = x
     assert parent_ids, "No parents 1"
-    assert len(parent_ids) == 1, "Multiple parents of data"
+    assert len(parent_ids) == 1, "Multiple parents of data: %d %s %s %s" % (
+        node_id, get_node_name(node), parent_ids, 
+        [get_node_name(network.nodes[x]) for x in parent_ids])
     module_id = parent_ids[0]
 
     parent_ids = nodeid2parents[module_id]

@@ -733,13 +733,13 @@ def safe_mkdir(path):
 
 
 def list_files_in_path(
-    file_or_path, endswith=None, case_insensitive=False, not_empty=False,
-    toplevel_only=False):
+    file_or_path, endswith=None, file_not_startswith=None,
+    case_insensitive=False, not_empty=False, toplevel_only=False):
     # Return a list of the files.  Returns full paths.
     # not_empty means will make sure some files are found.
     assert os.path.exists(file_or_path), "Not found: %s" % file_or_path
 
-    # If this is a file, return this file.
+    # If file_or_path is a file, then put it in a list.
     if not os.path.isdir(file_or_path):
         x = os.path.realpath(file_or_path)
         filenames = [x]
@@ -753,13 +753,26 @@ def list_files_in_path(
             x = [os.path.join(dirpath, x) for x in files]
             filenames.extend(x)
 
-    x = filenames
     if endswith is not None:
+        x = filenames
         if case_insensitive:
             x = [x for x in x if x.lower().endswith(endswith.lower())]
         else:
             x = [x for x in x if x.endswith(endswith)]
-    filenames = x
+        filenames = x
+
+    if file_not_startswith is not None:
+        i = 0
+        while i < len(filenames):
+            p, f = os.path.split(filenames[i])
+            nsw = file_not_startswith
+            if case_insensitive:
+                f = f.lower()
+                nsw = file_not_startswith.lower()
+            if f.startswith(nsw):
+                del filenames[i]
+            else:
+                i += 1
 
     if not_empty:
         msg = "No files found."
@@ -793,7 +806,7 @@ def symlink_file_or_path_to_path(
     in_file_or_path = os.path.realpath(in_file_or_path)
 
     if overwrite_outpath and os.path.exists(out_path):
-        if os.path.dir(out_path):
+        if os.path.isdir(out_path):
             shutil.rmtree(out_path)
         else:
             os.unlink(out_path)

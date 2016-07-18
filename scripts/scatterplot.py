@@ -145,6 +145,9 @@ def main():
     group.add_argument(
         "--log_y", action="store_true",
         help="Plot the Y-axis on a log scale.")
+    group.add_argument(
+        "--qq", action="store_true",
+        help="Make a QQ-plot.  Will sort the values to be plotted.")
 
     group = parser.add_argument_group(title="Plot Labels")
     group.add_argument("--title", help="Put a title on the plot.")
@@ -189,6 +192,11 @@ def main():
     group.add_argument(
         "--scale_lines", default=1.0, type=float,
         help="Scale the thickness of the lines.  Default 1.0")
+
+    group = parser.add_argument_group(title="Identity Line")
+    group.add_argument(
+        "--add_identity_line", action="store_true",
+        help="Add an identity line to the plot.")
 
     group = parser.add_argument_group(title="Colors")
     group.add_argument(
@@ -292,6 +300,12 @@ def main():
         col.extend(c)
     assert len(x_values) == len(y_values)
     assert len(x_values) == len(col)
+
+    if args.qq:
+        O = jmath.order(x_values)
+        x_values = [x_values[i] for i in O]
+        y_values = [y_values[i] for i in O]
+        col = [col[i] for i in O]
 
     if cluster is not None:
         col_rgb = pcalib.choose_colors(cluster)
@@ -401,7 +415,21 @@ def main():
                 l_c = c[j]
             if l_x:
                 jmath.R_fn("lines", l_x, l_y, lwd=lwd, col=l_c)
-            
+
+    if args.add_identity_line:
+        lwd = 4
+
+        x_min, x_max = min(x_values), max(x_values)
+        y_min, y_max = min(y_values), max(y_values)
+
+        iden_min = max(x_min, y_min)
+        iden_max = min(x_max, y_max)
+
+        l_x = [iden_min, iden_max]
+        l_y = l_x
+        l_c = "#FF0000"
+        jmath.R_fn("lines", l_x, l_y, lwd=lwd, col=l_c)
+    
 
     if args.label_header:
         cex = 1

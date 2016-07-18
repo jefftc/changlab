@@ -37,6 +37,9 @@ find_rsem_result_files
 find_reference_stem
 
 get_STAR_version
+make_STAR_command
+make_STAR_index_command
+assert_is_STAR_reference
 
 make_htseq_count_command
 parse_htseq_count_output
@@ -259,6 +262,7 @@ def _is_subset(small_list, full_list):
 
 
 def create_reference_genome(file_or_path, name=None):
+    # Return a ReferenceGenome object.
     import os
 
     # If file_or_path is a file, then find the path of this file.
@@ -271,6 +275,8 @@ def create_reference_genome(file_or_path, name=None):
 
 def standardize_reference_genome(
     in_file_or_path, out_path, use_symlinks=False):
+    # Put a cleaner version of the reference genome in out_path.
+    # 
     # in_file_or_path can be a reference FASTA file or path that
     # contains a reference FASTA file.
     # <file>         ->  <out_path>/<file>
@@ -306,7 +312,7 @@ def get_radia_version():
     radia_path = filelib.which_assert(config.radia_path)
     radia_py = opj(radia_path, "scripts", "radia.py")
     filelib.assert_exists_nz(radia_py)
-    
+
     x = [
         sq(python),
         sq(radia_py),
@@ -317,14 +323,14 @@ def get_radia_version():
     x = x.strip()
     # v1.1.3
     return x
-    
-    
+
+
 def get_samtools_version():
     import re
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     samtools = filelib.which_assert(config.samtools)
     x = parallel.sshell(samtools, ignore_nonzero_exit=True)
     x = x.strip()
@@ -339,7 +345,7 @@ def get_bcftools_version():
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     bcftools = filelib.which_assert(config.bcftools)
     x = parallel.sshell(bcftools, ignore_nonzero_exit=True)
     x = x.strip()
@@ -357,14 +363,14 @@ def get_vcfutils_version():
 def call_samtools_idxstats(bam_filename):
     # Return list of (seqname, length, mapped, unmapped).
     import StringIO
-    
+
     import parallel
     import filelib
     import config
 
     # BAM file should be indexed for maximum performance.
     filelib.assert_exists_nz(bam_filename)
-    
+
     sq = parallel.quote
     samtools = filelib.which_assert(config.samtools)
     cmd = [
@@ -391,7 +397,7 @@ def get_bowtie1_version():
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     bowtie = filelib.which_assert(config.bowtie)
     x = parallel.sshell("%s --version" % bowtie, ignore_nonzero_exit=True)
     x = x.strip()
@@ -489,7 +495,7 @@ def get_bowtie2_version():
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     bowtie = filelib.which_assert(config.bowtie2)
     x = parallel.sshell("%s --version" % bowtie, ignore_nonzero_exit=True)
     x = x.strip()
@@ -650,7 +656,7 @@ def get_tophat_version():
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     tophat = filelib.which_assert(config.tophat)
     x = parallel.sshell("%s --version" % tophat, ignore_nonzero_exit=True)
     x = x.strip()
@@ -703,7 +709,7 @@ def make_tophat_command(
         None, "fr-unstranded", "fr-firststrand", "fr-secondstrand"]
     if num_threads is not None:
         assert num_threads >= 1 and num_threads < 100
-        
+
     tophat = filelib.which_assert(config.tophat)
 
     # tophat [options]* <stem> <reads_1.fq> [<reads_2.fa>]
@@ -726,7 +732,7 @@ def make_tophat_command(
         cmd += ["-p", str(num_threads)]
     if library_type:
         cmd += ["--library-type", library_type]
-        
+
     stem = find_reference_stem(reference_fa)
     cmd += [sq(stem)]
     cmd += [sq(fastq_file1)]
@@ -787,14 +793,14 @@ def parse_tophat_align_summary(filename):
     x = int(round(aligned_pairs*concordant_pair_alignment_rate/100.0))
     results["aligned_reads"] = x
     return results
-    
+
 
 def get_bwa_version():
     import re
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     bwa = filelib.which_assert(config.bwa)
     x = parallel.sshell(bwa, ignore_nonzero_exit=True)
     x = x.strip()
@@ -917,7 +923,7 @@ def get_rsem_version():
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     rsem = filelib.which_assert(config.rsem_calculate)
     x = parallel.sshell("%s --version" % rsem, ignore_nonzero_exit=True)
     x = x.strip()
@@ -1011,7 +1017,7 @@ def find_rsem_result_files(search_path):
 def find_reference_stem(ref_fasta):
     # ref_fasta is the full path to the fasta file for the reference
     # genome.
-    # 
+    #
     # <path>/<name>.[fa|fasta]
     # <path>/<name>.[1234].ebwt
     # <path>/<name>.rev.[12].ebwt
@@ -1032,7 +1038,7 @@ def get_STAR_version():
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     star = filelib.which_assert(config.STAR)
     x = parallel.sshell(star, ignore_nonzero_exit=True)
     x = x.strip()
@@ -1042,6 +1048,117 @@ def get_STAR_version():
     m = re.search(r"versionSTAR\s+([\w\. \(\)-]+)", x)
     assert m, "Missing version string"
     return m.group(1)
+
+
+def make_STAR_command(
+    reference_path, out_prefix, num_cores, is_stranded, pair1, pair2,
+    log_filename):
+    # out_prefix should be full path.
+    from genomicode import filelib
+    from genomicode import parallel
+    from genomicode import config
+
+    STAR = filelib.which_assert(config.STAR)
+
+    sq = parallel.quote
+    x = [
+        sq(STAR),
+        "--genomeDir", sq(reference_path),
+        "--outFileNamePrefix", out_prefix,
+        "--runThreadN", num_cores,
+        "--outSAMtype", "BAM Unsorted",
+        ]
+    if not is_stranded:
+        x += ["--outSAMstrandField", "intronMotif"]
+    x += ["--readFilesIn", sq(pair1)]
+    if pair2:
+        x += [sq(pair2)]
+    x = " ".join(map(str, x))
+    x = "%s >& %s" % (x, log_filename)
+    return x
+
+
+def make_STAR_index_command(
+    fasta_filename, out_path, gtf_file=None, sjdb_files=None, num_cores=None):
+    # Either gtf_file or sjdb_file must be given, but not both.
+    # sjdb_files should be a list of the files for multi-sample 2-pass
+    # mapping.
+    import os
+    from genomicode import filelib
+    from genomicode import config
+    from genomicode import parallel
+
+    filelib.assert_exists_nz(fasta_filename)
+    #filelib.assert_exists(out_path)
+    if not os.path.exists(out_path):
+        os.mkdir(out_path)
+
+    assert gtf_file or sjdb_files
+    assert not (gtf_file and sjdb_files)
+    if gtf_file:
+        filelib.assert_exists_nz(gtf_file)
+    if sjdb_files:
+        assert type(sjdb_files) is type([]), \
+               "sjdb_files should be a list of files."
+        for x in sjdb_files:
+            filelib.assert_exists_nz(x)
+
+    STAR = filelib.which_assert(config.STAR)
+
+    # STAR --runThreadN 40 --runMode genomeGenerate --genomeDir test05
+    #  --genomeFastaFiles <file.fasta> \
+    #  --sjdbGTFfile $GTF
+
+    # --sjdbOverhang.  According to manual:
+    # In most cases, the default value of 100 will work as well as the
+    # ideal value.
+
+    sq = parallel.quote
+
+    x = [
+        sq(STAR),
+        ]
+    if num_cores is not None:
+        x += ["--runThreadN", num_cores]
+    x += [
+        "--runMode", "genomeGenerate",
+        "--genomeDir", sq(out_path),
+        "--genomeFastaFiles", sq(fasta_filename),
+        ]
+    if gtf_file:
+        x += ["--sjdbGTFfile", sq(gtf_file)]
+    else:
+        assert sjdb_files
+        x += ["--sjdbFileChrStartEnd"] + sjdb_files
+    x = " ".join(map(str, x))
+    #x = "%s >& out.txt" % " ".join(map(str, x))
+    return x
+
+
+def assert_is_STAR_reference(reference_path):
+    import os
+    from genomicode import filelib
+
+    # Check to make sure index was created successfully.
+    files = [
+        "chrLength.txt",
+        "chrNameLength.txt",
+        "chrName.txt",
+        "chrStart.txt",
+        #"exonGeTrInfo.tab",    # gtf_file only.  Missing for sjdb_files.
+        #"exonInfo.tab",        # gtf_file only.  Missing for sjdb_files.
+        #"geneInfo.tab",        # gtf_file only.  Missing for sjdb_files.
+        "Genome",
+        "genomeParameters.txt",
+        "SA",
+        "SAindex",
+        "sjdbInfo.txt",
+        #"sjdbList.fromGTF.out.tab",  # gtf_file only.  Missing for sjdb_files.
+        "sjdbList.out.tab",
+        #"transcriptInfo.tab",        # gtf_file only.  Missing for sjdb_files.
+        ]
+    x = [os.path.join(reference_path, x) for x in files]
+    filelib.assert_exists_nz_many(x)
 
 
 def make_htseq_count_command(
@@ -1125,7 +1242,7 @@ def parse_htseq_count_output(file_or_handle):
         # __not_aligned   9744
         # __alignment_not_unique  0
 
-    
+
     for line in handle:
         # 100000 GFF lines processed.
         if line.rstrip().endswith("processed."):
@@ -1168,7 +1285,7 @@ def find_picard_jar(jar_name):
     # e.g. "AddOrReplaceReadGroups".
     import os
     from genomicode import config
-    
+
     picard_path = config.picard
     assert os.path.exists(picard_path)
     jar_filename = os.path.join(picard_path, "%s.jar" % jar_name)
@@ -1232,7 +1349,7 @@ def make_MuTect_command(**params):
     name = "mutect_java"
     assert hasattr(config, name), "Missing from genomicode config: %s" % name
     java_path = getattr(config, name)
-    
+
     return _make_java_command("mutect_jar", params, 2, java_path=java_path)
 
 
@@ -1253,7 +1370,7 @@ def make_platypus_command(
     if num_cores is not None:
         assert num_cores >= 1 and num_cores < 256
 
-    # /usr/local/bin/Platypus/Platypus.py callVariants 
+    # /usr/local/bin/Platypus/Platypus.py callVariants
     #   --bamFiles $i
     #   --refFile ../index/erdman.fa
     #   --output $j
@@ -1340,7 +1457,7 @@ def find_rseqc_script(name):
     import os
     from genomicode import config
     from genomicode import filelib
-    
+
     rseqc_path = filelib.which_assert(config.rseqc_path)
     filename = os.path.join(rseqc_path, name)
     filelib.assert_exists_nz(filename)
@@ -1384,7 +1501,7 @@ def _get_samtools_SM(filename):
     from genomicode import filelib
 
     samtools = filelib.which_assert(config.samtools)
-    
+
     # samtools view -H <filename>
     sq = parallel.quote
     cmd = [
@@ -1411,7 +1528,7 @@ def _get_samtools_SM(filename):
     assert "SM" in info, "Misssing SM: %s" % rg_line.strip()
 
     return info["SM"]
-        
+
 
 def clean_mutect_vcf(
     normal_bam, cancer_bam, normal_sample, cancer_sample,
@@ -1533,7 +1650,7 @@ def clean_radia_vcf(normal_sample, cancer_sample, in_filename, out_filename):
     normal_name = normal_sample
     dna_tumor_name = cancer_sample
     rna_tumor_name = "%s_RNA" % cancer_sample
-    
+
     # #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT DNA_NORMAL
     # DNA_TUMOR RNA_TUMOR
     outhandle = open(out_filename, 'w')
@@ -1553,11 +1670,11 @@ def get_muse_version():
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel
-    
+
     muse = filelib.which_assert(config.muse)
     x = parallel.sshell(muse, ignore_nonzero_exit=True)
     x = x.strip()
-    # Version: v1.0rc    
+    # Version: v1.0rc
     m = re.search(r"Version: ([\w\.]+)", x)
     assert m, "Missing version string"
     return m.group(1)

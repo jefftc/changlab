@@ -46,6 +46,9 @@ TophatAlignmentFolder = DataType(
     #AttributeDef(
     #    "contents", BDT.CONTENTS,
     #    "unspecified", "unspecified", help="contents"),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
     help="A folder that contains alignments from Tophat.",
     )
 
@@ -83,6 +86,9 @@ STARAlignmentFolder = DataType(
     AttributeDef(
         "mouse_reads_subtracted", ["yes", "no"], "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
     help="Results from a STAR alignment.  Includes SAM files and other stuff.",
     )
 
@@ -182,6 +188,7 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 3),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
@@ -195,6 +202,8 @@ all_modules = [
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("aligner", SET_TO, "tophat"),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         help="Pull the BAM files out of the Tophat result folders."
         ),
     ModuleNode(
@@ -212,9 +221,14 @@ all_modules = [
         [NGS.FastqFolder, NGS.SampleGroupFile, NGS.ReadStrandedness,
          STARReferenceGenome],
         STARAlignmentFolder,
+        OptionDef(
+            "two_pass", default="yes", help="Whether to do 2-pass mapping.  "
+            "Helpful for variant calling, novel junction discovery.  "
+            '"yes" or "no"'),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
@@ -238,8 +252,10 @@ all_modules = [
         Consequence("aligner", SET_TO, "star"),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         help="Pull out the SAM files from the STAR results folder.",
         ),
 

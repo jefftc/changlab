@@ -20,6 +20,8 @@ class Module(AbstractModule):
         assert pileup_filenames, "No .pileup files."
         #ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
+        metadata = {}
+        # TODO: get version of varscan
 
         # Figure out whether the purpose is to get coverage.  Change
         # the parameters if it is.
@@ -27,11 +29,11 @@ class Module(AbstractModule):
         vartype = out_attributes["vartype"]
         assert vartype in ["all", "snp", "indel", "consensus"]
 
-        if vartype == "consensus":
-            # Figure out the consensus-specific arguments.
-            pass
-        else:
-            raise NotImplementedError
+        #if vartype == "consensus":
+        #    # Figure out the consensus-specific arguments.
+        #    pass
+        #else:
+        #    raise NotImplementedError
 
         # list of (sample, in_filename, tmp1_filename, tmp2_filename,
         #          out_filename)
@@ -96,11 +98,10 @@ class Module(AbstractModule):
             x = "%s >& %s" % (x, tmp2_filename)
             commands.append(x)
 
-        #for x in commands:
-        #    print x
-        #import sys; sys.exit(0)
-
         parallel.pshell(commands, max_procs=num_cores)
+        metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
+
         x = [x[3] for x in jobs]
         filelib.assert_exists_nz_many(x)
 
@@ -120,6 +121,7 @@ class Module(AbstractModule):
 
         x = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(x)
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):

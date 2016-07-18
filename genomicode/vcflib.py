@@ -35,6 +35,8 @@ select_variants  Select a subset of the variants.
 make_coverage_matrix
 make_vaf_matrix
 
+simplify_call
+
 """
 # _parse_info
 # _parse_genotype
@@ -216,6 +218,7 @@ class Variant:
         return x
 
 
+
 class Call:
     # Contains call information for a variant.
     #
@@ -225,7 +228,8 @@ class Call:
     # vaf              list of (float or None).  Can be empty list.
     # call             string or None
     def __init__(self, num_ref, num_alt, total_reads, vaf, call):
-        assert total_reads is None or type(total_reads) is type(0)
+        assert total_reads is None or type(total_reads) is type(0), \
+               "Invalid: %s" % repr(total_reads)
         assert total_reads is None or total_reads >= 0
         assert num_ref is None or type(num_ref) is type(0)
         assert num_ref is None or num_ref >= 0, "Invalid num_ref: %s" % num_ref
@@ -1722,3 +1726,23 @@ def has_all_format(vcf, names, num=None, sample=None):
         if not has_format(vcf, name, num=num, sample=sample):
             return False
     return True
+
+
+def simplify_call(call):
+    # Return a Call object.  If there are multiple num_alt or vaf,
+    # choose the one with the highest vaf.
+    assert len(call.num_alt) == len(call.vaf), "Mismatch: %s %s" % (
+        call.num_alt, call.vaf)
+    num_alt = call.num_alt[:]
+    vaf = call.vaf[:]
+    if len(num_alt) > 1:
+        max_vaf = max_i = None
+        for i in range(len(vaf)):
+            if max_vaf is None or vaf[i] > max_vaf:
+                max_vaf = vaf[i]
+                max_i = i
+        assert max_i is not None
+        num_alt = [num_alt[i]]
+        vaf = [vaf[i]]
+    x = Call(call.num_ref, num_alt, call.total_reads, vaf, call.call)
+    return x

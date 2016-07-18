@@ -62,16 +62,23 @@ class Module(AbstractModule):
         #   $i > $j"
         samtools = filelib.which_assert(config.samtools)
 
-        if vartype == "consensus":
-            args = [
-                "-R",        # Ignore read group tags.
-                "-B",        # Disable BAQ (base quality) computation.
-                "-q", 0,     # Skip bases with mapQ smaller than this.
-                "-Q", 0,     # Skip bases with BAQ smaller than this.
-                "-d10000000",  # Allow deep reads.
-                ]
-        else:
-            raise NotImplementedError
+        #if vartype == "consensus":
+        #    args = [
+        #        "-R",        # Ignore read group tags.
+        #        "-B",        # Disable BAQ (base quality) computation.
+        #        "-q", 0,     # Skip bases with mapQ smaller than this.
+        #        "-Q", 0,     # Skip bases with BAQ smaller than this.
+        #        "-d10000000",  # Allow deep reads.
+        #        ]
+        #else:
+        #    raise NotImplementedError
+        args = [
+            "-R",        # Ignore read group tags.
+            "-B",        # Disable BAQ (base quality) computation.
+            "-q", 0,     # Skip bases with mapQ smaller than this.
+            "-Q", 0,     # Skip bases with BAQ smaller than this.
+            "-d10000000",  # Allow deep reads.
+            ]
 
         sq = parallel.quote
         commands = []

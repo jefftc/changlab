@@ -7,6 +7,7 @@ from Module import AbstractModule
 # Pos
 # Ref
 # Alt
+# Source         DNA or RNA
 # Num Ref
 # Num Alt
 # Total Reads
@@ -32,9 +33,8 @@ class Module(AbstractModule):
         TEMPFILE = "temp.txt"
         handle = open(TEMPFILE, 'w')
         header = (
-            "Caller", "File", "Sample", "Chrom", "Pos",
-            "Ref", "Alt", "Num Ref", "Num Alt", "Total Reads", "VAF",
-            "Filter", "Call", "GQ")
+            "Caller", "File", "Sample", "Chrom", "Pos", "Ref", "Alt", "Source",
+            "Num Ref", "Num Alt", "Total Reads", "VAF", "Filter", "Call", "GQ")
         print >>handle, "\t".join(header)
         handle.close()
 
@@ -42,6 +42,9 @@ class Module(AbstractModule):
         jobs = []
         for x in vcf_files:
             filestem, filename = x
+
+            # filestem   197B-MG
+            # filename   /data/jchang/biocore/call01/radia.vcf/197B-MG.vcf
 
             args = filename, filestem, header, TEMPFILE
             x = summarize_vcf_file, args, {}
@@ -81,6 +84,15 @@ def summarize_vcf_file(filename, filestem, header, outfilename, lock):
             if sample == hashlib.hash_var(filestem):
                 clean_sample = filestem
 
+            source = "DNA"
+            if caller_name == "Radia":
+                # DNA    <clean_sample>       196B-lung
+                # RNA    <clean_sample>_RNA   196B-lung_RNA
+                # Figure out whether this is RNA and fix it.
+                if clean_sample.endswith("_RNA"):
+                    clean_sample = clean_sample[:-4]
+                    source = "RNA"
+
             genodict = var.sample2genodict[sample]
             call = vcflib.get_call(var, sample)
 
@@ -95,8 +107,8 @@ def summarize_vcf_file(filename, filestem, header, outfilename, lock):
                 GQ = ""
 
             x = caller_name, filestem, clean_sample, var.chrom, var.pos, \
-                ref, alt, num_ref, num_alt, total_reads, vaf, \
-                filter_str, call_str, GQ
+                ref, alt, source, \
+                num_ref, num_alt, total_reads, vaf, filter_str, call_str, GQ
             assert len(x) == len(header)
             x = "\t".join(map(str, x))
             lines.append(x)
