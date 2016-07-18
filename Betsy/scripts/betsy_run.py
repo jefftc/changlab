@@ -50,11 +50,16 @@ def _print_rulebase(rulebase):
     x = [x for x in x if isinstance(x, bie3.DataType)]
     datatypes = x
 
+    # Count the attributes.
+    num_attributes = 0
+    for dt in datatypes:
+        num_attributes += len(dt.attribute_defs)
+
     # Make a list of the modules
     modules = rulebase.all_modules
 
-    print "Rulebase contains %d data types and %d modules." % (
-        len(datatypes), len(modules))
+    print "Rulebase contains %d data types, %d attributes, and %d modules." % (
+        len(datatypes), num_attributes, len(modules))
 
     # Print each DataType object.
     for dt in datatypes:

@@ -100,18 +100,17 @@ class Module(AbstractModule):
             # For debugging.  If this file already exists, skip it.
             if os.path.exists(j.pass2_bam_filename):
                 continue
-            if not two_pass:
-                # link pass1_bam_filename to pass2_bam_filename
-                os.symlink(j.pass1_bam_filename, j.pass2_bam_filename)
-                continue
-            else:
+            if two_pass:
                 x = os.path.join(out_path, j.pass2_out_prefix)
                 cmd = alignlib.make_STAR_command(
                     sj_index, x, num_cores, is_stranded, j.pair1, j.pair2,
                     j.log2_filename)
-                print "HERE 3", cmd
                 parallel.sshell(cmd, path=out_path)
                 commands.append(cmd)
+            else:
+                # link pass1_bam_filename to pass2_bam_filename
+                os.symlink(j.pass1_bam_filename, j.pass2_bam_filename)
+                continue
             filelib.assert_exists_nz(j.pass2_bam_filename)
         
         metadata["commands"] = commands
