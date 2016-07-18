@@ -248,8 +248,11 @@ SAM_ATTRIBUTES = [
         "aligner", ALIGNERS, "unknown", "bowtie2",
         help="Alignment algorithm."),
     AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        "mouse_reads_subtracted", YESNO, "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
     #AttributeDef(
     #    "orientation", ORIENTATION, "unknown", "unknown",
     #    help="Either single-end reads, paired-end reads with orientation.  "
@@ -318,6 +321,9 @@ RealignTargetFolder = DataType(
         "duplicates_marked", ["yes", "no"], "no", "no",
         help="Whether the duplicates are marked."),
     AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
+    AttributeDef(
         "aligner", ALIGNERS, "unknown", "bowtie2",
         help="Alignment algorithm."),
     )
@@ -383,6 +389,9 @@ AlignmentCIGARFolder = DataType(
     AttributeDef(
         "mouse_reads_subtracted", ["yes", "no"], "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
+    AttributeDef(
+        "adapters_trimmed", ["yes", "no"], "no", "no",
+        help="Whether the adapters are trimmed."),
     help="For each alignment, show the CIGAR, MD, NM, and NH data "
     "(folder of .txt file).",
     )
@@ -628,12 +637,14 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bowtie1_indexed", MUST_BE, "yes", 3),
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
         #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
+
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
@@ -680,6 +691,7 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 3),
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
@@ -768,6 +780,7 @@ all_modules = [
         Constraint("reads_merged", MUST_BE, "yes", 0),
         #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bwa_indexed", MUST_BE, "yes", 2),
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
         #Consequence("orientation", SAME_AS_CONSTRAINT),
@@ -789,6 +802,7 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bwa_indexed", MUST_BE, "yes", 4),
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
         #Constraint("orientation", SAME_AS, 0, 1),
@@ -829,6 +843,8 @@ all_modules = [
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS),
         Constraint("indexed", CAN_BE_ANY_OF, YESNO),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         help="Summarize the number of matches for each alignment.",
         ),
 
@@ -881,6 +897,8 @@ all_modules = [
         #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         
         Consequence("has_read_groups", SET_TO, "no"),
         Consequence("sorted", SET_TO, "no"),
@@ -1019,6 +1037,8 @@ all_modules = [
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         help="Find the intervals to target for realignment "
         "(RealignerTargetCreator).",
         ),
@@ -1054,6 +1074,9 @@ all_modules = [
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Consequence("indexed", SET_TO, "no"),
         Consequence("base_quality_recalibrated", SET_TO, "no"),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         help="Realign indels (IndelRealigner)."
         ),
     ModuleNode(
@@ -1136,6 +1159,7 @@ all_modules = [
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Consequence("reads_merged", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         ),
 

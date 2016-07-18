@@ -180,6 +180,7 @@ debug_print
 DEBUG_BC = False
 DEBUG_PRUNE_PATHS = False
 DEBUG_FIND_PATHS = False
+DEBUG_PRUNE_CUSTOM_ATTRIBUTES = False
 
 
 
@@ -2981,10 +2982,6 @@ def _prune_by_custom_attributes(
     # 8.  Make sure the data node is bottom-most data node of that
     #     type.  (for custom_attributes where all_nodes=False)
 
-    #DEBUG_PRUNE_CUSTOM_ATTRIBUTES = True
-    DEBUG_PRUNE_CUSTOM_ATTRIBUTES = False
-    
-
     # First, cache some variables for convenience.
     # Cache names of data types with custom attributes.
     all_dnames = {}
@@ -3003,7 +3000,7 @@ def _prune_by_custom_attributes(
     x = [x for x in x if isinstance(network.nodes[x], DataNode)]
     data_node_ids = x
     debug_print(
-        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d data_node_ids 1" %
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d data_node_ids (all)" %
         len(data_node_ids))
 
     # Step 2: Only node IDs with a datatype subject to a custom
@@ -3012,7 +3009,8 @@ def _prune_by_custom_attributes(
     x = [x for x in x if network.nodes[x].datatype.name in all_dnames]
     data_node_ids = set(x)
     debug_print(
-        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d data_node_ids 2" %
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d data_node_ids (same datatype as custom attribute)" %
         len(data_node_ids))
 
     # Step 3: Make a list of the module IDs that these data nodes can
@@ -3050,7 +3048,7 @@ def _prune_by_custom_attributes(
                 x = combo_ids, module_id, node_id, i
                 sub_pathways.append(x)
     debug_print(
-        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d sub_pathways 1" % len(sub_pathways))
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d sub_pathways" % len(sub_pathways))
 
     # Step 5: Only want sub_pathways where the input datatype is
     # different from the output datatype.
@@ -3071,7 +3069,8 @@ def _prune_by_custom_attributes(
         good.append((combo_ids, module_id, data_node_id, i_combo))
     sub_pathways = good
     debug_print(
-        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d sub_pathways 2" % len(sub_pathways))
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (input and output different)" % len(sub_pathways))
 
     # Step 6: Assign each of the custom attributes to each of the
     # nodes.  Make sure the data types match.
@@ -3085,7 +3084,8 @@ def _prune_by_custom_attributes(
             good.append(x)
     sub_pathways = good
     debug_print(
-        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d sub_pathways 3" % len(sub_pathways))
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (matched to custom attributes)" % len(sub_pathways))
 
     # Step 7: Make sure the attribute does not conflict with a MUST_BE
     # constraint.
@@ -3117,7 +3117,8 @@ def _prune_by_custom_attributes(
         good.append((combo_ids, module_id, data_node_id, i_combo, cattrs))
     sub_pathways = good
     debug_print(
-        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d sub_pathways 4" % len(sub_pathways))
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (no MUST_BE conflicts)" % len(sub_pathways))
 
     # Step 8: Make sure the data node is bottom-most data node of that
     # type.
@@ -3141,7 +3142,8 @@ def _prune_by_custom_attributes(
         good.append((combo_ids, module_id, data_node_id, i_combo, cattrs))
     sub_pathways = good
     debug_print(
-        DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d sub_pathways 5" % len(sub_pathways))
+        DEBUG_PRUNE_CUSTOM_ATTRIBUTES,
+        "%d sub_pathways (bottom-most)" % len(sub_pathways))
 
 
     # At this point, we have a list of all the nodes that are subject

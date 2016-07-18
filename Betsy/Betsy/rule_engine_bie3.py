@@ -20,6 +20,7 @@ run_module
 
 VERSION = 7
 FINISHED_FILE = "finished.txt"
+LAST_ACCESSED_FILE = "last_accessed.txt"
 IN_PROGRESS_FILE = "in_progress.txt"
 BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 
@@ -415,6 +416,9 @@ def run_module(
 
     # Check if this has already been run.
     if _is_module_output_complete(result_dir):
+        # Update timestamp on LAST_ACCESSED_FILE.
+        open(os.path.join(result_dir, LAST_ACCESSED_FILE), 'w')
+        # Read parameter file.
         filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
         assert os.path.exists(filename)
         params = _read_parameter_file(filename)
@@ -473,6 +477,7 @@ def run_module(
     #                          complete.  If back, consider error.
     REFRESH = 5  # number of seconds to refresh copying.txt file.
     success_file = os.path.join(result_dir, FINISHED_FILE)
+    last_accessed_file = os.path.join(result_dir, LAST_ACCESSED_FILE)
     copying_file = os.path.join(result_dir, IN_PROGRESS_FILE)
     exists = os.path.exists
 
@@ -543,8 +548,12 @@ def run_module(
             # Does not fit one of these.
             time.sleep(REFRESH)
     assert i_run_analysis is not None
-    
+
     if not i_run_analysis:
+        # Analysis already is exists, and is completed.
+        # Update timestamp on LAST_ACCESSED_FILE.
+        open(last_accessed_file, 'w')
+        # Get the elapsed time.
         filename = os.path.join(result_dir, BETSY_PARAMETER_FILE)
         assert os.path.exists(filename)
         params = _read_parameter_file(filename)
@@ -597,6 +606,8 @@ def run_module(
         completed_successfully = True
         handle = open(success_file, 'w')
         handle.close()
+        # Update the last accessed time.
+        open(last_accessed_file, 'w')
         time.sleep(1)   # make sure file exists before stopping the refresher
     finally:
         if not completed_successfully and clean_up:
@@ -928,14 +939,14 @@ def _debug_is_module_output_complete(
             print "%s not completed successfully yet." % prev_path
             continue
         # See why this doesn't match.
-        hash_units = _make_hash_units(
-            module_name, antecedents, out_attributes, user_options)
         prev_params = _read_parameter_file(filename)
         prev_hash_units = prev_params["hash"]
         # Convert from unicode to strings.
         for i in range(len(prev_hash_units)):
             n, v = prev_hash_units[i]
             prev_hash_units[i] = str(n), str(v)
+        hash_units = _make_hash_units(
+            module_name, antecedents, out_attributes, user_options)
 
         # BUG: file checksum not aligned.
         print "Checking %s" % prev_path
@@ -1056,5 +1067,8 @@ def _write_parameter_file(
 
 
 def _read_parameter_file(filename):
+    import os
     import json
+    
+    assert os.path.exists(filename)
     return json.loads(open(filename).read())

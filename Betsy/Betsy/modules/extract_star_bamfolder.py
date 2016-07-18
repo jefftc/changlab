@@ -10,8 +10,14 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
 
+        # If align_with_star is run with two_pass=yes, this will leave
+        # two BAM files for every sample.
+        # p1.<sample>.Aligned.out.bam    pass 1
+        # <sample>.Aligned.out.bam       pass 2
+        # Make sure to ignore the pass1 files.
         x = filelib.list_files_in_path(
-            in_data.identifier, endswith=".Aligned.out.bam")
+            in_data.identifier, endswith=".Aligned.out.bam",
+            file_not_startswith="p1.")
         bam_filenames = x
         if not bam_filenames:
             x = filelib.list_files_in_path(
@@ -27,9 +33,9 @@ class Module(AbstractModule):
         for in_filename in bam_filenames:
             # in_filename has format:
             # <path>/<sample>.Aligned.out.sam
-            path, x = os.path.split(in_filename)
-            sample, x = x.split(".", 1)
-            assert x == "Aligned.out.bam"
+            path, f = os.path.split(in_filename)
+            sample, x = f.split(".", 1)
+            assert x == "Aligned.out.bam", f
             out_filename = os.path.join(out_path, "%s.bam" % sample)
             assert in_filename != out_filename
             jobs.append((in_filename, out_filename))
