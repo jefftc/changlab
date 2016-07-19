@@ -86,7 +86,7 @@ def parse_rseqc_infer_experiment(output):
         if lines[i].startswith("This is"):
             break
     else:
-        raise AssertionError, 'Cannot find "This is ..." line.'
+        raise AssertionError, 'Cannot find "This is ..." line:\n%s' % output
 
     single_or_paired = None
     if lines[i].find("PairEnd") >= 0:
@@ -151,6 +151,7 @@ def get_paired_stranded_rseqc(reference_bed, bam_filename):
         "-i", mlib.sq(bam_filename),
         ]
     cmd = " ".join(cmd)
+    print "HERE 3", cmd
     x = parallel.sshell(cmd)
     x = parse_rseqc_infer_experiment(x)
     #single_or_paired, stranded, frac_failed, frac_first, frac_second = x

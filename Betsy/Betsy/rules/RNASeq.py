@@ -156,6 +156,7 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Constraint("rsem_indexed", MUST_BE, "yes", 3),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
@@ -188,6 +189,7 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 3),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -228,6 +230,7 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
@@ -273,6 +276,9 @@ all_modules = [
             help="union, intersection-strict, or intersection-nonempty.  "
             "See htseq-count documentation.  union is recommended.",
             ),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 3),
+        
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 3),

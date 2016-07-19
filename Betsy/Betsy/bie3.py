@@ -5648,8 +5648,8 @@ def _bc_to_input_ids(
             continue
 
         # Can't use _fc_to_output_ids -- recursive.
-        output_datas = _fc_to_outputs(module, input_datas)
         num_found = 0
+        output_datas = _fc_to_outputs(module, input_datas)
         for output_data in output_datas:
             for out_id in all_output_ids:
                 if _is_data_compatible(output_data, network.nodes[out_id]):
@@ -5719,7 +5719,7 @@ def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
 
     # Priorities (in increasing order):
     # 1.  Default values
-    # 2.  Constraints
+    # 2.  Consequences
 
     # Set the default values.
     # Set the attributes based on the default values.
@@ -5761,18 +5761,30 @@ def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
     for cons in module.consequences:
         if cons.behavior == SET_TO:
             attributes[cons.name] = cons.arg1
+            if cons.name in possibilities:
+                del possibilities[cons.name]
         elif cons.behavior == SET_TO_ONE_OF:
             possibilities[cons.name] = cons.arg1
+            if cons.name in attributes:
+                del attributes[cons.name]
         elif cons.behavior == BASED_ON_DATA:
             possibilities[cons.name] = cons.arg1
             if ignore_based_on_data:
                 possibilities[cons.name] = [cons.arg1[0]]
+            if cons.name in attributes:
+                del attributes[cons.name]
         elif cons.behavior == SAME_AS_CONSTRAINT:
             input_index = cons.arg1
             data = in_datas[input_index]
             attributes[cons.name] = data.attributes[cons.name]
+            if cons.name in possibilities:
+                del possibilities[cons.name]
         else:
             raise AssertionError
+
+    # Make sure nothing is in both possibilities and attributes.
+    for x in possibilities:
+        assert x not in attributes
 
     # If no possibilities, then make one output variable.
     if not possibilities:

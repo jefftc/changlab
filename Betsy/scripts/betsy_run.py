@@ -1524,7 +1524,7 @@ def main():
         network, user_options, in_data_nodes, data_node_ids, custom_attributes,
         args.max_inputs, args.network_json, args.network_png, verbose_network)
     #plot_pipelines(
-    #    "pipeline", network, paths, user_options, max_pipelines=1,
+    #    "pipeline", network, paths, user_options, max_pipelines=16,
     #    prune=True, verbose=True)
 
     if not paths:
@@ -1550,6 +1550,7 @@ def main():
     #plot_network_show_pipelines(
     #    args.network_png, network, paths, user_options=user_options,
     #    verbose=args.verbose)
+    
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(
         network, user_options, custom_attributes, paths, args.network_json,
