@@ -274,7 +274,7 @@ all_modules = [
             "See htseq-count documentation.  union is recommended.",
             ),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
+        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 3),
         # Get error when using coordinate sorting:
         # Maximum alignment buffer size exceeded while pairing SAM alignments.

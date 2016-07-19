@@ -9,6 +9,7 @@
 # transpose_nonmatrix
 # correlate_matrix
 # correlate_against_matrix
+# correlate_some_vs_all
 # calc_mean
 # calc_sd
 # calc_range
@@ -163,7 +164,7 @@ def read_matrices(filenames, skip_lines, read_as_csv, remove_comments,
                 inhandle = filelib.openfh(infile)
                 if skip_lines:
                     skip_lines = int(skip_lines)
-                    for i in range(skip_lines):
+                    for x in range(skip_lines):
                         inhandle.readline()
 
                 if read_as_csv:
@@ -389,6 +390,94 @@ def correlate_against_matrix(MATRIX, correlate):
     return MATRIX_cor
 
 
+def correlate_some_vs_all(MATRIX, ids):
+    import itertools
+    from genomicode import jmath
+    from genomicode import Matrix
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
+
+    if not ids:
+        return MATRIX
+
+    ids = [x.strip() for x in ids]
+    ids = ",".join(ids)
+    I = parse_names(MATRIX, True, ids)
+    assert I, "I could not find any rows: %s" % ids
+
+    # Just use the first column as the name.
+    assert MATRIX._row_order
+    HEADER = MATRIX._row_order[0]
+    row_names = MATRIX.row_names(HEADER)
+
+    jmath.start_R()
+    data_tab = []
+    for (i, j) in itertools.product(I, range(MATRIX.nrow())):
+        row_i = MATRIX._X[i][:]
+        row_j = MATRIX._X[j][:]
+        assert len(row_i) == len(row_j), "%d %d %d %d" % (
+            i, j, len(row_i), len(row_j))
+
+        # Remove missing values.
+        k = 0
+        while k < len(row_i):
+            if row_i[k] is None or row_j[k] is None:
+                del row_i[k]
+                del row_j[k]
+            else:
+                k += 1
+        assert len(row_i) == len(row_j)
+        if not row_i:  # all missing values
+            continue
+
+        mean_i = jmath.mean(row_i)
+        mean_j = jmath.mean(row_j)
+
+        jmath.R_equals(row_i, "X")
+        jmath.R_equals(row_j, "Y")
+        jmath.R_fn("cor.test", row_i, row_j, method="pearson", RETVAL="x")
+        estimate = jmath.R("x$estimate")[0]
+        p_value = jmath.R("x$p.value")[0]
+        x = row_names[i], row_names[j], len(row_i), mean_i, mean_j, \
+            estimate, p_value, 0.0
+        data_tab.append(x)
+
+    # Calculate the false discovery rate.
+    p_values = [x[6] for x in data_tab]
+    fdr = jmath.cmh_fdr_bh(p_values)
+    for i in range(len(data_tab)):
+        x = data_tab[i]
+        x = list(x[:-1]) + [fdr[i]]
+        data_tab[i] = x
+
+    x1 = "%s 1" % HEADER
+    x2 = "%s 2" % HEADER
+    header = [
+        x1, x2, "Length", "Mean 1", "Mean 2", "Estimate", "p value", "FDR"]
+
+    s1 = [x[0] for x in data_tab]
+    s2 = [x[1] for x in data_tab]
+    X_cor = [x[2:] for x in data_tab]
+
+    row_order = header[:2]
+    col_order = [tdf.SAMPLE_NAME]
+    row_names = {
+        row_order[0] : s1,
+        row_order[1] : s2,
+        }
+    col_names = {
+        col_order[0] : header[2:]
+        }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_cor = Matrix.InMemoryMatrix(
+        X_cor, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_cor
+
+
 def calc_mean(MATRIX, calc_mean):
     from genomicode import jmath
     
@@ -440,8 +529,6 @@ def calc_sd(MATRIX, calc_sd):
 
 
 def calc_range(MATRIX, calc_range):
-    from genomicode import jmath
-    
     if not calc_range:
         return MATRIX
 
@@ -530,7 +617,6 @@ def average_row_indexes(MATRIX, indexes, count_headers):
     
 
 def group_expression_by_samplename(MATRIX, group):
-    from genomicode import jmath
     from genomicode import Matrix
     from arrayio import const
     from arrayio import tab_delimited_format as tdf
@@ -950,7 +1036,7 @@ def rename_col_id(MATRIX, rename_list, ignore_missing):
     return MATRIX_new
 
 
-def replace_col_ids(MATRIX, replace_list, ignore_missing):
+def replace_col_ids(MATRIX, replace_list):
     # replace_list is list of strings in format of: <from>,<to>.
     import arrayio
 
@@ -2115,7 +2201,7 @@ def reorder_row_indexes(MATRIX, indexes, count_headers):
 
 def reorder_row_cluster(
     MATRIX, cluster, tree_file, cluster_method, distance_method,
-    indexes, count_headers):
+    indexes):
     from genomicode import cluster30
     from genomicode import clusterio
 
@@ -2164,7 +2250,8 @@ def reorder_row_cor(MATRIX, correlations, reverse_negative_cors,
         I = parse_indexes(MATRIX, False, indexes, count_headers)
     X = MATRIX.slice(None, I)
 
-    nrow, ncol = len(X), len(X[0])
+    #nrow, ncol = len(X), len(X[0])
+    ncol = len(X[0])
     assert len(vec) == ncol, "vector %d indexes %d" % (len(vec), ncol)
 
     jmath.start_R()
@@ -2749,8 +2836,6 @@ def normalize_genes_var(MATRIX, indexes):
 
 
 def count_missing_values(MATRIX, header):
-    from genomicode import jmath
-
     if not header:
         return MATRIX
 
@@ -2799,7 +2884,7 @@ def impute_missing_values_knn(MATRIX, K):
     K = int(K)
     assert K >= 1 and K < 100
 
-    X = MATRIX._X
+    #X = MATRIX._X
     jmath.start_R()
     jmath.R("library(impute)")
     jmath.R_equals(MATRIX._X, "X")
@@ -3205,6 +3290,12 @@ def main():
         "Correlate each row of this matrix to the row of the matrix "
         "in filename.  "
         "Each of the rows and columns should be aligned.")
+    group.add_argument(
+        "--correlate_some_vs_all", action="append",
+        help="Correlate a selected list of rows against all other rows.  "
+        "The argument should be a list of IDs (like --select_row_ids).  "
+        "The output uses the first column as the row ID.")
+    
     group.add_argument(
         "--calc_mean", action="store_true",
         help="Calculate the mean of each row.")
@@ -3695,6 +3786,7 @@ def main():
     MATRIX = transpose_matrix(MATRIX, args.transpose)
     MATRIX = correlate_matrix(MATRIX, args.correlate)
     MATRIX = correlate_against_matrix(MATRIX, args.correlate_against)
+    MATRIX = correlate_some_vs_all(MATRIX, args.correlate_some_vs_all)
     MATRIX = calc_mean(MATRIX, args.calc_mean)
     MATRIX = calc_sd(MATRIX, args.calc_sd)
     MATRIX = calc_range(MATRIX, args.calc_range)
@@ -3796,8 +3888,7 @@ def main():
     # Relabel the column IDs.
     MATRIX = rename_col_id(
         MATRIX, args.rename_col_id, args.ignore_missing_labels)
-    MATRIX = replace_col_ids(
-        MATRIX, args.replace_col_ids, args.ignore_missing_labels)
+    MATRIX = replace_col_ids(MATRIX, args.replace_col_ids)
     MATRIX = relabel_col_ids(
         MATRIX, args.relabel_col_ids, args.ignore_missing_labels)
     MATRIX = append_col_ids(
@@ -3903,7 +3994,7 @@ def main():
     MATRIX = reorder_row_cluster(
         MATRIX, args.reorder_row_cluster, args.row_tree_file,
         args.cluster_method, args.distance_method,
-        args.reorder_row_cor_subset_indexes, args.col_indexes_include_headers)
+        args.reorder_row_cor_subset_indexes)
     MATRIX = reorder_col_cluster(
         MATRIX, args.reorder_col_cluster, args.col_tree_file,
         args.cluster_method, args.distance_method)

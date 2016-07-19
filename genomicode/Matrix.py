@@ -529,6 +529,9 @@ class InMemoryMatrix(AbstractMatrix):
         header = self._resolve_synonym(header, self.row_names, self._synonyms)
         if header not in self._row_names:
             x = sorted(self._row_names)
+            for i in range(len(x)):
+                if " " in x[i]:
+                    x[i] = '"%s"' % x[i]
             x = ", ".join(x)
             raise KeyError, "%s: headers %s" % (header, x)
         return self._row_names[header]

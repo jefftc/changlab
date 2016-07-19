@@ -238,7 +238,7 @@ CONST2STR = {
 DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
 #DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True
 
-MAX_NETWORK_SIZE = 1024 * 8
+MAX_NETWORK_SIZE = 1024 * 4
 
 
 class AttributeDef:
@@ -1339,7 +1339,12 @@ def _init_network(moduledb, out_data, custom_attributes):
     nit = -1
     while stack:
         nit += 1
-        assert len(network.nodes) < MAX_NETWORK_SIZE, "network too large"
+
+        if len(network.nodes) >= MAX_NETWORK_SIZE:
+            #plot_network_gv("network.png", network, verbose=True)
+            write_network("network.json", network)
+        assert len(network.nodes) < MAX_NETWORK_SIZE, \
+               "network [%d] too large" % len(network.nodes)
         #_print_network(Network(nodes, transitions))
 
         # Pop the next node off the stack.
@@ -4853,11 +4858,12 @@ def _format_modulenode_gv(node, node_id, options):
 def plot_network_gv(
     filename, network, options=None, bold=[], bold_transitions=[],
     highlight_green=[], highlight_orange=[], highlight_purple=[],
-    highlight_yellow=[], show_node_ids=None, verbose=False):
+    highlight_yellow=[], nodeid2color={}, show_node_ids=None, verbose=False):
     # bold              List of node IDs to bold.
     # highlight[1-2]    List of node IDs to highlight.
     # bold_transitions  List of tuples (node_id1, node_id2)
     # show_node_ids     If not None, then show only the node ids in this list.
+    # nodeid2color      node_id -> <color> (e.g. "#FDAF91")
     from genomicode import graphviz
 
     if show_node_ids is None:
@@ -4951,6 +4957,8 @@ def plot_network_gv(
             node2attr["fillcolor"] = highlight_orange_color
         elif node_id in highlight_purple:
             node2attr["fillcolor"] = highlight_purple_color
+        elif node_id in nodeid2color:
+            node2attr["fillcolor"] = nodeid2color[node_id]
 
         node_name = "%s [%d]" % (name, node_id)
         id2name[node_id] = node_name
@@ -5086,6 +5094,12 @@ def _bc_to_inputs(
         out_datatype = out_data.datatype
         attributes = all_attributes[in_num]
         attrsource = all_attrsource[in_num]
+
+        # TODO: Have some better way of diagnosing this error.
+        # To diagnose:
+        # AssertionError: 'gene_order' is not a known attribute for datatype
+        #   ClassLabelFile.
+        #print get_node_name(module)
 
         if inputs_have_atomic_attribute_values:
             attr_names = sorted(attributes)
@@ -5699,7 +5713,9 @@ def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
     # Assume that in_datas fulfill the constraints of the module.
 
     datatype = module.out_datatype
-    attributes = {}
+    
+    attributes = {}      # key -> value (ATOM)
+    possibilities = {}   # key -> value (ENUM)
 
     # Priorities (in increasing order):
     # 1.  Default values
@@ -5711,6 +5727,7 @@ def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
     #         Use the attributes from this default.
     # Case 2: Fill with the default input values of the output
     #         datatype.
+    
     # Case 1.
     if module.default_attributes_from:
         # If there are multiple default_attributes_from, just use the
@@ -5720,14 +5737,27 @@ def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
         assert input_index < len(in_datas)
         data = in_datas[input_index]
         assert data.datatype.name == datatype.name
-        attributes.update(data.attributes)
+        for key, value in data.attributes.iteritems():
+            x = _get_attribute_type(value)
+            if x is TYPE_ATOM:
+                attributes[key] = value
+            else:
+                possibilities[key] = value
+        #attributes.update(data.attributes)
     # Case 2.
     else:
         for attrdef in datatype.attribute_defs.itervalues():
+            x = _get_attribute_type(attrdef.default_in)
+            assert x is TYPE_ATOM
             attributes[attrdef.name] = attrdef.default_in
 
+    ## Make sure these attributes are atomic.
+    #for name, value in attributes.iteritems():
+    #    x = _get_attribute_type(value)
+    #    assert x is TYPE_ATOM, "Not atomic: %s.%s (%s)" % (
+    #        datatype.name, name, value)
+
     # Handle the consequences.
-    possibilities = {}
     for cons in module.consequences:
         if cons.behavior == SET_TO:
             attributes[cons.name] = cons.arg1

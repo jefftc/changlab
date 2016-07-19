@@ -85,7 +85,7 @@ IntensityPlot = DataType(
         'contents', BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
     AttributeDef(
-        "preprocess", ANY_PREPROCESS, "unknown", "any",
+        "preprocess", ANY_PREPROCESS, "unknown", "unknown",
         help="preprocess method"),
     help="Intensity plot file",
     )
@@ -978,7 +978,7 @@ all_modules = [
             "cn_abs_diff", 50, help='abs diff for class neighbors method'),
 
         Constraint("gene_order", MUST_BE, "none", 0),
-        Constraint("gene_order", SAME_AS, 0, 1),
+        #Constraint("gene_order", SAME_AS, 0, 1),
         Consequence("gene_order", SET_TO, "class_neighbors"),
 
         Constraint("contents", MUST_BE, "class0,class1", 0),
