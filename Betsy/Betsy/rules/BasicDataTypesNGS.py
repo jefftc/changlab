@@ -350,7 +350,7 @@ SaiFolder = DataType(
         help="Generate a small sample file with a limited number of reads."
         ),
     AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        "mouse_reads_subtracted", YESNO, "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
     #AttributeDef(
     #    "contents", BDT.CONTENTS,
@@ -387,10 +387,10 @@ NumAlignedReads = DataType(
 AlignmentCIGARFolder = DataType(
     "AlignmentCIGARFolder",
     AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        "mouse_reads_subtracted", YESNO, "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
     AttributeDef(
-        "adapters_trimmed", ["yes", "no"], "no", "no",
+        "adapters_trimmed", YESNO, "no", "no",
         help="Whether the adapters are trimmed."),
     help="For each alignment, show the CIGAR, MD, NM, and NH data "
     "(folder of .txt file).",
@@ -399,7 +399,7 @@ AlignmentCIGARFolder = DataType(
 PerfectAlignmentSummary = DataType(
     "PerfectAlignmentSummary",
     AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        "mouse_reads_subtracted", YESNO, "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
     help="Summarizes the fraction of perfect alignments (.txt file).",
     )
@@ -1028,7 +1028,7 @@ all_modules = [
             help="(OPTIONAL).",
             ),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         #Constraint("base_recalibrated", MUST_BE, "no", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
@@ -1103,7 +1103,7 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
@@ -1129,7 +1129,7 @@ all_modules = [
         Consequence("has_read_groups", SAME_AS_CONSTRAINT),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
         Consequence("indel_realigned", SAME_AS_CONSTRAINT),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", SAME_AS, 0, 2),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),

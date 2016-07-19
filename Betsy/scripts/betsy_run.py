@@ -212,7 +212,7 @@ def check_more_than_one_node_network(network):
 
 def check_inputs_provided(
     network, in_data_nodes, custom_attributes, user_options,
-    max_inputs, network_png, verbose):
+    max_inputs, network_json, network_png, verbose):
     if in_data_nodes:
         return True
     # If there's an output and no inputs, then show the possible
@@ -223,6 +223,7 @@ def check_inputs_provided(
         network, x, custom_attributes, max_inputs=max_inputs)
     plot_network(
         network_png, network, user_options=user_options, verbose=verbose)
+    write_network(network_json, network)
     return False
 
 
@@ -317,7 +318,7 @@ def _print_input_datatypes(
 
 
 def check_inputs_in_network(
-    network, user_options, in_data_nodes, network_png, verbose):
+    network, user_options, in_data_nodes, network_json, network_png, verbose):
     # Return a tuple of:
     # all_inputs_found (boolean)
     # list of (list of node IDs that match in_data_nodes).
@@ -385,6 +386,7 @@ def check_inputs_in_network(
     plot_network(
         network_png, network, user_options=user_options,
         highlight_green=start_ids, verbose=verbose)
+    write_network(network_json, network)
     return False, node2ids
 
 
@@ -468,7 +470,7 @@ def _print_node_score_table(network, scores):
 
 def build_pipelines(
     network, user_options, in_data_nodes, data_node_ids, custom_attributes,
-    max_inputs, network_png, verbose):
+    max_inputs, network_json, network_png, verbose):
     # Return list of (path, start_ids).  start_ids is parallel to
     # in_data_nodes.  If no paths found, will return an empty list.
     import sys
@@ -537,11 +539,13 @@ def build_pipelines(
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         verbose=verbose)
+    write_network(network_json, network)
     return []
 
 
 def check_attributes_complete(
-    network, user_options, paths, network_png, prune_network, verbose):
+    network, user_options, paths, network_json,
+    network_png, prune_network, verbose):
     # user_options is dict of name to value
     import sys
     from genomicode import parselib
@@ -605,12 +609,13 @@ def check_attributes_complete(
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         prune=prune_network, verbose=verbose)
+    write_network(network_json, network)
     return []
 
 
 def prune_pipelines(
-    network, user_options, custom_attributes, paths, network_png,
-    prune_network, verbose):
+    network, user_options, custom_attributes, paths, network_json,
+    network_png, prune_network, verbose):
     # Any any pipelines look weird, then remove them.
     import sys
     from Betsy import bie3
@@ -647,6 +652,7 @@ def prune_pipelines(
         plot_network_show_pipelines(
             network_png, network, paths_orig, user_options=user_options,
             prune=prune_network, verbose=verbose)
+        write_network(network_json, network)
         return paths
     
     num_pruned = len(paths_orig) - len(paths)
@@ -714,7 +720,7 @@ def _dict_diff(dict1, dict2, _as_dict=False):
 
 
 def check_input_files(network, in_data_nodes, user_options, paths,
-                      network_png, prune_network, verbose):
+                      network_json, network_png, prune_network, verbose):
     import os
     import sys
 
@@ -737,11 +743,13 @@ def check_input_files(network, in_data_nodes, user_options, paths,
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         prune=prune_network, verbose=verbose)
+    write_network(network_json, network)
     return []
 
 
 def manually_verify_network(
-    network, user_options, paths, run, network_png, prune_network, verbose):
+    network, user_options, paths, run, network_json,
+    network_png, prune_network, verbose):
     import sys
     if run:
         return True
@@ -753,6 +761,7 @@ def manually_verify_network(
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         prune=prune_network, verbose=verbose)
+    write_network(network_json, network)
     return False
     
 
@@ -818,7 +827,8 @@ def plot_network_show_pipelines(filename, network, paths, **keywds):
 
 
 def plot_network(
-    filename, network, user_options=None, bold=[], bold_transitions=[], 
+    filename, network, user_options=None,
+    bold=[], bold_transitions=[], 
     highlight_green=[], highlight_orange=[], highlight_purple=[],
     highlight_yellow=[], prune=False, verbose=False):
     # If show_node_ids is not None, should be a list of dict of the
@@ -854,6 +864,15 @@ def plot_network(
         highlight_green=highlight_green, highlight_orange=highlight_orange,
         highlight_purple=highlight_purple, highlight_yellow=highlight_yellow,
         show_node_ids=show_node_ids, verbose=verbose)
+
+
+def write_network(filename, network):
+    from Betsy import bie3
+
+    if not filename:
+        return
+    print "Writing network in json format: %s." % filename
+    bie3.write_network(filename, network)
 
 
 def plot_pipelines(filestem, network, paths, user_options, max_pipelines=None,
@@ -1160,7 +1179,7 @@ def main():
     import sys
     import argparse
     import getpass
-    import itertools
+    #import itertools
 
     from Betsy import config
     from Betsy import rule_engine_bie3
@@ -1381,7 +1400,8 @@ def main():
         x = [x[0] for x in out_attributes]
         x = sorted({}.fromkeys(x))
         datatypes = x
-        assert datatypes
+        # datatypes can be empty if no attributes specified.
+        #assert datatypes
         for dt in datatypes:
             # Since there's only one output object, all attributes for
             # that data type should be put into the same
@@ -1488,13 +1508,13 @@ def main():
     # Step 3: Make sure some inputs are provided.
     if not check_inputs_provided(
         network, in_data_nodes, custom_attributes, user_options,
-        args.max_inputs, args.network_png, verbose_network):
+        args.max_inputs, args.network_json, args.network_png, verbose_network):
         return
     # Step 4: Make sure each of the input nodes match a node in the
     # network.
     x = check_inputs_in_network(
-        network, user_options, in_data_nodes, args.network_png,
-        verbose_network)
+        network, user_options, in_data_nodes, args.network_json,
+        args.network_png, verbose_network)
     inputs_ok, data_node_ids = x
     if not inputs_ok:
         return
@@ -1502,7 +1522,7 @@ def main():
     # nodes.
     paths = build_pipelines(
         network, user_options, in_data_nodes, data_node_ids, custom_attributes,
-        args.max_inputs, args.network_png, verbose_network)
+        args.max_inputs, args.network_json, args.network_png, verbose_network)
     #plot_pipelines(
     #    "pipeline", network, paths, user_options, max_pipelines=1,
     #    prune=True, verbose=True)
@@ -1511,8 +1531,8 @@ def main():
         return
     # Step 6: Make sure required attributes are given.
     paths = check_attributes_complete(
-        network, user_options, paths, args.network_png, args.prune_network,
-        verbose_network)
+        network, user_options, paths, args.network_json,
+        args.network_png, args.prune_network, verbose_network)
     if not paths:
         return
     # DEBUG: To debug the pruning, save the network and paths so we
@@ -1532,8 +1552,8 @@ def main():
     #    verbose=args.verbose)
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(
-        network, user_options, custom_attributes, paths, args.network_png,
-        args.prune_network, verbose_network)
+        network, user_options, custom_attributes, paths, args.network_json,
+        args.network_png, args.prune_network, verbose_network)
     if not paths:
         return
     # DEBUG: Print out each of the pipelines.
@@ -1543,8 +1563,8 @@ def main():
         
     # Step 8: Look for input files.
     if not check_input_files(
-        network, in_data_nodes, user_options, paths, args.network_png,
-        args.prune_network, verbose_network):
+        network, in_data_nodes, user_options, paths, args.network_json,
+        args.network_png, args.prune_network, verbose_network):
         return
 
     #print "The network (%d nodes) is complete." % len(network.nodes)
@@ -1556,7 +1576,7 @@ def main():
         args.num_cores, x)
     # Step 9: Manual verification of the network.
     if not manually_verify_network(
-        network, user_options, paths, args.run,
+        network, user_options, paths, args.run, args.network_json,
         args.network_png, args.prune_network, verbose_network):
         return
 
@@ -1581,6 +1601,7 @@ def main():
             plot_network(
                 args.network_png, network, user_options=user_options,
                 highlight_green=node_ids, verbose=verbose_network)
+            write_network(args.network_json, network)
         raise
 
     # Draw the final network.
@@ -1589,12 +1610,11 @@ def main():
         node_ids = node_dict.keys()
         
     plot_network(
-        args.network_png, network, user_options=user_options,
+        args.network_png, network,
+        user_options=user_options,
         bold=node_ids, bold_transitions=transitions,
         highlight_green=node_ids, verbose=verbose_network)
-    if args.network_json:
-        print "Writing network in json format: %s." % args.network_json
-        bie3.write_network(args.network_json, network)
+    write_network(args.network_json, network)
     #if args.network_text:
     #    print "Writing detailed network: %s." % args.network_text
     #    bie3.print_network(network, outhandle=args.network_text)
