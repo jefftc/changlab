@@ -140,6 +140,9 @@ ReadStrandedness = DataType(
 
     "ReadStrandedness",
     AttributeDef(
+        "adapters_trimmed", ["yes", "no"], "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef(
         "mouse_reads_subtracted", ["yes", "no"], "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
     help="Contains information about strandedness of reads (.json)."
@@ -318,14 +321,17 @@ BamFolder = DataType(
 RealignTargetFolder = DataType(
     "RealignTargetFolder",
     AttributeDef(
-        "duplicates_marked", ["yes", "no"], "no", "no",
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
+    AttributeDef(
+        "duplicates_marked", YESNO, "no", "no",
         help="Whether the duplicates are marked."),
     AttributeDef(
         "adapters_trimmed", YESNO, "no", "no",
         help="Whether the reads in here have had adapters trimmed."),
     AttributeDef(
-        "aligner", ALIGNERS, "unknown", "bowtie2",
-        help="Alignment algorithm."),
+        "split_n_trim", YESNO, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
     )
 
 RecalibrationReport = DataType(
@@ -700,6 +706,7 @@ all_modules = [
         #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -1035,6 +1042,8 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("split_n_trim", SAME_AS_CONSTRAINT),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
@@ -1077,6 +1086,9 @@ all_modules = [
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
+        Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("split_n_trim", SAME_AS, 0, 2),
+        Consequence("split_n_trim", SAME_AS_CONSTRAINT),
         help="Realign indels (IndelRealigner)."
         ),
     ModuleNode(
@@ -1187,6 +1199,8 @@ all_modules = [
         #    "aligner", CAN_BE_ANY_OF,
         #    ["bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem"], 0),
         Constraint("aligner", MUST_BE, "bowtie2", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("is_subset", MUST_BE, "yes", 0),

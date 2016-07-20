@@ -495,6 +495,8 @@ all_modules = [
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
         Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),

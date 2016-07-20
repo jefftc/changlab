@@ -227,7 +227,7 @@ def run_pipeline(
                 # might've gotten added to the stack because there are
                 # many input nodes that can go into this.
                 if DEBUG_RUN_PIPELINE:
-                    print "Got None result.  Already run."
+                    print "Got None result.  Already run or not compatible."
                 continue
             if DEBUG_RUN_PIPELINE:
                 print "Successfully complete."
@@ -244,6 +244,9 @@ def run_pipeline(
                 trans[(x, node_id)] = 1
             trans[(node_id, next_id)] = 1
             stack.append((next_node, next_id, None, trans))
+            if DEBUG_RUN_PIPELINE:
+                print "Adding to stack: %s [%d]." % (
+                    bie3.get_node_name(next_node), next_id)
             total_time += run_time
             # Since new nodes are added to the stack, more modules may
             # be ready now.
@@ -286,7 +289,6 @@ def run_module(
     import logging
 
     from genomicode import filelib
-    #from genomicode import parselib
     from Betsy import config
     from Betsy import bie3
 
@@ -362,6 +364,16 @@ def run_module(
         j = i+1
         while j < len(out_data_nodes):
             if out_data_node == out_data_nodes[j]:
+                del out_data_nodes[j]
+            else:
+                j += 1
+        i += 1
+    # This might generate duplicate out_data_nodes.  Get rid of them.
+    i = 0
+    while i < len(out_data_nodes)-1:
+        j = i+1
+        while j < len(out_data_nodes):
+            if out_data_nodes[i] == out_data_nodes[j]:
                 del out_data_nodes[j]
             else:
                 j += 1

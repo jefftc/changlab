@@ -66,7 +66,7 @@ def parse_clear_cache(clear_cache):
             x = x[:-len(k)]
             mult = v
             break
-    b = int(x) * mult
+    b = int(float(x) * mult)
     return b
 
 
