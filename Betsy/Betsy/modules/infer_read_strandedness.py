@@ -65,18 +65,37 @@ def parse_rseqc_infer_experiment(output):
     # Fraction of reads explained by "++,--": 0.9669
     # Fraction of reads explained by "+-,-+": 0.0161
 
-    # MISSING FILE ERROR:
-    # /data/jchang/biocore/gtf02.txt does NOT exists.
-    
     x = output.split("\n")
     x = [x.strip() for x in x]
     x = [x for x in x if x]
     lines = x
 
+    # MISSING FILE ERROR:
+    # /data/jchang/biocore/gtf02.txt does NOT exists.
+
     # Look for missing file error.
     for x in lines:
         if x.find("does NOT exists") >= 0:
             raise AssertionError, "RSeQC Error: %s" % x.strip()
+    
+    # ANOTHER ERROR:
+    # Reading reference gene model gencode.vM8.annotation.bed ... Done
+    # Loading SAM/BAM file ...  Finished
+    # Total 0 usable reads were sampled
+    # Unknown Data type
+    #
+    # This can be caused by:
+    # 1.  Mixing single and paired end reads (according to internet).
+    # 2.  Aligning RNA-Seq data with a DNA-Seq aligner.
+    if output.find("Total 0 usable reads were sampled") >= 0:
+        err = [
+            "RSeQC Error:",
+            output.strip(),
+            #"This may be due to poor alignment.  Try more reads."
+            ]
+        err = "\n".join(err)
+        raise AssertionError, err
+
     
     # Might be correct.  Do more checks.
     assert len(lines) >= 4
@@ -151,7 +170,6 @@ def get_paired_stranded_rseqc(reference_bed, bam_filename):
         "-i", mlib.sq(bam_filename),
         ]
     cmd = " ".join(cmd)
-    print "HERE 3", cmd
     x = parallel.sshell(cmd)
     x = parse_rseqc_infer_experiment(x)
     #single_or_paired, stranded, frac_failed, frac_first, frac_second = x

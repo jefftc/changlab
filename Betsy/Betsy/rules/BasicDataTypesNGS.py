@@ -83,7 +83,8 @@ YESNO = BDT.YESNO  # for convenience
 
 ALIGNERS = [
     "unknown", "bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem", "tophat",
-    "star"]
+    "star", "star_unstranded"]
+# star_unstranded is to figure out the strand (without causing cycles).
 ##REFERENCE_GENOMES = ["hg18", "hg19", "mm9", "dm3"]
 
 COMPRESSION = ["unknown", "no", "gz", "bz2", "xz"]
@@ -521,6 +522,9 @@ all_modules = [
         FastqFolder, FastqFolder,
         OptionDef(
             # Use 200k because that's what infer_experiments.py uses.
+            # Actually, 1 million is better, because 200k on
+            # RNA-Seq/bowtie2 may result in too few good reads.
+            #"num_samples", default=1000000, help="Number of reads to sample.",
             "num_samples", default=200000, help="Number of reads to sample.",
             ),
         Constraint("is_subset", MUST_BE, "no"),
@@ -1193,12 +1197,10 @@ all_modules = [
     ModuleNode(
         "infer_read_strandedness",
         [BamFolder, GTFGeneModel], ReadStrandedness,
-        # Needs to be done with a non-RNA-Seq aligner, otherwise will
-        # cause a cycle.
-        #Constraint(
-        #    "aligner", CAN_BE_ANY_OF,
-        #    ["bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem"], 0),
-        Constraint("aligner", MUST_BE, "bowtie2", 0),
+        # ReadStrandedness is only used for RNA aligners.  So use an
+        # RNA-Seq aligner.  Have to use a special one that doesn't
+        # require ReadStrandedness, or it will cause a cycle.
+        Constraint("aligner", MUST_BE, "star_unstranded", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),

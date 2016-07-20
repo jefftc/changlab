@@ -80,6 +80,8 @@ STARAlignmentFolder = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified"),
     AttributeDef(
+        "aligner", ["star", "star_unstranded"], "star", "star"),
+    AttributeDef(
         "is_subset", YESNO, "no", "no",
         help="Generate a small sample file with a limited number of reads."
         ),
@@ -237,6 +239,7 @@ all_modules = [
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
+        Consequence("aligner", SET_TO, "star"),
         #Constraint(
         #    "orientation", CAN_BE_ANY_OF, NGS.ORIENTATION_NOT_UNKNOWN, 0),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -248,11 +251,29 @@ all_modules = [
         "pretty safe."
         ),
     ModuleNode(
+        "align_with_star_unstranded",
+        [NGS.FastqFolder, NGS.SampleGroupFile, STARReferenceGenome],
+        STARAlignmentFolder,
+        Constraint("compressed", MUST_BE, "no", 0),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
+        Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("is_subset", SAME_AS_CONSTRAINT),
+        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
+        Consequence("aligner", SET_TO, "star_unstranded"),
+        
+        help="Align to a reference genome with star, unstranded.  "
+        "This is only used internally to determine strandedness of reads."
+        ),
+    ModuleNode(
         "extract_star_bamfolder",
         STARAlignmentFolder, NGS.BamFolder,
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        Consequence("aligner", SET_TO, "star"),
+        Constraint("aligner", CAN_BE_ANY_OF, ["star", "star_unstranded"]),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),

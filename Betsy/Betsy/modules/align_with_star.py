@@ -91,7 +91,7 @@ class Module(AbstractModule):
             commands.append(x)
 
             # For debugging.  If this file already exists, skip it.
-            if filelib.exists_nz("genome.2pass.log"):
+            if not filelib.exists_nz("genome.2pass.log"):
                 parallel.sshell(x, path=out_path)
             alignlib.assert_is_STAR_reference(sj_index)
 
