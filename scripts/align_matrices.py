@@ -540,6 +540,7 @@ def get_annot_samples(matrix, header, samples_hint, headers_hint,
                       case_insensitive, hash_samples, ignore_nonalnum):
     if header:
         h = matrix.normalize_header(header)
+        assert h, "Missing header: %s (%s)" % (header, matrix.headers)
         return header, matrix.header2annots[h]
 
     # Find the column that contains the most matches.
