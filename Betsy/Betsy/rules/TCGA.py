@@ -19,10 +19,11 @@ TCGAFile = DataType(
         #               'humanmethylation450', 'mirnaseq',
         #               'rppa', 'clinical', 'agilent', 'affymetrix'],
         # XXX exons
-        "preprocess", ['tpm', 
-                       'humanmethylation450', 'mirnaseq',
-                       'rppa', 'clinical', 'agilent', 'affymetrix'],
-        'tpm', 'tpm', help="TCGA data type"),
+        #"preprocess", ['tpm', 
+        #               'humanmethylation450', 'mirnaseq',
+        #               'rppa', 'clinical', 'agilent', 'affymetrix'],
+        # Probably should be renamed something else.
+        "preprocess", ['tpm'], 'tpm', 'tpm', help="TCGA data type"),
     AttributeDef(
         "tumor_only", ['yes', 'no'],'no', 'no',
         help="select tumor sample only"),
@@ -41,11 +42,12 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence(
-            "preprocess", SET_TO_ONE_OF,
+            "preprocess", SET_TO_ONE_OF, ["tpm"],
             # XXX RSEM_exons
-            ['tpm', 'humanmethylation450', 'mirnaseq', 'rppa', 'clinical']),
+            #['tpm', 'humanmethylation450', 'mirnaseq', 'rppa', 'clinical']),
             #['RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
             # 'rppa', 'clinical']),
+            ),
         Consequence("tumor_only", SET_TO, 'no'),
         help="download data from tcga website according to TCGAID"),
     
@@ -82,9 +84,10 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("tumor_only", MUST_BE, 'yes'),
         Constraint(
-            "preprocess", CAN_BE_ANY_OF,
-            ['tpm', 'humanmethylation450', 'mirnaseq',
-             'rppa', 'clinical', 'affymetrix', 'agilent']),
+            "preprocess", CAN_BE_ANY_OF, ["tpm"],
+            #['tpm', 'humanmethylation450', 'mirnaseq',
+            # 'rppa', 'clinical', 'affymetrix', 'agilent']
+            ),
             #['RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
             # 'rppa', 'clinical', 'affymetrix', 'agilent']),
         Consequence("contents", SAME_AS_CONSTRAINT),
@@ -92,5 +95,6 @@ all_modules = [
         Consequence('predataset', SET_TO, "no"),
         Consequence('preprocess', SAME_AS_CONSTRAINT),
         Consequence('format', SET_TO, "tdf"),
-        help="preprocess tcga file, generate to SignalFile_Postprocess"),
+        help="preprocess tcga file, generate to SignalFile_Postprocess",
+            ),
     ]

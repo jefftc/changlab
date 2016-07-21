@@ -238,7 +238,7 @@ CONST2STR = {
 DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
 #DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True
 
-MAX_NETWORK_SIZE = 1024 * 4
+MAX_NETWORK_SIZE = 1024 * 0.5
 
 
 class AttributeDef:
@@ -1341,7 +1341,7 @@ def _init_network(moduledb, out_data, custom_attributes):
         nit += 1
 
         if len(network.nodes) >= MAX_NETWORK_SIZE:
-            #plot_network_gv("network.png", network, verbose=True)
+            plot_network_gv("network.png", network, verbose=True)
             write_network("network.json", network)
         assert len(network.nodes) < MAX_NETWORK_SIZE, \
                "network [%d] too large" % len(network.nodes)
@@ -5721,13 +5721,11 @@ def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
     # 1.  Default values
     # 2.  Consequences
 
-    # Set the default values.
-    # Set the attributes based on the default values.
+    # PRI 1.  Set the attributes based on the default values.
     # Case 1: default_attributes_from is given.
     #         Use the attributes from this default.
     # Case 2: Fill with the default input values of the output
     #         datatype.
-    
     # Case 1.
     if module.default_attributes_from:
         # If there are multiple default_attributes_from, just use the
@@ -5757,7 +5755,7 @@ def _fc_to_outputs(module, in_datas, ignore_based_on_data=False):
     #    assert x is TYPE_ATOM, "Not atomic: %s.%s (%s)" % (
     #        datatype.name, name, value)
 
-    # Handle the consequences.
+    # PRI 2.  Handle the consequences.
     for cons in module.consequences:
         if cons.behavior == SET_TO:
             attributes[cons.name] = cons.arg1

@@ -122,7 +122,7 @@ ActbPlot = DataType(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help='contents'),
     AttributeDef(
-        "preprocess", GeneExpProcessing.PREPROCESS, 'unknown', 'unknown',
+        "preprocess", BDT.PREPROCESS, 'unknown', 'unknown',
         help="preprocess method"),
     help="Actb plot file")
 
@@ -139,7 +139,7 @@ ControlPlot = DataType(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help='contents'),
     AttributeDef(
-        "preprocess", GeneExpProcessing.PREPROCESS, 'unknown', 'unknown',
+        "preprocess", BDT.PREPROCESS, 'unknown', 'unknown',
         help="preprocess method"),
     help="control plot file")
 
@@ -323,7 +323,7 @@ all_modules = [
     ModuleNode(
         'plot_actb_line', GeneExpProcessing._SignalFile_Impute, ActbPlot,
         #Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("missing_values", MUST_BE, 'no'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
@@ -331,7 +331,7 @@ all_modules = [
         help="plot actb line"),
     ModuleNode(
         'plot_affy_affx_line', GeneExpProcessing.SignalFile, ControlPlot,
-        Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),

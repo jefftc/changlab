@@ -23,6 +23,50 @@ CONTENTS2NUMCLASSES = {
 
 CONTENTS = CONTENTS2NUMCLASSES.keys()
 
+
+## PREPROCESS1 = [
+##     "unknown", "illumina", "agilent", "mas5", "rma", "loess",
+##     "rsem", 'RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
+##     'rppa', 'clinical', 'affymetrix']
+## # What is this for?
+## # TODO: get rid of this
+## PREPROCESS_WOrma = [
+##     "unknown", "illumina", "agilent", "mas5", "loess",
+##     "rsem", 'RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
+##     'rppa', 'clinical', 'affymetrix']
+## PREPROCESS = PREPROCESS1 + ['any']
+
+PREPROCESS = [
+    "unknown",
+
+    # Gene Expression
+    "mas5",
+    "rma",
+    "agilent",
+    "illumina",
+    "loess",  # What is this for?  Better in normalization?
+
+    # RNA-Seq
+    #"RSEM",
+    "tpm",
+    "fpkm",
+    "counts",
+    "cpm",
+    
+    # Not sure why this is here.
+    #'RSEM_genes',
+    #'RSEM_exons',
+
+    # Not sure why there are here.
+    #'humanmethylation450',
+    #'mirnaseq',
+    #'rppa',
+    #'clinical',
+    #'affymetrix',
+    ]
+ANY_PREPROCESS = PREPROCESS + ["any"]
+
+
 GENE_ORDER = [
     "none",
     "user_defined",
@@ -68,6 +112,11 @@ GeneListFile=DataType(
         "gene_order", GENE_ORDER, "none", "none",
         help="How this gene list is ordered.",
         ),
+    AttributeDef(
+        "preprocess", PREPROCESS, "unknown", "unknown",
+        help="preprocess method"),
+    AttributeDef(
+        "contents", CONTENTS, 'unspecified', 'unspecified', help="contents"),
     #AttributeDef(
     #    'cn_mean_or_median', ['mean', 'median'], 'mean', 'mean',
     #    help="class neighbors mean or median"),
@@ -77,23 +126,15 @@ GeneListFile=DataType(
     #AttributeDef(
     #    'cn_filter_data', ['yes','no'], 'no', 'no',
     #    help="class neighbors filter data or not"),
-    #AttributeDef(
-    #    'gene_order',
-    #    [
-    #        'no', "gene_list", "class_neighbors", "t_test_p",
-    #        "t_test_fdr",'diff_ttest','diff_sam',
-    #        'diff_ebayes','diff_fold_change',
-    #        ],
-    #    't_test_p', "t_test_p", help="gene order method"),
-    #AttributeDef(
-    #    "contents", CONTENTS, 'unspecified', 'unspecified', help="contents"),
-    help="A file that contains a list of genes.")
+    help="A file that contains a list of genes.",
+    )
+
 
 
 all_data_types = [
     RenameFile,
-    ExpressionFiles,
     GeneListFile,
+    ExpressionFiles,
     ]
 
 all_modules = [

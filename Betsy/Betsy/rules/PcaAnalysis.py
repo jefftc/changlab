@@ -7,7 +7,7 @@ PcaAnalysis = DataType(
     'PcaAnalysis',
     AttributeDef('contents',BDT.CONTENTS,"unspecified","unspecified",help="contents"),
     AttributeDef(
-        "preprocess",GeneExpProcessing.PREPROCESS,
+        "preprocess", BDT.PREPROCESS,
         "unknown","unknown",help="preprocess method"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
@@ -54,7 +54,7 @@ PcaPlot = DataType(
     'PcaPlot',
     AttributeDef("contents",BDT.CONTENTS,"unspecified","unspecified",help="contents"),
     # Properties of the data.
-    AttributeDef("preprocess",GeneExpProcessing.PREPROCESS,
+    AttributeDef("preprocess",BDT.PREPROCESS,
         "unknown","unknown",help="preprocess method"),
     AttributeDef(
         "missing_algorithm",["none", "median_fill", "zero_fill"],
@@ -110,7 +110,7 @@ all_modules = [
         Constraint("format",MUST_BE,'tdf'),
         Constraint("logged",MUST_BE,'yes'),
         Constraint("filter",CAN_BE_ANY_OF,["yes","no"]),
-        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("quantile_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("bfrm_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),
@@ -159,7 +159,7 @@ all_modules = [
                   "unspecified"]),
         Constraint("logged",MUST_BE,'yes'),
         Constraint("filter",CAN_BE_ANY_OF,["yes","no"]),
-        Constraint("preprocess",CAN_BE_ANY_OF,GeneExpProcessing.PREPROCESS),
+        Constraint("preprocess",CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("quantile_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("bfrm_norm",CAN_BE_ANY_OF,['yes','no']),
         Constraint("combat_norm",CAN_BE_ANY_OF,['yes','no']),

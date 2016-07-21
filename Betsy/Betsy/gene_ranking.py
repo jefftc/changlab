@@ -22,10 +22,13 @@ import numpy
 
 def t_test(X, Y, exact=True):
     """X,Y is a matrix slice"""
+    # Return tuple (list of t-values, list of p-values).  t-values and
+    # p-values are floats or None (for NA, inf, nan).
+    assert len(X) == len(Y), 'X and Y should be equal length'
+    
     R = jmath.start_R()
     t_value = []
     p_value = []
-    assert len(X) == len(Y), 'X and Y should be equal length'
     for i in range(len(X)):
         X[i] = [jmath.R_var('NA') if numpy.isnan(x) else x for x in X[i]]
         Y[i] = [jmath.R_var('NA') if numpy.isnan(x) else x for x in Y[i]]
@@ -33,16 +36,20 @@ def t_test(X, Y, exact=True):
         jmath.R_equals(Y[i], 'y')
         R('a<-try(t.test(x,y,exact=exact), silent=TRUE)')
         R('if (is(a, "try-error")) p=NA else p=a$p.value')
-        R('if (is(a,"try-error")) t=NA else t=a$t')
+        R('if (is(a, "try-error")) t=NA else t=a$t')
         R('if (is.null(t)) t=NA')
-        p = R['p']
-        if not p[0]:
-            p = [None]
-        t = R['t']
-        if not t[0]:
-            t = [None]
-        t_value.append(t[0])
-        p_value.append(p[0])
+        p = R["p"]
+        t = R["t"]
+        if str(p) in ["NA", "inf", "nan"]:
+            p = None
+        else:
+            p = float(p[0])
+        if str(t) in ["NA", "inf", "nan"]:
+            t = None
+        else:
+            t = float(t[0])
+        t_value.append(t)
+        p_value.append(p)
     return t_value, p_value
 
 

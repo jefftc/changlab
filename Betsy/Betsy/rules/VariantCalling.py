@@ -424,6 +424,8 @@ all_modules = [
         Consequence("caller", SET_TO, "mpileup"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO, "all"),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Use samtools mpileup to call variants."),
     ModuleNode(
         "summarize_consensus_mpileup",
@@ -484,6 +486,8 @@ all_modules = [
         Consequence("caller", SET_TO, "gatk"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO, "all"),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Use GATK HaplotypeCaller to call variants."),
     ModuleNode(
         "call_variants_platypus",
