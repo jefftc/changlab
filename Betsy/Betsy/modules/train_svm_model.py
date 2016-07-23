@@ -9,8 +9,10 @@ class Module(AbstractModule):
         outfile):
         import svmutil
         import arrayio
+        from genomicode import filelib
         from Betsy import read_label_file
         from Betsy import module_utils
+        
         data_node_train, cls_node_train = antecedents
         a, training_label, second_line = read_label_file.read(
             cls_node_train.identifier)
@@ -31,9 +33,7 @@ class Module(AbstractModule):
         prob = svmutil.svm_problem(y_training, x_training)
         model = svmutil.svm_train(prob, param)
         svmutil.svm_save_model(outfile, model)
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for train_svm_model fails' % outfile
-        )
+        filelib.assert_exists_nz(outfile)
 
 
     def name_outfile(self, antecedents, user_options):

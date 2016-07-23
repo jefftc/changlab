@@ -12,6 +12,7 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import module_utils
         from genomicode import config
+        from genomicode import filelib
         in_data = antecedents
         infile = in_data.identifier
         if in_data.identifier.endswith('tar.gz'):
@@ -34,7 +35,7 @@ class Module(AbstractModule):
             raise ValueError(error_message)
     
         
-        assert module_utils.exists_nz(tempfile), (
+        assert filelib.exists_nz(tempfile), (
             'the temp file %s for select_tumor_only fails' % tempfile
         )
         tempfile1 = 'temp1.txt'
@@ -49,7 +50,7 @@ class Module(AbstractModule):
             raise ValueError(error_message)
     
         
-        assert module_utils.exists_nz(tempfile1), (
+        assert filelib.exists_nz(tempfile1), (
             'the temp file %s for select_tumor_only fails' % tempfile1
         )
         tempfile2 = 'temp2.txt'
@@ -64,7 +65,7 @@ class Module(AbstractModule):
             raise ValueError(error_message)
     
         
-        assert module_utils.exists_nz(tempfile2), (
+        assert filelib.exists_nz(tempfile2), (
             'the output file %s for select_tumor_only fails' % tempfile2
         )
         process = subprocess.Popen([slice_matrix_BIN,
@@ -80,7 +81,7 @@ class Module(AbstractModule):
 
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for select_tumor_only fails' % outfile
         )
 

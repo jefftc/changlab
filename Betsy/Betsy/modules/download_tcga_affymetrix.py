@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import module_utils
         from genomicode import config
+        from genomicode import filelib
         #out_attributes = set_out_attributes(in_data, out_attributes)
         TCGA_BIN = config.download_tcga
         assert 'disease' in user_options
@@ -36,7 +37,7 @@ class Module(AbstractModule):
             if result_file.endswith(result_format):
                 os.rename(result_file, outfile)
 
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for download_tcga fails' % outfile
         )
 

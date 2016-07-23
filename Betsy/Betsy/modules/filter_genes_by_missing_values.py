@@ -7,6 +7,7 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         import arrayio
@@ -27,7 +28,7 @@ class Module(AbstractModule):
         M_c = M.matrix(I_good, None)
         arrayio.tab_delimited_format.write(M_c, f_out)
         f_out.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for gene_filter fails' % outfile
         )
 

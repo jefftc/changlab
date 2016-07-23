@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import os
         import subprocess
+        from genomicode import filelib
         from Betsy import module_utils
         from genomicode import config
         in_data = antecedents
@@ -91,7 +92,7 @@ class Module(AbstractModule):
         )
         result_files = os.listdir(download_directory)
         assert 'stderr.txt' not in result_files, 'gene_pattern get error'
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for consensusClustering fails' % outfile
         )
 

@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import arrayio
         from Betsy import module_utils
         from genomicode import jmath
+        from genomicode import filelib
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
         data = jmath.transpose(M._X)
@@ -21,7 +22,7 @@ class Module(AbstractModule):
                                title='Signal Intensity',
                                box_label=tickname)
         fig.savefig(outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for plot_intensity_boxplot fails' % outfile
         )
 

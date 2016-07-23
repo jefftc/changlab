@@ -11,7 +11,8 @@ class Module(AbstractModule):
         from Betsy import read_label_file
         from Betsy import module_utils
         from genomicode import jmath
-        data_node, cls_node_train = antecedents
+        
+        cls_node_train, data_node = antecedents
         result, label_line, second_line = read_label_file.read(
             cls_node_train.identifier)
         y = [second_line[int(i)] for i in label_line]
@@ -27,10 +28,10 @@ class Module(AbstractModule):
         jmath.R_equals_matrix(M2, 'test')
         jmath.R_equals(y, 'y')
         R('y<-as.factor(y)')
-        R('require(randomForest,quietly=TRUE)')
+        R('require(randomForest, quietly=TRUE)')
         R('library(randomForest)')
-        R('model<-randomForest(data,y=y,importance=TRUE)')
-        R('predict_result<-predict(model, test)')
+        R('model <- randomForest(data,y=y,importance=TRUE)')
+        R('predict_result <- predict(model, test)')
         predict_result = R['predict_result']
         levels = predict_result.levels
         predict_labels = predict_result[:]

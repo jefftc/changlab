@@ -10,6 +10,7 @@ class Module(AbstractModule):
         """compare signature predictions"""
         import os
         import arrayio
+        from genomicode import filelib
         from Betsy import module_utils
         data_node1, data_node2, data_node3 = antecedents
         assert 'probabilities.pcl' in os.listdir(data_node1.identifier)
@@ -40,7 +41,7 @@ class Module(AbstractModule):
             f.write('\t'.join(d3[i]) + '\n')
         
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for compare_signature_predictions fails' % outfile
         )
 

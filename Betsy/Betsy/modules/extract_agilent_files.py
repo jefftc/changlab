@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         import shutil
         from Betsy import module_utils
+        from genomicode import filelib
         in_data = antecedents
         directory = module_utils.unzip_if_zip(in_data.identifier)
         agilent_files = []
@@ -46,7 +47,7 @@ class Module(AbstractModule):
                 old_file = os.path.join(directory, filename)
                 new_file = os.path.join(outfile, filename)
                 shutil.copyfile(old_file, new_file)
-            assert module_utils.exists_nz(outfile), (
+            assert filelib.exists_nz(outfile), (
                 'the output file %s for extract_agilent_files fails' % outfile
             )
         else:

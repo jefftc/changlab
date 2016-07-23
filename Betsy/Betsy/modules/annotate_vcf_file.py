@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import subprocess
         from genomicode import config
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         species = out_attributes['ref']
@@ -25,7 +26,7 @@ class Module(AbstractModule):
             raise ValueError(error_message)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for annot_vcf_file fails' % outfile
         )
 

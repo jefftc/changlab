@@ -10,6 +10,7 @@ class Module(AbstractModule):
         from Betsy import gene_ranking
         import arrayio
         from Betsy import module_utils
+        from genomicode import filelib
         from genomicode import config
         from genomicode import arrayplatformlib
         data_node, gene_node = antecedents
@@ -53,7 +54,7 @@ class Module(AbstractModule):
                     error_message = process.communicate()[1]
                     if error_message:
                         raise ValueError(error_message)
-                    assert module_utils.exists_nz(
+                    assert filelib.exists_nz(
                         signal_file), 'the platform conversion fails'
                     id = out_attributes['platform']
                     M = arrayio.read(signal_file)
@@ -77,7 +78,7 @@ class Module(AbstractModule):
         f = open(outfile, 'w')
         arrayio.tab_delimited_format.write(M_new, f)
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for reorder_genes fails' % outfile
         )
 

@@ -15,58 +15,17 @@ from Betsy.bie3 import *
 import BasicDataTypes as BDT
 
 
-## PREPROCESS1 = [
-##     "unknown", "illumina", "agilent", "mas5", "rma", "loess",
-##     "rsem", 'RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
-##     'rppa', 'clinical', 'affymetrix']
-## # What is this for?
-## # TODO: get rid of this
-## PREPROCESS_WOrma = [
-##     "unknown", "illumina", "agilent", "mas5", "loess",
-##     "rsem", 'RSEM_genes', 'RSEM_exons', 'humanmethylation450', 'mirnaseq',
-##     'rppa', 'clinical', 'affymetrix']
-## PREPROCESS = PREPROCESS1 + ['any']
-
-PREPROCESS = [
-    "unknown",
-
-    # Gene Expression
-    "mas5",
-    "rma",
-    "agilent",
-    "illumina",
-    "loess",  # What is this for?  Better in normalization?
-
-    # RNA-Seq
-    #"RSEM",
-    "tpm",
-    "fpkm",
-    "counts",
-    "cpm",
-    
-    # Not sure why this is here.
-    #'RSEM_genes',
-    #'RSEM_exons',
-
-    # Not sure why there are here.
-    'humanmethylation450',
-    'mirnaseq',
-    'rppa',
-    'clinical',
-    'affymetrix',
-    ]
-ANY_PREPROCESS = PREPROCESS + ["any"]
-
-
-
 
 SimpleLabelFile = DataType(
     "SimpleLabelFile",
+    # Should have headers:
+    # Sample   Class
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
-    # Should have headers:
-    # Sample   Class
+    AttributeDef(
+        "preprocess", BDT.PREPROCESS, "unknown", "unknown",
+        help="preprocess method"),
     help="A simple tab-delimited format with labels for each sample.",
     )
 
@@ -75,6 +34,9 @@ ClassLabelFile = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
+    AttributeDef(
+        "preprocess", BDT.PREPROCESS, "unknown", "unknown",
+        help="preprocess method"),
     help="CLS format file with categorical labels.",
     )
 
@@ -85,7 +47,7 @@ IntensityPlot = DataType(
         'contents', BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
     AttributeDef(
-        "preprocess", ANY_PREPROCESS, "unknown", "unknown",
+        "preprocess", BDT.ANY_PREPROCESS, "unknown", "unknown",
         help="preprocess method"),
     help="Intensity plot file",
     )
@@ -100,7 +62,7 @@ UnprocessedSignalFile = DataType(
     # Properties of the data.
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", PREPROCESS, "unknown", "unknown",
+        "preprocess", BDT.PREPROCESS, "unknown", "unknown",
         help="preprocess method"),
     AttributeDef(
         "logged", ["unknown", "no", "yes"], "unknown", "yes",
@@ -120,7 +82,7 @@ _SignalFile_Impute = DataType(
     # Properties of the data.
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", PREPROCESS, "unknown", 'unknown',
+        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
         "predataset", ["no", "yes"], "no", "no",
@@ -145,7 +107,7 @@ _SignalFile_Merge = DataType(
     # Properties of the data.
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", PREPROCESS, "unknown", 'unknown',
+        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
         "predataset", ["no", "yes"], "no", "no", help="predataset or not"),
@@ -177,7 +139,7 @@ _SignalFile_Normalize = DataType(
     # Properties of the data.
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", PREPROCESS, "unknown", 'unknown',
+        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
         "predataset", ["no", "yes"], "no", "no", help="predataset or not"),
@@ -220,7 +182,7 @@ _SignalFile_Order = DataType(
     # Properties of the data.
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", PREPROCESS, "unknown", 'unknown',
+        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
@@ -262,7 +224,7 @@ _SignalFile_Annotate= DataType(
     # Properties of the data.
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", PREPROCESS, "unknown", 'unknown',
+        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
@@ -314,7 +276,7 @@ _SignalFile_Filter= DataType(
     # Properties of the data.
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", PREPROCESS, "unknown", 'unknown',
+        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
@@ -378,7 +340,7 @@ SignalFile= DataType(
     "SignalFile",
     # Properties of the data.
     AttributeDef(
-        "preprocess", ANY_PREPROCESS, "unknown", 'any', 
+        "preprocess", BDT.ANY_PREPROCESS, "unknown", 'any', 
         #"preprocess", PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
@@ -514,7 +476,7 @@ all_modules = [
         #Constraint("logged", CAN_BE_ANY_OF, ["no", "yes", "unknown"]),
         
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         
@@ -572,7 +534,7 @@ all_modules = [
         
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS_WOrma),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint(
@@ -658,29 +620,31 @@ all_modules = [
         Consequence("contents", SET_TO, "class0,class1"),
 
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS_WOrma, 0),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 0),
-        Constraint("combat_norm", MUST_BE, 'no', 0),
-        Constraint("quantile_norm", MUST_BE, 'no', 0),
-        Constraint("dwd_norm", MUST_BE, "no", 0),
-        Constraint("bfrm_norm", MUST_BE, "no", 0),
-        Constraint("shiftscale_norm", MUST_BE, "no", 0),
-        
-        #Constraint("preprocess", SAME_AS, 0, 1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
-        Constraint("combat_norm", MUST_BE, 'no', 1),
-        Constraint("quantile_norm", MUST_BE, "no", 1),
-        Constraint("dwd_norm", MUST_BE, "no", 1),
-        Constraint("bfrm_norm", MUST_BE, "no", 1),
-        Constraint("shiftscale_norm", MUST_BE, "no", 1),
-        
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
         Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
+        
+        Constraint("combat_norm", MUST_BE, 'no', 0),
+        Constraint("combat_norm", MUST_BE, 'no', 1),
         Consequence("combat_norm", SAME_AS_CONSTRAINT, 0),
+        
+        Constraint("quantile_norm", MUST_BE, 'no', 0),
+        Constraint("quantile_norm", MUST_BE, "no", 1),
         Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0),
+        
+        Constraint("dwd_norm", MUST_BE, "no", 0),
+        Constraint("dwd_norm", MUST_BE, "no", 1),
         Consequence("dwd_norm", SAME_AS_CONSTRAINT, 0),
+        
+        Constraint("bfrm_norm", MUST_BE, "no", 0),
+        Constraint("bfrm_norm", MUST_BE, "no", 1),
         Consequence("bfrm_norm", SAME_AS_CONSTRAINT, 0),
+        
+        Constraint("shiftscale_norm", MUST_BE, "no", 0),
+        Constraint("shiftscale_norm", MUST_BE, "no", 1),
         Consequence("shiftscale_norm", SAME_AS_CONSTRAINT, 0),
         DefaultAttributesFrom(0),
-        DefaultAttributesFrom(1),
+        #DefaultAttributesFrom(1),
         help="merge two classes SignalFile_Merge, generate SignalFile_Merge",
         ),
 
@@ -694,19 +658,23 @@ all_modules = [
         Consequence("contents", SET_TO, "class0,class1"),
 
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS_WOrma, 0),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 0),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        
         Constraint("combat_norm", MUST_BE, 'no', 0),
-        Constraint("quantile_norm", MUST_BE, 'no', 0),
-        Constraint("dwd_norm", MUST_BE, "no", 0),
-        Constraint("bfrm_norm", MUST_BE, "no", 0),
-        Constraint("shiftscale_norm", MUST_BE, "no", 0),
-
-        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS_WOrma, 1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
         Constraint("combat_norm", MUST_BE, 'no', 1),
+        
+        Constraint("quantile_norm", MUST_BE, 'no', 0),
         Constraint("quantile_norm", MUST_BE, 'no', 1),
+        
+        Constraint("dwd_norm", MUST_BE, "no", 0),
         Constraint("dwd_norm", MUST_BE, "no", 1),
+        
+        Constraint("bfrm_norm", MUST_BE, "no", 0),
         Constraint("bfrm_norm", MUST_BE, "no", 1),
+        
+        Constraint("shiftscale_norm", MUST_BE, "no", 0),
         Constraint("shiftscale_norm", MUST_BE, "no", 1),
         help="Generate a ClassLabelFile from two SignalFiles.",
         ),
@@ -785,8 +753,9 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with combat method"),
 
@@ -806,8 +775,11 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
+        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
+        #Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with dwd method"),
 
@@ -827,8 +799,11 @@ all_modules = [
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
+        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
+        #Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
         DefaultAttributesFrom(1),
         help="nommalize SignalFile_Merge with shiftscale method"),
     
@@ -837,7 +812,7 @@ all_modules = [
         "convert_merge_normalize",
         _SignalFile_Merge, _SignalFile_Normalize,
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
@@ -919,7 +894,7 @@ all_modules = [
         "convert_normalize_order",
         _SignalFile_Normalize, _SignalFile_Order,
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
@@ -982,9 +957,11 @@ all_modules = [
         Consequence("gene_order", SET_TO, "class_neighbors"),
 
         Constraint("contents", MUST_BE, "class0,class1", 0),
-        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 0),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 0),
         Constraint("contents", SAME_AS, 0, 1),
+        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 0),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         
         #Constraint("gene_order", MUST_BE, "no", 1),
         #Consequence("cn_mean_or_median", SET_TO_ONE_OF, ['mean', 'median']),
@@ -995,21 +972,25 @@ all_modules = [
         help="rank the genes in SignalFile_Order by class neighbors method"
         ),
 
-    ## ModuleNode(
-    ##     "rank_genes_by_sample_ttest",
-    ##     [_SignalFile_Order, ClassLabelFile], BDT.GeneListFile,
-    ##     OptionDef(
-    ##         "gene_select_threshold", 0.05, help="threshold for sample ttest"),
+    ModuleNode(
+        "rank_genes_by_sample_ttest",
+        [_SignalFile_Order, ClassLabelFile], BDT.GeneListFile,
+        OptionDef(
+            "gene_select_threshold", 0.05, help="threshold for sample ttest"),
         
-    ##     # Should make this an OptionDef.
-    ##     Constraint("gene_order", MUST_BE, "no", 0),
-    ##     Consequence("gene_order", SET_TO_ONE_OF, ["ttest_p", "ttest_fdr"]),
+        # Should make this an OptionDef.
+        Constraint("gene_order", MUST_BE, "none", 0),
+        Consequence("gene_order", SET_TO_ONE_OF, ["ttest_p", "ttest_fdr"]),
         
-    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-    ##     Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 0),
-    ##     Constraint("contents", SAME_AS, 0, 1),
-    ##     help="rank the genes in SignalFile_Order by ttest method"
-    ##    ),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
+        help="rank the genes in SignalFile_Order by ttest method"
+        ),
 
     ModuleNode(
         "reorder_genes",
@@ -1021,19 +1002,22 @@ all_modules = [
         Consequence("gene_order", SAME_AS_CONSTRAINT, 1),
 
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 0),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 0),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+
         Constraint("gene_center", CAN_BE_ANY_OF, ['median', 'mean', 'no'], 0),
+        Consequence("gene_center", SAME_AS_CONSTRAINT),
+        
         Constraint(
             "gene_normalize", CAN_BE_ANY_OF,
             ['sum_of_squares', 'variance', 'no'], 0),
-
-        #Constraint("contents", SAME_AS, 0, 1),
-        Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
-        Consequence("gene_center", SAME_AS_CONSTRAINT, 0),
-        Consequence("gene_normalize", SAME_AS_CONSTRAINT, 0),
-        DefaultAttributesFrom(0),
+        Consequence("gene_normalize", SAME_AS_CONSTRAINT),
+        #DefaultAttributesFrom(0),
         help="rank the genes in SignalFile_Order by genes in GeneListFile"
         ),
     
@@ -1068,7 +1052,7 @@ all_modules = [
         "convert_order_annotate",
         _SignalFile_Order, _SignalFile_Annotate,
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
@@ -1159,7 +1143,7 @@ all_modules = [
         "convert_annotate_filter",
         _SignalFile_Annotate, _SignalFile_Filter,
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         #Constraint("logged", CAN_BE_ANY_OF, ["no", "yes", "unknown"]),
@@ -1291,8 +1275,11 @@ all_modules = [
         Consequence("group_fc", SET_TO, "yes"),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
-        Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+        #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS, 1),
+        #Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         DefaultAttributesFrom(1),
         help="filter genes in SignalFile_Filter by fold change in "
         "different classes"),
@@ -1315,7 +1302,7 @@ all_modules = [
         'convert_signalfile_preprocess',
         SignalFile, SignalFile,
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Consequence("preprocess", SET_TO, "any"),
         help='convert preprocess from others to any'),
     
@@ -1323,7 +1310,7 @@ all_modules = [
         'convert_filter_final',
         _SignalFile_Filter, SignalFile,
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("predataset", CAN_BE_ANY_OF, ["no", "yes"]),
         Constraint("filter", CAN_BE_ANY_OF, ["no", "yes"]),
@@ -1381,7 +1368,7 @@ all_modules = [
     ModuleNode(
         'plot_intensity_boxplot',
         SignalFile, IntensityPlot,
-        Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
@@ -1398,6 +1385,10 @@ all_modules = [
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 0),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1, 1),
         #Consequence("preprocess", SAME_AS_CONSTRAINT, 1),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Constraint("preprocess", SAME_AS, 0, 1),
+        Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
+
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         #Consequence("cls_format", SET_TO, 'cls'),
         help="Convert a SimpleLabelFile to ClassLabelFile.",

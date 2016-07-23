@@ -9,12 +9,12 @@ class Module(AbstractModule):
         outfile):
         from Betsy import read_label_file
         from Betsy import module_utils
-        data_node, cls_node_test = antecedents
-        f = file(data_node.identifier, 'r')
-        text = f.readlines()
-        f.close()
+        
+        cls_node_test, data_node = antecedents
+        text = open(data_node.identifier).readlines()
         a, test_label, second_line = read_label_file.read(cls_node_test.identifier)
         actual_label = [second_line[int(i)] for i in test_label]
+
         f = file(outfile, 'w')
         header = text[0].replace('\n', '').split('\t')
         header.extend(['Actual_class', 'Correct?'])
@@ -27,11 +27,10 @@ class Module(AbstractModule):
                 correct = 'yes'
             line.extend([actual_label[index - 1], correct])
             f.write('\t'.join(line) + '\n')
-        
         f.close()
-        assert module_utils.exists_nz(outfile), (
-            'the output file %s for evaluate_prediction' % outfile
-        )
+        #assert filelib.exists_nz(outfile), (
+        #    'the output file %s for evaluate_prediction' % outfile
+        #)
 
 
     def name_outfile(self, antecedents, user_options):
@@ -40,6 +39,3 @@ class Module(AbstractModule):
         original_file = module_utils.get_inputid(data_node.identifier)
         filename = 'prediction_' + original_file + '.txt'
         return filename
-
-
-    

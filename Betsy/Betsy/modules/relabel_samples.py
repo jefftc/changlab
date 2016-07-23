@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import module_utils
         from genomicode import config
+        from genomicode import filelib
         data_node, rename_node = antecedents
         rename_path = config.slice_matrix
         rename_BIN = module_utils.which(rename_path)
@@ -27,7 +28,7 @@ class Module(AbstractModule):
             raise ValueError(error_message)
 
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for relabel_samples does not exist' % outfile
         )
 

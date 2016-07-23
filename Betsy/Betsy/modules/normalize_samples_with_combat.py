@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import read_label_file
         from Betsy import module_utils
+        from genomicode import filelib
         from genomicode import config
         data_node, cls_node = antecedents
         if data_node and cls_node:
@@ -29,7 +30,7 @@ class Module(AbstractModule):
             error_message = process.communicate()[1]
             if error_message:
                 raise ValueError(error_message)
-            assert module_utils.exists_nz(outfile), (
+            assert filelib.exists_nz(outfile), (
                 'the output file %s for combat fails' % outfile
             )
         

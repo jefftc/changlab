@@ -51,7 +51,7 @@ class Module(AbstractModule):
     
         
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for plot_prediction_bar fails' % outfile
         )
 

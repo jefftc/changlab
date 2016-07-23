@@ -8,9 +8,11 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         from Betsy import module_utils
+        from genomicode import filelib
+
         in_data = antecedents
         plot_hyb_bar(in_data.identifier, outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for plot_hyb_bar fails' % outfile
         )
 
@@ -56,4 +58,4 @@ def plot_hyb_bar(filename, outfile):
                            ylabel='Signal',
                            box_label=['high', 'med', 'low'])
     fig.savefig(outfile)
-    assert module_utils.exists_nz(outfile), 'the plot_illu_hyb_bar.py fails'
+    assert filelib.exists_nz(outfile), 'the plot_illu_hyb_bar.py fails'

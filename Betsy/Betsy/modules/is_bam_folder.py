@@ -10,6 +10,7 @@ class Module(AbstractModule):
         """extract the bam seq files"""
         import os
         import shutil
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         directory = module_utils.unzip_if_zip(in_data.identifier)
@@ -35,7 +36,7 @@ class Module(AbstractModule):
                 os.remove(new_file)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for is_bam_folder fails' % outfile
         )
 

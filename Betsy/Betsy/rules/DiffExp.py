@@ -119,7 +119,8 @@ all_modules = [
         OptionDef("select_gene_by_fdr", "", help="Filter genes by FDR."),
 
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        Constraint("preprocess", CAN_BE_ANY_OF, GEP.PREPROCESS, 0),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
         Constraint("filter", MUST_BE, "no", 0),
                    
         #Constraint("algorithm", CAN_BE_ANY_OF, DE_ALGORITHM),

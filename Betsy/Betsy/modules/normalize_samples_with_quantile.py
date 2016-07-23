@@ -10,6 +10,7 @@ class Module(AbstractModule):
         from genomicode import quantnorm
         import arrayio
         from Betsy import module_utils
+        from genomicode import filelib
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
         Y = quantnorm.normalize(M)
@@ -17,7 +18,7 @@ class Module(AbstractModule):
         Y_c = arrayio.convert(Y, to_format=arrayio.pcl_format)
         arrayio.tab_delimited_format.write(Y_c, f)
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for quantile fails' % outfile
         )
 

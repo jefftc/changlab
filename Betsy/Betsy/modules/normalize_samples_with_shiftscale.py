@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import arrayio
         from Betsy import read_label_file
         from Betsy import module_utils
+        from genomicode import filelib
         data_node, cls_node = antecedents
         if data_node and cls_node:
             result, label_line, second_line = read_label_file.read(
@@ -33,7 +34,7 @@ class Module(AbstractModule):
             f = file(outfile, 'w')
             arrayio.tab_delimited_format.write(M, f)
             f.close()
-            assert module_utils.exists_nz(outfile), (
+            assert filelib.exists_nz(outfile), (
                 'the output file %s for shiftscale fails' % outfile
             )
         

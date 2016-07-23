@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         """merge three signal file to generate a joined signal file"""
         import os
+        from genomicode import filelib
         from Betsy import module_utils
         merge_node1, merge_node2 = antecedents
         assert os.path.exists(merge_node1.identifier), (
@@ -22,7 +23,7 @@ class Module(AbstractModule):
         f = file(outfile, 'w')
         module_utils.merge_two_files(file1, file2, f)
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for merge_files_for_classification fails' % outfile
         )
 

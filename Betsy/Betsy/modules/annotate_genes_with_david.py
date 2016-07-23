@@ -8,6 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         from genomicode import arrayplatformlib
+        from genomicode import filelib
         from Betsy import module_utils
         
         f = file(antecedents.identifier, 'r')
@@ -21,7 +22,7 @@ class Module(AbstractModule):
         idType = platform2idtype[chipname]
           # convert the platform to idtype
         DAVIDenrich(in_list, idType, outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the outfile for run_david %s does not exist' % outfile
         )
 

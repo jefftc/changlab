@@ -11,8 +11,10 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import module_utils
         from genomicode import config
-        data_node, cls_node = antecedents
+        from genomicode import filelib
         import arrayio
+        
+        data_node, cls_node = antecedents
         tmp = os.path.join(".", 'tmp.txt')
         f = file(tmp, 'w')
         M = arrayio.read(data_node.identifier)
@@ -114,7 +116,7 @@ class Module(AbstractModule):
         f = file(outfile, 'w')
         f.write('\t'.join(gene_list))
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for rank_genes_by_class_neighbors fails' % outfile
         )
 

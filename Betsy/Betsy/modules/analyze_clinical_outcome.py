@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import subprocess
         import shutil
         from genomicode import config
+        from genomicode import filelib
         from Betsy import module_utils
         
         data_node, clinical_node = antecedents
@@ -37,7 +38,7 @@ class Module(AbstractModule):
         os.mkdir(outfile)
         for i in outputfiles:
             shutil.copyfile(i, os.path.join(outfile, i))
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for analyze_clinical_outcome fails' % outfile
         )
 

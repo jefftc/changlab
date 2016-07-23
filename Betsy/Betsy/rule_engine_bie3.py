@@ -106,6 +106,9 @@ def run_pipeline(
     # But usually, we expect just 1.
     pool = {}         # dict of node_id -> IdentifiedDataNode
 
+    # Keep track of the transitions.
+    transition_cache = {}  # dict of node_id -> dict of transitions
+
     # Cache the module node_ids that aren't ready to be run.  If all
     # modules on the stack are not ready, then something is wrong and
     # quit.  Otherwise, we would be stuck in an infinite loop.
@@ -145,9 +148,10 @@ def run_pipeline(
 
         if DEBUG_RUN_PIPELINE:
             print "[%d] Stack:" % it
-            x = [(x[1], bie3.get_node_name(x[0])) for x in stack]
-            for x in x:
-                print "    %s [%d]" % (x[1], x[0])
+            for x in stack:
+                name = bie3.get_node_name(x[0])
+                print "    %s [%d]" % (name, x[1])
+                #print "    %s" % x[3]
 
         node, node_id, more_info, transitions = stack.pop()
         if DEBUG_RUN_PIPELINE:
@@ -234,15 +238,19 @@ def run_pipeline(
             # Successfully completed this module.
             next_node, next_id, run_time = x
             assert next_id is not None
-            # No.  Only add data nodes to the pool.  Modules may need
-            # to be run multiple times if different antecedent IDs
-            # lead to different output IDs.
-            ## Update the pool, transitions.
-            #pool[node_id] = node
-            trans = transitions.copy()
+            # Do not add data node to the pool here.  It should be
+            # added to the pool when encountered.
+            # Many paths might have led to this module.  Should merge
+            # the transitions from each of the antecedents.
+            #trans = transitions.copy()
+            trans = transition_cache.get(next_id, {})
+            for nid in antecedent_ids:
+                x = transition_cache.get(nid, {})
+                trans.update(x)
             for x in antecedent_ids:
                 trans[(x, node_id)] = 1
             trans[(node_id, next_id)] = 1
+            transition_cache[next_id] = trans
             stack.append((next_node, next_id, None, trans))
             if DEBUG_RUN_PIPELINE:
                 print "Adding to stack: %s [%d]." % (

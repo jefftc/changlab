@@ -7,7 +7,7 @@ import ArrayPlatforms
 PreprocessingReport = DataType(
     'PreprocessingReport',
     AttributeDef(
-        "preprocess", GeneExpProcessing.ANY_PREPROCESS, 'unknown', 'any',
+        "preprocess", BDT.ANY_PREPROCESS, 'unknown', 'any',
         help="preprocess for normalize report file"),
     help="Preprocess gene expression data with some quality checks.")
 
@@ -24,7 +24,7 @@ all_data_types = [
 
 # Illumina has a different preprocessing report.
 PREPROCESS_NOT_ILLUMINA = [
-    x for x in GeneExpProcessing.PREPROCESS if x != "illumina"]
+    x for x in BDT.PREPROCESS if x != "illumina"]
 
 all_modules = [
     ModuleNode(
@@ -248,7 +248,7 @@ all_modules = [
         PreprocessingReport, PreprocessingReport,
         
         Constraint(
-            "preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS),
+            "preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Consequence("preprocess", SET_TO, 'any'),
         help='convert preprocess from others to any in PreprocessingReport',
         ),

@@ -43,7 +43,7 @@ SignatureScore = DataType(
         "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
         help="contents"),
     AttributeDef(
-        "preprocess", GEP.ANY_PREPROCESS, 'unknown', 'any',
+        "preprocess", BDT.ANY_PREPROCESS, 'unknown', 'any',
         #"preprocess", GEP.PREPROCESS, 'unknown', 'unknown',
         help="preprocess"),
     help="Signature score file",
@@ -138,7 +138,7 @@ all_modules = [
         GEP.SignalFile, SignatureScore,
         Constraint("format", MUST_BE, 'tdf'),
         #Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS_WOrma, 0),
-        Constraint("preprocess", CAN_BE_ANY_OF, GEP.PREPROCESS, 0),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
         Constraint("quantile_norm", MUST_BE, 'yes'),
         Constraint("logged", MUST_BE, 'yes'),
         Constraint("duplicate_probe", MUST_BE, 'high_var_probe'),
@@ -151,7 +151,7 @@ all_modules = [
     ModuleNode(
         'convert_SignatureScore_preprocess',
         SignatureScore, SignatureScore,
-        Constraint("preprocess", CAN_BE_ANY_OF, GEP.PREPROCESS),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Consequence("preprocess", SET_TO, 'any'),
         help='convert SignatureScore preprocess from others to any',
         ),
@@ -166,15 +166,15 @@ all_modules = [
         [GenesetAnalysis, GenesetPlot, SignatureScore], GenesetReportFile,
         help="make signature report"),
     
-    ModuleNode(
-        'compare_signature_predictions',
-        [SignatureScore, SignatureScore, SignatureScore],
-        ScoreCompareReportFile,
-        #Constraint("preprocess", MUST_BE, 'RSEM_genes', 0),
-        Constraint("preprocess", MUST_BE, 'tpm', 0),
-        Constraint("preprocess", MUST_BE, 'agilent', 1),
-        Constraint("preprocess", MUST_BE, 'affymetrix', 2),
-        help='compare three SignatureScore'),
+    #ModuleNode(
+    #    'compare_signature_predictions',
+    #    [SignatureScore, SignatureScore, SignatureScore],
+    #    ScoreCompareReportFile,
+    #    #Constraint("preprocess", MUST_BE, 'RSEM_genes', 0),
+    #    Constraint("preprocess", MUST_BE, 'tpm', 0),
+    #    Constraint("preprocess", MUST_BE, 'agilent', 1),
+    #    Constraint("preprocess", MUST_BE, 'affymetrix', 2),
+    #    help='compare three SignatureScore'),
 
     ModuleNode(
         'plot_signature_predictions_comparison',

@@ -408,6 +408,9 @@ PerfectAlignmentSummary = DataType(
     AttributeDef(
         "mouse_reads_subtracted", YESNO, "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
     help="Summarizes the fraction of perfect alignments (.txt file).",
     )
 
@@ -454,6 +457,12 @@ all_modules = [
         Consequence("compressed", BASED_ON_DATA, COMPRESSION_NOT_UNKNOWN),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Consequence("contents", SAME_AS_CONSTRAINT),
+
+        # Optimization: Don't check when is_subset=yes.  is_subset is
+        # created by the system, and will never be in a compressed
+        # state.
+        Constraint("is_subset", MUST_BE, "no"),
+        Consequence("is_subset", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
         "uncompress_fastq_folder",
@@ -462,6 +471,12 @@ all_modules = [
         Consequence("compressed", SET_TO, "no"),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Consequence("contents", SAME_AS_CONSTRAINT),
+        
+        # Optimization: Don't uncompress when is_subset=yes.
+        # is_subset is created by the system, and will never be in a
+        # compressed state.
+        Constraint("is_subset", MUST_BE, "no"),
+        Consequence("is_subset", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
         "merge_reads",
@@ -483,6 +498,12 @@ all_modules = [
         #Consequence("contents", SAME_AS_CONSTRAINT),
         # Bug: why does this cause the RSEM pipeline to not work?
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION, 1),
+
+        # Optimization: Don't merge when is_subset=yes.  is_subset is
+        # created by the system, and will never be in a compressed
+        # state.
+        Constraint("is_subset", MUST_BE, "no"),
+        Consequence("is_subset", SAME_AS_CONSTRAINT),
         ),
     ## ModuleNode(
     ##     "check_orientation",
@@ -870,6 +891,8 @@ all_modules = [
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),

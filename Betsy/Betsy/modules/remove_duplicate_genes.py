@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         """remove duplicate genes"""
         import arrayio
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
@@ -23,7 +24,7 @@ class Module(AbstractModule):
         f = file(outfile, 'w')
         arrayio.tab_delimited_format.write(M_new, f)
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for remove_duplicate_genes fails' % outfile
         )
 

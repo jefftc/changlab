@@ -50,7 +50,7 @@ class Module(AbstractModule):
             ##            old_file = os.path.join(directory, filename)
             ##            new_file = os.path.join(outfile, newfilename)
             ##            shutil.copyfile(old_file, new_file)
-            ##        assert module_utils.exists_nz(outfile), (
+            ##        assert filelib.exists_nz(outfile), (
             ##            'the output file %s for extract_illumina_idat_files fails'
             ##            % outfile)
             ##        out_node = bie3.Data(rulebase.IDATFiles,**parameters)

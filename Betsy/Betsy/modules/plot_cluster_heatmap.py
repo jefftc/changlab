@@ -13,6 +13,7 @@ class Module(AbstractModule):
         import arrayio
         from Betsy import module_utils
         from genomicode import config
+        from genomicode import filelib
         in_data = antecedents
         Heatmap_path = config.arrayplot
         Heatmap_BIN = module_utils.which(Heatmap_path)
@@ -67,7 +68,7 @@ class Module(AbstractModule):
     
         
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for plot_signal_heatmap fails' % outfile
         )
 

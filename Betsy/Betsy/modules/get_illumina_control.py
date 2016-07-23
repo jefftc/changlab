@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import os
         import shutil
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         result_files = os.listdir(in_data.identifier)
@@ -18,7 +19,7 @@ class Module(AbstractModule):
                 shutil.copyfile(goal_file, outfile)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for illu_control fails' % outfile
         )
 

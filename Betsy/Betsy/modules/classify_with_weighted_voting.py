@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         import subprocess
         import arrayio
+        from genomicode import filelib
         from Betsy import read_label_file
         from Betsy import module_utils
         from genomicode import config
@@ -91,7 +92,7 @@ class Module(AbstractModule):
                     f.write('\n')
                 f.close()
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for classify_with_weighted_voting fails' % outfile
         )
 
