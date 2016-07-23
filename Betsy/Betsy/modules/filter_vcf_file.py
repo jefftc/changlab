@@ -8,6 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         import subprocess
+        from genomicode import filelib
         from Betsy import module_utils
         from genomicode import config
         in_data = antecedents
@@ -35,7 +36,7 @@ class Module(AbstractModule):
             raise ValueError(error_message)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for filter_vcf_file does not exist' % outfile
         )
 

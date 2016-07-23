@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import os
         import shutil
         from genomicode import affyio
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         filenames = os.listdir(in_data.identifier)
@@ -41,7 +42,7 @@ class Module(AbstractModule):
                     os.remove(cel_file)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for convert_CEL_to_v3 fails' % outfile
         )
 

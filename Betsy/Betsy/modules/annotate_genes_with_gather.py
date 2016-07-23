@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import urllib
         import urllib2
+        from genomicode import filelib
         from Betsy import module_utils
 
         in_data = antecedents
@@ -40,7 +41,7 @@ class Module(AbstractModule):
         fout = file(outfile, 'w')
         fout.write(result_text)
         fout.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the outfile for run_gather %s does not exist' % outfile)
 
 

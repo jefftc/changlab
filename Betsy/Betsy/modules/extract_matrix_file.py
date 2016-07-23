@@ -10,6 +10,7 @@ class Module(AbstractModule):
         """extract the matrix file from the expression files"""
         import os
         from Betsy import module_utils
+        from genomicode import filelib
         #from genomicode import affyio
         in_data = antecedents
         directory = module_utils.unzip_if_zip(in_data.identifier)
@@ -22,7 +23,7 @@ class Module(AbstractModule):
                 extract_expression_file(fileloc, outname)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for extract_matrix_file fails' % outfile
         )
 

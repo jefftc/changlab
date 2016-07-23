@@ -10,6 +10,8 @@ class Module(AbstractModule):
         import os
         import subprocess
         from genomicode import config
+        from genomicode import filelib
+        from genomicode import filelib
         from Betsy import module_utils
         
         in_data = antecedents
@@ -42,7 +44,7 @@ class Module(AbstractModule):
         if 'error' in error_message:
             raise ValueError(error_message)
     
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for align_sequence does not exist' % outfile
         )
 

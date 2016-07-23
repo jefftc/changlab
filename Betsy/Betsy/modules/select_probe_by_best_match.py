@@ -53,7 +53,7 @@ class Module(AbstractModule):
             f = file(outfile, 'w')
             arrayio.tab_delimited_format.write(M_new, f)
             f.close()
-            assert module_utils.exists_nz(outfile), (
+            assert filelib.exists_nz(outfile), (
                 'the output file %s for best_match_both fails' % outfile
             )
         else:

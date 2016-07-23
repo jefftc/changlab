@@ -12,6 +12,7 @@ class Module(AbstractModule):
         import shutil
         from Betsy import module_utils
         from genomicode import affyio
+        from genomicode import filelib
         in_data = antecedents
         directory = module_utils.unzip_if_zip(in_data.identifier)
         filenames = os.listdir(directory)
@@ -36,7 +37,7 @@ class Module(AbstractModule):
     
         
         if True in ver_list:
-            assert module_utils.exists_nz(outfile), (
+            assert filelib.exists_nz(outfile), (
                 'the output file %s for extract_CEL_files fails' % outfile
             )
         else:

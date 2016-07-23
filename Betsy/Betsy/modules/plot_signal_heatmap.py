@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         """generate a heatmap of input file"""
         from genomicode import graphlib
+        from genomicode import filelib
         import subprocess
         import arrayio
         from Betsy import module_utils
@@ -70,7 +71,7 @@ class Module(AbstractModule):
     
         
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for plot_signal_heatmap fails' % outfile
         )
 

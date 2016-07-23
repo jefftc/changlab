@@ -12,6 +12,7 @@ class Module(AbstractModule):
         from Betsy import module_utils
         from genomicode import jmath
         from genomicode import arrayplatformlib
+        from genomicode import filelib
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
         platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
@@ -45,7 +46,7 @@ class Module(AbstractModule):
                                       ylabel='Gene Expression Value',
                                       box_label=label)
                 f.savefig(outfile)
-            assert module_utils.exists_nz(outfile), (
+            assert filelib.exists_nz(outfile), (
                 'the output file %s for plot_affy_affx_line fails' % outfile
             )
 

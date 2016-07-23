@@ -10,6 +10,7 @@ class Module(AbstractModule):
         """mean or median"""
         import os
         import subprocess
+        from genomicode import filelib
         from Betsy import module_utils
         from genomicode import config
         in_data = antecedents
@@ -35,7 +36,7 @@ class Module(AbstractModule):
         
         outputfile = outfile + '.nrm'
         os.rename(outputfile, outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for centering fails' % outfile
         )
 

@@ -57,7 +57,7 @@ class Module(AbstractModule):
 ##                     error_message = process.communicate()[1]
 ##                     if error_message:
 ##                         raise ValueError(error_message)
-##                     assert module_utils.exists_nz(
+##                     assert filelib.exists_nz(
 ##                         signal_file), 'the platform conversion fails'
 ##                     id = out_attributes['platform']
 ##                     M = arrayio.read(signal_file)

@@ -12,6 +12,7 @@ class Module(AbstractModule):
         import os
         import subprocess
         from Betsy import module_utils
+        from genomicode import filelib
         from genomicode import config
         in_data = antecedents
         #preprocess the cel file to text signal file
@@ -36,7 +37,7 @@ class Module(AbstractModule):
     
         
         os.rename(outputfile, outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for preprocess_mas5 fails' % outfile
         )
 

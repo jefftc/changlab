@@ -10,6 +10,7 @@ class Module(AbstractModule):
         """clustering the input file"""
         import os
         import subprocess
+        from genomicode import filelib
         from Betsy import module_utils
         from genomicode import config
         in_data = antecedents
@@ -46,7 +47,7 @@ class Module(AbstractModule):
                 os.rename(result_file, outfile)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for cluster_genes_by_kmeans fails' % outfile
         )
 

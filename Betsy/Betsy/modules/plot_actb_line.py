@@ -13,6 +13,7 @@ class Module(AbstractModule):
         from Betsy import module_utils
         from genomicode import config
         from genomicode import arrayplatformlib
+        from genomicode import filelib
         
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
@@ -60,7 +61,7 @@ class Module(AbstractModule):
             error_message = process.communicate()[1]
             if error_message:
                 raise ValueError(error_message)
-            assert module_utils.exists_nz('tmp'), 'failed platform conversion'
+            assert filelib.exists_nz('tmp'), 'failed platform conversion'
             column_id = out_platform
             M = arrayio.read('tmp')
         

@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import svmutil
         import arrayio
+        from genomicode import filelib
         from Betsy import read_label_file
         from Betsy import module_utils
         svm_model, data_node_test, cls_node_train = antecedents
@@ -37,7 +38,7 @@ class Module(AbstractModule):
             f.write('\n')
         
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for classify_with_svm fails' % outfile
         )
 

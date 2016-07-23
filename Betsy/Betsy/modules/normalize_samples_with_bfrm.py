@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import subprocess
         import arrayio
         from Betsy import module_utils
+        from genomicode import filelib
         from genomicode import config
         in_data = antecedents
         bfrm_path = config.bfrmnorm
@@ -42,10 +43,10 @@ class Module(AbstractModule):
             raise ValueError(error_message)
     
         
-        assert module_utils.exists_nz(tmp), (
+        assert filelib.exists_nz(tmp), (
             'the output dir %s for bfrm_normalize fails' % tmp
         )
-        assert module_utils.exists_nz(os.path.join(tmp, 'normalized.gct')), (
+        assert filelib.exists_nz(os.path.join(tmp, 'normalized.gct')), (
             'the output gct file for bfrm_normalize fails'
         )
         out = os.path.join(tmp, 'normalized.gct')

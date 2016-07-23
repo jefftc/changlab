@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import os
         import subprocess
         from Betsy import module_utils
+        from genomicode import filelib
         from genomicode import config
         in_data = antecedents
         norm_para = ["variance", "sum_of_squares"]
@@ -45,7 +46,7 @@ class Module(AbstractModule):
             os.rename(outputfile, outfile)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for normalize fails' % outfile
         )
 

@@ -28,7 +28,7 @@ class Module(AbstractModule):
             line.extend([actual_label[index - 1], correct])
             f.write('\t'.join(line) + '\n')
         f.close()
-        #assert module_utils.exists_nz(outfile), (
+        #assert filelib.exists_nz(outfile), (
         #    'the output file %s for evaluate_prediction' % outfile
         #)
 

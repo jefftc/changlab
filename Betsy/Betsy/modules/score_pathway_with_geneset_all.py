@@ -11,6 +11,7 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import module_utils
         from genomicode import config
+        from genomicode import filelib
         data_node, geneset_node = antecedents
         score_geneset_path = config.score_geneset
         score_geneset_BIN = module_utils.which(score_geneset_path)
@@ -29,7 +30,7 @@ class Module(AbstractModule):
         if error_message:
             raise ValueError(error_message)
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for score_pathway_with_geneset fails' % outfile
         )
 

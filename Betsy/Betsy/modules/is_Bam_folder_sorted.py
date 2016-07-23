@@ -9,12 +9,13 @@ class Module(AbstractModule):
         outfile):
         """check bamfiles in bam folder is all sorted"""
         import shutil
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         #filenames = os.listdir(in_data.identifier)
         #out_attributes = set_out_attributes(in_data, out_attributes)
         shutil.copytree(in_data.identifier, outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for is_Bam_folder_sorted fails' % outfile
         )
 

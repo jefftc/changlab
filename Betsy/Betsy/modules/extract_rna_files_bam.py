@@ -10,6 +10,7 @@ class Module(AbstractModule):
         """extract the bam rna seq files"""
         import os
         import shutil
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
 
@@ -36,7 +37,7 @@ class Module(AbstractModule):
                 os.remove(new_file)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for extract_rna_files_bam fails' % outfile
         )
 

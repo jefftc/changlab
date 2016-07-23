@@ -13,6 +13,7 @@ class Module(AbstractModule):
         import arrayio
         from Betsy import module_utils
         from genomicode import config
+        from genomicode import filelib
         from genomicode import arrayplatformlib
         data_node, cls_node = antecedents
         gsea_path = config.gsea
@@ -40,11 +41,11 @@ class Module(AbstractModule):
         if error_message:
             raise ValueError(error_message)
         
-        assert module_utils.exists_nz(download_directory), (
+        assert filelib.exists_nz(download_directory), (
             'there is no output directory for GSEA'
         )
         shutil.copytree(download_directory, outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for annotate_genes_with_gsea fails' % outfile
         )
 

@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         from matplotlib import cm
         from Betsy import read_label_file
+        from genomicode import filelib
         
         data_node, cls_node = antecedents
         a, b, c = read_label_file.read(cls_node.identifier)
@@ -73,4 +74,4 @@ def plot_pca(filename, result_fig, opts='b', legend=None):
             x1, x2, xlabel=xlabel, ylabel=ylabel, color=opts,
             label=labels)
     fig.savefig(result_fig)
-    assert module_utils.exists_nz(result_fig), 'the plot_pca.py fails'
+    assert filelib.exists_nz(result_fig), 'the plot_pca.py fails'

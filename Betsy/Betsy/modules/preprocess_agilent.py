@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         from Betsy import module_utils
         from genomicode import jmath
+        from genomicode import filelib
         in_data = antecedents
         cwd = os.getcwd()
         R = jmath.start_R()
@@ -52,7 +53,7 @@ class Module(AbstractModule):
         
         f.close()
         os.remove(tmpfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for preprocess_agilent fails' % outfile
         )
 

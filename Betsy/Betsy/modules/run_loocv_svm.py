@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import os
         import arrayio
+        from genomicode import filelib
         from Betsy import bie3
         from Betsy import rulebase
         from Betsy import read_label_file
@@ -78,7 +79,7 @@ class Module(AbstractModule):
         
         
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for loocv fails' % outfile
         )
 

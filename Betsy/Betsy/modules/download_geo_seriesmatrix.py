@@ -25,7 +25,7 @@ class Module(AbstractModule):
         #for matrix_file in matrix_files:
         #    newmatrix_filename = os.path.split(matrix_file)[-1]
         #    shutil.copyfile(matrix_file, os.path.join(outfile, newmatrix_filename))
-        #assert module_utils.exists_nz(outfile), (
+        #assert filelib.exists_nz(outfile), (
         #    'the output file %s for download_geo_dseriesmatrix fails' % outfile
         #)
     

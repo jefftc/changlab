@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import numpy
         import arrayio
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         assert module_utils.is_missing(in_data.identifier), 'no missing values'
@@ -24,7 +25,7 @@ class Module(AbstractModule):
         
         arrayio.tab_delimited_format.write(M, f_out)
         f_out.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for median_fill_if_missing does not exist' % outfile
         )
 

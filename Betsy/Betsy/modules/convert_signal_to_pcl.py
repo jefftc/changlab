@@ -10,6 +10,7 @@ class Module(AbstractModule):
         """convert signal file to pcl format"""
         import shutil
         import arrayio
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         f = file(outfile, 'w')
@@ -24,7 +25,7 @@ class Module(AbstractModule):
             f.close()
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for convert_signal_to_pcl fails' % outfile
         )
 

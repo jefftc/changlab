@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         import os
         from genomicode import smarray
+        from genomicode import filelib
         from Betsy import gpr_module
         from Betsy import module_utils
         
@@ -73,7 +74,7 @@ class Module(AbstractModule):
                 f.write(str(SIGNAL[i][j]))
             f.write('\n')
         f.close()
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for loess fails' % outfile)
 
 

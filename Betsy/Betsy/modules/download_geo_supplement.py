@@ -8,6 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         """given a database ID and GPLID, get the cel files"""
+        from genomicode import filelib
         from Betsy import module_utils
         GSEID = user_options['GSEID']
         GPLID = None
@@ -23,7 +24,7 @@ class Module(AbstractModule):
             download_geo_with_GPLID(GSEID, GPLID, outfile)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for download_geo_supplement fails' % outfile
         )
 

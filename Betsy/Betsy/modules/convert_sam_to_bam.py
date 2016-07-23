@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         import subprocess
         from genomicode import config
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         directory = module_utils.unzip_if_zip(in_data.identifier)
@@ -34,7 +35,7 @@ class Module(AbstractModule):
             error_message = process.communicate()
             if 'error' in error_message[1]:
                 raise ValueError(error_message)
-            assert module_utils.exists_nz(outname), (
+            assert filelib.exists_nz(outname), (
                 'the output file %s for convert_sam_to_bam does not exist' % outname
             )
     

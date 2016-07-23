@@ -13,6 +13,7 @@ class Module(AbstractModule):
         import subprocess
         from Betsy import module_utils
         from genomicode import config
+        from genomicode import filelib
         in_data = antecedents
         #preprocess the cel file to text signal file
         PREPROCESS_path = config.preprocess
@@ -38,7 +39,7 @@ class Module(AbstractModule):
         assert outputfile, "No output file created."
 
         os.rename(outputfile, outfile)
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for preprocess_rma fails' % outfile
         )
 

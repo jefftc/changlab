@@ -24,7 +24,7 @@ class Module(AbstractModule):
             download_geo_with_GPLID(GSEID, GPLID, outfile)
     
         
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for download_geo_dataset_GPL fails' % outfile
         )
 

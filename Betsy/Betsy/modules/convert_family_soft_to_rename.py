@@ -8,6 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         """convert family soft file to RenameFile"""
+        from genomicode import filelib
         from Betsy import module_utils
         in_data = antecedents
         GSEID = user_options['GSEID']
@@ -17,7 +18,7 @@ class Module(AbstractModule):
         else:
             convert_family_to_relabel_file(description, outfile)
     
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for convert_family_soft_to_rename does not exists'
             % outfile)
 

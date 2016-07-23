@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         import subprocess
         from genomicode import config
+        from genomicode import filelib
         from Betsy import module_utils
 
         data_node, cel_node = antecedents
@@ -31,7 +32,7 @@ class Module(AbstractModule):
         x = process.communicate()
         error_message = x[1]
         assert not error_message, error_message
-        assert module_utils.exists_nz(outfile), (
+        assert filelib.exists_nz(outfile), (
             'the output file %s for analyze_phenotype fails' % outfile)
 
 
