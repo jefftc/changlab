@@ -1293,22 +1293,33 @@ def find_picard_jar(jar_name):
     return jar_filename
 
 
-def _make_java_command(config_name, params, num_dashes, java_path=None):
-    # value of None means no argument.
+def _make_java_command(config_name, params, num_dashes, memory=None,
+                       java_path=None):
+    # params a a dictionary of <key> : <value> to pass to the java
+    # command.
+    # <value> of None means no argument.
     # A dash is prepended to each key.
     # Special key:
     # _UNHASHABLE  list of (key, value) tuples
+    #
+    # memory is the number of gb of RAM to allocate for java.  Should
+    # be an integer.  Default is 5.
     from genomicode import config
     from genomicode import parallel
     from genomicode import filelib
 
     UNHASHABLE = "_UNHASHABLE"
     assert num_dashes >= 1 and num_dashes <= 2
-    sq = parallel.quote
+
+    if memory is None:
+        memory = 5
+    assert type(memory) is type(0)
+    assert memory >= 1 and memory <= 256
 
     jarfile = getattr(config, config_name)
     filelib.assert_exists_nz(jarfile)
 
+    sq = parallel.quote
     java = "java"
     if java_path is not None:
         filelib.which_assert(java_path)
@@ -1316,7 +1327,8 @@ def _make_java_command(config_name, params, num_dashes, java_path=None):
 
     cmd = [
         java,
-        "-Xmx5g",
+        "-Xmx%dg" % memory,
+        "-Djava.io.tmpdir=.", 
         "-jar", sq(jarfile),
         ]
     x1 = params.get(UNHASHABLE, [])
@@ -1338,7 +1350,12 @@ def _make_java_command(config_name, params, num_dashes, java_path=None):
 
 
 def make_GATK_command(**params):
-    return _make_java_command("gatk_jar", params, 1)
+    # SplitNCigarReads complains with only 5 Gb RAM:
+    # There was a failure because you did not provide enough memory to
+    # run this program.  See the -Xmx JVM argument to adjust the
+    # maximum heap size provided to Java
+    
+    return _make_java_command("gatk_jar", params, 1, memory=20)
 
 
 def make_MuTect_command(**params):
