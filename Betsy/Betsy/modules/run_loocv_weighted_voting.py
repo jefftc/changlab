@@ -15,7 +15,7 @@ class Module(AbstractModule):
         #from genomicode import arraysetlib
         from Betsy import module_utils
         
-        data_node_train, cls_node_train = antecedents
+        cls_node_train, data_node_train = antecedents
         #result, label_line, class_name = read_label_file.read(
         #    cls_node_train.identifier)
         #x = arraysetlib.read_cls_file(cls_node_train.identifier)
@@ -62,7 +62,8 @@ class Module(AbstractModule):
         for key in gp_params:
             x = ['--parameters', "%s:%s" % (key, gp_params[key])]
             command.extend(x)
-        metadata["commands"] = [command]
+        x = " ".join(map(str, x))
+        metadata["commands"] = [x]
 
         # DEBUG: If this is already run, don't run it again.
         if not os.path.exists(download_directory):

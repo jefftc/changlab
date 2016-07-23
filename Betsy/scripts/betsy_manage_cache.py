@@ -171,7 +171,9 @@ def main():
             time_ = time.strptime(start_time, rule_engine_bie3.TIME_FMT)
             #time_str = time.strftime("%a %m/%d %I:%M %p", start_time)
             run_time = params.get("elapsed_pretty")
-            assert run_time, "Missing: elapsed_pretty"
+            if not run_time:
+                run_time = "unknown"
+            #assert run_time, "Missing elapsed_pretty: %s" % path
             #if run_time == "instant":
             #    x = "ran instantly"
             #else:

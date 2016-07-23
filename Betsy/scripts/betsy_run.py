@@ -1338,6 +1338,10 @@ def main():
     ## TODO: Make sure args.exclude_input is valid.
     ## args.exclude_input
 
+    if args.restart_from_network:
+        assert args.network_json, \
+               "Cannot restart_from_network: no --network_json specified."
+
     # Make sure configuration directory exists.
     if not os.path.exists(config.OUTPUTPATH):
         print "Making BETSY working path: %s." % config.OUTPUTPATH
