@@ -372,9 +372,10 @@ class samtoolsCaller(Caller):
         # Return PASS.
         
         # Always ".".
-        assert len(var.filter_) == 1
-        x = var.filter_[0]
-        assert x == None
+        assert not var.filter_
+        #assert len(var.filter_) == 1
+        #x = var.filter_[0]
+        #assert x == None
         return "PASS"
     def is_pass(self, filter_str):
         assert filter_str == "PASS"
@@ -385,6 +386,10 @@ class GATKCaller(Caller):
     # FORMAT:AD  num_ref, num_alt
     # FORMAT:DP  total_reads
     # FORMAT:GT  call
+    #
+    # Also see (rare):
+    # GT:GQ:PL         (INFO:DP=0  REF=., ALT=C)
+    # 1/1:6:49,6,0
     def __init__(self):
         Caller.__init__(self, "GATK")
     def is_caller(self, header_lines):
@@ -399,21 +404,28 @@ class GATKCaller(Caller):
         assert sample in var.sample2genodict, "Unknown sample: %s" % sample
         genodict = var.sample2genodict[sample]
 
-        x = _parse_vcf_value(genodict["AD"], to_int=1, len_at_least=2)
-        num_ref = x[0]
-        num_alt = x[1:]
-        total_reads = _parse_vcf_value(
-            genodict["DP"], to_int=1, len_exactly=1)[0]
-        vaf = [x/float(total_reads) for x in num_alt]
+        if "AD" in genodict and "DP" in genodict:
+            x = _parse_vcf_value(genodict["AD"], to_int=1, len_at_least=2)
+            num_ref = x[0]
+            num_alt = x[1:]
+            total_reads = _parse_vcf_value(
+                genodict["DP"], to_int=1, len_exactly=1)[0]
+            vaf = [x/float(total_reads) for x in num_alt]
+        else:
+            num_ref = 0
+            num_alt = [0]
+            total_reads = 0
+            vaf = [0.0]
         call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
         return Call(num_ref, num_alt, total_reads, vaf, call)
     def get_filter(self, var):
         # Return PASS.
         
         # Always ".".
-        assert len(var.filter_) == 1
-        x = var.filter_[0]
-        assert x == None
+        assert not var.filter_
+        #assert len(var.filter_) == 1, "Unexpected: %s" % str(var.filter_)
+        #x = var.filter_[0]
+        #assert x == None, "Unexpected: %s" % x
         return "PASS"
     def is_pass(self, filter_str):
         assert filter_str == "PASS"
@@ -563,25 +575,31 @@ class VarScan2Caller(Caller):
     def get_filter(self, var):
         # Returns PASS, REFERENCE, GERMLINE, LOH, or UNKNOWN.
 
-        # Varscan uses "PASS" to mean that the variant could be called
-        # correctly, and indicates the somatic variant in the SS info.
-        # INFO:SS  0=Reference,1=Germline,2=Somatic,3=LOH, or 5=Unknown
-        assert "SS" in var.infodict
-        SS = var.infodict["SS"]
-        assert SS in ["0", "1", "2", "3", "5"]
-        if SS == "2":
-            return "PASS"
-        elif SS == "0":
-            return "REFERENCE"
-        elif SS == "1":
-            return "GERMLINE"
-        elif SS == "3":
-            return "LOH"
-        return "UNKNOWN"
+        # For somatic calling.
+        if "SS" in var.infodict:
+            # Varscan uses "PASS" to mean that the variant could be called
+            # correctly, and indicates the somatic variant in the SS info.
+            # INFO:SS  0=Reference,1=Germline,2=Somatic,3=LOH, or 5=Unknown
+            SS = var.infodict["SS"]
+            assert SS in ["0", "1", "2", "3", "5"]
+            if SS == "2":
+                return "PASS"
+            elif SS == "0":
+                return "REFERENCE"
+            elif SS == "1":
+                return "GERMLINE"
+            elif SS == "3":
+                return "LOH"
+            return "UNKNOWN"
+        # PASS, indelError, str10
+        return ",".join(var.filter_)
+        
     def is_pass(self, filter_str):
         # Same for SNP and indel.
+        # For non-somatic, just PASS, indelError, or str10 (strand bias).
         assert filter_str in [
-            "PASS", "indelError", "REFERENCE", "GERMLINE", "LOH", "UNKNOWN"]
+            "PASS", "indelError", "str10",
+            "REFERENCE", "GERMLINE", "LOH", "UNKNOWN"]
         return filter_str == "PASS"
 
 
@@ -967,7 +985,7 @@ def read(filename):
     import AnnotationMatrix
 
     caller = get_caller(filename)
-    assert caller, "Unknown caller: %s" % filename
+    assert caller, "Can't identify caller: %s" % filename
     matrix = AnnotationMatrix.read(filename, header_char="##")
     return VCFFile(matrix, caller)
 
@@ -1044,7 +1062,7 @@ def get_variant(vcf, num):
     alt = x
         
     qual = _safe_float(vcf.matrix["QUAL"][num])
-    filter_ = vcf.matrix["FILTER"][num].split(";")
+    filter_ = _parse_vcf_value(vcf.matrix["FILTER"][num], delim=";")
     x = _parse_info(vcf.matrix["INFO"][num])
     info_names, infodict = x
 
@@ -1644,7 +1662,7 @@ def _format_genotype(genotype_names, genotype_dict):
 
 def _parse_vcf_value(
     value, to_int=False, to_float=False, perc_to_dec=False, len_exactly=None,
-    len_at_least=None):
+    len_at_least=None, delim=","):
     # Return a list of strings or None.  Can be an empty list.
     # Examples:
     # .
@@ -1653,7 +1671,7 @@ def _parse_vcf_value(
     # 4,.
     if value == ".":
         return []
-    values = value.split(",")
+    values = value.split(delim)
     for i in range(len(values)):
         if values[i] == ".":
             values[i] = None

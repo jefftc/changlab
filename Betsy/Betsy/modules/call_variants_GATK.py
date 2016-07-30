@@ -18,14 +18,25 @@ class Module(AbstractModule):
         assert bam_filenames, "No .bam files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
+        metadata = {}
+        # TODO: Figure out GATK version.
 
-        jobs = []  # list of (in_filename, log_filename, out_filename)
-        for in_filename in bam_filenames:
-            p, f = os.path.split(in_filename)
+        # Figure out whether the user wants SNPs or INDELs.
+        assert "vartype" in out_attributes
+        vartype = out_attributes["vartype"]
+        assert vartype in ["all", "snp", "indel"]
+
+        jobs = []
+        for bam_filename in bam_filenames:
+            p, f = os.path.split(bam_filename)
             sample, ext = os.path.splitext(f)
-            out_filename = os.path.join(out_path, "%s.vcf" % sample)
+            raw_outfile = os.path.join(out_path, "%s.raw" % sample)
+            vcf_outfile = os.path.join(out_path, "%s.vcf" % sample)
             log_filename = os.path.join(out_path, "%s.log" % sample)
-            x = in_filename, log_filename, out_filename
+            x = filelib.GenericObject(
+                bam_filename=bam_filename,
+                raw_outfile=raw_outfile, vcf_outfile=vcf_outfile,
+                log_filename=log_filename)
             jobs.append(x)
         
         # java -Xmx5g -jar /usr/local/bin/GATK/GenomeAnalysisTK.jar
@@ -35,22 +46,68 @@ class Module(AbstractModule):
                
         # Make a list of commands.
         commands = []
-        for x in jobs:
-            in_filename, log_filename, out_filename = x
+        for j in jobs:
+            # For debugging.  If exists, don't do it again.
+            if filelib.exists_nz(j.raw_outfile):
+                continue
             x = alignlib.make_GATK_command(
                 T="HaplotypeCaller", R=ref.fasta_file_full,
                 dontUseSoftClippedBases=None, stand_call_conf=20.0,
-                stand_emit_conf=20.0, I=in_filename, o=out_filename)
-            x = "%s >& %s" % (x, log_filename)
+                stand_emit_conf=20.0, I=j.bam_filename, o=j.raw_outfile)
+            x = "%s >& %s" % (x, j.log_filename)
             commands.append(x)
 
         parallel.pshell(commands, max_procs=num_cores)
 
+        # Filter each of the VCF files.
+        for j in jobs:
+            filter_by_vartype(vartype, j.raw_outfile, j.vcf_outfile)
+        metadata["filter"] = vartype
+
         # Make sure the analysis completed successfully.
-        out_filenames = [x[-1] for x in jobs]
-        filelib.assert_exists_nz_many(out_filenames)
+        x = [j.vcf_outfile for j in jobs]
+        filelib.assert_exists_nz_many(x)
+        
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):
         return "GATK.vcf"
 
+
+def is_snp(var):
+    # Doesn't seem to be annotated in the record.  Look at ref and alt
+    # alleles.
+    # REF  ALT
+    # A    C     SNP
+    # AG   A     INDEL
+    assert len(var.ref) >= 1
+    if len(var.ref) > 1:
+        return False
+    for x in var.alt:
+        assert len(x) >= 1
+        if len(x) > 1:
+            return False
+    return True
+
+
+def is_indel(var):
+    return not is_snp(var)
+
+
+def filter_by_vartype(vartype, infile, outfile):
+    # Filter out snps or indels.
+    import shutil
+    from genomicode import vcflib
+
+    assert vartype in ["all", "snp", "indel"]
+
+    if vartype == "all":
+        shutil.copy2(infile, outfile)
+        return
+    vcf = vcflib.read(infile)
+    fn = is_snp
+    if vartype == "indel":
+        fn = is_indel
+    vcf = vcflib.select_variants(vcf, fn)
+    vcflib.write(outfile, vcf)

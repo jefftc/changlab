@@ -14,10 +14,10 @@ class Module(AbstractModule):
         summary_file = in_data.identifier
         metadata = {}
 
-        x = mlib.get_user_option(
-            user_options, "nonsynonymous_and_stopgain_only",
-            allowed_values=["no", "yes"])
-        nonsynonymous_and_stopgain_only = (x == "yes")
+        #x = mlib.get_user_option(
+        #    user_options, "nonsynonymous_and_stopgain_only",
+        #    allowed_values=["no", "yes"])
+        #nonsynonymous_and_stopgain_only = (x == "yes")
 
         min_alt_reads = mlib.get_user_option(
             user_options, "filter_by_min_alt_reads", not_empty=True,
@@ -33,19 +33,18 @@ class Module(AbstractModule):
         #    user_options, "filter_by_min_GQ", not_empty=True, type=float)
         #assert min_gq >= 0 and min_gq < 1000
 
-        assert min_total_reads or min_alt_reads or \
-               nonsynonymous_and_stopgain_only, "No filter"
+        assert min_total_reads or min_alt_reads, "No filter"
 
         var_matrix = SimpleVariantMatrix.read(summary_file)
         call_matrix = var_matrix.call_matrix
         annot_matrix = var_matrix.annot_matrix
 
-        annovar_matrix = None
-        for (name, matrix) in var_matrix.named_matrices:
-            if "ExonicFunc.refGene" in matrix.headers:
-                annovar_matrix = matrix
-                break
-        assert annovar_matrix, "Missing annotation: ExonicFunc.refGene"
+        #annovar_matrix = None
+        #for (name, matrix) in var_matrix.named_matrices:
+        #    if "ExonicFunc.refGene" in matrix.headers:
+        #        annovar_matrix = matrix
+        #        break
+        #assert annovar_matrix, "Missing annotation: ExonicFunc.refGene"
 
         # copy.deepcopy is very slow.  Try to avoid it.
         # Strategy:
@@ -56,22 +55,22 @@ class Module(AbstractModule):
         I_remove = {}     # i -> 1
         call_remove = {}  # (chrom, pos, ref, alt) -> (sample, caller) -> 1
 
-        # Filter out synonymous variants.
-        if nonsynonymous_and_stopgain_only:
-            # Make sure annotated with Annovar.
-            assert "ExonicFunc.refGene" in annovar_matrix.headers
-            exonic_func = annovar_matrix["ExonicFunc.refGene"]
-            for i, efunc in enumerate(exonic_func):
-                efunc = exonic_func[i]
-                assert efunc in [
-                    "", "nonsynonymous SNV", "synonymous SNV",
-                    "stopgain", "stoploss",
-                    "frameshift substitution", "nonframeshift substitution",
-                    "unknown"], \
-                    "Unknown exonic_func: %s" % efunc
-                if efunc not in ["nonsynonymous SNV", "stopgain"]:
-                    I_remove[i] = 1
-                    continue
+        ## Filter out synonymous variants.
+        #if nonsynonymous_and_stopgain_only:
+        #    # Make sure annotated with Annovar.
+        #    assert "ExonicFunc.refGene" in annovar_matrix.headers
+        #    exonic_func = annovar_matrix["ExonicFunc.refGene"]
+        #    for i, efunc in enumerate(exonic_func):
+        #        efunc = exonic_func[i]
+        #        assert efunc in [
+        #            "", "nonsynonymous SNV", "synonymous SNV",
+        #            "stopgain", "stoploss",
+        #            "frameshift substitution", "nonframeshift substitution",
+        #            "unknown"], \
+        #            "Unknown exonic_func: %s" % efunc
+        #        if efunc not in ["nonsynonymous SNV", "stopgain"]:
+        #            I_remove[i] = 1
+        #            continue
                 
         # Filter based on the calls.
         if min_alt_reads > 0 or min_total_reads > 0:

@@ -68,6 +68,7 @@ class Module(AbstractModule):
                 "java", "-jar", sq(varscan),
                 tool,
                 tmp1_filename,
+                "--p-value", 0.05,
                 "--output-vcf", 1,
                 ]
             x = " ".join(map(str, x))

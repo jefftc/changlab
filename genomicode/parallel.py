@@ -31,7 +31,7 @@ def sshell(command, path=None, ignore_nonzero_exit=False):
 def _sshell_h(command, ignore_nonzero_exit):
     import subprocess
     if type(command) != type(""):
-        command = " ".join(command)
+        command = " ".join(map(str, command))
     try:
         x = subprocess.check_output(
             command, stderr=subprocess.STDOUT, shell=True)

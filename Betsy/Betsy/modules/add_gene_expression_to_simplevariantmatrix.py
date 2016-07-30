@@ -48,13 +48,13 @@ class Module(AbstractModule):
         assert annovar_matrix, "Missing annotation: %s" % GENE_H
         GENES = annovar_matrix[GENE_H]
 
-        # Make a list of the genes to get gene expression values for.
+        # Make a list of the genes.
         genes = {}
-        for i, gene in enumerate(GENES):
+        for i, gene_str in enumerate(GENES):
             # Format of genes:
             # PFN1P2
             # PMS2P2,PMS2P7
-            for x in gene.split(","):
+            for x in gene_str.split(","):
                 genes[x] = 1
         genes = sorted(genes)
 
@@ -62,24 +62,33 @@ class Module(AbstractModule):
         # and each sample.
         I = [GXP_samples.index(x) for x in SVM.samples]
         GXP_a = GXP.matrix(genes, I)  # align the matrices.
-
+        
         # Write out the expression matrix for debugging purposes.
         arrayio.write(GXP_a, "expression.txt")
 
-        # Align the matrix to the simple variant matrix.
+        # Search for each of the genes in the matrix.
+        gene2I = {}   # gene -> list of row indexes
+        for gene in genes:
+            x = GXP_a._index(row=gene)
+            I_row, i_col = x
+            if I_row:
+                gene2I[gene] = I_row
+
+        # Align the gene expression matrix to the simple variant
+        # matrix.
         matrix = [[None]*len(SVM.samples) for i in range(len(GENES))]
         for i, gene_str in enumerate(GENES):
             # Format of genes:     Format of output
             # PFN1P2                  5.2
             # PMS2P2,PMS2P7           2.2,8.6
             # If a gene is missing, then skip it.
+            genes = gene_str.split(",")
             for j in range(len(SVM.samples)):
-                values = []
-                genes = gene_str.split(",")
+                values = []  # expression values for each gene.
                 for k in range(len(genes)):
-                    x = GXP_a.value(genes[k], j)  # list
-                    if not x:
+                    if genes[k] not in gene2I:
                         continue
+                    x = [GXP_a._X[l][j] for l in gene2I[genes[k]]]
                     # If there are multiple instances of this gene,
                     # then pick the one with the maximum expression.
                     x = max(x)
