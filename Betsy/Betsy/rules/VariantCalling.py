@@ -19,8 +19,7 @@
 #     No requirements.  Can be done at any time.
 # 
 # 6.  SimpleVariantMatrix.filtered=yes   Filter on reads, exons, etc.
-#     filter_simplevariantmatrix
-#     Must be annotated="yes"
+#     filter_simplevariantmatrix_calls
 #
 #     _SimpleVariantMatrix2    Coverage
 #     =====================
@@ -54,7 +53,25 @@
 # NEED TO RENAME.  NOT VCF FOLDER
 # AnnotatedVCFFolder      # No.  Not VCF files.  Need to clean this up.
 # AnnotatedMultiVCFFile   # No.  Not VCF files.  Need to clean this up.
-
+#
+# FILTERS
+# filter_simplevariantfile       SimpleVariantFile
+#   remove_samples               Get rid of matched normal sample.
+#   remove_radia_rna_samples     Get rid of RNA-Seq samples for Radia.
+#   apply_filter                 Remove variants based on VCF FILTER column.
+#   wgs_or_wes                   Needed for filtering MuSE calls.
+# filter_simplevariantmatrix_calls   _SimpleVariantMatrix1
+#   * Filters specific calls.
+#   filter_by_min_alt_reads      At least this num of ALT reads. (No Strelka)
+#   filter_by_min_total_reads
+# filter_simplevariantmatrix_variants   SimpleVariantMatrix
+#   * Filters variants.
+#   min_callers_in_every_sample         Minimum callers in every sample.
+#   min_coverage_in_every_sample
+#   min_callers_in_any_sample           Minimum callers for >= 1 sample.
+#   min_gene_expression_every_sample    Needs with_gxp=yes.
+#   nonsynonymous_and_stopgain_only     Needs annotated=yes.
+#   sift_polyphen_damaging
 #
 #
 # Modules:
@@ -64,6 +81,9 @@
 # call_variants_platypus
 # call_consensus_varscan
 # call_variants_varscan
+# merge_variants_snp
+#
+# call_somatic_varscan
 # call_variants_mutect
 # call_variants_strelka
 # call_variants_somaticsniper
@@ -86,6 +106,7 @@
 
 
 #                 SNP   INDEL  NOTES
+# gatk             Y      Y    Makes file with both.  Can filter out.
 # mutect           Y      N
 # varscan          Y      Y    Makes separate files.
 # strelka          Y      Y    Makes separate files.
@@ -94,8 +115,6 @@
 # muse             Y      N
 # radia            Y      Y    Makes file with both.  Can filter out.
         
-
-# TODO: Make a constant for ["yes", "no"]
 
 # Calculate the consensus reads at specific positions.
 # PositionsFile -> summarize_consensus_mpileup -> PileupSummary
@@ -122,6 +141,8 @@ VARTYPES = ["all", "snp", "indel"]
 BACKFILLS = ["no", "yes", "consensus"]
 
 COORDINATES_FROM = ["unknown", "simplevariantmatrix", "whole_genome"]
+
+YESNO = BDT.YESNO  # for convenience
 
 
 
@@ -153,16 +174,16 @@ VCFFolder = DataType(
     #    "mpileup_summary", ["no", "yes"], "no", "no",
     #    help="Whether this is just summary information from mpileup."),
     AttributeDef(
-        "is_consensus", ["no", "yes"], "no", "no",
+        "is_consensus", YESNO, "no", "no",
         help="Whether this is a consensus call."),
     AttributeDef(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
     AttributeDef(
-        "vcf_recalibrated", ["no", "yes"], "no", "no",
+        "vcf_recalibrated", YESNO, "no", "no",
         help="Whether quality scores are ready for filtering."),
     AttributeDef(
-        "somatic", ["no", "yes"], "no", "no",
+        "somatic", YESNO, "no", "no",
         help="Whether the variants here are from the somatic cancer genome "
         "(no germline)."),
     AttributeDef(
@@ -183,7 +204,7 @@ VCFRecalibrationReport = DataType(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
     AttributeDef(
-        "somatic", ["no", "yes"], "no", "no",
+        "somatic", YESNO, "no", "no",
         help="Whether the variants here are from the somatic cancer genome "
         "(no germline)."),
     AttributeDef(
@@ -209,7 +230,7 @@ ManySampleVCFFile = DataType(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
     AttributeDef(
-        "somatic", ["no", "yes"], "no", "no",
+        "somatic", YESNO, "no", "no",
         help="Whether the variants here are from the somatic cancer genome "
         "(no germline)."),
     AttributeDef(
@@ -219,17 +240,17 @@ ManySampleVCFFile = DataType(
         # filled     backfilled
         # consensus  contains information that can be used for backfill
         "no", "no",
-        #"backfilled", ["no", "yes"], "no", "no",
+        #"backfilled", YESNO, "no", "no",
         help="Whether the mutations are backfilled."),
     #AttributeDef(
-    #    "backfilled", ["no", "yes"], "no", "no",
+    #    "backfilled", YESNO, "no", "no",
     #    help="Whether the mutations are backfilled."),
     )
 
 AnnotatedMultiVCFFile = DataType(
     "AnnotatedMultiVCFFile",
     #AttributeDef(
-    #    "backfilled", ["no", "yes"], "no", "no",
+    #    "backfilled", YESNO, "no", "no",
     #    help="Whether the mutations are backfilled."),
     )
 
@@ -304,6 +325,10 @@ ManyCallerVCFFolders = DataType(
     AttributeDef(
         "vartype", ["snp", "indel"], "snp", "snp",
         help="What kind of variants are held in this file."),
+    AttributeDef(
+        "somatic", YESNO, "no", "no",
+        help="Whether the variants here are from the somatic cancer genome "
+        "(no germline)."),
     )
 
 SimpleVariantFile = DataType(
@@ -312,39 +337,58 @@ SimpleVariantFile = DataType(
         "vartype", ["snp", "indel"], "snp", "snp",
         help="What kind of variants are held in this file."),
     AttributeDef(
-        "filtered", ["no", "yes"], "no", "no",
+        "filtered", YESNO, "no", "no",
         help="Whether these variants are filtered."),
     help="1-based coordinates"
     )
 
-SimpleVariantMatrix_ATTRIBUTES = [
+UnprocessedSimpleVariantMatrix_ATTRIBUTES = [
     AttributeDef(
         "vartype", ["snp", "indel"], "snp", "snp",
         help="What kind of variants are held in this file."),
+    ]
+
+_SimpleVariantMatrix1_ATTRIBUTES = \
+    UnprocessedSimpleVariantMatrix_ATTRIBUTES + [
     AttributeDef(
-        "annotated", ["no", "yes"], "no", "no",
+        "annotated", YESNO, "no", "no",
         help="Whether these variants are annotated with Annovar."),
     AttributeDef(
-        "filtered", ["no", "yes"], "no", "no",
-        help="Whether these variants are filtered."),
+        "filtered_calls", YESNO, "no", "no",
+        help="Whether the calls are filtered.  Requires annotated=yes"),
+    ]
+
+_SimpleVariantMatrix2_ATTRIBUTES = \
+    _SimpleVariantMatrix1_ATTRIBUTES + [
     AttributeDef(
-        "with_gxp", ["no", "yes"], "no", "no",
-        help="Whether this file contains the expression of the genes."),
-    AttributeDef(
-        "with_coverage", ["no", "yes"], "no", "no",
+        "with_coverage", YESNO, "no", "no",
         help="Whether this file contains the coverage at each position."),
     AttributeDef(
-        "with_rna_coverage", ["no", "yes"], "no", "no",
+        "with_rna_coverage", YESNO, "no", "no",
         help="Whether this file contains the coverage from RNA-Seq data."),
+    ]
+
+_SimpleVariantMatrix3_ATTRIBUTES = \
+    _SimpleVariantMatrix2_ATTRIBUTES + [
     AttributeDef(
-        "with_cancer_genes", ["no", "yes"], "no", "no",
+        "with_gxp", YESNO, "no", "no",
+        help="Whether this file contains the expression of the genes."),
+    AttributeDef(
+        "with_cancer_genes", YESNO, "no", "no",
         help="Whether each gene is a known cancer gene."),
+    ]
+                                 
+SimpleVariantMatrix_ATTRIBUTES = \
+    _SimpleVariantMatrix3_ATTRIBUTES + [
+    AttributeDef(
+        "filtered_variants", YESNO, "no", "no",
+        help="Whether the variants are filtered.  Requires XXX"),
     ]
     
 
 UnprocessedSimpleVariantMatrix = DataType(
     "UnprocessedSimpleVariantMatrix",
-    *SimpleVariantMatrix_ATTRIBUTES,
+    *UnprocessedSimpleVariantMatrix_ATTRIBUTES,
     **{
         "help" :
         "Contains information about variants.  Coordinates are 1-based.",
@@ -353,19 +397,19 @@ UnprocessedSimpleVariantMatrix = DataType(
 
 _SimpleVariantMatrix1 = DataType(
     "_SimpleVariantMatrix1",
-    *SimpleVariantMatrix_ATTRIBUTES,
+    *_SimpleVariantMatrix1_ATTRIBUTES,
     **{"help" : "Should not be used by the user.",}
     )
 
 _SimpleVariantMatrix2 = DataType(
     "_SimpleVariantMatrix2",
-    *SimpleVariantMatrix_ATTRIBUTES,
+    *_SimpleVariantMatrix2_ATTRIBUTES,
     **{"help" : "Should not be used by the user.",}
     )
 
 _SimpleVariantMatrix3 = DataType(
     "_SimpleVariantMatrix3",
-    *SimpleVariantMatrix_ATTRIBUTES,
+    *_SimpleVariantMatrix3_ATTRIBUTES,
     **{"help" : "Should not be used by the user.",}
     )
 
@@ -431,9 +475,9 @@ all_modules = [
         "summarize_consensus_mpileup",
         [NGS.BamFolder, NGS.ReferenceGenome, PositionsFile], PileupSummary,
         Constraint("sorted", MUST_BE, "coordinate", 0),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("has_read_groups", MUST_BE, "yes"),
-        Constraint("indexed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint("indexed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
@@ -455,9 +499,10 @@ all_modules = [
         "summarize_reads_mpileup",
         [NGS.BamFolder, NGS.ReferenceGenome], PileupSummary,
         Constraint("sorted", MUST_BE, "coordinate", 0),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
         Constraint("has_read_groups", MUST_BE, "yes"),
-        Constraint("indexed", CAN_BE_ANY_OF, ["no", "yes"], 0),
+        Constraint("indexed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
@@ -476,16 +521,19 @@ all_modules = [
         #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
         Constraint(
-            "base_quality_recalibrated", CAN_BE_ANY_OF, ["no", "yes"], 0),
+            "base_quality_recalibrated", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         
         Consequence("caller", SET_TO, "gatk"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
-        Consequence("vartype", SET_TO, "all"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        #Consequence("vartype", SET_TO, "all"),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Use GATK HaplotypeCaller to call variants."),
@@ -497,16 +545,17 @@ all_modules = [
         #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
-        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        
         Consequence("caller", SET_TO, "platypus"),
-        Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO, "snp"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
         help="Use GATK HaplotypeCaller to call variants."),
 
     ModuleNode(
@@ -581,8 +630,8 @@ all_modules = [
         #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
-        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("dict_added", MUST_BE, "yes", 2),
         Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "mutect"),
@@ -604,8 +653,8 @@ all_modules = [
         # Not sure if the BAM files need to be sorted or indexed.
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
-        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("aligner", MUST_BE, "bwa_mem", 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Consequence("caller", SET_TO, "strelka"),
@@ -622,8 +671,8 @@ all_modules = [
         # Not sure if the BAM files need to be sorted or indexed.
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
-        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("caller", SET_TO, "somaticsniper"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO, "snp"),
@@ -642,7 +691,7 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
-        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "jointsnvmix"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
@@ -668,7 +717,7 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
-        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "muse"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
@@ -696,7 +745,7 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
-        Constraint("has_read_groups", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint(
             "aligner", CAN_BE_ANY_OF,
             # TODO: replace with constant: DNA_ALIGNERS
@@ -737,6 +786,7 @@ all_modules = [
             VCFFolder, # Radia
             ],
         ManyCallerVCFFolders,
+        Consequence("somatic", SET_TO, "yes"),
         Constraint("caller", MUST_BE, "mutect", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
@@ -760,6 +810,27 @@ all_modules = [
         Constraint("somatic", MUST_BE, "yes", 6),
         Consequence("vartype", SET_TO, "snp"),
         help="Call variants with all implemented somatic variant callers.",
+        ),
+
+    ModuleNode(
+        "merge_variants_snp",
+        [
+            VCFFolder, # GATK
+            VCFFolder, # Platypus
+            VCFFolder, # Varscan
+            ],
+        ManyCallerVCFFolders,
+        Consequence("somatic", SET_TO, "no"),
+        Constraint("caller", MUST_BE, "gatk", 0),
+        Constraint("vartype", MUST_BE, "snp", 0),
+        Constraint("somatic", MUST_BE, "no", 0),
+        Constraint("caller", MUST_BE, "platypus", 1),
+        Constraint("vartype", MUST_BE, "snp", 1),
+        Constraint("somatic", MUST_BE, "no", 1),
+        Constraint("caller", MUST_BE, "varscan", 2),
+        Constraint("vartype", MUST_BE, "snp", 2),
+        Constraint("somatic", MUST_BE, "no", 2),
+        help="Call variants with all implemented non-somatic variant callers.",
         ),
 
     ModuleNode(
@@ -796,8 +867,6 @@ all_modules = [
         "convert_simplevariantfile_to_matrix",
         SimpleVariantFile, UnprocessedSimpleVariantMatrix,
         Constraint("filtered", MUST_BE, "yes"),
-        Consequence("filtered", SET_TO, "no"),
-        Consequence("annotated", SET_TO, "no"),
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
         ),
@@ -826,10 +895,12 @@ all_modules = [
         _SimpleVariantMatrix1, _SimpleVariantMatrix2,
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
-        Constraint("annotated", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("annotated", CAN_BE_ANY_OF, YESNO),
         Consequence("annotated", SAME_AS_CONSTRAINT),
-        Constraint("filtered", CAN_BE_ANY_OF, ["no", "yes"]),
-        Consequence("filtered", SAME_AS_CONSTRAINT),
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
+        #Constraint("filtered_variants", CAN_BE_ANY_OF, YESNO),
+        #Consequence("filtered_variants", SAME_AS_CONSTRAINT),
         #Constraint("with_gxp", CAN_BE_ANY_OF, ["no", "yes"]),
         #Consequence("with_gxp", SAME_AS_CONSTRAINT),
         #Constraint("with_rna_coverage", CAN_BE_ANY_OF, ["no", "yes"]),
@@ -844,17 +915,19 @@ all_modules = [
         _SimpleVariantMatrix2, _SimpleVariantMatrix3,
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
-        Constraint("annotated", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("annotated", CAN_BE_ANY_OF, YESNO),
         Consequence("annotated", SAME_AS_CONSTRAINT),
-        Constraint("filtered", CAN_BE_ANY_OF, ["no", "yes"]),
-        Consequence("filtered", SAME_AS_CONSTRAINT),
-        Constraint("with_gxp", CAN_BE_ANY_OF, ["no", "yes"]),
-        Consequence("with_gxp", SAME_AS_CONSTRAINT),
-        Constraint("with_coverage", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
+        #Constraint("filtered_variants", CAN_BE_ANY_OF, YESNO),
+        #Consequence("filtered_variants", SAME_AS_CONSTRAINT),
+        #Constraint("with_gxp", CAN_BE_ANY_OF, YESNO),
+        #Consequence("with_gxp", SAME_AS_CONSTRAINT),
+        Constraint("with_coverage", CAN_BE_ANY_OF, YESNO),
         Consequence("with_coverage", SAME_AS_CONSTRAINT),
-        Constraint("with_rna_coverage", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("with_rna_coverage", CAN_BE_ANY_OF, YESNO),
         Consequence("with_rna_coverage", SAME_AS_CONSTRAINT),
-        #Constraint("with_cancer_genes", CAN_BE_ANY_OF, ["no", "yes"]),
+        #Constraint("with_cancer_genes", CAN_BE_ANY_OF, YESNO),
         #Consequence("with_cancer_genes", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
@@ -862,17 +935,19 @@ all_modules = [
         _SimpleVariantMatrix3, SimpleVariantMatrix,
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
-        Constraint("annotated", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("annotated", CAN_BE_ANY_OF, YESNO),
         Consequence("annotated", SAME_AS_CONSTRAINT),
-        Constraint("filtered", CAN_BE_ANY_OF, ["no", "yes"]),
-        Consequence("filtered", SAME_AS_CONSTRAINT),
-        Constraint("with_gxp", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
+        #Constraint("filtered_variants", CAN_BE_ANY_OF, YESNO),
+        #Consequence("filtered_variants", SAME_AS_CONSTRAINT),
+        Constraint("with_gxp", CAN_BE_ANY_OF, YESNO),
         Consequence("with_gxp", SAME_AS_CONSTRAINT),
-        Constraint("with_rna_coverage", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("with_rna_coverage", CAN_BE_ANY_OF, YESNO),
         Consequence("with_rna_coverage", SAME_AS_CONSTRAINT),
-        Constraint("with_coverage", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("with_coverage", CAN_BE_ANY_OF, YESNO),
         Consequence("with_coverage", SAME_AS_CONSTRAINT),
-        Constraint("with_cancer_genes", CAN_BE_ANY_OF, ["no", "yes"]),
+        Constraint("with_cancer_genes", CAN_BE_ANY_OF, YESNO),
         Consequence("with_cancer_genes", SAME_AS_CONSTRAINT),
         ),
 
@@ -887,19 +962,15 @@ all_modules = [
         ),
 
     ModuleNode(
-        "filter_simplevariantmatrix",
+        "filter_simplevariantmatrix_calls",
         _SimpleVariantMatrix1, _SimpleVariantMatrix1,
         OptionDef(
             "filter_by_min_alt_reads", default="0",
-            help="Remove variants with less than this number of ALT reads.  "
+            help="Remove calls with less than this number of ALT reads.  "
             "Does not work for Strelka because it doesn't report ALT reads."),
         OptionDef(
             "filter_by_min_total_reads", default="0",
-            help="Remove variants with less than this number of reads."),
-        OptionDef(
-            "nonsynonymous_and_stopgain_only", 
-            help="Keep only non-synonymous and stopgain variants.  "
-            '"yes" or "no".'),
+            help="Remove calls with less than this number of reads."),
         #OptionDef(
         #    "filter_by_min_GQ", default="0",
         #    help="Remove variants with GQ less than this number.  "
@@ -908,10 +979,60 @@ all_modules = [
         #    "MuTect and VarScan has it in the header, but doesn't actually "
         #    "generate any values."
         #    ),
-        Constraint("filtered", MUST_BE, "no"),
-        Consequence("filtered", SET_TO, "yes"),
-        Constraint("annotated", MUST_BE, "yes"),
-        Consequence("annotated", SAME_AS_CONSTRAINT),
+        Constraint("filtered_calls", MUST_BE, "no"),
+        Consequence("filtered_calls", SET_TO, "yes"),
+        #Constraint("annotated", MUST_BE, "yes"),
+        #Consequence("annotated", SAME_AS_CONSTRAINT),
+        Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        ),
+
+    ModuleNode(
+        "filter_simplevariantmatrix_variants",
+        SimpleVariantMatrix, SimpleVariantMatrix,
+        OptionDef(
+            "min_callers_in_every_sample", default="",
+            help="Remove variants that do not have this many callers in "
+            "every sample."),
+        OptionDef(
+            "min_callers_in_any_sample", default="",
+            help="Remove variants that do not have this many callers in "
+            "any sample."),
+        OptionDef(
+            "min_gene_expression_in_every_sample", default="",
+            help="Remove variants that do not have this many callers in "
+            "every sample."),
+        OptionDef(
+            "min_coverage_in_every_sample", default="",
+            help="Remove variants that do not have this coverage "
+            "every sample."),
+        OptionDef(
+            "nonsynonymous_and_stopgain_only", default="no",
+            help="Keep only non-synonymous and stopgain variants.  "
+            '"yes" or "no".'),
+        OptionDef(
+            "sift_polyphen_damaging", default="no",
+            help="Only if SIFT (D)amaging and Polyphen2 (P) or (D).  "
+            '"yes" or "no".'),
+        #OptionDef(
+        #    "filter_by_min_total_reads", default="0",
+        #    help="Remove variants with less than this number of reads."),
+        #OptionDef(
+        #    "nonsynonymous_and_stopgain_only", 
+        #    help="Keep only non-synonymous and stopgain variants.  "
+        #    '"yes" or "no".'),
+        #OptionDef(
+        #    "filter_by_min_GQ", default="0",
+        #    help="Remove variants with GQ less than this number.  "
+        #    "SomaticSniper provides this.  "
+        #    "JointSNVMix, Strelka don't use this.  "
+        #    "MuTect and VarScan has it in the header, but doesn't actually "
+        #    "generate any values."
+        #    ),
+        Constraint("filtered_variants", MUST_BE, "no"),
+        Consequence("filtered_variants", SET_TO, "yes"),
+        #Constraint("annotated", MUST_BE, "yes"),
+        #Consequence("annotated", SAME_AS_CONSTRAINT),
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
         ),
@@ -1024,6 +1145,7 @@ all_modules = [
             VCFFolder, # JointSNVMix
             ],
         ManyCallerVCFFolders,
+        Consequence("somatic", SET_TO, "yes"),
         Constraint("caller", MUST_BE, "varscan", 0),
         Constraint("vartype", MUST_BE, "indel", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
@@ -1047,7 +1169,7 @@ all_modules = [
         Constraint("vcf_recalibrated", MUST_BE, "no", 0),
         Constraint("vartype", CAN_BE_ANY_OF, ["all", "snp"], 0),
         Consequence("vartype", SET_TO, "snp"),
-        Constraint("somatic", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("somatic", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("somatic", SAME_AS_CONSTRAINT),
         Constraint("caller", CAN_BE_ANY_OF, CALLERS, 0),
         Consequence("caller", SAME_AS_CONSTRAINT),
@@ -1064,7 +1186,7 @@ all_modules = [
         Constraint("vartype", CAN_BE_ANY_OF, ["all", "snp"], 0),
         Constraint("vartype", MUST_BE, "snp", 2),
         Consequence("vartype", SAME_AS_CONSTRAINT, 2),
-        Constraint("somatic", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("somatic", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("somatic", SAME_AS, 0, 2),
         Consequence("somatic", SAME_AS_CONSTRAINT),
         help="GATK ApplyRecalibration",

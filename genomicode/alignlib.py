@@ -935,7 +935,8 @@ def get_rsem_version():
 
 def make_rsem_command(
     reference_fa, sample_name, fastq_file1, fastq_file2=None,
-    forward_prob=None, num_threads=None):
+    forward_prob=None, num_threads=None, output_genome_bam=True,
+    bowtie_chunkmbs=None, align_with_bowtie2=False, align_with_star=False):
     # <sample_name> is prefix for all output files,
     #   e.g. <sample_name>.genes.results
     import os
@@ -950,12 +951,21 @@ def make_rsem_command(
     #   --forward-prob 1.0 (upstream from forward strand; secondstrand)
     #   --forward-prob 0.0 (upstream from reverse strand; firststrand)
 
+    # If there are lots of memory warnings in the log files:
+    #   Warning: Exhausted best-first chunk memory for read
+    #   ST-J00106:110:H5NY5BBXX:6:1101:18203:44675 1:N:0:1/1 (patid
+    #   2076693); skipping read
+    # May need to increase --chunkmbs.
+    
     assert os.path.exists(fastq_file1)
     if fastq_file2:
         assert os.path.exists(fastq_file2)
     if num_threads is not None:
         assert num_threads >= 1 and num_threads < 100
     assert forward_prob in [None, 0.0, 0.5, 1.0]
+    if bowtie_chunkmbs:
+        assert bowtie_chunkmbs > 0 and bowtie_chunkmbs < 100*1024
+    assert not (align_with_bowtie2 and align_with_star)
 
     rsem_calculate = filelib.which_assert(config.rsem_calculate)
 
@@ -965,7 +975,22 @@ def make_rsem_command(
         ]
     if num_threads:
         cmd += ["-p", str(num_threads)]
-    cmd += ["--output-genome-bam"]
+    if bowtie_chunkmbs:
+        cmd += ["--bowtie-chunkmbs", str(bowtie_chunkmbs)]
+    if align_with_bowtie2:
+        cmd += ["--bowtie2"]
+        bowtie2 = filelib.which_assert(config.bowtie2)
+        # RSEM wants the path that contains the bowtie2 executable.
+        bowtie2 = os.path.split(bowtie2)[0]
+        cmd += ["--bowtie2-path", sq(bowtie2)]
+    if align_with_star:
+        cmd += ["--star"]
+        STAR = filelib.which_assert(config.STAR)
+        # RSEM wants the path that contains the executable.
+        STAR = os.path.split(STAR)[0]
+        cmd += ["--star-path", sq(STAR)]
+    if output_genome_bam:
+        cmd += ["--output-genome-bam"]
     if forward_prob is not None:
         cmd += ["--forward-prob", str(forward_prob)]
     if not fastq_file2:
@@ -1293,22 +1318,33 @@ def find_picard_jar(jar_name):
     return jar_filename
 
 
-def _make_java_command(config_name, params, num_dashes, java_path=None):
-    # value of None means no argument.
+def _make_java_command(config_name, params, num_dashes, memory=None,
+                       java_path=None):
+    # params a a dictionary of <key> : <value> to pass to the java
+    # command.
+    # <value> of None means no argument.
     # A dash is prepended to each key.
     # Special key:
     # _UNHASHABLE  list of (key, value) tuples
+    #
+    # memory is the number of gb of RAM to allocate for java.  Should
+    # be an integer.  Default is 5.
     from genomicode import config
     from genomicode import parallel
     from genomicode import filelib
 
     UNHASHABLE = "_UNHASHABLE"
     assert num_dashes >= 1 and num_dashes <= 2
-    sq = parallel.quote
+
+    if memory is None:
+        memory = 5
+    assert type(memory) is type(0)
+    assert memory >= 1 and memory <= 256
 
     jarfile = getattr(config, config_name)
     filelib.assert_exists_nz(jarfile)
 
+    sq = parallel.quote
     java = "java"
     if java_path is not None:
         filelib.which_assert(java_path)
@@ -1316,7 +1352,8 @@ def _make_java_command(config_name, params, num_dashes, java_path=None):
 
     cmd = [
         java,
-        "-Xmx5g",
+        "-Xmx%dg" % memory,
+        "-Djava.io.tmpdir=.", 
         "-jar", sq(jarfile),
         ]
     x1 = params.get(UNHASHABLE, [])
@@ -1338,7 +1375,12 @@ def _make_java_command(config_name, params, num_dashes, java_path=None):
 
 
 def make_GATK_command(**params):
-    return _make_java_command("gatk_jar", params, 1)
+    # SplitNCigarReads complains with only 5 Gb RAM:
+    # There was a failure because you did not provide enough memory to
+    # run this program.  See the -Xmx JVM argument to adjust the
+    # maximum heap size provided to Java
+    
+    return _make_java_command("gatk_jar", params, 1, memory=20)
 
 
 def make_MuTect_command(**params):
@@ -1559,6 +1601,7 @@ def clean_mutect_vcf(
 def clean_varscan_vcf(sample, in_filename, out_filename):
     #from genomicode import hashlib
 
+    # Remove lines that contain these values.
     BAD_LINES = [
         "Min coverage:",
         "Min reads2:",
@@ -1571,6 +1614,9 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
         "were failed by the strand-filter",
         "variant positions reported",
         "Input file was not ready after 100 5-second cycles!",
+        "Only SNPs will be reported",
+        ("Warning: No p-value threshold provided, so p-values will " 
+         "not be calculated"),
         ]
 
     # Varscan calls each sample "Sample1".  Doesn't have the read

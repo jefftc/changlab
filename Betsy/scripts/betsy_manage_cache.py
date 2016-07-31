@@ -123,7 +123,7 @@ def main():
     print "BETSY cache path: %s" % output_path
     print
 
-    # GenericObject with path, size, status, last_accessed.
+    # GenericObject with path (full path), size, status, last_accessed.
     path_info = []
 
     # Don't sort.  Just print as it comes out for speed.
@@ -270,31 +270,83 @@ def main():
     # Figure out which paths to delete.
     if args.clear_cache:
         assert bytes_to_clear
-        
+
+        # Figure out which paths symlink into other paths.
+        real2links = {}  # real path -> list of symlinks that point to it
+        for p in path_info:
+            # Make a list of all the files under this path.
+            all_filenames = []
+            for x in os.walk(p.path):
+                dirpath, dirnames, files = x
+                x = [os.path.join(dirpath, x) for x in files]
+                all_filenames.extend(x)
+            # Follow the symlinks.
+            all_filenames = [x for x in all_filenames if os.path.islink(x)]
+            all_filenames = [os.path.realpath(x) for x in all_filenames]
+            # Look at whether any of these files are in other paths.
+            for filename in all_filenames:
+                for x in path_info:
+                    if x == p:
+                        continue
+                    if not filename.startswith(x.path):
+                        continue
+                    if x.path not in real2links:
+                        real2links[x.path] = []
+                    if p.path not in real2links[x.path]:
+                        real2links[x.path].append(p.path)
+
+        # Make a list of the paths that we can't delete.
+        # Don't delete any path that is running.
+        cant_delete = [x for x in path_info if x.status == S_RUNNING]
+        # If we can't delete a path, then we also can't delete any
+        # path with a real file that it symlinks into (because then
+        # this path would be broken).
+        for real_path, linked_paths in real2links.iteritems():
+            if real_path in cant_delete:
+                continue
+            p = [x for x in linked_paths if x in cant_delete]
+            if p:
+                cant_delete.append(real_path)
         # Sort the paths by priority.
         x = path_info
-        x = [x for x in x if x.status != S_RUNNING]
+        x = [x for x in x if x not in cant_delete]
         schwartz = [(get_clear_priority(x), x) for x in x]
         schwartz.sort()
         x = [x[-1] for x in schwartz]
+        prioritized = x
         # Add up the sizes until I reach the desired output.
         to_delete = []
         num_bytes = 0
-        for i in range(len(x)):
+        for i in range(len(prioritized)):
             if num_bytes >= bytes_to_clear:
                 break
-            to_delete.append(x[i])
-            num_bytes += x[i].size
+            to_delete.append(prioritized[i])
+            num_bytes += prioritized[i].size
+        # Delete the directories.
+        paths_to_delete = []
         for info in to_delete:
             x = format_module_summary(info)
             parselib.print_split(x, prefixn=2)
-            if args.dry_run:
-                continue
-            shutil.rmtree(info.path)
+            if not args.dry_run:
+                shutil.rmtree(info.path)
             i = path_info.index(info)
             path_info.pop(i)
-
-    print
+            # Also delete an path with symlinks into here.
+            x = real2links.get(info.path, [])
+            paths_to_delete.extend(x)
+        # Delete any of the extra paths (from symlinks).
+        for path in paths_to_delete:
+            found = False
+            for i in range(len(path_info)):
+                if path_info[i].path == path:
+                    found = True
+                    break
+            # If already deleted, then ignore.
+            if not found:
+                continue
+            if not args.dry_run:
+                shutil.rmtree(path_info[i].path)
+            path_info.pop(i)
     
     # BUG: Does not account for size in tmp directories.
     x = [x.size for x in path_info]

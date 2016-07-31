@@ -1111,28 +1111,26 @@ def _parse_args(args):
             out_parameters.append((datatype, key, value, all_nodes))
         elif arg == "--dattr":
             raise AssertionError, "--dattr before --input or --output"
-        elif arg == "--input_file":
+        elif arg.startswith("--input_file"):
             # Possible formats:
             # 1.  --input_file fastq01
             # 2.  --input_file=fastq01
             assert input_or_output == "--input", \
                    "--input_file must be after --input and before --output"
-            assert len(args) >= i+1
-            filename = args[i+1]
-            i += 2
+            if arg == "--input_file":
+                assert len(args) >= i+1
+                filename = args[i+1]
+                i += 2
+            else:
+                x = arg.split("=")
+                assert len(x) == 2, "Invalid arg: %s" % arg
+                assert x[0] == "--input_file"
+                filename = x[1]
+                i += 1
             index = len(inputs) - 1
+            assert index >= 0
             assert index not in in_identifiers, \
-                   "only one --input_file per --input"
-            in_identifiers[index] = filename
-        elif arg.startswith("--input_file"):
-            x = arg.split("=")
-            assert len(x) == 2, "Invalid arg: %s" % arg
-            assert x[0] == "--input_file"
-            filename = x[1]
-            i += 1
-            index = len(inputs) - 1
-            assert index not in in_identifiers, \
-                   "only one --input_file per --input"
+                   "Multiple --input_file provided for %s" % inputs[-1]
             in_identifiers[index] = filename
         elif arg == '--output_file':
             assert input_or_output == "--output", \
@@ -1270,7 +1268,7 @@ def main():
         "this argument is important.  --dattr should be given "
         "immediately following the Datatype that it refers to.  "
         "No --dattr should be given before the first --input.  "
-        "--dattr that refers to nodes not in the network should be "
+        "--dattr that refer to internal nodes in the network should be "
         "given after the --output.  Format: <datatype>.<key>=<value>.")
     group.add_argument(
         '--output_file', help='file or folder of output result')

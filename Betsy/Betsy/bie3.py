@@ -2681,14 +2681,20 @@ def _find_paths_by_start_ids_hh(
             #               ReadStrandedness.mouse=yes ->
             # count_with_htseq has constraint that mouse is the same,
             # but value for mouse conflicts.
-            if isinstance(network.nodes[node_id], ModuleNode):
-                # This is run multiple times for similar pathways.
-                # May be able to memoize.
-                if not _is_valid_outmodule_id_path(
-                    network, path, combo_ids, node_id, custom_attributes,
-                    nodeid2parents):
-                    continue
-
+            if not missing_ids:
+                # Don't bother checking if this is a dead pathway
+                # (missing start_ids).  The merging below can ccreate
+                # a non-atomic DataNode that will lead to an exception
+                # from _is_valid_outmodule_id_path, e.g.:
+                # BamFold.dup=no -> mrk_dup -> BF.dup=yes -> index -> BF.dup=?
+                #                ->                                ->
+                if isinstance(network.nodes[node_id], ModuleNode):
+                    # This is run multiple times for similar pathways.
+                    # May be able to memoize.
+                    if not _is_valid_outmodule_id_path(
+                        network, path, combo_ids, node_id, custom_attributes,
+                        nodeid2parents):
+                        continue
 
             # Case 5. If the merged branches would generate data nodes
             # with different parents, then this conflicts.
@@ -2726,6 +2732,7 @@ def _find_paths_by_start_ids_hh(
         # up merging alternate routes through the network.
         # Fastq.compress (unknown) -> is_compressed -> Fastq.compress (yes)
         #                                           -> Fastq.compress (no)
+        # This can create paths that don't work.
         sids2paths = {}  # start_ids -> list of paths
         for path in all_paths:
             sids = tuple(path.start_ids)
@@ -4852,8 +4859,8 @@ def _format_datanode_gv(node, node_id):
         w('<BR/>')
         w("<U>Data Attributes</U>:")
         w('<BR ALIGN="LEFT"/>')
-    for x in node.attributes.iteritems():
-        name, value = x
+    for name in sorted(node.attributes):
+        value = node.attributes[name]
         x = "%s = %s" % (name, value)
         for x in parselib.linesplit(x, prefix1=0, prefixn=4, width=LINE_WIDTH):
             w(x)
@@ -5306,7 +5313,6 @@ def _bc_to_one_input(
                 attrsource[name] = "consequence+constraint"
             else:
                 raise AssertionError
-
 
     # Case 3.  If the input data object does not proceed to the output
     # data object, then use the attribute provided by the user.
@@ -6765,7 +6771,9 @@ def _get_atomic_data_node_from_pathway(
     # However, since this is a pathway, only one atomic DataNode
     # should be able to be generated.  Create it.
     #
-
+    # The data node returned may not be atomic if:
+    # 1.  DataNode is the leaf and contains TYPE_ENUM.  e.g.
+    #     BamFolder.duplicates_marked=["no", "yes"]
     assert node_id in path.node_ids
     node = network.nodes[node_id]
     assert isinstance(node, DataNode)
@@ -6774,19 +6782,25 @@ def _get_atomic_data_node_from_pathway(
 
     if nodeid2parents is None:
         nodeid2parents = _make_parents_dict(network)
+    if node_id not in nodeid2parents:  # no parents
+        return node
     x = nodeid2parents[node_id]
     x = [x for x in x if x in path.node_ids]
     x = [x for x in x if x in path.transitions]
     x = [x for x in x if node_id in path.transitions[x]]
     parent_ids = x
+
     assert parent_ids, "No parents 1"
     assert len(parent_ids) == 1, "Multiple parents of data: %d %s %s %s" % (
         node_id, get_node_name(node), parent_ids,
         [get_node_name(network.nodes[x]) for x in parent_ids])
     module_id = parent_ids[0]
 
-    parent_ids = nodeid2parents[module_id]
-    parent_ids = [x for x in parent_ids if x in path.node_ids]
+    x = nodeid2parents[module_id]
+    x = [x for x in x if x in path.node_ids]
+    x = [x for x in x if x in path.transitions]
+    x = [x for x in x if module_id in path.transitions[x]]
+    parent_ids = x
     assert parent_ids, "No parents 2"
 
     combos = _bc_to_input_ids(
@@ -6832,8 +6846,20 @@ def _get_atomic_data_node_from_pathway(
                 continue
             based_on_data.append(cons.name)
 
+        if False:
+            # Plot a network for debugging.
+            transitions = []
+            for n1, n2s in path.transitions.iteritems():
+                for n2 in n2s:
+                    transitions.append((n1, n2))
+            x = [x for x in path.node_ids if x != node_id]
+            plot_network_gv(
+                "err.png", network, verbose=True, highlight_orange=x,
+                highlight_green=[node_id], bold_transitions=transitions)
+        
         err = []
         err.append("Cannot resolve %s [%d]" % (node.datatype.name, node_id))
+        err.append("Path: %s" % " ".join(map(str, sorted(path.node_ids))))
         for name in sorted(attr2values):
             values = attr2values[name]
             if len(values) <= 1:

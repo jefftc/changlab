@@ -1145,7 +1145,7 @@ def splitpath(path):
 
 def findbin(name, quote=False):
     # name is the name in the genomicode config file.
-    # DEPRECATE THIS FUNCTION.
+    # DEPRECATE THIS FUNCTION.  Just use get_config
     return get_config(name, which_assert_file=True, quote=quote)
 
 

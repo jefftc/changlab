@@ -9,17 +9,24 @@ class Module(AbstractModule):
         out_path):
         import os
         import shutil
-        from genomicode import config
+        #from genomicode import config
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
+        from Betsy import module_utils as mlib
 
         ref_node, gene_node = antecedents
-        rsem_prepare = filelib.which_assert(config.rsem_prepare)
-        ref = alignlib.standardize_reference_genome(
-            ref_node.identifier, out_path, use_symlinks=True)
+        # Don't copy the whole path.  Just get the fasta file.
+        #ref = alignlib.standardize_reference_genome(
+        #    ref_node.identifier, out_path, use_symlinks=True)
+        ref = alignlib.create_reference_genome(ref_node.identifier)
         gtf_file = gene_node.identifier
         filelib.assert_exists_nz(gtf_file)
+
+        # Symlink the fasta file into the out path.
+        filelib.safe_mkdir(out_path)
+        x = os.path.join(out_path, ref.fasta_file)
+        os.symlink(ref.fasta_file_full, x)
 
         # rsem-prepare-reference --bowtie --bowtie2 --gtf gtf02.gtf
         #   <reference.fa> <reference_name>
@@ -34,13 +41,43 @@ class Module(AbstractModule):
         # <reference_name>.seq
         # <reference_name>.ti
         # <reference_name>.transcripts.fa
+        # chrLength.txt                   # STAR
+        # chrNameLength.txt
+        # chrName.txt
+        # chrStart.txt
+        # exonGeTrInfo.tab
+        # exonInfo.tab
+        # gencode.vM8.annotation.gtf
+        # geneInfo.tab
+        # Genome
+        # genomeParameters.txt
+        # SA
+        # SAindex
+        # sjdbInfo.txt
+        # sjdbList.fromGTF.out.tab
+        # sjdbList.out.tab
+        # transcriptInfo.tab
+
+        rsem_prepare = mlib.get_config("rsem_prepare", which_assert_file=True)
+        bowtie = mlib.get_config("bowtie", which_assert_file=True)
+        bowtie2 = mlib.get_config("bowtie2", which_assert_file=True)
+        STAR = mlib.get_config("STAR", which_assert_file=True)
+
+        # RSEM wants the path that contains the executables.
+        bowtie = os.path.split(bowtie)[0]
+        bowtie2 = os.path.split(bowtie2)[0]
+        STAR = os.path.split(STAR)[0]
+
         sq = parallel.quote
-        # TODO: Need to test what happens if bowtie or bowtie2
-        # can't be found.
         cmd = [
             sq(rsem_prepare),
+            "--num-threads", num_cores,
             "--bowtie",
+            "--bowtie-path", sq(bowtie),
             "--bowtie2",
+            "--bowtie2-path", sq(bowtie2),
+            "--star",
+            "--star-path", sq(STAR),
             "--gtf", sq(gtf_file),
             sq(ref.fasta_file_full),
             ref.name,
@@ -65,7 +102,25 @@ class Module(AbstractModule):
             "%s.ti" % assembly,
             "%s.transcripts.fa" % assembly,
             ]
-        x = x1 + x2 + x3 + x4 + x5
+        x6 = [
+            "chrLength.txt",
+            "chrNameLength.txt",
+            "chrName.txt",
+            "chrStart.txt",
+            "exonGeTrInfo.tab",
+            "exonInfo.tab",
+            "gencode.vM8.annotation.gtf",
+            "geneInfo.tab",
+            "Genome",
+            "genomeParameters.txt",
+            "SA",
+            "SAindex",
+            "sjdbInfo.txt",
+            "sjdbList.fromGTF.out.tab",
+            "sjdbList.out.tab",
+            "transcriptInfo.tab",
+            ]
+        x = x1 + x2 + x3 + x4 + x5 + x6
         index_files = [os.path.join(out_path, x) for x in x]
         filelib.assert_exists_nz_many(index_files)
 

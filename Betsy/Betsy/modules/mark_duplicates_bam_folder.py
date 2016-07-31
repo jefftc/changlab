@@ -48,7 +48,7 @@ class Module(AbstractModule):
             in_filename, log_filename, out_filename = x
 
             x = [
-                "java", "-Xmx5g",
+                "java", "-Xmx20g",
                 "-jar", sq(picard_jar),
                 "MarkDuplicates",
                 "I=%s" % sq(in_filename),
@@ -69,8 +69,9 @@ class Module(AbstractModule):
         # java may use additional threads for garbage collection.
         # https://sourceforge.net/p/picard/wiki/Main_Page/
 
-        # Takes ~10 Gb per process.
-        nc = mlib.calc_max_procs_from_ram(20, upper_max=num_cores)
+        # Takes ~10 Gb per process (with -Xmx5g).  Increased the RAM
+        # used to 20 Gb because 5 Gb was not enough for some files.
+        nc = mlib.calc_max_procs_from_ram(25, upper_max=num_cores)
         parallel.pshell(commands, max_procs=nc)
         metadata["commands"] = commands
         metadata["num_cores"] = nc

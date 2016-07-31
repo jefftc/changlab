@@ -67,6 +67,9 @@ RSEMResults = DataType(
     "RSEMResults",
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+    AttributeDef(
+        "align_to", ["genome", "transcriptome"], "genome", "genome",
+        help="Align to the genome or transcriptome."),
     help="A folder of results from an rsem-calculate-expression analysis.",
     )
 
@@ -160,6 +163,7 @@ all_modules = [
         Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Constraint("rsem_indexed", MUST_BE, "yes", 3),
+        Consequence("align_to", SET_TO_ONE_OF, ["genome", "transcriptome"]),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
@@ -175,6 +179,7 @@ all_modules = [
         # What is this for?
         #Consequence("predataset", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
+        Constraint("align_to", MUST_BE, "genome"),
         ),
 
     ModuleNode(
