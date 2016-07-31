@@ -1250,6 +1250,45 @@ def split_chr_start_end(MATRIX, arg):
     return AnnotationMatrix.create_from_annotations(headers, all_annots)
 
 
+def tcga_relabel_patient_barcodes(MATRIX, arg):
+    # string that should be <header> or <1-based index>
+    if not arg:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+    import slice_matrix
+
+    arg = [arg]
+
+    jobs = []   # list of (index 0-based,)
+    for x in arg:
+        i = MATRIX.normalize_header_i(x, index_base1=True)
+        assert i is not None, "Unknown header: %s" % x
+        jobs.append((i,))
+
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        index, = x
+
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+
+        # Change the annotations in place.
+        for i, barcode in enumerate(annots):
+            try:
+                x = slice_matrix._parse_tcga_barcode(barcode)
+            except AssertionError, x:
+                # Keep all samples that don't look like a TCGA barcode.
+                if str(x).startswith("Invalid barcode"):
+                    pass
+                else:
+                    raise
+            else:
+                barcode = x[0]
+            annots[i] = barcode
+
+    return MATRIX
+
+
 def _add_annots(a1, a2):
     return a1 + a2
 
@@ -2529,6 +2568,13 @@ def main():
         "Format: <header>.  <header> may be the name of the header, "
         "or a 1-based index.  (MULTI)")
     
+    group = parser.add_argument_group(title="TCGA barcode operations")
+    group.add_argument(
+        "--tcga_relabel_patient_barcodes", 
+        help="Simplify barcodes to just the patient information.  "
+        "Format: <header>.  <header> may be the name of the header, "
+        "or a 1-based index.")
+
     group = parser.add_argument_group(title="Select by annotation")
     group.add_argument(
         "--select_if_annot_is", action="append",
@@ -2746,6 +2792,10 @@ def main():
         MATRIX, args.merge_annots_to_new_col_skip_empty)
     MATRIX = split_annots(MATRIX, args.split_annots)
     MATRIX = split_chr_start_end(MATRIX, args.split_chr_start_end)
+
+    # TCGA stuff
+    MATRIX = tcga_relabel_patient_barcodes(
+        MATRIX, args.tcga_relabel_patient_barcodes)
 
     # Selection by annotation.
     MATRIX = select_if_annot_is(MATRIX, args.select_if_annot_is)

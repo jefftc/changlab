@@ -68,7 +68,7 @@ def ignore_samples(M, clinical_annots, ignore):
     return M_f, annots_f
 
 
-def calc_association(phenotypes, scores):
+def calc_association(phenotypes, scores, ignore_insufficient_groups):
     # Return a dictionary with keys:
     # n                    Number of samples.
     # m                    Number of groups.
@@ -81,6 +81,9 @@ def calc_association(phenotypes, scores):
     # mean_score           dict of <group (int)> : <float>
     # p_value              <float>
     # relationship         <string>
+    #
+    # May return None if there is only 1 group, and
+    # ignore_insufficient_groups is a true value.
     from genomicode import jmath
     from genomicode import sortlib
     
@@ -96,6 +99,8 @@ def calc_association(phenotypes, scores):
     # Figure out the groupings.
     #group_names = sorted({}.fromkeys(phenotypes))
     group_names = sortlib.sort_natural({}.fromkeys(phenotypes))
+    if len(group_names) < 2 and ignore_insufficient_groups:
+        return None
     assert len(group_names) >= 2, "Need at least 2 groups (%s)." % \
            str(group_names)
     groups = [None] * len(phenotypes)
@@ -460,11 +465,27 @@ def main():
         '--phenotype', default=[], action='append',
         help='Header in the phenotype file (MULTI).  Format: <header>')
     group.add_argument(
+        '--all_phenotypes', action="store_true",
+        help="Analyze all phenotypes in the file.")
+    parser.add_argument(
+        "--ignore_phenotype", default=[], action="append",
+        help="Ignore this column in the phenotype file.  "
+        "Helpful to get rid of the sample column when using "
+        "--all_phenotypes.  Format: <header>  (MULTI)")
+    group.add_argument(
+        '--ignore_insufficient_groups', action="store_true",
+        help="If a phenotype only has one group, then ignore it rather "
+        "than raising an error.")
+    group.add_argument(
         '--gene', default=[], action='append',
         help='Comma separated name or ID of genes to analyze.  '
         'I will search for this gene in the annotations of the '
         'expression_file.  '
         'You can use this parameter multiple times to search more genes.')
+    group.add_argument(
+        "--empty_vs_filled", action="store_true",
+        help="Instead of categorizing by the contents of the cells, "
+        "compare the ones that are empty against the ones that are filled.")
     group.add_argument(
         "--all_genes", action="store_true",
         help="Run analysis on all genes in this file.")
@@ -549,8 +570,10 @@ def main():
     assert os.path.exists(args.phenotype_file), "File not found: %s" % \
            args.phenotype_file
     assert args.num_procs >= 1 and args.num_procs < 100
-    
-    assert args.phenotype, 'Please specify the phenotype to analyze.'
+
+    assert args.phenotype or args.all_phenotypes, \
+           'Please specify the phenotype to analyze.'
+    assert not (args.phenotype and args.all_phenotypes)
     assert args.gene or args.geneset or args.all_genes, \
            'Please specify a gene or gene set.'
     assert not (args.gene and args.all_genes)
@@ -593,6 +616,10 @@ def main():
         x = ignore_samples(M, clinical_annots, args.ignore_samples)
         M, clinical_annots = x
 
+    if args.all_phenotypes:
+        phenotypes = sorted(clinical_annots)
+    phenotypes = [x for x in phenotypes if x not in args.ignore_phenotype]
+
     # Make sure at least one of the phenotypes are in the clinical
     # annotations.
     x = [x for x in phenotypes if x in clinical_annots]
@@ -621,19 +648,38 @@ def main():
     #if gene_sets:
     #    expression_or_score = "Score"
 
-    # (header, gene_index) -> returned from calc_association
-    gene_phenotype_scores = {}  
+    jobs = []  # list of (function, args, keywds)
+    keys = []
     for x in itertools.product(phenotypes, range(M.nrow())):
         pheno_header, i = x
         phenotype = clinical_annots[pheno_header]
+        if args.empty_vs_filled:
+            x = ["0"] * len(phenotype)
+            for j in range(len(phenotype)):
+                if phenotype[j].strip():
+                    x[j] = "1"
+            phenotype = x
+        
         scores = M.value(i, None)
         if center_batch:
             batch = clinical_annots[center_batch]
             scores = center_scores(
                 scores, batch, phenotype, center_group1, center_group2)
-        
-        x = calc_association(phenotype, scores)
+
+        x = phenotype, scores, args.ignore_insufficient_groups
+        x = calc_association, x, {}
+        jobs.append(x)
+        keys.append((pheno_header, i))
+    retvals = parallel.pyfun(jobs, num_procs=args.num_procs)
+    assert len(retvals) == len(keys)
+
+    # (header, gene_index) -> returned from calc_association
+    gene_phenotype_scores = {}
+    for (pheno_header, i), x in zip(keys, retvals):
+        if x is None:
+            continue
         gene_phenotype_scores[(pheno_header, i)] = x
+        
 
     # Files generated:
     # <filestem>.stats.txt      Or to STDOUT if no <filestem> given.
@@ -663,7 +709,9 @@ def main():
     # Write out each row of the table.
     for x in itertools.product(phenotypes, range(M.nrow())):
         pheno_header, gene_i = x
-        SCORE = gene_phenotype_scores[(pheno_header, gene_i)]
+        SCORE = gene_phenotype_scores.get((pheno_header, gene_i))
+        if not SCORE:   # couldn't calculate.
+            continue
 
         gene_names = [M.row_names(x)[gene_i] for x in M.row_names()]
         phenotype = pheno_header
@@ -690,12 +738,12 @@ def main():
     if not filestem:
         return
 
-    
-
     jobs = []  # list of (fn, args, keywds)
     for x in itertools.product(phenotypes, range(M.nrow())):
         pheno_header, gene_i = x
-        SCORE = gene_phenotype_scores[(pheno_header, gene_i)]
+        SCORE = gene_phenotype_scores.get((pheno_header, gene_i))
+        if not SCORE:
+            continue
         
         # Write the PRISM file.
         gene_id = aco.format_gene_name(M, None, gene_i)
