@@ -12,12 +12,19 @@ class Module(AbstractModule):
         from genomicode import parallel
         from genomicode import alignlib
         from Betsy import module_utils as mlib
+        import call_variants_GATK
 
         bam_node, ref_node = antecedents
         bam_filenames = mlib.find_bam_files(bam_node.identifier)
         assert bam_filenames, "No .bam files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
+        metadata = {}
+
+        # Figure out whether the user wants SNPs or INDELs.
+        assert "vartype" in out_attributes
+        vartype = out_attributes["vartype"]
+        assert vartype in ["all", "snp", "indel"]
 
         # Platypus generates an error if there are spaces in the BAM
         # filename.  Symlink the file to a local directory to make
@@ -34,12 +41,15 @@ class Module(AbstractModule):
             local_bai = os.path.join(bam_path, "%s.bam.bai" % x)
             log_filename = os.path.join(out_path, "%s.log" % sample)
             err_filename = os.path.join(out_path, "%s.err" % sample)
+            # Unfiltered file.
+            raw_filename = os.path.join(out_path, "%s.raw" % sample)
+            # Final VCF file.
             out_filename = os.path.join(out_path, "%s.vcf" % sample)
             x = filelib.GenericObject(
                 bam_filename=bam_filename, bai_filename=bai_filename,
                 local_bam=local_bam, local_bai=local_bai,
                 log_filename=log_filename, err_filename=err_filename,
-                out_filename=out_filename)
+                raw_filename=raw_filename, out_filename=out_filename)
             jobs.append(x)
 
         filelib.safe_mkdir(bam_path)
@@ -52,6 +62,7 @@ class Module(AbstractModule):
             if not os.path.exists(j.local_bai):
                 os.symlink(j.bai_filename, j.local_bai)
 
+        # TODO: Keep better track of the metadata.
         buffer_size = 100000
         max_reads = 5E6
         # Running into errors sometimes, so increase these numbers.
@@ -69,7 +80,7 @@ class Module(AbstractModule):
                 bam_file=j.local_bam,
                 ref_file=ref.fasta_file_full,
                 log_file=j.log_filename,
-                out_file=j.out_filename,
+                out_file=j.raw_filename,
                 buffer_size=buffer_size, max_reads=max_reads)
             x = "%s >& %s" % (x, j.err_filename)
             commands.append(x)
@@ -87,8 +98,16 @@ class Module(AbstractModule):
             for line in open(j.err_filename):
                 if line.find("WARNING - Too many reads") >= 0:
                     print line,
-        x = [j.out_filename for j in jobs]
+        x = [j.raw_filename for j in jobs]
         filelib.assert_exists_nz_many(x)
+
+        # Filter each of the VCF files.
+        for j in jobs:
+            call_variants_GATK.filter_by_vartype(
+                vartype, j.raw_filename, j.out_filename)
+        metadata["filter"] = vartype
+
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):

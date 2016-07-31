@@ -7,7 +7,7 @@
 # SimpleVariantMatrix   # Summarizes variants in a matrix.
 #
 # Pipeline:
-# 1.  ManyCallerCVFFolders               Calls for all variant callers.
+# 1.  ManyCallerVCFFolders               Calls for all variant callers.
 # 2.  SimpleVariantFile.filtered=no      One file, merge from all folders.
 # 3.  SimpleVariantFile.filtered=yes     Filter based on the FILTER VCF column.
 # 4.  UnprocessedSimpleVariantMatrix     Compact Matrix format.
@@ -114,6 +114,7 @@
 # jointsnvmix      Y      Y    Makes file with both.  Can filter out.
 # muse             Y      N
 # radia            Y      Y    Makes file with both.  Can filter out.
+# platypus         Y      Y    Makes file with both.  Can filter out.
         
 
 # Calculate the consensus reads at specific positions.
@@ -517,11 +518,8 @@ all_modules = [
         
         # Pipeline: read groups -> sort -> mark dups -> realign ->
         # recalibrate -> call variants
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
-        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("indel_realigned", MUST_BE, "yes", 0),
         Constraint(
@@ -533,7 +531,6 @@ all_modules = [
         Consequence("caller", SET_TO, "gatk"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
-        #Consequence("vartype", SET_TO, "all"),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Use GATK HaplotypeCaller to call variants."),
@@ -554,7 +551,7 @@ all_modules = [
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         
         Consequence("caller", SET_TO, "platypus"),
-        Consequence("vartype", SET_TO, "snp"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         help="Use GATK HaplotypeCaller to call variants."),
 
@@ -820,6 +817,7 @@ all_modules = [
             VCFFolder, # Varscan
             ],
         ManyCallerVCFFolders,
+        Consequence("vartype", SET_TO, "snp"),
         Consequence("somatic", SET_TO, "no"),
         Constraint("caller", MUST_BE, "gatk", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
@@ -829,6 +827,28 @@ all_modules = [
         Constraint("somatic", MUST_BE, "no", 1),
         Constraint("caller", MUST_BE, "varscan", 2),
         Constraint("vartype", MUST_BE, "snp", 2),
+        Constraint("somatic", MUST_BE, "no", 2),
+        help="Call variants with all implemented non-somatic variant callers.",
+        ),
+
+    ModuleNode(
+        "merge_variants_indel",
+        [
+            VCFFolder, # GATK
+            VCFFolder, # Platypus
+            VCFFolder, # Varscan
+            ],
+        ManyCallerVCFFolders,
+        Consequence("somatic", SET_TO, "no"),
+        Consequence("vartype", SET_TO, "indel"),
+        Constraint("caller", MUST_BE, "gatk", 0),
+        Constraint("vartype", MUST_BE, "indel", 0),
+        Constraint("somatic", MUST_BE, "no", 0),
+        Constraint("caller", MUST_BE, "platypus", 1),
+        Constraint("vartype", MUST_BE, "indel", 1),
+        Constraint("somatic", MUST_BE, "no", 1),
+        Constraint("caller", MUST_BE, "varscan", 2),
+        Constraint("vartype", MUST_BE, "indel", 2),
         Constraint("somatic", MUST_BE, "no", 2),
         help="Call variants with all implemented non-somatic variant callers.",
         ),

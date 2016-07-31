@@ -1615,6 +1615,7 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
         "variant positions reported",
         "Input file was not ready after 100 5-second cycles!",
         "Only SNPs will be reported",
+        "Only indels will be reported",
         ("Warning: No p-value threshold provided, so p-values will " 
          "not be calculated"),
         ]
