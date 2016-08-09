@@ -21,6 +21,7 @@ class Module(AbstractModule):
         assert report_filenames, "No .grp files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
         assert len(bam_filenames) == len(report_filenames), \
                "Should have a .grp file for each .bam file."
@@ -64,16 +65,21 @@ class Module(AbstractModule):
         commands = []
         for x in jobs:
             in_filename, report_filename, out_filename = x
+            nc = max(1, num_cores/len(jobs))
             x = alignlib.make_GATK_command(
-                T="PrintReads", R=ref.fasta_file_full,
+                T="PrintReads", R=ref.fasta_file_full, nct=str(nc),
                 BQSR=report_filename, I=in_filename, o=out_filename)
             commands.append(x)
 
         parallel.pshell(commands, max_procs=num_cores)
+        metadata["num_cores"] = num_cores
+        metadata["commands"] = commands
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(out_filenames)
+
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):
