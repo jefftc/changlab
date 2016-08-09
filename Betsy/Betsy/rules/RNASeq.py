@@ -174,13 +174,17 @@ all_modules = [
         "extract_rsem_signal", RSEMResults, GXP.UnprocessedSignalFile,
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        OptionDef(
+            "genes_or_isoforms", default="genes",
+            help='Get the expression value for "genes" (DEFAULT) or
+            "isoforms".'),
         Consequence("preprocess", SET_TO_ONE_OF, ["tpm", "fpkm"]),
         Consequence("logged", SET_TO, "no"),
-        # What is this for?
-        #Consequence("predataset", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
         Constraint("align_to", MUST_BE, "genome"),
         ),
+
+    
 
     ModuleNode(
         "align_with_tophat",

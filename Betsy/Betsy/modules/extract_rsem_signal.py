@@ -11,6 +11,7 @@ class Module(AbstractModule):
         from genomicode import jmath
         from genomicode import AnnotationMatrix
         from genomicode import alignlib
+        from Betsy import module_utils as mlib
 
         rsem_path = in_data.identifier
         assert os.path.exists(rsem_path)
@@ -22,6 +23,11 @@ class Module(AbstractModule):
         preprocess = out_attributes.get("preprocess")
         assert preprocess in ["tpm", "fpkm"]
 
+        x = mlib.get_user_option(
+            user_options, "genes_or_isoforms", not_empty=True,
+            allowed_values=["genes", "isoforms"])
+        get_genes = x == "genes"
+
         # For each of the gene files, get the expression data.
         sample2matrix = {}  # sample -> AnnotationMatrix
         for x in result_files:
@@ -29,6 +35,8 @@ class Module(AbstractModule):
             # Get the gene results.
             # TODO: Implement isoforms.
             filename = gene_filename
+            if not get_genes:
+                filename = isoform_filename
             if filename is None:
                 continue
             assert os.path.exists(filename)
