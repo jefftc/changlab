@@ -510,7 +510,7 @@ def build_pipelines(
                 "%s is not used in any pipelines.  "
                 "Please make sure the proposed pipelines are acceptable and "
                 "remove this input." % name)
-            
+
     if not good_paths:
         print "No pipelines found.  Examine network to diagnose."
         print "Make sure that no --input is missing."

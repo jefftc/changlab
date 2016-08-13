@@ -333,6 +333,9 @@ RealignTargetFolder = DataType(
     AttributeDef(
         "split_n_trim", YESNO, "no", "no",
         help="Whether SplitNCigarReads has been applied."),
+    AttributeDef(
+        "sorted", SORT_ORDERS, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
     )
 
 RecalibrationReport = DataType(
@@ -1067,6 +1070,7 @@ all_modules = [
         #Constraint("base_recalibrated", MUST_BE, "no", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("sorted", MUST_BE, "coordinate"),
+        Consequence("sorted", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
@@ -1102,6 +1106,10 @@ all_modules = [
         #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("indel_realigned", MUST_BE, "no", 0),
         Consequence("indel_realigned", SET_TO, "yes"),
+        # create_realign_targets requires sort order to be "coordinate"
+        Constraint("sorted", MUST_BE, "coordinate", 2),
+        Constraint("sorted", SAME_AS, 2, 0),
+        Consequence("sorted", SAME_AS_CONSTRAINT, 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),

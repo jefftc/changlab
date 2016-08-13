@@ -56,6 +56,7 @@ debug_print
 
 """
 # Classes:
+# Pathway
 # PathSubset
 #
 # Functions:
@@ -2516,6 +2517,16 @@ def _find_paths_by_start_ids_hh(
             # No branches indicate an error somewhere.
             assert total > 0
 
+        assert len(combo_ids) == len(branchlen)
+        if DEBUG_FIND_PATHS:
+            x = []
+            for cid, bl in zip(combo_ids, branchlen):
+                x.append("%s(%d)" % (cid, bl))
+            x = " ".join(x)
+            debug_print(
+                DEBUG_FIND_PATHS, "[%d] Found %d possible combinations (%s)." %
+                (node_id, total, x))
+
         # Optimization: If there is already a possibility with
         # nomissing, then don't even consider the paths that will
         # introduce a missing node.
@@ -2630,6 +2641,7 @@ def _find_paths_by_start_ids_hh(
             if start_ids is None:
                 # This almost never happens.
                 continue
+            
 
             # Merge each of the branches into one path.
             # Optimization: If this pathway has already been checked,
@@ -2747,7 +2759,8 @@ def _find_paths_by_start_ids_hh(
                 p = Pathway(
                     node_ids, transitions, ps[0].start_ids, missing_ids)
             paths.append(p)
-
+        debug_print(DEBUG_FIND_PATHS, "[%d] No working paths." % node_id)
+        
     # Only prune working paths.  These paths start from a node, but
     # may not end up at the bottom node yet.
     if no_missing and PRUNE_PATHS:
@@ -2758,13 +2771,13 @@ def _find_paths_by_start_ids_hh(
         # the pipelines aren't finished yet.
         #orig_paths = paths
         debug_print(DEBUG_FIND_PATHS,
-                    "[%d] Pruning %d path(s)." % (node_id, len(paths)))
+                    "[%d] Pruning from %d path(s)." % (node_id, len(paths)))
         paths = prune_paths(
             paths, network, custom_attributes,
             prune_custom_attributes=False, prune_superset=False,
             ignore_incomplete_pathway=True, prune_most_inputs=False)
         debug_print(DEBUG_FIND_PATHS,
-                    "[%d] Final %d path(s)." % (node_id, len(paths)))
+                    "[%d] Final %d path(s) remain." % (node_id, len(paths)))
     return paths
 
 
@@ -4052,11 +4065,9 @@ def _does_path_go_through(network, start_id, good_ids, intermediate_ids):
         stack.extend(next_ids)
     return True
 
-
 def _prune_parallel_pipelines(network, paths, nodeid2parents):
     # Remove pipelines that are parallel to another pipeline.
     global SUBPATH_CACHE   # for optimization
-
     SUBPATH_CACHE = {}
 
     #plot_pipelines(
@@ -4093,16 +4104,108 @@ def _prune_parallel_pipelines(network, paths, nodeid2parents):
     #orig_path_ids = [
     #    x for (i, x) in enumerate(range(len(paths))) if i not in prune]
     paths = [x for (i, x) in enumerate(paths) if i not in prune]
-    path_lengths = [x for (i, x) in enumerate(path_lengths) if i not in prune]
+    #path_lengths = [x for (i, x) in enumerate(path_lengths) if i not in prune]
 
+    # Optimization: Cache the modules with only one child.
+    modules_with_one_child = []
+    for node_id in range(len(network.nodes)):
+        if not isinstance(network.nodes[node_id], ModuleNode):
+            continue
+        x = network.transitions.get(node_id, [])
+        if len(x) == 1:
+            modules_with_one_child.append(node_id)
+    modules_with_one_child = frozenset(modules_with_one_child)
+
+    # Optimization: Study the pathways to minimize the number of nodes
+    # that need to be checked.
+    # Make a list of the nodes that are shared across all pathways.
+    # These are not going to be parallel.
+    node2counts = {}
+    for p in paths:
+        for nid in p.node_ids:
+            node2counts[nid] = node2counts.get(nid, 0) + 1
+    shared_node_ids = []
+    for nid, count in node2counts.iteritems():
+        if count == len(paths):
+            shared_node_ids.append(nid)
+    shared_node_ids = frozenset(shared_node_ids)
+    all_node_ids = frozenset(node2counts.keys())
+
+    # Make a list of the node_ids in the paths that aren't shared.
+    path2nodeids = []
+    for p in paths:
+        x = p.node_ids.difference(shared_node_ids)
+        path2nodeids.append(x)
+
+    # Group the node_ids that aren't shared into clusters.  Since I'm
+    # looking for parallel pipelines, each parallel portion should be
+    # unconnected in the network.  Group together the nodes in each
+    # unconnected part.  Only compare two pathways if they differ by
+    # at most one unconnected part.
+    
+    # Start with each node_id in a separate cluster.  Then try to join
+    # the clusters together based on transitions.
+    transitions = {}
+    for p in paths:
+        for nid, nextids in p.transitions.iteritems():
+            if nid not in transitions:
+                transitions[nid] = []
+            x = nextids.union(transitions[nid])
+            transitions[nid] = x
+    clusters = []
+    for nid in all_node_ids.difference(shared_node_ids):
+        clusters.append([nid])
+    changed = True
+    while changed:
+        changed = False
+        i = 0
+        while i < len(clusters)-1:
+            j = i+1
+            while j < len(clusters):
+                merge = False
+                # If any of clusters[i] transitions to clusters[j],
+                # then merge.
+                trans1 = []
+                for nid1 in clusters[i]:
+                    trans1.extend(transitions.get(nid1, []))
+                trans2 = []
+                for nid2 in clusters[j]:
+                    trans2.extend(transitions.get(nid2, []))
+                    
+                # If any of clusters[i] transitions to clusters[j],
+                # then merge.
+                if set(trans1).intersection(clusters[j]) or \
+                   set(trans2).intersection(clusters[i]):
+                    clusters[i] = clusters[i] + clusters[j]
+                    del clusters[j]
+                    changed = True
+                else:
+                    j += 1
+            i += 1
+
+    # Each cluster should have a distinct set of nodes.  Choose an
+    # exemplar for each cluster.  Arbitrarily, just use the lowest
+    # node ID.
+    exemplars = frozenset([min(x) for x in clusters])
+                    
     # Now do the more computationally expensive pruning.
     prune = {}
     for i in range(len(paths)-1):
         for j in range(i+1, len(paths)):
             if i in prune and j in prune:
                 continue
+            # If two paths differ by more than 1 cluster, then they
+            # cannot be parallel.
+            c1 = exemplars.intersection(path2nodeids[i])
+            c2 = exemplars.intersection(path2nodeids[j])
+            x1 = c1.difference(c2)
+            x2 = c2.difference(c1)
+            if len(x1) != 1 or len(x2) != 1:
+                continue
+            
             p = _is_parallel_pipeline3(
-                network, paths, i, j, nodeid2parents)
+                network, paths, i, j, nodeid2parents, modules_with_one_child,
+                path2nodeids)
             if not p:
                 continue
             if p == 1:
@@ -4292,29 +4395,49 @@ def _is_parallel_pipeline2(network, path_1, path_2, nodeid2parents):
 
 
 def _is_parallel_pipeline3(
-    network, paths, path_id_1, path_id_2, nodeid2parents):
+    network, paths, path_id_1, path_id_2, nodeid2parents,
+    modules_with_one_child, path2nodeids):
     # Test if path_1 is parallel to path_2.  If not parallel, returns
     # False.  Otherwise, returns a 1 or 2 indicating which one should
     # be pruned.
-    # More careful and slower version of _is_parallel_pipeline3.
+    # More careful and slower version of _is_parallel_pipeline2.
     #
     # Parallel:
     # DataNode -> sort_coord -> mark_dup -> add_read_group -> DataNode
     #          -> add_read_group -> sort_coord -> mark_dup ->
-
     path_1, path_2 = paths[path_id_1], paths[path_id_2]
-    x = _compare_paths(network, path_1, path_2)
+    ids_1, ids_2 = path2nodeids[path_id_1], path2nodeids[path_id_2]
+    assert path_1.start_ids == path_2.start_ids
+    x = _compare_paths(
+        network, path_1, path_2, ids_1, ids_2, modules_with_one_child)
     shared_ids, unique_ids_1, unique_ids_2 = x
     # shared_ids is almost always a very long list.
+
+    # Optimization: The same set of unique_ids are tested over and
+    # over again.  With one network, this was run 907,625 times on
+    # only 767 unique sets of unique_ids (and transitions).  Don't
+    # need to re-test the same ones over and over again.
+    # Actually, this wouldn't save much because most of the time is
+    # spent in _compare_paths.  But as other things optimize, the time
+    # for this is relatively increasing.
+    
+    #for unique_ids in [unique_ids_1, unique_ids_2]:
+    #    h = list(unique_ids)
+    #    for nid1 in unique_ids:
+    #        for nid2 in path_1.transitions.get(nid1, []):
+    #            x = (nid1, nid2)
+    #            h.append(x)
+
+    if not unique_ids_1 or not unique_ids_2:
+        return False
 
     # For downstream tests, calculate some useful variables describing
     # the networks.
     # _build_subpath is relatively fast.  No use to optimize.
-    x1 = _build_subpath(
+    subpath_1 = _build_subpath(
         network, paths, path_id_1, unique_ids_1, nodeid2parents)
-    x2 = _build_subpath(
+    subpath_2 = _build_subpath(
         network, paths, path_id_2, unique_ids_2, nodeid2parents)
-    subpath_1, subpath_2 = x1, x2
 
     # There should only be 1 top and 1 bottom node.  This test removes
     # 95% of the possibilities.  The others don't filter as much.
@@ -4359,12 +4482,19 @@ def _is_parallel_pipeline3(
     return 1
 
 
-def _compare_paths(network, path_1, path_2):
+def _compare_paths(network, path_1, path_2, node_ids_1, node_ids_2,
+                   modules_with_one_child):
+    # This function takes a long time and is called frequently.  Good
+    # target for optimization.
+    
     # If a node occurs in only one pathway, then it is unique for
     # sure.
-    shared_ids = path_1.node_ids.intersection(path_2.node_ids)
-    unique_ids_1 = path_1.node_ids.difference(path_2.node_ids)
-    unique_ids_2 = path_2.node_ids.difference(path_1.node_ids)
+    #shared_ids = path_1.node_ids.intersection(path_2.node_ids)
+    #unique_ids_1 = path_1.node_ids.difference(path_2.node_ids)
+    #unique_ids_2 = path_2.node_ids.difference(path_1.node_ids)
+    shared_ids = node_ids_1.intersection(node_ids_2)
+    unique_ids_1 = node_ids_1.difference(node_ids_2)
+    unique_ids_2 = node_ids_2.difference(node_ids_1)
     shared_ids = set(shared_ids)
     unique_ids_1 = set(unique_ids_1)
     unique_ids_2 = set(unique_ids_2)
@@ -4374,12 +4504,14 @@ def _compare_paths(network, path_1, path_2):
     #shared_ids = _dict_diff(path_1.node_ids, unique_ids_1, _as_dict=True)
 
     # If a Module occurs in both pathways, it might be unique if it
-    # has different transitions.
+    # has transitions to different children.
     # sort_by_contig -> BamFolder.readgroups (no)
     # sort_by_contig -> BamFolder.readgroups (yes)
     # i.e same module, but different uses
 
-    for node_id in list(shared_ids):
+    # Pre-caching modules_with_one_child leads to 40% speedup.
+    #for node_id in list(shared_ids):
+    for node_id in shared_ids.intersection(modules_with_one_child):
         if not isinstance(network.nodes[node_id], ModuleNode):
             continue
 
@@ -4572,7 +4704,6 @@ class PathSubset:
                     #    based_on_data[name] = []
                     #based_on_data[name].append(value)
         self._based_on_data = based_on_data
-
 
 
 SUBPATH_CACHE = {}  # (path_id, sub_node_ids) -> PathSubset
@@ -6763,6 +6894,30 @@ def _is_network_atomic(network):
     return True
 
 
+def _find_grandparents_in_path(network, path, node_id, nodeid2parents):
+    # Find the parents of this node.  Must be a module ID.
+    x = nodeid2parents[node_id]
+    x = [x for x in x if x in path.node_ids]
+    x = [x for x in x if x in path.transitions]
+    x = [x for x in x if node_id in path.transitions[x]]
+    parent_ids = x
+    assert parent_ids, "No parents 1"
+    assert len(parent_ids) == 1, "Multiple parents of data: %d %s %s %s" % (
+        node_id, get_node_name(node), parent_ids,
+        [get_node_name(network.nodes[x]) for x in parent_ids])
+    module_id = parent_ids[0]
+
+    # Find the parents of the module (the grandparents of node_id).
+    x = nodeid2parents[module_id]
+    x = [x for x in x if x in path.node_ids]
+    x = [x for x in x if x in path.transitions]
+    x = [x for x in x if module_id in path.transitions[x]]
+    parent_ids = x
+    assert parent_ids, "No parents 2"
+
+    return module_id, parent_ids
+
+
 def _get_atomic_data_node_from_pathway(
     network, path, node_id, custom_attributes, ignore_based_on_data=False,
     ignore_unchanged=False, nodeid2parents=None):
@@ -6774,6 +6929,10 @@ def _get_atomic_data_node_from_pathway(
     # The data node returned may not be atomic if:
     # 1.  DataNode is the leaf and contains TYPE_ENUM.  e.g.
     #     BamFolder.duplicates_marked=["no", "yes"]
+    
+    # OPTIMIZATION: Maybe can memoize this function?  Seems to be
+    # called repeatedly for the same nodes.  Actually, doesn't take up
+    # that much time.
     assert node_id in path.node_ids
     node = network.nodes[node_id]
     assert isinstance(node, DataNode)
@@ -6784,25 +6943,18 @@ def _get_atomic_data_node_from_pathway(
         nodeid2parents = _make_parents_dict(network)
     if node_id not in nodeid2parents:  # no parents
         return node
-    x = nodeid2parents[node_id]
-    x = [x for x in x if x in path.node_ids]
-    x = [x for x in x if x in path.transitions]
-    x = [x for x in x if node_id in path.transitions[x]]
-    parent_ids = x
 
-    assert parent_ids, "No parents 1"
-    assert len(parent_ids) == 1, "Multiple parents of data: %d %s %s %s" % (
-        node_id, get_node_name(node), parent_ids,
-        [get_node_name(network.nodes[x]) for x in parent_ids])
-    module_id = parent_ids[0]
+    module_id, parent_ids = _find_grandparents_in_path(
+        network, path, node_id, nodeid2parents)
+    nid2atomic = {}  # node_id -> Node (atomic)
+    for nid in parent_ids:
+        node = _get_atomic_data_node_from_pathway(
+            network, path, nid, custom_attributes,
+            ignore_based_on_data=ignore_based_on_data,
+            ignore_unchanged=ignore_unchanged, nodeid2parents=nodeid2parents)
+        nid2atomic[nid] = node
 
-    x = nodeid2parents[module_id]
-    x = [x for x in x if x in path.node_ids]
-    x = [x for x in x if x in path.transitions]
-    x = [x for x in x if module_id in path.transitions[x]]
-    parent_ids = x
-    assert parent_ids, "No parents 2"
-
+    # Find all combinations of the grandparents.
     combos = _bc_to_input_ids(
         network, module_id, custom_attributes, all_input_ids=parent_ids,
         all_output_ids=[node_id], nodeid2parents=nodeid2parents)
@@ -6812,7 +6964,8 @@ def _get_atomic_data_node_from_pathway(
     out_datas = []
     for combo in combos:
         module = network.nodes[module_id]
-        in_datas = [network.nodes[x] for x in combo]
+        #in_datas = [network.nodes[x] for x in combo]
+        in_datas = [nid2atomic[x] for x in combo]
         x = _fc_to_outputs(
             module, in_datas, ignore_based_on_data=ignore_based_on_data,
             ignore_unchanged=ignore_unchanged)
