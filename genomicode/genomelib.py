@@ -589,11 +589,15 @@ def read_fastq(fh):
     import filelib
 
     handle = filelib.openfh(fh)
+    n = 0
     while True:
         # @<title>
         # <sequence>
         # +
         # <quality>
+        n += 1
+        #if fh.find("exm178_2") >= 0 and n >= 5:
+        #    break
         x1 = handle.readline()
         if not x1:
             break

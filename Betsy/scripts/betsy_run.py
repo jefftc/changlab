@@ -1416,7 +1416,7 @@ def main():
             # Get all_nodes for this data type.  Should all be the same.
             x = [x[3] for x in out_attributes if x[0] == dt]  # all_nodes
             x = sorted({}.fromkeys(x))
-            assert len(x) == 1
+            assert len(x) == 1, "Inconsistent all_nodes: %s" % dt
             all_nodes = x[0]
             out_attrs = [x for x in out_attributes
                          if x[0] == dt and x[3] == all_nodes]
