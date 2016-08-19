@@ -240,7 +240,10 @@ class Call:
                 assert x >= 0
         assert type(vaf) is type([])
         for x in vaf:
-            assert type(x) is type(0.0) or x is None
+            if type(x) is type(0):
+                x = float(x)
+            assert type(x) is type(0.0) or x is None, \
+                   "Invalid vaf: %s" % repr(x)
             if type(x) is type(0.0):
                 assert x >= 0
         assert len(num_alt) == len(vaf)
@@ -410,7 +413,10 @@ class GATKCaller(Caller):
             num_alt = x[1:]
             total_reads = _parse_vcf_value(
                 genodict["DP"], to_int=1, len_exactly=1)[0]
-            vaf = [x/float(total_reads) for x in num_alt]
+            if not total_reads:
+                vaf = [0.0] * len(num_alt)
+            else:
+                vaf = [x/float(total_reads) for x in num_alt]
         else:
             num_ref = 0
             num_alt = [0]
@@ -434,9 +440,12 @@ class GATKCaller(Caller):
 
 class PlatypusCaller(Caller):
     # INFO:TC    total coverage
+    # INFO:TCF
+    # INFO:TCR
+    # INFO:TR    Number of reads with variant.
     # INFO:NR    reverse reads
-    # FORMAT:NV  num_alt
-    # FORMAT:NR  number of reads
+    # FORMAT:NV  number of reads containing variant.  num_alt
+    # FORMAT:NR  number of reads covering variant location
     # FORMAT:GT  call
     def __init__(self):
         Caller.__init__(self, "Platypus")
@@ -450,24 +459,52 @@ class PlatypusCaller(Caller):
         assert sample in var.sample2genodict, "Unknown sample: %s" % sample
         genodict = var.sample2genodict[sample]
 
-        #   TOTAL  NUM_ALT  INFO:TC
-        #  12, 12   12, 12     12
-        #   6,  6    2,  3      6
-        # 879,879  576,576    879
-        # TOTAL always seems to be the same.
-        # Just use INFO:TC.
-        # May have multiple alt alleles that simultaneously overlap.
-        # Just the the maximum frequency.
+        # FORMAT:NR FORMAT:NV INFO:TC  INFO:TR
+        #   12, 12   12, 12     12
+        #    6,  6    2,  3      6
+        #  879,879  576,576    879
+        #    5,  6    2,  6      5       2, 6
+        #        0        0      0          0   Q20;badReads;MQ;QD
+        # o May have multiple alt alleles that simultaneously overlap.
+        #   Will have one FORMAT:NR for each alt allele.
+        # o With indels, it's possible for the number of reads to be
+        #   different for different alt alleles.
+        #     *AA  ALT1
+        #     TAA  ALT2   Has more reads than ALT1
+        #   >>>    READ
+        #   >>>>>  READ
+        # o total_reads should be a list.  For simplicity, just use
+        #   the largest one.
+        # o Only counts good reads.  May be 0 if reads are bad.
+        total_list = _parse_vcf_value(genodict["NR"], to_int=1)
+        #assert min(total_list) > 0, "Zero total reads: %s %s %d" % (
+        #    sample, var.chrom, var.pos)
+        total_reads = max(total_list)
+        num_alt = _parse_vcf_value(genodict["NV"], to_int=1)
+        assert len(total_list) == len(num_alt)
+        x = [total_list[i]-num_alt[i] for i in range(len(num_alt))]
+        # Minimum num_ref corresponds to max vaf.
+        num_ref = min(x)
+        vaf = [_safe_div_z(num_alt[i], total_list[i])
+               for i in range(len(num_alt))]
+        assert num_ref >= 0, "Negative num ref: %s %s %d" % (
+            sample, var.chrom, var.pos)
+        assert min(vaf) >= 0, "Negative vaf: %s %s %d" % (
+            sample, var.chrom, var.pos)
+        assert max(vaf) <= 1, "vaf greater than 1: %s %s %d" % (
+            sample, var.chrom, var.pos)
 
-        total_reads = _parse_vcf_value(
-            var.infodict["TC"], to_int=1, len_exactly=1)[0]
-        x = _parse_vcf_value(genodict["NV"], to_int=1)
-        num_alt = [max(x)]
-        num_ref = total_reads - sum(num_alt)
-        if total_reads:
-            vaf = [x/float(total_reads) for x in num_alt]
-        else:
-            vaf = [None] * len(num_alt)
+        #total_reads = _parse_vcf_value(
+        #    var.infodict["TC"], to_int=1, len_exactly=1)[0]
+        #x = _parse_vcf_value(genodict["NV"], to_int=1)
+        #num_alt = [max(x)]
+        #num_ref = total_reads - sum(num_alt)
+        #assert num_ref >= 0, "Negative num ref: %s %s %d" % (
+        #    sample, var.chrom, var.pos)
+        #if total_reads:
+        #    vaf = [x/float(total_reads) for x in num_alt]
+        #else:
+        #    vaf = [None] * len(num_alt)
         call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
         return Call(num_ref, num_alt, total_reads, vaf, call)
     def get_filter(self, var):
@@ -1529,6 +1566,22 @@ def _safe_float(x):
     if x in ["", ".", None]:
         return None
     return float(x)
+
+
+def _safe_div_z(x1, x2):
+    # Safe divide and ignore zero denominator.  x1/x2.  x1 and x2
+    # should be integers, float, or None.  If both are None, return
+    # None.  If only 1 is None, interpret it as 0.  If x2 is 0, return
+    # 0.
+    if x1 is None and x2 is None:
+        return None
+    if x1 is None:
+        x1 = 0
+    if x2 is None:
+        x2 = 0
+    if abs(x2) < 1E-20:
+        return 0
+    return float(x1)/x2
 
 
 def _safe_add(x1, x2):

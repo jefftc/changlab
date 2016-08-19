@@ -22,6 +22,8 @@ class Module(AbstractModule):
 
         features_bed = mlib.get_user_option(
             user_options, "features_bed", check_file=True)
+        if features_bed:
+            metadata["features_bed"] = features_bed
 
         # Applies to genomecov.
         min_coverage = user_options.get("ignore_coverage_below")
