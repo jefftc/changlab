@@ -9,7 +9,6 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import alignlib
         from genomicode import parallel
 
         vcf_node = in_data
