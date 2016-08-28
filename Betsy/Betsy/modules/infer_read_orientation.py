@@ -80,6 +80,7 @@ def get_paired_orientation(
     #from genomicode import genomelib
     from genomicode import alignlib
     from genomicode import parallel
+    from genomicode import filelib
 
     # Strategy: run bowtie2 in all orientations.  Return the one with
     # most reads aligned.  Do with a subset of the data, so this
@@ -106,7 +107,9 @@ def get_paired_orientation(
     tempdir = None   # temporary directory to be deleted
     try:
         if path is None:
-            tempdir = tempfile.mkdtemp(dir=".")
+            #tempdir = tempfile.mkdtemp(dir=".")
+            tempdir = "tests"
+            filelib.safe_mkdir(tempdir)
             path = tempdir   # write into a temporary directory
 
         #short_filename1 = os.path.join(path, "short_1.fq")
@@ -121,7 +124,6 @@ def get_paired_orientation(
         log_fr = os.path.join(path, "orient_fr.log")
         log_rf = os.path.join(path, "orient_rf.log")
         log_ns = os.path.join(path, "orient_ns.log")
-
 
         nc = multiprocessing.cpu_count()
         nc = int(max(nc/4.0, 1))
@@ -156,8 +158,10 @@ def get_paired_orientation(
         output_rf = alignlib.parse_bowtie2_output(log_rf)
         output_ns = alignlib.parse_bowtie2_output(log_ns)
     finally:
-        if tempdir is not None and os.path.exists(tempdir):
-            shutil.rmtree(tempdir)
+        # Don't delete tempdir.  Keep the files for debuggin.
+        pass
+        #if tempdir is not None and os.path.exists(tempdir):
+        #    shutil.rmtree(tempdir)
 
     reads_ff = output_ff["concordant_reads"]
     reads_fr = output_fr["concordant_reads"]

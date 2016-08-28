@@ -29,6 +29,11 @@ class Module(AbstractModule):
             type=int)
         assert min_total_reads >= 0 and min_total_reads < 10000
         
+        min_vaf = mlib.get_user_option(
+            user_options, "filter_by_min_vaf", not_empty=True,
+            type=float)
+        assert min_vaf >= 0.0 and min_vaf < 1.0
+
         #min_gq = mlib.get_user_option(
         #    user_options, "filter_by_min_GQ", not_empty=True, type=float)
         #assert min_gq >= 0 and min_gq < 1000
@@ -74,42 +79,58 @@ class Module(AbstractModule):
                 
         # Filter based on the calls.
         if min_alt_reads > 0 or min_total_reads > 0:
-            #check_coords = {}  # coordinates where I've deleted variants.
+            all_coord = call_matrix.coord2samplecaller2call.keys()
+            for coord in all_coord:
+                all_sc = call_matrix.coord2samplecaller2call[coord].keys()
+                for sc in all_sc:
+                    # SimpleVariantMatrix.Call object.
+                    call = call_matrix.coord2samplecaller2call[coord][sc]
+                    
+                    # filter_by_min_alt_reads
+                    if min_alt_reads > 0 and \
+                       (call.num_alt is None or call.num_alt < min_alt_reads):
+                        if coord not in call_remove:
+                            call_remove[coord] = {}
+                        call_remove[coord][sc] = 1
+                        
+                    # filter_by_min_total_reads
+                    if min_total_reads > 0 and (
+                        call.total is None or call.total < min_total_reads):
+                        if coord not in call_remove:
+                            call_remove[coord] = {}
+                        call_remove[coord][sc] = 1
+                        
+        # Filter based on VAF.
+        if min_vaf >= 1E-6:
             all_coord = call_matrix.coord2samplecaller2call.keys()
             for coord in all_coord:
                 all_sc = call_matrix.coord2samplecaller2call[coord].keys()
                 for sc in all_sc:
                     call = call_matrix.coord2samplecaller2call[coord][sc]
-                    
-                    # filter_by_min_alt_reads
-                    if min_alt_reads > 0 and call.num_alt is not None and \
-                           call.num_alt < min_alt_reads:
-                        if coord not in call_remove:
-                            call_remove[coord] = {}
-                        call_remove[coord][sc] = 1
-                    # filter_by_min_total_reads
-                    elif min_total_reads > 0 and call.total is not None and \
-                             call.total < min_total_reads:
-                        if coord not in call_remove:
-                            call_remove[coord] = {}
-                        call_remove[coord][sc] = 1
-            # If any of these coordinates have no more variants, then
-            # remove the whole row.
-            if call_remove:
-                chrom, pos = annot_matrix["Chrom"], annot_matrix["Pos"]
-                ref, alt = annot_matrix["Ref"], annot_matrix["Alt"]
-                pos = [int(x) for x in pos]
-                coord2i = {}
-                for i, coord in enumerate(zip(chrom, pos, ref, alt)):
-                    coord2i[coord] = i
 
-                for coord in call_remove:
-                    num_remove = len(call_remove[coord])
-                    num_calls = len(call_matrix.coord2samplecaller2call[coord])
-                    assert num_remove <= num_calls
-                    if num_remove == num_calls:
-                        i = coord2i[coord]
-                        I_remove[i] = 1
+                    # filter_by_min_vaf
+                    if call.vaf is None or call.vaf < min_vaf:
+                        if coord not in call_remove:
+                            call_remove[coord] = {}
+                        call_remove[coord][sc] = 1
+
+        # If any of these coordinates have no more variants, then
+        # remove the whole row.
+        if call_remove:
+            chrom, pos = annot_matrix["Chrom"], annot_matrix["Pos"]
+            ref, alt = annot_matrix["Ref"], annot_matrix["Alt"]
+            pos = [int(x) for x in pos]
+            coord2i = {}
+            for i, coord in enumerate(zip(chrom, pos, ref, alt)):
+                coord2i[coord] = i
+
+            for coord in call_remove:
+                num_remove = len(call_remove[coord])
+                num_calls = len(call_matrix.coord2samplecaller2call[coord])
+                assert num_remove <= num_calls
+                if num_remove == num_calls:
+                    i = coord2i[coord]
+                    I_remove[i] = 1
 
         # Make a matrix of the discarded rows.
         old_annot_matrix = var_matrix.annot_matrix

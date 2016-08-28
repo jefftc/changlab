@@ -11,16 +11,26 @@ class Module(AbstractModule):
         from genomicode import jmath
         from genomicode import AnnotationMatrix
         from genomicode import alignlib
+        from Betsy import module_utils as mlib
 
         rsem_path = in_data.identifier
         assert os.path.exists(rsem_path)
         assert os.path.isdir(rsem_path)
-
         result_files = alignlib.find_rsem_result_files(rsem_path)
         assert result_files, "No .results files found."
+        metadata = {}
 
         preprocess = out_attributes.get("preprocess")
         assert preprocess in ["tpm", "fpkm"]
+
+        x = mlib.get_user_option(
+            user_options, "genes_or_isoforms", not_empty=True,
+            allowed_values=["genes", "isoforms"])
+        get_genes = x == "genes"
+
+        transcript_header = "transcript_id(s)"
+        if not get_genes:
+            transcript_header = "transcript_id"
 
         # For each of the gene files, get the expression data.
         sample2matrix = {}  # sample -> AnnotationMatrix
@@ -29,13 +39,16 @@ class Module(AbstractModule):
             # Get the gene results.
             # TODO: Implement isoforms.
             filename = gene_filename
-            if filename is None:
-                continue
+            if not get_genes:
+                filename = isoform_filename
+            assert filename is not None, "Missing: %s" % filename
+            #if filename is None:
+            #    continue
             assert os.path.exists(filename)
             matrix = AnnotationMatrix.read(filename)
             # Do some checking on the matrix.
             assert "gene_id" in matrix.headers
-            assert "transcript_id(s)" in matrix.headers
+            assert transcript_header in matrix.headers
             assert "TPM" in matrix.headers
             assert "FPKM" in matrix.headers
             sample2matrix[sample] = matrix
@@ -45,7 +58,7 @@ class Module(AbstractModule):
         # Pull out the gene and transcript IDs.
         for matrix in sample2matrix.itervalues():
             x1 = matrix["gene_id"]
-            x2 = matrix["transcript_id(s)"]
+            x2 = matrix[transcript_header]
             if gene_id is None:
                 gene_id = x1
             if transcript_id is None:
@@ -72,13 +85,15 @@ class Module(AbstractModule):
             samples.append(sample)
 
         data = jmath.transpose(t_data)
-        header = ["gene_id", "transcript_id(s)"] + samples
+        header = ["gene_id", transcript_header] + samples
         data = [header] + data
 
         # Write out the data file.
         handle = open(out_filename, 'w')
         for x in data:
             print >>handle, "\t".join(map(str, x))
+
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):

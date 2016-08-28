@@ -18,6 +18,7 @@ class Module(AbstractModule):
         assert bam_filenames, "No .bam files."
         ref = alignlib.create_reference_genome(ref_node.identifier)
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
         jobs = []  # list of (bam_filename, out_filename)
         for in_filename in bam_filenames:
@@ -45,22 +46,27 @@ class Module(AbstractModule):
         #   -T BaseRecalibrator -R /Path/hg19.fa
         #    -knownSites /Path/bundle-1.5/hg19/dbsnp_135.hg19.vcf
         #    -I /Path/mySample.bam -o /Path/mySample_CovarTable_Recal.grp
-        
+
         # Make a list of commands.
         commands = []
         for x in jobs:
             in_filename, out_filename = x
+            nc = max(1, num_cores/len(jobs))
             x = [("knownSites", x) for x in known_sites]
             x = alignlib.make_GATK_command(
                 T="BaseRecalibrator", R=ref.fasta_file_full,
-                I=in_filename, o=out_filename, _UNHASHABLE=x)
+                nct=str(nc), I=in_filename, o=out_filename, _UNHASHABLE=x)
             commands.append(x)
 
         parallel.pshell(commands, max_procs=num_cores)
+        metadata["num_cores"] = num_cores
+        metadata["commands"] = commands
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(out_filenames)
+
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):

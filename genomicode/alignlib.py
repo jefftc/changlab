@@ -1016,9 +1016,9 @@ def find_rsem_result_files(search_path):
     # Look for files in the format:
     # <sample>.genes.results
     # <sample>.isoforms.results
-    x = filelib.list_files_in_path(search_path)
-    x1 = [x for x in x if x.endswith(".genes.results")]
-    x2 = [x for x in x if x.endswith(".isoforms.results")]
+    x0 = filelib.list_files_in_path(search_path)
+    x1 = [x for x in x0 if x.endswith(".genes.results")]
+    x2 = [x for x in x0 if x.endswith(".isoforms.results")]
     sample2files = {}  # sample -> gene_filename, isoform_filename
     for gene_filename in x1:
         p, f = os.path.split(gene_filename)
@@ -1026,8 +1026,8 @@ def find_rsem_result_files(search_path):
         assert sample not in sample2files
         sample2files[sample] = gene_filename, None
     for isoform_filename in x2:
-        p, f = os.path.split(gene_filename)
-        sample = f.replace(".genes.results", "")
+        p, f = os.path.split(isoform_filename)
+        sample = f.replace(".isoforms.results", "")
         gene_filename, x = sample2files.get(sample, (None, None))
         assert x is None
         sample2files[sample] = gene_filename, isoform_filename

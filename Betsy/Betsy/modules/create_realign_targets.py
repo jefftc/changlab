@@ -51,26 +51,29 @@ class Module(AbstractModule):
         #   -T RealignerTargetCreator -R ../genome.idx/erdman.fa -I $i -o $j
         #   --known <known_vcf_file>
 
+        # RealignerTargetCreator takes ~10Gb per process.  Each thread
+        # takes the full amount of memory.
+        nc = mlib.calc_max_procs_from_ram(12, upper_max=num_cores)
+
         # Make a list of commands.
         commands = []
         for x in jobs:
             in_filename, log_filename, out_filename = x
             
+            n = max(1, nc/len(jobs))
             x = [("-known", x) for x in known_sites]
             if filter_reads_with_N_cigar == "yes":
                 x.append(("-filter_reads_with_N_cigar", None))
             x = alignlib.make_GATK_command(
-                nt=4, T="RealignerTargetCreator", R=ref.fasta_file_full,
+                nt=n, T="RealignerTargetCreator", R=ref.fasta_file_full,
                 I=in_filename, o=out_filename,
                 _UNHASHABLE=x)
             x = "%s >& %s" % (x, log_filename)
             commands.append(x)
-        metadata["commands"] = commands
 
-        # RealignerTargetCreator takes ~10Gb per process.
-        nc = mlib.calc_max_procs_from_ram(15, upper_max=num_cores)
         parallel.pshell(commands, max_procs=nc)
         metadata["num_procs"] = nc
+        metadata["commands"] = commands
 
         # Make sure the analysis completed successfully.
         out_filenames = [x[-1] for x in jobs]

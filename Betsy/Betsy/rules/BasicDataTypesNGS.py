@@ -333,16 +333,28 @@ RealignTargetFolder = DataType(
     AttributeDef(
         "split_n_trim", YESNO, "no", "no",
         help="Whether SplitNCigarReads has been applied."),
+    AttributeDef(
+        "sorted", SORT_ORDERS, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
     )
 
 RecalibrationReport = DataType(
     "RecalibrationReport",
     AttributeDef(
-        "duplicates_marked", ["yes", "no"], "no", "no",
-        help="Whether the duplicates are marked."),
-    AttributeDef(
         "aligner", ALIGNERS, "unknown", "bowtie2",
         help="Alignment algorithm."),
+    AttributeDef(
+        "duplicates_marked", YESNO, "no", "no",
+        help="Whether the duplicates are marked."),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
+    AttributeDef(
+        "split_n_trim", YESNO, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
+    AttributeDef(
+        "sorted", SORT_ORDERS, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
     )
 
 SaiFolder = DataType(
@@ -1067,6 +1079,7 @@ all_modules = [
         #Constraint("base_recalibrated", MUST_BE, "no", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("sorted", MUST_BE, "coordinate"),
+        Consequence("sorted", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
@@ -1102,6 +1115,10 @@ all_modules = [
         #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("indel_realigned", MUST_BE, "no", 0),
         Consequence("indel_realigned", SET_TO, "yes"),
+        # create_realign_targets requires sort order to be "coordinate"
+        Constraint("sorted", MUST_BE, "coordinate", 2),
+        Constraint("sorted", SAME_AS, 2, 0),
+        Consequence("sorted", SAME_AS_CONSTRAINT, 0),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
@@ -1139,14 +1156,19 @@ all_modules = [
         # used for mkaing the recalibration report may be different
         # from the one whose scores are recalibrated.
         
-        Constraint("sorted", MUST_BE, "coordinate"),
-        Constraint("has_read_groups", MUST_BE, "yes", 0),
-        Constraint("indel_realigned", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
-        Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
-        Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
+        Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("split_n_trim", SAME_AS_CONSTRAINT),
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Consequence("sorted", SAME_AS_CONSTRAINT),
+        Constraint("has_read_groups", MUST_BE, "yes", 0),
+        Constraint("indel_realigned", MUST_BE, "yes", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("dict_added", MUST_BE, "yes", 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         help="Calculate the statistics for base recalibration "
@@ -1162,7 +1184,16 @@ all_modules = [
         
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
+        
+        Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("split_n_trim", SAME_AS, 0, 2),
+        Consequence("split_n_trim", SAME_AS_CONSTRAINT),
+
         Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("sorted", SAME_AS, 0, 2),
         Consequence("sorted", SAME_AS_CONSTRAINT),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Consequence("has_read_groups", SAME_AS_CONSTRAINT),

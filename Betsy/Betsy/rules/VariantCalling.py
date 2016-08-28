@@ -64,6 +64,7 @@
 #   * Filters specific calls.
 #   filter_by_min_alt_reads      At least this num of ALT reads. (No Strelka)
 #   filter_by_min_total_reads
+#   filter_by_min_vaf            VAF >= this value.
 # filter_simplevariantmatrix_variants   SimpleVariantMatrix
 #   * Filters variants.
 #   min_callers_in_every_sample         Minimum callers in every sample.
@@ -197,6 +198,12 @@ VCFFolder = DataType(
         "aligner", NGS.ALIGNERS, "unknown", "unknown",
         help="What alignment algorithm used.  Helpful for determining "
         "whether this contains DNA or RNA data."),
+    # For PileupSummary -> call_consensus_varscan ->
+    # summarize_coverage_at_positions ->
+    # PositionSpecificDepthOfCoverage
+    AttributeDef(
+        "filtered_calls", YESNO, "no", "no",
+        help="Whether the calls are filtered."),
     )
 
 VCFRecalibrationReport = DataType(
@@ -271,6 +278,9 @@ PileupSummary = DataType(
         "aligner", NGS.ALIGNERS, "unknown", "unknown",
         help="Which aligner used to generate this.  Helpful for "
         "distinguishing DNA and RNA data."),
+    AttributeDef(
+        "filtered_calls", YESNO, "no", "no",
+        help="Whether the calls are filtered."),
     )
 
 # For samtools.  Two columns (no header):
@@ -284,6 +294,11 @@ PositionsFile = DataType(
     AttributeDef(
         "coordinates_from", COORDINATES_FROM, "unknown", "unknown",
         help="Where do these coordinates come from."),
+    # Whether the positions are from a filtered or unfiltered
+    # SimpleVariantMatrix2.
+    AttributeDef(
+        "filtered_calls", YESNO, "no", "no",
+        help="Whether the calls are filtered."),
     )
 
 NormalCancerFile = DataType(
@@ -313,6 +328,9 @@ PositionSpecificDepthOfCoverage = DataType(
     AttributeDef(
         "vartype", VARTYPES, "snp", "snp",
         help="What kind of variants are held in this file."),
+    AttributeDef(
+        "filtered_calls", YESNO, "no", "no",
+        help="Whether the calls are filtered.  Requires annotated=yes"),
     AttributeDef(
         "aligner", NGS.ALIGNERS, "unknown", "unknown",
         help="What alignment algorithm used.  Helpful for determining "
@@ -484,6 +502,8 @@ all_modules = [
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Constraint("coordinates_from", CAN_BE_ANY_OF, COORDINATES_FROM, 2),
         Consequence("coordinates_from", SAME_AS_CONSTRAINT, 2),
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO, 2),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT, 2),
 
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Consequence("contents", SAME_AS_CONSTRAINT),
@@ -551,9 +571,20 @@ all_modules = [
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         
         Consequence("caller", SET_TO, "platypus"),
-        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        #Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        Consequence("vartype", SET_TO, "all"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
-        help="Use GATK HaplotypeCaller to call variants."),
+        help="Use Platypus to call variants."),
+
+    ModuleNode(
+        "filter_variants_platypus",
+        VCFFolder, VCFFolder,
+
+        Constraint("caller", MUST_BE, "platypus"),
+        Consequence("caller", SAME_AS_CONSTRAINT),
+        Constraint("vartype", MUST_BE, "all"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
+        help="Filter the variants from Platypus."),
 
     ModuleNode(
         "call_consensus_varscan",
@@ -573,6 +604,8 @@ all_modules = [
         Consequence("coordinates_from", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         help="Use Varscan to generate consensus information."),
 
     ModuleNode(
@@ -591,6 +624,10 @@ all_modules = [
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        # Since this PileupSummary doesn't come from calls, is not yet
+        # filtered.
+        Constraint("filtered_calls", MUST_BE, "no"),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         help="Use Varscan to call variants."),
 
     ModuleNode(
@@ -610,6 +647,10 @@ all_modules = [
         Consequence("somatic", SET_TO, "yes"),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        # Since this PileupSummary doesn't come from calls, is not yet
+        # filtered.
+        Constraint("filtered_calls", MUST_BE, "no"),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         help="Use Varscan to call variants."),
 
     ModuleNode(
@@ -991,6 +1032,10 @@ all_modules = [
         OptionDef(
             "filter_by_min_total_reads", default="0",
             help="Remove calls with less than this number of reads."),
+        OptionDef(
+            "filter_by_min_vaf", default="0.0",
+            help="Remove calls whose variant allele frequency is less than "
+            "this."),
         #OptionDef(
         #    "filter_by_min_GQ", default="0",
         #    help="Remove variants with GQ less than this number.  "
@@ -1063,12 +1108,17 @@ all_modules = [
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
         Consequence("coordinates_from", SET_TO, "simplevariantmatrix"),
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         ),
 
     ModuleNode(
         "add_coverage_to_simplevariantmatrix",
         [_SimpleVariantMatrix2, PositionSpecificDepthOfCoverage],
         _SimpleVariantMatrix2,
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("filtered_calls", SAME_AS, 0, 1),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         Constraint("with_coverage", MUST_BE, "no", 0),
         Consequence("with_coverage", SET_TO, "yes"),
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
@@ -1087,6 +1137,9 @@ all_modules = [
         "add_rna_coverage_to_simplevariantmatrix",
         [_SimpleVariantMatrix2, PositionSpecificDepthOfCoverage],
         _SimpleVariantMatrix2,
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("filtered_calls", SAME_AS, 0, 1),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         Constraint("with_rna_coverage", MUST_BE, "no", 0),
         Consequence("with_rna_coverage", SET_TO, "yes"),
         Constraint("with_coverage", MUST_BE, "yes", 0),
@@ -1292,6 +1345,8 @@ all_modules = [
     ModuleNode(
         "summarize_coverage_at_positions",
         VCFFolder, PositionSpecificDepthOfCoverage,
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         Constraint("backfilled", MUST_BE, "consensus"),
         Constraint("caller", MUST_BE, "varscan"),
         Constraint("is_consensus", MUST_BE, "yes"),
