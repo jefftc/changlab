@@ -45,6 +45,8 @@ class Module(AbstractModule):
         known_sites = x
         assert known_sites
 
+        # I/O bound, so not likely to get a big speedup with nt.
+
         # java -Xmx5g -jar /usr/local/bin/GATK/GenomeAnalysisTK.jar -nt 4
         #   -T RealignerTargetCreator -R ../genome.idx/erdman.fa -I $i -o $j
         #   --known <known_vcf_file>
