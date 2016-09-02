@@ -10,7 +10,6 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import parallel
-        import filter_variants_GATK
 
         vcf_node = in_data
         vcf_filenames = filelib.list_files_in_path(
@@ -37,7 +36,7 @@ class Module(AbstractModule):
         jobs2 = []
         for j in jobs:
             args = vartype, j.in_filename, j.out_filename
-            x = filter_variants_GATK.filter_by_vartype, args, {}
+            x = filter_by_vartype, args, {}
             jobs2.append(x)
         parallel.pyfun(jobs2, num_procs=num_cores)
         metadata["num_cores"] = num_cores
@@ -46,4 +45,42 @@ class Module(AbstractModule):
 
 
     def name_outfile(self, antecedents, user_options):
-        return "platypus.vcf"
+        return "GATK.vcf"
+
+
+def is_snp(var):
+    # Doesn't seem to be annotated in the record.  Look at ref and alt
+    # alleles.
+    # REF  ALT
+    # A    C     SNP
+    # AG   A     INDEL
+    assert len(var.ref) >= 1
+    if len(var.ref) > 1:
+        return False
+    for x in var.alt:
+        assert len(x) >= 1
+        if len(x) > 1:
+            return False
+    return True
+
+
+def is_indel(var):
+    return not is_snp(var)
+
+
+def filter_by_vartype(vartype, infile, outfile):
+    # Filter out snps or indels.
+    import shutil
+    from genomicode import vcflib
+
+    assert vartype in ["all", "snp", "indel"]
+
+    if vartype == "all":
+        shutil.copy2(infile, outfile)
+        return
+    vcf = vcflib.read(infile)
+    fn = is_snp
+    if vartype == "indel":
+        fn = is_indel
+    vcf = vcflib.select_variants(vcf, fn)
+    vcflib.write(outfile, vcf)

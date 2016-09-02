@@ -91,6 +91,12 @@ class Module(AbstractModule):
         x = [x[-1] for x in jobs]
         filelib.assert_exists_nz_many(x)
 
+        # The tmp files are really big.  Don't save those.
+        for x in jobs:
+            sample, in_filename, tmp1_filename, tmp2_filename, out_filename = x
+            filelib.safe_unlink(tmp1_filename)
+            filelib.safe_unlink(tmp2_filename)
+
 
     def name_outfile(self, antecedents, user_options):
         return "varscan.vcf"

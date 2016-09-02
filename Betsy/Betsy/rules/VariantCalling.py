@@ -550,10 +550,21 @@ all_modules = [
         
         Consequence("caller", SET_TO, "gatk"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
-        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        Consequence("vartype", SET_TO, "all"),
+        #Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Use GATK HaplotypeCaller to call variants."),
+    ModuleNode(
+        "filter_variants_GATK",
+        VCFFolder, VCFFolder,
+
+        Constraint("caller", MUST_BE, "gatk"),
+        Consequence("caller", SAME_AS_CONSTRAINT),
+        Constraint("vartype", MUST_BE, "all"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
+        help="Filter the variants from GATK."),
+    
     ModuleNode(
         "call_variants_platypus",
         [NGS.BamFolder, NGS.ReferenceGenome], VCFFolder,
