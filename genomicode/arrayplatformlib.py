@@ -605,7 +605,7 @@ PLATFORMS = [
         "HumanWG_6", "illumina_humanwg_6_v3", "hsapiens_gene_ensembl",
         PROBE_ID, 22),
     Platform(
-        "MouseRef_8", "illumina_mousewg_6_v2", "mmusculus_gene_ensembl",
+        "MouseRef_8", "illumina_mouseref_8_v2", "mmusculus_gene_ensembl",
         PROBE_ID, 23),
     Platform(
         "Entrez_ID_human", "entrezgene", "hsapiens_gene_ensembl", GENE_ID, 24),
@@ -687,6 +687,10 @@ PLATFORMS = [
     # BioMart only has v3, not v2.
     Platform("HumanRef_8_v2", None, "hsapiens_gene_ensembl", PROBE_ID, 53),
     Platform("HumanRef_8_v3", None, "hsapiens_gene_ensembl", PROBE_ID, 54),
+
+    Platform(
+        "MouseWG_6", "illumina_mousewg_6_v2", "mmusculus_gene_ensembl",
+        PROBE_ID, 55),
     ]
 
 
