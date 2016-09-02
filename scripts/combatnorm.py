@@ -134,7 +134,7 @@ def main():
     # Allow up to 4 groups for now.
     parser.add_argument("--indexes3")
     parser.add_argument(
-        "--indexes_include_headers", default=False, action="store_true",
+        "--indexes_include_headers", "--iih", action="store_true",
         help="If not given (default), then column 1 is the first column "
         "with data.  If given, then column 1 is the very first column in "
         "the file, including the headers.")

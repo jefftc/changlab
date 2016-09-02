@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import urllib2
 import re
-import arrayio
 from genomicode import genefinder, timer, Matrix, matrixlib
 from genomicode import parselib, filelib, arrayannot
 
@@ -60,6 +58,8 @@ resources = ["stddata", "analyses"]
 URL2HTML = {}
 def read_url(url):
     global URL2HTML
+    import urllib2
+    
     if url not in URL2HTML:
         #print "Reading %s" % url; sys.stdout.flush()
         timer.wait(2, 'tcga')
@@ -188,8 +188,8 @@ def download_file(disease, date, datatype):
                 print 'finished download %s' % newlink
                 resultlinks.append(newlink)
     if resultlinks:
-        return resultlinks    
-    assert ValueError('download fails')
+        return resultlinks
+    raise AssertionError, "download fails"
 
 
 def get_data_type_resource(disease, date, resource):
@@ -279,6 +279,8 @@ def read_and_extract_urls(page):
 
 def merge_files(input_list, outfile):
     """input two files and merge, write to the outfile"""
+    import arrayio
+
     assert len(input_list) == 2
     A_file = input_list[0]
     B_file = input_list[1]
@@ -400,6 +402,7 @@ def merge_mutation_files(in_files, out_file):
 
             
 def extract_and_merge_files(gzfile_list, datatype, resource):
+    assert gzfile_list is not None
     result = []
     for gzfile in gzfile_list:
         # BUG: This fails if passing an unzipped directory.
@@ -461,6 +464,8 @@ def format_mutation_packager(filename, outfile):
 
 
 def format_firehose_rsem(filename, output):
+    import arrayio
+
     HYB_REF = "Hybridization REF"
     GENE_ID = "gene_id"
     DATA = arrayio.read(filename)
@@ -488,6 +493,8 @@ def format_firehose_rsem(filename, output):
 
 
 def format_firehose_exonexp(filename, output):
+    import arrayio
+    
     HYB_REF = "Hybridization REF"
     GENE_ID = "exon"
     DATA = arrayio.read(filename)
@@ -657,6 +664,7 @@ def format_firehose_gistic(filename, output):
 
     
 def format_rsem_isoforms(txt_file, outfile):
+    import arrayio
     from genomicode import arrayplatformlib
     
     M = arrayio.read(txt_file)
@@ -702,6 +710,8 @@ def format_rsem_isoforms(txt_file, outfile):
     f.close()
 
 def format_affymetrix(filename, output):
+    import arrayio
+    
     HYB_REF = "Hybridization REF"
     DATA = arrayio.read(filename)
     assert DATA._row_order == [HYB_REF]
@@ -718,6 +728,8 @@ def format_affymetrix(filename, output):
     f.close()
 
 def format_agilent(filename, output):
+    import arrayio
+    
     HYB_REF = "Hybridization REF"
     DATA = arrayio.read(filename)
     assert DATA._row_order == [HYB_REF]
@@ -838,19 +850,20 @@ def main():
     if args.process_only:
         assert args.data, 'please specify the data'
 
-    all_dates, all_dates_list = retrieve_all_dates()
     if args.list_dates:
         assert not args.date
-        assert not args.data
+        assert not args.data, "Not implemented"
         print "Dates"
         if args.disease:
             raise NotImplementedError
         else:
+            all_dates, all_dates_list = retrieve_all_dates()
             for date in all_dates_list:
                 print date
         return
     elif args.list_diseases:
         assert not args.disease
+        all_dates, all_dates_list = retrieve_all_dates()
         date = all_dates_list[-1]
         if args.date:
             date = args.date
@@ -864,6 +877,7 @@ def main():
             print name
     elif args.list_data:
         assert args.disease, "disease must be given."
+        all_dates, all_dates_list = retrieve_all_dates()
         date = all_dates_list[-1]
         if args.date:
             date = args.date
@@ -882,6 +896,7 @@ def main():
     elif args.download_only:
         assert args.disease, "disease must be given."
         assert args.data, "data must be given."
+        all_dates, all_dates_list = retrieve_all_dates()
         date = sorted(all_dates_list)[-1]
         if args.date:
             date = args.date
@@ -889,6 +904,7 @@ def main():
     elif args.download_and_extract:
         assert args.disease, "disease must be given."
         assert args.data, "data must be given."
+        all_dates, all_dates_list = retrieve_all_dates()
         date = sorted(all_dates_list)[-1]
         if args.date:
             date = args.date
@@ -899,6 +915,7 @@ def main():
         assert args.disease, "Please specify a disease to download."
         assert args.data, "data must be given."
         assert args.output, "Please specify output path."
+        all_dates, all_dates_list = retrieve_all_dates()
         date = all_dates_list[-1]
         if args.date:
             date = args.date

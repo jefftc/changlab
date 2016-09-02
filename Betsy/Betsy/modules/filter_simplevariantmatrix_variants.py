@@ -121,7 +121,9 @@ def filter_nonsynonymous(MATRIX):
             "frameshift substitution", "nonframeshift substitution",
             "unknown"], \
             "Unknown exonic_func: %s" % efunc
-        if efunc in ["nonsynonymous SNV", "stopgain"]:
+        if efunc in [
+            "nonsynonymous SNV", "stopgain", "stoploss",
+            "frameshift substitution"]:
             I_keep.append(i)
     x = AnnotationMatrix.rowslice(MATRIX, I_keep)
     return x
