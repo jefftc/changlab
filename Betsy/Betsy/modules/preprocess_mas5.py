@@ -11,35 +11,36 @@ class Module(AbstractModule):
            using preprocess.py will generate a output file"""
         import os
         import subprocess
-        from Betsy import module_utils
         from genomicode import filelib
-        from genomicode import config
+        #from genomicode import config
+        from Betsy import module_utils as mlib
+        
         in_data = antecedents
         #preprocess the cel file to text signal file
-        PREPROCESS_path = config.preprocess
-        PREPROCESS_BIN = module_utils.which(PREPROCESS_path)
-        assert PREPROCESS_BIN, 'cannot find the %s' % PREPROCESS_path
+        PREPROCESS_BIN = mlib.get_config("preprocess", which_assert_file=True)
+        #PREPROCESS_path = config.preprocess
+        #PREPROCESS_BIN = module_utils.which(PREPROCESS_path)
+        #assert PREPROCESS_BIN, 'cannot find the %s' % PREPROCESS_path
         command = ['python', PREPROCESS_BIN, 'MAS5', in_data.identifier]
-        process = subprocess.Popen(command,
-                                   shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            command, shell=False,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_message = process.communicate()[1]
         if error_message:
             if not "Loading required package: Biobase" in error_message:
                 raise ValueError(error_message)
     
-        
         outputfiles = os.listdir(".")
+        outputfile = None
         for i in outputfiles:
             if i.endswith('.mas5') and not i.endswith('.l2.mas5'):
                 outputfile = i
+        assert outputfile, "No output file created."
     
-        
         os.rename(outputfile, outfile)
-        assert filelib.exists_nz(outfile), (
-            'the output file %s for preprocess_mas5 fails' % outfile
-        )
+        #assert filelib.exists_nz(outfile), (
+        #    'the output file %s for preprocess_mas5 fails' % outfile
+        #)
 
 
 

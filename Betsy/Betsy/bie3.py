@@ -4407,7 +4407,10 @@ def _is_parallel_pipeline3(
     #          -> add_read_group -> sort_coord -> mark_dup ->
     path_1, path_2 = paths[path_id_1], paths[path_id_2]
     ids_1, ids_2 = path2nodeids[path_id_1], path2nodeids[path_id_2]
-    assert path_1.start_ids == path_2.start_ids
+    #assert path_1.start_ids == path_2.start_ids, "%s %s" % (
+    #    path_1.start_ids, path_2.start_ids)
+    if path_1.start_ids != path_2.start_ids:
+        return False
     x = _compare_paths(
         network, path_1, path_2, ids_1, ids_2, modules_with_one_child)
     shared_ids, unique_ids_1, unique_ids_2 = x
@@ -6901,6 +6904,8 @@ def _find_grandparents_in_path(network, path, node_id, nodeid2parents):
     x = [x for x in x if x in path.transitions]
     x = [x for x in x if node_id in path.transitions[x]]
     parent_ids = x
+    # This can happen if there are no parents in the network, or if
+    # this is a start node.
     assert parent_ids, "No parents 1"
     assert len(parent_ids) == 1, "Multiple parents of data: %d %s %s %s" % (
         node_id, get_node_name(node), parent_ids,
@@ -6941,7 +6946,11 @@ def _get_atomic_data_node_from_pathway(
 
     if nodeid2parents is None:
         nodeid2parents = _make_parents_dict(network)
+    # If there are no parents, or this is the start node, then we
+    # cannot resolve any more attributes.
     if node_id not in nodeid2parents:  # no parents
+        return node
+    if node_id in path.start_ids:
         return node
 
     module_id, parent_ids = _find_grandparents_in_path(

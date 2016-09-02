@@ -553,6 +553,7 @@ class RowIterator:
                     dlen, flen, self._format, data)
                 raise AssertionError, s
         for i in self._fn_cols:
+            #print self._header
             data[i] = self._convert_fns[i](data[i])
         for i in self._strip_cols:
             data[i] = data[i].strip()
