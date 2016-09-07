@@ -178,7 +178,7 @@ debug_print
 # Not possible to indicate that the start aligned BamFolder is sorted.
 
 
-DEBUG_BC = False
+DEBUG_BACKCHAIN = False
 DEBUG_PRUNE_PATHS = False
 DEBUG_FIND_PATHS = False
 DEBUG_PRUNE_CUSTOM_ATTRIBUTES = False
@@ -1476,7 +1476,7 @@ def _complete_network(network, custom_attributes):
     import copy
     import itertools
 
-    debug_print(DEBUG_BC, "Completing network.")
+    debug_print(DEBUG_BACKCHAIN, "Completing network.")
 
     network = copy.deepcopy(network)
     nodeid2parents = _make_parents_dict(network)
@@ -1540,7 +1540,7 @@ def _complete_network(network, custom_attributes):
             network.transitions[id_].append(module_id)
             added.append(id_)
             debug_print(
-                DEBUG_BC,
+                DEBUG_BACKCHAIN,
                 "Completing DataNode %s [%d] -> ModuleNode %s [%d]." % (
                     network.nodes[id_].datatype.name, id_,
                     network.nodes[module_id].name, module_id))
@@ -2630,9 +2630,9 @@ def _find_paths_by_start_ids_hh(
             #     node.
             # 4.  If module node, can't transition from previous data
             #     nodes.
-            # 5.  The same node is seen in different branches, but it
-            #     has different parents in each branch.
-
+            # 5.  The same data node is seen in different branches,
+            #     but it has different parents in each branch.
+            
             # If the paths conflict, then skip it.
 
             # Case 1.  See if there are conflicting start_ids.
@@ -2642,7 +2642,6 @@ def _find_paths_by_start_ids_hh(
                 # This almost never happens.
                 continue
             
-
             # Merge each of the branches into one path.
             # Optimization: If this pathway has already been checked,
             # then don't check it again.
@@ -2688,11 +2687,20 @@ def _find_paths_by_start_ids_hh(
 
             # Case 4: If this is a ModuleNode, then make sure
             # transition from previous nodes is valid.
+            # 
             # Example:
             # Bam.mouse=no -> sort -> Bam.mouse=yes,no -> count_with_htseq
             #               ReadStrandedness.mouse=yes ->
             # count_with_htseq has constraint that mouse is the same,
             # but value for mouse conflicts.
+            #
+            # Another example:
+            # BamFolder.trimmed=yes        -> count_with_htseq
+            # ReadStrandedness.trimmed=no  ->
+            # Because further up the tree, different parents for align
+            # get merged:
+            # Fastq.trimmed=no -> trim -> Fastq.trimmed=yes -> align
+            # Fastq.trimmed=no ->                              align
             if not missing_ids:
                 # Don't bother checking if this is a dead pathway
                 # (missing start_ids).  The merging below can ccreate
@@ -2704,8 +2712,8 @@ def _find_paths_by_start_ids_hh(
                     # This is run multiple times for similar pathways.
                     # May be able to memoize.
                     if not _is_valid_outmodule_id_path(
-                        network, path, combo_ids, node_id, custom_attributes,
-                        nodeid2parents):
+                        network, branches, combo_ids, node_id,
+                        custom_attributes, nodeid2parents):
                         continue
 
             # Case 5. If the merged branches would generate data nodes
@@ -2760,7 +2768,7 @@ def _find_paths_by_start_ids_hh(
                     node_ids, transitions, ps[0].start_ids, missing_ids)
             paths.append(p)
         debug_print(DEBUG_FIND_PATHS, "[%d] No working paths." % node_id)
-        
+
     # Only prune working paths.  These paths start from a node, but
     # may not end up at the bottom node yet.
     if no_missing and PRUNE_PATHS:
@@ -2772,12 +2780,14 @@ def _find_paths_by_start_ids_hh(
         #orig_paths = paths
         debug_print(DEBUG_FIND_PATHS,
                     "[%d] Pruning from %d path(s)." % (node_id, len(paths)))
+            
         paths = prune_paths(
             paths, network, custom_attributes,
             prune_custom_attributes=False, prune_superset=False,
             ignore_incomplete_pathway=True, prune_most_inputs=False)
         debug_print(DEBUG_FIND_PATHS,
                     "[%d] Final %d path(s) remain." % (node_id, len(paths)))
+
     return paths
 
 
@@ -2909,6 +2919,13 @@ def prune_paths(paths, network, custom_attributes,
                 name, ns, len(paths)))
         # If len(paths) == 0, suggests that there's a problem with
         # custom attributes.
+ 
+    #ns = len(paths)
+    #paths = _prune_alternate_attributes3(
+    #    network, custom_attributes, paths, nodeid2parents)
+    #name = "_prune_alternate_attributes3"
+    #debug_print(
+    #    DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (name, ns, len(paths)))
 
     ns = len(paths)
     paths = _prune_alternate_attributes2(
@@ -2932,7 +2949,6 @@ def prune_paths(paths, network, custom_attributes,
         debug_print(
             DEBUG_PRUNE_PATHS, "Pruned [%s] %d -> %d." % (
                 name, ns, len(paths)))
-
 
     ns = len(paths)
     paths = _prune_parallel_pipelines(network, paths, nodeid2parents)
@@ -5300,15 +5316,15 @@ def _bc_to_inputs(
             all_inputs.append([x])
 
         # Optimization: Don't call debug_print and sorted.
-        if not DEBUG_BC:
+        if not DEBUG_BACKCHAIN:
             continue
         debug_print(
-            DEBUG_BC,
+            DEBUG_BACKCHAIN,
             "Backchaining %s (input=%d) -> %s -> %s." %
             (in_datatype.name, in_num, module.name, out_datatype.name))
         for name in sorted(attributes):
             debug_print(
-                DEBUG_BC,
+                DEBUG_BACKCHAIN,
                 "  %s=%s (%s)" %
                 (name, attributes[name], attrsource[name]))
 
@@ -6212,7 +6228,7 @@ def _is_valid_output(module, data):
         #    (module.name, data.datatype.name))
         return False
 
-    debug_print(DEBUG_BC, "Testing if module %s can produce data %s." %
+    debug_print(DEBUG_BACKCHAIN, "Testing if module %s can produce data %s." %
                 (repr(module.name), str(data)))
     # If any of the consequences conflict, then the module can't produce
     # this data object.
@@ -6270,26 +6286,29 @@ def _is_valid_output(module, data):
                 msg = ("Consequence '%s' requires '%s', "
                        "but data contains '%s'." %
                        (consequence.name, outc_value, data_value))
-                debug_print(DEBUG_BC, msg)
+                debug_print(DEBUG_BACKCHAIN, msg)
                 return False
         elif case == 2:
             # ModuleNode can produce any of a list of values.  Check
             # if the data's value can be produced by the module.
             if data_value not in outc_value:
                 debug_print(
-                    DEBUG_BC, "Consequence %s conflicts." % consequence.name)
+                    DEBUG_BACKCHAIN, "Consequence %s conflicts." %
+                    consequence.name)
                 return False
         elif case == 3:
             # ModuleNode produces a specific value.  DataNode could be
             # one of many values.
             if outc_value not in data_value:
                 debug_print(
-                    DEBUG_BC, "Consequence %s conflicts." % consequence.name)
+                    DEBUG_BACKCHAIN, "Consequence %s conflicts." %
+                    consequence.name)
                 return False
         elif case == 4:
             if not _intersect(data_value, outc_value):
                 debug_print(
-                    DEBUG_BC, "Consequence %s conflicts." % consequence.name)
+                    DEBUG_BACKCHAIN, "Consequence %s conflicts." %
+                    consequence.name)
                 return False
         else:
             raise AssertionError
@@ -6340,14 +6359,14 @@ def _is_valid_output(module, data):
     # the (in) defaults from the output data type.
     if not module.default_attributes_from:
         debug_print(
-            DEBUG_BC,
+            DEBUG_BACKCHAIN,
             "ModuleNode converts datatype.  Checking default attributes.")
         consequence_names = [x.name for x in module.consequences]
         for attrdef in module.out_datatype.attribute_defs.itervalues():
             # Ignore the attributes that have consequences.
             if attrdef.name in consequence_names:
                 debug_print(
-                    DEBUG_BC,
+                    DEBUG_BACKCHAIN,
                     "Attr %r: Skipping--has consequence." % attrdef.name)
                 continue
             assert attrdef.name in data.attributes
@@ -6358,25 +6377,28 @@ def _is_valid_output(module, data):
             if data_type == TYPE_ATOM:
                 if attrdef.default_in != data_value:
                     debug_print(
-                        DEBUG_BC, "Attr %r: Conflicts (module %r, data %r)." %
+                        DEBUG_BACKCHAIN,
+                        "Attr %r: Conflicts (module %r, data %r)." %
                         (attrdef.name, attrdef.default_in, data_value))
                     return False
             elif data_type == TYPE_ENUM:
                 if attrdef.default_in not in data_value:
                     debug_print(
-                        DEBUG_BC, "Attr %r: Conflicts (module %r, data %r)." %
+                        DEBUG_BACKCHAIN,
+                        "Attr %r: Conflicts (module %r, data %r)." %
                         (attrdef.name, attrdef.default_in, data_value))
                     return False
             else:
                 raise AssertionError
-            debug_print(DEBUG_BC, "Attr %r: matches defaults." % attrdef.name)
+            debug_print(
+                DEBUG_BACKCHAIN, "Attr %r: matches defaults." % attrdef.name)
 
     # TESTING.
     # If the module converts the datatype, the consequences don't
     # conflict, and the default attributes don't conflict, then this
     # should match.
     if not module.default_attributes_from:
-        debug_print(DEBUG_BC, "Match because of converting datatype.")
+        debug_print(DEBUG_BACKCHAIN, "Match because of converting datatype.")
         return True
 
     # At this point, the module produces this datatype and there are
@@ -6390,7 +6412,8 @@ def _is_valid_output(module, data):
 
         if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
             debug_print(
-                DEBUG_BC, "Consequence '%s' matches." % consequence.name)
+                DEBUG_BACKCHAIN, "Consequence '%s' matches." %
+                consequence.name)
             return True
 
         assert consequence.behavior == SAME_AS_CONSTRAINT
@@ -6456,34 +6479,39 @@ def _is_valid_output(module, data):
         if (const1.behavior, const2.behavior) == (MUST_BE, MUST_BE):
             if const1.arg1 != const2.arg1:
                 debug_print(
-                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
+                    DEBUG_BACKCHAIN, "Consequence '%s' matches." %
+                    consequence.name)
                 return True
         elif (const1.behavior, const2.behavior) == (MUST_BE, CAN_BE_ANY_OF):
             if const1.arg1 not in const2.arg1:
                 debug_print(
-                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
+                    DEBUG_BACKCHAIN, "Consequence '%s' matches." %
+                    consequence.name)
                 return True
         elif (const1.behavior, const2.behavior) == (CAN_BE_ANY_OF, MUST_BE):
             if const2.arg1 not in const1.arg1:
                 debug_print(
-                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
+                    DEBUG_BACKCHAIN, "Consequence '%s' matches." %
+                    consequence.name)
                 return True
         elif (const1.behavior, const2.behavior) == \
                  (CAN_BE_ANY_OF, CAN_BE_ANY_OF):
             if not _intersect(const1.arg1, const2.arg1):
                 debug_print(
-                    DEBUG_BC, "Consequence '%s' matches." % consequence.name)
+                    DEBUG_BACKCHAIN, "Consequence '%s' matches." %
+                    consequence.name)
                 return True
         else:
             raise AssertionError
 
     # No conflicts, and the module has no consequences.
     if not module.consequences:
-        debug_print(DEBUG_BC, "Match because there are no consequences.")
+        debug_print(
+            DEBUG_BACKCHAIN, "Match because there are no consequences.")
         return True
 
     # No consequences match.
-    debug_print(DEBUG_BC, "No consequences match.")
+    debug_print(DEBUG_BACKCHAIN, "No consequences match.")
     return False
 
 
@@ -6509,10 +6537,12 @@ def _is_valid_outdata_id_path(network, path, out_id, custom_attributes,
     return False
 
 
-def _is_valid_outmodule_id_path(network, path, parent_ids, module_id,
+def _is_valid_outmodule_id_path(network, paths, parent_ids, module_id,
                                 custom_attributes, nodeid2parents):
     # Can the nodes in this pathway produce module_id.  out_id must be a
     # Module node.
+    # paths should be parallel to parent_ids.  Each should be a path
+    # that creates the parent_id.
     assert isinstance(network.nodes[module_id], ModuleNode)
 
     # If these are all the same, then no need to check again.
@@ -6532,10 +6562,10 @@ def _is_valid_outmodule_id_path(network, path, parent_ids, module_id,
 
     combo_nodes = [
         _get_atomic_data_node_from_pathway(
-            network, path, x, custom_attributes,
+            network, paths[i], parent_ids[i], custom_attributes,
             ignore_based_on_data=True, ignore_unchanged=True,
             nodeid2parents=nodeid2parents)
-        for x in parent_ids]
+        for i in range(len(parent_ids))]
 
     # Check if these inputs violate SAME_AS constraints.
     for cons in same_as_cons:
@@ -6952,16 +6982,16 @@ def _get_atomic_data_node_from_pathway(
         return node
     if node_id in path.start_ids:
         return node
-
+ 
     module_id, parent_ids = _find_grandparents_in_path(
         network, path, node_id, nodeid2parents)
     nid2atomic = {}  # node_id -> Node (atomic)
     for nid in parent_ids:
-        node = _get_atomic_data_node_from_pathway(
+        x = _get_atomic_data_node_from_pathway(
             network, path, nid, custom_attributes,
             ignore_based_on_data=ignore_based_on_data,
             ignore_unchanged=ignore_unchanged, nodeid2parents=nodeid2parents)
-        nid2atomic[nid] = node
+        nid2atomic[nid] = x
 
     # Find all combinations of the grandparents.
     combos = _bc_to_input_ids(
@@ -7018,7 +7048,7 @@ def _get_atomic_data_node_from_pathway(
             plot_network_gv(
                 "err.png", network, verbose=True, highlight_orange=x,
                 highlight_green=[node_id], bold_transitions=transitions)
-        
+
         err = []
         err.append("Cannot resolve %s [%d]" % (node.datatype.name, node_id))
         err.append("Path: %s" % " ".join(map(str, sorted(path.node_ids))))

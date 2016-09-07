@@ -1509,10 +1509,6 @@ def main():
             rulebase, outtype, custom_attributes, out_custom_attribute)
         if args.network_json:
             write_network(args.network_json, network)
-    #plot_network(
-    #    args.network_png, network, user_options=user_options,
-    #    verbose=verbose_network)
-    
 
     # Step 2.5: Make sure network has more than one node.
     if not check_more_than_one_node_network(network):
