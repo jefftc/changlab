@@ -728,7 +728,7 @@ def check_input_files(network, in_data_nodes, user_options, paths,
     missing = False
     for x in in_data_nodes:
         if not x.identifier:
-            print "no file given for: %s." % (x.data.datatype.name)
+            print "No file given: %s." % (x.data.datatype.name)
             missing = True
         elif not os.path.exists(x.identifier):
             print "File not found: %s." % x.identifier
