@@ -6,6 +6,25 @@
 # SimpleVariantFile     # File with variants. many samples, many callers.
 # SimpleVariantMatrix   # Summarizes variants in a matrix.
 #
+#
+# Filters:
+# SimpleVariantFile.filtered
+#   remove_samples             For removing germline samples.
+#   remove_radia_rna_sample    Can remove RNA-Seq samples.
+#   apply_filter               Apply the "Filter" column from VCF files.
+#   wgs_or_wes                 For filtering MuSE calls.
+# SimpleVariantMatrix.filtered_calls     Filter specific calls.
+#   filter_by_min_alt_reads
+#   filter_by_min_total_reads
+#   filter_by_min_vaf
+# SimpleVariantMatrix.filtered_variants  Filter a variant across all samples
+#   min_callers_in_every_sample
+#   min_callers_in_any_sample
+#   min_gene_expression_in_every_sample
+#   min_coverage_in_every_sample
+#   nonsynonymous_and_stopgain_only
+#   sift_polyphen_damaging
+#
 # Pipeline:
 # 1.  ManyCallerVCFFolders               Calls for all variant callers.
 # 2.  SimpleVariantFile.filtered=no      One file, merge from all folders.
@@ -825,6 +844,40 @@ all_modules = [
 
     ModuleNode(
         "merge_somatic_variants_snp",
+        [
+            VCFFolder, # MuTect
+            VCFFolder, # Varscan
+            VCFFolder, # Strelka
+            VCFFolder, # SomaticSniper
+            VCFFolder, # JointSNVMix
+            VCFFolder, # MuSE
+            ],
+        ManyCallerVCFFolders,
+        Consequence("somatic", SET_TO, "yes"),
+        Constraint("caller", MUST_BE, "mutect", 0),
+        Constraint("vartype", MUST_BE, "snp", 0),
+        Constraint("somatic", MUST_BE, "yes", 0),
+        Constraint("caller", MUST_BE, "varscan", 1),
+        Constraint("vartype", MUST_BE, "snp", 1),
+        Constraint("somatic", MUST_BE, "yes", 1),
+        Constraint("caller", MUST_BE, "strelka", 2),
+        Constraint("vartype", MUST_BE, "snp", 2),
+        Constraint("somatic", MUST_BE, "yes", 2),
+        Constraint("caller", MUST_BE, "somaticsniper", 3),
+        Constraint("vartype", MUST_BE, "snp", 3),
+        Constraint("somatic", MUST_BE, "yes", 3),
+        Constraint("caller", MUST_BE, "jointsnvmix", 4),
+        Constraint("vartype", MUST_BE, "snp", 4),
+        Constraint("somatic", MUST_BE, "yes", 4),
+        Constraint("caller", MUST_BE, "muse", 5),
+        Constraint("vartype", MUST_BE, "snp", 5),
+        Constraint("somatic", MUST_BE, "yes", 5),
+        Consequence("vartype", SET_TO, "snp"),
+        help="Call variants with all implemented somatic variant callers.",
+        ),
+
+    ModuleNode(
+        "merge_somatic_variants_snp_with_radia",
         [
             VCFFolder, # MuTect
             VCFFolder, # Varscan
