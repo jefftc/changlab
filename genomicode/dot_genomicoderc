@@ -2,22 +2,15 @@
 python=/usr/local/bin/python
 matlab=/usr/local/bin/matlab
 povray=/usr/local/bin/povray
+Rscript=/usr/local/bin/Rscript
 
 
 [BIOINFORMATICS SOFTWARE]
 primer3=/usr/local/bin/primer3_core
 patser=/usr/local/bin/patser-v3b
 cluster=/usr/local/bin/cluster
-BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
-bwa=/usr/local/bin/bwa
-sortsam=/usr/local/bin/picard-tools-1.87/SortSam.jar
-Gatk=/usr/local/bin/GenomeAnalysisTK-2.4-9/GenomeAnalysisTK.jar
-Mark_duplicates=/usr/local/bin/picard-tools-1.87/MarkDuplicates.jar
-AddOrReplaceReadGroups=/usr/local/bin/picard-tools-1.87/AddOrReplaceReadGroups.jar
-samtools=/usr/local/bin/samtools
-bcftools=/usr/local/bin/bcftools
-vcfutils=/usr/local/bin/vcfutils.pl
-RNASeQC=/usr/local/bin/RNA-SeQC_v1.1.8.jar 
+blat=/usr/local/bin/x86_64/blat
+
 
 [BINREG]
 bfrm=/data/genomidata/bfrm64
@@ -25,29 +18,36 @@ sigdb_path=/data/genomidata/SIGDB/sigdb
 binreg20_path=/data/genomidata/SIGNATURE/BinReg2.0
 bfrm_normalize_path=/data/genomidata/SIGNATURE/BFRM_normalize
 bfrm_project_path=/data/genomidata/SIGNATURE/BFRM_project
-selap_path=/data/genomidata/SIGANTURE/SELAPver3
+selap_path=/data/genomidata/SIGNATURE/SELAPver3
+BatchAdjust=/data/genomidata/SIGNATURE/BatchAdjust
 
 
 [CHANG LAB]
-pybinreg=/home/xchen/chencode/scripts/pybinreg.py
-arrayplot=/home/xchen/chencode/scripts/arrayplot.py
-preprocess = /home/xchen/chencode/scripts/preprocess.py
-xls2txt = /home/xchen/chencode/scripts/xls2txt
+pybinreg=/home/jchang/changlab/scripts/pybinreg.py
+arrayplot=/home/jchang/changlab/scripts/arrayplot.py
+preprocess=/home/jchang/changlab/scripts/preprocess.py
+xls2txt=/home/jchang/changlab/scripts/xls2txt
+txt2xls=/home/jchang/changlab/scripts/txt2xls
 genepattern=/home/xchen/chencode/scripts/run_genepattern.py
+
+slice_matrix=/home/xchen/chencode/scripts/slice_matrix.py
+annotate_matrix=/home/xchen/chencode/scripts/annotate_matrix.py
+
 bfrmnorm=/home/xchen/chencode/scripts/bfrmnorm.py
 combatnorm=/home/xchen/chencode/scripts/combatnorm.py
 combat=/Volumes/Users/jchang/changlab/scripts/ComBat.R
+
+analyze_clinical=/home/xchen/chencode/scripts/analyze_clinical_outcome.py
+find_diffexp_genes=/home/xchen/chencode/scripts/find_diffexp_genes.py
+analyze_phenotype=/home/xchen/chencode/scripts/analyze_phenotype.py
+
 scoresig=/home/xchen/chencode/scripts/scoresig.py
-slice_matrix=/home/xchen/chencode/scripts/slice_matrix.py
-annotate_matrix=/home/xchen/chencode/scripts/annotate_matrix.py
 score_geneset=/home/xchen/chencode/scripts/score_geneset.py
 gsea=/home/xchen/chencode/scripts/gsea.py
-combat = /home/xchen/chencode/scripts/ComBat.R
-download_tcga = /home/xchen/chencode/scripts/download_tcga.py
-analyze_clinical = /home/xchen/chencode/scripts/analyze_clinical_outcome.py
-find_diffexp_genes = /home/xchen/chencode/scripts/find_diffexp_genes.py
-analyze_phenotype = /home/xchen/chencode/scripts/analyze_phenotype.py
 
+download_tcga=/home/xchen/chencode/scripts/download_tcga.py
+
+combat=/home/xchen/chencode/scripts/ComBat.R
 changlab_Rlib=/home/xchen/chencode/Rlib
 kaplanmeierlib=/home/xchen/chencode/Rlib/kaplanmeierlib.R
 
@@ -63,7 +63,6 @@ knowngene_mm10=/data/genomidata/mm10.knownGene.130207.txt
 dm3_ref=/data/biocore/reference_genome/Drosophila_melanogaster/NCBI/build5.3/Sequence/BWAIndex/genome.fa
 hg18_ref=/data/biocore/genomes/Broad/Homo_sapiens_assembly18.fasta
 hg19_ref=/data/biocore/genomes/Broad/ucsc.hg19.fasta
-mm9_ref=É
 hg19_dbsnp=/data/biocore/GATK/hg19/dbsnp_137.hg19.vcf
 hg19_indels=/data/biocore/GATK/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf
 hg18_dbsnp=/data/biocore/GATK/hg18/dbsnp_137.hg18.vcf
@@ -75,14 +74,14 @@ rna_mouse_ref=/data/biocore/ensembl_reference_genome/ref/mouse.transcripts.fa
 annotate_vcf=/home/xchen/chencode/scripts/annovar/annotate_vcf.py
 chrom2genome=/data/genomidata/chrom2genome
 genomes=/data/genomidata/genomes
-convert_platform=/data/genomidata/convert_platform
-cghubkey = /data/biocore/cghub.key
+cghubkey=/data/biocore/cghub.key
 
 
 [MICROARRAY DATA]
 annot_data_affy=/data/genomidata/affymetrix/annotation
 annot_data_illu=/data/genomidata/illumina/annotation
 psid2platform=/data/genomidata/psid2platform
+convert_platform=/data/genomidata/convert_platform
 HumanHT_12_to_HG_u133_Plus_2=/home/changlab/data/mapping/HumanHT-12_to_HG-U133_Plus_2.txt
 illumina_HUMANHT12_CONTROL=/data/genomidata/illumina/HumanHT-12.control.txt
 
@@ -95,6 +94,80 @@ TRANSFAC_DB=/data/genomidata/transfac.12_1.pfm
 JASPAR_info=/data/genomidata/jasparid2info
 TRANSFAC_info=/data/genomidata/matid2info
 matid2length=/data/genomidata/matid2length
+
+
+
+[NGS SOFTWARE]
+samtools=/usr/local/bin/samtools
+bcftools=/usr/local/bin/bcftools
+vcfutils=/usr/local/bin/vcfutils.pl
+vcftools=/usr/local/bin/vcftools
+bgzip=/usr/local/bin/bgzip
+tabix=/usr/local/bin/tabix
+bedtools=/usr/local/bin/bedtools
+gtfutils=/usr/local/bin/gtfutils
+bam2fastx=/usr/local/bin/bam2fastx
+
+RNASeQC=/usr/local/bin/RNA-SeQC_v1.1.8.jar
+rna_seqc_jar=/usr/local/bin/RNA-SeQC_v1.1.8.jar
+rseqc_path=/usr/bin
+pyrseqc=/home/jchang/bin/pyrseqc.py
+rseqc_hg19=/data/genomidata/rseqc_hg19
+
+htseq_count=/usr/bin/htseq-count
+
+trimmomatic_jar=/usr/local/bin/trimmomatic.jar
+
+table_annovar=/usr/local/bin/table_annovar.pl
+annovar_db=/data/genomidata/humandb
+
+
+
+[GATK and Picard]
+gatk_jar=/usr/local/bin/GATK/GenomeAnalysisTK.jar
+Gatk=/usr/local/bin/GenomeAnalysisTK-2.4-9/GenomeAnalysisTK.jar
+picard=/usr/local/bin/picard
+sortsam=/usr/local/bin/picard-tools-1.87/SortSam.jar
+Mark_duplicates=/usr/local/bin/picard-tools-1.87/MarkDuplicates.jar
+AddOrReplaceReadGroups=/usr/local/bin/picard-tools-1.87/AddOrReplaceReadGroups.jar
+
+
+[NGS Alignment]
+bowtie_build=/usr/local/bin/bowtie-build
+bowtie=/usr/local/bin/bowtie
+bowtie2_build=/usr/local/bin/bowtie2-build
+bowtie2=/usr/local/bin/bowtie2
+tophat=/usr/local/bin/tophat
+bwa=/usr/local/bin/bwa
+STAR=/usr/local/bin/STAR
+rsem_prepare=/usr/local/rsem/rsem-prepare-reference
+rsem_calculate=/usr/local/rsem/rsem-calculate-expression
+
+
+[NGS Variant Calling]
+platypus=/usr/local/bin/Platypus/Platypus.py
+#mutect_jar=/usr/local/bin/muTect-1.1.4.jar
+mutect_jar=/usr/local/bin/mutect-1.1.7.jar
+mutect_java=/usr/bin/java
+varscan_jar=/usr/local/bin/VarScan.jar
+somaticsniper=/usr/local/bin/bam-somaticsniper
+museq=/usr/local/museq
+muse=/usr/local/bin/MuSE
+radia_path=/usr/local/radia
+snp_eff_path=/usr/local/snpEff
+strelka=/usr/local/strelka_workflow
+
+
+[NGS ChIP-Seq]
+macs14=/usr/bin/macs14
+macs2=/usr/bin/macs2
+peakseq=/usr/local/bin/PeakSeq
+pypeakseq=/home/jchang/bin/pypeakseq.py
+pyspp=/home/jchang/bin/pyspp.py
+homer_path=/usr/local/bin/homer
+
+
+
 
 
 
