@@ -282,12 +282,24 @@ def _inner_join_matrices(matrix_samples_cmp, all_samples,
     assert matrix_samples_cmp
     matrix2indexes = [[] for i in range(len(matrix_samples_cmp))]
 
+    # sample (from all_samples) -> matrix_i -> index to use
+    sample2matrix2i = {}
     for sample_i in range(len(all_samples)):
-        # Take the first sample that matches.
+        sample = all_samples[sample_i]
+        if sample not in sample2matrix2i:
+            sample2matrix2i[sample] = {}
         for i in range(len(matrix_samples_cmp)):
+            if i not in sample2matrix2i[sample]:
+                sample2matrix2i[sample][i] = 0
+            else:
+                sample2matrix2i[sample][i] += 1
             x = sample2matrix2indexes[sample_i][i]
             assert x
-            matrix2indexes[i].append(x[0])
+            ## Take the first sample that matches.
+            #j = 0
+            # Iterate over the indexes in order.
+            j = sample2matrix2i[sample][i] % len(x)
+            matrix2indexes[i].append(x[j])
     return matrix2indexes
 
 
@@ -714,6 +726,7 @@ def read_express(filename):
 
 def write_express(filename, matrix):
     import arrayio
+    
     arrayio.write(matrix, open(filename, 'w'))
 
 

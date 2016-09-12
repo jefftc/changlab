@@ -25,6 +25,7 @@ safe_mean
 median
 safe_median
 var
+iqr      inter-quartile range
 stddev
 cov
 cor
@@ -315,6 +316,27 @@ def safe_var_matrix(X, byrow=1):
 def safe_var(X, byrow=1):
     return _dispatch(
         X, None, _fn(safe_var_list), _fn(safe_var_matrix, byrow=byrow))
+
+def iqr_list(X):
+    assert len(X) > 0
+
+    # 75% - 25%
+    X = sorted(X)
+    i25 = int(round((len(X)-1) * 0.25))
+    i75 = int(round((len(X)-1) * 0.75))
+    assert i25 >= 0 and i25 < len(X)
+    assert i75 >= 0 and i75 < len(X)
+    q25 = X[i25]
+    q75 = X[i75]
+    return q75 - q25
+
+def iqr_matrix(X, byrow=1):
+    if not byrow:
+        X = transpose(X)
+    return [iqr_list(x) for x in X]
+
+def iqr(X, byrow=1):
+    return _dispatch(X, None, _fn(iqr_list), _fn(iqr_matrix, byrow=byrow))
 
 def stddev_list(X):
     v = var(X)
