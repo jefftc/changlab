@@ -758,7 +758,9 @@ all_modules = [
         # Reference must be samtools_indexed.
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        # Thunderbolts may not have duplicates marked.
+        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "jointsnvmix"),
@@ -784,7 +786,10 @@ all_modules = [
         # Recommended aligners: bwa_mem.
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("indexed", MUST_BE, "yes", 0),
-        Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        # Thunderbolts may not have duplicates marked.
+        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "muse"),
