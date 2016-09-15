@@ -80,6 +80,7 @@
 # select_row_fc
 # select_row_num_samples_fc
 # dedup_row_by_var
+# dedup_row_by_iqr
 # reverse_rows
 # reorder_row_indexes
 # reorder_row_cluster
@@ -2223,6 +2224,41 @@ def dedup_row_by_var(MATRIX, header):
     return I
 
 
+def dedup_row_by_iqr(MATRIX, header):
+    from genomicode import jmath
+    if not header:
+        return None
+
+    assert header in MATRIX.row_names(), "Missing header: %s" % header
+    assert MATRIX.ncol() >= 4, "IQR requires >= 4 columns"
+
+    annots = MATRIX.row_names(header)
+    annot2i = {}  # annotation -> list of indexes
+    for i, annot in enumerate(annots):
+        if annot not in annot2i:
+            annot2i[annot] = []
+        annot2i[annot].append(i)
+
+    assert_no_missing_values(MATRIX)
+    
+    iqrs = jmath.iqr(MATRIX._X)
+
+    I = []
+    for annot, indexes in annot2i.iteritems():
+        if len(indexes) == 1:
+            I.append(indexes[0])
+            continue
+        max_iqr = max_i = None
+        for i in indexes:
+            if max_iqr is None or iqrs[i] > max_iqr:
+                max_iqr = iqrs[i]
+                max_i = i
+        assert max_i is not None
+        I.append(max_i)
+    I.sort()
+    return I
+
+
 def reverse_rows(MATRIX, reverse):
     if not reverse:
         return MATRIX
@@ -3702,6 +3738,12 @@ def main():
         "with the highest variance.  The value of this parameter should "
         "be the header of the column that contains duplicate annotations.")
     group.add_argument(
+        "--dedup_row_by_iqr",
+        help="If multiple rows have the same annotation, select the one "
+        "with the highest inter-quartile range.  The value of this "
+        "parameter should be the header of the column that contains "
+        "duplicate annotations.")
+    group.add_argument(
         "--select_row_mean_value", default=None, type=float,
         help="Keep only the rows where the mean is at least this number.")
     group.add_argument(
@@ -4027,6 +4069,8 @@ def main():
     # This has to happen before any normalization by variance, but
     # after logging and quantile normalization.
     I = dedup_row_by_var(MATRIX, args.dedup_row_by_var)
+    MATRIX = MATRIX.matrix(I, None)
+    I = dedup_row_by_iqr(MATRIX, args.dedup_row_by_iqr)
     MATRIX = MATRIX.matrix(I, None)
 
     # Preprocess the expression values.

@@ -1,0 +1,22 @@
+This repository contains code developed by the Chang lab at the University 
+of Texas Health Science Center at Houston.
+
+Contact:
+Jeffrey Chang
+jeffrey.t.chang@uth.tmc.edu
+http://changlab.uth.tmc.edu/
+
+
+User Software:
+Betsy        BETSY expert system for Bioinformatics pipelines.
+scripts      Python scripts for use from the command line.
+
+Libraries:
+Rlib         Library of R code.
+arrayio      For reading gene expression matrices.
+genomicode   Miscellaneous Python modules.
+queue        EXPERIMENTAL.  Not used.
+web2py       EXPERIMENTAL.  Not used.
+
+Most of the code is written in Python, although there are some
+C and R scripts as well.

@@ -139,6 +139,9 @@ def main():
         ".pdf, will generate a PDF file instead.")
     parser.add_argument(
         "--prism_file", help="Write Prism-formatted results to this file.")
+    parser.add_argument(
+        "--ignore_missing_values", action="store_true",
+        help="Ignore missing values in the file.")
 
     group = parser.add_argument_group(title="Calculations")
     group.add_argument(
@@ -221,6 +224,8 @@ def main():
 
     # Pull out the values for the histogram.
     x = MATRIX[args.header]
+    if args.ignore_missing_values:
+        x = [x for x in x if x.strip()]
     values = map(float, x)
 
     value_min = value_max = None
