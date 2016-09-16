@@ -368,9 +368,25 @@ def main():
         batched_jobs[batch].append(jobs[i])
     batched_jobs = batched_jobs.values()  # list of list of jobs
 
-    # TODO: if there are too many gene sets to score for a file, split
-    # it up into multiple batches.  Don't know the tradeoff between
-    # reading a file twice and calculating more gene sets.
+    # If there are too many gene sets to score for a file, split it up
+    # into multiple batches.  Don't know the tradeoff between reading
+    # a file twice and calculating more gene sets.
+    while len(batched_jobs) < args.num_procs:
+        # Find the largest job and split it into two.
+        largest = i_largest = None
+        for i in range(len(batched_jobs)):
+            nj = len(batched_jobs[i])
+            if nj > 1 and nj > largest:
+                largest = nj
+                i_largest = i
+        if largest is None:
+            break
+        # Split i_largest in half.
+        bj = batched_jobs[i_largest]
+        i = len(bj)/2
+        j1, j2 = bj[:i], bj[i:]
+        batched_jobs[i_largest] = j1
+        batched_jobs.append(j2)
 
     job_str = "jobs"
     if len(jobs) == 1:

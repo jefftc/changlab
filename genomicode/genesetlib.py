@@ -592,6 +592,38 @@ def wilcox_test(x, y):
     return p_value
 
 
+def wilcox_test_each_col(X, Y):
+    # X and Y are matrices with same numbers of columns (but might
+    # have different rows).  Run the wilcoxon text across each of the
+    # columns.  Return a list of p-values.
+    import jmath
+    from jmath import R_fn, R_equals, R_var
+
+    assert X and Y
+    assert X[0] and Y[0]
+    assert len(X[0]) == len(Y[0])
+    ncol = len(X[0])
+
+    R = jmath.start_R()
+    R_equals(X, "X")
+    R_equals(Y, "Y")
+    R("p.values <- rep(NA, %d)" % ncol)
+    lines =  []
+    lines.append("for(i in 1:%d) {" % ncol)
+    lines.append("x <- wilcox.test(X[,i], Y[,i]);")
+    lines.append("p.values[i] <- x$p.value;")
+    lines.append("}")
+    x = "\n".join(lines)
+    R(x)
+    #for i in range(ncol):
+    #R("x <- wilcox.test(X[,%d], Y[,%d])" % (i+1, i+1))
+    #R("p.values[%d] <- x$p.value" % (i+1))
+    #R("}")
+    p_values = list(R("p.values"))
+    assert len(p_values) == ncol
+    return p_values
+    
+
 def score_geneset_I(X, I_pos, I_neg):
     # Return X_p, X_n, num_matches, list of scores
     import jmath
@@ -635,14 +667,16 @@ def score_geneset_I(X, I_pos, I_neg):
     #        i, scores_o[i], len(X_o))
 
     # Calculate the p-values.
-    nc = len(X[0])
-    pvalues = [None] * nc
-    for j in range(nc):
-        col_pn = [x[j] for x in X_pn]
-        col_o = [x[j] for x in X_o]
-        # Compare col_pn and col_o with wilcoxon test.
-        p = wilcox_test(col_o, col_pn)
-        pvalues[j] = p
+    # This step is very slow due to the R call.
+    #nc = len(X[0])
+    #pvalues = [None] * nc
+    #for j in range(nc):
+    #    col_pn = [x[j] for x in X_pn]
+    #    col_o = [x[j] for x in X_o]
+    #    # Compare col_pn and col_o with wilcoxon test.
+    #    p = wilcox_test(col_o, col_pn)
+    #    pvalues[j] = p
+    pvalues = wilcox_test_each_col(X_o, X_pn)
     
     return X_p, X_n_orig, num_rows, scores_pn, scores_o, pvalues
 

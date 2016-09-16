@@ -643,7 +643,8 @@ def cmh_bonferroni(p_values):
 def cmh_fdr_bh(p_values):
     # Check types of p_values.
     for x in p_values:
-        assert type(x) in [type(None), type(0.0), type(0)]
+        assert type(x) in [type(None), type(0.0), type(0)], \
+               "Invalid: %s [%s]" % (repr(x), type(x))
     p_clean = []
     p_I = []
     for i, p in enumerate(p_values):

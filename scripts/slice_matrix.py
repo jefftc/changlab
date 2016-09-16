@@ -9,6 +9,7 @@
 # transpose_nonmatrix
 # correlate_matrix
 # correlate_against_matrix
+# correlate_against_all_matrix
 # correlate_some_vs_all
 # calc_mean
 # calc_sd
@@ -392,6 +393,92 @@ def correlate_against_matrix(MATRIX, correlate):
     return MATRIX_cor
 
 
+def correlate_against_all_matrix(MATRIX, correlate):
+    import itertools
+    import arrayio
+    from arrayio import const
+    from arrayio import tab_delimited_format as tdf
+    from genomicode import jmath
+    from genomicode import Matrix
+
+    if not correlate:
+        return MATRIX
+
+    MATRIX2 = arrayio.read(correlate)
+    assert MATRIX.ncol() == MATRIX2.ncol()
+ 
+    # Just use the first column as the name.
+    assert MATRIX._row_order
+    assert MATRIX2._row_order
+    HEADER1 = MATRIX._row_order[0]
+    HEADER2 = MATRIX2._row_order[0]
+    row_names1 = MATRIX.row_names(HEADER1)
+    row_names2 = MATRIX2.row_names(HEADER2)
+
+    # Correlate each row against each other row.
+    data_tab = []
+    nr1, nr2 = MATRIX.nrow(), MATRIX2.nrow()
+    for (i, j) in itertools.product(range(nr1), range(nr2)):
+        x = MATRIX._X[i]
+        y = MATRIX2._X[j]
+        assert len(x) == len(y)
+
+        # Ignore None.
+        I1 = [k for (k, a) in enumerate(x) if a is not None]
+        I2 = [k for (k, a) in enumerate(y) if a is not None]
+        I = [k for k in I1 if k in I2]
+        if len(I) < 2:
+            continue
+        x = [x[k] for k in I]
+        y = [y[k] for k in I]
+
+        mean_i = jmath.mean(x)
+        mean_j = jmath.mean(y)
+
+        jmath.R_fn("cor.test", x, y, method="pearson", RETVAL="x")
+        estimate = jmath.R("x$estimate")[0]
+        p_value = jmath.R("x$p.value")[0]
+        
+        x = row_names1[i], row_names2[j], len(x), mean_i, mean_j, \
+            estimate, p_value, 0.0
+        data_tab.append(x)
+
+    # Calculate the false discovery rate.
+    p_values = [x[6] for x in data_tab]
+    fdr = jmath.cmh_fdr_bh(p_values)
+    for i in range(len(data_tab)):
+        x = data_tab[i]
+        x = list(x[:-1]) + [fdr[i]]
+        data_tab[i] = x
+
+    x1 = "%s 1" % HEADER1
+    x2 = "%s 2" % HEADER2
+    header = [
+        x1, x2, "Length", "Mean 1", "Mean 2", "Estimate", "p value", "FDR"]
+
+    s1 = [x[0] for x in data_tab]
+    s2 = [x[1] for x in data_tab]
+    X_cor = [x[2:] for x in data_tab]
+
+    row_order = header[:2]
+    col_order = [tdf.SAMPLE_NAME]
+    row_names = {
+        row_order[0] : s1,
+        row_order[1] : s2,
+        }
+    col_names = {
+        col_order[0] : header[2:]
+        }
+    synonyms = {
+        const.ROW_ID : row_order[0],
+        const.COL_ID : col_order[0],
+        }
+    MATRIX_cor = Matrix.InMemoryMatrix(
+        X_cor, row_names=row_names, col_names=col_names,
+        row_order=row_order, col_order=col_order, synonyms=synonyms)
+    return MATRIX_cor
+
+    
 def correlate_some_vs_all(MATRIX, ids):
     import itertools
     from genomicode import jmath
@@ -435,8 +522,8 @@ def correlate_some_vs_all(MATRIX, ids):
         mean_i = jmath.mean(row_i)
         mean_j = jmath.mean(row_j)
 
-        jmath.R_equals(row_i, "X")
-        jmath.R_equals(row_j, "Y")
+        #jmath.R_equals(row_i, "X")
+        #jmath.R_equals(row_j, "Y")
         jmath.R_fn("cor.test", row_i, row_j, method="pearson", RETVAL="x")
         estimate = jmath.R("x$estimate")[0]
         p_value = jmath.R("x$p.value")[0]
@@ -3366,9 +3453,15 @@ def main():
     group.add_argument(
         "--correlate_against",
         help="The argument should be the name of another matrix file.  "
-        "Correlate each row of this matrix to the row of the matrix "
-        "in filename.  "
-        "Each of the rows and columns should be aligned.")
+        "Correlate the rows of this matrix against matching rows of "
+        "another matrix.  "
+        "The columns and rows of the matrices should be aligned.")
+    group.add_argument(
+        "--correlate_against_all",
+        help="The argument should be the name of another matrix file.  "
+        "Correlate each row of this matrix against every row of another "
+        "matrix.  "
+        "The columns of the matrices should be aligned.")
     group.add_argument(
         "--correlate_some_vs_all", action="append",
         help="Correlate a selected list of rows against all other rows.  "
@@ -3875,6 +3968,7 @@ def main():
     MATRIX = transpose_matrix(MATRIX, args.transpose)
     MATRIX = correlate_matrix(MATRIX, args.correlate)
     MATRIX = correlate_against_matrix(MATRIX, args.correlate_against)
+    MATRIX = correlate_against_all_matrix(MATRIX, args.correlate_against_all)
     MATRIX = correlate_some_vs_all(MATRIX, args.correlate_some_vs_all)
     MATRIX = calc_mean(MATRIX, args.calc_mean)
     MATRIX = calc_sd(MATRIX, args.calc_sd)

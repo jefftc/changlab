@@ -10,8 +10,8 @@
 # Filters:
 # SimpleVariantFile.filtered
 #   remove_samples             For removing germline samples.
-#   remove_radia_rna_sample    Can remove RNA-Seq samples.
-#   apply_filter               Apply the "Filter" column from VCF files.
+#   remove_radia_rna_sample    Can remove RNA-Seq samples.  default=no
+#   apply_filter               Apply the VCF "Filter" column.  default=yes
 #   wgs_or_wes                 For filtering MuSE calls.
 # SimpleVariantMatrix.filtered_calls     Filter specific calls.
 #   filter_by_min_alt_reads
