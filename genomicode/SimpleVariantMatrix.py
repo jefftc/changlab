@@ -482,6 +482,14 @@ def read_as_am(filename, is_csv=False):
     # Header format:  <header0>___<header1>___<header2>
     # "blanks" are filled in.  E.g. "Annovar" occurs in each Annovar
     # column in header0.
+    #
+    # Headers:
+    # ______Chrom
+    # ______Pos
+    # ______Ref
+    # ______Alt
+    # Num Callers______<Sample>
+    # ...
     from genomicode import filelib
     from genomicode import AnnotationMatrix
     

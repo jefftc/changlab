@@ -128,6 +128,10 @@ def draw_venn(
     R_fn('library', R_var('VennDiagram'))
     sys.stdout = old_stdout
 
+    # venn diagram can't handle missing gene sets.  Get rid of them.
+    I = [i for (i, x) in enumerate(all_names) if x in name2genes]
+    all_names = [all_names[i] for i in I]
+    all_labels = [all_labels[i] for i in I]
 
     # Five is the maximum supported by package.
     assert len(all_names) <= 5, "Can't draw venn diagram with %d circles." % \
@@ -136,7 +140,8 @@ def draw_venn(
     varnames = ["A", "B", "C", "D", "E"]
     for i in range(len(all_labels)):
         n = all_names[i]
-        R_equals(name2genes[n], varnames[i])
+        genes = name2genes[n]
+        R_equals(genes, varnames[i])
     #n1, n2, n3 = all_names
     #R_equals(name2genes[n1], "A")
     #R_equals(name2genes[n2], "B")
@@ -168,18 +173,23 @@ def draw_venn(
     cat_cex = 0.75*args_label_size
     cex = 0.65*args_count_size
 
-    if len(all_names) == 2:
+    # The length of fill needs to match the number of non-empty
+    # values.
+    x = [x for x in all_names if x in name2genes]
+    num_fill = len(x)
+
+    if num_fill == 2:
         fill = ["cornflowerblue", "darkorchid1"]
         cat_col = ["cornflowerblue", "darkorchid1"]
-    elif len(all_names) == 3:
+    elif num_fill == 3:
         fill = ["cornflowerblue", "green", "yellow"]
         cat_col = ["darkblue", "darkgreen", "orange"]
-    elif len(all_names) == 4:
+    elif num_fill == 4:
         fill = [
             "dodgerblue", "goldenrod1", "seagreen3", "orchid3"]
         cat_col = [
             "dodgerblue", "goldenrod1", "seagreen3", "orchid3"]
-    elif len(all_names) == 5:
+    elif num_fill == 5:
         fill = [
             "dodgerblue", "goldenrod1", "darkorange1", "seagreen3",
             "orchid3"]
@@ -305,6 +315,9 @@ def main():
     group.add_argument(
         "--automatch", action="store_true", 
         help="Will match _UP with _DN (or _DOWN).")
+    group.add_argument(
+        "--ignore_missing_genesets", action="store_true",
+        help="If any gene sets can't be found, ignore silently.")
 
     group = parser.add_argument_group(title="Plot")
     group.add_argument(
@@ -368,6 +381,10 @@ def main():
         name2genes[name] = genes
         all_names.append(name)
 
+    if args.all_genesets:
+        # all_names already contains all gene sets.
+        pass
+    
     if args.automatch:
         DELIMITERS = [",", ";", "-"]
         delimiter = None
@@ -396,24 +413,35 @@ def main():
         name2genes = merged
         all_names = pretty_names
 
-    # Select only the gene sets of interest.
     if args.geneset:
-        missing = [x for x in args.geneset if x not in name2genes]
-        assert not missing, "Missing geneset: %s" % ", ".join(missing)
+        # Use only the gene sets specified.
         all_names = args.geneset
-
+        # Make sure all gene sets are present.
+        missing = [x for x in args.geneset if x not in name2genes]
+        if not args.ignore_missing_genesets:
+            assert not missing, "Missing geneset: %s" % ", ".join(missing)
+        
+    # Figure out the right labels for each gene set.
     all_labels = all_names
     if args.label:
         assert len(args.label) == len(all_names)
         all_labels = args.label
 
+    # If any gene sets are missing, then ignore it.
+    #if args.ignore_missing_genesets:
+    #    I = [i for (i, x) in enumerate(all_names) if x in name2genes]
+    #    all_names = [all_names[i] for i in I]
+    #    all_labels = [all_labels[i] for i in I]
+
+        
+
     # Count all pairwise intersections.
     combo2common = {}  # (gs1, gs2[, ...]) -> list of common genes
     for combo in product_genesets(all_names, args.num_to_compare):
         assert len(combo) >= 1
-        common = set(name2genes[combo[0]])
+        common = set(name2genes.get(combo[0], []))
         for i in range(1, len(combo)):
-            x = name2genes[combo[i]]
+            x = name2genes.get(combo[i], [])
             common = common.intersection(x)
         combo2common[combo] = sorted(common)
         # Hack to make writing out matrix below easier.
@@ -443,7 +471,9 @@ def main():
                 x1 = len(combo2common[(name1, name1)])
                 x2 = len(combo2common[(name2, name2)])
                 den = min(x1, x2)
-                perc = float(num)/den
+                perc = 0
+                if den > 0:
+                    perc = float(num)/den
                 row.append(perc)
             assert len(row) == len(header)
             print "\t".join(map(str, row))
