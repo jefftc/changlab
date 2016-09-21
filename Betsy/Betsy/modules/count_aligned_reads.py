@@ -41,6 +41,7 @@ class Module(AbstractModule):
 
         nc = min(num_cores, MAX_CORES)
         results = parallel.pyfun(funcalls, num_procs=nc)
+        metadata["num_cores"] = nc
 
         # list of (sample, aligns, aligned_reads, total_reads, perc_aligned).
         results2 = []
@@ -140,7 +141,11 @@ def count_alignments(bam_filename):
         assert len(x) >= 11, "SAM format"
         qname, flag = x[:2]
         flag = int(flag)
-        is_aligned = flag & 0x02
+        # 2  mapped in proper pair
+        # 4  query is unmapped
+        # 8  mate is unmapped
+        #is_aligned = flag & 0x02
+        is_aligned = not (flag & 0x04)
         if is_aligned:
             alignments += 1
             aligned_reads[qname] = 1

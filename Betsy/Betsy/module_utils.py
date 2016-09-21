@@ -813,6 +813,14 @@ def read_sample_group_file(file_or_handle):
         assert filename not in seen, "Filenames not unique: %s" % filename
         seen[filename] = 1
 
+    # If all the Pairs are "1", then make them all blank.
+    x = [x[-1] for x in data]
+    x = sorted({}.fromkeys(x))
+    if x == ["1"]:
+        for i in range(len(data)):
+            filename, sample, pair = data[i]
+            data[i] = filename, sample, ""
+
     # For each sample, make sure there isn't a mix of paired and
     # single ended files.  It must be all single ended or all paired.
     x = [x[1] for x in data]
@@ -820,7 +828,7 @@ def read_sample_group_file(file_or_handle):
     for sample in all_samples:
         x = [x[2] for x in data if x[1] == sample]
         x = sorted({}.fromkeys(x))
-        if x == [""]:  # All single
+        if x == [""] or x == ["1"]:  # All single
             continue
         elif x == ["1", "2"]:  # All paired
             continue
@@ -831,13 +839,13 @@ def read_sample_group_file(file_or_handle):
         pairs = [x[2] for x in data if x[1] == sample]
         # Should be all "", or a pattern of "1", "2".
         x = {}.fromkeys(pairs).keys()
-        if x == [""]:  # all ""
+        if x == [""] or x == ["1"]:  # all ""
             continue
         assert len(x) % 2 == 0, "Weird pairing: %s" % sample
         for i in range(0, len(x), 2):
             assert x[i] == "1", "Weird pairing: %s" % sample
             assert x[i+1] == "2", "Weird pairing: %s" % sample
-        
+
     return data
 
 

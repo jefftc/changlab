@@ -38,10 +38,14 @@ def run_pipeline(
     network, in_datas, custom_attributes, user_options, paths, user=None,
     job_name='', clean_up=True, num_cores=8, verbosity=0):
     # Run the pipeline that is indicated by the network.  Returns a
-    # tuple of (dictionary of node_id -> IdentifiedDataNode, output
-    # filename).  Returns None if not successful.
+    # tuple of:
+    # - dictionary of node_id -> IdentifiedDataNode
+    # - output filename
+    # Returns None if not successful.
+    # 
     # Can raise an exception if there was an error in one of the
-    # modules, or if there is no path through the network.
+    # modules, or if there is no path through the network (which
+    # probably indicates an inferencing error).
     #
     # in_datas         List of IdentifiedDataNodes.
     # user_attributes  From --dattr.  AttributeDef
@@ -236,8 +240,11 @@ def run_pipeline(
             if DEBUG_RUN_PIPELINE:
                 print "Successfully complete."
             # Successfully completed this module.
-            next_node, next_id, run_time = x
+            out_path, next_node, next_id, run_time = x
             assert next_id is not None
+            # HACK: Add the out_path to the next_node object so that
+            # we can generate read receipts.
+            next_node.out_path = out_path
             # Do not add data node to the pool here.  It should be
             # added to the pool when encountered.
             # Many paths might have led to this module.  Should merge
@@ -286,9 +293,10 @@ def run_pipeline(
 def run_module(
     network, path_ids, module_id, input_ids, all_user_options, pool,
     transitions, user, job_name='', clean_up=True, num_cores=8, verbosity=0):
-    # Return tuple of (IdentifiedDataNode, node_id) for the node that
-    # was created.  Returns None if this module fails (no compatible
-    # output nodes, or all output nodes already generated).
+    # Return tuple of (output_path, IdentifiedDataNode, node_id,
+    # elapsed time) for the node that was created.  Returns None if
+    # this module fails (no compatible output nodes, or all output
+    # nodes already generated).
 
     import os
     import sys
@@ -457,7 +465,7 @@ def run_module(
             x = os.path.split(result_dir)[1]
             print "%s%s" % (" "*indent, x)
         sys.stdout.flush()
-        return out_identified_data_node, next_id, elapsed
+        return result_dir, out_identified_data_node, next_id, elapsed
 
     #_debug_is_module_output_complete(
     #    module_name, antecedents, out_data_node.attributes, user_options,
@@ -578,7 +586,7 @@ def run_module(
         assert os.path.exists(filename)
         params = _read_parameter_file(filename)
         elapsed = params["elapsed"]
-        return out_identified_data_node, next_id, elapsed
+        return result_dir, out_identified_data_node, next_id, elapsed
 
     # Make sure nobody deleted this after I created it.
     assert os.path.exists(result_dir)
@@ -638,7 +646,7 @@ def run_module(
             _rmtree_multi(result_dir)
         os.chdir(cwd)
 
-    return out_identified_data_node, next_id, elapsed
+    return result_dir, out_identified_data_node, next_id, elapsed
 
 
 class FileRefresher:
