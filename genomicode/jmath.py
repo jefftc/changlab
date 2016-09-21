@@ -42,7 +42,7 @@ log_add
 equal_matrix
 
 cmh_bonferroni   Correct multiple hypotheses, Bonferroni.
-cmh_fdr          Correct multiple hypotheses, False Discovery Rate.
+cmh_fdr_bh       Correct multiple hypotheses, False Discovery Rate.
 
 fisher_z
 norm_mv

@@ -2386,6 +2386,9 @@ def main():
         "--read_as_csv", action="store_true",
         help="Read as a CSV file.")
     parser.add_argument(
+        "--write_as_csv", action="store_true",
+        help="Write out as a CSV file.")
+    parser.add_argument(
         "--ignore_lines_startswith",
         help="Ignore lines that starts with this string.  "
         'E.g. --ignore_lines_starswith "##" will ignore headers in VCF files.')
@@ -2837,7 +2840,10 @@ def main():
         MATRIX, args.subtract_value_from_bed_list)
 
     # Write the matrix back out.
-    AnnotationMatrix.write(sys.stdout, MATRIX)
+    delim = None
+    if args.write_as_csv:
+        delim = ","
+    AnnotationMatrix.write(sys.stdout, MATRIX, delim=delim)
 
 if __name__ == '__main__':
     main()
