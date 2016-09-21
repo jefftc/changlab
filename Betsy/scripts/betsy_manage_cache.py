@@ -152,7 +152,6 @@ def main():
 
         if args.running and not IN_PROGRESS:
             continue
-        
 
         # Read the parameter file.
         params = {}

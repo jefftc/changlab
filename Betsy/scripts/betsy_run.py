@@ -20,7 +20,8 @@
 # 
 # plot_network
 # plot_network_show_pipelines
-# plot_pipelines             
+# plot_pipelines
+# write_receipt
 # 
 # get_all_option_names       Get the names of all OptionDef in the rulebase.
 # get_module_options         Get the options used in a list of modules.
@@ -223,7 +224,6 @@ def check_inputs_provided(
         network, x, custom_attributes, max_inputs=max_inputs)
     plot_network(
         network_png, network, user_options=user_options, verbose=verbose)
-    #write_network(network_json, network)
     return False
 
 
@@ -386,7 +386,6 @@ def check_inputs_in_network(
     plot_network(
         network_png, network, user_options=user_options,
         highlight_green=start_ids, verbose=verbose)
-    #write_network(network_json, network)
     return False, node2ids
 
 
@@ -539,7 +538,6 @@ def build_pipelines(
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         verbose=verbose)
-    #write_network(network_json, network)
     return []
 
 
@@ -608,7 +606,6 @@ def check_attributes_complete(
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         prune=prune_network, verbose=verbose)
-    #write_network(network_json, network)
     return []
 
 
@@ -651,7 +648,6 @@ def prune_pipelines(
         plot_network_show_pipelines(
             network_png, network, paths_orig, user_options=user_options,
             prune=prune_network, verbose=verbose)
-        #write_network(network_json, network)
         return paths
     
     num_pruned = len(paths_orig) - len(paths)
@@ -742,7 +738,6 @@ def check_input_files(network, in_data_nodes, user_options, paths,
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         prune=prune_network, verbose=verbose)
-    #write_network(network_json, network)
     return []
 
 
@@ -759,7 +754,6 @@ def manually_verify_network(
     plot_network_show_pipelines(
         network_png, network, paths, user_options=user_options,
         prune=prune_network, verbose=verbose)
-    #write_network(network_json, network)
     return False
     
 
@@ -882,6 +876,65 @@ def plot_pipelines(filestem, network, paths, user_options, max_pipelines=None,
         plot_network_show_pipelines(
             filename, network, [path], user_options=user_options,
             prune=prune, verbose=verbose)
+
+
+def write_receipt(outfilename, network, start_ids, node_ids, transitions,
+                  node_dict):
+    import os
+    from Betsy import bie3
+    from Betsy import rule_engine_bie3
+    from genomicode import parselib
+
+    print "Writing receipt to %s." % outfilename
+    
+    # Figure out the order to write the nodes.
+    node_order = []
+    stack = start_ids
+    # Do a breadth first search.
+    while stack:
+        nid = stack.pop(0)
+        if nid in node_order:
+            continue
+        node_order.append(nid)
+        for (n1, n2) in transitions:
+            if nid == n1:
+                stack.append(n2)
+
+    # No module nodes.
+    node_order = [
+        x for x in node_order
+        if not isinstance(network.nodes[x], bie3.ModuleNode)]
+
+    # Write out each module.
+    handle = open(outfilename, 'w')
+    for nid in node_order:
+        inode = node_dict[nid]
+        node = inode.data
+        if not hasattr(inode, "out_path"):
+            print >>handle, node.datatype.name
+            print >>handle, inode.identifier
+            print >>handle
+            continue
+        x = os.path.join(inode.out_path, rule_engine_bie3.BETSY_PARAMETER_FILE)
+        params = rule_engine_bie3._read_parameter_file(x)
+        module_name = params.get("module_name")
+        print >>handle, "%d.  %s" % (nid, module_name)
+        print >>handle, "-"*len(module_name)
+        print >>handle, inode.out_path
+        start_time = params.get("start_time")
+        assert start_time, "Missing: start_time"
+        print >>handle, "Run on %s." % start_time
+        #time_ = time.strptime(start_time, rule_engine_bie3.TIME_FMT)
+
+        metadata = params.get("metadata", {})
+        for key, value in metadata.iteritems():
+            if key == "commands":
+                for x in value:
+                    print >>handle, x
+            else:
+                x = "%s: %s" % (key.upper(), value)
+                parselib.print_split(x, prefix1=0, prefixn=4, outhandle=handle)
+        print >>handle
 
 
 def get_all_option_names():
@@ -1283,16 +1336,16 @@ def main():
         "Format: <datatype>,<filename>.  Will save the top-most "
         "node with this datatype.")
 
-    group = parser.add_argument_group(title="Outfiles")
+    group = parser.add_argument_group(title="Output")
     group.add_argument(
         '--network_png', help='generate the output network png file')
+    group.add_argument(
+        '--sparse_network_png', action="store_true",
+        help="Leave out details in network plot.")
     group.add_argument(
         '--prune_network', action="store_true",
         help="Prune nodes that are not included in any pipeline.  "
         "Mostly for debugging.")
-    group.add_argument(
-        '--sparse_network_png', action="store_true",
-        help="Leave out details in network plot.")
     #group.add_argument(
     #    '--network_text', help='generate the output network text file')
     group.add_argument(
@@ -1301,6 +1354,10 @@ def main():
         '--restart_from_network', action="store_true",
         help="If the --network_json file already exists, "
         "then will use this network rather than recreating a new one.")
+    group.add_argument(
+        "--receipt",
+        help="Name of file to write a receipt (as a text file) "
+        "describing the analysis.  ")
     #parser.add_argument(
     #    '--clobber', action='store_const', const=True, default=False,
     #    help='overwrite the output_data if it already exists')
@@ -1613,6 +1670,8 @@ def main():
                 highlight_green=node_ids, verbose=verbose_network)
             #write_network(args.network_json, network)
         raise
+    for x in node_dict.values():
+        break
 
     # Draw the final network.
     node_dict = node_dict or {}
@@ -1646,7 +1705,9 @@ def main():
         bold_transitions=transitions,
         highlight_green=start_ids, highlight_yellow=node_ids,
         verbose=verbose_network)
-    #write_network(args.network_json, network)
+    if args.receipt:
+        write_receipt(
+            args.receipt, network, start_ids, node_ids, transitions, node_dict)
     #if args.network_text:
     #    print "Writing detailed network: %s." % args.network_text
     #    bie3.print_network(network, outhandle=args.network_text)

@@ -65,7 +65,6 @@ class Module(AbstractModule):
         # Warning: Detected a read pair whose two mates have different names
 
         # Use STAR aligner instead.
-
         use_STAR = True
 
         sq = parallel.quote
