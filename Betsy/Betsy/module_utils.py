@@ -832,13 +832,13 @@ def read_sample_group_file(file_or_handle):
             continue
         elif x == ["1", "2"]:  # All paired
             continue
-        raise AssertionError, "Weird pairing: %s" % sample
+        raise AssertionError, "Weird pairing [%s]: %s" % (repr(x), sample)
 
     # Make sure each pair is next to each other.
     for sample in all_samples:
         pairs = [x[2] for x in data if x[1] == sample]
         # Should be all "", or a pattern of "1", "2".
-        x = {}.fromkeys(pairs).keys()
+        x = sorted({}.fromkeys(pairs))
         if x == [""] or x == ["1"]:  # all ""
             continue
         assert len(x) % 2 == 0, "Weird pairing: %s" % sample
