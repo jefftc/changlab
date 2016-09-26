@@ -45,6 +45,7 @@
 # reorder_col_cluster
 # reorder_col_alphabetical
 # reorder_col_byfile
+# reorder_col_random
 # remove_duplicate_cols
 # remove_unnamed_cols
 # rename_duplicate_cols
@@ -440,21 +441,25 @@ def correlate_against_all_matrix(MATRIX, correlate):
         p_value = jmath.R("x$p.value")[0]
         
         x = row_names1[i], row_names2[j], len(x), mean_i, mean_j, \
-            estimate, p_value, 0.0
+            estimate, p_value, 0.0, 0.0
         data_tab.append(x)
 
     # Calculate the false discovery rate.
     p_values = [x[6] for x in data_tab]
     fdr = jmath.cmh_fdr_bh(p_values)
+    bonf = jmath.cmh_bonferroni(p_values)
     for i in range(len(data_tab)):
-        x = data_tab[i]
-        x = list(x[:-1]) + [fdr[i]]
+        x = list(data_tab[i])
+        x[7] = fdr[i]
+        x[8] = bonf[i]
         data_tab[i] = x
+        
 
     x1 = "%s 1" % HEADER1
     x2 = "%s 2" % HEADER2
     header = [
-        x1, x2, "Length", "Mean 1", "Mean 2", "Estimate", "p value", "FDR"]
+        x1, x2, "Length", "Mean 1", "Mean 2", "Estimate",
+        "p value", "FDR", "BONF"]
 
     s1 = [x[0] for x in data_tab]
     s2 = [x[1] for x in data_tab]
@@ -1502,6 +1507,19 @@ def reorder_col_byfile(MATRIX, filename, ignore_missing_cols):
     if not ignore_missing_cols:
         assert len(I_col) == len(samples), "I could not find some samples."
     MATRIX_new = MATRIX.matrix(None, I_col)
+    return MATRIX_new
+
+
+def reorder_col_random(MATRIX, shuffle):
+    import arrayio
+    import random
+
+    if not shuffle:
+        return MATRIX
+
+    I = list(range(MATRIX.ncol()))
+    random.shuffle(I)
+    MATRIX_new = MATRIX.matrix(None, I)
     return MATRIX_new
 
 
@@ -3666,6 +3684,9 @@ def main():
         "--reorder_col_byfile",
         help="Reorder based on a file.  One line per sample name.")
     group.add_argument(
+        "--reorder_col_random", default=False, action="store_true",
+        help="Sort the columns randomly.")
+    group.add_argument(
         "--align_col_matrix",
         help="Align the cols to a matrix in another file.")
     group.add_argument(
@@ -4042,6 +4063,7 @@ def main():
     MATRIX = reorder_col_indexes(
         MATRIX, args.reorder_col_indexes, args.col_indexes_include_headers)
     MATRIX = reorder_col_alphabetical(MATRIX, args.reorder_col_alphabetical)
+    MATRIX = reorder_col_random(MATRIX, args.reorder_col_random)
 
     ## # Merge the rows with duplicated values.
     ## MATRIX = merge_rows_with_dup_values(

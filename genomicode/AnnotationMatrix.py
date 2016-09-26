@@ -226,8 +226,12 @@ def read(filename, is_csv=False, header_char=None):
         all_headers, headers_h, header2annots, headerlines=all_comments)
 
 
-def write(handle_or_file, annot_matrix):
+def write(handle_or_file, annot_matrix, delim=None):
     from genomicode import jmath
+
+    if delim is None:
+        delim = "\t"
+    
     matrix = []
     for i, header_h in enumerate(annot_matrix.headers_h):
         header = annot_matrix.headers[i]
@@ -243,4 +247,4 @@ def write(handle_or_file, annot_matrix):
     for x in annot_matrix.headerlines:
         print >>handle, x
     for x in matrix:
-        print >>handle, "\t".join(map(str, x))
+        print >>handle, delim.join(map(str, x))
