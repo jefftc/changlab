@@ -10,15 +10,18 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import parallel
-        from Betsy import module_utils
+        from Betsy import module_utils as mlib
 
-        filelib.safe_mkdir(out_path)
-        filenames = module_utils.find_fastq_files(in_data.identifier)
+        filenames = mlib.find_fastq_files(in_data.identifier)
         assert filenames, "FASTQ files not found: %s" % in_data.identifier
+        filelib.safe_mkdir(out_path)
         metadata = {}
 
+        fastqc = mlib.findbin("fastqc")
+        fastqc_q = parallel.quote(fastqc)
+        
         commands = [
-            "fastqc --outdir=%s --extract %s" % (out_path, x)
+            "%s --outdir=%s --extract %s" % (fastqc_q, out_path, x)
             for x in filenames]
         metadata["commands"] = commands
         metadata["num_cores"] = num_cores
