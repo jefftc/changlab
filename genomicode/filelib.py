@@ -307,9 +307,12 @@ def assert_exists_nz_many(filenames, retries=2):
     if len(missing) == 1:
         msg = "File not found or empty: %s" % missing[0]
     elif len(missing) < 5:
-        msg = "Files not found or empty: %s" % ", ".join(missing)
+        x = map(repr, missing)
+        msg = "Files not found or empty: %s" % ", ".join(x)
     else:
-        x = missing[:5] + ["..."]
+        x = missing[:5]
+        x = map(repr, missing)
+        x = x + ["..."]
         msg = "Files (%d) not found or empty: %s" % (
             len(missing), ", ".join(x))
     assert not missing, msg

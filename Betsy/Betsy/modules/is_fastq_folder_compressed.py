@@ -27,7 +27,8 @@ class Module(AbstractModule):
         for in_filename in filenames:
             in_path, in_file = os.path.split(in_filename)
             out_filename = os.path.join(out_path, in_file)
-            assert not os.path.exists(out_filename)
+            assert not os.path.exists(out_filename), \
+                   "Duplicate file found: %s" % out_filename
             os.symlink(in_filename, out_filename)
             #shutil.copyfile(in_filename, out_filename)
 
