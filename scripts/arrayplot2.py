@@ -234,8 +234,8 @@ class ColorbarLayout:
             # Text.
             text_width = max([x[1] for x in self._label_sizes])
             # PIL doesn't calculate text widths very accurately.
-            # Compensate with a fudge factor.  2 is not big enough.
-            text_width *= 2.5
+            # Compensate with a fudge factor.  2.5 is not big enough.
+            text_width *= 3
             width += text_width
         width = int(width)
         return width

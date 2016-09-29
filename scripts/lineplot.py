@@ -153,6 +153,8 @@ def main():
         "--xlabel_off", default=False, action="store_true",
         help="Turn off the X labels.")
     group.add_argument(
+        "--ylabel", help="Label the Y axis.")
+    group.add_argument(
         "--gene_name_header",
         help="Header for gene names to be used in the legend.")
 
@@ -212,7 +214,10 @@ def main():
         main = args.title
     sub = ""
     xlab = ""
-    ylab = "Gene Expression"
+    #ylab = "Gene Expression"
+    ylab = ""
+    if args.ylabel:
+        ylab = args.ylabel
     labels = jmath.R_var("FALSE")
     #labels = MATRIX.col_names(arrayio.COL_ID)
     col = R_var("NULL")

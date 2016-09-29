@@ -306,9 +306,9 @@ def score_annotations(annotations, min_score=None, remove_version=False):
     for i in range(len(annotations)):
         x = annotations[i]
         if x.startswith("ENS"):
-            i = x.find(".")
-            if i >= 0:
-                x = x[:i]
+            j = x.find(".")
+            if j >= 0:
+                x = x[:j]
         annotations[i] = x
 
     annots_clean_cs = normalize_ids(annotations, case_insensitive=False)
