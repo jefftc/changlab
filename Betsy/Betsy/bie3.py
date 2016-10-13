@@ -2583,7 +2583,7 @@ def _find_paths_by_start_ids_hh(
         #for bnum, branches_i in enumerate(itertools.product(*x)):
         #    branches = [
         #        branch2info[i][branches_i[i]] for i in range(len(branches_i))]
-
+        
             # This _merge_paths is called 99.999% of the time.
             #if merge_cache:
             #    key = [None] * len(branch2info)
@@ -2787,6 +2787,7 @@ def _find_paths_by_start_ids_hh(
             ignore_incomplete_pathway=True, prune_most_inputs=False)
         debug_print(DEBUG_FIND_PATHS,
                     "[%d] Final %d path(s) remain." % (node_id, len(paths)))
+        
 
     return paths
 

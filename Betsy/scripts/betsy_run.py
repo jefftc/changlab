@@ -1566,6 +1566,9 @@ def main():
             rulebase, outtype, custom_attributes, out_custom_attribute)
         if args.network_json:
             write_network(args.network_json, network)
+    #plot_network(
+    #    "network.png", network, user_options=user_options,
+    #    verbose=verbose_network)
 
     # Step 2.5: Make sure network has more than one node.
     if not check_more_than_one_node_network(network):
@@ -1615,7 +1618,7 @@ def main():
     #    verbose=True)
     #plot_network_show_pipelines(
     #    args.network_png, network, paths, user_options=user_options,
-    #    verbose=args.verbose)
+    #    verbose=verbose_network)
     
     # Step 7: Prune undesired pipelines.
     paths = prune_pipelines(
@@ -1668,10 +1671,8 @@ def main():
             plot_network(
                 args.network_png, network, user_options=user_options,
                 highlight_green=node_ids, verbose=verbose_network)
-            #write_network(args.network_json, network)
+            #write_network(args.network_json, network) 
         raise
-    for x in node_dict.values():
-        break
 
     # Draw the final network.
     node_dict = node_dict or {}

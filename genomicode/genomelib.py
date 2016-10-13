@@ -591,7 +591,7 @@ def read_fastq(fh):
     handle = filelib.openfh(fh)
     n = 0
     while True:
-        # @<title>
+        # <@title>
         # <sequence>
         # +
         # <quality>

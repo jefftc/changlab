@@ -77,15 +77,18 @@ class Module(AbstractModule):
 
         # Put together the results in a table.
         handle = open(out_filename, 'w')
-        header = "sample", "match", "total", "perc", "perc mismatch"
+        header = "sample", "match", "total", "RPM", "match", "mismatch"
         print >>handle, "\t".join(header)
         for x in zip(jobs, results):
             x, d = x
             sample, in_filename, summary_filename, \
                     fastq_filename1, fastq_filename2 = x
+            match = d["perfect_alignments"]
+            total = d["total_alignments"]
+            rpm = int(float(match)/total*1E6)
+            perc_match = d["perc_perfect"]
             perc_mismatch = 1 - d["perc_perfect"]
-            x = sample, d["perfect_alignments"], d["total_alignments"], \
-                d["perc_perfect"], perc_mismatch
+            x = sample, match, total, rpm, perc_match, perc_mismatch
             assert len(x) == len(header)
             print >>handle, "\t".join(map(str, x))
         handle.close()
@@ -100,7 +103,7 @@ def summarize_matches_file(filename, fastq_file1, fastq_file2, num_mismatches,
     # Return dictionary with keys:
     # total_alignments       int
     # perfect_alignments     int
-    # perc_perfect           float (0.0-1.0)
+    # perc_perfect           float (0.0-1.0)    Technically, fraction not %
     # Will create temporary files in temp_path.  These files could be
     # big (similar in size to the fastq files), so this should
     # ideally be a path with a lot of free space.

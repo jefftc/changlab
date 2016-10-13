@@ -1620,6 +1620,22 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
          "not be calculated"),
         ]
 
+    # Gives error message (and no results) if the machine is out of
+    # memory.  Detect this case and raise an exception.
+    #
+    #There is insufficient memory for the Java Runtime Environment to continue.
+    # Cannot create GC thread. Out of system resources.
+    # An error report file with more information is saved as:
+    # /tmp/jvm-23978/hs_error.log
+
+    # Generate an exception if these lines are found.
+    ERROR_LINES = [
+        ("There is insufficient memory for the Java Runtime Environment to "
+         "continue."),
+        "Cannot create GC thread. Out of system resources.",
+        "An error report file with more information is saved as:",
+        ]
+
     # Varscan calls each sample "Sample1".  Doesn't have the read
     # group info from the BAM file.  Change this to the proper sample
     # name.
@@ -1627,7 +1643,7 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
 
     # Not sure why hashing this?  Other callers don't hash.
     #sample_h = hashlib.hash_var(sample)
-
+    
     outhandle = open(out_filename, 'w')
     for line in open(in_filename):
         found = False
@@ -1637,6 +1653,9 @@ def clean_varscan_vcf(sample, in_filename, out_filename):
                 break
         if found:
             continue
+        for x in ERROR_LINES:
+            if line.find(x) >= 0:
+                raise AssertionError(line.strip())
         if line.startswith("#CHROM") and line.find("Sample1") >= 0:
             #line = line.replace("Sample1", sample_h)
             line = line.replace("Sample1", sample)

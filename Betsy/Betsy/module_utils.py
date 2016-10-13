@@ -785,6 +785,7 @@ def read_sample_group_file(file_or_handle):
     # F6         B       2
     #
     # - Filenames should be unique.
+    # - Filename should be relative.  No full path information.
     # - Pair should be 1 or 2.  If single end reads, just leave blank.
     # - There can be many Filenames per Sample.  There can be many
     #   Pairs per Sample (if the reads for one pair are split).
@@ -792,7 +793,7 @@ def read_sample_group_file(file_or_handle):
     #   each other in the file.
     import os
     from genomicode import filelib
-    
+
     handle = file_or_handle
     if type(handle) is type(""):
         assert os.path.exists(file_or_handle)
@@ -810,7 +811,9 @@ def read_sample_group_file(file_or_handle):
     seen = {}
     for x in data:
         filename, sample, pair = x
-        assert filename not in seen, "Filenames not unique: %s" % filename
+        x1, x2 = os.path.split(filename)
+        assert not x1, "Filename should not contain a path: %s" % filename
+        assert filename not in seen, "Filename is not unique: %s" % filename
         seen[filename] = 1
 
     # If all the Pairs are "1", then make them all blank.

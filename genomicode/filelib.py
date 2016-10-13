@@ -486,13 +486,13 @@ class RowIterator:
     # _header      Name of each column.  From header, format, then index.
     # _nheader     Normalized names.
 
-    def __init__(self, file_or_handle, delimiter, strip, skip, pad_cols,
-                 header, format=None, *obj_convert_fns):
+    def __init__(self, file_or_handle, delimiter, strip, skip, comment_char,
+                 pad_cols, header, format=None, *obj_convert_fns):
         if skip:
             file_or_handle = openfh(file_or_handle)
             for i in range(skip):
                 file_or_handle.readline()
-        reader = self._parse_line(file_or_handle, delimiter=delimiter)
+        reader = self._parse_line(file_or_handle, comment_char, delimiter)
 
         names = None
         if header:
@@ -528,14 +528,20 @@ class RowIterator:
         self._strip_cols = strip_cols
         self._pad_cols = pad_cols
 
-    def _parse_line(self, file, delimiter="\t"):
+    def _parse_line(self, file, comment_char, delimiter):
         import csv
+
+        delimiter = delimiter or "\t"
+        
         # Allow up to 32Mb fields (Python 2.5 and above).
         if hasattr(csv, "field_size_limit"):
             csv.field_size_limit(32*1024*1024)
         for i, line in enumerate(openfh(file)):
             # Skip blank lines.
             if not line.strip():
+                continue
+            # Skip comment lines.
+            if comment_char is not None and line.startswith(comment_char):
                 continue
             try:
                 x = csv.reader([line], delimiter=delimiter).next()
@@ -556,8 +562,11 @@ class RowIterator:
                     dlen, flen, self._format, data)
                 raise AssertionError, s
         for i in self._fn_cols:
-            #print self._header
-            data[i] = self._convert_fns[i](data[i])
+            try:
+                data[i] = self._convert_fns[i](data[i])
+            except ValueError, x:
+                x = "[%s] %s" % (self._header[i], str(x))
+                raise ValueError(x)
         for i in self._strip_cols:
             data[i] = data[i].strip()
         if self._nheader:
@@ -589,9 +598,11 @@ class RowIterator:
 # read_row(filename, "name:s number:i")
 # read_row(filename, "col1:O col2:O", convert_fn, convert_fn)
 # read_row(filename, header=1)
-#   delimiter  Character used for the delimiter.  default "\t".
-#   skip       Number of lines to skip at the beginning.
-#   pad_cols   If not enough columns in a row, pad with this value.
+#   delimiter     Character used for the delimiter.  default "\t".
+#   strip
+#   skip          Number of lines to skip at the beginning.
+#   pad_cols      If not enough columns in a row, pad with this value.
+#   commend_char  Ignore lines that start with this character.
 def read_row(file_or_handle, *args, **keywds):
     """Iterate over each line of a tab-delimited file.  The iterator
     object contains the following member variables:
@@ -633,7 +644,8 @@ def read_row(file_or_handle, *args, **keywds):
     format string is provided, then will just skip the header.
 
     """
-    known_params = ["delimiter", "strip", "skip", "pad_cols", "header"]
+    known_params = [
+        "delimiter", "strip", "skip", "pad_cols", "header", "comment_char"]
     for key in keywds:
         assert key in known_params, "Unknown parameter: %s" % key
     delimiter = keywds.get("delimiter", "\t")
@@ -641,8 +653,10 @@ def read_row(file_or_handle, *args, **keywds):
     skip = keywds.get("skip", 0)
     pad_cols = keywds.get("pad_cols", None)
     header = keywds.get("header", False)
+    comment_char = keywds.get("comment_char", None)
     return RowIterator(
-        file_or_handle, delimiter, strip, skip, pad_cols, header, *args)
+        file_or_handle, delimiter, strip, skip, comment_char, pad_cols, header,
+        *args)
 
 def write_row(file_or_handle, data, format=None, *obj_convert_fns):
     """Write one row of a table into file_or_handle.  data should be a

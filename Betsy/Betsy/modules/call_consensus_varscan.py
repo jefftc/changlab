@@ -13,7 +13,6 @@ class Module(AbstractModule):
         from genomicode import parallel
         from genomicode import alignlib
         from genomicode import config
-        #from Betsy import module_utils
 
         pileup_filenames = filelib.list_files_in_path(
             in_data.identifier, endswith=".pileup")
