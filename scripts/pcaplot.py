@@ -6,10 +6,12 @@
 
 import os, sys
 
+
 def read_matrix(filename, num_header_cols=None):
     import arrayio
 
     return arrayio.read(filename, hcols=num_header_cols)
+
 
 def _parse_cluster(options_cluster, indexes_include_headers, MATRIX):
     # Return a vector of clusters, where each cluster is an integer
@@ -34,6 +36,7 @@ def _parse_cluster(options_cluster, indexes_include_headers, MATRIX):
     for i, g in index2cluster.iteritems():
         cluster[i] = g
     return cluster
+
 
 def _parse_cluster_file(cluster_file, MATRIX):
     # Return a vector of clusters, where each cluster is an integer
@@ -75,14 +78,17 @@ def _parse_cluster_file(cluster_file, MATRIX):
             cluster[i] = cluster[i] - min(clean)
     return cluster
 
+
 def main():
     from optparse import OptionParser, OptionGroup
+    import numpy
     import arrayio
     from genomicode import jmath
     from genomicode import pcalib
     from genomicode import colorlib
     from genomicode import prismlib
 
+    # Does a PCA on the columns.
     usage = "usage: %prog [options] filename outfile.png"
     parser = OptionParser(usage=usage, version="%prog 01")
 
@@ -99,10 +105,17 @@ def main():
         help="Number of genes to use.")
     parser.add_option(
         "--prism_file", 
-        help="Write the results out to a prism-formatted file.")
+        help="Write the column principal components to a prism-formatted "
+        "file.")
     parser.add_option(
-        "-v", "--verbose", default=False, action="store_true",
-        help="")
+        "--row_pc_file",
+        help="Write the principal components of the rows to this file.")
+    parser.add_option(
+        "--col_pc_file",
+        help="Write the principal components of the cols to this file.")
+    #parser.add_option(
+    #    "-v", "--verbose", default=False, action="store_true",
+    #    help="")
 
     group = OptionGroup(parser, "Clustering")
     parser.add_option_group(group)
@@ -130,6 +143,9 @@ def main():
     group.add_option(
         "--label", default=False, action="store_true",
         help="Label the samples.")
+    group.add_option(
+        "--label_axes", default=False, action="store_true",
+        help="Label the axes.")
     group.add_option(
         "--scale_label", type=float, default=1.0, 
         help="Scale the size of the labels.")
@@ -194,27 +210,10 @@ def main():
         height, width = int(options.width*0.75), options.width
     pcalib.plot_scatter(
         X, Y, outfile, group=cluster, color=color, title=options.title,
-        label=LABEL, xlabel=False, ylabel=False,
+        label=LABEL, xlabel=options.label_axes, ylabel=options.label_axes,
         scale_label=options.scale_label, height=height, width=width)
 
-    if options.verbose:
-        # Write out the principal components.
-        assert cluster is None or len(cluster) == len(principal_components)
-        x = ["PC%02d (%.2f%%)" % (i, 100*perc_var[i]) for i in range(K)]
-        header = ["Index", "Sample", "Cluster", "Color"] + x
-        print "\t".join(header)
-        for i in range(len(principal_components)):
-            x = MATRIX.col_names(arrayio.COL_ID)[i]
-            c = ""
-            if color:
-                c = colorlib.rgb2hex(color[i])
-            clust = ""
-            if cluster is not None:
-                clust = cluster[i]
-            x = [i+1, x, clust, c] + principal_components[i]
-            assert len(x) == len(header)
-            print "\t".join(map(str, x))
-
+    # Write out the scatter plot in Prism format.
     if options.prism_file:
         # Write out as prism format.
         num_series = 1
@@ -239,6 +238,45 @@ def main():
 
         prismlib.write_scatterplot(options.prism_file, DATA, rownames)
 
+    if options.col_pc_file:
+        # Write out the principal components.
+        handle = open(options.col_pc_file, 'w')
+        assert cluster is None or len(cluster) == len(principal_components)
+        x = ["PC%02d (%.2f%%)" % (i, 100*perc_var[i]) for i in range(K)]
+        header = ["Index", "Sample", "Cluster", "Color"] + x
+        print >>handle, "\t".join(header)
+        for i in range(len(principal_components)):
+            x = MATRIX.col_names(arrayio.COL_ID)[i]
+            c = ""
+            if color and color[i] is not None:
+                c = colorlib.rgb2hex(color[i])
+            clust = ""
+            if cluster is not None and cluster[i] is not None:
+                clust = cluster[i]
+            x = [i+1, x, clust, c] + principal_components[i]
+            assert len(x) == len(header)
+            print >>handle, "\t".join(map(str, x))
+        handle.close()
+
+    # Look at the principal components on the rows.
+    if options.row_pc_file:
+        handle = open(options.row_pc_file, 'w')
+        row_names = MATRIX.row_names()
+        x = ["PC%02d (%.2f%%)" % (i, 100*perc_var[i]) for i in range(K)]
+        header = ["Index"] + row_names + x
+        print >>handle, "\t".join(header)
+
+        # U  nrow x k  columns are principal components
+        # V  k x ncol  rows are principal components
+        U, s, V = numpy.linalg.svd(MATRIX._X, full_matrices=False)
+        for i in range(len(U)):
+            assert len(U[i]) == K, "%d %d" % (len(U), len(U[i]), K)
+            n = [MATRIX.row_names(x)[i] for x in row_names]
+            x = [i+1] + n + list(U[i])
+            assert len(x) == len(header)
+            print >>handle, "\t".join(map(str, x))
+        handle.close()
+        
 
 if __name__ == '__main__':
     main()

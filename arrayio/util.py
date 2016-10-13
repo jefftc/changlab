@@ -565,6 +565,7 @@ def _num_headers_h(matrix):
         _rule_scale_factor_no_value,
         ]
 
+
     if not matrix:
         return 0, 0
     num_rows, num_cols = len(matrix), len(matrix[0])
