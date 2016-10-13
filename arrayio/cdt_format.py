@@ -32,8 +32,10 @@ def is_format(locator_str, hrows=None, hcols=None):
         return False
 
     # Read 5 lines and count the headers.
+    # Actually, sometimes 5 lines not enough.  Working on matrix with
+    # 13 lines of header.
     handle = filelib.openfh(locator_str)
-    lines = [handle.readline() for i in range(5)]
+    lines = [handle.readline() for i in range(20)]
     handle.close()   # need to close it properly, or gunzip might not die.
     lines = [x for x in lines if x]
     matrix = [line.rstrip("\r\n").split("\t") for line in lines]

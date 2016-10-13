@@ -98,7 +98,9 @@ class AnnotationMatrix:
         return None
         #raise KeyError, header
     def normalize_header_i(self, header, index_base1=False):
-        # Return the 0-based index.  Same arguments as normalize_header.
+        # Return the 0-based index.  If index_base1 is a true value,
+        # then will return a 1-based index.  Same arguments as
+        # normalize_header.
         h = self.normalize_header(header, index_base1=index_base1)
         if h is None:
             return None

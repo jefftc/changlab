@@ -284,7 +284,8 @@ def main():
     from genomicode import genesetlib
 
     # Option for case insensitive comparison?
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Writes comparison matrix to stdout.")
     parser.add_argument(
         "geneset_file", help="File in GMX or GMT format.")
     parser.add_argument(

@@ -43,6 +43,11 @@
 # merge_annots_to_new_col
 # merge_annots_to_new_col_skip_empty
 # split_annots
+# split_chr_start_end
+#
+# tcga_relabel_patient_barcodes
+# tcga_label_patient_barcodes
+# tcga_label_by_tissue_type
 #
 # _add_annots
 # _subtract_annots
@@ -642,7 +647,7 @@ def copy_column(MATRIX, copy_column):
         assert len(x) == 2
         x, new_header = x
         index = MATRIX.normalize_header_i(x, index_base1=True)
-        assert index is not None
+        assert index is not None, "Unknown header: %s" % x
         #index = int(index)
         #assert index >= 1 and index <= len(MATRIX.headers)
         #index -= 1  # convert to 0-based
@@ -1286,6 +1291,99 @@ def tcga_relabel_patient_barcodes(MATRIX, arg):
                 barcode = x[0]
             annots[i] = barcode
 
+    return MATRIX
+
+
+def tcga_label_patient_barcodes(MATRIX, arg):
+    # string that should be <src header>,<dst header>
+    if not arg:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+    import slice_matrix
+
+    MATRIX = MATRIX.copy()
+
+    x = arg.split(",")
+    assert len(x) == 2, "Format: <src header>,<dst header>"
+    src_header, dst_header = x
+
+    i_src = MATRIX.normalize_header_i(src_header, index_base1=True)
+    assert i_src is not None, "Missing header: %s" % src_header
+    i_dst = MATRIX.normalize_header_i(dst_header, index_base1=True)
+    if i_dst is None:
+        # Create this header.
+        headers = MATRIX.headers[:]
+        all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+        headers.append(dst_header)
+        x = [""] * MATRIX.num_annots()
+        all_annots.append(x)
+        MATRIX = AnnotationMatrix.create_from_annotations(
+            headers, all_annots, headerlines=MATRIX.headerlines)
+    i_dst = MATRIX.normalize_header_i(dst_header, index_base1=True)
+    assert i_dst is not None, "Missing header: %s" % dst_header
+
+    h_src = MATRIX.headers_h[i_src]
+    h_dst = MATRIX.headers_h[i_dst]
+    src_annots = MATRIX.header2annots[h_src]
+    dst_annots = MATRIX.header2annots[h_dst]
+
+    # Change the annotations in place.
+    for i, barcode in enumerate(src_annots):
+        try:
+            x = slice_matrix._parse_tcga_barcode(barcode)
+        except AssertionError, x:
+            # Keep all samples that don't look like a TCGA barcode.
+            if str(x).startswith("Invalid barcode"):
+                pass
+            else:
+                raise
+        else:
+            barcode = x[0]
+        dst_annots[i] = barcode
+
+    return MATRIX
+
+
+def tcga_label_by_tissue_type(MATRIX, arg):
+    # string that should be <src header>,<dst header>
+    if not arg:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+    import slice_matrix
+
+    MATRIX = MATRIX.copy()
+
+    x = arg.split(",")
+    assert len(x) == 2, "Format: <src header>,<dst header>"
+    src_header, dst_header = x
+
+    i_src = MATRIX.normalize_header_i(src_header, index_base1=True)
+    assert i_src is not None, "Missing header: %s" % src_header
+    i_dst = MATRIX.normalize_header_i(dst_header, index_base1=True)
+    if i_dst is None:
+        # Create this header.
+        headers = MATRIX.headers[:]
+        all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+        headers.append(dst_header)
+        x = [""] * MATRIX.num_annots()
+        all_annots.append(x)
+        MATRIX = AnnotationMatrix.create_from_annotations(
+            headers, all_annots, headerlines=MATRIX.headerlines)
+    i_dst = MATRIX.normalize_header_i(dst_header, index_base1=True)
+    assert i_dst is not None, "Missing header: %s" % dst_header
+
+    h_src = MATRIX.headers_h[i_src]
+    h_dst = MATRIX.headers_h[i_dst]
+    src_annots = MATRIX.header2annots[h_src]
+    dst_annots = MATRIX.header2annots[h_dst]
+
+    # Change the annotations in place.
+    for i, barcode in enumerate(src_annots):
+        x = slice_matrix._parse_tcga_tissue_type(barcode)
+        if x is None:
+            x = barcode
+        dst_annots[i] = x
+        
     return MATRIX
 
 
@@ -2576,7 +2674,20 @@ def main():
         "--tcga_relabel_patient_barcodes", 
         help="Simplify barcodes to just the patient information.  "
         "Format: <header>.  <header> may be the name of the header, "
-        "or a 1-based index.")
+        "or a 1-based index.  Will change this column in place.")
+    group.add_argument(
+        "--tcga_label_patient_barcodes", 
+        help="Simplify barcodes to just the patient information.  "
+        "Format: <src header>,<dst header>.  <src header> may be the name "
+        "of the header, or a 1-based index.  Will save the results to "
+        "<dst header>.  If <dst header> doesn't exist, will create it.")
+    group.add_argument(
+        "--tcga_label_by_tissue_type",
+        help="Label PRIMARY, RECURRENT, METASTATIC, ADDITIONAL_METASTATIC, "
+        "NORMAL_BLOOD, or NORMAL_SOLID.  "
+        "Format: <src header>,<dst header>.  <src header> may be the name "
+        "of the header, or a 1-based index.  Will save the results to "
+        "<dst header>.  If <dst header> doesn't exist, will create it.")
 
     group = parser.add_argument_group(title="Select by annotation")
     group.add_argument(
@@ -2799,6 +2910,9 @@ def main():
     # TCGA stuff
     MATRIX = tcga_relabel_patient_barcodes(
         MATRIX, args.tcga_relabel_patient_barcodes)
+    MATRIX = tcga_label_patient_barcodes(
+        MATRIX, args.tcga_label_patient_barcodes)
+    MATRIX = tcga_label_by_tissue_type(MATRIX, args.tcga_label_by_tissue_type)
 
     # Selection by annotation.
     MATRIX = select_if_annot_is(MATRIX, args.select_if_annot_is)

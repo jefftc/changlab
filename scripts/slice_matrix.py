@@ -1725,6 +1725,39 @@ def _parse_tcga_barcode(barcode):
     return patient, sample, aliquot, analyte
 
 
+def _parse_tcga_tissue_type(barcode):
+    # Take a full bar code and return:
+    # PRIMARY, RECURRENT, METASTATIC, ADDITIONAL_METASTATIC, 
+    # NORMAL_BLOOD, or NORMAL_SOLID
+    # Return None if can't parse.
+
+    try:
+        x = _parse_tcga_barcode(barcode)
+    except AssertionError, x:
+        # Keep all samples that don't look like a TCGA barcode.
+        if ignore_non_tcga and str(x).startswith("Invalid barcode"):
+            return None
+        raise
+    
+    assert len(x) >= 2
+    patient, sample = x[:2]
+    assert len(sample) >= 2
+    sample_i = int(sample[:2])
+    if sample_i == 1:
+        return "PRIMARY"
+    elif sample_i == 2:
+        return "RECURRENT"
+    elif sample_i == 6:
+        return "METASTATIC"
+    elif sample_i == 7:
+        return "ADDITIONAL_METASTATIC"
+    elif sample_i == 10:
+        return "NORMAL_BLOOD"
+    elif sample_i == 11:
+        return "NORMAL_SOLID"
+    raise AssertionError, "Unknown sample: %s" % sample
+
+
 def tcga_normal_only(MATRIX, cancer_only, ignore_non_tcga):
     from arrayio import tab_delimited_format as tdf
 
@@ -1898,34 +1931,11 @@ def tcga_label_by_tissue_type(MATRIX, label_tissue, ignore_non_tcga):
     
     for i in range(len(barcodes)):
         barcode = barcodes[i]
-        try:
-            x = _parse_tcga_barcode(barcode)
-        except AssertionError, x:
-            # Keep all samples that don't look like a TCGA barcode.
-            if ignore_non_tcga and str(x).startswith("Invalid barcode"):
-                pass
-            else:
-                raise
-        else:
-            assert len(x) >= 2
-            patient, sample = x[:2]
-            assert len(sample) >= 2
-            sample_i = int(sample[:2])
-            if sample_i == 1:
-                barcode = "PRIMARY"
-            elif sample_i == 2:
-                barcode = "RECURRENT"
-            elif sample_i == 6:
-                barcode = "METASTATIC"
-            elif sample_i == 7:
-                barcode = "ADDITIONAL_METASTATIC"
-            elif sample_i == 10:
-                barcode = "NORMAL_BLOOD"
-            elif sample_i == 11:
-                barcode = "NORMAL_SOLID"
-            else:
-                raise AssertionError, "Unknown sample: %s" % sample
-        barcodes[i] = barcode
+        x = _parse_tcga_tissue_type(barcode)
+        if x is None:
+            # If this doesn't look like a TCGA barcode, then don't change it.
+            x = barcode
+        barcodes[i] = x
     MATRIX_new._col_names[name] = barcodes
 
     return MATRIX_new
