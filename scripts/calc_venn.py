@@ -108,10 +108,14 @@ def match_gene_sets(genesets, delimiter):
     return genesets, pretty_names
 
 
-def draw_venn(
+
+def draw_venn1(
     filename, all_names, name2genes, all_labels, args_margin,
     args_title, args_title_size, args_title_y,
     args_label_size, args_count_size):
+    # Draw a Venn diagram using the VennDiagram package.
+    # Only up to 5 areas.  No Euler plots.
+    # Generates TIFF files.
     import sys
     import StringIO
     from genomicode import jmath
@@ -122,11 +126,11 @@ def draw_venn(
     R = jmath.start_R()
 
     # Prevent R from writing junk to the screen.
-    handle = StringIO.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = handle
+    handle1, handle2 = StringIO.StringIO(), StringIO.StringIO()
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = handle1, handle2
     R_fn('library', R_var('VennDiagram'))
-    sys.stdout = old_stdout
+    sys.stdout, sys.stderr = old_stdout, old_stderr
 
     # venn diagram can't handle missing gene sets.  Get rid of them.
     I = [i for (i, x) in enumerate(all_names) if x in name2genes]
@@ -235,47 +239,160 @@ def draw_venn(
         #"cat.default.pos" : "text",
         "cat.default.pos" : "outer",
         "margin" : margin,
+
+        #"euler.d" : R_var("TRUE"),
+        #"scaled" : R_var("TRUE"),
         }
     R_fn(
         "venn.diagram", R_var("x"), filename=filename, **params)
 
-    ## area1 = len(name2genes[n1])
-    ## area2 = len(name2genes[n2])
-    ## area3 = len(name2genes[n3])
-    ## n12 = len(pair2common[(n1, n2)])
-    ## n23 = len(pair2common[(n2, n3)])
-    ## n13 = len(pair2common[(n1, n3)])
-    ## x1 = pair2common[(n1, n2)]
-    ## x2 = name2genes[n3]
-    ## n123 = len(set(x1).intersection(x2))
-    ## category = all_names
-    ## fontfamily = ["Helvetica"]*7
-    ## cat_fontfamily = ["Helvetica"]*3
-    ## #fill = ["blue", "red", "green"]
-    ## fill = ["cornflowerblue", "green", "yellow"]
-    ## cat_col = ["cornflowerblue", "green", "yellow"]
 
-    ## R_fn(
-    ##     "bitmap", filename, type="png256",
-    ##     height=1600, width=1600, units="px", res=300)
-    ## params = {
-    ##     "fontfamily" : fontfamily,
-    ##     #"col" : "transparent",
-    ##     "fill" : fill,
+def draw_venn2(
+    filename, all_names, name2genes, all_labels, args_margin,
+    args_title, args_title_size, args_title_y,
+    args_label_size, args_count_size):
+    # Draw a Venn diagram using the venneuler package.
+    # Generates PDF files.
+    # Not implemented yet:
+    #   args_title_y
+    # Not good, because it doesn't provide a way to label the
+    # intersection.
+    import sys
+    import string
+    import StringIO
+    from genomicode import jmath
 
-    ##     #"lty" : "blank",
-    ##     #"cex" : 2,
+    R_fn = jmath.R_fn
+    R_var = jmath.R_var
+    R_equals = jmath.R_equals
+    
+    R = jmath.start_R()
 
-    ##     # Labels
-    ##     "category" : category,
-    ##     "cat.fontfamily" : cat_fontfamily,
-    ##     #"cat.cex" : 2,
-    ##     "cat.col" : cat_col,
-    ##     }
-    ## R_fn(
-    ##     "draw.triple.venn", area1, area2, area3, n12, n23, n13, n123,
-    ##     **params)
-    ## jmath.R_fn("dev.off")
+    # Prevent R from writing junk to the screen.
+    handle1, handle2 = StringIO.StringIO(), StringIO.StringIO()
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = handle1, handle2
+    R_fn('library', R_var('venneuler'))
+    sys.stdout, sys.stderr = old_stdout, old_stderr
+
+    # For figuring out the colors for the legend.
+    x = [
+        "col.fn <- function(col, alpha=0.3) {",
+        "  col<- hcl(col * 360, 130, 60)",
+        "  col <- col2rgb(col)/255",
+        "  col <- rgb(col[1, ], col[2, ], col[3, ], alpha)",
+        "  col",
+        "}",
+        ]
+    x = "\n".join(x)
+    R(x)
+
+    assert len(all_names) < len(string.ascii_uppercase)
+    varnames = list(string.ascii_uppercase[:len(all_names)])
+
+    # Assign each of the genes to a specific list.
+    gene2names = {}  # gene -> list of names
+    for name in all_names:
+        genes = name2genes.get(name, [])
+        for gene in genes:
+            if gene not in gene2names:
+                gene2names[gene] = []
+            assert name not in gene2names[gene]
+            gene2names[gene].append(name)
+
+    ## Make a matrix where the gene is the first column, and sets are
+    ## the second column.
+    #data = []
+    #for gene, names in gene2names.iteritems():
+    #    for n in names:
+    #        i = all_names.index(n)
+    #        vname = varnames[i]
+    #        x = [gene, vname]
+    #        data.append(x)
+    
+    # Calculate the intersection between each of the lists.
+    combo2genes = {}  # (gs1, gs2[, ...]) -> list of genes
+    for gene, names in gene2names.iteritems():
+        vnames = []
+        for n in names:
+            i = all_names.index(n)
+            vnames.append(varnames[i])
+        combo = tuple(vnames)
+        if combo not in combo2genes:
+            combo2genes[combo] = []
+        combo2genes[combo].append(gene)
+    sets = []
+    weights = []
+    for combo in sorted(combo2genes):
+        num_genes = len(combo2genes[combo])
+        n = "&".join(combo)
+        sets.append(n)
+        weights.append(num_genes)
+    R_equals(weights, "M")
+    R_equals(sets, "n")
+    R("names(M) <- n")
+    #R("print(M)")
+
+    # Maybe can draw legend instead.
+    # http://stackoverflow.com/questions/9121956/legend-venn-diagram-in-venneuler
+
+    R_fn("venneuler", R_var("M"), RETVAL="v")
+    #R("print(v)")
+
+    # Bigger margin is smaller figure.
+    margin = 0.10*args_margin
+    cex = 0.65*args_count_size
+    cat_cex = 0.75*args_label_size
+
+    main = R_var("NULL")
+    if args_title:
+        main = args_title
+    main_cex = 2.0 * args_title_size
+
+    font_family = "Helvetica"
+
+    params = {
+        }
+
+    # Somehow doesn't work with transparency.
+    #R_fn(
+    #    "bitmap", filename, type="pdfwrite",
+    #    height=1600, width=1600, units="px", res=300)
+    R_fn("pdf", filename)
+    R("COL <- col.fn(v$colors)")
+    R("LABS <- v$labels")
+    for i in range(len(all_names)):
+        R('v$labels[%d] <- ""' % (i+1))
+    R_fn("plot", R_var("v"))
+    R_fn("title", main=main, fontfamily=font_family, **{"cex.main" : main_cex})
+    # Write the counts myself, so I can control the text size.
+    # Doesn't work.  Hard to find right place to label.
+    #rnames = list(R("rownames(v$centers)"))
+    #for i in range(len(sets)):
+    #    x = sets[i].split("&")
+    #    if len(x) == 1:
+    #        # If this is a single category, plot label in middle of circle.
+    #        i = rnames.index(x[0])
+    #        x = R("v$centers[%d, 1]" % (i+1))[0]
+    #        y = R("v$centers[%d, 2]" % (i+1))[0]
+    #        R_fn("text", x, y, weights[i], cex=cex)
+    #for i in range(len(weights)):
+    #    x = R("v$centers[%d, 1]" % (i+1))[0]
+    #    y = R("v$centers[%d, 2]" % (i+1))[0]
+    #    R_fn("text", x, y, weights[i], cex=cex)
+    #for i in range(len(sets)):
+    #    if sets[i].find("&") >= 0:
+    #        continue
+    #    x = R("v$centers[%d, 1]" % (i+1))[0]
+    #    y = R("v$centers[%d, 2]" % (i+1))[0]
+    #    R_fn("text", x, y, sets[i], cex=cat_cex)
+
+    # Draw the legend so I know what is what.
+    R_fn("match", varnames, R_var("LABS"), RETVAL="O")
+    #R_fn(
+    #    "legend", "topleft", inset=0, legend=all_labels,
+    #    fill=R_var("COL[O]"))
+    R_fn("dev.off")
 
 
 def main():
@@ -291,8 +408,10 @@ def main():
     parser.add_argument(
         "-o", dest="outfile", help="Save the intersection to this "
         "(GMX or GMT) file.")
+    #parser.add_argument(
+    #    "--plotfile", help="Save a TIFF plot to this file.")
     parser.add_argument(
-        "--plotfile", help="Save a TIFF plot to this file.")
+        "--plotfile", help="Save a PDF plot to this file.")
 
     group = parser.add_argument_group(title="Gene Sets")
     #parser.add_argument(
@@ -356,7 +475,7 @@ def main():
     args = parser.parse_args()
     assert os.path.exists(args.geneset_file), \
            "File not found: %s" % args.geneset_file
-    assert args.num_to_compare >= 2 and args.num_to_compare <= 5
+    assert args.num_to_compare >= 2 and args.num_to_compare <= 8
 
     assert args.margin > 0 and args.margin < 100
     assert args.title_size > 0 and args.title_size < 10
@@ -519,7 +638,7 @@ def main():
     if args.plotfile:
         x = _name_replace(args.name_replace, all_labels, name2genes)
         all_labels, name2genes = x
-        draw_venn(
+        draw_venn1(
             args.plotfile, all_names, name2genes, all_labels, args.margin,
             args.title, args.title_size, args.title_y, 
             args.label_size, args.count_size)

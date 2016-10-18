@@ -81,9 +81,10 @@ import BasicDataTypes as BDT
 
 YESNO = BDT.YESNO  # for convenience
 
-ALIGNERS = [
-    "unknown", "bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem", "tophat",
-    "star", "star_unstranded"]
+DNA_ALIGNERS = ["bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem"]
+RNA_ALIGNERS = ["tophat", "star", "star_unstranded"]
+ALIGNERS = ["unknown"] + DNA_ALIGNERS + RNA_ALIGNERS
+
 # star_unstranded is to figure out the strand (without causing cycles).
 ##REFERENCE_GENOMES = ["hg18", "hg19", "mm9", "dm3"]
 

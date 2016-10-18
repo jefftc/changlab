@@ -144,11 +144,6 @@ def generate_network(rulebase, outtype,
     from Betsy import bie3
 
     assert outtype
-    a_or_an = "a"
-    if outtype.lower()[0] in "aeiou":
-        a_or_an = "an"
-    print "Generating a network that produces %s %s." % (a_or_an, outtype)
-    sys.stdout.flush()
 
     # Get the out_datatype.
     # BUG: Should separate the custom attributes for the out_datatype.
@@ -167,6 +162,18 @@ def generate_network(rulebase, outtype,
     #    for x in cattr.attributes:
     #        assert x.name not in attrs
     #        attrs[x.name] = x.value
+
+    a_or_an = "a"
+    if outtype.lower()[0] in "aeiou":
+        a_or_an = "an"
+    print "Generating a network that produces %s %s:" % (
+        a_or_an, out_data.datatype.name)
+    for name in sorted(out_data.attributes):
+        value = out_data.attributes[name]
+        x = "  %s=%s" % (name, value)
+        print x
+    
+    sys.stdout.flush()
 
     # There may be a bug in here somehow where impossible networks can
     # be created.  e.g. FastqFolder:orientation="unknown" ->
@@ -640,7 +647,7 @@ def prune_pipelines(
             
     if not paths:
         print "All pipelines pruned.  This can happen if:"
-        print "  1.  There is a conflicting data attribute in the  pipeline."
+        print "  1.  There is a conflicting data attribute in the pipeline."
         print "  2.  A --mattr option is missing."
         print "  3.  There is a bug in the network generation."
         print "  4.  There is a bug in the pipeline pruning."

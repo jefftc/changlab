@@ -81,7 +81,8 @@ normalize.inputs <- function(X, Y, geneid, genenames, X.is.logged) {
   Y <- Y[I]
 
   Y.orig <- Y
-  group.names <- sort(unique(Y.orig))
+  #group.names <- sort(unique(Y.orig))
+  group.names <- unique(Y.orig)
   Y <- rep(NA, length(Y.orig))
   for(i in 1:length(group.names))
     Y[Y.orig == group.names[i]] <- i

@@ -367,6 +367,9 @@ ManyCallerVCFFolders = DataType(
         "somatic", YESNO, "no", "no",
         help="Whether the variants here are from the somatic cancer genome "
         "(no germline)."),
+    AttributeDef(
+        "with_rna_callers", YESNO, "no", "no",
+        help="Whether to include variant callers based on RNA-Seq data."),
     )
 
 SimpleVariantFile = DataType(
@@ -819,17 +822,12 @@ all_modules = [
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint(
-            "aligner", CAN_BE_ANY_OF,
-            # TODO: replace with constant: DNA_ALIGNERS
-            ["bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem"], 0),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.DNA_ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT, 0),
         # RNA BamFolder
         Constraint("sorted", MUST_BE, "coordinate", 1),
         Constraint("indexed", MUST_BE, "yes", 1),
-        Constraint(
-            # TODO: replace with constant: RNA_ALIGNERS
-            "aligner", CAN_BE_ANY_OF, ["tophat", "star"], 1),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS, 1),
         Constraint("samtools_indexed", MUST_BE, "yes", 3),
         Consequence("caller", SET_TO, "radia"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
@@ -858,7 +856,9 @@ all_modules = [
             VCFFolder, # MuSE
             ],
         ManyCallerVCFFolders,
+        Consequence("vartype", SET_TO, "snp"),
         Consequence("somatic", SET_TO, "yes"),
+        Consequence("with_rna_callers", SET_TO, "no"),
         Constraint("caller", MUST_BE, "mutect", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
@@ -877,7 +877,6 @@ all_modules = [
         Constraint("caller", MUST_BE, "muse", 5),
         Constraint("vartype", MUST_BE, "snp", 5),
         Constraint("somatic", MUST_BE, "yes", 5),
-        Consequence("vartype", SET_TO, "snp"),
         help="Call variants with all implemented somatic variant callers.",
         ),
 
@@ -893,7 +892,9 @@ all_modules = [
             VCFFolder, # Radia
             ],
         ManyCallerVCFFolders,
+        Consequence("vartype", SET_TO, "snp"),
         Consequence("somatic", SET_TO, "yes"),
+        Consequence("with_rna_callers", SET_TO, "yes"),
         Constraint("caller", MUST_BE, "mutect", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
@@ -915,7 +916,6 @@ all_modules = [
         Constraint("caller", MUST_BE, "radia", 6),
         Constraint("vartype", MUST_BE, "snp", 6),
         Constraint("somatic", MUST_BE, "yes", 6),
-        Consequence("vartype", SET_TO, "snp"),
         help="Call variants with all implemented somatic variant callers.",
         ),
 
@@ -929,6 +929,7 @@ all_modules = [
         ManyCallerVCFFolders,
         Consequence("vartype", SET_TO, "snp"),
         Consequence("somatic", SET_TO, "no"),
+        Consequence("with_rna_callers", SET_TO, "no"),
         Constraint("caller", MUST_BE, "gatk", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
         Constraint("somatic", MUST_BE, "no", 0),
@@ -949,8 +950,9 @@ all_modules = [
             VCFFolder, # Varscan
             ],
         ManyCallerVCFFolders,
-        Consequence("somatic", SET_TO, "no"),
         Consequence("vartype", SET_TO, "indel"),
+        Consequence("somatic", SET_TO, "no"),
+        Consequence("with_rna_callers", SET_TO, "no"),
         Constraint("caller", MUST_BE, "gatk", 0),
         Constraint("vartype", MUST_BE, "indel", 0),
         Constraint("somatic", MUST_BE, "no", 0),
@@ -968,6 +970,7 @@ all_modules = [
         ManyCallerVCFFolders, SimpleVariantFile,
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
         Consequence("vartype", SAME_AS_CONSTRAINT),
+        Constraint("with_rna_callers", CAN_BE_ANY_OF, YESNO),
         ),
 
     ModuleNode(
@@ -1194,10 +1197,7 @@ all_modules = [
         Constraint("vartype", SAME_AS, 0, 1),
         Consequence("vartype", SAME_AS_CONSTRAINT),
         Constraint("coordinates_from", MUST_BE, "simplevariantmatrix", 1),
-        Constraint(
-            "aligner", CAN_BE_ANY_OF,
-            # TODO: replace with constant: DNA_ALIGNERS
-            ["bowtie1", "bowtie2", "bwa_backtrack", "bwa_mem"], 1),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.DNA_ALIGNERS, 1),
         help="Add the coverage and baseline variant allele frequencies at "
         "each position."
         ),
@@ -1211,14 +1211,13 @@ all_modules = [
         Consequence("filtered_calls", SAME_AS_CONSTRAINT),
         Constraint("with_rna_coverage", MUST_BE, "no", 0),
         Consequence("with_rna_coverage", SET_TO, "yes"),
+        # Simplification: can't have RNA coverage without DNA coverage.
         Constraint("with_coverage", MUST_BE, "yes", 0),
         Consequence("with_coverage", SAME_AS_CONSTRAINT),
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),
         Constraint("vartype", SAME_AS, 0, 1),
         Consequence("vartype", SAME_AS_CONSTRAINT),
-        Constraint(
-            # TODO: replace with constant: RNA_ALIGNERS
-            "aligner", CAN_BE_ANY_OF, ["tophat", "star"], 1),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS, 1),
         Constraint("coordinates_from", MUST_BE, "simplevariantmatrix", 1),
         help="Add the coverage and baseline variant allele frequencies "
         "from RNA-Seq data at each position."
@@ -1287,7 +1286,9 @@ all_modules = [
             VCFFolder, # JointSNVMix
             ],
         ManyCallerVCFFolders,
+        Consequence("vartype", SET_TO, "indel"),
         Consequence("somatic", SET_TO, "yes"),
+        Consequence("with_rna_callers", SET_TO, "no"),
         Constraint("caller", MUST_BE, "varscan", 0),
         Constraint("vartype", MUST_BE, "indel", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
@@ -1297,7 +1298,6 @@ all_modules = [
         Constraint("caller", MUST_BE, "jointsnvmix", 2),
         Constraint("vartype", MUST_BE, "indel", 2),
         Constraint("somatic", MUST_BE, "yes", 2),
-        Consequence("vartype", SET_TO, "indel"),
         help="Call variants with all implemented somatic variant callers.",
         ),
 

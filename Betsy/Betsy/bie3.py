@@ -3017,6 +3017,8 @@ def _prune_by_custom_attributes(
     network, custom_attributes, paths, nodeid2parents):
     # Keep only the paths that match the attributes desired by the
     # user.  custom_attributes is a list of CustomAttribute objects.
+    import itertools
+    
     if not custom_attributes:
         return paths
 
@@ -3237,6 +3239,7 @@ def _prune_by_custom_attributes(
         # don't use it.
         conflict = False    # any attribute conflicts
         ambiguous = False   # any attribute is ambiguous
+        good = False        # attributes match
         for attr in cattrs.attributes:
             assert attr.name in node.attributes
             uvalue = attr.value                    # user value
@@ -3253,6 +3256,8 @@ def _prune_by_custom_attributes(
             if dtype == TYPE_ATOM:
                 if uvalue != dvalue:
                     conflict = True
+                else:
+                    good = True
             elif dtype == TYPE_ENUM:
                 if uvalue in dvalue:
                     ambiguous = True
@@ -3260,6 +3265,12 @@ def _prune_by_custom_attributes(
                     conflict = True
             else:
                 raise AssertionError
+        # If it matches any custom attribute, then accept.
+        if good:
+            conflict = False
+            ambiguous = False
+        if ambiguous:
+            conflict = False
         if conflict:
             mismatch_node_ids[data_node_id] = cattrs
             debug_print(DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "conflict")
@@ -3283,6 +3294,7 @@ def _prune_by_custom_attributes(
     # For each pathway, see if it contains a mismatch or ambiguous node.
     bc_cache = {}
     fc_cache = {}
+    # (module_id, in_data_ids, out_data_id) -> bool (is valid output)
     path_cache = {}
 
     delete = {}
@@ -3296,8 +3308,13 @@ def _prune_by_custom_attributes(
         mismatch_ids = p.node_ids.intersection(mismatch_node_ids)
         if mismatch_ids:
             delete[i] = 1
-            reason[i] = "Nodes (%s) do not match custom attribute." % \
-                        ",".join(map(str, mismatch_ids))
+            x1 = "Node"
+            x2 = "does"
+            if len(mismatch_ids) > 1:
+                x1 = "Nodes"
+                x2 = "do"
+            reason[i] = "%s (%s) %s not match custom attribute." % (
+                x1, ",".join(map(str, mismatch_ids)), x2)
             debug_print(
                 DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d.  %s" % (i, reason[i]))
             continue
@@ -3330,22 +3347,38 @@ def _prune_by_custom_attributes(
             if out_data_id in match:  # don't check if already done
                 continue
 
-            cattrs = ambiguous_node_ids[out_data_id]
-            attrs = {}
-            for x in cattrs.attributes:
-                attrs[x.name] = x.value
-
-            #name = network.nodes[out_data_id].datatype.name
-            #attrs = dname2attrs[name]
-            #attrs = nodeid2attrs[out_data_id]
             key = module_id, in_data_ids, out_data_id
             if key not in path_cache:
-                # See if this set of attributes can be created from
-                # this module and inputs.
-                x = _is_valid_output_from_input_and_module_ids(
-                    network, in_data_ids, module_id, out_data_id,
-                    attrs, fc_cache)
-                path_cache[key] = x
+                cattrs = ambiguous_node_ids[out_data_id]
+
+                path_cache[key] = False
+                # See if any combination of the user attributes for
+                # this node are valid.  Allow the user to specify more
+                # than one potential value per attribute.
+                name2values = {}
+                for x in cattrs.attributes:
+                    if x.name not in name2values:
+                        name2values[x.name] = []
+                    name2values[x.name].append(x.value)
+                names = sorted(name2values)
+                values = [name2values[x] for x in names]
+                for vs in itertools.product(*values):
+                    attrs = {}
+                    for n, v in zip(names, vs):
+                        attrs[n] = v
+
+                    # See if this set of attributes can be created from
+                    # this module and inputs.
+                    x = _is_valid_output_from_input_and_module_ids(
+                        network, in_data_ids, module_id, out_data_id,
+                        attrs, fc_cache)
+                    if x:
+                        path_cache[key] = True
+                        break
+                #attrs = {}
+                #for x in cattrs.attributes:
+                #    attrs[x.name] = x.value
+                
             if path_cache[key]:
                 match[out_data_id] = 1
             # Optimization: stop checking if we've already resolved
@@ -3357,9 +3390,12 @@ def _prune_by_custom_attributes(
         if len(match) != len(ambig_ids):
             delete[i] = 1
             x = [x for x in ambig_ids if x not in match]
+            x1 = "node"
+            if len(x) > 1:
+                x1 = "nodes"
             reason[i] = \
-                      "Custom attributes can not be generated in nodes (%s)." \
-                      % ",".join(map(str, x))
+                      "Custom attributes can not be generated in %s (%s)." % (
+                x1, ",".join(map(str, x)))
             debug_print(
                 DEBUG_PRUNE_CUSTOM_ATTRIBUTES, "%d.  %s" % (i, reason[i]))
 

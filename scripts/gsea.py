@@ -93,17 +93,29 @@ DATABASE2GENESET = {
     ## "gene_ontology" : "c5.all.v5.0.symbols.gmt",
     ## "gene_ontology:process" : "c5.bp.v5.0.symbols.gmt",
 
-    "positional" : "c1.all.v5.1.symbols.gmt",
-    "curated" : "c2.all.v5.1.symbols.gmt",
-    "curated:canonical" : "c2.cp.v5.1.symbols.gmt",
-    "curated:biocarta" : "c2.cp.biocarta.v5.1.symbols.gmt",
-    "curated:kegg" : "c2.cp.kegg.v5.1.symbols.gmt",
-    "curated:reactome" : "c2.cp.reactome.v5.1.symbols.gmt",
-    "motif" : "c3.all.v5.1.symbols.gmt",
-    "motif:tfactor" : "c3.tft.v5.1.symbols.gmt",
-    "computational" : "c4.all.v5.1.symbols.gmt",
-    "gene_ontology" : "c5.all.v5.1.symbols.gmt",
-    "gene_ontology:process" : "c5.bp.v5.1.symbols.gmt",
+    ## "positional" : "c1.all.v5.1.symbols.gmt",
+    ## "curated" : "c2.all.v5.1.symbols.gmt",
+    ## "curated:canonical" : "c2.cp.v5.1.symbols.gmt",
+    ## "curated:biocarta" : "c2.cp.biocarta.v5.1.symbols.gmt",
+    ## "curated:kegg" : "c2.cp.kegg.v5.1.symbols.gmt",
+    ## "curated:reactome" : "c2.cp.reactome.v5.1.symbols.gmt",
+    ## "motif" : "c3.all.v5.1.symbols.gmt",
+    ## "motif:tfactor" : "c3.tft.v5.1.symbols.gmt",
+    ## "computational" : "c4.all.v5.1.symbols.gmt",
+    ## "gene_ontology" : "c5.all.v5.1.symbols.gmt",
+    ## "gene_ontology:process" : "c5.bp.v5.1.symbols.gmt",
+
+    "positional" : "c1.all.v5.2.symbols.gmt",
+    "curated" : "c2.all.v5.2.symbols.gmt",
+    "curated:canonical" : "c2.cp.v5.2.symbols.gmt",
+    "curated:biocarta" : "c2.cp.biocarta.v5.2.symbols.gmt",
+    "curated:kegg" : "c2.cp.kegg.v5.2.symbols.gmt",
+    "curated:reactome" : "c2.cp.reactome.v5.2.symbols.gmt",
+    "motif" : "c3.all.v5.2.symbols.gmt",
+    "motif:tfactor" : "c3.tft.v5.2.symbols.gmt",
+    "computational" : "c4.all.v5.2.symbols.gmt",
+    "gene_ontology" : "c5.all.v5.2.symbols.gmt",
+    "gene_ontology:process" : "c5.bp.v5.2.symbols.gmt",
     }
 DEFAULT_DATABASE = "gene_ontology:process"
 
@@ -349,6 +361,13 @@ def main():
     x = fix_class_order(MATRIX, name1, name2, classes)
     MATRIX, name1, name2, classes = x
 
+    # Remove samples that aren't in any classes.
+    for c in classes:
+        assert c in [0, 1, None]
+    I = [i for (i, x) in enumerate(classes) if x is not None]
+    classes = [classes[i] for i in I]
+    MATRIX = MATRIX.matrix(None, I)
+
     handle = StringIO.StringIO()
     arraysetlib.write_cls_file(handle, name1, name2, classes)
     cls_data = handle.getvalue()
@@ -471,8 +490,16 @@ def main():
     if x.find("UserWarning") >= 0 and x.endswith("(*new_args, **new_kwargs)"):
         # Ignore this UserWarning.
         x = ""
+    # Also ignore this RRuntimeWarning.
+    # /opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/
+    #   python2.7/site-packages/rpy2/rinterface/__init__.py:185:
+    #   RRuntimeWarning:
+    # 
+    #   warnings.warn(x, RRuntimeWarning)
+    if x.find("RRuntimeWarning") >= 0 and \
+           x.endswith("warnings.warn(x, RRuntimeWarning)"):
+        x = ""
     assert not x, "%s\n%s" % (cmd, data)
-
 
     error_file = os.path.join(args.outpath, "stderr.txt")
     assert not os.path.exists(error_file), (
