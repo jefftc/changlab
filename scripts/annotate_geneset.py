@@ -2,6 +2,7 @@
 
 # Functions:
 # read_geneset
+# read_all_genesets
 # read_annotations
 
 
@@ -24,6 +25,22 @@ def read_geneset(geneset):
         genes = genesetlib.read_genes(filename, geneset, allow_tdf=True)
         assert genes, "I could not find the gene set: %s" % geneset
         x = filename, geneset, genes
+        data.append(x)
+    return data
+
+
+def read_all_genesets(filename):
+    # geneset is in the format <filename>.  Return a list of
+    # (<filename>, <geneset>, list of genes).
+    from genomicode import genesetlib
+    
+    assert os.path.exists(filename), "I could not find file: %s" % filename
+    
+    data = []
+    for x in genesetlib.read_genesets(filename):
+        name, x, genes = x
+        assert genes, "I could not find the gene set: %s" % geneset
+        x = filename, name, genes
         data.append(x)
     return data
 
@@ -235,14 +252,17 @@ def main():
 
     group = parser.add_argument_group(title="Required arguments")
     group.add_argument(
-        "--background", default=None,
+        "--background", 
         help="Genes are selected from this background geneset.  "
         "Format: <gmx/gmt_file>,<geneset>")
     group.add_argument(
-        "--geneset", default=None,
+        "--geneset", 
         help="Annotate this geneset.  If multiple gene sets are provided, "
         "their genes will be combined.  "
         "Format: <gmx/gmt_file>[,<geneset>,<geneset>,...]")
+    group.add_argument(
+        "--all_genesets", 
+        help="Use all gene sets in this file.  Format: <gmx/gmt_file>")
     group.add_argument(
         "--ignore_genes_not_in_background", default=False, action="store_true",
         help="Ignore any gene in the gene set that is not in the background.")
@@ -269,7 +289,8 @@ def main():
     
     
     args = parser.parse_args()
-    assert args.geneset, "Please specify a gene set."
+    assert args.geneset or args.all_genesets, "Please specify a gene set."
+    assert not (args.geneset and args.all_genesets)
     assert args.background, "Please specify a background gene set."
     assert args.annotation, "Please specify an annotation file."
     if args.num_procs < 1 or args.num_procs > 100:
@@ -277,7 +298,11 @@ def main():
     assert args.min_genes >= 0, "Need a positive min_genes."
 
     # Read the gene sets.
-    x1 = read_geneset(args.geneset)
+    if args.geneset:
+        x1 = read_geneset(args.geneset)
+    else:
+        assert args.all_genesets
+        x1 = read_all_genesets(args.all_genesets)
     x2 = read_geneset(args.background)
     assert len(x1) >= 1
     assert len(x2) == 1
@@ -367,6 +392,16 @@ def main():
     for n, p, b, f in zip(nl10ps, p_values, bonferroni, fdr):
         nl10p2stats[n] = p, b, f
 
+    # Sort the annotations by decreasing nl10p.
+    schwartz = []
+    for annot in all_annots:
+        L1A1, L1A0, L0A1, L0A0, fe, nl10p, L1A1_genes = scores[annot]
+        x = -nl10p, annot
+        schwartz.append(x)
+    schwartz.sort()
+    all_annots = [x[-1] for x in schwartz]
+    
+
     # Read the descriptors for output.
     gene2pretty = {}
     if args.gene_descriptor:
@@ -382,7 +417,8 @@ def main():
         "Your Genes (With Ann)", "Your Genes (No Ann)",
         "Other Genes (With Ann)", "Other Genes (No Ann)",
         "Your Genes Annotated", "Other Genes Annotated",
-        "Fold Enrichment", "neg log_10(p value)", "Bonferroni", "FDR"] + \
+        "Fold Enrichment", "neg log_10(p value)",
+        "Bonferroni", "FDR", "neg log_10(Bonf)", "neg log_10(FDR)"] + \
         all_genesets
     print "\t".join(header)
     for i, annot in enumerate(all_annots):
@@ -390,6 +426,8 @@ def main():
         perc_geneset = float(L1A1) / (L1A1+L1A0)
         perc_background = float(L0A1) / (L0A1+L0A0)
         pvalue, bonf, fdr = nl10p2stats[nl10p]
+        nl10bonf = -jmath.log(bonf, 10)
+        nl10fdr = -jmath.log(fdr, 10)
 
         # Pull out the descriptors for the annotations.
         annot_info = [x[1][i] for x in annot_descriptors]
@@ -416,7 +454,7 @@ def main():
 
         x = annot_info + [
             annot, L1A1, L1A0, L0A1, L0A0, perc_geneset, perc_background,
-            fe, nl10p, bonf, fdr] + geneset_list
+            fe, nl10p, bonf, fdr, nl10bonf, nl10fdr] + geneset_list
         assert len(x) == len(header), "%d %d" % (len(x), len(header))
         print "\t".join(map(str, x))
 

@@ -25,6 +25,7 @@ def main():
     import copy
     
     import xlwt
+    import arial10
     from genomicode import filelib
 
     parser = argparse.ArgumentParser()
@@ -129,6 +130,27 @@ def main():
     #            style.font = bold_font
     #        ws.write(i, j, matrix[i][j], style)
     #        style.font = old_font
+
+    # Set the widths of the columns.
+    if matrix:
+        maxwidth = [0] * len(matrix[0])
+        for i in range(len(matrix)):
+            for j in range(len(matrix[i])):
+                width = arial10.fitwidth(str(matrix[i][j]))
+                if width > maxwidth[j]:
+                    maxwidth[j] = width
+        # Make sure no column is too big.
+        # Default width is 2962 units (0.9 inches).
+        MAX_WIDTH = 2.0   # max width in inches.
+        max_width_u = min(2962/0.9*MAX_WIDTH, 65536)
+        for i in range(len(maxwidth)):
+            if maxwidth[i] > max_width_u:
+                maxwidth[i] = max_width_u
+        maxwidth = [int(x) for x in maxwidth]
+        # Set the column widths.
+        for i in range(len(maxwidth)):
+            ws.col(i).width = maxwidth[i]
+    
     wb.save(sys.stdout)
 
     

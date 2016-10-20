@@ -3837,7 +3837,7 @@ def main():
         "than this.  E.g. if '500.0' is given, then remove the rows where "
         "any sample is more than 500.")
     group.add_argument(
-        "--select_row_genesets", default=[], action="append",
+        "--select_row_genesets", "--sel_r_gs", default=[], action="append",
         help="Include only the IDs from this geneset.  "
         "Format: <txt/gmx/gmt_file>,<geneset>[,<geneset>,...].  (MULTI)")
     group.add_argument(
