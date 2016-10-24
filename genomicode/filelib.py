@@ -17,7 +17,7 @@ assert_exists_nz
 assert_exists_nz_many
 assert_exists_z_many
 fp_exists_nz  Whether a file or directory exists and is not empty.
-
+dir_exists
 
 list_files_in_path         Return all files under a path.
 get_file_or_path_size      Get size of all files in a directory.
@@ -368,7 +368,16 @@ def fp_exists_nz(file_or_path):
         return False
     return exists_nz(file_or_path)
 
-    
+
+def dir_exists(path):
+    import os
+    if not os.path.isdir(path):
+        return False
+    if not os.path.exists(path):
+        return False
+    return True
+
+
 def _parse_format(format):
     """Return names, format."""
     assert format is not None
