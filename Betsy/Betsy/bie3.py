@@ -2407,6 +2407,7 @@ class Pathway:
             #x = (
             #    frozenset(self.node_ids), t_hash, tuple(self.start_ids),
             #    frozenset(self.missing_ids))
+            # Even much (3x) faster.
             t_hash = frozenset(self.transitions.items())
             x = (
                 self.node_ids, t_hash, tuple(self.start_ids), self.missing_ids)
@@ -2490,7 +2491,19 @@ def _find_paths_by_start_ids_hh(
         combos = _bc_to_input_ids(
             network, node_id, custom_attributes, nodeid2parents=nodeid2parents)
 
-    checked_pathway = {}
+    # Get a Pathway for each parent node.
+    node_ids = {}
+    for combo_ids in combos:
+        for pid in combo_ids:
+            node_ids[pid] = 1
+    nodeid2pathways = {}   # node_id -> list of Pathways
+    for pid in node_ids:
+        x = _find_paths_by_start_ids_h(
+            network, pid, custom_attributes, node2startids, nodeid2parents,
+            depth+[node_id], cache)
+        nodeid2pathways[pid] = x
+        
+    #merge_cache = {}
     for cnum, combo_ids in enumerate(combos):
         # combo is a list of node_ids.
         # Some combos will be seen twice, but the vast majority of the
@@ -2501,15 +2514,15 @@ def _find_paths_by_start_ids_hh(
                 node_id, combo_ids, x))
 
         # For each input, get a list of the Pathway objects.
-        innum2branch = [
-            _find_paths_by_start_ids_h(
-                network, x, custom_attributes, node2startids, nodeid2parents,
-                depth+[node_id], cache)
-            for x in combo_ids]
+        #innum2branches = [
+        #    _find_paths_by_start_ids_h(
+        #        network, x, custom_attributes, node2startids, nodeid2parents,
+        #        depth+[node_id], cache)
+        #    for x in combo_ids]
 
         # Make sure there aren't too many combinations to search.
         MAX_COMBINATIONS = 5E4
-        branchlen = [len(x) for x in innum2branch]
+        branchlen = [len(nodeid2pathways[x]) for x in combo_ids]
         total = jmath.prod(branchlen)
         assert total < MAX_COMBINATIONS, "Too many paths (%d)" % total
 
@@ -2577,13 +2590,64 @@ def _find_paths_by_start_ids_hh(
         #                p = Pathway(node_ids, transitions, sids, missing_ids)
         #            merge_cache[tuple(key)] = p
 
+        # Optimization: For this set of combo_ids, there may be some
+        # combinations of branches that can yield the same pathways.
+        # As an example, for a set of 4 parent nodes, the combination
+        # of branches:
+        #   (0, 0, 0, 0)    may yield the same pathway as:
+        #   (0, 0, 0, 3)
+        # In this case, whenever parent node indexes end with 3, then
+        # skip.  Since itertools will iterate over the branches
+        # sequentially, then, (?, ?, ?, 0) will always be checked
+        # before (?, ?, ?, 3).
+        #
+        # Keep track of branches to skip as:
+        #   [
+        #     (None, None, 2, 0),
+        #   ]
+        # 
+        # Actually, it isn't so simple.  There can be more 
+        # Input nodes 1, 2.  Both converge at some ancestor node X.
+        # Ancestor node can be created by two paths, X_A, X_B.
+        #   NODE_1  NODE_2  NODE_3  NODE_4
+        #   X_A      X_B             X_A (0)  (0, 0, 0, 0)
+        #   X_A      X_B             X_B (3)  (0, 0, 0, 3)
+        #   X_B      X_B             X_A (0)  (1, 0, 0, 0)
+        #   X_B      X_B             X_B (3)  (1, 0, 0, 3)
+        # Because there's an interaction between NODE_1,2 and _4, then
+        # hard to predict whether changes in NODE_4 will be exactly
+        # unique.
+        # Don't do this optimization until we figure out a better way.
+        checked_pathway = {}
+        #makes_same_pathways = []
+
         # Try different combinations of paths for each branch.
-        for bnum, branches in enumerate(itertools.product(*innum2branch)):
-        #x = [range(x) for x in branchlen]
-        #for bnum, branches_i in enumerate(itertools.product(*x)):
-        #    branches = [
-        #        branch2info[i][branches_i[i]] for i in range(len(branches_i))]
-        
+        #for bnum, branches in enumerate(itertools.product(*innum2branches)):
+        x = [range(x) for x in branchlen]
+        for bnum, branches_i in enumerate(itertools.product(*x)):
+            ## Make sure branches_i doesn't lead to the same pathways.
+            ## See explanation above.
+            #same = False
+            #for pattern in makes_same_pathways:
+            #    #assert len(pattern) == len(branches_i)
+            #    x = [x1 for (x1, x2) in zip(pattern, branches_i) if 
+            #         x1 != None and x1 != x2]
+            #    if not x:
+            #        # Matches a pattern
+            #        same = True
+            #        break
+            #if same:
+            #    continue
+
+            # Get the branches.
+            branches = [None] * len(branches_i)   # list of Pathways
+            # list of (node_id, index of Pathway)
+            branch_ids = [None] * len(branches_i)
+            for i_combo, i_branch in enumerate(branches_i):
+                nid = combo_ids[i_combo]
+                branches[i_combo] = nodeid2pathways[nid][i_branch]
+                branch_ids[i_combo] = (nid, i_branch)
+            
             # This _merge_paths is called 99.999% of the time.
             #if merge_cache:
             #    key = [None] * len(branch2info)
@@ -2601,6 +2665,10 @@ def _find_paths_by_start_ids_hh(
             #    continue
             #node_ids, transitions, missing_ids = x
             node_ids, transitions, missing_ids = _merge_paths(branches)
+            # Takes 50% longer.
+            #node_ids, transitions, missing_ids = _merge_paths_cached(
+            #    branch_ids, branches, merge_cache)
+            
 
             # Optimization: If there's already a nomissing path, then
             # skip all paths with missing_ids.
@@ -2652,8 +2720,16 @@ def _find_paths_by_start_ids_hh(
                 # (e.g. steps done in different order).  Branches take
                 # different combinations of routes, but when you merge
                 # them, they end up the same.
+                #old_branches_i = checked_pathway[path]
+                #x = [None] * len(branches_i)
+                #for i in range(len(branches_i)):
+                #    if branches_i[i] == old_branches_i[i]:
+                #        continue
+                #    x[i] = branches_i[i]
+                #makes_same_pathways.append(tuple(x))
                 continue
-            checked_pathway[path] = 1
+            #checked_pathway[path] = 1
+            checked_pathway[path] = branches_i
 
             # Case 2.  Look for modules with a BASED_ON_DATA
             # consequence.  Then, make sure the attribute values of
@@ -2665,6 +2741,8 @@ def _find_paths_by_start_ids_hh(
             if not missing_ids:
                 conflict = _does_based_on_data_conflict_with_out_data(
                     network, node_ids, transitions)
+                #if conflict:
+                #    print "HERE 1", branches_i
                 if conflict and not missing_ids:
                     # This happens 60% of the time.
                     continue
@@ -2775,19 +2853,23 @@ def _find_paths_by_start_ids_hh(
         # Can't prune by custom attributes here.  Because paths aren't
         # finished, we don't know which are the bottom-mode nodes to
         # apply the attributes to.
+        #
         # Also don't prune by superset pipelines.  Can't be sure if
-        # the pipelines aren't finished yet.
+        # the pipelines are finished yet.  Is this true?  Will
+        # cautiously turn prune_superset on and see if this causes
+        # problems.
+        
         #orig_paths = paths
         debug_print(DEBUG_FIND_PATHS,
                     "[%d] Pruning from %d path(s)." % (node_id, len(paths)))
-            
+
+        # Not sure if prune_superset will cause problems.
         paths = prune_paths(
             paths, network, custom_attributes,
-            prune_custom_attributes=False, prune_superset=False,
+            prune_custom_attributes=False, prune_superset=True,
             ignore_incomplete_pathway=True, prune_most_inputs=False)
         debug_print(DEBUG_FIND_PATHS,
                     "[%d] Final %d path(s) remain." % (node_id, len(paths)))
-        
 
     return paths
 
@@ -2863,16 +2945,43 @@ def _merge_paths(paths):
     return node_ids, transitions, missing_ids
 
 
+#def _merge_paths_cached(branch_ids, branches, merge_cache):
+#    # merge_cache is tuple of branch_ids -> node_ids, transitions, missing_ids
+#    # e.g. ((0, 0), (1, 2), (4, 5))
+#    branch_ids = tuple(branch_ids)
+#    if branch_ids in merge_cache:
+#        return merge_cache[branch_ids]
+#    elif len(branch_ids) == 1:
+#        x = _merge_paths(branches)
+#        merge_cache[branch_ids] = x
+#        return x
+#    x = _merge_paths_cached(branch_ids[:-1], branches[:-1], merge_cache)
+#    node_ids, transitions, missing_ids = x
+#    p = Pathway(node_ids, transitions, [], missing_ids)
+#    paths = [p, branches[-1]]
+#    x = _merge_paths(paths)
+#    merge_cache[branch_ids] = x
+#    return x
+    
+
 def _merge_transitions(paths):
     # Merge the transitions.
+
+    # len(paths) is usually high, like 7.
     transitions = paths[0].transitions.copy()
+    # len(transitions) is usually high, usually in 20's.
     for p in paths[1:]:
         for k, v in p.transitions.iteritems():
+            # len(v)
+            #   1     87%
+            #   2      8%
+            #   3      2%
             if k not in transitions:
+                # Called 59% of the time.
                 transitions[k] = v
+            #elif not v.issubset(transitions[k]):  # slower
+            #else:   # much slower
             elif transitions[k] != v:
-                # 90% of the time, there are only 2 values.
-                # This union called 6x more than the ones above.
                 transitions[k] = transitions[k].union(v)
     return transitions
 
@@ -2881,9 +2990,10 @@ def prune_paths(paths, network, custom_attributes,
                 prune_custom_attributes=True, prune_superset=True,
                 ignore_incomplete_pathway=False, prune_most_inputs=True):
     # This may be called by _find_paths_by_start_ids when the pathway
-    # is incomplete.  If this is the case, then may not be able to
-    # resolve TYPE_ENUM.  If we can't resolve because the pathway is
-    # incomplete, return None rather than raise an exception.
+    # is incomplete.  If this is the case, we may not be able to
+    # resolve atomic values for TYPE_ENUM attributes.  If we can't
+    # resolve because the pathway is incomplete, return None rather
+    # than raise an exception.
     nodeid2parents = _make_parents_dict(network)
 
     # Do the O(N) pruning, then fast O(NN) pruning, then slow O(NN)

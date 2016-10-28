@@ -166,7 +166,7 @@ def generate_network(rulebase, outtype,
     a_or_an = "a"
     if outtype.lower()[0] in "aeiou":
         a_or_an = "an"
-    print "Generating a network that produces %s %s:" % (
+    print "Generating a network that produces %s:\n%s" % (
         a_or_an, out_data.datatype.name)
     for name in sorted(out_data.attributes):
         value = out_data.attributes[name]
