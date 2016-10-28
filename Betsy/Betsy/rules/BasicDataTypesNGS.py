@@ -182,9 +182,9 @@ SampleGroupFile = DataType(
     #    "contents", BDT.CONTENTS,
     #    "unspecified", "unspecified", help="contents"),
     # Needed to prevent cycles.
-    #AttributeDef(
-    #    "mouse_reads_subtracted", ["yes", "no"], "no", "no",
-    #    help="For subtracting mouse reads from PDX models of FastqFolder"),
+    AttributeDef(
+        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        help="For subtracting mouse reads from PDX models of FastqFolder"),
     help="File contains sample group infomation"
     )
 
@@ -229,6 +229,15 @@ FastqFolder = DataType(
         ),
     help="A folder containing FASTQ files."
     )
+
+
+#MouseSubtractedFastqFolder = DataType(
+#    "MouseSubtractedFastqFolder",
+#    AttributeDef(
+#        "adapters_trimmed", ["yes", "no"], "no", "no",
+#        help="Whether the adapters are trimmed."),
+#    )
+    
 
 
 FastaFolder = DataType(
@@ -401,6 +410,12 @@ Bowtie2AlignmentSummary = DataType(
 
 NumAlignedReads = DataType(
     "NumAlignedReads",
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
     help="Count the number of aligned reads (.xls file).",
     )
 
@@ -460,6 +475,8 @@ all_data_types = [
     DepthOfCoverage,
     AlignmentCIGARFolder,
     PerfectAlignmentSummary,
+
+    #MouseSubtractedFastqFolder,
     ]
 
 all_modules = [
@@ -503,7 +520,8 @@ all_modules = [
         #Consequence("compressed", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -567,7 +585,8 @@ all_modules = [
         Consequence("compressed", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("reads_merged", MUST_BE, "yes"),
         Consequence("reads_merged", SAME_AS_CONSTRAINT),
@@ -743,7 +762,8 @@ all_modules = [
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         
@@ -798,7 +818,8 @@ all_modules = [
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
 
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -857,7 +878,8 @@ all_modules = [
         Constraint("is_subset", SAME_AS, 0, 1),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
 
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
@@ -873,7 +895,10 @@ all_modules = [
         [FastqFolder, SampleGroupFile, BamFolder], NumAlignedReads,
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 2),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT, 2),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 2),
+        Consequence("aligner", SAME_AS_CONSTRAINT, 2),
         Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS, 2),
         Constraint("indexed", MUST_BE, "yes", 2),
         help="Summarize the alignment, e.g. number of reads aligned.",
@@ -906,7 +931,8 @@ all_modules = [
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         help="Summarize the fraction of reads with perfect alignments.",
@@ -938,7 +964,8 @@ all_modules = [
         #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         Consequence("aligner", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN),
         #Consequence("orientation", SAME_AS_CONSTRAINT),
@@ -1244,7 +1271,8 @@ all_modules = [
         #Consequence("reads_merged", SAME_AS_CONSTRAINT),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 2),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         ),
@@ -1258,7 +1286,8 @@ all_modules = [
         Constraint("aligner", MUST_BE, "star_unstranded", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("is_subset", MUST_BE, "yes", 0),
         ),

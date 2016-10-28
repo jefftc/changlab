@@ -47,6 +47,7 @@ def _sshell_h(command, ignore_nonzero_exit):
     return x
 
 
+# TODO: change max_procs to num_procs
 def pshell(commands, max_procs=None, path=None):
     # commands is a list of shell commands to run.  Return the output
     # as a single string.

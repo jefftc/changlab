@@ -1742,5 +1742,5 @@ def get_muse_version():
     x = x.strip()
     # Version: v1.0rc
     m = re.search(r"Version: ([\w\.]+)", x)
-    assert m, "Missing version string"
+    assert m, "Missing version string:\n%s" % x
     return m.group(1)

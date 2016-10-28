@@ -10,6 +10,7 @@ class Module(AbstractModule):
         import os
         from genomicode import filelib
         from genomicode import sortlib
+        from Betsy import module_utils as mlib
 
         # Should be a folder of fastqc results.
         fastqc_path = in_data.identifier
@@ -56,7 +57,9 @@ class Module(AbstractModule):
             print >>handle, "\t".join(map(str, x))
         handle.close()
 
-        os.system("txt2xls -b %s > %s" % (TXT_FILE, outfile))
+        x = mlib.get_config("txt2xls", which_assert_file=True, quote=True)
+        os.system("%s -b %s > %s" % (x, TXT_FILE, outfile))
+        filelib.assert_exists_nz(outfile)
             
         
     def name_outfile(self, antecedents, user_options):

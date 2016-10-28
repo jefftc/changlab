@@ -8,6 +8,17 @@
 # HTSeqCountResults          HTSeqCount
 # HTSeqCountSummary
 #
+# RNASeqUnprocessedSignalFile  Contains attributes from RNA-Seq analysis.
+# 
+# StdRNASeqAnalysis          A standard RNA-Seq analysis.
+#                            FastQCSummary, FastQCFolder
+#                            RSeQCResults
+#                            BamFolder
+#                            UnprocessedSignalFile (TPM)
+#                            NumAlignedReads (Star alignment)
+#                            UnprocessedSignalFile (counts)
+#                            HTSeqCountSummary
+#
 #
 # Modules:
 # index_reference_rsem               rsem
@@ -32,6 +43,7 @@ from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
 import GeneExpProcessing as GXP
+import NGSQC as QC
 
 YESNO = BDT.YESNO  # for convenience
 
@@ -70,6 +82,8 @@ RSEMResults = DataType(
     AttributeDef(
         "align_to", ["genome", "transcriptome"], "genome", "genome",
         help="Align to the genome or transcriptome."),
+    AttributeDef(
+        "aligner", ["star", "bowtie1"], "star", "star"),
     help="A folder of results from an rsem-calculate-expression analysis.",
     )
 
@@ -101,15 +115,57 @@ HTSeqCountResults = DataType(
     "HTSeqCountResults",
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef("aligner", NGS.RNA_ALIGNERS, "star", "star"),
     help="Results from HTSeq-Count.",
     )
 
 HTSeqCountSummary = DataType(
     "HTSeqCountSummary",
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef("aligner", NGS.RNA_ALIGNERS, "star", "star"),
     help="Contains a summary of the results from htseq-count as a "
     "tab-delimited text file.",
     )
 
+RNASeqUnprocessedSignalFile = DataType(
+    "RNASeqUnprocessedSignalFile",
+
+    AttributeDef(
+        "format", ["unknown", "tdf", "pcl", "gct", "res", "jeffs"],
+        "unknown", "tdf", help="file format"),
+    AttributeDef(
+        # Should limit these options to RNA-Seq specific ones.
+        "preprocess", BDT.PREPROCESS, "unknown", "unknown",
+        help="preprocess method"),
+    AttributeDef(
+        "logged", ["unknown", "no", "yes"], "unknown", "yes",
+        help="logged or not"),
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef("aligner", NGS.RNA_ALIGNERS, "star", "star"),
+    
+    help="Contains attributes for an RNA-Seq analysis.",
+    )
+    
+
+StdRNASeqAnalysis = DataType(
+    "StdRNASeqAnalysis",
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef("aligner", NGS.RNA_ALIGNERS, "star", "star"),
+    help="Contains the results from a standard RNA-Seq experiment.",
+    )
 
 
 all_data_types = [
@@ -122,6 +178,8 @@ all_data_types = [
     STARAlignmentFolder,
     HTSeqCountResults,
     HTSeqCountSummary,
+    
+    StdRNASeqAnalysis,
     ]
 
 
@@ -164,6 +222,8 @@ all_modules = [
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Constraint("rsem_indexed", MUST_BE, "yes", 3),
         Consequence("align_to", SET_TO_ONE_OF, ["genome", "transcriptome"]),
+        # bowtie not implemented.
+        Consequence("aligner", SET_TO, "star"),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Constraint("contents", SAME_AS, 0, 1),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
@@ -171,7 +231,7 @@ all_modules = [
         ),
 
     ModuleNode(
-        "extract_rsem_signal", RSEMResults, GXP.UnprocessedSignalFile,
+        "extract_rsem_signal", RSEMResults, RNASeqUnprocessedSignalFile,
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
         OptionDef(
@@ -181,6 +241,8 @@ all_modules = [
         Consequence("preprocess", SET_TO_ONE_OF, ["tpm", "fpkm"]),
         Consequence("logged", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
+        Constraint("aligner", MUST_BE, "star"),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("align_to", MUST_BE, "genome"),
         ),
 
@@ -245,7 +307,8 @@ all_modules = [
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
         Consequence("aligner", SET_TO, "star"),
@@ -269,7 +332,8 @@ all_modules = [
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
         Consequence("aligner", SET_TO, "star_unstranded"),
         
@@ -285,7 +349,8 @@ all_modules = [
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
@@ -308,16 +373,18 @@ all_modules = [
             ),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 3),
-        
-        Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+
+        # Optimization.  Don't allow this.
+        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
         #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 3),
         # Get error when using coordinate sorting:
         # Maximum alignment buffer size exceeded while pairing SAM alignments.
         #Constraint("sorted", CAN_BE_ANY_OF, ["name", "coordinate"], 0),
         Constraint("sorted", MUST_BE, "name", 0),
-        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
-        #Constraint("aligner", MUST_BE, "bwa_backtrack", 0),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         #Constraint(
         #    "orientation", CAN_BE_ANY_OF,
         #    ["single", "paired", "paired_fr", "paired_rf"], 0),
@@ -331,10 +398,14 @@ all_modules = [
     ModuleNode(
         "summarize_htseq_count",
         HTSeqCountResults, HTSeqCountSummary,
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
         "extract_htseq_count_signal",
-        HTSeqCountResults, GXP.UnprocessedSignalFile,
+        HTSeqCountResults, RNASeqUnprocessedSignalFile,
         OptionDef(
             "ignore_htseq_count_errors", default="no",
             help='Whether to ignore errors in the files.  '
@@ -342,14 +413,15 @@ all_modules = [
             ),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SET_TO, "counts"),
         Consequence("logged", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
         ),
     ModuleNode(
         "convert_counts_to_cpm",
-        GXP.UnprocessedSignalFile, GXP.UnprocessedSignalFile,
+        RNASeqUnprocessedSignalFile, RNASeqUnprocessedSignalFile,
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
 
@@ -358,5 +430,67 @@ all_modules = [
         Constraint("logged", MUST_BE, "no"),
         Consequence("logged", SAME_AS_CONSTRAINT),
         Consequence("format", SET_TO, "tdf"),
+        ),
+    ModuleNode(
+        "do_std_rna_seq_analysis",
+        [NGS.BamFolder,                      # 0
+         QC.FastQCSummary, QC.FastQCFolder,  # 1-2  # no trimming
+         QC.FastQCSummary, QC.FastQCFolder,  # 3-4  # trimmed
+         QC.RSeQCResults,                    # 5
+         RNASeqUnprocessedSignalFile,        # 6
+         NGS.NumAlignedReads,                # 7
+         RNASeqUnprocessedSignalFile,        # 8
+         HTSeqCountSummary,                  # 9
+         ],
+        StdRNASeqAnalysis,
+        # BamFolder
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS, 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        # FastQCSummary, FastQCFolder
+        Constraint("adapters_trimmed", MUST_BE, "no", 1),
+        Constraint("adapters_trimmed", MUST_BE, "no", 2),
+        Constraint("adapters_trimmed", MUST_BE, "yes", 3),
+        Constraint("adapters_trimmed", MUST_BE, "yes", 4),
+        # RSeQCResults
+        Constraint("aligner", SAME_AS, 0, 5),
+        Constraint("adapters_trimmed", SAME_AS, 0, 5),
+        # RNASeqUnprocessedSignalFile
+        Constraint("aligner", SAME_AS, 0, 6),
+        Constraint("adapters_trimmed", SAME_AS, 0, 6),
+        Constraint("logged", MUST_BE, "no", 6),
+        Constraint("preprocess", MUST_BE, "tpm", 6),
+        # NumAlignedReads
+        Constraint("aligner", SAME_AS, 0, 7),
+        Constraint("adapters_trimmed", SAME_AS, 0, 7),
+        # RNASeqUnprocessedSignalFile
+        Constraint("aligner", SAME_AS, 0, 8),
+        Constraint("adapters_trimmed", SAME_AS, 0, 8),
+        Constraint("logged", MUST_BE, "no", 8),
+        Constraint("preprocess", MUST_BE, "counts", 8),
+        # HTSeqCountSummary
+        Constraint("aligner", SAME_AS, 0, 9),
+        Constraint("adapters_trimmed", SAME_AS, 0, 9),
+
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT, 0),
+        ),
+
+    ModuleNode(
+        "rnasequnprocessedsignalfile_to_unprocessedsignalfile",
+        RNASeqUnprocessedSignalFile, GXP.UnprocessedSignalFile,
+
+        Constraint(
+            "format", CAN_BE_ANY_OF,
+            ["unknown", "tdf", "pcl", "gct", "res", "jeffs"]),
+        Consequence("format", SAME_AS_CONSTRAINT),
+        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
+        Consequence("preprocess", SAME_AS_CONSTRAINT),
+        Constraint("logged", CAN_BE_ANY_OF, ["unknown", "no", "yes"]),
+        Consequence("logged", SAME_AS_CONSTRAINT),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        Consequence("contents", SAME_AS_CONSTRAINT),
+
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
+        Constraint("aligner", CAN_BE_ANY_OF, ["star", "tophat"]),
         ),
     ]
