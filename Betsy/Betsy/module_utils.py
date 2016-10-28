@@ -48,10 +48,8 @@ get_dirsize
 
 get_user_option
 get_config
-file_exists_nz
-dir_exists
-splitpath
 findbin
+splitpath
 sq
 
 read_orientation
@@ -645,9 +643,10 @@ def find_merged_fastq_files(sample_group_filename, fastq_path,
     # If as_dict is True, then returns a dictionary of sample ->
     # (pair1.fastq, pair2.fastq).
     import os
+    from genomicode import filelib
 
-    assert file_exists_nz(sample_group_filename)
-    assert dir_exists(fastq_path)
+    assert filelib.exists_nz(sample_group_filename)
+    assert filelib.dir_exists(fastq_path)
     sample_groups = read_sample_group_file(sample_group_filename)
     x = [x[1] for x in sample_groups]
     x = sorted({}.fromkeys(x))
@@ -755,7 +754,7 @@ def find_sam_files(path):
     # Return a list of the .sam files (full filenames) under path.
     from genomicode import filelib
 
-    assert dir_exists(path)
+    assert filelib.dir_exists(path)
     return filelib.list_files_in_path(
         path, endswith=".sam", case_insensitive=True)
 
@@ -764,7 +763,7 @@ def find_bam_files(path):
     # Return a list of the .bam files (full filenames) under path.
     from genomicode import filelib
 
-    assert dir_exists(path)
+    assert filelib.dir_exists(path)
     return filelib.list_files_in_path(
         path, endswith=".bam", case_insensitive=True)
 
@@ -1109,20 +1108,6 @@ def get_config(name, which_assert_file=False, assert_exists=False,
     
 
 
-def file_exists_nz(filename):
-    from genomicode import filelib
-    return filelib.exists_nz(filename)
-
-
-def dir_exists(path):
-    import os
-    if not os.path.isdir(path):
-        return False
-    if not os.path.exists(path):
-        return False
-    return True
-
-
 def root2filename(filenames):
     # filenames is a list of <filename>s in format:
     # <directory>/<root><ext>
@@ -1155,8 +1140,8 @@ def splitpath(path):
 
 
 def findbin(name, quote=False):
-    # name is the name in the genomicode config file.
-    # DEPRECATE THIS FUNCTION.  Just use get_config
+    # name is the name of the variable in the genomicode config file.
+    # DEPRECATE THIS FUNCTION.  Just use get_config.
     return get_config(name, which_assert_file=True, quote=quote)
 
 

@@ -96,8 +96,8 @@ def get_paired_orientation_rseqc(reference_bed, bam_filename):
     cmd = [
         "python",
         mlib.sq(script),
-        "-r", mlib.sq(reference_bed)
-        "-i", mlib.sq(bam_filename)
+        "-r", mlib.sq(reference_bed),
+        "-i", mlib.sq(bam_filename),
         ]
     cmd = " ".join(cmd)
     x = parallel.sshell(cmd)

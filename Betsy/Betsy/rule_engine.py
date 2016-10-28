@@ -66,7 +66,7 @@ def run_pipeline(
     #DEBUG_RUN_PIPELINE = True
 
     user = user or getpass.getuser()
-    output_path = config.OUTPUTPATH
+    output_path = config.CACHE_PATH
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     # Is this thread-safe?
@@ -309,7 +309,7 @@ def run_module(
     from Betsy import bie3
 
     assert user
-    output_path = config.OUTPUTPATH
+    output_path = config.CACHE_PATH
     filelib.assert_exists(output_path)
 
     # If there are no possible nodes to generate, return an empty list.
@@ -942,7 +942,7 @@ def _debug_is_module_output_complete(
             print "%s has no broken symlinks" % path
 
     # Look for related paths.
-    output_path = config.OUTPUTPATH
+    output_path = config.CACHE_PATH
     assert os.path.exists(output_path)
     for prev_path in os.listdir(output_path):
         x = os.path.join(output_path, prev_path)

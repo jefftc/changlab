@@ -79,7 +79,7 @@ def main():
     from genomicode import parselib
     from genomicode import filelib
     from Betsy import config
-    from Betsy import rule_engine_bie3
+    from Betsy import rule_engine
     from Betsy import module_utils as mlib
     
     parser = argparse.ArgumentParser()
@@ -115,7 +115,7 @@ def main():
         #print "Clearing %d bytes" % bytes_to_clear
     
 
-    output_path = config.OUTPUTPATH
+    output_path = config.CACHE_PATH
     if not os.path.exists(output_path):
         return
     output_path = os.path.realpath(output_path)
@@ -147,7 +147,7 @@ def main():
         size = mlib.get_dirsize(path)
 
         # See if this module is still running.
-        f = os.path.join(path, rule_engine_bie3.IN_PROGRESS_FILE)
+        f = os.path.join(path, rule_engine.IN_PROGRESS_FILE)
         IN_PROGRESS = os.path.exists(f)
 
         if args.running and not IN_PROGRESS:
@@ -155,9 +155,9 @@ def main():
 
         # Read the parameter file.
         params = {}
-        x = os.path.join(path, rule_engine_bie3.BETSY_PARAMETER_FILE)
+        x = os.path.join(path, rule_engine.BETSY_PARAMETER_FILE)
         if os.path.exists(x):
-            params = rule_engine_bie3._read_parameter_file(x)
+            params = rule_engine._read_parameter_file(x)
         assert params.get("module_name", module_name) == module_name
 
         # Figure out the state of this module.
@@ -167,7 +167,7 @@ def main():
             status = S_DONE
             start_time = params.get("start_time")
             assert start_time, "Missing: start_time"
-            time_ = time.strptime(start_time, rule_engine_bie3.TIME_FMT)
+            time_ = time.strptime(start_time, rule_engine.TIME_FMT)
             #time_str = time.strftime("%a %m/%d %I:%M %p", start_time)
             run_time = params.get("elapsed_pretty")
             if not run_time:
@@ -196,12 +196,12 @@ def main():
 
         # Figure out the last accessed time.
         last_accessed = None   # seconds since epoch
-        x = os.path.join(path, rule_engine_bie3.LAST_ACCESSED_FILE)
+        x = os.path.join(path, rule_engine.LAST_ACCESSED_FILE)
         if os.path.exists(x):
             last_accessed = os.path.getmtime(x)
         # If I can't find the LAST_ACCESSED_FILE, then use the
         # parameters file.
-        x = os.path.join(path, rule_engine_bie3.BETSY_PARAMETER_FILE)
+        x = os.path.join(path, rule_engine.BETSY_PARAMETER_FILE)
         if not last_accessed and os.path.exists(x):
             last_accessed = os.path.getmtime(x)
         # Otherwise, use the path time.
@@ -229,7 +229,7 @@ def main():
                 all_files = []  # tuple of (mod time, relative_file, filename)
                 for filename in filenames:
                     file_ = os.path.relpath(filename, path)
-                    if file_ == rule_engine_bie3.IN_PROGRESS_FILE:
+                    if file_ == rule_engine.IN_PROGRESS_FILE:
                         continue
                     mtime = os.path.getmtime(filename)
                     all_files.append((mtime, file_, filename))

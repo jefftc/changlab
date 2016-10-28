@@ -15,7 +15,7 @@ class Module(AbstractModule):
 
         bam_folder, sample_node, gene_node, strand_node = antecedents
         bam_path = bam_folder.identifier
-        assert mlib.dir_exists(bam_path)
+        assert filelib.dir_exists(bam_path)
         gtf_file = gene_node.identifier
         filelib.assert_exists_nz(gtf_file)
         stranded = mlib.read_stranded(strand_node.identifier)

@@ -1,37 +1,40 @@
-import os
-import ConfigParser
 
 
-#DEFAULTS = {
-#    #'OUTPUTPATH': '.',
-#    #'NETWORKFILE': 'betsy.xgmml',
-#    #'ANNOTATE_MATRIX': 'annotate_matrix.py',
-#    #'SCORE_GENE': 'score_geneset.py'
-#    }
-
-SEARCH_PATH = [
-    '/home/xchen/chencode/scripts',
-    "/usr/local/bin",
-    "/usr/bin",
-    '/opt/local/bin',
-    os.path.join(os.environ['HOME'], 'bin'),
-    '/home/changlab/changlab/scripts',
-    ]
+#SEARCH_PATH = [
+#    "/usr/local/bin",
+#    "/usr/bin",
+#    '/opt/local/bin',
+#    os.path.join(os.environ['HOME'], 'bin'),
+#    '/home/changlab/changlab/scripts',
+#    ]
 
 
 def read_config():
+    import os
+    import ConfigParser
+
     config_file = os.path.join(os.environ["HOME"], ".betsyrc")
     assert os.path.exists(config_file), "File not found: %s" % config_file
     
-    var_dict = dict()
-    
+    # Read the configuration.
     config = ConfigParser.ConfigParser()
+    config.optionxform = str   # use case sensitive option names
     config.read(config_file)
-    sections = config.sections()
-    for i in sections:
-        section_content = config.items(i)
-        for j in range(len(section_content)):
-            var_dict[section_content[j][0].upper()] = section_content[j][1]
+
+    # Set a dictionary of name=value from the configuration file,
+    # ignoring section headings.
+    var_dict = dict()
+    for section in config.sections():
+        for (name, value) in config.items(section):
+            var_dict[name] = value
+    
+    #config = ConfigParser.ConfigParser()
+    #config.read(config_file)
+    #sections = config.sections()
+    #for i in sections:
+    #    section_content = config.items(i)
+    #    for j in range(len(section_content)):
+    #        var_dict[section_content[j][0].upper()] = section_content[j][1]
                 
     #for key in DEFAULTS.keys():
     #    if key not in var_dict.keys():

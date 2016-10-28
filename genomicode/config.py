@@ -16,9 +16,8 @@ def read_config():
     import os
     import ConfigParser
     
-    config_file = os.environ["HOME"]+'/.genomicoderc'
-    assert os.path.exists(config_file), \
-           "I could not find the configuration file %s." % (config_file)
+    config_file = os.path.join(os.environ["HOME"], ".genomicoderc")
+    assert os.path.exists(config_file), "File not found: %s" % config_file
 
     # Read the configuration.
     config = ConfigParser.ConfigParser()
@@ -29,8 +28,7 @@ def read_config():
     # ignoring section headings.
     var_dict = {}
     for section in config.sections():
-        for x in config.items(section):
-            name, value = x
+        for (name, value) in config.items(section):
             var_dict[name] = value
     return var_dict
 

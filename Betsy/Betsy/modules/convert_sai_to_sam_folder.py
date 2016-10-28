@@ -18,7 +18,7 @@ class Module(AbstractModule):
         fastq_files = mlib.find_merged_fastq_files(
             sample_node.identifier, fastq_node.identifier)
         sai_path = sai_node.identifier
-        assert mlib.dir_exists(sai_path)
+        assert filelib.dir_exists(sai_path)
         orient = mlib.read_orientation(orient_node.identifier)
         ref = alignlib.create_reference_genome(reference_node.identifier)
         filelib.safe_mkdir(out_path)

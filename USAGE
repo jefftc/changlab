@@ -1,17 +1,75 @@
-INSTALLATION
+RUNNING BETSY
+=============
 
-graphviz
-pygraphviz
-Configure .betsyrc
-Configure .genomicoderc
-openpyxl
-xlrd
+The main interface to the BETSY expert system is through the
+betsy_run.py script.  In this system, you specify the desired output
+(e.g. a gene expression data set), and work with BETSY to refine the
+pipeline until you come upon one that fits your needs.  Here is an
+example interaction with the system to generate a clustered heatmap of
+a gene expression data set.
 
-NGS Specific Tools
-samtools
-bowtie
-bowtie2
-STAR
+1.  First, query the BETSY knowledge base for the DataTypes that can
+be produced.
+
+$ betsy_run.py
+
+In the output, I see that the DataType for generating a heatmap is
+called a "Heatmap".
+
+
+2.  Ask BETSY to create a network that produces a Heatmap.
+
+$ betsy_run.py --network_png network.png --output Heatmap
+
+
+
+
+
+Some useful flags:
+--num_cores <int>     Set the maximum number of cores to use.
+--receipt <filename>  Save a record of the analysis run (as a text file).
+
+BETSY is concurrency safe.  You can run multiple instances
+simultaneously.  If two instances are operating on the same data, they
+won't do the same calculations, and they won't overwrite each other's
+results.
+
+betsy_run.py -h will 
+
+
+
+
+MANAGING CACHE
+==============
+
+When BETSY runs pipelines, it tries to avoiding repeating the same
+calculation.  This enables the user to try multiple different
+parameters without performing redundant calculations.  BETSY does this
+by caching the results in the CACHE_PATH configured in ~/.betsyrc.
+Because CACHE_PATH contains an archive of every result, it can grow
+large.  Unfortunately, there is not yet an automated way of clearing
+that cache, and it must be done manually using a script called
+betsy_manage_cache.py
+
+Here are some example uses of betsy_manage_cache.py.
+
+betsy_manage_cache.py -h        Shows a help message.
+betsy_manage_cache.py           Generates a summary of the analyses that are 
+                                cached.
+betsy_manage_cache.py --run     Show the analyses currently running.
+betsy_manage_cache.py --broken  Show the broken analyses, e.g. those that 
+                                quit before completion for some reason.
+
+betsy_manage_cache.py --clear_cache 1T 
+                                Clear out 1 terabyte of old (not currently 
+                                running) analyses.
+betsy_manage_cache.py --clear_cache 500g
+                                Clear out 500 Gb of old analyses.
+betsy_manage_cache.py --clear_cache 500g --dry_run
+                                Do a dry run.  Just show the analyses that 
+                                would be deleted without actually deleting
+                                them.
+                                                  
 
 
 

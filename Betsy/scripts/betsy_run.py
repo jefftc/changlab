@@ -38,7 +38,7 @@ def check_output_provided(rulebase, output_file):
     if output_file:
         return True
     # If there is no output, just print the whole rulebase.
-    print "Selecting --output DataType."
+    #print "Selecting --output DataType."
     _print_rulebase(rulebase)
     return False
 
@@ -889,7 +889,7 @@ def write_receipt(outfilename, network, start_ids, node_ids, transitions,
                   node_dict):
     import os
     from Betsy import bie3
-    from Betsy import rule_engine_bie3
+    from Betsy import rule_engine
     from genomicode import parselib
 
     print "Writing receipt to %s." % outfilename
@@ -922,8 +922,8 @@ def write_receipt(outfilename, network, start_ids, node_ids, transitions,
             print >>handle, inode.identifier
             print >>handle
             continue
-        x = os.path.join(inode.out_path, rule_engine_bie3.BETSY_PARAMETER_FILE)
-        params = rule_engine_bie3._read_parameter_file(x)
+        x = os.path.join(inode.out_path, rule_engine.BETSY_PARAMETER_FILE)
+        params = rule_engine._read_parameter_file(x)
         module_name = params.get("module_name")
         print >>handle, "%d.  %s" % (nid, module_name)
         print >>handle, "-"*len(module_name)
@@ -931,7 +931,7 @@ def write_receipt(outfilename, network, start_ids, node_ids, transitions,
         start_time = params.get("start_time")
         assert start_time, "Missing: start_time"
         print >>handle, "Run on %s." % start_time
-        #time_ = time.strptime(start_time, rule_engine_bie3.TIME_FMT)
+        #time_ = time.strptime(start_time, rule_engine.TIME_FMT)
 
         metadata = params.get("metadata", {})
         for key, value in metadata.iteritems():
@@ -1238,7 +1238,7 @@ def main():
     #import itertools
 
     from Betsy import config
-    from Betsy import rule_engine_bie3
+    from Betsy import rule_engine
     from Betsy import userfile
     from Betsy import reportlib
     from Betsy import rulebase
@@ -1254,7 +1254,7 @@ def main():
         "    Now shows just the combinations that includes the input\n"
         "    DataTypes requested.\n"
         "FLAG: --input\n"
-        "5.  Work out the attributes of the inputs.\n"
+        "5.  Configure the attributes of the inputs.\n"
         "    Shows the detailed information about each node.\n"
         "6.  System makes sure each node can be found in the network.\n"
         "    If not, try to diagnose differences.\n"
@@ -1405,9 +1405,9 @@ def main():
                "Cannot restart_from_network: no --network_json specified."
 
     # Make sure configuration directory exists.
-    if not os.path.exists(config.OUTPUTPATH):
-        print "Making BETSY working path: %s." % config.OUTPUTPATH
-        os.mkdir(config.OUTPUTPATH)
+    if not os.path.exists(config.CACHE_PATH):
+        print "Making BETSY working path: %s." % config.CACHE_PATH
+        os.mkdir(config.CACHE_PATH)
 
     # Make sure files exist.
     for x in input_list:
@@ -1666,7 +1666,7 @@ def main():
     clean_up = not args.save_failed_data
     node_dict = transitions = None
     try:
-        x = rule_engine_bie3.run_pipeline(
+        x = rule_engine.run_pipeline(
             network, in_data_nodes, custom_attributes, user_options, paths,
             user=args.user, job_name=args.job_name, clean_up=clean_up,
             num_cores=args.num_cores, verbosity=args.verbose)
@@ -1674,7 +1674,7 @@ def main():
             node_dict, transitions = x
     except AssertionError, x:
         if str(x).startswith("Inference error"):
-            node_ids = rule_engine_bie3.DEBUG_POOL.keys()
+            node_ids = rule_engine.DEBUG_POOL.keys()
             plot_network(
                 args.network_png, network, user_options=user_options,
                 highlight_green=node_ids, verbose=verbose_network)

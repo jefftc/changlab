@@ -152,11 +152,11 @@ def has_file(username, filename):
 
 def _make_user_path(username):
     # Return the full path to store files for this user.
-    # <config.OUTPUTPATH>/userfile/<username>
+    # <config.CACHE_PATH>/userfile/<username>
     import os
     import config
 
-    p1 = os.path.join(config.OUTPUTPATH, 'userfile')
+    p1 = os.path.join(config.CACHE_PATH, 'userfile')
     p2 = os.path.join(p1, username)
     if not os.path.exists(p1):
         os.mkdir(p1)

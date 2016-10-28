@@ -35,7 +35,7 @@ class Module(AbstractModule):
         else:
             raise AssertionError, "Unhandled: %s" % gene_model
         
-        mlib.dir_exists(gene_path)
+        filelib.dir_exists(gene_path)
         gene_model_bed = os.path.join(gene_path, "RefSeq.bed12")
         housekeeping_model_bed = os.path.join(
             gene_path, "HouseKeepingGenes.bed")
