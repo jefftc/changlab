@@ -19,6 +19,7 @@ GEOSeries = DataType(
     AttributeDef(
         "contents", BDT.CONTENTS,
         'unspecified', 'unspecified', help="contents"),
+    no_file=True,
     help="GEOID to download from the GEO database")
 
 GEOSeriesMatrixFile = DataType(

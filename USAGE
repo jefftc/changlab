@@ -17,9 +17,53 @@ In the output, I see that the DataType for generating a heatmap is
 called a "Heatmap".
 
 
-2.  Ask BETSY to create a network that produces a Heatmap.
+2.  Ask BETSY to create a network that produces a Heatmap.  I do this
+by specifying an "--output" parameter.
 
 $ betsy_run.py --network_png network.png --output Heatmap
+# Will run for a minute or two.
+
+This will show (in the terminal) all the possible combination of
+"inputs" that can be used to generate a Heatmap.  As you can see,
+there are many possibilities.
+
+To get a description of what these inputs are, we can examine the
+BETSY knowledge base:
+$ betsy_run.py
+
+It will also create a file "network.png" in the local directory that
+shows the graph of all possible pipelines that connect the inputs to
+the Heatmap output.
+
+
+3.  We would like to use a gene expression file that is currently
+stored in the GEO database.  Therefore, we will refine the pipeline by
+telling BETSY that we would like to use a "GEOSeries" (seen in the
+results from the terminal in the previous step).
+
+$ betsy_run.py --network_png network.png \
+    --input GEOSeries \
+    --output Heatmap
+
+betsy_run.py --network_png network.png \
+    --network_json network.json --restart_from_network \
+    --input GEOSeries \
+    --mattr GSEID=GSE14934 \
+    --output Heatmap
+
+XXX BROKEN?  Why only agilent?
+
+This tells BETSY that we would like to generate a Heatmap from a
+GEOSeries.  With this additional information, BETSY will generate
+a new graph that shows the pipeline(s) that fits this.
+
+Reading through the 
+
+Missing --mattr: download_geo_supplement requires attribute "GSEID".
+
+RMA or MAS5
+
+GSE14934
 
 
 

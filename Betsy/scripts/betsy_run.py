@@ -730,7 +730,10 @@ def check_input_files(network, in_data_nodes, user_options, paths,
     sys.stdout.flush()
     missing = False
     for x in in_data_nodes:
-        if not x.identifier:
+        if x.data.datatype.no_file:
+            # This DataType does not require a file.
+            continue
+        elif not x.identifier:
             print "No file given: %s." % (x.data.datatype.name)
             missing = True
         elif not os.path.exists(x.identifier):

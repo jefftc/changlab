@@ -581,7 +581,7 @@ class DataType:
         for x in attribute_defs:
             assert isinstance(x, AttributeDef), repr(x)
         for x in keywds:
-            assert x in ["help"]
+            assert x in ["help", "no_file"]
 
         # Optimizations:
         # 1.  Save attribute_defs as a dictionary for fast lookups.
@@ -599,8 +599,10 @@ class DataType:
         #self.attribute_defs = attribute_defs   # AttributeDef
         self.attribute_defs = attr_defs_dict
         self._attribute_names = sorted(attr_defs_dict)   # optimize
+        self.no_file = keywds.get("no_file", False)
         self.help = keywds.get("help")
-        self.hash_ = hash((name, hash(attr_defs_tuple), self.help))
+        x = name, hash(attr_defs_tuple), self.no_file, self.help
+        self.hash_ = hash(x)
 
     def get_attribute_def(self, name):
         #x = [x for x in self.attribute_defs if x.name == name]
@@ -710,6 +712,8 @@ class DataType:
     def __repr__(self):
         x = [self.name]
         x += [repr(x) for x in self.attribute_defs.itervalues()]
+        if self.no_file:
+            x.append("no_file=1")
         if self.help:
             x.append("help=%r" % self.help)
         return "DataType(%s)" % ", ".join(x)
@@ -718,14 +722,18 @@ class DataType:
     def __init_from_dict(args):
         assert 'name' in args
         assert 'attribute_defs' in args
+        assert "no_file" in args
         assert 'help' in args
         #inst = DataType(
         #    args['name'], *args['attribute_defs'], help=args['help'])
-        dictionary = args['attribute_defs']
         attributes = []
-        for i in dictionary:
-            attributes.append(dictionary[i])
-        inst = DataType(args['name'], *attributes, **{"help" : args['help']})
+        for value in args['attribute_defs'].itervalues():
+            attributes.append(value)
+        params = {
+            "no_file" : args["no_file"],
+            "help" : args["help"],
+            }
+        inst = DataType(args['name'], *attributes, **params)
         return inst
 
 
@@ -2741,8 +2749,6 @@ def _find_paths_by_start_ids_hh(
             if not missing_ids:
                 conflict = _does_based_on_data_conflict_with_out_data(
                     network, node_ids, transitions)
-                #if conflict:
-                #    print "HERE 1", branches_i
                 if conflict and not missing_ids:
                     # This happens 60% of the time.
                     continue
@@ -3552,9 +3558,8 @@ def _prune_alternate_attributes1(
 
     # Make list of all nodes that have alternate values.
     alternates = []  # list of node_id, attr_name
-    for node_id, node in enumerate(network.nodes):
-        if node_id not in path_node_ids:
-            continue
+    for node_id in sorted(path_node_ids):
+        node = network.nodes[node_id]
         if not isinstance(node, DataNode):
             continue
         for (name, value) in node.attributes.iteritems():
@@ -3568,6 +3573,8 @@ def _prune_alternate_attributes1(
 
     # Only want the alternates with multiple parent nodes.
     nodeid2parents = _make_parents_dict(network)
+    nodeid2ancestors = _make_ancestor_dict(network)
+    
     good = []
     for (node_id, attr_name) in alternates:
         x = nodeid2parents.get(node_id, [])
@@ -3643,6 +3650,52 @@ def _prune_alternate_attributes1(
         if len(value2pathids) == 1:
             continue
 
+        # Do not delete any paths whose attributes are BASED_ON_DATA.
+        # e.g.
+        # identify_exp -> gpr     -> -> UnprocSignalFile.preprocess=illumina
+        #              -> agilent -> -> UnprocSignalFile.preprocess=agilent
+        #              -> cel     -> -> UnprocSignalFile.preprocess=rma
+        #
+        # Only resolve this variable if:
+        # 1.  Each parent is associated with a single value.
+        # 2.  AND the pipelines for each value do not converge upon a
+        #     common ancestor with a BASED_ON_DATA consequence.
+        
+        value2ancestors = {}  # value -> set of ancestors
+        for value, path_ids in value2pathids.iteritems():
+            node_ids = set()
+            for path_id in path_ids:
+                node_ids = node_ids.union(paths[path_id].node_ids)
+            x = [
+                x for x in node_ids if x in nodeid2ancestors.get(node_id, {})]
+            value2ancestors[value] = set(x)
+        # Count the number of values is associated with each ancestor
+        # node.
+        nodeid2count = {}  # node_id -> count
+        for node_ids in value2ancestors.itervalues():
+            for nid in node_ids:
+                nodeid2count[nid] = nodeid2count.get(nid, 0) + 1
+        # See if each parent is associated with a single value.
+        num_values = [
+            nodeid2count.get(x, 0) for x in nodeid2parents.get(node_id, [])]
+        if num_values and max(num_values) >= 2:
+            continue
+        # See if any of the pipelines for each value converge upon a
+        # common ancestor with a BASED_ON_DATA consequence.
+        x = [nid for (nid, count) in nodeid2count.iteritems() if count >= 2]
+        # Only Module nodes with consequences.
+        x = [x for x in x if isinstance(network.nodes[x], ModuleNode) and
+             network.nodes[x].consequences]
+        # See if any of the consequences are BASED_ON_DATA.
+        dont_resolve = False
+        for nid in x:
+            for cons in network.nodes[nid].consequences:
+                if cons.behavior == BASED_ON_DATA:
+                    dont_resolve = True
+                    break
+        if dont_resolve:
+            continue
+
         # Choose a value.
         chosen_value = None
         # Look in custom_attributes to see if one is favored by the user.
@@ -3670,6 +3723,7 @@ def _prune_alternate_attributes1(
             to_delete.extend(path_ids)
         to_delete = {}.fromkeys(to_delete)
 
+        #print "Pruning node %d %s=%s" % (node_id, name, value)
         paths = [p for (i, p) in enumerate(paths) if i not in to_delete]
 
     #_print_attributes_pruned(deleted)
@@ -4093,8 +4147,7 @@ def _list_alternate_attributes2(
                 continue
             for mid in x:
                 for cons in network.nodes[mid].consequences:
-                    if cons.name == name and \
-                           cons.behavior in [BASED_ON_DATA]:
+                    if cons.name == name and cons.behavior == BASED_ON_DATA:
                         based_on_data = True
                         break
         if based_on_data:
