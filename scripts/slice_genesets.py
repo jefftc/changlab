@@ -142,6 +142,18 @@ def sort_genesets(genesets, arg):
     return genesets
 
 
+def split_genes(genesets, arg):
+    if not arg:
+        return genesets
+    from genomicode import arrayplatformlib as apl
+    
+    delimiter = arg
+
+    for gs in genesets:
+        gs.genes = apl.normalize_ids(gs.genes, delimiter=delimiter)
+    return genesets
+
+
 def _parse_file_gs(geneset):
     # Parse a geneset specified by the user.  geneset is in the format
     # of <filename>[,<geneset>,<geneset>,...].  Return a tuple of
@@ -177,9 +189,6 @@ def main():
         help="Merge gene sets.  The argument should be the name of the "
         "intersection.  Format: <geneset_name>.")
     group.add_argument(
-        "--clean_excel", action="store_true",
-        help="Clean up gene names that Excel messes up (like OCT1).")
-    group.add_argument(
         "--append_to_name", 
         help="Append to the name of these gene sets.  "
         "Format: <text_to_append>.")
@@ -189,6 +198,13 @@ def main():
         "<from> will be replaced with <to>.  "
         "If there are already commas in the header names, can use ; instead.  "
         "(MULTI)")
+    group.add_argument(
+        "--split_genes", help="Split genes based on a delimiter.  "
+        "e.g. \"CHPF2 /// MIR671\" will be split to separate genes.  "
+        "Format: <delimiter>")
+    group.add_argument(
+        "--clean_excel", action="store_true",
+        help="Clean up gene names that Excel messes up (like OCT1).")
     group.add_argument(
         "--nodup", action="store_true", help="Remove duplicate genes.")
     group.add_argument("--sort_genes", action="store_true")
@@ -230,6 +246,7 @@ def main():
     genesets = nodup(genesets, args.nodup)
     genesets = sort_genes(genesets, args.sort_genes)
     genesets = sort_genesets(genesets, args.sort_genesets)
+    genesets = split_genes(genesets, args.split_genes)
 
 
     if args.format == "gmt":

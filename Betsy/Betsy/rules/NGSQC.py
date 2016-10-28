@@ -6,11 +6,17 @@ YESNO = BDT.YESNO  # for convenience
 
 FastQCFolder = DataType(
     "FastQCFolder",
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
     help="Folder that holds FastQC results.",
     )
 
 FastQCSummary = DataType(
     "FastQCSummary",
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
     help="An Excel file that merges and summarizes FastQC results."
     )
 
@@ -24,6 +30,10 @@ RNASeQCSummary = DataType(
 
 RSeQCResults = DataType(
     "RSeQCResults",
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef("aligner", NGS.RNA_ALIGNERS, "star", "star"),
     )
 
 all_data_types = [
@@ -40,11 +50,15 @@ all_modules = [
         NGS.FastqFolder, FastQCFolder,
         # Actually, will work on gzip'd data.
         Constraint("compressed", MUST_BE, "no"),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         help="Run FastQC on a folder of FASTQ files.",
         ),
     ModuleNode(
         "summarize_fastqc_results",
         FastQCFolder, FastQCSummary,
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         help="Merge and summarize the results from a FastQC folder.",
         ),
     
@@ -94,9 +108,10 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate", 1),
         Constraint("indexed", MUST_BE, "yes", 1),
         Constraint("has_md_tags", MUST_BE, "yes", 1),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
-        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS, 1),
+        Consequence("aligner", SAME_AS_CONSTRAINT, 1),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 1),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT, 1),
         help="run RSeQC",
         ),
     ]

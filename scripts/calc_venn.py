@@ -243,8 +243,7 @@ def draw_venn1(
         #"euler.d" : R_var("TRUE"),
         #"scaled" : R_var("TRUE"),
         }
-    R_fn(
-        "venn.diagram", R_var("x"), filename=filename, **params)
+    R_fn("venn.diagram", R_var("x"), filename=filename, **params)
 
 
 def draw_venn2(
@@ -408,10 +407,10 @@ def main():
     parser.add_argument(
         "-o", dest="outfile", help="Save the intersection to this "
         "(GMX or GMT) file.")
-    #parser.add_argument(
-    #    "--plotfile", help="Save a TIFF plot to this file.")
     parser.add_argument(
-        "--plotfile", help="Save a PDF plot to this file.")
+        "--plotfile", help="Save a TIFF plot to this file.")
+    #parser.add_argument(
+    #    "--plotfile", help="Save a PDF plot to this file.")
 
     group = parser.add_argument_group(title="Gene Sets")
     #parser.add_argument(
@@ -422,11 +421,11 @@ def main():
         help="Num gene sets to compare at once.  "
         "Default is 2 (pairwise comparisons).")
     group.add_argument(
-        "--geneset", action="append",
+        "--geneset", "--gs", action="append", 
         help="Which gene sets to include in the VENN diagram.  "
         "If automatch, this is the name without the _UP or _DN suffix.")
     group.add_argument(
-        "--label", action="append",
+        "--label", action="append", 
         help="How to label this gene set.  Should have a --label for each "
         "--geneset")
     group.add_argument(
@@ -484,6 +483,7 @@ def main():
     assert args.title_y >= 0 and args.title_y <= 1
 
     assert not (args.geneset and args.all_genesets)
+    assert args.all_genesets or args.geneset, "No gene sets specified."
     if not args.all_genesets:
         assert len(args.geneset) > 1, "Must compare multiple gene sets."
         assert len(args.geneset) >= args.num_to_compare
