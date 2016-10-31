@@ -1,0 +1,502 @@
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+VCFFolder
+  aligner=bowtie2
+  backfilled=no
+  caller=gatk
+  contents=unspecified
+  coordinates_from=unknown
+  filtered_calls=no
+  is_consensus=no
+  somatic=no
+  vartype=all
+  vcf_recalibrated=no
+Made a network with 102 nodes.
+Writing network in json format: test01.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 16 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: realign_indels_bam_folder requires attribute "realign_known_sites1".
+Missing --mattr: create_realign_targets requires attribute "realign_known_sites1".
+Plotting (102 node) network to test01.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+ClassifyFile
+  actual_label=no
+  classify_alg=random_forest
+  loocv=yes
+  svm_kernel=linear
+  wv_feature_stat=wv_snr
+Made a network with 151 nodes.
+Writing network in json format: test02.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 4 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  4 left.
+Looking for input files.
+No file given: UnprocessedSignalFile.
+No file given: ClassLabelFile.
+Plotting (151 node) network to test02.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+FastQCSummary
+  adapters_trimmed=no
+Made a network with 16 nodes.
+Writing network in json format: test03.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 2 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  2 left.
+Looking for input files.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+Plotting (16 node) network to test03.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+RSeQCResults
+  adapters_trimmed=no
+  aligner=star
+Made a network with 67 nodes.
+Writing network in json format: test04.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 4 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  4 left.
+Looking for input files.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+No file given: ReferenceGenome.
+No file given: STARReferenceGenome.
+No file given: GTFGeneModel.
+Plotting (67 node) network to test04.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+PerfectAlignmentSummary
+  adapters_trimmed=yes
+  mouse_reads_subtracted=no
+Made a network with 64 nodes.
+Writing network in json format: test05.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 2 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: trim_adapters_trimmomatic requires attribute "adapters_fasta".
+Plotting (64 node) network to test05.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+PerfectAlignmentSummary
+  adapters_trimmed=yes
+  mouse_reads_subtracted=no
+Made a network with 64 nodes.
+Writing network in json format: test06.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 2 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: trim_adapters_trimmomatic requires attribute "adapters_fasta".
+Plotting (64 node) network to test06.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces an:
+UnprocessedSignalFile
+  contents=unspecified
+  filter_and_threshold=no
+  format=tdf
+  logged=no
+  preprocess=tpm
+Made a network with 72 nodes.
+Writing network in json format: test07.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 4 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  4 left.
+Looking for input files.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+No file given: ReferenceGenome.
+No file given: RSEMReferenceGenome.
+No file given: GTFGeneModel.
+Plotting (72 node) network to test07.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+HTSeqCountSummary
+  adapters_trimmed=no
+  aligner=star
+Made a network with 57 nodes.
+Writing network in json format: test08.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+ReferenceGenome is not used in any pipelines.  Please make sure the proposed pipelines are acceptable and remove this input.
+Plotting (57 node) network to test08.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+MACS21Results
+Made a network with 25 nodes.
+Writing network in json format: test09.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 1 possible pipeline.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: run_MACS21 requires attribute "macs_genome".
+Missing --mattr: run_MACS21 requires attribute "treatment_sample".
+Plotting (25 node) network to test09.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+BamFolder
+  adapters_trimmed=no
+  aligner=bwa_mem
+  base_quality_recalibrated=yes
+  duplicates_marked=yes
+  has_md_tags=no
+  has_read_groups=yes
+  indel_realigned=yes
+  indexed=yes
+  is_subset=no
+  mouse_reads_subtracted=no
+  sorted=coordinate
+  split_n_trim=no
+Made a network with 81 nodes.
+Writing network in json format: test10.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 4 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: create_realign_targets requires attribute "realign_known_sites1".
+Missing --mattr: make_base_recalibration_report requires attribute "recal_known_sites1".
+Missing --mattr: realign_indels_bam_folder requires attribute "realign_known_sites1".
+Plotting (81 node) network to test10.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+DepthOfCoverage
+Made a network with 74 nodes.
+Writing network in json format: test11.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 1 possible pipeline.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  1 left.
+Looking for input files.
+No file given: BamFolder.
+No file given: ReferenceGenome.
+Plotting (74 node) network to test11.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+VCFFolder
+  aligner=bwa_mem
+  backfilled=no
+  caller=somaticsniper
+  contents=unspecified
+  coordinates_from=unknown
+  filtered_calls=no
+  is_consensus=no
+  somatic=yes
+  vartype=snp
+  vcf_recalibrated=no
+Made a network with 84 nodes.
+Writing network in json format: test12.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 1 possible pipeline.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  1 left.
+Looking for input files.
+No file given: BamFolder.
+No file given: ReferenceGenome.
+No file given: NormalCancerFile.
+Plotting (84 node) network to test12.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+STARReferenceGenome
+Made a network with 4 nodes.
+Writing network in json format: test13.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 1 possible pipeline.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  1 left.
+Looking for input files.
+No file given: ReferenceGenome.
+No file given: GTFGeneModel.
+Plotting (4 node) network to test13.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+SimpleVariantMatrix
+  annotated=yes
+  filtered_calls=yes
+  filtered_variants=no
+  vartype=snp
+  with_cancer_genes=yes
+  with_coverage=yes
+  with_gxp=yes
+  with_rna_coverage=yes
+Made a network with 305 nodes.
+Writing network in json format: test14.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 8 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: add_cancer_genes_to_simplevariantmatrix requires attribute "cancer_genes_file".
+Missing --mattr: filter_simplevariantfile requires attribute "wgs_or_wes".
+Missing --mattr: annotate_simplevariantmatrix requires attribute "annovar_buildver".
+Plotting (305 node) network to test14.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+SimpleVariantMatrix
+  annotated=no
+  filtered_calls=no
+  filtered_variants=no
+  vartype=snp
+  with_cancer_genes=no
+  with_coverage=no
+  with_gxp=no
+  with_rna_coverage=no
+Made a network with 111 nodes.
+Writing network in json format: test15.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 6 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  6 left.
+Looking for input files.
+No file given: BamFolder.
+No file given: ReferenceGenome.
+Plotting (111 node) network to test15.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces an:
+UnprocessedSignalFile
+  contents=unspecified
+  filter_and_threshold=no
+  format=tdf
+  logged=no
+  preprocess=tpm
+Made a network with 72 nodes.
+Writing network in json format: test16.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 4 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  4 left.
+Looking for input files.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+No file given: STARReferenceGenome.
+No file given: RSEMReferenceGenome.
+No file given: GTFGeneModel.
+Plotting (72 node) network to test16.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces an:
+UnprocessedSignalFile
+  contents=unspecified
+  filter_and_threshold=no
+  format=tdf
+  logged=no
+  preprocess=counts
+Made a network with 78 nodes.
+Writing network in json format: test17.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 2 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  2 left.
+Looking for input files.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+No file given: STARReferenceGenome.
+No file given: GTFGeneModel.
+Plotting (78 node) network to test17.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+SimpleVariantMatrix
+  annotated=no
+  filtered_calls=no
+  filtered_variants=no
+  vartype=snp
+  with_cancer_genes=no
+  with_coverage=no
+  with_gxp=no
+  with_rna_coverage=no
+Made a network with 154 nodes.
+Writing network in json format: test18.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 6 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: call_variants_mutect requires attribute "mutect_cosmic_vcf".
+Missing --mattr: call_variants_mutect requires attribute "mutect_dbsnp_vcf".
+Missing --mattr: call_variants_muse requires attribute "muse_dbsnp_vcf".
+Plotting (154 node) network to test18.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+SimpleVariantMatrix
+  annotated=yes
+  filtered_calls=yes
+  filtered_variants=yes
+  vartype=snp
+  with_cancer_genes=yes
+  with_coverage=yes
+  with_gxp=no
+  with_rna_coverage=no
+Made a network with 201 nodes.
+Writing network in json format: test19.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 6 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: call_variants_muse requires attribute "wgs_or_wes".
+Missing --mattr: call_variants_mutect requires attribute "mutect_cosmic_vcf".
+Missing --mattr: annotate_simplevariantmatrix requires attribute "annovar_buildver".
+Missing --mattr: call_variants_muse requires attribute "muse_dbsnp_vcf".
+Missing --mattr: add_cancer_genes_to_simplevariantmatrix requires attribute "cancer_genes_file".
+Missing --mattr: filter_simplevariantfile requires attribute "wgs_or_wes".
+Missing --mattr: call_variants_mutect requires attribute "mutect_dbsnp_vcf".
+Plotting (201 node) network to test19.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+SimpleVariantMatrix
+  annotated=yes
+  filtered_calls=yes
+  filtered_variants=yes
+  vartype=snp
+  with_cancer_genes=yes
+  with_coverage=yes
+  with_gxp=yes
+  with_rna_coverage=yes
+Made a network with 305 nodes.
+Writing network in json format: test20.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 96 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  96 left.
+Looking for input files.
+No file given: BamFolder.
+No file given: BamFolder.
+No file given: ReferenceGenome.
+No file given: NormalCancerFile.
+No file given: UnprocessedSignalFile.
+Plotting (305 node) network to test20.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+SimpleVariantMatrix
+  annotated=yes
+  filtered_calls=yes
+  filtered_variants=no
+  vartype=indel
+  with_cancer_genes=yes
+  with_coverage=yes
+  with_gxp=yes
+  with_rna_coverage=no
+Made a network with 216 nodes.
+Writing network in json format: test21.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 8 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  8 left.
+Looking for input files.
+No file given: BamFolder.
+No file given: NormalCancerFile.
+No file given: ReferenceGenome.
+No file given: UnprocessedSignalFile.
+Plotting (216 node) network to test21.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+StdRNASeqAnalysis
+  adapters_trimmed=no
+  aligner=star
+Made a network with 122 nodes.
+Writing network in json format: test22.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 8 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  8 left.
+Looking for input files.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+No file given: ReferenceGenome.
+No file given: RSEMReferenceGenome.
+No file given: STARReferenceGenome.
+No file given: GTFGeneModel.
+Plotting (122 node) network to test22.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+Heatmap
+  cluster_alg=none
+  contents=unspecified
+Made a network with 176 nodes.
+Writing network in json format: test23.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 22 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  22 left.
+Looking for input files.
+Ready to go!  Will run the analysis using a maximum of 4 cores.
+Please review the network to make sure the analysis is correct.
+Add --run when ready to run the analysis.
+Plotting (176 node) network to test23.png.

@@ -73,7 +73,6 @@ betsy_run.py --network_png test08.png --network_json test08.txt \
   --input FastqFolder \
   --dattr FastqFolder.reads_merged=yes \
   --input SampleGroupFile \
-  --input ReferenceGenome \
   --input STARReferenceGenome \
   --input GTFGeneModel \
   --output HTSeqCountSummary \
@@ -289,3 +288,19 @@ betsy_run.py --network_png test21.png --network_json test21.txt \
   --dattr SimpleVariantMatrix.with_cancer_genes=yes \
   --mattr cancer_genes_file="project/08 Cancer Genes/cancer_genes.txt" \
   --dattr SimpleVariantMatrix.with_gxp=yes >& test21.log
+# RNA-Seq analysis.
+betsy_run.py --network_png test22.png --network_json test22.txt \
+  --input FastqFolder \
+  --input SampleGroupFile \
+  --input ReferenceGenome \
+  --input RSEMReferenceGenome \
+  --input STARReferenceGenome \
+  --input GTFGeneModel \
+  --output StdRNASeqAnalysis \
+  --mattr gene_model=hg19 \
+  --mattr adapters_fasta=adapters/TruSeq3-PE-2.fa >& test22.log
+# Generate a heatmap.
+betsy_run.py --network_png test23.png --network_json test23.txt \
+  --input GEOSeries \
+  --output Heatmap \
+  --mattr GSEID=GSE14934 >& test23.log

@@ -888,9 +888,10 @@ def plot_pipelines(filestem, network, paths, user_options, max_pipelines=None,
             prune=prune, verbose=verbose)
 
 
-def write_receipt(outfilename, network, start_ids, node_ids, transitions,
-                  node_dict):
+def write_receipt(
+    outfilename, network, start_ids, node_ids, transitions, node_dict):
     import os
+    import sys
     from Betsy import bie3
     from Betsy import rule_engine
     from genomicode import parselib
@@ -915,26 +916,36 @@ def write_receipt(outfilename, network, start_ids, node_ids, transitions,
         x for x in node_order
         if not isinstance(network.nodes[x], bie3.ModuleNode)]
 
-    # Write out each module.
     handle = open(outfilename, 'w')
+
+    # Write the command line.
+    cmd = " ".join(sys.argv)
+    parselib.print_split(cmd, outhandle=handle)
+    print >>handle
+    
+    # Write out each module.
     for nid in node_order:
         inode = node_dict[nid]
         node = inode.data
         if not hasattr(inode, "out_path"):
-            print >>handle, node.datatype.name
-            print >>handle, inode.identifier
+            print >>handle, "Input: %s" % node.datatype.name
+            if inode.identifier:
+                print >>handle, inode.identifier
             print >>handle
             continue
         x = os.path.join(inode.out_path, rule_engine.BETSY_PARAMETER_FILE)
         params = rule_engine._read_parameter_file(x)
         module_name = params.get("module_name")
-        print >>handle, "%d.  %s" % (nid, module_name)
-        print >>handle, "-"*len(module_name)
-        print >>handle, inode.out_path
+        x = "%s [Node %d]" % (module_name, nid)
+        print >>handle, x
+        print >>handle, "-"*len(x)
         start_time = params.get("start_time")
         assert start_time, "Missing: start_time"
-        print >>handle, "Run on %s." % start_time
+        print >>handle, "Run on: %s." % start_time
+        x = "Files saved in: %s" % inode.out_path
+        parselib.print_split(x, outhandle=handle)
         #time_ = time.strptime(start_time, rule_engine.TIME_FMT)
+        # TODO: how long did it take to run?
 
         metadata = params.get("metadata", {})
         for key, value in metadata.iteritems():
@@ -1348,7 +1359,8 @@ def main():
 
     group = parser.add_argument_group(title="Output")
     group.add_argument(
-        '--network_png', help='generate the output network png file')
+        '--network_png',
+        help='Generate a PNG that shows the data flow graph.')
     group.add_argument(
         '--sparse_network_png', action="store_true",
         help="Leave out details in network plot.")
@@ -1473,13 +1485,9 @@ def main():
         x = [x[0] for x in out_attributes]
         x = sorted({}.fromkeys(x))
         datatypes = x
+        
         # datatypes can be empty if no attributes specified.
-        #assert datatypes
         for dt in datatypes:
-            # Since there's only one output object, all attributes for
-            # that data type should be put into the same
-            # CustomAttributes object.
-
             # Get all_nodes for this data type.  Should all be the same.
             x = [x[3] for x in out_attributes if x[0] == dt]  # all_nodes
             x = sorted({}.fromkeys(x))
@@ -1489,12 +1497,21 @@ def main():
                          if x[0] == dt and x[3] == all_nodes]
             assert out_attrs
             attributes = [(x[1], x[2]) for x in out_attrs]
-            x = _make_custom_attr(
-                rulebase, dt, attributes, all_nodes)
+            # Since there's only one output object, all attributes for
+            # that data type should be put into the same
+            # CustomAttributes object.
             if dt == outtype:
+                x = _make_custom_attr(rulebase, dt, attributes, all_nodes)
                 out_custom_attribute = x
+            # Otherwise, make separate CustomAttribute objects.
             else:
-                custom_attributes.append(x)
+                for x in attributes:
+                    x = _make_custom_attr(rulebase, dt, [x], all_nodes)
+                    custom_attributes.append(x)
+                #x = _make_custom_attr(
+                #    rulebase, dt, attributes, all_nodes)
+                #custom_attributes.append(x)
+                
         
         ## # out_attributes contains attributes for the output node, as
         ## # well as other nodes in the network. Just group them by
