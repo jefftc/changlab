@@ -9,16 +9,24 @@ class Module(AbstractModule):
         outfile):
         # Given a GEOID and GPLID, get the series matrix file.
         from genomicode import geolib
-    
+
+        metadata = {}
+        
         GSEID = user_options['GSEID']
         GPLID = user_options.get("GPLID")
         assert GSEID.startswith('GSE'), 'GSEID %s is not correct' % GSEID
         assert not GPLID or GPLID.startswith('GPL'), \
                'GPLID %s is not correct' % GPLID
+        # Don't need to save user_options.
+        #metadata["GSEID"] = GSEID
+        #if GPLID:
+        #    metadata["GPLID"] = GPLID
     
         outhandle = open(outfile, 'w')
         geolib.download_seriesmatrix_file(outhandle, GSEID, GPLID)
         outhandle.close()
+        filelib.assert_exists_nz(outfile)
+        #metadata["filesize"] = filelib.filesize(outfile)
         #if not os.path.exists(outfile):
         #    os.mkdir(outfile)
         #matrix_files = get_seriesmatrix_file(GSEID, GPLID)
@@ -28,17 +36,14 @@ class Module(AbstractModule):
         #assert filelib.exists_nz(outfile), (
         #    'the output file %s for download_geo_dseriesmatrix fails' % outfile
         #)
-    
+        return metadata
 
-
-        # Not sure exactly what this does.  Looks like it makes a unique name
-        # for the output of this module.
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-
-        # BUG: what if there are multiple GPLIDs?
-        original_file = module_utils.get_inputid(user_options['GSEID'])
-        filename = "download_geo_seriesmatrix_%s" % original_file
-        return filename
+        #from Betsy import module_utils
+        ## BUG: what if there are multiple GPLIDs?
+        #original_file = module_utils.get_inputid(user_options['GSEID'])
+        #filename = "download_geo_seriesmatrix_%s" % original_file
+        #return filename
+        return "seriesmatrix.txt"
 
     

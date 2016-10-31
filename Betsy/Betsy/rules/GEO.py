@@ -12,8 +12,6 @@ import GeneExpProcessing as GXP
 
 
 
-
-
 GEOSeries = DataType(
     "GEOSeries",
     AttributeDef(
@@ -76,7 +74,7 @@ all_modules = [
         help="Download SeriesMatrix file from GEO."
         ),
     ModuleNode(
-        'download_GEO_family_soft', GEOSeries, GEOFamilySoftFile,
+        'download_geo_family_soft', GEOSeries, GEOFamilySoftFile,
         OptionDef("GSEID", help='GSEID for download family_soft file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),

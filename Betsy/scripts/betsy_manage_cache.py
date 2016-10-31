@@ -41,7 +41,6 @@ def format_module_summary(info):
     x = "[%s]  %s (%s; %s) %s" % (
         time_str, info.module_name, size_str, run_time, info.hash_)
     return x
-
     
     
 def parse_clear_cache(clear_cache):

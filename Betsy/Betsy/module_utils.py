@@ -25,6 +25,7 @@ convert_to_same_platform
 plot_line_keywds
 plot_line_keywd
 find_pcaplots
+find_cluster_files
 
 # Miscellaneous
 is_number
@@ -583,6 +584,43 @@ def find_pcaplots(network, pool, module_id, rma=False):
     return before_pcaplot, after_pcaplot
 
 
+def find_cluster_files(cluster_path):
+    # Return a dictionary of:
+    #   "cdt" : cdt_filename
+    #   "atr" : atr_filename
+    #   "gtr" : gtr_filename
+    #   "kag" : kag_filename
+    #   "kgg" : kgg_filename
+    # Any of these files can be missing.
+    import os
+    from genomicode import filelib
+
+    filelib.assert_exists(cluster_path)
+
+    opj = os.path.join
+    cdt = opj(cluster_path, "signal.cdt")
+    atr = opj(cluster_path, "array_tree.atr")
+    gtr = opj(cluster_path, "gene_tree.gtr")
+    kag = opj(cluster_path, "array_cluster.kag")
+    kgg = opj(cluster_path, "gene_cluster.kgg")
+
+    cluster_files = {}
+    if filelib.exists_nz(cdt):
+        cluster_files["cdt"] = cdt
+    if filelib.exists_nz(atr):
+        cluster_files["atr"] = atr
+    if filelib.exists_nz(gtr):
+        cluster_files["gtr"] = gtr
+    if filelib.exists_nz(kag):
+        cluster_files["kag"] = kag
+    if filelib.exists_nz(kgg):
+        cluster_files["kgg"] = kgg
+
+    assert "cdt" in cluster_files, "No clustered file."
+
+    return cluster_files
+
+
 ## def renew_parameters(parameters, key_list):
 ##     newparameters = parameters.copy()
 ##     for key in key_list:
@@ -1105,7 +1143,12 @@ def get_config(name, which_assert_file=False, assert_exists=False,
     if quote:
         x = sq(x)
     return x
-    
+
+
+# TODO: deprecate this.  Used in a lot of modules.
+def which(bin_name):
+    from genomicode import filelib
+    return filelib.which_assert(bin_name)
 
 
 def root2filename(filenames):

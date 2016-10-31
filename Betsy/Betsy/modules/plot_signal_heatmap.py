@@ -5,82 +5,176 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
+        self, network, in_data, out_attributes, user_options, num_cores,
         outfile):
-        """generate a heatmap of input file"""
-        from genomicode import graphlib
         from genomicode import filelib
-        import subprocess
-        import arrayio
-        from Betsy import module_utils
-        from genomicode import config
-        in_data = antecedents
-        Heatmap_path = config.arrayplot
-        Heatmap_BIN = module_utils.which(Heatmap_path)
-        assert Heatmap_BIN, 'cannot find the %s' % Heatmap_path
 
-        command = ['python', Heatmap_BIN, in_data.identifier, '-o', outfile,
-                   "--label_arrays", "--label_genes", '--no_autoscale']
-        if 'color' in out_attributes.keys():
-            color = ['--color', out_attributes['color'].replace('_', '-')]
-            command.extend(color)
+        metadata = {}
+        cmd = plot_heatmap(in_data.identifier, outfile, {}, user_options)
+        metadata["command"] = cmd
 
-        
-        
-        M = arrayio.read(in_data.identifier)
-        nrow = M.nrow()
-        ncol = M.ncol()
-        ratio = float(nrow) / ncol
-        max_box_height = 20
-        max_box_width = 60
-        if 'hm_width' in user_options:
-            max_box_width = user_options['hm_width']
+        #M = arrayio.read(in_data.identifier)
+        #nrow = M.nrow()
+        #ncol = M.ncol()
+        #ratio = float(nrow) / ncol
+        #max_box_height = 20
+        #max_box_width = 60
     
+        #if 'hm_width' in user_options:
+        #    max_box_width = user_options['hm_width']
+        #if 'hm_height' in user_options:
+        #    max_box_height = user_options['hm_height']
         
-        
-        if 'hm_height' in user_options:
-            max_box_height = user_options['hm_height']
-    
-        
-        
-        if ratio >= 4:
-            x, y = graphlib.find_tall_heatmap_size(nrow, ncol,
-                                                   max_box_height=max_box_height,
-                                                   max_box_width=max_box_width,
-                                                   min_box_height=20,
-                                                   min_box_width=20,
-                                                   max_megapixels=128)
-        else:
-            x, y = graphlib.find_wide_heatmap_size(nrow, ncol,
-                                                   max_box_height=max_box_height,
-                                                   max_box_width=max_box_width,
-                                                   min_box_height=20,
-                                                   min_box_width=20,
-                                                   max_megapixels=128)
-    
-        
-        
-        command.extend(['-x', str(x), '-y', str(y)])
-        process = subprocess.Popen(command,
-                                   shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        error_message = process.communicate()[1]
-        if error_message:
-            raise ValueError(error_message)
-    
-        
-        
-        assert filelib.exists_nz(outfile), (
-            'the output file %s for plot_signal_heatmap fails' % outfile
-        )
+        #if ratio >= 4:
+        #    x, y = graphlib.find_tall_heatmap_size(
+        #        nrow, ncol,
+        #        max_box_height=max_box_height,
+        #        max_box_width=max_box_width,
+        #        min_box_height=20,
+        #        min_box_width=20,
+        #        max_megapixels=128)
+        #else:
+        #    x, y = graphlib.find_wide_heatmap_size(
+        #        nrow, ncol,
+        #        max_box_height=max_box_height,
+        #        max_box_width=max_box_width,
+        #        min_box_height=20,
+        #        min_box_width=20,
+        #        max_megapixels=128)
+        #command.extend(['-x', str(x), '-y', str(y)])
+        #
+        #process = subprocess.Popen(command,
+        #                           shell=False,
+        #                           stdout=subprocess.PIPE,
+        #                           stderr=subprocess.PIPE)
+        #error_message = process.communicate()[1]
+        #if error_message:
+        #    raise ValueError(error_message)
+
+        filelib.assert_exists_nz(outfile)
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'heatmap_' + original_file + '.png'
-        return filename
+        return "heatmap.png"
 
+
+def plot_heatmap(filename, outfile, cluster_files, user_options):
+    from genomicode import parallel
+    from Betsy import module_utils as mlib
+    
+    python = mlib.get_config(
+        "python", which_assert_file=True, assert_exists=True)
+    arrayplot = mlib.get_config(
+        "arrayplot", which_assert_file=True, assert_exists=True)
+
+    COLORS = [
+        "red", "white", "red-green", "blue-yellow", "red-green-soft",
+        "red-blue-soft", "matlab", "bild", "genepattern", "genespring",
+        "yahoo", "brewer-prgn-div", "brewer-rdbu-div", 
+        "brewer-rdylbu-div", "brewer-rdylgn-div", "brewer-spectral-div",
+        "brewer-blues-seq", "brewer-greens-seq", "brewer-reds-seq",
+        "brewer-ylorbr-seq", "brewer-qual-set",
+        ]
+    YESNO = ["no", "yes"]
+
+    hm_width = mlib.get_user_option(
+        user_options, "hm_width", not_empty=True, type=int)
+    hm_height = mlib.get_user_option(
+        user_options, "hm_height", not_empty=True, type=int)
+    hm_color = mlib.get_user_option(
+        user_options, "hm_color", allowed_values=COLORS, not_empty=True)
+
+    hm_colorbar = mlib.get_user_option(
+        user_options, "hm_colorbar", not_empty=True, allowed_values=YESNO)
+    hm_colorbar_horizontal = mlib.get_user_option(
+        user_options, "hm_colorbar_horizontal", not_empty=True,
+        allowed_values=YESNO)
+    hm_colorbar_height = mlib.get_user_option(
+        user_options, "hm_colorbar_height", not_empty=True, type=float)
+    hm_colorbar_width = mlib.get_user_option(
+        user_options, "hm_colorbar_width", not_empty=True, type=float)
+    hm_colorbar_font = mlib.get_user_option(
+        user_options, "hm_colorbar_font", not_empty=True, type=float)
+
+    hm_label_genes = mlib.get_user_option(
+        user_options, "hm_label_genes", allowed_values=YESNO,
+        not_empty=True)
+    hm_scale_gene_labels = mlib.get_user_option(
+        user_options, "hm_scale_gene_labels", not_empty=True, type=float)
+    hm_label_arrays = mlib.get_user_option(
+        user_options, "hm_label_arrays", allowed_values=YESNO,
+        not_empty=True)
+    hm_scale_array_labels = mlib.get_user_option(
+        user_options, "hm_scale_array_labels", not_empty=True, type=float)
+
+    hm_show_gene_tree = None
+    hm_show_array_tree = None
+    hm_show_gene_cluster = None
+    hm_show_array_cluster = None
+    if "hm_show_gene_tree" in user_options:
+        hm_show_gene_tree = mlib.get_user_option(
+            user_options, "hm_show_gene_tree", allowed_values=YESNO,
+            not_empty=True)
+        hm_show_array_tree = mlib.get_user_option(
+            user_options, "hm_show_array_tree", allowed_values=YESNO,
+            not_empty=True)
+        hm_show_gene_cluster = mlib.get_user_option(
+            user_options, "hm_show_gene_cluster", allowed_values=YESNO,
+            not_empty=True)
+        hm_show_array_cluster = mlib.get_user_option(
+            user_options, "hm_show_array_cluster", allowed_values=YESNO,
+            not_empty=True)
+
+    assert hm_width >= 1 and hm_width <= 200
+    assert hm_height >= 1 and hm_height <= 200
+    assert hm_scale_gene_labels > 0 and hm_scale_gene_labels < 10
+    assert hm_scale_array_labels > 0 and hm_scale_array_labels < 10
+
+    sq = parallel.quote
+    cmd = [
+        sq(python),
+        sq(arrayplot),
+        "--grid",
+        "-x", hm_width,
+        "-y", hm_height,
+        "--color", hm_color,
+        ]
+    if hm_colorbar == "yes":
+        cmd += [
+            "--colorbar",
+            "--cb_height", hm_colorbar_height,
+            "--cb_width", hm_colorbar_width,
+            "--cb_font", hm_colorbar_font,
+            ]
+        if hm_colorbar_horizontal == "yes":
+            cmd += ["--cb_horizontal"]
+
+    if hm_label_genes == "yes":
+        cmd += [
+            "--label_genes",
+            "--scale_gene_labels", hm_scale_gene_labels,
+            ]
+    if hm_label_arrays == "yes":
+        cmd += [
+            "--label_arrays",
+            "--scale_array_labels", hm_scale_array_labels,
+            ]
+    if hm_show_gene_tree == "yes" and "gtr" in cluster_files:
+        cmd += ["--gene_tree_file", cluster_files["gtr"]]
+    if hm_show_array_tree == "yes" and "atr" in cluster_files:
+        cmd += ["--array_tree_file", cluster_files["atr"]]
+    if hm_show_gene_cluster == "yes" and "kgg" in cluster_files:
+        cmd += ["--gene_cluster_file", cluster_files["kgg"]]
+    if hm_show_array_cluster == "yes" and "kag" in cluster_files:
+        cmd += ["--array_cluster_file", cluster_files["kag"]]
+    cmd += [
+        sq(filename),
+        sq(outfile),
+        ]
+    cmd = " ".join(map(str, cmd))
+    parallel.sshell(cmd)
+
+    return cmd
 
 

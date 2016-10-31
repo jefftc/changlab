@@ -10,12 +10,16 @@ class Module(AbstractModule):
         """given a GEOID  get the family soft file"""
         from genomicode import filelib
         from Betsy import module_utils
-        #in_data = antecedents
+        
+        metadata = {}
         GSEID = user_options['GSEID']
-
         assert GSEID.startswith('GSE'), 'GSEID %s is not correct' % GSEID
+        metadata["GSEID"] = GSEID
+
         download_series_family(GSEID, 300, open(outfile, 'w'))
         filelib.assert_exists_nz(outfile)
+        #metadata["filesize"] = filelib.filesize(outfile)
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):

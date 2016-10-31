@@ -18,6 +18,7 @@ class Module(AbstractModule):
         annotation_filename = annotation_node.identifier
         filelib.assert_exists_nz(signal_filename)
         filelib.assert_exists_nz(annotation_filename)
+        metadata = {}
 
         align_matrices = filelib.which_assert(config.align_matrices)
 
@@ -41,6 +42,7 @@ class Module(AbstractModule):
             ]
         cmd = " ".join(cmd)
         parallel.sshell(cmd)
+        metadata["command"] = cmd
 
         # Now merge them.  Take the first column of the expression
         # file (should be ID_REF), the whole annotation file, then the

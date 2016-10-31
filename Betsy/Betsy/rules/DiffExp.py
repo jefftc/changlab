@@ -2,8 +2,8 @@ from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import GeneExpProcessing as GEP
 import GOAnalysis
-import Heatmap
 import GSEAAnalysis
+import Clustering
 
 
 DE_ALGORITHM = ["fold_change", "ttest", "sam", "ebayes"]
@@ -121,7 +121,7 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Constraint("filter", MUST_BE, "no", 0),
+        Constraint("filter_missing_values", MUST_BE, "no", 0),
                    
         #Constraint("algorithm", CAN_BE_ANY_OF, DE_ALGORITHM),
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
@@ -134,15 +134,14 @@ all_modules = [
     
     ModuleNode(
         'make_diffgenes_report',
-        [DiffExprFile, DiffExprFile, Heatmap.Heatmap, GOAnalysis.GatherFile,
-         GSEAAnalysis.GseaFile],
-        DiffReportFile,
+        [DiffExprFile, DiffExprFile, Clustering.Heatmap, GOAnalysis.GatherFile,
+         GSEAAnalysis.GseaFile], DiffReportFile,
         OptionDef("hm_width", 20),
         OptionDef("hm_height", 1),
         
         Constraint("de_algorithm", MUST_BE, 'ttest', 0),
         Constraint("de_algorithm", MUST_BE, 'sam', 1),
-        Constraint("cluster_alg", MUST_BE, 'no_cluster_alg', 2),
+        Constraint("cluster_alg", MUST_BE, 'none', 2),
         #Constraint("de_algorithm", SAME_AS, 0, 3),
         #Constraint("contents", MUST_BE, 'unspecified', 0),
         #Constraint("contents", MUST_BE, 'unspecified', 1),

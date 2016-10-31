@@ -80,6 +80,7 @@
 # select_row_var
 # select_row_delta
 # select_row_fc
+# select_row_fc_not_logged
 # select_row_num_samples_fc
 # dedup_row_by_var
 # dedup_row_by_iqr
@@ -103,6 +104,7 @@
 # rlog_blind
 # calc_cpm
 # set_min_value
+# set_max_value
 # normalize_rows_to
 # normalize_rows_sub
 # center_genes_mean
@@ -1511,7 +1513,6 @@ def reorder_col_byfile(MATRIX, filename, ignore_missing_cols):
 
 
 def reorder_col_random(MATRIX, shuffle):
-    import arrayio
     import random
 
     if not shuffle:
@@ -1725,7 +1726,7 @@ def _parse_tcga_barcode(barcode):
     return patient, sample, aliquot, analyte
 
 
-def _parse_tcga_tissue_type(barcode):
+def _parse_tcga_tissue_type(barcode, ignore_non_tcga):
     # Take a full bar code and return:
     # PRIMARY, RECURRENT, METASTATIC, ADDITIONAL_METASTATIC, 
     # NORMAL_BLOOD, or NORMAL_SOLID
@@ -1931,7 +1932,7 @@ def tcga_label_by_tissue_type(MATRIX, label_tissue, ignore_non_tcga):
     
     for i in range(len(barcodes)):
         barcode = barcodes[i]
-        x = _parse_tcga_tissue_type(barcode)
+        x = _parse_tcga_tissue_type(barcode, ignore_non_tcga)
         if x is None:
             # If this doesn't look like a TCGA barcode, then don't change it.
             x = barcode
@@ -2273,6 +2274,30 @@ def select_row_fc(MATRIX, select_fc):
 
     lfc_cutoff = math.log(select_fc, 2)
     I = [i for (i, x) in enumerate(log_fc) if x >= lfc_cutoff]
+    return I
+
+
+def select_row_fc_not_logged(MATRIX, select_fc):
+    import math
+    if select_fc is None:
+        return None
+    select_fc = float(select_fc)
+    assert select_fc > 0 and select_fc < 500
+
+    log_fc = []
+    for x in MATRIX._X:
+        x = [x for x in x if x is not None]
+        if not x:
+            fc.append(0)
+            continue
+        min_x = min(x)
+        max_x = max(x)
+        min_x = max(min_x, 0.01)
+        max_x = min(max_x, min_x)
+        x = max_x / min_x
+        fc.append(x)
+
+    I = [i for (i, x) in enumerate(fc) if x >= select_fc]
     return I
 
 
@@ -2919,10 +2944,22 @@ def calc_cpm(X):
 
 
 def set_min_value(MATRIX, value):
+    if value is None:
+        return MATRIX
     MATRIX = [x[:] for x in MATRIX]  # Make a copy.
     for i in range(len(MATRIX)):
         for j in range(len(MATRIX[i])):
             MATRIX[i][j] = max(MATRIX[i][j], value)
+    return MATRIX
+
+
+def set_max_value(MATRIX, value):
+    if value is None:
+        return MATRIX
+    MATRIX = [x[:] for x in MATRIX]  # Make a copy.
+    for i in range(len(MATRIX)):
+        for j in range(len(MATRIX[i])):
+            MATRIX[i][j] = min(MATRIX[i][j], value)
     return MATRIX
 
 
@@ -3584,6 +3621,9 @@ def main():
         "--min_value", type=float,
         help="Set the minimum value for this matrix.  Done before logging.")
     group.add_argument(
+        "--max_value", type=float,
+        help="Set the maximum value for this matrix.  Done before logging.")
+    group.add_argument(
         "--normalize_rows_to", 
         help="Normalize each row by dividing the values in a specified row.  "
         "The argument to this flag should be an ID that uniquely specifies "
@@ -3882,6 +3922,10 @@ def main():
         help="Keep only the rows with at least this fold change between "
         "highest and lowest sample (assuming log_2 values).")
     group.add_argument(
+        "--select_row_fc_not_logged", default=None, type=float,
+        help="Keep only the rows with at least this fold change between "
+        "highest and lowest sample (assuming not logged values).")
+    group.add_argument(
         "--select_row_num_samples_fc_mean", default=None, type=int,
         help="Keep only the rows where at least this number of samples "
         "deviate at least 2 fold change from the mean "
@@ -4036,14 +4080,15 @@ def main():
     I15 = select_row_var(MATRIX, args.select_row_var)
     I16 = select_row_delta(MATRIX, args.select_row_delta)
     I17 = select_row_fc(MATRIX, args.select_row_fc)
-    I18 = select_row_num_samples_fc(
-        MATRIX, args.select_row_num_samples_fc_mean, use_median=False)
+    I18 = select_row_fc_not_logged(MATRIX, args.select_row_fc_not_logged)
     I19 = select_row_num_samples_fc(
+        MATRIX, args.select_row_num_samples_fc_mean, use_median=False)
+    I20 = select_row_num_samples_fc(
         MATRIX, args.select_row_num_samples_fc_median, use_median=True)
-    I20 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
+    I21 = select_row_missing_values(MATRIX, args.filter_row_by_missing_values)
     I_row = _intersect_indexes(
         I01, I02, I03, I04, I05, I06, I07, I08, I09, I10, I11, I12, I13,
-        I14, I15, I16, I17, I18, I19, I20)
+        I14, I15, I16, I17, I18, I19, I20, I21)
 
     I01 = select_col_indexes(
         MATRIX, args.select_col_indexes, args.col_indexes_include_headers)
@@ -4156,8 +4201,8 @@ def main():
     I_col = align_cols(MATRIX, args.align_col_matrix, args.ignore_missing_cols)
     MATRIX = MATRIX.matrix(None, I_col)
 
-    if args.min_value is not None:
-        MATRIX._X = set_min_value(MATRIX._X, args.min_value)
+    MATRIX._X = set_min_value(MATRIX._X, args.min_value)
+    MATRIX._X = set_max_value(MATRIX._X, args.max_value)
     MATRIX = normalize_rows_to(MATRIX, args.normalize_rows_to)
     MATRIX = normalize_rows_sub(MATRIX, args.normalize_rows_sub)
     

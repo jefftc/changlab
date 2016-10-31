@@ -261,6 +261,11 @@ def exists_nz(filename):
     return None
 
 
+def filesize(filename):
+    import stat
+    return os.stat(filename)[stat.ST_SIZE]
+
+
 def assert_exists_nz(filename):
     import os
     if exists_nz(filename):

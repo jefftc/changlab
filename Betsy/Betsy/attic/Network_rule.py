@@ -10,7 +10,7 @@ from Betsy.rules import GeneExpSignature
 from Betsy.rules import GeneExpProcessing
 from Betsy.rules import ArrayPlatforms
 from Betsy.rules import ClinicalOutcomes
-from Betsy.rules import Heatmap
+from Betsy.rules import Clustering
 
 from Betsy.rules import DiffExp
 from Betsy.rules import Classification
@@ -35,7 +35,7 @@ all_data_types = [
                                   
 all_modules = [
     ModuleNode(
-        'group_all_module_2mintues',
+        'group_all_module_2minutes',
         [
             GeneExpProcessing.SignalFile,#0
             GeneExpProcessing.SignalFile,#1
@@ -104,18 +104,18 @@ all_modules = [
             ClinicalOutcomes.ClinicalAnalysis,#22
             PcaAnalysis.PcaPlot,#23
             GeneExpSignature.SignatureScore,#24
-            Heatmap.Heatmap,#25
-            Heatmap.Heatmap,#26
-            Heatmap.Heatmap,#27
-            Heatmap.Heatmap,#28
-            Heatmap.Heatmap,#29
-            Classification.PredictionPCAPlot,#30
-            Classification.PredictionPlot,#31
-            Classification.PredictionPCAPlot,#32
-            Classification.PredictionPlot,#33
-            Classification.PredictionPCAPlot,#34
-            Classification.PredictionPlot,#35
-            GeneExpProcessing.SignalFile,#36 tcga
+            Clustering.Heatmap,#25
+            Clustering.Heatmap,#26
+            #Clustering.Heatmap,#27
+            Clustering.Heatmap,#27
+            Clustering.Heatmap,#28
+            Classification.PredictionPCAPlot,#29
+            Classification.PredictionPlot,#30
+            Classification.PredictionPCAPlot,#31
+            Classification.PredictionPlot,#32
+            Classification.PredictionPCAPlot,#33
+            Classification.PredictionPlot,#34
+            GeneExpProcessing.SignalFile,#35 tcga
             ],
         NetworkFile,
         Constraint('preprocess', MUST_BE, 'mas5',0),
@@ -125,7 +125,7 @@ all_modules = [
         Constraint('preprocess', MUST_BE, 'loess',4),
         Constraint('preprocess', MUST_BE, 'agilent',5),
         #Constraint('preprocess', MUST_BE, 'RSEM_exons',36),
-        Constraint('preprocess', MUST_BE, 'tpm',36),
+        Constraint('preprocess', MUST_BE, 'tpm',35),
         Constraint("contents", MUST_BE, "class0,class1", 0),
         Constraint("contents", MUST_BE, "class0,class1", 1),
         Constraint("contents", MUST_BE, "class0,class1", 2),
@@ -155,8 +155,7 @@ all_modules = [
         Constraint("contents", MUST_BE, "class0,class1", 26),
         Constraint("contents", MUST_BE, "class0,class1", 27),
         Constraint("contents", MUST_BE, "class0,class1", 28),
-        Constraint("contents", MUST_BE, "class0,class1", 29),
-        Constraint("contents", MUST_BE, "class0,class1", 36),
+        Constraint("contents", MUST_BE, "class0,class1", 35),
 	    Constraint('quantile_norm', MUST_BE, 'yes', 0),
         Constraint('gene_center', MUST_BE, 'mean', 0),
         Constraint('gene_normalize', MUST_BE, 'variance', 0),
@@ -169,7 +168,7 @@ all_modules = [
         Constraint('unique_genes', MUST_BE, 'high_var', 0),
         Constraint('duplicate_probe', MUST_BE, 'high_var_probe', 0),
         Constraint('group_fc', MUST_BE, 'yes', 0),
-        Constraint('filter', MUST_BE, 'yes', 0),
+        Constraint('filter_missing_values', MUST_BE, 'yes', 0),
         #bie3.Attribute(rulebase.SignalFile, "gene_center", "mean"),
         #bie3.Attribute(rulebase.SignalFile, "gene_normalize", "variance"),
         #bie3.Attribute(rulebase.SignalFile,"gene_order",'class_neighbors'),
@@ -188,14 +187,14 @@ all_modules = [
         Constraint('quantile_norm', MUST_BE, 'yes', 3),
         Constraint('quantile_norm', MUST_BE, 'yes', 4),
         Constraint('quantile_norm', MUST_BE, 'yes', 5),
-        Constraint('quantile_norm', MUST_BE, 'yes', 36),
+        Constraint('quantile_norm', MUST_BE, 'yes', 35),
         Constraint('combat_norm', MUST_BE, 'yes', 0),
-        Constraint('predataset', MUST_BE, 'yes', 0),
+        Constraint('filter_and_threshold', MUST_BE, 'yes', 0),
         Constraint('logged', MUST_BE, 'no', 0),
         Constraint('shiftscale_norm', MUST_BE, 'yes', 1),
         Constraint('dwd_norm', MUST_BE, 'yes', 2),
         Constraint('bfrm_norm', MUST_BE, 'yes', 3),
-        Constraint('missing_algorithm', MUST_BE, 'median_fill', 36),
+        Constraint('missing_algorithm', MUST_BE, 'median_fill', 35),
         Constraint('gene_order', MUST_BE, 'ttest_p', 2),
         Constraint('gene_order', MUST_BE, 'ttest_fdr', 3), # was diff_ttest
         Constraint('platform', MUST_BE, 'yes', 2),
@@ -206,9 +205,9 @@ all_modules = [
         #Constraint("gene_order",MUST_BE,'diff_ebayes',20),
         #Constraint("gene_order",MUST_BE,'diff_fold_change',21),
         Constraint("cluster_alg",MUST_BE,'som',26),
-        Constraint("cluster_alg",MUST_BE,'pca',27),
-        Constraint("cluster_alg",MUST_BE,'kmeans',28),
-        Constraint("cluster_alg",MUST_BE,'hierarchical',29),
+        #Constraint("cluster_alg",MUST_BE,'pca',27),
+        Constraint("cluster_alg",MUST_BE,'kmeans',27),
+        Constraint("cluster_alg",MUST_BE,'hierarchical',28),
         Constraint("classify_alg",MUST_BE,'svm',30),#30
         Constraint("actual_label",MUST_BE,'yes',30),#30
         Constraint("classify_alg",MUST_BE,'svm',31),

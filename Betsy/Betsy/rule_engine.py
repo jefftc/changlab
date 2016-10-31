@@ -29,6 +29,9 @@ BETSY_PARAMETER_FILE = "BETSY_parameters.txt"
 CLEAN_UP_PATH_FOR_NEW_MODULE = True
 #CLEAN_UP_PATH_FOR_NEW_MODULE = False   # DEBUGGING ONLY!
 
+DEBUG_RUN_PIPELINE = False
+
+
 
 TIME_FMT = "%a %b %d %H:%M:%S %Y"
 
@@ -61,9 +64,6 @@ def run_pipeline(
     from genomicode import parselib
     from Betsy import bie3
     from Betsy import config
-
-    DEBUG_RUN_PIPELINE = False
-    #DEBUG_RUN_PIPELINE = True
 
     user = user or getpass.getuser()
     output_path = config.CACHE_PATH
@@ -159,7 +159,7 @@ def run_pipeline(
 
         node, node_id, more_info, transitions = stack.pop()
         if DEBUG_RUN_PIPELINE:
-            print "Processing %s [%d]." % (bie3.get_node_name(node), node_id)
+            print "Processing: %s [%d]." % (bie3.get_node_name(node), node_id)
         
         if node_id not in path_ids:  # ignore if not in pipeline
             if DEBUG_RUN_PIPELINE:
@@ -183,17 +183,41 @@ def run_pipeline(
             pool[node_id] = node
             # Add the next modules into the stack, if not already there.
             on_stack = [x[1] for x in stack]
+            add_to_stack = []
             for next_id in network.transitions[node_id]:
                 next_node = network.nodes[next_id]
                 assert isinstance(next_node, bie3.ModuleNode)
                 if next_id in on_stack:
-                    continue
+                    # This can happen if:
+                    # GEOSignalFile             -> convert_geo_to_signal
+                    # GEOPlatformAnnotationFile ->
+                    # 
+                    # After the first one is processed,
+                    # convert_geo_to_signal is added onto the stack,
+                    # but cannot be processed yet and gets reordered
+                    # onto the bottom of the stack.  After the second
+                    # one is processed, make sure it goes back onto
+                    # the top of the stack.
+
+                    # Remove it from the stack, so we can add this
+                    # node back onto the top.
+                    stack = [x for x in stack if x[1] != next_id]
+                
                 # Module updates the transitions based on which set of
                 # antecedent IDs are used.
-                stack.append((next_node, next_id, None, transitions))
+                add_to_stack.append((next_node, next_id, None, transitions))
                 if DEBUG_RUN_PIPELINE:
                     print "Adding to stack: %s [%d]." % (
                         bie3.get_node_name(next_node), next_id)
+                    
+            # Execute the modules in alphabetical order.  So push them
+            # onto the stack in reverse alphabetical order.
+            schwartz = [(bie3.get_node_name(x[0]), x) for x in add_to_stack]
+            schwartz.sort()
+            schwartz.reverse()
+            add_to_stack = [x[-1] for x in schwartz]
+            stack.extend(add_to_stack)
+                    
         elif isinstance(node, bie3.ModuleNode) and more_info is None:
             # If the input data for this module doesn't exist, then
             # just try it again later.
@@ -301,7 +325,6 @@ def run_module(
     import os
     import sys
     import time
-    import shutil
     import logging
 
     from genomicode import filelib
@@ -850,6 +873,8 @@ def _make_hash_units(module_name, antecedents, out_attributes, user_options):
     hash_units.append(("module name", module_name))
     # Hash the checksum of the inputs.
     for data_node in antecedents:
+        if data_node.data.datatype.no_file:
+            continue
         x = bhashlib.checksum_file_or_path_smart(data_node.identifier)
         x = "file checksum", x
         hash_units.append(x)

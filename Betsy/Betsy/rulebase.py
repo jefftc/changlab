@@ -19,7 +19,9 @@ def import_rules():
     # Convert to module names, e.g.:
     # ClassifyFile
     # GseaFile
-    x = [os.path.splitext(x)[0] for x in filenames]  # No extensions.
+    x = filenames
+    x = [x for x in x if not x.endswith("~")]
+    x = [os.path.splitext(x)[0] for x in x]  # No extensions.
     x = {}.fromkeys(x)  # No duplicates
 
     x = [x for x in x if not x.startswith('._')]
@@ -30,6 +32,7 @@ def import_rules():
     #x = [x for x in x if x.endswith("_rule")]        # Must end with _rule.
     #x = [x for x in x if x.endswith(".py")]        # Must end with _rule.
     module_names = x
+
     # Load each module.
     all_modules = []
     for name in module_names:

@@ -1,5 +1,39 @@
-RUNNING BETSY
-=============
+TABLE OF CONTENTS
+=================
+
+I.  BETSY Quick Reference
+II.  BETSY Tutorial
+III.  BETSY Cookbook
+IV.  Managing Cache
+
+
+
+BETSY QUICK REFERENCE
+=====================
+
+betsy_run.py -h    Show a help message with description of arguments.
+betsy_run.py       Browse the knowledge base.
+
+Some useful flags:
+  --num_cores <int>         Set the maximum number of cores to use.
+  --receipt <filename>      Save a record of the analysis run (as a text file).
+  --network_png <filename>  Save the graph with pipelines as a PNG file.
+
+
+
+
+BETSY is concurrency safe.  You can run multiple instances
+simultaneously.  If two instances are operating on the same data, they
+won't do the same calculations, and they won't overwrite each other's
+results in the cache.  (They may overwrite files specified by the
+user, e.g. in --network_png).
+
+
+
+
+
+BETSY TUTORIAL
+==============
 
 The main interface to the BETSY expert system is through the
 betsy_run.py script.  In this system, you specify the desired output
@@ -20,20 +54,28 @@ called a "Heatmap".
 2.  Ask BETSY to create a network that produces a Heatmap.  I do this
 by specifying an "--output" parameter.
 
-$ betsy_run.py --network_png network.png --output Heatmap
+$ betsy_run.py --network_png graph.png --output Heatmap
 # Will run for a minute or two.
 
 This will show (in the terminal) all the possible combination of
 "inputs" that can be used to generate a Heatmap.  As you can see,
 there are many possibilities.
 
-To get a description of what these inputs are, we can examine the
-BETSY knowledge base:
-$ betsy_run.py
+The "--network_png" argument tells BETSY to create a file "graph.png"
+in the local directory that shows the graph of the pipelines that can
+create a Heatmap.
 
-It will also create a file "network.png" in the local directory that
-shows the graph of all possible pipelines that connect the inputs to
-the Heatmap output.
+Zooming in, we can see that there are light and dark grey nodes.  The
+light ones indicate Data objects, and the dark ones are Modules that
+can convert one type of Data to another.  They are connected by
+arrows, that indicate which Data are inputs and outputs to each
+module.  On the bottom of the graph is a Heatmap object.  BETSY can
+take as input any one (or combination) of Data objects as inputs to
+create a Heatmap.
+
+To get a description of what these Data and Module nodes are, we can
+examine the BETSY knowledge base:
+$ betsy_run.py
 
 
 3.  We would like to use a gene expression file that is currently
@@ -41,44 +83,232 @@ stored in the GEO database.  Therefore, we will refine the pipeline by
 telling BETSY that we would like to use a "GEOSeries" (seen in the
 results from the terminal in the previous step).
 
-$ betsy_run.py --network_png network.png \
+$ betsy_run.py --network_png graph.png \
     --input GEOSeries \
     --output Heatmap
-
-betsy_run.py --network_png network.png \
-    --network_json network.json --restart_from_network \
-    --input GEOSeries \
-    --mattr GSEID=GSE14934 \
-    --output Heatmap
-
-XXX BROKEN?  Why only agilent?
 
 This tells BETSY that we would like to generate a Heatmap from a
-GEOSeries.  With this additional information, BETSY will generate
-a new graph that shows the pipeline(s) that fits this.
+GEOSeries.  Know that it knows the desired input, the graph will show
+the pipeline(s) that run from the input(s) to the output.
 
-Reading through the 
-
-Missing --mattr: download_geo_supplement requires attribute "GSEID".
-
-RMA or MAS5
-
-GSE14934
+The order of the arguments to betsy_run.py can be important.
+"--input" goes before "--output".
 
 
 
+4.  Reading through the messages that BETSY printed to the terminal,
+we see lines:
+    Missing --mattr: download_GEO_family_soft requires attribute "GSEID".
+    Missing --mattr: download_geo_seriesmatrix requires attribute "GSEID".
+    Missing --mattr: download_geo_supplement requires attribute "GSEID".
+
+This means that these modules require an attribute "GSEID" to run.  In
+this case, it is asking for the identifier of the GEO record to
+download.
+
+"--mattr" stands for (m)odule (attr)ibute, which is a parameter that
+changes how a module runs.  Some of the attributes are required
+(e.g. here, we can't download data from GEO without knowing which data
+to download), and sometimes attributes are optional.  They are not
+required to run, but may change the module's behavior (e.g. when we
+generate the heatmap, there are attributes to specify the color).
+
+We now specify which data to download.
+
+$ betsy_run.py --network_png graph.png \
+    --input GEOSeries \
+    --output Heatmap \
+    --mattr GSEID=GSE14934
+
+Although --mattr can go anywhere in the argument list, I usually put
+them at the end.
+
+There are no more messages about missing --mattr arguments.  We now
+see the line:
+    Add --run when ready to run the analysis.
+
+This means that BETSY has enough information to generate the pipeline
+and is ready to run it.
 
 
-Some useful flags:
---num_cores <int>     Set the maximum number of cores to use.
---receipt <filename>  Save a record of the analysis run (as a text file).
+5.  We now take one more look at graph.png to examine the
+pipeline(s) created and make sure it is what we intended.  Since it
+looks good, we now ask BETSY to run the pipeline by adding the "--run"
+argument.
 
-BETSY is concurrency safe.  You can run multiple instances
-simultaneously.  If two instances are operating on the same data, they
-won't do the same calculations, and they won't overwrite each other's
-results.
+Although it is not necessary, we will also add a "--receipt" argument
+so that BETSY will generate a text file record of what it did, and an
+"--output_file" argument to tell BETSY where to save the output file.
 
-betsy_run.py -h will 
+$ betsy_run.py --network_png graph.png \
+    --input GEOSeries \
+    --output Heatmap --output_file heatmap.png \
+    --receipt "GSE14934.heatmap.txt" \
+    --mattr GSEID=GSE14934 \
+    --run
+# This will run for ~10 minutes.
+
+If this ran successfully, BETSY:
+a.  Downloaded the user submitted gene expression data for GEO recore
+    GSE14934.
+b.  Downloaded the annotations for this GEO record.
+c.  Merged the gene expression with annotations.
+d.  Log normalized the data.
+e.  Plotted the heatmap.
+
+Also, graph.png is now updated to show the pipeline that was run.
+
+
+6.  Unfortuntely, this generated a heatmap that is too big to open on
+my computer.  (Using ImageMagick, I can make a smaller file that can
+open: convert heatmap.png -resize x1024 heatmap_smaller.png).  It
+looks like BETSY made a heatmap that includes every gene on the array,
+which isn't what I wanted.  The purpose of the heatmap is to show the
+general expression pattern across the samples of the data set.  Thus,
+it is better to filter for the most meaningful genes.  Specifically, I
+would like to filter for just the genes with highest variance.
+
+Examining the graph, I see that the Heatmap is generated from a
+SignalFile DataType.  Further, the SignalFile has an attribute
+called "filter_and_threshold" that is set to "no".  (TODO: BETSY needs
+to define each of these attributes clearly.)  I'll asked BETSY to
+filter the genes by setting this to "yes".
+
+"filter_and_threshold" is an attribute on the SignalFile DataType.  To
+ask BETSY to filter the SignalFile set, I use the "--dattr" or (d)ata
+(attr)ibute argument thusly:
+
+$ betsy_run.py --network_png graph.png \
+    --input GEOSeries \
+    --output Heatmap --output_file heatmap.png \
+    --dattr SignalFile.filter_and_threshold=yes \
+    --receipt "GSE14934.heatmap.txt" \
+    --mattr GSEID=GSE14934
+
+Again, the order of the arguments is important.  --dattr arguments
+usually apply to the most recent DataType (specified as an --input or
+--output).  So if GEOSeries had an attribute I wanted to set, I would
+add the --dattr argument for the GEOSeries directly after the --input
+argument.  However, in this case, since I would like to set the
+attribute of a DataType in the graph that is not specified in either
+the --input or --output, I put that at the end, after both --input and
+--output.
+
+After running this, I examine the graph closely to see what has
+changed.  I verify that the "filter_and_threshold" data attribute is
+now "yes".  Looking through the graph, I see that this is set by the
+module "filter_and_threshold_genes", with several module attributes.
+Looking through the BETSY knowledge base (by running betsy_run.py), I
+find a description for what each of these attributes do.  To select
+the most highly varying genes, I add "--mattr genes_with_highest_var=250".
+
+$ betsy_run.py --network_png graph.png \
+    --input GEOSeries \
+    --output Heatmap --output_file heatmap.png \
+    --dattr SignalFile.filter_and_threshold=yes \
+    --receipt "GSE14934.heatmap.txt" \
+    --mattr GSEID=GSE14934 \
+    --mattr genes_with_highest_var=250
+XXX BROKEN HEATMAP?
+
+After verifying that the graph looks OK, I add "--run" to run this
+pipeline.
+
+
+7.  After the analysis is finished, the heatmap is starting to look
+closer.  One thing that is commonly done when comparing the relative
+patterns of expression, is to center and normalize the genes.  Using a
+procedure similar to step 6, examining the graph and knowledge base,
+we find that the way to ask BETSY to do this is:
+
+$ betsy_run.py --network_png graph.png \
+    --input GEOSeries \
+    --output Heatmap --output_file heatmap.png \
+    --dattr SignalFile.filter_and_threshold=yes \
+    --dattr SignalFile.gene_center=mean \
+    --dattr SignalFile.gene_normalize=variance \
+    --receipt "GSE14934.heatmap.txt" \
+    --mattr GSEID=GSE14934 \
+    --mattr genes_with_highest_var=250 \
+    --run
+
+
+8.  Still not quite right.  Looks a bit messy.  Let's cluster it.
+
+$ betsy_run.py --network_png graph.png \
+    --input GEOSeries \
+    --output Heatmap --output_file heatmap.png \
+    --dattr Heatmap.cluster_alg=hierarchical \
+    --dattr SignalFile.filter_and_threshold=yes \
+    --dattr SignalFile.gene_center=mean \
+    --dattr SignalFile.gene_normalize=variance \
+    --receipt "GSE14934.heatmap.txt" \
+    --mattr GSEID=GSE14934 \
+    --mattr genes_with_highest_var=250 \
+    --run
+
+
+9.  Looks much better.  Now refining by playing around with attributes
+for the "plot_cluster_heatmap" module.
+
+$ betsy_run.py \
+    --input GEOSeries \
+    --output Heatmap --output_file heatmap.png \
+    --dattr Heatmap.cluster_alg=hierarchical \
+    --dattr SignalFile.filter_and_threshold=yes \
+    --dattr SignalFile.gene_center=mean \
+    --dattr SignalFile.gene_normalize=variance \
+    --receipt "GSE14934.heatmap.txt" \
+    --mattr GSEID=GSE14934 \
+    --mattr genes_with_highest_var=250 \
+    --mattr hm_width=100 \
+    --mattr hm_color=brewer-rdbu-div \
+    --mattr hm_colorbar=yes \
+    --mattr hm_colorbar_height=1.5 \
+    --run
+
+This generates a nice hierarchically clustered heatmap.
+
+XXX trace gene names
+XXX check out receipts
+
+Playing around a bit more, 
+
+$ betsy_run.py \
+    --input GEOSeries \
+    --output Heatmap --output_file heatmap.png \
+    --dattr Heatmap.cluster_alg=kmeans \
+    --dattr SignalFile.filter_and_threshold=yes \
+    --dattr SignalFile.gene_center=mean \
+    --dattr SignalFile.gene_normalize=variance \
+    --receipt "GSE14934.heatmap.txt" \
+    --mattr GSEID=GSE14934 \
+    --mattr genes_with_highest_var=250 \
+    --mattr hm_width=100 \
+    --mattr hm_color=brewer-rdbu-div \
+    --mattr hm_colorbar=yes \
+    --mattr hm_colorbar_height=1.5 \
+    --mattr kmeans_k=3 \
+    --run
+
+
+
+10.  
+
+
+XXX
+a.  Downloaded the files associated with GEO record GSE14934.  
+b.  Saw that it contained Affymetrix CEL files.  
+c.  Examined the CEL files and determine that they were version cc1.
+d.  Converted them to CEL version 3, since this is required for
+    programs later in the pipeline.
+e.  Preprocessed the CEL files by MAS5.
+
+XXX
+
+
+
+
 
 
 
@@ -97,7 +327,7 @@ betsy_manage_cache.py
 
 Here are some example uses of betsy_manage_cache.py.
 
-betsy_manage_cache.py -h        Shows a help message.
+betsy_manage_cache.py -h        Show a help message.
 betsy_manage_cache.py           Generates a summary of the analyses that are 
                                 cached.
 betsy_manage_cache.py --run     Show the analyses currently running.

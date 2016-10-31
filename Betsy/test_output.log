@@ -39,8 +39,8 @@ Constructing pipelines that use --input data types.
 Found 4 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  4 left.
-Looking for input files.
+No redundant pipelines found.  4 final pipelines.
+Making sure all input files provided.
 No file given: UnprocessedSignalFile.
 No file given: ClassLabelFile.
 Plotting (151 node) network to test02.png.
@@ -57,8 +57,8 @@ Constructing pipelines that use --input data types.
 Found 2 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  2 left.
-Looking for input files.
+No redundant pipelines found.  2 final pipelines.
+Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
 Plotting (16 node) network to test03.png.
@@ -76,8 +76,8 @@ Constructing pipelines that use --input data types.
 Found 4 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  4 left.
-Looking for input files.
+No redundant pipelines found.  4 final pipelines.
+Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
 No file given: ReferenceGenome.
@@ -131,8 +131,8 @@ Constructing pipelines that use --input data types.
 Found 4 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  4 left.
-Looking for input files.
+No redundant pipelines found.  4 final pipelines.
+Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
 No file given: ReferenceGenome.
@@ -150,7 +150,9 @@ Writing network in json format: test08.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
-ReferenceGenome is not used in any pipelines.  Please make sure the proposed pipelines are acceptable and remove this input.
+Found 2 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Missing --mattr: trim_adapters_trimmomatic requires attribute "adapters_fasta".
 Plotting (57 node) network to test08.png.
 Starting rule engine.
 Checking parameters.
@@ -205,8 +207,8 @@ Constructing pipelines that use --input data types.
 Found 1 possible pipeline.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  1 left.
-Looking for input files.
+No redundant pipelines found.  1 final pipelines.
+Making sure all input files provided.
 No file given: BamFolder.
 No file given: ReferenceGenome.
 Plotting (74 node) network to test11.png.
@@ -232,8 +234,8 @@ Constructing pipelines that use --input data types.
 Found 1 possible pipeline.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  1 left.
-Looking for input files.
+No redundant pipelines found.  1 final pipelines.
+Making sure all input files provided.
 No file given: BamFolder.
 No file given: ReferenceGenome.
 No file given: NormalCancerFile.
@@ -250,8 +252,8 @@ Constructing pipelines that use --input data types.
 Found 1 possible pipeline.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  1 left.
-Looking for input files.
+No redundant pipelines found.  1 final pipelines.
+Making sure all input files provided.
 No file given: ReferenceGenome.
 No file given: GTFGeneModel.
 Plotting (4 node) network to test13.png.
@@ -298,8 +300,8 @@ Constructing pipelines that use --input data types.
 Found 6 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  6 left.
-Looking for input files.
+No redundant pipelines found.  6 final pipelines.
+Making sure all input files provided.
 No file given: BamFolder.
 No file given: ReferenceGenome.
 Plotting (111 node) network to test15.png.
@@ -320,8 +322,8 @@ Constructing pipelines that use --input data types.
 Found 4 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  4 left.
-Looking for input files.
+No redundant pipelines found.  4 final pipelines.
+Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
 No file given: STARReferenceGenome.
@@ -345,8 +347,8 @@ Constructing pipelines that use --input data types.
 Found 2 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  2 left.
-Looking for input files.
+No redundant pipelines found.  2 final pipelines.
+Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
 No file given: STARReferenceGenome.
@@ -422,8 +424,8 @@ Constructing pipelines that use --input data types.
 Found 96 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  96 left.
-Looking for input files.
+No redundant pipelines found.  96 final pipelines.
+Making sure all input files provided.
 No file given: BamFolder.
 No file given: BamFolder.
 No file given: ReferenceGenome.
@@ -450,8 +452,8 @@ Constructing pipelines that use --input data types.
 Found 8 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  8 left.
-Looking for input files.
+No redundant pipelines found.  8 final pipelines.
+Making sure all input files provided.
 No file given: BamFolder.
 No file given: NormalCancerFile.
 No file given: ReferenceGenome.
@@ -471,8 +473,8 @@ Constructing pipelines that use --input data types.
 Found 8 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  8 left.
-Looking for input files.
+No redundant pipelines found.  8 final pipelines.
+Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
 No file given: ReferenceGenome.
@@ -494,8 +496,9 @@ Constructing pipelines that use --input data types.
 Found 22 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  22 left.
-Looking for input files.
+No redundant pipelines found.  22 final pipelines.
+Making sure all input files provided.
+No --output_file specified.  Will not save results.
 Ready to go!  Will run the analysis using a maximum of 4 cores.
 Please review the network to make sure the analysis is correct.
 Add --run when ready to run the analysis.

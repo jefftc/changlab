@@ -2267,9 +2267,9 @@ class _OptimizeMergeData1:
         similar = []
         for node_ids in dt2nodeids.itervalues():
             for i, node_id1 in enumerate(node_ids):
-                n1 = network.nodes[node_id1]
+                #n1 = network.nodes[node_id1]
                 for node_id2 in node_ids[i+1:]:
-                    n2 = network.nodes[node_id2]
+                    #n2 = network.nodes[node_id2]
                     #if (id(n1), id(n2)) in not_similar:
                     #    continue
                     if self._are_nodes_similar(
@@ -4616,7 +4616,7 @@ def _prune_parallel_pipelines(network, paths, nodeid2parents):
         while i < len(clusters)-1:
             j = i+1
             while j < len(clusters):
-                merge = False
+                #merge = False
                 # If any of clusters[i] transitions to clusters[j],
                 # then merge.
                 trans1 = []
@@ -7361,11 +7361,11 @@ def _is_atomic_datas_compatible(datas_specific, datas_general):
         seen[x] = 1
         
     for d_s in datas_specific:
-        dt = d_g.datatype.name
+        dt = d_s.datatype.name
         if dt not in dt2attrnames:
             continue
         attr_names = dt2attrnames[dt]
-        attr_values = [d_g.attributes[x] for x in attr_names]
+        attr_values = [d_s.attributes[x] for x in attr_names]
         x = tuple([dt] + attr_values)
         if x not in seen:
             return False
@@ -7644,7 +7644,7 @@ def _find_grandparents_in_path(network, path, node_id, nodeid2parents):
     # this is a start node.
     assert parent_ids, "No parents 1"
     assert len(parent_ids) == 1, "Multiple parents of data: %d %s %s %s" % (
-        node_id, get_node_name(node), parent_ids,
+        node_id, get_node_name(network.nodes[node_id]), parent_ids,
         [get_node_name(network.nodes[x]) for x in parent_ids])
     module_id = parent_ids[0]
 
@@ -7743,7 +7743,7 @@ def _get_atomic_data_node_from_pathway_h(
     # Filter out any out_datas that are incompatible with the node.
     # This can happen if the pathway could produce multiple out_datas,
     # but a specific one was selected by a custom_attribute.
-    orig_out_datas = out_datas
+    #orig_out_datas = out_datas
     out_datas = [x for x in out_datas if _is_data_compatible(x, node)]
     assert out_datas, "no out_datas"
 

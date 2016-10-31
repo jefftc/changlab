@@ -16,7 +16,8 @@
 # prune_pipelines            Step 7.
 #   _print_attributes_pruned
 # check_input_files          Step 8.
-# manually_verify_network    Step 9.
+# check_output_file          Step 9.
+# manually_verify_network    Step 10.
 # 
 # plot_network
 # plot_network_show_pipelines
@@ -659,12 +660,13 @@ def prune_pipelines(
     
     num_pruned = len(paths_orig) - len(paths)
     if not num_pruned:
-        print "No redundant pipelines found.  %d left." % len(paths)
+        print "No redundant pipelines found.  %d final pipelines." % len(paths)
     else:
         x = ""
         if num_pruned >= 2:
             x = "s"
-        print "Pruned %d pipeline%s.  %d left." % (num_pruned, x, len(paths))
+        print "Pruned %d pipeline%s.  %d final pipelines." % (
+            num_pruned, x, len(paths))
 
     return paths
 
@@ -726,7 +728,7 @@ def check_input_files(network, in_data_nodes, user_options, paths,
     import os
     import sys
 
-    print "Looking for input files."
+    print "Making sure all input files provided."
     sys.stdout.flush()
     missing = False
     for x in in_data_nodes:
@@ -741,7 +743,7 @@ def check_input_files(network, in_data_nodes, user_options, paths,
             missing = True
 
     if not missing:
-        #print "all input files found."
+        #print "All input files found."
         #sys.stdout.flush()
         return True
 
@@ -749,6 +751,13 @@ def check_input_files(network, in_data_nodes, user_options, paths,
         network_png, network, paths, user_options=user_options,
         prune=prune_network, verbose=verbose)
     return []
+
+
+def check_output_file(filename):
+    if not filename:
+        print "No --output_file specified.  Will not save results."
+
+    return True
 
 
 def manually_verify_network(
@@ -892,9 +901,10 @@ def write_receipt(
     outfilename, network, start_ids, node_ids, transitions, node_dict):
     import os
     import sys
+    from genomicode import parselib
     from Betsy import bie3
     from Betsy import rule_engine
-    from genomicode import parselib
+    from Betsy import module_utils as mlib
 
     print "Writing receipt to %s." % outfilename
     
@@ -919,6 +929,8 @@ def write_receipt(
     handle = open(outfilename, 'w')
 
     # Write the command line.
+    print >>handle, "COMMAND"
+    print >>handle, "-------"
     cmd = " ".join(sys.argv)
     parselib.print_split(cmd, outhandle=handle)
     print >>handle
@@ -926,35 +938,85 @@ def write_receipt(
     # Write out each module.
     for nid in node_order:
         inode = node_dict[nid]
-        node = inode.data
+        #node = inode.data
+
+        # Input data type.
         if not hasattr(inode, "out_path"):
-            print >>handle, "Input: %s" % node.datatype.name
-            if inode.identifier:
-                print >>handle, inode.identifier
-            print >>handle
+            #print >>handle, "Input: %s" % node.datatype.name
+            #if inode.identifier:
+            #    print >>handle, inode.identifier
+            #print >>handle
             continue
+
+        # Module.
+        # module name.
         x = os.path.join(inode.out_path, rule_engine.BETSY_PARAMETER_FILE)
         params = rule_engine._read_parameter_file(x)
+        metadata = params.get("metadata", {})
+        
         module_name = params.get("module_name")
         x = "%s [Node %d]" % (module_name, nid)
         print >>handle, x
         print >>handle, "-"*len(x)
-        start_time = params.get("start_time")
-        assert start_time, "Missing: start_time"
-        print >>handle, "Run on: %s." % start_time
-        x = "Files saved in: %s" % inode.out_path
-        parselib.print_split(x, outhandle=handle)
+        # run time.
+        assert "start_time" in params, "Missing: start_time"
+        start_time = params["start_time"]
+        run_time = params.get("elapsed_pretty")
+        if run_time == "instant":
+            x = "ran instantly"
+        else:
+            x = "took %s" % run_time
+        print >>handle, "RUN: %s (%s)." % (start_time, x)
         #time_ = time.strptime(start_time, rule_engine.TIME_FMT)
-        # TODO: how long did it take to run?
 
-        metadata = params.get("metadata", {})
+        # input files.
+        antecedents = params.get("antecedents")
+        if antecedents:
+            print >>handle, "INPUTS:"
+            for i, (name, filename) in enumerate(antecedents):
+                x = "%d.  %s" % (i+1, name)
+                parselib.print_split(
+                    x, prefix1=4, prefixn=8, outhandle=handle)
+                if filename:
+                    parselib.print_split(
+                        filename, prefix1=8, prefixn=8, outhandle=handle)
+
+        # output files.
+        outfile = params["outfile"]
+        outfilename = os.path.join(inode.out_path, outfile)
+        size = parselib.pretty_filesize(mlib.get_dirsize(outfilename))
+        x = "OUTPUT: %s (%s)" % (outfile, size)
+        parselib.print_split(x, prefix1=0, prefixn=4, outhandle=handle)
+
+        # working path.
+        x = "WORKING PATH: %s" % inode.out_path
+        parselib.print_split(x, outhandle=handle)
+
+        # user options (--mattr)
+        user_options = params.get("user_options")
+        if user_options:
+            print >>handle, "MODULE ATTRIBUTES:"
+            for name in sorted(user_options):
+                value = user_options[name]
+                print >>handle, "    %s=%s" % (name, value)
+
+        # commands
+        if "commands" in metadata:
+            # XXX fix this
+            for x in metadata["commands"]:
+                print >>handle, x
+
+        # miscellaneous metadata
+        meta_lines = []
         for key, value in metadata.iteritems():
             if key == "commands":
-                for x in value:
-                    print >>handle, x
-            else:
-                x = "%s: %s" % (key.upper(), value)
-                parselib.print_split(x, prefix1=0, prefixn=4, outhandle=handle)
+                continue
+            x = "%s=%s" % (key.upper(), value)
+            meta_lines.append(x)
+        if meta_lines:
+            print >>handle, "METADATA:"
+        for x in meta_lines:
+            parselib.print_split(x, prefix1=4, prefixn=8, outhandle=handle)
         print >>handle
 
 
@@ -1664,6 +1726,10 @@ def main():
         args.network_png, args.prune_network, verbose_network):
         return
 
+    # Step 9: Look for output file.
+    if not check_output_file(args.output_file):
+        return
+
     #print "The network (%d nodes) is complete." % len(network.nodes)
     #print "There are %d possible pipelines." % len(paths)
     x = "core"
@@ -1671,7 +1737,7 @@ def main():
         x = "cores"
     print "Ready to go!  Will run the analysis using a maximum of %d %s." % (
         args.num_cores, x)
-    # Step 9: Manual verification of the network.
+    # Step 10: Manual verification of the network.
     if not manually_verify_network(
         network, user_options, paths, args.run, 
         args.network_png, args.prune_network, verbose_network):

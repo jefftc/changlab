@@ -24,16 +24,28 @@ cut_dendrogram          Cut a tree into clusters.
 # _exists_nz
 
 
+DIST2ID = {
+    "uncent-cor"  : 1,  "pearson"    : 2,  "abs-uncent-cor" : 3,
+    "abs-pearson" : 4,  "spearman"   : 5,  "kendall"        : 6,
+    "euclidean"   : 7,  "city-block" : 8,
+    }
+METHOD2ID = {
+    "complete" : "m", "single" : "s", "centroid" : "c", "average" : "a",
+    }
+
+
 class ClusterData:
     def __init__(
         self, matrix, gene_tree, array_tree,
         gene_tree_cluster, array_tree_cluster, gene_cluster, array_cluster):
-        # gtr  gene_tree            hierarchical
-        # atr  array_tree           hierarchical
-        # gtc  gene_tree_cluster    hierarchical
-        # atc  array_tree_cluster   hierarchical
-        # kgg  gene_cluster         kmeans
-        # kag  array_cluster        kmeans
+        # matrix   Matrix object
+        # gtr      gene_tree            hierarchical
+        # atr      array_tree           hierarchical
+        # gtc      gene_tree_cluster    hierarchical
+        # atc      array_tree_cluster   hierarchical
+        # kgg      gene_cluster         kmeans
+        # kag      array_cluster        kmeans
+        # These can be None, if missing.
         self.matrix = matrix
         self.gene_tree = gene_tree
         self.array_tree = array_tree
@@ -41,6 +53,69 @@ class ClusterData:
         self.array_tree_cluster = array_tree_cluster
         self.gene_cluster = gene_cluster
         self.array_cluster = array_cluster
+
+
+def cluster30_file(
+    filename, cluster_genes, cluster_arrays, algorithm, 
+    distance=None, method=None, kmeans_k=None, som_rows=None, som_cols=None,
+    cluster_bin=None, jobname=None):
+    # Run cluster3.0.  Return the command used to run it.
+    import config
+    import parallel
+    import filelib
+    
+    assert algorithm in ["hierarchical", "kmeans", "som"]
+    distance = distance or "pearson"
+    assert distance in DIST2ID, "Unknown distance: %s" % distance
+    if algorithm == "hierarchical":
+        method = method or "average"
+    if method:
+        assert method in METHOD2ID, "Unknown method: %s" % method
+    assert not (method and algorithm in ["kmeans", "som"])
+    assert not (kmeans_k and algorithm != "kmeans")
+    assert not (som_rows and algorithm != "som")
+    assert not (som_cols and algorithm != "som")
+    assert cluster_genes or cluster_arrays
+    
+    assert not kmeans_k or (kmeans_k > 1 and kmeans_k <= 100)
+    assert not som_rows or (som_rows >= 1 and som_rows <= 100)
+    assert not som_cols or (som_cols >= 1 and som_cols <= 100)
+
+    cluster = cluster_bin or config.cluster or "cluster"
+    cluster = filelib.which_assert(cluster)
+
+    array_metric = 0  # no clustering
+    gene_metric = 0
+    if cluster_arrays:
+        array_metric = DIST2ID[distance]
+    if cluster_genes:
+        gene_metric = DIST2ID[distance]
+        
+    sq = parallel.quote
+    cmd = [
+        sq(cluster),
+        "-f", sq(filename),
+        ]
+    if jobname:
+        cmd += ["-u", jobname]
+    if method is not None:
+        cmd += ["-m", METHOD2ID[method]]
+    if kmeans_k is not None:
+        cmd += ["-k", kmeans_k]
+    if algorithm == "som":
+        cmd += ["-s"]
+    if som_rows:
+        cmd += ["-y", som_rows]
+    if som_cols:
+        cmd += ["-x", som_cols]
+    cmd += [
+        "-e", array_metric,
+        "-g", gene_metric,
+        ]
+    cmd = " ".join(map(str, cmd))
+    parallel.sshell(cmd)
+    return cmd
+    #return _read_cluster_files(jobname)
 
 
 def cluster30(MATRIX, cluster_genes, cluster_arrays,
@@ -59,22 +134,14 @@ def cluster30(MATRIX, cluster_genes, cluster_arrays,
     # UNUSED?
     # gene_k          Number of gene clusters (hierarchical only).
     # array_k         Number of array clusters (hierarchical only).
-    dist2id = {
-        "uncent-cor"  : 1,  "pearson"    : 2,  "abs-uncent-cor" : 3,
-        "abs-pearson" : 4,  "spearman"   : 5,  "kendall"        : 6,
-        "euclidean"   : 7,  "city-block" : 8,
-        }
-    method2id = {
-        "complete" : "m", "single" : "s", "centroid" : "c", "average" : "a",
-        }
     
     assert algorithm in ["hierarchical", "kmeans"]
     distance = distance or "pearson"
-    assert distance in dist2id, "Unknown distance: %s" % distance
+    assert distance in DIST2ID, "Unknown distance: %s" % distance
     if algorithm == "hierarchical":
         method = method or "average"
     if method:
-        assert method in method2id, "Unknown method: %s" % method
+        assert method in METHOD2ID, "Unknown method: %s" % method
     assert not (algorithm == "kmeans" and method)
     assert not (algorithm == "hierarchical" and kmeans_k)
     assert cluster_genes or cluster_arrays
@@ -84,7 +151,7 @@ def cluster30(MATRIX, cluster_genes, cluster_arrays,
         assert not kmeans_k
     
     args = []
-    id_ = dist2id[distance]
+    id_ = DIST2ID[distance]
     if cluster_genes:
         args.append("-g %s" % id_)
     else:
@@ -95,7 +162,7 @@ def cluster30(MATRIX, cluster_genes, cluster_arrays,
         args.append("-e 0")
 
     if method:
-        id_ = method2id[method]
+        id_ = METHOD2ID[method]
         args.append("-m %s" % id_)
 
     if algorithm == "kmeans":
@@ -435,6 +502,9 @@ def _find_cluster_files(file_or_stem):
     # <stem>_K_A5.kag
     # <stem>_K_G5.kgg
     # <stem>_K_G5_A5.cdt    Hard to cut into a stem.
+    # <stem>_SOM_G2-2_A2-2.txt
+    # <stem>_SOM_G2-2_A2-2.anf
+    # <stem>_SOM_G2-2_A2-2.gnf
     fullstem = _guess_filestem(file_or_stem)
 
     # Bug: should do a case insensitive search.
@@ -442,7 +512,8 @@ def _find_cluster_files(file_or_stem):
     if not path:
         path = "."
     EXTENSIONS = [
-        "nrm", "pcl", "cdt", "gtr", "atr", "gtc", "atc", "kgg", "kag"]
+        "nrm", "pcl", "cdt", "gtr", "atr", "gtc", "atc", "kgg", "kag",
+        "txt", "anf", "gnf"]
     ext2file = {}
     for file_ in os.listdir(path):
         if not file_.startswith(stem):
@@ -461,6 +532,8 @@ def _find_cluster_files(file_or_stem):
             recognize_file = True
         elif f.startswith("%s_K_G" % stem):
             recognize_file = True
+        elif f.startswith("%s_SOM_" % stem):
+            recognize_file = True
         if not recognize_file:
             continue
         
@@ -469,6 +542,7 @@ def _find_cluster_files(file_or_stem):
     
 
 def _read_cluster_files(file_or_stem):
+    # Return a ClusterData object.
     import os
     import arrayio
     from genomicode import parselib

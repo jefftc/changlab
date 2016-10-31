@@ -5,52 +5,54 @@ class Module(AbstractModule):
         AbstractModule.__init__(self)
 
     def run(
-        self, network, antecedents, out_attributes, user_options, num_cores,
+        self, network, in_data, out_attributes, user_options, num_cores,
         outfile):
-        """mean or median"""
         import os
-        import subprocess
         from genomicode import filelib
-        from Betsy import module_utils
-        from genomicode import config
-        in_data = antecedents
-        CLUSTER_BIN = config.cluster
-        cluster = module_utils.which(CLUSTER_BIN)
-        assert cluster, 'cannot find the %s' % CLUSTER_BIN
-        center_alg = {'mean': 'a', 'median': 'm'}
-        try:
-            center_parameter = center_alg[out_attributes['gene_center']]
-        except:
-            raise ValueError("Centering parameter is not recognized")
-    
+        from genomicode import parallel
+        from Betsy import module_utils as mlib
+
+        metadata = {}
         
-        process = subprocess.Popen([CLUSTER_BIN, '-f', in_data.identifier, '-cg',
-                                    center_parameter, '-u', outfile],
-                                   shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        error_message = process.communicate()[1]
-        if error_message:
-            raise ValueError(error_message)
-    
+        center_alg = {
+            'mean': 'a',
+            'median': 'm',
+            }
+        assert "gene_center" in out_attributes
+        center = out_attributes['gene_center']
+        assert center in center_alg, "Invalid center option: %s" % center
+        center_parameter = center_alg[center]
+
+        cluster = mlib.get_config("cluster", which_assert_file=True)
+        sq = parallel.quote
+        cmd = [
+            sq(cluster),
+            "-f", sq(in_data.identifier),
+            "-cg", center_parameter,
+            "-u", outfile,
+            ]
+        parallel.sshell(cmd)
+        metadata["command"] = cmd
         
         outputfile = outfile + '.nrm'
+        filelib.assert_exists_nz(outputfile)
         os.rename(outputfile, outfile)
-        assert filelib.exists_nz(outfile), (
-            'the output file %s for centering fails' % outfile
-        )
+
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'signal_center_' + original_file + '.tdf'
-        return filename
+        #from Betsy import module_utils
+        #original_file = module_utils.get_inputid(antecedents.identifier)
+        #filename = 'signal_center_' + original_file + '.tdf'
+        #return filename
+        return "signal.tdf"
 
-    def set_out_attributes(self, antecedents, out_attributes):
-        new_parameters = out_attributes.copy()
-        new_parameters['format'] = 'tdf'
-        return new_parameters
+    
+    #def set_out_attributes(self, antecedents, out_attributes):
+    #    new_parameters = out_attributes.copy()
+    #    new_parameters['format'] = 'tdf'
+    #    return new_parameters
 
 
 
