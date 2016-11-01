@@ -8,8 +8,16 @@ IV.  Managing Cache
 
 
 
-BETSY QUICK REFERENCE
-=====================
+Please email if there are any problems with this document.
+
+Thanks,
+Jeff
+jeffrey.t.chang@uth.tmc.edu
+
+
+
+I.  BETSY QUICK REFERENCE
+=========================
 
 betsy_run.py -h    Show a help message with description of arguments.
 betsy_run.py       Browse the knowledge base.
@@ -18,8 +26,6 @@ Some useful flags:
   --num_cores <int>         Set the maximum number of cores to use.
   --receipt <filename>      Save a record of the analysis run (as a text file).
   --network_png <filename>  Save the graph with pipelines as a PNG file.
-
-
 
 
 BETSY is concurrency safe.  You can run multiple instances
@@ -31,9 +37,8 @@ user, e.g. in --network_png).
 
 
 
-
-BETSY TUTORIAL
-==============
+II.  BETSY TUTORIAL
+===================
 
 The main interface to the BETSY expert system is through the
 betsy_run.py script.  In this system, you specify the desired output
@@ -146,7 +151,7 @@ $ betsy_run.py --network_png graph.png \
     --receipt "GSE14934.heatmap.txt" \
     --mattr GSEID=GSE14934 \
     --run
-# This will run for ~10 minutes.
+# This will run for ~5 minutes.
 
 If this ran successfully, BETSY:
 a.  Downloaded the user submitted gene expression data for GEO recore
@@ -209,9 +214,8 @@ $ betsy_run.py --network_png graph.png \
     --receipt "GSE14934.heatmap.txt" \
     --mattr GSEID=GSE14934 \
     --mattr genes_with_highest_var=250
-XXX BROKEN HEATMAP?
 
-After verifying that the graph looks OK, I add "--run" to run this
+After verifying that the graph looks OK, I added "--run" to run this
 pipeline.
 
 
@@ -249,7 +253,9 @@ $ betsy_run.py --network_png graph.png \
 
 
 9.  Looks much better.  Now refining by playing around with attributes
-for the "plot_cluster_heatmap" module.
+for the "plot_cluster_heatmap" module.  (You can find this by running
+betsy_run.py and searching through the results.)
+
 
 $ betsy_run.py \
     --input GEOSeries \
@@ -269,15 +275,20 @@ $ betsy_run.py \
 
 This generates a nice hierarchically clustered heatmap.
 
-XXX trace gene names
-XXX check out receipts
 
-Playing around a bit more, 
+10.  Finally, I want to play around with the processing of the gene
+expression data.  Previously, BETSY opted to use the data that was
+provided by the depositors.  However, I would like to see what the
+data looks like if it is preprocessed with RMA.  To do this, I ask for
+the SignalFile to be preprocessed with RMA:
+    --dattr SignalFile.preprocess=rma
 
-$ betsy_run.py \
+
+$ betsy_run.py --network_png graph.png \
     --input GEOSeries \
     --output Heatmap --output_file heatmap.png \
-    --dattr Heatmap.cluster_alg=kmeans \
+    --dattr Heatmap.cluster_alg=hierarchical \
+    --dattr SignalFile.preprocess=rma \
     --dattr SignalFile.filter_and_threshold=yes \
     --dattr SignalFile.gene_center=mean \
     --dattr SignalFile.gene_normalize=variance \
@@ -288,33 +299,205 @@ $ betsy_run.py \
     --mattr hm_color=brewer-rdbu-div \
     --mattr hm_colorbar=yes \
     --mattr hm_colorbar_height=1.5 \
-    --mattr kmeans_k=3 \
     --run
 
+Taking a look at the graph generated, the pipeline now:
 
-
-10.  
-
-
-XXX
-a.  Downloaded the files associated with GEO record GSE14934.  
+a.  Downloaded the supplementary files associated with GEO record
+    GSE14934.
 b.  Saw that it contained Affymetrix CEL files.  
 c.  Examined the CEL files and determine that they were version cc1.
 d.  Converted them to CEL version 3, since this is required for
     programs later in the pipeline.
-e.  Preprocessed the CEL files by MAS5.
-
-XXX
-
-
-
+e.  Preprocessed the CEL files by RMA.
+f.  Log normalized the data.
+g.  Filtered the data.
+h.  Plotted the heatmap.
 
 
 
+III.  BETSY COOKBOOK
+====================
+
+This section includes some generic BETSY rules that you can try out.
+This is a work in progress, so please email if there are any problems
+with these.  Also, please email if you have any to add.
+
+There are examples of some file formats in Betsy/samples/.
 
 
-MANAGING CACHE
-==============
+A.  Run FastQC to check quality of a folder of FastQ files.
+
+betsy_run.py \
+  --input FastqFolder \
+  --input SampleGroupFile \
+  --output FastQCSummary
+
+You will need to provide --input_file and --output_file arguments
+describing where your files (or folders) are, e.g.:
+
+  betsy_run.py \
+    --input FastqFolder --input_file my_fastq_folder/ \
+    --input SampleGroupFile --input_file samples.txt \
+    --output FastQCSummary --output_file fastqc_results.xls
+
+- FastqFolder is a folder (directory) of .fastq files (or compressed
+  fastq files, e.g. .fastq.gz).
+- SampleGroupFile is a file that links each fastq file with a sample
+  name.  There is an example in Betsy/samples/.
+
+For simplicity, we will leave out the --input_file and --output_file
+in these commands.  BETSY can still generate the graphs without them.
+However, before executing the pipelines, please fill in with your own
+files.
+
+This will run FastQC on each of the fastq files in your FastqFolder
+and provide a summary of the results.  If you want the raw results
+from FastQC, you can specify a FastQCFolder as the --output, e.g.:
+
+  betsy_run.py \
+    --input FastqFolder \
+    --input SampleGroupFile \
+    --output FastQCFolder
+
+
+If you look at the results and decide you would like to see what
+happens after trimming adapters, you can ask for the adapters to be
+trimmed.  You will need to provide a fasta file with the adapter
+sequences.  I use the one distributed with Trimmomatic.
+
+  betsy_run.py \
+    --input FastqFolder \
+    --input SampleGroupFile \
+    --output FastQCSummary \
+    --dattr FastQCSummary.adapters_trimmed=yes \
+    --mattr adapters_fasta=adapters/TruSeq3-PE-2.fa
+
+
+
+B.  Preprocess RNA-Seq data starting from Fastq files.
+
+betsy_run.py --network_png graph.png \
+  --input FastqFolder \
+  --input SampleGroupFile \
+  --input ReferenceGenome \
+  --input GTFGeneModel \
+  --output SignalFile \
+  --dattr SignalFile.preprocess=fpkm
+
+This will generate a gene expression matrix (SignalFile) containing
+the FPKM values.  Note from the terminal output (and from the graph)
+that this will generate logged FPKM values.  If you don't want it to
+be logged, then request for the SignalFile to be not logged:
+
+  --dattr SignalFile.logged=no
+
+Also, if you would like to get TPM, read counts, or counts per
+million, you can specify one of:
+
+  --dattr SignalFile.preprocess=tpm
+  --dattr SignalFile.preprocess=counts
+  --dattr SignalFile.preprocess=cpm
+
+The pipelines will change to reflect the desired output.
+
+Also note that these pipelines analyze the data without adapter
+trimming.  To figure out how to request adapter trimming, let's start
+by examining the graph.png created above.  Note that the SignalFile
+data type that is generated does not have an attribute that controls
+adapter trimming.  Thus, we cannot just set an attribute for
+SignalFile.
+
+While in principal each data type should contain attributes describing
+every option used to create it, this would lead to data types that
+contain a confusing number of attributes.  In this case, instead of
+setting the attribute on the SignalFile at the end, we will configure
+the "lowest" data type that contains the appropriate attribute.  In
+this case, the RNASeqUnprocessedSignalFile node contains an
+"adapters_trimmed" attribute.  This attribute is dropped (for
+simplicity) when it gets converted to the next data type.  If we set:
+  --dattr RNASeqUnprocessedSignalFile.adapters_trimmed=yes
+
+... the backwards chainer will generate a pipeline that creates this
+data object with adapters trimmed.
+
+In this RNA-Seq analysis, the aligners require a GTFGeneModel to know
+where the transcripts are in the genome.  This is just a GTF file that
+is provided to the alignment algorithm.  These can be downloaded from
+GENCODE, UCSC, or other databases, e.g.:
+  gencodegenes.org -> Data : Human : Reference Releases : 19 -> 
+    Comprehensive gene annotation (GTF)
+
+The ReferenceGenome here can be either:
+  1.  A FASTA formatted file that contains a reference genome,
+      e.g. GRCh37.p13.genome.fa.
+      If this is given, the BETSY  
+  2.  A directory that contains the genome file along with the proper
+      indexes.
+
+
+
+C.  Creating pre-indexed reference genomes.
+
+In recipe B above, you provide a ReferenceGenome.  Since the
+RNA-Seq aligners (e.g. Tophat, STAR, etc.) require their own indexes
+for the genome, BETSY will automatically create those indexes from the
+ReferenceGenome.  BETSY will save those indexes in its cache and reuse
+them the next time they are needed.
+
+In practice, however, those indexes take a lot of disk space, and
+sometimes I would like to use them outside of BETSY.  Thus, I usually
+pre-index my references.
+
+betsy_run.py \
+  --input ReferenceGenome \
+  --output FullyIndexedReferenceGenome --output_file <reference>
+
+betsy_run.py \
+  --input ReferenceGenome \
+  --input GTFGeneModel \
+  --output RSEMReferenceGenome --output_file <reference.rsem>
+
+betsy_run.py \
+  --input ReferenceGenome \
+  --input GTFGeneModel \
+  --output STARReferenceGenome --output_file <reference.star>
+
+Note that the --output for an indexed "ReferenceGenome" is a
+"FullyIndexedReferenceGenome".  This is for historical reasons and
+may be changed in the future.
+
+Now that we have the indexed reference genomes, we can ask BETSY to
+use them when doing the RNA-Seq preprocessing.  The RNA-Seq recipe
+(from above) then becomes:
+
+betsy_run.py --network_png graph.png \
+  --input FastqFolder \
+  --input SampleGroupFile \
+  --input ReferenceGenome \
+  --input STARReferenceGenome --input_file <reference.star> \
+  --input RSEMReferenceGenome --input_file <reference.rsem> \
+  --input GTFGeneModel \
+  --output SignalFile \
+  --dattr SignalFile.preprocess=fpkm
+
+We get a message that ReferenceGenome is no longer needed, so we can
+remove it.  The final command is then:
+
+betsy_run.py --network_png graph.png \
+  --input FastqFolder \
+  --input SampleGroupFile \
+  --input STARReferenceGenome \
+  --input RSEMReferenceGenome \
+  --input GTFGeneModel \
+  --output SignalFile \
+  --dattr SignalFile.preprocess=fpkm
+
+
+
+
+IV.  MANAGING CACHE
+===================
 
 When BETSY runs pipelines, it tries to avoiding repeating the same
 calculation.  This enables the user to try multiple different
@@ -343,7 +526,10 @@ betsy_manage_cache.py --clear_cache 500g --dry_run
                                 Do a dry run.  Just show the analyses that 
                                 would be deleted without actually deleting
                                 them.
-                                                  
+
+
+BETSY will clear the analyses that were least recently accessed.
+
 
 
 

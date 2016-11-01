@@ -30,7 +30,7 @@ Rscript=/usr/local/bin/Rscript
 primer3=/usr/local/bin/primer3_core
 patser=/usr/local/bin/patser-v3b
 # Cluster 3.0.
-cluster=/usr/local/bin/cluster
+cluster=/opt/local/bin/cluster
 # "blat"
 blat=/usr/local/bin/x86_64/blat
 

@@ -219,6 +219,16 @@ def main():
             x = format_module_summary(x)
             parselib.print_split(x, prefixn=2)
 
+        if status == S_DONE and args.verbose >= 1:
+            # Print out the has stuff.
+            hash_lines = []
+            for name, value in params["hash"]:
+                x = "%s=%s" % (name, value)
+                hash_lines.append(x)
+            if hash_lines:
+                print "  HASH:"
+                for x in hash_lines:
+                    parselib.print_split(x, prefix1=4, prefixn=6)
         if status == S_RUNNING and args.verbose >= 1:
             # Print out the files in the directory.
             for x in os.walk(path):

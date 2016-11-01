@@ -222,6 +222,36 @@ def find_bin(name):
     return None
 
 
+def cluster_find_bin(name):
+    import os
+
+    opj = os.path.join
+    SEARCH_PATH = [
+        opj(get_home_path(), "bin"),
+        "/opt/local/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        get_genomicode_bin_path(),
+        ]
+    path, name = os.path.split(name)
+    if path:
+        # If this is a full path name, then search the full path.
+        SEARCH_PATH = [path] + SEARCH_PATH
+    for path in SEARCH_PATH:
+        filename = os.path.join(path, name)
+        if not os.path.exists(filename):
+            continue
+        try:
+            get_cluster_version(filename)
+        except AssertionError, x:
+            # Was not correct.
+            continue
+        # Found correct one.
+        return filename
+    # Not found.
+    return None
+    
+
 def read_config_file(filename):
     # Read a configuration file and return a dictionary of:
     # <section> -> <name> -> <value>
@@ -414,6 +444,59 @@ def autoset_betsyrc_value(name, default_value):
     return default_value
 
 
+def quote(s, always_quote=False):
+    BAD_CHARS = " \\"
+
+    if type(s) in [type(0), type(0.0)]:
+        s = str(s)
+    needs_quote = False
+    if not always_quote:
+        for x in BAD_CHARS:
+            if x in s:
+                needs_quote = True
+                break
+    if always_quote or needs_quote:
+        s = "'" + s.replace("'", "'\\''") + "'"
+    return s
+
+
+def get_cluster_version(cluster_bin):
+    # There's two programs called "cluster".  One is cluster 3.0.  The
+    # other is from graphviz.
+    
+    # cluster --version
+
+    # Output from cluster30:
+    # Cluster 3.0, command line version (no GUI support),
+    # using the C Clustering Library version 1.50.
+    # [...]
+
+    # Output from graphviz:
+    # option -- unrecognized - ignored
+    #Usage: cluster <options> graphfile
+    #    -C k - generate no more than k clusters (0)
+    #       0 : no limit
+    #    -c k - use clustering method k (0)
+    #       0 : use modularity
+    #       1 : use modularity quality
+    #    -o <outfile> - output file (stdout)
+    #    -v   - verbose mode
+    #    -?   - print usage
+
+    import re
+    import subprocess
+
+    cmd = "%s --version" % quote(cluster_bin)
+    x = subprocess.check_output(
+        cmd, stderr=subprocess.STDOUT, shell=True)
+    x = x.strip()
+    if x.find("cluster <options> graphfile") >= 0:
+        raise AssertionError, "Found graphviz cluster, not Cluster 3.0"
+    m = re.search(r"Cluster ([\w\. ]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
+
+
 def autoset_genomicoderc_value(name, default_value):
     # See if we can figure out a better value for the default_value.
     import os
@@ -421,6 +504,14 @@ def autoset_genomicoderc_value(name, default_value):
     if not default_value.strip():
         return default_value
     path, file_ = os.path.split(default_value)
+
+    # Handle "cluster" separately.  Can be either GraphViz or
+    # Cluster3.0.  Make sure we don't automatically set it to
+    # GraphViz's cluster.
+    if file_ == "cluster":
+        filename = cluster_find_bin(default_value)
+        if filename:
+            default_value = filename
 
     if file_ in CONFIG_BINARY_FILES:
         filename = find_bin(default_value)

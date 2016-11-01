@@ -9,7 +9,7 @@ FastQCFolder = DataType(
     AttributeDef(
         "adapters_trimmed", YESNO, "no", "no",
         help="Whether the adapters are trimmed."),
-    help="Folder that holds FastQC results.",
+    help="Folder that containts the results from FastQC.",
     )
 
 FastQCSummary = DataType(

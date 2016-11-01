@@ -22,7 +22,6 @@
 #
 # Modules:
 # index_reference_rsem               rsem
-# is_rsemreference_rsem_indexed       
 # normalize_with_rsem
 # extract_rsem_signal
 # 
@@ -70,20 +69,23 @@ RSEMReferenceGenome = DataType(
     #    "bowtie1_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
     #AttributeDef(
     #    "bowtie2_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
-    AttributeDef(
-        "rsem_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
+    #AttributeDef(
+    #    "rsem_indexed", ["unknown", "no", "yes"], "unknown", "unknown"),
     help="Indexed for rsem.",
     )
 
 RSEMResults = DataType(
     "RSEMResults",
     AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
     AttributeDef(
         "align_to", ["genome", "transcriptome"], "genome", "genome",
         help="Align to the genome or transcriptome."),
     AttributeDef(
         "aligner", ["star", "bowtie1"], "star", "star"),
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified"),
     help="A folder of results from an rsem-calculate-expression analysis.",
     )
 
@@ -179,6 +181,7 @@ all_data_types = [
     HTSeqCountResults,
     HTSeqCountSummary,
     
+    RNASeqUnprocessedSignalFile,
     StdRNASeqAnalysis,
     ]
 
@@ -186,18 +189,18 @@ all_data_types = [
 all_modules = [
     ModuleNode(
         "index_reference_rsem",
-        [RSEMReferenceGenome, NGS.GTFGeneModel], RSEMReferenceGenome,
-        Constraint("rsem_indexed", MUST_BE, "no", 0),
-        Consequence("rsem_indexed", SET_TO, "yes"),
+        [NGS.ReferenceGenome, NGS.GTFGeneModel], RSEMReferenceGenome,
+        #Constraint("rsem_indexed", MUST_BE, "no", 0),
+        #Consequence("rsem_indexed", SET_TO, "yes"),
         #Consequence("bowtie1_indexed", SET_TO, "yes"),
         #Consequence("bowtie2_indexed", SET_TO, "yes"),
         ),
-    ModuleNode(
-        "is_rsemreference_rsem_indexed",
-        RSEMReferenceGenome, RSEMReferenceGenome,
-        Constraint("rsem_indexed", MUST_BE, "unknown"),
-        Consequence("rsem_indexed", BASED_ON_DATA, ["no", "yes"]),
-        ),
+    #ModuleNode(
+    #    "is_rsemreference_rsem_indexed",
+    #    RSEMReferenceGenome, RSEMReferenceGenome,
+    #    Constraint("rsem_indexed", MUST_BE, "unknown"),
+    #    Consequence("rsem_indexed", BASED_ON_DATA, ["no", "yes"]),
+    #    ),
     #ModuleNode(
     #    "is_rsemreference_bowtie1_indexed",
     #    RSEMReferenceGenome, RSEMReferenceGenome,
@@ -218,9 +221,11 @@ all_modules = [
         RSEMResults,
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
-        Constraint("rsem_indexed", MUST_BE, "yes", 3),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
+        #Constraint("rsem_indexed", MUST_BE, "yes", 3),
         Consequence("align_to", SET_TO_ONE_OF, ["genome", "transcriptome"]),
         # bowtie not implemented.
         Consequence("aligner", SET_TO, "star"),
@@ -238,6 +243,8 @@ all_modules = [
             "genes_or_isoforms", default="genes",
             help='Get the expression value for "genes" (DEFAULT) or '
             '"isoforms".'),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SET_TO_ONE_OF, ["tpm", "fpkm"]),
         Consequence("logged", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),

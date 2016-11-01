@@ -660,13 +660,20 @@ def prune_pipelines(
     
     num_pruned = len(paths_orig) - len(paths)
     if not num_pruned:
-        print "No redundant pipelines found.  %d final pipelines." % len(paths)
+        x = "s"
+        if len(paths) == 1:
+            x = ""
+        print "No redundant pipelines found.  %d final pipeline%s." % (
+            len(paths), x)
     else:
-        x = ""
-        if num_pruned >= 2:
-            x = "s"
-        print "Pruned %d pipeline%s.  %d final pipelines." % (
-            num_pruned, x, len(paths))
+        x1 = "s"
+        if num_pruned == 1:
+            x1 = ""
+        x2 = "s"
+        if len(paths) == 1:
+            x2 = ""
+        print "Pruned %d pipeline%s.  %d final pipeline%s." % (
+            num_pruned, x1, len(paths), x2)
 
     return paths
 

@@ -119,26 +119,25 @@ Checking parameters.
 Generating a network that produces an:
 UnprocessedSignalFile
   contents=unspecified
-  filter_and_threshold=no
   format=tdf
   logged=no
   preprocess=tpm
-Made a network with 72 nodes.
+Made a network with 69 nodes.
 Writing network in json format: test07.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
-Found 4 possible pipelines.
+Found 2 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  4 final pipelines.
+No redundant pipelines found.  2 final pipelines.
 Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
 No file given: ReferenceGenome.
 No file given: RSEMReferenceGenome.
 No file given: GTFGeneModel.
-Plotting (72 node) network to test07.png.
+Plotting (69 node) network to test07.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -207,7 +206,7 @@ Constructing pipelines that use --input data types.
 Found 1 possible pipeline.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  1 final pipelines.
+No redundant pipelines found.  1 final pipeline.
 Making sure all input files provided.
 No file given: BamFolder.
 No file given: ReferenceGenome.
@@ -234,7 +233,7 @@ Constructing pipelines that use --input data types.
 Found 1 possible pipeline.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  1 final pipelines.
+No redundant pipelines found.  1 final pipeline.
 Making sure all input files provided.
 No file given: BamFolder.
 No file given: ReferenceGenome.
@@ -252,7 +251,7 @@ Constructing pipelines that use --input data types.
 Found 1 possible pipeline.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  1 final pipelines.
+No redundant pipelines found.  1 final pipeline.
 Making sure all input files provided.
 No file given: ReferenceGenome.
 No file given: GTFGeneModel.
@@ -269,7 +268,7 @@ SimpleVariantMatrix
   with_coverage=yes
   with_gxp=yes
   with_rna_coverage=yes
-Made a network with 305 nodes.
+Made a network with 302 nodes.
 Writing network in json format: test14.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -279,7 +278,7 @@ Making sure all required attributes (--mattr) are provided.
 Missing --mattr: add_cancer_genes_to_simplevariantmatrix requires attribute "cancer_genes_file".
 Missing --mattr: filter_simplevariantfile requires attribute "wgs_or_wes".
 Missing --mattr: annotate_simplevariantmatrix requires attribute "annovar_buildver".
-Plotting (305 node) network to test14.png.
+Plotting (302 node) network to test14.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -310,32 +309,31 @@ Checking parameters.
 Generating a network that produces an:
 UnprocessedSignalFile
   contents=unspecified
-  filter_and_threshold=no
   format=tdf
   logged=no
   preprocess=tpm
-Made a network with 72 nodes.
+Made a network with 69 nodes.
 Writing network in json format: test16.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
-Found 4 possible pipelines.
+Found 2 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
+The following --mattr options were provided, but may not be needed:
+  adapters_fasta
 Pruning redundant pipelines.
-No redundant pipelines found.  4 final pipelines.
-Making sure all input files provided.
-No file given: FastqFolder.
-No file given: SampleGroupFile.
-No file given: STARReferenceGenome.
-No file given: RSEMReferenceGenome.
-No file given: GTFGeneModel.
-Plotting (72 node) network to test16.png.
+All pipelines pruned.  This can happen if:
+  1.  There is a conflicting data attribute in the pipeline.
+  2.  A --mattr option is missing.
+  3.  There is a bug in the network generation.
+  4.  There is a bug in the pipeline pruning.
+Please review the network, attributes, and --mattr options.
+Plotting (69 node) network to test16.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces an:
 UnprocessedSignalFile
   contents=unspecified
-  filter_and_threshold=no
   format=tdf
   logged=no
   preprocess=counts
@@ -416,7 +414,7 @@ SimpleVariantMatrix
   with_coverage=yes
   with_gxp=yes
   with_rna_coverage=yes
-Made a network with 305 nodes.
+Made a network with 302 nodes.
 Writing network in json format: test20.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -431,7 +429,7 @@ No file given: BamFolder.
 No file given: ReferenceGenome.
 No file given: NormalCancerFile.
 No file given: UnprocessedSignalFile.
-Plotting (305 node) network to test20.png.
+Plotting (302 node) network to test20.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -444,7 +442,7 @@ SimpleVariantMatrix
   with_coverage=yes
   with_gxp=yes
   with_rna_coverage=no
-Made a network with 216 nodes.
+Made a network with 213 nodes.
 Writing network in json format: test21.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -458,22 +456,22 @@ No file given: BamFolder.
 No file given: NormalCancerFile.
 No file given: ReferenceGenome.
 No file given: UnprocessedSignalFile.
-Plotting (216 node) network to test21.png.
+Plotting (213 node) network to test21.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 StdRNASeqAnalysis
   adapters_trimmed=no
   aligner=star
-Made a network with 122 nodes.
+Made a network with 119 nodes.
 Writing network in json format: test22.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
-Found 8 possible pipelines.
+Found 4 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  8 final pipelines.
+No redundant pipelines found.  4 final pipelines.
 Making sure all input files provided.
 No file given: FastqFolder.
 No file given: SampleGroupFile.
@@ -481,14 +479,14 @@ No file given: ReferenceGenome.
 No file given: RSEMReferenceGenome.
 No file given: STARReferenceGenome.
 No file given: GTFGeneModel.
-Plotting (122 node) network to test22.png.
+Plotting (119 node) network to test22.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 Heatmap
   cluster_alg=none
   contents=unspecified
-Made a network with 176 nodes.
+Made a network with 163 nodes.
 Writing network in json format: test23.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -502,4 +500,4 @@ No --output_file specified.  Will not save results.
 Ready to go!  Will run the analysis using a maximum of 4 cores.
 Please review the network to make sure the analysis is correct.
 Add --run when ready to run the analysis.
-Plotting (176 node) network to test23.png.
+Plotting (163 node) network to test23.png.

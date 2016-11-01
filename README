@@ -27,6 +27,7 @@ README       This file.
 USAGE        Instructions for using BETSY.
 LICENSE      How this code is licensed.
 Betsy/       BETSY expert system for Bioinformatics pipelines.
+  samples/   Example files for BETSY file formats.
 scripts/     Python scripts for use from the command line.
 Rlib/        Library of R code.
 arrayio/     Python library for reading gene expression matrices.
@@ -293,6 +294,5 @@ TESTING
 =======
 
 There is not yet an automated system for doing regression testing.
-There are some tests in Betsy/regr_test.sh that can be run and
-evaluated manually.
-
+However, there are some tests in Betsy/regr_test.sh that can be run.
+You can check your output against that in Betsy/test_output.log.

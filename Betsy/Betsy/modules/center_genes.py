@@ -31,6 +31,7 @@ class Module(AbstractModule):
             "-cg", center_parameter,
             "-u", outfile,
             ]
+        cmd = " ".join(map(str, cmd))
         parallel.sshell(cmd)
         metadata["command"] = cmd
         

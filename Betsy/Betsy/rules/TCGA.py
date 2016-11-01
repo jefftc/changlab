@@ -93,7 +93,7 @@ all_modules = [
         Consequence('preprocess', SAME_AS_CONSTRAINT),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence('logged', SET_TO, "unknown"),
-        Consequence('filter_and_threshold', SET_TO, "no"),
+        #Consequence('filter_and_threshold', SET_TO, "no"),
         Consequence('format', SET_TO, "tdf"),
         help="preprocess tcga file, generate to SignalFile_Postprocess",
         ),

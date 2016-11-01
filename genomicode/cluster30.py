@@ -5,6 +5,8 @@ cluster30
 cluster_hierarchical
 cluster_kmeans
 
+get_cluster_version
+
 cut_dendrogram          Cut a tree into clusters.
 
 """
@@ -281,6 +283,45 @@ def cluster_kmeans(MATRIX, cluster_genes, cluster_arrays,
     return cluster30(
         MATRIX, cluster_genes, cluster_arrays, "kmeans",
         distance=distance, kmeans_k=kmeans_k, cluster_bin=cluster_bin)
+
+
+def get_cluster_version(cluster_bin=None):
+    # There's two programs called "cluster".  One is cluster 3.0.  The
+    # other is from graphviz.
+    
+    # cluster --version
+
+    # Output from cluster30:
+    # Cluster 3.0, command line version (no GUI support),
+    # using the C Clustering Library version 1.50.
+    # [...]
+
+    # Output from graphviz:
+    # option -- unrecognized - ignored
+    #Usage: cluster <options> graphfile
+    #    -C k - generate no more than k clusters (0)
+    #       0 : no limit
+    #    -c k - use clustering method k (0)
+    #       0 : use modularity
+    #       1 : use modularity quality
+    #    -o <outfile> - output file (stdout)
+    #    -v   - verbose mode
+    #    -?   - print usage
+
+    import re
+    from genomicode import config
+    from genomicode import filelib
+    from genomicode import parallel
+
+    cluster = cluster_bin or config.cluster or "cluster"
+    cmd = "%s --version" % parallel.quote(cluster)
+    x = parallel.sshell(cmd, ignore_nonzero_exit=True)
+    x = x.strip()
+    if x.find("cluster <options> graphfile") >= 0:
+        raise AssertionError, "Found graphviz cluster, not Cluster 3.0"
+    m = re.search(r"Cluster ([\w\. ]+)", x)
+    assert m, "Missing version string"
+    return m.group(1)
 
 
 def cut_dendrogram(tree, k):

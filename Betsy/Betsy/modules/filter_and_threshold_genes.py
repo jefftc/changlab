@@ -7,7 +7,6 @@ class Module(AbstractModule):
     def run(
         self, network, in_data, out_attributes, user_options, num_cores,
         outfile):
-        """run preprocessdataset """
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import config
@@ -40,16 +39,16 @@ class Module(AbstractModule):
             highest_var is None
             ), "No criteria specified for filter_and_threshold."
 
-        if min_threshold:
-            metadata["min_threshold"] = min_threshold
-        if max_threshold:
-            metadata["max_threshold"] = max_threshold
-        if min_fold_change:
-            metadata["min_fold_change"] = min_fold_change
-        if min_delta:
-            metadata["min_delta"] = min_delta
-        if highest_var:
-            metadata["highest_var"] = highest_var
+        #if min_threshold:
+        #    metadata["min_threshold"] = min_threshold
+        #if max_threshold:
+        #    metadata["max_threshold"] = max_threshold
+        #if min_fold_change:
+        #    metadata["min_fold_change"] = min_fold_change
+        #if min_delta:
+        #    metadata["min_delta"] = min_delta
+        #if highest_var:
+        #    metadata["highest_var"] = highest_var
 
         slice_matrix = filelib.which_assert(config.slice_matrix)
 
@@ -62,7 +61,8 @@ class Module(AbstractModule):
         if max_threshold:
             cmd += ["--max_value", max_threshold]
         if min_fold_change:
-            cmd += ["--select_row_fc_not_logged", min_fold_change]
+            #cmd += ["--select_row_fc_not_logged", min_fold_change]
+            cmd += ["--select_row_fc", min_fold_change]
         if min_delta:
             cmd += ["--select_row_delta", min_delta]
         if highest_var:

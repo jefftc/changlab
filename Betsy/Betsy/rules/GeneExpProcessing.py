@@ -68,9 +68,9 @@ UnprocessedSignalFile = DataType(
     AttributeDef(
         "logged", ["unknown", "no", "yes"], "unknown", "yes",
         help="logged or not"),
-    AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
+    #AttributeDef(
+    #    "filter_and_threshold", YESNO, "no", "no",
+    #    help="Whether the values are filtered and thresholded."),
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
@@ -79,82 +79,51 @@ UnprocessedSignalFile = DataType(
 
 _SignalFile_Impute = DataType(
     "_SignalFile_Impute",
-    # Properties of the data.
+    # UnprocessedSignalFile
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
         "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
     AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    # _SignalFile_Impute
+    #AttributeDef(
+    #    "filter_and_threshold", YESNO, "no", "no",
+    #    help="Whether the values are filtered and thresholded."),
     AttributeDef(
         "missing_values", ["unknown", "no", "yes"], "unknown", "no",
-        help="missing values unknown,yes or not"),
+        help="missing values unknown, yes or no"),
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
         "zero_fill","zero_fill", help="missing algorithm"),
     AttributeDef(
         "filter_missing_values", YESNO, "no", "no",
         help="Whether missing values are filtered."),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
     help="The SignalFile after SignalFile_Postprocess, care missing_values, "
     "missing_algorithm and filter.")
 
-
 _SignalFile_Merge = DataType(
     "_SignalFile_Merge",
-    # Properties of the data.
+    # UnprocessedSignalFile
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
         "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
-    AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
-    AttributeDef(
-        "missing_algorithm", ["none", "median_fill", "zero_fill"],
-        "zero_fill", "zero_fill", help="missing algorithm"),
-    AttributeDef(
-        "filter_missing_values", YESNO, "no", "no",
-        help="Whether missing values are filtered."),
-    AttributeDef(
-        "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
-    AttributeDef(
-        "bfrm_norm", YESNO, "no", "no", help="bfrm normalization"),
-    AttributeDef(
-        "quantile_norm", YESNO, "no", "no",
-        help="quantile normalization"),
-    AttributeDef(
-        "shiftscale_norm", YESNO, "no", "no",
-        help="shiftscale normalization"),
-    AttributeDef(
-        "combat_norm", YESNO, "no", "no", help="combat normalization"),
     AttributeDef(
         "contents", BDT.CONTENTS, "unspecified", "unspecified",
         help="contents"),
-    help="The SignalFile after SignalFile_Impute, care dwd_norm,bfrm_norm,"\
-          "quantile_norm,shiftscale_norm,combat_norm.")
-
-_SignalFile_Normalize = DataType(
-    "_SignalFile_Normalize",
-    # Properties of the data.
-    AttributeDef(
-        #"preprocess", PREPROCESS1, "unknown", 'unknown',
-        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
-        help="preprocess method"),
-    AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
+    # _SignalFile_Impute
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill", help="missing algorithm"),
     AttributeDef(
-        "format", ["tdf", "pcl"], "tdf", "tdf", help="file format"),
-    AttributeDef(
         "filter_missing_values", YESNO, "no", "no",
         help="Whether missing values are filtered."),
+    # _SignalFile_Merge
+    #AttributeDef(
+    #    "filter_and_threshold", YESNO, "no", "no",
+    #    help="Whether the values are filtered and thresholded."),
     AttributeDef(
         "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
     AttributeDef(
@@ -167,33 +136,75 @@ _SignalFile_Normalize = DataType(
         help="shiftscale normalization"),
     AttributeDef(
         "combat_norm", YESNO, "no", "no", help="combat normalization"),
+    help="The SignalFile after SignalFile_Impute, care dwd_norm,bfrm_norm,"\
+          "quantile_norm,shiftscale_norm,combat_norm.",
+    )
+
+_SignalFile_Normalize = DataType(
+    "_SignalFile_Normalize",
+    # UnprocessedSignalFile
+    AttributeDef(
+        "format", ["tdf", "pcl"], "tdf", "tdf", help="file format"),
+    AttributeDef(
+        #"preprocess", PREPROCESS1, "unknown", 'unknown',
+        "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
+        help="preprocess method"),
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    #AttributeDef(
+    #    "filter_and_threshold", YESNO, "no", "no",
+    #    help="Whether the values are filtered and thresholded."),
+    # _SignalFile_Impute
+    AttributeDef(
+        "missing_algorithm", ["none", "median_fill", "zero_fill"],
+        "zero_fill", "zero_fill", help="missing algorithm"),
+    AttributeDef(
+        "filter_missing_values", YESNO, "no", "no",
+        help="Whether missing values are filtered."),
+    # _SignalFile_Merge
+    AttributeDef(
+        "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
+    AttributeDef(
+        "bfrm_norm", YESNO, "no", "no", help="bfrm normalization"),
+    AttributeDef(
+        "quantile_norm", YESNO, "no", "no",
+        help="quantile normalization"),
+    AttributeDef(
+        "shiftscale_norm", YESNO, "no", "no",
+        help="shiftscale normalization"),
+    AttributeDef(
+        "combat_norm", YESNO, "no", "no", help="combat normalization"),
+    # _SignalFile_Normalize
     AttributeDef(
         "gene_center", ["unknown", "no", "mean", "median"],
         "unknown", "no", help="gene center method"),
     AttributeDef(
         "gene_normalize", ["unknown", "no", "variance", "sum_of_squares"],
         "unknown", "no", help="gene normalize method"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
     help="The SignalFile after SignalFile_Merge, care gene_center,"\
-          "gene_normalize.")
+          "gene_normalize.",
+    )
 
 
 _SignalFile_Order = DataType(
     "_SignalFile_Order",
-    # Properties of the data.
+    # UnprocessedSignalFile
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
         "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    # _SignalFile_Impute
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill", help="missing algorithm"),
     AttributeDef(
         "filter_missing_values", YESNO, "no", "no",
         help="Whether missing values are filtered."),
-    # Normalization of the data.
+    # _SignalFile_Merge
     AttributeDef(
         "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
     AttributeDef(
@@ -206,39 +217,41 @@ _SignalFile_Order = DataType(
         help="shiftscale normalization"),
     AttributeDef(
         "combat_norm", YESNO, "no", "no", help="combat normalization"),
-    AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
+    # _SignalFile_Normalize
     AttributeDef(
         "gene_center", [ "no", "mean", "median"], "no", "no",
         help="gene center method"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"],
         "no", "no", help="gene normalize method"),
+    # _SignalFile_Order
+    #AttributeDef(
+    #    "filter_and_threshold", YESNO, "no", "no",
+    #    help="Whether the values are filtered and thresholded."),
     AttributeDef(
         "gene_order", BDT.GENE_ORDER, "none", "none",
         help="gene order method"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
     help="The SignalFile after SignalFile_Normalize, care gene_order.")
 
 
-_SignalFile_Annotate= DataType(
+_SignalFile_Annotate = DataType(
     "_SignalFile_Annotate",
-    
-    # Properties of the data.
+    # UnprocessedSignalFile
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
         "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    # _SignalFile_Impute
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill", help="missing algorithm"),
     AttributeDef(
         "filter_missing_values", YESNO, "no", "no",
         help="Whether missing values are filtered."),
-    # Normalization of the data.
+    # _SignalFile_Merge
     AttributeDef(
         "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
     AttributeDef(
@@ -251,18 +264,21 @@ _SignalFile_Annotate= DataType(
         help="shiftscale normalization"),
     AttributeDef(
         "combat_norm", YESNO, "no", "no", help="combat normalization"),
-    AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
+    # _SignalFile_Normalize
+    #AttributeDef(
+    #    "filter_and_threshold", YESNO, "no", "no",
+    #    help="Whether the values are filtered and thresholded."),
     AttributeDef(
         "gene_center", ["no", "mean", "median"], "no", "no",
         help="gene center method"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"], "no", "no",
         help="gene normalize method"),
+    # _SignalFile_Order
     AttributeDef(
         "gene_order", BDT.GENE_ORDER, "none", "none",
         help="gene order method"),
+    # _SignalFile_Annotate
     AttributeDef(
         "annotate", YESNO, "no", "no", help="annotate file or not"),
     AttributeDef(
@@ -273,27 +289,31 @@ _SignalFile_Annotate= DataType(
         "platform", ["yes", "no", 'u133A'], "no", "no",
         help="add platform or not"),
     #AttributeDef("has_u133A", ["yes", "no"], "no", "no", help="has hg_u133A platform or not"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
     help="The SignalFile after SignalFile_Order, care annotate,"
     "rename_sample,platform.")
 
 
-_SignalFile_Filter= DataType(
+_SignalFile_Filter = DataType(
     "_SignalFile_Filter",
-    # Properties of the data.
+    # UnprocessedSignalFile
     AttributeDef(
         #"preprocess", PREPROCESS1, "unknown", 'unknown',
         "preprocess", BDT.PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    # Not sure why these are back now.
+    AttributeDef("logged", [ "no", "yes"], "yes", "yes", help="logged or not"),
+    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf", help="file format"),
+    # _SignalFile_Impute
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill", help="missing algorithm"),
     AttributeDef(
         "filter_missing_values", YESNO, "no", "no",
         help="Whether missing values are filtered."),
-    # Normalization of the data.
+    # _SignalFile_Merge
     AttributeDef(
         "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
     AttributeDef(
@@ -306,18 +326,18 @@ _SignalFile_Filter= DataType(
         help="shiftscale normalization"),
     AttributeDef(
         "combat_norm", YESNO, "no", "no", help="combat normalization"),
-    AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
+    # _SignalFile_Normalize
     AttributeDef(
         "gene_center", [ "no", "mean", "median"], "no", "no",
         help="gene center method"),
     AttributeDef(
         "gene_normalize", [ "no", "variance", "sum_of_squares"], "no", "no",
         help="gene normalize method"),
+    # _SignalFile_Order
     AttributeDef(
         "gene_order", BDT.GENE_ORDER, "none", "none",
         help="gene order method"),
+    # _SignalFile_Annotate
     AttributeDef(
         "annotate", YESNO, "no", "no", help="annotate file or not"),
     AttributeDef(
@@ -326,10 +346,14 @@ _SignalFile_Filter= DataType(
     AttributeDef(
         "platform", ["yes", "no", 'u133A'], "no", "no",
         help="add platform or not"),
+    # _SignalFile_Filter
     #AttributeDef("has_u133A", ["yes", "no"], "no", "no", help="has hg_u133A platform or not"),
     AttributeDef(
         "num_features", ["yes", "no"], "no", "no",
         help="select a num of features or not"),
+    AttributeDef(
+        "filter_and_threshold", YESNO, "no", "no",
+        help="Whether the values are filtered and thresholded."),
     AttributeDef(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
         "no", "no", help="method to get unique genes"),
@@ -339,29 +363,31 @@ _SignalFile_Filter= DataType(
     AttributeDef(
         "group_fc", ["yes", "no"], "no", "no",
         help="group fold change or not"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
-    AttributeDef("logged", [ "no", "yes"], "yes", "yes", help="logged or not"),
-    AttributeDef("format", [ "tdf", "gct"], "tdf", "tdf", help="file format"),
     help="The SignalFile after SignalFile_Annotate, care num_features,"\
           "unique_genes,duplicate_probe,group_fc,logged,format.")
 
 
 SignalFile= DataType(
     "SignalFile",
-    # Properties of the data.
+    # UnprocessedSignalFile
     AttributeDef(
         "preprocess", BDT.ANY_PREPROCESS, "unknown", 'any', 
         #"preprocess", PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
+    AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    AttributeDef(
+        "logged", YESNO, "yes", "yes", help="logged or not"),
+    AttributeDef("format", ["tdf", "gct"], "tdf", "tdf", help="file format"),
+    # _SignalFile_Impute
     AttributeDef(
         "missing_algorithm", ["none", "median_fill", "zero_fill"],
         "zero_fill", "zero_fill", help="missing algorithm"),
     AttributeDef(
         "filter_missing_values", YESNO, "no", "no",
         help="Whether missing values are filtered."),
-    # Normalization of the data.
+    # _SignalFile_Merge
     AttributeDef(
         "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
     AttributeDef(
@@ -374,18 +400,18 @@ SignalFile= DataType(
         help="shiftscale normalization"),
     AttributeDef(
         "combat_norm", YESNO, "no", "no", help="combat normalization"),
-    AttributeDef(
-        "filter_and_threshold", YESNO, "no", "no",
-        help="Whether the values are filtered and thresholded."),
+    # _SignalFile_Normalize
     AttributeDef(
         "gene_center", ["no", "mean", "median"], "no", "no",
         help="gene center method"),
     AttributeDef(
         "gene_normalize", ["no", "variance", "sum_of_squares"], "no", "no",
         help="gene normalize method"),
+    # _SignalFile_Order
     AttributeDef(
         "gene_order", BDT.GENE_ORDER, "none", "none",
         help="gene order method"),
+    # _SignalFile_Annotate
     AttributeDef(
         "annotate", YESNO, "no", "no", help="annotate file or not"),
     AttributeDef(
@@ -395,9 +421,13 @@ SignalFile= DataType(
         "platform", ["yes", "no", 'u133A'], "no", "no",
         help="add platform or not"),
     #AttributeDef("has_u133A", ["yes", "no"], "no", "no", help="has hg_u133A platform or not"),
+    # _SignalFile_Filter
     AttributeDef(
         "num_features", ["yes", "no"], "no", "no",
         help="select a num of features or not"),
+    AttributeDef(
+        "filter_and_threshold", YESNO, "no", "no",
+        help="Whether the values are filtered and thresholded."),
     AttributeDef(
         "unique_genes", ["no", "average_genes", "high_var", "first_gene"],
         "no", "no", help="method to get unique genes"),
@@ -407,12 +437,6 @@ SignalFile= DataType(
     AttributeDef(
         "group_fc", ["yes", "no"], "no", "no",
         help="group fold change or not"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
-    AttributeDef(
-        "logged", YESNO, "yes", "yes", help="logged or not"),
-    AttributeDef("format", ["tdf", "gct"], "tdf", "tdf", help="file format"),
     help="The SignalFile after SignalFile_Filter, the attributes are the "
     "same as SignalFile_Filter.  Should not be specified by user.  "
     "Data provided by user should be provided as UnprocessedSignalFile.")
@@ -463,7 +487,7 @@ all_modules = [
 
     ModuleNode(
         "filter_and_threshold_genes",
-        UnprocessedSignalFile, UnprocessedSignalFile,
+        _SignalFile_Filter, _SignalFile_Filter,
         OptionDef(
             "min_threshold", default="",
             help="Set the minimum value to this number, e.g. 20"),
@@ -484,12 +508,14 @@ all_modules = [
             "e.g. 250"),
         Constraint('format', MUST_BE, "tdf"),
         Consequence('format', SAME_AS_CONSTRAINT),
-        Constraint('logged', MUST_BE, "no"),
+        Constraint('logged', MUST_BE, "yes"),
+        #Constraint('logged', CAN_BE_ANY_OF, ["no", "yes"]),
         Consequence('logged', SAME_AS_CONSTRAINT),
         Constraint('filter_and_threshold', MUST_BE, "no"),
         Consequence('filter_and_threshold', SET_TO, 'yes'),
-        help="filter genes by a threshold using genepattern module"),
-
+        help="Either threshold (change the value of) or filter genes.  "
+        "All options given here should be non-logged values."
+        ),
     ModuleNode(
         "log_signal",
         UnprocessedSignalFile, UnprocessedSignalFile,
@@ -497,7 +523,21 @@ all_modules = [
         Constraint("logged", MUST_BE, "no"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", SET_TO, "yes"),
-        help="log SignalFile_Postprocess"),
+        ),
+    # No.  Causes cycles in the network.
+    #ModuleNode(
+    #    # Unlog RMA values so it can be filtered and thresholded
+    #    # (which requires log=no).  If I allow the module to take
+    #    # log=yes, will increase pipelines exponentially.
+    #    "unlog_rma_signal",
+    #    UnprocessedSignalFile, UnprocessedSignalFile,
+    #    Constraint("format", MUST_BE, "tdf"),
+    #    Consequence("format", SAME_AS_CONSTRAINT),
+    #    Constraint("logged", MUST_BE, "yes"),
+    #    Consequence("logged", SET_TO, "no"),
+    #    Constraint("preprocess", MUST_BE, "rma"),
+    #    Consequence("preprocess", SAME_AS_CONSTRAINT),
+    #    ),
 
     #impute
     ModuleNode(
@@ -510,11 +550,11 @@ all_modules = [
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
+        #Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
         
         Consequence("preprocess", SAME_AS_CONSTRAINT),
         Consequence("contents", SAME_AS_CONSTRAINT),
-        Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
+        #Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
         
         Consequence("missing_algorithm", SET_TO, 'zero_fill'),
         Consequence("missing_values", SET_TO, "unknown"),
@@ -567,7 +607,7 @@ all_modules = [
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS_WOrma),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
-        Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
+        #Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
         Constraint("filter_missing_values", CAN_BE_ANY_OF, YESNO),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
@@ -576,7 +616,7 @@ all_modules = [
         
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
+        #Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
         Consequence("filter_missing_values", SAME_AS_CONSTRAINT),
         Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
         
@@ -846,14 +886,14 @@ all_modules = [
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
+        #Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
         Constraint("filter_missing_values", CAN_BE_ANY_OF, YESNO),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
             ['none', 'zero_fill', 'median_fill']),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
+        #Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
         Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
         Consequence("filter_missing_values", SAME_AS_CONSTRAINT),
         Constraint("quantile_norm", CAN_BE_ANY_OF, YESNO),
@@ -928,7 +968,7 @@ all_modules = [
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
+        #Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
         Constraint("filter_missing_values", CAN_BE_ANY_OF, YESNO),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
@@ -936,7 +976,7 @@ all_modules = [
         Constraint("format", MUST_BE, 'tdf'),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
+        #Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
         Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
         Consequence("filter_missing_values", SAME_AS_CONSTRAINT),
         Constraint("quantile_norm", CAN_BE_ANY_OF, YESNO),
@@ -1086,14 +1126,14 @@ all_modules = [
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
+        #Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
         Constraint("filter_missing_values", CAN_BE_ANY_OF, YESNO),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
             ['none', 'zero_fill', 'median_fill']),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
+        #Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
         Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
         Consequence("filter_missing_values", SAME_AS_CONSTRAINT),
         
@@ -1177,7 +1217,7 @@ all_modules = [
         #Constraint("preprocess", CAN_BE_ANY_OF, PREPROCESS1),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
+        #Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO),
         #Constraint("logged", CAN_BE_ANY_OF, ["no", "yes", "unknown"]),
         Constraint("filter_missing_values", CAN_BE_ANY_OF, YESNO),
         Constraint(
@@ -1185,7 +1225,7 @@ all_modules = [
             ['none', 'zero_fill', 'median_fill']),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
+        Consequence("filter_and_threshold", SET_TO, "no"),
         Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
         Consequence("filter_missing_values", SAME_AS_CONSTRAINT),
         Constraint("quantile_norm", CAN_BE_ANY_OF, YESNO),

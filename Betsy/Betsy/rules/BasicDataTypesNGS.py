@@ -185,7 +185,16 @@ SampleGroupFile = DataType(
     AttributeDef(
         "mouse_reads_subtracted", ["yes", "no"], "no", "no",
         help="For subtracting mouse reads from PDX models of FastqFolder"),
-    help="File contains sample group infomation"
+    help="File that associates FastQ files with sample names and pairing "
+    "information.  It can be either an Excel file or a tab-delimited text "
+    "file with at least three columns.  These three columns should contain "
+    'headers "Filename", "Sample", and "Pair".  '
+    "The Filename column contains the name of the fastq file (without "
+    "any path information.  The Sample column contains the name of each "
+    "sample.  There may be duplicates in this column if multiple FastQ "
+    "files contain data for the same sample.  The Pair column should be "
+    'either "1" or "2" for mate pairs for paired-end sequencing, '
+    "or blank for single end sequencing."
     )
 
 ## FastqFile = DataType(
