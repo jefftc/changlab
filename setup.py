@@ -24,8 +24,8 @@
 # get_numpy_include_path
 #
 # get_original_user
-# username2uid
 # get_original_uid
+# username2uid
 #
 # read_config_file
 # merge_config_files
@@ -33,7 +33,7 @@
 # setup_dot_genomicoderc
 # autoset_betsyrc_value
 # autoset_genomicoderc_value
-# 
+#
 # check_required_software
 
 
@@ -132,19 +132,23 @@ CONFIG_NOT_FILE = [
 
 def get_home_path():
     import os
-    return os.environ["HOME"]
+    # Does not work on LINUX if user is SUDO.  (Works fine on macOs).
+    # x = os.environ["HOME"]
+    user = get_original_user()
+    x = os.path.expanduser("~%s" % user)
+    return x
 
 
 def get_genomicode_rlib_path():
     import os
-    
+
     opj = os.path.join
     return opj(get_site_packages_path(), "genomicode", "Rlib")
 
 
 def get_genomicode_bin_path():
     import os
-    
+
     opj = os.path.join
     return opj(get_site_packages_path(), "genomicode", "bin")
 
@@ -188,16 +192,16 @@ def get_original_user():
     return user
 
 
-def username2uid(username):
-    import pwd
-    return pwd.getpwnam(username).pw_uid
-
-
 def get_original_uid():
     user = get_original_user()
     uid = username2uid(user)
     return uid
-    
+
+
+def username2uid(username):
+    import pwd
+    return pwd.getpwnam(username).pw_uid
+
 
 def find_bin(name):
     import os
@@ -208,6 +212,7 @@ def find_bin(name):
         "/opt/local/bin",
         "/usr/local/bin",
         "/usr/bin",
+        "/bin",
         get_genomicode_bin_path(),
         ]
     path, name = os.path.split(name)
@@ -231,6 +236,7 @@ def cluster_find_bin(name):
         "/opt/local/bin",
         "/usr/local/bin",
         "/usr/bin",
+        "/bin",
         get_genomicode_bin_path(),
         ]
     path, name = os.path.split(name)
@@ -250,13 +256,13 @@ def cluster_find_bin(name):
         return filename
     # Not found.
     return None
-    
+
 
 def read_config_file(filename):
     # Read a configuration file and return a dictionary of:
     # <section> -> <name> -> <value>
     import ConfigParser
-    
+
     # Read the configuration.
     config = ConfigParser.ConfigParser()
     config.optionxform = str   # use case sensitive option names
@@ -272,14 +278,16 @@ def read_config_file(filename):
     return config_values
 
 
-def _print_name_value(handle, name, delim, value):
+def _print_name_value(handle, name, delim, value, comment_out=False):
     import os
-    
+
     x = "%s%s%s" % (name, delim, value)
     if name not in CONFIG_NOT_FILE and not os.path.exists(value):
         x = "#%s" % x
+    if comment_out:
+        x = "##%s" % x
     print >>handle, x
-    
+
 
 def merge_config_files(old_file, new_file, value_handler_fn=None):
     # Merge two configuration files.  Use the formatting of the
@@ -308,7 +316,7 @@ def merge_config_files(old_file, new_file, value_handler_fn=None):
         # 4.  Variable definition.
         #     <name>=<value>
         #     <name>:<value>
-        
+
         line_s = line.strip()
         # Case 1.  Print out blank lines.
         if not line_s:
@@ -333,13 +341,18 @@ def merge_config_files(old_file, new_file, value_handler_fn=None):
                 # See if the old_file contains any variables in this
                 # section that were not already written out.  If so,
                 # then write them out now.
+                printed = False
                 for name, value in old_values.get(section, {}).iteritems():
                     if name in merged_values.get(section, {}):
                         continue
+                    printed = True
                     print "Betsy config file %s has unrecognized variable: %s"\
                           % (old_file, name)
-                    _print_name_value(handle, name, "=", value)
+                    _print_name_value(
+                        handle, name, "=", value, comment_out=True)
                     merged_values[name] = value
+                if printed:
+                    print >>handle
             print >>handle, line_s
             x = line_s[1:-1]
             section = x.strip()
@@ -376,13 +389,17 @@ def merge_config_files(old_file, new_file, value_handler_fn=None):
     # section that were not already written out.  If so,
     # then write them out now.
     if section is not None:
+        printed = False
         for name, value in old_values.get(section, {}).iteritems():
             if name in merged_values.get(section, {}):
                 continue
+            printed = True
             print "Betsy config file %s has unrecognized variable: %s" % (
                 old_file, name)
-            _print_name_value(handle, name, "=", value)
+            _print_name_value(handle, name, "=", value, comment_out=True)
             merged_values[name] = value
+        if printed:
+            print >>handle
 
     # See if the old_file contains any sections that were not already
     # written out.
@@ -395,9 +412,9 @@ def merge_config_files(old_file, new_file, value_handler_fn=None):
         print >>handle, "[%s]" % section
         print >>handle
         for name, value in old_values[section].iteritems():
-            _print_name_value(handle, name, "=", value)
+            _print_name_value(handle, name, "=", value, comment_out=True)
             merged_values[name] = value
-        
+
     handle.seek(0)
     open(old_file, 'w').write(handle.read())
 
@@ -409,7 +426,7 @@ def merge_config_files(old_file, new_file, value_handler_fn=None):
 
 def setup_dot_betsyrc():
     import os
-    
+
     template_file = os.path.join("Betsy", "dot_betsyrc")
     config_file = os.path.join(get_home_path(), ".betsyrc")
     assert os.path.exists(template_file), "File not found: %s" % template_file
@@ -417,12 +434,14 @@ def setup_dot_betsyrc():
     # If the configuration file already exists, merge them.  This will
     # make sure the configuration includes all the values from
     # dot_betsyrc.
-    merge_config_files(config_file, template_file)
+    merge_config_files(
+        config_file, template_file,
+        value_handler_fn=autoset_betsyrc_value)
 
 
 def setup_dot_genomicoderc():
     import os
-    
+
     template_file = os.path.join("genomicode", "dot_genomicoderc")
     config_file = os.path.join(get_home_path(), ".genomicoderc")
     assert os.path.exists(template_file), "File not found: %s" % template_file
@@ -440,7 +459,7 @@ def autoset_betsyrc_value(name, default_value):
     import os
 
     if name == "CACHE_PATH":
-        return os.path.join(get_home_path, "betsy.out")
+        return os.path.join(get_home_path(), "betsy.out")
     return default_value
 
 
@@ -463,7 +482,7 @@ def quote(s, always_quote=False):
 def get_cluster_version(cluster_bin):
     # There's two programs called "cluster".  One is cluster 3.0.  The
     # other is from graphviz.
-    
+
     # cluster --version
 
     # Output from cluster30:
@@ -500,7 +519,7 @@ def get_cluster_version(cluster_bin):
 def autoset_genomicoderc_value(name, default_value):
     # See if we can figure out a better value for the default_value.
     import os
-    
+
     if not default_value.strip():
         return default_value
     path, file_ = os.path.split(default_value)
@@ -526,9 +545,9 @@ def autoset_genomicoderc_value(name, default_value):
         x = os.path.join(x, file_)
         if os.path.exists(x):
             default_value = x
-            
+
     return default_value
-    
+
 
 def check_required_software():
     try:
@@ -614,7 +633,7 @@ def main():
             "install" : my_install,
             }
         )
-    
+
 
 if __name__ == '__main__':
     main()
