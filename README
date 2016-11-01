@@ -85,6 +85,9 @@ INSTALL
     please uncomment the line and configure it according to the
     location of the program.
 
+    This file will direct you to more external dependencies to
+    install.  You can decide whether to install them depending on your
+    needs (see SYSTEM REQUIREMENTS below).
 
 
 
