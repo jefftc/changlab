@@ -57,10 +57,11 @@ INSTALL
 
 
 2.  The genomicode/bin/ path (described in step 1) contains executable
-    scripts, including those that run the BETSY system:
+    scripts, including those that run the BETSY system, such as:
 
         betsy_run.py
         betsy_manage_cache.py
+        pybinreg.py
 
     Either symlink these files into a path that your shell will search
     for executable files, e.g:

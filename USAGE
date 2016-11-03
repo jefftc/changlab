@@ -1,10 +1,11 @@
 TABLE OF CONTENTS
 =================
 
-I.  BETSY Quick Reference
-II.  BETSY Tutorial
-III.  BETSY Cookbook
-IV.  Managing Cache
+I.  Scripts
+II.  BETSY Quick Reference
+III.  BETSY Tutorial
+IV.  BETSY Cookbook
+V.  Managing Cache
 
 
 
@@ -16,8 +17,42 @@ jeffrey.t.chang@uth.tmc.edu
 
 
 
-I.  BETSY QUICK REFERENCE
-=========================
+I.  SCRIPTS
+===========
+
+This is a list of some scripts that may be useful.  You can get a
+description of how to run it by typing:
+
+    <script name> -h
+
+
+GENERAL UTILITIES
+slice_matrix.py        Matrix utilities, e.g. normalize, cluster, filter.
+slice_annot.py         Utilities for annotation files (tab-delimited, columns).
+align_matrices.py      Align matrices or annotation files.
+
+
+DATA ANALYSIS
+calc_venn.py           Does a Venn diagram comparison of gene sets.
+find_diffexp_genes.py  Calculates differential expression of genes.
+gsea.py                Command line interface to GSEA.
+pybinreg.py            Command line interface to BinReg 2.0.
+scoresig.py            Score all signatures in a gene expression file.
+score_geneset.py
+
+
+MAKING FIGURES
+arrayplot2.py          Makes heatmaps from gene expression files.
+histoplot.py           Histograms.
+lineplot.py            Expression of genes across each sample.
+pcaplot.py             PCA of arrays.
+boxplot.               Distribution of gene expression for samples.
+
+
+
+
+II.  BETSY QUICK REFERENCE
+==========================
 
 betsy_run.py -h    Show a help message with description of arguments.
 betsy_run.py       Browse the knowledge base.
@@ -37,8 +72,8 @@ user, e.g. in --network_png).
 
 
 
-II.  BETSY TUTORIAL
-===================
+III.  BETSY TUTORIAL
+====================
 
 The main interface to the BETSY expert system is through the
 betsy_run.py script.  In this system, you specify the desired output
@@ -316,8 +351,8 @@ h.  Plotted the heatmap.
 
 
 
-III.  BETSY COOKBOOK
-====================
+IV.  BETSY COOKBOOK
+===================
 
 This section includes some generic BETSY rules that you can try out.
 This is a work in progress, so please email if there are any problems
@@ -496,8 +531,8 @@ betsy_run.py --network_png graph.png \
 
 
 
-IV.  MANAGING CACHE
-===================
+V.  MANAGING CACHE
+==================
 
 When BETSY runs pipelines, it tries to avoiding repeating the same
 calculation.  This enables the user to try multiple different
