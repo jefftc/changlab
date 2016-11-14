@@ -56,7 +56,8 @@ def convert_gene_ids(
     if in2out is None:
         in2out = _convert_gene_ids_biomart(
             gene_ids_c, in_platform, out_platform, no_na)
-    assert in2out, "I could not convert %s to %s" % (in_platform, out_platform)
+    assert not gene_ids_c or in2out, \
+           "I could not convert %s to %s" % (in_platform, out_platform)
 
     # Make a parallel list of the output IDs.
     output_ids = []
@@ -103,6 +104,7 @@ def _convert_gene_ids_biomart_h(gene_ids, in_platform, out_platform, no_na):
     # if these platforms cannot be converted.
     from genomicode import jmath
     from genomicode import arrayplatformlib
+    from genomicode import timer
 
     if not gene_ids:
         return {}
@@ -141,6 +143,7 @@ def _convert_gene_ids_biomart_h(gene_ids, in_platform, out_platform, no_na):
     #   query. Please report this to the mailing list.
     # Can mean that the gene IDs are bad.  E.g. version numbers still
     # on entrez IDs.
+    timer.wait(3)
     R_fn(
         "getLDS", attributes=in_attribute, filters=in_attribute,
         values=R_var("gene.ids"), mart=R_var("in.dataset"),

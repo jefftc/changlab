@@ -355,6 +355,7 @@ def is_logged_array_data(data):
 
     # Count the number of scores greater than the cutoff.
     nrow, ncol = data.dim()
+    assert nrow >= 2000, "No enough genes to determine log status."
     X = data.slice()
     total = nrow * ncol
     num_greater = 0

@@ -446,7 +446,7 @@ def write_from_am(handle_or_file, svm_matrix):
     headers2 = [None] * len(svm_matrix.headers)
     for i, header in enumerate(svm_matrix.headers):
         x = header.split("___")
-        assert len(x) == 3
+        assert len(x) == 3, "Invalid header format: %s" % x
         headers0[i] = x[0]
         headers1[i] = x[1]
         headers2[i] = x[2]
