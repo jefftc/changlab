@@ -8,7 +8,7 @@ import sys
 
 
 def convert_geneset(
-    filename, in_delim, keep_dups, keep_emptys, no_na, 
+    filename, all_in_platform, in_delim, keep_dups, keep_emptys, no_na, 
     in_genesets, all_genesets, out_platforms, out_format):
     from genomicode import genesetlib
     from genomicode import arrayplatformlib as apl
@@ -37,11 +37,13 @@ def convert_geneset(
     converted = []
     for x in sorted(name2geneset.values()):
         name, description, in_ids = x
-        
-        x = apl.score_annotations(in_ids, min_score=0.50)
-        assert x, "Unknown platform: %s" % name
-        best_score = x[0]
-        in_platform = best_score.platform_name
+
+        in_platform = all_in_platform
+        if not in_platform:
+            x = apl.score_annotations(in_ids, min_score=0.50)
+            assert x, "Unknown platform: %s" % name
+            best_score = x[0]
+            in_platform = best_score.platform_name
 
         # Convert to each of the out platformss.
         for out_platform in out_platforms:
@@ -190,8 +192,11 @@ def main():
 
     parser = argparse.ArgumentParser(
         description='Annotate a matrix or a geneset.')
-    parser.add_argument("infile")
-    
+    parser.add_argument(
+        "infile",
+        help="Either an expression file or a gene set file.  "
+        "Assumes a gene set file if the --geneset or --all_genesets "
+        "arguments are given.")
     all_platforms = [platform.name for platform in apl.PLATFORMS]
     x = ", ".join(all_platforms)
     parser.add_argument(
@@ -236,6 +241,8 @@ def main():
         "Format: <header>,<platform>.")
     
     group = parser.add_argument_group(title="Gene Set")
+    parser.add_argument(
+        "--in_platform", help="Which platform to convert from.")
     group.add_argument(
         '--geneset', default=[], action='append',
         help='Which gene set to annotate (if infile is a gene set file).  '
@@ -254,6 +261,8 @@ def main():
         assert x, "Unknown platform: %s" % x
         #assert arrayplatformlib.get_bm_organism(x), "Unknown platform: %s" % x
     assert len(args.geneset) <= 1, "Not implemented."
+    assert not args.in_platform or args.in_platform in all_platforms, \
+           "Unknown platform: %s" % args.in_platform
 
     annotate_matrix = False
     annotate_geneset = False
@@ -272,7 +281,8 @@ def main():
 
     if annotate_geneset:
         convert_geneset(
-            args.infile, args.in_delim,  args.keep_dups, args.keep_emptys,
+            args.infile, args.in_platform,
+            args.in_delim,  args.keep_dups, args.keep_emptys,
             args.no_na,  args.geneset, args.all_genesets, args.platform,
             args.out_geneset_format)
     else:
