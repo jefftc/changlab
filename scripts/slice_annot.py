@@ -2476,6 +2476,7 @@ def main():
     import sys
     import argparse
     from genomicode import AnnotationMatrix
+    from genomicode import SimpleVariantMatrix
 
     parser = argparse.ArgumentParser(
         description="Perform operations on an annotation file.")
@@ -2486,6 +2487,9 @@ def main():
     parser.add_argument(
         "--write_as_csv", action="store_true",
         help="Write out as a CSV file.")
+    parser.add_argument(
+        "--read_as_svm", action="store_true",
+        help="Read as a simple variant matrix.")
     parser.add_argument(
         "--ignore_lines_startswith",
         help="Ignore lines that starts with this string.  "
@@ -2845,13 +2849,20 @@ def main():
     assert len(args.filename) == 1
     FILENAME = args.filename[0]
 
+    assert not (args.read_as_csv and args.read_as_svm)
+
     # Do operations that do not take a matrix.
     if args.add_header_line:
+        assert not args.read_as_svm
         MATRIX = add_header_line(
             args.filename[0], args.add_header_line, args.read_as_csv)
     elif args.remove_header_line:
+        assert not args.read_as_svm
         remove_header_line(args.filename[0], args.read_as_csv)
         sys.exit(0)
+    elif args.read_as_svm:
+        assert not args.ignore_lines_startswith
+        MATRIX = SimpleVariantMatrix.read_as_am(args.filename[0])
     else:
         # Read the matrix.
         MATRIX = AnnotationMatrix.read(
