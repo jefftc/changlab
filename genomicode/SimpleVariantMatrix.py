@@ -451,7 +451,6 @@ def write_from_am(handle_or_file, svm_matrix):
         headers1[i] = x[1]
         headers2[i] = x[2]
 
-    # Clean up the headers.
     for i in range(len(headers0)-1, -1, -1):
         if headers0[i] == headers0[i-1]:
             headers0[i] = ""
@@ -479,6 +478,8 @@ def write_from_am(handle_or_file, svm_matrix):
 
 
 def read_as_am(filename, is_csv=False):
+    # Read file in SVM format.  Return an AnnotationMatrix object.
+    
     # Header format:  <header0>___<header1>___<header2>
     # "blanks" are filled in.  E.g. "Annovar" occurs in each Annovar
     # column in header0.
@@ -513,7 +514,7 @@ def read_as_am(filename, is_csv=False):
 
     # Fill in the blanks for header1.
     for i in range(1, len(header1)):
-        # if header0[i], then this block over.
+        # if header0[i], then copy this block over.
         if not header1[i] and not header0[i]:
             header1[i] = header1[i-1]
     # Fill in the blanks for header0.

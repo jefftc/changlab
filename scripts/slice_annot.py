@@ -2490,6 +2490,9 @@ def main():
     parser.add_argument(
         "--read_as_svm", action="store_true",
         help="Read as a simple variant matrix.")
+    #parser.add_argument(
+    #    "--clean_svm_headers", action="store_true",
+    #    help="Whether to clean up redundancies in SVM headers.")
     parser.add_argument(
         "--ignore_lines_startswith",
         help="Ignore lines that starts with this string.  "
