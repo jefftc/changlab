@@ -768,12 +768,22 @@ all_modules = [
         Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "jointsnvmix"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
-        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        #Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel", "all"]),
+        Consequence("vartype", SET_TO, "all"),
         Consequence("somatic", SET_TO, "yes"),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Use JointSNVMix (museq) to call variants.",
         ),
+    ModuleNode(
+        "filter_variants_jointsnvmix",
+        VCFFolder, VCFFolder,
+
+        Constraint("caller", MUST_BE, "jointsnvmix"),
+        Consequence("caller", SAME_AS_CONSTRAINT),
+        Constraint("vartype", MUST_BE, "all"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
+        help="Filter the variants from JointSNVMix."),
 
     ModuleNode(
         "call_variants_muse",
