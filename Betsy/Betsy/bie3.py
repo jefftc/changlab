@@ -966,11 +966,11 @@ class ModuleNode:
         assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF, SAME_AS]
         if constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]:
             assert in_datatype.is_valid_attribute_name(constraint.name), \
-                ("%r: Invalid attribute %r for datatype %r." %
+                ("Module %r: Invalid attribute %r for datatype %r." %
                  (name, constraint.name, in_datatype.name))
             assert in_datatype.is_valid_attribute_value(
                 constraint.name, constraint.arg1), \
-                ("%r: Invalid value %r for attribute %r." %
+                ("Module %r: Invalid value %r for attribute %r." %
                  (name, constraint.arg1, constraint.name))
         elif constraint.behavior == SAME_AS:
             # Make sure the datatype has this attribute.
@@ -978,7 +978,7 @@ class ModuleNode:
             assert dt.is_valid_attribute_name(constraint.name)
             # Make sure value can be resolved.
             assert len(in_datatypes) > 1, (
-                "%r: SAME_AS constraint requires at least two input "
+                "Module %r: SAME_AS constraint requires at least two input "
                 "datatypes." % name)
             const = _resolve_constraint(constraint, constraints)
             assert const.behavior in [MUST_BE, CAN_BE_ANY_OF]
