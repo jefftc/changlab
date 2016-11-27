@@ -31,6 +31,8 @@ import os
 import sys
 
 def _handle_annot_path(sys_argv, args):
+    import glob
+    
     # Check if --annot_path requested.
     if not args.annot_path:
         return sys_argv, args
@@ -59,23 +61,38 @@ def _handle_annot_path(sys_argv, args):
         os.mkdir(outpath)
 
     # Get a list of all the annotation files in the annot_path.
-    files = os.listdir(args.annot_path)
+    #files = os.listdir(args.annot_path)
+    files = glob.glob(args.annot_path)
     assert files, "No files found in %s" % args.annot_path
+    files.sort()
 
     # Find the file that contains the header.
     header = args.header[0]
-    has_header = None
+    has_header = [False] * len(files)
     for i, x in enumerate(files):
-        x = open(os.path.join(args.annot_path, x)).readline()
+        #x = open(os.path.join(args.annot_path, x)).readline()
+        x = open(x).readline()
         x = x.rstrip("\r\n").split("\t")
         if header in x:
-            has_header = i
+            has_header[i] = True
+    x = [x for x in has_header if x]
+    assert x, "Missing header: %s" % header
+    i_header = None
+    for i, x in enumerate(has_header):
+        if x:
+            i_header = i
             break
-    assert has_header is not None, "Missing header: %s" % header
-    files = [files.pop(has_header)] + files
+    files = [files.pop(i_header)] + files
+    has_header = [has_header.pop(i_header)] + has_header
     
-    annot_files = [os.path.join(args.annot_path, x) for x in files]
-    outfiles = [os.path.join(outpath, x) for x in files]
+    #annot_files = [os.path.join(args.annot_path, x) for x in files]
+    annot_files = files
+    outfiles = []
+    for x in files:
+        f = os.path.split(x)[1]
+        fn = os.path.join(outpath, f)
+        outfiles.append(fn)
+    #outfiles = [os.path.join(outpath, x) for x in files]
     args.annot_file = annot_files
     args.outfile = outfiles
 
@@ -87,10 +104,11 @@ def _handle_annot_path(sys_argv, args):
     i = sys_argv.index("--header")
     sys_argv.pop(i)  # delete --header
     sys_argv.pop(i)  # delete the argument
-    sys_argv.extend(["--annot_file", annot_files[0]])
-    sys_argv.extend(["--header", header])
-    for annot_file in annot_files[1:]:
-        sys_argv.extend(["--annot_file", annot_file])
+    for i in range(len(annot_files)):
+        sys_argv.extend(["--annot_file", annot_files[i]])
+        assert i or has_header[i]
+        if has_header[i]:
+            sys_argv.extend(["--header", header])
     sys_argv.extend(outfiles)
 
     return sys_argv, args
@@ -115,7 +133,8 @@ def list_all_samples(matrix_data, case_insensitive, hash_samples,
     if case_insensitive:
         all_samples_cmp = [x.upper() for x in all_samples_cmp]
     if hash_samples:
-        all_samples_cmp = [hashlib.hash_var(x) for x in all_samples_cmp]
+        #all_samples_cmp = [hashlib.hash_var(x) for x in all_samples_cmp]
+        all_samples_cmp = hashlib.hash_var_many(all_samples_cmp)
     if ignore_nonalnum:
         all_samples_cmp = [strip_nonalnum(x) for x in all_samples_cmp]
 
@@ -203,6 +222,19 @@ def _process_sample(sample, case_insensitive, hash_samples, ignore_nonalnum):
         x = hashlib.hash_var(x)
     if ignore_nonalnum:
         x = strip_nonalnum(x)
+    return x
+
+
+def _process_samples(samples, case_insensitive, hash_samples, ignore_nonalnum):
+    from genomicode import hashlib
+
+    x = samples
+    if case_insensitive:
+        x = [x.upper() for x in x]
+    if hash_samples:
+        x = hashlib.hash_var_many(x)
+    if ignore_nonalnum:
+        x = [strip_nonalnum(x) for x in x]
     return x
 
 
@@ -315,18 +347,22 @@ def align_matrices(
     import itertools
     from genomicode import hashlib
 
-    final_samples_cmp = [
-        _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
-        for x in final_samples]
+    final_samples_cmp = _process_samples(
+        final_samples, case_insensitive, hash_samples, ignore_nonalnum)
+    #final_samples_cmp = [
+    #    _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
+    #    for x in final_samples]
 
     # Pre-process the samples so I don't have to do it repeatedly.
     # This list should be aligned to matrix_data.
     matrix_samples_cmp = []
     for x in matrix_data:
         infile, outfile, matrix, header, samples = x
-        x = [
-            _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
-            for x in samples]
+        x = _process_samples(
+            samples, case_insensitive, hash_samples, ignore_nonalnum)
+        #x = [
+        #    _process_sample(x, case_insensitive, hash_samples, ignore_nonalnum)
+        #    for x in samples]
         matrix_samples_cmp.append(x)
 
     # Pre-process, for each matrix, a dictionary of sample -> list of
@@ -621,7 +657,8 @@ def find_sample(sample_list, sample, case_insensitive, hash_samples,
         sample_list_cmp = [x.upper() for x in sample_list_cmp]
         sample_cmp = sample_cmp.upper()
     if hash_samples:
-        sample_list_cmp = [hashlib.hash_var(x) for x in sample_list_cmp]
+        #sample_list_cmp = [hashlib.hash_var(x) for x in sample_list_cmp]
+        sample_list_cmp = hashlib.hash_var_many(sample_list_cmp)
         sample_cmp = hashlib.hash_var(sample_cmp)
     if ignore_nonalnum:
         sample_list_cmp = [strip_nonalnum(x) for x in sample_list_cmp]
@@ -664,8 +701,10 @@ def intersect_samples(samples1, samples2, case_insensitive, hash_samples,
         samples1_cmp = [x.upper() for x in samples1_cmp]
         samples2_cmp = [x.upper() for x in samples2_cmp]
     if hash_samples:
-        samples1_cmp = [hashlib.hash_var(x) for x in samples1_cmp]
-        samples2_cmp = [hashlib.hash_var(x) for x in samples2_cmp]
+        #samples1_cmp = [hashlib.hash_var(x) for x in samples1_cmp]
+        #samples2_cmp = [hashlib.hash_var(x) for x in samples2_cmp]
+        samples1_cmp = hashlib.hash_var_many(samples1_cmp)
+        samples2_cmp = hashlib.hash_var_many(samples2_cmp)
     if ignore_nonalnum:
         samples1_cmp = [strip_nonalnum(x) for x in samples1_cmp]
         samples2_cmp = [strip_nonalnum(x) for x in samples2_cmp]
@@ -684,7 +723,8 @@ def uniq_samples(samples, case_insensitive, hash_samples, ignore_nonalnum):
     if case_insensitive:
         samples_cmp = [x.upper() for x in samples_cmp]
     if hash_samples:
-        samples_cmp = [hashlib.hash_var(x) for x in samples_cmp]
+        #samples_cmp = [hashlib.hash_var(x) for x in samples_cmp]
+        samples_cmp = hashlib.hash_var_many(samples_cmp)
     if ignore_nonalnum:
         samples_cmp = [strip_nonalnum(x) for x in samples_cmp]
 
@@ -794,9 +834,11 @@ def main():
         "--annot_path",
         help="Align all the annotation files in a path.  "
         "If using this argument, no --annot_file or --express_file should "
-        'be given.  --header is still required.  Only one "outfile" should be '
-        "given, and it should refer to a path in which to store the "
-        "aligned files.")
+        "be given.  "
+        "--header is still required, and should apply to at least one file.  "
+        'Only one "outfile" should be given, and it should refer to a path '
+        "in which to store the aligned files.")
+    
     #parser.add_argument(
     #    "--first_annot_header", help="If only aligning annotation files, "
     #    "find the samples to be matched under this header in the first "
@@ -834,7 +876,6 @@ def main():
         'records that are present in all files.  An "outer join" will '
         'also keep records that occur in any file.')
 
-
     group = parser.add_argument_group(title="Output")
     group.add_argument(
         "--null_string", default="",
@@ -847,6 +888,11 @@ def main():
         help="If a matrix does not have a sample, don't fill in the value "
         "from another matrix.")
 
+    group = parser.add_argument_group(title="Debug")
+    group.add_argument(
+        "--debug_nrows", type=int,
+        help="Debugging: Only read this many rows from the annotation files.")
+    
     args = parser.parse_args()
     # If the user specified an --annot_path, revise args to
     # contain --annot_files instead.
@@ -865,6 +911,7 @@ def main():
     if args.null_string:
         assert args.outer_join or args.left_join, \
                "null_string given, but only used for outer_join"
+
 
     # Align the outfiles to the expression and annotation files.
     express_file = args.express_file[:]
@@ -886,7 +933,7 @@ def main():
     assert not annot_file
     assert not outfile
 
-    # Align the headers to the annotation files.
+    # Align the --header arguments to the annotation files.
     headers = [None] * len(matrix_data)
     header_i = -1
     for i, arg in enumerate(sys.argv):
@@ -915,7 +962,7 @@ def main():
         if is_express_file:
             data = read_express(infile)
         else:
-            data = AM.read(infile)
+            data = AM.read(infile, nrows=args.debug_nrows)
         x = infile, outfile, data, header
         new_matrix_data.append(x)
     matrix_data = new_matrix_data
@@ -997,6 +1044,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
-    #import cProfile as profile
-    #profile.runctx("main()", globals(), locals())
+    #main()
+    import cProfile as profile
+    profile.runctx("main()", globals(), locals())

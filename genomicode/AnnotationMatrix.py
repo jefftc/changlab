@@ -186,7 +186,7 @@ def uniquify_headers(headers):
     return nodup
 
 
-def read(filename, is_csv=False, header_char=None):
+def read(filename, is_csv=False, header_char=None, nrows=None):
     # Everything are strings.  No numeric conversion.
     import re
     from genomicode import genesetlib
@@ -203,7 +203,7 @@ def read(filename, is_csv=False, header_char=None):
     all_comments = []
     for x in genesetlib.read_tdf(
         filename, preserve_spaces=True, allow_duplicates=True,
-        delimiter=delimiter, yield_lines_startswith=header_char):
+        delimiter=delimiter, yield_lines_startswith=header_char, nrows=nrows):
         if type(x) is type(""):
             all_comments.append(x)
             continue
@@ -214,7 +214,9 @@ def read(filename, is_csv=False, header_char=None):
         # na\xc3\xafve-WIBR3.5 hESC
         # na\xe2\x80\x9a\xc3\xa0\xc3\xb6\xe2\x88\x9a\xc3\xb2ve-C1.2 hiPSC
         #annots = [re.sub("na\\W+ve", "naive", x) for x in annots]
-        annots = [re_naive.sub("naive", x) for x in annots]
+        # This takes a long time.  Don't do it unless necessary.
+        if False:
+            annots = [re_naive.sub("naive", x) for x in annots]
 
         all_headers.append(name)
         all_annots.append(annots)

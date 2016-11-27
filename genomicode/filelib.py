@@ -26,7 +26,7 @@ copy_file_or_path_to_path
 
 read_row     Read one row from a tab-delimited table from a file.
 write_row    Save one row from a tab-delimited table to a file.
-read_cols
+read_cols    Iterate over columns of a matrix.
 
 split_by     Split a column.
 join_by      Join a column.
@@ -438,30 +438,92 @@ def _make_convert_fns(format, obj_convert_fns, fmt2fn_fn):
         convert_fns.append(fn)
     return convert_fns
 
+
 # Bug: if the file is gzip'd, will leave gunzip -c processes lying
 # around.
-def read_cols(file_or_handle, delimiter="\t", skip=0):
+def read_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
     import csv
-
-    # Allow up to 32Mb fields (Python 2.5 and above).
-    if hasattr(csv, "field_size_limit"):
-        csv.field_size_limit(32*1024*1024)
 
     # Skip the first lines.
     handle = openfh(file_or_handle)
     for i in range(skip):
         handle.readline()
 
-    # Read each line.
-    handle = csv.reader(handle, delimiter=delimiter)
-    for i, row in enumerate(handle):
-        #if i > 5000:   # For debugging
-        #    break
-        yield row
-    #for line in handle:
-    #    cols = line.rstrip("\r\n").split(delimiter)
-    #    yield cols
-    #handle.close()
+    # Use the pandas csv parser if available.  Runs faster.
+    try:
+        import pandas
+    except ImportError, x:
+        has_pandas = False
+    else:
+        has_pandas = True
+        
+    if has_pandas:
+        df = pandas.read_csv(
+            handle, sep=delimiter, skip_blank_lines=False, header=None,
+            na_filter=False, doublequote=False, error_bad_lines=False,
+            warn_bad_lines=False, low_memory=False, memory_map=True,
+            nrows=nrows)
+        for x in df.values:
+            yield list(x)
+    elif False and delimiter == "\t":
+        # iolib.split_tdf takes about the same amount of time as
+        # csv.reader.
+        for i, x in enumerate(iolib.split_tdf(handle.read())):
+            if nrows is not None and i >= nrows:
+                break
+            yield x
+    elif False:
+        # Default naive implementation.
+        for i, line in enumerate(handle):
+            if nrows is not None and i >= nrows:
+                break
+            cols = line.rstrip("\r\n").split(delimiter)
+            yield cols
+        handle.close()
+    else:
+        # Use the Python csv parser.
+        # Allow up to 32Mb fields (Python 2.5 and above).
+        if hasattr(csv, "field_size_limit"):
+            csv.field_size_limit(32*1024*1024)
+        # Read each line.
+        handle = csv.reader(handle, delimiter=delimiter)
+        for i, row in enumerate(handle):
+            if nrows is not none and i >= nrows:
+                break
+            #if i > 5000:   # For debugging
+            #    break
+            yield row
+
+
+def read_all_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
+    import csv
+    
+    # Skip the first lines.
+    handle = openfh(file_or_handle)
+    for i in range(skip):
+        handle.readline()
+    
+    # Use the pandas csv parser if available.  Runs faster.
+    try:
+        import pandas
+    except ImportError, x:
+        has_pandas = False
+    else:
+        has_pandas = True
+
+    if has_pandas:
+        df = pandas.read_csv(
+            handle, sep=delimiter, skip_blank_lines=False, header=None,
+            na_filter=False, doublequote=False, error_bad_lines=False,
+            warn_bad_lines=False, low_memory=False, memory_map=True,
+            nrows=nrows)
+        matrix = [list(x) for x in df.values]
+    else:
+        matrix = [
+            x for x in
+            read_cols(handle, delimiter=delimiter, skip=0, nrows=nrows)]
+    return matrix
+
 
 def _make_format_from_header(names):
     import math

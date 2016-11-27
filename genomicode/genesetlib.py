@@ -78,7 +78,8 @@ def read_gmx(filename, preserve_spaces=False, allow_duplicates=False):
     import StringIO
     import filelib
 
-    matrix = [x for x in filelib.read_cols(filename)]
+    #matrix = [x for x in filelib.read_cols(filename)]
+    matrix = filelib.read_all_cols(filename)
     assert len(matrix) >= 2
     
     # Transpose this file and parse as gmt.
@@ -94,34 +95,52 @@ def read_gmx(filename, preserve_spaces=False, allow_duplicates=False):
 
 
 def _transpose_gmx(matrix):
+    # Transpose a GMX (column-oriented) matrix to GMT (row-oriented).
+    # The rows are not guaranteed to be the same length.
+    
     # GMX format:
     # <gene set name>  ...
     # <description>    ...
     # <gene>           ...
-    #
-    # Each column is a gene set.
-
     if not matrix:
         return []
     assert matrix[0]
-    
+
+    # Check if the rows are the same length.  If so, can use a faster
+    # algorithm.
+    all_same = True
+    for i in range(1, len(matrix)):
+        if len(matrix[0]) != len(matrix[i]):
+            all_same = False
+            break
+
     t_matrix = []
-    # Iterate over each of the columns (gene sets).
-    for j in range(len(matrix[0])):
-        x = []
-        # Pull this column out of the matrix into variable x.
-        for i in range(len(matrix)):
-            # These lines may not be the same length as the names,
-            # e.g. if the gene sets at the end have very few genes.
-            if j >= len(matrix[i]):
-                continue
-            x.append(matrix[i][j])
-        assert len(x) >= 2, "Short column %d: %s" % (j, x)
-        x1 = x[:2]
-        x2 = [x.strip() for x in x[2:]]
-        x = x1 + x2
-        t_matrix.append(x)
-    # The rows are not guaranteed to be the same length.
+    if all_same:
+        for j in range(len(matrix[0])):
+            x = [row[j] for row in matrix]
+            t_matrix.append(x)
+    else:
+        # Rows are not the same length.
+        # Iterate over each of the columns (gene sets).
+        for j in range(len(matrix[0])):
+            x = []
+            # Pull this column out of the matrix into variable x.
+            for i in range(len(matrix)):
+                # These lines may not be the same length as the names,
+                # e.g. if the gene sets at the end have very few genes.
+                if j >= len(matrix[i]):
+                    continue
+                x.append(matrix[i][j])
+            assert len(x) >= 2, "Short column %d: %s" % (j, x)
+            #x1 = x[:2]
+            #x2 = [x.strip() for x in x[2:]]
+            #x = x1 + x2
+            t_matrix.append(x)
+
+    #for i, x in enumerate(t_matrix):
+    #    x = [x.strip() for x in x]
+    #    t_matrix[i] = x
+        
     return t_matrix
 
 
@@ -165,11 +184,13 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
     # yield name, description, list of genes
     # genes can be duplicated.
     import filelib
-    import iolib
+    #import iolib
 
     # <name> <desc> [<gene>, <gene>, ...]
-    x = filelib.openfh(filename).read()
-    matrix = [x for x in iolib.split_tdf(x)]
+    matrix = filelib.read_all_cols(filename)
+    #matrix = [x for x in filelib.read_cols(filename)]
+    #x = filelib.openfh(filename).read()
+    #matrix = [x for x in iolib.split_tdf(x)]
     maxlen = max([len(x) for x in matrix]) - 2 # subtract name, description
     for cols in matrix:
         assert len(cols) >= 2
@@ -200,7 +221,7 @@ def read_gmt(filename, preserve_spaces=False, allow_duplicates=False):
 
 def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
              delimiter="\t", ignore_lines_startswith=None,
-             yield_lines_startswith=None):
+             yield_lines_startswith=None, nrows=None, strip=True):
     # yield name, description (always ""), list of genes.
     # preserve_spaces determines whether to remove blank annotations.
     # allow_duplicates determines whether to remove duplicate
@@ -210,7 +231,13 @@ def read_tdf(filename, preserve_spaces=False, allow_duplicates=False,
     # as a single string (not a tuple).
     import filelib
 
-    matrix = [x for x in filelib.read_cols(filename, delimiter=delimiter)]
+    matrix = filelib.read_all_cols(filename, delimiter=delimiter, nrows=nrows)
+    #matrix = [x for x in
+    #          filelib.read_cols(filename, delimiter=delimiter, nrows=nrows)]
+    if strip:
+        for i, x in enumerate(matrix):
+            x = [x.strip() for x in x]
+            matrix[i] = x
     if ignore_lines_startswith:
         # BUG: Will not work if this contains the delimiter.
         assert ignore_lines_startswith.find(delimiter) < 0
@@ -376,10 +403,12 @@ def detect_format(filename):
     # Return "GMX", "GMT", or None.
     global DEBUG
     import filelib
-    import iolib
+    #import iolib
 
-    x = filelib.openfh(filename).read()
-    matrix = [x for x in iolib.split_tdf(x)]
+    #x = filelib.openfh(filename).read()
+    #matrix = [x for x in iolib.split_tdf(x)]
+    matrix = filelib.read_all_cols(filename)
+    #matrix = [x for x in filelib.read_cols(filename)]
 
     # GMX
     # <name1> <name2> ... <nameN>
