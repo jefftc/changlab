@@ -100,11 +100,16 @@ def convert_xlsx(filename, worksheet):
         worksheet = sheet_names[0]
     ws = wb.get_sheet_by_name(name=worksheet)
 
-    #dim = ws.calculate_dimension()  # A1:B109
-    #M = ws.range(dim)
-    #M = ws[dim]
+    if hasattr(ws, "iter_rows"):
+        iter_ = ws.iter_rows()
+    else:
+        dim = ws.calculate_dimension()  # A1:B109
+        M = ws.range(dim)
+        #M = ws[dim]
+        iter_ = M
     #for i, ws_row in enumerate(M):
-    for i, ws_row in enumerate(ws.iter_rows()):
+    #for i, ws_row in enumerate(ws.iter_rows()):
+    for i, ws_row in enumerate(iter_):
         row = [safe_encode(x.value) for x in ws_row]
         print "\t".join(row)
 
