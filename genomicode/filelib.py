@@ -439,6 +439,40 @@ def _make_convert_fns(format, obj_convert_fns, fmt2fn_fn):
     return convert_fns
 
 
+def _read_with_pandas(handle, delimiter, nrows):
+    # Read a matrix (list of lists) with pandas.  Return None if not
+    # able to do so (e.g. if pandas not installed).
+
+    try:
+        import pandas
+    except ImportError, x:
+        return None
+    
+    # Sometimes segfaults: 
+    # pandas.io.common.CParserError: Error tokenizing data. C error:
+    # out of memory
+    
+    # chunksize is the number of rows.
+    CHUNKSIZE = 64*1024   # Read 64k rows at a time.
+    # nrows and chunksize is not implemented in pandas.
+    if nrows is not None:
+        CHUNKSIZE = None
+    reader = pandas.read_csv(
+        handle, sep=delimiter, skip_blank_lines=False, header=None,
+        na_filter=False, doublequote=False, error_bad_lines=False,
+        warn_bad_lines=False, low_memory=False, memory_map=True,
+        nrows=nrows, dtype=str, chunksize=CHUNKSIZE)
+    if CHUNKSIZE is None:
+        df = reader
+        matrix = [list(x) for x in df.values]
+    else:
+        matrix = []
+        for df in reader:
+            x = [list(x) for x in df.values]
+            matrix.extend(x)
+    return matrix
+
+
 # Bug: if the file is gzip'd, will leave gunzip -c processes lying
 # around.
 def read_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
@@ -449,22 +483,10 @@ def read_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
     for i in range(skip):
         handle.readline()
 
-    # Use the pandas csv parser if available.  Runs faster.
-    try:
-        import pandas
-    except ImportError, x:
-        has_pandas = False
-    else:
-        has_pandas = True
-        
-    if has_pandas:
-        df = pandas.read_csv(
-            handle, sep=delimiter, skip_blank_lines=False, header=None,
-            na_filter=False, doublequote=False, error_bad_lines=False,
-            warn_bad_lines=False, low_memory=False, memory_map=True,
-            nrows=nrows)
-        for x in df.values:
-            yield list(x)
+    matrix = _read_with_pandas(handle, delimiter, nrows)
+    if matrix:
+        for x in matrix:
+            yield x
     elif False and delimiter == "\t":
         # iolib.split_tdf takes about the same amount of time as
         # csv.reader.
@@ -502,26 +524,14 @@ def read_all_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
     handle = openfh(file_or_handle)
     for i in range(skip):
         handle.readline()
-    
-    # Use the pandas csv parser if available.  Runs faster.
-    try:
-        import pandas
-    except ImportError, x:
-        has_pandas = False
-    else:
-        has_pandas = True
 
-    if has_pandas:
-        df = pandas.read_csv(
-            handle, sep=delimiter, skip_blank_lines=False, header=None,
-            na_filter=False, doublequote=False, error_bad_lines=False,
-            warn_bad_lines=False, low_memory=False, memory_map=True,
-            nrows=nrows)
-        matrix = [list(x) for x in df.values]
-    else:
-        matrix = [
-            x for x in
-            read_cols(handle, delimiter=delimiter, skip=0, nrows=nrows)]
+    matrix = _read_with_pandas(handle, delimiter, nrows)
+    if matrix is not None:
+        return matrix
+    
+    matrix = [
+        x for x in
+        read_cols(handle, delimiter=delimiter, skip=0, nrows=nrows)]
     return matrix
 
 
