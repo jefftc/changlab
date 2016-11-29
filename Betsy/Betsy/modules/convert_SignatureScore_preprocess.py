@@ -6,9 +6,11 @@ class Module(AbstractModule):
 
     def run(
         self, network, in_data, out_attributes, user_options, num_cores,
-        outfile):
-        import shutil
-        shutil.copyfile(in_data.identifier, outfile)
+        out_path):
+        #import shutil
+        #shutil.copyfile(in_data.identifier, outfile)
+        import os
+        os.symlink(in_data.identifier, out_path)
 
 
     def name_outfile(self, antecedents, user_options):
@@ -16,7 +18,4 @@ class Module(AbstractModule):
         #original_file = module_utils.get_inputid(antecedents.identifier)
         #filename = 'SignatureScore_' + original_file
         #return filename
-        return "signal.txt"
-
-
-
+        return "scoresig"

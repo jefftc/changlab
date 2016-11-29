@@ -46,7 +46,7 @@ SignatureScore = DataType(
         "preprocess", BDT.ANY_PREPROCESS, 'unknown', 'any',
         #"preprocess", GEP.PREPROCESS, 'unknown', 'unknown',
         help="preprocess"),
-    help="Signature score file",
+    help="Output path containing results from scoresig analysis.",
     )
 
 GenesetReportFile = DataType(
