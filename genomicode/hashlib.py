@@ -4,6 +4,7 @@ Functions:
 hash_R               Hash a string using the R algorithm for list names.
 hash_R_many
 hash_var             Hash a string to an acceptable variable name.
+hash_var_many
 hash_alnum           Like hash_var, but can start with a number.
 hash_geneid          Lowercase, no spaces at the end.
 hash_sampleid        Lowercase, no punctuation (except _), no initial X.
@@ -47,6 +48,7 @@ def hash_R_many(names):
         hashed[i] = s
     return hashed
 
+
 def hash_var(name):
     import re
     # Fix the header to be a python variable.
@@ -55,6 +57,21 @@ def hash_var(name):
     x = re.sub(r"\W", "_", x)
     # Replace initial numbers with Xnumber.
     x = re.sub(r"^(\d)", r"X\1", x)
+    return x
+
+
+def hash_var_many(names):
+    import re
+
+    x = names
+    # Fix the header to be a python variable.
+    x = [str(x) for x in x]
+    # Replace all non-word character with _.
+    r = re.compile(r"\W")
+    x = [r.sub("_", x) for x in x]
+    # Replace initial numbers with Xnumber.
+    r = re.compile(r"^(\d)")
+    x = [r.sub(r"X\g<1>", x) for x in x]
     return x
 
 

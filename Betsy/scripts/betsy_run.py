@@ -1489,6 +1489,8 @@ def main():
                "Cannot restart_from_network: no --network_json specified."
 
     # Make sure configuration directory exists.
+    assert hasattr(config, "CACHE_PATH"), \
+           "Not defined in .genomicoderc: CACHE_PATH"
     if not os.path.exists(config.CACHE_PATH):
         print "Making BETSY working path: %s." % config.CACHE_PATH
         os.mkdir(config.CACHE_PATH)

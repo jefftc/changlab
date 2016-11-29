@@ -611,7 +611,12 @@ def read_fastq(fh):
         title = x1.strip()
         sequence = x2.strip()
         quality = x4.strip()
-        assert len(sequence) == len(quality)
+        if len(sequence) != len(quality):
+            err = "Mismatch sequence [%d] and quality [%d] lengths: %s" % (
+                len(sequence), len(quality), title)
+            if type(fh) is type(""):
+                err += " (%s)" % fh
+            assert len(sequence) == len(quality), err
         yield title, sequence, quality
 
     

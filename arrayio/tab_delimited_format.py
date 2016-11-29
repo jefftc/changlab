@@ -141,6 +141,11 @@ def _clean_tdf(matrix):
         for i in range(len(matrix)):
             matrix[i][-1] = ""
 
+    # Strip whitespace.
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            matrix[i][j] = matrix[i][j].strip()
+
     return matrix
 
 
@@ -162,8 +167,10 @@ def read(handle, hrows=None, hcols=None, datatype=float):
     if type(handle) is type(""):
         filename = handle
     handle = filelib.openfh(handle)
-    x = handle.read()
-    data = iolib.split_tdf(x, strip=True)
+    data = filelib.read_all_cols(handle)
+    #data = [x for x in filelib.read_cols(handle)]
+    #x = handle.read()
+    #data = iolib.split_tdf(x, strip=True)
     #handle = filelib.read_cols(handle)
     #data = [handle.next() for i in range(100)]
     data = _clean_tdf(data)

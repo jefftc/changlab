@@ -134,6 +134,9 @@ missing).
   PIL        http://www.pythonware.com/products/pil/
              To generate plots, such as heatmaps.
              Configure with: freetype, jpeg, zlib, lcms.
+  pandas     http://pandas.pydata.org
+             Will speed up some file I/O if available.
+             But otherwise not necessary.
 
 
 - R (+ libraries)
