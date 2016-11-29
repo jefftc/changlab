@@ -482,7 +482,16 @@ all_modules = [
         Constraint("logged", MUST_BE, "unknown"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Consequence("logged", BASED_ON_DATA, ["yes", "no"]),
-        help="check for log in SignalFile_Postprocess"
+
+        help="Determine whether the gene expression data in this "
+        "UnprocessedSignalFile has been logged.  This is done using a "
+        "heuristic.  We assume the gene expression is logged if "
+        "all values are < 1000.  "
+        "If at least 10 or 1% of the values are >= 1000, then we assume the "
+        "gene expression has not been logged.  "
+        "Otherwise, it is difficult to determine whether the values are "
+        "not logged, or if there are just some outliers; and we raise an "
+        "error."
         ),
 
     ModuleNode(

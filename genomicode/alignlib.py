@@ -326,6 +326,9 @@ def get_radia_version():
 
 
 def get_samtools_version():
+    # Returns full version string.
+    # 1.2 (using htslib 1.2.1)
+    # 0.1.18 (r982:295)
     import re
     from genomicode import config
     from genomicode import filelib
@@ -335,7 +338,8 @@ def get_samtools_version():
     x = parallel.sshell(samtools, ignore_nonzero_exit=True)
     x = x.strip()
     # Version: 1.2 (using htslib 1.2.1)
-    m = re.search(r"Version: ([\w\. \(\)-]+)", x)
+    # Version: 0.1.18 (r982:295)
+    m = re.search(r"Version: ([\w\. \(\)-:]+)", x)
     assert m, "Missing version string"
     return m.group(1)
 

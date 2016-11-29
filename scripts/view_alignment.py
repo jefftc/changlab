@@ -21,6 +21,7 @@ def main():
     from genomicode import filelib
     from genomicode import config
     from genomicode import parallel
+    from genomicode import alignlib
 
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("reference_genome", help="fastq file")
@@ -55,6 +56,9 @@ def main():
     group.add_argument(
         "--outpath", help="If multiple alignments are generated, this option "
         "directs where to save the output files.")
+    group.add_argument(
+        "--noclobber", action="store_true",
+        help="If an output file already exists, don't overwrite it.")
 
 
     # Parse the input arguments.
@@ -92,7 +96,7 @@ def main():
         positions.append((chrom, pos))
     if os.path.exists(args.position_file):
         for cols in filelib.read_cols(args.position_file):
-            assert len(cols) == 2
+            assert len(cols) == 2, "Position file should have 2 columns"
             chrom, pos = cols
             pos = int(pos)
             assert pos >= 1
@@ -102,6 +106,17 @@ def main():
     # Make the commands.
     assert hasattr(config, "samtools")
     filelib.assert_exists(config.samtools)
+
+    # Make sure we have the right version of samtools.
+    # 1.2 (using htslib 1.2.1)
+    # 0.1.18 (r982:295)
+    version = alignlib.get_samtools_version()
+    x = version.split(".")
+    assert len(x) >= 2
+    major = x[0]
+    assert major in ["0", "1"], "Unknown samtools version: %s" % version
+    major = int(major)
+    assert major >= 1, "Requires samtools >= 1 (Current version: %s)" % version
 
     commands = []
     for x in itertools.product(bam_filenames, positions):
@@ -119,6 +134,9 @@ def main():
         if args.outpath:
             x = os.path.join(args.outpath, x)
         out_filename = x
+
+        if args.noclobber and os.path.exists(out_filename):
+            continue
 
         # samtools tview -d t -p 7:100550778 bam01/196B-lung.bam $FA
         sq = parallel.quote

@@ -389,7 +389,7 @@ def run_many_pybinreg(jobs, num_procs):
         cmd = "%s >& %s" % (cmd, outfile)
         commands.append(cmd)
 
-    parallel.run_commands(commands, num_procs)
+    parallel.pshell(commands, max_procs=num_procs)
 
     for x in jobs:
         cmd, outpath, outfile = x
@@ -1190,7 +1190,7 @@ def main():
     if options.num_procs < 1 or options.num_procs > 100:
         parser.error("Please specify between 1 and 100 processes.")
     if options.num_procs > 1:
-        if parallel.find():
+        if parallel._find_parallel():
             num_sigs = min(options.num_procs, len(jobs))
             if num_sigs > 1:
                 print "Predicting %d signatures at a time." % num_sigs
