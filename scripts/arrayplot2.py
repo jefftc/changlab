@@ -1317,10 +1317,11 @@ def plot_array_clusters(
         n = aid2cluster.get(aid)
         if n is not None:
             p = 0.5
-            if max_cluster > 0:
+            if max_cluster > 0 and max_cluster < 8 and \
+                   layout.color_fn == get_color_scheme_fn("brewer-qual-set1"):
+                p = float(n) / 8
+            elif max_cluster > 0:
                 p = float(n) / max_cluster
-            ## Bug: This should be set in the layout.
-            #c = _get_color(p, colorlib.matlab_colors)
             c = _get_color(p, layout.color_fn)
         plotlib.rectangle(image, x+xoff, y+yoff, width, height, c)
 
@@ -2079,7 +2080,8 @@ def main():
            "More array cluster colors than files."
     while len(options.array_cluster_color) < len(options.array_cluster_file):
         # Fill with defaults.
-        options.array_cluster_color.append("bild")
+        #options.array_cluster_color.append("bild")
+        options.array_cluster_color.append("brewer-qual-set1")
     for x in options.array_cluster_color:
         assert x in COLOR_SCHEMES, "Unknown color scheme: %s" % x
 

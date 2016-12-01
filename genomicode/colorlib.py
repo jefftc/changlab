@@ -391,9 +391,10 @@ def brewer_ylorbr_seq(n):
 
 def brewer_qual_set1(n):
     # Works best when n == 8.
+    # Low number is red.
     ns = len(BREWER_QUALITATIVE_SET1)
     color_matrix = [
-        (1.0-1.0/(ns-1)*i, 255*x[0], 255*x[1], 255*x[2])
+        (1.0/(ns-1)*i, 255*x[0], 255*x[1], 255*x[2])
         for i, x in enumerate(BREWER_QUALITATIVE_SET1)]
     x = _colors(color_matrix, n)
     return x

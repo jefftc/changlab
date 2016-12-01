@@ -62,6 +62,7 @@ def read_atc_file(filename):
 def read_kgg_file(filename):
     import jmath
 
+    # Header:
     # <ID> GROUP
     #
     # GROUP should be integer.

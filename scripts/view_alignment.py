@@ -94,7 +94,7 @@ def main():
     for x in args.position:
         chrom, pos = _parse_position(x)
         positions.append((chrom, pos))
-    if os.path.exists(args.position_file):
+    if args.position_file and os.path.exists(args.position_file):
         for cols in filelib.read_cols(args.position_file):
             assert len(cols) == 2, "Position file should have 2 columns"
             chrom, pos = cols

@@ -1044,6 +1044,6 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
-    import cProfile as profile
-    profile.runctx("main()", globals(), locals())
+    main()
+    #import cProfile as profile
+    #profile.runctx("main()", globals(), locals())
