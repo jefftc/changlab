@@ -443,6 +443,15 @@ def _read_with_pandas(handle, delimiter, nrows):
     # Read a matrix (list of lists) with pandas.  Return None if not
     # able to do so (e.g. if pandas not installed).
 
+    # Don't know why, but this has a hard time reading VCF files.
+    # 1.  If CHUNKSIZE is 64k, then will only read the 20 lines (that
+    #     start with "##").
+    # 2.  If CHUNKSIZE is 4, will read all lines, but only keep first
+    #     column.
+    #
+    # Does too much weird stuff.  Don't use it.
+    return None
+    
     try:
         import pandas
     except ImportError, x:
@@ -451,7 +460,7 @@ def _read_with_pandas(handle, delimiter, nrows):
     # Sometimes segfaults: 
     # pandas.io.common.CParserError: Error tokenizing data. C error:
     # out of memory
-    
+
     # chunksize is the number of rows.
     CHUNKSIZE = 64*1024   # Read 64k rows at a time.
     # nrows and chunksize is not implemented in pandas.
@@ -459,6 +468,7 @@ def _read_with_pandas(handle, delimiter, nrows):
         CHUNKSIZE = None
     reader = pandas.read_csv(
         handle, sep=delimiter, skip_blank_lines=False, header=None,
+        comment=None,
         na_filter=False, doublequote=False, error_bad_lines=False,
         warn_bad_lines=False, low_memory=False, memory_map=True,
         nrows=nrows, dtype=str, chunksize=CHUNKSIZE)
@@ -510,7 +520,7 @@ def read_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
         # Read each line.
         handle = csv.reader(handle, delimiter=delimiter)
         for i, row in enumerate(handle):
-            if nrows is not none and i >= nrows:
+            if nrows is not None and i >= nrows:
                 break
             #if i > 5000:   # For debugging
             #    break
@@ -519,7 +529,7 @@ def read_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
 
 def read_all_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
     import csv
-    
+
     # Skip the first lines.
     handle = openfh(file_or_handle)
     for i in range(skip):

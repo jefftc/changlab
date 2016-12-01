@@ -135,6 +135,10 @@
 # muse             Y      N
 # radia            Y      Y    Makes file with both.  Can filter out.
 # platypus         Y      Y    Makes file with both.  Can filter out.
+
+# - JointSNVMix indels look like SNVs.
+# - Strelka doesn't call any indels.
+# - Zhongqi suggests Pan-Can uses Pindel, Indelocator, VarScan2.
         
 
 # Calculate the consensus reads at specific positions.
