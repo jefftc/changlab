@@ -35,7 +35,6 @@ def checksum_file(filename, fast=False):
 
 
 def checksum_path(path, fast=False):
-    import os
     from hashlib import md5
     from genomicode import filelib
     
