@@ -8,7 +8,7 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
-        import shutil
+        import os
         
         fastq_node, group_node, reference_node = antecedents
         metadata = {}

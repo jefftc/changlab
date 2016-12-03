@@ -12,7 +12,6 @@ class Module(AbstractModule):
         import arrayio
         from genomicode import filelib
         from genomicode import binreg
-        from Betsy import module_utils
 
         signal_file = in_data.identifier
         filelib.assert_exists_nz(signal_file)
@@ -39,10 +38,7 @@ class Module(AbstractModule):
 
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'signal_log_' + original_file + '.tdf'
-        return filename
+        return "signal.tdf"
 
 
 

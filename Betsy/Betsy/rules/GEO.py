@@ -145,7 +145,7 @@ all_modules = [
     ModuleNode(
         'convert_family_soft_to_rename',
         GEOFamilySoftFile, BDT.RenameFile,
-        OptionDef("GSEID", help='GSEID for download family_soft file'),
+        #OptionDef("GSEID", help='GSEID for download family_soft file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("labels_from", SET_TO_ONE_OF, ["title","description"]),

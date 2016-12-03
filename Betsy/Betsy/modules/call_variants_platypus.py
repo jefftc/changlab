@@ -12,7 +12,7 @@ class Module(AbstractModule):
         from genomicode import parallel
         from genomicode import alignlib
         from Betsy import module_utils as mlib
-        import call_variants_GATK
+        #import call_variants_GATK
 
         bam_node, ref_node = antecedents
         bam_filenames = mlib.find_bam_files(bam_node.identifier)

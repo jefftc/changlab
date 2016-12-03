@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         import shutil
         from genomicode import filelib
-        from Betsy import module_utils
         in_data = antecedents
         #out_attributes = set_out_attributes(in_data, out_attributes)
         shutil.copyfile(in_data.identifier, outfile)

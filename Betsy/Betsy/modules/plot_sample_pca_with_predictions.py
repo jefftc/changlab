@@ -8,7 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         from genomicode import genesetlib
-        from Betsy import module_utils
         import plot_sample_pca
         data_node, classify_node = antecedents
         result_data = genesetlib.read_tdf(classify_node.identifier,

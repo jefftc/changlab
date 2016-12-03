@@ -11,7 +11,6 @@ class Module(AbstractModule):
         import subprocess
         from genomicode import config
         from genomicode import filelib
-        from Betsy import module_utils
 
         data_node, cel_node = antecedents
         #out_attributes = set_out_attributes(data_node, out_attributes)

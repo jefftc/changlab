@@ -10,7 +10,7 @@ class Module(AbstractModule):
         """convert the cel file with ccl or v3_4 to v3_4"""
         import shutil
         from genomicode import filelib
-        from Betsy import module_utils
+
         in_data = antecedents
         #new_parameters = set_out_attributes(in_data, out_attributes)
         shutil.copytree(in_data.identifier, outfile)

@@ -10,7 +10,6 @@ class Module(AbstractModule):
         import os
         import shutil
         from genomicode import filelib
-        from Betsy import module_utils
         in_data = antecedents
         result_files = os.listdir(in_data.identifier)
         for result_file in result_files:

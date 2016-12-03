@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from genomicode import arrayplatformlib
         from genomicode import filelib
-        from Betsy import module_utils
         
         f = file(antecedents.identifier, 'r')
         text = f.read()

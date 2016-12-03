@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from genomicode import mplgraph
         import arrayio
-        from Betsy import module_utils
         from genomicode import jmath
         from genomicode import arrayplatformlib
         from genomicode import filelib
@@ -50,10 +49,6 @@ class Module(AbstractModule):
                 'the output file %s for plot_affy_affx_line fails' % outfile
             )
 
-
-
-
-    
     
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils

@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from genomicode import mplgraph
         import arrayio
-        from Betsy import module_utils
         from genomicode import jmath
         from genomicode import filelib
         in_data = antecedents

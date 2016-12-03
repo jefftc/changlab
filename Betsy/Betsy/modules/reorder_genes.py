@@ -8,10 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         import arrayio
-        from genomicode import config
-        from genomicode import arrayplatformlib
-        from Betsy import gene_ranking
-        from Betsy import module_utils
         
         data_node, gene_node = antecedents
         M = arrayio.read(data_node.identifier)

@@ -11,8 +11,6 @@ class Module(AbstractModule):
            using preprocess.py will generate a output file"""
         import os
         import subprocess
-        from genomicode import filelib
-        #from genomicode import config
         from Betsy import module_utils as mlib
         
         in_data = antecedents
@@ -38,9 +36,6 @@ class Module(AbstractModule):
         assert outputfile, "No output file created."
     
         os.rename(outputfile, outfile)
-        #assert filelib.exists_nz(outfile), (
-        #    'the output file %s for preprocess_mas5 fails' % outfile
-        #)
 
 
 

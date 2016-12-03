@@ -11,7 +11,6 @@ class Module(AbstractModule):
         import subprocess
         from genomicode import config
         from genomicode import filelib
-        from Betsy import module_utils
         #out_attributes = set_out_attributes(in_data, out_attributes)
         
         TCGA_BIN = filelib.which_assert(config.download_tcga)

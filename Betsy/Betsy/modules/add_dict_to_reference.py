@@ -11,7 +11,6 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
-        from Betsy import module_utils
 
         #picard_jar = module_utils.find_picard_jar("CreateSequenceDictionary")
         picard_jar = alignlib.find_picard_jar("picard")

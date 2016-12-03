@@ -11,7 +11,6 @@ class Module(AbstractModule):
         from genomicode import config
         from genomicode import filelib
         from genomicode import parallel
-        from Betsy import module_utils
 
         in_path = in_data.identifier
         filelib.safe_mkdir(out_path)
@@ -42,11 +41,12 @@ class Module(AbstractModule):
             # samtools sort -n <in_filename> <out_filestem>
             # .bam automatically added to <out_filestem>, so don't
             # need it.
-            x = out_filename
-            assert x.endswith(".bam")
-            x = x[:-4]
-            out_filestem = x
-            
+            #x = out_filename
+            #assert x.endswith(".bam")
+            #x = x[:-4]
+            #out_filestem = x
+
+            # Actually, samtools changed, new version.
             x = [
                 samtools,
                 "sort", "-n",

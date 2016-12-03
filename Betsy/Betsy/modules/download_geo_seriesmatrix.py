@@ -9,6 +9,7 @@ class Module(AbstractModule):
         outfile):
         # Given a GEOID and GPLID, get the series matrix file.
         from genomicode import geolib
+        from genomicode import filelib
 
         metadata = {}
         

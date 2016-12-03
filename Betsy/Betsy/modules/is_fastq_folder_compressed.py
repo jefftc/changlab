@@ -41,7 +41,7 @@ class Module(AbstractModule):
         assert filenames, "I could not find any FASTQ files."
 
         ext2count = {}  # ".gz" -> num files
-        is_compressed = False
+        #is_compressed = False
         for filename in filenames:
             x, ext = os.path.splitext(filename)
             ext = ext.lower()

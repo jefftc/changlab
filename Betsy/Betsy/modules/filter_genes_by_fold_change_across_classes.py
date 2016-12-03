@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         import math
         from Betsy import read_label_file
-        from Betsy import module_utils
         from genomicode import jmath
         import arrayio
         data_node, cls_node = antecedents

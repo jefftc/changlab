@@ -8,7 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         import math
-        from Betsy import module_utils
 
         raise NotImplementedError, "Changed a lot"
 

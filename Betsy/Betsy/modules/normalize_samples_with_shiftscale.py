@@ -10,7 +10,6 @@ class Module(AbstractModule):
         from genomicode import shiftscalenorm
         import arrayio
         from Betsy import read_label_file
-        from Betsy import module_utils
         from genomicode import filelib
         data_node, cls_node = antecedents
         if data_node and cls_node:

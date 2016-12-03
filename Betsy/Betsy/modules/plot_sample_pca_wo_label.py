@@ -7,7 +7,6 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
-        from Betsy import module_utils
         import plot_sample_pca
         
         plot_sample_pca.plot_pca(antecedents.identifier, outfile)

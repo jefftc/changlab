@@ -8,7 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         from genomicode import filelib
-        from Betsy import module_utils
         in_data = antecedents
         import arrayio
         f_out = file(outfile, 'w')

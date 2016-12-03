@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from genomicode import filelib
         import os
-        from Betsy import module_utils
         from genomicode import jmath
         in_data = antecedents
         matrix = [x for x in filelib.read_cols(in_data.identifier)]
