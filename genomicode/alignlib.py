@@ -1383,6 +1383,7 @@ def make_GATK_command(**params):
     # There was a failure because you did not provide enough memory to
     # run this program.  See the -Xmx JVM argument to adjust the
     # maximum heap size provided to Java
+    # GATK commands by default just use one dash.
     
     return _make_java_command("gatk_jar", params, 1, memory=20)
 

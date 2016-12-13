@@ -25,8 +25,8 @@ read_as_am      Return an AnnotationMatrix with samples and callers members.
 write_from_am
 
 """
-# TODO: Use AnnotationMatrix as underlying representation.  Implement
-# special read and write functions to handle the header.
+# _format_call
+# _parse_call
 
 class SimpleVariantMatrix:
     def __init__(self, samples, callers,
@@ -414,7 +414,7 @@ def _format_call(call):
 
 def _parse_call(call_str):
     # Ref/Alt/VAF
-    # Return tuple of ref, alt, vaf.  Each can be None if missing.
+    # Return Call object.
     if not call_str:
         return None
     x = call_str.split("/")
@@ -452,11 +452,23 @@ def write_from_am(handle_or_file, svm_matrix):
         headers2[i] = x[2]
 
     for i in range(len(headers0)-1, -1, -1):
+        # If headers1[i] is the same as header1[i-1], then do not
+        # write it out again.
+        #
+        # Exception: If headers0[i] != headers0[i-1], then we're
+        # starting a new "block", and headers1[i] should still be
+        # written out.
+        # Example: If there's only one <Caller>, then the <Sample>
+        # will not be blank, but the <Caller> should still be copied
+        # over (because they are the same).
+        # <Sample1>    <Sample2>
+        # <Caller>     <Caller>
+        # Ref/Alt/VAF  Ref/Alt/VAF
+        if headers1[i] == headers1[i-1] and headers0[i] == headers0[i-1]:
+            headers1[i] = ""
         if headers0[i] == headers0[i-1]:
             headers0[i] = ""
-        if headers1[i] == headers1[i-1]:
-            headers1[i] = ""
-    
+
     matrix = []
     for i, header_h in enumerate(svm_matrix.headers_h):
         h0 = headers0[i]
@@ -479,6 +491,8 @@ def write_from_am(handle_or_file, svm_matrix):
 
 def read_as_am(filename, is_csv=False):
     # Read file in SVM format.  Return an AnnotationMatrix object.
+    # Does no special processing on any columns (i.e. no parsing as
+    # integers or Call objects).  Everything is a string.
     
     # Header format:  <header0>___<header1>___<header2>
     # "blanks" are filled in.  E.g. "Annovar" occurs in each Annovar
@@ -514,7 +528,11 @@ def read_as_am(filename, is_csv=False):
 
     # Fill in the blanks for header1.
     for i in range(1, len(header1)):
-        # if header0[i], then copy this block over.
+        if header1[i]:
+            continue
+        # header1[i] is blank.  If header0[i], then this starts a new
+        # "block".  Start with a new header1, and do not copy the old
+        # one over.
         if not header1[i] and not header0[i]:
             header1[i] = header1[i-1]
     # Fill in the blanks for header0.

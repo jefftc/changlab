@@ -203,19 +203,58 @@ def generate_network(rulebase, outtype,
     return network
 
 
-def check_more_than_one_node_network(network):
+def check_more_than_one_node_network(network, rulebase):
+    #from genomicode import parselib
+    from Betsy import bie3
+    
     if len(network.nodes) > 1:
         return True
     
     # Print out the node.
     node = network.nodes[0]
-    print "I have no rules that generate node:"
-    print node.datatype.name
-    for x in node.attributes.iteritems():
-        name, value = x
-        x = "  %s=%s" % (name, value)
-        print x
-    print "This is most likely due to an incompatibility in the attributes."
+    print "I cannot generate this network."
+    #print node.datatype.name
+    #for x in node.attributes.iteritems():
+    #    name, value = x
+    #    x = "  %s=%s" % (name, value)
+    #    print x
+    print "This can be caused by:"
+    print "1.  An incompatibility in the attributes (most likely)."
+    print "    Please verify the attributes in the output data object."
+    print "2.  The knowledge base is incomplete and missing a rule."
+
+    # Look for rules that can almost generate this node, with at most
+    # 1 mismatch.
+    attr2values = {}  # attr -> list of values
+    for module in rulebase.all_modules:
+        assert not bie3._is_valid_output(module, node)
+        # Print out conflicts
+        conflicts = bie3.DEBUG_IS_VALID_OUTPUT_CONFLICTS
+        if not conflicts:  # Can happen if data type doesn't match.
+            continue
+        if len(conflicts) > 1:
+            continue
+        attr_name, desired_value, data_value = conflicts[0]
+        #print module.name, attr_name, desired_value, data_value
+        v1 = attr2values.get(attr_name, [])
+        v2 = desired_value
+        if type(v2) is type(""):
+            v2 = [v2]
+        attr2values[attr_name] = v1+v2
+    if not attr2values:
+        return False
+
+    print "Is it possible that you meant:"
+    i = 1
+    for attr_name in sorted(attr2values):
+        x = attr2values[attr_name]
+        x = {}.fromkeys(x)
+        values = sorted(x)
+        #values_str = parselib.pretty_list(values, conjunction="or")
+        dtype = node.datatype.name
+        for value in values:
+            print "%d.  %s.%s=%s" % (i, dtype, attr_name, value)
+            i += 1
     return False
 
 
@@ -904,8 +943,7 @@ def plot_pipelines(filestem, network, paths, user_options, max_pipelines=None,
             prune=prune, verbose=verbose)
 
 
-def write_receipt(
-    outfilename, network, start_ids, node_ids, transitions, node_dict):
+def write_receipt(outfilename, network, start_ids, transitions, node_dict):
     import os
     import sys
     from genomicode import parselib
@@ -1669,7 +1707,7 @@ def main():
     #    verbose=verbose_network)
 
     # Step 2.5: Make sure network has more than one node.
-    if not check_more_than_one_node_network(network):
+    if not check_more_than_one_node_network(network, rulebase):
         return
     
     # Step 3: Make sure some inputs are provided.
@@ -1809,8 +1847,7 @@ def main():
         highlight_green=start_ids, highlight_yellow=node_ids,
         verbose=verbose_network)
     if args.receipt:
-        write_receipt(
-            args.receipt, network, start_ids, node_ids, transitions, node_dict)
+        write_receipt(args.receipt, network, start_ids, transitions, node_dict)
     #if args.network_text:
     #    print "Writing detailed network: %s." % args.network_text
     #    bie3.print_network(network, outhandle=args.network_text)

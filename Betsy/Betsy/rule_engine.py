@@ -626,6 +626,8 @@ def run_module(
         # Clear out any old files in the directory.
         if CLEAN_UP_PATH_FOR_NEW_MODULE:
             _clear_analysis_path(result_dir, copying_file)
+        else:
+            print "DEBUG: Not cleaning up path."
         
         start_time = time.localtime()
         try:

@@ -213,6 +213,11 @@ varscan_jar=/usr/local/bin/VarScan.jar
 #   [...]
 museq=/usr/local/museq_4.3.6
 
+# Path to the pindel binary.
+pindel=/usr/local/pindel/pindel
+pindel2vcf=/usr/local/pindel/pindel2vcf
+
+
 # Path to the directory that contains the Radia files.  e.g.
 # <radia>/
 #   scripts/

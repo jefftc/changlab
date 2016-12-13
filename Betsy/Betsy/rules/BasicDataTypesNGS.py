@@ -456,6 +456,16 @@ DepthOfCoverage = DataType(
     help="Count the average coverage.  Saves a directory of files.",
     )
 
+InsertSizeMetrics = DataType(
+    "InsertSizeMetrics",
+    help="Look at insert sizes of DNA-Seq.  Saves a directory of files.",
+    )
+
+AlignmentSummaryMetrics = DataType(
+    "AlignmentSummaryMetrics",
+    help="Picard CollectAlignmentSummaryMetrics.  Saves a directory of files.",
+    )
+
 TrimmomaticSummary = DataType(
     "TrimmomaticSummary",
     help="Summarizes the results from trimmomatic in an Excel .xls file.",
@@ -484,8 +494,8 @@ all_data_types = [
     DepthOfCoverage,
     AlignmentCIGARFolder,
     PerfectAlignmentSummary,
-
-    #MouseSubtractedFastqFolder,
+    InsertSizeMetrics,
+    AlignmentSummaryMetrics,
     ]
 
 all_modules = [
@@ -1306,6 +1316,26 @@ all_modules = [
         BamFolder, FastaFolder,
         Consequence("compressed", SET_TO, "no"),
         Consequence("reads_merged", SET_TO, "yes"),
+        ),
+
+    ModuleNode(
+        "calculate_insert_size_metrics",
+        BamFolder, InsertSizeMetrics,
+        Constraint("sorted", MUST_BE, "coordinate"),
+        Constraint("indexed", CAN_BE_ANY_OF, YESNO),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
+        ),
+    
+    ModuleNode(
+        "calculate_alignment_summary_metrics",
+        [BamFolder, ReferenceGenome], AlignmentSummaryMetrics,
+        Constraint("sorted", MUST_BE, "coordinate"),
+        Constraint("indexed", CAN_BE_ANY_OF, YESNO),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         ),
 
     ## ModuleNode(

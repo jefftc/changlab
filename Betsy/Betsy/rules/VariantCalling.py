@@ -18,6 +18,7 @@
 #   filter_by_min_total_reads
 #   filter_by_min_vaf
 # SimpleVariantMatrix.filtered_variants  Filter a variant across all samples
+#                                        Usually for SNPs, not indel.
 #   min_callers_in_every_sample
 #   min_callers_in_any_sample
 #   min_gene_expression_in_every_sample
@@ -95,22 +96,51 @@
 #
 #
 # Modules:
-# summarize_variants_mpileup
+# XXX CLEAN UP
 # call_variants_mpileup
+# summarize_consensus_mpileup
+# summarize_reads_mpileup
 # call_variants_GATK
+# filter_variants_GATK
 # call_variants_platypus
-# call_consensus_varscan
+# filter_variants_platypus
 # call_variants_varscan
-# merge_variants_snp
-#
 # call_somatic_varscan
+# call_consensus_varscan
 # call_variants_mutect
+# filter_variants_mutect2
 # call_variants_strelka
 # call_variants_somaticsniper
 # call_variants_jointsnvmix
+# filter_variants_jointsnvmix
 # call_variants_muse
-# merge_somatic_variants_snp
+# call_variants_radia_with_rna
+# select_radia_snps
+# call_variants_pindel
 #
+# merge_somatic_variants_snp
+# merge_somatic_variants_snp_with_radia
+# merge_variants_snp
+# merge_variants_indel
+# 
+# merge_manycallervcffolders
+# filter_simplevariantfile
+# convert_simplevariantfile_to_matrix
+# _convert_unprocessedsimplevariantmatrix_to_simplevariantmatrix1
+# _convert_simplevariantmatrix1_to_simplevariantmatrix2
+# _convert_simplevariantmatrix2_to_simplevariantmatrix3
+# _convert_simplevariantmatrix3_to_simplevariantmatrix
+# 
+# annotate_simplevariantmatrix
+# filter_simplevariantmatrix_calls
+# filter_simplevariantmatrix_variants
+# extract_positions_from_simplevariantmatrix
+# add_coverage_to_simplevariantmatrix
+# add_rna_coverage_to_simplevariantmatrix
+# add_gene_expression_to_simplevariantmatrix
+# add_cancer_genes_to_simplevariantmatrix
+# 
+# merge_somatic_variants_indel
 # make_vcf_recalibration_report_snp
 # recalibrate_variants_snp
 # filter_snps_only_multivcf
@@ -119,6 +149,9 @@
 # annotate_multivcf_annovar
 # extract_positions_from_multivcf_file
 # backfill_vcf_folder
+# summarize_coverage_at_positions
+#
+# make_full_genome_intervals
 
 
 # Recalibrate variant scores with GATK.
@@ -128,17 +161,32 @@
 #                 SNP   INDEL  NOTES
 # gatk             Y      Y    Makes file with both.  Can filter out.
 # mutect           Y      N
-# varscan          Y      Y    Makes separate files.
+# mutect2          Y      Y    Makes file with both.  Can filter out.
+# varscan2         Y      Y    Makes separate files.
 # strelka          Y      Y    Makes separate files.
 # somaticsniper    Y      N
 # jointsnvmix      Y      Y    Makes file with both.  Can filter out.
 # muse             Y      N
 # radia            Y      Y    Makes file with both.  Can filter out.
 # platypus         Y      Y    Makes file with both.  Can filter out.
-
+# pindel           N      Y    Not somatic caller.
 # - JointSNVMix indels look like SNVs.
 # - Strelka doesn't call any indels.
 # - Zhongqi suggests Pan-Can uses Pindel, Indelocator, VarScan2.
+#   Indelocator not available anymore.
+
+# TODO:
+# mutect2                       RUNNING
+# merge_somatic_variants_snp
+#
+# merge_somatic_variants_indel
+# call_variants_mutect2   indel
+# merge_variants_indel
+# call_variants_pindel           RUNNING
+# 
+# Add VAFs in normal samples
+
+
         
 
 # Calculate the consensus reads at specific positions.
@@ -159,8 +207,9 @@ import BasicDataTypesNGS as NGS
 import GeneExpProcessing as GXP
 
 CALLERS = [
-    "none", "mpileup", "gatk", "platypus", "varscan", "mutect", "strelka",
-    "somaticsniper", "jointsnvmix", "muse", "radia"]
+    "none", "mpileup", "gatk", "platypus", "varscan", "mutect", "mutect2",
+    "strelka", "somaticsniper", "jointsnvmix", "muse", "radia", "pindel", 
+    ]
 VARTYPES = ["all", "snp", "indel"]
 #VARTYPE_NOT_CONSENSUS = [x for x in VARTYPES if x != "consensus"]
 BACKFILLS = ["no", "yes", "consensus"]
@@ -241,6 +290,14 @@ VCFRecalibrationReport = DataType(
     AttributeDef(
         "caller", CALLERS, "none", "mpileup",
         help="Which variant caller was used."),
+    )
+
+PindelResultsFolder = DataType(
+    "PindelResultsFolder",
+    AttributeDef(
+        "aligner", NGS.ALIGNERS, "unknown", "unknown",
+        help="What alignment algorithm used.  Helpful for determining "
+        "whether this contains DNA or RNA data."),
     )
 
 AnnotatedVCFFolder = DataType(
@@ -624,28 +681,6 @@ all_modules = [
         help="Filter the variants from Platypus."),
 
     ModuleNode(
-        "call_consensus_varscan",
-        PileupSummary, VCFFolder,
-        
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
-        #Constraint("vartype", MUST_BE, "consensus"),
-        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
-        Consequence("vartype", SAME_AS_CONSTRAINT),
-        Consequence("is_consensus", SET_TO, "yes"),
-        #Constraint("samtools_indexed", MUST_BE, "yes", 1),
-        Consequence("caller", SET_TO, "varscan"),
-        Consequence("vcf_recalibrated", SET_TO, "no"),
-        Consequence("backfilled", SET_TO, "consensus"),
-        Constraint("coordinates_from", CAN_BE_ANY_OF, COORDINATES_FROM),
-        Consequence("coordinates_from", SAME_AS_CONSTRAINT),
-        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS),
-        Consequence("aligner", SAME_AS_CONSTRAINT),
-        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
-        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
-        help="Use Varscan to generate consensus information."),
-
-    ModuleNode(
         "call_variants_varscan",
         PileupSummary, VCFFolder,
         
@@ -691,6 +726,28 @@ all_modules = [
         help="Use Varscan to call variants."),
 
     ModuleNode(
+        "call_consensus_varscan",
+        PileupSummary, VCFFolder,
+        
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("vartype", MUST_BE, "consensus"),
+        Constraint("vartype", CAN_BE_ANY_OF, VARTYPES),
+        Consequence("vartype", SAME_AS_CONSTRAINT),
+        Consequence("is_consensus", SET_TO, "yes"),
+        #Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        Consequence("caller", SET_TO, "varscan"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("backfilled", SET_TO, "consensus"),
+        Constraint("coordinates_from", CAN_BE_ANY_OF, COORDINATES_FROM),
+        Consequence("coordinates_from", SAME_AS_CONSTRAINT),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("filtered_calls", CAN_BE_ANY_OF, YESNO),
+        Consequence("filtered_calls", SAME_AS_CONSTRAINT),
+        help="Use Varscan to generate consensus information."),
+
+    ModuleNode(
         "make_full_genome_intervals",
         NGS.ReferenceGenome, IntervalListFile,
         ),
@@ -716,6 +773,39 @@ all_modules = [
         Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         help="Use MuTect to call variants.",
+        ),
+
+    ModuleNode(
+        "call_variants_mutect2",
+        [NGS.BamFolder, NormalCancerFile, NGS.ReferenceGenome,
+         IntervalListFile], VCFFolder,
+        OptionDef("mutect_cosmic_vcf"),
+        OptionDef("mutect_dbsnp_vcf"),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("dict_added", MUST_BE, "yes", 2),
+        Constraint("samtools_indexed", MUST_BE, "yes", 2),
+        Consequence("caller", SET_TO, "mutect2"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO, "all"),
+        Consequence("somatic", SET_TO, "yes"),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
+        help="Use MuTect2 to call variants.",
+        ),
+
+    ModuleNode(
+        "filter_variants_mutect2",
+        VCFFolder, VCFFolder,
+        Constraint("caller", MUST_BE, "mutect2"),
+        Consequence("caller", SAME_AS_CONSTRAINT),
+        Constraint("vartype", MUST_BE, "all"),
+        Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
+        help="Filter the variants from Mutect2.",
         ),
 
     ModuleNode(
@@ -860,9 +950,39 @@ all_modules = [
         ),
 
     ModuleNode(
+        "call_variants_pindel",
+        [NGS.BamFolder, NGS.ReferenceGenome,
+         NGS.InsertSizeMetrics, NGS.AlignmentSummaryMetrics],
+        PindelResultsFolder,
+        Constraint("sorted", MUST_BE, "coordinate", 0),
+        Constraint("indexed", MUST_BE, "yes", 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
+        #Consequence("caller", SET_TO, "pindel"),
+        #Consequence("vcf_recalibrated", SET_TO, "no"),
+        #Consequence("vartype", SET_TO, "indel"),
+        # Pindel 0.2.0 wants BWA-generated BAM files.
+        Constraint("aligner", MUST_BE, "bwa_mem", 0),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
+        help="Use pindel to call variants.",
+        ),
+    ModuleNode(
+        "convert_pindel_results_to_vcf",
+        [PindelResultsFolder, NGS.ReferenceGenome], VCFFolder,
+        Consequence("caller", SET_TO, "pindel"),
+        Consequence("vcf_recalibrated", SET_TO, "no"),
+        Consequence("vartype", SET_TO, "indel"),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
+        help="Convert the pindel results to VCF.",
+        ),
+
+    ModuleNode(
         "merge_somatic_variants_snp",
         [
             VCFFolder, # MuTect
+            VCFFolder, # MuTect2
             VCFFolder, # Varscan
             VCFFolder, # Strelka
             VCFFolder, # SomaticSniper
@@ -876,21 +996,24 @@ all_modules = [
         Constraint("caller", MUST_BE, "mutect", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
-        Constraint("caller", MUST_BE, "varscan", 1),
+        Constraint("caller", MUST_BE, "mutect2", 1),
         Constraint("vartype", MUST_BE, "snp", 1),
         Constraint("somatic", MUST_BE, "yes", 1),
-        Constraint("caller", MUST_BE, "strelka", 2),
+        Constraint("caller", MUST_BE, "varscan", 2),
         Constraint("vartype", MUST_BE, "snp", 2),
         Constraint("somatic", MUST_BE, "yes", 2),
-        Constraint("caller", MUST_BE, "somaticsniper", 3),
+        Constraint("caller", MUST_BE, "strelka", 3),
         Constraint("vartype", MUST_BE, "snp", 3),
         Constraint("somatic", MUST_BE, "yes", 3),
-        Constraint("caller", MUST_BE, "jointsnvmix", 4),
+        Constraint("caller", MUST_BE, "somaticsniper", 4),
         Constraint("vartype", MUST_BE, "snp", 4),
         Constraint("somatic", MUST_BE, "yes", 4),
-        Constraint("caller", MUST_BE, "muse", 5),
+        Constraint("caller", MUST_BE, "jointsnvmix", 5),
         Constraint("vartype", MUST_BE, "snp", 5),
         Constraint("somatic", MUST_BE, "yes", 5),
+        Constraint("caller", MUST_BE, "muse", 6),
+        Constraint("vartype", MUST_BE, "snp", 6),
+        Constraint("somatic", MUST_BE, "yes", 6),
         help="Call variants with all implemented somatic variant callers.",
         ),
 
@@ -898,6 +1021,7 @@ all_modules = [
         "merge_somatic_variants_snp_with_radia",
         [
             VCFFolder, # MuTect
+            VCFFolder, # MuTect2
             VCFFolder, # Varscan
             VCFFolder, # Strelka
             VCFFolder, # SomaticSniper
@@ -912,24 +1036,27 @@ all_modules = [
         Constraint("caller", MUST_BE, "mutect", 0),
         Constraint("vartype", MUST_BE, "snp", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
-        Constraint("caller", MUST_BE, "varscan", 1),
+        Constraint("caller", MUST_BE, "mutect2", 1),
         Constraint("vartype", MUST_BE, "snp", 1),
         Constraint("somatic", MUST_BE, "yes", 1),
-        Constraint("caller", MUST_BE, "strelka", 2),
+        Constraint("caller", MUST_BE, "varscan", 2),
         Constraint("vartype", MUST_BE, "snp", 2),
         Constraint("somatic", MUST_BE, "yes", 2),
-        Constraint("caller", MUST_BE, "somaticsniper", 3),
+        Constraint("caller", MUST_BE, "strelka", 3),
         Constraint("vartype", MUST_BE, "snp", 3),
         Constraint("somatic", MUST_BE, "yes", 3),
-        Constraint("caller", MUST_BE, "jointsnvmix", 4),
+        Constraint("caller", MUST_BE, "somaticsniper", 4),
         Constraint("vartype", MUST_BE, "snp", 4),
         Constraint("somatic", MUST_BE, "yes", 4),
-        Constraint("caller", MUST_BE, "muse", 5),
+        Constraint("caller", MUST_BE, "jointsnvmix", 5),
         Constraint("vartype", MUST_BE, "snp", 5),
         Constraint("somatic", MUST_BE, "yes", 5),
-        Constraint("caller", MUST_BE, "radia", 6),
+        Constraint("caller", MUST_BE, "muse", 6),
         Constraint("vartype", MUST_BE, "snp", 6),
         Constraint("somatic", MUST_BE, "yes", 6),
+        Constraint("caller", MUST_BE, "radia", 7),
+        Constraint("vartype", MUST_BE, "snp", 7),
+        Constraint("somatic", MUST_BE, "yes", 7),
         help="Call variants with all implemented somatic variant callers.",
         ),
 
@@ -962,6 +1089,7 @@ all_modules = [
             VCFFolder, # GATK
             VCFFolder, # Platypus
             VCFFolder, # Varscan
+            VCFFolder, # pindel
             ],
         ManyCallerVCFFolders,
         Consequence("vartype", SET_TO, "indel"),
@@ -976,6 +1104,9 @@ all_modules = [
         Constraint("caller", MUST_BE, "varscan", 2),
         Constraint("vartype", MUST_BE, "indel", 2),
         Constraint("somatic", MUST_BE, "no", 2),
+        Constraint("caller", MUST_BE, "pindel", 3),
+        Constraint("vartype", MUST_BE, "indel", 3),
+        Constraint("somatic", MUST_BE, "no", 3),
         help="Call variants with all implemented non-somatic variant callers.",
         ),
 
@@ -1295,21 +1426,25 @@ all_modules = [
     ModuleNode(
         "merge_somatic_variants_indel",
         [
-            VCFFolder, # Varscan
+            VCFFolder, # MuTect2
+            VCFFolder, # Varscan2
             VCFFolder, # Strelka
-            VCFFolder, # JointSNVMix
+            #VCFFolder, # JointSNVMix
             ],
         ManyCallerVCFFolders,
         Consequence("vartype", SET_TO, "indel"),
         Consequence("somatic", SET_TO, "yes"),
         Consequence("with_rna_callers", SET_TO, "no"),
-        Constraint("caller", MUST_BE, "varscan", 0),
+        Constraint("caller", MUST_BE, "mutect2", 0),
         Constraint("vartype", MUST_BE, "indel", 0),
         Constraint("somatic", MUST_BE, "yes", 0),
-        Constraint("caller", MUST_BE, "strelka", 1),
+        Constraint("caller", MUST_BE, "varscan", 1),
         Constraint("vartype", MUST_BE, "indel", 1),
         Constraint("somatic", MUST_BE, "yes", 1),
-        Constraint("caller", MUST_BE, "jointsnvmix", 2),
+        #Constraint("caller", MUST_BE, "jointsnvmix", 2),
+        #Constraint("vartype", MUST_BE, "indel", 2),
+        #Constraint("somatic", MUST_BE, "yes", 2),
+        Constraint("caller", MUST_BE, "strelka", 2),
         Constraint("vartype", MUST_BE, "indel", 2),
         Constraint("somatic", MUST_BE, "yes", 2),
         help="Call variants with all implemented somatic variant callers.",
